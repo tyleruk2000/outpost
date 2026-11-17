@@ -31,8 +31,8 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Every screen can be found from the navigation, on a wide screen as on a phone. One
   description of every screen and where it belongs (`apps/web/src/components/nav.ts`)
   draws the sidebar, the phone's More sheet, the quick search's "Go to" list and the
-  shortcuts. A screen reached from inside another (How search works, the five radio
-  tools, Import files, Manage and clean up, Bring back from a drive, the set-up guide)
+  shortcuts. A screen reached from inside another (How search works, the radio tools,
+  Import files, Manage and clean up, Bring back changes from a drive, the set-up guide)
   is listed indented under it in the sidebar and in the More sheet, behind a button that
   shows or hides them; the group of the screen in view opens by itself, and what was
   opened or closed is remembered on the device. Collapsed to icons, such a screen opens
@@ -372,7 +372,9 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   sources are fenced off from instructions.
 - Tested against a stand-in server that speaks the protocol
   (`apps/server/test/model-server.ts`), checked against the Ollama and llama.cpp
-  documentation of 2026-11-15. **Not yet run against a real model.**
+  documentation of 2026-11-15. The automated tests still use only the stand-in; runs
+  against real models are below and under
+  [Chat: tools a model can use, and MCP](#chat-tools-a-model-can-use-and-mcp).
 - A model server must be on this computer or a private network: an address on the public
   internet is refused, by spelling and by looking the name up before each request,
   unless Outpost is started with `OUTPOST_ALLOW_REMOTE_MODEL_SERVER=true`.
@@ -381,7 +383,9 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   `llama3.2:1b` on Ollama 0.40.16, with a script that counts right answers, rightly
   declined questions, made-up answers, citation faults and times. The figures before
   and after the changes below are in `docs/ai.md`. It is run by hand; the test suites
-  never contact a real model server and fail if a test tries to.
+  never contact a real model server and fail if a test tries to. Five more models were
+  run through the same questions on 17 November (see **Which model** under
+  [Help: the guides in the app](#help-the-guides-in-the-app)).
 - **Passages for an answer are chosen one by one**, by words and by meaning together,
   five at most, where there used to be up to three from each of the best documents and
   eight in all. A passage that only shares a common word with the question is no
@@ -415,7 +419,7 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   everyone who can open Outpost can read them, and the screen says so.
 - Replies arrive as they are written and go on being written if the tab is closed.
   Stop closes the connection to the model server. Regenerate, edit and resend the last
-  message, copy a reply, copy a code block, save a reply as a new note.
+  message, copy a reply, copy a code block, save a reply as a new page in Notes.
 - A reply's headings, lists, tables and code are drawn from a tree of plain values,
   never as HTML; a link in a reply is shown as words and a picture is never fetched.
 - A model picker fed by the model server's own list, remembered per conversation, with
@@ -438,14 +442,15 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 
 #### Reference collections
 
-- A catalogue of 310 items in JSON manifests, with a validator: 155 Kiwix archives; 130
+- A catalogue of 410 items in JSON manifests, with a validator: 173 Kiwix archives; 212
   official handbooks, rules, guides and textbooks fetched as PDFs from their publishers
-  (FAA, NASA, USGS, the US National Weather Service, FAO, WHO, Ready.gov, USDA, OpenStax,
-  UIAA, Ofcom, IARU, CEPT, NIST, NTIA, CISA, the Met Office, the Health and Safety
-  Executive, GOV.UK, the US Department of Energy and others), each
-  pinned by size and SHA-256; and nine radio reference sheets and sixteen radio books
-  that ship with Outpost. Downloaded PDFs join
-  the document library and are searchable to the page.
+  (FAA, NASA, USGS, the US National Weather Service, FAO, WHO, Ready.gov, FEMA, the CDC,
+  USDA, OpenStax, UIAA, Ofcom, IARU, CEPT, NIST, NTIA, CISA, the Met Office, the Health
+  and Safety Executive, GOV.UK, the US Department of Energy and others), each pinned by
+  size and SHA-256; and nine radio reference sheets and sixteen radio books that ship
+  with Outpost. Downloaded PDFs join the document library and are searchable to the
+  page. There are 22 packs. What was added on 17 November is under
+  [Catalogue additions](#catalogue-additions).
 - 72 of those were added in a second pass on 16 November 2026, each fetched and its
   licence read that day: Met Office weather factsheets, HSE safety guidance, UK government guides (life saving signals, the
   Countryside Code, a flood plan, the National Risk Register, traffic signs), US
@@ -866,12 +871,24 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   with every cell, card or hole a control with a spoken name. See
   [docs/games.md](docs/games.md).
 - **Allotment**: one plot for the household, kept on the server so every device sees the
-  same, every action applied with the server's clock. Crops grow in real time, from four
-  minutes to three days, a little faster in season (from the real calendar, by
-  hemisphere) and when watered; the stall, more beds, a water butt, compost, hens, a
-  hive, an apple tree and a greenhouse; an almanac and a few milestones. It never
-  punishes: nothing withers or runs out, ripe crops wait for ever, what builds up stops
-  at a small cap, radish seed is free, and after a year away everything is waiting.
+  same, every action applied with the server's clock. A crop grows only in its real
+  British months (from its earliest sowing to its last harvest, as the Royal
+  Horticultural Society gives them; under glass, all year) and only while its bed is
+  moist; otherwise it waits, losing nothing. Watering with the can lasts 12 hours; rain
+  falls on wet days worked out from the date alone, the same on every device, more often
+  in autumn and winter (in the southern hemisphere the months move on six); the water
+  butt keeps the open beds watered for 2 days after rain; the greenhouse is in season all
+  year but gets no rain. Twelve crops, growing in moist soil in their months from four
+  minutes (radishes) to three days (squash): broad beans, garlic, onions and kale were
+  added so that something grows in every month. The stall, more beds, a water butt,
+  compost, hens, a hive, an apple tree and a greenhouse; a few milestones. Dry and moist
+  soil, rain, and why each bed waits are shown on the plot; there is a "This month on
+  the plot" section, and a card for each crop in the almanac saying where its facts come
+  from. It never punishes: nothing withers, dies or runs out, a ripe crop waits for
+  ever, what builds up stops at a small cap, radish seed and onion sets are free, and
+  after a year away everything is waiting. A plot saved before these rules is read into
+  them with nothing lost (no migration). **Start again** is in plain view at the foot of
+  the screen, not folded inside About. See [docs/games.md](docs/games.md#allotment).
 - **Solitaire** (Klondike, also called patience), draw one or three, with undo, tap to
   send a card where it fits, pick and put, drag, and putting away all that can go.
   **Peg solitaire** on the English 33-hole board. **Sudoku** made on the device, every
@@ -930,6 +947,16 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - CSV out and in, with a preview and a choice for duplicates. Items have addresses a
   note can link to; `GET /api/supplies/outlook` answers days of food and water and what
   is missing for other screens. Migration 0016. See [docs/supplies.md](docs/supplies.md).
+- **The energy in a food, offered by name.** Typing a food's name offers its energy per
+  100 g from USDA FoodData Central (SR Legacy, April 2018, 7,793 foods, public domain),
+  which ships with Outpost (724 kB) and works offline; British words such as courgette,
+  mince and tinned also find the American entry. Choosing one fills the energy and asks
+  for the weight of the tin or pack rather than assuming one, and the item's notes say
+  where the figure came from.
+- **How long it lasts** says the days of energy, whose daily figure it uses (Public
+  Health England's, or one given for a person under Household), and which foods are not
+  counted, with one press (**Give them their energy**) to give each a figure in turn.
+  `GET /api/supplies/foods` answers the food search.
 
 
 #### Weather and hazards (Preparedness)
@@ -1283,6 +1310,12 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   the sun stands at a height, beside `sunDay` in `features/maps/lib/sun.ts`; sidereal time
   and the positions of Polaris, Dubhe and Kochab in `features/maps/lib/sky.ts`. All held
   to the US Naval Observatory's published values in tests.
+- The solar clock draws its methods: the shadow's path seen from above, the stick and the
+  sun's height, the compass's view of a shadow, and each recovered time on the day's sun
+  with its range. The sundial, the gnomon, true north and the night sky with a nocturnal
+  are drawn for the place. See [docs/tools-solar-clock.md](docs/tools-solar-clock.md).
+- Recovering the time from a shadow's compass bearing fills in the magnetic declination
+  for the place from the World Magnetic Model (see [Tools: Compass](#tools-compass)).
 
 #### Tools: QR codes and devices on this network
 
@@ -1306,6 +1339,13 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - A Dockerfile for `linux/amd64` and `linux/arm64`, and a Compose stack that builds the
   image locally (`outpost:local`) and runs it with a kiwix-serve sidecar.
 - A packaged app that runs with only a Node binary.
+- Two scripts for a Raspberry Pi in `deploy/pi/`: `install.sh` checks for a 64-bit
+  Raspberry Pi OS, can install Docker (`--install-docker`), share Outpost with the
+  network (`--lan`) and publish the HTTPS port (`--https`), then builds and starts the
+  stack; `hotspot.sh` gives the Pi a Wi-Fi network of its own, to be carried somewhere
+  with no router. **Neither has been run on a Raspberry Pi**: they were checked only
+  for syntax and with `--dry-run` on a Mac. See
+  [docs/deployment.md](docs/deployment.md#from-a-mac-to-a-raspberry-pi-step-by-step).
 - Checks to run locally: lint, type checking, server and web tests, catalogue
   validation, and browser tests against the packaged app with the internet blocked.
 
@@ -1317,7 +1357,7 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   figure typed; the answer appears as you type, in figures and in a sentence; a figure
   that cannot be used is said to be, in words; and "How this is worked out" gives the
   formula, its source with the date it was read, the range it holds for and what it
-  leaves out. Copy and Save as a note keep an answer.
+  leaves out. **Copy** and **Save as a page** keep an answer.
 - Water: water to store by the UK Government's, the CDC's, FEMA's or the WHO's figure,
   with every body's figure listed beside the answer; rain from a roof; filter life from
   the filter's own label; and making water safe to drink, quoted from the CDC, the EPA,
@@ -1331,7 +1371,8 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Radio: antenna lengths with an adjustable factor, free-space path loss, the
   smooth-earth radio horizon (linking to the map's line of sight over terrain), cable
   loss from makers' published figures, watts, dBm and S-units on both S9 conventions, and
-  battery life on a duty cycle.
+  battery life on a duty cycle. The radio calculators draw the antenna and the radio
+  horizon.
 - Building: concrete and mortar by Hanson's published mixes, area and volume, roof pitch,
   a cutting list (first fit decreasing, said not to be optimal), U-values by BS EN ISO
   6946's simple sum and heat loss, both said to be estimates, and sheets and fixings.
@@ -1409,6 +1450,441 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   only use figures already fetched on the other screen, and offered no choice at all
   when one place had them.
 
+#### Messages: the household board
+
+- **Messages**, a board for one household on the home network, with no extra hardware
+  and no internet: short messages for everyone; check-ins ("I'm safe, gone to Mum's"),
+  with each person's latest at the top and, if ticked, the device's position (on a
+  secure page only); and files sent from one device for another to save. A person is a
+  name chosen once on each device; there are no accounts, and anyone on the network can
+  post under any name, read everything, and change or remove any message. A removed
+  message keeps a line saying who removed it. No push notifications: it does not wake
+  a locked phone. See [docs/messages.md](docs/messages.md).
+- Home says "N new on the board" when there is something new. **Settings → Message
+  board** sets how long sent files are kept (7 days by default).
+- The board is counted under Storage and Manage and clean up, can be emptied from the
+  leftovers, is erased with everything else, and goes into backups with its files; it
+  does not go on a portable drive. A message changed on another device after this one
+  opened it is not overwritten. Migration `0028_board`.
+
+#### Mesh radio (Messages)
+
+- **Not yet tried with a real radio.** The household board can reach beyond the Wi-Fi
+  through a LoRa radio running Meshtastic or MeshCore firmware. Meshtastic connects by
+  MQTT in JSON mode, with Outpost as the broker or through a broker the household
+  already runs; MeshCore by USB cable or its network port. A radio channel is a channel
+  of the board, shown beside **Home** on Messages; nothing is relayed between Home and a
+  radio channel by itself. Set up under **Settings → Mesh radio**, and only from the
+  computer Outpost runs on; off until then, with no listener, timer or open device.
+  Built from the projects' published documentation and tested against stand-ins (for
+  MeshCore by USB cable, only the device list and the port settings were tested, not
+  opening a device). A default public channel can be read by anyone
+  with a radio in range, and the screen says so. See
+  [docs/mesh-radio.md](docs/mesh-radio.md).
+
+#### Audiobooks (Library)
+
+- **Audiobooks**: add a zip or audio files and they become one book with its chapters in
+  order, kept on the server and played in the browser from it, with speed, 30-second
+  skips, controls on the lock screen where the browser offers them, and the place
+  reached kept on each device. Found by title in search and listed under Library →
+  Documents and Collections. See [docs/library.md](docs/library.md#audiobooks).
+- **Explore → Audiobooks**: a shelf of 15 public-domain LibriVox recordings, as links to
+  download in your own browser and then add. Outpost never fetches a recording; LibriVox
+  says its recordings are public domain in the USA and asks people elsewhere to check
+  their own country's law.
+
+#### Learning progress (Library)
+
+- **Learning progress**: the reader records where each learner got to in a reference
+  archive (Khan Academy, PhET and others): pages opened, time on screen while the tab is
+  visible, and pages done. The reader's bar has a learner switch ("Who is learning?")
+  and **Done**; a video played through counts as watched. A learner is a name chosen on
+  the device, with no password; nothing is recorded on a device until someone is chosen
+  there. Progress is kept under the archive's name without its date, so it carries on
+  through an update. Not tried with the real Khan Academy archive or any real course
+  archive. See [docs/learning.md](docs/learning.md).
+- **Library → Learning** lists each learner's courses, pages done and time this week,
+  and can be printed. A collection's page offers "Carry on where Sam left off".
+- Learning progress can be removed per learner under Manage and clean up. It is erased
+  with everything else, and kept in backups and on portable drives. It is not put in
+  search and never sent to a model server. Migration `0029_learning_progress`.
+
+#### Catalogue additions
+
+- Explore lists eight CDC health and safety sheets (making water safe, food after a
+  power cut, wound care, diarrhoea, heat illness, generator carbon monoxide,
+  handwashing, water treatment outdoors) and seven FEMA guides (the planning guidance
+  for response to a nuclear detonation, the P-320 safe room guide and the five *Protect
+  Your Property* brochures), each fetched from the agency's own site with a pinned
+  checksum. Both sites had refused Outpost's client on the two days before and answered
+  it on 17 November; `docs/sources.md` quotes their reuse statements, with what was left
+  out and why.
+- The NIOSH Pocket Guide to Chemical Hazards (publication 2005-149, third printing),
+  public domain, from cdc.gov.
+- 66 more publications from their publishers, for days, months and years without a
+  connection: UK household emergency plans (Be Ready, Ready Scotland, nidirect), cold,
+  heat, flood, fire and gas guidance, more of Ready.gov and the CDC; the rest of the US
+  Department of Energy's fundamentals handbooks; hand-tool and trail manuals from the US
+  Forest Service; soil, seed and poultry manuals; repairing old buildings (the National
+  Park Service's Preservation Briefs); the ICRC's *War Surgery*; fifteen more OpenStax
+  textbooks and two NASA histories. `docs/sources.md` records each, and what was looked
+  at and left out, and why.
+- 18 more Kiwix archives: eight Project Gutenberg literature and humanities shelves,
+  Wikiquote, Book Dash picture books, Mutopia sheet music and seven Stack Exchange
+  sites. They were kept by the owner's decision after Kiwix's `robots.txt` was found to
+  disallow every client: Outpost goes on fetching Kiwix's feed and a file only when a
+  person presses Download, as Kiwix's own readers do, and the catalogue's online check
+  now leaves Kiwix's hosts alone (see [For contributors](#for-contributors)). See
+  [docs/sources.md](docs/sources.md#kiwixs-robotstxt-read-on-2026-11-17).
+- Five new packs, "A few days without power", "If it goes on for months", "Rebuilding",
+  "Something good to read" and "For children", making 22; "First things" now opens with
+  the UK household emergency plan. A new category, "Literature and reading".
+
+#### Help: the guides in the app
+
+- **Help** in the sidebar: every page of Outpost's documentation inside the app, grouped
+  for a household and readable with no internet. The quick search finds each guide and
+  its sections.
+- The installation guide walks from a Mac to a Raspberry Pi step by step, says what has
+  and has not been tried, and covers moving a library across. Troubleshooting covers
+  each message the Raspberry Pi scripts stop with.
+- **Which model**: a guide comparing seven models measured on a Mac (an Apple M2 Max
+  with Ollama), for answers from the library and for looking things up: `llama3.2:1b`,
+  `lfm3:1.7b`, `bonsai-2:2b`, `llama3.2:3b`, `bonsai-2:4b`, `bonsai-2:9b` and
+  `ornith:9b`, each with its download, memory, licence, results and times. None was
+  timed on a Raspberry Pi. Written from one data file
+  (`packages/shared/src/model-trials.ts`); see [docs/which-model.md](docs/which-model.md).
+
+#### Chat: tools a model can use, and MCP
+
+- **Looking things up in Outpost**: Chat can let a model read places and map layers,
+  supplies, emergency plans, the weather as last fetched, the sun and compass, radio,
+  the catalogue and the library, and answer from what Outpost holds, saying where each
+  fact came from. The tools only read: none changes anything, starts a download or asks
+  the internet, and a test runs every tool and fails if one does. Off by default
+  (**Settings → Looking things up in Outpost**), switchable by area; the message board's
+  area is off until turned on, and contacts, keys, encrypted pages and the board's files
+  are never readable. When tools are on, Chat suggests a model measured to look things
+  up well. Tried by script with the seven models of Which model; see
+  [docs/ai.md](docs/ai.md#looking-things-up-in-outpost).
+- **An MCP endpoint**, `/mcp`, serving the same tools under the same switches to other
+  programs on the home network that speak the Model Context Protocol. Off by default,
+  and switched on only at the computer Outpost runs on (see [Security](#security-1)).
+  Not tried with a real MCP client. See [docs/mcp.md](docs/mcp.md).
+
+#### Maps: place names and postcodes for Great Britain
+
+- Place names, roads and postcodes for Great Britain from Ordnance Survey's OS Open
+  Names (Open Government Licence), downloaded on a press from the Offline tab and
+  updated whole when OS publishes a new edition. The map and the search list credit
+  Ordnance Survey.
+- The map's search finds a postcode however it is typed, offers the district or sector
+  for a partial one, and says Northern Ireland is not covered. Exact names come first,
+  then places before roads, then nearness; each result says what it is and where.
+
+#### Maps: heights
+
+- The map's readout gives the height of the ground under a resting pointer, or at the
+  centre when opened on a phone, from installed terrain. `GET /api/maps/height`.
+- **Settings → Appearance → Heights**: metres or feet for every height on the map
+  screens, kept in the browser.
+
+#### Food and supplies (Maps)
+
+- **Maps → Layers → Food and supplies**: shops, markets, food banks, drinking water,
+  fuel and pharmacies from OpenStreetMap, fetched for the area on screen up to about a
+  county, each kind with its own mark and switch. In the UK the Food Standards Agency's
+  registered food shops can be added to the same layer; a shop in both is shown once.
+- The nearest of each kind to home or the middle of the map, with distance (in
+  kilometres and miles) and bearing, worked out offline. `GET /api/reference/nearest`.
+- **For a whole region**: a US state, a German Land, an English county or any region
+  Geofabrik publishes, chosen by name, with the size and what will be shown first; one
+  download fills the other OpenStreetMap layers too. The region's extract is deleted
+  once read unless you keep it; only the places stay. See
+  [docs/reference-layers.md](docs/reference-layers.md#food-and-supplies).
+
+#### Airport frequencies (Reference layers)
+
+- Downloading or updating the airports layer also fetches OurAirports'
+  `airport-frequencies.csv` (about 1.3 MB, public domain), and each airport's card lists
+  its radio frequencies in MHz, tower and information services first, marked not for
+  navigation or flight planning. About five rows show on a phone, and the card folds.
+- An airports pack whose frequencies could not be fetched still installs and says why
+  under Reference data for the map; a pack from before says on each card that
+  frequencies are not held until it is updated.
+
+#### Repeaters: estimated range
+
+- An **Estimated range** switch on a repeater's map card (and a button on the repeater's
+  own screen) draws where its aerial is in line of sight over installed terrain, for a
+  handheld, a car or a roof aerial, out to 100 km, on 72 bearings. It is an estimate of
+  line of sight only, says its heights and what it leaves out, and is off until switched
+  on. With no terrain it is the smooth-Earth radio horizon, a dashed circle, and says
+  so; where terrain covers only part of the area it says so and dashes the edge where
+  terrain ran out. On a phone the card folds so the outline has room.
+  `GET /api/maps/sight-range`. See [docs/radio.md](docs/radio.md).
+
+#### River and sea levels (Preparedness)
+
+- **Weather and hazards → River and sea levels**: the Environment Agency's stations near
+  a place, fetched on a press, each with its latest level, when it was measured, its
+  datum, where it sits in the Agency's typical range and whether it is rising, steady or
+  falling, in three short lines. England only, and the screen says so.
+- A station's own view: its last three days as a chart with its typical range and
+  highest on record, and as a table.
+- The Flood view now holds flood warnings only, and links to River and sea levels. See
+  [docs/weather.md](docs/weather.md#river-and-sea-levels).
+
+#### Tools: Compass
+
+- **Tools → Compass**: magnetic north from NOAA's World Magnetic Model 2025 (valid to
+  the end of 2029), grid north on the National Grid, and what to add or subtract going
+  between map and compass at a place, worked out with no internet; with a drawing of
+  the three norths and of a bearing from map to compass, and a bearing converted
+  between the three.
+- A live compass on phones at an HTTPS address, corrected to true or grid north. Not
+  tried on a real phone.
+- The map's centre card gives magnetic north at the centre and opens the Compass for
+  that point. See [docs/tools-compass.md](docs/tools-compass.md).
+
+#### For contributors
+
+- `e2e/tools/idle-cost.mjs` measures what a screen costs while nobody is touching it:
+  the processor time of the page and the server, and what keeps them awake.
+- The catalogue's online check takes `--skip-host <host>` to leave a host unasked, and
+  leaves Kiwix's hosts alone unless `--include-kiwix` is given.
+- `apps/web/src/lib/one-product.test.ts` fails when a screen goes its own way on the
+  rules written in `docs/development/web-screens.md` (dialog buttons, back links, names,
+  separators, empty states, sections, icons).
+- `apps/server/test/eval/tools-eval.ts` asks real models sixteen questions that need
+  the tools, and `scripts/write-which-model.mjs` writes `docs/which-model.md` from the
+  figures.
+
+### Changed
+
+- **Outpost at rest costs close to nothing.** With nobody using it, the server sets no
+  timer on a fixed tick except a few checks of things outside it. The job queue no
+  longer asks the database every two seconds; it sets a timer only for a job told to
+  wait. Open live-event streams share one 50-second keep-alive that stops with the last
+  of them. Storage checks no longer tell every open screen that free space moved, and a
+  missing drive is looked for every ten minutes, or at once with **Check drives**.
+  Automatic backups sleep until one is due; HTTPS looks again every five minutes while
+  all is well; network shares are looked for again only while a storage location is
+  away. See [docs/architecture.md](docs/architecture.md).
+- **A tab in the background asks the server for nothing.** A hidden tab notes what
+  changed and fetches it when shown, and closes its live-events stream after a minute;
+  screens following work on the server ask only while live events cannot arrive and the
+  page is shown. With the server out of reach, the app no longer asks whether it is back
+  while it is in the background.
+- **Screens at rest do no work**:
+  - Games: no timers or requests at rest or while hidden; the allotment redraws only
+    when something changes; Draughts ends its worker after each reply and does not think
+    in a hidden tab; saves are batched and skipped when nothing changed.
+  - Maps: a map at rest no longer fetches its tiles again every hour; the contour worker
+    ends when idle; a recording does no drawing or ticking while the page is hidden, and
+    redraws its line every five seconds.
+  - Morse trainer: the sound sleeps between tones and when the page is hidden; the
+    automatic keyers no longer redraw every frame while Send or On the air is open.
+  - Chat and answers draw nothing while the page is hidden; the server formats a chat
+    reply only while someone watches.
+  - The kitchen timer wakes the page only while it counts on screen; the solar clock's
+    Now tab reads the clock once a minute and not while hidden; Downloads does nothing
+    in a background tab; the Supplies camera stops when the page is hidden.
+  - Contacts no longer asks for the system summary every 15 seconds; Import no longer
+    asks every 3 seconds while live events arrive, and its list of imports no longer
+    reads every plan (30 imports of 5,000 pages: 6.3 ms a request instead of 115); the
+    set-up guide no longer polls.
+  - Finding a conversation by name and making the QR codes' printable sheet wait for
+    typing to pause; typing in Frequencies to listen to redraws only the rows that
+    change.
+- **Less to download.** The app's files are compressed when it is built, and the server
+  sends them as they are: the first load is 262 kB (gzip), where 1.1 MB was sent
+  uncompressed. JSON answers over 1 kB are compressed as they are sent (the catalogue
+  goes as 57 kB instead of 420 kB). The map's icons and fonts are cached by browsers, map
+  tiles are checked with `ETag` and answered `304` when unchanged, and an empty tile is
+  no longer cached for an hour. Parts are loaded when first used: the Supplies barcode
+  scanner, the Morse trainer's Send, QSO practice and On the air, the HTTPS steps in
+  Settings and the Offline maps tab. The notes lists no longer load the editor, and a
+  tab no longer fetches back a page it has just saved.
+- **Faults.** A screen that fails says so and offers **Reload** and **Home**, keeping the
+  sidebar; before, the window went blank. A fault nothing else caught is logged; an
+  uncaught exception stops the server in order, to be started again by Docker or
+  whatever supervises it.
+- **A change saved elsewhere is not overwritten.** Power plans and a person's own
+  devices, communication plans, emergency plans and nuclear scenario sets refuse a save
+  made from an older copy and offer to keep yours or take theirs. Notes: a draft kept
+  after a reload says when the page has been saved since, and asks before replacing the
+  newer version. Two tabs on one game follow each other. Power plans save at once when
+  the page is hidden or closed, one save at a time; a household may keep at most 500.
+- **Finding your way.** The sidebar keeps Downloads, Storage and Settings in view; Maps
+  and Notes come with Library, and the phone's More sheet is grouped like the sidebar.
+  Child screens lead back to their parent, and one name is used for each thing ("Bring
+  back changes from a drive"; "Save as a page", not "note"). Settings lists its sections
+  at the top. Home names the emergency plan and how long food and water last.
+- **Quick search** finds screens, and each section of Settings, by everyday words
+  (Tools and Preparedness screens by common words, Solitaire by "patience"), with whole
+  words first; it lists the keyboard shortcuts. Search puts what is on this device
+  before what would have to be downloaded, and offers the screens that match.
+- **One way everywhere**: toasts have one look, stay clear of the bottom bar and can be
+  hidden; one separator, one date format, one empty state and one way to move between
+  sections; forms say "optional" in words; dialogs give focus back to what opened them;
+  error notices are read out at once by screen readers; control outlines and
+  placeholders meet contrast guidelines in both themes. On the contact log the empty
+  log has its own buttons, and the Repeaters screen's main button goes last.
+- **Saying before the press.** Manage and Settings say what another device may not do
+  before it is tried. Restoring a backup, and removing a location or an item, say what
+  will happen and whether it can be undone; the restore dialog lists what changes, and
+  its button is **Restore after restart**. An import says what will be made,
+  overwritten and left alone, and screen readers hear its stage, not every page. PDF
+  choices say what each does, and map PDFs are named for place, scale and day.
+- **Text size, and phones.** **Settings → Appearance → Text size**. Large text fits every
+  top-level screen; the radio screens fit a phone at 150% and 200%, and the Downloads
+  charts and Settings hold at 200%. Tabs wrap and are 44 px on phones (the HF planner's
+  a thumb high); the bottom bar's labels are 12.5 px; the document page's header buttons
+  are 44 px; the PDF reader's page steps go into a menu. The map panel's five tabs fit
+  one line on an iPhone ("Offline maps" is written "Offline"), and a card's buttons
+  (Pause, Stop, Preview the page) stay in view. Saving a place: the hint goes on a tap,
+  the form stays above the keyboard and the place stays in view; touch screens say
+  "tap". Notes on a phone keep Undo, Redo and Add a block in sight, selecting text no
+  longer covers the phone's own menu, and tick boxes, callout icons and toggle arrows
+  are finger-sized. Save a web page brings its result into view. Contacts: long names
+  and tag filters wrap, and opening a contact from the keyboard moves focus to it. The
+  Morse trainer shows no keyboard keys on a phone.
+- **Library and Explore.** Explore starts with encyclopedias, medicine and maps, shows a
+  few of each category and long lists a page at a time (on a phone, 1,713 elements
+  instead of 5,689), keeps its filter in the address, and its catalogue is put together
+  faster. Downloads history, places and routes show fifty at a time. The reference
+  reader offers **Try again** when a collection cannot be read, says plainly when an
+  archive lacks a file, takes the page's main heading as its title, and follows **Add
+  all** by live events instead of asking.
+- **Radio.** The HF planner's answer comes first, in local time beside UTC: it opens
+  with the share of days a contact is predicted to get through, and explains the MUF.
+  Repeaters, the HF planner and HF coverage start from your home place. Communication
+  plans give their best figure as a share "of days", on screen, in the PDF and in
+  Markdown. The Repeaters screen says its lists are kept in Outpost.
+- **Storage and backups.** Storage counts each file once, and Home, Library and Storage
+  give the same counts; its legend says "Books and other files". Storage → Database
+  speaks plainly, with the technical detail behind a disclosure, and counts lists of
+  repeaters, weather places, PGP keys and reference records. Storage shows which location
+  holds the automatic backups. Settings says a backup was made, its name and size, where
+  it went and what is not in it.
+- **Maps.** The map offers your own area first, and says before the press that a
+  region's size needs a connection. A reference-layer estimate over half an hour old is
+  refused, and an import with no publisher is credited by name.
+- **Notes, imports and encryption.** Long code lines scroll inside their block, as in the
+  library. Notes home keeps titles readable at large text and has Trash and All
+  templates on the page. Over plain http, the Encryption screen says first, in a shorter
+  notice above the tabs, what does not work.
+- **Supplies and tools.** Supplies counts items and says when no water is stored, and
+  CSV figures that cannot be right are refused row by row. Path loss refuses distances
+  under a wavelength, and its power is optional. The kitchen timer shows the time it will
+  count from. Weight and Volume keep their From unit; walking and battery times are
+  rounded to what their figures support.
+- **Games.** Peg solitaire and Draughts count time only while the board is in view; the
+  Sudoku board is wider; the allotment's cards say each thing once.
+
+### Fixed
+
+- Search counts every match, so every page of results can be reached.
+- Quick search that cannot be fetched (an old tab after an update, a dropped connection)
+  no longer leaves a blank window: it says so and is fetched afresh at the next press.
+  Letters typed while it loads are not taken as shortcuts.
+- Importing search-by-meaning vectors of the wrong size for a model is refused.
+- A screen opened on a phone from a scrolled list starts at its top.
+- Erasing everything on a portable drive no longer lets a later merge remove things at
+  home.
+- A backup the computer slept through is made soon after it wakes, not hours later. A
+  saved backup is recorded once, and the server no longer writes to a closed database
+  when it shuts down.
+- Free space is brought up to date once it moves 256 MiB, whatever the disk's size.
+- Network shares are looked for again while any storage location is away; a share whose
+  mount stayed listed after its server had gone was not looked for again.
+- Manage and clean up no longer counts a download that is still arriving as left over.
+  Downloads no longer says nothing was downloaded beside a Library with collections.
+- The "Add all to library" count moves while the job runs again.
+- Reloading a page of an archive in the reader, or opening a link to one, no longer
+  answers 404 when the page's own name ends in `.html`.
+- Updating a sheet included with Outpost from its collection page goes to the new
+  edition. A map's attribution reads as words on its collection page.
+- Updating an OpenStreetMap reference pack twice in one day no longer fails, and an
+  OurAirports update made on the same day as the last download is no longer refused.
+- Notes: "Try again" opens the page once the connection is back. Import: "Replace"
+  leaves a page that has been encrypted since as it is.
+- The power screens no longer say "changed somewhere else" when the database was only
+  busy.
+- Emergency plans: typed numbers are no longer silently lost, and a copy shows its own
+  last-opened time.
+- Supplies: hidden form fields no longer block saving; "Use one of", not "one one of".
+- The barometer's CSV preview lists how each number not written plainly was read, and a
+  height with a decimal comma is read.
+- A wind from 360° is read as north in the nuclear simulator.
+- Water's filter life no longer breaks the screen on very large figures, and storage
+  gives both ends of a range in UK gallons. The sun calculator's "today" follows this
+  device's date.
+- Maps: the Sun tab and the sun line move on to the new day at midnight. Find a route:
+  long server names wrap, so Search stays inside the panel.
+- The HF planner's charts no longer spill sideways for a moment on a phone.
+- Allotment: a bed's time label no longer covers its plants.
+- The set-up guide's page in the repository keeps multi-line commands inside their
+  steps.
+
+### Security
+
+- **A symbolic link in a storage root no longer opens the whole disk to the network.**
+  Whether a folder is inside the storage roots is now decided twice: as it is written,
+  and again with every symbolic link in it followed. On a Mac the default root is
+  `/Volumes`, where `/Volumes/Macintosh HD` is a link to `/`; checked by spelling alone,
+  that let any device on the network list every folder on the computer and make a
+  storage location in a person's home folder. The same test decides the folders the
+  storage screen lists, a new location, each location's check at start-up, where a
+  portable drive is made and which drive is read back home. A link inside a storage
+  location is still followed; [docs/security.md](docs/security.md#paths) says why.
+- **Erasing everything clears the words of what was erased from the search index's own
+  storage.** The keyword index's storage is rebuilt before the database file is
+  compacted, so nothing erased is left readable in the file.
+- **Another device can no longer delete several of a person's own files in one step**
+  (documents they uploaded, archives Outpost was pointed at): that is held to the rule
+  for erasing everything and refused with `403`; they can be removed one at a time, or
+  forgotten with their files kept. Downloaded content can still be removed in bulk from
+  anywhere.
+- **Another device can no longer write over the person's own HTTPS certificate and
+  key.** Giving a new pair while one is already in `tls/own` deletes the old key as
+  surely as deleting it does, and so follows the same rule as deleting Outpost's own
+  authority.
+- **The reader frames an archive's pages at a secret address of its own**, where a page
+  may read its own archive's files. Archives whose page is a small web app (most
+  collections of videos) showed an empty page, because a sandboxed page's requests for
+  its own scripts, fonts and data count as coming from another site. Allowing that at
+  the plain address would have let a page on any site read the library through a
+  sandboxed frame of its own, so pages are framed under `/kiwix/<word>/content/…`, where
+  the word is 32 random characters made once for the installation (`reader-token` in the
+  data folder) and given only to Outpost's own screens; only there, and only to a
+  request with `Origin: null`, may the answer be read. An archive's own scripts can see
+  the word, so a hostile archive could send it out and let others read the downloaded
+  archives (not notes, contacts or anything behind the API); removing `reader-token`
+  and restarting makes a new one. The script the reader adds gives such a page stand-ins
+  for the cookies and browser storage a sandbox refuses. The sandbox itself is
+  unchanged: no `allow-same-origin`, no referrer. Checked in Chromium only.
+- **Importing a search-by-meaning file refuses a line over 1 MB.** The import kept
+  everything after the last line break in one string and searched it again with every
+  piece, so a gzip file of a few kilobytes that unpacked to one endless line held the
+  server's memory and processor for minutes. A real export's longest line is about
+  44,000 characters.
+- **The MCP endpoint can only be switched on at the computer Outpost runs on.** `/mcp`
+  is off by default; its switch is kept outside the ordinary settings, changed only by a
+  request from the computer itself, and turned off by erasing everything or putting the
+  settings back to their defaults. With it on, any program on the home network that
+  speaks MCP can read what the tools read, and whatever that program is connected to
+  receives the answers; the switch says so. Being outside `/api/`, it has rules of its
+  own: a page on another site cannot call it, an address outside the home network or a
+  forwarded request is refused, and each address has an allowance. There are no tokens.
+  See [docs/security.md](docs/security.md#the-mcp-endpoint).
+- The mesh radio link is set up only from the computer Outpost runs on; its passwords
+  are kept outside the database, and a broker connection from outside the home network
+  is closed before anything is read. See
+  [docs/security.md](docs/security.md#the-mesh-radio-link).
+
 ### Who is told what is asking
 
 - **Wikidata is asked, once the person agrees.** Its query service requires a client
@@ -1437,9 +1913,12 @@ These are deliberate or known, and are explained in
   shapes), and has English only unless a language file is added by hand.
 - **No language model is included.** Answers and Chat need a model server you run
   yourself. They read documents, notes and book chapters only (reference collections
-  are not read), and have been run with two small models
-  (`llama3.2:3b`, `llama3.2:1b`) on Ollama on a Mac only; llama.cpp, LM Studio and a
-  Raspberry Pi have not been tried.
+  are not read). They have been run on Ollama on one Mac only: answers with seven
+  models (`llama3.2:3b` and `llama3.2:1b` through Chat by hand as well), and looking
+  things up with the same seven, by script and judged by rule. llama.cpp, LM Studio and
+  a Raspberry Pi have not been tried, and no model has been timed on a Pi. The MCP
+  endpoint has not been tried with a real MCP client. See
+  [docs/which-model.md](docs/which-model.md).
 - **Reference collections need kiwix-serve**: the Compose sidecar, or a binary for
   installations without Docker. On a portable drive they cannot be opened on Windows,
   because the Kiwix project publishes no Windows build of its reader at the version
@@ -1455,8 +1934,21 @@ These are deliberate or known, and are explained in
   on one computer, not with a physical drive carried to a second one.
 - **Tried on one platform.** Outpost has been run by hand on macOS on Apple Silicon,
   including the Compose stack with the `arm64` image. Linux on x86-64, Intel Macs,
-  Windows, Raspberry Pi hardware and NAS products are untried. Nothing builds or tests
-  it automatically, and no image is published.
+  Windows, Raspberry Pi hardware and NAS products are untried; the two Raspberry Pi
+  scripts in `deploy/pi/` have never been run on a Pi. Nothing builds or tests it
+  automatically, and no image is published.
+- **Mesh radio has not been tried with a real radio**, only with stand-ins written for
+  the tests. Expect the first real radio to find something.
+- **The message board has no push notifications**: it does not wake a locked phone, and
+  a name on it proves nothing.
+- **Learning progress has not been tried with a real course archive**, Khan Academy's
+  included.
+- **Not tried on a real phone**: the live compass, and much of what was measured at
+  phone sizes in a desktop browser (each docs page says which).
+- **An archive whose page is a small web app** has been checked in Chromium only, not
+  Safari or Firefox.
+- **River and sea levels are England's only**, and OS Open Names covers Great Britain,
+  not Northern Ireland.
 - **No accounts.** Everyone who can reach Outpost can read and change everything. There
   are no per-page or per-person permissions.
 - **No encryption at rest**, apart from backups protected with a passphrase and private
