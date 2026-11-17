@@ -1126,3 +1126,33 @@ from the broadcaster's own page.
 
 **Not used as sources at all**: Wikipedia, hobbyist schedule lists (EiBi, Aoki and the
 like), HFCC data, commercial frequency guides and RepeaterBook.
+
+## The allotment's months and facts (read 2026-11-17)
+
+Games → Allotment ([games.md](games.md#the-crops)) uses real sowing and harvest months for
+its twelve crops, and a few facts about each on its almanac card. Nothing is fetched by
+Outpost and no page or picture is bundled: the months are numbers in
+`packages/shared/src/games/allotment/numbers.ts`, the facts are sentences written for
+Outpost in `notes.ts`, and the pages are plain links behind "Where this comes from".
+
+| What | Where it comes from | How it was read |
+| --- | --- | --- |
+| Sowing, planting and harvest months; hardiness, watering and a few facts for each crop | Royal Horticultural Society, "Grow your own" pages: <https://www.rhs.org.uk/vegetables/radishes/grow-your-own>, and the same address with `salad-leaves`, `onions`, `peas`, `carrots`, `beetroot`, `kale`, `broad-beans`, `potatoes`, `leeks`, `garlic` and `squash` | Each page fetched once on 17 November 2026 with Outpost's own user agent ("Outpost (self-hosted offline library)"), three seconds apart; every one answered 200. The month calendar is in the page's HTML (each month marked active or not, in rows Sow, Plant, Plant out and Harvest), and was read from it. The radishes page was also opened once with the ordinary fetch tool first, whose summary left out the calendar; that was the second request to that page. |
+| The crop families and why rotation matters | RHS, "Crop rotation", <https://www.rhs.org.uk/vegetables/crop-rotation> | Fetched once the same day. Used: the four groups (brassicas, legumes, onions, the potato family, roots), that salads and the squash family can go anywhere, that soil pests and diseases attack one family again and again and decline while it is absent, clubroot in brassicas and onion white rot. |
+| Which pages exist | The RHS sitemaps, <https://www.rhs.org.uk/sitemap_index.xml>, `sitemap-general.xml` and `sitemap-kontent-ai.xml` | Fetched once each, to find the addresses above rather than guess them. |
+| What a robot may read | <https://www.rhs.org.uk/robots.txt> | Read the same day: for all user agents it disallows only `/api/`, Word documents, and paths ending `undefined` or `thank-you`, and names five crawlers that are shut out entirely; no crawl delay. `/vegetables/` is not disallowed. |
+| Terms of reuse | The RHS site's footer and its policies page, <https://www.rhs.org.uk/about-us/what-we-do/policies> | No terms of use or reuse policy is linked: the footer says "© The Royal Horticultural Society 2026", and the policies page lists none for website content. So no prose, table or picture is copied. Outpost keeps only facts (which months; which family; hardy or tender; wants much or little water) and says them in its own words, with the source named and linked. |
+
+The months as the RHS calendars gave them (Sow / Plant / Plant out / Harvest), so that
+they can be checked again: radishes Mar–Sep / – / – / Jan, Feb, Apr–Dec (the winter months
+are winter radishes; the game's salad radishes are harvested April to October, "about four
+to six weeks" after sowing, as the page says); salad leaves Feb–Sep / – / – / Apr–Dec;
+onions Jan–Apr, Aug–Sep / Mar–Apr, Sep–Nov / – / Jun–Sep; peas Feb–Jun / – / Mar–Apr /
+Jun–Oct; carrots Feb–Jul / – / – / May–Nov; beetroot Mar–Jul / – / – / Jun–Oct; kale
+Mar–Jun / – / May–Jul / Oct–Apr; broad beans Feb–May, Oct–Nov / – / Apr–May / May–Aug;
+potatoes – / Mar–May / – / Jun–Oct; leeks Feb–Jun / May–Jul / – / Jan–Mar, Aug–Dec; garlic –
+/ Feb–Mar, Oct–Dec / – / May–Aug; squash Apr–May / – / May–Jun / Jul–Oct.
+
+Only the RHS was used, so no two sources had to be reconciled. Made up for the game, and
+said so on the screen: how fast things grow, prices, how long water lasts and how often it
+rains.

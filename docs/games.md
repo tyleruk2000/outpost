@@ -54,81 +54,129 @@ The routes are in [api.md](api.md#games).
 
 ## Allotment
 
-A small top-down plot of beds. Sow seeds; they grow in real time; harvest; take the
-produce to the stall for coins; buy seeds, more beds and a few lasting things.
+A small top-down plot of beds. Sow seeds; water them; they grow in their own months while
+the soil is moist; harvest; take the produce to the stall for coins; buy seeds, more beds
+and a few lasting things. It is also a little almanac of real growing: when each crop is
+sown and harvested in Britain, how it takes the cold and the dry, and a few things worth
+knowing about it.
 
 ### It never punishes, and why
 
 The owner asked for something "super easy, like if you left it for a year it would be
-fine". So:
+fine", and later (17 November 2026) "dont have things die but do not grow out of season or
+with no water", and "a bit of an educational thing also". So:
 
-- Nothing withers, dies, rots, expires, runs out or is stolen. A ripe crop waits for
+- Nothing withers, dies, wilts, rots, bolts, expires or is stolen, and no growth is ever
+  lost. A crop out of its months, or in dry soil, **waits**: it keeps every bit of growth
+  it has and carries on when its months come round or water comes. A ripe crop waits for
   ever.
-- No energy meter, streaks, daily rewards, notifications or countdowns to miss.
-- Radish seed is free, so there is always something to sow: no way to get stuck.
-- What builds up while you are away (eggs, honey, apples) stops at a small cap and
-  waits.
-- Watering and compost only ever speed things up or add to a harvest; neither is ever
-  needed.
-- No ending and no fail state. The long-term things are calm ones: the almanac of what
-  has been grown, a few milestones, the plot filling out.
+- No energy meter, streaks, daily rewards, notifications, quizzes or scores for learning.
+- Radish seed and onion sets are free, so there is always something to sow; onions grow in
+  every month, so a plot with no coins is never stuck.
+- What builds up while you are away (eggs, honey, apples) stops at a small cap and waits.
+- Sowing out of season is never refused: each crop in the sowing list says first what will
+  happen ("Sown now, they wait in the ground until February."), because waiting is the
+  lesson.
+- No ending and no fail state.
 
-Open it after a year and every bed is ripe and waiting, the hens' eggs, the honey and
-the apples are at their caps, and one line says "You were away 1 year and 35 days.
-Everything waited for you." (shown when the last action was more than six hours ago,
-until the next). A test advances the engine 400 days and checks that nothing is lost
-and no number overflows, goes negative or stops being finite
+### The rules
+
+A crop grows only while **both** of these hold; otherwise it waits:
+
+1. **It is in its months.** Each crop grows in the open from its earliest sowing to its
+   last harvest in Britain, as the Royal Horticultural Society gives them (the table
+   below). Under glass every month is in season.
+2. **Its bed is moist.** A bed is moist:
+   - for **12 hours** after it is watered with the can (watering again tops it up to 12
+     hours from then; it is never refused);
+   - in the open, all through a **wet day** and for **12 hours** after it;
+   - in the open with the **water butt**, all through a wet day and for **2 days** after
+     it (the butt fills when it rains and keeps the beds watered between showers).
+
+   No rain falls under glass, and the butt does not reach the greenhouse: there, the can
+   is the only water.
+
+**Rain.** Whether a UTC day is wet comes from the date alone (a hash of the day number
+against that month's chance), so it is the same on every device, after any absence and
+after a reload; nothing random changes it. It rains more in the household's autumn and
+winter (in the south the months are moved on six, as the seasons are):
+
+| Month (north) | Jan | Feb | Mar | Apr | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Chance of a wet day | 45% | 40% | 35% | 30% | 30% | 30% | 30% | 35% | 35% | 45% | 50% | 50% |
+
+Measured over 2025 to 2064 the share of wet days is within a point or two of these; the
+longest run of dry days in those forty years is 22.
+
+What that means in play (the share of the time a crop that is in its months is growing,
+worked out with the engine over 2027 to 2030, for someone who looks in at 8 in the
+morning):
+
+| | Nobody waters | Water butt | Waters once a day | Both |
+| --- | --- | --- | --- | --- |
+| January | 52% | 76% | 78% | 88% |
+| April | 40% | 66% | 72% | 83% |
+| June | 42% | 66% | 73% | 83% |
+| October | 56% | 81% | 80% | 90% |
+
+So someone who looks in once a day and waters always finds something has happened, and
+gets on nearly twice as fast as someone who waits for the rain; the butt makes an untended
+plot comfortable.
+
+**Growth is exact.** The engine integrates growth month by month (the season changes only
+at a month's start) and over the moist stretches inside each month, so a plot worked out
+a year at once is identical to one worked out in a thousand small steps, wherever the beds
+dry and the rain comes; a test checks this in both hemispheres
 (`apps/server/test/allotment-engine.test.ts`).
 
-### One plot, the server's clock
+### The crops
 
-The engine is pure TypeScript in `packages/shared/src/games/allotment/` (imported as
-`@outpost/shared/games/allotment`): the state, `advance(state, now, hemisphere)`, and each
-action as a pure function. The server applies every action with its own clock, so devices
-whose clocks are wrong agree; a clock that jumps backwards changes nothing (time is
-clamped to the latest the plot has seen, and nothing un-grows). `GET` works the plot out
-to now without writing it. An action that cannot be done (sowing a bed that has a crop,
-seed you cannot afford) is refused with a message, and nothing changes. After each
-action the server says `games.changed`, and every device showing the plot refreshes;
-nothing else asks the server again. Between refreshes the screen moves growth on with
-the device's clock, for display only: it draws the plot again when the next bed ripens
-or the next egg, jar or apple is ready, and otherwise once a minute (for the time left
-on each bed and the light), and not at all while the page is hidden. The season shown
-moves with that clock, so a screen left open over the turn of a season changes with it.
-A stored plot that cannot be read is not replaced: the screen says so and offers Start
-again.
+The months are real; the growing times and prices are made up for the game. A growing
+time is the time a crop needs in moist soil in its months, sped up from weeks or months
+to minutes or days. "Grows" is from the first month it goes in to the last month it is
+harvested, for each way the RHS gives of growing it (so overwintering sowings carry it
+through the winter).
 
-### The numbers
+| Crop | Sown or planted | Harvested | Grows (in the open) | Growing time | Seed | Yield | Sells each |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Radishes | March to September | April to October | March to October | 4 minutes | free | 3 | 1 |
+| Salad leaves | February to September | April to December | February to December | 25 minutes | 4 | 4 | 2 |
+| Onions | January to April, August to November | June to September | all year | 1 hour | free | 3 | 2 |
+| Peas | February to June | June to October | February to October | 2 hours | 10 | 5 | 4 |
+| Carrots | February to July | May to November | February to November | 6 hours | 15 | 6 | 5 |
+| Beetroot | March to July | June to October | March to October | 12 hours | 20 | 5 | 8 |
+| Kale | March to July | October to April | all year | 18 hours | 20 | 6 | 7 |
+| Broad beans | February to May, October and November | May to August | October to August | 1 day | 25 | 6 | 9 |
+| Potatoes | March to May | June to October | March to October | 1 day | 30 | 8 | 7 |
+| Leeks | February to July | August to March | all year | 2 days | 40 | 5 | 18 |
+| Garlic | February, March, October to December | May to August | October to August | 2½ days | 35 | 6 | 16 |
+| Squash | April to June | July to October | April to October | 3 days | 60 | 3 | 45 |
 
-They are game numbers, made up for the game: not growing advice and not a sowing
-calendar. The game's About says so.
+So there is something to sow and something growing in the open in every month: in
+January, onions to sow, and onions, kale, broad beans, leeks and garlic growing; under
+glass, everything. The eight crops of the first version are all still grown, with their
+growing times unchanged; broad beans, garlic, onions and kale were added for the winter.
 
-| Crop | Grows in | Seed | Yield | Sells each | Faster in |
-| --- | --- | --- | --- | --- | --- |
-| Radishes | 4 minutes | free | 3 | 1 | spring, autumn |
-| Salad leaves | 25 minutes | 4 | 4 | 2 | spring, summer |
-| Peas | 2 hours | 10 | 5 | 4 | summer |
-| Carrots | 6 hours | 15 | 6 | 5 | summer, autumn |
-| Beetroot | 12 hours | 20 | 5 | 8 | autumn, winter |
-| Potatoes | 1 day | 30 | 8 | 7 | spring, summer |
-| Leeks | 2 days | 40 | 5 | 18 | autumn, winter |
-| Squash | 3 days | 60 | 3 | 45 | summer, autumn |
+Where they come from: each crop's RHS "grow your own" page (listed in
+[sources.md](sources.md#the-allotments-months-and-facts-read-2026-11-17)). "Sown or
+planted" is the page's Sow, Plant and Plant out rows together. Two choices were made where
+the page has more than one kind of crop: the radishes are **salad radishes** (sown March to
+September, ready four to six weeks later), so the winter months the RHS calendar also marks,
+which are for winter radishes, are left out; the squash's sowing is the RHS's April and May
+(it starts them indoors) with its planting out in May and June. The RHS was the only
+source used, so there were no two sources to choose between.
 
-- 10 coins and 4 beds to start. Every crop can be sown in every season. The seed price
-  is paid when sowing.
-- Growth runs ×1.25 in season and ×1.5 watered (free, once per sowing); the two multiply.
-  A greenhouse bed counts every crop as in season.
-- The next bed costs 25 × (beds − 3) coins, from 25 for the fifth to 225 for the
-  twelfth.
+- 10 coins and 4 beds to start. The seed price is paid when sowing.
+- The next bed costs 25 × (beds − 3) coins, from 25 for the fifth to 225 for the twelfth.
 
 | Lasting thing | Costs | Does |
 | --- | --- | --- |
-| Water butt | 40 | Every new sowing starts watered. |
+| Water butt | 40 | Fills when it rains, and keeps the open beds watered for 2 days after each wet day. |
 | Compost bin | 80 | Each harvest adds 1 compost (at most 8); a sowing uses one, and that bed yields 2 more. |
 | Hens | 120 | An egg every 3 hours, at most 6 waiting; 3 coins each. |
 | Beehive | 200 | A jar of honey every 8 hours, at most 4 waiting; 12 coins each. |
 | Apple tree | 300 | An apple every 6 hours, at most 12 waiting; 3 coins each. |
-| Greenhouse | 500 | Two more beds, under glass. |
+| Greenhouse | 500 | Two more beds, under glass: every crop grows all year there, but no rain falls. |
 
 Counts stop at caps: coins at 999,999, each kind in the basket at 9,999, each almanac
 count at 999,999. A harvest the basket cannot hold is refused and the crop stays in its
@@ -138,20 +186,109 @@ Milestones, each dated when reached: the first harvest, 10 and 100 harvests, eve
 grown once, all 12 beds, every lasting thing, 1,000 coins earned in all, and a year since
 the plot was started.
 
+### A plot left alone for a year
+
+Open it after a year and: every open bed whose crop has had its months has ripened with
+the rain and waits, ripe; a crop sown out of its months waited for them, grew in them, and
+is ripe; a bed under glass grew only for the water it was last given and waits for the
+can, with all that growth kept; the hens' eggs, the honey and the apples are at their
+caps; the coins, the basket and the almanac are exactly as they were. One line says "You
+were away 1 year and 35 days. Everything waited for you." (shown when the last action was
+more than six hours ago, until the next). A test advances the engine 400 days and checks
+this, and that no number overflows, goes negative or stops being finite.
+
+### A plot from before these rules
+
+The stored plot is version 2 (`v: 2`). A version 1 plot (the first rules, where watering
+was a flag that lasted the sowing) is read into version 2 when it is loaded, with no
+database migration: every coin, bed, thing bought, crop's growth, basket count, almanac
+record and milestone is kept; a bed that had been watered and is not ripe is moist for 12
+hours from the plot's clock; the four new crops start with empty records. No crop was
+dropped, so nothing had to be harvested on its behalf. A `GET` does not write the
+upgraded plot; the next action writes it in the new shape. The time since the plot's last
+action before the upgrade is worked out under the new rules (growth only goes forward).
+Tests load a version 1 plot as saved, and one a year old
+(`allotment-engine.test.ts`, `allotment.test.ts`).
+
+### The almanac, and this month on the plot
+
+- **This month on the plot** says the month and season, whether it is raining or when the
+  next rain is due, what to sow now (the crops whose RHS sowing months include it), what
+  grows in the open this month and what would wait, and each bed that is waiting and for
+  what ("Bed 3: squash, waiting for April").
+- **The crops**: a card for each (a row that opens): when it is sown and harvested (by
+  month, in the household's calendar: moved on six in the south), how it takes the cold,
+  how much water it wants. Once it has been grown on the plot, the card adds its family
+  (and why the family matters for rotating beds) and one or two things worth knowing (that
+  peas and beans feed the soil, why potatoes are earthed up, why garlic goes in in
+  autumn). Nothing is read aloud or tested; nothing asks to be read.
+- **Where this comes from**, a disclosure at the foot of the almanac, names the RHS, links
+  each crop's page and the crop rotation page, and says what is made up.
+
+### Seeing it
+
+- Dry soil is pale and crazed with cracks; moist soil is dark and glistens: told apart by
+  shape as well as colour, in day and night, light and dark.
+- Each bed's label shows the time left, "Ripe", or why it waits: a crossed-out drop and
+  "Dry", or an hourglass and the month it resumes ("Till Mar"). Its spoken name says it in
+  full ("Bed 3, carrots, shoots, waiting for rain, dry").
+- Tapping a bed says in one sentence what it is doing and what would change it: "Waiting
+  for rain: the soil is dry. Water it to grow now; rain is due in about 2 days." "Waiting
+  for April: squash grow April to October, so they rest in the ground with all their
+  growth until then." "Growing: the water butt is keeping it watered, for about 1 day
+  more."
+- A wet day greys the light and lays rain across the plot, drawn still (nothing on the
+  plot moves at rest); puddles lie on the paths while it rains and for 12 hours after; the
+  water butt is brim-full after rain and low after a dry spell; there are no sun shadows
+  under cloud.
+
+### One plot, the server's clock
+
+The engine is pure TypeScript in `packages/shared/src/games/allotment/` (imported as
+`@outpost/shared/games/allotment`): the state, `advance(state, now, hemisphere)`, and each
+action as a pure function; every number is in `numbers.ts`, and the almanac's words in
+`notes.ts`. The server applies every action with its own clock, so devices whose clocks
+are wrong agree; a clock that jumps backwards changes nothing (time is clamped to the
+latest the plot has seen, and nothing un-grows). `GET` works the plot out to now from
+timestamps, without writing it; there is no timer on the server. An action that cannot be
+done (sowing a bed that has a crop, seed you cannot afford) is refused with a message, and
+nothing changes. After each action the server says `games.changed`, and every device
+showing the plot refreshes; nothing else asks the server again. Between refreshes the
+screen moves growth on with the device's clock, for display only: it draws the plot again
+when the next thing changes (a bed ripens, dries or is wetted, the rain starts or stops,
+the month turns, an egg, jar or apple is ready), and otherwise once a minute (for the time
+left on each bed and the light), and not at all while the page is hidden. Measured with
+`e2e/tools/idle-cost.mjs` at phone size on 17 November 2026: with a new plot and with
+crops growing, visible: 0% page processor, 0 animation frames, 0 requests, 10 timers a
+minute (the same as Sudoku: the app's own); hidden: 0 frames, 2 timers a minute; the
+server 0%. A stored plot that cannot be read is not replaced: the screen says so and
+offers Start again.
+
 ### Seasons and light
 
 The season comes from the real calendar (the month in UTC). Northern: March to May
 spring, June to August summer, September to November autumn, December to February
-winter; southern, six months on. The hemisphere is northern unless the home place (the
-saved place with the home icon) is south of the equator; a switch on the screen
-(Automatic, Northern, Southern) overrides it. Growth over a long absence is worked out
-piece by piece across season changes. The season changes how the plot looks (the grass,
-fresh, deep, going gold or frosted but always green; blossom, apples or bare boughs;
-fallen leaves in autumn, frost and a little snow along the hedge in winter), and the
-device's own time of day lights it, against a day as long as the month's: shadows that
-lengthen when the sun is low, a warm cast at dawn and dusk, and a blue night with the
-shed window lit. A lasting thing not yet bought, and the next bed to dig, are pegged out
-on the ground; each is a button that says what it is for and what it costs.
+winter; southern, six months on, and so are each crop's months and the rain. The
+hemisphere is northern unless the home place (the saved place with the home icon) is south
+of the equator; a switch on the screen (Automatic, Northern, Southern) overrides it. The
+season changes how the plot looks (the grass, fresh, deep, going gold or frosted but
+always green; blossom, apples or bare boughs; fallen leaves in autumn, frost and a little
+snow along the hedge in winter), and the device's own time of day lights it, against a day
+as long as the month's: shadows that lengthen when the sun is low, a warm cast at dawn and
+dusk, and a blue night with the shed window lit. A lasting thing not yet bought, and the
+next bed to dig, are pegged out on the ground; each is a button that says what it is for
+and what it costs.
+
+### What is real and what is made up
+
+- **Real**, from the RHS: the months each crop is sown, harvested and grows in; each
+  crop's family, how it takes the cold, how much water it wants, and the facts on its
+  card.
+- **Made up for the game**: how fast things grow, the prices and yields, how long water
+  lasts (12 hours from the can, 12 hours after rain, 2 days with the butt), how often it
+  rains, and the hens, the hive and the tree. It is not a planting guide for any one
+  garden: frost dates and rainfall differ from place to place, and the southern months are
+  Britain's moved on six, not a southern gardening calendar.
 
 ## Solitaire
 
@@ -257,3 +394,6 @@ one line with the turns and the time.
 - On a real iPhone, Android phone or Raspberry Pi. The end-to-end tests run Chromium at
   phone size (Pixel 7 and 390 × 844), with touch.
 - With a real screen reader: the spoken names are checked by the tests, not by ear.
+- The allotment's rain, drying and season changes were checked in the engine's tests and
+  in pictures of plots made for given dates (a demonstration server with its clock moved);
+  not by leaving a real plot for days or across a real change of month.
