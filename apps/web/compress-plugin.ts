@@ -5,7 +5,10 @@
  * the processor of a Raspberry Pi the same work on every request.
  *
  * Browsers ask for Brotli only over HTTPS; at a plain http address, which is how most
- * people reach Outpost on a home network, they are given the gzip copy.
+ * people reach Outpost on a home network, they are given the gzip copy. So every file
+ * gets a gzip copy, and only the app's own scripts and styles, where it saves most and
+ * which every visit loads, get a Brotli one too: map lettering and PDF character maps
+ * are thousands of small files, and a second copy of each would add 20 MB to the app.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -14,6 +17,7 @@ import zlib from "node:zlib";
 import type { Plugin } from "vite";
 
 const COMPRESSIBLE = new Set([".js", ".mjs", ".css", ".svg", ".json", ".webmanifest", ".wasm", ".pbf", ".bcmap", ".txt"]);
+const BROTLI = new Set([".js", ".mjs", ".css", ".wasm"]);
 /** Too small to gain from it. */
 const SMALLEST = 1024;
 const gzip = promisify(zlib.gzip);
@@ -47,13 +51,15 @@ export function precompress(): Plugin {
               const bytes = await fs.promises.readFile(file);
               const [gz, br] = await Promise.all([
                 gzip(bytes, { level: 9 }),
-                brotli(bytes, {
-                  params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 11, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: bytes.length },
-                }),
+                BROTLI.has(path.extname(file))
+                  ? brotli(bytes, {
+                      params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 11, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: bytes.length },
+                    })
+                  : undefined,
               ]);
               // Kept only where it saves something worth a second file.
               if (gz.length < bytes.length * 0.9) await fs.promises.writeFile(`${file}.gz`, gz);
-              if (br.length < bytes.length * 0.9) await fs.promises.writeFile(`${file}.br`, br);
+              if (br && br.length < bytes.length * 0.9) await fs.promises.writeFile(`${file}.br`, br);
             }),
           );
         }
