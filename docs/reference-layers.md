@@ -3,7 +3,8 @@
 Layers of published data for the map: country and regional boundaries, populated
 places, airports, publicly mapped military sites and nuclear facilities, hospitals and
 emergency services, shelters and emergency meeting points, emergency planning zones,
-population density, and historical records. They are the data side of the nuclear
+population density, historical records, and food and supplies (shops, markets, food
+banks, drinking water, fuel and pharmacies; see [Food and supplies](#food-and-supplies)). They are the data side of the nuclear
 preparedness module (sections 2, 3, 5, 6, 8 and 10 of its specification); the effects
 simulator and the module's workspace are built separately and mount these pieces.
 
@@ -64,6 +65,8 @@ and never counted into one patch together).
   ([nuclear-preparedness.md](nuclear-preparedness.md)).
 - **A WorldPop grid downloaded by hand** can be imported (Import a file, "Population grid
   from WorldPop"), read and credited as the download would be.
+- **Food and supplies**: the kinds, the nearest list and the card, under the layer's
+  switch in the Layers tab ([below](#food-and-supplies)).
 - **The search across everything** finds records by name (kind "map-feature") and opens
   them on the map at `/maps?feature=<id>`.
 
@@ -93,6 +96,8 @@ with the rest of Outpost's sources.
 | GeoNuclearData (GitHub), WRI Global Power Plant Database, Global Energy Monitor | Lists of power plants | GeoNuclearData is ODbL but "taken from WNA/IAEA", whose terms were not read; WRI's (CC BY 4.0) is "not currently maintained" since 2022; Global Energy Monitor's tracker page says "All Rights Reserved". | **Not used.** OpenStreetMap and Wikidata cover the same facilities with clear licences. |
 | Historical archives | Declassified targeting and civil-defence planning | See [below](#historical-records). | **Linked; manual import.** |
 | Environment Agency (England) | Flood Zones 2 and 3 (Flood Map for Planning, Rivers and Sea) | [data.gov.uk](https://www.data.gov.uk/dataset/flood-map-for-planning-flood-zones1), updated 22 October 2026: "Open Government Licence"; "Attribution statement: © Environment Agency copyright and/or database right 2025. All rights reserved." No limit on requests was found on the publisher's pages. See [below](#flood-zones-england) and [sources.md](sources.md). | **Fetched on a press**, for the area on screen up to about 20 km across, after a count. |
+| Food Standards Agency (UK) | Registered food businesses: retailers only, for the food and supplies layer | See [Food and supplies](#food-and-supplies). [Terms](https://ratings.food.gov.uk/terms-and-conditions): "subject to the terms of the Open Government Licence". | **Fetched on a press**, for the area on screen up to about a county. |
+| Give Food | UK food banks | See [Food and supplies](#food-and-supplies): asks to be contacted before launch and to be kept up to date several times a day. | **Linked**: wanted, and the project could be asked. |
 | Emergency planning zones and shelter registers | Official zones and registers | See [below](#emergency-planning-zones-and-shelters). | **Swiss meeting points fetched; the rest linked or imported.** |
 
 ### Historical records
@@ -309,6 +314,7 @@ the others have none.
 | Hospitals | `amenity=hospital`, `healthcare=hospital` | |
 | Police, fire and ambulance | `amenity=police`, `amenity=fire_station`, `emergency=ambulance_station` | |
 | Shelters and assembly points | as above | `amenity=shelter` of other kinds (bus stops, picnic shelters) |
+| Food and supplies | `shop=supermarket`, `convenience` and `general` (small shop), `greengrocer`, `butcher`, `bakery`, `farm`; `amenity=marketplace`, `fuel`, `pharmacy`, `drinking_water`, `water_point`; `man_made=water_tap`; `social_facility=food_bank` | Restaurants, cafés, pubs, takeaways; taps and water points tagged `drinking_water=no`; `healthcare=pharmacy` on its own |
 
 The wiki's page on `military=*` warns: "In some territories … it is illegal to create
 maps of military facilities, or even mapping their location … using OpenStreetMap can
@@ -324,6 +330,125 @@ contributors, ODbL" in its credits while an OpenStreetMap layer is drawn. Outpos
 arises from it. The downloaded files (Overpass answers, `.osm.pbf` extracts) stay in the
 storage location; anyone who copies them on to others must offer them under the ODbL
 with the notice, as with any OpenStreetMap data.
+
+## Food and supplies
+
+Asked for by the owner on 17 November 2026: "is there any open source data layers we
+could use for food stores?" The layer holds the shops and public facilities a household
+would look for when the shelves at home run low, as they are on any map: supermarkets,
+small shops (`convenience`, `general`), greengrocers, butchers, bakers, farm shops,
+markets, food banks, drinking water, fuel and pharmacies, and in the UK every shop
+registered with its council as selling food. Nothing in it is about who holds food or
+where to take it from. Its provenance class is **published public record**.
+
+**How complete it is likely to be.** Well mapped in towns in Britain and much of Europe;
+patchy in the countryside and in many other countries; a place missing from the map may
+still be there. Opening hours, brands and addresses are mapped for some places and not
+others. In the UK the Food Standards Agency's list is much fuller for shops, as every food
+business must register, but its positions can be the postcode's rather than the door's,
+and its "Retailers - other" includes any shop that sells some food (newsagents, chemists,
+delicatessens, outdoor shops, campsite shops).
+
+**Getting it.** Maps → Offline maps → Reference data for the map, then either source:
+
+- **OpenStreetMap, by tag query**: tick **Food and supplies** (it is never part of "all
+  layers"), choose **The area on screen**, tick that the client name may be sent, **Show
+  the size**, **Download**. The area may be at most 1.5° north to south and 2° east to west
+  (about a county: Devon is about 1.6° by 1°), and must count at most 30,000 places; a
+  country is refused, with that reason, before anything is asked. These limits are
+  Outpost's: the public servers' operators ask applications not to rely on them for bulk
+  extraction (see the OpenStreetMap row above), and a country's shops is that.
+- **Food Standards Agency: registered food businesses (UK)**: **The area on screen**,
+  **Show the size**, **Download**. The same box limits; an area outside the UK is
+  refused. Two packs come: supermarkets, and other shops selling food.
+
+Updating either pack asks again for the same area and replaces it. Areas side by side are
+separate packs, and a place in both is listed once.
+
+**The Food Standards Agency's data.** Read on 17 November 2026: the terms say "Use of
+proprietary food hygiene ratings information and services is subject to the terms of the
+Open Government Licence", and the open data page that the API "is a free service and
+there is no need to register to use it" and "The data is updated daily". The API's help
+states no limit on requests, and says it needs no key "at this time". Neither
+`robots.txt` exists (404). So it is fetched, under Outpost's plain name, on a press:
+while estimating, one request per business type with a page of one, for the count; then
+one page per type of up to 5,000 businesses within the distance in miles from the area's
+middle to its corners (the API searches by centre and distance), keeping only those inside
+the area. Only the two retailer types are asked for (`7840`, "Retailers -
+supermarkets/hypermarkets"; `4613`, "Retailers - other"); restaurants, takeaways,
+caterers, pubs, manufacturers and farmers are not. **Hygiene ratings are not kept or
+shown**: they are not what the layer is for, and the Agency has its own rules for
+displaying them ("Only the actual rating issued under the FHRS may be used"). Each record
+links to the business's page on ratings.food.gov.uk. Credit on the map: "Food
+businesses: Food Standards Agency, Open Government Licence v3.0". Measured once on
+17 November 2026: 309 "Retailers - other" within 10 miles of Bedford, 243 kB, in 0.19 s.
+The Agency says a page "maybe capped by the system"; where it sends fewer than it
+counted, the pack says so. A search with a small distance (0.3 miles) answered with
+businesses up to 2.1 miles away, so the distance is a floor rather than a fence, which
+is why the area is cut to the box afterwards.
+
+**One shop in both.** When a pack is installed, each of its places is compared with what
+the other source holds nearby. Two are taken as one shop when their names agree, once
+folded and without company words ("Ltd", "PLC", "UK", "Stores"), numbers and what is in
+brackets (equal, or every word of the shorter, of four letters or more in all, in the
+other), or the Agency's name of one or two words is the mapped brand; and they are within
+150 m, or 400 m when both give the same postcode, or 100 m when they give different ones.
+Otherwise both are shown. The mapped record leads, whichever came first, as it says what
+kind of shop it is and when it opens; the card lists the Agency's under "Also recorded
+by". In the middle of Keswick on 17 November 2026 this joined Booths (76 m apart,
+postcodes CA12 5EA and CA12 5ED), Boots (3 m) and Open All Hours (9 m), and kept apart
+Keswick Mini Market and Harpers Newsagents, 2 m apart with one postcode.
+
+**A place with two roles.** A fuel station with a shop (`amenity=fuel` and
+`shop=convenience` on one object) is kept once, under its first kind in the order food
+bank, market, fuel, pharmacy, then what it sells, then drinking water, and is found under
+each: the "small shop" filter and the nearest small shop include it, and its card says
+"Fuel, also small shop".
+
+**On the map.** Each kind has its own mark: a rounded square in the layer's colour (the
+same teal as shelters) with a drawing in the line style of the saved places' icons: a
+trolley, a bag, an apple, a cleaver, a loaf, an ear of wheat, a stall, a basket (other
+shop selling food), a heart (food bank), and the places' own drop, pump and cross. The
+square sets them apart from a person's own places, which are round. A shop's building
+outline is not drawn; the mark stands at its middle. Further out they are counted into
+patches like every layer.
+
+**The Layers tab.** Under the switch: the kinds held, each with its mark and count; a
+press shows that kind alone (the same as Show only → Kind), so drinking water can be shown
+by itself. Then the nearest: of each kind (nearest first), or the nearest five of the kind
+shown alone, from the home place (the saved place with the home icon) or the middle of the
+map, chosen there and remembered on the device, with the distance in a straight line and
+the bearing, as the repeater lists give them. It is worked out from what is held
+(`GET /api/reference/nearest`), within 100 km; nothing is asked of any source. Then, in
+words: how complete the layer is likely to be, that neither source says a place is open,
+stocked or still there, and that in an emergency shops may be shut or empty.
+
+**The card.** What the source says and no more: the name, the kind (and a second kind),
+the address, opening hours exactly as mapped (each rule on its line) with "Opening hours
+as mapped, fetched …", the brand; for the Agency's records the business type as it gives
+it; for drinking water whether it is marked drinkable ("Mapped as a drinking water
+point", "Marked as drinking water", or "Not marked as drinkable or not: treat it as
+untested") and whether it is marked seasonal. Then the caution: "What OpenStreetMap
+volunteers had mapped when it was fetched. It does not say a place is open, has anything
+in stock or is still there. In an emergency shops may be shut or empty, and taps and pumps
+may not work." (the Agency's records say "A business registered with its council as
+selling food …" instead).
+
+**Search.** The places are found by the search across everything and by the Layers tab's
+search, by name, like every layer's.
+
+**Wanted, and what stands in the way.** [Give Food](https://www.givefood.org.uk/) lists
+UK food banks with what each needs, through a free API, but its API page asks: "Please
+contact us at mail@givefood.org.uk if you're going to launch something using our data",
+"Keep the information up to date", and says the data "changes multiple times per day". A
+copy kept offline cannot do that, so it is linked, not fetched. The owner could ask Give
+Food whether an offline copy, refreshed when a person presses, would be acceptable.
+
+**Not tested.** Nothing was fetched through Outpost from the real Overpass server or the
+real Agency API: both were tried by hand once each (above) to learn their answers' shape,
+and the flow through Outpost was tested against local stand-ins
+(`OUTPOST_FSA_URL` puts one in the Agency's place). The layer was not looked at over
+satellite imagery.
 
 ## The data model
 

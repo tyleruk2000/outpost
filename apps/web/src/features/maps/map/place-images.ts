@@ -16,6 +16,7 @@
  * over the other.
  */
 import type { Map as MapLibreMap } from "maplibre-gl";
+import { drawFoodImage } from "@/features/layers/food-symbols";
 import { MARKER_HEX } from "../lib/palette";
 import { BADGE, GLYPH_ON, PLACE_GLYPHS, parsePlaceImageId } from "../lib/place-icons";
 
@@ -67,9 +68,9 @@ export function drawPlaceImage(id: string, ratio: number): ImageData | null {
  */
 export function providePlaceImages(map: MapLibreMap, ratio = Math.max(2, Math.ceil(window.devicePixelRatio || 1))): void {
   map.setMissingStyleImageResolver((id) => {
-    // Anything that is not a place's picture is left as it was: missing.
+    // Anything that is not a place's picture, or a food and supplies mark's, is left as it was: missing.
     if (map.hasImage(id)) return;
-    const image = drawPlaceImage(id, ratio);
+    const image = drawPlaceImage(id, ratio) ?? drawFoodImage(id, ratio);
     if (image) map.addImage(id, image, { pixelRatio: ratio });
   });
 }

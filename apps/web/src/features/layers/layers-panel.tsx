@@ -21,6 +21,8 @@ import type { LatLon } from "@/features/maps/lib/geo";
 import { formatNumber } from "@/lib/utils";
 import { useLayerSearch } from "./data";
 import { FloodZonesLegend } from "./flood-legend";
+import { FoodSection } from "./food-panel";
+import { FoodMark } from "./food-symbols";
 import { AreaMark, ProvenanceMark } from "./marks";
 import type { LayerChoice } from "./use-reference-layers";
 
@@ -68,6 +70,8 @@ function LayerRow({
       <div className="flex items-start gap-3">
         {info.areas && (layer === "boundaries" || layer === "regions" || layer === "planning-zones" || layer === "flood-zones") ? (
           <AreaMark colour={colour} />
+        ) : layer === "food" ? (
+          <FoodMark kind="food:supermarket" colour={colour} className="-m-0.5 size-[22px] shrink-0" />
         ) : (
           <ProvenanceMark provenance={layer === "historical" ? "historical" : "public-infrastructure"} colour={colour} />
         )}
@@ -93,6 +97,7 @@ export function LayersPanel({
   onManage,
   onOpen,
   floodZones,
+  centre = null,
 }: {
   summary: UseQueryResult<ReferenceLayersResponse>;
   choice: LayerChoice;
@@ -103,6 +108,8 @@ export function LayersPanel({
   onOpen: (id: number, layer: ReferenceLayerId, at: LatLon | null) => void;
   /** Why flood zones are not drawn in this view, when they are not. */
   floodZones?: "zoom-in" | "too-many" | null;
+  /** The middle of the map, for the nearest list. */
+  centre?: LatLon | null;
 }) {
   const [text, setText] = useState("");
   const layers = useMemo(() => [...(summary.data?.layers ?? [])].sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id)), [summary.data]);
@@ -136,8 +143,8 @@ export function LayersPanel({
         <h3 className="font-title text-lead text-ink">No reference data on this device yet</h3>
         <p className="mt-1.5 text-small text-ink-muted">
           Layers of published data for the map: country and regional boundaries, airports, publicly mapped military sites, nuclear
-          facilities, hospitals, emergency services, shelters, population, and historical records you import. Each is downloaded when you
-          ask, by country, with its size shown first.
+          facilities, hospitals, emergency services, shelters, food shops and drinking water, population, and historical records you import.
+          Each is downloaded when you ask, by country or for the area on screen, with its size shown first.
         </p>
         <Button variant="primary" className="mt-4" onClick={onManage}>
           <Layers /> Get reference data
@@ -217,6 +224,15 @@ export function LayersPanel({
               below={
                 layer.id === "flood-zones" && choice.layers.includes("flood-zones") ? (
                   <FloodZonesLegend colour={colours["flood-zones"]} status={floodZones} />
+                ) : layer.id === "food" && choice.layers.includes("food") ? (
+                  <FoodSection
+                    summary={layer}
+                    colour={colours.food}
+                    kind={choice.kind}
+                    onKind={(kind) => set({ kind })}
+                    centre={centre}
+                    onOpen={(id, at) => onOpen(id, "food", at)}
+                  />
                 ) : null
               }
             />

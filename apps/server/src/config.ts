@@ -80,6 +80,7 @@ const envSchema = z.object({
   OUTPOST_WEATHER_STAND_IN: z.string().url().optional(),
   // For tests: a local server in place of the Environment Agency's flood zones service (modules/layers/adapters/flood-zones.ts).
   OUTPOST_FLOOD_ZONES_URL: z.string().url().optional(),
+  OUTPOST_FSA_URL: z.string().url().optional(),
   // For tests: a local folder in place of OurAirports' data repository, holding airports.csv and airport-frequencies.csv.
   OUTPOST_OURAIRPORTS_URL: z.string().url().optional(),
   // For tests: a local server in place of Ordnance Survey's Downloads API (modules/maps/os-names/source.ts).
@@ -163,6 +164,8 @@ export interface Config {
   weatherStandIn?: string;
   /** For tests: the flood zones collection's address in place of the Environment Agency's; unset in use. */
   floodZonesUrl?: string;
+  /** The Food Standards Agency's API, or a stand-in for it (tests). */
+  fsaUrl?: string;
   /** For tests: the folder that stands in for OurAirports' data repository (it ends in a slash). */
   ourAirportsUrl?: string;
   /** For tests: Ordnance Survey's Downloads API address in place of api.os.uk's; unset in use. */
@@ -269,6 +272,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     imagery: imageryStandIns(parsed),
     weatherStandIn: parsed.OUTPOST_WEATHER_STAND_IN,
     floodZonesUrl: parsed.OUTPOST_FLOOD_ZONES_URL,
+    fsaUrl: parsed.OUTPOST_FSA_URL,
     ourAirportsUrl: parsed.OUTPOST_OURAIRPORTS_URL,
     osDownloadsUrl: parsed.OUTPOST_OS_DOWNLOADS_URL,
   };

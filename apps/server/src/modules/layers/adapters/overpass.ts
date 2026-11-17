@@ -20,7 +20,7 @@ import { QUERY_FETCHER, type QuerySpec } from "../query-fetcher.ts";
 import type { AdapterDeps, ReferenceAdapter } from "../types.ts";
 import { REFERENCE_USER_AGENT } from "./http.ts";
 import { addOsm } from "./osm-read.ts";
-import { OSM_LAYERS, type OsmLayer, overpassFilters } from "./osm-tags.ts";
+import { OSM_LAYERS, type OsmLayer, OVERPASS_LAYERS, overpassFilters } from "./osm-tags.ts";
 
 /** Servers not asked for reference layers, and why. */
 export const EXCLUDED_SOURCES: Record<string, string> = {
@@ -28,6 +28,22 @@ export const EXCLUDED_SOURCES: Record<string, string> = {
 };
 const TIMEOUT = 25;
 const MAX_ANSWER_BYTES = 96 * 1048576;
+/**
+ * Food and supplies is asked for an area about a county across at most (Devon is about
+ * 1.6° by 1°), never a country: a country's shops, taps and fuel stations is more than a
+ * public server should be asked for at once. Within that, an area that counts more than
+ * this many places is refused too (a large city), and should be fetched in parts.
+ */
+export const FOOD_MAX_BOX = { lat: 1.5, lon: 2 } as const;
+export const FOOD_MAX_RECORDS = 30_000;
+/** Why food and supplies cannot be asked for in this area, or null. */
+export function foodAreaRefusal(countries: string[], bbox: Bbox | null | undefined): string | null {
+  if (countries.length > 0 || !bbox)
+    return "Food and supplies are fetched for the area on screen, up to about a county across, not for a whole country: that is more than a public server should be asked for at once. Move the map to your area, choose “The area on screen” and try again.";
+  if (bbox[3] - bbox[1] > FOOD_MAX_BOX.lat || bbox[2] - bbox[0] > FOOD_MAX_BOX.lon)
+    return `The area on screen is too large to ask a public server for its shops (at most ${FOOD_MAX_BOX.lat}° north to south and ${FOOD_MAX_BOX.lon}° east to west, about a county). Zoom in and try again; several areas can be kept side by side.`;
+  return null;
+}
 /** Rough sizes of one object in an answer, for the estimate: a node, a way with its points, a relation's centre. */
 const BYTES = { nodes: 350, ways: 2_500, relations: 600 };
 
@@ -89,10 +105,14 @@ interface Part {
 
 function partsOf(request: ReferenceEstimateRequest): Part[] {
   const layers = (request.layers?.length ? request.layers : OSM_LAYERS).filter((layer): layer is OsmLayer =>
-    (OSM_LAYERS as string[]).includes(layer),
+    (OVERPASS_LAYERS as string[]).includes(layer),
   );
   const countries = request.scope.countries ?? [];
   if (countries.length > 10) throw new AppError("bad_request", "Choose at most ten countries at a time.");
+  if (layers.includes("food")) {
+    const refusal = foodAreaRefusal(countries, request.scope.bbox);
+    if (refusal) throw new AppError("bad_request", refusal);
+  }
   const parts: Part[] = [];
   for (const layer of layers) {
     if (countries.length > 0) {
@@ -122,6 +142,7 @@ const LAYER_TITLES: Record<OsmLayer, string> = {
   hospitals: "Hospitals",
   emergency: "Police, fire and ambulance stations",
   shelters: "Shelters and assembly points",
+  food: "Food and supplies",
 };
 
 export function createOverpassAdapter({ ctx, client }: AdapterDeps): ReferenceAdapter {
@@ -154,6 +175,16 @@ export function createOverpassAdapter({ ctx, client }: AdapterDeps): ReferenceAd
       );
       if (counts.length !== parts.length)
         throw new AppError("upstream", `${source.host} did not count every layer. Try again in a little while.`);
+      parts.forEach((part, index) => {
+        if (part.layer !== "food") return;
+        const tags = counts[index]!.tags;
+        const total = (Number(tags.nodes) || 0) + (Number(tags.ways) || 0) + (Number(tags.relations) || 0);
+        if (total > FOOD_MAX_RECORDS)
+          throw new AppError(
+            "bad_request",
+            `${source.host} counted ${total.toLocaleString("en-GB")} shops and other places in that area, more than the ${FOOD_MAX_RECORDS.toLocaleString("en-GB")} Outpost asks for at once. Zoom in and fetch it in parts.`,
+          );
+      });
       const items: ReferenceEstimateItem[] = parts.map((part, index) => {
         const tags = counts[index]!.tags;
         const nodes = Number(tags.nodes) || 0;
@@ -194,7 +225,8 @@ export function createOverpassAdapter({ ctx, client }: AdapterDeps): ReferenceAd
       return {
         url: source.endpoint,
         fetcher: QUERY_FETCHER,
-        relPath: `collections/reference/osm/${part.layer}-${where}-${new Date().toISOString().slice(0, 10)}.json`,
+        // To the thousandth of a second, so that an update, or a second box, on the same day is a file of its own.
+        relPath: `collections/reference/osm/${part.layer}-${where}-${new Date().toISOString().slice(0, 23).replace(/[:.]/g, "-")}.json`,
         sizeBytes: item.bytes,
         allowedHosts: [source.allowHost],
         meta: {
@@ -220,7 +252,7 @@ export function createOverpassAdapter({ ctx, client }: AdapterDeps): ReferenceAd
       }
       if (!Array.isArray(body.elements)) throw new PermanentJobError("The answer from the Overpass server holds no map data.");
       const stamp = typeof body.osm3s?.timestamp_osm_base === "string" ? body.osm3s.timestamp_osm_base.slice(0, 10) : null;
-      const layers = new Set(meta.layers.filter((layer): layer is OsmLayer => (OSM_LAYERS as string[]).includes(layer)));
+      const layers = new Set(meta.layers.filter((layer): layer is OsmLayer => (OVERPASS_LAYERS as string[]).includes(layer)));
       const country = meta.countries.length === 1 ? meta.countries[0]! : null;
       for (const raw of body.elements) {
         const element = raw as {

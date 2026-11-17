@@ -23,6 +23,7 @@ export const REFERENCE_LAYERS = [
   "towns",
   "historical",
   "flood-zones",
+  "food",
 ] as const;
 export type ReferenceLayerId = (typeof REFERENCE_LAYERS)[number];
 
@@ -155,6 +156,13 @@ export const REFERENCE_LAYER_INFO: Record<ReferenceLayerId, ReferenceLayerInfo> 
       "The Environment Agency's Flood Map for Planning: Flood Zones 2 and 3, from rivers and the sea, ignoring the benefits of defences. England only. A planning zone is not a forecast that a place will flood.",
     areas: true,
   },
+  food: {
+    id: "food",
+    label: "Food and supplies",
+    about:
+      "Shops, markets, food banks, drinking water, fuel and pharmacies as OpenStreetMap volunteers have mapped them, and in the UK the shops registered with the Food Standards Agency. A mark does not mean a place is open, stocked or still there.",
+    areas: false,
+  },
 };
 
 /**
@@ -175,6 +183,76 @@ export const FLOOD_ZONE_WORDS = {
   notForecast:
     "A planning zone says how likely flooding is in a typical year, as modelled for planning. It is not a forecast that a place will flood, and it is not a warning: for those, see Weather and hazards.",
 } as const;
+
+/**
+ * The kinds of place in the food and supplies layer, in the order the legend and the
+ * nearest list give them. Each is a kind a household would look for; the tags or the
+ * Agency's business types each is made from are in the server (`adapters/food-tags.ts`).
+ */
+export const FOOD_KINDS = [
+  { kind: "food:supermarket", label: "Supermarket" },
+  { kind: "food:small-shop", label: "Small shop" },
+  { kind: "food:greengrocer", label: "Greengrocer" },
+  { kind: "food:butcher", label: "Butcher" },
+  { kind: "food:baker", label: "Baker" },
+  { kind: "food:farm-shop", label: "Farm shop" },
+  { kind: "food:market", label: "Market" },
+  { kind: "food:retailer", label: "Other shop selling food" },
+  { kind: "food:food-bank", label: "Food bank" },
+  { kind: "food:water", label: "Drinking water" },
+  { kind: "food:fuel", label: "Fuel" },
+  { kind: "food:pharmacy", label: "Pharmacy" },
+] as const;
+export type FoodKind = (typeof FOOD_KINDS)[number]["kind"];
+export const isFoodKind = (kind: string): kind is FoodKind => FOOD_KINDS.some((entry) => entry.kind === kind);
+
+/** Outpost's words for what the food and supplies layer is and is not, for the card and the Layers tab. */
+export const FOOD_WORDS = {
+  osm: "What OpenStreetMap volunteers had mapped when it was fetched. It does not say a place is open, has anything in stock or is still there.",
+  fsa: "A business registered with its council as selling food, as the Food Standards Agency listed it when it was fetched. It does not say a place is open, has anything in stock or is still there.",
+  emergency: "In an emergency shops may be shut or empty, and taps and pumps may not work.",
+  coverage:
+    "Well mapped in towns in Britain and much of Europe; patchy in the countryside and in many other countries. A place missing here may still be there.",
+} as const;
+
+/** What a food and supplies record says, from its source's own fields, for the card. Absent for every other layer. */
+export interface FoodFactsDto {
+  /** Other kinds the same place is mapped as (a fuel station with a shop), as labels. */
+  alsoKinds: string[];
+  /** The address as its source gives it, in one line; null where none is given. */
+  address: string | null;
+  /** OpenStreetMap's `opening_hours`, exactly as mapped; null where none is. */
+  openingHours: string | null;
+  brand: string | null;
+  /** The Food Standards Agency's business type, as it gives it; null for OpenStreetMap. */
+  businessType: string | null;
+  /** For drinking water: whether it is marked as drinkable, and whether it is seasonal, in words. */
+  water: { drinkable: string; seasonal: string | null } | null;
+  /** The source and its caution, in Outpost's words (FOOD_WORDS). */
+  caution: string;
+}
+
+/** One record in the nearest list (`GET /api/reference/nearest`), measured from the point asked about. */
+export interface NearestHit {
+  id: number;
+  name: string;
+  kind: string;
+  kindLabel: string;
+  provider: string;
+  lat: number;
+  lon: number;
+  distanceMeters: number;
+  /** Compass bearing from the point asked about, 0 to 360. */
+  bearingDegrees: number;
+}
+
+export interface NearestResponse {
+  /** The kind asked for, or null for the nearest of each kind. */
+  kind: string | null;
+  /** How far was looked, in metres: nothing further is listed. */
+  withinMeters: number;
+  hits: NearestHit[];
+}
 
 /** A provider of reference data, and what Outpost may do with it. */
 export interface ReferenceProviderDto {
@@ -429,6 +507,8 @@ export interface ReferenceFeatureDetail {
   hasGeometry: boolean;
   /** For an airport from OurAirports: its radio frequencies, or that they are not held. Absent for every other record. */
   airportFrequencies?: AirportFrequenciesDto;
+  /** For a place in the food and supplies layer: what its source says about it. Absent for every other record. */
+  food?: FoodFactsDto;
 }
 
 /** One row of OurAirports' `airport-frequencies.csv` for an airport. */
