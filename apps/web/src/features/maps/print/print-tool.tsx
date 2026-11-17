@@ -201,11 +201,12 @@ export default function PrintTool({
               ]}
             />
           </div>
-          <p className="tabular mt-2 text-small text-ink" aria-live="polite">
-            <span className="md:hidden">The box is the page: </span>
-            {formatBboxSize(box)} on {paperName(prefs.paper, prefs.orientation)} at {formatScale(scale)}
-          </p>
-          <div className={cn(mapCardFoot, "mt-3 max-md:mt-1")}>
+          <div className={cn(mapCardFoot, "mt-2 max-md:mt-1")}>
+            {/* In the foot, which stays in view on a phone: in the part that scrolls, the scale was cut off under it. */}
+            <p className="tabular mb-1 basis-full text-small text-ink" aria-live="polite">
+              <span className="md:hidden">The box is the page: </span>
+              {formatBboxSize(box)} on {paperName(prefs.paper, prefs.orientation)} at {formatScale(scale)}
+            </p>
             <Button variant="primary" onClick={() => setStep("page")}>
               Preview the page
             </Button>
