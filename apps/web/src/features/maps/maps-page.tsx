@@ -24,6 +24,7 @@ import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Skeleton, Tooltip } from "@/components/ui/misc";
+import { CentreLines } from "@/features/compass/magnetic-glance";
 import { useDownloads } from "@/features/downloads/use-downloads";
 import { useReferenceLayers } from "@/features/layers/use-reference-layers";
 import { type SightStart, useRepeatersOnMap } from "@/features/repeaters/map/use-repeaters-on-map";
@@ -1504,8 +1505,11 @@ export default function MapsPage() {
               onFormatChange={setFormat}
               credits={engine ? credits : []}
               underReadout={
-                sunLine && engine ? (
-                  <SunGlance engine={engine} onOpen={showSun} where={isDesktop ? "At the centre" : undefined} />
+                engine && (sunLine || isDesktop) ? (
+                  <CentreLines
+                    engine={engine}
+                    sun={sunLine ? <SunGlance engine={engine} onOpen={showSun} where={isDesktop ? "At the centre" : undefined} /> : null}
+                  />
                 ) : undefined
               }
               // On a phone the credits always have a line of their own under the readout, never the space beside it:

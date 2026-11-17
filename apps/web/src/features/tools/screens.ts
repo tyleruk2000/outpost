@@ -4,7 +4,18 @@
  * a route in app.tsx. Keep one entry to one line group, so that two people adding tools
  * at once meet only here.
  */
-import { BatteryCharging, CookingPot, Droplets, Hammer, MonitorSmartphone, Mountain, QrCode, RadioTower, SunMedium } from "lucide-react";
+import {
+  BatteryCharging,
+  CookingPot,
+  Droplets,
+  Hammer,
+  MonitorSmartphone,
+  Mountain,
+  Navigation,
+  QrCode,
+  RadioTower,
+  SunMedium,
+} from "lucide-react";
 import type { SectionScreen } from "@/components/section";
 
 export const toolScreens: SectionScreen[] = [
@@ -68,5 +79,13 @@ export const toolScreens: SectionScreen[] = [
     icon: SunMedium,
     about:
       "The sun's place now, setting your clocks from a shadow after a power cut, and how to make a sundial and a nocturnal. Works with no internet.",
+  },
+  {
+    to: "/tools/compass",
+    label: "Compass",
+    icon: Navigation,
+    about:
+      "Magnetic north and the map's grid north at a place, what to add or subtract between map and compass, and the phone's own compass corrected by them.",
+    keywords: "compass bearing north declination magnetic variation grid magnetic angle",
   },
 ];
