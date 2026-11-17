@@ -71,9 +71,9 @@ describe("an airport's radio frequencies on its card", () => {
     const list = screen.getByRole("list", { name: "Radio frequencies" });
     const rows = within(list).getAllByRole("listitem");
     expect(rows.map((row) => row.textContent)).toEqual([
-      "TowerTWRHeathrow Tower118.500 MHz",
-      "ATISHeathrow ATIS113.750 MHz",
-      "CLDHeathrow Delivery121.975 MHz",
+      "TowerTWR · Heathrow Tower118.500 MHz",
+      "ATIS · Heathrow ATIS113.750 MHz",
+      "CLD · Heathrow Delivery121.975 MHz",
       "8.33123.425 MHz",
     ]);
     // It scrolls inside the card when long, on a phone as on a wide screen: about five rows show at once.

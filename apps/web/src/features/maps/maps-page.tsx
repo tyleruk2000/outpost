@@ -980,7 +980,7 @@ export default function MapsPage() {
   // On a phone, while the sheet is lowered and nothing else is in hand. On a wide screen there is room for it
   // always, except while the Sun tab itself is open beside the map and says the same and more.
   const sunLine = isDesktop ? !(panel.open && panel.tab === "sun") : detent === "peek" && tool === "browse" && !pin && !moving && !cardOpen;
-  inHand.current = tool !== "browse" || Boolean(pin) || Boolean(moving) || cardOpen;
+  inHand.current = tool !== "browse" || Boolean(pin) || Boolean(moving);
   // A record opened from the Layers tab (found by name) comes up as a card over the map: on a phone the sheet is
   // lowered for it, as for a found place, or the card had a strip of map and showed none of an airport's frequencies.
   const recordOpen = Boolean(reference.card);

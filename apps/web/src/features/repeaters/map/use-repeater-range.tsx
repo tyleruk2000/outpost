@@ -129,6 +129,7 @@ export function useRepeaterRange({
   // that there is room to see it, and the outline is brought into the part of the map the card leaves clear.
   const pending = useRef(false);
   const card = useRef<HTMLElement | null>(null);
+  const fitting = useRef<number | undefined>(undefined);
   const id = repeater?.id;
   useEffect(() => {
     if (id && prefs.on) pending.current = true;
@@ -141,8 +142,13 @@ export function useRepeaterRange({
       return;
     }
     pending.current = false;
-    engine.fitBounds(rangeBounds(shown), cardClearance(card.current));
+    // Once the folded card and the readout under it have settled (the line of sun times gives way to the card, and
+    // the camera's room follows in 200 ms), so that the outline is fitted into the room there is, not the room there was.
+    const bounds = rangeBounds(shown);
+    window.clearTimeout(fitting.current);
+    fitting.current = window.setTimeout(() => engine.fitBounds(bounds, cardClearance(card.current)), 260);
   }, [engine, shown, folded]);
+  useEffect(() => () => window.clearTimeout(fitting.current), []);
 
   const setOn = useCallback(
     (on: boolean) => {

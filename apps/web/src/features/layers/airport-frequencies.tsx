@@ -36,18 +36,17 @@ export function formatMhz(mhz: string): string {
   return `${match[1]}.${(match[2] ?? "").padEnd(3, "0")}`;
 }
 
+/** One line where it fits: what it is for, the file's description beside it, and the frequency at the end. */
 function Row({ entry }: { entry: AirportFrequencyDto }) {
   const description = entry.description && entry.description.toLowerCase() !== entry.type.toLowerCase() ? entry.description : "";
   return (
-    <li className="flex items-baseline justify-between gap-4 py-1.5">
-      <span className="min-w-0">
-        <span className="text-small text-ink">
-          {entry.typeLabel ?? entry.type}
-          {entry.typeLabel && entry.typeLabel.toLowerCase() !== entry.type.toLowerCase() ? (
-            <span className="ml-1.5 font-mono text-[0.8125rem] text-ink-muted">{entry.type}</span>
-          ) : null}
-        </span>
-        {description ? <span className="block text-small text-ink-muted [overflow-wrap:anywhere]">{description}</span> : null}
+    <li className="flex items-baseline justify-between gap-3 py-1.5">
+      <span className="min-w-0 text-small [overflow-wrap:anywhere]">
+        <span className="text-ink">{entry.typeLabel ?? entry.type}</span>
+        {entry.typeLabel && entry.typeLabel.toLowerCase() !== entry.type.toLowerCase() ? (
+          <span className="ml-1.5 font-mono text-[0.8125rem] text-ink-muted">{entry.type}</span>
+        ) : null}
+        {description ? <span className="text-ink-muted"> · {description}</span> : null}
       </span>
       <span className="tabular shrink-0 font-mono text-[0.8125rem] text-ink select-text">{formatMhz(entry.mhz)} MHz</span>
     </li>
