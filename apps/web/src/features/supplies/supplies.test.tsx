@@ -151,6 +151,12 @@ describe("the Supplies screen", () => {
     await waitFor(() => expect(server.posted).toContainEqual({ path: "POST /api/supplies/items/i1/adjust", body: { by: -1 } }));
   });
 
+  it("names the buttons of an item counted without a unit in plain words", async () => {
+    show({ items: [item({ name: "AA batteries", unit: "" })] });
+    expect(await screen.findByRole("button", { name: "Use one of AA batteries" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add one of AA batteries" })).toBeInTheDocument();
+  });
+
   it("marks what is past its use-by", async () => {
     show({ items: [item({ name: "Ham", dateKind: "use-by", date: "2020-01-01" })] });
     expect(await screen.findByText(/Past its use-by, 1 Jan 2020/)).toBeInTheDocument();

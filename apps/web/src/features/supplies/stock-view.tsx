@@ -59,14 +59,15 @@ export function ItemFacts({ item, today, className }: { item: SupplyItem; today:
 /** Minus and plus for one row: 44 px each, so that a thumb finds them. */
 export function Adjuster({ item }: { item: SupplyItem }) {
   const adjust = useAdjust();
-  const unit = item.unit || "one";
+  // "Use one tin of Baked beans"; counted without a unit, "Use one of AA batteries".
+  const one = item.unit ? `one ${item.unit}` : "one";
   return (
     <div className="relative flex shrink-0 items-center gap-1">
       <Button
         variant="secondary"
         size="icon"
         className="size-11"
-        aria-label={`Use one ${unit} of ${item.name}`}
+        aria-label={`Use ${one} of ${item.name}`}
         disabled={item.quantity <= 0}
         onClick={() => adjust.mutate({ id: item.id, by: -1 })}
       >
@@ -79,7 +80,7 @@ export function Adjuster({ item }: { item: SupplyItem }) {
         variant="secondary"
         size="icon"
         className="size-11"
-        aria-label={`Add one ${unit} of ${item.name}`}
+        aria-label={`Add ${one} of ${item.name}`}
         onClick={() => adjust.mutate({ id: item.id, by: 1 })}
       >
         <Plus />
