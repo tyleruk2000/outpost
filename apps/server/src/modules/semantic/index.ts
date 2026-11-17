@@ -86,6 +86,8 @@ declare module "../../core/context.ts" {
 }
 
 const EXPORT_FORMAT = "outpost-embeddings";
+/** The longest line an import may have: a vector of 8192 dimensions, in base64 and JSON, is about 44 000 characters. */
+const MAX_IMPORT_LINE_CHARS = 1024 * 1024;
 
 export async function registerSemantic(app: FastifyInstance, ctx: AppContext): Promise<void> {
   const { sqlite, jobs } = ctx;
@@ -533,6 +535,12 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
           yield rest.slice(0, newline);
           rest = rest.slice(newline + 1);
           newline = rest.indexOf("\n");
+        }
+        // A real line is one vector, tens of kilobytes. Without a limit a small gzip file
+        // that unpacks to one endless line would be held in memory and searched again
+        // on every chunk.
+        if (rest.length > MAX_IMPORT_LINE_CHARS) {
+          throw badRequest("The file has a line far longer than any in an embeddings export, so it was not read.");
         }
       }
       rest += decoder.decode();

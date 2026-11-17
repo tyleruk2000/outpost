@@ -268,6 +268,13 @@ test.describe("HTTPS on your network", () => {
     const house = makeAuthority("Hill House Root");
     const mine = make({ name: "localhost", issuer: house.intermediate, names: ["localhost", "127.0.0.1"], until: 90 });
     const pick = (name: string, text: string) => ({ name, mimeType: "application/x-pem-file", buffer: Buffer.from(text) });
+    // Another device may give a key only where none is kept (replacing one deletes it), so the pair an
+    // earlier test gave is deleted first, at the computer itself.
+    const here = await browser.newContext({ baseURL });
+    const atComputer = await here.newPage();
+    await atComputer.goto("/");
+    if ((await api<HttpsStatus>(atComputer, "GET", "/api/https")).own.inFolder.key) await api(atComputer, "DELETE", "/api/https/own");
+    await here.close();
     // A phone. The test's browser runs on the server's own computer, so the header a proxy would add is
     // what makes the server see another device (`core/local.ts`); TEST-NET-1 is never a real device.
     const context = await browser.newContext({

@@ -22,6 +22,7 @@ import Database from "better-sqlite3";
 import type { Config } from "../../config.ts";
 import { AppError, badRequest } from "../../core/errors.ts";
 import { isInside, resolveInside } from "../../core/fs-safe.ts";
+import { isInsideRoots } from "../storage/service.ts";
 
 type Sqlite = InstanceType<typeof Database>;
 
@@ -104,7 +105,7 @@ const isoOrNull = (value: unknown): string | null =>
 export function resolveDriveFolder(config: Config, input: string): string {
   if (input.includes("\0")) throw badRequest("That path is not valid.");
   const target = path.resolve(input);
-  if (!config.storageRoots.some((root) => isInside(root, target))) {
+  if (!isInsideRoots(config.storageRoots, target)) {
     throw new AppError("forbidden", "Choose the drive's folder inside one of the storage roots this server allows.");
   }
   if (isInside(config.dataDir, target) || isInside(target, config.dataDir)) {

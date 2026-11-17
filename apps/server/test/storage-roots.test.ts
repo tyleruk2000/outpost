@@ -176,3 +176,49 @@ describe("a location inside the storage roots", () => {
     });
   });
 });
+
+describe("a symbolic link inside a root that leads outside it", () => {
+  // macOS puts one in the default root itself: /Volumes/Macintosh HD is a link to /.
+  // Through it every folder on the computer would be "inside /Volumes".
+  async function withLinkOut(): Promise<{ server: TestApp; through: string; outside: string }> {
+    const server = await start("vol");
+    const outside = path.join(dir, "outside");
+    fs.mkdirSync(path.join(outside, "home", "secret"), { recursive: true });
+    fs.symlinkSync(outside, path.join(dir, "vol", "Macintosh HD"));
+    return { server, through: path.join(dir, "vol", "Macintosh HD"), outside };
+  }
+
+  it("cannot be browsed through", async () => {
+    const { server, through } = await withLinkOut();
+    const listing = await server.api("GET", `/api/storage/browse?path=${encodeURIComponent(path.join(through, "home"))}`);
+    expect(listing.status).toBe(403);
+    expect(JSON.stringify(listing.body)).not.toContain("secret");
+  });
+
+  it("cannot be made a storage location, and nothing is written there", async () => {
+    const { server, through, outside } = await withLinkOut();
+    const added = await server.api("POST", "/api/storage/locations", { name: "Home", path: path.join(through, "home"), kind: "external" });
+    expect(added.status).toBe(403);
+    expect(fs.readdirSync(path.join(outside, "home"))).toEqual(["secret"]);
+  });
+
+  it("cannot be chosen for a portable drive or looked at as one", async () => {
+    const { server, through } = await withLinkOut();
+    const plan = await server.api("POST", "/api/portable/plan", { targetPath: path.join(through, "drive"), platforms: ["linux-x64"] });
+    expect(plan.status).toBe(403);
+    const inspect = await server.api("GET", `/api/merge/inspect?path=${encodeURIComponent(path.join(through, "home"))}`);
+    expect(inspect.status).toBe(403);
+  });
+
+  it("does not stop a folder reached through a link that stays inside the roots", async () => {
+    const server = await start("vol");
+    fs.mkdirSync(path.join(dir, "vol", "real", "library"), { recursive: true });
+    fs.symlinkSync(path.join(dir, "vol", "real"), path.join(dir, "vol", "alias"));
+    const added = await server.api("POST", "/api/storage/locations", {
+      name: "Alias",
+      path: path.join(dir, "vol", "alias", "library"),
+      kind: "external",
+    });
+    expect(added.status).toBe(200);
+  });
+});

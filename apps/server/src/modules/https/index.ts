@@ -183,6 +183,13 @@ export async function registerHttps(app: FastifyInstance, ctx: AppContext): Prom
       );
     }
     if (files.length === 0) throw badRequest("No file was sent. Choose the certificate and its key.");
+    // Writing over a pair already there destroys that key, as deleting it would, and is held to the same rule.
+    const there = service.status().own.inFolder;
+    if ((there.certificate || there.key) && !authorityRight(request).allowed) {
+      throw forbidden(
+        `There is already a certificate and key in ${service.status().own.folder}. Giving new ones would delete them, and HTTPS could not then be put back from another device, so they can only be replaced at the computer Outpost runs on. Whoever starts Outpost can allow it from every device with ${REMOTE_OPTION}=true.`,
+      );
+    }
     await service.importOwn({ files, password });
     if (!right.allowed) {
       // The address only: never the key, the password or the certificate.

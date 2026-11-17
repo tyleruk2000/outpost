@@ -1,4 +1,4 @@
-import { gunzipSync } from "node:zlib";
+import { gunzipSync, gzipSync } from "node:zlib";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { checkCitations } from "../src/modules/retrieval/index.ts";
 import { type EmbeddingProvider, normalise } from "../src/modules/semantic/providers.ts";
@@ -214,6 +214,19 @@ describe("semantic and hybrid search", () => {
       payload: Buffer.from("not gzip at all"),
     });
     expect(response.statusCode).toBe(400);
+  });
+
+  it("stops reading a line far longer than any an export holds, instead of keeping all of it in memory", async () => {
+    // 64 MB of one character, which gzip packs into a few kilobytes: a small upload that would unpack into one huge line.
+    const payload = gzipSync(Buffer.alloc(64 * 1024 * 1024, 0x61));
+    const response = await app.app.inject({
+      method: "POST",
+      url: "/api/semantic/import",
+      headers: { host: "localhost", "x-outpost-request": "1", "content-type": "application/gzip" },
+      payload,
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error.message).toMatch(/longer than any/);
   });
 
   it("explains what is missing when no provider is configured", async () => {
