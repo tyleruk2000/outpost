@@ -22,6 +22,7 @@ import {
   type FrequencyKindId,
   filterFrequencies,
   formatFrequency,
+  heardFromAfar,
   kindLabel,
   localDay,
   modeLabel,
@@ -352,6 +353,11 @@ export default function FrequenciesPage() {
     () => ordered(filterFrequencies(entries, { kind, place, band, receiver: set, text, showUnverified }), place),
     [entries, kind, place, band, set, text, showUnverified],
   );
+  // Shortwave carries: what the place filter leaves out but is still worth trying from here.
+  const far = useMemo(
+    () => ordered(heardFromAfar(entries, { kind, place, band, receiver: set, text, showUnverified }), null),
+    [entries, kind, place, band, set, text, showUnverified],
+  );
   const places = useMemo(() => placesIn(entries), [entries]);
   const bands = useMemo(() => {
     const used = new Set(entries.flatMap((entry) => entry.bands));
@@ -513,6 +519,24 @@ export default function FrequenciesPage() {
             )}
           </Section>
 
+          {far.length > 0 && place ? (
+            <Section className="mt-8" title="Shortwave from further away">
+              <p className="mb-2 max-w-[70ch] text-small text-ink-muted">
+                {plural(far.length, "entry is", "entries are")} filed under other parts of the world, but shortwave carries a long way: each
+                can sometimes be heard from {placeName(place)} when its band is open.{" "}
+                <Link to="/radio/propagation" className={linkClass}>
+                  HF propagation
+                </Link>{" "}
+                shows when a band is likely to be open. They are in the PDF too.
+              </p>
+              <Rows>
+                {far.map((entry) => (
+                  <FrequencyRow key={entry.id} entry={entry} today={today} />
+                ))}
+              </Rows>
+            </Section>
+          ) : null}
+
           {unverified > 0 ? (
             <p className="mt-4 max-w-[70ch] text-small text-ink-muted">
               {showUnverified
@@ -545,7 +569,13 @@ export default function FrequenciesPage() {
             everywhere.
           </p>
 
-          <PdfDialog open={pdfOpen} onOpenChange={setPdfOpen} entries={shown} chosen={chosen} today={today} />
+          <PdfDialog
+            open={pdfOpen}
+            onOpenChange={setPdfOpen}
+            entries={far.length > 0 ? [...shown, ...far] : shown}
+            chosen={chosen}
+            today={today}
+          />
         </>
       )}
     </Page>

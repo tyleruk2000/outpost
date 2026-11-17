@@ -156,6 +156,17 @@ A closed station is better kept as closed, with the date, than removed.
 - **Full shortwave schedules** beyond what a broadcaster publishes itself for the
   current season.
 
+## Shortwave from further away
+
+A country chosen in the filter shows what is filed under that country, under a region that
+holds it, and under "worldwide". Shortwave does not stop at a region's edge, so under that
+list the screen adds "Shortwave from further away": time signals and broadcasters on 2.3 to
+30 MHz that are on the air but filed elsewhere (WWV from the United States for a reader in
+Britain, say), with a line saying they can only sometimes be heard and a link to HF
+propagation. The other filters still apply to it, closed and unchecked entries are left
+out, and the PDF includes it. The rule is `heardFromAfar` in
+`packages/shared/src/radio-frequencies.ts`.
+
 ## Gaps
 
 Looked for and not put in, by kind. Most are pages that refuse AI agents, or that could

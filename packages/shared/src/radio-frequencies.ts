@@ -666,6 +666,28 @@ export function filterFrequencies(entries: readonly FrequencyEntry[], filter: Fr
   });
 }
 
+/** The kinds whose shortwave signals are meant to carry: worth trying far from the places they are filed under. */
+const CARRIES_FAR: ReadonlySet<FrequencyKindId> = new Set<FrequencyKindId>(["time-signals", "broadcasters"]);
+
+/**
+ * Shortwave from further away: entries the place filter leaves out that are on the air on
+ * shortwave (2.3 to 30 MHz) and of a kind meant to be heard at a distance. A time signal filed
+ * under the United States is still worth trying from Britain when its band is open, and a
+ * reader who filtered to their own country should not have to know to clear the filter to find it.
+ * Every other part of the filter still applies. Nothing when no place is chosen.
+ */
+export function heardFromAfar(entries: readonly FrequencyEntry[], filter: FrequencyFilter): FrequencyEntry[] {
+  const place = filter.place;
+  if (!place) return [];
+  return filterFrequencies(entries, { ...filter, place: null }).filter(
+    (entry) =>
+      !appliesTo(entry, place) &&
+      CARRIES_FAR.has(entry.kind) &&
+      (entry.status === "on-air" || entry.status === "occasional") &&
+      entry.frequencies.some((frequency) => (frequency.toKhz ?? frequency.khz) >= 2300 && frequency.khz <= 30_000),
+  );
+}
+
 /** Places named in the entries, countries by name and then regions in their table's order. */
 export function placesIn(entries: readonly Pick<FrequencyEntry, "where">[]): Array<{ code: string; name: string }> {
   const codes = new Set(entries.flatMap((entry) => entry.where));

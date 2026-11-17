@@ -904,6 +904,9 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - A data test that fails on an entry with no source, no checked date, a frequency outside
   its band, an unknown place, a duplicate or a bad date. See
   [docs/radio-frequencies.md](docs/radio-frequencies.md).
+- With a country chosen, shortwave time signals and broadcasters filed under other parts of
+  the world are listed under it as "Shortwave from further away", so that WWV is not hidden
+  from a reader in Britain.
 
 #### Supplies (Preparedness)
 

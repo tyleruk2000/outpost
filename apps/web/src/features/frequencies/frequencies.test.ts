@@ -10,6 +10,7 @@ import {
   filterFrequencies,
   formatFrequency,
   formatKhz,
+  heardFromAfar,
   isDay,
   matchesText,
   placesIn,
@@ -187,6 +188,27 @@ describe("filtering and finding", () => {
     expect(filterFrequencies(all, { band: "lf" }).map((item) => item.id)).toEqual(["msf"]);
     expect(filterFrequencies(all, { receiver: "marine-vhf" }).map((item) => item.id)).toEqual(["ch16"]);
     expect(filterFrequencies(all, { kind: "time-signals", place: "JP" }).map((item) => item.id)).toEqual(["wwv"]);
+  });
+
+  it("offers shortwave time signals and broadcasts filed elsewhere, and nothing else the place filter left out", () => {
+    const set = [
+      entry({ id: "wwv", name: "WWV", kind: "time-signals", frequencies: [{ khz: 5000 }, { khz: 10_000 }], where: ["US", "itu-2"] }),
+      entry({ id: "msf", name: "MSF", kind: "time-signals", frequencies: [{ khz: 60 }], where: ["GB"] }),
+      entry({ id: "wwvb", name: "WWVB", kind: "time-signals", frequencies: [{ khz: 60 }], where: ["US"] }),
+      entry({ id: "chu", name: "CHU", kind: "time-signals", status: "closed", frequencies: [{ khz: 7850 }], where: ["CA"] }),
+      entry({ id: "ppe", name: "PPE", kind: "time-signals", status: "not-verified", frequencies: [{ khz: 10_000 }], where: ["BR"] }),
+      entry({ id: "sw", name: "A broadcaster", kind: "broadcasters", frequencies: [{ khz: 9500 }], where: ["IN"] }),
+      entry({ id: "mw", name: "A medium wave station", kind: "broadcasters", frequencies: [{ khz: 525, toKhz: 1705 }], where: ["US"] }),
+      entry({ id: "cb", name: "CB channel 9", kind: "licence-free", frequencies: [{ khz: 27_065 }], where: ["US"] }),
+    ];
+    // From Britain: the American time signal on shortwave and the Indian broadcaster, not the one on long wave,
+    // the closed one, the unchecked one, medium wave, or another country's CB.
+    expect(heardFromAfar(set, { place: "GB" }).map((item) => item.id)).toEqual(["wwv", "sw"]);
+    expect(heardFromAfar(set, { place: "GB", kind: "time-signals" }).map((item) => item.id)).toEqual(["wwv"]);
+    // Already listed for the place: not offered twice.
+    expect(heardFromAfar(set, { place: "US" }).map((item) => item.id)).toEqual(["sw"]);
+    // No place chosen: everything is already in the list.
+    expect(heardFromAfar(set, {})).toEqual([]);
   });
 
   it("keeps entries not checked against a primary source out unless asked", () => {
