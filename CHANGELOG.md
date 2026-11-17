@@ -1787,9 +1787,6 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 ### Fixed
 
 - Search counts every match, so every page of results can be reached.
-- Quick search that cannot be fetched (an old tab after an update, a dropped connection)
-  no longer leaves a blank window: it says so and is fetched afresh at the next press.
-  Letters typed while it loads are not taken as shortcuts.
 - Importing search-by-meaning vectors of the wrong size for a model is refused.
 - A screen opened on a phone from a scrolled list starts at its top.
 - Erasing everything on a portable drive no longer lets a later merge remove things at
@@ -1866,6 +1863,10 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   and restarting makes a new one. The script the reader adds gives such a page stand-ins
   for the cookies and browser storage a sandbox refuses. The sandbox itself is
   unchanged: no `allow-same-origin`, no referrer. Checked in Chromium only.
+- **Quick search failing to load no longer blanks the app.** Quick search that cannot be
+  fetched (an old tab after an update, a dropped connection) was outside the screens'
+  error boundary and left a blank window; it now says so and is fetched afresh at the
+  next press. Letters typed while it loads are not taken as shortcuts.
 - **Importing a search-by-meaning file refuses a line over 1 MB.** The import kept
   everything after the last line break in one string and searched it again with every
   piece, so a gzip file of a few kilobytes that unpacked to one endless line held the
