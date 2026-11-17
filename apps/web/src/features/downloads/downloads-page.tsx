@@ -191,6 +191,7 @@ export default function DownloadsPage() {
   // Until the library has loaded, a finished download is taken to be installed still.
   const installedIds = collections.data ? new Set(collections.data.collections.map((item) => item.id)) : undefined;
   const nothing = all.length === 0 && otherWork.length === 0;
+  const installed = collections.data?.collections.length ?? 0;
 
   // The plan: asked for once there are downloads at all, refreshed while any is on its way.
   const plan = usePlan({ enabled: all.length > 0 });
@@ -249,6 +250,25 @@ export default function DownloadsPage() {
         </div>
       ) : downloads.isError ? (
         <ErrorState error={downloads.error} onRetry={() => downloads.refetch()} />
+      ) : nothing && installed > 0 ? (
+        // Installed without a download here: a map imported from a file, a book included with Outpost.
+        <EmptyState
+          title="Nothing is downloading"
+          seed={7}
+          action={
+            <>
+              <Button asChild variant="primary">
+                <Link to="/explore">Explore collections</Link>
+              </Button>
+              <Button asChild>
+                <Link to="/library?tab=collections">See your collections</Link>
+              </Button>
+            </>
+          }
+        >
+          The Library holds {plural(installed, "collection")}, added without a download here: included with Outpost or imported from a
+          file. Collections and maps you fetch from Explore or Maps are listed here, with their real size and progress.
+        </EmptyState>
       ) : nothing ? (
         <EmptyState
           title="Nothing has been downloaded yet"
