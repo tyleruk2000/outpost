@@ -443,6 +443,29 @@
       }
     },
     {
+      "id": "niosh.pocket-guide-chemical-hazards",
+      "name": "NIOSH Pocket Guide to Chemical Hazards",
+      "description": "NIOSH's tables for several hundred workplace chemicals: names, synonyms and CAS and UN numbers, exposure limits, levels immediately dangerous to life or health, physical properties, what each reacts with, protective clothing and respirators, symptoms, target organs and first aid. The third printing of September 2007, 454 pages; NIOSH updates the web edition more often than this PDF.",
+      "category": "preparedness",
+      "publisher": "National Institute for Occupational Safety and Health (NIOSH), CDC",
+      "language": "en",
+      "format": "pdf",
+      "license": "Public domain (the file: “This document is in the public domain and may be freely copied or reprinted.”)",
+      "licenseNote": "The file's own page ii says: “This document is in the public domain and may be freely copied or reprinted.” CDC's “Use of Agency Materials” page says: “Most of the information on the CDC and ATSDR websites is not subject to copyright, is in the public domain, and may be freely used or reproduced without obtaining copyright permission.” Its conditions: credit CDC, imply no endorsement by CDC, HHS or the US Government, do not change the substantive content, and say the material is available on the agency's website at no charge. The exceptions it names are material by contractors, grantees or third parties, which should carry a copyright statement, and the CDC logo; this file is DHHS (NIOSH) Publication No. 2005-149 and carries no copyright statement or outside credit.",
+      "attribution": "Source: CDC. Materials developed by the US Centers for Disease Control and Prevention, available at no charge on www.cdc.gov. Their use here does not imply endorsement by CDC, HHS or the US Government.",
+      "homepage": "https://www.cdc.gov/niosh/npg/",
+      "lastVerified": "2026-11-17",
+      "tags": ["chemicals", "hazardous materials", "exposure limits", "respirators", "first aid"],
+      "sizeBytes": 6339883,
+      "source": {
+        "type": "http",
+        "url": "https://www.cdc.gov/niosh/docs/2005-149/pdfs/2005-149.pdf",
+        "sha256": "c008054cef5aae66addaeab70549d4d549de409f3db75df73c5e7c631a674ad9",
+        "sizeBytes": 6339883,
+        "version": "2005-149, third printing (September 2007)"
+      }
+    },
+    {
       "id": "fema.planning-guidance-response-nuclear-detonation",
       "name": "Planning Guidance for Response to a Nuclear Detonation",
       "description": "FEMA's interagency planning guidance for the first hours and days after a nuclear detonation: blast, heat, radiation and fallout, hazard zones, sheltering and evacuation, acute medical care, population monitoring, and public communications and warnings. Written for emergency planners. 258 pages.",
