@@ -31,6 +31,7 @@ import type {
   ReferenceSourceInfo,
 } from "@outpost/shared";
 import { haversineMeters, ownValue } from "@outpost/shared";
+import type { Statement } from "better-sqlite3";
 import type { AppContext } from "../../core/context.ts";
 import { yieldToEventLoop } from "../../core/event-loop.ts";
 import { kindLabel } from "./kinds.ts";
@@ -288,7 +289,7 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
    * Statements for the map's questions, kept by their text: a view asks the same few each
    * time it moves, and preparing one costs several times what running it on a small view does.
    */
-  const statements = new Map<string, ReturnType<typeof sqlite.prepare>>();
+  const statements = new Map<string, Statement<unknown[]>>();
   const prepared = (sql: string) => {
     let statement = statements.get(sql);
     if (statement) {
