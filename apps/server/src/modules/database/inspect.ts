@@ -72,7 +72,12 @@ export const GROUP_ORDER: DatabaseGroupId[] = ["search", "meaning", "library", "
 
 /** What each count is, as the services that own the tables count it. */
 const COUNTS: Array<{ id: DatabaseCountId; table: string; sql: string }> = [
-  { id: "documents", table: "documents", sql: "SELECT count(*) AS n FROM documents" },
+  // A book's chapters are kept as documents for reading and search, but the Library counts the book, not them.
+  {
+    id: "documents",
+    table: "documents",
+    sql: "SELECT count(*) AS n FROM documents WHERE id NOT IN (SELECT document_id FROM book_chapters)",
+  },
   { id: "passages", table: "chunks", sql: "SELECT count(*) AS n FROM chunks" },
   { id: "vectors", table: "embeddings", sql: "SELECT count(*) AS n FROM embeddings" },
   { id: "pages", table: "notes", sql: "SELECT count(*) AS n FROM notes WHERE trashed_at IS NULL AND is_template = 0" },

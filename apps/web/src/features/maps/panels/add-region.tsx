@@ -512,8 +512,8 @@ export function AddRegion({
           ) : (
             <p className="text-small text-ink-muted">
               {bbox ? <>{formatNumber(countTiles(bbox, 0, maxZoom))} map tiles. </> : null}
-              How many megabytes that is depends on what is in the area, so Outpost asks the map server. That needs an internet
-              connection; nothing is downloaded until you press Download.
+              How many megabytes that is depends on what is in the area, so Outpost asks the map server. That needs an internet connection;
+              nothing is downloaded until you press Download.
             </p>
           )}
           {!estimate.data ? (
