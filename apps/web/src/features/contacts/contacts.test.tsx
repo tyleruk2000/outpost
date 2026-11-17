@@ -137,8 +137,11 @@ describe("the list", () => {
     fakeApi({ ...system, "GET /api/contacts": listOf([]) });
     const first = show("/contacts");
     expect(await screen.findByRole("heading", { name: "No contacts yet" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Add a contact" })).toHaveAttribute("href", "/contacts/new");
-    expect(screen.getByRole("link", { name: "Bring in from a phone" })).toHaveAttribute("href", "/contacts/import");
+    // The empty list's button has the header's name: one action, one name.
+    const adds = screen.getAllByRole("link", { name: "Add contact" });
+    expect(adds).toHaveLength(2);
+    for (const add of adds) expect(add).toHaveAttribute("href", "/contacts/new");
+    expect(screen.getByRole("link", { name: "Bring in from a phone or a file" })).toHaveAttribute("href", "/contacts/import");
     first.unmount();
 
     fakeApi({ ...system, "GET /api/contacts": { status: 500, error: { code: "internal", message: "The database is busy." } } });

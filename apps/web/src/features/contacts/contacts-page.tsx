@@ -61,7 +61,8 @@ function Row({ contact, inEmergencyGroup }: { contact: ContactSummary; inEmergen
         className="group flex min-h-14 min-w-0 flex-1 items-center gap-3 rounded-control px-2.5 py-2 transition-colors duration-150 hover:bg-surface aria-[current=page]:bg-primary-soft"
       >
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-body font-medium text-ink group-aria-[current=page]:text-primary-soft-ink">
+          {/* A name is what the row is for: it takes a second line rather than lose its end. */}
+          <span className="line-clamp-2 block text-body font-medium [overflow-wrap:anywhere] text-ink group-aria-[current=page]:text-primary-soft-ink">
             {contact.displayName}
           </span>
           {second ? <span className="block truncate text-small text-ink-muted">{second}</span> : null}
@@ -116,10 +117,10 @@ function ContactList({ filter, setFilter }: { filter: ListFilter; setFilter: (ne
         action={
           <>
             <Button asChild variant="primary">
-              <Link to="/contacts/new">Add a contact</Link>
+              <Link to="/contacts/new">Add contact</Link>
             </Button>
             <Button asChild>
-              <Link to="/contacts/import">Bring in from a phone</Link>
+              <Link to="/contacts/import">Bring in from a phone or a file</Link>
             </Button>
           </>
         }
@@ -170,23 +171,23 @@ function ContactList({ filter, setFilter }: { filter: ListFilter; setFilter: (ne
       </div>
 
       {data.tags.length > 0 ? (
-        <ul aria-label="Show one tag" className="scroll-quiet -mx-1 mt-3 flex gap-1.5 overflow-x-auto px-1 pb-1">
+        <ul aria-label="Show one tag" className="mt-3 flex flex-wrap gap-1.5">
           {data.tags.map((tag) => {
             const on = filter.tag.toLowerCase() === tag.name.toLowerCase();
             return (
-              <li key={tag.name} className="shrink-0">
+              <li key={tag.name} className="min-w-0">
                 <button
                   type="button"
                   aria-pressed={on}
                   onClick={() => setFilter({ ...filter, tag: on ? "" : tag.name, limit: LIST_STEP })}
                   className={cn(
-                    "flex h-8 items-center gap-1.5 rounded-full border px-3 text-small transition-colors duration-150 max-md:h-10",
+                    "flex h-8 max-w-full items-center gap-1.5 rounded-full border px-3 text-small transition-colors duration-150 max-md:h-11",
                     on
                       ? "border-primary bg-primary-soft font-medium text-primary-soft-ink"
                       : "border-border-strong text-ink-muted hover:bg-surface hover:text-ink",
                   )}
                 >
-                  {tag.name}
+                  <span className="truncate">{tag.name}</span>
                   <span className="tabular text-micro">{formatNumber(tag.count)}</span>
                 </button>
               </li>

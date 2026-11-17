@@ -81,7 +81,7 @@ test.describe("at an address that is not secure", () => {
 
     // ── Encryption: keys, text and files need SubtleCrypto; the screen says so and offers what works.
     await page.goto("/encryption?tab=keys");
-    await expect(page.getByText("Keys, text and files need HTTPS")).toBeVisible();
+    await expect(page.getByText("Keys, text, files and encrypted pages need HTTPS")).toBeVisible();
     await expect(page.getByRole("link", { name: "Settings, HTTPS on your network" })).toBeVisible();
 
     expect(failing(errors)).toEqual([]);
