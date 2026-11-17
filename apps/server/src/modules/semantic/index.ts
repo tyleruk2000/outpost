@@ -483,8 +483,8 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
    * the key is the text, the file fits any Outpost that holds the same passages,
    * whatever ids its database gave them.
    */
-  app.get<{ Querystring: { model?: string } }>("/api/semantic/export", async (request, reply) => {
-    const modelId = request.query.model ?? currentProvider()?.modelId;
+  app.get("/api/semantic/export", async (request, reply) => {
+    const modelId = z.object({ model: z.string().max(300).optional() }).parse(request.query).model ?? currentProvider()?.modelId;
     if (!modelId) throw badRequest("Say which model to export with ?model=.");
     const model = sqlite.prepare("SELECT id, provider, model, dimensions FROM embedding_models WHERE id = ?").get(modelId) as
       | { id: string; provider: string; model: string; dimensions: number }

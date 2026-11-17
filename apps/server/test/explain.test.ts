@@ -101,6 +101,16 @@ describe("how search works", () => {
     expect(body.vectors.reason).toMatch(/turned off/);
   });
 
+  it("refuses a query it cannot read, rather than failing", async () => {
+    for (const path of [
+      "/api/retrieval/entities?q=a&q=b",
+      "/api/retrieval/chunks?kind=document&kind=note&entityId=d-water",
+      "/api/semantic/export?model=a&model=b",
+    ]) {
+      expect((await app.api("GET", path)).status, path).toBe(400);
+    }
+  });
+
   it("shows how one document was cut into overlapping passages", async () => {
     const list = (await app.api("GET", "/api/retrieval/entities")).body.entities;
     expect(list[0]).toMatchObject({ kind: "document", entityId: "d-water" });
