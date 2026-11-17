@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { findPlaces, type Place } from "@/components/find-places";
 import { EmptyState, ErrorState, Notice, Page } from "@/components/page";
+import { findGuides, useGuideIndex } from "@/features/help/guide-places";
 import { ScreensUnder } from "@/components/screens-under";
 import { Highlighted, kindMeta, kindOf, resultHref } from "@/components/search-hit";
 import { Button } from "@/components/ui/button";
@@ -251,7 +252,8 @@ export default function SearchPage() {
   const toDownload = everything && data ? data.results.filter((result) => result.kind === "catalog") : [];
   // Added once the reference collections have answered, so that it never moves under a finger.
   const toDownloadShown = toDownload.length > 0 && !(referenceBelow && reference.status !== "done");
-  const places = everything && page === 1 && q.trim() ? findPlaces(q).slice(0, PLACES_SHOWN) : [];
+  const guides = useGuideIndex(everything && Boolean(q.trim()));
+  const places = everything && page === 1 && q.trim() ? [...findPlaces(q), ...findGuides(q, guides)].slice(0, PLACES_SHOWN) : [];
   const semanticOffered = data && !data.warnings.some((warning) => warning.source === "semantic") && data.mode !== "keyword";
 
   return (

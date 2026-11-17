@@ -12,6 +12,7 @@ import { CornerDownLeft, Eraser, FolderInput, Globe, ListChecks, type LucideIcon
 import { Dialog } from "radix-ui";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
+import { findGuides, useGuideIndex } from "@/features/help/guide-places";
 import { api } from "@/lib/api";
 import { referenceProgress, useReferenceSearch } from "@/lib/reference-search";
 import { useTheme } from "@/lib/theme";
@@ -128,7 +129,8 @@ export function CommandPalette({
   ];
   // Every screen, those under another with its name first ("Radio: Repeaters"); with words typed, the sections of
   // Settings too. Nothing typed lists the screens alone.
-  const places = typed ? findPlaces(typed) : everyPlace.filter((place) => !place.section);
+  const guides = useGuideIndex(open);
+  const places = typed ? [...findPlaces(typed), ...findGuides(typed, guides)] : everyPlace.filter((place) => !place.section);
   const actions = everyAction.filter((action) => matchesWords(`${action.label}${action.keywords ? ` ${action.keywords}` : ""}`, typed));
 
   return (

@@ -9,6 +9,7 @@
  */
 import {
   AudioWaveform,
+  BookMarked,
   BookOpen,
   ClipboardList,
   Compass,
@@ -178,6 +179,14 @@ export const upkeepNav: NavItem[] = [
     keywords: "preferences options",
     // How to set up search by meaning, answers and chat (SETUP_GUIDE_PATH): its settings link to it part by part.
     children: [{ to: "/help/search-and-answers", label: "Set-up guide", icon: LifeBuoy, keywords: "help models ollama install" }],
+  },
+  // The guides, made from docs/ (features/help/guides.ts); each guide is a page of its own, found by the quick search. "i" for information: "h" is Home's.
+  {
+    to: "/help",
+    label: "Help",
+    icon: BookMarked,
+    key: "i",
+    keywords: "guide guides manual how to install deploy raspberry pi docker set up instructions documentation troubleshooting",
   },
 ];
 

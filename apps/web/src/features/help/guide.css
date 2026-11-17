@@ -1,0 +1,62 @@
+/* A guide under Help (guide-page.tsx). The reading itself is the library's (.prose-doc in styles/prose.css). */
+
+/* A command keeps the reading rhythm of the page around it. */
+.guide-doc .guide-code {
+  margin-block: 0.85em;
+}
+
+/* A link that leaves Outpost: a small arrow after it, and words for a screen reader. It needs the internet. */
+.guide-doc a[target="_blank"]::after {
+  content: "" / " (opens in the browser, and needs the internet)";
+  display: inline-block;
+  width: 0.75em;
+  height: 0.75em;
+  margin-left: 0.15em;
+  vertical-align: 0.05em;
+  background-color: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 7h10v10'/%3E%3Cpath d='M7 17 17 7'/%3E%3C/svg%3E")
+    no-repeat center / contain;
+}
+
+/*
+ * The browser's own print: the guide alone, black on white, every part laid out, and the
+ * address of each link that leaves Outpost written after it, since paper cannot follow it.
+ */
+@media print {
+  body:has(.guide-print) :has(> #content) > :not(#content),
+  .guide-print .guide-chrome,
+  .guide-print header a,
+  .guide-print button {
+    display: none !important;
+  }
+
+  body:has(.guide-print),
+  .guide-print,
+  .guide-print * {
+    color: black !important;
+    background: transparent !important;
+  }
+
+  .guide-print {
+    max-width: none;
+    padding: 0;
+  }
+
+  .guide-print section {
+    content-visibility: visible !important;
+  }
+
+  .guide-print .doc-table {
+    overflow: visible;
+  }
+
+  .guide-doc a[target="_blank"]::after {
+    content: " (" attr(href) ")";
+    display: inline;
+    width: auto;
+    height: auto;
+    mask: none;
+    font-size: 0.85em;
+    overflow-wrap: anywhere;
+  }
+}

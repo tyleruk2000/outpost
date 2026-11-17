@@ -38,6 +38,8 @@ const ManagePage = lazy(() => import("./features/manage/manage-page"));
 const MergePage = lazy(() => import("./features/merge/merge-page"));
 const SettingsPage = lazy(() => import("./features/settings/settings-page"));
 const SetupGuidePage = lazy(() => import("./features/help/setup-guide-page"));
+const HelpPage = lazy(() => import("./features/help/help-page"));
+const GuidePage = lazy(() => import("./features/help/guide-page"));
 const KeptPage = lazy(() => import("./features/kept/kept-page"));
 const RadioPage = lazy(() => import("./features/radio/radio-page"));
 const ToolsPage = lazy(() => import("./features/tools/tools-page"));
@@ -155,6 +157,8 @@ export function App() {
           <Route path="storage/merge" element={<MergePage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="help/search-and-answers" element={<SetupGuidePage />} />
+          <Route path="help" element={<HelpPage />} />
+          <Route path="help/:slug" element={<GuidePage />} />
           <Route path="kept" element={<KeptPage />} />
           <Route path="radio" element={<RadioPage />} />
           <Route path="tools" element={<ToolsPage />} />
