@@ -26,6 +26,11 @@ test.describe("Sudoku on a phone", () => {
     await expect(grid).toBeVisible();
     await expect(page.getByRole("radio", { name: "Gentle" })).toHaveAttribute("aria-checked", "true");
     expect(await overflow()).toBeLessThanOrEqual(0);
+    // The board takes nearly the width of the phone, so a cell is a finger's width, and the digits pad is still on screen.
+    const cellBox = (await grid.getByRole("button").first().boundingBox())!;
+    expect(cellBox.width).toBeGreaterThanOrEqual(40);
+    const pad = (await page.getByRole("group", { name: "Number pad" }).boundingBox())!;
+    expect(pad.y + pad.height).toBeLessThanOrEqual(844);
 
     // The first two empty cells, by their names.
     const names = await grid.getByRole("button").evaluateAll((cells) => cells.map((cell) => cell.getAttribute("aria-label") ?? ""));
