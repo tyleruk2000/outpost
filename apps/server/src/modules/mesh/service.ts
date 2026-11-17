@@ -114,6 +114,7 @@ export function createMeshService(ctx: AppContext, options: { open?: Opener } = 
     if (row) return;
     if (secrets.brokerPasswordSet() || secrets.clientPassword() !== null) secrets.erase();
     const next = store.config();
+    meshtastic.forgetNodes();
     if (JSON.stringify(next) === applied) return;
     applied = JSON.stringify(next);
     void meshtastic.apply(next.meshtastic);

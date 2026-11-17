@@ -242,6 +242,8 @@ export function createMeshtasticLink(ctx: AppContext, store: MeshStore, secrets:
       config = next;
       json = null;
       others.clear();
+      // Read again: erase-everything may have emptied what was heard.
+      heard = store.heard();
       if (next.mode === "off") {
         set("off");
         return;
@@ -321,6 +323,9 @@ export function createMeshtasticLink(ctx: AppContext, store: MeshStore, secrets:
     },
 
     forgetNodes() {
+      // Nothing written when there is nothing to forget: erasing the board must not leave a row behind.
+      heard = store.heard();
+      if (Object.keys(heard.nodes).length === 0) return;
       heard = { ...heard, nodes: {} };
       store.saveHeard(heard);
       changed();

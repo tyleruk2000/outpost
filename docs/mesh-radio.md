@@ -158,8 +158,14 @@ device. With a way in set up and a radio connected, Outpost does nothing between
 packets: the radio's keep-alive is the radio's (the broker uses the socket's own idle
 timeout, not a timer), a MeshCore radio says when messages are waiting, and a radio that
 went away is tried again with a growing wait only while it is still set up. As a client
-of the household's broker Outpost sends one keep-alive every two minutes. Measured
-figures are in the report for this change (`docs/messages.md` lists the board's).
+of the household's broker Outpost sends one keep-alive every two minutes.
+
+Measured on 17 November 2026 on the development Mac (heavily loaded by other work), the
+packaged server over ten minutes each, nobody using it: nothing set up, 0.15 s of
+processor; Outpost as the broker with a stand-in radio connected and pinging every 15
+seconds, 0.13 s; MeshCore by TCP with a stand-in companion connected, 0.12 s. All three
+are the server's ordinary rest (about 0.02% of one core); the link adds nothing that
+shows.
 
 ## What the broker does
 

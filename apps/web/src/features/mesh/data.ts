@@ -22,7 +22,9 @@ import { api } from "@/lib/api";
 export const MESH_KEY = ["mesh"];
 const DEVICES_KEY = ["mesh", "devices"];
 
-export const useMesh = () => useQuery({ queryKey: MESH_KEY, queryFn: () => api.get<MeshResponse>("/api/mesh") });
+// Kept until the server says it changed (`mesh.changed`): never asked again only because time passed.
+export const useMesh = () =>
+  useQuery({ queryKey: MESH_KEY, queryFn: () => api.get<MeshResponse>("/api/mesh"), staleTime: Number.POSITIVE_INFINITY });
 
 /** The devices that may be a radio, asked for only while "By USB cable" is chosen. */
 export const useMeshDevices = (enabled: boolean) =>
