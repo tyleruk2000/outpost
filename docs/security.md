@@ -1539,10 +1539,13 @@ database must pass SQLite's integrity check, and it must not come from a newer
 Outpost. Only then is it marked ready. It is applied at the next start, before the
 database is opened, and the data it replaces is kept in a dated folder. An upload that
 was interrupted is discarded, never applied. A restore puts back the database,
-attachments and extracted text only. Catalogue manifests in the file are ignored,
-because they name the hosts downloads may start from; unfinished jobs and remembered
-network shares in the restored database are deleted, so a backup from another machine
-cannot make this one start work or connect to a file server. Each file unpacked must
+attachments, extracted text and the files sent on the board only. Catalogue manifests
+in the file are ignored, because they name the hosts downloads may start from;
+unfinished jobs and remembered network shares in the restored database are deleted, and
+the mesh radio link's set-up in it is replaced by the one in use here (none if there is
+none), so a backup from another machine cannot make this one start work, connect to a
+file server or a radio broker, or open a radio or a port. Neither the mesh link's
+passwords file nor the reference reader's `reader-token` is in a backup. Each file unpacked must
 match the checksum the archive recorded for it, so a backup damaged where it was kept
 is refused whole.
 Code: `apps/server/src/modules/backup/restore.ts`.
