@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { lazy } from "react";
-import { Route, Routes, useNavigate } from "react-router";
+import { Link, Route, Routes, useNavigate } from "react-router";
 import { AppShell } from "./components/app-shell";
 import { Page } from "./components/page";
 import { ServerDown } from "./components/server-down";
+import { Button } from "./components/ui/button";
 import { Skeleton } from "./components/ui/misc";
 import { giveUpAfter, OutOfReach, PROBE_TIMEOUT_MS, ReachGate } from "./features/kept/reach";
 import { canOpenOutOfReach } from "./features/kept/register";
@@ -75,7 +76,15 @@ function NotFound() {
   return (
     <Page width="reading">
       <h1 className="font-title text-title">There is nothing at this address</h1>
-      <p className="mt-2 text-ink-muted">The page may have been moved or deleted. Use the sidebar or search to find your way.</p>
+      <p className="mt-2 text-ink-muted">The page may have been moved or deleted, or the address was typed with a mistake in it.</p>
+      <div className="mt-6 flex flex-wrap gap-2">
+        <Button variant="primary" asChild>
+          <Link to="/">Go to Home</Link>
+        </Button>
+        <Button asChild>
+          <Link to="/search">Search</Link>
+        </Button>
+      </div>
     </Page>
   );
 }
