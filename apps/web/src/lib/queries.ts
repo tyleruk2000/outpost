@@ -1,7 +1,7 @@
 /** Shared data hooks for things several screens read: system, storage, jobs, settings. */
 import type { JobDto, Settings, StorageLocationsResponse, SystemInfo } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { notify } from "@/lib/notify";
 import { api, errorMessage } from "./api";
 
 // Not polled: memory and load are figures read in passing, taken when a screen opens, and the
@@ -26,6 +26,6 @@ export function useUpdateSettings() {
   return useMutation({
     mutationFn: (patch: Partial<Settings>) => api.patch<{ settings: Settings }>("/api/settings", patch),
     onSuccess: (data) => client.setQueryData(["settings"], data),
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 }

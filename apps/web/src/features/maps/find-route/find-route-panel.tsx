@@ -426,6 +426,7 @@ export function FindRoutePanel({
             <form className="grid gap-3" onSubmit={runSearch}>
               <Field
                 label="Name of the route"
+                optional
                 hint="A waymarked walk, a cycle route or a named path, such as Llanberis Path. Leave it empty to list the routes in the map view."
               >
                 {(ids) => (

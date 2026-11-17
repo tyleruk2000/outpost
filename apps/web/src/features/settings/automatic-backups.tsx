@@ -22,21 +22,13 @@ import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/compo
 import { Badge, Progress, Segmented, Select, Skeleton } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
 import { useServerEvent } from "@/lib/events";
+import { notify } from "@/lib/notify";
 import { useStorage } from "@/lib/queries";
 import { formatDateTime } from "@/lib/utils";
 import { passphraseProblem, RestorePassphrase } from "./backup-protection";
-import {
-  backupSummary,
-  checkText,
-  kindText,
-  protectionText,
-  RESTORE_WORDS,
-  retryText,
-  scheduleText,
-  stagedText,
-  waitingTitle,
-} from "./backup-text";
+import { backupSummary, checkText, kindText, protectionText, retryText, scheduleText, stagedText, waitingTitle } from "./backup-text";
 import { NumberSetting, SettingRow, SettingsSection } from "./parts";
+import { RESTORE_LABEL, RestoreWords } from "./restore-words";
 
 const OFF = "off";
 /** Monday first, as the week is written here. */
@@ -76,8 +68,11 @@ export function AutomaticBackups() {
   const status = useQuery({ queryKey: ["backup", "status"], queryFn: () => api.get<BackupStatus>("/api/backup/status") });
   const protection = status.data?.protection;
   const refresh = () => client.invalidateQueries({ queryKey: ["backup"] });
-  // A location coming or going, and each step of a backup under way, change what is said here.
-  useServerEvent("storage.changed", () => void refresh());
+  // A location coming or going changes whether backups can be made and which are there to
+  // list; each step of a backup under way changes the rest of what is said here.
+  useServerEvent("storage.changed", () => {
+    for (const key of ["schedule", "stored"]) void client.invalidateQueries({ queryKey: ["backup", key] });
+  });
   useServerEvent("job.updated", ({ data }) => {
     if ((data as JobDto | undefined)?.type === "backup.run") void refresh();
   });
@@ -88,12 +83,12 @@ export function AutomaticBackups() {
       client.setQueryData(["backup", "schedule"], data);
       return client.invalidateQueries({ queryKey: ["backup", "stored"] });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
   const run = useMutation({
     mutationFn: () => api.post<{ job: JobDto }>("/api/backup/run"),
     onSuccess: refresh,
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 
   const data = schedule.data;
@@ -151,8 +146,9 @@ export function AutomaticBackups() {
             label="Keep backups on"
             hint={
               <>
-                Outpost writes them to a folder named <span className="font-mono text-[0.8125rem] text-ink">{data.folder}</span> on the
-                location you choose, and nowhere else.{" "}
+                Outpost writes them to a folder named{" "}
+                <span className="font-mono text-[0.8125rem] text-ink [overflow-wrap:anywhere]">{data.folder}</span> on the location you
+                choose, and nowhere else.{" "}
                 {protection?.on
                   ? "Backups are encrypted with your passphrase: anyone who can open that folder can copy them and see when each was made, and cannot read them without it."
                   : "A backup holds your notes, saved places and settings as they are, not encrypted: anyone who can open that folder can read them, so choose storage you trust."}
@@ -301,7 +297,7 @@ function StoredBackups({
       // A passphrase that was wrong is said beside the field, and the dialog stays for another try.
       if (passphraseProblem(error)) return setProblem(errorMessage(error));
       setRestoring(undefined);
-      toast.error(errorMessage(error));
+      notify.error(errorMessage(error));
     },
   });
   const remove = useMutation({
@@ -312,7 +308,7 @@ function StoredBackups({
     },
     onError: (error) => {
       setDeleting(undefined);
-      toast.error(errorMessage(error));
+      notify.error(errorMessage(error));
     },
   });
 
@@ -412,15 +408,16 @@ function StoredBackups({
         onOpenChange={(open) => !open && !restore.isPending && setRestoring(undefined)}
         title="Restore from this backup?"
         description={
-          <>
-            <p>
-              The backup of <span className="font-medium text-ink">{restoring ? formatDateTime(restoring.createdAt) : ""}</span>, from{" "}
-              {locationName}, is checked first. {RESTORE_WORDS[0]}
-            </p>
-            <p className="mt-2">{RESTORE_WORDS[1]}</p>
-          </>
+          <RestoreWords
+            lead={
+              <>
+                The backup of <span className="font-medium text-ink">{restoring ? formatDateTime(restoring.createdAt) : ""}</span>, from{" "}
+                {locationName}, is checked first.
+              </>
+            }
+          />
         }
-        confirmLabel="Check and stage restore"
+        confirmLabel={RESTORE_LABEL}
         confirmVariant="primary"
         loading={restore.isPending}
         onConfirm={() => {

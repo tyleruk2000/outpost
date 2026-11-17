@@ -72,26 +72,30 @@ export function render(bits: string, module: number, options: { height?: number;
 export function blur(image: Luma, radius: number): Luma {
   let data = Float32Array.from(image.data);
   const { width, height } = image;
+  // Each pixel the mean of those within `radius` along a row or a column, the window cut
+  // short at the edges. A running sum slides along each line, so a pass costs the same
+  // whatever the radius.
   const pass = (source: Float32Array, horizontal: boolean) => {
     const out = new Float32Array(source.length);
-    for (let y = 0; y < height; y += 1) {
-      for (let x = 0; x < width; x += 1) {
-        let sum = 0;
-        let n = 0;
-        for (let k = -radius; k <= radius; k += 1) {
-          const xx = horizontal ? x + k : x;
-          const yy = horizontal ? y : y + k;
-          if (xx < 0 || yy < 0 || xx >= width || yy >= height) continue;
-          sum += source[yy * width + xx]!;
-          n += 1;
-        }
-        out[y * width + x] = sum / n;
+    const lines = horizontal ? height : width;
+    const length = horizontal ? width : height;
+    const step = horizontal ? 1 : width;
+    for (let line = 0; line < lines; line += 1) {
+      const start = horizontal ? line * width : line;
+      let sum = 0;
+      for (let k = 0; k <= Math.min(radius, length - 1); k += 1) sum += source[start + k * step]!;
+      for (let i = 0; i < length; i += 1) {
+        out[start + i * step] = sum / (Math.min(length - 1, i + radius) - Math.max(0, i - radius) + 1);
+        if (i + radius + 1 < length) sum += source[start + (i + radius + 1) * step]!;
+        if (i - radius >= 0) sum -= source[start + (i - radius) * step]!;
       }
     }
     return out;
   };
   for (let i = 0; i < 3; i += 1) data = pass(pass(data, true), false);
-  return { data: Uint8Array.from(data, (value) => Math.round(value)), width, height };
+  const out = new Uint8Array(data.length);
+  for (let i = 0; i < data.length; i += 1) out[i] = Math.round(data[i]!);
+  return { data: out, width, height };
 }
 
 /** Turned by `degrees` about its centre onto a canvas big enough to hold it, the corners filled with the background. */
@@ -113,9 +117,11 @@ export function rotate(image: Luma, degrees: number): Luma {
       const y0 = Math.floor(sy);
       const fx = sx - x0;
       const fy = sy - y0;
-      const at = (xx: number, yy: number) => image.data[yy * image.width + xx]!;
-      const top = at(x0, y0) + (at(x0 + 1, y0) - at(x0, y0)) * fx;
-      const bottom = at(x0, y0 + 1) + (at(x0 + 1, y0 + 1) - at(x0, y0 + 1)) * fx;
+      const at = y0 * image.width + x0;
+      const topLeft = image.data[at]!;
+      const bottomLeft = image.data[at + image.width]!;
+      const top = topLeft + (image.data[at + 1]! - topLeft) * fx;
+      const bottom = bottomLeft + (image.data[at + image.width + 1]! - bottomLeft) * fx;
       data[y * width + x] = Math.round(top + (bottom - top) * fy);
     }
   }

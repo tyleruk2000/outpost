@@ -4,6 +4,7 @@ import {
   type EmergencyPlanUpdate,
   type MarkerDto,
   type NuclearScenario,
+  type NuclearSet,
   PLAN_TEMPLATES,
   planFromTemplate,
 } from "@outpost/shared";
@@ -137,6 +138,9 @@ interface Options {
   onPatch?: (body: Record<string, unknown>, count: number) => { status: number; body: unknown } | undefined;
   /** What one saved scenario is read as (`GET /api/nuclear/scenarios/:id`). */
   one?: NuclearScenario;
+  /** Saved sets, and what one is read as (`GET /api/nuclear/sets/:id`). */
+  sets?: NuclearSet[];
+  oneSet?: NuclearSet;
   /** Emergency plans: the list, and what each read of `/api/emergency-plans/:id` and each change to it answer. */
   plans?: {
     list: EmergencyPlanSummary[];
@@ -181,7 +185,8 @@ function serve(options: Options = {}) {
         if (options.scenarios === "fails") return json({ error: { code: "internal", message: "The database is busy." } }, 500);
         return json({ scenarios: options.scenarios ?? [] });
       }
-      if (pathname === "/api/nuclear/sets") return json({ sets: [] });
+      if (pathname === "/api/nuclear/sets") return json({ sets: options.sets ?? [] });
+      if (options.oneSet && pathname === `/api/nuclear/sets/${options.oneSet.id}`) return json(options.oneSet);
       if (pathname === "/api/maps/markers") {
         if (options.markers === "fails") return json({ error: { code: "internal", message: "The database is busy." } }, 500);
         return json({ markers: options.markers ?? [] });
@@ -234,7 +239,7 @@ describe("Nuclear preparedness", () => {
   it("gives the panel's tabs a 44 px touch target on a phone", () => {
     serve();
     for (const name of [/Scenario/, /Saved/, /Layers/, /Records/, /Plans/])
-      expect(screen.getByRole("tab", { name })).toHaveClass("min-h-11");
+      expect(screen.getByRole("tab", { name })).toHaveClass("max-md:min-h-11");
   });
 
   it("names the installed regions when there are some", async () => {
@@ -292,7 +297,7 @@ describe("Nuclear preparedness", () => {
     await waitFor(() => expect(screen.getByTestId("drawn")).toHaveTextContent(/A · 5 psi · 1\.1 km/));
     const before = overlays.length;
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Over the quarry" } });
-    fireEvent.change(screen.getByLabelText("Notes"), { target: { value: "For the talk on Thursday." } });
+    fireEvent.change(screen.getByLabelText(/^Notes/), { target: { value: "For the talk on Thursday." } });
     expect(overlays.length).toBe(before);
     fireEvent.change(screen.getByLabelText("Yield"), { target: { value: "10" } });
     await waitFor(() => expect(overlays.length).toBe(before + 1));
@@ -401,6 +406,78 @@ describe("Nuclear preparedness", () => {
       expect(screen.queryByText("This scenario was changed somewhere else")).toBeNull();
       expect(patches()).toHaveLength(1);
       fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+      await waitFor(() => expect(patches()).toHaveLength(2));
+      expect(patches()[1]!.body).toMatchObject({ name: theirs.name, baseUpdatedAt: THEIRS });
+    });
+  });
+
+  describe("a saved set changed on another device while open here", () => {
+    const member = (letter: "A" | "B", name: string) => ({ ...saved, letter, hidden: false, name });
+    const set: NuclearSet = {
+      id: "set1",
+      name: "Two at the bay",
+      members: [member("A", "First")],
+      createdAt: 1,
+      updatedAt: saved.updatedAt,
+    };
+    const THEIRS = set.updatedAt + 60_000;
+    const theirs: NuclearSet = {
+      ...set,
+      name: "Two at the bay (kitchen)",
+      members: [member("A", "First"), member("B", "Second")],
+      updatedAt: THEIRS,
+    };
+    const refusedOnce = (body: Record<string, unknown>, count: number) =>
+      count === 1
+        ? {
+            status: 409,
+            body: {
+              error: {
+                code: "conflict",
+                message:
+                  "This set was changed somewhere else after you opened it, in another tab or on another device. Your changes were not saved over it; reload to see the newer version.",
+                details: { current: { updatedAt: THEIRS, name: theirs.name } },
+              },
+            },
+          }
+        : { status: 200, body: { ...set, ...body, updatedAt: THEIRS + 1000 } };
+
+    async function changeOpenSet() {
+      const server = serve({ sets: [set], onPatch: refusedOnce, oneSet: theirs });
+      openTab(/Saved/);
+      fireEvent.click(await screen.findByRole("button", { name: "Open the set" }));
+      openTab(/Saved/);
+      fireEvent.change(await screen.findByLabelText("Name of the set"), { target: { value: "Mine" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save changes to the set" }));
+      expect(await screen.findByText("This set was changed somewhere else")).toBeInTheDocument();
+      const patches = () => server.posted.filter((post) => post.path === "/api/nuclear/sets/set1");
+      expect(patches()).toHaveLength(1);
+      expect(patches()[0]!.body).toMatchObject({ name: "Mine", baseUpdatedAt: set.updatedAt });
+      expect(screen.getByText(/Your version is still on the map, unsaved, and nothing has been overwritten/)).toBeInTheDocument();
+      return patches;
+    }
+
+    it("keeps my version by sending it again on top of the newer one", async () => {
+      const patches = await changeOpenSet();
+      fireEvent.click(screen.getByRole("button", { name: "Keep my version" }));
+      await waitFor(() => expect(patches()).toHaveLength(2));
+      expect(patches()[1]!.body).toMatchObject({ name: "Mine", baseUpdatedAt: THEIRS });
+      await waitFor(() => expect(screen.queryByText("This set was changed somewhere else")).toBeNull());
+      // The next change builds on the version just saved.
+      fireEvent.click(screen.getByRole("button", { name: "Save changes to the set" }));
+      await waitFor(() => expect(patches()).toHaveLength(3));
+      expect(patches()[2]!.body).toMatchObject({ baseUpdatedAt: THEIRS + 1000 });
+    });
+
+    it("puts the other version on the map instead", async () => {
+      const patches = await changeOpenSet();
+      fireEvent.click(screen.getByRole("button", { name: "Load the other version" }));
+      // Both of its scenarios are on the map, as on opening it.
+      await waitFor(() => expect(screen.getByTestId("drawn")).toHaveTextContent(/B · 5 psi/));
+      openTab(/Saved/);
+      expect(await screen.findByLabelText("Name of the set")).toHaveValue(theirs.name);
+      expect(screen.queryByText("This set was changed somewhere else")).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Save changes to the set" }));
       await waitFor(() => expect(patches()).toHaveLength(2));
       expect(patches()[1]!.body).toMatchObject({ name: theirs.name, baseUpdatedAt: THEIRS });
     });

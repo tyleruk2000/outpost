@@ -15,6 +15,7 @@ import { ConfirmDialog } from "@/components/ui/dialog";
 import { Badge, Checkbox } from "@/components/ui/misc";
 import { DownloadControls, DownloadProgress } from "@/features/downloads/download-progress";
 import { api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { formatNumber } from "@/lib/utils";
 import { useRemovePlaces } from "../data";
 import { DestinationPicker, useDestination } from "./destination";
@@ -46,7 +47,7 @@ function useStart() {
       void client.invalidateQueries({ queryKey: ["downloads"] });
       void client.invalidateQueries({ queryKey: ["maps"] });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 }
 

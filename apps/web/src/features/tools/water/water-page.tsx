@@ -220,7 +220,7 @@ const rnFilter: NumberSpec = {
 };
 const rnUse: NumberSpec = {
   id: "water.rain.use",
-  label: "Water used a day (optional)",
+  label: "Water used a day",
   initial: "",
   units: u.units.water,
   above: 0,
@@ -329,7 +329,7 @@ const flUsed: NumberSpec = { id: "water.filter.used", label: "Already filtered",
 const flDaily: NumberSpec = { id: "water.filter.daily", label: "Filtered a day", initial: 8, units: u.units.water, above: 0 };
 const flMonths: NumberSpec = {
   id: "water.filter.months",
-  label: "Longest use the label allows (optional)",
+  label: "Longest use the label allows",
   initial: "",
   suffix: "months",
   above: 0,

@@ -115,12 +115,17 @@ describe("the limits", () => {
   });
   it("never gives a wrong number for a spoiled picture: it reads the right one or none", () => {
     const seen = new Set<string>();
-    for (const radius of [1, 2, 3])
-      for (const degrees of [0, 7, 22, 41])
-        for (const module of [3, 4, 6]) {
-          const result = decodeBarcode(blur(rotate(render(ean13Modules(EAN), module), degrees), radius));
+    // Each picture is turned once and blurred three ways: making the pictures is most of the work here.
+    for (const module of [3, 4, 6]) {
+      const clean = render(ean13Modules(EAN), module);
+      for (const degrees of [0, 7, 22, 41]) {
+        const turned = rotate(clean, degrees);
+        for (const radius of [1, 2, 3]) {
+          const result = decodeBarcode(blur(turned, radius));
           if (result) seen.add(result.text);
         }
+      }
+    }
     expect([...seen]).toEqual([EAN]);
   });
 });

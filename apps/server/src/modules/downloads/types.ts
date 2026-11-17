@@ -102,6 +102,10 @@ export interface DownloadsService {
   start(input: StartDownload): Promise<DownloadRow>;
   get(id: string): DownloadRow | undefined;
   list(): DownloadRow[];
+  /** Every download that has not finished (finished: completed or cancelled), newest first. */
+  unfinished(): DownloadRow[];
+  /** Finished downloads, most recently finished first, a page at a time, and how many there are. */
+  history(offset: number, limit: number): { rows: DownloadRow[]; total: number };
   pause(id: string): DownloadRow;
   resume(id: string): DownloadRow;
   cancel(id: string): DownloadRow;

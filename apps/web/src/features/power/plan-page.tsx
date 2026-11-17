@@ -780,7 +780,7 @@ export default function PowerPlanPage() {
           <Field label="Name">
             {(ids) => <Input {...ids} value={draft.name} maxLength={120} onChange={(event) => set({ name: event.target.value })} />}
           </Field>
-          <Field label="Notes" hint="Printed with the plan.">
+          <Field label="Notes" optional hint="Printed with the plan.">
             {(ids) => <Textarea {...ids} value={draft.notes} maxLength={20_000} onChange={(event) => set({ notes: event.target.value })} />}
           </Field>
           <p className="text-small text-ink-muted">

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { useStorage } from "@/lib/queries";
 import { ChoiceList } from "../downloads/choice-list";
 import { LocationPicker, locationProblem, preferredLocation } from "../downloads/location-picker";
@@ -187,7 +188,7 @@ export function RemoveCollectionDialog({
       onOpenChange(false);
       onRemoved();
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 
   const size = formatBytes(collection.sizeBytes);

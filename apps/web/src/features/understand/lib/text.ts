@@ -9,31 +9,37 @@ function searchable(text: string): boolean {
   return count >= 1 && count <= 6 && text.length >= 4 && text.length <= 60 && /\p{L}{3}/u.test(text);
 }
 
-/** Strips the punctuation that the search box would treat as syntax, and file-like endings. */
+/** A title without a file-like ending: "weather.pdf" is "weather". */
+const withoutEnding = (text: string) => tidy(text.replace(/\.(pdf|md|txt|epub|docx?|html?)$/i, ""));
+
+/** Strips the punctuation that the search box would treat as syntax. */
 function asQuery(text: string): string {
-  return tidy(
-    text
-      .replace(/\.(pdf|md|txt|epub|docx?|html?)$/i, "")
-      .replace(/["“”()[\]{}:;,.!?*]/g, " ")
-      .replace(/(^|\s)-+/g, " "),
-  ).toLowerCase();
+  return tidy(text.replace(/["“”()[\]{}:;,.!?*]/g, " ").replace(/(^|\s)-+/g, " "));
+}
+
+/** A thing to try: shown as the library writes it, searched for without the punctuation the box reads as syntax. */
+export interface Example {
+  label: string;
+  query: string;
 }
 
 /**
  * Things to try, taken from what is really in the library: headings inside the
- * document on show, then titles of other documents and pages. Nothing is invented.
+ * document on show, then titles of other documents and pages. Nothing is invented, and
+ * nothing is reworded into a question: they are shown as the headings and titles they are.
  */
-export function buildExamples(titles: readonly string[], headings: ReadonlyArray<string | null>, limit = 4): string[] {
+export function buildExamples(titles: readonly string[], headings: ReadonlyArray<string | null>, limit = 4): Example[] {
   const seen = new Set<string>();
   const take = (source: readonly string[], most: number) => {
-    const picked: string[] = [];
+    const picked: Example[] = [];
     for (const raw of source) {
       if (picked.length >= most) break;
       if (!searchable(raw)) continue;
-      const query = asQuery(raw);
-      if (!query || seen.has(query)) continue;
-      seen.add(query);
-      picked.push(query);
+      const label = withoutEnding(raw);
+      const query = asQuery(label);
+      if (!query || seen.has(query.toLowerCase())) continue;
+      seen.add(query.toLowerCase());
+      picked.push({ label, query });
     }
     return picked;
   };

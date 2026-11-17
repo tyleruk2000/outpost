@@ -1,7 +1,8 @@
 import type { ExplainOverview, ExplainResponse } from "@outpost/shared";
+import { useWidth } from "@/lib/use-width";
 import { formatNumber, plural } from "@/lib/utils";
 import { COLOR } from "../charts/colors";
-import { HiddenTable, useMeasure } from "../charts/figure";
+import { HiddenTable } from "../charts/figure";
 import { fitLabel } from "../charts/measure";
 import { TRACE_LIMIT } from "../data";
 import { layoutPipeline, NODE_HEIGHT, type NodeId } from "../lib/pipeline";
@@ -150,7 +151,7 @@ const ORDER: NodeId[] = [
 
 /** The whole journey: what is prepared beforehand, and what happens to one question. */
 export function PipelineDiagram({ overview, trace }: { overview: ExplainOverview | undefined; trace: ExplainResponse | undefined }) {
-  const [ref, width] = useMeasure<HTMLDivElement>(760);
+  const [ref, width] = useWidth(760);
   const layout = layoutPipeline(width);
   const texts = nodeTexts(overview, trace);
 

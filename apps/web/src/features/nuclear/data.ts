@@ -5,6 +5,7 @@ import type {
   NuclearScenarioUpdate,
   NuclearSet,
   NuclearSetInput,
+  NuclearSetUpdate,
 } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, api } from "@/lib/api";
@@ -18,7 +19,7 @@ export const useScenarios = () =>
     select: (data) => data.scenarios,
   });
 
-/** The newer version a change was refused for (409 `conflict`), or null for any other failure. */
+/** The newer version a change to a scenario or a set was refused for (409 `conflict`), or null for any other failure. */
 export function scenarioConflictOf(error: unknown): NuclearScenarioConflictDetails["current"] | null {
   if (!(error instanceof ApiError) || error.status !== 409) return null;
   const current = (error.details as Partial<NuclearScenarioConflictDetails> | undefined)?.current;
@@ -50,10 +51,11 @@ export const useSets = () =>
     select: (data) => data.sets,
   });
 
+/** A new set is posted; a saved one is changed with the `baseUpdatedAt` it was opened at. */
 export function useSaveSet() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, input }: { id: string | null; input: NuclearSetInput }) =>
+    mutationFn: ({ id, input }: { id: string | null; input: NuclearSetInput | NuclearSetUpdate }) =>
       id ? api.patch<NuclearSet>(`/api/nuclear/sets/${id}`, input) : api.post<NuclearSet>("/api/nuclear/sets", input),
     onSuccess: () => client.invalidateQueries({ queryKey: ["nuclear"] }),
   });

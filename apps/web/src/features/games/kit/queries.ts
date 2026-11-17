@@ -5,8 +5,8 @@
  */
 import type { GameId, GameResultInput, GamesResponse, GameTally, TallyGameId } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 
 export const gamesKey = ["games"] as const;
 
@@ -20,7 +20,7 @@ export function useRecordResult(game: TallyGameId) {
   return useMutation({
     mutationFn: (result: GameResultInput) => api.post<{ tally: GameTally }>(`/api/games/${game}/results`, result),
     onSuccess: () => client.invalidateQueries({ queryKey: gamesKey }),
-    onError: (error) => toast.error(`The result was not kept: ${errorMessage(error)}`),
+    onError: (error) => notify.error(`The result was not kept: ${errorMessage(error)}`),
   });
 }
 
@@ -30,6 +30,6 @@ export function useClearGame(game: GameId) {
   return useMutation({
     mutationFn: () => api.delete<{ removed: boolean }>(`/api/games/${game}`),
     onSuccess: () => client.invalidateQueries({ queryKey: gamesKey }),
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 }

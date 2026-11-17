@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { formatDateTime, plural, timeAgo } from "@/lib/utils";
 import { DEVICE, DeviceIcon, KEEP_ON_THIS_DEVICE } from "./device";
 import { keepPlan } from "./plan-copy";
@@ -50,7 +51,7 @@ export function KeepPlanSection({ plan }: { plan: Pick<EmergencyPlan, "id" | "na
               onClick={() =>
                 void removeKept("plan", plan.id).then(
                   () => toast(`“${plan.name}” is no longer kept on this ${DEVICE}. The plan itself is untouched.`),
-                  (error) => toast.error(errorMessage(error)),
+                  (error) => notify.error(errorMessage(error)),
                 )
               }
             >
@@ -73,7 +74,7 @@ export function KeepPlanSection({ plan }: { plan: Pick<EmergencyPlan, "id" | "na
                 keepPlan(plan.id)
                   .then(
                     () => toast.success(`“${plan.name}” is kept on this ${DEVICE}.`),
-                    (error) => toast.error(outOfRoomMessage(error) ?? errorMessage(error)),
+                    (error) => notify.error(outOfRoomMessage(error) ?? errorMessage(error)),
                   )
                   .finally(() => setBusy(false));
               }}

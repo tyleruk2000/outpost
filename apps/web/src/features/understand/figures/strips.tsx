@@ -1,8 +1,9 @@
 import type { ExplainResponse } from "@outpost/shared";
 import { type KeyboardEvent, useState } from "react";
+import { useWidth } from "@/lib/use-width";
 import { formatNumber } from "@/lib/utils";
 import { COLOR, passageName } from "../charts/colors";
-import { HiddenTable, Legend, useMeasure } from "../charts/figure";
+import { HiddenTable, Legend } from "../charts/figure";
 import { Tip, TipBody, useTip } from "../charts/tip";
 import { agreement, peak } from "../lib/cosine";
 import { clamp } from "../lib/scale";
@@ -27,7 +28,7 @@ export function stripsReading(trace: ExplainResponse): string {
  * column where two rows both rise (or both fall) is a place where the two vectors agree.
  */
 export function VectorStrips({ trace, rows = 4 }: { trace: ExplainResponse; rows?: number }) {
-  const [ref, width] = useMeasure<HTMLDivElement>(720);
+  const [ref, width] = useWidth(720);
   const tip = useTip();
   const [cursor, setCursor] = useState<number | null>(null);
   const query = trace.semantic.queryVector;

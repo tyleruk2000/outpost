@@ -3,10 +3,10 @@
  * cache, the draft kept in this tab, and the moments a save must not wait (the tab
  * being hidden or closed, the connection coming back).
  */
-import type { ApiErrorBody, NoteConflictDetails, NoteDoc, NoteResponse, NoteSaveResult, UpdateNoteBody } from "@outpost/shared";
+import type { NoteConflictDetails, NoteDoc, NoteResponse, NoteSaveResult, UpdateNoteBody } from "@outpost/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { type RefObject, useEffect, useRef, useState } from "react";
-import { ApiError, errorMessage } from "@/lib/api";
+import { ApiError, api, errorMessage } from "@/lib/api";
 import { useServerConnection } from "@/lib/events";
 import { type Autosaver, type AutosaveStatus, createAutosaver, type SaveFailure } from "./autosave";
 import { noteKeys, reflectInTree, saveNote } from "./notes-data";
@@ -80,39 +80,12 @@ export const draftIsBehind = (draft: PageDraft, savedUpdatedAt: number): boolean
 
 // ── Sending ──
 
-/** Browsers refuse a keepalive request with a larger body than this. */
-const KEEPALIVE_LIMIT = 60_000;
-
 /**
- * The save made while the tab closes. `keepalive` lets it finish after the page is
- * gone, which `api.patch` cannot ask for. A page too long for keepalive is sent the
- * ordinary way; if the browser cuts that off, the draft is what remains.
+ * The save made while the tab closes asks to finish after the page is gone. A page too long
+ * for that is sent the ordinary way; if the browser cuts it off, the draft is what remains.
  */
-async function saveWhileUnloading(noteId: string, body: UpdateNoteBody): Promise<NoteSaveResult> {
-  const json = JSON.stringify(body);
-  let response: Response;
-  try {
-    response = await fetch(`/api/notes/${noteId}`, {
-      method: "PATCH",
-      headers: { Accept: "application/json", "Content-Type": "application/json", "X-Outpost-Request": "1" },
-      body: json,
-      credentials: "same-origin",
-      keepalive: json.length <= KEEPALIVE_LIMIT,
-    });
-  } catch {
-    throw new ApiError(0, "unreachable", "The Outpost server is not responding. It may be restarting.");
-  }
-  if (!response.ok) {
-    const error = ((await response.json().catch(() => null)) as ApiErrorBody | null)?.error;
-    throw new ApiError(
-      response.status,
-      error?.code ?? "http",
-      error?.message ?? `The server answered with an error (${response.status}).`,
-      error?.details,
-    );
-  }
-  return ((await response.json()) as { note: NoteSaveResult }).note;
-}
+const saveWhileUnloading = (noteId: string, body: UpdateNoteBody) =>
+  api.patch<{ note: NoteSaveResult }>(`/api/notes/${noteId}`, body, { keepalive: true }).then((data) => data.note);
 
 const isConflict = (details: unknown): details is NoteConflictDetails =>
   typeof details === "object" && details !== null && typeof (details as Partial<NoteConflictDetails>).current?.updatedAt === "number";

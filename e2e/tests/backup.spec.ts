@@ -52,11 +52,8 @@ test.describe("automatic backups", () => {
     await row.getByRole("button", { name: /^Actions for the backup of/ }).click();
     await page.getByRole("menuitem", { name: "Restore this one" }).click();
     const asking = page.getByRole("alertdialog", { name: "Restore from this backup?" });
-    await expect(asking.getByText(/Nothing changes until Outpost starts again\./)).toBeVisible();
-    await expect(
-      asking.getByText(/moved to a dated folder in its data folder, not deleted, and until the restart you can cancel\./),
-    ).toBeVisible();
-    await asking.getByRole("button", { name: "Check and stage restore" }).click();
+    await expect(asking.getByRole("list", { name: "What restoring does" })).toContainText("When: the next time Outpost starts.");
+    await asking.getByRole("button", { name: "Restore after restart" }).click();
     // And afterwards, which backup it was and what to do next.
     await expect(page.getByText(/^The backup of .+ has been checked\./)).toBeVisible();
     const waiting = page.getByRole("region", { name: "Backup", exact: true }).getByText("A restore is waiting for a restart");
@@ -147,14 +144,14 @@ test.describe("backups protected by a passphrase", () => {
     await page.getByRole("menuitem", { name: "Restore this one" }).click();
     const asking = page.getByRole("alertdialog", { name: "Restore from this backup?" });
     const field = asking.getByLabel("Passphrase of this backup");
-    await asking.getByRole("button", { name: "Check and stage restore" }).click();
+    await asking.getByRole("button", { name: "Restore after restart" }).click();
     await expect(asking.getByText("Type the passphrase this backup was made under.")).toBeVisible();
     await field.fill("seven tall ships at anchos");
-    await asking.getByRole("button", { name: "Check and stage restore" }).click();
+    await asking.getByRole("button", { name: "Restore after restart" }).click();
     await expect(asking.getByText(/^That passphrase does not open this backup\./)).toBeVisible({ timeout: 15_000 });
     expect((await api(page, "GET", "/api/backup/status")).restorePending).toBe(false);
     await field.fill(passphrase);
-    await asking.getByRole("button", { name: "Check and stage restore" }).click();
+    await asking.getByRole("button", { name: "Restore after restart" }).click();
     await expect(backup.getByText("A restore is waiting for a restart")).toBeVisible({ timeout: 15_000 });
     await page.getByRole("button", { name: "Cancel restore" }).click();
     await expect(backup.getByText("A restore is waiting for a restart")).toHaveCount(0);

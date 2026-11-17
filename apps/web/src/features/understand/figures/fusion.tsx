@@ -2,9 +2,10 @@ import type { ExplainHit, ExplainResponse } from "@outpost/shared";
 import { RotateCcw } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useWidth } from "@/lib/use-width";
 import { cn, plural } from "@/lib/utils";
 import { COLOR, passageName } from "../charts/colors";
-import { AxisNote, HiddenTable, Legend, useMeasure } from "../charts/figure";
+import { AxisNote, HiddenTable, Legend } from "../charts/figure";
 import { LinePlot } from "../charts/line-plot";
 import { Tip, TipBody, useTip } from "../charts/tip";
 import { foundBy, layoutBump, linkPath } from "../lib/bump";
@@ -227,7 +228,7 @@ export const BUMP_SHOWN = 10;
  */
 export function BumpChart({ whatIf }: { whatIf: WhatIf }) {
   const { rows, settings, moved, changed } = whatIf;
-  const [ref, width] = useMeasure<HTMLDivElement>(720);
+  const [ref, width] = useWidth(720);
   const tip = useTip();
   const [active, setActive] = useState<number | null>(null);
   const layout = useMemo(() => layoutBump(rows, { shown: BUMP_SHOWN, rowHeight: ROW_HEIGHT, top: 4 }), [rows]);

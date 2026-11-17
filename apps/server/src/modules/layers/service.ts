@@ -97,7 +97,7 @@ export interface LayersService {
     signal: AbortSignal,
     progress: (current: number, total: number | null, message: string) => void,
   ): Promise<ReferenceImportResult>;
-  layers(): ReferenceLayersResponse;
+  layers(): Promise<ReferenceLayersResponse>;
   installer: Installer;
   packTitles(): Map<string, { title: string }>;
   close(): Promise<void>;
@@ -574,7 +574,7 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
       return { pack: toPack(collection, packMeta), imported: packMeta.records, skipped, duplicates, problems };
     },
 
-    layers() {
+    async layers() {
       const credits = new Map<string, { provider: string; text: string; url: string | null }>();
       for (const { meta, row } of installedPacks()) {
         const provider = PROVIDERS.find((entry) => entry.id === meta.provider);
@@ -608,7 +608,7 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
           });
         }
       }
-      return { layers: store.summary(providerNames), population: population.sets(), credits: [...credits.values()] };
+      return { layers: store.summary(providerNames), population: await population.sets(), credits: [...credits.values()] };
     },
 
     packTitles() {

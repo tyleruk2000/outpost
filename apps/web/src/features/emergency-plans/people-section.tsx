@@ -13,8 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Switch } from "@/components/ui/misc";
-import { useDebounced } from "@/features/maps/hooks";
 import { errorMessage } from "@/lib/api";
+import { useDebounced } from "@/lib/use-debounced";
 import { localId } from "@/lib/utils";
 import { useContactSearch } from "./data";
 import { move, RowTools, removeAt, replaceAt } from "./list-edit";
@@ -120,7 +120,7 @@ function ContactPicker({
                 <Field label="Name">
                   {(ids) => <Input {...ids} value={name} maxLength={120} onChange={(event) => setName(event.target.value)} />}
                 </Field>
-                <Field label="Phone number">
+                <Field label="Phone number" optional>
                   {(ids) => (
                     <Input {...ids} value={phone} inputMode="tel" maxLength={120} onChange={(event) => setPhone(event.target.value)} />
                   )}
@@ -282,7 +282,7 @@ export function PeopleSection({
                     />
                   )}
                 </Field>
-                <Field label="What to remember or do">
+                <Field label="What to remember or do" optional>
                   {(ids) => (
                     <Textarea
                       {...ids}
@@ -294,7 +294,7 @@ export function PeopleSection({
                     />
                   )}
                 </Field>
-                <Field label="Medical, for their card" hint="Optional. Printed only on this person's own wallet card.">
+                <Field label="Medical, for their card" optional hint="Printed only on this person's own wallet card.">
                   {(ids) => (
                     <Input
                       {...ids}

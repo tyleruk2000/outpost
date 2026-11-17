@@ -26,6 +26,7 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { api, errorMessage, uploadWithProgress } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { localId } from "@/lib/utils";
 import { buildTreeIndex, placeOf, type TreeIndex } from "./tree-model";
 
@@ -141,7 +142,7 @@ export function useNoteActions(): NoteActions {
   return useMemo<NoteActions>(() => {
     const refresh = () => refreshNotes(client);
     const fail = (error: unknown) => {
-      toast.error(errorMessage(error));
+      notify.error(errorMessage(error));
     };
 
     const restore = async (page: NoteRef) => {

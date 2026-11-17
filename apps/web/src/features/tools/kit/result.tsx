@@ -10,8 +10,9 @@ import { type ReactNode, useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { copyText } from "@/features/downloads/copy";
 import { api, errorMessage } from "@/lib/api";
+import { copyText } from "@/lib/clipboard";
+import { notify } from "@/lib/notify";
 import { cn, formatDate } from "@/lib/utils";
 
 export interface ResultProps {
@@ -64,7 +65,7 @@ export function KeepButtons({ title, lines }: { title: string; lines: string[] }
   const text = [title, ...lines].join("\n");
   const copy = async () => {
     if (await copyText(text)) toast.success("Copied");
-    else toast.error("This browser would not copy it. Select the answer and copy it by hand.");
+    else notify.error("This browser would not copy it. Select the answer and copy it by hand.");
   };
   const save = async () => {
     setSaving(true);
@@ -77,7 +78,7 @@ export function KeepButtons({ title, lines }: { title: string; lines: string[] }
         action: { label: "Open it", onClick: () => navigate(`/notes/${note.id}`) },
       });
     } catch (error) {
-      toast.error(errorMessage(error));
+      notify.error(errorMessage(error));
     } finally {
       setSaving(false);
     }

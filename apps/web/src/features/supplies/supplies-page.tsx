@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { ErrorState, Page, PageHeader } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/misc";
-import { copyText } from "@/features/downloads/copy";
+import { copyText } from "@/lib/clipboard";
 import { exportHref, useSupplies } from "./data";
 import { HouseholdView } from "./household-view";
 import { ImportDialog } from "./import-dialog";
@@ -27,7 +27,6 @@ const ScannerDialog = lazy(() => import("./scanner-dialog").then((module) => ({ 
 
 const VIEWS = ["stock", "days", "shopping", "household"] as const;
 type View = (typeof VIEWS)[number];
-const tab = "min-h-11 md:min-h-0";
 
 /** Copies an address inside Outpost, for pasting as a link in a note; says so, or shows it to copy by hand. */
 export async function copyAddress(path: string): Promise<void> {
@@ -86,19 +85,11 @@ export default function SuppliesPage() {
         <ErrorState error={supplies.error} onRetry={() => void supplies.refetch()} />
       ) : (
         <Tabs value={view} onValueChange={setView}>
-          <TabsList className="mb-6 flex-wrap gap-x-5 gap-y-1 overflow-visible" aria-label="Supplies">
-            <TabsTrigger value="stock" className={tab}>
-              Stock
-            </TabsTrigger>
-            <TabsTrigger value="days" className={tab}>
-              How long it lasts
-            </TabsTrigger>
-            <TabsTrigger value="shopping" className={tab}>
-              Shopping list
-            </TabsTrigger>
-            <TabsTrigger value="household" className={tab}>
-              Household
-            </TabsTrigger>
+          <TabsList className="mb-6" aria-label="Supplies">
+            <TabsTrigger value="stock">Stock</TabsTrigger>
+            <TabsTrigger value="days">How long it lasts</TabsTrigger>
+            <TabsTrigger value="shopping">Shopping list</TabsTrigger>
+            <TabsTrigger value="household">Household</TabsTrigger>
           </TabsList>
           <TabsContent value="stock">
             <StockView items={supplies.data.items} locations={supplies.data.locations} onAdd={() => setAdding({})} />

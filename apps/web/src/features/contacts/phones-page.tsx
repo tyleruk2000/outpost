@@ -11,9 +11,10 @@ import { toast } from "sonner";
 import { ErrorState, Notice, Page, PageHeader, Section } from "@/components/page";
 import { Badge, Skeleton, Switch } from "@/components/ui/misc";
 import { api } from "@/lib/api";
+import { copyText } from "@/lib/clipboard";
+import { notify } from "@/lib/notify";
 import { useSettings, useUpdateSettings } from "@/lib/queries";
 import { plural } from "@/lib/utils";
-import { copyText } from "../library/document-meta";
 import { usePhoneStatus } from "./contacts-data";
 import { SubscribeSteps } from "./phone-steps";
 
@@ -154,7 +155,7 @@ export default function PhonesPage() {
                                 void copyText(address.url).then((copied) =>
                                   copied
                                     ? toast.success("Copied the address.")
-                                    : toast.error("This browser would not copy it. Select the text and copy it by hand."),
+                                    : notify.error("This browser would not copy it. Select the text and copy it by hand."),
                                 )
                               }
                               className="inline-flex h-9 items-center gap-1.5 rounded-control px-2 text-small text-ink-muted hover:bg-surface-strong hover:text-ink max-md:h-11"

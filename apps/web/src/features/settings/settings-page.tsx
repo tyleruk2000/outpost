@@ -350,7 +350,7 @@ export default function SettingsPage() {
             : "To let phones and other computers on your network use this library, set "}
           {info?.lanAccess ? null : (
             <>
-              <span className="font-mono text-[0.8125rem] text-ink">OUTPOST_LAN_ACCESS=true</span> in the{" "}
+              <span className="font-mono text-[0.8125rem] [overflow-wrap:anywhere] text-ink">OUTPOST_LAN_ACCESS=true</span> in the{" "}
               <span className="font-mono text-[0.8125rem] text-ink">.env</span> file and restart. There is no sign-in: everyone on that
               network will be able to use and change it.
             </>

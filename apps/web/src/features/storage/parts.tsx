@@ -4,6 +4,7 @@ import { type ReactNode, type Ref, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/misc";
+import { copyText } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
 
 /**
@@ -55,36 +56,6 @@ export function SwitchRow({
 export function tailPath(path: string, keep = 2): string {
   const segments = path.split("/").filter(Boolean);
   return segments.length <= keep + 1 ? path : `…/${segments.slice(-keep).join("/")}`;
-}
-
-/**
- * Copies text. Outpost is often opened over plain http on a home network, where the
- * browser's clipboard API is switched off, so there is an older way to fall back on.
- */
-export async function copyText(text: string): Promise<boolean> {
-  try {
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    }
-  } catch {
-    // Fall through to the older way.
-  }
-  const area = document.createElement("textarea");
-  area.value = text;
-  area.setAttribute("readonly", "");
-  area.style.position = "fixed";
-  area.style.opacity = "0";
-  document.body.appendChild(area);
-  area.select();
-  let copied = false;
-  try {
-    copied = document.execCommand("copy");
-  } catch {
-    copied = false;
-  }
-  area.remove();
-  return copied;
 }
 
 /** Text to use exactly as written, with where it goes and a button that copies it. */

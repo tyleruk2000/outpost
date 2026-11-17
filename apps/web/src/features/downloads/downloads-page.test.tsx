@@ -138,6 +138,26 @@ describe("Downloads", () => {
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
 
+  it("shows older history a page at a time, when asked, each download once", async () => {
+    const finished = (n: number) =>
+      download({ id: `old${n}`, title: `Old download ${n}`, state: "completed", collectionId: null, finishedAt: 1_000 - n });
+    const server = serve({
+      "GET /api/downloads": { downloads: [...everything, ...Array.from({ length: 48 }, (_, n) => finished(n))], historyTotal: 53 },
+      // The page asked for overlaps the first by one: a download finished in between.
+      "GET /api/downloads/history": { downloads: [finished(47), finished(48), finished(49), finished(50)], total: 53, offset: 50 },
+    });
+    renderScreen(<DownloadsPage />);
+    const history = within(await section("History"));
+    expect(history.getByText("50 of 53 shown")).toBeInTheDocument();
+    expect(server.calls.some((call) => call.startsWith("GET /api/downloads/history"))).toBe(false);
+    await userEvent.click(history.getByRole("button", { name: "Show more" }));
+    await waitFor(() => expect(history.getByRole("heading", { name: "Old download 50" })).toBeInTheDocument());
+    expect(server.calls).toContain("GET /api/downloads/history?offset=50&limit=50");
+    expect(history.getAllByRole("heading", { name: "Old download 47" })).toHaveLength(1);
+    // All of it is shown: nothing more to ask for.
+    expect(history.queryByRole("button", { name: "Show more" })).not.toBeInTheDocument();
+  });
+
   it("lists other background work, leaving out the jobs that are downloads", async () => {
     const server = serve({ "POST /api/jobs/j1/cancel": { job: job({ state: "cancelled" }) } });
     renderScreen(<DownloadsPage />);

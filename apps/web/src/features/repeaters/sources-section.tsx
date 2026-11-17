@@ -14,12 +14,12 @@
 import type { RepeaterFetchResponse, RepeaterListDto, RepeaterSourceDto, RepeaterSourceRegion } from "@outpost/shared";
 import { ChevronRight, CircleAlert, Download, ExternalLink, FileUp, RefreshCw } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
-import { toast } from "sonner";
 import { ErrorState, Notice, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { useMarkers } from "@/features/maps/data";
 import { ApiError, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { formatDate, plural } from "@/lib/utils";
 import { fetchSource, type LatLon, useRepeaterSources } from "./data";
 import { ImportDialog } from "./import-dialog";
@@ -96,7 +96,7 @@ export function useGetList(): GetList {
         .catch((error: unknown) => {
           const message = errorMessage(error);
           setProblems((current) => ({ ...current, [source.id]: { message, wait: error instanceof ApiError && error.status === 409 } }));
-          if (options?.aloud) toast.error(message);
+          if (options?.aloud) notify.error(message);
         })
         .finally(() => setBusyId(null));
     },

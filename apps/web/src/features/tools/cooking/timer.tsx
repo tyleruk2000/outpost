@@ -11,6 +11,7 @@ import { Pause, Play, RotateCcw } from "lucide-react";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { usePageVisible } from "@/lib/page-visible";
 import { readPref, writePref } from "../kit/device-pref";
 
 interface TimerState {
@@ -143,17 +144,6 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     };
   }, [state, save]);
   return <TimerContext.Provider value={{ state, start, pause, reset }}>{children}</TimerContext.Provider>;
-}
-
-/** Whether the page can be seen: false in a background tab or on a locked phone. */
-function usePageVisible(): boolean {
-  const [visible, setVisible] = useState(() => document.visibilityState !== "hidden");
-  useEffect(() => {
-    const update = () => setVisible(document.visibilityState !== "hidden");
-    document.addEventListener("visibilitychange", update);
-    return () => document.removeEventListener("visibilitychange", update);
-  }, []);
-  return visible;
 }
 
 /**

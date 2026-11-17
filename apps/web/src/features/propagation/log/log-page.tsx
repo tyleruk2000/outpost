@@ -207,7 +207,7 @@ function EntryDialog({ onClose }: { onClose: () => void }) {
           </div>
           <fieldset className="grid gap-3">
             <legend className="mb-2 text-small font-semibold text-ink">{first}, transmitting</legend>
-            <Field label={`${first}: callsign`}>
+            <Field label={`${first}: callsign`} optional>
               {(ids) => (
                 <Input
                   {...ids}
@@ -229,7 +229,7 @@ function EntryDialog({ onClose }: { onClose: () => void }) {
           </fieldset>
           <fieldset className="grid gap-3">
             <legend className="mb-2 text-small font-semibold text-ink">{second}, receiving</legend>
-            <Field label={`${second}: callsign`}>
+            <Field label={`${second}: callsign`} optional>
               {(ids) => (
                 <Input
                   {...ids}
@@ -254,7 +254,12 @@ function EntryDialog({ onClose }: { onClose: () => void }) {
             </p>
           </fieldset>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Transmitter power, watts" hint="Of the transmitting station. Leave empty if not known." error={error("power")}>
+            <Field
+              label="Transmitter power, watts"
+              optional
+              hint="Of the transmitting station. Leave empty if not known."
+              error={error("power")}
+            >
               {(ids) => (
                 <Input
                   {...ids}
@@ -265,15 +270,15 @@ function EntryDialog({ onClose }: { onClose: () => void }) {
                 />
               )}
             </Field>
-            <Field label="Antenna">
+            <Field label="Antenna" optional>
               {(ids) => <Input {...ids} value={antenna} onChange={(event) => setAntenna(event.target.value)} maxLength={120} />}
             </Field>
-            <Field label="Report sent">
+            <Field label="Report sent" optional>
               {(ids) => (
                 <Input {...ids} value={sent} onChange={(event) => setSent(event.target.value)} maxLength={20} className="max-w-32" />
               )}
             </Field>
-            <Field label="Report received">
+            <Field label="Report received" optional>
               {(ids) => (
                 <Input
                   {...ids}
@@ -285,7 +290,7 @@ function EntryDialog({ onClose }: { onClose: () => void }) {
               )}
             </Field>
           </div>
-          <Field label="Notes">
+          <Field label="Notes" optional>
             {(ids) => <Textarea {...ids} rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={4000} />}
           </Field>
           {add.isError ? (
@@ -579,7 +584,7 @@ export default function LogPage() {
       <PageHeader
         title="Contact log"
         description="What actually happened on the air: contacts, stations heard, and calls that got no answer. Typed in, or read from your logging program's ADIF file, and set beside what the engine predicted for the same paths."
-        actions={actions}
+        actions={log.data && log.data.total > 0 ? actions : undefined}
       />
       {importJobId ? (
         <div className="mb-6 flex flex-wrap items-center gap-3" aria-live="polite">
@@ -622,7 +627,7 @@ export default function LogPage() {
       ) : log.isError ? (
         <ErrorState error={log.error} onRetry={() => void log.refetch()} />
       ) : log.data.total === 0 ? (
-        <EmptyState title="Nothing is logged yet">
+        <EmptyState title="Nothing is logged yet" action={actions}>
           Log a contact as you make it, or import the ADIF file your logging program exports. Once there are entries with a position at both
           ends, they can be set beside what the engine predicted.
         </EmptyState>
@@ -715,7 +720,7 @@ export default function LogPage() {
                   />
                 )}
               </Field>
-              <Field label="Power to assume where the log gives none, watts" hint="Leave empty to leave those entries out.">
+              <Field label="Power to assume where the log gives none, watts" optional hint="Leave empty to leave those entries out.">
                 {(ids) => (
                   <Input
                     {...ids}

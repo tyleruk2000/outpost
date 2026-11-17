@@ -741,6 +741,11 @@ A marker is a named point with an optional note, one of seven colours (teal, amb
 red, green, blue, violet, slate), one of sixteen icons, a favourite flag, and optionally
 a link to one of your note pages. Markers are found by the app-wide search.
 
+The Places and Routes tabs list fifty at a time, with **Show more** for the next fifty;
+the map draws every one. (`GET /api/maps/markers` and `GET /api/maps/tracks` answer
+whole lists, because the map, the export and every screen that offers a saved place
+need all of them.)
+
 ### Icons
 
 | Icon | Meant for | Written to GPX as |
@@ -1240,7 +1245,7 @@ first time).
 
 | While recording | |
 | --- | --- |
-| The line | Drawn on the map as you go, with a dot where you are. The map moves with you when you walk off the edge of it; if you move the map to look somewhere else, it stays where you put it. |
+| The line | Drawn on the map as you go, with a dot where you are: brought up to date every five seconds while positions arrive (every one is kept as it comes), and at once on a pause, a stop or when the page is shown again. Redrawing the map at every position kept a phone busy for a change too small to see. The map moves with you when you walk off the edge of it; if you move the map to look somewhere else, it stays where you put it. |
 | Distance | Along the points kept, in kilometres and miles. |
 | Time | Since the first point, by the clock: pauses and rests are in it. |
 | Moving | The part of that time spent covering ground at 1 km/h or more. |

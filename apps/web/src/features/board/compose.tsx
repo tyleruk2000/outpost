@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Progress } from "@/components/ui/misc";
 import { errorMessage, uploadWithProgress } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { setDeviceName, usePost, useReplace } from "./data";
 
 /** Choosing a name: the household's people where Outpost holds them, or one typed. */
@@ -71,7 +72,7 @@ export function WriteMessage({ name }: { name: string }) {
   const submit = (event?: FormEvent) => {
     event?.preventDefault();
     if (!text.trim()) return;
-    post.mutate({ author: name, body: text }, { onSuccess: () => setText(""), onError: (error) => toast.error(errorMessage(error)) });
+    post.mutate({ author: name, body: text }, { onSuccess: () => setText(""), onError: (error) => notify.error(errorMessage(error)) });
   };
   return (
     <form onSubmit={submit} className="grid gap-2">
@@ -140,7 +141,7 @@ export function SendFile({ name, summary }: { name: string; summary: BoardSummar
       toast.success(`Sent “${file.name}”`);
       clear();
     } catch (error) {
-      if (!(error instanceof DOMException && error.name === "AbortError")) toast.error(errorMessage(error));
+      if (!(error instanceof DOMException && error.name === "AbortError")) notify.error(errorMessage(error));
     } finally {
       sending.current = null;
       setProgress(null);

@@ -4,24 +4,10 @@
  * the arrow keys, and the same figures as a table for a screen reader. Drawn by hand as
  * SVG like every chart in Outpost (see features/propagation/charts.tsx).
  */
-import { type KeyboardEvent, memo, type PointerEvent, useEffect, useId, useRef, useState } from "react";
+import { type KeyboardEvent, memo, type PointerEvent, useId, useState } from "react";
+import { useWidth } from "@/lib/use-width";
 
 const AXIS_TEXT = "tabular fill-ink-muted text-[11px]";
-
-function useWidth(fallback = 640): [React.RefObject<HTMLDivElement | null>, number] {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const [width, setWidth] = useState(fallback);
-  useEffect(() => {
-    const element = ref.current;
-    if (!element || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry && entry.contentRect.width > 0) setWidth(Math.round(entry.contentRect.width));
-    });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-  return [ref, width];
-}
 
 /** "Day 2, 14:00": the end of hour `index` (0-based) counted from midnight of day 1. */
 export const hourLabel = (index: number): string =>
@@ -39,7 +25,7 @@ export const SocChart = memo(function SocChart({
   name: string;
   height?: number;
 }) {
-  const [ref, width] = useWidth();
+  const [ref, width] = useWidth(640);
   const [at, setAt] = useState<number | null>(null);
   const tableId = useId();
   const left = 44;

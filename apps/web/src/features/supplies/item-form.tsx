@@ -344,7 +344,7 @@ export function ItemDialog({
                   />
                 )}
               </Field>
-              <Field label="Of what" hint="A tin, a pack, a bottle: what one of them is.">
+              <Field label="Of what" optional hint="A tin, a pack, a bottle: what one of them is.">
                 {(ids) => (
                   <>
                     <Input
@@ -391,7 +391,7 @@ export function ItemDialog({
                   />
                 )}
               </Field>
-              <Field label="Kept in" hint="Pantry, garage, go-bag: wherever you would look.">
+              <Field label="Kept in" optional hint="Pantry, garage, go-bag: wherever you would look.">
                 {(ids) => (
                   <>
                     <Input
@@ -458,7 +458,7 @@ export function ItemDialog({
                   className="justify-self-start"
                 />
                 {draft.energyBy === "pack" ? (
-                  <Field label="kcal in one" error={error("kcalPerUnit")}>
+                  <Field label="kcal in one" optional error={error("kcalPerUnit")}>
                     {(ids) => (
                       <Input
                         {...ids}
@@ -471,7 +471,7 @@ export function ItemDialog({
                   </Field>
                 ) : (
                   <div className="grid grid-cols-2 gap-3 sm:max-w-sm">
-                    <Field label="kcal per 100 g" error={error("kcalPer100g")}>
+                    <Field label="kcal per 100 g" optional error={error("kcalPer100g")}>
                       {(ids) => (
                         <Input
                           {...ids}
@@ -487,7 +487,7 @@ export function ItemDialog({
                         />
                       )}
                     </Field>
-                    <Field label="Grams in one" error={error("gramsPerUnit")}>
+                    <Field label="Grams in one" optional error={error("gramsPerUnit")}>
                       {(ids) => (
                         <Input
                           {...ids}
@@ -520,7 +520,12 @@ export function ItemDialog({
             ) : null}
 
             {draft.category === "water" ? (
-              <Field label="Litres in one" hint="Without it, this is not counted in the days of water." error={error("litresPerUnit")}>
+              <Field
+                label="Litres in one"
+                optional
+                hint="Without it, this is not counted in the days of water."
+                error={error("litresPerUnit")}
+              >
                 {(ids) => (
                   <Input
                     {...ids}
@@ -536,7 +541,12 @@ export function ItemDialog({
             <details ref={moreRef} className="group rounded-panel border border-border px-4 py-3 open:pb-4">
               <summary className="cursor-pointer text-small font-medium text-ink select-none">More: minimum, barcode, notes</summary>
               <div className="mt-3 grid gap-4">
-                <Field label="Keep at least" hint="Fewer than this of it, and it goes on the shopping list." error={error("minimum")}>
+                <Field
+                  label="Keep at least"
+                  optional
+                  hint="Fewer than this of it, and it goes on the shopping list."
+                  error={error("minimum")}
+                >
                   {(ids) => (
                     <Input
                       {...ids}
@@ -547,7 +557,7 @@ export function ItemDialog({
                     />
                   )}
                 </Field>
-                <Field label="Barcode" hint="The number under the bars. Scanning fills it in.">
+                <Field label="Barcode" optional hint="The number under the bars. Scanning fills it in.">
                   {(ids) => (
                     <Input
                       {...ids}
@@ -560,7 +570,7 @@ export function ItemDialog({
                     />
                   )}
                 </Field>
-                <Field label="Notes" error={error("notes")}>
+                <Field label="Notes" optional error={error("notes")}>
                   {(ids) => (
                     <Textarea
                       {...ids}

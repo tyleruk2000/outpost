@@ -19,6 +19,7 @@ import { ConfirmDialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { formatDate, plural } from "@/lib/utils";
 import { guessDevice, HTTPS_STATUS_KEY } from "./https-shared";
 import { TrustSteps } from "./https-steps";
@@ -57,7 +58,7 @@ function DeleteOwn({ data }: { data: HttpsStatus }) {
     },
     onError: (error) => {
       setAsking(false);
-      toast.error(errorMessage(error));
+      notify.error(errorMessage(error));
     },
   });
   const { own } = data;

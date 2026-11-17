@@ -8,7 +8,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/components/ui/misc";
-import { beforeYouStart, RecordButton, TrackRecording, useNow } from "./record-ui";
+import { beforeYouStart, RecordButton, TrackRecording, useAtMostEvery, useNow } from "./record-ui";
 
 beforeAll(() => {
   // A browser with geolocation, as every phone has. It is never asked for anything in these tests.
@@ -98,5 +98,29 @@ describe("the recording card's clock", () => {
     expect(result.current).toBe(Date.parse("2026-06-21T12:10:00Z"));
     expect(vi.getTimerCount()).toBe(1);
     visibility.mockRestore();
+  });
+});
+
+describe("the recording's line on the map", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("is handed on at once, then at most once every few seconds while fixes arrive, and at once when the phase or sight changes", () => {
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+    const { result, rerender } = renderHook(({ value, now }) => useAtMostEvery(value, 5_000, now), {
+      initialProps: { value: 0, now: "recording" },
+    });
+    expect(result.current).toBe(0);
+    // One fix a second for twelve seconds: two hand-overs, five seconds apart, each with the latest fix.
+    const handed: number[] = [];
+    for (let fix = 1; fix <= 12; fix += 1) {
+      act(() => vi.advanceTimersByTime(1_000));
+      rerender({ value: fix, now: "recording" });
+      if (handed.at(-1) !== result.current && result.current !== 0) handed.push(result.current);
+    }
+    expect(handed).toEqual([4, 9]);
+    // Paused: the last fix is handed on at once, not at the end of the wait.
+    rerender({ value: 12, now: "paused" });
+    expect(result.current).toBe(12);
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

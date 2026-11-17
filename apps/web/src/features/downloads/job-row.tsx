@@ -1,10 +1,10 @@
 import { formatBytes, type JobDto } from "@outpost/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 
 /** Jobs whose progress counts bytes; the rest count items, which only mean something as a share. */
 const countsBytes = new Set(["collection.verify", "portable.build"]);
@@ -34,7 +34,7 @@ export function JobRow({ job }: { job: JobDto }) {
   const cancel = useMutation({
     mutationFn: () => api.post(`/api/jobs/${job.id}/cancel`),
     onSuccess: () => client.invalidateQueries({ queryKey: ["jobs"] }),
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
   const running = job.state === "running";
   const figures = jobProgressText(job);

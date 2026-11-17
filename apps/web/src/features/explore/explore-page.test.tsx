@@ -88,6 +88,16 @@ describe("Explore", () => {
     expect(screen.getByRole("heading", { name: "Knots by Wikipedia" })).toBeInTheDocument();
   });
 
+  it("keeps the filter in the address, so a reload or a shared link shows the same list", async () => {
+    serve();
+    renderScreen(<ExplorePage />, "/explore?q=wikipedia&show=not_installed&sort=largest");
+    expect(await screen.findByRole("heading", { name: "Wikipedia (complete, with images)" })).toBeInTheDocument();
+    expect(screen.getByRole("searchbox", { name: "Filter collections" })).toHaveValue("wikipedia");
+    expect(screen.getByRole("radio", { name: "Not installed" })).toHaveAttribute("data-state", "on");
+    expect(screen.getByRole("combobox", { name: "Sort" })).toHaveTextContent("Largest first");
+    expect(screen.queryByRole("heading", { name: "NHS Medicines A to Z" })).not.toBeInTheDocument();
+  });
+
   it("shows a few of each category at first, and the rest of a long list a page at a time", async () => {
     const many = Array.from({ length: 70 }, (_, index) =>
       entry({

@@ -23,7 +23,7 @@ import type {
 import { type QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { usePageShown } from "./use-page-shown";
+import { usePageVisible } from "@/lib/page-visible";
 
 export const chatKeys = {
   all: ["chat"] as const,
@@ -180,7 +180,7 @@ function settle(client: QueryClient, id: string, message: ChatMessage): void {
 export function useLiveReply(id: string, writing: boolean): LiveReply | null {
   const client = useQueryClient();
   const [live, setLive] = useState<LiveReply | null>(null);
-  const shown = usePageShown();
+  const shown = usePageVisible();
   const watching = writing && shown;
 
   useEffect(() => {
@@ -240,7 +240,7 @@ export function useLiveReply(id: string, writing: boolean): LiveReply | null {
 /** Seconds since `since`, counted while `running` and the page can be seen. For a wait that must not look frozen. */
 export function useElapsedSeconds(since: number | null, running: boolean): number {
   const [now, setNow] = useState(() => Date.now());
-  const shown = usePageShown();
+  const shown = usePageVisible();
   const counting = running && shown;
   useEffect(() => {
     if (!counting) return;

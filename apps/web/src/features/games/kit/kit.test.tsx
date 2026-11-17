@@ -5,7 +5,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, renderHook, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReactElement } from "react";
+import { act, type ReactElement, useState } from "react";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import GamesPage from "../games-page";
@@ -25,6 +25,25 @@ function show(ui: ReactElement) {
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+
+const isTimedGame = (value: unknown): value is { moves: number; seconds: number } =>
+  typeof value === "object" &&
+  value !== null &&
+  typeof (value as { moves?: unknown }).moves === "number" &&
+  typeof (value as { seconds?: unknown }).seconds === "number";
+
+/** A game that follows another tab, and keeps what it has with time added, as every game adds the time since its last move. */
+function FollowingBoard({ onFollowed }: { onFollowed: (game: unknown) => void }) {
+  const [game, setGame] = useState({ moves: 1, seconds: 0 });
+  useDeviceSave("test", game, (current) => ({ ...current, seconds: current.seconds + 1 }), {
+    accept: isTimedGame,
+    onFollow: (other) => {
+      onFollowed(other);
+      setGame(other);
+    },
+  });
+  return <p>{game.moves} moves</p>;
+}
 
 beforeEach(() => localStorage.clear());
 afterEach(() => vi.unstubAllGlobals());
@@ -85,6 +104,37 @@ describe("an unfinished game kept on this device", () => {
 
   const isGame = (value: unknown): value is { moves: number } =>
     typeof value === "object" && value !== null && typeof (value as { moves?: unknown }).moves === "number";
+
+  it("follows the same game played in another tab of this browser, without writing it straight back", () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const set = vi.spyOn(Storage.prototype, "setItem");
+    const followed = vi.fn();
+    const fromOtherTab = (key: string, value: string | null) =>
+      act(() => {
+        window.dispatchEvent(new StorageEvent("storage", { key, newValue: value }));
+      });
+    try {
+      show(<FollowingBoard onFollowed={followed} />);
+      act(() => vi.advanceTimersByTime(SAVE_AFTER_MS));
+      expect(set).toHaveBeenCalledTimes(1);
+      fromOtherTab("outpost.games.test", '{"moves":4,"seconds":30}');
+      expect(screen.getByText("4 moves")).toBeInTheDocument();
+      fromOtherTab("outpost.games.test", '{"moves":6,"seconds":42}');
+      expect(screen.getByText("6 moves")).toBeInTheDocument();
+      // Another game, a damaged copy, a game of another shape and a cleared key are left alone.
+      fromOtherTab("outpost.games.other", '{"moves":9,"seconds":1}');
+      fromOtherTab("outpost.games.test", "{not json");
+      fromOtherTab("outpost.games.test", '{"moves":"nine"}');
+      fromOtherTab("outpost.games.test", null);
+      expect(screen.getByText("6 moves")).toBeInTheDocument();
+      expect(followed).toHaveBeenCalledTimes(2);
+      act(() => vi.advanceTimersByTime(SAVE_AFTER_MS * 2));
+      expect(set).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.restoreAllMocks();
+      vi.useRealTimers();
+    }
+  });
 
   it("is kept, read back only when it passes the check, and cleared", () => {
     expect(writeDeviceSave("test", { moves: 3 })).toBe(true);

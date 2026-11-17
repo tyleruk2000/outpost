@@ -10,10 +10,13 @@ import { ChevronUp, Copy } from "lucide-react";
 import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Menu, MenuCheckItem, MenuContent, MenuLabel, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
+import { copyText } from "@/lib/clipboard";
+import { notify } from "@/lib/notify";
+import { usePageVisible } from "@/lib/page-visible";
 import { cn } from "@/lib/utils";
 import { useGroundHeight } from "./ground-height";
 import { HeightFigure, HeightInMenu } from "./height-readout";
-import { copyText, useIsDesktop, usePageVisible } from "./hooks";
+import { useIsDesktop } from "./hooks";
 import { parseAttribution } from "./lib/attribution";
 import { formatPosition, READOUT_FORMATS, READOUT_LABELS, type ReadoutFormat } from "./lib/coords";
 import { type LatLon, metersPerPixel, scaleBar } from "./lib/geo";
@@ -97,7 +100,7 @@ function CoordinateReadout({
     const value = text.current?.textContent ?? "";
     if (!value) return;
     if (await copyText(value)) toast.success(`Copied ${value}`);
-    else toast.error("The browser did not allow copying. Select the coordinates and copy them by hand.");
+    else notify.error("The browser did not allow copying. Select the coordinates and copy them by hand.");
   };
 
   return (

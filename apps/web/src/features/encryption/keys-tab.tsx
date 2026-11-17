@@ -13,8 +13,9 @@ import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Checkbox, Segmented, Select } from "@/components/ui/misc";
-import { copyText } from "@/features/downloads/copy";
 import { errorMessage } from "@/lib/api";
+import { copyText } from "@/lib/clipboard";
+import { notify } from "@/lib/notify";
 import { formatDate } from "@/lib/utils";
 import { removeDevicePrivateKey, saveDevicePrivateKey, setKeyChecked } from "./device-keys";
 import { getEngine, type KeyAlgorithm, type KeyInfo } from "./engine";
@@ -159,7 +160,7 @@ function MakeKeyForm({ onMade, onCancel }: { onMade(made: MadeKey): void; onCanc
           <Field label="Name" hint="Written in the key for everyone you give it to.">
             {(ids) => <Input {...ids} value={name} onChange={(event) => setName(event.target.value)} maxLength={120} required autoFocus />}
           </Field>
-          <Field label="Email address (optional)" hint="Also written in the key. Leave it out if the key is not for email.">
+          <Field label="Email address" optional hint="Also written in the key. Leave it out if the key is not for email.">
             {(ids) => <Input {...ids} type="email" value={email} onChange={(event) => setEmail(event.target.value)} maxLength={200} />}
           </Field>
         </div>
@@ -477,7 +478,7 @@ function KeyRow({ entry }: { entry: ShelfKey }) {
       setDialog(null);
       if (done) toast(done);
     } catch (failure) {
-      toast.error(errorMessage(failure));
+      notify.error(errorMessage(failure));
     } finally {
       setBusy(false);
     }
@@ -538,7 +539,7 @@ function KeyRow({ entry }: { entry: ShelfKey }) {
             <MenuItem
               onSelect={async () => {
                 if (await copyText(entry.publicKey)) toast("Public key copied.");
-                else toast.error("This browser would not copy that. Save the key as a file instead.");
+                else notify.error("This browser would not copy that. Save the key as a file instead.");
               }}
             >
               Copy public key
@@ -969,7 +970,7 @@ export function KeysTab({ shelf }: { shelf: Shelf }) {
                       removeDevicePrivateKey(entry.fingerprint);
                       await refresh();
                     } catch (failure) {
-                      toast.error(errorMessage(failure));
+                      notify.error(errorMessage(failure));
                     }
                   }}
                 >

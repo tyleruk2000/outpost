@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 import { useMarkDone, usePageProgress } from "./data";
 import { chooseLearner, setRecording, useLearningDevice } from "./device";
@@ -47,7 +48,7 @@ export function ReaderLearning({
           },
         );
       },
-      onError: (error) => toast.error(errorMessage(error)),
+      onError: (error) => notify.error(errorMessage(error)),
     });
   };
 

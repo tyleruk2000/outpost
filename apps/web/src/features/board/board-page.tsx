@@ -16,9 +16,10 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Segmented, Skeleton } from "@/components/ui/misc";
-import { usePageShown } from "@/features/chat/use-page-shown";
 import { ApiError, errorMessage } from "@/lib/api";
 import { useClockStyle } from "@/lib/clock";
+import { notify } from "@/lib/notify";
+import { usePageVisible } from "@/lib/page-visible";
 import { CheckInControls, CheckInStrip } from "./check-ins";
 import { ChooseName, SendFile, WriteMessage } from "./compose";
 import { allMessages, markSeen, useAddToLibrary, useBoardMessages, useBoardSummary, useDeviceName, useEdit, useRemove } from "./data";
@@ -31,7 +32,7 @@ export default function BoardPage() {
   const summary = useBoardSummary();
   const messages = useBoardMessages();
   const list = allMessages(messages.data);
-  const shown = usePageShown();
+  const shown = usePageVisible();
   const [editing, setEditing] = useState<BoardMessage | null>(null);
   const [removing, setRemoving] = useState<BoardMessage | null>(null);
   const [adding, setAdding] = useState<BoardMessage | null>(null);
@@ -142,7 +143,7 @@ export default function BoardPage() {
           name &&
           remove.mutate(
             { id: removing.id, by: name },
-            { onSuccess: () => setRemoving(null), onError: (error) => toast.error(errorMessage(error)) },
+            { onSuccess: () => setRemoving(null), onError: (error) => notify.error(errorMessage(error)) },
           )
         }
       />
@@ -175,7 +176,7 @@ export default function BoardPage() {
                 },
               );
             },
-            onError: (error) => toast.error(errorMessage(error)),
+            onError: (error) => notify.error(errorMessage(error)),
           })
         }
       />
@@ -208,7 +209,7 @@ function EditDialog({ message, name, onClose }: { message: BoardMessage; name: s
       {
         onSuccess: onClose,
         onError: (error) => {
-          toast.error(errorMessage(error));
+          notify.error(errorMessage(error));
           if (error instanceof ApiError && error.status === 409) onClose();
         },
       },

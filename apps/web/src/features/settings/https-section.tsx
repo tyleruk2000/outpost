@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Skeleton, Spinner, Switch } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
+import { useServerConnection } from "@/lib/events";
+import { notify } from "@/lib/notify";
+import { usePageVisible } from "@/lib/page-visible";
 import { formatDate } from "@/lib/utils";
 import type { SecureWay } from "./https-own";
 import { guessDevice, HTTPS_STATUS_KEY as STATUS_KEY } from "./https-shared";
@@ -18,6 +21,22 @@ import { SettingRow, SettingsSection, TextSetting } from "./parts";
 const TrustSteps = lazy(() => import("./https-steps").then((module) => ({ default: module.TrustSteps })));
 const OwnCertificateInUse = lazy(() => import("./https-own").then((module) => ({ default: module.OwnCertificateInUse })));
 const WaysIn = lazy(() => import("./https-own").then((module) => ({ default: module.WaysIn })));
+
+/**
+ * Whether HTTPS is up. Starting takes a moment, longest the first time, when the keys are
+ * made; the server says when it is done (`https.changed`). Only while that word cannot
+ * arrive is it asked for every two seconds, and not while the page is hidden.
+ */
+export function useHttpsStatus(enabled: boolean) {
+  const shown = usePageVisible();
+  const connected = useServerConnection();
+  return useQuery({
+    queryKey: STATUS_KEY,
+    queryFn: () => api.get<HttpsStatus>("/api/https"),
+    refetchInterval: (query) =>
+      shown && !connected && enabled && query.state.data && !query.state.data.listening && !query.state.data.problem ? 2000 : false,
+  });
+}
 
 const loading = (
   <div className="grid gap-2" aria-busy>
@@ -89,13 +108,7 @@ export function HttpsSection({
 }) {
   const client = useQueryClient();
   const enabled = settings["https.enabled"];
-  const status = useQuery({
-    queryKey: STATUS_KEY,
-    queryFn: () => api.get<HttpsStatus>("/api/https"),
-    // Starting takes a moment, longest the first time, when the keys are made. The server
-    // says when it is done; asking as well covers a missed event.
-    refetchInterval: (query) => (enabled && query.state.data && !query.state.data.listening && !query.state.data.problem ? 2000 : false),
-  });
+  const status = useHttpsStatus(enabled);
   const [asking, setAsking] = useState<"off" | "replace" | "delete" | null>(null);
 
   const change = useMutation({
@@ -113,7 +126,7 @@ export function HttpsSection({
     },
     onError: (error) => {
       setAsking(null);
-      toast.error(errorMessage(error));
+      notify.error(errorMessage(error));
     },
   });
 
@@ -437,7 +450,7 @@ export function HttpsSection({
                   </p>
                   <p className="mt-1 text-ink-muted">
                     Whoever starts Outpost can allow it from every device by starting it with{" "}
-                    <span className="font-mono text-[0.8125rem]">{data.authorityRight.option}=true</span>.
+                    <span className="font-mono text-[0.8125rem] [overflow-wrap:anywhere]">{data.authorityRight.option}=true</span>.
                   </p>
                 </Notice>
               )}

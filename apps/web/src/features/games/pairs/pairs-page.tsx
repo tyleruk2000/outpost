@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Segmented } from "@/components/ui/misc";
 import { cn, plural } from "@/lib/utils";
-import { readDeviceSave, useDeviceSave } from "../kit/device-save";
+import { FOLLOWED_WORDS, readDeviceSave, useDeviceSave } from "../kit/device-save";
 import { boardSurface, GameAbout, GameFrame } from "../kit/frame";
 import { usePlayTime } from "../kit/play-time";
 import { useRecordResult } from "../kit/queries";
@@ -88,7 +88,15 @@ export default function PairsPage() {
   const time = usePlayTime(!game.finished);
   const withTime = (current: PairsGame): PairsGame => ({ ...current, seconds: current.seconds + time.lap() });
   // Kept a moment after each move, and when the screen is hidden or left.
-  useDeviceSave(SAVE_KEY, game, (current) => ({ ...current, seconds: current.seconds + time.peek() }));
+  // The same game played in another tab of this browser is followed here; its time already holds this tab's.
+  useDeviceSave(SAVE_KEY, game, (current) => ({ ...current, seconds: current.seconds + time.peek() }), {
+    accept: isPairsGame,
+    onFollow: (other) => {
+      time.lap();
+      setGame(other);
+      setSaid(FOLLOWED_WORDS);
+    },
+  });
 
   // A miss turns back by itself after a second.
   const showingMiss = missShowing(game);

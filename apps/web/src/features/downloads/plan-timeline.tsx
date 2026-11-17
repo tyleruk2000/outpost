@@ -1,12 +1,12 @@
 import { type DownloadPlan, type DownloadPlanItem, formatBytes, formatDuration } from "@outpost/shared";
 import { type FocusEvent, memo, type PointerEvent, useRef, useState } from "react";
 import { Link } from "react-router";
+import { useWidth } from "@/lib/use-width";
 import { cn } from "@/lib/utils";
 import { ChartTooltip } from "./charts/chart-tooltip";
 import { linearScale } from "./charts/scale";
 import { useTextScale } from "./charts/text-scale";
 import { aheadLabel, atClock, clockAt, clockTime, durationTicks } from "./charts/time-axis";
-import { useWidth } from "./charts/use-width";
 import { finishWords, startWords, unscheduledReason } from "./plan-text";
 
 /** The label column and the plot share these columns in the axis, the grid and every row, so they line up. */
@@ -52,7 +52,7 @@ export const PlanTimeline = memo(function PlanTimeline({
   /** Downloads that stopped and are waiting to try again, by id, with what they are waiting for. */
   stalled: ReadonlyMap<string, string>;
 }) {
-  const [plot, measured] = useWidth<HTMLDivElement>();
+  const [plot, measured] = useWidth();
   const plotWidth = measured || 560;
   const frame = useRef<HTMLDivElement>(null);
   const [tip, setTip] = useState<{ id: string; x: number; y: number } | null>(null);

@@ -36,7 +36,7 @@ export const AT_LEAST: Array<[string, string]> = [
   ["Downloads", "/downloads"],
   ["Storage", "/storage"],
   ["Manage and clean up", "/storage/manage"],
-  ["Bring back from a drive", "/storage/merge"],
+  ["Bring back changes from a drive", "/storage/merge"],
   ["Kept on this device", "/kept"],
   ["Settings", "/settings"],
   ["Set-up guide", "/help/search-and-answers"],

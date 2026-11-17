@@ -113,4 +113,36 @@ test.describe("notes on a phone", () => {
       for (const id of made) await api(page, "DELETE", `/api/notes/${id}`);
     }
   });
+
+  test("with the text at 200%, a page's way back keeps its name beside Saved, and the tree's Expand is a finger's size", async ({
+    page,
+  }) => {
+    const errors = watchForErrors(page);
+    const { note: parent } = await api(page, "POST", "/api/notes", { title: "Household" });
+    const { note: child } = await api(page, "POST", "/api/notes", { title: "Kit for a power cut", parentId: parent.id });
+    try {
+      await page.addInitScript(() => {
+        document.addEventListener("DOMContentLoaded", () => {
+          document.documentElement.style.fontSize = "32px";
+        });
+      });
+      await page.goto(`/notes/${child.id}`);
+      const back = page.getByRole("navigation", { name: "Where this page is" }).getByRole("link", { name: "Household" });
+      await expect(back).toBeVisible();
+      await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+      // The whole name, not one letter of it.
+      expect(await back.locator("span").evaluate((span) => span.scrollWidth <= span.clientWidth + 1)).toBe(true);
+
+      await page.goto("/notes");
+      // Household is open, as the page under it was just visited.
+      const expand = page.getByRole("button", { name: /^(Expand|Collapse) Household$/ });
+      const box = (await expand.boundingBox())!;
+      expect([Math.round(box.width), Math.round(box.height)]).toEqual([88, 88]);
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(overflow).toBeLessThanOrEqual(1);
+      expect(errors).toEqual([]);
+    } finally {
+      await api(page, "DELETE", `/api/notes/${parent.id}`);
+    }
+  });
 });

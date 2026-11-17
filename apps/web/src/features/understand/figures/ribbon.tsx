@@ -5,9 +5,10 @@ import { Link } from "react-router";
 import { kindMeta } from "@/components/search-hit";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/misc";
+import { useWidth } from "@/lib/use-width";
 import { formatNumber, plural } from "@/lib/utils";
 import { COLOR } from "../charts/colors";
-import { HiddenTable, Legend, useMeasure } from "../charts/figure";
+import { HiddenTable, Legend } from "../charts/figure";
 import { fitLabel } from "../charts/measure";
 import type { ChunksResponse } from "../data";
 import { extents, layoutRibbon, placeLabel, splitOverlap, stepIndex } from "../lib/ribbon";
@@ -143,7 +144,7 @@ function PassageReader({
 /** One document as a ribbon of passages, with the passage under the pointer shown beneath it. */
 export function DocumentRibbon({ data, demonstration }: { data: ChunksResponse; demonstration: boolean }) {
   const { chunks, entity, chunkSize } = data;
-  const [ref, width] = useMeasure<HTMLDivElement>(720);
+  const [ref, width] = useWidth(720);
   const [selected, setSelected] = useState(0);
   const [hovered, setHovered] = useState<number | null>(null);
   const listId = useId();

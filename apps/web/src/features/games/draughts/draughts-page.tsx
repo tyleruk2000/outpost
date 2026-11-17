@@ -8,10 +8,11 @@ import { useSearchParams } from "react-router";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Segmented } from "@/components/ui/misc";
+import { usePageVisible } from "@/lib/page-visible";
 import { plural } from "@/lib/utils";
-import { readDeviceSave, useDeviceSave } from "../kit/device-save";
+import { FOLLOWED_WORDS, readDeviceSave, useDeviceSave } from "../kit/device-save";
 import { GameAbout, GameFrame } from "../kit/frame";
-import { usePageVisible, usePlayTime } from "../kit/play-time";
+import { usePlayTime } from "../kit/play-time";
 import { useRecordResult } from "../kit/queries";
 import { newSeed } from "../kit/rng";
 import { GameTallyLine, gameTime } from "../kit/tally";
@@ -62,8 +63,21 @@ export default function DraughtsPage() {
   // Time runs from the first move to the end, only while the board is in view.
   const time = usePlayTime(game.paths.length > 0 && !over);
   // Kept a moment after each move, and when the screen is hidden or left.
-  useDeviceSave(SAVE_KEY, game, (current) =>
-    current.recorded || current.paths.length === 0 ? current : { ...current, seconds: (current.seconds ?? 0) + time.peek() },
+  // The same game played in another tab of this browser is followed here; its time already holds this tab's.
+  useDeviceSave(
+    SAVE_KEY,
+    game,
+    (current) => (current.recorded || current.paths.length === 0 ? current : { ...current, seconds: (current.seconds ?? 0) + time.peek() }),
+    {
+      accept: isGame,
+      onFollow: (other) => {
+        time.lap();
+        setGame(other);
+        setChosen([]);
+        setMarked(null);
+        setNotice(FOLLOWED_WORDS);
+      },
+    },
   );
   const vsComputer = game.mode === "computer";
   const computerSide = other(game.human);

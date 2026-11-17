@@ -205,8 +205,9 @@ const Row = memo(function Row({
       draggable={!touch}
       style={top === undefined ? { paddingLeft: indent } : { paddingLeft: indent, position: "absolute", top, left: 0, right: 0 }}
       className={cn(
-        "group/row relative flex h-[30px] items-center gap-1 rounded-control pr-1 text-small select-none transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 max-md:h-11 max-md:text-body",
-        "[contain-intrinsic-size:auto_30px] [content-visibility:auto] [-webkit-touch-callout:none]",
+        // The height is in rem so that a row grows with the text; windowing measures a drawn row, so it follows.
+        "group/row relative flex h-[1.875rem] items-center gap-1 rounded-control pr-1 text-small select-none transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 max-md:h-11 max-md:text-body",
+        "[contain-intrinsic-size:auto_1.875rem] [content-visibility:auto] [-webkit-touch-callout:none]",
         style.row,
         current && style.current,
         dropZone === "inside" && style.inside,
@@ -232,11 +233,8 @@ const Row = memo(function Row({
           tabIndex={-1}
           aria-label={row.expanded ? `Collapse ${title}` : `Expand ${title}`}
           onClick={() => onToggle(item.id, !row.expanded)}
-          // On small screens the target reaches past the glyph to 44 px, without moving the title.
-          className={cn(
-            "relative grid size-5 shrink-0 place-content-center rounded-[4px] max-md:size-8 max-md:after:absolute max-md:after:-inset-1.5",
-            style.button,
-          )}
+          // On small screens the button is 44 px, its margins taking back the room it adds, so the title does not move.
+          className={cn("relative grid size-5 shrink-0 place-content-center rounded-[4px] max-md:-mx-1.5 max-md:size-11", style.button)}
         >
           <ChevronRight
             aria-hidden

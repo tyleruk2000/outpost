@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Segmented, Select, Skeleton } from "@/components/ui/misc";
 import { ApiError, api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { plural, timeAgo } from "@/lib/utils";
 import { useLibrivoxShelf } from "../audiobooks/audiobook-data";
 // The LibriVox shelf, offered as links (features/audiobooks).
@@ -128,9 +129,23 @@ export default function ExplorePage() {
   const client = useQueryClient();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const [query, setQuery] = useState("");
-  const [show, setShow] = useState<ShowFilter>("all");
-  const [sort, setSort] = useState<SortOrder>("name");
+  // The filter, what is shown and the order are in the address, as every other filter is, so a reload keeps them.
+  const query = params.get("q") ?? "";
+  const show = showOptions.find((option) => option.value === params.get("show"))?.value ?? "all";
+  const sort = sortOptions.find((option) => option.value === params.get("sort"))?.value ?? "name";
+  const setParam = (key: string, value: string, unset: string) =>
+    setParams(
+      (current) => {
+        const updated = new URLSearchParams(current);
+        if (value === unset) updated.delete(key);
+        else updated.set(key, value);
+        return updated;
+      },
+      { replace: true },
+    );
+  const setQuery = (next: string) => setParam("q", next, "");
+  const setShow = (next: ShowFilter) => setParam("show", next, "all");
+  const setSort = (next: SortOrder) => setParam("sort", next, "name");
   const [downloading, setDownloading] = useState<{ entry: CatalogEntryDto; open: boolean }>();
   // Pages shown of the list below, counted afresh whenever the list itself changes.
   const [pages, setPages] = useState({ list: "", count: 1 });
@@ -167,7 +182,7 @@ export default function ExplorePage() {
       void client.invalidateQueries({ queryKey: ["collections"] });
       return client.invalidateQueries({ queryKey: ["catalog"] });
     },
-    onError: (error, entry) => toast.error(`“${entry.name}” could not be added`, { description: errorMessage(error) }),
+    onError: (error, entry) => notify.error(`“${entry.name}” could not be added`, { description: errorMessage(error) }),
   });
 
   const entries = catalog.data?.entries ?? [];
@@ -213,10 +228,16 @@ export default function ExplorePage() {
   ];
 
   const filtered = query.trim() !== "" || show !== "all";
-  const clearFilters = () => {
-    setQuery("");
-    setShow("all");
-  };
+  const clearFilters = () =>
+    setParams(
+      (current) => {
+        const updated = new URLSearchParams(current);
+        updated.delete("q");
+        updated.delete("show");
+        return updated;
+      },
+      { replace: true },
+    );
 
   const inCategory = category === "all" || category === "packs" ? matching : matching.filter((entry) => entry.category === category);
   const shown = sortEntries(inCategory, sort);
@@ -316,7 +337,7 @@ export default function ExplorePage() {
                 </p>
               ) : null}
               <div className="flex flex-wrap items-center gap-3">
-                <div className="relative min-w-56 flex-1 max-md:basis-full">
+                <div className="relative min-w-[min(100%,14rem)] flex-1 max-md:basis-full">
                   <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-muted" />
                   <Input
                     type="search"
@@ -328,7 +349,7 @@ export default function ExplorePage() {
                   />
                 </div>
                 <Segmented label="Show" value={show} onChange={setShow} options={showOptions} className="max-md:hidden" />
-                <div className="flex gap-3 max-md:basis-full [&>*]:min-w-0 [&>*]:flex-1">
+                <div className="flex min-w-0 gap-3 max-md:basis-full [&>*]:min-w-0 [&>*]:flex-1">
                   <Select
                     aria-label="Show"
                     value={show}

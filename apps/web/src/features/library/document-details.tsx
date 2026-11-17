@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Badge, Tooltip } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
+import { copyText } from "@/lib/clipboard";
+import { notify } from "@/lib/notify";
 import { cn, formatDateTime, formatNumber, plural } from "@/lib/utils";
 import { SavedField } from "./document-field";
-import { copyText, documentKeys, isReading, kindOfDocument } from "./document-meta";
+import { documentKeys, isReading, kindOfDocument } from "./document-meta";
 import { OcrDetails, useDocumentOcr } from "./document-ocr";
 import { TagEditor } from "./document-tags";
 import { MadeInOutpostLine } from "./made/made-in-outpost";
@@ -35,7 +37,7 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 function Checksum({ sha256 }: { sha256: string }) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
-    if (!(await copyText(sha256))) return toast.error("The checksum could not be copied. Select it and copy it by hand.");
+    if (!(await copyText(sha256))) return notify.error("The checksum could not be copied. Select it and copy it by hand.");
     setCopied(true);
     window.setTimeout(() => setCopied(false), 2000);
   };
@@ -60,7 +62,7 @@ function TextStatus({ document, onDocument }: { document: DocumentDto; onDocumen
   const reextract = useMutation({
     mutationFn: () => api.post<DocumentResponse>(`/api/documents/${document.id}/reextract`),
     onSuccess: (data) => onDocument(data.document),
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 
   return (
@@ -125,7 +127,7 @@ function DeleteDocument({ document, locationName, onDeleted }: { document: Docum
     },
     onError: (error) => {
       setConfirming(false);
-      toast.error(errorMessage(error));
+      notify.error(errorMessage(error));
     },
   });
 

@@ -1,12 +1,12 @@
 /** Pieces the Encryption screen and encrypted pages share. */
 import { Check, CircleAlert, CircleHelp, Copy, Download, Eye, EyeOff, LockKeyhole, ShieldCheck, TriangleAlert } from "lucide-react";
 import { type FormEvent, type InputHTMLAttributes, type ReactNode, useId, useState } from "react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Badge, Checkbox } from "@/components/ui/misc";
-import { copyText } from "@/features/downloads/copy";
 import { errorMessage } from "@/lib/api";
+import { copyText } from "@/lib/clipboard";
+import { notify } from "@/lib/notify";
 import { cn, formatDate, formatDateTime } from "@/lib/utils";
 import type { SignatureResult } from "./engine";
 import { download, fingerprintGroups, formatFingerprint, keyLabel } from "./format";
@@ -60,7 +60,7 @@ export function CopyButton({
         if (await copyText(text)) {
           setCopied(true);
           setTimeout(() => setCopied(false), 2000);
-        } else toast.error("This browser would not copy that. Select the text and copy it by hand.");
+        } else notify.error("This browser would not copy that. Select the text and copy it by hand.");
       }}
     >
       {copied ? <Check /> : <Copy />} {copied ? done : label}

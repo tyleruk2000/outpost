@@ -3,18 +3,8 @@
  * left in a background tab or on a locked phone is not timed. Nothing ticks to count it:
  * the time is worked out from `performance.now()` when it is asked for.
  */
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-
-const isVisible = () => document.visibilityState !== "hidden";
-function onVisibilityChange(listener: () => void) {
-  document.addEventListener("visibilitychange", listener);
-  return () => document.removeEventListener("visibilitychange", listener);
-}
-
-/** Whether the page is in view: false in a background tab or on a locked phone. */
-export function usePageVisible(): boolean {
-  return useSyncExternalStore(onVisibilityChange, isVisible, () => true);
-}
+import { useEffect, useRef, useState } from "react";
+import { isPageVisible, usePageVisible } from "@/lib/page-visible";
 
 export interface PlayTime {
   /** Seconds played since the last lap (or since the game started), and starts the next lap. */
@@ -55,11 +45,13 @@ export function usePlayTime(running: boolean): PlayTime {
       state.since = null;
     };
     const resume = () => {
-      if (state.since === null && state.running && isVisible()) state.since = performance.now();
+      if (state.since === null && state.running && isPageVisible()) state.since = performance.now();
     };
     if (running) resume();
     else pause();
-    return onVisibilityChange(() => (isVisible() ? resume() : pause()));
+    const changed = () => (isPageVisible() ? resume() : pause());
+    document.addEventListener("visibilitychange", changed);
+    return () => document.removeEventListener("visibilitychange", changed);
   }, [running]);
 
   return time;

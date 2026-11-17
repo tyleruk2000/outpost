@@ -3,11 +3,11 @@ import type { DownloadDetail, DownloadEvent } from "@outpost/shared";
 import { useQuery } from "@tanstack/react-query";
 import { Check, Copy } from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { copyText } from "@/lib/clipboard";
+import { notify } from "@/lib/notify";
 import { cn, timeAgo } from "@/lib/utils";
 import { clockTimeWithSeconds, shortDate } from "./charts/time-axis";
-import { copyText } from "./copy";
 import { describeEvents, regionDetail, regionExtent, type Tone } from "./plan-text";
 
 /**
@@ -66,7 +66,7 @@ export function Checksum({ value, name }: { value: string; name: string }) {
         aria-label={copied ? `Copied ${name}` : `Copy ${name}`}
         onClick={async () => {
           if (await copyText(value)) setCopied(true);
-          else toast.error("The browser would not copy it. Select the checksum and copy it by hand.");
+          else notify.error("The browser would not copy it. Select the checksum and copy it by hand.");
         }}
       >
         {copied ? <Check className="text-success" /> : <Copy />}

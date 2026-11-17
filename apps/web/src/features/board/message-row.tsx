@@ -26,6 +26,7 @@ import { Link } from "react-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/menu";
+import { copyText } from "@/lib/clipboard";
 import { formatTimeOfDay } from "@/lib/clock";
 import { cn, formatDate } from "@/lib/utils";
 import { isLong, linkPieces, whenWritten } from "./words";
@@ -145,15 +146,11 @@ function selectText(element: HTMLElement | null) {
   selection?.addRange(range);
 }
 
-async function copyText(text: string, element: HTMLElement | null) {
-  if (navigator.clipboard && window.isSecureContext) {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success("Copied");
-      return;
-    } catch {
-      // Refused: select it instead, for the device's own copy.
-    }
+/** Copies the words with the shared helper; where a browser will not, selects them for the device's own Copy. */
+async function copyWords(text: string, element: HTMLElement | null) {
+  if (await copyText(text)) {
+    toast.success("Copied");
+    return;
   }
   selectText(element);
   toast("The words are selected. Use your device's own Copy.");
@@ -208,7 +205,7 @@ export function MessageRow({
                 >
                   {open ? "Show less" : "Show all of it"}
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => void copyText(message.body, document.getElementById(wordsId))}>
+                <Button size="sm" variant="ghost" onClick={() => void copyWords(message.body, document.getElementById(wordsId))}>
                   <Copy aria-hidden /> Copy the words
                 </Button>
               </div>
@@ -253,7 +250,7 @@ export function MessageRow({
           </MenuTrigger>
           <MenuContent>
             {canCopy ? (
-              <MenuItem onSelect={() => void copyText(message.body, document.getElementById(wordsId))}>
+              <MenuItem onSelect={() => void copyWords(message.body, document.getElementById(wordsId))}>
                 {navigator.clipboard && window.isSecureContext ? <Copy aria-hidden /> : <TextSelect aria-hidden />}
                 {navigator.clipboard && window.isSecureContext ? "Copy the words" : "Select the words"}
               </MenuItem>

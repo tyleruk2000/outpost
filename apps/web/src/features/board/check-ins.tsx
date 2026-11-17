@@ -18,6 +18,7 @@ import { Field, Input, Textarea } from "@/components/ui/input";
 import { Checkbox, Segmented, Skeleton } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
 import { useClockStyle } from "@/lib/clock";
+import { notify } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 import { currentPosition, positionAvailable, useCheckIn } from "./data";
 import { checkInWords, needsHelp } from "./words";
@@ -76,7 +77,7 @@ export function CheckInControls({ name }: { name: string }) {
           setPlace("");
           after?.();
         },
-        onError: (error) => toast.error(errorMessage(error)),
+        onError: (error) => notify.error(errorMessage(error)),
       },
     );
 

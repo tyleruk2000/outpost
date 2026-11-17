@@ -29,6 +29,7 @@ import { useDownloads } from "@/features/downloads/use-downloads";
 import { useReferenceLayers } from "@/features/layers/use-reference-layers";
 import { type SightStart, useRepeatersOnMap } from "@/features/repeaters/map/use-repeaters-on-map";
 import { errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { plural } from "@/lib/utils";
 import { CentreMark } from "./centre-mark";
 import {
@@ -527,13 +528,13 @@ export default function MapsPage() {
       handledLink.current = location.key;
       const marker = markers.data.find((item) => item.id === markerId);
       if (marker) openMarker(marker);
-      else toast.error("That saved place no longer exists.");
+      else notify.error("That saved place no longer exists.");
     } else if (linkedTrack) {
       if (!tracks.data) return;
       handledLink.current = location.key;
       const track = tracks.data.find((item) => item.id === linkedTrack);
       if (track) openTrack(track);
-      else toast.error("That route no longer exists.");
+      else notify.error("That route no longer exists.");
     } else {
       const first = handledLink.current === undefined;
       handledLink.current = location.key;
@@ -926,7 +927,7 @@ export default function MapsPage() {
     (fix, first) => {
       if (first) engine?.flyTo(fix, Math.max(engine.getZoom(), 14));
     },
-    (message) => toast.error(message),
+    (message) => notify.error(message),
   );
   useEffect(() => {
     engine?.setOverlay("o-location", locationData(locate.fix));
@@ -1006,7 +1007,7 @@ export default function MapsPage() {
     setDropping(false);
     const files = [...event.dataTransfer.files];
     const gpx = files.filter((file) => /\.gpx$/i.test(file.name));
-    if (gpx.length === 0) toast.error("Only GPX files can be dropped on the map.");
+    if (gpx.length === 0) notify.error("Only GPX files can be dropped on the map.");
     else setImportFiles(gpx);
   };
 
@@ -1056,7 +1057,7 @@ export default function MapsPage() {
   const changeContours = (on: boolean) => {
     if (!on) return setContours(false);
     if (!contoursSupported()) {
-      toast.error("This browser cannot draw contour lines. An up-to-date browser can.");
+      notify.error("This browser cannot draw contour lines. An up-to-date browser can.");
       return;
     }
     const now = engine ? contourReach({ bounds: engine.getBounds(), zoom: engine.getZoom() }, terrainBoxes) : reach;

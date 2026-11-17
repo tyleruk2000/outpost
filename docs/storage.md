@@ -120,6 +120,13 @@ that is already disconnected, the search of every storage root for its marker is
 most every ten minutes, so an unplugged drive does not mean a walk of the roots twice a
 minute. **Check drives** and a start always search.
 
+Thirty seconds is how long a screen may go on saying a drive is there after it has been
+unplugged, and it costs next to nothing: on a demonstration instance with two locations,
+a check every 5 seconds for two minutes used 30 ms more of the server's processor time
+than no check at all (60 ms against 90 ms, twice over), about 1.3 ms a check, and a
+check made by hand answered in 1 ms (median of 20). At the default that is under 3 ms a
+minute, so the default stays at 30 seconds. A value you have set is kept.
+
 Only what you would call a change is announced to open screens: a location being
 disconnected or coming back, moving, or holding a different disk. Free space is
 recorded once it has moved by 256 MiB and shown the next time the list is read, but it is not announced, because on a
@@ -785,8 +792,9 @@ who can open the file can read them: keep it on storage you trust, and on an enc
 disk if it leaves the house.
 
 Restoring replaces the database, attachments and extracted text after a restart. The
-backup is checked first; nothing changes until Outpost starts again, and until then
-**Cancel restore** drops it. Downloads that were under way stop. The files of
+dialog lists what is replaced, what is not touched, when it happens and how to cancel,
+and its button is **Restore after restart**. The backup is checked first; nothing
+changes until Outpost starts again, and until then **Cancel restore** drops it. Downloads that were under way stop. The files of
 collections, maps and documents on your storage locations are not touched. The
 data they replace is kept in the data directory in a folder named
 `before-restore-<time>`. After a restore, add the same storage locations again (their

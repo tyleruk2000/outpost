@@ -7,8 +7,8 @@
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { type Editor, Extension } from "@tiptap/react";
-import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { uploadAttachment } from "../notes-data";
 import type { HostRef } from "./host";
 
@@ -97,7 +97,7 @@ export function uploadImages(editor: Editor, host: HostRef, files: readonly File
   const at = blockBoundaryAfter(editor, pos);
   for (const file of files) {
     if (file.type && !isPicture(file)) {
-      toast.error(
+      notify.error(
         `“${file.name}” is not a picture. Only pictures can go in the text of a page; add other files to the Library and embed them from there.`,
       );
       continue;
@@ -124,7 +124,7 @@ export function uploadImages(editor: Editor, host: HostRef, files: readonly File
           // The placeholder was deleted meanwhile, or the file turned out not to be a picture.
           done();
           void api.delete(`/api/attachments/${attachment.id}`).catch(() => {});
-          if (!usable) toast.error(`“${file.name}” is not a picture, so it was not added to the page.`);
+          if (!usable) notify.error(`“${file.name}” is not a picture, so it was not added to the page.`);
           return;
         }
         const before = editor.state.doc.resolve(target).nodeBefore;
@@ -141,7 +141,7 @@ export function uploadImages(editor: Editor, host: HostRef, files: readonly File
       },
       (error: unknown) => {
         done();
-        if (!(error instanceof DOMException && error.name === "AbortError")) toast.error(errorMessage(error));
+        if (!(error instanceof DOMException && error.name === "AbortError")) notify.error(errorMessage(error));
       },
     );
   }

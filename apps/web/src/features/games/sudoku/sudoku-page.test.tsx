@@ -4,11 +4,12 @@
  * the tally saying so when the server cannot be reached.
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makePuzzle } from "./engine";
+import { enter, newGame } from "./game";
 import SudokuPage from "./sudoku-page";
 
 const SEED = 4242;
@@ -77,6 +78,21 @@ describe("the Sudoku screen", () => {
     show("/games/sudoku");
     expect(cell(a!)).toHaveAccessibleName(`${at(a!)}, 5`);
     expect(cell(b!)).toHaveAccessibleName(`${at(b!)}, empty, notes 2 and 7`);
+  });
+
+  it("follows the same puzzle played in another tab of this browser", () => {
+    show();
+    const [a, b] = empties;
+    const elsewhere = enter(newGame(SEED, "gentle"), a!, 3);
+    const fromOtherTab = (game: unknown) =>
+      act(() => {
+        window.dispatchEvent(new StorageEvent("storage", { key: "outpost.games.sudoku", newValue: JSON.stringify(game) }));
+      });
+    fromOtherTab(elsewhere);
+    expect(cell(a!)).toHaveAccessibleName(`${at(a!)}, 3`);
+    fromOtherTab(enter(elsewhere, b!, 8));
+    expect(cell(b!)).toHaveAccessibleName(`${at(b!)}, 8`);
+    expect(screen.getByText("This board now shows the moves made in another tab.")).toBeInTheDocument();
   });
 
   it("marks a wrong digit in words and in its name, without giving the answer, and undoes", async () => {

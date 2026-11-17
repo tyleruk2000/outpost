@@ -151,6 +151,12 @@ describe("the Supplies screen", () => {
     await waitFor(() => expect(server.posted).toContainEqual({ path: "POST /api/supplies/items/i1/adjust", body: { by: -1 } }));
   });
 
+  it("names the buttons of an item counted without a unit in plain words", async () => {
+    show({ items: [item({ name: "AA batteries", unit: "" })] });
+    expect(await screen.findByRole("button", { name: "Use one of AA batteries" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add one of AA batteries" })).toBeInTheDocument();
+  });
+
   it("marks what is past its use-by", async () => {
     show({ items: [item({ name: "Ham", dateKind: "use-by", date: "2020-01-01" })] });
     expect(await screen.findByText(/Past its use-by, 1 Jan 2020/)).toBeInTheDocument();
@@ -162,7 +168,7 @@ describe("the Supplies screen", () => {
     const dialog = await screen.findByRole("dialog", { name: "Add to supplies" });
     await userEvent.type(within(dialog).getByLabelText("Name"), "Chickpeas");
     await userEvent.click(within(dialog).getByRole("button", { name: "One more: how many" }));
-    await userEvent.type(within(dialog).getByLabelText("kcal in one"), "400");
+    await userEvent.type(within(dialog).getByLabelText("kcal in one (optional)"), "400");
     await userEvent.click(within(dialog).getByRole("button", { name: "Add, then another like this" }));
     await waitFor(() => expect(server.posted.filter((post) => post.path === "POST /api/supplies/items")).toHaveLength(1));
     expect(server.posted[0]!.body).toMatchObject({
@@ -213,7 +219,7 @@ describe("the Supplies screen", () => {
     const dialog = await screen.findByRole("dialog", { name: "Add to supplies" });
     await userEvent.type(within(dialog).getByLabelText("Name"), "Rice");
     await userEvent.click(within(dialog).getByText("More: minimum, barcode, notes"));
-    await userEvent.type(within(dialog).getByLabelText("Keep at least"), "lots");
+    await userEvent.type(within(dialog).getByLabelText("Keep at least (optional)"), "lots");
     const more = within(dialog).getByText("More: minimum, barcode, notes").closest("details")!;
     more.open = false;
     await userEvent.click(within(dialog).getByRole("button", { name: "Add" }));
@@ -326,7 +332,7 @@ describe("the scanner", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: "New item with this barcode" }));
     const form = await screen.findByRole("dialog", { name: "Add to supplies" });
     await userEvent.click(within(form).getByText("More: minimum, barcode, notes"));
-    expect(within(form).getByLabelText("Barcode")).toHaveValue("5012345678900");
+    expect(within(form).getByLabelText("Barcode (optional)")).toHaveValue("5012345678900");
   });
 
   it("lets the camera go when the dialog is closed", async () => {

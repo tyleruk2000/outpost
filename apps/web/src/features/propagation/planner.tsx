@@ -286,6 +286,7 @@ export function Planner() {
           <div className="grid grid-cols-2 gap-4">
             <Field
               label="Signal-to-noise, dB"
+              optional
               hint={
                 mode.requiredSnrDb === null ? "What your mode needs." : `What the mode needs. Leave empty for ${mode.requiredSnrDb} dB.`
               }
@@ -304,6 +305,7 @@ export function Planner() {
             </Field>
             <Field
               label="Bandwidth, Hz"
+              optional
               hint={`What the ratio is measured in. Leave empty for ${mode.referenceBandwidthHz} Hz.`}
               error={fieldError("referenceBandwidthHz")}
             >

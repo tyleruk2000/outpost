@@ -20,6 +20,7 @@ import { Field, Input } from "@/components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Badge, Skeleton } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { useStorage } from "@/lib/queries";
 import { plural, timeAgo } from "@/lib/utils";
 import { manageLink } from "../manage/manage-data";
@@ -92,7 +93,7 @@ function LocationRow({
       setRenaming(false);
       return invalidate();
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
   const moveDocuments = useMutation({
     mutationFn: () => api.post<{ documents: number }>("/api/documents/move", { locationId: location.id }),
@@ -100,7 +101,7 @@ function LocationRow({
       setMovingDocuments(false);
       toast.success(`Moving ${plural(result.documents, "document")} to “${location.name}”. Progress is under Downloads.`);
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
   const remove = useMutation({
     mutationFn: () => api.delete(`/api/storage/locations/${location.id}`),
@@ -109,7 +110,7 @@ function LocationRow({
       toast.success(`Removed “${location.name}” from Outpost. Its files were left in place.`);
       return invalidate();
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 
   return (
@@ -306,7 +307,7 @@ export default function StoragePage() {
       else toast.warning(`Checked: ${plural(away, "location")} cannot be reached.`);
       return client.invalidateQueries({ queryKey: ["storage"] });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 
   const locations = storage.data?.locations ?? [];
@@ -389,29 +390,33 @@ export default function StoragePage() {
                 Your library is empty. Space used will be listed here as you add documents, collections and maps.
               </p>
             ) : (
-              <table className="w-full max-w-xl text-small">
-                <thead className="sr-only">
-                  <tr>
-                    <th>Kind</th>
-                    <th>Items</th>
-                    <th>Size</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border border-y border-border">
-                  {totals.map((entry) => (
-                    <tr key={entry.kind}>
-                      <td className="py-2.5 pr-4">
-                        <span className="flex items-center gap-2.5 text-ink">
-                          <span aria-hidden className="size-2.5 rounded-[2px]" style={{ background: entry.color }} />
-                          {entry.label}
-                        </span>
-                      </td>
-                      <td className="tabular py-2.5 pr-4 text-right text-ink-muted">{plural(entry.count, "item")}</td>
-                      <td className="tabular py-2.5 text-right font-medium text-ink">{formatBytes(entry.bytes)}</td>
+              <div className="@container">
+                <table className="w-full max-w-xl text-small">
+                  <thead className="sr-only">
+                    <tr>
+                      <th>Kind</th>
+                      <th>Items</th>
+                      <th>Size</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-border border-y border-border">
+                    {totals.map((entry) => (
+                      <tr key={entry.kind}>
+                        <td className="py-2.5 pr-4">
+                          <span className="flex items-center gap-2.5 text-ink">
+                            <span aria-hidden className="size-2.5 shrink-0 rounded-[2px]" style={{ background: entry.color }} />
+                            {entry.label}
+                          </span>
+                          {/* Where three columns do not fit (a phone with large text: rem here follows the text), the count goes under the kind. */}
+                          <span className="tabular block pl-5 text-ink-muted @min-[20rem]:hidden">{plural(entry.count, "item")}</span>
+                        </td>
+                        <td className="tabular py-2.5 pr-4 text-right text-ink-muted @max-[20rem]:hidden">{plural(entry.count, "item")}</td>
+                        <td className="tabular py-2.5 text-right font-medium whitespace-nowrap text-ink">{formatBytes(entry.bytes)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </Section>
 

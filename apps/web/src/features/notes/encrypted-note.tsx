@@ -34,6 +34,7 @@ import { openPage, type PageLock, sealPage } from "@/features/encryption/pages";
 import { IDLE_MINUTES, PassphraseInput, UnlockForm } from "@/features/encryption/parts";
 import { keepUnlocked, lockAll, UNLOCK_IDLE_MS, unlockedKey } from "@/features/encryption/session";
 import { errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 import { NoteEditor } from "./editor/note-editor";
 import { MoveDialog } from "./move-dialog";
@@ -245,7 +246,7 @@ export default function EncryptedNote({ note }: { note: NoteDetail }) {
         // The key is still needed to check what is saved, by a save under way as much as by one yet to start.
         // It is forgotten as soon as that is done.
         void latestSave.current().then(() => {
-          if (dirty.current) toast.error("Your last changes to an encrypted page could not be saved before you left it.");
+          if (dirty.current) notify.error("Your last changes to an encrypted page could not be saved before you left it.");
           typed.current = null;
           lockAll();
         });
@@ -357,7 +358,7 @@ export default function EncryptedNote({ note }: { note: NoteDetail }) {
       await refreshNotes(client);
       toast(`“${displayTitle(title)}” is no longer encrypted.`);
     } catch (failure) {
-      toast.error(errorMessage(failure));
+      notify.error(errorMessage(failure));
     } finally {
       setRemoveBusy(false);
       setRemoving(false);

@@ -6,26 +6,6 @@ import { FALLBACK_THEME } from "./lib/palette";
 import type { MapFlavour, MapTheme } from "./lib/style";
 import { readStored, writeStored } from "./lib/view";
 
-export function useDebounced<T>(value: T, delay: number): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const timer = window.setTimeout(() => setDebounced(value), delay);
-    return () => window.clearTimeout(timer);
-  }, [value, delay]);
-  return debounced;
-}
-
-/** Whether the page is in sight: false in a background tab or on a locked phone. */
-export function usePageVisible(): boolean {
-  const [visible, setVisible] = useState(() => document.visibilityState !== "hidden");
-  useEffect(() => {
-    const onChange = () => setVisible(document.visibilityState !== "hidden");
-    document.addEventListener("visibilitychange", onChange);
-    return () => document.removeEventListener("visibilitychange", onChange);
-  }, []);
-  return visible;
-}
-
 /** True from the `md` breakpoint up, where the sidebar and the side panel are shown. */
 export function useIsDesktop(): boolean {
   const [desktop, setDesktop] = useState(() => window.matchMedia("(min-width: 48rem)").matches);
@@ -198,31 +178,5 @@ export function useGeolocation(onFix: (fix: PositionFix, first: boolean) => void
   return { supported, state, fix, start, stop };
 }
 
-/**
- * Copies text and reports whether it worked. The clipboard API only exists on HTTPS and
- * localhost; over plain HTTP on a home network the older selection-based copy is used.
- */
-export async function copyText(text: string): Promise<boolean> {
-  try {
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    }
-  } catch {
-    // Fall through to the older way.
-  }
-  const area = document.createElement("textarea");
-  area.value = text;
-  area.setAttribute("readonly", "");
-  area.style.position = "fixed";
-  area.style.opacity = "0";
-  document.body.append(area);
-  area.select();
-  try {
-    return document.execCommand("copy");
-  } catch {
-    return false;
-  } finally {
-    area.remove();
-  }
-}
+/** Re-exported for the radio layer, which imports it from here. */
+export { copyText } from "@/lib/clipboard";

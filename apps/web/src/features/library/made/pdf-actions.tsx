@@ -16,12 +16,12 @@ import { formatBytes } from "@outpost/shared";
 import { Check, CircleAlert, Download, Files, LibraryBig, Share2 } from "lucide-react";
 import { type FormEvent, type ReactNode, useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { Link } from "react-router";
-import { toast } from "sonner";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/misc";
+import { notify } from "@/lib/notify";
 import { printSupport } from "@/lib/printing";
 import { cn, formatDate } from "@/lib/utils";
 import {
@@ -137,7 +137,7 @@ export function useMadePdf(pdf: MadePdf | null, options: { send?: SendUpload } =
     navigator.share({ files: [pdf.file], title: pdf.title }).catch((error: unknown) => {
       // Closing the share sheet without choosing is not a failure.
       if (!(error instanceof DOMException && error.name === "AbortError")) {
-        toast.error("This device would not share the file. Save it, or add it to the library, instead.");
+        notify.error("This device would not share the file. Save it, or add it to the library, instead.");
       }
     });
   }, [pdf]);
