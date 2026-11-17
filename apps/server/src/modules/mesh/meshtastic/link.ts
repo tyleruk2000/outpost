@@ -19,7 +19,15 @@
  * household's broker, as MQTT requires, every two minutes.
  */
 import os from "node:os";
-import { type BoardMessage, type MeshLinkState, type MeshMeta, type MeshtasticStatus, meshChannelId, radioText } from "@outpost/shared";
+import {
+  type BoardMessage,
+  MESH_CHANNEL_NAME_MAX,
+  type MeshLinkState,
+  type MeshMeta,
+  type MeshtasticStatus,
+  meshChannelId,
+  radioText,
+} from "@outpost/shared";
 import type { AppContext } from "../../../core/context.ts";
 import { messageOf } from "../../../core/errors.ts";
 import { isHomeAddress } from "../addresses.ts";
@@ -91,7 +99,8 @@ export function createMeshtasticLink(ctx: AppContext, store: MeshStore, secrets:
 
   function handle(topic: string, payload: Buffer): void {
     const parts = parseTopic(topic);
-    if (!parts) return;
+    // Longer than what is learnt can hold: kept, it would make the stored row unreadable, and all of it forgotten.
+    if (!parts || parts.root.length > 100 || parts.channel.length > MESH_CHANNEL_NAME_MAX) return;
     lastHeardAt = Date.now();
     learn({ root: parts.root, ...(parts.gatewayId ? { gateway: parts.gatewayId } : {}) });
     if (parts.format === "encoded") {
