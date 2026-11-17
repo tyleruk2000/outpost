@@ -55,8 +55,8 @@ const KEEPALIVE_LIMIT = 60_000;
  * page has gone, which `api.put` cannot ask for. A plan too large for keepalive is sent
  * the ordinary way.
  */
-async function saveWhileLeaving(id: string, input: PowerPlanInput): Promise<PowerPlan> {
-  const json = JSON.stringify(input);
+async function saveWhileLeaving(id: string, body: PowerPlanSave): Promise<PowerPlan> {
+  const json = JSON.stringify(body);
   let response: Response;
   try {
     response = await fetch(`/api/power/plans/${id}`, {
@@ -71,21 +71,35 @@ async function saveWhileLeaving(id: string, input: PowerPlanInput): Promise<Powe
   }
   if (!response.ok) {
     const error = ((await response.json().catch(() => null)) as ApiErrorBody | null)?.error;
-    throw new ApiError(response.status, error?.code ?? "http", error?.message ?? `The server answered with an error (${response.status}).`);
+    throw new ApiError(
+      response.status,
+      error?.code ?? "http",
+      error?.message ?? `The server answered with an error (${response.status}).`,
+      error?.details,
+    );
   }
   return ((await response.json()) as { plan: PowerPlan }).plan;
 }
 
+/** A plan as saved: the whole plan, and the version it was changed from (`updatedAt` when opened or last saved). */
+type PowerPlanSave = PowerPlanInput & { baseUpdatedAt?: number };
+
+/** Whether a save was refused because the plan or device was saved over somewhere else since it was opened. */
+export const isConflict = (error: unknown): error is ApiError => error instanceof ApiError && error.code === "conflict";
+
 export function useSavePowerPlan(id: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ input, leaving }: { input: PowerPlanInput; leaving: boolean }) =>
-      leaving ? saveWhileLeaving(id, input) : api.put<{ plan: PowerPlan }>(`/api/power/plans/${id}`, input).then((data) => data.plan),
+    mutationFn: ({ body, leaving }: { body: PowerPlanSave; leaving: boolean }) =>
+      leaving ? saveWhileLeaving(id, body) : api.put<{ plan: PowerPlan }>(`/api/power/plans/${id}`, body).then((data) => data.plan),
     onSuccess: (plan) => {
       client.setQueryData(powerKeys.one(id), plan);
       void client.invalidateQueries({ queryKey: powerKeys.all, exact: true });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    // A conflict is shown on the plan itself, with the choice of which to keep.
+    onError: (error) => {
+      if (!isConflict(error)) toast.error(errorMessage(error));
+    },
   });
 }
 
@@ -126,9 +140,9 @@ export const useOwnDevices = () =>
 export function useSaveOwnDevice() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, input }: { id: string | null; input: OwnDeviceInput }) =>
+    mutationFn: ({ id, input, baseUpdatedAt }: { id: string | null; input: OwnDeviceInput; baseUpdatedAt?: number }) =>
       (id
-        ? api.put<{ device: OwnDevice }>(`/api/power/devices/${id}`, input)
+        ? api.put<{ device: OwnDevice }>(`/api/power/devices/${id}`, { ...input, baseUpdatedAt })
         : api.post<{ device: OwnDevice }>("/api/power/devices", input)
       ).then((data) => data.device),
     onSuccess: () => void client.invalidateQueries({ queryKey: powerKeys.devices }),

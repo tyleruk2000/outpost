@@ -10,6 +10,7 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { toMarkdown } from "@/features/propagation/plans/document";
 import { workOut } from "./calc/plan";
+import { OwnDeviceDialog } from "./device-picker";
 import { planBlocks } from "./document";
 import PowerPlanPage from "./plan-page";
 import PowerPage from "./power-page";
@@ -209,5 +210,48 @@ describe("a plan made from the library", () => {
     expect(text).toContain("read 16 November 2026");
     expect(text).toContain("A figure has been changed by hand since");
     expect(text).toContain("The label on your own device governs");
+  });
+});
+
+describe("changing a device of the person's own", () => {
+  it("sends the version it was opened at, and says what to do when it was changed elsewhere since", async () => {
+    const sent: Array<Record<string, unknown>> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        sent.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+        return new Response(
+          JSON.stringify({
+            error: { code: "conflict", message: "This device was changed somewhere else.", details: { updatedAt: 9 } },
+          }),
+          { status: 409, headers: { "content-type": "application/json" } },
+        );
+      }),
+    );
+    const onSaved = vi.fn();
+    const lamp = {
+      id: "d1",
+      name: "Shed lamp",
+      kind: "run" as const,
+      supply: "dc" as const,
+      watts: 6,
+      wattHours: null,
+      receiveW: null,
+      transmitW: null,
+      standbyW: null,
+      note: "",
+      createdAt: 1,
+      updatedAt: 5,
+    };
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <OwnDeviceDialog device={lamp} onClose={() => undefined} onSaved={onSaved} />
+      </QueryClientProvider>,
+    );
+    fireEvent.change(screen.getByLabelText("Power while on"), { target: { value: "7" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save device" }));
+    expect(await screen.findByText(/changed somewhere else\. Close this and open it again to see it as it is now\./)).toBeInTheDocument();
+    expect(sent[0]).toMatchObject({ watts: 7, baseUpdatedAt: 5 });
+    expect(onSaved).not.toHaveBeenCalled();
   });
 });

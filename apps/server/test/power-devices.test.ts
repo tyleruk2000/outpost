@@ -55,6 +55,16 @@ describe("devices of a person's own", () => {
     expect(changed.body.device).toMatchObject({ name: "Handheld", kind: "radio", watts: null, receiveW: 1.2, transmitW: 14 });
   });
 
+  it("refuses a change made from a version that has since been saved over elsewhere", async () => {
+    const opened: OwnDevice = (await app.api("GET", "/api/power/devices")).body.devices.find((d: OwnDevice) => d.id === device.id);
+    const first = await app.api("PUT", `/api/power/devices/${device.id}`, { ...lamp, watts: 7, baseUpdatedAt: opened.updatedAt });
+    expect(first.status).toBe(200);
+    const second = await app.api("PUT", `/api/power/devices/${device.id}`, { ...lamp, watts: 9, baseUpdatedAt: opened.updatedAt });
+    expect(second.status).toBe(409);
+    expect(second.body.error).toMatchObject({ code: "conflict", details: { updatedAt: first.body.device.updatedAt } });
+    expect((await app.api("GET", "/api/power/devices")).body.devices.find((d: OwnDevice) => d.id === device.id).watts).toBe(7);
+  });
+
   it("refuses a device without its figure, saying why", async () => {
     const refused = await app.api("POST", "/api/power/devices", { ...lamp, kind: "charge", watts: 6 });
     expect(refused.status).toBe(400);

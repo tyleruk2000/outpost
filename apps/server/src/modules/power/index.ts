@@ -19,12 +19,14 @@ import { badRequest, notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
 import { powerPlans } from "../../db/schema.ts";
 import { registerPowerDevices } from "./devices.ts";
+import { checkBase, nextUpdatedAt, withoutBase } from "./versions.ts";
 
 export interface PowerService {
   list(): PowerPlan[];
   get(id: string): PowerPlan;
   create(input: PowerPlanInput): PowerPlan;
-  update(id: string, input: PowerPlanInput): PowerPlan;
+  /** `baseUpdatedAt`, when given, is the version the change was made from: an older one than is kept is refused (409). */
+  update(id: string, input: PowerPlanInput, baseUpdatedAt?: number): PowerPlan;
   copy(id: string): PowerPlan;
   remove(id: string): void;
   /** The person's own: counted for "what is stored", and erased with everything else. */
@@ -200,10 +202,11 @@ export async function registerPower(app: FastifyInstance, ctx: AppContext): Prom
       changed();
       return service.get(id);
     },
-    update(id, input) {
-      service.get(id);
+    update(id, input, baseUpdatedAt) {
+      const current = service.get(id);
+      checkBase("plan", current.updatedAt, baseUpdatedAt);
       db.update(powerPlans)
-        .set({ ...split(input), updatedAt: Date.now() })
+        .set({ ...split(input), updatedAt: nextUpdatedAt(current.updatedAt) })
         .where(eq(powerPlans.id, id))
         .run();
       changed();
@@ -235,9 +238,10 @@ export async function registerPower(app: FastifyInstance, ctx: AppContext): Prom
   app.get("/api/power/plans", async () => ({ plans: service.list() }));
   app.post("/api/power/plans", async (request) => ({ plan: service.create(planInput.parse(request.body)) }));
   app.get<IdParams>("/api/power/plans/:id", async (request) => ({ plan: service.get(request.params.id) }));
-  app.put<IdParams>("/api/power/plans/:id", async (request) => ({
-    plan: service.update(request.params.id, planInput.parse(request.body)),
-  }));
+  app.put<IdParams>("/api/power/plans/:id", async (request) => {
+    const { body, baseUpdatedAt } = withoutBase(request.body);
+    return { plan: service.update(request.params.id, planInput.parse(body), baseUpdatedAt) };
+  });
   app.post<IdParams>("/api/power/plans/:id/copy", async (request) => ({ plan: service.copy(request.params.id) }));
   app.delete<IdParams>("/api/power/plans/:id", async (request) => {
     service.remove(request.params.id);
