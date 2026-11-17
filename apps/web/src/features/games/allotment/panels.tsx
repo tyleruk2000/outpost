@@ -1,16 +1,23 @@
 /**
  * What sits beside the plot: the panel for the bed in hand (sow, water, harvest), the
- * stall (the basket, the coins, more beds and the lasting things), the almanac with its
+ * stall (the basket, the coins, more beds and the lasting things), this month on the plot
+ * (what to sow, what waits for what), the almanac with a card for each crop and its
  * milestones, and the hemisphere switch. Lists with hairlines, in the app's own chrome.
  */
 import {
   type AllotmentAction,
   type AllotmentState,
   bedAt,
+  bedIndices,
   bedName,
+  bedNow,
   COMPOST_BONUS,
   CROP_IDS,
+  CROP_NOTES,
   CROPS,
+  type CropId,
+  DAY,
+  FAMILIES,
   type Hemisphere,
   type HemisphereSetting,
   ITEM_IDS,
@@ -19,19 +26,27 @@ import {
   itemPrice,
   MILESTONE_IDS,
   MILESTONES,
+  monthAt,
   nextBedPrice,
+  ROTATION_SOURCE,
+  ROTATION_WHY,
+  rainingAt,
   readyInMs,
   type Season,
-  stageOf,
+  SOURCE_READ_ON,
+  seasonOf,
+  sowingMonth,
   THING_IDS,
   THINGS,
+  wetDay,
 } from "@outpost/shared/games/allotment";
-import { X } from "lucide-react";
+import { ChevronRight, DropletOff, Droplets, Hourglass, X } from "lucide-react";
 import type { ReactNode, Ref } from "react";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/misc";
 import { cn, formatDate, plural } from "@/lib/utils";
-import { aboutWords, capital, growWords, itemCount, SEASON_WORDS } from "./words";
+import { GameAbout } from "../kit/frame";
+import { aboutWords, bedSentence, capital, growWords, itemCount, monthName, monthsWords, SEASON_WORDS, sowNote } from "./words";
 
 type Act = (action: AllotmentAction) => void;
 
@@ -59,7 +74,6 @@ export function BedPanel({
   plot,
   index,
   hemisphere,
-  season,
   busy,
   act,
   onClose,
@@ -68,7 +82,6 @@ export function BedPanel({
   plot: AllotmentState;
   index: number;
   hemisphere: Hemisphere;
-  season: Season;
   busy: boolean;
   act: Act;
   onClose: () => void;
@@ -78,60 +91,64 @@ export function BedPanel({
   if (!bed) return null;
   const glass = isGlassBed(index);
   const name = bedName(index);
-  const stage = stageOf(bed);
+  const now = bedNow(plot, index, hemisphere);
+  const month = monthAt(plot.clock, hemisphere);
   let body: ReactNode;
   if (!bed.crop) {
     body = (
       <>
+        <p className="mt-1 text-small text-ink">{bedSentence(plot, index, hemisphere)}</p>
         <p className="mt-1 text-small text-ink-muted">
-          Empty. Choose what to sow; the seed is paid for from the coins.
-          {glass ? " Under glass every crop is in season." : ""}
+          Choose what to sow; the seed is paid for from the coins. Each crop grows in its own months
+          {glass ? ", and under glass in every month" : ""}, and only while the soil is moist.
         </p>
         <ul className="mt-2 divide-y divide-border border-y border-border">
           {CROP_IDS.map((id) => {
             const crop = CROPS[id];
             const fits = plot.coins >= crop.seed;
-            const seasonal = inSeason(id, season, glass);
+            const note = sowNote(id, month, glass, hemisphere);
+            const waits = !inSeason(id, month, glass);
             return (
               <li key={id}>
                 <button
                   type="button"
                   disabled={!fits || busy}
                   onClick={() => act({ type: "sow", bed: index, crop: id })}
-                  aria-label={`Sow ${crop.name}: ${crop.seed === 0 ? "free" : plural(crop.seed, "coin")}, ${growWords(crop.growMs)}${seasonal ? ", in season" : ""}${fits ? "" : `, ${plural(crop.seed - plot.coins, "more coin")} needed`}`}
-                  className="grid min-h-11 w-full grid-cols-[minmax(0,1fr)_4.75rem_5.5rem] items-center gap-x-2 px-1 py-1.5 text-left text-small transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-55 md:min-h-10"
+                  aria-label={`Sow ${crop.name}: ${crop.seed === 0 ? "free" : plural(crop.seed, "coin")}, ${growWords(crop.growMs)}. ${note}${fits ? "" : ` ${plural(crop.seed - plot.coins, "more coin")} needed.`}`}
+                  className="grid min-h-11 w-full grid-cols-[minmax(0,1fr)_4.75rem_4.5rem] items-center gap-x-2 px-1 py-1.5 text-left text-small transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-55 md:min-h-10"
                 >
                   <span className="min-w-0">
-                    <span className="font-medium text-ink">{capital(crop.name)}</span>
-                    {seasonal ? <span className="ml-2 text-micro text-success">In season</span> : null}
+                    <span className="block font-medium text-ink">{capital(crop.name)}</span>
+                    <span className={cn("flex items-start gap-1 text-micro", waits ? "text-ink" : "text-ink-muted")}>
+                      {waits ? <Hourglass aria-hidden className="mt-0.5 size-3 shrink-0" /> : null}
+                      <span>{note}</span>
+                    </span>
                   </span>
-                  <span className="tabular text-ink-muted">{crop.seed === 0 ? "Free" : plural(crop.seed, "coin")}</span>
-                  <span className="tabular text-right text-ink-muted">{growWords(crop.growMs)}</span>
+                  <span className="tabular self-start text-ink-muted">{crop.seed === 0 ? "Free" : plural(crop.seed, "coin")}</span>
+                  <span className="tabular self-start text-right text-ink-muted">{growWords(crop.growMs)}</span>
                 </button>
               </li>
             );
           })}
         </ul>
+        <p className="mt-2 text-micro text-ink-muted">Growing times are the time a crop needs in moist soil, sped up for the game.</p>
       </>
     );
   } else {
     const crop = CROPS[bed.crop];
-    const left = readyInMs(plot, index, hemisphere) ?? 0;
-    const seasonal = inSeason(bed.crop, season, glass);
+    const stage = now.stage;
+    const left = readyInMs(plot, index, hemisphere);
+    const growing = stage !== "ripe" && now.waitsFor === null;
     body = (
       <>
         <p className="mt-1 text-small text-ink">
-          {capital(crop.name)}
-          {stage === "ripe" ? ", ripe and waiting." : `, ${stage === "sown" ? "just sown" : stage}. Ready in ${aboutWords(left)}.`}
+          <span className="font-medium">{capital(crop.name)}</span>
+          {stage === "ripe" ? "" : `, ${stage === "sown" ? "just sown" : stage}`}. {bedSentence(plot, index, hemisphere)}
         </p>
         <p className="mt-1 text-small text-ink-muted">
           {[
-            seasonal
-              ? glass
-                ? "Under glass, so in season."
-                : "In season, so growing faster."
-              : `Out of season in ${season}; it grows all the same.`,
-            bed.watered ? "Watered." : null,
+            growing && left !== null ? `Ready in ${aboutWords(left)} if it is not watered again.` : null,
+            growing && left === null ? "Its water will run out before it ripens: water it again later." : null,
             bed.composted ? `Sown with compost: ${crop.yield + COMPOST_BONUS} to harvest.` : `${crop.yield} to harvest.`,
           ]
             .filter(Boolean)
@@ -142,9 +159,14 @@ export function BedPanel({
             <Button variant="primary" loading={busy} onClick={() => act({ type: "harvest", bed: index })}>
               Harvest {crop.name}
             </Button>
-          ) : bed.watered ? null : (
-            <Button variant="secondary" disabled={busy} onClick={() => act({ type: "water", bed: index })}>
-              Water
+          ) : now.waitsFor === "season" ? null : (
+            <Button
+              variant={now.waitsFor === "water" ? "primary" : "secondary"}
+              disabled={busy}
+              onClick={() => act({ type: "water", bed: index })}
+            >
+              <Droplets aria-hidden />
+              {now.moist ? "Water again" : "Water"}
             </Button>
           )}
         </div>
@@ -271,38 +293,162 @@ export function Stall({ plot, busy, act }: { plot: AllotmentState; busy: boolean
   );
 }
 
+// ── This month on the plot ─────────────────────────────────────────────────
+
+/** "salad leaves, onions and garlic". */
+const listWords = (items: string[]) => (items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`);
+
+/** The next wet day from the plot's clock, as a moment, within a few weeks; null if none. */
+function nextRain(plot: AllotmentState, hemisphere: Hemisphere): number | null {
+  const today = Math.floor(plot.clock / DAY);
+  for (let day = today + 1; day <= today + 40; day++) if (wetDay(day, hemisphere)) return day * DAY;
+  return null;
+}
+
+export function ThisMonth({ plot, hemisphere }: { plot: AllotmentState; hemisphere: Hemisphere }) {
+  const month = monthAt(plot.clock, hemisphere);
+  const sowNow = CROP_IDS.filter((id) => sowingMonth(id, month)).map((id) => CROPS[id].name);
+  const growing = CROP_IDS.filter((id) => inSeason(id, month)).map((id) => CROPS[id].name);
+  const resting = CROP_IDS.filter((id) => !inSeason(id, month)).map((id) => CROPS[id].name);
+  const raining = rainingAt(plot.clock, hemisphere);
+  const rain = raining ? null : nextRain(plot, hemisphere);
+  const waiting = bedIndices(plot)
+    .map((index) => ({ index, bed: bedAt(plot, index)!, now: bedNow(plot, index, hemisphere) }))
+    .filter(({ now }) => now.waitsFor !== null);
+  return (
+    <section aria-labelledby="allotment-month">
+      <Heading id="allotment-month">This month on the plot</Heading>
+      <p className="mt-1 text-small text-ink-muted">
+        {monthName(month, hemisphere)}, {SEASON_WORDS[seasonOf(month)].toLowerCase()}.{" "}
+        {raining
+          ? "It is raining on the plot today: every open bed is watered."
+          : rain === null
+            ? ""
+            : `The next rain is due in ${aboutWords(rain - plot.clock)}.`}
+      </p>
+      <ul className="mt-2 divide-y divide-border border-y border-border">
+        <Row>
+          <p className="text-small text-ink">
+            <span className="font-medium">To sow now:</span> {listWords(sowNow)}.
+          </p>
+        </Row>
+        <Row>
+          <p className="text-small text-ink">
+            <span className="font-medium">Growing in the open:</span> {listWords(growing)}.
+          </p>
+          {resting.length ? (
+            <p className="text-small text-ink-muted">
+              Not in their months, so they wait if sown outside: {listWords(resting)}. Under glass everything grows.
+            </p>
+          ) : null}
+        </Row>
+        {waiting.map(({ index, bed, now }) => (
+          <Row key={index}>
+            <p className="flex items-start gap-1.5 text-small text-ink">
+              {now.waitsFor === "water" ? (
+                <DropletOff aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
+              ) : (
+                <Hourglass aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
+              )}
+              <span>
+                <span className="font-medium">{bedName(index)}</span>: {CROPS[bed.crop!].name},{" "}
+                {now.waitsFor === "season"
+                  ? `waiting for ${monthName(now.resumes!, hemisphere)}`
+                  : isGlassBed(index)
+                    ? "waiting for water (no rain under glass)"
+                    : "waiting for rain or the can"}
+                .
+              </span>
+            </p>
+          </Row>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 // ── The almanac ────────────────────────────────────────────────────────────
 
-export function Almanac({ plot }: { plot: AllotmentState }) {
-  const grown = CROP_IDS.filter((id) => plot.almanac.crops[id].harvests > 0);
+/** One crop's card: its months, the cold and water, and, once grown here, its family and a few facts. */
+function CropCard({ plot, id, hemisphere }: { plot: AllotmentState; id: CropId; hemisphere: Hemisphere }) {
+  const crop = CROPS[id];
+  const notes = CROP_NOTES[id];
+  const record = plot.almanac.crops[id];
+  const grown = record.harvests > 0;
+  const family = FAMILIES[notes.family];
+  return (
+    <li>
+      <details className="group">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 py-2 md:min-h-10 [&::-webkit-details-marker]:hidden">
+          <ChevronRight
+            aria-hidden
+            className="size-4 shrink-0 text-ink-muted transition-transform duration-150 group-open:rotate-90 motion-reduce:transition-none"
+          />
+          <span className="min-w-0 flex-1 text-small text-ink">
+            <span className="font-medium">{capital(crop.name)}</span>{" "}
+            <span className="text-ink-muted">
+              {grown ? `${plural(record.harvests, "harvest")}, ${itemCount(id, record.produce)}` : "not grown here yet"}
+            </span>
+          </span>
+        </summary>
+        <dl className="mb-3 ml-6 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-small">
+          <dt className="text-ink-muted">Sown</dt>
+          <dd className="text-ink">{capital(monthsWords(crop.sow, hemisphere))}</dd>
+          <dt className="text-ink-muted">Harvested</dt>
+          <dd className="text-ink">{capital(monthsWords(crop.harvest, hemisphere))}</dd>
+          <dt className="text-ink-muted">Cold</dt>
+          <dd className="text-ink">{notes.cold}.</dd>
+          <dt className="text-ink-muted">Water</dt>
+          <dd className="text-ink">{notes.water}</dd>
+          {grown ? (
+            <>
+              <dt className="text-ink-muted">Family</dt>
+              <dd className="text-ink">
+                {family.name}. {family.about}
+              </dd>
+              <dt className="text-ink-muted">Worth knowing</dt>
+              <dd className="grid gap-1 text-ink">
+                {notes.facts.map((fact) => (
+                  <p key={fact}>{fact}</p>
+                ))}
+              </dd>
+              <dt className="text-ink-muted">First grown</dt>
+              <dd className="tabular text-ink">{formatDate(record.firstAt ?? plot.startedAt)}</dd>
+            </>
+          ) : (
+            <dd className="col-span-2 text-ink-muted">
+              Its family and a few things worth knowing are written here once it has been grown.
+            </dd>
+          )}
+        </dl>
+      </details>
+    </li>
+  );
+}
+
+export function Almanac({ plot, hemisphere }: { plot: AllotmentState; hemisphere: Hemisphere }) {
   const reached = MILESTONE_IDS.filter((id) => plot.milestones[id] !== undefined).sort(
     (a, b) => (plot.milestones[a] ?? 0) - (plot.milestones[b] ?? 0),
   );
+  const grownCount = CROP_IDS.filter((id) => plot.almanac.crops[id].harvests > 0).length;
   return (
     <section aria-labelledby="allotment-almanac">
       <Heading id="allotment-almanac">Almanac</Heading>
       <p className="tabular mt-1 text-small text-ink-muted">
         Started {formatDate(plot.startedAt)}. {capital(plural(plot.almanac.harvests, "harvest"))} in all,{" "}
-        {plural(plot.almanac.coinsEarned, "coin")} earned.
+        {plural(plot.almanac.coinsEarned, "coin")} earned. {grownCount} of {CROP_IDS.length} crops grown.
       </p>
-      {grown.length ? (
-        <ul className="mt-2 divide-y divide-border border-y border-border">
-          {grown.map((id) => {
-            const record = plot.almanac.crops[id];
-            return (
-              <Row key={id}>
-                <p className="tabular text-small text-ink">
-                  <span className="font-medium">{capital(CROPS[id].name)}</span>: {plural(record.harvests, "harvest")},{" "}
-                  {itemCount(id, record.produce)}.{" "}
-                  <span className="text-ink-muted">First grown {formatDate(record.firstAt ?? plot.startedAt)}.</span>
-                </p>
-              </Row>
-            );
-          })}
-        </ul>
-      ) : (
-        <p className="mt-1 text-small text-ink-muted">Nothing harvested yet. Each crop is written here once it has been grown.</p>
-      )}
+      <h3 className="mt-4 text-small font-semibold text-ink">The crops</h3>
+      <p className="text-small text-ink-muted">
+        When each is sown and harvested in{" "}
+        {hemisphere === "south" ? "Britain, with the months moved on six for the southern hemisphere" : "Britain"}.
+      </p>
+      <ul className="mt-1 divide-y divide-border border-y border-border">
+        {CROP_IDS.map((id) => (
+          <CropCard key={id} plot={plot} id={id} hemisphere={hemisphere} />
+        ))}
+      </ul>
+      <p className="mt-2 text-small text-ink-muted">{ROTATION_WHY}</p>
       <h3 className="mt-4 text-small font-semibold text-ink">Milestones</h3>
       {reached.length ? (
         <ul className="mt-1 divide-y divide-border border-y border-border">
@@ -317,6 +463,31 @@ export function Almanac({ plot }: { plot: AllotmentState }) {
       ) : (
         <p className="mt-1 text-small text-ink-muted">None yet. The first harvest will be the first.</p>
       )}
+      <GameAbout summary="Where this comes from">
+        <p>
+          The months each crop is sown and harvested, and every fact on these cards, are from the Royal Horticultural Society's
+          grow-your-own pages, read on {SOURCE_READ_ON} and put in Outpost's own words. Where the RHS gives several ways of growing a crop,
+          its months together are used; the radishes are salad radishes (the RHS's winter months are for winter radishes). The families are
+          from its page on{" "}
+          <a className="text-primary underline underline-offset-2" href={ROTATION_SOURCE} target="_blank" rel="noreferrer">
+            crop rotation
+          </a>
+          .
+        </p>
+        <ul className="grid gap-0.5">
+          {CROP_IDS.map((id) => (
+            <li key={id}>
+              <a className="text-primary underline underline-offset-2" href={CROP_NOTES[id].source} target="_blank" rel="noreferrer">
+                {capital(CROPS[id].name)}
+              </a>
+            </li>
+          ))}
+        </ul>
+        <p>
+          Made up for the game: how fast things grow (minutes to days rather than weeks to months), the prices, how long water lasts and how
+          often it rains. It is not a planting guide for any one garden: frost dates and rain differ from place to place.
+        </p>
+      </GameAbout>
     </section>
   );
 }
@@ -349,7 +520,8 @@ export function Seasons({
       <Heading id="allotment-seasons">Seasons</Heading>
       <p className="mt-1 text-small text-ink-muted">
         {SEASON_WORDS[season]} on the plot, by the calendar in the {hemisphere === "south" ? "southern" : "northern"} hemisphere,{" "}
-        {FROM_WORDS[from]}. Crops in season grow a quarter faster.
+        {FROM_WORDS[from]}. Each crop grows only in its own months, and only while its bed is moist; the rest of the time it waits, keeping
+        its growth.
       </p>
       <Segmented<HemisphereSetting>
         className={cn("mt-3", busy && "pointer-events-none opacity-70")}

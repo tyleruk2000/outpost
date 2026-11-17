@@ -2,7 +2,8 @@
  * A bed and what grows in it. A bed is a timber-edged box of dug soil; a sowing is a
  * raked drill with the seed packet on a stick at its end; then each crop comes up as
  * itself: seed leaves, a young plant, and the ripe crop with the thing you eat showing
- * (a red radish shoulder, a pod, a squash). Watered soil is darker and glistens.
+ * (a red radish shoulder, a pod, a squash). Moist soil is dark and glistens; dry soil is
+ * pale and crazed with cracks, so the two are told apart by shape as well as colour.
  */
 import { type Bed, type BedStage, type CropId, stageOf } from "@outpost/shared/games/allotment";
 import { type Box, circles, leafShape, scatter, strokes, type Tone, v } from "./paint";
@@ -16,6 +17,10 @@ const PACKET: Record<CropId, Tone> = {
   potatoes: "tuber",
   leeks: "leaf-blue",
   squash: "bloom",
+  onions: "stem-pale",
+  kale: "leaf-deep",
+  broadBeans: "leaf",
+  garlic: "petal",
 };
 
 /** `n` leaves fanned upwards from (0, base), `spread` radians across. */
@@ -309,6 +314,174 @@ function Plant({ crop, stage }: { crop: CropId; stage: Exclude<BedStage, "empty"
           ) : null}
         </>
       );
+    case "onions":
+    case "garlic": {
+      const garlic = crop === "garlic";
+      if (stage === "shoots")
+        return (
+          <path
+            d="M0 3 L-0.8 -3.4 M0 3 L1.2 -2.8"
+            stroke={v(garlic ? "leaf" : "leaf-blue")}
+            strokeWidth={garlic ? 1.3 : 1}
+            strokeLinecap="round"
+          />
+        );
+      // Ripe onions' tops fall over as the bulbs finish; garlic's leaves turn yellow.
+      const leaves = ripe
+        ? garlic
+          ? "M0 1 L-4 -7 M0 1 L0.5 -8 M0 1 L4.5 -6"
+          : "M-1 0 Q-5 -2 -9 1 M0 0 Q2 -5 7 -4 M0 0 Q-1 -4 -5 -6"
+        : "M0 1 L-3 -7 M0 1 L0.6 -8.4 M0 1 L3.6 -6.4";
+      return (
+        <>
+          <path
+            d={leaves}
+            stroke={v(ripe && garlic ? "bloom" : garlic ? "leaf" : "leaf-blue")}
+            strokeWidth={garlic ? 1.7 : 1.3}
+            strokeLinecap="round"
+            fill="none"
+          />
+          <ellipse cx={0} cy={2.6} rx={ripe ? 4.2 : 2.2} ry={ripe ? 3.4 : 1.8} fill={v(garlic ? "petal" : ripe ? "tuber" : "stem-pale")} />
+          {ripe ? (
+            <path
+              d={garlic ? "M-1.4 0 Q-2 2.6 -1.4 5.4 M1.4 0 Q2 2.6 1.4 5.4" : "M-2 0.4 Q0 -0.6 2 0.4"}
+              stroke={v(garlic ? "stem-pale" : "bloom")}
+              strokeWidth={0.6}
+              fill="none"
+            />
+          ) : null}
+        </>
+      );
+    }
+    case "kale":
+      if (stage === "shoots")
+        return (
+          <path
+            d={circles([
+              [-1.9, -0.8, 1.8],
+              [1.9, -0.8, 1.8],
+            ])}
+            fill={v("leaf-light")}
+          />
+        );
+      return (
+        <>
+          {/* Ruffled leaves round a stem: the leaf edges are crowds of small curls. */}
+          <path
+            d={circles(
+              (ripe
+                ? [
+                    [-5, -5, 3.2],
+                    [5, -5, 3.2],
+                    [-6, 2, 3],
+                    [6, 2, 3],
+                    [0, -8, 3],
+                    [0, 4, 2.8],
+                    [-2.5, -2, 2.6],
+                    [2.5, -2, 2.6],
+                  ]
+                : [
+                    [-3.4, -2.6, 2.4],
+                    [3.4, -2.6, 2.4],
+                    [0, -5, 2.2],
+                    [-2.6, 2, 2.2],
+                    [2.6, 2, 2.2],
+                  ]) as Array<[number, number, number]>,
+            )}
+            fill={v("leaf-deep")}
+          />
+          <path
+            d={circles(
+              (ripe
+                ? [
+                    [-6.4, -6.2, 1.2],
+                    [6.2, -6.4, 1.2],
+                    [-7.4, 1, 1.1],
+                    [7.4, 1, 1.1],
+                    [0, -10, 1.1],
+                  ]
+                : [
+                    [-4.4, -3.6, 0.9],
+                    [4.4, -3.6, 0.9],
+                    [0, -6.4, 0.9],
+                  ]) as Array<[number, number, number]>,
+            )}
+            fill={v("leaf-blue")}
+          />
+          <path
+            d={rays(
+              ripe
+                ? [
+                    [-6, -6],
+                    [6, -6],
+                    [-7, 2],
+                    [7, 2],
+                    [0, -9],
+                  ]
+                : [
+                    [-4, -3],
+                    [4, -3],
+                    [0, -5.6],
+                  ],
+              1,
+            )}
+            stroke={v("stem-pale")}
+            strokeWidth={0.6}
+          />
+        </>
+      );
+    case "broadBeans":
+      if (stage === "shoots")
+        return (
+          <>
+            <path d="M0 3 V-2.6" stroke={v("leaf-deep")} strokeWidth={1.2} />
+            <path d={`${leafShape(-1.9, -2.6, -2.6, 2.2, 1.1)}${leafShape(1.9, -2.6, -0.5, 2.2, 1.1)}`} fill={v("leaf-light")} />
+          </>
+        );
+      return (
+        <>
+          <path d="M0 8 V-9" stroke={v("leaf-deep")} strokeWidth={1.6} strokeLinecap="round" />
+          <path
+            d={[-6, -2, 2, 6]
+              .flatMap((y, i) => [
+                leafShape(-3, y - 1, -2.7 + (i % 2) * 0.2, 2.8, 1.3),
+                leafShape(3, y - 1, -0.45 - (i % 2) * 0.2, 2.8, 1.3),
+              ])
+              .join("")}
+            fill={v("leaf-light")}
+            stroke={v("leaf")}
+            strokeWidth={0.4}
+          />
+          {ripe ? (
+            <path
+              d={`${leafShape(-4.4, 2.4, 1.25, 4.4, 1.5)}${leafShape(4.6, -1.6, 1.85, 4.4, 1.5)}${leafShape(-4, -5, 1.3, 3.8, 1.4)}`}
+              fill={v("leaf")}
+              stroke={v("leaf-deep")}
+              strokeWidth={0.6}
+            />
+          ) : (
+            <>
+              {/* The flowers: white with a dark spot. */}
+              <path
+                d={circles([
+                  [-1.6, -4, 1.3],
+                  [1.8, 0, 1.3],
+                  [-1.6, 4, 1.2],
+                ])}
+                fill={v("petal")}
+              />
+              <path
+                d={circles([
+                  [-1.6, -4, 0.5],
+                  [1.8, 0, 0.5],
+                  [-1.6, 4, 0.45],
+                ])}
+                fill={v("soil-edge")}
+              />
+            </>
+          )}
+        </>
+      );
     case "squash":
       if (stage === "shoots")
         return (
@@ -404,7 +577,8 @@ function Sowing({ crop, soil, spots }: { crop: CropId; soil: Box; spots: Array<[
         ))}
       </>
     );
-  if (crop === "leeks" || crop === "squash")
+  // Leeks, kale and squash are planted out, and onion sets, garlic cloves and broad beans pushed in one by one.
+  if (crop !== "radishes" && crop !== "salad" && crop !== "peas" && crop !== "carrots" && crop !== "beetroot")
     return (
       <>
         <path d={circles(spots.map(([x, y]) => [x, y, crop === "squash" ? 6 : 2.4]))} fill={v("soil-crumb")} />
@@ -451,10 +625,31 @@ function Clods({ soil, seed }: { soil: Box; seed: number }) {
   );
 }
 
-export function BedDrawing({ bed, box, index, frost }: { bed: Bed; box: Box; index: number; frost: boolean }) {
+/** Cracks in dry soil, the same for a bed every time: short crooked lines, some forked, as one path. */
+function cracks(soil: Box, seed: number): string {
+  const lines: Array<[number, number, number, number]> = [];
+  for (const [x, y, rng] of scatter(seed, 7, { x: soil.x + 4, y: soil.y + 4, w: soil.w - 8, h: soil.h - 8 })) {
+    let px = x;
+    let py = y;
+    let a = rng() * Math.PI * 2;
+    for (let step = 0; step < 3; step++) {
+      const len = 3 + rng() * 3.5;
+      const nx = Math.min(soil.x + soil.w - 2, Math.max(soil.x + 2, px + Math.cos(a) * len));
+      const ny = Math.min(soil.y + soil.h - 2, Math.max(soil.y + 2, py + Math.sin(a) * len));
+      lines.push([px, py, nx, ny]);
+      if (step === 1) lines.push([nx, ny, nx + Math.cos(a + 1.3) * 2.6, ny + Math.sin(a + 1.3) * 2.6]);
+      px = nx;
+      py = ny;
+      a += (rng() - 0.5) * 1.6;
+    }
+  }
+  return strokes(lines);
+}
+
+export function BedDrawing({ bed, box, index, frost, moist }: { bed: Bed; box: Box; index: number; frost: boolean; moist: boolean }) {
   const stage = stageOf(bed);
   const soil = { x: box.x + 3.5, y: box.y + 3.5, w: box.w - 7, h: box.h - 7 };
-  const wet = bed.watered && bed.crop !== null && stage !== "ripe";
+  const wet = moist;
   const crop = bed.crop;
   const spots = crop ? plantSpots(box, crop) : [];
   return (
@@ -474,8 +669,11 @@ export function BedDrawing({ bed, box, index, frost }: { bed: Bed; box: Box; ind
         stroke={v("wood-deep")}
         strokeWidth={0.7}
       />
-      <rect x={soil.x} y={soil.y} width={soil.w} height={soil.h} rx={1} fill={v(wet ? "soil-wet" : "soil")} />
-      <rect x={soil.x} y={soil.y} width={soil.w} height={soil.h} fill="url(#allotment-crumbs)" />
+      <rect x={soil.x} y={soil.y} width={soil.w} height={soil.h} rx={1} fill={v(wet ? "soil-wet" : "soil-dry")} />
+      <rect x={soil.x} y={soil.y} width={soil.w} height={soil.h} fill="url(#allotment-crumbs)" opacity={wet ? 1 : 0.6} />
+      {wet ? null : (
+        <path d={cracks(soil, index * 6007 + 3)} stroke={v("soil-crack")} strokeWidth={0.75} strokeLinecap="round" fill="none" />
+      )}
       <path
         d={`M${soil.x} ${soil.y + soil.h} V${soil.y} H${soil.x + soil.w}`}
         stroke={v("soil-edge")}

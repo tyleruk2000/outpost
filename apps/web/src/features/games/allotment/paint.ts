@@ -25,6 +25,8 @@ export type Tone =
   | "path-edge"
   | "soil"
   | "soil-wet"
+  | "soil-dry"
+  | "soil-crack"
   | "soil-crumb"
   | "soil-edge"
   | "wood"
@@ -70,6 +72,8 @@ export type Tone =
   | "dawn"
   | "dusk"
   | "night"
+  | "rain"
+  | "overcast"
   | "moon";
 
 /** A colour of the plot, as SVG takes it. */
