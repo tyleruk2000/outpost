@@ -982,8 +982,11 @@ Messages ([messages.md](messages.md)) is a board for everyone on the home networ
   a file 200 MB; at most 100 files and 4 GB kept; the data folder must keep 256 MB free.
   Every input is checked with zod, and every route that changes something is held to the
   cross-site rules above.
-- **Not searched, not sent anywhere.** Messages are not added to search and are never
-  sent to a model server. The board makes no outbound request; there are no push
+- **Not searched, not sent anywhere unless asked.** Messages are not added to search.
+  They reach a model server only when model tools and their "Messages on the board" area
+  are both turned on (the area is off by default, and anyone on the network can turn it
+  on, as any setting): then the household channel's words, places in words, names and times, never a
+  radio channel's, a file or a position (`modules/tools/board.ts`). The board makes no outbound request; there are no push
   notifications.
 
 ### The mesh radio link

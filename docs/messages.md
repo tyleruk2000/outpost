@@ -120,7 +120,11 @@ checksum, place in `board/`, and when it goes or went). They are:
   notes' attachments do), and restored with them;
 - not copied to a portable drive: the board stays with the household's Outpost.
 
-Messages are **not** added to search and are **never** sent to a model server.
+Messages are **not** added to search. They are sent to a model server only if someone
+turns on both "Let the model look things up in Outpost" and its "Messages on the board"
+area in Settings (the second is off on its own: [ai.md](ai.md)). Then a question in Chat
+can have the model read the household channel's messages and check-ins (with any place
+in words), with who wrote them and when; never a radio channel's, a file's name or contents, or a position.
 
 ## Limits
 
