@@ -4,6 +4,7 @@ import { type ReactNode, useEffect } from "react";
 import { useLocation } from "react-router";
 import { ErrorState, Page, PageHeader } from "@/components/page";
 import { Segmented, Skeleton, Switch } from "@/components/ui/misc";
+import { BoardSettingsSection } from "@/features/board/settings-section";
 import { useClockStyle } from "@/lib/clock";
 import { useSettings, useSystem, useUpdateSettings } from "@/lib/queries";
 import { useTheme } from "@/lib/theme";
@@ -58,6 +59,7 @@ const SECTIONS = [
   ["semantic", "Search by meaning"],
   ["answers", "Answers"],
   ["maps", "Maps"],
+  ["board", "Message board"],
   ["backup", "Backup"],
   ["automatic-backups", "Automatic backups"],
   ["https", "HTTPS"],
@@ -322,6 +324,8 @@ export default function SettingsPage() {
               }
             />
           </SettingsSection>
+
+          <BoardSettingsSection settings={s} disabled={disabled} save={save} />
 
           <BackupSection />
 

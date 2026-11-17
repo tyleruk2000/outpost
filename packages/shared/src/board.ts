@@ -31,11 +31,11 @@ export const BOARD_LIMITS = {
   /** Files sent from one address in an hour. */
   filesPerHour: 30,
   /** The largest file that can be sent. */
-  fileBytes: 200 * 1024 * 1024,
+  fileBytes: 200_000_000,
   /** Files kept on the board at once. */
   filesKept: 100,
   /** All the files kept at once, together. */
-  keptBytes: 4 * 1024 * 1024 * 1024,
+  keptBytes: 4_000_000_000,
   /** Messages in one page of the history. */
   page: 50,
 } as const;
@@ -120,7 +120,7 @@ export interface BoardSummaryResponse {
   newestAt: number | null;
   /** Days a sent file is kept; 0 keeps it until removed. */
   fileDays: number;
-  limits: typeof BOARD_LIMITS;
+  limits: { [K in keyof typeof BOARD_LIMITS]: number };
 }
 
 export interface BoardPostInput {

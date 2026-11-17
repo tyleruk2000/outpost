@@ -79,6 +79,7 @@ test.describe("on a phone", () => {
       ["Explore", "/explore"],
       ["Chat", "/chat"],
       ["Contacts", "/contacts"],
+      ["Messages", "/messages"],
       ["Encryption", "/encryption"],
       ["Radio", "/radio"],
       ["HF propagation", "/radio/propagation"],

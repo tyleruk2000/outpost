@@ -33,15 +33,15 @@ afterAll(async () => {
 let nextAddress = 10;
 const device = () => ({ remoteAddress: `192.168.1.${nextAddress++}` });
 
-const post = (body: unknown, from = device()) => app.api<{ message: BoardMessage }>("POST", "/api/board/messages", body, from);
-const checkIn = (body: unknown, from = device()) => app.api<{ message: BoardMessage }>("POST", "/api/board/check-ins", body, from);
+const post = (body: unknown, from = device()) => app.api("POST", "/api/board/messages", body, from);
+const checkIn = (body: unknown, from = device()) => app.api("POST", "/api/board/check-ins", body, from);
 const summary = async (query = "") => (await app.api<BoardSummaryResponse>("GET", `/api/board/summary${query}`)).body;
 const page = async (query = "") => (await app.api<BoardMessagesResponse>("GET", `/api/board/messages${query}`)).body;
 
 function sendFile(name: string, content: Buffer | string, fields: Record<string, string> = { author: "Sam" }, from = device()) {
   // The fields go first, as the web app sends them.
   const { payload, headers } = multipart(fields, [{ name, content: Buffer.isBuffer(content) ? content : Buffer.from(content) }]);
-  return app.api<{ message: BoardMessage }>("POST", "/api/board/files", undefined, { payload, headers, ...from });
+  return app.api("POST", "/api/board/files", undefined, { payload, headers, ...from });
 }
 
 function heard(type: string): { events: Array<{ id?: string; data?: unknown }>; stop: () => void } {
@@ -301,7 +301,7 @@ describe("check-ins", () => {
     expect(result.newSince).toBe(2);
     expect(result.newestAt).toBeGreaterThanOrEqual(message.createdAt);
     expect(result.fileDays).toBe(7);
-    expect(result.limits.fileBytes).toBe(200 * 1024 * 1024);
+    expect(result.limits.fileBytes).toBe(200_000_000);
   });
 });
 

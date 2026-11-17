@@ -20,6 +20,7 @@ const ReaderPage = lazy(() => import("./features/reader/reader-page"));
 const NotesPage = lazy(() => import("./features/notes/notes-page"));
 const ChatPage = lazy(() => import("./features/chat/chat-page"));
 const ContactsPage = lazy(() => import("./features/contacts/contacts-page"));
+const BoardPage = lazy(() => import("./features/board/board-page"));
 const ImportPage = lazy(() => import("./features/imports/import-page"));
 const EncryptionPage = lazy(() => import("./features/encryption/encryption-page"));
 const ExplorePage = lazy(() => import("./features/explore/explore-page"));
@@ -142,6 +143,7 @@ export function App() {
           <Route path="chat" element={<ChatPage />} />
           <Route path="chat/:id" element={<ChatPage />} />
           <Route path="contacts/*" element={<ContactsPage />} />
+          <Route path="messages" element={<BoardPage />} />
           <Route path="import" element={<ImportPage />} />
           <Route path="encryption" element={<EncryptionPage />} />
           <Route path="downloads" element={<DownloadsPage />} />

@@ -24,6 +24,7 @@ import {
   LockKeyhole,
   type LucideIcon,
   Map as MapIcon,
+  MessageSquareText,
   MessagesSquare,
   NotebookText,
   Puzzle,
@@ -80,6 +81,14 @@ export const knowledgeNav: NavItem[] = [
   { to: "/chat", label: "Chat", icon: MessagesSquare, key: "c", keywords: "ask model questions answers" },
   // "a" for address book: "c" is Chat's.
   { to: "/contacts", label: "Contacts", icon: Contact, key: "a", keywords: "address book people phone numbers" },
+  // The household board (features/board). "w" for the board on the wall: "m" is Maps'.
+  {
+    to: "/messages",
+    label: "Messages",
+    icon: MessageSquareText,
+    key: "w",
+    keywords: "message board chat note to family check in safe send a file",
+  },
   { to: "/encryption", label: "Encryption", icon: LockKeyhole, key: "k", keywords: "pgp keys cipher one-time pad secret" },
   {
     to: "/radio",
