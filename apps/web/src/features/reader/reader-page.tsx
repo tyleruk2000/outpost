@@ -266,6 +266,7 @@ export default function ReaderPage() {
       openFile)
     : "";
   const backLabel = listMode && !ownPage ? "Back to the list" : "Back to the page";
+  const TitleTag = (book.data.book.ready && showDocuments) || searchFor ? "p" : "h1";
 
   return (
     <div className="flex h-dvh flex-col max-md:h-[calc(100dvh-3.25rem)] max-md:pb-[calc(3.5rem+env(safe-area-inset-bottom))]">
@@ -278,7 +279,8 @@ export default function ReaderPage() {
           </Button>
         </Tooltip>
         <div className="min-w-0 flex-1 basis-40">
-          <p className="truncate font-title text-body text-ink">{pageTitle ?? title}</p>
+          {/* The screen's main heading, unless the list or the search results over the page carry their own. */}
+          <TitleTag className="truncate font-title text-body text-ink">{pageTitle ?? title}</TitleTag>
           {pageTitle ? <p className="truncate text-micro text-ink-muted">{title}</p> : null}
         </div>
         {/* biome-ignore lint/a11y/useSemanticElements: a form with role="search" is the search landmark every browser and screen reader knows */}

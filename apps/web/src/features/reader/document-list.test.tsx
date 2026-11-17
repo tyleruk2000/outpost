@@ -311,6 +311,15 @@ describe("the reader, for a collection that lists documents", () => {
     expect(frame()).toHaveAttribute("src", `${BASE}Bowline`);
     expect(screen.getByRole("searchbox", { name: "Search in Field library" })).toBeInTheDocument();
     expect(screen.queryByText(/Documents in this collection/)).not.toBeInTheDocument();
+    // The screen is named by what it shows: here the collection, there being no list or results over it.
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Field library");
+  });
+
+  it("has one main heading whichever way the collection is shown", async () => {
+    fakeServer({ "GET /api/kiwix/books/c1": book, "GET /api/kiwix/books/c1/documents": answer() });
+    reader("/library/read/c1/");
+    expect(await screen.findByRole("heading", { level: 1, name: "Documents in this collection" })).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
 
   it("shows the collection's own page, and says why, when its list could not be read", async () => {

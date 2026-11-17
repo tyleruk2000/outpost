@@ -1,7 +1,8 @@
 import type { ArchiveAddPlan, ArchiveAddResult, ArchiveDocument, ArchiveDocumentsResponse, JobDto, PageFile } from "@outpost/shared";
-import { screen, waitFor, within } from "@testing-library/react";
+import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { EventsProvider } from "@/lib/events";
 import { fakeServer, installBrowserStubs, renderScreen } from "../downloads/test-support";
 import { addOutcome, planSize, whichOnes } from "./add-all";
 import { DocumentList } from "./document-list";
@@ -274,6 +275,56 @@ describe("adding all of them", () => {
     const dialog = await screen.findByRole("dialog");
     await userEvent.click(await within(dialog).findByRole("button", { name: "Add 3 documents" }));
     expect(await within(dialog).findByRole("alert")).toHaveTextContent('"Main" does not have room for these 3 files.');
+  });
+
+  it("follows a running add by the server's word, and asks on a timer only while that word cannot arrive", async () => {
+    const statusCalls = (server: { calls: string[] }) => server.calls.filter((call) => call === `GET ${BASE}/files/add-all`).length;
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const server = fakeServer({ [`GET ${BASE}/documents`]: listOf(three), [`GET ${BASE}/files/add-all`]: { job: job() } });
+      list();
+      await screen.findByRole("region", { name: "Adding to your library" });
+      const before = statusCalls(server);
+      await vi.advanceTimersByTimeAsync(6000);
+      expect(statusCalls(server)).toBe(before);
+
+      // With the connection to the server down, nothing would say the job moved: it is asked after again.
+      vi.unstubAllGlobals();
+      cleanup();
+      const fallback = fakeServer({ [`GET ${BASE}/documents`]: listOf(three), [`GET ${BASE}/files/add-all`]: { job: job() } });
+      vi.stubGlobal(
+        "EventSource",
+        class {
+          onopen: (() => void) | null = null;
+          onerror: (() => void) | null = null;
+          constructor() {
+            setTimeout(() => this.onerror?.(), 0);
+          }
+          addEventListener() {}
+          removeEventListener() {}
+          close() {}
+        },
+      );
+      renderScreen(
+        <EventsProvider enabled>
+          <DocumentList
+            collectionId="c1"
+            contentBase="/kiwix/open/content/field-library/"
+            description={null}
+            query=""
+            onOpen={vi.fn()}
+            onShowOwnPage={vi.fn()}
+            onClearQuery={vi.fn()}
+          />
+        </EventsProvider>,
+      );
+      await screen.findByRole("region", { name: "Adding to your library" });
+      const first = statusCalls(fallback);
+      await vi.advanceTimersByTimeAsync(6000);
+      expect(statusCalls(fallback)).toBeGreaterThan(first);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("shows each document's place while it runs: in the library, being added, or waiting its turn", async () => {
