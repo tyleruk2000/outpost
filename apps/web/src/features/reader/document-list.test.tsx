@@ -339,6 +339,22 @@ describe("the reader, for a collection that lists documents", () => {
     expect(frame()).not.toBeNull();
   });
 
+  it("says why a collection cannot be read, and opens it when asked again once it can", async () => {
+    let ready = false;
+    fakeServer({
+      "GET /api/kiwix/books/c1": () =>
+        ready
+          ? book
+          : { book: { ...book.book, ready: false }, reason: "The Kiwix server is not answering. Check that its container is running." },
+      "GET /api/kiwix/books/c1/documents": answer(),
+    });
+    reader("/library/read/c1/");
+    expect(await screen.findByText("The Kiwix server is not answering. Check that its container is running.")).toBeInTheDocument();
+    ready = true;
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Documents in this collection" })).toBeInTheDocument();
+  });
+
   it("falls back to the frame when it cannot learn what kind of collection this is", async () => {
     fakeServer({ "GET /api/kiwix/books/c1": book });
     reader("/library/read/c1/Bowline");

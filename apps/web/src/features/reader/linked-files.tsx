@@ -203,7 +203,7 @@ export function LinkedFiles({ collectionId, files, foundIn }: { collectionId: st
           </span>
         ) : null}
       </p>
-      <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
+      <Button size="sm" variant="secondary" className="max-md:h-11" onClick={() => setOpen(true)}>
         {addAll.active ? "See how it is going" : loading || fresh.length > 0 ? "Add them to your library" : "See them"}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>

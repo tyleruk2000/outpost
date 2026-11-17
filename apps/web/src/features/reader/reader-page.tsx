@@ -356,7 +356,15 @@ export default function ReaderPage() {
       <div className="relative min-h-0 flex-1">
         {!book.data.book.ready ? (
           <Page width="reading">
-            <Notice tone="warning" title="This collection cannot be read right now">
+            <Notice
+              tone="warning"
+              title="This collection cannot be read right now"
+              action={
+                <Button size="sm" loading={book.isFetching} onClick={() => book.refetch()}>
+                  Try again
+                </Button>
+              }
+            >
               {book.data.reason}
             </Notice>
           </Page>

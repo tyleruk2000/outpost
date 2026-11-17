@@ -18,6 +18,12 @@ import { fileTitle } from "./linked-files";
 
 const PdfViewer = lazy(() => import("../library/pdf-viewer"));
 
+/** A link or a list can name a file the collection was made without. */
+const ARCHIVE_MISSING = {
+  title: "This collection does not have that file",
+  text: "The page or list that named it points to a file that was left out when the collection was made. Nothing is wrong with your library.",
+};
+
 export function ArchiveFile({
   collectionId,
   url,
@@ -132,7 +138,16 @@ export function ArchiveFile({
             </div>
           }
         >
-          <PdfViewer key={url} url={url} title={label} initialPage={1} downloadUrl={url} onState={setViewer} controls={controlsRef} />
+          <PdfViewer
+            key={url}
+            url={url}
+            title={label}
+            initialPage={1}
+            downloadUrl={url}
+            onState={setViewer}
+            controls={controlsRef}
+            missing={ARCHIVE_MISSING}
+          />
         </Suspense>
       ) : (
         <div className="grid min-h-0 flex-1 place-items-center p-6">

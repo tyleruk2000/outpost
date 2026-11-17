@@ -78,7 +78,7 @@ function BackToLibrary({ cameFromLibrary, book }: { cameFromLibrary: boolean; bo
   // A chapter belongs to its book: back means the book's contents, wherever the reader came from.
   if (book) {
     return (
-      <Button asChild variant="ghost" size="sm" className="shrink-0 max-md:w-10 max-md:px-0">
+      <Button asChild variant="ghost" size="sm" className="shrink-0 max-md:size-11 max-md:px-0">
         <Link to={book.to} aria-label={`Back to the contents of ${book.title}`}>
           <ArrowLeft /> <span className="max-md:sr-only">Contents</span>
         </Link>
@@ -95,14 +95,14 @@ function BackToLibrary({ cameFromLibrary, book }: { cameFromLibrary: boolean; bo
     <Button
       variant="ghost"
       size="sm"
-      className="shrink-0 max-md:w-10 max-md:px-0"
+      className="shrink-0 max-md:size-11 max-md:px-0"
       onClick={() => navigate(-1)}
       aria-label="Back to Library"
     >
       {content}
     </Button>
   ) : (
-    <Button asChild variant="ghost" size="sm" className="shrink-0 max-md:w-10 max-md:px-0">
+    <Button asChild variant="ghost" size="sm" className="shrink-0 max-md:size-11 max-md:px-0">
       <Link to="/library" aria-label="Back to Library">
         {content}
       </Link>
@@ -355,13 +355,19 @@ export default function DocumentPage() {
           label={document.locationAvailable ? "Download original" : "The original cannot be downloaded while its storage is disconnected"}
         >
           {document.locationAvailable ? (
-            <Button asChild variant="ghost" size="icon-sm">
+            <Button asChild variant="ghost" size="icon-sm" className="max-md:size-11">
               <a href={`${document.fileUrl}?download=1`} aria-label="Download original">
                 <Download />
               </a>
             </Button>
           ) : (
-            <Button variant="ghost" size="icon-sm" aria-label="Download original" aria-disabled className="cursor-not-allowed">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Download original"
+              aria-disabled
+              className="cursor-not-allowed max-md:size-11"
+            >
               <Download />
             </Button>
           )}
@@ -374,7 +380,7 @@ export default function DocumentPage() {
             aria-expanded={detailsOpen}
             aria-controls="document-details"
             onClick={toggleDetails}
-            className={cn(detailsOpen && "bg-primary-soft text-primary-soft-ink hover:bg-primary-soft")}
+            className={cn("max-md:size-11", detailsOpen && "bg-primary-soft text-primary-soft-ink hover:bg-primary-soft")}
           >
             <PanelRight />
           </Button>
@@ -401,7 +407,13 @@ export default function DocumentPage() {
           >
             <div className="sticky top-0 z-(--z-sticky) flex h-12 items-center justify-between border-b border-border bg-page pr-2 pl-5 lg:hidden">
               <h2 className="text-lead font-semibold text-ink">Details</h2>
-              <Button variant="ghost" size="icon-sm" aria-label="Close details" onClick={() => setDetailsOpen(false)}>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="max-md:size-11"
+                aria-label="Close details"
+                onClick={() => setDetailsOpen(false)}
+              >
                 <X />
               </Button>
             </div>

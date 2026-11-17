@@ -86,9 +86,11 @@ export interface PdfViewerProps {
   downloadUrl: string;
   onState: (state: ViewerState | null) => void;
   controls: Ref<ViewerControls>;
+  /** What to say when there is no file at `url`, for a PDF that is not a document of the library. */
+  missing?: { title: string; text: string };
 }
 
-export default function PdfViewer({ url, title, initialPage, locationName, downloadUrl, onState, controls }: PdfViewerProps) {
+export default function PdfViewer({ url, title, initialPage, locationName, downloadUrl, onState, controls, missing }: PdfViewerProps) {
   const scrollerRef = useRef<HTMLElement>(null);
   const columnRef = useRef<HTMLDivElement>(null);
   const pagesRef = useRef<PdfPages | null>(null);
@@ -254,10 +256,14 @@ export default function PdfViewer({ url, title, initialPage, locationName, downl
               </p>
             </ViewerMessage>
           ) : phase.kind === "missing" ? (
-            <ViewerMessage icon={<FileWarning />} title="The original file is missing" actions={retry}>
+            <ViewerMessage icon={<FileWarning />} title={missing?.title ?? "The original file is missing"} actions={retry}>
               <p>
-                Outpost has a record of this document, but its file is no longer{" "}
-                {locationName ? `on “${locationName}”` : "in its storage location"}. It may have been moved or deleted outside Outpost.
+                {missing?.text ?? (
+                  <>
+                    Outpost has a record of this document, but its file is no longer{" "}
+                    {locationName ? `on “${locationName}”` : "in its storage location"}. It may have been moved or deleted outside Outpost.
+                  </>
+                )}
               </p>
             </ViewerMessage>
           ) : (
