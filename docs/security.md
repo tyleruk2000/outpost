@@ -647,7 +647,7 @@ manager, and only from these hosts, each named in code:
 | `raw.githubusercontent.com` | Natural Earth's GeoJSON, at release v5.1.2 | Public domain |
 | `davidmegginson.github.io` | OurAirports' `airports.csv`, and `airport-frequencies.csv` from the same folder in the same install | Public domain |
 | `ovp.dresel.systems`, or a server the person declares in their route source file | One Overpass question per layer and country | The operator's terms; private.coffee is excluded for this use |
-| `download.geofabrik.de` | The index (read on a press, then kept as the list of regions), a country's or a region's `.osm.pbf` and its `.md5` | ODbL, fetched once per press; a redirect to another host (a mirror) is not followed |
+| `download.geofabrik.de` | The index (read on a press, then kept as the list of regions), a country's or a region's `.osm.pbf` and its `.md5` | ODbL, fetched once per press; a file that Show the size finds is sent from another host (a mirror) is refused, and the size and the `.md5` are asked of `download.geofabrik.de` alone on every hop. The download itself is held to that host on its first request only, like every download; what arrives is checked against that MD5 before it is read |
 | `query.wikidata.org` | One count and one query, once the person has agreed to the client name being sent | CC0; within the service's limits, with the project's address as the contact the service asks for |
 | `data.worldpop.org` | One country's population GeoTIFF | CC BY 4.0 |
 | `data.geo.admin.ch` | The Swiss emergency meeting points | Open use with the source given |
