@@ -52,6 +52,28 @@ export function OutOfReach({ onReachable }: { onReachable: () => void }) {
   );
 }
 
+/**
+ * Calls `tick` every `ms` while the page is shown, and once each time it is shown again.
+ * Nothing runs while it is hidden (a background tab, a locked phone). Returns the way to stop.
+ */
+export function everyWhileShown(tick: () => void, ms: number): () => void {
+  let timer: number | undefined;
+  const start = () => {
+    window.clearInterval(timer);
+    timer = document.visibilityState === "visible" ? window.setInterval(tick, ms) : undefined;
+  };
+  const changed = () => {
+    start();
+    if (timer !== undefined) tick();
+  };
+  start();
+  document.addEventListener("visibilitychange", changed);
+  return () => {
+    window.clearInterval(timer);
+    document.removeEventListener("visibilitychange", changed);
+  };
+}
+
 const ReachContext = createContext<{ lost: boolean }>({ lost: false });
 
 /** Brings kept copies up to date. Quiet: a failure here is the server going away again, which the app already shows. */
@@ -79,26 +101,43 @@ export function ReachGate({ children }: { children: ReactNode }) {
   const [lostAt, setLostAt] = useState<string | null>(null);
   const [away, setAway] = useState(false);
 
-  // The live connection dropping is the first sign; a plain question to the server settles it.
+  // The live connection dropping is the first sign; a plain question to the server settles it. It is
+  // asked only where the app can go on without the server, only while the page is shown, and not
+  // while the kept copies are up (they ask for themselves).
   useEffect(() => {
     if (connected) {
       setLost(false);
       return;
     }
+    if (away || !canOpenOutOfReach()) return;
     let stopped = false;
     let timer: number | undefined;
+    let asking = false;
     const check = async () => {
+      timer = undefined;
+      if (document.visibilityState !== "visible" || asking) return;
+      asking = true;
       const reachable = await probeServer();
+      asking = false;
       if (stopped) return;
       setLost(!reachable);
-      timer = window.setTimeout(check, 5_000);
+      // A server that answers while the live connection is down is asked again only now and then.
+      timer = window.setTimeout(check, reachable ? 30_000 : 5_000);
+    };
+    const shown = () => {
+      if (document.visibilityState !== "visible") {
+        window.clearTimeout(timer);
+        timer = undefined;
+      } else if (timer === undefined) void check();
     };
     timer = window.setTimeout(check, 1_200);
+    document.addEventListener("visibilitychange", shown);
     return () => {
       stopped = true;
       window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", shown);
     };
-  }, [connected]);
+  }, [connected, away]);
 
   const key = useRef(location.key);
   key.current = location.key;

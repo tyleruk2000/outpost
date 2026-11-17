@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { DEVICE, DeviceIcon, ON_THIS_DEVICE } from "./device";
 import KeptNoteScreen from "./kept-note-screen";
 import KeptPage from "./kept-page";
-import { probeServer } from "./reach";
+import { everyWhileShown, probeServer } from "./reach";
 import { tellWorkerReach } from "./register";
 import { useKept } from "./store";
 
@@ -198,19 +198,18 @@ export default function OutOfReachApp({ onReachable }: { onReachable: () => void
     if (reachable) back.current();
   }, []);
 
-  // The server is asked again now and then, and at once when the device says it has a network again or the app comes back to the front.
+  // The server is asked again now and then while the app is in front (never while it is hidden),
+  // and at once when the device says it has a network again or the app comes back to the front.
   useEffect(() => {
     tellWorkerReach(false);
-    const timer = window.setInterval(() => void check(false), 10_000);
+    const stop = everyWhileShown(() => void check(false), 10_000);
     const now = () => {
       if (document.visibilityState === "visible") void check(false);
     };
     window.addEventListener("online", now);
-    document.addEventListener("visibilitychange", now);
     return () => {
-      window.clearInterval(timer);
+      stop();
       window.removeEventListener("online", now);
-      document.removeEventListener("visibilitychange", now);
     };
   }, [check]);
 

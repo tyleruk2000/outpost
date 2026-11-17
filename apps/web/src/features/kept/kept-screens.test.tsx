@@ -281,6 +281,37 @@ describe("losing the server while the app is open", () => {
     expect(screen.getByRole("link", { name: "See what is kept" })).toHaveAttribute("href", "/kept");
   }, 20_000);
 
+  function pageIs(state: "visible" | "hidden") {
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => state });
+    document.dispatchEvent(new Event("visibilitychange"));
+  }
+
+  it("does not ask the server anything while the page is hidden, and asks as soon as it is shown", async () => {
+    appIsKeptHere();
+    serverIs(false);
+    pageIs("hidden");
+    try {
+      events.connected = false;
+      await showApp();
+      await new Promise((resolve) => setTimeout(resolve, 1600));
+      expect(fetch).not.toHaveBeenCalled();
+      pageIs("visible");
+      expect(await screen.findByRole("status", {}, { timeout: 4000 })).toHaveTextContent("The server is out of reach.");
+      expect(fetch).toHaveBeenCalledWith("/api/health", expect.anything());
+    } finally {
+      pageIs("visible");
+    }
+  }, 20_000);
+
+  it("does not ask the server whether it is there where the app is not kept on the device", async () => {
+    Reflect.deleteProperty(navigator, "serviceWorker");
+    serverIs(false);
+    events.connected = false;
+    await showApp();
+    await new Promise((resolve) => setTimeout(resolve, 1600));
+    expect(fetch).not.toHaveBeenCalled();
+  }, 20_000);
+
   it("changes nothing where the app is not kept on the device: the screens stay, and the sidebar already says the server is down", async () => {
     const user = userEvent.setup();
     serverIs(false);
@@ -291,6 +322,37 @@ describe("losing the server while the app is open", () => {
     await user.click(screen.getByRole("link", { name: "Open the plan" }));
     expect(screen.getByRole("heading", { name: "The page, from the server" })).toBeInTheDocument();
   }, 20_000);
+});
+
+describe("asking again now and then", () => {
+  it("runs only while the page is shown, and once more each time it is shown again", async () => {
+    vi.useFakeTimers();
+    const { everyWhileShown } = await import("./reach");
+    const show = (state: "visible" | "hidden") => {
+      Object.defineProperty(document, "visibilityState", { configurable: true, get: () => state });
+      document.dispatchEvent(new Event("visibilitychange"));
+    };
+    const tick = vi.fn();
+    const stop = everyWhileShown(tick, 10_000);
+    try {
+      vi.advanceTimersByTime(20_000);
+      expect(tick).toHaveBeenCalledTimes(2);
+      show("hidden");
+      vi.advanceTimersByTime(60_000);
+      expect(tick).toHaveBeenCalledTimes(2);
+      show("visible");
+      expect(tick).toHaveBeenCalledTimes(3);
+      vi.advanceTimersByTime(10_000);
+      expect(tick).toHaveBeenCalledTimes(4);
+      stop();
+      vi.advanceTimersByTime(60_000);
+      expect(tick).toHaveBeenCalledTimes(4);
+    } finally {
+      stop();
+      show("visible");
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe("an emergency plan kept on this device", () => {
