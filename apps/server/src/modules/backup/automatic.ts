@@ -239,18 +239,22 @@ export function registerAutomaticBackups(
   }
 
   function tick(): void {
-    if (closed) return;
+    if (!closed) sleepUntil(look());
+  }
+
+  /** Starts a backup if one is due and can be made; answers when to look next, or null for never. */
+  function look(): number | null {
     // Space is being reclaimed in the database, which nothing can write to meanwhile. The
     // backup is made once that has finished.
-    if (ctx.jobs.holding) return sleepUntil(clock() + HELD_RETRY_MS);
+    if (ctx.jobs.holding) return clock() + HELD_RETRY_MS;
     const settings = readSettings();
-    if (!settings.locationId) return sleepUntil(null);
+    if (!settings.locationId) return null;
     const state = readState();
     const now = clock();
     const next = nextBackupSlot(settings, now);
     const due = dueSlot(settings, state, now);
     // Nothing owed, or a backup is being made (its end looks again): the next time is next.
-    if (due === null || activeJob()) return sleepUntil(next);
+    if (due === null || activeJob()) return next;
     const location = findLocation(settings.locationId);
     if (location?.status !== "available") {
       // Skipped, not redirected: there is no second place a backup may go. A location
@@ -261,15 +265,15 @@ export function registerAutomaticBackups(
         ctx.log.warn({ location: settings.locationId, dueAt: due }, "scheduled backup not made: its storage location is not connected");
         changed();
       }
-      return sleepUntil(next);
+      return next;
     }
     if (state.failure?.dueAt === due) {
       const retryAt = state.failure.at + retryWaitMs(state.failure.attempts ?? 1);
-      if (now < retryAt) return sleepUntil(Math.min(retryAt, next));
+      if (now < retryAt) return Math.min(retryAt, next);
     }
     announced = "";
     ctx.jobs.enqueue<RunPayload>(BACKUP_JOB, { kind: "scheduled", dueAt: due }, { title: `Back up to ${location.name}`, subject: SUBJECT });
-    sleepUntil(next);
+    return next;
   }
 
   // ── One backup ──

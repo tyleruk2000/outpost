@@ -501,10 +501,16 @@ of work. It shows:
   into the file).
 - **What is in it:** counts named as the rest of the app names them (documents,
   passages in the search index, passages read for search by meaning, pages of notes,
-  saved places, routes, place names, contacts, chat conversations, repeaters,
-  communication plans, logged contacts, profiles, saved predictions), and where the
-  bytes go in seven groups: search index, search by meaning, library records, notes,
-  maps, radio, everything else, plus the unused pages.
+  attachments, saved places, routes, place names, records in the map's reference
+  layers, contacts, PGP keys, chat conversations, repeaters and lists of repeaters,
+  communication plans, logged contacts, profiles, saved predictions, power plans and
+  devices, rows of supplies, weather places and barometer readings, emergency plans,
+  saved nuclear effects scenarios, devices found on the network, Morse practice
+  sessions, games kept), and where the bytes go in eight groups: search index, search
+  by meaning, library records, notes, maps (with the reference layers and nuclear
+  effects scenarios), radio (with Morse practice), preparedness (plans, supplies,
+  weather), everything else (contacts and keys, chat, power, network devices, games,
+  settings, the history of work), plus the unused pages.
 - **State:** how many of the layout changes (migrations) this version of Outpost knows
   have been made, the SQLite version, the journal mode, and the last backup written to
   a storage location, scheduled or with **Back up now**. A backup downloaded from
@@ -715,9 +721,18 @@ cannot be downloaded again.
   with its messages; every repeater, both the lists you imported and the entries you
   added or changed; what the HF planner keeps for you (communication plans, the contact
   log, radio and antenna profiles, saved predictions and coverage maps, and every
-  answer worked out); settings; search data; the history of downloads and other work; and
-  the copies of earlier data that a restore set aside (they hold the same notes). The
+  answer worked out); power plans and devices of your own; supplies, the household and
+  the shopping list; weather places, the forecasts fetched for them and barometer
+  readings; emergency plans; saved nuclear effects scenarios; devices found on the
+  network with the names and notes given them; the Morse trainer's sessions and
+  progress; the allotment and each game's tally; PGP keys, your own private key among
+  them; the records of merges from portable drives (they hold earlier versions of
+  pages); settings; search data; the history of downloads and other work; and the
+  copies of earlier data that a restore set aside (they hold the same notes). The
   summary shown before it starts counts each of these.
+- On a portable drive it also clears the drive's record of what it held when it was
+  written, and the drive stops counting as a copy of the library it came from: a later
+  merge home brings what is made on it as new and takes nothing as removed.
 - Keeps: storage locations and their marker files; network shares and any password
   remembered in the Keychain; catalogue manifests of your own; programs fetched for
   portable drives and search model files (clear those from Leftovers); the catalogue's

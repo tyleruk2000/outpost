@@ -647,9 +647,9 @@ computer trusts, and says so.
 
 A certificate from a public authority lasts 90 days or less (Let's Encrypt: 90 days
 today, 45 days by 2028, and six days for those who ask) and is replaced by a script.
-**The script only has to replace the two files in `tls/own`.** Every 30 seconds Outpost
-looks at the folder, and takes up a new certificate and key without a restart and
-without closing the port. For example, after each renewal:
+**The script only has to replace the two files in `tls/own`.** Every five minutes (every
+30 seconds while a file there is missing or cannot be used) Outpost looks at the folder,
+and takes up a new certificate and key without a restart and without closing the port. For example, after each renewal:
 
 ```bash
 install -m 644 /etc/letsencrypt/live/outpost.example.net/fullchain.pem /srv/outpost/data/tls/own/fullchain.pem

@@ -127,6 +127,28 @@ describe("everything installed", () => {
     expect(screen.queryByRole("region", { name: "Selection" })).not.toBeInTheDocument();
   });
 
+  it("says before the press that several of a person's own files cannot be deleted at once from another device", async () => {
+    const own = [
+      sampleItems[3]!,
+      item({ id: "d2", key: "document:d2", type: "document", title: "Field notes", kind: "document", origin: "own", catalogEntryId: null }),
+    ];
+    fakeApi({
+      "GET /api/manage/items": { items: own },
+      "GET /api/manage/cleanup": status({ erase: { allowed: false, reason: "remote", option: "OUTPOST_ALLOW_REMOTE_ERASE" } }),
+      "POST /api/manage/plan": plan({ changes: 2 }),
+    });
+    renderScreen(<ItemsView busy={false} />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("checkbox", { name: "Select everything" }));
+    await user.click(screen.getByRole("button", { name: "Remove" }));
+    const dialog = await screen.findByRole("dialog", { name: "Remove 2 items" });
+    expect(await within(dialog).findByText("Not from this device, all at once")).toBeVisible();
+    expect(within(dialog).getByRole("button", { name: "Remove 2 items" })).toBeDisabled();
+    // Keeping the files is allowed from anywhere.
+    await user.click(within(dialog).getByRole("radio", { name: /Keep the files/ }));
+    expect(within(dialog).queryByText("Not from this device, all at once")).not.toBeInTheDocument();
+  });
+
   it("says what stops working without an item before it is removed", async () => {
     fakeApi({
       "GET /api/manage/items": {

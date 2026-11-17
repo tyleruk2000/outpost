@@ -310,6 +310,9 @@ export function personalWords(personal: NonNullable<CleanupPlan["personal"]>): s
   if (morse) parts.push(morse);
   const games = gamesWords(personal.games);
   if (games) parts.push(games);
+  if ((personal.pgpKeys ?? 0) > 0) parts.push(plural(personal.pgpKeys ?? 0, "PGP key"));
+  if ((personal.driveMerges ?? 0) > 0)
+    parts.push(plural(personal.driveMerges ?? 0, "record of a merge from a drive", "records of merges from drives"));
   if (personal.settings > 0) parts.push(plural(personal.settings, "changed setting"));
   if (personal.vectors > 0) parts.push(plural(personal.vectors, "semantic vector"));
   parts.push("the history of downloads and other work");
@@ -363,6 +366,10 @@ export function resultSentences(result: CleanupResult): string[] {
       (result.personal.emergencyPlans ?? 0) > 0 ? plural(result.personal.emergencyPlans ?? 0, "emergency plan") : null,
       morseWords(result.personal.morse),
       gamesWords(result.personal.games),
+      (result.personal.pgpKeys ?? 0) > 0 ? plural(result.personal.pgpKeys ?? 0, "PGP key") : null,
+      (result.personal.driveMerges ?? 0) > 0
+        ? plural(result.personal.driveMerges ?? 0, "record of a merge from a drive", "records of merges from drives")
+        : null,
       settings > 0 ? plural(settings, "changed setting") : null,
       "the history",
     ].filter((part): part is string => part !== null);

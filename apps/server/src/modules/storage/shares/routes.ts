@@ -76,8 +76,27 @@ export async function registerShares(app: FastifyInstance, ctx: AppContext): Pro
 
   // Bring back the shares that were connected before, so the library on them is there
   // from the start. Start-up does not wait long for a server that is slow or away.
-  const reconnect = () =>
-    shares.reconnectRemembered().catch((error) => ctx.log.error({ err: error }, "reconnecting network shares failed"));
+  // After that it is tried again every few minutes only while a share is still away,
+  // and at once when a storage location goes away or comes back (a share dropping shows
+  // up there); with every share connected, nothing wakes.
+  let retry: NodeJS.Timeout | undefined;
+  let running = false;
+  const reconnect = async (): Promise<void> => {
+    if (running) return;
+    running = true;
+    clearTimeout(retry);
+    retry = undefined;
+    try {
+      if (await shares.reconnectRemembered()) {
+        retry = setTimeout(() => void reconnect(), RETRY_INTERVAL_MS);
+        retry.unref();
+      }
+    } catch (error) {
+      ctx.log.error({ err: error }, "reconnecting network shares failed");
+    } finally {
+      running = false;
+    }
+  };
   let wait: NodeJS.Timeout | undefined;
   await Promise.race([
     reconnect(),
@@ -86,7 +105,11 @@ export async function registerShares(app: FastifyInstance, ctx: AppContext): Pro
     }),
   ]);
   clearTimeout(wait);
-  const timer = setInterval(reconnect, RETRY_INTERVAL_MS);
-  timer.unref();
-  ctx.onClose.push(() => clearInterval(timer));
+  const unsubscribe = ctx.events.subscribe((event) => {
+    if (event.type === "storage.changed") void reconnect();
+  });
+  ctx.onClose.push(() => {
+    clearTimeout(retry);
+    unsubscribe();
+  });
 }

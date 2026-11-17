@@ -12,7 +12,7 @@ import { useStorage } from "@/lib/queries";
 import { plural } from "@/lib/utils";
 import { ChoiceList } from "../downloads/choice-list";
 import { LocationPicker, locationProblem, preferredLocation } from "../downloads/location-picker";
-import { useMoveItems, usePlan, useRemoveItems } from "./manage-data";
+import { useCleanup, useMoveItems, usePlan, useRemoveItems } from "./manage-data";
 import { planSentences, tallyOf, tallyText } from "./manage-text";
 import { FileList, PlanSkeleton, PlanTables, RefusedNotice } from "./plan-summary";
 
@@ -25,6 +25,11 @@ function RemoveSteps({ items, onClose, onStarted }: { items: ManagedItem[]; onCl
   const remove = useRemoveItems();
   const data = plan.data;
   const acts = data?.changes ?? 0;
+  // A person's own files cannot be fetched again: deleting several at once is erasing, and
+  // from another device the server refuses it. Said here, before the button is pressed.
+  const erase = useCleanup().data?.erase;
+  const own = items.filter((item) => item.origin === "own").length;
+  const onlyOneByOne = files === "delete" && erase?.allowed === false && own > 1;
 
   return (
     <form
@@ -105,6 +110,13 @@ function RemoveSteps({ items, onClose, onStarted }: { items: ManagedItem[]; onCl
               ))}
           </>
         ) : null}
+        {onlyOneByOne ? (
+          <Notice tone="warning" icon={<CircleAlert />} title="Not from this device, all at once">
+            {plural(own, "of the chosen items is", "of the chosen items are")} your own, and their files cannot be fetched again. Deleting
+            several of them in one step can only be done on the computer Outpost runs on. From here, remove them one at a time, or choose to
+            keep the files.
+          </Notice>
+        ) : null}
         {remove.isError ? (
           <Notice tone="danger" icon={<CircleAlert />}>
             {errorMessage(remove.error)}
@@ -113,7 +125,7 @@ function RemoveSteps({ items, onClose, onStarted }: { items: ManagedItem[]; onCl
       </DialogBody>
       <DialogFooter>
         <Button onClick={onClose}>Cancel</Button>
-        <Button type="submit" variant="danger" loading={remove.isPending} disabled={!data || acts === 0}>
+        <Button type="submit" variant="danger" loading={remove.isPending} disabled={!data || acts === 0 || onlyOneByOne}>
           {files === "keep" ? `Forget ${plural(acts, "item")}` : `Remove ${plural(acts, "item")}`}
         </Button>
       </DialogFooter>

@@ -28,7 +28,13 @@ What travels:
 
 - **Always:** all your notes with their attachments, tags, map markers and tracks,
   settings, and the search index, with its vectors for search by meaning if you built
-  them.
+  them. So do the rest of your own records: repeaters and what the radio planner keeps
+  (plans, the contact log, profiles, saved predictions), the Morse trainer's progress,
+  power plans and devices, supplies and the shopping list, weather places and barometer
+  readings, emergency plans, saved nuclear effects scenarios, reference layers, devices
+  found on the network with their names and notes, the games, and PGP keys. A private
+  PGP key is kept only in the form its passphrase protects, and it goes on the drive in
+  that form, with or without contacts.
 - **Your choice:** all documents or none; your contacts or not; and any installed
   collections and maps you tick.
 - **Contacts travel unless you turn them off.** They are on by default, as notes are,

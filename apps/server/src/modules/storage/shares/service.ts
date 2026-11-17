@@ -109,8 +109,11 @@ export interface SharesService {
   /** Disconnects, removes the remembered password and forgets the share. */
   forget(id: string, options: { confirm: boolean }): Promise<void>;
   discover(): Promise<{ supported: boolean; servers: DiscoveredServer[] }>;
-  /** Connects again every share that should be connected and has a remembered password. */
-  reconnectRemembered(): Promise<void>;
+  /**
+   * Connects again every share that should be connected and has a remembered password.
+   * True when one of them is still not connected, so that it is worth trying again later.
+   */
+  reconnectRemembered(): Promise<boolean>;
 }
 
 declare module "../../../core/context.ts" {
@@ -830,7 +833,7 @@ export function createSharesService(ctx: AppContext, overrides: Partial<SharesDe
     },
 
     async reconnectRemembered() {
-      if (deps.mode !== "macos") return;
+      if (deps.mode !== "macos") return false;
       const wanted = db
         .select()
         .from(networkShares)
@@ -839,19 +842,22 @@ export function createSharesService(ctx: AppContext, overrides: Partial<SharesDe
         // Only shares that can be connected without asking anyone: a remembered password, or a guest.
         // A refused password will be refused again; asking repeatedly can lock the account on the NAS.
         .filter((row) => (row.passwordInKeychain || row.userName === "") && row.lastError !== "wrong_password");
-      if (wanted.length === 0) return;
+      if (wanted.length === 0) return false;
       const mounts = await mountsNow();
+      let missing = false;
       for (const row of wanted) {
         if (findMount(row, mounts)) continue;
         await exclusive(() => attach(row, getRow(row.id), undefined, false, true)).then(
           () => ctx.log.info({ share: row.id }, "network share reconnected"),
           (error: unknown) => {
+            missing = true;
             const reason = error instanceof AppError ? (error.details?.reason ?? error.code) : "error";
             // Said once per reason, not every five minutes while a NAS is switched off.
             if (reason !== row.lastError) ctx.log.warn({ share: row.id, reason }, "network share could not be reconnected");
           },
         );
       }
+      return missing;
     },
   };
 

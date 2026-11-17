@@ -242,7 +242,8 @@ export default function StoragePage() {
     onSuccess: (result) => {
       // Said either way: a press that changes nothing on screen still needs an answer.
       const away = result.locations.filter((location) => location.status !== "available").length;
-      if (away === 0) toast.success(result.locations.length === 1 ? "Checked: the location is connected." : "Checked: every location is connected.");
+      if (away === 0)
+        toast.success(result.locations.length === 1 ? "Checked: the location is connected." : "Checked: every location is connected.");
       else toast.warning(`Checked: ${plural(away, "location")} cannot be reached.`);
       return client.invalidateQueries({ queryKey: ["storage"] });
     },

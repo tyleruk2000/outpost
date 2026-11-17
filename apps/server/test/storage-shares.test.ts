@@ -820,6 +820,14 @@ describe("reconnecting, disconnecting and forgetting", () => {
     expect((await app.api("GET", "/api/storage/shares")).body.shares[0].status).toBe("disconnected");
   });
 
+  it("says whether anything is still to be connected, so that it is tried again only then", async () => {
+    const { app, mac, deps } = await connectedApp();
+    expect(await app.ctx.services.shares.reconnectRemembered()).toBe(false);
+    mac.state.mounts = [];
+    deps.probe = async () => "unreachable";
+    expect(await app.ctx.services.shares.reconnectRemembered()).toBe(true);
+  });
+
   it("does not hand an unanswering server to the system when nobody is waiting", async () => {
     const { app, mac, deps } = await connectedApp();
     mac.state.mounts = [];

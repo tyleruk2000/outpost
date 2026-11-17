@@ -202,6 +202,8 @@ function GiveFiles({ data, secure, onDone }: { data: HttpsStatus; secure: Secure
   // One file that holds everything, behind a password.
   const container = /\.(pfx|p12)$/i.test(certificate?.name ?? "");
   const overPlainHttp = !data.own.keyRight.allowed;
+  // New files would write over the pair in the folder, which deletes that key: from another device the server refuses it.
+  const replaceRefused = (data.own.inFolder.certificate || data.own.inFolder.key) && !data.authorityRight.allowed;
 
   const give = useMutation({
     mutationFn: () => {
@@ -306,13 +308,24 @@ function GiveFiles({ data, secure, onDone }: { data: HttpsStatus; secure: Secure
           />
         </>
       )}
+      {replaceRefused ? (
+        <Notice tone="warning" icon={<CircleAlert aria-hidden />} title="Only at the computer Outpost runs on">
+          There is already a certificate and key in {data.own.folder}. Giving new ones would delete them, so they can only be replaced on
+          that computer, or from every device if Outpost is started with {data.authorityRight.option}=true.
+        </Notice>
+      ) : null}
       {give.isError ? (
         <Notice tone="danger" icon={<CircleAlert aria-hidden />} title="Not used">
           {errorMessage(give.error)}
         </Notice>
       ) : null}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <Button type="submit" variant="primary" disabled={!certificate || (overPlainHttp && !accepted)} loading={give.isPending}>
+        <Button
+          type="submit"
+          variant="primary"
+          disabled={!certificate || (overPlainHttp && !accepted) || replaceRefused}
+          loading={give.isPending}
+        >
           Use this certificate
         </Button>
         <p className="min-w-48 flex-1 text-small text-ink-muted">
@@ -356,7 +369,8 @@ function FromFolder({ data, refresh }: { data: HttpsStatus; refresh: () => void 
       <p className="text-small text-ink-muted">
         Put the certificate (with its chain) and its key on the server, in PEM form, under exactly these two names. The key never crosses
         the network this way, so it can be done from any device, and it is the way for Docker, a Raspberry Pi, and a script that renews the
-        certificate: Outpost looks at the folder every half minute and takes up new files by itself.
+        certificate: Outpost looks at the folder every five minutes (every half minute while a file is missing or cannot be used) and takes
+        up new files by itself.
       </p>
       <ul className="divide-y divide-border border-y border-border">
         {row(files.certificate, inFolder.certificate)}

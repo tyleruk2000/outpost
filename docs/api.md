@@ -271,6 +271,9 @@ runs directly on a Mac; `mode` in the first route says which case applies (`maco
 | --- | --- |
 | `GET /api/storage/shares` | `{ mode, shares, hints }` (`NetworkSharesResponse`): the shares Outpost knows, each with its status and the storage locations on it. No response ever contains a password. |
 | `GET /api/storage/shares/discover` | `{ supported, servers }`: file servers that announce themselves on the local network. `supported` is false anywhere but a Mac run directly. |
+| `POST /api/storage/shares/list` | The shared folders a server offers, so one can be picked rather than typed. Body: `server`, `port?`, `userName`, `password`, as for connecting; the password is used for this one question and not kept. `{ shares, unusable }` (`ServerSharesResponse`); `unusable` counts shares whose names have characters Outpost does not accept. |
+| `GET /api/storage/shares/mounted` | `{ mounts }` (`MountedSharesResponse`): network volumes connected on this Mac already, by Outpost or from the Finder, each with whether Outpost can use it and why not. |
+| `POST /api/storage/shares/adopt` | Starts using a volume that is connected already. Body: `mountPath` (where it is mounted, from the list above). Answers as connecting does. |
 | `POST /api/storage/shares` | Connects an SMB share. Body (`ConnectShareRequest`): `server`, `port?`, `share`, `userName`, `password`, `rememberPassword`. Answers `{ share, note? }`. |
 | `POST /api/storage/shares/:id/reconnect` | Body: `password?`, `rememberPassword?`. Without a password, the one remembered in the Keychain is used. |
 | `POST /api/storage/shares/:id/disconnect` | Unmounts the share. Answers `409 conflict` with `details.work` while something is using it, unless the body is `{ "confirm": true }`. |
@@ -313,7 +316,7 @@ Types: `SemanticStatus` in `packages/shared/src/semantic.ts`.
 | Method and path | Purpose |
 | --- | --- |
 | `GET /api/semantic/status` | Whether it is enabled and ready, the model, counts of passages and vectors, other models with stored vectors, whether a build is running, `build` (the latest index build for the current model as a job, in whatever state, or null), `secondsLeft` (what a running build still needs at its own speed, or null), `keptChunks` (passages already embedded for the model that switching on would use, counted whether it is on or off) and `builtIn` (the model that ships with Outpost: whether it is installed, its name, licence, size, dimensions and threads). `?fresh=1` asks the model again now rather than trusting an answer from the last minute. |
-| `POST /api/jobs/:id/pause`, `/cancel` | Pause or stop the build named in `build`. `POST /api/semantic/index` continues a paused one. |
+| `POST /api/jobs/:id/pause`, `POST /api/jobs/:id/cancel` | Pause or stop the build named in `build`. `POST /api/semantic/index` continues a paused one. |
 | `POST /api/semantic/index` | Starts (or continues) building vectors for the current model. `409` if no provider is configured or it does not answer. Answers the status. Not needed in the ordinary way: setting `search.semantic.enabled` to true starts the build, and so does naming another model while it is on. |
 | `POST /api/semantic/use-built-in` | Switches search by meaning on with the model that ships with Outpost, whatever it was pointed at before, and starts the build. Answers the status. `409` when that model is not part of the installation; nothing is changed then. |
 | `POST /api/semantic/test` | Body: `text`. Embeds it once and answers `{ modelId, dimensions, tookMs }`. |
