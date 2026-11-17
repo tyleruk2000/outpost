@@ -29,6 +29,8 @@ export const READY_MARKER = "READY";
  * backup file from somewhere else must not be able to change that.
  */
 const RESTORED_FOLDERS = ["attachments", "extracted"];
+// Files sent on the household board (modules/board): they belong with its rows in the database.
+RESTORED_FOLDERS.push("board");
 const MAX_ENTRIES = 500_000;
 export const MAX_TOTAL_BYTES = 64 * 1024 * 1024 * 1024;
 /** A backup is mostly a database and images; anything that expands more than this is not one. */

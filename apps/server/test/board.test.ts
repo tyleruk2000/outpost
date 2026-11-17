@@ -20,6 +20,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { measureContents } from "../src/modules/database/inspect.ts";
 import { multipart } from "./fixtures/documents/builders.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { tempDir } from "./temp.ts";
 
 let app: TestApp;
 beforeAll(async () => {
@@ -540,7 +541,36 @@ describe("the board as a person's own data", () => {
     expect(plan.personal?.board).toEqual({ messages: 2, files: 1, fileBytes: 5 });
   });
 
+  it("goes into a backup with its files, and comes back with them", async () => {
+    await clearBoard();
+    const sent = (await sendFile("map.txt", "grid ref NY 215 072")).body.message as BoardMessage;
+    const backup = await app.app.inject({ method: "GET", url: "/api/backup/download", headers: { host: "localhost" } });
+    expect(backup.statusCode).toBe(200);
+    const dir = tempDir("outpost-board-restore-");
+    let target = await createTestApp({}, dir, { voacapData: false });
+    try {
+      const staged = await target.app.inject({
+        method: "POST",
+        url: "/api/backup/restore",
+        headers: { host: "localhost", "x-outpost-request": "1", "content-type": "application/zip" },
+        payload: backup.rawPayload,
+      });
+      expect(staged.statusCode, staged.body).toBe(200);
+      await target.close();
+      target = await createTestApp({}, dir, { voacapData: false });
+      const answer = await target.app.inject({ method: "GET", url: sent.file!.url!, headers: { host: "localhost" } });
+      expect(answer.statusCode).toBe(200);
+      expect(answer.body).toBe("grid ref NY 215 072");
+    } finally {
+      await target.close();
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }, 60_000);
+
   it("is listed under Manage and clean up and emptied from there, files and all", async () => {
+    await clearBoard();
+    await post({ author: "Sam", body: "Hello" });
+    await sendFile("note.txt", "12345");
     const listed = (await app.api<LeftoversResponse>("GET", "/api/manage/leftovers")).body;
     const item = listed.items.find((entry) => entry.id === "board:all");
     expect(item).toMatchObject({ kind: "board", title: "Messages and files on the board", count: 2, bytes: 5, href: "/messages" });

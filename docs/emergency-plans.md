@@ -299,6 +299,10 @@ no step. Ticks have routes of their own (`/ticks`, `/start`, `/reset`), apart fr
 editing, so a tick on one phone never undoes an edit on another, nor the other way
 round; a step taken out of the plan takes its tick with it.
 
+Once a plan has been started, "Use now" also links to the household board, **Check in
+on the household board** ([messages.md](messages.md)), where each person's latest
+check-in is listed. The plan's own steps are not changed by it.
+
 Nothing on "Use now" changes by itself, so it runs no clock: no timer, no animation
 frame and no polling while it is open (a web test holds it to that). The time a step
 was ticked is the time kept with the tick, not counted on the page.

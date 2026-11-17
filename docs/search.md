@@ -151,7 +151,9 @@ them." In the API response this is `relaxed: true`.
 | Places in reference layers | Names of the features in installed reference packs, opened on the map (up to 30 found) |
 | Reference articles | Articles inside installed ZIM archives; see [below](#reference-collections-in-results) |
 
-Pages in the notes trash, and your own page templates, are not searched.
+Pages in the notes trash, and your own page templates, are not searched. Nor is the
+household board ([messages.md](messages.md)): its messages are not added to search and
+are never sent to a model server.
 
 Text is split into passages of about 1,200 characters with a 150-character overlap
 (**Settings → Reading documents**, or the `indexing.chunkSize` and
