@@ -63,15 +63,22 @@ Only actions that fetch something new. Each happens because a person pressed a b
 | **Look at the page** and **Save page** under "Save a web page" | The host in the address you pasted, and whatever it redirects to: one request for the page. If you asked for its pictures, one request for each, to the hosts the preview names. Nothing a page links to is followed. The address must be `http` or `https` and must not be on this computer or a private network (unless the server was started with `OUTPOST_ALLOW_PRIVATE_DOWNLOADS=true`). See [notes-and-imports.md](notes-and-imports.md#saving-a-web-page). |
 | **Show the size** and **Download** under Offline maps → Reference data for the map | The source chosen: `raw.githubusercontent.com` (Natural Earth), `davidmegginson.github.io` (OurAirports), `ovp.dresel.systems` or an Overpass server you declared (OpenStreetMap), `download.geofabrik.de`, `query.wikidata.org`, `data.worldpop.org` or `data.geo.admin.ch`. It is sent the country or the edges of the area on screen, and Outpost's name and address. See [reference-layers.md](reference-layers.md). |
 | **Update now** on Weather and hazards, or opening that screen with "also update when I open this screen" ticked (off by default); **Fetch the averages for this place** under its Climate tab | `api.open-meteo.com`, `www.metoffice.gov.uk` and `environment.data.gov.uk` for an update; `power.larc.nasa.gov` and `re.jrc.ec.europa.eu` for averages. Each place's position goes to them rounded to two decimal places (the Met Office is sent none). See [weather.md](weather.md) and [security.md](security.md#weather-and-hazards). |
+| **Find pictures**, **Continue**, **Fetch** and **Download** for satellite imagery or aerial photographs on the Maps screen | Hosts fixed in code: Earth Search and its Sentinel-2 files, NASA for the world picture; for aerial photographs, LINZ's public bucket (New Zealand) or Microsoft's Planetary Computer (United States). See [security.md](security.md#downloads-the-ssrf-guard). |
+| **Download a newer table** under HF propagation, Engine and data | `services.swpc.noaa.gov`, for NOAA's solar cycle table. See [hf-propagation.md](hf-propagation.md). |
+| **Download the P.533 maps** for the second HF model | `raw.githubusercontent.com`. See [hf-propagation.md](hf-propagation.md#a-second-model-itu-p533). |
+| **Fetch the registry from the IEEE** under Devices on this network | `standards-oui.ieee.org`, for the list of who made which network card. See [tools-qr-and-network.md](tools-qr-and-network.md#who-made-each-device). |
 | Making a portable drive for a kind of computer for the first time | `nodejs.org` for the Node runtime; `download.kiwix.org` for the reference-collection reader |
 
 Once fetched, the Node runtimes and the reader are cached in the data directory, so
 later drives can be made offline.
 
-One more connection is yours to choose: with semantic search set to a "local embedding
-server", Outpost sends passage text and search queries to the address in the
-`search.semantic.endpoint` setting. The default is `http://127.0.0.1:11434/v1`, on the
-same machine. Point it at another machine and the text goes there.
+Two more connections are yours to choose. Answers and Chat send your question, and the
+passages found for it, to the model server in the `answers.endpoint` setting; with
+semantic search set to a "local embedding server", Outpost sends passage text and
+search queries to the address in the `search.semantic.endpoint` setting. Both default to
+`http://127.0.0.1:11434/v1`, on the same machine. Point either at another machine and
+the text goes there. The complete list of every connection the server opens, with the
+code that opens it, is in [security.md](security.md#no-telemetry).
 
 The same goes for answers: with "Answers from your library" switched on, pressing
 **Answer from my library** sends your question and the passages found for it to the
@@ -276,8 +283,9 @@ was.
 
 - A line across the top: "The server is out of reach. Showing what is kept on this
   phone, for reading only." It has a **Try again** button; the app also asks the server
-  again every ten seconds, when the phone reports a network, and when the app comes
-  back to the front, and returns to normal by itself.
+  again every ten seconds while it is on screen, when the phone reports a network, and
+  when the app comes back to the front, and returns to normal by itself. It asks
+  nothing while it is in the background or the phone is locked.
 - The navigation holds only what works: **On this phone**, **Maps**, and the kept pages.
 - A kept page opens as it is at home, with writing switched off. A page that was not
   kept says "This page is not kept on this phone". A screen that lives on the server
@@ -288,6 +296,12 @@ was.
   version. A kept copy is only ever replaced by the server's version; it is never sent
   back, so a stale copy cannot overwrite a page. Documents and reference collections
   cannot be kept.
+
+How the app notices: the live connection to the server drops, and a plain question to
+the server (`/api/health`) goes unanswered for four seconds. That question is asked
+only on a device where the app is kept, only while the app is on screen, every five
+seconds until the server answers; a server that answers while the live connection is
+still down is asked again every thirty seconds.
 
 If the server goes out of reach while a screen is open, that screen is left exactly as
 it is, because you may be half-way through writing. The notes editor holds unsaved
