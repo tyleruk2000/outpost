@@ -184,9 +184,7 @@ export const upkeepNav: NavItem[] = [
     key: ",",
     keywords: "preferences options",
     // How to set up search by meaning, answers and chat (SETUP_GUIDE_PATH): its settings link to it part by part.
-    children: [
-      { to: "/help/search-and-answers", label: "Set-up guide", icon: LifeBuoy, keywords: "help models ollama install" },
-    ],
+    children: [{ to: "/help/search-and-answers", label: "Set-up guide", icon: LifeBuoy, keywords: "help models ollama install" }],
   },
   // The guides, made from docs/ (features/help/guides.ts); each guide is a page of its own, found by the quick search. "i" for information: "h" is Home's.
   {
@@ -225,8 +223,16 @@ export const settingsSections: SettingsSection[] = [
   { id: "semantic", label: "Search by meaning", inContents: true, keywords: "semantic embeddings vectors model" },
   { id: "answers", label: "Answers", inContents: true, keywords: "ai language model ollama llm" },
   { id: "tools", label: "Looking things up", inContents: true, keywords: "tools mcp model context protocol llm look up claude code" },
-  { id: "tools-switch", label: "Let the model look things up in Outpost", keywords: "tools llm chat look up places supplies plans weather ai" },
-  { id: "tools-mcp-switch", label: "Let other programs use these tools (MCP)", keywords: "mcp model context protocol claude code vs code tools llm" },
+  {
+    id: "tools-switch",
+    label: "Let the model look things up in Outpost",
+    keywords: "tools llm chat look up places supplies plans weather ai",
+  },
+  {
+    id: "tools-mcp-switch",
+    label: "Let other programs use these tools (MCP)",
+    keywords: "mcp model context protocol claude code vs code tools llm",
+  },
   { id: "maps", label: "Maps", inContents: true, keywords: "map source terrain tiles" },
   { id: "board", label: "Message board", inContents: true, keywords: "messages files keep" },
   { id: "mesh", label: "Mesh radio", inContents: true, keywords: "meshtastic meshcore lora mqtt radio link mesh off grid messages" },

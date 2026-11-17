@@ -9,7 +9,11 @@ const schema = {
 
 describe("what a small model sends, made to fit", () => {
   it("reads numbers written as digits where the schema asks for numbers, as llama3.2:3b sent them", () => {
-    expect(lenient({ kind: "supermarket", count: "3", radius_km: " 2.5 " }, schema)).toEqual({ kind: "supermarket", count: 3, radius_km: 2.5 });
+    expect(lenient({ kind: "supermarket", count: "3", radius_km: " 2.5 " }, schema)).toEqual({
+      kind: "supermarket",
+      count: 3,
+      radius_km: 2.5,
+    });
   });
 
   it("leaves out empty or null optional arguments, and keeps a required one for the schema to refuse", () => {
