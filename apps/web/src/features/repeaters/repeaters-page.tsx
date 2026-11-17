@@ -468,13 +468,14 @@ export default function RepeatersPage() {
     })),
   ];
 
+  // The main action last, as in the header of every other screen with two.
   const actions = (
     <>
-      <Button variant="primary" onClick={() => setImporting({ list: null })}>
-        <FileUp /> Import a list
-      </Button>
       <Button onClick={() => setAdding(true)}>
         <Plus /> Add by hand
+      </Button>
+      <Button variant="primary" onClick={() => setImporting({ list: null })}>
+        <FileUp /> Import a list
       </Button>
     </>
   );

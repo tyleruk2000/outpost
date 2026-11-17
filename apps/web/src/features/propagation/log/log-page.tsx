@@ -579,7 +579,7 @@ export default function LogPage() {
       <PageHeader
         title="Contact log"
         description="What actually happened on the air: contacts, stations heard, and calls that got no answer. Typed in, or read from your logging program's ADIF file, and set beside what the engine predicted for the same paths."
-        actions={actions}
+        actions={log.data && log.data.total > 0 ? actions : undefined}
       />
       {importJobId ? (
         <div className="mb-6 flex flex-wrap items-center gap-3" aria-live="polite">
@@ -622,7 +622,7 @@ export default function LogPage() {
       ) : log.isError ? (
         <ErrorState error={log.error} onRetry={() => void log.refetch()} />
       ) : log.data.total === 0 ? (
-        <EmptyState title="Nothing is logged yet">
+        <EmptyState title="Nothing is logged yet" action={actions}>
           Log a contact as you make it, or import the ADIF file your logging program exports. Once there are entries with a position at both
           ends, they can be set beside what the engine predicted.
         </EmptyState>
