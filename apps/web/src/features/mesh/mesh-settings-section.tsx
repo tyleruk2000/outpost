@@ -177,13 +177,25 @@ function SaveRow({ problem, pending, onSave }: { problem: string | null; pending
   );
 }
 
-function PasswordField({ label, value, set, onChange }: { label: string; value: string; set: boolean; onChange: (value: string) => void }) {
+function PasswordField({
+  label,
+  value,
+  set,
+  onChange,
+  optional = false,
+}: {
+  label: string;
+  value: string;
+  set: boolean;
+  onChange: (value: string) => void;
+  optional?: boolean;
+}) {
   const [shown, setShown] = useState(false);
   return (
     <div className="grid gap-1.5 sm:col-span-2">
       <Field
         label={label}
-        optional
+        optional={optional}
         hint={
           shown && value
             ? "Shown so that you can type it into the radio's app. Kept once you press Save, and never shown again."
@@ -412,7 +424,7 @@ function MeshtasticPart({ data }: { data: MeshResponse }) {
         {mode === "broker" ? (
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField label="Port" value={brokerPort} onChange={setBrokerPort} error={portError} inputMode="numeric" />
-            <TextField label="User name" value={brokerUser} onChange={setBrokerUser} optional />
+            <TextField label="User name" value={brokerUser} onChange={setBrokerUser} />
             <PasswordField label="Password" value={brokerPassword} set={config.broker.passwordSet} onChange={setBrokerPassword} />
           </div>
         ) : null}
@@ -429,7 +441,7 @@ function MeshtasticPart({ data }: { data: MeshResponse }) {
               monoText
               hint={status.heardRoot ? `The radio was last heard under ${status.heardRoot}.` : "As set on the radio."}
             />
-            <PasswordField label="Password" value={clientPassword} set={config.client.passwordSet} onChange={setClientPassword} />
+            <PasswordField label="Password" value={clientPassword} set={config.client.passwordSet} onChange={setClientPassword} optional />
           </div>
         ) : null}
 
