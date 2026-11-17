@@ -15,7 +15,7 @@ const longDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long
 const CHART_RGB: [number, number, number] = [0.13, 0.42, 0.45];
 
 export const ESTIMATE =
-  "These figures are an estimate from the figures typed in. Real batteries deliver less when cold, when old and when discharged fast; panels give less when hot, dirty or shaded.";
+  "These figures are an estimate from the figures typed in, and general information: no substitute for the wiring regulations that apply or for a qualified electrician. Real batteries deliver less when cold, when old and when discharged fast; panels give less when hot, dirty or shaded.";
 
 export function hoursText(hours: number | null): string {
   if (hours === null) return "No load";

@@ -109,7 +109,10 @@ const QUESTIONS: Record<"secret" | "people", { title: string; description: React
 
 type Made = { pdf: MadePdf } | { error: string };
 
-/** The sheet as a PDF, made on this device whenever the code or its words change. */
+/** How long typing must pause before the sheet is made again: each one is drawn and written whole. */
+const SHEET_AFTER_MS = 400;
+
+/** The sheet as a PDF, made on this device once the code or its words have stopped changing. */
 function SheetPdf({ code, described, kind, draw }: { code: QrCode; described: Described; kind: QrKind; draw?: DrawLine }) {
   const [made, setMade] = useState<Made | null>(null);
   const [paper] = useState(() => readStored(AID_PAPER_KEY, isAidPaper, likelyPaper(navigator.language)));
@@ -117,18 +120,21 @@ function SheetPdf({ code, described, kind, draw }: { code: QrCode; described: De
   useEffect(() => {
     let live = true;
     setMade(null);
-    // Dated by the day, not the moment: the same code made twice in a day is the same file, and the library says it has it.
-    const today = new Date();
-    const day = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
-    const footer = `Made in Outpost on ${formatDate(day.getTime())}.`;
-    writeLettered([qrSheet(code, described, paper, footer)], described.title, day, draw)
-      .then((written) => ({ pdf: madePdf(written.bytes, described.title, "QR code", { what: "the QR code maker", path: "/tools/qr" }) }))
-      .catch((error: unknown) => ({ error: errorMessage(error) }))
-      .then((result) => {
-        if (live) setMade(result);
-      });
+    const timer = setTimeout(() => {
+      // Dated by the day, not the moment: the same code made twice in a day is the same file, and the library says it has it.
+      const today = new Date();
+      const day = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+      const footer = `Made in Outpost on ${formatDate(day.getTime())}.`;
+      writeLettered([qrSheet(code, described, paper, footer)], described.title, day, draw)
+        .then((written) => ({ pdf: madePdf(written.bytes, described.title, "QR code", { what: "the QR code maker", path: "/tools/qr" }) }))
+        .catch((error: unknown) => ({ error: errorMessage(error) }))
+        .then((result) => {
+          if (live) setMade(result);
+        });
+    }, SHEET_AFTER_MS);
     return () => {
       live = false;
+      clearTimeout(timer);
     };
   }, [code, described, paper, draw]);
 

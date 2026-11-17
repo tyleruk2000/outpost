@@ -39,9 +39,9 @@ export function readQuantity(text: string): number | null {
   let match = /^(\d+)\s*([¼½¾⅓⅔⅛])$/.exec(tidy);
   if (match) return Number(match[1]) + VULGAR[match[2]!]!;
   if (VULGAR[tidy] !== undefined) return VULGAR[tidy]!;
-  match = /^(\d+)\s+(\d+)\/(\d+)$/.exec(tidy);
+  match = /^(\d+)\s+(\d+)\/(\d*[1-9]\d*)$/.exec(tidy);
   if (match) return Number(match[1]) + Number(match[2]) / Number(match[3]);
-  match = /^(\d+)\/(\d+)$/.exec(tidy);
+  match = /^(\d+)\/(\d*[1-9]\d*)$/.exec(tidy);
   if (match) return Number(match[1]) / Number(match[2]);
   if (/^\d+(\.\d+)?$/.test(tidy)) return Number(tidy);
   return null;

@@ -148,4 +148,3 @@ export function gaugeForArea(areaMm2: number): { label: string; n: number } | nu
 }
 
 export const FEET_PER_METRE = 1 / 0.3048;
-export const celsiusFromFahrenheit = (f: number): number => ((f - 32) * 5) / 9;

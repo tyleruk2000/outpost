@@ -31,6 +31,7 @@ import {
   lossPer100m,
   radioHorizonMeters,
   S9_DBM,
+  SPEED_OF_LIGHT,
   sMeterReading,
   wattsToDbm,
 } from "./formulas";
@@ -205,11 +206,12 @@ const plFrequency: NumberSpec = {
 const plDistance: NumberSpec = { id: "radio.fspl.distance", label: "Distance", initial: 10, units: u.units.distance, above: 0 };
 const plPower: NumberSpec = {
   id: "radio.fspl.power",
-  label: "Transmitter power (optional sum)",
+  label: "Transmitter power (optional)",
   initial: 5,
   units: [u.watt, u.mw],
   above: 0,
-  hint: "With antennas of no gain at both ends, for the level at the receiver.",
+  optional: true,
+  hint: "For the level at the receiver, with antennas of no gain at both ends.",
 };
 
 function PathLossCalculator() {
@@ -217,7 +219,10 @@ function PathLossCalculator() {
   const distance = useNumber(plDistance);
   const power = useNumber(plPower);
   const values = allValues(frequency, distance);
-  const loss = values ? freeSpaceLossDb(values[0], values[1] / 1000) : null;
+  const wavelength = values ? SPEED_OF_LIGHT / (values[0] * 1e6) : null;
+  // Closer than a wavelength the antennas are in each other's near field, where the formula does not hold (and gives less than no loss).
+  const tooClose = values !== null && wavelength !== null && values[1] < wavelength;
+  const loss = values && !tooClose ? freeSpaceLossDb(values[0], values[1] / 1000) : null;
   const received = loss !== null && power.value !== null ? wattsToDbm(power.value) - loss : null;
   const convention = values && values[0] > 30 ? "vhf" : "hf";
   return (
@@ -230,6 +235,11 @@ function PathLossCalculator() {
       <Result
         label="Path loss"
         figure={loss !== null ? `${formatFigure(loss, { decimals: 1 })} dB` : null}
+        refusal={
+          tooClose
+            ? `That is closer than one wavelength (${formatFigure(wavelength!, { decimals: 1, significant: 3 })} m), where the antennas are in each other's near field and the free-space formula does not hold.`
+            : undefined
+        }
         keep={
           loss !== null && values
             ? {
@@ -456,7 +466,15 @@ const SCALES = [
   { value: "s-vhf", label: "S-units, VHF and up (above 30 MHz)" },
 ] as const satisfies ReadonlyArray<{ value: Scale; label: string }>;
 
-const levelSpec: NumberSpec = { id: "radio.levels.value", label: "Level", initial: 100, hint: "For S-units, type 9 for S9, or 9.5." };
+const levelSpec: NumberSpec = { id: "radio.levels.value", label: "Level", initial: 100 };
+/** The level's field, saying the unit of the scale chosen beside the figure. */
+const LEVEL_SPECS: Record<Scale, NumberSpec> = {
+  w: { ...levelSpec, suffix: "W" },
+  dbm: { ...levelSpec, suffix: "dBm" },
+  dbw: { ...levelSpec, suffix: "dBW" },
+  "s-hf": { ...levelSpec, suffix: "S-units", hint: "Type 9 for S9, or 7.5 for half way between S7 and S8." },
+  "s-vhf": { ...levelSpec, suffix: "S-units", hint: "Type 9 for S9, or 7.5 for half way between S7 and S8." },
+};
 const overS9Spec: NumberSpec = { id: "radio.levels.over", label: "Decibels over S9", initial: 0, min: 0, suffix: "dB" };
 
 function formatWatts(watts: number): string {
@@ -470,7 +488,7 @@ function formatWatts(watts: number): string {
 
 function LevelsCalculator() {
   const [scale, setScale] = useChoice<Scale>("radio.levels.scale", SCALES, "w");
-  const level = useNumber(levelSpec);
+  const level = useNumber(LEVEL_SPECS[scale]);
   const over = useNumber(overS9Spec);
   const isS = scale === "s-hf" || scale === "s-vhf";
   let dbm: number | null = null;
@@ -482,7 +500,11 @@ function LevelsCalculator() {
     } else if (scale === "dbm") dbm = level.value;
     else if (scale === "dbw") dbm = level.value + 30;
     else if (level.value < 0 || level.value > 9) refusal = "S-units run from 0 to 9; above S9 a reading is given as decibels over S9.";
-    else if (over.value !== null) dbm = dbmFromSUnits(level.value, scale === "s-hf" ? "hf" : "vhf", level.value === 9 ? over.value : 0);
+    else {
+      // Decibels over S9 are asked for, and count, only at S9.
+      const extra = level.value === 9 ? over.value : 0;
+      if (extra !== null) dbm = dbmFromSUnits(level.value, scale === "s-hf" ? "hf" : "vhf", extra);
+    }
   }
   const rows: Array<[string, string]> =
     dbm !== null

@@ -79,14 +79,6 @@ export function kindWords(load: PowerLoad): string | null {
   }
 }
 
-/** What a load does in a day, in words: "4 W for 24 h", "1 charge of 13.4 Wh", "on the air 2 h, 3 min an hour transmitting (FM)". */
-export function useWords(load: PowerLoad): string {
-  if (load.kind === "device") return `${watts(load.watts)} for ${figure(load.hoursPerDay, 1)} h a day`;
-  if (load.kind === "charge")
-    return `${figure(load.chargesPerDay, 1)} ${load.chargesPerDay === 1 ? "charge" : "charges"} a day of ${wattHours(load.wattHours)}`;
-  return `${watts(load.receiveW)} receiving, ${watts(load.transmitW)} transmitting, ${figure(load.onAirHours, 1)} h on the air, ${figure(load.transmitShare * 60, 0)} min an hour transmitting`;
-}
-
 /**
  * Where a load's figures came from, one sentence for the plan's screen and its PDF:
  * the library entry, its publisher, document, URL and the date read, and whether the

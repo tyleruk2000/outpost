@@ -14,7 +14,7 @@ import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Segmented, Skeleton } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
-import { useOwnDevices, useRemoveOwnDevice, useSaveOwnDevice } from "./data";
+import { isConflict, useOwnDevices, useRemoveOwnDevice, useSaveOwnDevice } from "./data";
 import { entrySummary, ownSummary } from "./device-text";
 import { ChoiceField, Fields, NumberField } from "./inputs";
 
@@ -255,7 +255,10 @@ export function OwnDeviceDialog({
             ? "Give the power it draws receiving and transmitting."
             : null;
     if (missing) return setProblem(missing);
-    save.mutate({ id: device?.id ?? null, input }, { onSuccess: (saved) => onSaved(saved, device === null) });
+    save.mutate(
+      { id: device?.id ?? null, input, baseUpdatedAt: device?.updatedAt },
+      { onSuccess: (saved) => onSaved(saved, device === null) },
+    );
   };
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -333,7 +336,12 @@ export function OwnDeviceDialog({
               )}
             </Field>
             {problem ? <Notice tone="danger">{problem}</Notice> : null}
-            {save.isError ? <Notice tone="danger">{errorMessage(save.error)}</Notice> : null}
+            {save.isError ? (
+              <Notice tone="danger">
+                {errorMessage(save.error)}
+                {isConflict(save.error) ? " Close this and open it again to see it as it is now." : null}
+              </Notice>
+            ) : null}
           </DialogBody>
           <DialogFooter>
             {device ? (

@@ -18,7 +18,6 @@ import {
   type PowerLoad,
   type PowerSupply,
   type PublishedFigure,
-  RADIO_MODES,
   type RadioEntry,
   type RadioModeId,
   radioModeById,
@@ -175,8 +174,6 @@ export function withMode(load: PowerLoad, mode: RadioModeId): PowerLoad {
   const preset = radioModeById(mode);
   return mode === "custom" ? { ...load, mode } : { ...load, mode, transmitShare: preset.transmitShare, modeFactor: preset.modeFactor };
 }
-
-export const RADIO_MODE_CHOICES = RADIO_MODES.filter((mode) => mode.id !== "custom");
 
 /** True when a figure the load has is no longer the one it was given from its source. */
 export function changedSince(load: PowerLoad): boolean {

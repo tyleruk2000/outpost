@@ -15,13 +15,38 @@ import { SOLAR_SOURCES as S } from "./sources";
 import { SunPathChart, sunPath } from "./sun-path-chart";
 import { clockAt, formatOffset, offsetAt, reading, standardOffset, type ZoneChoice } from "./zone";
 
-/** The device's clock, read again every half minute. */
-function useNow(every = 30_000): number {
+const MINUTE = 60_000;
+
+/**
+ * The device's clock, read again at the turn of each minute: the tab shows minutes and
+ * tenths of a degree, which change no faster. Not read at all while the page is hidden;
+ * read at once when it is shown again.
+ */
+export function useMinuteClock(): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), every);
-    return () => window.clearInterval(timer);
-  }, [every]);
+    let timer: number | undefined;
+    const next = () => {
+      const at = Date.now();
+      timer = window.setTimeout(tick, MINUTE - (at % MINUTE));
+    };
+    const tick = () => {
+      setNow(Date.now());
+      next();
+    };
+    const onVisibility = () => {
+      window.clearTimeout(timer);
+      timer = undefined;
+      if (document.visibilityState === "hidden") return;
+      tick();
+    };
+    if (document.visibilityState !== "hidden") next();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
   return now;
 }
 
@@ -35,7 +60,7 @@ export function minutesAndSeconds(minutes: number): string {
 }
 
 export function NowTab({ place, zone }: { place: ChosenPlace | null; zone: ZoneChoice }) {
-  const now = useNow();
+  const now = useMinuteClock();
   const style = useClockStyle();
   const figures = useMemo(() => {
     if (!place) return null;

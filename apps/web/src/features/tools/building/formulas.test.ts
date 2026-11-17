@@ -72,7 +72,9 @@ describe("U-value", () => {
   });
 
   it("agrees with Knauf's published R-value for Loft Roll 44 at 100 mm (2.25 m²K/W, rounded down)", () => {
-    expect(Math.floor((0.1 / 0.044) * 20) / 20).toBe(2.25);
+    // The layer's own resistance is what is left of 1 ÷ U once the surface resistances are taken off.
+    const layerR = 1 / uValue([{ thickness: 0.1, conductivity: 0.044 }], "upwards") - 0.1 - 0.04;
+    expect(Math.floor(layerR * 20) / 20).toBe(2.25);
   });
 
   it("gives heat loss as U × A × ΔT", () => {

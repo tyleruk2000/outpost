@@ -251,7 +251,15 @@ to run a generator indoors.
 
 A plan holds a battery bank, its loads, an inverter, solar and an optional generator or
 mains charger, and the cable's rated current. It is saved 0.7 s after the last change
-("Saved." beside the title). Plans can be copied (named "… (copy)"), deleted, compared
+("Saved." beside the title), one save at a time, and at once when the page is hidden,
+closed or left (a save made as the page closes asks the browser to finish it after the
+page has gone). A plan whose name has been emptied is not saved until it has one again.
+Each save says which version it was made from; if another tab or device has saved the
+plan since, nothing is written over it, saving stops, and the page says so and offers
+**Keep my version** or **Load the other version**, as a note does. A save made as the
+page closes while another save is still under way goes without that check, since it
+cannot know the version the first will make. A device of your own changed in two places
+is refused the same way, and the dialog says to open it again. Plans can be copied (named "… (copy)"), deleted, compared
 side by side on the Power and batteries screen, and written out as a PDF with Save as
 PDF, Add to library and Share (the PDF is made from the plan as last saved, dated by its
 last change, and linked back to `/tools/power/plans/:id`). To link one from a note, put
@@ -345,8 +353,9 @@ as one JSON value.
   drawn as one line in one hue with the usable limit marked, labelled axes, a readout
   for the pointer and the arrow keys, and a table for screen readers.
 - Every assumption, in sentences (`assumptions` in `calc/plan.ts`), on the screen and in
-  the PDF, and the sentence that these are estimates and that real batteries deliver
-  less when cold, old or discharged fast.
+  the PDF, and the sentence that these are estimates and general information, no
+  substitute for the wiring regulations or a qualified electrician, and that real
+  batteries deliver less when cold, old or discharged fast.
 
 ### Starting figures
 
@@ -392,7 +401,7 @@ plan's system is kept as one JSON value.
 
 ### Limits
 
-Figures are checked by the server: up to 60 loads; watts to 1 MW; hours 0 to 24 (a
+Figures are checked by the server: up to 500 plans; up to 60 loads; watts to 1 MW; hours 0 to 24 (a
 radio's on-air and standby hours together at most 24); shares 0 to 1; peak sun hours 0
 to 12; 1 to 100 batteries in series and in parallel.
 

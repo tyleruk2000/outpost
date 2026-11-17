@@ -41,17 +41,6 @@ interface Offer {
   copy: KeptCopy<"solar">;
 }
 
-export function offersOf(weather: WeatherResponse | undefined): Offer[] {
-  if (!weather) return [];
-  const offers: Offer[] = [];
-  for (const place of weather.places) {
-    const copy = weather.kept.find((each) => each.kind === "solar" && each.placeId === place.id) as KeptCopy<"solar"> | undefined;
-    if (copy) offers.push({ place, copy });
-  }
-  // Home first, then the weather list's own order.
-  return offers.sort((a, b) => Number(b.place.isHome) - Number(a.place.isHome));
-}
-
 /** The twelve figures and the record of where they came from, for one place and tilt. */
 export function fillFrom(offer: Offer, tilt: Tilt, now: number): { sunHours: Array<number | null>; source: PowerSunSource } {
   const data: SolarData = offer.copy.data;

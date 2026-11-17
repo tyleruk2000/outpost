@@ -8,7 +8,6 @@ import {
   Calculator,
   ChoiceField,
   Formula,
-  formatDuration,
   formatFigure,
   formatRange,
   HowWorkedOut,
@@ -67,6 +66,14 @@ export default function WaterPage() {
 
 const litres = (value: number) => `${formatFigure(value, { decimals: 0 })} litres`;
 
+/** How long a store lasts at a daily use, given no more precisely than the yield it comes from. */
+function lasts(lowLitres: number, highLitres: number, perDay: number): string {
+  const precision = { significant: 2, decimals: 1 };
+  const [low, high] = [lowLitres / perDay, highLitres / perDay];
+  if (high < 1) return formatRange(low * 24, high * 24, "hours", precision);
+  return formatRange(low, high, high === 1 ? "day" : "days", precision);
+}
+
 // ── Water to store ──────────────────────────────────────────────────────────
 
 const stPeople: NumberSpec = {
@@ -117,7 +124,7 @@ function StorageCalculator() {
         keep={
           total && values
             ? {
-                title: `Water to store for ${values[0]} ${values[0] === 1 ? "person" : "people"}, ${values[1]} days`,
+                title: `Water to store for ${values[0]} ${values[0] === 1 ? "person" : "people"}, ${plural(values[1], "day")}`,
                 lines: [`${totalText}${figure ? `, by the ${figure.who} figure (${figure.covers})` : ", by my own figure"}`],
               }
             : undefined
@@ -133,7 +140,7 @@ function StorageCalculator() {
               ) : (
                 <>By your own figure.</>
               )}{" "}
-              About {formatFigure(total[1]! / u.ukGallon.toBase(1), { decimals: 0 })} UK gallons.
+              About {formatRange(total[0]! / u.ukGallon.toBase(1), total[1]! / u.ukGallon.toBase(1), "UK gallons", { decimals: 0 })}.
             </p>
             <table className="mt-3 w-full text-left text-small tabular">
               <caption className="text-left text-ink-muted">The same household by each body's figure</caption>
@@ -276,13 +283,11 @@ function RainCalculator() {
           <p>
             The range is the two published coefficients for {surface.label.toLowerCase()}: {surface.bs8515} in the draft BS 8515 and{" "}
             {surface.ciria} in CIRIA C753.
-            {use.value
-              ? ` At ${litres(use.value)} a day that lasts ${formatDuration((yields[0]! / use.value) * 24 * 60)} to ${formatDuration((yields[1]! / use.value) * 24 * 60)}.`
-              : ""}
+            {use.value ? ` At ${litres(use.value)} a day that lasts ${lasts(yields[0]!, yields[1]!, use.value)}.` : ""}
           </p>
         ) : yields && use.value ? (
           <p>
-            At {litres(use.value)} a day that lasts {formatDuration((yields[0]! / use.value) * 24 * 60)}.
+            At {litres(use.value)} a day that lasts {lasts(yields[0]!, yields[1]!, use.value)}.
           </p>
         ) : null}
         {yields ? (
@@ -343,7 +348,9 @@ function FilterCalculator() {
     values && months.error === null
       ? filterLife(values[0], values[1], values[2], months.value !== null ? months.value * 30.44 : null)
       : null;
-  const date = life ? formatDate(Date.now() + life.days * 86_400_000) : "";
+  // Beyond a century the figures are surely mistyped, and a date that far off cannot be written.
+  const tooLong = life !== null && life.days > 36_525;
+  const date = life && !tooLong ? formatDate(Date.now() + life.days * 86_400_000) : "";
   return (
     <Calculator
       id="filter"
@@ -359,9 +366,15 @@ function FilterCalculator() {
       <Result
         label="Replace it in"
         figure={life ? plural(Math.floor(life.days), "day") : null}
-        refusal={values && values[1] >= values[0] ? "It has already filtered its rated capacity: replace it now." : undefined}
+        refusal={
+          values && values[1] >= values[0]
+            ? "It has already filtered its rated capacity: replace it now."
+            : tooLong
+              ? "That is more than 100 years at this rate: check the figures above."
+              : undefined
+        }
         keep={
-          life
+          life && !tooLong
             ? {
                 title: "Water filter replacement",
                 lines: [`Replace by ${date}, when the ${life.limit === "time" ? "label's time limit" : "rated capacity"} is reached`],
@@ -369,7 +382,7 @@ function FilterCalculator() {
             : undefined
         }
       >
-        {life ? (
+        {life && !tooLong ? (
           <p>
             By {date}, when {life.limit === "time" ? "the time limit on the label comes" : "it has filtered its rated capacity"}. Replace it
             sooner if the flow slows, the taste changes or the maker's instructions say so.

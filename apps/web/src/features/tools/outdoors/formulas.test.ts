@@ -84,11 +84,13 @@ describe("heat index", () => {
   });
 
   it("applies the NWS's adjustments for very dry and very humid air", () => {
+    // The regression alone gives 94.75 °F at 100 °F and 10%, and 92.97 °F at 82 °F and 95%.
+    // The dry adjustment, (13 − 10) ÷ 4 × √((17 − 5) ÷ 17) = 0.63, is taken off; the humid one,
+    // (95 − 85) ÷ 10 × (87 − 82) ÷ 5 = 1, is added.
     const dry = heatIndexF(100, 10);
     const humid = heatIndexF(82, 95);
-    expect(dry.ok && humid.ok).toBe(true);
-    // The adjustment for dry air is subtracted, for humid air added.
-    expect(dry.ok && dry.value).toBeLessThan(96);
+    expect(dry.ok && dry.value).toBeCloseTo(94.12, 2);
+    expect(humid.ok && humid.value).toBeCloseTo(93.97, 2);
   });
 
   it("refuses outside 80 °F to 110 °F", () => {

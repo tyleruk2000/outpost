@@ -27,11 +27,6 @@ export function formatFigure(value: number, { decimals = 1, significant }: Figur
   return text === "-0" ? "0" : text;
 }
 
-/** A figure and its unit: "12.5 litres", "3 km". */
-export function formatQuantity(value: number, unit: string, options?: FigureOptions): string {
-  return `${formatFigure(value, options)} ${unit}`;
-}
-
 /** A length of time in minutes as people say it: "2 hours 35 minutes", "45 minutes", "1 hour". */
 export function formatDuration(minutes: number): string {
   if (!Number.isFinite(minutes)) return "–";

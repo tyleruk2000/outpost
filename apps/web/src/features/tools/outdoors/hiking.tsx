@@ -100,7 +100,7 @@ export function HikingCalculator() {
         keep={
           water && energy
             ? {
-                title: `Water and food for ${formatFigure(values![0])} hours of walking`,
+                title: `Water and food for ${formatFigure(values![0])} ${values![0] === 1 ? "hour" : "hours"} of walking`,
                 lines: [
                   `Water in warm or hot weather: ${waterText} (UK MoD maximum provision; no more than 1.25 litres an hour)`,
                   `Energy used: ${energyText}`,

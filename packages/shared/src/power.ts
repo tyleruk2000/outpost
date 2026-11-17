@@ -406,6 +406,8 @@ export interface PowerPlan extends PowerPlanInput {
 }
 
 export const POWER_PLAN_MAX_LOADS = 60;
+/** Plans kept at most: the list is sent whole, so it has an end. */
+export const POWER_PLANS_MAX = 500;
 
 /** Months, for labels. */
 export const MONTHS = [

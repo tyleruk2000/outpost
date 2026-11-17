@@ -14,12 +14,14 @@ import type { AppContext } from "../../core/context.ts";
 import { badRequest, notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
 import { powerDevices } from "../../db/schema.ts";
+import { checkBase, nextUpdatedAt, withoutBase } from "./versions.ts";
 
 export interface PowerDevicesService {
   list(): OwnDevice[];
   get(id: string): OwnDevice;
   create(input: OwnDeviceInput): OwnDevice;
-  update(id: string, input: OwnDeviceInput): OwnDevice;
+  /** `baseUpdatedAt`, when given, is the version the change was made from: an older one than is kept is refused (409). */
+  update(id: string, input: OwnDeviceInput, baseUpdatedAt?: number): OwnDevice;
   remove(id: string): void;
   count(): number;
   eraseAll(): number;
@@ -90,6 +92,8 @@ function tidy(input: OwnDeviceInput): OwnDeviceInput {
 export function registerPowerDevices(app: FastifyInstance, ctx: AppContext): void {
   const { db } = ctx;
   const changed = () => ctx.events.publish({ type: "power.changed" });
+  const countDevices = ctx.sqlite.prepare<[], { n: number }>("SELECT count(*) AS n FROM power_devices");
+  const deleteDevices = ctx.sqlite.prepare("DELETE FROM power_devices");
 
   const service: PowerDevicesService = {
     list: () => db.select().from(powerDevices).orderBy(asc(powerDevices.name)).all().map(toDevice),
@@ -109,10 +113,11 @@ export function registerPowerDevices(app: FastifyInstance, ctx: AppContext): voi
       changed();
       return service.get(id);
     },
-    update(id, input) {
-      service.get(id);
+    update(id, input, baseUpdatedAt) {
+      const current = service.get(id);
+      checkBase("device", current.updatedAt, baseUpdatedAt);
       db.update(powerDevices)
-        .set({ ...tidy(input), updatedAt: Date.now() })
+        .set({ ...tidy(input), updatedAt: nextUpdatedAt(current.updatedAt) })
         .where(eq(powerDevices.id, id))
         .run();
       changed();
@@ -123,10 +128,10 @@ export function registerPowerDevices(app: FastifyInstance, ctx: AppContext): voi
       db.delete(powerDevices).where(eq(powerDevices.id, id)).run();
       changed();
     },
-    count: () => (ctx.sqlite.prepare("SELECT count(*) AS n FROM power_devices").get() as { n: number }).n,
+    count: () => countDevices.get()!.n,
     eraseAll() {
       const had = service.count();
-      ctx.sqlite.prepare("DELETE FROM power_devices").run();
+      deleteDevices.run();
       changed();
       return had;
     },
@@ -136,9 +141,10 @@ export function registerPowerDevices(app: FastifyInstance, ctx: AppContext): voi
   type IdParams = { Params: { id: string } };
   app.get("/api/power/devices", async () => ({ devices: service.list() }));
   app.post("/api/power/devices", async (request) => ({ device: service.create(deviceInput.parse(request.body)) }));
-  app.put<IdParams>("/api/power/devices/:id", async (request) => ({
-    device: service.update(request.params.id, deviceInput.parse(request.body)),
-  }));
+  app.put<IdParams>("/api/power/devices/:id", async (request) => {
+    const { body, baseUpdatedAt } = withoutBase(request.body);
+    return { device: service.update(request.params.id, deviceInput.parse(body), baseUpdatedAt) };
+  });
   app.delete<IdParams>("/api/power/devices/:id", async (request) => {
     service.remove(request.params.id);
     return { ok: true };

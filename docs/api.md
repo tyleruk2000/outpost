@@ -968,11 +968,14 @@ Types: `packages/shared/src/power.ts`. The server keeps plans and works nothing 
 
 | Route | What it does |
 | --- | --- |
-| `GET` / `POST /api/power/plans` | Power plans, by name. `POST` body: `name`, `notes`, `battery`, `loads` (up to 60, each a `device`, a `radio` or a `charge`, supplied `dc`, `usb` or `ac`, each with an optional `origin`: the library entry or own device its figures came from), `usb` (optional: `{ efficiency }`, the converter to USB), `inverter`, `solar` (with `sunHours`, twelve numbers or `null`, and `sunHoursSource`: `null`, left out, or where they were filled in from, a `PowerSunSource`), `charger`, `cableRatingA`. Returns `{ plan }`. `400` with the reason for figures out of range, or a radio's hours adding up to more than a day. |
-| `GET` / `PUT` / `DELETE /api/power/plans/:id` | One plan. `PUT` takes the whole plan, as `POST` does. |
-| `POST /api/power/plans/:id/copy` | A copy under the name "… (copy)". Returns `{ plan }`. |
+| `GET` / `POST /api/power/plans` | Power plans, by name. `POST` body: `name`, `notes`, `battery`, `loads` (up to 60, each a `device`, a `radio` or a `charge`, supplied `dc`, `usb` or `ac`, each with an optional `origin`: the library entry or own device its figures came from), `usb` (optional: `{ efficiency }`, the converter to USB), `inverter`, `solar` (with `sunHours`, twelve numbers or `null`, and `sunHoursSource`: `null`, left out, or where they were filled in from, a `PowerSunSource`), `charger`, `cableRatingA`. Returns `{ plan }`. `400` with the reason for figures out of range, a radio's hours adding up to more than a day, or past 500 plans (`POWER_PLANS_MAX`). `GET` lists every plan, whole, by name. |
+| `GET` / `PUT` / `DELETE /api/power/plans/:id` | One plan. `PUT` takes the whole plan, as `POST` does, and optionally `baseUpdatedAt`: the `updatedAt` the change was made from. If the plan has been saved since (another tab or device), nothing is saved and the answer is `409 conflict` with `details.updatedAt`, the newer version's time. Without `baseUpdatedAt` the save is taken as it is. Each save's `updatedAt` is later than the one before. `404` for a plan that is not there. |
+| `POST /api/power/plans/:id/copy` | A copy under the name "… (copy)". Returns `{ plan }`. `400` past 500 plans. |
 | `GET` / `POST /api/power/devices` | A person's own devices for the battery calculators, by name. `POST` body: `name`, `kind` (`run`, `charge`, `radio`), `supply` (`dc`, `usb`, `ac`), `watts`, `wattHours`, `receiveW`, `transmitW`, `standbyW` (each a number or `null`; the one its kind needs is required, the others are kept as `null`), `note`. Returns `{ device }`. `400` with the reason when the figure its kind needs is missing, or past 500 devices. |
-| `PUT` / `DELETE /api/power/devices/:id` | One device. `PUT` takes the whole device, as `POST` does. Loads already made from it keep their figures. |
+| `PUT` / `DELETE /api/power/devices/:id` | One device. `PUT` takes the whole device, as `POST` does, and optionally `baseUpdatedAt`, refused with `409 conflict` (and `details.updatedAt`) as for a plan. Loads already made from it keep their figures. `404` for a device that is not there. |
+
+The server publishes `power.changed` on the event stream when a plan or a device of the
+person's own is added, changed, copied, deleted or erased.
 ## Morse trainer
 
 Types: `packages/shared/src/morse.ts`; the engine is `packages/shared/src/morse/` and
@@ -1165,12 +1168,12 @@ the browser.
 | Method and path | Purpose |
 | --- | --- |
 | `GET /api/network` | `NetworkStatus`: `unavailable` (`container`, `platform`, `portable` or null), `os`, `abilities` (whether ping can be used, where the neighbour table, announcements and router are read from, each null when missing), `subnets` (each with `cidr`, `kind`, `plan`: `sweep`, `narrowed` or `listen`, `swept`, `addresses` and `reason`), `skipped` (with reasons), `limits`, `lastScan`, the scan `job` under way, `devices` (`NetworkDevice[]`), `makers` (whether the IEEE's registry is here, its size and date, and where it comes from), `makersJob`, and `scanRight` (`{ allowed, reason }`, `reason` being `open`, `local` or `remote`: whether this request may start a scan; see `OUTPOST_NETWORK_SCAN_LOCAL_ONLY`). Sends nothing onto the network. |
-| `POST /api/network/scan` | Starts a `network.scan` job: `{ job }`. Takes no body; what is scanned is worked out on the server. `409` while one is queued or running; `415 unsupported` in a container without host networking, from a portable drive, on another system, or with no private network; `403` from another device when Outpost was started with `OUTPOST_NETWORK_SCAN_LOCAL_ONLY=true`. Stop it with `POST /api/jobs/:id/cancel`; a stopped scan keeps nothing. |
+| `POST /api/network/scan` | Starts a `network.scan` job: `{ job }`. Takes no body; what is scanned is worked out on the server. `409` while one is queued, running or paused; `415 unsupported` in a container without host networking, from a portable drive, on another system, or with no private network; `403` from another device when Outpost was started with `OUTPOST_NETWORK_SCAN_LOCAL_ONLY=true`. Stop it with `POST /api/jobs/:id/cancel`; a stopped scan keeps nothing. |
 | `PATCH /api/network/devices/:id` | Body: any of `label` (80 characters) and `note` (2,000). Returns `{ device }`. |
 | `DELETE /api/network/devices/:id` | Forgets one device, with its name and note. |
 | `DELETE /api/network/devices` | Forgets every device and the record of scans: `{ removed }`. |
 | `GET /api/network/devices.csv` | The list as a CSV file, sent only when asked for. |
-| `POST /api/network/makers` | Fetches the IEEE's registry of hardware-address prefixes as a `network.makers` job: `{ job }`. The only route here that reaches the internet. |
+| `POST /api/network/makers` | Fetches the IEEE's registry of hardware-address prefixes as a `network.makers` job: `{ job }`. The only route here that reaches the internet. `409` while it is already being fetched. |
 | `DELETE /api/network/makers` | Removes the fetched registry. |
 
 The server publishes `network.changed` on the event stream when a scan finishes, a

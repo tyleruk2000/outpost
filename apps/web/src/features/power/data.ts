@@ -1,8 +1,16 @@
 /** What the power screens ask the server for. */
-import { newPowerPlan, type OwnDevice, type OwnDeviceInput, type PowerPlan, type PowerPlanInput, type RadioProfile } from "@outpost/shared";
+import {
+  type ApiErrorBody,
+  newPowerPlan,
+  type OwnDevice,
+  type OwnDeviceInput,
+  type PowerPlan,
+  type PowerPlanInput,
+  type RadioProfile,
+} from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api, errorMessage } from "@/lib/api";
+import { ApiError, api, errorMessage } from "@/lib/api";
 
 export const powerKeys = {
   all: ["power", "plans"] as const,
@@ -39,15 +47,59 @@ export function useCreatePowerPlan() {
   });
 }
 
+/** Browsers refuse a keepalive request with a larger body than this. */
+const KEEPALIVE_LIMIT = 60_000;
+
+/**
+ * The save made as the page is hidden or closed. `keepalive` lets it finish after the
+ * page has gone, which `api.put` cannot ask for. A plan too large for keepalive is sent
+ * the ordinary way.
+ */
+async function saveWhileLeaving(id: string, body: PowerPlanSave): Promise<PowerPlan> {
+  const json = JSON.stringify(body);
+  let response: Response;
+  try {
+    response = await fetch(`/api/power/plans/${id}`, {
+      method: "PUT",
+      headers: { Accept: "application/json", "Content-Type": "application/json", "X-Outpost-Request": "1" },
+      body: json,
+      credentials: "same-origin",
+      keepalive: json.length <= KEEPALIVE_LIMIT,
+    });
+  } catch {
+    throw new ApiError(0, "unreachable", "The Outpost server is not responding. It may be restarting.");
+  }
+  if (!response.ok) {
+    const error = ((await response.json().catch(() => null)) as ApiErrorBody | null)?.error;
+    throw new ApiError(
+      response.status,
+      error?.code ?? "http",
+      error?.message ?? `The server answered with an error (${response.status}).`,
+      error?.details,
+    );
+  }
+  return ((await response.json()) as { plan: PowerPlan }).plan;
+}
+
+/** A plan as saved: the whole plan, and the version it was changed from (`updatedAt` when opened or last saved). */
+type PowerPlanSave = PowerPlanInput & { baseUpdatedAt?: number };
+
+/** Whether a save was refused because the plan or device was saved over somewhere else since it was opened. */
+export const isConflict = (error: unknown): error is ApiError => error instanceof ApiError && error.code === "conflict";
+
 export function useSavePowerPlan(id: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (input: PowerPlanInput) => api.put<{ plan: PowerPlan }>(`/api/power/plans/${id}`, input).then((data) => data.plan),
+    mutationFn: ({ body, leaving }: { body: PowerPlanSave; leaving: boolean }) =>
+      leaving ? saveWhileLeaving(id, body) : api.put<{ plan: PowerPlan }>(`/api/power/plans/${id}`, body).then((data) => data.plan),
     onSuccess: (plan) => {
       client.setQueryData(powerKeys.one(id), plan);
       void client.invalidateQueries({ queryKey: powerKeys.all, exact: true });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    // A conflict is shown on the plan itself, with the choice of which to keep.
+    onError: (error) => {
+      if (!isConflict(error)) toast.error(errorMessage(error));
+    },
   });
 }
 
@@ -88,9 +140,9 @@ export const useOwnDevices = () =>
 export function useSaveOwnDevice() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, input }: { id: string | null; input: OwnDeviceInput }) =>
+    mutationFn: ({ id, input, baseUpdatedAt }: { id: string | null; input: OwnDeviceInput; baseUpdatedAt?: number }) =>
       (id
-        ? api.put<{ device: OwnDevice }>(`/api/power/devices/${id}`, input)
+        ? api.put<{ device: OwnDevice }>(`/api/power/devices/${id}`, { ...input, baseUpdatedAt })
         : api.post<{ device: OwnDevice }>("/api/power/devices", input)
       ).then((data) => data.device),
     onSuccess: () => void client.invalidateQueries({ queryKey: powerKeys.devices }),

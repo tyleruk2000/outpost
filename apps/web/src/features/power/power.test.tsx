@@ -12,6 +12,7 @@ import PowerPage from "./power-page";
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+  Reflect.deleteProperty(document, "visibilityState");
 });
 
 function planOf(patch: Partial<PowerPlan> = {}): PowerPlan {
@@ -44,7 +45,13 @@ function planOf(patch: Partial<PowerPlan> = {}): PowerPlan {
 }
 
 interface Server {
-  put: PowerPlanInput[];
+  put: Array<PowerPlanInput & { baseUpdatedAt?: number }>;
+  /** Another tab or device saving the plan, as the server would keep it. */
+  saveElsewhere(patch: Partial<PowerPlanInput>): PowerPlan;
+  /** Whether each save asked to outlive the page (`keepalive`). */
+  keptAlive: boolean[];
+  /** The most saves under way at the same moment. */
+  mostAtOnce: number;
   posted: unknown[];
   devices: unknown[];
   /** What the plan's sun-hours control asked of the weather module, in order. */
@@ -61,10 +68,24 @@ function show(
     markers?: Array<{ id: string; name: string; lat: number; lon: number; icon: string }>;
     /** What PVGIS says when asked: figures unless this is set. */
     pvgisFails?: string;
+    /** How long the server takes over each save. */
+    putDelayMs?: number;
   } = {},
 ): Server {
-  const server: Server = { put: [], posted: [], devices: [], weatherAsked: [] };
   let plan = options.plan ?? planOf();
+  const server: Server = {
+    put: [],
+    keptAlive: [],
+    mostAtOnce: 0,
+    posted: [],
+    devices: [],
+    weatherAsked: [],
+    saveElsewhere(patch) {
+      plan = { ...plan, ...patch, updatedAt: plan.updatedAt + 1000 };
+      return plan;
+    },
+  };
+  let saving = 0;
   // What Weather and hazards holds, which a fetch from the plan adds to.
   const weather = (options.weather ?? { places: [], kept: [], sources: [], updateOnOpen: false, now: Date.now() }) as {
     places: Array<Record<string, unknown>>;
@@ -86,9 +107,21 @@ function show(
         return json({ plans: options.plans ?? [plan] });
       }
       if (pathname === "/api/power/plans/p1" && init?.method === "PUT") {
-        const body = JSON.parse(String(init.body)) as PowerPlanInput;
+        const body = JSON.parse(String(init.body)) as PowerPlanInput & { baseUpdatedAt?: number };
         server.put.push(body);
-        plan = { ...plan, ...body };
+        server.keptAlive.push(init.keepalive === true);
+        saving += 1;
+        server.mostAtOnce = Math.max(server.mostAtOnce, saving);
+        if (options.putDelayMs) await new Promise((resolve) => setTimeout(resolve, options.putDelayMs));
+        saving -= 1;
+        // As the server does: a save made from an older version than the one kept is refused.
+        const { baseUpdatedAt, ...input } = body;
+        if (baseUpdatedAt !== undefined && baseUpdatedAt !== plan.updatedAt)
+          return json(
+            { error: { code: "conflict", message: "This plan was changed somewhere else.", details: { updatedAt: plan.updatedAt } } },
+            409,
+          );
+        plan = { ...plan, ...input, updatedAt: plan.updatedAt + 1 };
         return json({ plan });
       }
       if (pathname === "/api/power/plans/p1") return json({ plan });
@@ -195,7 +228,9 @@ describe("a power plan", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Shack" })).toBeInTheDocument();
     // 15 W × 24 h + 15.2 Wh for the radio.
     expect(screen.getByText("375 Wh")).toBeInTheDocument();
-    expect(screen.getByText(/Real batteries deliver less when cold/)).toBeInTheDocument();
+    expect(screen.getByText(/Real batteries deliver less when cold/)).toHaveTextContent(
+      /general information: no substitute for the wiring regulations/,
+    );
     expect(screen.getByText(/Duty cycle 10.0%/)).toBeInTheDocument();
     expect(screen.getByText(/Not checked: give the battery's rated discharge current/)).toBeInTheDocument();
     expect(await screen.findByText("Save as PDF")).toBeInTheDocument();
@@ -228,6 +263,82 @@ describe("a power plan", () => {
       supply: "usb",
       origin: { library: "common", id: "raspberry-pi-5", state: "typical", figures: { watts: 4.08 } },
     });
+  });
+
+  it("saves a change at once when the page is hidden or closed, in a request that outlives the page", async () => {
+    const server = show("/tools/power/plans/p1");
+    fireEvent.change(await screen.findByLabelText("Name"), { target: { value: "Shack, winter" } });
+    expect(server.put).toHaveLength(0);
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "hidden" });
+    document.dispatchEvent(new Event("visibilitychange"));
+    // Well inside the moment an ordinary change waits before it is saved.
+    await waitFor(() => expect(server.put).toHaveLength(1), { timeout: 300 });
+    expect(server.put[0]!.name).toBe("Shack, winter");
+    expect(server.keptAlive).toEqual([true]);
+    fireEvent.change(screen.getByLabelText("Notes"), { target: { value: "For the winter months." } });
+    window.dispatchEvent(new Event("pagehide"));
+    await waitFor(() => expect(server.put).toHaveLength(2), { timeout: 300 });
+    expect(server.put[1]!.notes).toBe("For the winter months.");
+  });
+
+  it("sends one save at a time, and a change made while one is under way follows it", async () => {
+    const server = show("/tools/power/plans/p1", { putDelayMs: 1200 });
+    const name = await screen.findByLabelText("Name");
+    fireEvent.change(name, { target: { value: "Shack A" } });
+    await waitFor(() => expect(server.put).toHaveLength(1), { timeout: 2000 });
+    fireEvent.change(name, { target: { value: "Shack AB" } });
+    await waitFor(() => expect(server.put).toHaveLength(2), { timeout: 4000 });
+    expect(server.mostAtOnce).toBe(1);
+    expect(server.put.map((put) => put.name)).toEqual(["Shack A", "Shack AB"]);
+    await waitFor(() => expect(screen.getByText("Saved.")).toBeInTheDocument(), { timeout: 3000 });
+  }, 10_000);
+
+  it("saves each change from the version it last saved, so that one save never refuses the next", async () => {
+    const server = show("/tools/power/plans/p1");
+    const name = await screen.findByLabelText("Name");
+    fireEvent.change(name, { target: { value: "Shack A" } });
+    await waitFor(() => expect(server.put).toHaveLength(1), { timeout: 2000 });
+    fireEvent.change(name, { target: { value: "Shack AB" } });
+    await waitFor(() => expect(server.put).toHaveLength(2), { timeout: 2000 });
+    expect(server.put.map((put) => put.baseUpdatedAt)).toEqual([Date.UTC(2026, 10, 16), Date.UTC(2026, 10, 16) + 1]);
+    await waitFor(() => expect(screen.getByText("Saved.")).toBeInTheDocument());
+  });
+
+  it("when another device has saved the plan since, overwrites nothing, says so, and keeps whichever version is chosen", async () => {
+    const server = show("/tools/power/plans/p1");
+    const name = await screen.findByLabelText("Name");
+    const elsewhere = server.saveElsewhere({ name: "Shack, theirs", cableRatingA: 25 });
+    fireEvent.change(name, { target: { value: "Shack, mine" } });
+    const notice = await screen.findByText("This plan was changed somewhere else", {}, { timeout: 2000 });
+    expect(screen.getByText(/Your version is still here, unsaved, and nothing has been overwritten/)).toBeInTheDocument();
+    expect(screen.getByText("Not saved: changed somewhere else.")).toBeInTheDocument();
+    expect(server.put).toHaveLength(1);
+    // Saving stops while the choice is open: a further change sends nothing.
+    fireEvent.change(name, { target: { value: "Shack, mine still" } });
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    expect(server.put).toHaveLength(1);
+    expect(notice).toBeInTheDocument();
+    // Keeping mine saves it over theirs, from their version.
+    fireEvent.click(screen.getByRole("button", { name: "Keep my version" }));
+    await waitFor(() => expect(server.put).toHaveLength(2));
+    expect(server.put[1]).toMatchObject({ name: "Shack, mine still", baseUpdatedAt: elsewhere.updatedAt });
+    await waitFor(() => expect(screen.getByText("Saved.")).toBeInTheDocument());
+    expect(screen.queryByText("This plan was changed somewhere else")).not.toBeInTheDocument();
+  });
+
+  it("can load the other version instead, dropping the unsaved change", async () => {
+    const server = show("/tools/power/plans/p1");
+    const name = await screen.findByLabelText("Name");
+    server.saveElsewhere({ name: "Shack, theirs" });
+    fireEvent.change(name, { target: { value: "Shack, mine" } });
+    fireEvent.click(await screen.findByRole("button", { name: "Load the other version" }, { timeout: 2000 }));
+    await waitFor(() => expect(screen.getByLabelText("Name")).toHaveValue("Shack, theirs"));
+    expect(screen.queryByText("This plan was changed somewhere else")).not.toBeInTheDocument();
+    expect(server.put).toHaveLength(1);
+    // And saving carries on from their version.
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Shack, theirs, changed" } });
+    await waitFor(() => expect(server.put).toHaveLength(2), { timeout: 2000 });
+    await waitFor(() => expect(screen.getByText("Saved.")).toBeInTheDocument());
   });
 
   it("refuses a load with a figure missing, saying which", async () => {

@@ -157,14 +157,14 @@ function RoastingCalculator() {
             <p>The FSA's figures, for when the retailer gives no cooking instructions:</p>
             <ul className="grid gap-1">
               <li>
-                Turkey, at 180ºC: 45 minutes per kg plus 20 minutes under 4.5 kg; 40 minutes per kg from 4.5 to 6.5 kg; 35 minutes per kg
+                Turkey, at 180 °C: 45 minutes per kg plus 20 minutes under 4.5 kg; 40 minutes per kg from 4.5 to 6.5 kg; 35 minutes per kg
                 over 6.5 kg.
               </li>
-              <li>Chicken, at 180ºC: 45 minutes per kg plus 20 minutes.</li>
-              <li>Goose, at 200ºC: 35 minutes per kg. Duck, at 200ºC: 45 minutes per kg.</li>
+              <li>Chicken, at 180 °C: 45 minutes per kg plus 20 minutes.</li>
+              <li>Goose, at 200 °C: 35 minutes per kg. Duck, at 200 °C: 45 minutes per kg.</li>
             </ul>
             <p>
-              Food Standards Scotland gives goose at 220ºC (Gas Mark 7) for the same time per kg. “{TIME_IS_A_GUIDE.text}” (
+              Food Standards Scotland gives goose at 220 °C (gas mark 7) for the same time per kg. “{TIME_IS_A_GUIDE.text}” (
               {TIME_IS_A_GUIDE.who})
             </p>
           </>
@@ -328,18 +328,15 @@ const KINDS = {
   },
 } as const;
 type Kind = keyof typeof KINDS;
+const KIND_OPTIONS = [
+  { value: "weight", label: "Weight" },
+  { value: "volume", label: "Volume" },
+] as const satisfies ReadonlyArray<{ value: Kind; label: string }>;
 
 const cvAmount: NumberSpec = { id: "cooking.convert.amount", label: "Amount", initial: 250, min: 0 };
 
 function ConversionCalculator() {
-  const [kind, setKind] = useChoice<Kind>(
-    "cooking.convert.kind",
-    [
-      { value: "weight", label: "Weight" },
-      { value: "volume", label: "Volume" },
-    ],
-    "weight",
-  );
+  const [kind, setKind] = useChoice<Kind>("cooking.convert.kind", KIND_OPTIONS, "weight");
   const units = KINDS[kind].units;
   const unitOptions = units.map((unit) => ({ value: unit.id, label: unit.name }));
   const [fromId, setFrom] = useChoice(`cooking.convert.from.${kind}`, unitOptions, units[0]!.id);
@@ -352,15 +349,7 @@ function ConversionCalculator() {
   return (
     <Calculator id="convert" title="Weights and measures" intro="Recipe amounts from one unit into the others: metric, imperial and US.">
       <Inputs>
-        <ChoiceField
-          label="Measure"
-          value={kind}
-          onChange={setKind}
-          options={[
-            { value: "weight", label: "Weight" },
-            { value: "volume", label: "Volume" },
-          ]}
-        />
+        <ChoiceField label="Measure" value={kind} onChange={setKind} options={KIND_OPTIONS} />
         <ChoiceField label="From" value={from.id} onChange={setFrom} options={unitOptions} />
         <NumberField input={amount} />
       </Inputs>
@@ -459,7 +448,7 @@ function OvenCalculator() {
         formula={
           <p>
             Read from the table: the gas mark whose conventional temperature is nearest. Which? says “Fan oven cooking temperatures are
-            typically around 20°C less than conventional ovens.” The FSA gives the same 20 °C for its roasting temperatures (180ºC, 160ºC
+            typically around 20°C less than conventional ovens.” The FSA gives the same 20 °C for its roasting temperatures (180 °C, 160 °C
             fan).
           </p>
         }

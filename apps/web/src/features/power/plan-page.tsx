@@ -15,7 +15,7 @@ import {
   sunSourceText,
   USB_CONVERTER,
 } from "@outpost/shared";
-import { Copy } from "lucide-react";
+import { Copy, TriangleAlert } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { ErrorState, Notice, Page, PageHeader, Rows, Section } from "@/components/page";
@@ -26,9 +26,9 @@ import { Skeleton, Switch } from "@/components/ui/misc";
 import { madePdf } from "@/features/library/made/made-pdf";
 import { PdfButtons, PdfStatus, useMadePdf } from "@/features/library/made/pdf-actions";
 import { errorMessage } from "@/lib/api";
-import { plural } from "@/lib/utils";
+import { formatDateTime, plural } from "@/lib/utils";
 import { assumptions, loadDailyWh, radioDuty, simulate, usbEfficiency, workOut } from "./calc/plan";
-import { inputOf, useCopyPowerPlan, usePowerPlan, useRemovePowerPlan, useSavePowerPlan } from "./data";
+import { inputOf, isConflict, useCopyPowerPlan, usePowerPlan, useRemovePowerPlan, useSavePowerPlan } from "./data";
 import { FigureSources } from "./device-rows";
 import { kindWords } from "./device-text";
 import { chartMonth, ESTIMATE, hoursText, planPdf } from "./document";
@@ -45,54 +45,149 @@ const shortDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "sho
 /** "Power plan, Shack, 16 Nov 2026" */
 export const powerPlanTitle = (plan: PowerPlan) => `Power plan, ${plan.name}, ${shortDate.format(new Date(plan.updatedAt))}`;
 
-/** Keeps a draft of the plan and saves it a moment after the last change. */
-function useDraft(plan: PowerPlan | undefined) {
+/**
+ * Keeps a draft of the plan and saves it a moment after the last change, one save at a
+ * time so that an older one never lands after a newer one. What is waiting is saved at
+ * once when the page is hidden or closed, and when it is left.
+ *
+ * Each save says which version it was made from (`baseUpdatedAt`: the plan's time when it
+ * was opened, then as this page last saved it). If another tab or device has saved since,
+ * the server refuses, nothing is saved over the other version, saving stops, and the page
+ * asks which to keep.
+ */
+function useDraft(plan: PowerPlan | undefined, refetch: () => Promise<PowerPlan | undefined>) {
   const save = useSavePowerPlan(plan?.id ?? "");
+  const { mutateAsync } = save;
   const [draft, setDraft] = useState<PowerPlanInput | null>(null);
+  const [conflict, setConflict] = useState<{ updatedAt: number } | null>(null);
   const pending = useRef<PowerPlanInput | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSave = useRef<Promise<void>>(Promise.resolve());
+  const base = useRef<number | undefined>(undefined);
+  const stopped = useRef(false);
+  const inFlight = useRef(0);
   const loadedId = useRef<string | null>(null);
   useEffect(() => {
     if (plan && loadedId.current !== plan.id) {
       loadedId.current = plan.id;
+      base.current = plan.updatedAt;
       setDraft(inputOf(plan));
     }
   }, [plan]);
-  /** Saves what is waiting now; resolves once it is saved (or at once when nothing is waiting). */
-  const flush = useCallback(async () => {
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = null;
-    // A plan always has a name: one emptied while typing waits for the next.
-    if (pending.current?.name.trim()) {
-      const input = { ...pending.current, name: pending.current.name.trim() };
-      pending.current = null;
-      await save.mutateAsync(input).catch(() => undefined);
-    }
-  }, [save]);
+  /** Saves what is waiting; resolves once it is saved (or at once when nothing is waiting). */
+  const flush = useCallback(
+    (leaving = false) => {
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = null;
+      const send = async () => {
+        // A plan always has a name: one emptied while typing waits for the next.
+        const waiting = pending.current;
+        if (stopped.current || !waiting?.name.trim()) return;
+        pending.current = null;
+        // A save leaving the page while another is under way cannot know the version that one will make, so it goes without.
+        const baseUpdatedAt = leaving && inFlight.current > 0 ? undefined : base.current;
+        inFlight.current += 1;
+        try {
+          const saved = await mutateAsync({ body: { ...waiting, name: waiting.name.trim(), baseUpdatedAt }, leaving });
+          base.current = Math.max(base.current ?? 0, saved.updatedAt);
+        } catch (error) {
+          if (isConflict(error)) {
+            stopped.current = true;
+            pending.current ??= waiting;
+            setConflict({ updatedAt: Number(error.details?.updatedAt) || Date.now() });
+          }
+        } finally {
+          inFlight.current -= 1;
+        }
+      };
+      // A page being hidden or closed may not run again, so its save goes now rather than after the one under way.
+      const next = leaving ? send() : lastSave.current.then(send);
+      lastSave.current = next;
+      return next;
+    },
+    [mutateAsync],
+  );
   const flushRef = useRef(flush);
   flushRef.current = flush;
-  useEffect(() => () => void flushRef.current(), []);
+  useEffect(() => {
+    const hidden = () => {
+      if (document.visibilityState === "hidden") void flushRef.current(true);
+    };
+    const closing = () => void flushRef.current(true);
+    document.addEventListener("visibilitychange", hidden);
+    window.addEventListener("pagehide", closing);
+    return () => {
+      document.removeEventListener("visibilitychange", hidden);
+      window.removeEventListener("pagehide", closing);
+      void flushRef.current();
+    };
+  }, []);
   const change = (next: PowerPlanInput) => {
     setDraft(next);
     pending.current = next;
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => void flushRef.current(), SAVE_AFTER_MS);
+    if (!stopped.current) timer.current = setTimeout(() => void flushRef.current(), SAVE_AFTER_MS);
   };
-  const state = draft && !draft.name.trim() ? "unnamed" : pending.current || save.isPending ? "saving" : save.isError ? "failed" : "saved";
-  return { draft, change, state, flush };
+  /** Drops what is waiting: the plan is being deleted. */
+  const discard = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+    pending.current = null;
+  };
+  /** After a conflict: save this page's version over the other one. */
+  const keepMine = () => {
+    if (!conflict || !draft) return;
+    base.current = conflict.updatedAt;
+    stopped.current = false;
+    pending.current = draft;
+    setConflict(null);
+    void flushRef.current();
+  };
+  /** After a conflict: drop this page's changes and show the other version. */
+  const takeTheirs = async () => {
+    const fresh = await refetch();
+    if (!fresh) return;
+    pending.current = null;
+    base.current = fresh.updatedAt;
+    stopped.current = false;
+    setDraft(inputOf(fresh));
+    setConflict(null);
+  };
+  const state =
+    draft && !draft.name.trim()
+      ? "unnamed"
+      : conflict
+        ? "conflict"
+        : pending.current || save.isPending
+          ? "saving"
+          : save.isError
+            ? "failed"
+            : "saved";
+  return { draft, change, state, flush, discard, conflict, keepMine, takeTheirs };
 }
 
 export default function PowerPlanPage() {
   const { id = "" } = useParams();
   const plan = usePowerPlan(id);
-  const { draft, change, state, flush } = useDraft(plan.data);
+  const { draft, change, state, flush, discard, conflict, keepMine, takeTheirs } = useDraft(plan.data, () =>
+    plan.refetch().then((result) => result.data),
+  );
+  const [choosing, setChoosing] = useState(false);
   const copy = useCopyPowerPlan();
   const remove = useRemovePowerPlan();
   const navigate = useNavigate();
   const [editing, setEditing] = useState<PowerLoad | "new" | null>(null);
   const [removing, setRemoving] = useState<PowerLoad | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const answers = useMemo(() => (draft ? workOut(draft) : null), [draft]);
+  // The answers do not depend on the name or the notes: typing those works nothing out again and leaves the chart as it is.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on the parts of the plan the answers are worked out from
+  const worked = useMemo(() => {
+    if (!draft) return null;
+    const answers = workOut(draft);
+    const month = chartMonth(answers);
+    return { answers, month, run: simulate(draft, month, 3) };
+  }, [draft?.battery, draft?.loads, draft?.inverter, draft?.usb, draft?.solar, draft?.charger, draft?.cableRatingA]);
+  const answers = worked?.answers ?? null;
 
   // The PDF is made from the plan as saved, so that the file and the library's copy say what is kept.
   const saved = plan.data;
@@ -137,8 +232,7 @@ export default function PowerPlanPage() {
   /** A field left empty keeps the figure it had: a plan always has one. */
   const keep = <T,>(value: number | null, apply: (value: number) => T) => (value === null ? undefined : apply(value));
   const hasAc = draft.loads.some((load) => load.supply === "ac");
-  const month = chartMonth(answers);
-  const run = simulate(draft, month, 3);
+  const { month, run } = worked!;
   const floor = 1 - draft.battery.usableDod;
   const over = [
     answers.peak.battery.over ? `more than the ${figure(answers.peak.battery.limit!, 0)} A the battery is rated to give` : null,
@@ -160,9 +254,11 @@ export default function PowerPlanPage() {
                 ? "Not saved: give the plan a name."
                 : state === "saving"
                   ? "Saving…"
-                  : state === "failed"
-                    ? "Not saved: the last change could not be saved."
-                    : "Saved."}
+                  : state === "conflict"
+                    ? "Not saved: changed somewhere else."
+                    : state === "failed"
+                      ? "Not saved: the last change could not be saved."
+                      : "Saved."}
             </span>
           </>
         }
@@ -187,6 +283,29 @@ export default function PowerPlanPage() {
         }
       />
       <PdfStatus made={made} className="-mt-4 mb-6" />
+      {conflict ? (
+        <Notice tone="warning" icon={<TriangleAlert />} title="This plan was changed somewhere else" className="mb-6">
+          <p>
+            Another tab or device saved a newer version at {formatDateTime(conflict.updatedAt)}. Your version is still here, unsaved, and
+            nothing has been overwritten. Choose which one to keep.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button size="sm" variant="primary" disabled={choosing} onClick={keepMine}>
+              Keep my version
+            </Button>
+            <Button
+              size="sm"
+              loading={choosing}
+              onClick={async () => {
+                setChoosing(true);
+                await takeTheirs().finally(() => setChoosing(false));
+              }}
+            >
+              Load the other version
+            </Button>
+          </div>
+        </Notice>
+      ) : null}
 
       <Section title="Answers" description={ESTIMATE}>
         <Answers>
@@ -442,7 +561,7 @@ export default function PowerPlanPage() {
               <li key={load.id} className="py-2.5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <span className="block truncate text-ink">
+                    <span className="block break-words text-ink">
                       {load.name}
                       {load.quantity > 1 ? ` × ${load.quantity}` : ""}
                     </span>
@@ -698,7 +817,10 @@ export default function PowerPlanPage() {
         title={`Delete ${saved.name}?`}
         description={`The plan and its ${plural(draft.loads.length, "load")} are deleted. A PDF of it already added to the library stays there.`}
         confirmLabel="Delete plan"
-        onConfirm={() => remove.mutate(saved.id, { onSuccess: () => navigate("/tools/power") })}
+        onConfirm={() => {
+          discard();
+          remove.mutate(saved.id, { onSuccess: () => navigate("/tools/power") });
+        }}
       />
       {remove.isError ? <Notice tone="danger">{errorMessage(remove.error)}</Notice> : null}
     </Page>

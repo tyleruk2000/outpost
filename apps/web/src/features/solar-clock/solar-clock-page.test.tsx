@@ -1,9 +1,10 @@
 /** The solar clock against a stand-in server: each tab's states. The places are made up. */
-import { fireEvent, screen, within } from "@testing-library/react";
+import { act, fireEvent, renderHook, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeApi, renderScreen } from "../manage/test-support";
 import { toolScreens } from "../tools/screens";
+import { useMinuteClock } from "./now-tab";
 import SolarClockPage from "./solar-clock-page";
 
 const marker = (over: Record<string, unknown>) => ({
@@ -146,5 +147,43 @@ describe("the solar clock", () => {
     renderScreen(<SolarClockPage />, "/tools/solar-clock?tab=nocturnal");
     expect(await screen.findByText("Not for the southern hemisphere")).toBeInTheDocument();
     expect(screen.getByText("No nocturnal for a place south of the equator.")).toBeInTheDocument();
+  });
+});
+
+describe("the clock on the Now tab", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    Reflect.deleteProperty(document, "visibilityState");
+  });
+  const setHidden = (hidden: boolean) => {
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => (hidden ? "hidden" : "visible") });
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+  };
+
+  it("is read at the turn of each minute while the page is shown, and not at all while it is hidden", () => {
+    const start = Date.UTC(2026, 10, 17, 12, 0, 30);
+    vi.useFakeTimers({ now: start });
+    const { result, unmount } = renderHook(() => useMinuteClock());
+    expect(result.current).toBe(start);
+    act(() => vi.advanceTimersByTime(29_000));
+    expect(result.current).toBe(start);
+    act(() => vi.advanceTimersByTime(2_000));
+    expect(new Date(result.current).getUTCMinutes()).toBe(1);
+    expect(vi.getTimerCount()).toBe(1);
+
+    setHidden(true);
+    expect(vi.getTimerCount()).toBe(0);
+    const whenHidden = result.current;
+    act(() => vi.advanceTimersByTime(5 * 60_000));
+    expect(result.current).toBe(whenHidden);
+
+    // Shown again: read at once, then at each minute's turn.
+    setHidden(false);
+    expect(result.current).toBe(Date.now());
+    expect(vi.getTimerCount()).toBe(1);
+    unmount();
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

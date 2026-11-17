@@ -5,7 +5,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { type CleanupResult, newPowerPlan, type PowerPlan, type PowerPlanInput } from "@outpost/shared";
+import { type CleanupResult, newPowerPlan, POWER_PLANS_MAX, type PowerPlan, type PowerPlanInput } from "@outpost/shared";
 import Database from "better-sqlite3";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestApp, type TestApp } from "./helpers.ts";
@@ -94,6 +94,43 @@ describe("power plans", () => {
     expect(changed.body.plan).toMatchObject({ name: "Shack, winter", cableRatingA: 40 });
   });
 
+  it("refuses a change made from a version that another device has since saved over, and keeps the newer one", async () => {
+    const opened: PowerPlan = (await app.api("GET", `/api/power/plans/${plan.id}`)).body.plan;
+    const { id: _id, createdAt: _c, updatedAt: _u, ...input } = opened;
+    // Two devices open the same plan; the first saves.
+    const first = await app.api("PUT", `/api/power/plans/${plan.id}`, { ...input, cableRatingA: 50, baseUpdatedAt: opened.updatedAt });
+    expect(first.status).toBe(200);
+    expect(first.body.plan.updatedAt).toBeGreaterThan(opened.updatedAt);
+    // The second saves from what it opened: refused, saying so, with the newer version's time.
+    const second = await app.api("PUT", `/api/power/plans/${plan.id}`, { ...input, cableRatingA: 60, baseUpdatedAt: opened.updatedAt });
+    expect(second.status).toBe(409);
+    expect(second.body.error).toMatchObject({ code: "conflict", details: { updatedAt: first.body.plan.updatedAt } });
+    expect(second.body.error.message).toMatch(/changed somewhere else/);
+    expect((await app.api("GET", `/api/power/plans/${plan.id}`)).body.plan.cableRatingA).toBe(50);
+    // Choosing to keep its own: it saves from the newer version's time.
+    const kept = await app.api("PUT", `/api/power/plans/${plan.id}`, {
+      ...input,
+      cableRatingA: 60,
+      baseUpdatedAt: first.body.plan.updatedAt,
+    });
+    expect(kept.status).toBe(200);
+    expect(kept.body.plan.cableRatingA).toBe(60);
+    // Without a base (an older client), a save is taken as before.
+    expect((await app.api("PUT", `/api/power/plans/${plan.id}`, { ...input, cableRatingA: 40 })).status).toBe(200);
+  });
+
+  it("gives every save a later time than the one before, so that two saves in one millisecond still differ", async () => {
+    const opened: PowerPlan = (await app.api("GET", `/api/power/plans/${plan.id}`)).body.plan;
+    const { id: _id, createdAt: _c, updatedAt: _u, ...input } = opened;
+    let base = opened.updatedAt;
+    for (let i = 0; i < 5; i++) {
+      const saved = await app.api("PUT", `/api/power/plans/${plan.id}`, { ...input, baseUpdatedAt: base });
+      expect(saved.status).toBe(200);
+      expect(saved.body.plan.updatedAt).toBeGreaterThan(base);
+      base = saved.body.plan.updatedAt;
+    }
+  });
+
   it("refuses what is not a plan, saying why", async () => {
     const bad = shack();
     bad.loads[1] = { ...(bad.loads[1] as Extract<PowerPlanInput["loads"][number], { kind: "radio" }>), onAirHours: 20, standbyHours: 10 };
@@ -146,5 +183,17 @@ describe("power plans", () => {
     expect(job?.state).toBe("succeeded");
     expect((job!.result as CleanupResult).personal?.powerPlans).toBe(2);
     expect((await app.api("GET", "/api/power/plans")).body.plans).toEqual([]);
+  });
+
+  it("keeps no more than POWER_PLANS_MAX plans, so that the list stays a list, and says so on a new one or a copy", async () => {
+    const input = shack();
+    for (let made = 0; made < POWER_PLANS_MAX; made += 1) app.ctx.services.power.create({ ...input, name: `Plan ${made}` });
+    const refused = await app.api("POST", "/api/power/plans", input);
+    expect(refused.status).toBe(400);
+    expect(refused.body.error.message).toMatch(new RegExp(`already ${POWER_PLANS_MAX} power plans`));
+    const first = app.ctx.services.power.list()[0]!;
+    expect((await app.api("POST", `/api/power/plans/${first.id}/copy`)).status).toBe(400);
+    expect(app.ctx.services.power.kept.count()).toBe(POWER_PLANS_MAX);
+    app.ctx.services.power.kept.eraseAll();
   });
 });

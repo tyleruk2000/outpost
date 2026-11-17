@@ -2,6 +2,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, Textarea } from "@/components/ui/input";
+import { plural } from "@/lib/utils";
 import {
   allValues,
   Calculator,
@@ -14,6 +15,7 @@ import {
   NumberField,
   type NumberSpec,
   Result,
+  readNumber,
   ToolScreen,
   u,
   useChoice,
@@ -381,11 +383,13 @@ function UValueCalculator() {
   const rows = readLayers(stored);
   const setRows = (next: LayerRow[]) => setStored(JSON.stringify(next));
   const parsed = rows.map((row) => {
-    const mm = Number(row.mm);
-    const k = Number(row.conductivity);
-    const mmError = row.mm.trim() === "" || !(mm > 0) ? "Type a thickness more than 0." : undefined;
-    const kError = row.conductivity.trim() === "" || !(k > 0) ? "Type a conductivity more than 0." : undefined;
-    return { mmError, kError, layer: mmError || kError ? null : ({ thickness: mm / 1000, conductivity: k } satisfies Layer) };
+    const mm = readNumber(row.mm, { above: 0 });
+    const k = readNumber(row.conductivity, { above: 0 });
+    return {
+      mmError: mm.ok ? undefined : mm.error,
+      kError: k.ok ? undefined : k.error,
+      layer: mm.ok && k.ok ? ({ thickness: mm.value / 1000, conductivity: k.value } satisfies Layer) : null,
+    };
   });
   const layers = parsed.every((row) => row.layer) ? parsed.map((row) => row.layer!) : null;
   const u = layers?.length ? uValue(layers, flow) : null;
@@ -641,10 +645,13 @@ function SheetsCalculator() {
       </Inputs>
       <Result
         label="Sheets"
-        figure={sheets !== null ? `${sheets} sheets` : null}
+        figure={sheets !== null ? plural(sheets, "sheet") : null}
         keep={
           sheets !== null && perSheet !== null
-            ? { title: "Sheets and fixings", lines: [`${sheets} sheets`, `About ${perSheet} fixings a sheet, ${sheets * perSheet} in all`] }
+            ? {
+                title: "Sheets and fixings",
+                lines: [plural(sheets, "sheet"), `About ${perSheet} fixings a sheet, ${sheets * perSheet} in all`],
+              }
             : undefined
         }
       >

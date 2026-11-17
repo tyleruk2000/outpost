@@ -112,7 +112,8 @@ otherwise it says "in the code, not written here".
   **Save as PDF**, **Add to library** and **Share**. The file is dated by the day it is
   made. "Add to library" asks first for a Wi-Fi code (the code holds the password
   whether or not it is written in words; the library is readable by everyone on the
-  network and is in every backup) and for a contact (another person's details).
+  network and is in every backup) and for a contact (another person's details). The
+  sheet is made again once typing has paused for 0.4 s, not at every key.
 
 QR Code is a registered trademark of DENSO WAVE INCORPORATED.
 
@@ -235,7 +236,7 @@ networking.
 
 ### What is kept, and who sees it
 
-Each device found is kept (`network_devices`, migration 0016) with its addresses,
+Each device found is kept (`network_devices`, migration `0019_network_devices`) with its addresses,
 hardware address, the name it gave itself, what it announces, when it was first and
 last seen, and whether it is this computer or the router. A person can give it a name
 of their own and a note. A device is known by its hardware address where the neighbour
@@ -268,7 +269,8 @@ pages state no licence or permission to pass the file on, and the site's footer 
 Outpost**. A person who wants makers shown presses "Fetch the registry from the IEEE"
 (about 3.9 MB: 3,876,189 bytes when looked at on 16 November 2026), once; it is fetched
 through the guarded HTTP client from that host only (every redirect held to it), kept
-in the data directory as `network/oui.csv`, and can be removed again. Without it, no
+in the data directory as `network/oui.csv`, and can be removed again. The server reads
+the file once, the first time it is needed, and keeps it in memory from then on. Without it, no
 maker is shown. Only the large blocks are read; the medium and small blocks (MA-M,
 MA-S) are in other files and are not fetched. This is the only thing on the screen that
 uses the internet.
