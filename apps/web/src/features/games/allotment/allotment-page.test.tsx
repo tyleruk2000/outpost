@@ -183,6 +183,35 @@ describe("the allotment screen", () => {
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
 
+  it("keeps Start again in plain view under the plot, and resets the plot once it has been confirmed", async () => {
+    const user = userEvent.setup();
+    let plot = { ...newAllotment(NOW), coins: 75 };
+    const deleted: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (url === "/api/games") return json({ tallies: {}, allotmentStarted: true });
+        if (url === "/api/games/allotment" && init?.method === "DELETE") {
+          deleted.push(url);
+          plot = newAllotment(NOW);
+          return json({ removed: true });
+        }
+        if (url === "/api/games/allotment") return json(answer(plot));
+        return json({ error: { code: "not_found", message: "Not here." } }, 404);
+      }),
+    );
+    show();
+    const start = await screen.findByRole("button", { name: "Start again" });
+    // Not folded away inside "About this game", where it could not be found.
+    expect(start.closest("details")).toBeNull();
+    expect(screen.getByText(/resets the whole allotment/)).toBeInTheDocument();
+    await user.click(start);
+    const dialog = await screen.findByRole("alertdialog", { name: "Start the allotment again?" });
+    expect(deleted).toEqual([]);
+    await user.click(within(dialog).getByRole("button", { name: "Start again" }));
+    await vi.waitFor(() => expect(deleted).toEqual(["/api/games/allotment"]));
+  });
+
   it("offers to start again when the kept plot cannot be read, naming what goes", async () => {
     const user = userEvent.setup();
     vi.stubGlobal(

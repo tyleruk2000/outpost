@@ -39,7 +39,7 @@ a version that goes up with each write, and timestamps. It is the household's ow
 counted under **Storage → Database** ("games kept for the household", in "Everything
 else") and in **Manage and clean up**, erased by erase everything, and in every backup. A
 game's tally is forgotten with **Clear the tally** under its board, and the allotment
-with **Start again** under its About; both ask first.
+with **Start again**, in plain view at the foot of its screen; both ask first.
 
 The game kept in the browser is read and written inside `try`/`catch` and checked field
 by field when it is read back: in a private window, with site data blocked, or with a

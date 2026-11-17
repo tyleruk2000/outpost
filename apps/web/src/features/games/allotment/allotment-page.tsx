@@ -233,10 +233,14 @@ function Allotment({ view }: { view: AllotmentView }) {
           </p>
           <p>The timings and prices are made up for the game and are not growing advice.</p>
           <p>The plot is the household's, kept on this Outpost: it is the same on every device, and anyone can tend it.</p>
-          <div className="pt-1">
-            <StartAgain />
-          </div>
         </GameAbout>
+        {/* In plain view, not folded into About: a way to reset the plot has to be findable. */}
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-4">
+          <StartAgain />
+          <p className="min-w-0 flex-1 basis-56 text-small text-ink-muted">
+            Start again resets the whole allotment to a new plot, for everyone. It asks first.
+          </p>
+        </div>
       </div>
     </div>
   );
