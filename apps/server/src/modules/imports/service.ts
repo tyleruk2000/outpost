@@ -14,7 +14,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { ImportAnalysis, ImportDto, ImportJobInfo, ImportKind, ImportOptions, ImportReport, ImportSummary } from "@outpost/shared";
-import { desc, eq, inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, conflict, messageOf, notFound } from "../../core/errors.ts";
 import { resolveInside } from "../../core/fs-safe.ts";
@@ -188,6 +188,22 @@ export async function createImportsService(ctx: AppContext): Promise<ImportsServ
         : null,
     };
   }
+
+  // The list shows counts, not the plan or the report themselves, which for a large
+  // export run to megabytes each: SQLite counts them without handing them over.
+  const listStatement = sqlite.prepare(
+    `SELECT id, kind, state, original_name AS originalName, size_bytes AS sizeBytes, error,
+            created_at AS createdAt, completed_at AS completedAt,
+            report IS NOT NULL AS hasReport,
+            json_array_length(report, '$.created') AS created, json_array_length(report, '$.updated') AS updated,
+            json_array_length(report, '$.skipped') AS skipped, json_array_length(report, '$.failed') AS failed,
+            json_array_length(report, '$.documents') AS documents
+     FROM imports ORDER BY created_at DESC, id DESC LIMIT ?`,
+  );
+  type ListRow = Omit<ImportSummary, "counts"> & { hasReport: number } & Record<
+      "created" | "updated" | "skipped" | "failed" | "documents",
+      number | null
+    >;
 
   function toDto(row: ImportRow): ImportDto {
     const { counts: _counts, ...summary } = toSummary(row);
@@ -423,7 +439,12 @@ export async function createImportsService(ctx: AppContext): Promise<ImportsServ
     get: (id) => toDto(mustFind(id)),
 
     list(limit = 30) {
-      return db.select().from(imports).orderBy(desc(imports.createdAt), desc(imports.id)).limit(limit).all().map(toSummary);
+      return (listStatement.all(limit) as ListRow[]).map(({ hasReport, created, updated, skipped, failed, documents, ...row }) => ({
+        ...row,
+        counts: hasReport
+          ? { created: created ?? 0, updated: updated ?? 0, skipped: skipped ?? 0, failed: failed ?? 0, documents: documents ?? 0 }
+          : null,
+      }));
     },
 
     commit(id, options) {

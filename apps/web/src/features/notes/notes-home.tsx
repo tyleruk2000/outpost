@@ -147,6 +147,7 @@ export function NotesHome() {
         description="Pages you write and keep here: plans, lists, things learned. They link to each other and to your library, and they are searched with everything else."
         actions={
           <>
+            {newPageButton}
             <Menu>
               <MenuTrigger asChild>
                 <Button variant="ghost" size="icon" aria-label="Import, export, templates and trash">
@@ -157,7 +158,6 @@ export function NotesHome() {
                 <WorkspaceMenuItems />
               </MenuContent>
             </Menu>
-            {newPageButton}
           </>
         }
       />
