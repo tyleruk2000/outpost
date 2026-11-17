@@ -159,7 +159,7 @@ export function BackupSection() {
           }
         />
         {/* Said where the button is, not only in a toast: what was made, where it went, and what is not in it. */}
-        <div role="status" className="empty:hidden">
+        <div aria-live="polite" className="empty:hidden">
           {asked === null ? null : made && lastDownload ? (
             <Notice tone="success" title="Backup made">
               {lastDownload.name}, {formatBytes(lastDownload.bytes)}, made {formatDateTime(lastDownload.at)}. Your browser put it where it
