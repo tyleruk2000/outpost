@@ -19,7 +19,8 @@ export function SettingsSection({
     <section
       id={id}
       aria-labelledby={`${id}-title`}
-      className="grid grid-cols-[minmax(0,1fr)] gap-x-10 gap-y-4 border-t border-border py-8 first:border-t-0 first:pt-0 lg:grid-cols-[15rem_minmax(0,1fr)]"
+      // Reached at /settings#id: on a phone it comes to rest below the top bar, not under it.
+      className="grid scroll-mt-14 grid-cols-[minmax(0,1fr)] gap-x-10 gap-y-4 border-t border-border py-8 first:border-t-0 first:pt-0 md:scroll-mt-0 lg:grid-cols-[15rem_minmax(0,1fr)]"
     >
       <div>
         <h2 id={`${id}-title`} className="text-lead font-semibold text-ink">

@@ -24,6 +24,7 @@ const OUT_OF_REACH_APP = /\/src\/features\/kept\/out-of-reach-app\.tsx$/;
 /** Files from `public/` that the shell needs. Map lettering and icons are kept with a map area instead: they are 20 MB. */
 const PUBLIC_FILES = [
   "outpost.svg",
+  "pre-paint.js",
   "manifest.webmanifest",
   "icons/icon-192.png",
   "icons/icon-512.png",

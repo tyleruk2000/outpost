@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchesWords } from "./command-palette";
+import { matchesWords } from "./find-places";
 
 describe("matching places and actions in the palette", () => {
   it("matches everything when nothing is typed", () => {

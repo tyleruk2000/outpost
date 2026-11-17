@@ -96,17 +96,36 @@ describe("the sidebar", () => {
     const user = userEvent.setup();
     showSidebar("/");
     const sidebar = screen.getByRole("complementary", { name: "Main" });
-    for (const name of ["Search page", "Radio", "Notes", "Storage", "Settings"]) {
+    for (const name of ["Search", "Radio", "Notes", "Storage", "Settings"]) {
       expect(within(sidebar).getByRole("button", { name: `Show the screens under ${name}` })).toHaveAttribute("aria-expanded", "false");
     }
     expect(within(sidebar).queryByRole("link", { name: "How search works" })).toBeNull();
 
-    await user.click(within(sidebar).getByRole("button", { name: "Show the screens under Search page" }));
-    expect(within(sidebar).getByRole("button", { name: "Hide the screens under Search page" })).toHaveAttribute("aria-expanded", "true");
+    await user.click(within(sidebar).getByRole("button", { name: "Show the screens under Search" }));
+    expect(within(sidebar).getByRole("button", { name: "Hide the screens under Search" })).toHaveAttribute("aria-expanded", "true");
     await user.click(within(sidebar).getByRole("link", { name: "How search works" }));
     expect(screen.getByRole("status", { name: "Address" })).toHaveTextContent("/search/how-it-works");
     // Remembered on this device.
     expect(JSON.parse(localStorage.getItem("outpost.sidebar.groups")!)).toEqual({ "/search": true });
+  });
+
+  it("keeps Downloads, Storage and Settings out of the part that scrolls, and Notes with Library and Maps", () => {
+    showSidebar("/");
+    const sidebar = screen.getByRole("complementary", { name: "Main" });
+    const knowledge = within(sidebar).getByRole("navigation", { name: "Knowledge" });
+    const upkeep = within(sidebar).getByRole("navigation", { name: "Upkeep" });
+    const scrolls = knowledge.closest(".overflow-y-auto");
+    expect(scrolls).not.toBeNull();
+    expect(scrolls!.contains(upkeep)).toBe(false);
+    expect(
+      within(knowledge)
+        .getAllByRole("link")
+        .slice(0, 5)
+        .map((link) => link.textContent),
+    ).toEqual(["Home", "Search", "Library", "Notes", "Maps"]);
+    // The field that opens the quick search, and the link to the search screen, have names that cannot be confused.
+    expect(within(sidebar).getByRole("button", { name: "Quick search" })).toHaveTextContent("Quick search");
+    expect(within(knowledge).getByRole("link", { name: "Search" })).toHaveAttribute("href", "/search");
   });
 
   it("opens the group of the screen in view by itself, and lights only that screen", () => {

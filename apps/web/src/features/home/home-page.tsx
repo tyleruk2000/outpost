@@ -25,6 +25,7 @@ import { api } from "@/lib/api";
 import { useActiveJobs, useStorage } from "@/lib/queries";
 import { timeAgo } from "@/lib/utils";
 import { homeSummary } from "./home-summary";
+import { PreparedLines } from "./prepared-lines";
 
 function Block({ title, more, children }: { title: string; more?: { to: string; label: string }; children: ReactNode }) {
   return (
@@ -158,6 +159,7 @@ export default function HomePage() {
           <h1 className="font-title text-display text-ink">Your library</h1>
           <div className="mt-3 max-w-[56ch] text-lead text-ink-muted">{summary ?? <Skeleton className="h-6 w-96 max-w-full" />}</div>
           <BoardHomeLine className="mt-2" />
+          <PreparedLines className="mt-2" />
           {/* biome-ignore lint/a11y/useSemanticElements: a form with role="search" is the search landmark every browser and screen reader knows */}
           <form onSubmit={submit} role="search" className="relative mt-6 max-w-[34rem]">
             <Search aria-hidden className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-ink-muted" />

@@ -1,5 +1,5 @@
 import { ChevronRight, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { type ReactNode, type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router";
 import { useActiveJobs } from "@/lib/queries";
 import { cn, modKey } from "@/lib/utils";
@@ -57,18 +57,30 @@ function useGroups(groups: NavItem[], pathname: string) {
   return { isOpen, toggle, setRoomForAll };
 }
 
-/** Tall enough to keep the upkeep list at the foot of the sidebar while the rest scrolls. */
-const TALL = "(min-height: 880px)";
-
-function useTallWindow(): boolean {
-  const [tall, setTall] = useState(() => window.matchMedia(TALL).matches);
+/**
+ * Whether the part that scrolls has more below what is shown, kept up to date as it scrolls and as what
+ * is in it changes size. It says so with a fade at its foot, since a quiet scroll bar says nothing.
+ */
+function useMoreBelow(region: RefObject<HTMLDivElement | null>, collapsed: boolean, pathname: string, tree: ReactNode): boolean {
+  const [more, setMore] = useState(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: looked at again when what is in the region changes
   useEffect(() => {
-    const media = window.matchMedia(TALL);
-    const onChange = (event: MediaQueryListEvent) => setTall(event.matches);
-    media.addEventListener("change", onChange);
-    return () => media.removeEventListener("change", onChange);
-  }, []);
-  return tall;
+    const element = region.current;
+    if (!element) return;
+    const look = () => setMore(element.scrollTop + element.clientHeight < element.scrollHeight - 2);
+    look();
+    element.addEventListener("scroll", look, { passive: true });
+    window.addEventListener("resize", look);
+    const watch = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(look);
+    for (const child of element.children) watch?.observe(child);
+    watch?.observe(element);
+    return () => {
+      element.removeEventListener("scroll", look);
+      window.removeEventListener("resize", look);
+      watch?.disconnect();
+    };
+  }, [collapsed, pathname, tree]);
+  return more;
 }
 
 /** Room left for the page tree when every group is open, below which groups start closed. About eight pages. */
@@ -209,9 +221,6 @@ export function Sidebar({
   const downloads = jobs.data?.filter((job) => job.queue === "download" && job.state !== "paused").length ?? 0;
   const groups = useGroups([...knowledgeNav, ...upkeepNav], pathname);
   const { setRoomForAll } = groups;
-  // On a tall window the upkeep list stays at the foot, as it always has. On a short one (a 13-inch laptop) it
-  // scrolls with the rest, so that the screens and the page tree are not squeezed between it and the top.
-  const tall = useTallWindow();
 
   // Whether every group fits open with room left for the page tree: measured, since text size and window height vary.
   const regionRef = useRef<HTMLDivElement>(null);
@@ -224,19 +233,18 @@ export function Sidebar({
     const shown = region.ownerDocument.querySelectorAll("aside [data-child]").length;
     const total = [...knowledgeNav, ...upkeepNav].reduce((sum, item) => sum + (item.children?.length ?? 0), 0);
     const childRow = 2.125 * rem;
-    // The upkeep list is inside the scrolling part on a short window, and below it on a tall one.
-    const needed =
-      knowledgeRef.current.offsetHeight + (tall ? 0 : upkeepRef.current.offsetHeight) + (total - shown) * childRow + TREE_ROOM_REM * rem;
+    // The upkeep list is always in view below the part that scrolls, so it takes its room from that part.
+    const needed = knowledgeRef.current.offsetHeight + (total - shown) * childRow + TREE_ROOM_REM * rem;
     setRoomForAll(region.clientHeight >= needed);
-  }, [collapsed, setRoomForAll, tall]);
+  }, [collapsed, setRoomForAll]);
   useLayoutEffect(() => {
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
   }, [measure]);
 
-  // The screen in view is never out of sight in the sidebar: on a short window Storage and Settings are below the page
-  // tree. The tree arrives a moment after the screen, and pushes them down, so for a short while it is looked at again.
+  // The screen in view is never out of sight in the sidebar: on a short window Games or a radio tool can be below the
+  // fold. The tree arrives a moment after the screen and can move things, so for a short while it is looked at again.
   const treeRef = useRef<HTMLDivElement>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the screen changes, by design
   useEffect(() => {
@@ -252,8 +260,10 @@ export function Sidebar({
     };
   }, [pathname]);
 
+  const moreBelow = useMoreBelow(regionRef, collapsed, pathname, notesTree);
+
   const row = (item: NavItem, trailing?: ReactNode) => {
-    const label = item.sidebarLabel ?? item.label;
+    const label = item.label;
     const lit = isOwnScreen(pathname, item);
     return collapsed ? (
       <IconRow key={item.to} item={item} label={label} lit={lit} pathname={pathname} />
@@ -320,7 +330,7 @@ export function Sidebar({
         <button
           type="button"
           onClick={onOpenSearch}
-          aria-label="Search everything"
+          aria-label="Quick search"
           className={cn(
             "flex h-9 w-full items-center gap-2.5 rounded-control border border-spine-border bg-spine-raised/60 px-2.5 text-[0.9375rem] text-spine-ink-muted transition-colors hover:border-spine-ink-muted/40 hover:text-spine-ink focus-visible:outline-spine-ink",
             collapsed && "justify-center border-transparent bg-transparent px-0",
@@ -329,40 +339,41 @@ export function Sidebar({
           <Search aria-hidden className="size-[17px] shrink-0" strokeWidth={1.6} />
           {!collapsed ? (
             <>
-              <span className="flex-1 text-left">Search</span>
+              <span className="flex-1 text-left">Quick search</span>
               <kbd className="font-mono text-micro text-spine-ink-muted/80">{modKey} K</kbd>
             </>
           ) : null}
         </button>
       </div>
 
-      {/* One scrolling part: the screens, the page tree under Notes, and on a short window the upkeep list. */}
-      <div
-        ref={regionRef}
-        className={cn(
-          "scroll-quiet flex min-h-0 flex-1 flex-col overflow-y-auto px-3 [scrollbar-color:var(--spine-border)_transparent]",
-          collapsed && "px-2",
-        )}
-      >
-        <nav ref={knowledgeRef} aria-label="Knowledge">
-          <ul className="grid gap-0.5">{knowledgeNav.map((item) => row(item))}</ul>
-        </nav>
-        <div ref={treeRef} className="mt-1 flex-1">
-          {!collapsed ? notesTree : null}
-        </div>
-        {!tall ? (
-          <div ref={upkeepRef} className="mt-2 border-t border-spine-border py-2">
-            {upkeep}
+      {/* The one part that scrolls: the screens, then the tree of pages. What looks after the library stays in view below. */}
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <div
+          ref={regionRef}
+          className={cn(
+            "scroll-quiet flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pb-2 [scrollbar-color:var(--spine-border)_transparent]",
+            collapsed && "px-2",
+          )}
+        >
+          <nav ref={knowledgeRef} aria-label="Knowledge">
+            <ul className="grid gap-0.5">{knowledgeNav.map((item) => row(item))}</ul>
+          </nav>
+          <div ref={treeRef} className="mt-1 flex-1">
+            {!collapsed ? notesTree : null}
           </div>
-        ) : null}
+        </div>
+        {/* More of the screens or the tree is below: said by a fade into the spine, over the last line shown. */}
+        <div
+          aria-hidden
+          data-more-below={moreBelow || undefined}
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-linear-to-b from-transparent to-spine opacity-0 transition-opacity duration-150 data-more-below:opacity-100"
+        />
       </div>
 
-      <div className={cn("shrink-0 border-t border-spine-border px-3 py-2", collapsed && "px-2")}>
-        {tall ? (
-          <div ref={upkeepRef} className="mb-1 border-b border-spine-border pb-2">
-            {upkeep}
-          </div>
-        ) : null}
+      <div className={cn("shrink-0 border-t border-spine-border px-3 pt-2 pb-2", collapsed && "px-2")}>
+        <div ref={upkeepRef} className="mb-1 border-b border-spine-border pb-2">
+          {upkeep}
+        </div>
         <Lamp collapsed={collapsed} />
       </div>
     </aside>

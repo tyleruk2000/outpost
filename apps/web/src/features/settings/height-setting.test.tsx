@@ -43,7 +43,7 @@ describe("the Heights choice", () => {
     for (const word of ["feet", "metres", "meters", "height", "elevation", "units"]) {
       await userEvent.clear(box);
       await userEvent.type(box, word);
-      expect(screen.getByRole("option", { name: "Heights in metres or feet" }), word).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "Settings: Heights in metres or feet" }), word).toBeInTheDocument();
     }
   });
 });

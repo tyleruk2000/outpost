@@ -218,6 +218,38 @@ describe("keyword search", () => {
     expect(search.stats().entities).toEqual({ document: 2 });
   });
 
+  it("puts what is on this device above what would have to be downloaded, on every page", async () => {
+    const { search } = app.ctx.services;
+    // Catalogue entries that match better than anything kept: water in the title, three times over.
+    for (let index = 0; index < 4; index += 1) {
+      search.upsert({
+        kind: "catalog",
+        entityId: `c${index}`,
+        title: `Water water water library ${index}`,
+        url: "/explore",
+        tags: ["water"],
+        sections: [{ text: "A collection about making water safe to drink: water, water, water." }],
+      });
+    }
+    const { body } = await app.api("GET", "/api/search?q=water");
+    expect(body.results.map((result: { kind: string }) => result.kind)).toEqual(["document", "note", ...Array(4).fill("catalog")]);
+    // A score is still relative to the best match, so that no entry to download reads as better than 100%.
+    expect(body.results.every((result: { score: number }) => result.score <= 1)).toBe(true);
+    expect(body.facets).toEqual({ document: 1, note: 1, catalog: 4 });
+
+    // Page by page the order holds: nothing kept turns up after something to download.
+    const kinds: string[] = [];
+    for (let offset = 0; offset < 6; offset += 2) {
+      kinds.push(
+        ...(await app.api("GET", `/api/search?q=water&limit=2&offset=${offset}`)).body.results.map((r: { kind: string }) => r.kind),
+      );
+    }
+    expect(kinds).toEqual(["document", "note", "catalog", "catalog", "catalog", "catalog"]);
+
+    // Only what is to download is still listed by itself.
+    expect((await app.api("GET", "/api/search?q=water&kinds=catalog")).body.results).toHaveLength(4);
+  });
+
   it("keeps an entity with no text findable by title", async () => {
     app.ctx.services.search.upsert({
       kind: "document",

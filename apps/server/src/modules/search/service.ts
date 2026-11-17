@@ -327,6 +327,18 @@ declare module "../../core/context.ts" {
 
 const TAG_SEPARATOR = " , ";
 
+/**
+ * The one kind of result that is not on this device: an entry of the catalogue, which would have to be
+ * downloaded first. However well it matches, it comes after everything that can be opened now, so that
+ * with the internet down the top of the list is still of use. Each part keeps its own order.
+ */
+export const TO_DOWNLOAD = "catalog";
+
+/** `results` with what is on this device first, each part in the order it had. */
+export function onDeviceFirst<T extends { kind: string }>(results: T[]): T[] {
+  return [...results.filter((result) => result.kind !== TO_DOWNLOAD), ...results.filter((result) => result.kind === TO_DOWNLOAD)];
+}
+
 interface KeywordRow {
   chunkId: number;
   entityRowId: number;
@@ -467,10 +479,12 @@ export function createSearchService(ctx: AppContext): SearchService {
        JOIN chunks c ON c.id = chunks_fts.rowid
        JOIN search_entities e ON e.id = c.entity_row_id
        WHERE chunks_fts MATCH ? ${kindFilter}
-       ORDER BY rank
+       ORDER BY e.kind = ?, rank
        LIMIT ?`,
     );
-    return statement.all(match, ...(kinds ?? []), limit) as KeywordRow[];
+    // What is on this device first (TO_DOWNLOAD), so that a page of results never reaches a catalogue entry
+    // while something kept is still to come.
+    return statement.all(match, ...(kinds ?? []), TO_DOWNLOAD, limit) as KeywordRow[];
   }
 
   function keywordSearch(
@@ -520,8 +534,9 @@ export function createSearchService(ctx: AppContext): SearchService {
         });
       }
     }
-    const results = [...byEntity.values()].sort((a, b) => b.best - a.best);
-    const top = results[0]?.best ?? 1;
+    const results = onDeviceFirst([...byEntity.values()].sort((a, b) => b.best - a.best));
+    // Relative to the best match of all, which may be one to download.
+    const top = Math.max(0, ...results.map((result) => result.best));
     for (const result of results) result.score = top > 0 ? Math.max(0, Math.min(1, result.best / top)) : 0;
 
     const facetRows = sqlite
@@ -805,7 +820,7 @@ export function createSearchService(ctx: AppContext): SearchService {
 
       let results: SearchResult[];
       if (lists.length === 1) {
-        results = lists[0]!.items;
+        results = onDeviceFirst(lists[0]!.items);
       } else {
         const fused = reciprocalRankFusion(
           lists,
@@ -813,15 +828,17 @@ export function createSearchService(ctx: AppContext): SearchService {
           ctx.services.settings.get("search.hybrid.rrfK"),
         );
         const top = fused[0]?.score ?? 1;
-        results = fused.map(({ item, score }) => {
-          const all = lists.flatMap((list) => list.items.filter((other) => other.kind === item.kind && other.entityId === item.entityId));
-          return {
-            ...item,
-            score: score / top,
-            sources: [...new Set(all.flatMap((other) => other.sources))],
-            passages: item.passages.length > 0 ? item.passages : (all.find((other) => other.passages.length > 0)?.passages ?? []),
-          };
-        });
+        results = onDeviceFirst(
+          fused.map(({ item, score }) => {
+            const all = lists.flatMap((list) => list.items.filter((other) => other.kind === item.kind && other.entityId === item.entityId));
+            return {
+              ...item,
+              score: score / top,
+              sources: [...new Set(all.flatMap((other) => other.sources))],
+              passages: item.passages.length > 0 ? item.passages : (all.find((other) => other.passages.length > 0)?.passages ?? []),
+            };
+          }),
+        );
       }
 
       return {
