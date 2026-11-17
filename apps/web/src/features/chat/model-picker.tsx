@@ -3,8 +3,8 @@
  * is Ollama it also says how large each model is, which is most of what decides
  * whether a small computer can run it.
  */
-import { type ChatModel, type ChatModelsResponse, type ChatStatus, formatBytes } from "@outpost/shared";
-import { Check, ChevronDown, Settings } from "lucide-react";
+import { type ChatModel, type ChatModelsResponse, type ChatStatus, formatBytes, trialWord, WHICH_MODEL_PATH } from "@outpost/shared";
+import { Check, ChevronDown, Scale, Settings } from "lucide-react";
 import { DropdownMenu as Primitive } from "radix-ui";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
@@ -103,11 +103,11 @@ export function ModelPicker({
                         <span className="ml-2 text-micro text-ink-muted">default</span>
                       ) : null}
                     </span>
-                    {facts || (status?.tools?.enabled && model.tools) ? (
-                      <span className="tabular block text-micro text-ink-muted">
-                        {[facts, status?.tools?.enabled && model.tools ? "can look things up" : ""].filter(Boolean).join(", ")}
-                      </span>
-                    ) : null}
+                    <span className="tabular block text-micro text-ink-muted">
+                      {[facts, status?.tools?.enabled && model.tools ? "can look things up" : "", `tried here: ${trialWord(model.id)}`]
+                        .filter(Boolean)
+                        .join(", ")}
+                    </span>
                   </span>
                   <Primitive.ItemIndicator className="absolute top-2 right-2.5">
                     <Check aria-hidden className="size-4 text-primary" />
@@ -122,6 +122,11 @@ export function ModelPicker({
             </p>
           ) : null}
           <MenuSeparator />
+          <MenuItem asChild>
+            <Link to={WHICH_MODEL_PATH}>
+              <Scale aria-hidden /> Which model?
+            </Link>
+          </MenuItem>
           <MenuItem asChild>
             <Link to={SETTINGS_MODEL}>
               <Settings aria-hidden /> Model server settings

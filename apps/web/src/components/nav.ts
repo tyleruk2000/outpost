@@ -31,6 +31,7 @@ import {
   Radio,
   RadioReceiver,
   RadioTower,
+  Scale,
   Search,
   Settings,
   ShieldCheck,
@@ -177,7 +178,15 @@ export const upkeepNav: NavItem[] = [
     key: ",",
     keywords: "preferences options",
     // How to set up search by meaning, answers and chat (SETUP_GUIDE_PATH): its settings link to it part by part.
-    children: [{ to: "/help/search-and-answers", label: "Set-up guide", icon: LifeBuoy, keywords: "help models ollama install" }],
+    children: [
+      { to: "/help/search-and-answers", label: "Set-up guide", icon: LifeBuoy, keywords: "help models ollama install" },
+      {
+        to: "/help/which-model",
+        label: "Which model",
+        icon: Scale,
+        keywords: "model which model choose llm ollama pi raspberry compare tried measured",
+      },
+    ],
   },
 ];
 

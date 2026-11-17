@@ -7,7 +7,7 @@
  * the rest are in answers-options.tsx, behind "More options".
  */
 import type { AnswersStatus, ChatModelsResponse, ModelSetupLook, ModelSetupTry, Settings } from "@outpost/shared";
-import { recommendModel, sameModelName } from "@outpost/shared";
+import { recommendModel, sameModelName, WHICH_MODEL_PATH } from "@outpost/shared";
 import { useQuery } from "@tanstack/react-query";
 import { CircleAlert, CircleCheck } from "lucide-react";
 import { useState } from "react";
@@ -193,6 +193,12 @@ export function AnswersSection({
               <GuideLink part="answers-and-chat" />
             </p>
           )}
+          <p className="text-small text-ink-muted">
+            <Link to={WHICH_MODEL_PATH} className={link}>
+              Which model?
+            </Link>{" "}
+            How each model did when it was tried with Outpost: what it got right, the memory it needed and how long it took.
+          </p>
 
           <MoreOptions>
             <AnswersOptions
