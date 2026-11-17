@@ -31,7 +31,10 @@ test.describe("food and supplies for a state on a phone", () => {
     await dialog.getByRole("button", { name: "Read the list of regions" }).click();
 
     // A country, then its state.
-    await dialog.getByRole("list", { name: "Countries" }).getByRole("button", { name: /United States of America/ }).click();
+    await dialog
+      .getByRole("list", { name: "Countries" })
+      .getByRole("button", { name: /United States of America/ })
+      .click();
     const states = dialog.getByRole("list", { name: "United States of America and its parts" });
     await states.getByText("Ohio", { exact: true }).click();
     await expect(dialog.getByRole("list", { name: "Chosen" })).toContainText("Ohio: OpenStreetMap only");
@@ -59,7 +62,10 @@ test.describe("food and supplies for a state on a phone", () => {
     await page.getByRole("tab", { name: "Layers" }).click();
     await page.getByRole("tab", { name: "Layers" }).click();
     await page.getByRole("switch", { name: "Food and supplies" }).click();
-    await page.getByRole("list", { name: "Kinds of place" }).getByRole("button", { name: /Pharmacy/ }).click();
+    await page
+      .getByRole("list", { name: "Kinds of place" })
+      .getByRole("button", { name: /Pharmacy/ })
+      .click();
     await expect(page.getByRole("heading", { name: "Nearest pharmacy" })).toBeVisible();
     const nearest = page.getByRole("list", { name: "Nearest to the middle of the map" });
     await expect(nearest.getByRole("button").first()).toContainText("High Street Pharmacy (test)");

@@ -27,11 +27,7 @@ export function madeFrom(region: Pick<ReferenceRegionDto, "country">): string {
     : "OpenStreetMap only: likely to be fuller in towns than in the country.";
 }
 
-const fold = (text: string) =>
-  text
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
+const fold = (text: string) => text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
 export function RegionChooser({
   chosen,
@@ -60,7 +56,8 @@ export function RegionChooser({
   /** Where a region sits: "Bayern, Germany". */
   const placeOf = (region: ReferenceRegionDto) => {
     const names: string[] = [];
-    for (let at = region.parent ? byId.get(region.parent) : undefined; at; at = at.parent ? byId.get(at.parent) : undefined) names.push(at.name);
+    for (let at = region.parent ? byId.get(region.parent) : undefined; at; at = at.parent ? byId.get(at.parent) : undefined)
+      names.push(at.name);
     return names.join(", ");
   };
 
@@ -69,10 +66,10 @@ export function RegionChooser({
     const needle = fold(typed);
     const hits = list.filter((region) => fold(region.name).includes(needle));
     // Names that begin with what was typed first, then the rest, each in the list's order.
-    return [...hits.filter((region) => fold(region.name).startsWith(needle)), ...hits.filter((region) => !fold(region.name).startsWith(needle))].slice(
-      0,
-      MAX_FOUND,
-    );
+    return [
+      ...hits.filter((region) => fold(region.name).startsWith(needle)),
+      ...hits.filter((region) => !fold(region.name).startsWith(needle)),
+    ].slice(0, MAX_FOUND);
   }, [typed, list]);
 
   if (regions.isPending) return <Skeleton className="h-24" />;
@@ -215,7 +212,9 @@ export function RegionChooser({
       ) : (
         <p className="text-small text-ink-muted">Choose up to {MAX_REGIONS}; each is its own file and its own pack.</p>
       )}
-      {full ? <p className="text-micro text-ink-muted">That is {MAX_REGIONS}, as many as one download takes. Fetch more afterwards.</p> : null}
+      {full ? (
+        <p className="text-micro text-ink-muted">That is {MAX_REGIONS}, as many as one download takes. Fetch more afterwards.</p>
+      ) : null}
       <p className="text-micro text-ink-muted">
         Geofabrik's list as read on {formatDate(regions.data.readAt ?? Date.now())}.{" "}
         <button type="button" onClick={() => read.mutate()} disabled={read.isPending} className="text-primary underline underline-offset-2">

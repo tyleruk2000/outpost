@@ -16,7 +16,6 @@
  */
 import crypto from "node:crypto";
 import fs from "node:fs";
-import type { ReferenceEstimateItem } from "@outpost/shared";
 import { AppError } from "../../../core/errors.ts";
 import { PermanentJobError } from "../../../core/jobs.ts";
 import { countryOf } from "../countries.ts";
@@ -110,8 +109,19 @@ export function createGeofabrikAdapter({ client }: AdapterDeps, regions: RegionI
   const asked = (layers: string[] | undefined) =>
     (layers?.length ? layers : OSM_LAYERS).filter((layer): layer is OsmLayer => (EXTRACT_LAYERS as string[]).includes(layer));
 
-  async function sized(url: string, signal?: AbortSignal) {
-    const head = await headSize(client, url, signal);
+  async function sized(url: string, name: string, signal?: AbortSignal) {
+    let head: Awaited<ReturnType<typeof headSize>>;
+    try {
+      head = await headSize(client, url, signal);
+    } catch (error) {
+      // Geofabrik sends its largest files (Germany's on 17 November 2026) from a mirror on another host.
+      if (error instanceof AppError && error.code === "forbidden")
+        throw new AppError(
+          "bad_request",
+          `Geofabrik sends ${name}'s file from another server (a mirror), which Outpost does not download from. Choose its parts instead: each is its own, smaller file.`,
+        );
+      throw error;
+    }
     // The MD5 of the dated file the size is for, not of whatever "latest" is a moment later.
     const md5 = /^([0-9a-f]{32})\b/i.exec((await fetchText(client, `${head.finalUrl}.md5`, { max: 4096, signal })).trim())?.[1];
     // The dated address the "latest" one leads to, so that resuming fetches the same file, and its MD5.
@@ -137,7 +147,7 @@ export function createGeofabrikAdapter({ client }: AdapterDeps, regions: RegionI
           const parents: string[] = [];
           for (let at = region.parent ? regions.find(region.parent) : undefined; at; at = at.parent ? regions.find(at.parent) : undefined)
             parents.push(at.name);
-          const { head, extra } = await sized(region.pbf, signal);
+          const { head, extra } = await sized(region.pbf, region.name, signal);
           const bytes = head.bytes ?? 0;
           items.push({
             key: `geofabrik:${region.id}:${region.country ?? ""}`,
@@ -165,7 +175,7 @@ export function createGeofabrikAdapter({ client }: AdapterDeps, regions: RegionI
             notes.push(`Geofabrik has no extract for ${countryOf(code)?.name ?? code} on its own.`);
             continue;
           }
-          const { head, extra } = await sized(entry.pbf, signal);
+          const { head, extra } = await sized(entry.pbf, entry.name, signal);
           const bytes = head.bytes ?? 0;
           items.push({
             key: `geofabrik:${entry.id}:${code}`,
@@ -251,9 +261,14 @@ export function createGeofabrikAdapter({ client }: AdapterDeps, regions: RegionI
         progress: (pass, passes, bytes, total) =>
           progress(bytes, total, `Reading the extract, pass ${pass} of ${passes}: ${sink.count.toLocaleString("en-GB")} places so far`),
       });
-      const notes =
-        meta.options?.region && layers.has("food") ? [meta.countries[0] === "GB" ? COVERAGE_UK : COVERAGE_OSM_ONLY] : undefined;
-      return { version: stamp, publishedAt: stamp, countries: meta.countries, bbox: header.bbox ?? meta.bbox ?? (seen[0] <= seen[2] ? seen : null), ...(notes ? { notes } : {}) };
+      const notes = meta.options?.region && layers.has("food") ? [meta.countries[0] === "GB" ? COVERAGE_UK : COVERAGE_OSM_ONLY] : undefined;
+      return {
+        version: stamp,
+        publishedAt: stamp,
+        countries: meta.countries,
+        bbox: header.bbox ?? meta.bbox ?? (seen[0] <= seen[2] ? seen : null),
+        ...(notes ? { notes } : {}),
+      };
     },
   };
 }

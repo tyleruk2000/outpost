@@ -37,7 +37,11 @@ const extract: ReferenceProviderDto = {
   incremental: "No.",
 };
 
-const CATALOGUE = { providers: [extract], linked: [], countries: [{ code: "US", name: "United States", bbox: [-125, 24, -66, 49] }] } as unknown as ReferenceCatalogueResponse;
+const CATALOGUE = {
+  providers: [extract],
+  linked: [],
+  countries: [{ code: "US", name: "United States", bbox: [-125, 24, -66, 49] }],
+} as unknown as ReferenceCatalogueResponse;
 
 const REGIONS: ReferenceRegionsResponse = {
   held: true,
@@ -67,7 +71,8 @@ const ESTIMATE: ReferenceEstimate = {
       layers: ["food"],
       bytes: 327_771_006,
       exact: true,
-      basis: "The size Geofabrik's server gives for today's file. Read from it: food and supplies. OpenStreetMap only: likely to be fuller in towns than in the country.",
+      basis:
+        "The size Geofabrik's server gives for today's file. Read from it: food and supplies. OpenStreetMap only: likely to be fuller in towns than in the country.",
       records: null,
       host: "download.geofabrik.de",
       replaces: null,
@@ -81,13 +86,19 @@ const ESTIMATE: ReferenceEstimate = {
 };
 
 function show(options: { held: boolean; home?: boolean }) {
-  const calls = { read: 0, regionsAsked: [] as string[], estimates: [] as ReferenceEstimateRequest[], starts: [] as ReferenceStartRequest[] };
+  const calls = {
+    read: 0,
+    regionsAsked: [] as string[],
+    estimates: [] as ReferenceEstimateRequest[],
+    starts: [] as ReferenceStartRequest[],
+  };
   let held = options.held;
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = new URL(String(input), "http://outpost.test");
-      const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+      const json = (body: unknown, status = 200) =>
+        new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
       if (url.pathname === "/api/reference/catalogue") return json(CATALOGUE);
       if (url.pathname === "/api/reference/regions" && init?.method === "POST") {
         calls.read += 1;
@@ -110,7 +121,10 @@ function show(options: { held: boolean; home?: boolean }) {
         calls.starts.push(JSON.parse(String(init.body)) as ReferenceStartRequest);
         return json({ downloads: [] });
       }
-      if (url.pathname.startsWith("/api/storage")) return json({ locations: [{ id: "loc1", name: "This computer", isDefault: true, status: "available", freeBytes: 50e9, totalBytes: 100e9 }] });
+      if (url.pathname.startsWith("/api/storage"))
+        return json({
+          locations: [{ id: "loc1", name: "This computer", isDefault: true, status: "available", freeBytes: 50e9, totalBytes: 100e9 }],
+        });
       return json({});
     }),
   );
@@ -155,20 +169,20 @@ describe("choosing a region", () => {
     fireEvent.change(find, { target: { value: "bay" } });
     const found = await screen.findByRole("list", { name: "Regions found" });
     // Names that begin with what was typed first; where each sits is said.
-    expect(within(found).getAllByRole("checkbox").map((box) => box.closest("label")?.textContent)).toEqual([
-      "BayernGermany",
-      "OberbayernBayern, Germany",
-    ]);
+    expect(
+      within(found)
+        .getAllByRole("checkbox")
+        .map((box) => box.closest("label")?.textContent),
+    ).toEqual(["BayernGermany", "OberbayernBayern, Germany"]);
     fireEvent.change(find, { target: { value: "" } });
 
     fireEvent.click(screen.getByRole("button", { name: /^Germany/ }));
     const germany = await screen.findByRole("list", { name: "Germany and its parts" });
-    expect(within(germany).getAllByRole("checkbox").map((box) => box.closest("label")?.textContent)).toEqual([
-      "The whole of Germany",
-      "Bayern",
-      "Oberbayern",
-      "Berlin",
-    ]);
+    expect(
+      within(germany)
+        .getAllByRole("checkbox")
+        .map((box) => box.closest("label")?.textContent),
+    ).toEqual(["The whole of Germany", "Bayern", "Oberbayern", "Berlin"]);
     fireEvent.click(screen.getByRole("button", { name: "All countries" }));
     expect(await screen.findByRole("list", { name: "Countries" })).toBeVisible();
   });
@@ -189,7 +203,9 @@ describe("choosing a region", () => {
     await waitFor(() => expect(calls.estimates).toHaveLength(1));
     expect(calls.estimates[0]).toEqual({ provider: "osm-extract", scope: { regions: ["us/ohio"] }, layers: ["food"] });
     expect(await screen.findByText(/1 file to download, 328 MB, and at most 26.0 MB in Outpost's database/)).toBeVisible();
-    expect(screen.getByText(/Afterwards on this device: only the places read, at most 26.0 MB\. The 328 MB file is deleted once read/)).toBeVisible();
+    expect(
+      screen.getByText(/Afterwards on this device: only the places read, at most 26.0 MB\. The 328 MB file is deleted once read/),
+    ).toBeVisible();
     const keep = screen.getByRole("checkbox", { name: "Keep the downloaded file too" });
     expect(keep).not.toBeChecked();
     fireEvent.click(keep);

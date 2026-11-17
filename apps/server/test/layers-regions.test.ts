@@ -110,14 +110,24 @@ describe("a region on a real test server", () => {
     standIn.requests.length = 0;
     const before = (await app.api("GET", "/api/reference/regions")).body as ReferenceRegionsResponse;
     expect(before).toMatchObject({ held: false, regions: [] });
-    const refused = await app.api("POST", "/api/reference/estimate", { provider: "osm-extract", scope: { regions: ["us/ohio"] }, layers: ["food"] });
+    const refused = await app.api("POST", "/api/reference/estimate", {
+      provider: "osm-extract",
+      scope: { regions: ["us/ohio"] },
+      layers: ["food"],
+    });
     expect(JSON.stringify(refused.body)).toMatch(/Read Geofabrik's list of regions first/);
     expect(standIn.requests).toEqual([]);
 
     const list = await readList();
     expect(standIn.requests).toEqual(["GET /index-v1-nogeom.json"]);
     expect(list.held).toBe(true);
-    expect(list.regions.find((region) => region.id === "us/ohio")).toEqual({ id: "us/ohio", name: "Ohio", country: "US", parent: "us", depth: 1 });
+    expect(list.regions.find((region) => region.id === "us/ohio")).toEqual({
+      id: "us/ohio",
+      name: "Ohio",
+      country: "US",
+      parent: "us",
+      depth: 1,
+    });
     expect(JSON.stringify(list)).not.toMatch(/osm\.pbf/);
     // Kept: asking again (and from another start of the server's list) reads nothing more.
     const again = (await app.api("GET", `/api/reference/regions?lat=${COLUMBUS.lat}&lon=${COLUMBUS.lon}`)).body as ReferenceRegionsResponse;
@@ -141,7 +151,9 @@ describe("a region on a real test server", () => {
         fileKeptByDefault: false,
       }),
     ]);
-    expect(found.items[0]!.basis).toMatch(/Read from it: food and supplies and hospitals\. OpenStreetMap only: likely to be fuller in towns/);
+    expect(found.items[0]!.basis).toMatch(
+      /Read from it: food and supplies and hospitals\. OpenStreetMap only: likely to be fuller in towns/,
+    );
     expect(found.databaseBytes).toBeGreaterThan(0);
     expect(found.notes.join(" ")).toMatch(/downloaded responsibly/);
     // A HEAD for the size and the MD5 file: the extract itself is not fetched.
@@ -171,9 +183,17 @@ describe("a region on a real test server", () => {
     const shown = await view(OHIO_VIEW);
     const byName = (name: string) => shown.points.find((point) => point.name === name);
     // A supermarket mapped only as its building, at the building's middle.
-    expect(byName("Made-up Supermarket (test)")).toMatchObject({ kind: "food:supermarket", lat: expect.closeTo(39.965, 4), lon: expect.closeTo(-83.005, 4) });
+    expect(byName("Made-up Supermarket (test)")).toMatchObject({
+      kind: "food:supermarket",
+      lat: expect.closeTo(39.965, 4),
+      lon: expect.closeTo(-83.005, 4),
+    });
     // A market made of two ways in a relation, at its middle.
-    expect(byName("Made-up Market (test)")).toMatchObject({ kind: "food:market", lat: expect.closeTo(39.955, 4), lon: expect.closeTo(-82.99, 4) });
+    expect(byName("Made-up Market (test)")).toMatchObject({
+      kind: "food:market",
+      lat: expect.closeTo(39.955, 4),
+      lon: expect.closeTo(-82.99, 4),
+    });
     expect(byName("Made-up Fuel (test)")?.kind).toBe("food:fuel");
     expect(byName("Made-up Hospital (test)")?.layer).toBe("hospitals");
     expect(shown.points.map((point) => point.name)).not.toContain("A restaurant (left out)");
@@ -184,10 +204,15 @@ describe("a region on a real test server", () => {
     expect(nearest.hits[0]).toMatchObject({ name: "High Street Pharmacy (test)", distanceMeters: 111, bearingDegrees: 0 });
     const card = (await app.api("GET", `/api/reference/features/${nearest.hits[0]!.id}`)).body.feature;
     expect(card.food).toMatchObject({ openingHours: "Mo-Fr 09:00-19:00" });
-    expect(card.source).toMatchObject({ provider: "osm-extract", license: "ODbL 1.0", sourceUrl: "https://www.openstreetmap.org/node/1001" });
+    expect(card.source).toMatchObject({
+      provider: "osm-extract",
+      license: "ODbL 1.0",
+      sourceUrl: "https://www.openstreetmap.org/node/1001",
+    });
 
     // The home place's region is offered first now that it is held.
-    const offered = (await app.api("GET", `/api/reference/regions?lat=${COLUMBUS.lat}&lon=${COLUMBUS.lon}`)).body as ReferenceRegionsResponse;
+    const offered = (await app.api("GET", `/api/reference/regions?lat=${COLUMBUS.lat}&lon=${COLUMBUS.lon}`))
+      .body as ReferenceRegionsResponse;
     expect(offered.suggested[0]).toEqual({ id: "us/ohio", why: "Held already, and holds the home place" });
   });
 
@@ -248,6 +273,17 @@ describe("a region on a real test server", () => {
     expect(started.status).toBe(507);
     expect(JSON.stringify(started.body)).toMatch(/does not have enough free space/);
     expect(standIn.requests.filter((line) => line === "GET /north-america/us/texas-261116.osm.pbf")).toEqual([]);
+  });
+
+  it("says plainly when Geofabrik sends a file from a mirror, which is not followed", async () => {
+    await readList();
+    const answer = await app.api("POST", "/api/reference/estimate", {
+      provider: "osm-extract",
+      scope: { regions: ["germany"] },
+      layers: ["food"],
+    });
+    expect(answer.status).toBe(400);
+    expect(answer.body.error.message).toMatch(/sends Germany's file from another server \(a mirror\).*Choose its parts instead/);
   });
 
   it("is a download that can be stopped half-way and resumed from where it stopped", async () => {

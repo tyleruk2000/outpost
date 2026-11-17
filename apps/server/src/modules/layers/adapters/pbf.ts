@@ -20,8 +20,8 @@ import fs from "node:fs";
 import zlib from "node:zlib";
 import type { Bbox } from "@outpost/shared";
 import { PermanentJobError } from "../../../core/jobs.ts";
-import type { OsmObject } from "./osm-read.ts";
 import { classifyFood } from "./food-tags.ts";
+import type { OsmObject } from "./osm-read.ts";
 import { classifyOsm, type OsmLayer } from "./osm-tags.ts";
 
 const MAX_BLOB_HEADER = 64 * 1024;

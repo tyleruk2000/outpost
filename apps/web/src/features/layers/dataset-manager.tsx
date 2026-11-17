@@ -26,8 +26,8 @@ import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "
 import { Field, Input } from "@/components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Badge, Checkbox, Select, Skeleton } from "@/components/ui/misc";
-import type { MapEngine } from "@/features/maps/map/engine";
 import { useMarkers } from "@/features/maps/data";
+import type { MapEngine } from "@/features/maps/map/engine";
 import { DestinationPicker, useDestination } from "@/features/maps/panels/destination";
 import { PanelHeading } from "@/features/maps/ui";
 import { api, errorMessage } from "@/lib/api";
@@ -429,8 +429,8 @@ export function GetDialog({
               ) : null}
               {provider?.id === "osm-extract" && layers.includes("food") ? (
                 <Notice tone="info">
-                  One download serves every layer: the same file also holds hospitals, police, fire and ambulance stations, shelters, military
-                  sites and nuclear facilities. Tick any of those too and they are read from it, with nothing more downloaded.
+                  One download serves every layer: the same file also holds hospitals, police, fire and ambulance stations, shelters,
+                  military sites and nuclear facilities. Tick any of those too and they are read from it, with nothing more downloaded.
                 </Notice>
               ) : null}
               {provider?.caution ? (
@@ -467,7 +467,10 @@ export function GetDialog({
                   onClick={() => estimate.mutate(request())}
                   loading={estimate.isPending}
                   disabled={
-                    !provider || (scope === "bbox" && !engine) || (scope === "region" && regions.length === 0) || (needsAgreement && !agreed)
+                    !provider ||
+                    (scope === "bbox" && !engine) ||
+                    (scope === "region" && regions.length === 0) ||
+                    (needsAgreement && !agreed)
                   }
                 >
                   Show the size

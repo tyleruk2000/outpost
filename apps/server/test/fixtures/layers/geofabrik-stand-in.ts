@@ -6,7 +6,8 @@
  *
  * As the real server does, a `-latest` address answers with a redirect to a dated file,
  * each file has an `.md5` beside it, HEAD gives the size, and a range is honoured.
- * Kentucky's MD5 is wrong on purpose; Texas says it is far larger than any disk.
+ * Kentucky's MD5 is wrong on purpose; Texas says it is far larger than any disk; Germany's
+ * file is sent from another host, as the real one is from a mirror.
  */
 import crypto from "node:crypto";
 import type http from "node:http";
@@ -32,7 +33,11 @@ function filler(from: number, count: number, lat: number, lon: number): PbfNode[
     seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648;
     return seed / 2_147_483_648;
   };
-  return Array.from({ length: count }, (_, i) => ({ id: from + i * 3 + Math.floor(next() * 3), lat: lat + next() * 0.5, lon: lon + next() * 0.5 }));
+  return Array.from({ length: count }, (_, i) => ({
+    id: from + i * 3 + Math.floor(next() * 3),
+    lat: lat + next() * 0.5,
+    lon: lon + next() * 0.5,
+  }));
 }
 
 /** The pharmacy on the Ohio and Indiana line, in both files, as Geofabrik's extracts overlap at their edges. */
@@ -61,7 +66,11 @@ function ohio(): Buffer {
   ];
   const ways: PbfWay[] = [
     // A supermarket mapped as its building: no point of its own.
-    { id: 2_001, refs: [3_001, 3_002, 3_003, 3_004, 3_001], tags: { building: "retail", shop: "supermarket", name: "Made-up Supermarket (test)" } },
+    {
+      id: 2_001,
+      refs: [3_001, 3_002, 3_003, 3_004, 3_001],
+      tags: { building: "retail", shop: "supermarket", name: "Made-up Supermarket (test)" },
+    },
     // The two halves of a market's outline, untagged: the relation says what they are.
     { id: 2_002, refs: [3_011, 3_012, 3_013] },
     { id: 2_003, refs: [3_013, 3_014, 3_011] },
@@ -114,6 +123,8 @@ interface StandInFile {
   md5: string;
   /** What HEAD says, when it should say something else. */
   claimedBytes?: number;
+  /** Sent from another host, as Geofabrik sends Germany's file from a mirror. */
+  mirror?: boolean;
 }
 
 export interface GeofabrikStandIn {
@@ -145,7 +156,14 @@ const ENTRIES: Array<{ id: string; parent?: string; name: string; alpha2?: strin
   { id: "us/kentucky", parent: "north-america", name: "us/kentucky", sub: ["US-KY"], path: "north-america/us/kentucky" },
   { id: "us/new-york", parent: "north-america", name: "us/new-york", sub: ["US-NY"], path: "north-america/us/new-york" },
   { id: "us/texas", parent: "north-america", name: "us/texas", sub: ["US-TX"], path: "north-america/us/texas" },
-  { id: "us/puerto-rico", parent: "north-america", name: "us/puerto-rico", alpha2: ["PR"], sub: ["US-PR"], path: "north-america/us/puerto-rico" },
+  {
+    id: "us/puerto-rico",
+    parent: "north-america",
+    name: "us/puerto-rico",
+    alpha2: ["PR"],
+    sub: ["US-PR"],
+    path: "north-america/us/puerto-rico",
+  },
 ];
 
 export function createGeofabrikStandIn(): GeofabrikStandIn {
@@ -156,6 +174,7 @@ export function createGeofabrikStandIn(): GeofabrikStandIn {
   put("north-america/us/kentucky", indiana(), { md5: "0".repeat(32) });
   put("north-america/us/texas", indiana(), { claimedBytes: 4e15 });
   put("europe/germany/bayern", bayern());
+  put("europe/germany", bayern(), { mirror: true });
   const requests: string[] = [];
   const standIn: GeofabrikStandIn = {
     files,
@@ -188,7 +207,8 @@ export function createGeofabrikStandIn(): GeofabrikStandIn {
       }
       const latest = /^\/(.+)-latest\.osm\.pbf$/.exec(route);
       if (latest && files.has(latest[1]!)) {
-        response.writeHead(302, { location: `${base}/${latest[1]}-261116.osm.pbf` }).end();
+        const elsewhere = files.get(latest[1]!)!.mirror ? base.replace("127.0.0.1", "localhost") : base;
+        response.writeHead(302, { location: `${elsewhere}/${latest[1]}-261116.osm.pbf` }).end();
         return;
       }
       const dated = /^\/(.+)-261116\.osm\.pbf(\.md5)?$/.exec(route);
@@ -201,7 +221,11 @@ export function createGeofabrikStandIn(): GeofabrikStandIn {
         response.writeHead(200, { "content-type": "text/plain" }).end(`${file.md5}  ${file.path.split("/").at(-1)}-261116.osm.pbf\n`);
         return;
       }
-      const headers = { "content-type": "application/octet-stream", "last-modified": "Mon, 16 Nov 2026 21:00:00 GMT", etag: `"${file.md5}"` };
+      const headers = {
+        "content-type": "application/octet-stream",
+        "last-modified": "Mon, 16 Nov 2026 21:00:00 GMT",
+        etag: `"${file.md5}"`,
+      };
       const range = /^bytes=(\d+)-$/.exec(request.headers.range ?? "");
       const from = range ? Number(range[1]) : 0;
       const body = file.body.subarray(from);

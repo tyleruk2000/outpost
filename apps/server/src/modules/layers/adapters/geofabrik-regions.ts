@@ -49,9 +49,7 @@ export function nameFromId(id: string): string {
   return last
     .split("-")
     .filter(Boolean)
-    .map((word, index) =>
-      word === "us" ? "US" : index > 0 && SMALL_WORDS.has(word) ? word : word.charAt(0).toUpperCase() + word.slice(1),
-    )
+    .map((word, index) => (word === "us" ? "US" : index > 0 && SMALL_WORDS.has(word) ? word : word.charAt(0).toUpperCase() + word.slice(1)))
     .join(" ");
 }
 

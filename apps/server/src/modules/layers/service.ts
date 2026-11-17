@@ -333,7 +333,7 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
     let kept = { relPath: input.relPath, sizeBytes: input.sizeBytes, sha256: input.sha256 };
     const notes = [...(result.notes ?? [])];
     if (placesOnly) {
-      const relPath = input.relPath.replace(/(\.osm)?\.pbf$/, "") + ".read.json";
+      const relPath = `${input.relPath.replace(/(\.osm)?\.pbf$/, "")}.read.json`;
       const record = JSON.stringify(
         {
           what: "The record of an OpenStreetMap extract Outpost read and then deleted, keeping only the places read from it (in its database).",
@@ -500,8 +500,7 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
         const spec = adapter.download!(estimate.request, item);
         const { query, ...partial } = (spec.meta ?? {}) as Partial<ReferenceMeta> & { query?: unknown };
         // A file that need not be kept once read: kept or not as the person chose, or as the source says by default.
-        const keep =
-          item.fileKeptByDefault === undefined ? undefined : (keepFile ?? item.fileKeptByDefault) ? "file" : "places";
+        const keep = item.fileKeptByDefault === undefined ? undefined : (keepFile ?? item.fileKeptByDefault) ? "file" : "places";
         const options = partial.options || keep ? { ...partial.options, ...(keep ? { keep } : {}) } : undefined;
         const reference: ReferenceMeta = {
           provider: adapter.provider.id,
