@@ -16,6 +16,9 @@ import { Input } from "@/components/ui/input";
 import { Segmented, Select, Skeleton } from "@/components/ui/misc";
 import { ApiError, api, errorMessage } from "@/lib/api";
 import { plural, timeAgo } from "@/lib/utils";
+import { useLibrivoxShelf } from "../audiobooks/audiobook-data";
+// The LibriVox shelf, offered as links (features/audiobooks).
+import { LibrivoxShelf } from "../audiobooks/librivox-shelf";
 import { useDownloads } from "../downloads/use-downloads";
 import { manageLink } from "../manage/manage-data";
 import { type CategoryChoice, countByCategory, filterEntries, type ShowFilter, type SortOrder, sortEntries } from "./catalog";
@@ -173,10 +176,13 @@ export default function ExplorePage() {
   const requested = params.get("category");
   // A link to one entry opens its category unless the address names another.
   const packs = catalog.data?.packs ?? [];
+  const shelfCount = useLibrivoxShelf().data?.books.length ?? 0;
   const category: CategoryChoice =
     requested === "packs" && packs.length > 0
       ? "packs"
-      : (CATALOG_CATEGORIES.find((item) => item.slug === requested)?.slug ?? markedEntry?.category ?? "all");
+      : requested === "audiobooks"
+        ? "audiobooks"
+        : (CATALOG_CATEGORIES.find((item) => item.slug === requested)?.slug ?? markedEntry?.category ?? "all");
 
   const setCategory = (next: CategoryChoice) =>
     setParams((current) => {
@@ -196,6 +202,7 @@ export default function ExplorePage() {
   const navItems: CategoryItem[] = [
     // Packs come first: they are the answer to "where do I start?".
     ...(packs.length > 0 ? [{ slug: "packs" as const, label: "Packs", count: packs.length }] : []),
+    ...(shelfCount > 0 ? [{ slug: "audiobooks" as const, label: "Audiobooks", count: shelfCount }] : []),
     { slug: "all", label: "All collections", count: counts.all ?? 0 },
     // Maps are fetched by region on their own screen, so "0" beside them would be wrong.
     ...categories.map((item) => ({
@@ -285,7 +292,9 @@ export default function ExplorePage() {
         <div className="lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-x-10">
           <CategoryNav items={navItems} value={category} onChange={setCategory} />
 
-          {category === "packs" ? (
+          {category === "audiobooks" ? (
+            <LibrivoxShelf />
+          ) : category === "packs" ? (
             <div className="min-w-0 max-lg:mt-3">
               <h2 className="text-lead font-semibold text-ink">Packs</h2>
               <p className="mt-1 mb-4 max-w-[68ch] text-small text-ink-muted">

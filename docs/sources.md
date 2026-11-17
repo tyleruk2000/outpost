@@ -10,7 +10,7 @@ The catalogue itself lives in [`catalog/manifests/`](../catalog/manifests):
 | --- | --- | --- |
 | `kiwix-essentials.json` | A starter selection of archives from the Kiwix library | 61 |
 | `kiwix-more.json` | Further Kiwix archives: programming documentation, more Project Gutenberg shelves, medical and science references, courses, talks, preparedness, and more question-and-answer sites | 89 |
-| `official-publications.json` | Individual PDF handbooks, guides, leaflets and textbooks, each fetched from its publisher's own website | 107 |
+| `official-publications.json` | Individual PDF handbooks, guides, leaflets and textbooks, each fetched from its publisher's own website | 108 |
 | `radio.json` | Radio rules, frequency tables, field guides, broadcast guides and band plans as PDFs from their publishers (38), and five more Kiwix archives | 43 |
 | `outpost-reference.json` | Reference sheets written for Outpost and shipped with it; see [radio.md](radio.md) | 9 |
 | `logbook73.json` | The Radio Engineering Handbook and fifteen radio companion guides, written by this project's author for LogBook73 (MIT) and shipped as books; generated, see [radio.md](radio.md#the-handbook-and-the-radio-guides) | 16 |
@@ -135,6 +135,19 @@ means the source looks worth having and something stopped it, which the row name
 | N14 | US Environmental Protection Agency (epa.gov) | Emergency disinfection of drinking water | **Not listed.** The guidance is a web page; the page links no PDF of its own. | Not applicable. |
 | N15 | Radio sources looked at again | RSGB's repeater list (ukrepeater.net), Summits on the Air, the IARU Region 1 VHF and HF managers' handbooks | **Not listed.** ukrepeater.net's `robots.txt` disallows its data and documents folders and asks for ten seconds between requests; nothing was fetched. A search found no licence for the Summits on the Air rules, only a copyright notice on a copy elsewhere; of its own site only `robots.txt` was read. The IARU handbooks were not fetched: the IARU documents already listed state no licence, and no more "See source" entries were added. | No licence found. |
 | N16 | Not examined | Mountaineering Scotland, the British Mountaineering Council, Mountain Rescue England and Wales, CAWST, Practical Action, Oxfam's technical briefs, the US National Park Service, the US Fire Administration, the US Coast Guard's boating safety site, the remaining FAO and WHO titles | **Thought of and not pursued** for want of time. Only `robots.txt` was read for some of them, and nothing else was fetched. They are named here so that the next pass can start with them. | Not checked. |
+### Audiobooks and the NIOSH Pocket Guide, added on 2026-11-17
+
+Read on 2026-11-17 for two requests: public-domain audiobooks from LibriVox, and the
+NIOSH Pocket Guide to Chemical Hazards. How each was read is in
+[the section below](#what-was-read-on-2026-11-17-for-audiobooks-and-the-niosh-pocket-guide-and-how).
+
+| # | Source | What it is | How Outpost uses it | Licence and terms |
+| --- | --- | --- | --- | --- |
+| AU1 | NIOSH (cdc.gov/niosh) | The US National Institute for Occupational Safety and Health, part of the CDC | **Listed: 1 entry** in `official-publications`: *NIOSH Pocket Guide to Chemical Hazards*, DHHS (NIOSH) Publication No. 2005-149, third printing (September 2007), 454 pages, 6,339,883 bytes. The address was taken from NIOSH's own pages: the [Pocket Guide page](https://www.cdc.gov/niosh/npg/) links "PDF Version" to the publication's page, which links the file. NIOSH also keeps an online edition that it updates more often than the PDF; the entry says so. | The file's own page ii: "This document is in the public domain and may be freely copied or reprinted." CDC's terms as in row 11, whose attribution wording the entry carries. The file names NIOSH as author and carries no copyright notice or outside credit. |
+| AU2 | LibriVox (librivox.org) | Volunteer recordings of public-domain books | **Link out, by decision**: a shelf of 15 books in Explore (`catalog/audiobooks.json`), each with a link to its LibriVox page and to its zip, which the person downloads in their own browser and adds under Library. Outpost never fetches a recording. | The [public domain page](https://librivox.org/pages/public-domain/): "all our recordings are public domain in the USA, but not necessarily in other countries", and "if you are outside the USA, we recommend that you check the copyright status of the work in your country before downloading our recording of it." It explains that LibriVox works under US law because its domain, website and audio files are in the USA. It also says "book summaries, CD cover art, and any other material that goes into our catalog with the audio recordings are in the public domain", which is what lets the shelf hold LibriVox's records. |
+| AU3 | Internet Archive (archive.org), for LibriVox's files | Where LibriVox's audio is hosted | **Not fetched.** LibriVox's [API page](https://librivox.org/api/info) says each book's zip is "Hosted by Archive.org", and its addresses are now archive.org's `/compress/` service, which builds the zip when it is asked. The terms of use could not be read (as row 5), so Outpost does not fetch from archive.org; the shelf's links are followed by the person's browser. | `robots.txt` (read 2026-11-17) disallows only `/control/` and `/report/`. [Terms of use](https://archive.org/about/terms): the page, and its older address `terms.php`, are drawn by a script ("Javascript is required for this site") and could not be read on 2026-11-17. |
+| AU4 | Kiwix library, for LibriVox | The Kiwix feed Outpost already uses | **Nothing to list.** One search of the feed (`entries?q=librivox`) on 2026-11-17 found no book. | Not applicable. |
+
 ### Repeater lists
 
 Read on 2026-11-16 for the repeater database ([radio.md](radio.md#repeaters)), in two
@@ -817,6 +830,53 @@ with 310 entries.
   their source. One entry from each host (the CDC generator flyer and FEMA's earthquake
   brochure) was downloaded through a throwaway Outpost server started from the
   repository, and both completed at the pinned size and checksum.
+
+## What was read on 2026-11-17 for audiobooks and the NIOSH Pocket Guide, and how
+
+- **Client.** Every request went through Outpost's own client (`apps/server/src/core/http.ts`,
+  user agent "Outpost (self-hosted offline library)"), one at a time, a few seconds apart.
+  No other user agent, browser, mirror, cache or summarising service was used.
+- **NIOSH.** www.cdc.gov's `robots.txt` was read first; it disallows `/niosh/archive/`,
+  which was not visited. Then the [Pocket Guide page](https://www.cdc.gov/niosh/npg/),
+  its "PDF Version" link (`/niosh/docs/2005-149/default.html`, a page that sends the
+  browser on to `/niosh/publications/numbered/2005-149.html`), and that publication page,
+  which links `/niosh/docs/2005-149/pdfs/2005-149.pdf`. The file was fetched once:
+  6,339,883 bytes (the page says "6,192KB"), SHA-256
+  `c008054cef5aae66addaeab70549d4d549de409f3db75df73c5e7c631a674ad9`, 454 pages, its
+  title, edition and public-domain statement read from the file, and it was searched for
+  copyright notices and credits (none). The file was then deleted. `pnpm catalog:validate`
+  passes with 326 entries; `pnpm catalog:validate --online --delay 16` reported 325 of 326
+  resolving, the NIOSH entry among them, and one failure that is not this entry's
+  (`nasa.fastener-design-manual: fetch failed`).
+- **LibriVox, terms first.** `robots.txt` (it allows ordinary clients everywhere but
+  `/uploads/`, `/librivox-validator-books/`, `/public_readers_iframe/` and `/auth/`, and
+  carries the content signals `search=yes,ai-train=no,use=reference`), the public domain
+  page, its note for readers in the European Union (a page about LibriVox not being the
+  German firm Libri; nothing on copyright), the API page and the [API update of
+  16 September 2026](https://librivox.org/2026/09/16/librivox-api-update/). That post
+  says "because all LibriVox recordings are in the Public Domain, third parties – app
+  developers, archivists, streaming channels and curators – are more than welcome to
+  share and re-share them with the world", sets a limit of 500 records a request, and
+  asks "that developers be considerate and separate their requests by several seconds".
+- **What decided it.** A catalogue entry that fetched a book on a press would fetch from
+  archive.org, not from LibriVox: the API names each zip "Hosted by Archive.org". LibriVox
+  welcomes reuse of its recordings, but the Internet Archive's terms could not be read,
+  so it is not clear that a program may fetch its files; and its `/compress/` addresses
+  build each zip on request, so no size or checksum could be pinned as an entry needs.
+  So the smaller thing was done: a link the person follows in their browser, and an
+  importer in the Library for the zip they get.
+- **The shelf.** 28 title searches of LibriVox's API (`/api/feed/audiobooks/?title=^…`,
+  with `extended=1`), five seconds apart. Fifteen books were chosen: three practical, six
+  classics for adults, six for children, a solo reader wherever there was a complete
+  English version with one. `catalog/audiobooks.json` keeps LibriVox's record of each as
+  the API gave it (title, authors, readers, running time, number of files, page and zip
+  addresses) and a one-line summary written for Outpost. Sizes are not in the record and
+  archive.org was not asked: the shelf says "about" a size worked out from the running
+  time at the 64 kbps the zips hold. To make the shelf again, search the API by title for
+  each id in the file and copy the same fields.
+- **Kiwix.** One search of the feed for "librivox"; no result.
+- **Not read.** archive.org's terms (drawn by a script); no other archive.org page was
+  asked for.
 
 ## What was read on 2026-11-16 for repeaters, and how
 

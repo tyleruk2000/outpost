@@ -68,6 +68,7 @@ Only actions that fetch something new. Each happens because a person pressed a b
 | **Download a newer table** under HF propagation, Engine and data | `services.swpc.noaa.gov`, for NOAA's solar cycle table. See [hf-propagation.md](hf-propagation.md). |
 | **Download the P.533 maps** for the second HF model | `raw.githubusercontent.com`. See [hf-propagation.md](hf-propagation.md#a-second-model-itu-p533). |
 | **Fetch the registry from the IEEE** under Devices on this network | `standards-oui.ieee.org`, for the list of who made which network card. See [tools-qr-and-network.md](tools-qr-and-network.md#who-made-each-device). |
+| **Download the zip** and **LibriVox page** under Explore → Audiobooks | Nothing, from Outpost: these are links your browser follows to `archive.org` and `librivox.org`. Outpost itself never fetches an audiobook. Playing one in the Library is played from Outpost's own server, with no connection. See [library.md](library.md#audiobooks). |
 | Making a portable drive for a kind of computer for the first time | `nodejs.org` for the Node runtime; `download.kiwix.org` for the reference-collection reader |
 
 Once fetched, the Node runtimes and the reader are cached in the data directory, so

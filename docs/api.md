@@ -456,7 +456,7 @@ Types: `packages/shared/src/documents.ts`.
 | Method and path | Purpose |
 | --- | --- |
 | `POST /api/documents` | Uploads one or more files as `multipart/form-data` (at most 200 per request). Optional fields or query parameters: `category`, `tags` (comma separated), `locationId`, `allowDuplicate`, `source` (where the files came from, at most 1,000 characters) and `title` (at most 300 characters, and only with one file: `400` with more). A title that is sent is kept when the file's text is read; without one the title is the file's name until a PDF's or EPUB's own title replaces it. The web app sends `title` and `source` with a PDF it made itself ([library.md](library.md)). Answers `{ results: UploadResult[] }`, one per file with status `created`, `duplicate` or `rejected`; one bad file does not fail the others. |
-| `GET /api/documents` | Lists documents (`DocumentListResponse`). Query: `q` (title or file name), `category`, `tag`, `type` (`pdf`, `markdown`, `text`, `html`, `epub`, `image`), `sort` (`added`, `title`, `size`), `order`, `limit` (50 by default, at most 200), `offset`, `chapters`. The chapters of books are left out unless `q` or `tag` is given: a book is one thing in the library, reached from its collection. `chapters=true` always lists them, `chapters=false` never. A chapter's `book` says which book it is from. |
+| `GET /api/documents` | Lists documents (`DocumentListResponse`). Query: `q` (title or file name), `category`, `tag`, `type` (`pdf`, `markdown`, `text`, `html`, `epub`, `image`, `audio`), `sort` (`added`, `title`, `size`), `order`, `limit` (50 by default, at most 200), `offset`, `chapters`. The chapters of books are left out unless `q` or `tag` is given: a book is one thing in the library, reached from its collection. `chapters=true` always lists them, `chapters=false` never. A chapter's `book` says which book it is from. |
 | `GET /api/documents/facets` | Counts by category, tag and type, with totals (`DocumentFacets`). Chapters of books are not counted. |
 | `GET /api/documents/:id` | `{ document }` (`DocumentDto`). `scanPages` is how many pages have no text of their own (1 for an image), `ocrPages` how many of them OCR has been run on (`null` if never), and `ocrDetail` a sentence about the last OCR run. For a chapter of a book, also `chapter` (`DocumentChapterDto`): the book, the chapter's place in it, and the previous and next chapters. |
 | `PATCH /api/documents/:id` | Body (`DocumentPatch`): `title`, `description`, `category`, `author`, `source`, `language`, `tags`. Omitted fields are left alone; `tags` replaces the whole list. |
@@ -474,10 +474,25 @@ Types: `packages/shared/src/documents.ts`.
 | `POST /api/documents/move` | Body: `locationId`. Moves every document that is not on that location to it, as a job. `{ job, documents }`. |
 | `GET /api/tags` | `{ tags }`: every tag with the number of documents carrying it (`TagDto`). |
 
-Accepted types: PDF, EPUB, Markdown, plain text (`.txt`, `.csv`, `.json`), HTML and
-images (`.png`, `.jpg`, `.gif`, `.webp`, `.svg`). A file must be what its extension
+Accepted types: PDF, EPUB, Markdown, plain text (`.txt`, `.csv`, `.json`), HTML,
+images (`.png`, `.jpg`, `.gif`, `.webp`, `.svg`) and audio (`.mp3`, `.m4a`, `.m4b`,
+`.aac`, `.ogg`, `.oga`, `.opus`, `.flac`, `.wav`), which is served in place with its own
+type so a browser can play it a range at a time. A file must be what its extension
 says. An identical file (same SHA-256) is reported as `duplicate` unless
 `allowDuplicate` is set.
+
+### Audiobooks
+
+An audiobook of several files is a book (a collection whose chapters are documents)
+with `meta.audiobook`; one audio file on its own is a document of type `audio`. Both are
+played from `GET /api/documents/:id/file`. See [library.md](library.md#audiobooks).
+
+| Route | What it does |
+| --- | --- |
+| `GET /api/audiobooks` | `AudiobookListResponse`: every audiobook once (`kind` `book` or `single`), with author, readers, chapter count, running time where known, size and the address of its page. Query: `q` (title, author or reader), `sort` (`added`, the default, or `title`). |
+| `GET /api/audiobooks/:id` | `AudiobookResponse`: a book by its collection id or by any of its chapters' document ids (either gives the whole book), or one audio document on its own. Chapters in order, each with its `fileUrl`, `mime` and running time. `404` for anything that is not an audiobook. |
+| `POST /api/audiobooks` | Multipart: one `.zip`, or one or more audio files; optional fields `title`, `librivoxId` and `locationId` (as fields or in the query). Each file is checked from its first bytes. `202` with `{ job }`: job `audiobook.add` unpacks a zip inside the location's incoming folder (names that climb out of it, absolute names and encrypted entries refuse the zip; links and other files are left out and listed in the result), orders the audio files by track number or name, files them under `collections/audiobooks/<title>/` and records the book. Its result is `AudiobookAddResult`: `collectionId`, `title`, `chapters`, `leftOut`. `400` for a zip together with other files, two zips, or a file that is neither a zip nor audio. |
+| `GET /api/audiobooks/librivox` | `LibrivoxShelfResponse`: the LibriVox shelf from `catalog/audiobooks.json`, each book with `approxBytes` and `inLibrary`. Makes no request to LibriVox or the Internet Archive. |
 
 ## Notes
 

@@ -150,7 +150,7 @@ describe("documents panel", () => {
     serve({ documents: [], library: { categories: [], tags: [], types: [], total: 0, totalBytes: 0 } });
     renderPanel();
     expect(await screen.findByRole("heading", { name: "No documents yet" })).toBeInTheDocument();
-    expect(screen.getByText(/PDF, EPUB, Markdown, plain text, HTML, CSV, JSON, and images/)).toBeInTheDocument();
+    expect(screen.getByText(/PDF, EPUB, Markdown, plain text, HTML, CSV, JSON, images .*, and audio/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add documents" })).toBeInTheDocument();
     expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
   });

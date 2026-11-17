@@ -6,6 +6,7 @@
 import type { FastifyInstance } from "fastify";
 import type { AppContext } from "../core/context.ts";
 import { registerAnswers } from "./answers/index.ts";
+import { registerAudiobooks } from "./audiobooks/index.ts";
 import { registerBackup } from "./backup/index.ts";
 import { registerBooks } from "./books/index.ts";
 import { registerCatalog } from "./catalog/index.ts";
@@ -81,4 +82,6 @@ export const modules: ModuleRegister[] = [
   registerMorse,
   // Games, on a line of its own so that other additions merge cleanly.
   registerGames,
+  // Audiobooks (Library), after books, on a line of its own so that other additions merge cleanly.
+  registerAudiobooks,
 ];
