@@ -5,6 +5,7 @@ import { Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components
 
 const DocumentsPanel = lazy(() => import("./documents-panel"));
 const CollectionsPanel = lazy(() => import("./collections-panel"));
+const LearningPanel = lazy(() => import("@/features/learning/learning-panel"));
 
 const fallback = (
   <div className="mt-6 grid gap-3" aria-busy>
@@ -16,7 +17,8 @@ const fallback = (
 
 export default function LibraryPage() {
   const [params, setParams] = useSearchParams();
-  const tab = params.get("tab") === "collections" ? "collections" : "documents";
+  const asked = params.get("tab");
+  const tab = asked === "collections" || asked === "learning" ? asked : "documents";
   return (
     <Page>
       <PageHeader
@@ -37,6 +39,7 @@ export default function LibraryPage() {
         <TabsList>
           <TabsTrigger value="documents">Documents</TabsTrigger>
           <TabsTrigger value="collections">Collections</TabsTrigger>
+          <TabsTrigger value="learning">Learning</TabsTrigger>
         </TabsList>
         <TabsContent value="documents" className="focus:outline-none">
           <Suspense fallback={fallback}>
@@ -46,6 +49,11 @@ export default function LibraryPage() {
         <TabsContent value="collections" className="focus:outline-none">
           <Suspense fallback={fallback}>
             <CollectionsPanel />
+          </Suspense>
+        </TabsContent>
+        <TabsContent value="learning" className="focus:outline-none">
+          <Suspense fallback={fallback}>
+            <LearningPanel />
           </Suspense>
         </TabsContent>
       </Tabs>

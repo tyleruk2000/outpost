@@ -66,6 +66,8 @@ const GROUPS: Record<Exclude<DatabaseGroupId, "other">, string[]> = {
 GROUPS.prepare.push("emergency_plans");
 // The Morse trainer (modules/morse), on a line of its own so that other additions merge cleanly.
 GROUPS.radio.push("morse_progress", "morse_sessions");
+// Learning progress in reference archives (modules/learning), on a line of its own so that other additions merge cleanly.
+GROUPS.library.push("learning_pages", "learning_days", "learning_topics");
 export const GROUP_ORDER: DatabaseGroupId[] = ["search", "meaning", "library", "notes", "maps", "radio", "prepare", "other"];
 
 /** What each count is, as the services that own the tables count it. */
@@ -103,6 +105,7 @@ const COUNTS: Array<{ id: DatabaseCountId; table: string; sql: string }> = [
   { id: "morseSessions", table: "morse_sessions", sql: "SELECT count(*) AS n FROM morse_sessions" },
   { id: "gameSaves", table: "game_saves", sql: "SELECT count(*) AS n FROM game_saves" },
   { id: "boardMessages", table: "board_messages", sql: "SELECT count(*) AS n FROM board_messages WHERE removed_at IS NULL" },
+  { id: "learningPages", table: "learning_pages", sql: "SELECT count(*) AS n FROM learning_pages" },
   { id: "repeaterLists", table: "repeater_lists", sql: "SELECT count(*) AS n FROM repeater_lists" },
   { id: "weatherPlaces", table: "weather_places", sql: "SELECT count(*) AS n FROM weather_places" },
   { id: "pgpKeys", table: "pgp_keys", sql: "SELECT count(*) AS n FROM pgp_keys" },

@@ -398,7 +398,7 @@ accepts, or load anything from the internet.
 Only a book's pages and its icon can be reached through the proxy; kiwix-serve's own
 search and catalogue cannot. A small script of Outpost's own is placed at the top of
 each page, ahead of the archive's scripts, to tell the reader which page is on show
-and which link was pressed. The reader treats everything it is told as untrusted: each
+and which link was pressed, and, for learning progress, which other pages of the archive it links to and when a video on it has played to the end ([learning progress](#learning-progress)). The reader treats everything it is told as untrusted: each
 field is checked, and nothing the page reports is acted on without a person pressing
 a button. Code: `apps/server/src/modules/kiwix/index.ts`,
 `apps/web/src/features/reader/reader-page.tsx`.
@@ -497,6 +497,39 @@ a restart, no room, a file that fails, paths that are refused),
 `apps/web/src/features/reader/document-list.test.tsx` and
 `e2e/tests/reader.spec.ts`, which also shows the archive's own page being refused
 storage inside the frame.
+
+### Learning progress
+
+The reader records where each learner got to in a reference archive
+([learning.md](learning.md)). What is recorded, for each learner, archive and page: the
+page's address inside the archive and its title, when it was first and last opened, the
+seconds it was on screen while the tab was visible, and whether it was marked done or its
+video played through; and the seconds spent in each archive each day. Nothing else: no
+device, address or browser is recorded with it.
+
+- **Who can see it.** Everyone who can reach Outpost, as with everything else: the
+  Learning view shows everyone's, and the routes answer anyone. A learner is a name
+  chosen on a device, with no password, and the screens say that a name is not proof of
+  who was holding the device. Nothing is recorded on a device until someone has been
+  chosen there, and a device can stop recording.
+- **Where it goes.** The database, so backups and portable drives. It is not put in
+  search and never sent to a model server. A PDF of it added to the library asks first,
+  because that copy is searchable.
+- **The archive's page is no more trusted than before.** The reader learns which page is
+  on show, which other pages of the archive it links to, and that a `<video>` on it
+  played to the end, from the script the proxy already adds to each page. That script
+  only sends messages up to the reader; it does not listen for any, so a page still
+  cannot ask the reader for anything. The frame's `sandbox` attribute and the proxy's
+  policy are unchanged, without `allow-same-origin`; `apps/server/test/learning.test.ts`
+  asserts the policy word for word and that the script holds no listener for messages,
+  and `e2e/tests/learning.mobile.spec.ts` asserts the frame's attribute and the policy in
+  a browser. Every field a page sends is checked: an address must be inside the same
+  book, decode cleanly, and hold no `..` or control characters; at most 600 links are
+  read; a claim that a video ended counts only for the page on show, and only if it says
+  nine tenths of the video was played. A page can lie in these messages; the most it can
+  do is mark itself watched or make a topic's count wrong.
+- **Limits.** 50 learners, 20,000 pages a learner, two minutes of time a write, and no
+  more than could have passed since the page was last written.
 
 ### Downloads (the SSRF guard)
 

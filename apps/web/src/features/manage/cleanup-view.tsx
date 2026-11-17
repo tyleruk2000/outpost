@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Checkbox, Skeleton } from "@/components/ui/misc";
+import { LearningCleanup } from "@/features/learning/learning-cleanup";
 import { errorMessage } from "@/lib/api";
 import { plural } from "@/lib/utils";
 import { useEraseEverything, usePlan, useRebuild, useRemoveDownloaded } from "./manage-data";
@@ -394,12 +395,22 @@ export default function CleanupView({ status, loading }: { status: CleanupStatus
       </Rung>
 
       <Rung
+        title="Learning progress"
+        summary="Where each learner got to in the reference collections, as the reader recorded it. Remove one learner's, or everyone's."
+        removes={["The pages recorded for the learner, what was marked done, and the time spent"]}
+        keeps={["The collections themselves, and every other learner's progress when you remove one"]}
+      >
+        <LearningCleanup busy={busy} />
+      </Rung>
+
+      <Rung
         title="Erase everything and start again"
         summary="The only clean-up that destroys things that cannot be downloaded again."
         removes={[
           "Everything the first clean-up removes",
           "Documents you added, files and all",
           "Your notes and their attachments, saved places, routes, contacts and settings",
+          "Learning progress",
           "Every chat conversation, and every repeater: the lists you imported and the ones you added or changed",
           "History, search data, and copies of earlier data set aside by a restore",
         ]}

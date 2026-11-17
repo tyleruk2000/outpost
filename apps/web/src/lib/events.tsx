@@ -65,6 +65,8 @@ const invalidations: Record<string, string[][]> = {
   "games.changed": [["games"], ["manage"]],
   // A message, check-in or file on the household board was posted, changed, removed or expired, here or on another device.
   "board.changed": [["board"], ["manage"]],
+  // A page was marked done, or a learner's progress removed, here or on another device.
+  "learning.changed": [["learning"], ["manage"]],
   // The background count of what is on disk has finished.
   "manage.changed": [["manage"]],
 };

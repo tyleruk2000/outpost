@@ -171,6 +171,7 @@ server's cost at rest with books held: 0%.
 | Tools → QR codes | The code and what it holds. A code holding a Wi-Fi password or someone's contact details **asks first**. | Tag `QR code` |
 | Tools → Solar clock, Sundial and Nocturnal tabs | A template to cut out, for the place and date chosen. | Tags `Sundial template`, `Nocturnal template` |
 | Preparedness → Supplies, the shopping list | What is missing, as a list to take to the shop. | Tag `Shopping list` |
+| Library → Learning, under "On paper" | Each learner's courses: where they got to, pages opened and done, time this week, the topic counts. **Asks first**; see below. See [learning.md](learning.md). | "Learning progress, Sam, 17 Nov 2026", tag `Learning progress` |
 | Preparedness → Emergency plans → a plan's cards | Wallet cards, a fridge sheet or a grab list. **Asks first**: it holds the household's names and numbers. | "Wallet cards, *plan*, 16 Nov 2026", tag `Wallet cards`, `Fridge sheet` or `Grab list` |
 
 Every one of them offers the same three things, in the same words:
@@ -305,6 +306,16 @@ asks first, saying exactly that (`confirm` on `PdfButtons`), and nothing is sent
 the answer is yes. The sheet carries the date and time it was made, so a copy found
 later says how old it is. Saving the PDF to the device asks nothing.
 
+## Learning progress, on paper
+
+The Library's **Learning** tab lists, for one learner or for everyone, the courses they
+opened in the reference collections and where they got to ([learning.md](learning.md)).
+Its PDF is a record of what a child has covered, which a household may want on paper.
+Progress itself is kept out of search; a PDF of it in the library is searched like any
+document, goes into every backup and onto drives, and does not change when the progress
+does. So **Add to library** asks first, saying that. The sheet is dated by the day it was
+written out.
+
 ## Letters the typefaces cannot write
 
 The writer's typefaces (Helvetica and Courier, which every reader supplies) can write
@@ -385,4 +396,5 @@ blobs and exports, November 2026):
 | A coverage map as pages, and its picture | `apps/web/src/features/propagation/coverage-map/coverage-document.ts`, `coverage-picture.ts`, `coverage-export.tsx` |
 | A plan's PDF | `apps/web/src/features/propagation/plans/plan-export.tsx`, `document.ts` |
 | A map's words | `apps/web/src/features/maps/print/map-words.ts` |
+| Learning progress as pages | `apps/web/src/features/learning/progress-document.ts`, `learning-panel.tsx` |
 | The upload, with `title` and `source` | `apps/server/src/modules/documents/upload.ts` |

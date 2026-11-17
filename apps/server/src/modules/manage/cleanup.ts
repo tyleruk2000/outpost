@@ -269,6 +269,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
         morse: ctx.services.morse.kept.count(),
         games: ctx.services.games.kept.count(),
         board: ctx.services.board.kept.count(),
+        learning: ctx.services.learning.kept.count(),
         pgpKeys: count("SELECT count(*) AS n FROM pgp_keys"),
         driveMerges: count("SELECT count(*) AS n FROM drive_merges"),
         settings: count("SELECT count(*) AS n FROM settings"),
@@ -535,6 +536,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
       morse: { sessions: 0, progress: 0 },
       games: { saves: 0 },
       board: { messages: 0, files: 0, fileBytes: 0 },
+      learning: { learners: 0, pages: 0 },
       pgpKeys: 0,
       driveMerges: 0,
       settings: 0,
@@ -596,6 +598,8 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
     personal.games = ctx.services.games.kept.eraseAll();
     // The household board: messages, check-ins (with any positions) and the files sent on it.
     personal.board = await ctx.services.board.kept.eraseAll();
+    // Learning progress: where each learner got to in the reference archives.
+    personal.learning = ctx.services.learning.kept.eraseAll();
 
     // Whatever is left belongs to records that no longer exist: attachments no page
     // used, import reports, history, vectors, and the settings.

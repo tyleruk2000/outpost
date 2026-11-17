@@ -8,6 +8,7 @@ import {
   type CleanupResult,
   formatBytes,
   type GamesKept,
+  type LearningKept,
   type LeftoverKind,
   type ManagedItem,
   type ManagedKind,
@@ -295,6 +296,12 @@ export function boardWords(board: BoardKept | undefined): string | null {
   return `${plural(board.messages, "message")} on the board${files}`;
 }
 
+/** "the learning progress of 2 learners (140 pages)", or null when there is nothing. */
+export function learningWords(learning: LearningKept | undefined): string | null {
+  if (!learning || learning.pages === 0) return null;
+  return `the learning progress of ${plural(learning.learners, "learner")} (${plural(learning.pages, "page")})`;
+}
+
 /** "2 weather places, 140 barometer readings and 6 fetched forecasts and warnings", leaving out what there is none of; null when there is nothing. */
 export function weatherWords(weather: WeatherKept | undefined): string | null {
   if (!weather) return null;
@@ -337,6 +344,8 @@ export function personalWords(personal: NonNullable<CleanupPlan["personal"]>): s
   if (games) parts.push(games);
   const board = boardWords(personal.board);
   if (board) parts.push(board);
+  const learning = learningWords(personal.learning);
+  if (learning) parts.push(learning);
   if ((personal.pgpKeys ?? 0) > 0) parts.push(plural(personal.pgpKeys ?? 0, "PGP key"));
   if ((personal.driveMerges ?? 0) > 0)
     parts.push(plural(personal.driveMerges ?? 0, "record of a merge from a drive", "records of merges from drives"));
@@ -394,6 +403,7 @@ export function resultSentences(result: CleanupResult): string[] {
       morseWords(result.personal.morse),
       gamesWords(result.personal.games),
       boardWords(result.personal.board),
+      learningWords(result.personal.learning),
       (result.personal.pgpKeys ?? 0) > 0 ? plural(result.personal.pgpKeys ?? 0, "PGP key") : null,
       (result.personal.driveMerges ?? 0) > 0
         ? plural(result.personal.driveMerges ?? 0, "record of a merge from a drive", "records of merges from drives")

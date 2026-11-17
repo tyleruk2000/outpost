@@ -24,6 +24,7 @@ import { registerHttps } from "./https/index.ts";
 import { registerImports } from "./imports/index.ts";
 import { registerKiwix } from "./kiwix/index.ts";
 import { registerLayers } from "./layers/index.ts";
+import { registerLearning } from "./learning/index.ts";
 import { registerLinks } from "./links/index.ts";
 import { registerManage } from "./manage/index.ts";
 import { registerMaps } from "./maps/index.ts";
@@ -87,4 +88,6 @@ export const modules: ModuleRegister[] = [
   registerAudiobooks,
   // Messages: the household board, on a line of its own so that other additions merge cleanly.
   registerBoard,
+  // Learning progress in reference archives (the reader), on a line of its own so that other additions merge cleanly.
+  registerLearning,
 ];

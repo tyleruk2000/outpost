@@ -204,6 +204,13 @@
       "when": 1794915937224,
       "tag": "0028_board",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "6",
+      "when": 1794920433148,
+      "tag": "0029_learning_progress",
+      "breakpoints": true
     }
   ]
 }

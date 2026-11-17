@@ -33,6 +33,7 @@ export type DatabaseCountId =
   | "morseSessions"
   | "gameSaves"
   | "boardMessages"
+  | "learningPages"
   | "repeaterLists"
   | "weatherPlaces"
   | "pgpKeys"
