@@ -83,6 +83,31 @@
   padding-left: 1.5em;
 }
 
+/*
+ * A finger is larger than the tick box, the callout's icon and a toggle's arrow. On a
+ * touch screen each takes a 44 px target round itself, without moving anything: the
+ * extra is an invisible layer, and the text beside it is far enough off to stay a place
+ * to put the cursor.
+ */
+@media (pointer: coarse) {
+  .note-editor ul[data-type="taskList"] > li > label,
+  .note-editor .callout button.callout-kind,
+  .note-editor .note-details > button {
+    position: relative;
+  }
+  .note-editor ul[data-type="taskList"] > li > label::after,
+  .note-editor .callout button.callout-kind::after,
+  .note-editor .note-details > button::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+}
+
 /* ── Callouts ── */
 
 .note-editor .callout .callout-kind {
@@ -179,8 +204,14 @@
 .note-editor .note-code:not(:has(.note-code-language)) pre {
   padding-top: 0.9em;
 }
+/*
+ * Lines of code keep their breaks, as in a document read in the library: a long line
+ * scrolls inside the block rather than wrapping into what looks like two lines. Tiptap
+ * writes "pre-wrap" on the element itself, which only an important rule outweighs.
+ */
 .note-editor .note-code code > div {
-  white-space: pre;
+  /* biome-ignore lint/complexity/noImportantStyles: the only way past a style written on the element */
+  white-space: pre !important;
 }
 .note-editor .note-code-language {
   position: absolute;

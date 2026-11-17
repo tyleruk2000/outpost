@@ -1,6 +1,9 @@
 /**
  * The toolbar over selected text: formatting, a link field, and "Turn into". With the
  * cursor resting in a link it shows that link's address instead, to open, change or remove.
+ *
+ * On a touch screen the phone puts its own menu (copy, paste) over a selection, and the
+ * bar above the keyboard already formats it, so there this shows only for a link.
  */
 
 import { NodeSelection } from "@tiptap/pm/state";
@@ -23,7 +26,7 @@ export const SELECTION_TOOLBAR = "selectionToolbar";
 const appendToBody = () => document.body;
 const placement = { placement: "top" as const, offset: 8, flip: true, shift: { padding: 8 } };
 
-export function SelectionToolbar({ editor }: { editor: Editor }) {
+export function SelectionToolbar({ editor, touch = false }: { editor: Editor; touch?: boolean }) {
   const format = useFormatState(editor);
   const [editingLink, setEditingLink] = useState(false);
   const active = new Set(format.marks.split(" "));
@@ -77,6 +80,7 @@ export function SelectionToolbar({ editor }: { editor: Editor }) {
         if (state.doc.resolve(from).parent.type.spec.code) return false;
         if (!view.hasFocus() && !element.contains(document.activeElement)) return false;
         if (selection.empty) return current.isActive("link");
+        if (touch) return false;
         return state.doc.textBetween(from, to, " ").trim().length > 0;
       }}
     >

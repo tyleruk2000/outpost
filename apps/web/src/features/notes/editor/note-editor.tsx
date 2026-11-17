@@ -144,7 +144,7 @@ export function NoteEditor({ noteId, content, editable, onChange, onBlur, onEdit
         <>
           {/* A larger target for the pointer only; the keyboard is already in the text. */}
           <div aria-hidden className="note-editor-tail" onClick={writeAtEnd} />
-          <SelectionToolbar editor={editor} />
+          <SelectionToolbar editor={editor} touch={touch} />
           <TableMenu editor={editor} />
           {touch ? <TouchBar editor={editor} /> : <BlockHandle editor={editor} />}
           <input
