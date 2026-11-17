@@ -2,6 +2,7 @@
  * Managing and cleaning up what Outpost stores: what is taking the space, everything
  * installed in one list, leftovers, and the three bulk clean-ups.
  */
+import type { BoardKept } from "./board.ts";
 import type { JobDto, LocalBy } from "./common.ts";
 import type { GamesKept } from "./games.ts";
 import type { MorseKept } from "./morse.ts";
@@ -139,6 +140,8 @@ export interface CleanupPlan {
     morse?: MorseKept;
     /** The games: the allotment's plot and each game's tally, one row each. Absent from a plan made before they were counted. */
     games?: GamesKept;
+    /** Messages, check-ins and sent files on the household board. Absent from a plan made before they were counted. */
+    board?: BoardKept;
     /** PGP keys kept for contacts, any private key of the person's own among them. Absent from a plan made before they were counted. */
     pgpKeys?: number;
     /** Records of merges from portable drives, which hold earlier versions of pages. Absent from a plan made before they were counted. */
@@ -219,6 +222,7 @@ export interface CleanupResult extends Record<string, unknown> {
     emergencyPlans?: number;
     morse?: MorseKept;
     games?: GamesKept;
+    board?: BoardKept;
     pgpKeys?: number;
     driveMerges?: number;
     settings: number;
@@ -243,6 +247,8 @@ export type UsageId =
   | "dataset"
   | "document"
   | "attachments"
+  /** Files sent on the household board. */
+  | "board"
   | "database"
   | "passages"
   | "vectors"
@@ -317,7 +323,9 @@ export type LeftoverKind =
   /** Something that can be fetched or worked out again. */
   | "cache"
   /** Data set aside by a restore. */
-  | "previous";
+  | "previous"
+  /** The household board's messages and sent files: the household's own, listed so that it can be emptied here. */
+  | "board";
 
 export interface Leftover {
   /** Opaque; sent back to clear it. */

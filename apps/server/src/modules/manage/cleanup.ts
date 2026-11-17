@@ -268,6 +268,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
         emergencyPlans: ctx.services.emergencyPlans.kept.count(),
         morse: ctx.services.morse.kept.count(),
         games: ctx.services.games.kept.count(),
+        board: ctx.services.board.kept.count(),
         pgpKeys: count("SELECT count(*) AS n FROM pgp_keys"),
         driveMerges: count("SELECT count(*) AS n FROM drive_merges"),
         settings: count("SELECT count(*) AS n FROM settings"),
@@ -533,6 +534,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
       emergencyPlans: 0,
       morse: { sessions: 0, progress: 0 },
       games: { saves: 0 },
+      board: { messages: 0, files: 0, fileBytes: 0 },
       pgpKeys: 0,
       driveMerges: 0,
       settings: 0,
@@ -592,6 +594,8 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
     personal.morse = ctx.services.morse.kept.eraseAll();
     // The games: the allotment and each game's tally.
     personal.games = ctx.services.games.kept.eraseAll();
+    // The household board: messages, check-ins (with any positions) and the files sent on it.
+    personal.board = await ctx.services.board.kept.eraseAll();
 
     // Whatever is left belongs to records that no longer exist: attachments no page
     // used, import reports, history, vectors, and the settings.
@@ -673,7 +677,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
         // From here on nothing can be stopped half-way in a state worth keeping.
         run.progress({
           message:
-            "Erasing notes, places, routes, contacts, conversations, repeaters, radio plans and logs, power plans and devices, supplies, emergency plans, Morse practice, the games, and settings",
+            "Erasing notes, places, routes, contacts, conversations, repeaters, radio plans and logs, power plans and devices, supplies, emergency plans, Morse practice, the games, the board, and settings",
         });
         await erasePersonal(result);
         await eraseDataFolders(result);

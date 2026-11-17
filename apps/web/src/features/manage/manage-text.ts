@@ -3,6 +3,7 @@
  * components so that what the screen says can be read, and tested, in one place.
  */
 import {
+  type BoardKept,
   type CleanupPlan,
   type CleanupResult,
   formatBytes,
@@ -50,7 +51,11 @@ export const usageGroups: UsageGroup[] = [
     description: "From the catalogue or the map. All of it can be fetched again.",
     ids: ["zim", "map", "terrain", "places", "sheet", "file", "model", "dataset"],
   },
-  { title: "Yours", description: "What you added or wrote. Outpost holds the only copy it knows of.", ids: ["document", "attachments"] },
+  {
+    title: "Yours",
+    description: "What you added or wrote. Outpost holds the only copy it knows of.",
+    ids: ["document", "attachments", "board"],
+  },
   {
     title: "Outpost's own",
     description: "What Outpost keeps to do its work. Most of it can be worked out again from the above.",
@@ -74,6 +79,7 @@ export const usageNames: Record<UsageId, string> = {
   dataset: kindNames.dataset.many,
   document: "Documents you added",
   attachments: "Pictures and files in notes",
+  board: "Files sent on the board",
   database: "Database",
   passages: "Search passages",
   vectors: "Semantic vectors",
@@ -92,6 +98,7 @@ export function usageNote(row: UsageRow): string {
   if (row.count !== null) {
     const counted: Partial<Record<UsageId, [string, string?]>> = {
       attachments: ["file"],
+      board: ["file"],
       passages: ["passage"],
       vectors: ["vector"],
       unfinished: ["download"],
@@ -281,6 +288,13 @@ export function gamesWords(games: GamesKept | undefined): string | null {
   return plural(games.saves, "game kept for the household", "games kept for the household");
 }
 
+/** "12 messages on the board with 2 sent files (3.10 MB)", or null when there is nothing. */
+export function boardWords(board: BoardKept | undefined): string | null {
+  if (!board || (board.messages === 0 && board.files === 0)) return null;
+  const files = board.files > 0 ? ` with ${plural(board.files, "sent file")} (${formatBytes(board.fileBytes)})` : "";
+  return `${plural(board.messages, "message")} on the board${files}`;
+}
+
 /** "2 weather places, 140 barometer readings and 6 fetched forecasts and warnings", leaving out what there is none of; null when there is nothing. */
 export function weatherWords(weather: WeatherKept | undefined): string | null {
   if (!weather) return null;
@@ -321,6 +335,8 @@ export function personalWords(personal: NonNullable<CleanupPlan["personal"]>): s
   if (morse) parts.push(morse);
   const games = gamesWords(personal.games);
   if (games) parts.push(games);
+  const board = boardWords(personal.board);
+  if (board) parts.push(board);
   if ((personal.pgpKeys ?? 0) > 0) parts.push(plural(personal.pgpKeys ?? 0, "PGP key"));
   if ((personal.driveMerges ?? 0) > 0)
     parts.push(plural(personal.driveMerges ?? 0, "record of a merge from a drive", "records of merges from drives"));
@@ -377,6 +393,7 @@ export function resultSentences(result: CleanupResult): string[] {
       (result.personal.emergencyPlans ?? 0) > 0 ? plural(result.personal.emergencyPlans ?? 0, "emergency plan") : null,
       morseWords(result.personal.morse),
       gamesWords(result.personal.games),
+      boardWords(result.personal.board),
       (result.personal.pgpKeys ?? 0) > 0 ? plural(result.personal.pgpKeys ?? 0, "PGP key") : null,
       (result.personal.driveMerges ?? 0) > 0
         ? plural(result.personal.driveMerges ?? 0, "record of a merge from a drive", "records of merges from drives")
@@ -467,6 +484,14 @@ export const leftoverWords: Record<LeftoverKind, LeftoverWords> = {
     action: "Delete",
     confirm: "The copies are deleted for good. The restores they came from can then no longer be undone.",
   },
+  board: {
+    title: "Messages and files on the board",
+    description:
+      "Everything on the household board (Messages): messages, check-ins with any positions, and the files sent on it. These are the household's own, not leftovers, and are listed here so the board can be emptied in one go. Clearing it empties the board on every device.",
+    action: "Clear",
+    confirm:
+      "Every message, check-in and sent file on the board is deleted, on every device. They cannot be got back except from a backup.",
+  },
 };
 
 /** What getting a cleared cache back costs. */
@@ -480,4 +505,4 @@ export const cacheCost: Record<string, string> = {
   snapshots: "Left by backups that were interrupted. Nothing uses them.",
 };
 
-export const leftoverOrder: LeftoverKind[] = ["download", "missing", "untracked", "upload", "cache", "previous", "history"];
+export const leftoverOrder: LeftoverKind[] = ["download", "missing", "untracked", "upload", "cache", "previous", "history", "board"];

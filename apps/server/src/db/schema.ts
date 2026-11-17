@@ -1507,3 +1507,75 @@ export const gameSaves = sqliteTable("game_saves", {
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
+
+// ── The household board (Messages) ─────────────────────────────────────────
+
+/**
+ * A file sent on the board, to be saved on another device. Its bytes are in the data
+ * directory at `board/<aa>/<id>/<name>`. When it is removed or its days are up the bytes
+ * go and the row stays, with `gone_at`, so that the message that carried it can say so.
+ */
+export const boardFiles = sqliteTable(
+  "board_files",
+  {
+    id: id(),
+    /** The name as sent, made safe for a file system. */
+    filename: text("filename").notNull(),
+    /** The type served with it: always one a browser downloads and never runs. */
+    mime: text("mime").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    sha256: text("sha256").notNull(),
+    /** Relative to the data directory's `board` folder. */
+    relPath: text("rel_path").notNull(),
+    createdAt: createdAt(),
+    /** When it is removed by itself; null keeps it until someone removes it. */
+    expiresAt: integer("expires_at"),
+    /** When its bytes went, and why: "expired" or "removed". */
+    goneAt: integer("gone_at"),
+    goneReason: text("gone_reason", { enum: ["expired", "removed"] }),
+  },
+  (table) => [index("board_files_expires").on(table.expiresAt)],
+);
+
+/**
+ * One message on a channel: the household's own board ("board"), or, later, a channel a
+ * transport (a radio link) carries. A check-in is a message with a status. Removing one
+ * keeps the row with who removed it and when, and empties its words.
+ */
+export const boardMessages = sqliteTable(
+  "board_messages",
+  {
+    id: id(),
+    /** "board" for the household's board; a transport names its own ("meshtastic:LongFast"). */
+    channel: text("channel").notNull(),
+    /** Where it was written: "here" (a device on this Outpost), or the name of the transport it came in by. */
+    source: text("source").notNull(),
+    /** The transport's own id for it, so that one heard twice is kept once. Null for one written here. */
+    externalId: text("external_id"),
+    kind: text("kind", { enum: ["message", "checkin"] }).notNull(),
+    /** The name the person chose on their device. Not proof of anything. */
+    author: text("author").notNull(),
+    body: text("body").notNull(),
+    /** A check-in's status. */
+    status: text("status", { enum: ["safe", "help", "other"] }),
+    /** Where they are, in their own words: "gone to Mum's". */
+    place: text("place"),
+    lat: real("lat"),
+    lon: real("lon"),
+    accuracyM: real("accuracy_m"),
+    fileId: text("file_id").references(() => boardFiles.id, { onDelete: "set null" }),
+    /** What a transport knows about it that the board does not use (a node id, a signal report). */
+    meta: json<Record<string, unknown>>("meta"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    editedAt: integer("edited_at"),
+    editedBy: text("edited_by"),
+    removedAt: integer("removed_at"),
+    removedBy: text("removed_by"),
+  },
+  (table) => [
+    index("board_messages_channel_created").on(table.channel, table.createdAt),
+    index("board_messages_author_kind").on(table.kind, table.author),
+    uniqueIndex("board_messages_external").on(table.source, table.externalId),
+  ],
+);
