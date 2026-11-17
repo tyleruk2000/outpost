@@ -9,6 +9,8 @@ import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { matchesWords } from "@/components/command-palette";
+import { prepareScreens } from "@/features/prepare/screens";
 import BuildingPage from "./building/building-page";
 import CookingPage from "./cooking/cooking-page";
 import OutdoorsPage from "./outdoors/outdoors-page";
@@ -43,6 +45,29 @@ describe("the Tools registry", () => {
         ["/tools/cooking", "Cooking"],
       ]),
     );
+  });
+});
+
+describe("the quick search, for the screens under Tools and Preparedness", () => {
+  const found = (typed: string) =>
+    [...toolScreens, ...prepareScreens]
+      .filter((item) => matchesWords(`${item.label} ${item.keywords ?? ""}`, typed))
+      .map((item) => item.to);
+
+  it("knows every screen by other words than its name", () => {
+    for (const item of [...toolScreens, ...prepareScreens]) expect(item.keywords, item.label).toBeTruthy();
+  });
+
+  it("finds a screen by the words people type for it", () => {
+    expect(found("hiking")).toContain("/tools/outdoors");
+    expect(found("antenna")).toContain("/tools/radio");
+    expect(found("solar panel")).toContain("/tools/power");
+    expect(found("wifi")).toContain("/tools/qr");
+    expect(found("sundial")).toContain("/tools/solar-clock");
+    expect(found("food")).toContain("/prepare/supplies");
+    expect(found("flood")).toContain("/prepare/weather");
+    expect(found("fallout")).toContain("/prepare/nuclear");
+    expect(found("grab bag")).toContain("/prepare/plans");
   });
 });
 
