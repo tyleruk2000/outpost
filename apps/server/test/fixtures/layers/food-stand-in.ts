@@ -1045,6 +1045,18 @@ export const FSA_OTHER_RETAILERS = {
   },
 };
 
+/** What an Overpass server answers the layer's question with: a count while estimating, the places when downloading. */
+export function overpassFoodAnswer(query: string): unknown {
+  if (!query.includes("out count")) return OVERPASS_FOOD_ANSWER;
+  const count = { type: "count", id: 0, tags: { nodes: "3", ways: "9", relations: "0", total: "12" } };
+  return {
+    elements: query
+      .split("out count")
+      .slice(1)
+      .map(() => count),
+  };
+}
+
 /** What the Agency's API answers, by business type; a page of one gives the count. Requests are kept for the tests to read. */
 export function createFsaStandIn() {
   const requests: Array<{ url: string; headers: http.IncomingHttpHeaders }> = [];

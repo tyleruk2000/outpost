@@ -729,7 +729,10 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
         total = cells.reduce((sum, cell) => sum + cell.count, 0);
       }
       // Areas: those of the area layers at any zoom, the rest from close in, and never more than the limit.
-      const shapeLayers = filter.layers.filter((layer) => layer !== "flood-zones" && (AREA_LAYERS.has(layer) || zoom >= SHAPE_ZOOM));
+      // A shop's building outline adds nothing to its mark: food and supplies are drawn as marks only.
+      const shapeLayers = filter.layers.filter(
+        (layer) => layer !== "flood-zones" && layer !== "food" && (AREA_LAYERS.has(layer) || zoom >= SHAPE_ZOOM),
+      );
       const tolerance = (360 / (256 * 2 ** Math.max(0, zoom))) * 0.75;
       const shapesOf = (layers: ReferenceLayerId[], limit: number): ReferenceShape[] | null => {
         const shapeWhere = filterSql({ ...filter, layers });

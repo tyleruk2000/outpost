@@ -49,7 +49,11 @@ describe("kinds from OpenStreetMap's tags", () => {
 
 describe("one shop in two sources", () => {
   const osm = (name: string, props: Record<string, string> = {}) => ({ provider: "osm", name, props });
-  const fsa = (name: string, postcode?: string) => ({ provider: "fsa", name, props: postcode ? { PostCode: postcode } : {} });
+  const fsa = (name: string, postcode?: string) => ({
+    provider: "fsa",
+    name,
+    props: (postcode ? { PostCode: postcode } : {}) as Record<string, string>,
+  });
 
   it("compares names without company words, brackets and numbers", () => {
     expect(sameShopName("Booths", "Booths Supermarket & Cafe 1847")).toBe(true);

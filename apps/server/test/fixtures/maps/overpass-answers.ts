@@ -7,6 +7,7 @@
  * Plain Node with no dependencies, so the end-to-end suite's file server can use it too.
  */
 import type http from "node:http";
+import { overpassFoodAnswer } from "../layers/food-stand-in.ts";
 
 type LatLon = { lat: number; lon: number };
 const at = (lat: number, lon: number): LatLon => ({ lat, lon });
@@ -207,6 +208,8 @@ export function createOverpassStandIn(options: { slowMs?: number; hugePoints?: n
         };
         if (request.url?.endsWith("/elsewhere")) return json({ elements: [], reached: "a host that was never named" });
         if (request.method !== "POST") return json({ error: "Outpost asks with POST" }, 405);
+        // The food and supplies layer's question is answered with real data for Keswick (layers/food-stand-in.ts).
+        if (query.includes('["social_facility"="food_bank"]')) return json(overpassFoodAnswer(query));
         if (/"busy"/.test(query)) {
           response.writeHead(429, { "content-type": "text/plain" });
           return response.end("Too many requests");

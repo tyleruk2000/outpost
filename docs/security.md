@@ -648,6 +648,7 @@ manager, and only from these hosts, each named in code:
 | `data.worldpop.org` | One country's population GeoTIFF | CC BY 4.0 |
 | `data.geo.admin.ch` | The Swiss emergency meeting points | Open use with the source given |
 | `environment.data.gov.uk` | The Environment Agency's flood zones for a box at most about 20 km across: a count (`limit=1`), then the areas in one answer | Open Government Licence; one box per press |
+| `api.ratings.food.gov.uk` | The Food Standards Agency's registered food retailers round the area on screen (up to about a county): a count per business type (page of one), then one page per type; under Outpost's plain name, with the `x-api-version: 2` header the API asks for | Open Government Licence; free and without registration, by the Agency's open data page; one area per press |
 
 Every request carries nothing about the person and must land on a public address (rule
 2 above). Two of these sources ask a program to say what it is and how its makers can be
