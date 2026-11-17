@@ -14,6 +14,7 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
+import { createGeofabrikStandIn } from "../../apps/server/test/fixtures/layers/geofabrik-stand-in.ts";
 import { serveOurAirportsStandIn } from "../../apps/server/test/fixtures/layers/ourairports-stand-in.ts";
 import { createImageryStandIn } from "../../apps/server/test/fixtures/maps/imagery-stand-in.ts";
 import { createOsNamesStandIn } from "../../apps/server/test/fixtures/maps/os-names-sample.ts";
@@ -55,6 +56,8 @@ const sums = [...files].map(([name, body]) => `${createHash("sha256").update(bod
 export const FIELD_MANUAL = Buffer.alloc(300_000, "A field manual for end-to-end tests. ");
 
 const routeSource = createOverpassStandIn();
+// download.geofabrik.de: its list of extracts and small made-up extracts (apps/server/test/fixtures/layers).
+const geofabrik = createGeofabrikStandIn();
 const voacapHome = path.resolve(import.meta.dirname, "../../engines/voacap");
 const voacapFiles = new Set(JSON.parse(fs.readFileSync(path.join(voacapHome, "coefficients.json"), "utf8")).files.map((file) => file.path));
 const repeaterSource = createRepeaterSourceStandIn();
@@ -84,6 +87,7 @@ http
     if (request.url?.startsWith("/imagery/")) return imagery.handle(request, response);
     // OurAirports' airports.csv and airport-frequencies.csv (apps/server/test/fixtures/layers).
     if (request.url?.startsWith("/ourairports/")) return serveOurAirportsStandIn(request, response);
+    if (request.url?.startsWith("/geofabrik/")) return geofabrik.handle(request, response, "/geofabrik");
     if (request.url?.startsWith("/os-downloads/") || request.url?.startsWith("/os-files/")) return osNames.handle(request, response);
     if (request.url === "/files/field-manual.bin") {
       response.setHeader("Content-Length", FIELD_MANUAL.length);

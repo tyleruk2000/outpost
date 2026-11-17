@@ -85,6 +85,10 @@ const scopeSchema = z.object({
     .tuple([z.number().min(-180).max(180), z.number().min(-90).max(90), z.number().min(-180).max(180), z.number().min(-90).max(90)])
     .refine(([, south, , north]) => south < north, "A box has its south edge below its north edge.")
     .optional(),
+  regions: z
+    .array(z.string().regex(/^[a-z0-9/-]{1,80}$/))
+    .max(20)
+    .optional(),
 });
 const estimateSchema = z
   .object({
@@ -95,7 +99,7 @@ const estimateSchema = z
   })
   .superRefine((request, issues) => {
     // A request for nothing in particular is the whole world: only a source that is published for the whole world as one can answer it.
-    if ((request.scope.countries?.length ?? 0) > 0 || request.scope.bbox) return;
+    if ((request.scope.countries?.length ?? 0) > 0 || request.scope.bbox || (request.scope.regions?.length ?? 0) > 0) return;
     const provider = PROVIDERS.find((entry) => entry.id === request.provider);
     if (!provider || provider.scopes.includes("world")) return;
     issues.addIssue({
@@ -108,6 +112,7 @@ const startSchema = z.object({
   estimateId: z.string().min(1).max(40),
   keys: z.array(z.string().min(1).max(200)).min(1).max(40),
   locationId: z.string().min(1).optional(),
+  keepFile: z.boolean().optional(),
 });
 /** A CSV form's name, from the address: only the forms there are, never a name every object has ("constructor"). */
 const templateName = z.string().refine((name) => Object.hasOwn(TEMPLATES, name));
@@ -189,6 +194,17 @@ export async function registerLayers(app: FastifyInstance, ctx: AppContext): Pro
   });
 
   app.get("/api/reference/packs", async () => ({ packs: service.packs() }));
+
+  /** Geofabrik's regions as kept on this device, those for the home place first: nothing is asked of Geofabrik. */
+  app.get("/api/reference/regions", async (request) => {
+    const query = z
+      .object({ lat: z.coerce.number().min(-90).max(90).optional(), lon: z.coerce.number().min(-180).max(180).optional() })
+      .parse(request.query);
+    return service.regions(query.lat !== undefined && query.lon !== undefined ? { lat: query.lat, lon: query.lon } : null);
+  });
+
+  /** Reads Geofabrik's list of regions, on a press: one file of about 500 kB. */
+  app.post("/api/reference/regions", async (_request, reply) => service.refreshRegions(gone(reply)));
 
   app.delete<{ Params: { id: string }; Querystring: { deleteFiles?: string } }>("/api/reference/packs/:id", async (request) => {
     await service.remove(request.params.id, request.query.deleteFiles === "1" || request.query.deleteFiles === "true");

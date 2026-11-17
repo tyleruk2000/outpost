@@ -20,8 +20,9 @@ import fs from "node:fs";
 import zlib from "node:zlib";
 import type { Bbox } from "@outpost/shared";
 import { PermanentJobError } from "../../../core/jobs.ts";
+import { classifyFood } from "./food-tags.ts";
 import type { OsmObject } from "./osm-read.ts";
-import { classifyOsm } from "./osm-tags.ts";
+import { classifyOsm, type OsmLayer } from "./osm-tags.ts";
 
 const MAX_BLOB_HEADER = 64 * 1024;
 const MAX_BLOB = 32 * 1024 * 1024;
@@ -520,3 +521,16 @@ export async function readPbf(filePath: string, options: PbfReadOptions): Promis
 
 /** Whether an object belongs to any reference layer: what the reader is asked to keep. */
 export const wantedForLayers = (tags: Record<string, string>) => classifyOsm(tags) !== null;
+
+/**
+ * What the reader is asked to keep for some layers: an object of one of them. Food and
+ * supplies is looked for only when it is among them, as a country's shops are many.
+ */
+export function wantedFor(layers: Set<OsmLayer>): (tags: Record<string, string>) => boolean {
+  const food = layers.has("food");
+  return (tags) => {
+    const found = classifyOsm(tags);
+    if (found && layers.has(found.layer)) return true;
+    return food && classifyFood(tags) !== null;
+  };
+}

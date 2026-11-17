@@ -6,6 +6,7 @@
  */
 import {
   formatBytes,
+  homePlaceOf,
   type JobDto,
   REFERENCE_LAYER_INFO,
   type ReferenceEstimate,
@@ -25,6 +26,7 @@ import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "
 import { Field, Input } from "@/components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Badge, Checkbox, Select, Skeleton } from "@/components/ui/misc";
+import { useMarkers } from "@/features/maps/data";
 import type { MapEngine } from "@/features/maps/map/engine";
 import { DestinationPicker, useDestination } from "@/features/maps/panels/destination";
 import { PanelHeading } from "@/features/maps/ui";
@@ -32,6 +34,7 @@ import { api, errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { formatDate, formatNumber, plural } from "@/lib/utils";
 import { layersKeys, useCatalogue, useEstimate, usePacks, useRemovePack, useStartDownloads } from "./data";
+import { RegionChooser } from "./region-chooser";
 
 const layerNames = (layers: ReferenceLayerId[]) => layers.map((layer) => REFERENCE_LAYER_INFO[layer].label.toLowerCase()).join(", ");
 
@@ -125,6 +128,9 @@ function EstimateResult({ estimate, onDone }: { estimate: ReferenceEstimate; onD
   const bytes = items.reduce((sum, item) => sum + item.bytes, 0);
   const destination = useDestination(bytes);
   const start = useStartDownloads();
+  // A file that need not be kept once read (a Geofabrik extract): kept or not, as the person chooses.
+  const optional = estimate.items.filter((item) => item.fileKeptByDefault !== undefined);
+  const [keepFile, setKeepFile] = useState(() => optional.length > 0 && optional.every((item) => item.fileKeptByDefault));
   if (estimate.items.length === 0) {
     return <Notice tone="info">{estimate.notes.join(" ") || "That source has nothing for what you chose."}</Notice>;
   }
@@ -160,10 +166,29 @@ function EstimateResult({ estimate, onDone }: { estimate: ReferenceEstimate; onD
       <p className="tabular text-small text-ink">
         {items.length === 0
           ? "Choose at least one."
-          : `${plural(items.length, "file")} to download, ${items.every((item) => item.exact) ? "" : "about "}${formatBytes(bytes)}, and about ${formatBytes(
-              estimate.databaseBytes,
-            )} in Outpost's database.`}
+          : `${plural(items.length, "file")} to download, ${items.every((item) => item.exact) ? "" : "about "}${formatBytes(bytes)}, and ${
+              optional.length > 0 ? "at most" : "about"
+            } ${formatBytes(estimate.databaseBytes)} in Outpost's database.`}
       </p>
+      {optional.length > 0 && items.length > 0 ? (
+        <div className="grid gap-1.5">
+          <p className="tabular text-small text-ink">
+            {keepFile
+              ? `Afterwards on this device: the ${formatBytes(bytes)} ${items.length === 1 ? "file" : "files"} and the places read from ${items.length === 1 ? "it" : "them"}.`
+              : `Afterwards on this device: only the places read, at most ${formatBytes(estimate.databaseBytes)}. The ${formatBytes(bytes)} ${items.length === 1 ? "file is" : "files are"} deleted once read; it needs the room only while it is read.`}
+          </p>
+          <div className="flex min-h-11 items-center gap-2 md:min-h-8">
+            <Checkbox id="keep-file" checked={keepFile} onCheckedChange={(on) => setKeepFile(on === true)} />
+            <label htmlFor="keep-file" className="text-small text-ink">
+              Keep the downloaded {items.length === 1 ? "file" : "files"} too
+            </label>
+          </div>
+          <p className="text-micro text-ink-muted">
+            Outpost reads everything it needs from the file at once, and an update downloads it afresh, so keeping it is only for using the
+            file elsewhere. Most of it is roads, buildings and paths, not places.
+          </p>
+        </div>
+      ) : null}
       <DestinationPicker destination={destination} approximate={!items.every((item) => item.exact)} />
       <div className="flex justify-end">
         <Button
@@ -172,7 +197,12 @@ function EstimateResult({ estimate, onDone }: { estimate: ReferenceEstimate; onD
           loading={start.isPending}
           onClick={() =>
             start.mutate(
-              { estimateId: estimate.estimateId, keys: items.map((item) => item.key), locationId: destination.locationId },
+              {
+                estimateId: estimate.estimateId,
+                keys: items.map((item) => item.key),
+                locationId: destination.locationId,
+                ...(optional.length > 0 ? { keepFile } : {}),
+              },
               {
                 onSuccess: (result) => {
                   destination.remember();
@@ -196,20 +226,29 @@ export function GetDialog({
   onOpenChange,
   engine,
   initial,
+  preset,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   engine: MapEngine | null;
+  /** A pack's own request, to update it: estimated as the dialog opens. */
   initial: ReferenceEstimateRequest | null;
+  /** A starting point that is only filled in, never estimated by itself (food and supplies for a region). */
+  preset?: Pick<ReferenceEstimateRequest, "provider" | "scope" | "layers">;
 }) {
+  const start = initial ?? preset ?? null;
   const catalogue = useCatalogue(open);
   const providers = (catalogue.data?.providers ?? []).filter((provider) => provider.verdict === "fetch");
-  const [providerId, setProviderId] = useState<string>(initial?.provider ?? "natural-earth");
-  const [scope, setScope] = useState<"country" | "bbox" | "world">(
-    initial?.scope.bbox ? "bbox" : initial?.scope.countries?.length ? "country" : "country",
+  const [providerId, setProviderId] = useState<string>(start?.provider ?? "natural-earth");
+  const [scope, setScope] = useState<"country" | "region" | "bbox" | "world">(
+    start?.scope.bbox ? "bbox" : start?.scope.regions ? "region" : "country",
   );
-  const [country, setCountry] = useState<string>(initial?.scope.countries?.[0] ?? "GB");
-  const [layers, setLayers] = useState<ReferenceLayerId[]>(initial?.layers ?? []);
+  const [regions, setRegions] = useState<string[]>(start?.scope.regions ?? []);
+  const markers = useMarkers();
+  const homePlace = homePlaceOf(markers.data ?? []);
+  const home = homePlace ? { lat: homePlace.lat, lon: homePlace.lon } : null;
+  const [country, setCountry] = useState<string>(start?.scope.countries?.[0] ?? "GB");
+  const [layers, setLayers] = useState<ReferenceLayerId[]>(start?.layers ?? []);
   const estimate = useEstimate();
   const provider: ReferenceProviderDto | undefined = providers.find((entry) => entry.id === providerId);
   // Whether the person has ticked that this source may be told how to reach the project. Asked again each time the
@@ -233,7 +272,14 @@ export function GetDialog({
 
   const request = (): ReferenceEstimateRequest => ({
     provider: providerId,
-    scope: scope === "country" ? { countries: [country] } : scope === "bbox" && engine ? { bbox: engine.getBounds() } : {},
+    scope:
+      scope === "country"
+        ? { countries: [country] }
+        : scope === "region"
+          ? { regions }
+          : scope === "bbox" && engine
+            ? { bbox: engine.getBounds() }
+            : {},
     ...(layers.length > 0 ? { layers } : {}),
     ...(needsAgreement ? { clientNameAgreed: agreed } : {}),
   });
@@ -300,15 +346,48 @@ export function GetDialog({
                 <fieldset className="grid gap-2">
                   <legend className="text-small font-medium text-ink">Area</legend>
                   <div className="flex flex-wrap gap-x-4 gap-y-2">
-                    {(["country", "bbox", "world"] as const)
+                    {(["region", "country", "bbox", "world"] as const)
                       .filter((option) => provider.scopes.includes(option))
                       .map((option) => (
                         <label key={option} className="flex min-h-11 items-center gap-2 text-small text-ink md:min-h-0">
-                          <input type="radio" name="reference-scope" checked={scope === option} onChange={() => setScope(option)} />
-                          {option === "country" ? "A country" : option === "bbox" ? "The area on screen" : "The whole world"}
+                          <input
+                            type="radio"
+                            name="reference-scope"
+                            checked={scope === option}
+                            onChange={() => {
+                              setScope(option);
+                              estimate.reset();
+                            }}
+                            className="accent-primary"
+                          />
+                          {option === "country"
+                            ? "A whole country"
+                            : option === "region"
+                              ? "A state or region, by name"
+                              : option === "bbox"
+                                ? "The area on screen"
+                                : "The whole world"}
                         </label>
                       ))}
                   </div>
+                  {providerId === "osm" && layers.includes("food") ? (
+                    <p className="text-small text-ink-muted">
+                      The area on screen goes up to about a county. For a whole state or region,{" "}
+                      <button
+                        type="button"
+                        className="text-primary underline underline-offset-2"
+                        onClick={() => {
+                          setProviderId("osm-extract");
+                          setScope("region");
+                          estimate.reset();
+                        }}
+                      >
+                        get it from a Geofabrik extract
+                      </button>
+                      .
+                    </p>
+                  ) : null}
+                  {scope === "region" ? <RegionChooser chosen={regions} onChange={setRegions} home={home} /> : null}
                   {scope === "country" ? (
                     <Select
                       aria-label="Country"
@@ -338,13 +417,21 @@ export function GetDialog({
                         {REFERENCE_LAYER_INFO[layer].label}
                         {layer === "food" ? (
                           <span className="block text-micro text-ink-muted">
-                            Only when ticked, and only for the area on screen, up to about a county across.
+                            {provider.id === "osm-extract"
+                              ? "Only when ticked: “none ticked” means the other five."
+                              : "Only when ticked, and only for the area on screen, up to about a county across."}
                           </span>
                         ) : null}
                       </label>
                     </div>
                   ))}
                 </fieldset>
+              ) : null}
+              {provider?.id === "osm-extract" && layers.includes("food") ? (
+                <Notice tone="info">
+                  One download serves every layer: the same file also holds hospitals, police, fire and ambulance stations, shelters,
+                  military sites and nuclear facilities. Tick any of those too and they are read from it, with nothing more downloaded.
+                </Notice>
               ) : null}
               {provider?.caution ? (
                 <Notice tone="warning" icon={<CircleAlert />}>
@@ -379,7 +466,12 @@ export function GetDialog({
                 <Button
                   onClick={() => estimate.mutate(request())}
                   loading={estimate.isPending}
-                  disabled={!provider || (scope === "bbox" && !engine) || (needsAgreement && !agreed)}
+                  disabled={
+                    !provider ||
+                    (scope === "bbox" && !engine) ||
+                    (scope === "region" && regions.length === 0) ||
+                    (needsAgreement && !agreed)
+                  }
                 >
                   Show the size
                 </Button>
