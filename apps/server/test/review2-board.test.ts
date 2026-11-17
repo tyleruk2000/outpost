@@ -69,10 +69,15 @@ describe("a sent file", () => {
     const from = { remoteAddress: "192.168.1.240" };
     let last = 0;
     for (let i = 0; i < 32; i++) {
-      const answer = await app.api("POST", "/api/board/messages", { author: "Sam", body: `n${i}` }, {
-        ...from,
-        headers: { "x-forwarded-for": `10.0.0.${i}` },
-      });
+      const answer = await app.api(
+        "POST",
+        "/api/board/messages",
+        { author: "Sam", body: `n${i}` },
+        {
+          ...from,
+          headers: { "x-forwarded-for": `10.0.0.${i}` },
+        },
+      );
       last = answer.status;
     }
     expect(last).toBe(429);
