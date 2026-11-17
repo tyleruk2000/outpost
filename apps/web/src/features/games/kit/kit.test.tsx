@@ -3,14 +3,14 @@
  * browser (and the game going on when it cannot be), the tally line, and the Games page.
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, renderHook, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import GamesPage from "../games-page";
 import { gameScreens } from "../screens";
-import { clearDeviceSave, readDeviceSave, writeDeviceSave } from "./device-save";
+import { clearDeviceSave, readDeviceSave, SAVE_AFTER_MS, useDeviceSave, writeDeviceSave } from "./device-save";
 import { newSeed, seededRng, shuffled } from "./rng";
 import { GameTallyLine, tallyWords } from "./tally";
 
@@ -54,6 +54,35 @@ describe("the seeded generator", () => {
 });
 
 describe("an unfinished game kept on this device", () => {
+  it("is written a moment after a burst of moves, once, at once when hidden, and not again when nothing changed", () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const set = vi.spyOn(Storage.prototype, "setItem");
+    const visibility = vi.spyOn(document, "visibilityState", "get");
+    try {
+      const { rerender, unmount } = renderHook(({ moves }) => useDeviceSave("test", { moves }), { initialProps: { moves: 1 } });
+      rerender({ moves: 2 });
+      rerender({ moves: 3 });
+      expect(set).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(SAVE_AFTER_MS);
+      expect(set).toHaveBeenCalledTimes(1);
+      expect(localStorage.getItem("outpost.games.test")).toBe('{"moves":3}');
+      rerender({ moves: 3 });
+      vi.advanceTimersByTime(SAVE_AFTER_MS);
+      visibility.mockReturnValue("hidden");
+      document.dispatchEvent(new Event("visibilitychange"));
+      expect(set).toHaveBeenCalledTimes(1);
+      rerender({ moves: 4 });
+      document.dispatchEvent(new Event("visibilitychange"));
+      expect(set).toHaveBeenCalledTimes(2);
+      rerender({ moves: 5 });
+      unmount();
+      expect(localStorage.getItem("outpost.games.test")).toBe('{"moves":5}');
+    } finally {
+      vi.restoreAllMocks();
+      vi.useRealTimers();
+    }
+  });
+
   const isGame = (value: unknown): value is { moves: number } =>
     typeof value === "object" && value !== null && typeof (value as { moves?: unknown }).moves === "number";
 

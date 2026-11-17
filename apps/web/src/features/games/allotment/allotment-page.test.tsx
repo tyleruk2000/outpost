@@ -15,12 +15,13 @@ import {
   seasonAt,
 } from "@outpost/shared/games/allotment";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, renderHook, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { Toaster } from "sonner";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import AllotmentPage from "./allotment-page";
+import { untilNextChange, useServerNow } from "./queries";
 import { awayWords, bedLabel, growWords, shortWords } from "./words";
 
 /** 10 January 2026: winter in the north, so nothing is in season. */
@@ -199,6 +200,46 @@ describe("the allotment screen", () => {
     expect(await screen.findByRole("alertdialog", { name: "Start the allotment again?" })).toHaveTextContent(
       /every bed and what is growing in it/,
     );
+  });
+});
+
+describe("when the plot is drawn again", () => {
+  it("is when the next bed ripens or the hens lay, or in a minute at most", () => {
+    const empty = newAllotment(NOW);
+    expect(untilNextChange(empty, "north")).toBe(60_050);
+    const sown = advance(applyAction(empty, { type: "sow", bed: 0, crop: "radishes" }, NOW, "north"), NOW + 3.5 * 60_000, "north");
+    expect(untilNextChange(sown, "north")).toBe(30_050);
+    const ripe = advance(sown, NOW + DAY, "north");
+    expect(untilNextChange(ripe, "north")).toBe(60_050);
+    const hens = applyAction({ ...newAllotment(NOW), coins: 200 }, { type: "buy", thing: "hens" }, NOW, "north");
+    expect(untilNextChange(advance(hens, NOW + 3 * 3_600_000 - 5_000, "north"), "north")).toBe(5_050);
+  });
+
+  it("is set once, for that moment, and not at all while the page is hidden", () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"], now: NOW });
+    const visibility = vi.spyOn(document, "visibilityState", "get");
+    try {
+      const { result } = renderHook(() => useServerNow(0, () => 30_000));
+      expect(result.current).toBe(NOW);
+      expect(vi.getTimerCount()).toBe(1);
+      act(() => vi.advanceTimersByTime(30_000));
+      expect(result.current).toBe(NOW + 30_000);
+      act(() => {
+        visibility.mockReturnValue("hidden");
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+      expect(vi.getTimerCount()).toBe(0);
+      act(() => vi.advanceTimersByTime(3_600_000));
+      act(() => {
+        visibility.mockReturnValue("visible");
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+      // Shown again, the time is read afresh.
+      expect(result.current).toBe(NOW + 3_630_000);
+    } finally {
+      visibility.mockRestore();
+      vi.useRealTimers();
+    }
   });
 });
 

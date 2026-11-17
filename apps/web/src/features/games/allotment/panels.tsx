@@ -8,6 +8,7 @@ import {
   type AllotmentState,
   bedAt,
   bedName,
+  COMPOST_BONUS,
   CROP_IDS,
   CROPS,
   type Hemisphere,
@@ -131,7 +132,7 @@ export function BedPanel({
                 : "In season, so growing faster."
               : `Out of season in ${season}; it grows all the same.`,
             bed.watered ? "Watered." : null,
-            bed.composted ? `Sown with compost: ${crop.yield + 2} to harvest.` : `${crop.yield} to harvest.`,
+            bed.composted ? `Sown with compost: ${crop.yield + COMPOST_BONUS} to harvest.` : `${crop.yield} to harvest.`,
           ]
             .filter(Boolean)
             .join(" ")}
