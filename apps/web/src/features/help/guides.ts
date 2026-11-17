@@ -73,6 +73,15 @@ export const GUIDES: Guide[] = [
     keywords: "ollama model language ai semantic embeddings install",
   },
   {
+    slug: "which-model",
+    file: "which-model.md",
+    group: "running",
+    own: true,
+    about: "Which language model to use on a Raspberry Pi or a Mac, from seven tried here at answering and at looking things up.",
+    keywords: "model which model choose llm ollama pi raspberry compare tried measured tools look up",
+    page: () => import("@/features/chat/which-model-page"),
+  },
+  {
     slug: "portable",
     file: "portable.md",
     group: "running",
@@ -120,6 +129,14 @@ export const GUIDES: Guide[] = [
     about: "Answers from your own library, and chat, with a language model of your own: what is sent where, and what is kept.",
     keywords: "ai language model chat ollama llm answer",
     opens: { to: "/chat", label: "Open Chat" },
+  },
+  {
+    slug: "mcp",
+    file: "mcp.md",
+    group: "using",
+    about: "Letting other programs on the home network, such as Claude Code or VS Code, use the tools a model may look things up with.",
+    keywords: "mcp model context protocol tools claude code vs code llm look up",
+    opens: { to: "/settings#tools", label: "Open Looking things up in Settings" },
   },
   {
     slug: "library",

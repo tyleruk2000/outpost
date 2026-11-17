@@ -41,6 +41,8 @@ export interface ComposerProps {
   onCancelEdit?: () => void;
   /** Something to say above the box: a refusal from the server, for one. */
   notice?: ReactNode;
+  /** Said under the sentence about what the model is given: whether it can also look things up in Outpost. */
+  toolsNote?: ReactNode;
   autoFocus?: boolean;
   ref?: Ref<ComposerHandle>;
 }
@@ -63,6 +65,7 @@ export function Composer({
   editing = false,
   onCancelEdit,
   notice,
+  toolsNote,
   autoFocus = false,
   ref,
 }: ComposerProps) {
@@ -200,6 +203,11 @@ export function Composer({
           "A plain conversation: the model answers from what it learned, and nothing from your library is sent."
         )}
       </p>
+      {toolsNote ? (
+        <p className="mt-1 max-w-[68ch] text-small text-ink-muted" data-testid="chat-tools-note">
+          {toolsNote}
+        </p>
+      ) : null}
     </div>
   );
 }

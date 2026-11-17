@@ -125,6 +125,23 @@ export const settingsSchema = z.object({
   "weather.riversKm": z.number().int().min(1).max(50).default(8),
   /** Days a file sent on the household board is kept before it is removed by itself; 0 keeps it until someone removes it. */
   "board.fileDays": z.number().int().min(0).max(BOARD_FILE_DAYS_MAX).default(BOARD_FILE_DAYS_DEFAULT),
+  /**
+   * Let the model look things up in Outpost: Chat offers the tools of modules/tools to a
+   * model that says it can call them. Off by default, as answers are. Each area below is
+   * a switch of its own; what each lets a model server see is in docs/ai.md.
+   */
+  "tools.enabled": z.boolean().default(false),
+  "tools.library": z.boolean().default(true),
+  "tools.places": z.boolean().default(true),
+  "tools.supplies": z.boolean().default(true),
+  "tools.plans": z.boolean().default(true),
+  "tools.weather": z.boolean().default(true),
+  "tools.radio": z.boolean().default(true),
+  "tools.catalogue": z.boolean().default(true),
+  /** Messages on the household board: off until a person turns it on. */
+  "tools.board": z.boolean().default(false),
+  /** Models that say they can call tools and do it badly: Chat offers them none. */
+  "tools.offForModels": z.array(z.string().trim().min(1).max(200)).max(50).default([]),
   /** Seconds between checks that storage locations are still connected. */
   "storage.checkIntervalSeconds": z.number().int().min(5).max(3600).default(30),
 });

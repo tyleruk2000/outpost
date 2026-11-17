@@ -403,7 +403,8 @@ describe("stopping a reply", () => {
     const { app, model, send, open } = await station("stand-in-long", { longChunkDelayMs: 20 });
     const id = await open();
     await send(id, "Tell me about stoves");
-    await expect.poll(() => app.ctx.services.chat.runner.of(id)?.blocks.length ?? 0, { timeout: 4000 }).toBeGreaterThan(0);
+    // Waits for what is asserted below, the first sentence whole: a block can exist when only "Paragraph" has arrived.
+    await expect.poll(() => JSON.stringify(app.ctx.services.chat.runner.of(id)?.blocks ?? []), { timeout: 4000 }).toContain("Paragraph 1.");
     expect(model.writing()).toBe(1);
     expect((await app.api("GET", "/api/chat/status")).body).toMatchObject({ writingIn: id });
 
@@ -789,8 +790,9 @@ describe("the model server", () => {
       parameters: "3.2B",
       quantization: "Q4_K_M",
       family: "llama",
-      // Ollama says what each model can do; this one can write.
+      // Ollama says what each model can do; this one can write, and call tools.
       writes: true,
+      tools: true,
     });
     expect(ollama.models.find((model) => model.id === "embed-only:latest")?.writes).toBe(false);
 

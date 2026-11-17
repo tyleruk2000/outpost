@@ -369,8 +369,8 @@ open to every caller.
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/chat/status` | `ChatStatus`: `enabled`, `usable`, `reason`, `defaultModel`, `server`, `place`, `writingIn` (the conversation a reply is being written in, or null). Read from settings; the model server is not contacted. |
-| `GET /api/chat/models` | `{ models, message, ollama }`: the model server's models. Each has `id`, and, when the server also answers Ollama's `/api/tags`, `sizeBytes`, `parameters`, `quantization` and `family` (otherwise null), and `writes` when Ollama says what the model can do. Contacts the model server. |
+| `GET /api/chat/status` | `ChatStatus`: `enabled`, `usable`, `reason`, `defaultModel`, `server`, `place`, `writingIn` (the conversation a reply is being written in, or null), `tools` (`enabled`, `offForModels`, `offered`: whether "Let the model look things up" is on and any area is). Read from settings; the model server is not contacted. |
+| `GET /api/chat/models` | `{ models, message, ollama }`: the model server's models. Each has `id`, and, when the server also answers Ollama's `/api/tags`, `sizeBytes`, `parameters`, `quantization` and `family` (otherwise null), and `writes` and `tools` (it can call tools) when Ollama says what the model can do. Contacts the model server. |
 | `POST /api/chat/look-for-ollama` | Asks the address Ollama listens on by default for its models. `ChatLookResult`: `found`, `address`, `models`, `message`. Always `200`. Saves nothing. |
 | `POST /api/chat/setup/look` | Setting up, step one. Asks the address in `answers.endpoint`, then the addresses Ollama listens on by default. `ModelSetupLook`: a `ChatLookResult` with `recommended`, the model to offer first (see [ai.md](ai.md#which-model)). Always `200`. Saves nothing. |
 | `POST /api/chat/setup/try` | Setting up, the last step. Body: `address`, `model`. Asks that model for one word. `ModelSetupTry`: an `AnswerTestResult` with `saved`. When the model answered, `answers.endpoint`, `answers.model` and `answers.enabled` have been saved. An address that `setup/look` would not ask is refused (`failure: "address"`) without being contacted. Always `200` for a well-formed body. |
@@ -395,7 +395,7 @@ A message (`ChatMessage`) has `id`, `role` (`user` or `assistant`), `text`, `blo
 (a reply's text as a tree of plain values, the same `MarkdownBlock` a Markdown
 document is sent as; empty for a person's message), `state` (`writing`, `complete`,
 `cut-short`, `stopped`, `failed`, `nothing-found`), `failure` and `notice` (why it did
-not finish, and what to do), `model`, `grounded`, `sources`, `searchedFor`,
+not finish, and what to do), `model`, `grounded`, `sources` (passages, and, of kind `lookup` with a `lookup` record `{ tool, arguments, area, ok }`, what the model looked up with a tool: see [ai.md](ai.md#looking-things-up-in-outpost)), `searchedFor`,
 `declined` (a reply from the library that says the passages do not answer; its markers are taken out of `blocks`), `used` (markers left in `blocks`), `unsupported` (numbers no passage carried, none left in `blocks`), `repointed` (`{ from, to }`), `citesAll`, `omitted` (earlier
 messages that were not sent for this reply), `tookMs` and `createdAt`.
 
@@ -405,8 +405,8 @@ leaving does not stop the model. Events, each with one JSON `data` line:
 | Event | Data |
 | --- | --- |
 | `idle` | Nothing is being written in this conversation. The stream ends. |
-| `start` | Always first otherwise: `messageId`, `phase` (`finding`, `loading` (only when Ollama says the model is not in memory), `waiting`, `writing`), `model`, `grounded`, `sources`, `searchedFor`, `omitted`, `startedAt`. |
-| `phase` | `phase`, and `sources` and `searchedFor` once the passages are known. |
+| `start` | Always first otherwise: `messageId`, `phase` (`finding`, `loading` (only when Ollama says the model is not in memory), `waiting`, `looking` (Outpost is running a tool the model asked for), `writing`), `model`, `grounded`, `sources`, `searchedFor`, `omitted`, `startedAt`. |
+| `phase` | `phase`, and `sources` and `searchedFor` once the passages are known; `looking`, the title of the tool being run, while `looking`. Each lookup is added to `sources` as it is made. |
 | `blocks` | `from`, `blocks`: replace the reply's blocks from index `from` onward. A browser that joins part-way is first sent the whole reply so far (`from` 0). |
 | `done` | `message`: the reply as it was stored, whatever its `state`. The stream ends. |
 
@@ -422,6 +422,28 @@ curl -s -X POST http://localhost:8080/api/chat/conversations/<id>/messages \
   -H "X-Outpost-Request: 1" -H "Content-Type: application/json" -d '{"text": "Hello"}'
 curl -N http://localhost:8080/api/chat/conversations/<id>/stream
 ```
+
+## Tools a model can call
+
+The read-only tools of `apps/server/src/modules/tools/` (see
+[ai.md](ai.md#looking-things-up-in-outpost)). Types: `packages/shared/src/tools.ts`.
+Chat runs them for a model; nothing here runs one for a browser.
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/tools` | `ToolsStatus`: `enabled` (`tools.enabled`), `areas` (each area's switch), `offForModels`, `tools` (every tool's `name`, `title`, `area`, `description`), and `mcp` (`enabled`, `canChange`: whether this request comes from the computer Outpost runs on, `addresses` to give a client, `versions`). Changes nothing. |
+| `PUT /api/tools/mcp` | Body: `{ enabled }`. Switches `/mcp` on or off. Only from the computer Outpost runs on: `403` from any other device. Answers the `ToolsStatus`. |
+
+The area switches and `tools.enabled` are ordinary settings (`PATCH /api/settings`).
+
+### `/mcp`
+
+The Model Context Protocol endpoint, for other programs: `POST` only, JSON-RPC 2.0,
+`Content-Type: application/json`, answered with plain JSON. Off by default (`403` while
+off). Outside `/api/`, so it does not take the `X-Outpost-Request` header; its own rules
+(origin, address, allowance) are in [mcp.md](mcp.md) and
+[security.md](security.md#the-mcp-endpoint). Methods: `initialize`, `ping`,
+`server/discover`, `tools/list`, `tools/call`, and the notifications a client sends.
 
 ## Retrieval
 

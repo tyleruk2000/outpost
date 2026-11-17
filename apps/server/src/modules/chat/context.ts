@@ -45,6 +45,29 @@ export const PLAIN_SYSTEM = [
 ].join(" ");
 
 /**
+ * Said to a model that is offered tools (modules/tools), after the instructions of a
+ * plain conversation or of one from the library.
+ */
+export const TOOLS_PARAGRAPH = [
+  "You are inside Outpost, on the household's own computer. You cannot reach the internet.",
+  "You can look things up in the household's own data with the tools you are given, and in no other way.",
+  "Use a tool only when the question is about this household, its home and area, or what Outpost holds. For general knowledge, writing or conversation, answer without a tool.",
+  "Each tool's answer comes back numbered as a source, like Source [3]. After each fact you take from one, give its number in square brackets, like [3].",
+  "When a tool says something is not held, say so, and where in Outpost it could be got if the tool says; do not guess instead.",
+].join(" ");
+
+/**
+ * A plain conversation whose model is offered tools: the same, but for what it can
+ * read, which is now the library and the household's data, through the tools alone.
+ */
+export const PLAIN_TOOLS_SYSTEM = `${[
+  "You are a language model running on the person's own computer, inside Outpost, an offline library.",
+  "You cannot search the internet or open files. You can read the person's library and the household's other data only through the tools you are given, when you need them.",
+  "Answer from what you know or what you looked up. If you do not know, or are not sure, say so plainly instead of guessing.",
+  "Use Markdown where it helps: lists, tables, and fenced code blocks for code.",
+].join(" ")}\n\n${TOOLS_PARAGRAPH}`;
+
+/**
  * Earlier messages grouped into exchanges: a person's message and the reply to it. A
  * reply the model never wrote (it failed, or the library held nothing) has no text and
  * is not sent; the question it would have answered still is.

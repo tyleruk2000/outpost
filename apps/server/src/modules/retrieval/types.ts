@@ -12,6 +12,8 @@
  *                                                   └──────── citations ◀───────────┘
  */
 
+import type { ToolSpec } from "../tools/index.ts";
+
 /** A passage with everything needed to trace it back to its source. */
 export interface RetrievedPassage {
   chunkId: number;
@@ -96,12 +98,45 @@ export interface ContextAssembler {
   assemble(query: string, passages: RetrievedPassage[], options?: { maxChars?: number; maxPassages?: number }): AssembledContext;
 }
 
+/** One tool call as the model asked for it. */
+export interface ToolCallRequest {
+  id: string | null;
+  name: string;
+  arguments: unknown;
+}
+
+/** A message of a turn after the newest one from the person. */
+export type GenerationStep =
+  | { role: "assistant"; content: string; toolCalls: ToolCallRequest[] }
+  /** What one tool answered, for the call with this id and name. */
+  | { role: "tool"; callId: string | null; name: string; content: string }
+  /** A line from Outpost, not from the person: "answer now from what you have". */
+  | { role: "user"; content: string };
+
 export interface GenerationRequest {
   system: string;
   /** The newest message from the person. */
   prompt: string;
   /** Earlier turns of a conversation, oldest first, sent between the instructions and `prompt`. */
   history?: Array<{ role: "user" | "assistant"; content: string }>;
+  /**
+   * Tools the model may ask for (modules/tools), sent as the request's `tools` field in
+   * both protocols. Only to a model the server says can call them.
+   */
+  tools?: ToolSpec[];
+  /**
+   * What came after `prompt` in this same turn: the model asking for tools, what they
+   * answered, and, at the end of a turn that has looked up all it may, a line from
+   * Outpost telling it to answer. Sent after the newest message, in order.
+   */
+  after?: GenerationStep[];
+  /**
+   * Called once, when the model ends its turn asking for tools rather than answering in
+   * words, with what it asked for. `arguments` is the parsed JSON, or the string as the
+   * model sent it when it was not valid JSON. `id` is the server's id for the call, when
+   * it gave one (the OpenAI-compatible protocol does; Ollama may not).
+   */
+  onToolCalls?: (calls: ToolCallRequest[]) => void;
   maxTokens?: number;
   temperature?: number;
   /**

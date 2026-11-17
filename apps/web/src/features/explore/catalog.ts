@@ -1,6 +1,9 @@
 /** Filtering, ordering and wording for catalogue entries. Pure, so the rules can be tested without a screen. */
-import { type CatalogCategorySlug, type CatalogEntryDto, type CatalogPack, formatBytes } from "@outpost/shared";
+import { type CatalogCategorySlug, type CatalogEntryDto, type CatalogPack, formatBytes, matchesQuery, sizeText } from "@outpost/shared";
 import { formatDate } from "@/lib/utils";
+
+/** Every word typed has to appear somewhere in the name, description, publisher or tags (shared with the server's catalogue tool). */
+export { matchesQuery };
 
 export type ShowFilter = "all" | "included" | "installed" | "not_installed";
 export type SortOrder = "name" | "smallest" | "largest";
@@ -11,14 +14,6 @@ export interface CatalogFilter {
 }
 
 type Searchable = Pick<CatalogEntryDto, "name" | "description" | "publisher" | "tags">;
-
-/** Every word typed has to appear somewhere in the name, description, publisher or tags. */
-export function matchesQuery(entry: Searchable, query: string): boolean {
-  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return true;
-  const text = [entry.name, entry.description, entry.publisher, ...(entry.tags ?? [])].join("\n").toLowerCase();
-  return words.every((word) => text.includes(word));
-}
 
 /** An entry whose file ships with Outpost: adding it copies the file, and nothing is downloaded. */
 export const isIncluded = (entry: Pick<CatalogEntryDto, "source">): boolean => entry.source.type === "bundled";
@@ -58,11 +53,8 @@ export type CategoryChoice = CatalogCategorySlug | "all" | "packs" | "audiobooks
 
 // ── Wording ──
 
-/** "about 14.0 MB" while the size is the catalogue's estimate, the exact figure once the source has confirmed it. */
-export function sizeText(entry: Pick<CatalogEntryDto, "sizeBytes" | "sizeIsEstimate">): string {
-  if (entry.sizeBytes === null) return "Size not known yet";
-  return entry.sizeIsEstimate ? `about ${formatBytes(entry.sizeBytes)}` : formatBytes(entry.sizeBytes);
-}
+/** "about 14.0 MB" while the size is the catalogue's estimate, the exact figure once the source has confirmed it (shared). */
+export { sizeText };
 
 let languageNames: Intl.DisplayNames | undefined;
 

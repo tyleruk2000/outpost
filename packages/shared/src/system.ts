@@ -59,4 +59,16 @@ export interface Settings {
   "storage.checkIntervalSeconds": number;
   /** Days a file sent on the household board is kept; 0 keeps it until removed. */
   "board.fileDays": number;
+  /** Let the model look things up in Outpost (Chat). Off by default. */
+  "tools.enabled": boolean;
+  "tools.library": boolean;
+  "tools.places": boolean;
+  "tools.supplies": boolean;
+  "tools.plans": boolean;
+  "tools.weather": boolean;
+  "tools.radio": boolean;
+  "tools.catalogue": boolean;
+  "tools.board": boolean;
+  /** Models not offered tools, though they say they can call them. */
+  "tools.offForModels": string[];
 }

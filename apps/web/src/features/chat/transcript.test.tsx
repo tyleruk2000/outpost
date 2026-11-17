@@ -266,6 +266,7 @@ describe("a conversation as it reads", () => {
     const live: LiveReply = {
       messageId: "a1",
       phase: "waiting",
+      looking: null,
       model: "llama3.2:3b",
       grounded: false,
       sources: [],
@@ -297,6 +298,7 @@ describe("a conversation as it reads", () => {
     const live: LiveReply = {
       messageId: "a1",
       phase: "loading",
+      looking: null,
       model: "llama3.2:1b",
       grounded: false,
       sources: [],
@@ -318,6 +320,7 @@ describe("a conversation as it reads", () => {
     const live: LiveReply = {
       messageId: "a1",
       phase: "finding",
+      looking: null,
       model: "llama3.2:3b",
       grounded: true,
       sources: [],
@@ -333,6 +336,7 @@ describe("a conversation as it reads", () => {
     const live: LiveReply = {
       messageId: "a1",
       phase: "writing",
+      looking: null,
       model: "llama3.2:3b",
       grounded: true,
       sources,

@@ -14,6 +14,7 @@ const status = (over: Partial<ChatStatus> = {}): ChatStatus => ({
   server: null,
   place: null,
   writingIn: null,
+  tools: { enabled: false, offForModels: [], offered: 0 },
   ...over,
 });
 

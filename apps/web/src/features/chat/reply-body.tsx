@@ -12,7 +12,8 @@
  *  - a diagram or figure block is shown as the code it is.
  *
  * The one thing in a reply that leads anywhere is a citation marker, and where it
- * leads was decided by Outpost, not by the model.
+ * leads was decided by Outpost, not by the model: to a passage, or to what a tool
+ * answered when the model looked something up.
  */
 import type { AnswerSource, MarkdownBlock, MarkdownInline, MarkdownListItem } from "@outpost/shared";
 import { Check, Copy } from "lucide-react";
@@ -21,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable } from "@/features/library/document-table";
 import { Marker } from "@/features/search/answer";
 import { copyText } from "@/lib/clipboard";
+import { isLookup, LookupMarker } from "./looked-at";
 import "./chat.css";
 
 /** "[2]", and "[1, 3]" as some models write it. The same rule as the server's `checkCitations`. */
@@ -45,7 +47,15 @@ function Words({ text, sources }: { text: string; sources: Sources | null }): Re
     if (at > last) out.push(text.slice(last, at));
     for (const number of match[1]!.split(/[,;]/)) {
       const marker = Number(number);
-      out.push(<Marker key={`${at}-${marker}`} piece={{ kind: "marker", marker, source: sources.get(marker) }} />);
+      const source = sources.get(marker);
+      // Something the model looked up shows what the tool answered; a passage shows the passage.
+      out.push(
+        source && isLookup(source) ? (
+          <LookupMarker key={`${at}-${marker}`} source={source} />
+        ) : (
+          <Marker key={`${at}-${marker}`} piece={{ kind: "marker", marker, source }} />
+        ),
+      );
     }
     last = at + match[0].length;
   }
@@ -246,7 +256,9 @@ export function ReplyBody({
   sources?: readonly AnswerSource[];
   writing?: boolean;
 }) {
-  const byMarker = sources && sources.length > 0 ? new Map(sources.map((source) => [source.marker, source])) : null;
+  // A refused lookup has marker 0 and is no source: a "[0]" stays a marker to nothing.
+  const usable = sources?.filter((source) => source.marker > 0) ?? [];
+  const byMarker = usable.length > 0 ? new Map(usable.map((source) => [source.marker, source])) : null;
   return (
     <div className="prose prose-reply" data-writing={writing || undefined} data-testid="reply-text">
       <Blocks blocks={blocks} sources={byMarker} />

@@ -16,6 +16,13 @@
  * "families","parameter_size","quantization_level"}}]}`. It was then read from a
  * running Ollama (version 0.40.16, on 2026-11-16), which answered in that shape and
  * with one field more for each model: `"capabilities":["completion","tools"]`.
+ *
+ * That field is also what says whether a model can call tools, which Chat needs to
+ * know before it offers it any (run.ts). So the list is asked for at the start of a
+ * reply too, when looking things up is switched on: at most once per address every few
+ * minutes (`toolAbility`), under the same rule as every other request. A server that
+ * has no such list, or a model it lists without saying what it can do, is taken to be
+ * unable to call tools.
  */
 import type { ChatLookResult, ChatModel, ChatModelsResponse } from "@outpost/shared";
 import { AppError } from "../../core/errors.ts";
@@ -30,15 +37,62 @@ const MOST_BYTES = 512 * 1024;
 
 const text = (value: unknown, most = 80): string | null => (typeof value === "string" && value.trim() ? value.trim().slice(0, most) : null);
 
+/**
+ * What each address's own list said, kept a few minutes so that a reply does not ask
+ * again. `null`: the server answered and has no such list (llama.cpp, LM Studio). A
+ * server that did not answer at all is not remembered.
+ */
+const knownLists = new Map<string, { details: Map<string, Omit<ChatModel, "id">> | null; at: number }>();
+const KNOWN_FOR_MS = 5 * 60_000;
+
+/** Test seam: forget what the model servers' lists said. */
+export function forgetModelLists(): void {
+  knownLists.clear();
+}
+
 /** Ollama's own list beside a `/v1` address. Undefined when the server has none, or it could not be read. */
 async function ollamaDetails(
   address: ModelServerAddress,
   guard: () => Promise<void>,
   timeoutMs: number,
 ): Promise<Map<string, Omit<ChatModel, "id">> | undefined> {
-  if (!address.base.endsWith("/v1")) return undefined;
+  const read = await readTags(address, guard, timeoutMs);
+  if (read !== undefined) knownLists.set(address.base, { details: read, at: Date.now() });
+  return read ?? undefined;
+}
+
+/**
+ * Whether the model can call tools, as the model server's own list says. False when the
+ * list says nothing about it, when there is no such list, and when the server could not
+ * be asked, or the guard refused it. Asked at most once per address every few minutes.
+ */
+export async function toolAbility(
+  address: ModelServerAddress,
+  model: string,
+  guard: () => Promise<void>,
+  timeoutMs: number,
+): Promise<boolean> {
+  let known = knownLists.get(address.base);
+  if (!known || Date.now() - known.at >= KNOWN_FOR_MS) {
+    const read = await readTags(address, guard, Math.min(timeoutMs, 5_000));
+    if (read === undefined) return false;
+    known = { details: read, at: Date.now() };
+    knownLists.set(address.base, known);
+  }
+  const info = known.details?.get(model) ?? known.details?.get(model.includes(":") ? model : `${model}:latest`);
+  return info?.tools === true;
+}
+
+/** Ollama's list, read. Null when the server answered and has none; undefined when it could not be asked or read. */
+async function readTags(
+  address: ModelServerAddress,
+  guard: () => Promise<void>,
+  timeoutMs: number,
+): Promise<Map<string, Omit<ChatModel, "id">> | null | undefined> {
+  if (!address.base.endsWith("/v1")) return null;
   const url = `${address.base.slice(0, -"/v1".length)}/api/tags`;
   try {
+    // Refused before anything is sent (caught below): the request that follows reports it.
     await guard();
     const response = await fetch(url, {
       headers: { accept: "application/json" },
@@ -47,7 +101,8 @@ async function ollamaDetails(
     });
     if (!response.ok || !response.body) {
       await response.body?.cancel().catch(() => {});
-      return undefined;
+      // An answer, and it says there is no such list here.
+      return response.status === 404 || response.status === 405 ? null : undefined;
     }
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -64,7 +119,7 @@ async function ollamaDetails(
       raw += decoder.decode(value, { stream: true });
     }
     const body = JSON.parse(raw) as { models?: unknown };
-    if (!Array.isArray(body.models)) return undefined;
+    if (!Array.isArray(body.models)) return null;
     const found = new Map<string, Omit<ChatModel, "id">>();
     for (const entry of body.models.slice(0, 500) as Array<Record<string, unknown>>) {
       if (!entry || typeof entry !== "object") continue;
@@ -77,7 +132,10 @@ async function ollamaDetails(
       };
       // Not in the documentation that was read, but sent by the Ollama that was tried (0.40.16): what each
       // model can do. One that lists no "completion" cannot write; an embedding model lists "embedding".
-      if (Array.isArray(entry.capabilities) && entry.capabilities.length > 0) info.writes = entry.capabilities.includes("completion");
+      if (Array.isArray(entry.capabilities) && entry.capabilities.length > 0) {
+        info.writes = entry.capabilities.includes("completion");
+        info.tools = entry.capabilities.includes("tools");
+      }
       for (const name of [entry.name, entry.model]) if (typeof name === "string" && name) found.set(name, info);
     }
     return found;

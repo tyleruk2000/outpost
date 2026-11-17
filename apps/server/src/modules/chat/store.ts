@@ -69,17 +69,50 @@ export function toConversation(row: ConversationRow): ChatConversation {
  * a marker to a number no passage carried is taken out or pointed at the passage whose
  * own sentences it stood on. It is worked out each time from the stored text, which
  * stays as the model wrote it.
+ *
+ * A reply that looked things up with tools is read the same way, its lookups counting
+ * as sources (a refused call, marker 0, does not). One that rests on lookups alone is
+ * never shown as "your library does not cover this": that is about passages, and a
+ * lookup that found nothing says so itself, under "Looked at".
  */
 export function shownReply(
   row: Pick<MessageRow, "role" | "text" | "state" | "grounded" | "sources">,
 ): Omit<TidiedReply, "outcome"> & { declined: boolean } {
-  const sources = (row.sources ?? []) as AnswerSource[];
+  const sources = ((row.sources ?? []) as AnswerSource[]).filter((source) => source.kind !== "lookup" || source.marker > 0);
   const settled = row.state === "complete" || row.state === "cut-short";
-  if (row.role !== "assistant" || !row.grounded || !settled || sources.length === 0) {
+  const looked = sources.some((source) => source.kind === "lookup");
+  if (row.role !== "assistant" || !(row.grounded || looked) || !settled || sources.length === 0) {
     return { text: row.text, declined: false, used: [], unsupported: [], repointed: [], citesAll: false };
   }
   const tidied = tidyReply(row.text, sources);
+  if (tidied.outcome === "not-covered" && sources.every((source) => source.kind === "lookup")) return lookupsOnly(row.text, sources);
   return { ...tidied, declined: tidied.outcome === "not-covered" };
+}
+
+const MARKER = /\[(\d{1,3}(?:\s*[,;]\s*\d{1,3})*)\]/g;
+
+/** A reply resting on lookups alone, whose first sentence reads like a refusal: its markers are kept where they are real, and taken out where not. */
+function lookupsOnly(text: string, sources: readonly AnswerSource[]): Omit<TidiedReply, "outcome"> & { declined: boolean } {
+  const given = new Set(sources.map((source) => source.marker));
+  const used = new Set<number>();
+  const unsupported = new Set<number>();
+  const shown = text.replace(MARKER, (_whole, list: string) => {
+    const numbers = list.split(/[,;]/).map(Number);
+    for (const number of numbers) (given.has(number) ? used : unsupported).add(number);
+    return numbers
+      .filter((number) => given.has(number))
+      .map((number) => `[${number}]`)
+      .join("");
+  });
+  const all = [...used].sort((a, b) => a - b);
+  return {
+    text: unsupported.size > 0 ? shown.replace(/[ \t]+([.,;:!?])/g, "$1").replace(/[ \t]{2,}/g, " ") : text,
+    declined: false,
+    used: all,
+    unsupported: [...unsupported].sort((a, b) => a - b),
+    repointed: [],
+    citesAll: sources.length >= 3 && all.length === sources.length,
+  };
 }
 
 export function toMessage(row: MessageRow, blocks?: MarkdownBlock[]): ChatMessage {

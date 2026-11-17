@@ -15,6 +15,12 @@
  * the conversation uses the library, the passages found for the question. All of it
  * goes to the one configured model server and nowhere else. Opening the Chat screen
  * asks that server for its list of models; that request carries nothing.
+ *
+ * When "Let the model look things up in Outpost" is on and the model can call tools
+ * (tools.ts), the request also carries the tools' descriptions, and the model may ask
+ * for them to be run: Outpost runs them here, on the server, and sends what they
+ * answered to the same model server, in the same turn. Nothing a tool reads goes
+ * anywhere else, and a tool only ever reads.
  */
 import type {
   ChatConversationDetail,
@@ -100,6 +106,11 @@ export async function registerChat(app: FastifyInstance, ctx: AppContext): Promi
       server: address?.host ?? null,
       place: address?.place ?? null,
       writingIn: runner.current()?.conversationId ?? null,
+      tools: {
+        enabled: settings.get("tools.enabled"),
+        offForModels: settings.get("tools.offForModels"),
+        offered: ctx.services.tools.offered().length,
+      },
     };
   }
 
@@ -357,6 +368,7 @@ export async function registerChat(app: FastifyInstance, ctx: AppContext): Promi
       searchedFor: live.searchedFor,
       omitted: live.omitted,
       startedAt: live.startedAt,
+      looking: live.looking,
     });
     if (live.blocks.length > 0) send({ type: "blocks", from: 0, blocks: live.blocks });
 
@@ -403,7 +415,10 @@ export async function registerChat(app: FastifyInstance, ctx: AppContext): Promi
         question: question?.text ?? "",
         model: message.model,
         writtenAt: message.createdAt,
-        sources: toMessage(message).sources,
+        // What was looked up is listed with the passages, by what it was; a refused call was not a source.
+        sources: toMessage(message)
+          .sources.filter((source) => source.kind !== "lookup" || source.marker > 0)
+          .map((source) => (source.kind === "lookup" ? { ...source, title: `Looked up in Outpost: ${source.title}` } : source)),
         unfinished: message.state !== "complete",
       }),
     });

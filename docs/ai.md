@@ -19,7 +19,10 @@ is several gigabytes, and which one to run is your decision.
 > figures, what was changed because of them, and the list of things that were **not**
 > tried with a real model, which is long. Later that day Chat, Stop, a model loading,
 > a conversation past the context size and two requests at once were tried with the
-> same models. llama.cpp and LM Studio have still not been run.
+> same models. On 2026-11-17 looking things up in Outpost was tried with seven models,
+> and five more models were run through the 45 questions: see
+> [Tried with a real model: tools](#tried-with-a-real-model-tools). All of it on one Mac,
+> **none of it on a Raspberry Pi**. llama.cpp and LM Studio have still not been run.
 
 ## What exists
 
@@ -45,6 +48,13 @@ is several gigabytes, and which one to run is your decision.
 - **Optional semantic search**, so retrieval can work by meaning as well as by words.
   A small embedding model is built in, so this needs no server; a local embedding
   server can be used instead. See [search.md](search.md#semantic-search).
+- **Looking things up in Outpost**: in Chat, a model that can call tools may ask
+  Outpost about places on the map, supplies, plans, the weather as last fetched, the
+  sun, radio and the catalogue, as well as the library, under switches in Settings. Off
+  by default. See [Looking things up in Outpost](#looking-things-up-in-outpost).
+- **The same tools for other programs**, over the Model Context Protocol at `/mcp`,
+  off by default and switched on only at the computer Outpost runs on. See
+  [mcp.md](mcp.md).
 - **A page that shows all of it working**: *How search works*
   (`/search/how-it-works`) follows one question through cutting, both searches, fusion,
   the context and the exact prompt that is sent.
@@ -53,8 +63,13 @@ is several gigabytes, and which one to run is your decision.
 
 - No bundled model, and no download of one. Nothing here works until you run a model
   server yourself.
-- No agents and no tools the model can call, in an answer or in a conversation. A
-  model writes words and Outpost shows them; nothing a model writes is acted on.
+- No agents, and no tool that does anything but read. In Chat, when you switch it on,
+  a model that can call tools may **look things up in Outpost** (see
+  [Looking things up in Outpost](#looking-things-up-in-outpost)): Outpost runs the
+  lookups it asks for, on the server, and sends back what it found. Every tool reads;
+  none creates, changes, removes, downloads or reaches the internet. Beyond choosing
+  what to read, nothing a model writes is acted on: its words are shown, and that is
+  all. "Answer from my library" has no tools at all.
 - No memory between conversations, and no summary of a long one: see
   [Long conversations](#long-conversations).
 - No downloading or removing of models from Outpost. Fetch a model with the model
@@ -691,6 +706,15 @@ that is a program on the same machine. If you enter the address of another machi
 your question and passages of your documents go to that machine, over plain HTTP
 unless you gave an `https` address.
 
+**What the tools return is sent the same way.** With "Let the model look things up in
+Outpost" on, Chat also sends the model the tools' descriptions, and then the answers of
+the tools it asks for: places on the map and in your layers, supplies, plans, the
+weather as last fetched, radio, the catalogue, and the board's messages if that area is
+on. They go to the same one address as passages, and nowhere else; if the model server
+is on another machine, so are they. See
+[Looking things up in Outpost](#looking-things-up-in-outpost). "Answer from my library"
+sends no tools.
+
 **Search by meaning is different.** Answers and chat are given passages of documents,
 notes and book chapters only, never contacts. But building the index for search by
 meaning embeds every passage in the search index, contacts included (names, numbers,
@@ -1010,6 +1034,1117 @@ using the browser's report of how much of the window is visible; that was checke
 with a stand-in for the report, in an emulated phone, not on a telephone.
 
 Code: `apps/server/src/modules/chat/`, `apps/web/src/features/chat/`.
+
+## Looking things up in Outpost
+
+> **Tested against the stand-in, and tried by script with seven real models on one Mac.**
+> The automated tests run every tool, the loop in Chat and `/mcp` against the stand-in
+> model server only. On 2026-11-17 the same questions were asked of seven models in a
+> real Ollama on an Apple Silicon Mac: see
+> [Tried with a real model: tools](#tried-with-a-real-model-tools). Nothing has been tried
+> on a Raspberry Pi, with llama.cpp or LM Studio, or with a real MCP client.
+
+In Chat, a model that can call tools may ask Outpost about the household's own things
+("what supermarkets are near home?", "how many days of food have we got?", "when is
+sunset on Saturday?") and answer from what Outpost holds, saying where each fact came
+from. The model knows none of this by itself; it is told only what the tools return, and
+it cannot reach the internet. When the thing asked about is not held, the tool says so
+and where in Outpost it could be got ("No shops are held for Northampton: fetch that area
+under Maps → Layers"), and the model is told to pass that on instead of guessing.
+
+### Switching it on
+
+**Settings → Looking things up in Outpost**, with the other answers settings:
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `tools.enabled` | off | "Let the model look things up in Outpost". Off, Chat sends no tools and asks nothing about them. |
+| `tools.library` | on | Library and notes: `search_library`, `read_passage`. |
+| `tools.places` | on | Places and map layers: `find_places`, `nearest_place`. |
+| `tools.supplies` | on | Supplies: `supplies`. |
+| `tools.plans` | on | Emergency plans: `emergency_plans`. |
+| `tools.weather` | on | Weather and hazards, the sun and the compass: `weather`, `sun_and_compass`. |
+| `tools.radio` | on | Radio: `radio_frequencies`, `repeaters_near`, `saved_predictions`. |
+| `tools.catalogue` | on | The catalogue: `search_catalogue`. |
+| `tools.board` | **off** | Messages on the board: `board_messages`. |
+| `tools.offForModels` | none | Models that say they can call tools and do it badly: Chat offers them none. |
+
+These are ordinary settings: the household is one trust group, and anyone who can open
+Outpost can change them, as every other. Each area's switch says on the screen what
+turning it on lets a model server see. An area switched off is not offered at all: its
+tools are not in the request, and a call to one is refused as if it did not exist.
+Notes' encrypted pages are never readable: they have no text in the search index.
+
+### The tools
+
+Each tool is defined once (`apps/server/src/modules/tools/`), with a name, a description
+a small model can act on, an input schema in zod from which the JSON Schema it is sent is
+made, and a function that answers from the service that already answers the same
+question for a screen. No calculation is written a second time: the sun, the declination,
+the supplies outlook and the catalogue's matching were moved into `packages/shared` where
+only the web app had them, and the screens use the same functions.
+
+| Tool | Reads | From |
+| --- | --- | --- |
+| `search_library` | Passages of documents and notes that match a few key words, with their passage numbers. | The retrieval answers use. |
+| `read_passage` | One passage in full, or one page of the same document. Documents and notes only: a passage of any other kind in the index (contacts are in it) is never read out. | The search index. |
+| `find_places` | Saved places and records of every reference layer held, by name or kind, near a place or within a radius: what each is, where, how far and on what bearing, which layer and source, and the day it was fetched. | `maps.annotations`, the layers' own store (`summary`, `overlay`, `search`, `detail`). A layer added later is picked up with no change. |
+| `nearest_place` | The nearest few of a kind to a place, widening from 2 km to 250 km. | The same. |
+| `supplies` | The outlook (days of food, water and energy, what runs out first, what is missing) and stock by name or category. | The shared functions behind `GET /api/supplies/outlook`. |
+| `emergency_plans` | The plans held; one plan's steps, meeting places and how to keep in touch. Contacts and medical notes in a plan are left out. | `emergencyPlans`. |
+| `weather` | Forecast, warnings, flood warnings, river and sea levels, as last fetched, each with its age. Never fetches. | `weather.kept()`. |
+| `sun_and_compass` | Sunrise, sunset, twilight, the sun's position, magnetic declination (WMM) and the grid magnetic angle. | The shared sun and compass functions the Maps and Compass screens use. |
+| `radio_frequencies` | Frequencies to listen to, by kind, place or band. | The bundled frequency list the Frequencies screen uses. |
+| `repeaters_near` | Repeaters held within 50 km of a place, with distance and bearing. | `repeaters.list`. |
+| `saved_predictions` | Propagation predictions already saved. Never starts one: a prediction is a job, made on the Radio screen. | The saved predictions table. |
+| `search_catalogue` | What could be downloaded on a subject, its size, and whether it is held. | The catalogue Explore shows, read without matching archives to entries (which writes). |
+| `board_messages` | The board's messages and check-ins, newest first, with who and when. Files only as "(sent a file)". | `board`. |
+
+`near` is understood in one order: two numbers as latitude and longitude; a saved place,
+or "home"; the map's own place search (grid references, postcodes, then GeoNames or OS
+Open Names when installed); then a layer record of that name. Every answer says which.
+
+Every answer is plain labelled lines, says where it came from and how old it is, is at
+most 3,000 characters, and is paged ("Showing 1 to 10 of 34. Ask again with page 2 for
+more."). Before checking, a number written as digits is read as a number where the
+schema asks for one, and an empty optional argument is left out: the real models sent
+both (see below).
+
+**Every tool reads.** None creates, changes, removes, queues a job, starts a download or
+makes a request to the internet or the network. `apps/server/test/tools-readonly.test.ts`
+runs every tool in the registry against a filled server while `fetch`, `http` and `https`
+requests, undici, sockets, the job queue, downloads and live events fail the test if
+touched, and checks that the database counted no change.
+
+**Never readable**, by any tool: contacts; private keys and anything under Encryption;
+notes' encrypted pages; the board's files; network-share credentials; settings that are
+secrets; the network scan.
+
+### How Chat uses them
+
+When a person sends a message, tools are offered when: `tools.enabled` is on; the model
+says it can call tools; it is not in `tools.offForModels`; the conversation is not about
+one document; and at least one area is on. "Says it can call tools" is Ollama's own word:
+`/api/tags` lists each model's capabilities, and Outpost asks it at most once every five
+minutes per server. llama.cpp and LM Studio say nothing about their models, so a model
+there is offered no tools.
+
+Then, inside the same reply that is streamed, stopped and stored as before:
+
+1. The tool definitions go with the conversation, in the OpenAI-compatible `tools` field
+   (or Ollama's own, which is the same shape), with a paragraph added to the standing
+   instructions:
+
+   ```
+   You are inside Outpost, on the household's own computer. You cannot reach the internet. You can look things up in the household's own data with the tools you are given, and in no other way. Use a tool only when the question is about this household, its home and area, or what Outpost holds. For general knowledge, writing or conversation, answer without a tool. Each tool's answer comes back numbered as a source, like Source [3]. After each fact you take from one, give its number in square brackets, like [3]. When a tool says something is not held, say so, and where in Outpost it could be got if the tool says; do not guess instead.
+   ```
+
+2. When the model asks for tools, the server runs them (never the browser), at most three
+   a round, and sends each answer back headed `Source [n] (from Outpost: places on the
+   map, …):`, numbered after any library passages, so the reply can cite it.
+3. It asks again, until the model answers in words or four rounds have been used; then it
+   asks once more with no tools and a line telling the model to answer from what it has.
+4. A tool that does not exist, arguments that do not fit, or the same call twice in a row
+   are answered to the model in words, never with a crash and never shown as raw JSON.
+   **Stop** ends the loop at once: the tool's signal fires, and nothing more is asked.
+
+The screen shows, under the reply, **Looked at: places on the map (Food and supplies,
+fetched 12 Nov), supplies**; each name opens to the question asked of the tool, in
+words, and the answer it gave, quoted, with a link to the screen it came from. That
+record is kept with the message (in its `sources`, as a source of kind `lookup`, so no
+table was added) and a conversation read again later shows the same. A model that cannot
+call tools gets none, and Chat says once, under the message box: "This model cannot look
+things up in Outpost; it answers from your library's passages only", naming the suggested
+models that can. The model picker marks each model.
+
+With tools offered, Ollama is asked for a larger context, so that the tools' descriptions
+(7,642 characters for all thirteen, about 2,000 tokens) and room for their answers fit beside the
+conversation: 8,192 tokens with the default context budget (what Ollama reported loading in every
+real trial), against 4,096 without. That takes more memory (measured below), and loads the model afresh when it was last used for
+an answer from the library.
+
+Only the reply's words go into later turns; the tools' answers are not sent again.
+
+### What is sent, and where
+
+Tool answers go to the model server exactly as passages do: to the one address in
+`answers.endpoint`. If that server is on another machine, so is what the tools return:
+where the supermarkets are, how many days of food you hold, what is in your plans. The
+Settings section says so at the switch. Nothing is sent about tools until a person sends
+a message with tools on, and then only what the model asked for.
+
+### Other programs: `/mcp`
+
+The same tools, under the same area switches, are offered to other programs over the
+Model Context Protocol at `/mcp`: off by default, switched on only at the computer
+Outpost runs on, refused from any address that is not this computer's or the home
+network's. Whatever program asks receives the answers, and so does whatever that program
+is connected to. See [mcp.md](mcp.md).
+
+### What tool calling was checked against
+
+Read on 2026-11-17: Ollama's tool-calling page (`docs.ollama.com/capabilities/tool-calling`:
+a `tools` array of `{"type":"function","function":{…,"parameters":…}}`; calls in
+`message.tool_calls` with `function.arguments` as an object; results as
+`{"role":"tool","tool_name":…,"content":…}`; streamed calls gathered across chunks), its
+OpenAI-compatibility page (`tools` supported, `tool_choice` not, so it is never sent),
+and llama.cpp's server README ("Function calling / tool use for ~any model", with its
+Jinja templates on by default). The OpenAI-compatible stream's `delta.tool_calls`
+fragments, keyed by `index` and ended by `finish_reason: "tool_calls"`, are handled as
+llama.cpp and Ollama's `/v1` send them; neither llama.cpp nor LM Studio has been run.
+
+The stand-in (`apps/server/test/model-server.ts`) asks for tools in both protocols:
+`stand-in-tools` calls what the message names, one round at a time; `stand-in-tools-loops`
+calls the same tool for ever; `stand-in-no-tools` says it cannot and refuses a request
+carrying `tools` with the 400 Ollama gives.
+
+## Tried with a real model: tools
+
+On 2026-11-17, by script, against Ollama 0.40.16 on an Apple M2 Max with 32 GB of
+memory (the owner's Mac), with the seven models the owner chose: for a Raspberry Pi,
+`llama3.2:1b`, `lfm3:1.7b`, `bonsai-2:2b`, `llama3.2:3b` and `bonsai-2:4b`; for a Mac,
+`bonsai-2:9b` and `ornith:9b`. **Not on a Raspberry Pi**: nothing here has been timed on
+one, and a Pi will be slower by an amount that has not been measured.
+
+`apps/server/test/eval/tools-eval.ts` starts an Outpost of its own on a throwaway
+folder, filled with something in every area (`test/fixtures/tools/filled.ts`: twelve
+made-up supermarkets in Northampton, two hospitals, a layer of drinking water, the
+GeoNames places for Northampton and Bedford, a home place, a short supply list for one
+person, an eighteen-step power cut plan, weather from the stand-in, a saved prediction,
+a catalogue entry on first aid, board messages), switches answers and looking things up
+on, and sends each of sixteen questions (`test/eval/tool-questions.ts`) as the first
+message of a new conversation, through `POST /api/chat/conversations/:id/messages` as the
+Chat screen does. Between models it asks Ollama to put the last one out of memory.
+
+```bash
+node apps/server/test/eval/tools-eval.ts --models llama3.2:3b,lfm3:1.7b --json run.json
+node apps/server/test/eval/tools-eval.ts --rejudge run.json   # judge saved replies again
+node apps/server/test/eval/tools-eval.ts --probe              # what each tool answers, no model
+```
+
+**The judging is by rule, and crude.** A reply is right when it called the tool the
+question needs (or none, for the two that need none) with arguments that fitted, and says
+one thing the tool answered (a supermarket's name, the days of food, the sunset time),
+and does not say something the instance does not hold. It does not judge whether the
+rest of the reply is right; every reply is below, word for word, to be read.
+
+### The figures
+
+The run that counts (the last, on the code as it now stands; one run of each question):
+
+| Model | Right, of 16 | First word, s (median) | Whole reply, s (median) | Memory while answering | What went wrong |
+| --- | --- | --- | --- | --- | --- |
+| `llama3.2:1b` | 6 | 0.9 | 1.4 | 1.73 GB | Wrote tool calls, or a tool's whole description, into its reply as JSON instead of making them (8 of 16); asked `weather` for `"what": "river"`, which it does not take. |
+| `lfm3:1.7b` | 15 | 3.5 | 4.2 | 1.72 GB | Looked for the shipping forecast in the library, not the radio frequencies. |
+| `bonsai-2:2b` | 14 | 2.3 | 3.2 | 1.02 GB | Said it had nothing on the shipping forecast without looking; answered the boiling question from what it knew. |
+| `llama3.2:3b` | 13 | 2.9 | 2.9 | 3.12 GB | Gave the water's 2 days as the food's (the tool said 4.9); looked up "France capital" in the catalogue; wrote a call to a made-up tool as text for the haiku. |
+| `bonsai-2:4b` | 15 | 5.8 | 7.5 | 1.95 GB | Answered the boiling question from what it knew (rightly: 1 minute, 3 at altitude), without the library. |
+| `bonsai-2:9b` | 15 | 11.2 | 13.3 | 2.81 GB | The same. |
+| `ornith:9b` | 15 | 10.9 | 14.1 | 4.78 GB | The same. Thinks before answering. |
+
+Memory is what Ollama's `/api/ps` reported holding for the model while it answered, with
+the 8,192-token context Chat asks for when tools are offered; with answers alone (4,096)
+it is less. Times are with the model in memory after the first question.
+
+An earlier full run of the same set, before the last three changes below, came to 9, 16,
+13, 14, 16, 15 and 14 in the same order: small models vary by a question or two from run
+to run, and the two runs differ by no more than that except for `llama3.2:1b`, whose
+written-out calls are now counted as the failures they are rather than shown.
+
+**What thinking models did.** `lfm3`, `bonsai-2` and `ornith` think before answering
+(their library pages list it). Ollama sends the thinking in a field of its own, which
+Chat does not show and does not count as the first word: the times above are to the
+first word of the answer. `ornith:9b` once spent its whole 1,024-token allowance
+thinking about a haiku in an earlier run and wrote nothing; Chat said so ("The model used
+up its whole allowance without writing a reply").
+
+### What was changed because of it
+
+| Change | Before | After |
+| --- | --- | --- |
+| A number written as digits (`"count": "3"`, `"page": "1"`) is read as a number, and an empty optional argument is left out, before the arguments are checked (`lenient` in `modules/tools/index.ts`). `sun_and_compass` takes "today", "now" and "tomorrow". | `llama3.2:3b`: 7 of 16. Six of its calls were refused for `"page": "1"` and the like. | 12 of 16, same day, one run each. |
+| The tools paragraph says: "Use a tool only when the question is about this household, its home and area, or what Outpost holds. For general knowledge, writing or conversation, answer without a tool." | `llama3.2:3b` looked something up for both questions that need no tool. | It stopped for the haiku and not for France: 13 of 16, within a run's variation. Kept, because it is the rule the screens describe. It also made the larger models answer the boiling question from what they knew rather than from the library (below). |
+| `find_places` reads a `query` that names a kind held as that kind (`bonsai-2:2b` sent `query: "supermarket"` with `kind: "supermarket"` and was told none were held); `supplies` does the same for a kind of supply, and every supplies answer carries the days of food and water. | `bonsai-2:2b` said no supermarkets were held; and that no food was held. | It lists them; it gives the days. |
+| A reply that holds a tool call or a tool's description written out as JSON is not shown: the reply says the model wrote out a request instead of making it, and nothing was looked up. | `llama3.2:1b` showed the person raw JSON in 4 replies of 16. | It shows none; those replies end as failures, which is what they were. |
+
+Tried and not kept: nothing else was tried. The boiling question is the one place the
+prompt line costs something: `bonsai-2:4b`, `bonsai-2:9b` and `ornith:9b` answered it
+rightly from what they knew, without the library, and so without a source to check.
+
+### Which to use
+
+- **To start with, on a Raspberry Pi 5 or a Mac: `lfm3:1.7b`.** It looked things up rightly
+  15 times in 16, and answered 28 of the 32 library questions rightly (below), in 1.7 GB.
+  Its licence (the LFM Open License v1.0, read at `liquid.ai/lfm-license`) is free for a
+  household; a business with $10 million a year or more in revenue is not covered.
+- **`bonsai-2:2b`** is the smallest (1 GB) and looks things up nearly as well (14), but for
+  answers from the library it often thinks past its allowance and writes nothing.
+- **`llama3.2:3b`**, which Outpost has suggested for answers, is still the most reliable
+  on answers from the library, and looks things up adequately (13).
+- **The two models chosen for the Mac** (`bonsai-2:9b`, `ornith:9b`) looked things up no
+  better here, took about three times as long to start, and thought past their allowance
+  on many library questions.
+- **`llama3.2:1b` cannot look things up**: it writes its requests out as text. Switch
+  tools off for it (Settings → Looking things up → Models not to offer tools to) or use
+  another.
+
+The same is on the **Which model** screen inside Outpost (`/help/which-model`) and in
+[which-model.md](which-model.md), written from one data file
+(`packages/shared/src/model-trials.ts`).
+
+### Every reply
+
+Each question, then each model: whether it was judged right, the tools it called with
+what it asked, its times, and its reply as the person would read it (a failed reply shows
+the notice the person sees instead).
+
+<details><summary><b>What supermarkets are near home?</b> (supermarkets-home)</summary>
+
+**`llama3.2:1b`**: wrong: the reply did not finish (failed). Called: `none`. First word 1.4 s, whole reply 1.4 s.
+
+> (failed) The model wrote out a request to look something up as text instead of making it, so nothing was looked up. Small models do this; ask again, or choose a model that looks things up well (see Which model, under Settings).
+
+**`lfm3:1.7b`**: right. Called: `find_places {"kind": "supermarket", "near": "home"}`. First word 4.9 s, whole reply 8.1 s.
+
+> Here are the supermarkets near your home (based on the saved "Home" location):
+> | # | Supermarket | Location | Distance & Direction |
+> |---|-------------|----------|----------------------|
+> | 1 | Iceland Gold Street | Gold Street, Northampton, NN1 1RA | 620 m SW |
+> | 2 | Tesco Express Wellingborough Road | Wellingborough Road, Northampton, NN1 4EY | 970 m ENE |
+> | 3 | Lidl St James | St James Road, Northampton, NN5 5LD | 1.5 km WSW |
+> | 4 | Co-op Abington | Wellingborough Road, Northampton, NN1 4DY | 1.6 km ENE |
+> | 5 | Aldi Towcester Road | Towcester Road, Northampton, NN4 8LE | 1.7 km S |
+> | 6 | Morrisons Kettering Road | Kettering Road, Northampton, NN3 6AA | 1.8 km NNE |
+> | 7 | Co-op Kingsthorpe | Welford Road, Northampton, NN2 8AA | 2.7 km N |
+> | 8 | M&S Food Sixfields | Upton Way, Northampton, NN5 4EG | 2.8 km W |
+> | 9 | Tesco Extra Mereway | Mere Way, Northampton, NN4 8BX | 3.0 km S |
+> | 10 | Asda Riverside | Riverside Way, Northampton, NN3 9HX | 3.1 km E |
+> There are **12** supermarkets in total; these are the first 10 listed. Let me know if you'd like to see the next page.
+
+**`bonsai-2:2b`**: right. Called: `find_places {"query": "supermarket", "kind": "supermarket", "near": "home"}`. First word 4.7 s, whole reply 7.4 s.
+
+> Here are the supermarkets near your home:
+> 1. **Iceland Gold Street** - 620 m SW
+> 2. **Tesco Express Wellingborough Road** - 970 m ENE
+> 3. **Lidl St James** - 1.5 km WSW
+> 4. **Co-op Abington** - 1.6 km ENE
+> 5. **Aldi Towcester Road** - 1.7 km S
+> 6. **Morrisons Kettering Road** - 1.8 km NNE
+> 7. **Co-op Kingsthorpe** - 2.7 km N
+> 8. **M&S Food Sixfields** - 2.8 km W
+> 9. **Tesco Extra Mereway** - 3.0 km S
+> 10. **Asda Riverside** - 3.1 km E
+> All of these are within the saved places layer near your home location (52.2405, -0.8936). Would you like me to check for any other types of stores or provide more details about any specific one?
+
+**`llama3.2:3b`**: right. Called: `nearest_place {"kind": "supermarket", "near": "home"}`. First word 5.4 s, whole reply 7.1 s.
+
+> The nearest supermarkets to home are:
+> 1. Iceland Gold Street (Supermarket) - 620 m SW, Gold Street, Northampton, NN1 1RA
+> 2. Tesco Express Wellingborough Road (Supermarket) - 970 m ENE, Wellingborough Road, Northampton, NN1 4EY
+> 3. Lidl St James (Supermarket) - 1.5 km WSW, St James Road, Northampton, NN5 5LD
+
+**`bonsai-2:4b`**: right. Called: `find_places {"kind": "supermarket", "near": "home"}`. First word 10.8 s, whole reply 19.1 s.
+
+> Here are the supermarkets near home:
+> | # | Name | Distance | Direction |
+> |---|------|----------|-----------|
+> | 1 | Iceland Gold Street | 620 m SW | Gold Street, Northampton, NN1 1RA |
+> | 2 | Tesco Express Wellingborough Road | 970 m ENE | Wellingborough Road, Northampton, NN1 4EY |
+> | 3 | Lidl St James | 1.5 km WSW | St James Road, Northampton, NN5 5LD |
+> | 4 | Co-op Abington | 1.6 km ENE | Wellingborough Road, Northampton, NN1 4DY |
+> | 5 | Aldi Towcester Road | 1.7 km S | Towcester Road, Northampton, NN4 8LE |
+> | 6 | Morrisons Kettering Road | 1.8 km NNE | Kettering Road, Northampton, NN3 6AA |
+> | 7 | Co-op Kingsthorpe | 2.7 km N | Welford Road, Northampton, NN2 8AA |
+> | 8 | M&S Food Sixfields | 2.8 km W | Upton Way, Northampton, NN5 4EG |
+> | 9 | Tesco Extra Mereway | 3.0 km S | Mere Way, Northampton, NN4 8BX |
+> | 10 | Asda Riverside | 3.1 km E | Riverside Way, Northampton, NN3 9HX |
+> There are 12 supermarkets total in the area; you can ask for page 2 if you'd like to see the remaining ones [1].
+
+**`bonsai-2:9b`**: right. Called: `find_places {"kind": "supermarket", "near": "home"}`. First word 19.0 s, whole reply 27.3 s.
+
+> Here are the supermarkets near home, listed by distance:
+> 1. **Iceland Gold Street** - 620 m SW [1]
+> 2. **Tesco Express Wellingborough Road** - 970 m ENE [1]
+> 3. **Lidl St James** - 1.5 km WSW [1]
+> 4. **Co-op Abington** - 1.6 km ENE [1]
+> 5. **Aldi Towcester Road** - 1.7 km S [1]
+> 6. **Morrisons Kettering Road** - 1.8 km NNE [1]
+> 7. **Co-op Kingsthorpe** - 2.7 km N [1]
+> 8. **M&S Food Sixfields** - 2.8 km W [1]
+> 9. **Tesco Extra Mereway** - 3.0 km S [1]
+> 10. **Asda Riverside** - 3.1 km E [1]
+> There are 12 supermarkets total in the area, with more available on page 2 if you'd like to see them.
+
+**`ornith:9b`**: right. Called: `find_places {"kind": "supermarket", "near": "home"}`. First word 21.1 s, whole reply 32.6 s.
+
+> Here are the supermarkets near home, listed by distance:
+> | # | Supermarket | Distance | Direction |
+> |---|---|---|---|
+> | 1 | Iceland Gold Street | 620 m | SW |
+> | 2 | Tesco Express Wellingborough Road | 970 m | ENE |
+> | 3 | Lidl St James | 1.5 km | WSW |
+> | 4 | Co-op Abington | 1.6 km | ENE |
+> | 5 | Aldi Towcester Road | 1.7 km | S |
+> | 6 | Morrisons Kettering Road | 1.8 km | NNE |
+> | 7 | Co-op Kingsthorpe | 2.7 km | N |
+> | 8 | M&S Food Sixfields | 2.8 km | W |
+> | 9 | Tesco Extra Mereway | 3.0 km | S |
+> | 10 | Asda Riverside | 3.1 km | E |
+> The closest one is **Iceland Gold Street** at just over half a kilometre to the southwest. There are 12 supermarkets in total within range — let me know if you'd like to see the rest.
+
+</details>
+
+<details><summary><b>Where is the nearest drinking water?</b> (drinking-water)</summary>
+
+**`llama3.2:1b`**: wrong: the reply did not finish (failed). Called: `none`. First word 0.4 s, whole reply 8.5 s.
+
+> (failed) The model wrote out a request to look something up as text instead of making it, so nothing was looked up. Small models do this; ask again, or choose a model that looks things up well (see Which model, under Settings).
+
+**`lfm3:1.7b`**: right. Called: `nearest_place {"kind": "drinking water", "near": "home"}`. First word 3.5 s, whole reply 4.2 s.
+
+> The nearest drinking water source is the **Market Square fountain**, located about **220 meters southwest** of your home (coordinates: 52.2389, -0.8954).
+> Other nearby options include:
+> - Becket's Park tap — ~1.0 km south-east
+> - Spring at the allotment — ~1.1 km north-west
+> Let me know if you'd like more details!
+
+**`bonsai-2:2b`**: right. Called: `find_places {"query": "drinking water", "kind": "drinking water", "near": "home"}`. First word 3.9 s, whole reply 5.2 s.
+
+> Based on your location, the nearest drinking water options are:
+> 1. **Market Square fountain** - 220 meters SW from home (closest)
+> 2. Becket's Park tap - 1.0 km SSE
+> 3. Spring at the allotment - 1.1 km NW (marked as a saved place)
+> 4. Abington Park drinking fountain - 1.6 km ENE
+> The **Market Square fountain** is your closest option, just over 200 meters away.
+
+**`llama3.2:3b`**: right. Called: `nearest_place {"kind": "drinking water", "near": "home"}`. First word 0.9 s, whole reply 1.9 s.
+
+> The nearest drinking water is:
+> 1. Market Square fountain, approximately 220 meters southwest of home.
+> 2. Becket's Park tap, approximately 1.0 kilometer southeast of home.
+> 3. Spring at the allotment, approximately 1.1 kilometers northwest of home, available all year.
+
+**`bonsai-2:4b`**: right. Called: `find_places {"kind": "drinking water", "near": "home"}`. First word 5.6 s, whole reply 7.5 s.
+
+> The nearest drinking water is the **Market Square fountain**, located about **220 metres southwest** of home [1].
+> Other nearby options include:
+> - Becket's Park tap (1.0 km SSE) [1]
+> - Spring at the allotment (1.1 km NW, clear all year) [1]
+> - Abington Park drinking fountain (1.6 km ENE) [1]
+
+**`bonsai-2:9b`**: right. Called: `find_places {"kind": "drinking water", "near": "home"}`. First word 11.6 s, whole reply 14.5 s.
+
+> The nearest drinking water source to your home is:
+> **Market Square fountain** - 220 m SW [1]
+> Other nearby options include:
+> - Becket's Park tap - 1.0 km SSE [1]
+> - Spring at the allotment - 1.1 km NW [1]
+> - Abington Park drinking fountain - 1.6 km ENE [1]
+
+**`ornith:9b`**: right. Called: `nearest_place {"kind": "drinking water", "near": "home"}`. First word 10.9 s, whole reply 14.1 s.
+
+> The nearest drinking water sources to home are:
+> 1. **Market Square fountain** — 220 m SW
+> 2. **Becket's Park tap** — 1.0 km SSE
+> 3. **Spring at the allotment** — 1.1 km NW (noted as clear all year)
+> The Market Square fountain is the closest by far.
+
+</details>
+
+<details><summary><b>Which hospital is nearest to Northampton?</b> (hospital-northampton)</summary>
+
+**`llama3.2:1b`**: right. Called: `nearest_place {"kind": "hospital", "near": "Northampton"}`. First word 0.4 s, whole reply 1.0 s.
+
+> The nearest hospital to Northampton is Northampton General Hospital.
+> Source [1] (from Outpost: the nearest places, Hospitals, fetched 17 Nov):
+> 1. Northampton General Hospital (Hospital) at 52.2353, -0.8836, 1.6 km S.
+> 2. Bedford Hospital (Hospital) at 52.1290, -0.4697, 31 km ESE.
+
+**`lfm3:1.7b`**: right. Called: `nearest_place {"kind": "hospital", "near": "Northampton"}`. First word 1.8 s, whole reply 2.4 s.
+
+> According to the saved places data, the nearest hospital to **Northampton** is:
+> - **Northampton General Hospital** – approximately **1.6 km south** of Northampton (coordinates: 52.2353, -0.8836).
+> The next closest option is Bedford Hospital, about 31 km east-southeast.
+
+**`bonsai-2:2b`**: right. Called: `nearest_place {"kind": "hospital", "near": "Northampton", "count": 3}`. First word 2.7 s, whole reply 3.2 s.
+
+> The nearest hospital to Northampton is **Northampton General Hospital**, which is only about 1.6 km away.
+> Other nearby hospitals include:
+> - Bedford Hospital (31 km ESE)
+
+**`llama3.2:3b`**: right. Called: `nearest_place {"kind": "hospital", "near": "Northampton"}`. First word 0.8 s, whole reply 1.6 s.
+
+> The nearest hospital to Northampton is Northampton General Hospital, which is approximately 1.6 km south of the city center. Bedford Hospital is also relatively close, located about 31 km east-southeast of Northampton.
+
+**`bonsai-2:4b`**: right. Called: `nearest_place {"kind": "hospital", "near": "Northampton", "count": 3}`. First word 5.8 s, whole reply 8.0 s.
+
+> The nearest hospital to Northampton is **Northampton General Hospital**, located approximately **1.6 km South** of the city [1].
+> Here are the top two nearest hospitals:
+> | Rank | Hospital | Distance | Direction |
+> |------|----------|----------|-----------|
+> | 1 | Northampton General Hospital | 1.6 km | S |
+> | 2 | Bedford Hospital | 31 km | ESE |
+> Source [1] is from Outpost's map data, fetched on 17 Nov.
+
+**`bonsai-2:9b`**: right. Called: `nearest_place {"kind": "hospital", "near": "Northampton"}`. First word 13.5 s, whole reply 14.5 s.
+
+> The nearest hospital to Northampton is **Northampton General Hospital**, located 1.6 km south of the city [1].
+
+**`ornith:9b`**: right. Called: `nearest_place {"kind": "hospital", "near": "Northampton", "count": 3}`. First word 10.3 s, whole reply 12.3 s.
+
+> The nearest hospital to Northampton is:
+> - **Northampton General Hospital** — about **1.6 km south** of Northampton [1].
+> The next nearest is Bedford Hospital, roughly 31 km to the east-southeast.
+
+</details>
+
+<details><summary><b>How many days of food have we got?</b> (food-days)</summary>
+
+**`llama3.2:1b`**: right. Called: `supplies {"category": "food", "page": 1}`. First word 0.9 s, whole reply 1.5 s.
+
+> We have 10 tin of baked beans, 5 pack of pasta, and a total of 4.9 days of food stock.
+> Note: The outlook for all stock is that we have 4.9 days of food stock, 2.0 days of water stock, and 7 days of stock wanted.
+
+**`lfm3:1.7b`**: right. Called: `supplies {"category": "food"}`. First word 3.7 s, whole reply 4.3 s.
+
+> According to the household's supplies record, you have **4.9 days** of food remaining (out of a total of 7 days needed). This is based on the current food stock: baked beans (10 tins) and pasta (5 packs).
+
+**`bonsai-2:2b`**: right. Called: `supplies {"query": "food"}`. First word 2.0 s, whole reply 2.6 s.
+
+> You have **2 days** of food currently in stock:
+> - 10 tins of baked beans
+> - 5 packs of pasta
+> The outlook shows a total of **4.9 days** of food remaining out of your 7-day supply.
+
+**`llama3.2:3b`**: wrong: the answer does not hold what the tool said. Called: `supplies {"category": "food", "page": 1}`. First word 3.2 s, whole reply 3.4 s.
+
+> You have 2 days' worth of food.
+
+**`bonsai-2:4b`**: right. Called: `supplies {"category": "food"}`. First word 4.4 s, whole reply 4.7 s.
+
+> We have **4.9 days** of food in stock [1].
+
+**`bonsai-2:9b`**: right. Called: `supplies {"category": "food"}`. First word 8.8 s, whole reply 9.3 s.
+
+> You have **4.9 days** of food supply held [1].
+
+**`ornith:9b`**: right. Called: `supplies {"category": "food"}`. First word 9.5 s, whole reply 12.8 s.
+
+> We've got about **4.9 days** of food on hand, but we're aiming for 7 days. That's a bit short of our target.
+> Here's what's in the food cupboard:
+> - Baked beans: 10 tins
+> - Pasta: 5 packs
+> Want to check what else we're low on, or look at the water supply too?
+
+</details>
+
+<details><summary><b>What's on our power cut plan?</b> (power-cut-plan)</summary>
+
+**`llama3.2:1b`**: right. Called: `emergency_plans {"plan": "power cut", "page": 1}`. First word 1.1 s, whole reply 1.5 s.
+
+> Our power cut plan includes putting torches where everyone can find them, checking on the neighbors, and meeting at the church at noon each day. It also includes keeping in touch through the PMR446 channel 3.
+> Please note that the plan is subject to change and may be updated.
+
+**`lfm3:1.7b`**: right. Called: `emergency_plans {"plan": "power cut"}`. First word 3.4 s, whole reply 5.0 s.
+
+> Here’s your **Power cut** emergency plan (last reviewed 17 Nov 2026):
+> **Emergency number:** 999  
+> **Key steps:**
+> 1. Place torches where everyone can see them.  
+> 2. Check on the neighbours.  
+> 3–6. Repeat “Check on the neighbours” (multiple rounds).  
+> 7–12. Continue checking on neighbours during the outage.  
+> 13–15. Continue checking after the outage ends.  
+> (Additional steps continue beyond 15; ask for page 2 for the rest.)
+> **Meeting place:**  
+> - If the home can’t be used, meet at **Number 12's porch** – knock twice to get attention.
+> **Daily coordination:**  
+> - Meet at the **church at noon** each day.  
+> - Radio channel: **PMR446 channel 3**.
+> That covers the main actions, locations, and contacts for handling a power cut.
+
+**`bonsai-2:2b`**: right. Called: `emergency_plans {"plan": "power cut"}`. First word 3.0 s, whole reply 5.5 s.
+
+> Based on your emergency plans, here are the details for your **Power cut** plan:
+> **Emergency Number:** 999
+> **Steps (15 of 18 shown):**
+> 1. Put the torches where everyone can find them
+> 2. Check on the neighbours
+> 3. Check on the neighbours
+> 4. Check on the neighbours
+> 5. Check on the neighbours
+> 6. Check on the neighbours
+> 7. Check on the neighbours
+> 8. Check on the neighbours
+> 9. Check on the neighbours
+> 10. Check on the neighbours
+> 11. Check on the neighbours
+> 12. Check on the neighbours
+> 13. Check on the neighbours
+> 14. Check on the neighbours
+> 15. Check on the neighbours
+> **Meeting Places:**
+> - **Number 12's porch** (if the home cannot be used)
+> - **Church at noon each day**
+> - **PMR446 channel 3** (for keeping in touch)
+> The plan was last reviewed on November 17, 2026.
+
+**`llama3.2:3b`**: right. Called: `emergency_plans {"plan": "power cut", "page": 1}`. First word 3.4 s, whole reply 6.1 s.
+
+> The power cut plan includes steps to be taken before and during a power cut, as well as after. It also outlines meeting places and ways to keep in touch with the household and neighbors.
+> Before the power cut:
+> - Put torches in a visible place
+> - Check on neighbors
+> During the power cut:
+> - Check on neighbors (multiple times)
+> - Keep in touch with the household and neighbors through a meeting place (church at noon each day) and a radio channel (PMR446 channel 3)
+> After the power cut:
+> - Check on neighbors (multiple times)
+> Meeting places:
+> - Number 12's porch (if the home cannot be used)
+> - The church (at noon each day)
+> Ways to keep in touch:
+> - PMR446 channel 3 (radio)
+> Source [1]
+
+**`bonsai-2:4b`**: right. Called: `emergency_plans {"plan": "power cut"}`. First word 8.0 s, whole reply 13.3 s.
+
+> Here's what's on our **Power cut** plan [1]:
+> ### Emergency Details
+> - **Emergency number**: 999
+> - **Last reviewed**: 17 Nov 2026
+> ### Key Steps (shown 1–15 of 18)
+> The plan includes steps marked as:
+> - **(Before)** – Prepare items beforehand
+> - **(During)** – Actions while the power is out
+> - **(After)** – Recovery actions once power returns
+> Steps 1–15 cover:
+> 1. Put torches where everyone can find them
+> 2. Check on neighbours (repeated multiple times)
+> 3. Various neighbour checks before, during, and after the cut
+> ### Meeting Places
+> - **If home cannot be used**: Number 12's porch (knock twice)
+> - **Keeping in touch**: Meet at the church at noon each day; use PMR446 channel 3
+> > There are 18 steps total. If you'd like to see the remaining steps (16–18), ask again with page 2.
+
+**`bonsai-2:9b`**: right. Called: `emergency_plans {"plan": "power cut"}`. First word 10.6 s, whole reply 19.2 s.
+
+> Here's what's on your power cut plan [1]:
+> **Emergency Number:** 999
+> **Steps:**
+> 1. Put the torches where everyone can find them.
+> 2. Check on the neighbours.
+> 3. Check on the neighbours.
+> 4. Check on the neighbours.
+> 5. Check on the neighbours.
+> 6. Check on the neighbours.
+> 7. Check on the neighbours.
+> 8. Check on the neighbours.
+> 9. Check on the neighbours.
+> 10. Check on the neighbours.
+> 11. Check on the neighbours.
+> 12. Check on the neighbours.
+> 13. Check on the neighbours.
+> 14. Check on the neighbours.
+> 15. Check on the neighbours.
+> *(There are 18 steps total - I've shown you the first 15)*
+> **Meeting Places:**
+> - Number 12's porch (If the home cannot be used): Knock twice
+> **Keeping in Touch:**
+> - Meet at the church at noon each day
+> - PMR446 channel 3
+> Would you like to see the remaining steps (pages 2-3) or any other details about this plan?
+
+**`ornith:9b`**: right. Called: `emergency_plans {"plan": "power cut"}; emergency_plans {"plan": "power cut", "page": 2}`. First word 14.9 s, whole reply 22.9 s.
+
+> Here's what's on the **Power cut** plan [1][2]:
+> **Emergency number:** 999
+> **Before the cut:**
+> 1. Put the torches where everyone can find them.
+> 2–6. Check on the neighbours.
+> **During the cut:**
+> 7–12. Check on the neighbours.
+> **After the cut:**
+> 13–18. Check on the neighbours.
+> **Meeting place:** Number 12's porch (if the home cannot be used) — knock twice.
+> **Keeping in touch:** Meet at the church at noon each day; PMR446 channel 3.
+> The plan was last reviewed on 17 Nov 2026. It's a bit sparse — almost every step is just "check on the neighbours." Want me to look into anything specific about it, or check the other emergency plans?
+
+</details>
+
+<details><summary><b>Are there any weather warnings for us at the moment?</b> (warnings)</summary>
+
+**`llama3.2:1b`**: right. Called: `weather {"what": "warnings"}`. First word 0.3 s, whole reply 0.7 s.
+
+> There are no weather warnings for you at the moment.
+> Source [1] (from Outpost: the weather as last fetched, fetched just now):
+> Met Office weather warnings, from Met Office. Fetched just now.
+> For East Midlands:
+> None in force or ahead, as fetched.
+
+**`lfm3:1.7b`**: right. Called: `weather {"what": "warnings"}`. First word 3.5 s, whole reply 4.2 s.
+
+> According to the latest check (fetched just now), **there are no active or upcoming Met Office weather warnings** for your area — specifically, none are in force or ahead for East Midlands [1].
+> So, no weather warnings are currently reported for you at the moment.
+
+**`bonsai-2:2b`**: right. Called: `weather {"what": "warnings"}`. First word 2.1 s, whole reply 2.6 s.
+
+> There are no weather warnings currently in force or ahead for your location in the East Midlands. The weather data was last fetched 2 minutes ago, and no warnings were issued.
+
+**`llama3.2:3b`**: right. Called: `weather {"what": "warnings"}`. First word 0.5 s, whole reply 0.9 s.
+
+> According to the latest weather information from Outpost, which is 3 minutes old, there are currently no weather warnings for the East Midlands region.
+
+**`bonsai-2:4b`**: right. Called: `weather {"what": "warnings"}`. First word 5.3 s, whole reply 6.3 s.
+
+> No, there are no current weather warnings for you at the moment. The last update from Outpost (fetched 4 minutes ago) shows that for the East Midlands area, there are none in force or ahead [1].
+
+**`bonsai-2:9b`**: right. Called: `weather {"what": "warnings"}`. First word 9.8 s, whole reply 10.5 s.
+
+> No, there are currently no weather warnings in force or ahead for the East Midlands area [1].
+
+**`ornith:9b`**: right. Called: `weather {"what": "warnings"}`. First word 9.4 s, whole reply 10.7 s.
+
+> No, there are currently no Met Office weather warnings in force for the East Midlands. The check was done about 11 minutes ago.
+
+</details>
+
+<details><summary><b>What's the river doing?</b> (river)</summary>
+
+**`llama3.2:1b`**: wrong: did not call weather with arguments that fitted (1 refused). Called: `(refused) weather {"what": "river"}`. First word 0.9 s, whole reply 1.7 s.
+
+> I can't provide information about the river's current activity or conditions. If you'd like to know the river's weather forecast, I can help with that.
+> For example, you can ask: "What's the weather like today near the river?" or "Will it rain tomorrow near the river?"
+> If you'd like to know more about the river's history or past weather conditions, I can try to help with that as well.
+> If you have any other questions or need assistance with something else, feel free to ask!
+
+**`lfm3:1.7b`**: right. Called: `weather {"what": "levels"}`. First word 3.2 s, whole reply 4.1 s.
+
+> According to the latest weather/environmental data fetched just now, there are **no river level monitoring stations within 8 km** of your home. That means I don't have current information on how the local river is behaving (e.g., rising or falling levels).
+> So, unfortunately, I can't tell you exactly what the river is doing right now — you may want to check a local gauge or recent weather reports for details.
+
+**`bonsai-2:2b`**: right. Called: `weather {"what": "floods"}`. First word 1.8 s, whole reply 2.1 s.
+
+> There is a flood warning for Christchurch Harbour in the English Channel. The water levels are rising in that area.
+
+**`llama3.2:3b`**: right. Called: `weather {"what": "floods"}`. First word 3.0 s, whole reply 3.3 s.
+
+> It appears that the river is experiencing flooding, specifically in the Christchurch Harbour in the English Channel.
+
+**`bonsai-2:4b`**: right. Called: `weather {"what": "floods"}; weather {"what": "levels"}`. First word 7.2 s, whole reply 9.2 s.
+
+> Based on the latest weather data from Outpost:
+> **Flood Warnings:**
+> - There is a flood alert for **Christchurch Harbour** (English Channel) [1]
+> **River Levels:**
+> - No level stations are within 8 km of home [2]
+> So while there's a flood warning for Christchurch Harbour, we don't have specific river level data nearby since no stations are in the immediate area.
+
+**`bonsai-2:9b`**: right. Called: `weather {"what": "all"}`. First word 12.2 s, whole reply 14.2 s.
+
+> Based on the latest weather data from Outpost, there are no river level stations within 8 km of your home, so there's no specific river level information available for your area. The data was fetched 8 minutes ago and shows no flood warnings or river levels in the immediate vicinity.
+
+**`ornith:9b`**: right. Called: `weather {"what": "levels"}; weather {"what": "all"}`. First word 16.5 s, whole reply 21.0 s.
+
+> There are no river level stations within 8 km of Home, so I don't have current river level data to share. The Environment Agency hasn't recorded any river levels near your location.
+> The only flood alert in the area is for Christchurch Harbour (English Channel), not a river. No Met Office weather warnings are in force for the East Midlands either.
+> If you're asking about a specific river, let me know which one and I can try to look it up.
+
+</details>
+
+<details><summary><b>When is sunset at home today?</b> (sunset)</summary>
+
+**`llama3.2:1b`**: right. Called: `sun_and_compass {"near": "home", "date": "today"}`. First word 1.0 s, whole reply 1.2 s.
+
+> The sunset at home today is at 16:08 UTC (16:08 GMT local) in the WSW.
+> [1]
+
+**`lfm3:1.7b`**: right. Called: `sun_and_compass {"near": "home", "date": "today"}`. First word 1.9 s, whole reply 2.6 s.
+
+> Today at your home (coordinates 52.2405, -0.8936), sunset is at **16:08 UTC** (which is 16:08 local time) in the **WSW** direction. 
+> For reference, sunrise was at 07:27 UTC and daylight lasted about 8 hours and 41 minutes.
+
+**`bonsai-2:2b`**: right. Called: `sun_and_compass {"near": "home", "date": "today"}`. First word 2.3 s, whole reply 2.7 s.
+
+> Based on your location, the sunset today is at **16:08 GMT local time**. The sun will set in the southwest direction.
+
+**`llama3.2:3b`**: right. Called: `sun_and_compass {"near": "home", "date": "today"}`. First word 3.5 s, whole reply 4.0 s.
+
+> According to the information from Outpost, sunset at home today is at 16:08 UTC (16:08 GMT local) in the WSW.
+
+**`bonsai-2:4b`**: right. Called: `sun_and_compass {"near": "home", "date": "today"}`. First word 5.9 s, whole reply 6.7 s.
+
+> Sunset at home today is at **16:08 UTC** (16:08 GMT local), in the WSW direction [1].
+
+**`bonsai-2:9b`**: right. Called: `sun_and_compass {"near": "home", "date": "today"}`. First word 11.3 s, whole reply 12.0 s.
+
+> Sunset at home today is at 16:08 GMT [1].
+
+**`ornith:9b`**: right. Called: `sun_and_compass {"date": "today"}`. First word 10.8 s, whole reply 12.5 s.
+
+> Sunset at home today is **16:08 GMT** (4:08 PM), in the WSW direction. Daylight lasts about 8 hours and 41 minutes.
+
+</details>
+
+<details><summary><b>What is the magnetic declination at home?</b> (declination)</summary>
+
+**`llama3.2:1b`**: wrong: the reply did not finish (failed). Called: `none`. First word 1.0 s, whole reply 1.0 s.
+
+> (failed) The model wrote out a request to look something up as text instead of making it, so nothing was looked up. Small models do this; ask again, or choose a model that looks things up well (see Which model, under Settings).
+
+**`lfm3:1.7b`**: right. Called: `sun_and_compass {}`. First word 1.9 s, whole reply 2.5 s.
+
+> According to the "sun and compass" data for your home location (52.2405, -0.8936), the magnetic declination is **0.9° east** (based on the World Magnetic Model 2025, WMM2025).
+> [1] *sun_and_compass* – Outpost record, 2026-11-17.
+
+**`bonsai-2:2b`**: right. Called: `sun_and_compass {"near": "home", "date": "now"}`. First word 5.0 s, whole reply 5.6 s.
+
+> Based on your location at home, the magnetic declination is **0.9° east** (measured from WMM2025). The grid magnetic angle on an OS map is 0.0°.
+
+**`llama3.2:3b`**: right. Called: `sun_and_compass {"near": "home", "date": "now"}`. First word 0.9 s, whole reply 1.2 s.
+
+> The magnetic declination at home is 0.9° east.
+
+**`bonsai-2:4b`**: right. Called: `sun_and_compass {"near": "home"}`. First word 5.5 s, whole reply 6.1 s.
+
+> The magnetic declination at home is **0.9° east** (using WMM2025) [1].
+
+**`bonsai-2:9b`**: right. Called: `sun_and_compass {}`. First word 9.7 s, whole reply 10.3 s.
+
+> The magnetic declination at home is **0.9° east** [1].
+
+**`ornith:9b`**: right. Called: `sun_and_compass {"near": "home"}`. First word 11.6 s, whole reply 12.9 s.
+
+> The magnetic declination at home is **0.9° east** (based on the World Magnetic Model 2025) [1].
+
+</details>
+
+<details><summary><b>What frequency is the shipping forecast on?</b> (shipping-forecast)</summary>
+
+**`llama3.2:1b`**: wrong: the reply did not finish (failed). Called: `none`. First word 1.3 s, whole reply 1.3 s.
+
+> (failed) The model wrote out a request to look something up as text instead of making it, so nothing was looked up. Small models do this; ask again, or choose a model that looks things up well (see Which model, under Settings).
+
+**`lfm3:1.7b`**: wrong: did not call radio_frequencies. Called: `search_library {"query": "shipping forecast"}`. First word 6.6 s, whole reply 7.2 s.
+
+> I searched the household's library for “shipping forecast” but found no matching documents or notes. Therefore, I don’t have any information about which frequency the shipping forecast airs on. If you can give me more context (e.g., the exact name or type of forecast), I'd be happy to look again.
+
+**`bonsai-2:2b`**: wrong: did not call radio_frequencies. Called: `none`. First word 2.4 s, whole reply 3.3 s.
+
+> I don't have access to shipping forecast data in my library system. The weather tool can provide forecasts, but it's for weather conditions rather than shipping forecasts. 
+> If you're looking for shipping-related information, this would need to come from a different source or be part of your household's specific records that I can search through. Would you like me to check the weather forecast instead?
+
+**`llama3.2:3b`**: right. Called: `radio_frequencies {"kind": "shipping forecast"}`. First word 1.0 s, whole reply 1.8 s.
+
+> The shipping forecast is broadcast on frequencies 87.5 to 108 MHz, FM, on BBC Radio 4, at 00:48 and 05:34 local time daily, and at 17:54 local time on Saturday and Sunday.
+
+**`bonsai-2:4b`**: right. Called: `radio_frequencies {"kind": "weather"}`. First word 9.2 s, whole reply 10.2 s.
+
+> The shipping forecast is broadcast on **BBC Radio 4** at frequencies of **87.5 to 108 MHz, FM**.
+> [1]
+
+**`bonsai-2:9b`**: right. Called: `radio_frequencies {"kind": "weather"}`. First word 15.6 s, whole reply 17.8 s.
+
+> The Shipping Forecast is on **BBC Radio 4** at **87.5 to 108 MHz, FM (broadcast)**. It's broadcast at 00:48 and 05:34 local time daily, and also at 17:54 local time on Saturday and Sunday [1].
+
+**`ornith:9b`**: right. Called: `radio_frequencies {"kind": "shipping"}`. First word 17.9 s, whole reply 23.7 s.
+
+> The Shipping Forecast is broadcast as part of **BBC Radio 4** on FM (87.5–108 MHz). It's not on a separate frequency—it's a scheduled programme within Radio 4's broadcast.
+> The shipping forecast is aired at:
+> - **00:48** and **05:34** local time daily
+> - **17:54** local time on Saturdays and Sundays
+> If you're listening on FM, you'd tune to BBC Radio 4's frequency in your area (typically around 92.5–96.1 MHz in the UK).
+
+</details>
+
+<details><summary><b>How long should I boil water to make it safe to drink?</b> (boil-water)</summary>
+
+**`llama3.2:1b`**: wrong: the reply did not finish (failed). Called: `none`. First word 0.5 s, whole reply 8.7 s.
+
+> (failed) The model wrote out a request to look something up as text instead of making it, so nothing was looked up. Small models do this; ask again, or choose a model that looks things up well (see Which model, under Settings).
+
+**`lfm3:1.7b`**: right. Called: `search_library {"query": "boil water safe to drink"}; read_passage {"passage": 6}`. First word 7.0 s, whole reply 8.0 s.
+
+> To make water safe to drink by boiling:
+> - **At sea level:** Bring the water to a rolling boil and let it boil for **about 1 minute**.  
+> - **At altitude:** Extend the boil to roughly **3 minutes** (instead of 1 minute) — i.e., a total of about 2–3 minutes depending on the exact altitude.
+> So, generally, bring it to a rolling boil and maintain it for at least **one minute**, but if you're at a higher elevation, plan on **three minutes** of boiling. [1]
+
+**`bonsai-2:2b`**: wrong: did not call search_library. Called: `none`. First word 1.9 s, whole reply 3.9 s.
+
+> To make water safe to drink, you should boil it for at least **1 minute**. The World Health Organization recommends boiling water for a minimum of 1 minute, though longer boiling times (like 3 minutes) are better for safety, especially if you're concerned about contaminants or if the water is from a source with potential issues.
+> Here are some additional tips:
+> - Boil water for **3 minutes** if it's from a public tap or if there's any concern about contamination
+> - Use a pot or kettle to boil water
+> - Let the water cool before using it
+> Would you like me to search the household's library for any specific information about water safety or related topics?
+
+**`llama3.2:3b`**: right. Called: `search_library {"query": "boil water time", "page": 1}`. First word 0.7 s, whole reply 1.2 s.
+
+> To make water safe to drink, you should boil it for at least 1 minute at sea level, but 3 minutes at higher altitudes.
+
+**`bonsai-2:4b`**: wrong: did not call search_library. Called: `none`. First word 6.0 s, whole reply 10.2 s.
+
+> Boiling water is one of the most common methods for making it safe to drink, especially when you're unsure about its safety. The general guideline is:
+> - **1-3 minutes** at a rolling boil is typically sufficient to kill pathogens and bacteria [general knowledge]
+> - For extra safety, some sources recommend boiling for **at least 5 minutes**, especially if the water source is uncertain or you're in an area with potential contamination risks [general knowledge]
+> However, this is general safety information. If you have specific concerns about your water source (like knowing it's from a well, river, or natural source), I'd recommend checking your household's emergency plans or any relevant documents you might have saved. You could search for "boil water" in your household documents to see if there are any specific guidelines stored there [search_library].
+> Would you like me to help you search for any specific information about water safety in your household documents?
+
+**`bonsai-2:9b`**: wrong: did not call search_library. Called: `none`. First word 9.1 s, whole reply 13.3 s.
+
+> To make water safe to drink by boiling, the general recommendation is:
+> - **1 minute** at sea level or below 6,500 feet (2,000 meters) altitude
+> - **3 minutes** at high altitudes above 6,500 feet (2,000 meters)
+> This ensures that any bacteria, viruses, or parasites are killed. If you're in a situation where boiling water is necessary (such as during an emergency or power outage), make sure to use a clean pot and boil it for the full recommended time.
+
+**`ornith:9b`**: wrong: did not call search_library. Called: `none`. First word 8.2 s, whole reply 15.7 s.
+
+> Boil water for **at least 1 minute** at regular altitude (sea level to about 2,000 m / 6,500 ft). At higher altitudes (above 2,000 m / 6,500 ft), boil for **3 minutes** instead, because water boils at a lower temperature up there.
+> The key is to get it to a rolling boil — that's the visual cue you need, not a specific timer. Once it's bubbling vigorously, keep it at that boil for the full minute (or three at altitude). This kills bacteria, viruses, and parasites that make water unsafe to drink.
+> If you want to check the library for any notes on this topic, I can search — but this is a well-established guideline.
+
+</details>
+
+<details><summary><b>Is there anything on first aid I could download?</b> (first-aid-download)</summary>
+
+**`llama3.2:1b`**: right. Called: `search_catalogue {"subject": "first aid"}`. First word 0.3 s, whole reply 1.2 s.
+
+> There is no downloadable file for "first aid" in the Outpost catalogue.
+> As a backup, I can suggest some alternatives:
+> * You can search for "first aid manual" in the catalogue to find a book or document that provides information on first aid.
+> * You can also search for "first aid" in the household's data to find any relevant information or resources.
+> If you need a specific type of first aid manual, you may be able to find it in the Explore section of the catalogue.
+
+**`lfm3:1.7b`**: right. Called: `search_catalogue {"subject": "first aid"}`. First word 2.8 s, whole reply 3.9 s.
+
+> Yes — the catalogue lists a **First aid manual** (History and general reference, Test Press), described as a field guide to first aid and casualty care. It's estimated at about **14.0 MB**. However, note that it is **not currently held** in Outpost; it's located in the *Explore* section and would need to be retrieved/downloaded from there.
+> Would you like me to look up any other first-aid-related items?
+
+**`bonsai-2:2b`**: right. Called: `search_catalogue {"subject": "first aid"}`. First word 2.2 s, whole reply 3.2 s.
+
+> Based on the catalogue search, there is a **First aid manual** available (History and general reference, Test Press), but it is not currently held in your library. It's only available in Explore, approximately 14.0 MB in size.
+> Would you like me to check if there are any other resources related to first aid that might be available?
+
+**`llama3.2:3b`**: right. Called: `search_catalogue {"subject": "first aid"}`. First word 3.2 s, whole reply 4.3 s.
+
+> It appears that there is no first aid manual available for download within Outpost. The catalogue indicates that there is a field guide to first aid and casualty care, but it is not held in Outpost. It is available in Explore, but its size is approximately 14.0 MB, which may be too large to download.
+
+**`bonsai-2:4b`**: right. Called: `search_catalogue {"subject": "first aid"}`. First word 5.2 s, whole reply 7.2 s.
+
+> Yes, there is one first aid item available for download in Outpost:
+> | Title | Size | Status |
+> |-------|------|--------|
+> | First aid manual (History and general reference, Test Press) | ~14.0 MB | Not held (available to download) |
+> This is the only first aid entry found in the catalogue [1]. If you need more details or other topics, let me know.
+
+**`bonsai-2:9b`**: right. Called: `search_catalogue {"subject": "first aid"}`. First word 11.2 s, whole reply 13.2 s.
+
+> Yes, there is something on first aid you could download:
+> - **First aid manual** (History and general reference, Test Press): A field guide to first aid and casualty care. It's not currently held by the household but is available in Explore for about 14 MB.
+
+**`ornith:9b`**: right. Called: `search_catalogue {"subject": "first aid"}`. First word 9.5 s, whole reply 11.7 s.
+
+> Yes — there's a **First aid manual** (History and general reference, Test Press) in the catalogue. It's about 14 MB and isn't held yet, so it can be downloaded. Want me to go ahead and get it?
+
+</details>
+
+<details><summary><b>What pharmacies are there in Bedford?</b> (pharmacies-bedford)</summary>
+
+**`llama3.2:1b`**: wrong: the reply did not finish (failed). Called: `none`. First word 1.4 s, whole reply 1.4 s.
+
+> (failed) The model wrote out a request to look something up as text instead of making it, so nothing was looked up. Small models do this; ask again, or choose a model that looks things up well (see Which model, under Settings).
+
+**`lfm3:1.7b`**: right. Called: `find_places {"kind": "pharmacy", "near": "Bedford"}`. First word 6.6 s, whole reply 7.5 s.
+
+> I checked the household's saved places and map reference layers for pharmacies near **Bedford**, but no pharmacies were found within the searched area (default 10 km radius). The available layers include police, fire/ambulance, hospitals, and shelters, but none for pharmacies in that location. 
+> If you'd like, I can try searching a different nearby place or a broader area.
+
+**`bonsai-2:2b`**: right. Called: `find_places {"query": "pharmacy", "kind": "pharmacy", "near": "Bedford"}; find_places {"query": "pharmacy", "kind": "pharmacy", "near": "Bedford", "radius_km": 20}`. First word 4.4 s, whole reply 5.2 s.
+
+> Based on the available data in Outpost, there are no pharmacies currently held within the Bedford area. The household's reference layers only include Police, fire and ambulance services, hospitals, and shelters. If you need to find pharmacies, you would need to check the Maps layer for a different search radius or use a different method to locate them.
+
+**`llama3.2:3b`**: right. Called: `nearest_place {"kind": "pharmacy", "near": "Bedford"}`. First word 3.1 s, whole reply 3.8 s.
+
+> It seems that Outpost does not have information on pharmacies in Bedford. If you'd like to find pharmacies in Bedford, you can use a mapping tool or search engine to look up the nearest pharmacies in the area.
+
+**`bonsai-2:4b`**: right. Called: `find_places {"kind": "pharmacy", "near": "Bedford"}`. First word 7.1 s, whole reply 10.1 s.
+
+> Based on the current data in Outpost, there are no pharmacies listed within 10 km of Bedford. The map layers available in your household's reference data do not include a "pharmacy" layer for this area.
+> The layers currently held are:
+> - Police, fire and ambulance (13 records) [1]
+> - Hospitals (2 records) [1]
+> - Shelters and assembly points (3 records) [1]
+> If you need pharmacy information, you would need to check the Maps → Layers → Get reference data section in Outpost to see if a pharmacy layer can be added or updated. Otherwise, you may need to consult external sources outside of Outpost.
+
+**`bonsai-2:9b`**: right. Called: `find_places {"kind": "pharmacy", "near": "Bedford"}`. First word 11.4 s, whole reply 14.7 s.
+
+> There are no pharmacies currently held in the map's reference layers within 10 km of Bedford. The available reference layers for that area include:
+> - Police (13)
+> - Fire and ambulance (13)
+> - Hospitals (2)
+> - Shelters and assembly points (3)
+> If you need pharmacy information, you may need to check the map's reference data directly under Maps → Layers → Get reference data.
+
+**`ornith:9b`**: right. Called: `find_places {"kind": "pharmacy", "near": "Bedford"}; nearest_place {"kind": "pharmacy", "near": "Bedford", "count": 10}`. First word 20.2 s, whole reply 24.5 s.
+
+> I don't have pharmacy data in my map layers for Bedford. The reference data I hold covers Police, fire and ambulance (13), Hospitals (2), and Shelters and assembly points (3), but no pharmacy kind.
+> To get pharmacy information, you'd need to fetch that area under **Maps → Layers → Get reference data** as the tools suggested. Would you like me to help with anything else from what I do have, like the hospitals or shelters in Bedford?
+
+</details>
+
+<details><summary><b>What is the capital of France?</b> (capital-france)</summary>
+
+**`llama3.2:1b`**: wrong: the reply did not finish (failed). Called: `none`. First word 1.4 s, whole reply 1.4 s.
+
+> (failed) The model wrote out a request to look something up as text instead of making it, so nothing was looked up. Small models do this; ask again, or choose a model that looks things up well (see Which model, under Settings).
+
+**`lfm3:1.7b`**: right. Called: `none`. First word 0.6 s, whole reply 0.9 s.
+
+> The capital of France is **Paris**.
+> (This is general knowledge, not drawn from the household's stored documents or tools.)
+
+**`bonsai-2:2b`**: right. Called: `none`. First word 1.5 s, whole reply 1.6 s.
+
+> The capital of France is Paris.
+
+**`llama3.2:3b`**: wrong: called search_catalogue for a question that needs no tool. Called: `search_catalogue {"subject": "France capital"}`. First word 3.1 s, whole reply 3.9 s.
+
+> I'm not aware of the capital of France. I don't have any information about France or its capital in Outpost's catalogue or library. If you'd like to know more about France, I can try searching the catalogue or library for general information about the country.
+
+**`bonsai-2:4b`**: right. Called: `none`. First word 3.5 s, whole reply 3.8 s.
+
+> The capital of France is Paris [general knowledge].
+
+**`bonsai-2:9b`**: right. Called: `none`. First word 6.0 s, whole reply 6.4 s.
+
+> The capital of France is Paris [general knowledge].
+
+**`ornith:9b`**: right. Called: `none`. First word 7.4 s, whole reply 7.7 s.
+
+> The capital of France is **Paris**.
+
+</details>
+
+<details><summary><b>Write a haiku about rain.</b> (haiku)</summary>
+
+**`llama3.2:1b`**: wrong: the reply did not finish (failed). Called: `none`. First word 1.6 s, whole reply 9.1 s.
+
+> (failed) The model wrote out a request to look something up as text instead of making it, so nothing was looked up. Small models do this; ask again, or choose a model that looks things up well (see Which model, under Settings).
+
+**`lfm3:1.7b`**: right. Called: `none`. First word 4.8 s, whole reply 5.2 s.
+
+> Here's a haiku about rain:
+> **Rain taps soft the glass,**  
+> **each drop a tiny pearl,**  
+> **silence washes the air.**
+> [No tool needed — this is a creative request.]
+
+**`bonsai-2:2b`**: right. Called: `none`. First word 1.2 s, whole reply 1.6 s.
+
+> Here's a haiku about rain:
+> **Rain falls softly**
+> **Green leaves dance**
+> **Earth feels wet**
+
+**`llama3.2:3b`**: wrong: the reply did not finish (failed). Called: `none`. First word 2.9 s, whole reply 2.9 s.
+
+> (failed) The model wrote out a request to look something up as text instead of making it, so nothing was looked up. Small models do this; ask again, or choose a model that looks things up well (see Which model, under Settings).
+
+**`bonsai-2:4b`**: right. Called: `none`. First word 5.6 s, whole reply 5.9 s.
+
+> Rain falls on the roof
+> Silver drops on the window pane
+> Quiet world awakes
+
+**`bonsai-2:9b`**: right. Called: `none`. First word 7.4 s, whole reply 8.3 s.
+
+> Here's a haiku about rain:
+> Grey clouds gather high,
+> Soft drops fall on the garden,
+> Green leaves drink their fill.
+
+**`ornith:9b`**: right. Called: `none`. First word 21.8 s, whole reply 22.5 s.
+
+> Soft rain falls gently
+> Washing the dusty world clean
+> Green things wake up now
+
+</details>
+
+<details><summary><b>What is the nearest supermarket to home, and what time does the sun set there today?</b> (two-tools)</summary>
+
+**`llama3.2:1b`**: wrong: did not call sun_and_compass. Called: `nearest_place {"kind": "supermarket", "near": "home"}`. First word 0.5 s, whole reply 1.4 s.
+
+> The nearest supermarket to home is Tesco Express Wellingborough Road, located at 52.2430, -0.8800, Wellingborough Road, Northampton, NN1 4EY, 970 m ENE.
+> As for the time the sun sets, I don't have real-time access to the current date and time. However, I can suggest checking a reliable online source, such as a weather website or a calendar, to find out the sunset time for today, November 17th, 2023.
+
+**`lfm3:1.7b`**: right. Called: `nearest_place {"kind": "supermarket", "near": "home"}; sun_and_compass {"near": "Iceland Gold Street, Northampton", "date": "today"}; sun_and_compass {"near": "52.2370,-0.9007", "date": "today"}`. First word 10.0 s, whole reply 11.2 s.
+
+> **Nearest supermarket to home:**  
+> - **Iceland Gold Street (Supermarket)** – 52.2370, -0.9007, Gold Street, Northampton, NN1 1RA, about **620 m SW** of your home [1].
+> **Sunset at that location today (2026‑11‑17):**  
+> - Sunset at **16:08 local time** (16:08 GMT/WSW) [3].  
+> So, head to Iceland Gold Street for groceries, and plan to see the sun set around 4:08 PM local time.
+
+**`bonsai-2:2b`**: right. Called: `nearest_place {"kind": "supermarket", "near": "home", "count": 3}; sun_and_compass {"near": "home", "date": "today"}`. First word 5.4 s, whole reply 7.3 s.
+
+> Based on your location in Northampton, here are the answers:
+> **Nearest Supermarket:**
+> - **Iceland Gold Street** (620 m SW) - 620 meters away
+> - **Tesco Express Wellingborough Road** (970 m ENE) - 970 meters away
+> - **Lidl St James** (1.5 km WSW) - 1.5 kilometers away
+> **Sunset Time:**
+> - The sun sets at **16:08 GMT local time** today (November 17, 2026)
+> The sun also rises at 07:27 GMT and reaches its highest point at 11:48 GMT.
+
+**`llama3.2:3b`**: right. Called: `nearest_place {"kind": "supermarket", "near": "home", "count": 1}; sun_and_compass {"near": "home", "date": "today"}`. First word 1.6 s, whole reply 2.7 s.
+
+> The nearest supermarket to home is Iceland Gold Street (Supermarket) at 52.2370, -0.9007, Gold Street, Northampton, NN1 1RA, 620 m SW.
+> The sun sets at 16:08 UTC (16:08 GMT local) on 2026-11-17, in the WSW direction.
+
+**`bonsai-2:4b`**: right. Called: `nearest_place {"kind": "supermarket", "near": "home", "count": 3}; sun_and_compass {"near": "home", "date": "today"}`. First word 9.9 s, whole reply 11.7 s.
+
+> Based on the household data:
+> **Nearest supermarket to home:**
+> - **Iceland Gold Street** – 620 m SW of home [1]
+> **Sunset time today:**
+> - **16:08 GMT local** (on 2026-11-17) [2]
+> The sun sets in the WSW direction at that time.
+
+**`bonsai-2:9b`**: right. Called: `nearest_place {"kind": "supermarket", "near": "home"}; sun_and_compass {"near": "home", "date": "today"}`. First word 15.7 s, whole reply 18.4 s.
+
+> The nearest supermarket to home is **Iceland Gold Street** on Gold Street, Northampton, NN1 1RA, at a distance of 620 m to the southwest [1].
+> The sun sets today (2026-11-17) at **16:08 GMT** (local time) in the west-southwest [2].
+
+**`ornith:9b`**: right. Called: `nearest_place {"kind": "supermarket", "near": "home", "count": 1}; sun_and_compass {"near": "home", "date": "today"}`. First word 19.5 s, whole reply 22.4 s.
+
+> The nearest supermarket to home is **Iceland Gold Street** on Gold Street, Northampton (NN1 1RA), about **620 m to the SW** [1].
+> Today's sunset is at **16:08 GMT** (16:08 UTC) [2].
+
+</details>
+
+
+### Answers from the library, the new models
+
+The same day, the five models not measured before were run once through the 45
+questions of [the evaluation set](#the-evaluation-set), search by words only
+(`answers-eval.ts --mode keyword`); the two llama3.2 models' figures are the second
+round's, above. As the script printed it:
+
+| Model | Search | Search gave the passage that answers | Right, citing the passage | Right, passage not cited | Said it could not, though the passage was given | Said it could not; passage not found by search | Wrong | Declined rightly | Answered what the library does not hold | Citation faults: invented / cites all / cites after declining / none | First word, s: median (longest) | Whole answer, s: median (longest) | Cut short | Failed |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `lfm3:1.7b` | words | 29 of 32 | 28 of 32 | 1 | 0 | 3 | 0 | 13 of 13 | 0 | 0 / 0 / 0 / 1 | 2.2 (9.7) | 2.6 (10.4) | 0 | 0 |
+| `bonsai-2:2b` | words | 29 of 32 | 19 of 32 | 0 | 0 | 1 | 0 | 12 of 13 | 0 | 0 / 0 / 0 / 0 | 10.7 (14.3) | 10.9 (14.7) | 0 | 13 |
+| `bonsai-2:4b` | words | 29 of 32 | 13 of 32 | 0 | 0 | 1 | 0 | 10 of 13 | 0 | 0 / 0 / 0 / 0 | 21.5 (40.2) | 21.7 (41.7) | 1 | 21 |
+| `bonsai-2:9b` | words | 29 of 32 | 14 of 32 | 0 | 0 | 1 | 0 | 10 of 13 | 0 | 0 / 0 / 0 / 0 | 29.3 (51.3) | 29.9 (52.6) | 0 | 20 |
+| `ornith:9b` | words | 29 of 32 | 20 of 32 | 0 | 0 | 3 | 0 | 13 of 13 | 0 | 0 / 0 / 0 / 0 | 29.5 (43.8) | 30.4 (45.0) | 0 | 9 |
+
+Every "Failed" is the same failure: the model spent its whole allowance of 1,024 tokens
+thinking and wrote no answer ("The model used up its whole allowance without writing a
+reply"). Outpost does not ask Ollama to turn thinking off (`"think": false`): that was not
+tried, and is the first thing to try if these models are wanted for answers. `lfm3:1.7b`,
+which also thinks, did not run out.
 
 ## What this was checked against
 

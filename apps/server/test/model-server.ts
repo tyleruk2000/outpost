@@ -47,6 +47,31 @@
  *   stand-in-not-answered   replies with the one sentence it is told to use when the passages hold no answer
  *   stand-in-cites-all      cites every passage it was given, whichever it used
  *
+ * And models that call tools, the way docs.ollama.com/capabilities/tool-calling and its
+ * OpenAI-compatibility page described it on 2026-11-17, in both protocols: a request may
+ * carry `tools` (each `{type: "function", function: {name, description, parameters}}`,
+ * refused unless well formed), and its messages may then include the assistant's
+ * `tool_calls` and the answers, as `{role: "tool", tool_call_id, content}` on `/v1`
+ * (the id must be one the assistant's calls carried) and `{role: "tool", tool_name,
+ * content}` on `/api/chat`. On `/v1` a call is streamed in fragments keyed by `index`,
+ * its arguments a string in pieces, ended by `finish_reason: "tool_calls"`; on
+ * `/api/chat` it comes whole in `message.tool_calls`, arguments as an object, and the
+ * last line says `done_reason: "stop"`, as Ollama's does.
+ *
+ *   stand-in-tools          reads the newest message from the person for directives such as
+ *                           use find_places {"kind":"supermarket","near":"Northampton"}
+ *                           several joined by "then", and calls them one round at a time (when
+ *                           offered tools); then answers in words, quoting the first line of
+ *                           each answer with its source number: "From Outpost: … [1]."
+ *   stand-in-tools-loops    calls search_library {"query":"water"} every round, for ever, while offered tools
+ *   stand-in-tools-as-text  writes its request for a tool into its reply as JSON instead of making it, as llama3.2:1b
+ *                           did when tried with a real Ollama on 2026-11-17
+ *   stand-in-no-tools       says only "completion" in /api/tags, and refuses a request carrying
+ *                           `tools` with 400 "… does not support tools", as Ollama does
+ *                           for a model without the capability
+ *
+ * Every other model says "completion" and "tools" in /api/tags, as llama3.2 does, and
+ * answers a request carrying `tools` in words, as a model that chose not to call any.
  * The Ollama flavour also speaks Ollama's own protocol beside the OpenAI-compatible one,
  * as a real Ollama does (read from its API pages on 2026-11-16 and tried against 0.40.16):
  *
@@ -101,6 +126,8 @@ export interface StandInOptions {
   ollamaApi?: boolean;
   /** How long loading a model into memory takes, the first time it is used or when the context size asked for changes. */
   loadMs?: number;
+  /** How long a model that calls tools waits before sending its call, so that a test can stop it meanwhile. */
+  toolCallDelayMs?: number;
 }
 
 export interface RecordedRequest {
@@ -155,6 +182,10 @@ const MODELS = [
   "stand-in-declines",
   "stand-in-not-answered",
   "stand-in-cites-all",
+  "stand-in-tools",
+  "stand-in-tools-loops",
+  "stand-in-tools-as-text",
+  "stand-in-no-tools",
   "embed-only",
 ];
 
@@ -185,12 +216,12 @@ export const MARKDOWN_REPLY = [
 ].join("\n");
 
 /** The fields Ollama, llama-server and LM Studio all document for chat completions. */
-const DOCUMENTED_FIELDS = new Set(["model", "messages", "stream", "temperature", "max_tokens", "stop", "seed", "top_p"]);
+const DOCUMENTED_FIELDS = new Set(["model", "messages", "stream", "temperature", "max_tokens", "stop", "seed", "top_p", "tools"]);
 /**
  * What Ollama's own chat endpoint takes. `truncate` and `shift` were not on its API page on 2026-11-16;
  * Ollama 0.40.16 acted on both when tried, and a version that does not know a field ignores it.
  */
-const OLLAMA_FIELDS = new Set(["model", "messages", "stream", "options", "truncate", "shift", "keep_alive", "think"]);
+const OLLAMA_FIELDS = new Set(["model", "messages", "stream", "options", "truncate", "shift", "keep_alive", "think", "tools"]);
 const OLLAMA_OPTIONS = new Set(["temperature", "num_predict", "num_ctx", "stop", "seed", "top_p", "top_k", "min_p"]);
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -226,6 +257,8 @@ function chatReply(model: string, prompt: string, fromPerson: number): string {
   switch (model) {
     case "stand-in-markdown":
       return MARKDOWN_REPLY;
+    case "stand-in-tools-as-text":
+      return 'Let me try again with a different tool. {"name": "weather", "parameters": {"what": "river"}}';
     case "stand-in-long":
     case "stand-in-length":
       return Array.from(
@@ -291,6 +324,53 @@ function answerFor(model: string, prompt: string, fromPerson = 1): string {
       return cited.join(" ");
   }
 }
+
+/** A tool call the stand-in will make: a name, and its arguments as written (which may not be JSON). */
+interface Directive {
+  name: string;
+  args: string;
+}
+
+/** "use find_places {…} then use supplies": the calls asked for, in order. Read from the question when the message has one. */
+function directivesIn(message: string): Directive[] {
+  const question = /\nQuestion: ([\s\S]*)/.exec(message)?.[1] ?? message;
+  return question
+    .split(/\bthen\b/)
+    .map((part) => /\buse ([A-Za-z0-9_]+)(?:\s+(\{[^\n]*?\}))?/.exec(part))
+    .filter((match) => match !== null)
+    .map((match) => ({ name: match[1]!, args: match[2] ?? "{}" }));
+}
+
+/** A message from Outpost rather than the person ("answer now from what you have"). */
+const fromOutpost = (content: string) => content.startsWith("(From Outpost");
+
+/** What the stand-in says once it has looked things up: the first line of each answer, with its number. */
+function fromLookups(answers: readonly string[]): string {
+  return answers
+    .map((answer) => {
+      const lines = answer.split("\n");
+      const numbered = /^Source \[(\d+)\]/.exec(lines[0] ?? "");
+      if (numbered) return `From Outpost: ${(lines[1] ?? "").trim().replace(/[.:]$/, "")} [${numbered[1]}].`;
+      return `Outpost said: ${firstSentence(answer.replace(/^Refused \(not a source\): /, ""))}.`;
+    })
+    .join(" ");
+}
+
+/** A tool as sent is well formed: a function with a name and an object of parameters. */
+const isToolSpec = (tool: unknown) => {
+  if (!tool || typeof tool !== "object") return false;
+  const { type, function: fn } = tool as { type?: unknown; function?: { name?: unknown; parameters?: unknown } };
+  return (
+    type === "function" &&
+    !!fn &&
+    typeof fn === "object" &&
+    typeof fn.name === "string" &&
+    /^[A-Za-z0-9_-]{1,64}$/.test(fn.name) &&
+    !!fn.parameters &&
+    typeof fn.parameters === "object" &&
+    !Array.isArray(fn.parameters)
+  );
+};
 
 /** Splits text into the small pieces a model sends: a word or part of a word at a time. */
 const pieces = (text: string) => text.match(/\s*\S{1,6}|\s+/g) ?? [];
@@ -410,7 +490,7 @@ export async function startModelServer(options: StandInOptions = {}): Promise<St
             quantization_level: name === "embed-only" ? "F16" : "Q4_K_M",
           },
           // As Ollama 0.40.16 sent it on 2026-11-16; its API documentation of that day does not list the field.
-          capabilities: name === "embed-only" ? ["embedding"] : ["completion", "tools"],
+          capabilities: name === "embed-only" ? ["embedding"] : name === "stand-in-no-tools" ? ["completion"] : ["completion", "tools"],
         })),
       });
     }
@@ -491,17 +571,42 @@ export async function startModelServer(options: StandInOptions = {}): Promise<St
       if (!OLLAMA_OPTIONS.has(key)) return refuse(400, `stand-in: "${key}" is not an option Ollama documents`, "invalid_request_error");
     }
     const messages = input.messages;
+    /** The ids the assistant's calls carried, which a tool's answer on `/v1` must name. */
+    const callIds = new Set<string>();
+    const validCall = (call: unknown) => {
+      if (!call || typeof call !== "object") return false;
+      const { id, type, function: fn } = call as { id?: unknown; type?: unknown; function?: { name?: unknown; arguments?: unknown } };
+      if (!fn || typeof fn !== "object" || typeof fn.name !== "string" || !fn.name) return false;
+      if (protocol === "ollama") return !!fn.arguments && typeof fn.arguments === "object" && !Array.isArray(fn.arguments);
+      if (typeof id !== "string" || !id || type !== "function" || typeof fn.arguments !== "string") return false;
+      callIds.add(id);
+      return true;
+    };
     const valid =
       Array.isArray(messages) &&
       messages.length > 0 &&
-      messages.every(
-        (message) =>
-          message &&
-          typeof message === "object" &&
-          ["system", "user", "assistant"].includes((message as { role?: unknown }).role as string) &&
-          typeof (message as { content?: unknown }).content === "string",
-      );
+      messages.every((message) => {
+        if (!message || typeof message !== "object") return false;
+        const entry = message as { role?: unknown; content?: unknown; tool_calls?: unknown; tool_call_id?: unknown; tool_name?: unknown };
+        if (!["system", "user", "assistant", "tool"].includes(entry.role as string) || typeof entry.content !== "string") return false;
+        if ("tool_calls" in entry && (entry.role !== "assistant" || !Array.isArray(entry.tool_calls) || !entry.tool_calls.every(validCall)))
+          return false;
+        if (entry.role === "tool") {
+          return protocol === "ollama"
+            ? typeof entry.tool_name === "string" && entry.tool_name.length > 0
+            : typeof entry.tool_call_id === "string" && callIds.has(entry.tool_call_id);
+        }
+        return true;
+      });
     if (!valid) return refuse(400, "invalid request: messages must be a list of {role, content}", "invalid_request_error");
+    if ("tools" in input && (!Array.isArray(input.tools) || !input.tools.every(isToolSpec))) {
+      return refuse(
+        400,
+        'invalid request: tools must be a list of {type: "function", function: {name, parameters}}',
+        "invalid_request_error",
+      );
+    }
+    const offered = Array.isArray(input.tools) && input.tools.length > 0;
     for (const [key, type] of [
       ["stream", "boolean"],
       ["temperature", "number"],
@@ -525,6 +630,9 @@ export async function startModelServer(options: StandInOptions = {}): Promise<St
     if (flavour === "ollama") {
       if (!MODELS.includes(model)) return refuse(404, `model '${asked}' not found`, "not_found_error");
       if (model === "embed-only") return refuse(400, `"${asked}" does not support chat`, "invalid_request_error");
+      // As Ollama answers for a model whose capabilities do not include "tools".
+      if (model === "stand-in-no-tools" && offered)
+        return refuse(400, `registry.ollama.ai/library/${asked} does not support tools`, "invalid_request_error");
     } else if (!MODELS.includes(model) || model === "embed-only") {
       // llama-server has one model loaded and answers with it whatever name arrives.
       model = "stand-in";
@@ -552,8 +660,24 @@ export async function startModelServer(options: StandInOptions = {}): Promise<St
       promptTokens = Math.ceil((others + newest.content.length) / 4);
     }
 
-    const user = [...list].reverse().find((message) => message.role === "user")?.content ?? "";
-    const fromPerson = list.filter((message) => message.role === "user").length;
+    const personAt = list.findLastIndex((message) => message.role === "user" && !fromOutpost(message.content));
+    const user = list[personAt]?.content ?? "";
+    const fromPerson = list.filter((message) => message.role === "user" && !fromOutpost(message.content)).length;
+    // What came after the person's message in this turn: the rounds of calls so far, and what they answered.
+    const later = list.slice(personAt + 1) as Array<{ role: string; content: string; tool_calls?: unknown[] }>;
+    const roundsDone = later.filter((message) => message.role === "assistant" && Array.isArray(message.tool_calls)).length;
+    const answers = later.filter((message) => message.role === "tool").map((message) => message.content);
+    /** The call to make now, when this model makes one: one round at a time, and only when tools are offered. */
+    const nextCall: Directive | null = !offered
+      ? null
+      : model === "stand-in-tools-loops"
+        ? { name: "search_library", args: '{"query":"water"}' }
+        : model === "stand-in-tools"
+          ? (directivesIn(user)[roundsDone] ?? null)
+          : null;
+    /** The reply in words: what the lookups said, when there were any, for the models that look things up. */
+    const words = (fallback: () => string) =>
+      (model === "stand-in-tools" || model === "stand-in-tools-loops") && answers.length > 0 ? fromLookups(answers) : fallback();
     const id = `chatcmpl-${requests.length}`;
     const created = Math.floor(Date.now() / 1000);
 
@@ -567,7 +691,11 @@ export async function startModelServer(options: StandInOptions = {}): Promise<St
     if (input.stream !== true) {
       await load();
       const content =
-        model === "stand-in-silent" ? "" : user.includes("Reply with the one word") ? "ready" : answerFor(model, user, fromPerson);
+        model === "stand-in-silent"
+          ? ""
+          : user.includes("Reply with the one word")
+            ? "ready"
+            : words(() => answerFor(model, user, fromPerson));
       if (protocol === "ollama") {
         return json(response, 200, {
           model: asked,
@@ -669,6 +797,48 @@ export async function startModelServer(options: StandInOptions = {}): Promise<St
       }
     }
     if (model === "stand-in-silent") return end("stop");
+    if (nextCall) {
+      if (options.toolCallDelayMs) await sleep(options.toolCallDelayMs);
+      if (gone()) return;
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(nextCall.args);
+      } catch {
+        parsed = nextCall.args;
+      }
+      if (protocol === "ollama") {
+        // Ollama sends the call whole, its arguments an object, and ends the turn with "stop".
+        response.write(
+          `${JSON.stringify({
+            model: asked,
+            created_at: new Date().toISOString(),
+            message: { role: "assistant", content: "", tool_calls: [{ function: { index: 0, name: nextCall.name, arguments: parsed } }] },
+            done: false,
+          })}\n`,
+        );
+        return end("stop");
+      }
+      // The OpenAI-compatible way: the name first, then the arguments a piece at a time, all keyed by index.
+      const callId = `call_${requests.length}_${roundsDone}`;
+      const chunk = (delta: Record<string, unknown>, finish: string | null = null) =>
+        response.write(
+          `data: ${JSON.stringify({ id, object: "chat.completion.chunk", created, model: asked, choices: [{ index: 0, delta, finish_reason: finish }] })}\n\n`,
+        );
+      chunk({
+        role: "assistant",
+        tool_calls: [{ index: 0, id: callId, type: "function", function: { name: nextCall.name, arguments: "" } }],
+      });
+      const third = Math.ceil(nextCall.args.length / 3);
+      for (let at = 0; at < nextCall.args.length; at += third) {
+        await sleep(chunkDelayMs);
+        if (gone()) return;
+        chunk({ tool_calls: [{ index: 0, function: { arguments: nextCall.args.slice(at, at + third) } }] });
+      }
+      chunk({}, "tool_calls");
+      response.write("data: [DONE]\n\n");
+      finished = true;
+      return void response.end();
+    }
     if (model === "stand-in-endless") {
       const filler = `${"The same sentence, again and again, with no end in sight. ".repeat(4)}\n\n`;
       while (!gone()) {
@@ -678,7 +848,7 @@ export async function startModelServer(options: StandInOptions = {}): Promise<St
       return;
     }
 
-    const all = pieces(answerFor(model, user, fromPerson));
+    const all = pieces(words(() => answerFor(model, user, fromPerson)));
     const delay = model === "stand-in-long" ? longChunkDelayMs : chunkDelayMs;
     for (const [index, piece] of all.entries()) {
       if (gone()) return;

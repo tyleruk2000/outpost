@@ -6,19 +6,10 @@
  * A box is rough near a border: the person can change the filter, and it is said which
  * country was taken.
  */
-import { type Bbox, homePlaceOf } from "@outpost/shared";
+import { type Bbox, countryAt, homePlaceOf } from "@outpost/shared";
 
-export function countryAt(point: { lat: number; lon: number }, countries: ReadonlyArray<{ code: string; bbox: Bbox }>): string | null {
-  let best: { code: string; area: number } | null = null;
-  for (const country of countries) {
-    const [west, south, east, north] = country.bbox;
-    if (west > east) continue;
-    if (point.lon < west || point.lon > east || point.lat < south || point.lat > north) continue;
-    const area = (east - west) * (north - south);
-    if (!best || area < best.area) best = { code: country.code, area };
-  }
-  return best?.code ?? null;
-}
+/** The smallest Natural Earth box that holds a point (shared with the server's radio tool). */
+export { countryAt };
 
 export function homeCountry(
   markers: ReadonlyArray<{ icon: string; createdAt: number; id: string; lat: number; lon: number }> | undefined,

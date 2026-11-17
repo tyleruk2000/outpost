@@ -70,7 +70,12 @@ export interface ChatMessage {
   model: string | null;
   /** The reply was written from passages of the library. */
   grounded: boolean;
-  /** The passages the model was given for this reply. Empty for a plain reply. */
+  /**
+   * The passages the model was given for this reply, then what it looked up in Outpost
+   * with a tool (kind `lookup`, numbered after the passages, in the order asked; a
+   * refused call has marker 0 and is not a source). Empty for a plain reply that looked
+   * nothing up.
+   */
   sources: AnswerSource[];
   /** What the library was searched for, when it was. */
   searchedFor: string | null;
@@ -119,7 +124,36 @@ export interface ChatStatus {
   place: ModelServerPlace | null;
   /** The conversation a reply is being written in right now. The model writes one thing at a time. */
   writingIn: string | null;
+  /** "Let the model look things up in Outpost", as Settings has it. Read from settings alone. */
+  tools: ChatToolsStatus;
 }
+
+/**
+ * What the screen needs to say, once, whether a conversation's model will be offered
+ * the tools (modules/tools). Whether a model can call them is in `ChatModel.tools`.
+ */
+export interface ChatToolsStatus {
+  /** The switch in Settings (`tools.enabled`). Off until a person turns it on. */
+  enabled: boolean;
+  /** Models a person has told Outpost not to offer tools to. */
+  offForModels: string[];
+  /** How many tools the area switches leave on. None: nothing is offered, whatever the model. */
+  offered: number;
+}
+
+/**
+ * Which of the suggested small models (recommended-models.ts) Ollama's library lists
+ * with the "tools" capability tag, read from ollama.com/library/<model> on the day in
+ * `checked`: llama3.2 (1b and 3b) and phi4-mini show "tools"; gemma3 shows "vision"
+ * and not "tools". What decides whether a model is offered tools is what the model
+ * server says (`ChatModel.tools`). Chat no longer suggests from this list: tried on
+ * 2026-11-17, llama3.2:1b has the tag and could not look things up, so suggestions come
+ * from what was measured (model-trials.ts). Kept as the record of what the pages said.
+ */
+export const RECOMMENDED_TOOL_MODELS = {
+  checked: "2026-11-17",
+  names: ["llama3.2:3b", "llama3.2:1b", "phi4-mini"] as readonly string[],
+} as const;
 
 export interface ChatModel {
   /** The name the server knows the model by; what is sent back to it. */
@@ -136,6 +170,12 @@ export interface ChatModel {
    * capabilities). Absent when it does not: then the name is all there is to go by.
    */
   writes?: boolean;
+  /**
+   * Whether the model can call tools, when the server says (Ollama lists "tools" among
+   * a model's capabilities). Absent when it does not (llama.cpp, LM Studio): Outpost
+   * then offers it none.
+   */
+  tools?: boolean;
 }
 
 export interface ChatModelsResponse {
@@ -179,9 +219,9 @@ export interface ModelSetupTry extends AnswerTestResult {
 /**
  * What a reply is doing at this moment. `loading` only when the model server has said
  * the model is not in memory (Ollama can be asked; other servers cannot, and are never
- * reported as loading).
+ * reported as loading). `looking` while Outpost runs a tool the model asked for.
  */
-export type ChatPhase = "finding" | "loading" | "waiting" | "writing";
+export type ChatPhase = "finding" | "loading" | "waiting" | "looking" | "writing";
 
 /**
  * What `GET /api/chat/conversations/:id/stream` sends, as server-sent events named by
@@ -201,8 +241,14 @@ export type ChatStreamEvent =
       omitted: number;
       /** When the reply was asked for, in milliseconds since 1970. */
       startedAt: number;
+      /** While `looking`: the title of the tool being run ("places on the map"). */
+      looking?: string | null;
     }
-  | { type: "phase"; phase: ChatPhase; sources?: AnswerSource[]; searchedFor?: string | null }
+  /**
+   * The reply moved on. `sources`, when present, replaces the list: a lookup is added to
+   * it as soon as it has been made, so the screen can show it before the reply.
+   */
+  | { type: "phase"; phase: ChatPhase; sources?: AnswerSource[]; searchedFor?: string | null; looking?: string | null }
   /** Replace the reply's blocks from index `from` onward with `blocks`. Earlier ones have not changed. */
   | { type: "blocks"; from: number; blocks: MarkdownBlock[] }
   /** The reply as it was stored: finished, stopped, cut short or failed. */
