@@ -8,7 +8,6 @@
  * TABLES below fails here, so that someone decides, with a reason, whether erasing keeps
  * it, which group the Storage screen counts it in, and whether it goes on a drive.
  */
-import fs from "node:fs";
 import path from "node:path";
 import type { DatabaseGroupId } from "@outpost/shared";
 import Database from "better-sqlite3";
@@ -144,7 +143,7 @@ const WORD = "zqvlantern";
 const PLACES_PACK = "places-pack";
 
 const configs = new Map(
-  Object.values(schema)
+  (Object.values(schema) as unknown[])
     .filter((value): value is SQLiteTable => is(value, SQLiteTable))
     .map((table) => [getTableName(table), getTableConfig(table)]),
 );
