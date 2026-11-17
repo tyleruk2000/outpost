@@ -183,14 +183,17 @@ describe("River and sea levels", () => {
     expect(await screen.findByText("Fetched 5 minutes ago.")).toBeInTheDocument();
     const rows = screen.getAllByRole("listitem").filter((item) => item.hasAttribute("data-station"));
     expect(rows.map((row) => row.getAttribute("data-station"))).toEqual(["E47901", "E21183"]);
+    // Three lines at most: the station and how far; the level, its datum and when; one line of state.
+    for (const row of rows) expect(row.querySelectorAll(":scope > *")).toHaveLength(3);
     const tidal = within(rows[0]!);
     expect(tidal.getByText("Tidal")).toBeInTheDocument();
-    expect(tidal.getByText(/A tidal level: it rises and falls with the tide/)).toBeInTheDocument();
-    expect(tidal.getByText(/Falling 0\.40 m over the 3 hours/)).toBeInTheDocument();
+    expect(rows[0]!.lastElementChild).toHaveTextContent(/^Tidal · (, )?falling 0\.40 m$/);
     const river = within(rows[1]!);
-    expect(river.getByText(/^1\.05 m above Ordnance Datum, measured .* \(20 minutes ago\)\.$/)).toBeInTheDocument();
-    expect(river.getByText("Within the typical range the Agency gives for this station (0.03 to 3.45 m).")).toBeInTheDocument();
-    expect(river.getByText(/Rising 0\.05 m over the 3 hours/)).toBeInTheDocument();
+    expect(river.getByText(/^1\.05 m above Ordnance Datum, measured .* \(20 minutes ago\)$/)).toBeInTheDocument();
+    expect(rows[1]!.lastElementChild).toHaveTextContent(/^Within its typical range · (, )?rising 0\.05 m$/);
+    // What the figures mean is said once, under the list, not in every row.
+    expect(screen.queryByText(/A tidal level: it rises and falls with the tide/)).toBeNull();
+    expect(screen.getByText("What the figures mean")).toBeInTheDocument();
     expect(screen.getByText(/This uses Environment Agency flood and river level data/)).toBeInTheDocument();
   });
 
@@ -200,9 +203,8 @@ describe("River and sea levels", () => {
       /Fetched 14 hours ago: this set of river and sea levels is old, and levels may have changed since\./,
     );
     expect(age.closest("[data-freshness]")).toHaveAttribute("data-freshness", "old");
-    expect(screen.getByText(/measured .* \(14 hours ago\)\./)).toBeInTheDocument();
+    expect(screen.getByText(/measured .* \(14 hours ago\)$/)).toBeInTheDocument();
     expect(screen.getByText("Not reporting")).toBeInTheDocument();
-    expect(screen.getByText(/Its latest reading is \d+ days older than the moment this was fetched/)).toBeInTheDocument();
     // A station that names no datum says so.
     expect(screen.getByText(/^0\.20 m, measured/)).toBeInTheDocument();
   });

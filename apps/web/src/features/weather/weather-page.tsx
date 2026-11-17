@@ -237,13 +237,16 @@ export default function WeatherPage() {
           </div>
 
           <Tabs value={view} onValueChange={setView}>
+            {/* What is opened most first: what the weather will do and what is warned of, then levels and the barometer
+                read on the day; the climate of the months, the places and the sources after. On a phone the names wrap
+                to two lines, and the first holds the first three or four. */}
             <TabsList className="mb-6" aria-label="Weather and hazards">
               <TabsTrigger value="forecast">Forecast</TabsTrigger>
               <TabsTrigger value="warnings">Warnings</TabsTrigger>
               <TabsTrigger value="flood">Flood</TabsTrigger>
               <TabsTrigger value="rivers">River and sea levels</TabsTrigger>
-              <TabsTrigger value="climate">Climate</TabsTrigger>
               <TabsTrigger value="barometer">Barometer</TabsTrigger>
+              <TabsTrigger value="climate">Climate</TabsTrigger>
               <TabsTrigger value="places">Places</TabsTrigger>
               <TabsTrigger value="kept">Kept and sources</TabsTrigger>
             </TabsList>

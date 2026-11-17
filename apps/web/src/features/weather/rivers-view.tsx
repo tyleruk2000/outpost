@@ -20,6 +20,7 @@ import {
   latestReading,
   levelTrend,
   RANGE_WORDS,
+  type RangeState,
   RIVER_DISTANCES_KM,
   type RiverLevelStation,
   rangeState,
@@ -34,9 +35,9 @@ import {
 import { ChevronRight, CircleAlert, Clock, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
-import { BackLink, Notice } from "@/components/page";
+import { BackLink, Joined, Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
-import { Badge, Select } from "@/components/ui/misc";
+import { Select } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
 import { formatDateTime, plural } from "@/lib/utils";
 import { AgeLine, Credit } from "./age-line";
@@ -106,12 +107,45 @@ function DistanceChoice({ value }: { value: number }) {
   );
 }
 
+/** The state of a level in a few words, for a station's row: the full sentences are under "What the figures mean". */
+const STATE_SHORT: Record<RangeState, string> = {
+  above: "Above its typical range",
+  within: "Within its typical range",
+  below: "Below its typical range",
+  tidal: "Tidal",
+  "no-range": "No typical range given",
+};
+
+/** "steady", "rising 0.05 m", or nothing where the readings held cannot say. */
+export function trendShort(trend: TrendResult): string | null {
+  if (!trend.ok) return null;
+  return trend.direction === "steady" ? "steady" : `${trend.direction} ${Math.abs(trend.change).toFixed(2)} m`;
+}
+
+/**
+ * One station in three lines at most on a phone: the station and how far; the level, what it is
+ * measured from and when; and its state in one line ("Within its typical range · steady").
+ */
 function StationRow({ station, fetchedAt, now }: { station: RiverLevelStation; fetchedAt: number; now: number }) {
   const latest = latestReading(station.recent);
   const stopped = latest !== null && stoppedReporting(station.recent, fetchedAt);
-  const state = latest ? rangeState(station, latest.v) : null;
+  const state = latest ? rangeState(station, latest.v) : station.tidal ? "tidal" : null;
+  const parts = [
+    state ? <span key="state">{STATE_SHORT[state]}</span> : null,
+    latest ? trendShort(levelTrend(station.recent)) : null,
+    stopped ? (
+      <span key="stopped" className="text-warning">
+        Not reporting
+      </span>
+    ) : null,
+    station.status === "suspended" || station.status === "closed" ? (
+      <span key="status" className="text-warning">
+        {station.status === "suspended" ? "Suspended" : "Closed"}, the Agency says
+      </span>
+    ) : null,
+  ];
   return (
-    <li className="py-3" data-station={station.id}>
+    <li className="py-2.5" data-station={station.id}>
       <Link
         to={`?view=rivers&station=${encodeURIComponent(station.id)}`}
         className="flex min-h-11 items-center gap-2 rounded-control text-ink hover:text-primary focus-visible:outline-2 focus-visible:outline-focus"
@@ -123,36 +157,16 @@ function StationRow({ station, fetchedAt, now }: { station: RiverLevelStation; f
         </span>
         <ChevronRight aria-hidden className="size-4 shrink-0 text-ink-muted" />
       </Link>
-      <div className="mt-0.5 flex flex-wrap gap-2">
-        {station.tidal ? <Badge tone="primary">Tidal</Badge> : null}
-        {stopped ? <Badge tone="warning">Not reporting</Badge> : null}
-        {station.status === "suspended" || station.status === "closed" ? (
-          <Badge tone="warning">{station.status === "suspended" ? "Suspended" : "Closed"}, the Agency says</Badge>
-        ) : null}
-      </div>
       {latest ? (
-        <>
-          <p className="tabular mt-1 text-body text-ink">
-            {levelText(latest.v, station.unit)}, {measuredText(latest.t, now)}.
-          </p>
-          <p className="text-small text-ink">
-            {RANGE_WORDS[state!]}
-            {state === "above" || state === "within" || state === "below"
-              ? ` (${station.typicalLow!.toFixed(2)} to ${station.typicalHigh!.toFixed(2)} m)`
-              : ""}
-            .
-          </p>
-          <p className="text-small text-ink-muted">{trendText(levelTrend(station.recent))}</p>
-        </>
-      ) : (
-        <p className="mt-1 text-body text-ink-muted">{station.readingsNote ?? "No reading is held for this station."}</p>
-      )}
-      {stopped ? (
-        <p className="text-small text-warning">
-          Its latest reading is {ageWords(fetchedAt - latest!.t)} older than the moment this was fetched.
-          {station.statusReason ? ` The Agency says: “${station.statusReason}”` : ""}
+        <p className="tabular text-small text-ink">
+          {levelText(latest.v, station.unit)}, {measuredText(latest.t, now)}
         </p>
-      ) : null}
+      ) : (
+        <p className="text-small text-ink-muted">{station.readingsNote ?? "No reading is held for this station."}</p>
+      )}
+      <p className="text-small text-ink-muted">
+        <Joined parts={parts} />
+      </p>
     </li>
   );
 }
@@ -261,7 +275,12 @@ export function RiversView({
                   </p>
                   <p>
                     Rising, steady or falling is Outpost's reading of the readings held, not the Agency's: the latest against the earliest
-                    in the three hours before it, at least 45 minutes apart; a change of under 2 cm is called steady.
+                    in the three hours before it, at least 45 minutes apart; a change of under 2 cm is called steady. Where too few readings
+                    are held to say, nothing is said.
+                  </p>
+                  <p>
+                    Not reporting: the station's latest reading is much older than the moment the levels were fetched. A station's own page
+                    says how much older, and what the Agency says about it.
                   </p>
                   <p>
                     The Agency measures usually every 15 minutes, but sends readings back "typically once or twice per day" except when
