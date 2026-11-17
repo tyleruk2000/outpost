@@ -73,15 +73,19 @@ export function PopoverContent({ className, sideOffset = 6, align = "start", ...
 export const Tabs = TabsPrimitive.Root;
 export const TabsContent = TabsPrimitive.Content;
 
+/**
+ * A row of tab names that wraps on to a second line rather than scrolling sideways out of
+ * sight, on a phone or with large text. Each name is 44 px tall on a phone.
+ */
 export function TabsList({ className, ...props }: ComponentProps<typeof TabsPrimitive.List>) {
-  return <TabsPrimitive.List className={cn("scroll-quiet flex gap-5 overflow-x-auto border-b border-border", className)} {...props} />;
+  return <TabsPrimitive.List className={cn("flex flex-wrap gap-x-5 gap-y-1 border-b border-border", className)} {...props} />;
 }
 
 export function TabsTrigger({ className, ...props }: ComponentProps<typeof TabsPrimitive.Trigger>) {
   return (
     <TabsPrimitive.Trigger
       className={cn(
-        "-mb-px flex items-center gap-2 border-b-2 border-transparent pt-1 pb-2.5 text-small font-medium whitespace-nowrap text-ink-muted transition-colors hover:text-ink data-[state=active]:border-primary data-[state=active]:text-ink",
+        "-mb-px flex items-center gap-2 border-b-2 border-transparent pt-1 pb-2.5 text-small max-md:min-h-11 font-medium whitespace-nowrap text-ink-muted transition-colors hover:text-ink data-[state=active]:border-primary data-[state=active]:text-ink",
         className,
       )}
       {...props}
@@ -181,13 +185,13 @@ export function Select<T extends string>({
                 key={option.value}
                 value={option.value}
                 disabled={option.disabled}
-                className="relative flex cursor-default items-start gap-2 rounded-[4px] py-1.5 pr-8 pl-2.5 outline-none select-none data-highlighted:bg-surface-strong data-disabled:opacity-45 max-md:py-2.5"
+                className="relative flex cursor-default items-start gap-2 rounded-[4px] py-1.5 pr-8 pl-2.5 outline-none select-none data-highlighted:bg-surface-strong data-disabled:opacity-45 max-md:min-h-11 max-md:py-2.5"
               >
                 <div className="min-w-0">
                   <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
                   {option.description ? <div className="text-micro text-ink-muted">{option.description}</div> : null}
                 </div>
-                <SelectPrimitive.ItemIndicator className="absolute top-2 right-2.5">
+                <SelectPrimitive.ItemIndicator className="absolute top-2 right-2.5 max-md:top-3">
                   <Check className="size-4 text-primary" />
                 </SelectPrimitive.ItemIndicator>
               </SelectPrimitive.Item>
@@ -271,7 +275,8 @@ export function Progress({
 
 // ── Status badge ───────────────────────────────────────────────────────────
 
-const badge = cva("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-micro font-medium whitespace-nowrap [&_svg]:size-3.5", {
+// One line while it fits; wraps only when wider than the room it is in, at large text.
+const badge = cva("inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-micro font-medium [&_svg]:size-3.5", {
   variants: {
     tone: {
       neutral: "bg-surface-strong text-ink-muted",
@@ -303,6 +308,7 @@ export function Kbd({ className, ...props }: ComponentProps<"kbd">) {
   );
 }
 
+/** A shape that stands for content still loading. Its shimmer stops after a few seconds (the `skeleton` rule). */
 export function Skeleton({ className, ...props }: ComponentProps<"div">) {
   return <div aria-hidden className={cn("skeleton h-4", className)} {...props} />;
 }

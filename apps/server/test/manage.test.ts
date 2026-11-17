@@ -533,6 +533,28 @@ describe("what is taking the space", () => {
     expect(usb.totalBytes).toBeGreaterThan(0);
     expect(usage.rows.find((entry) => entry.id === "file")!.disconnectedBytes).toBe(30_000);
   });
+
+  it("does not count a download still under way as left over, as the list of leftovers does not", async () => {
+    const w = await world();
+    w.server.routes.set("/slow", { body: testBytes(900_000, 9), chunkBytes: 16_384, delayMs: 15 });
+    const { downloads } = w.app.ctx.services;
+    const started = await downloads.start({
+      kind: "file",
+      title: "Atlas on its way",
+      url: w.server.url("/slow"),
+      relPath: "collections/files/on-its-way.bin",
+      allowedHosts: [w.server.host],
+    });
+    const part = path.join(w.internal, "collections/files/on-its-way.bin.part");
+    await waitFor(() => fs.existsSync(part) && fs.statSync(part).size > 0, "part of the file to arrive");
+    const usage = await measured(w.app);
+    expect(downloads.get(started.id)?.state).toBe("running");
+    expect(usage.rows.find((entry) => entry.id === "unfinished")).toMatchObject({ bytes: 0, count: 0 });
+    const listed = (await w.app.api<{ items: Leftover[] }>("GET", "/api/manage/leftovers")).body.items;
+    expect(listed.filter((item) => item.kind === "download")).toEqual([]);
+    downloads.cancel(started.id);
+    await w.app.ctx.jobs.whenIdle();
+  });
 });
 
 describe("leftovers", () => {

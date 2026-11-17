@@ -226,7 +226,8 @@ describe("automatic backups in Settings", () => {
     );
     await userEvent.click(screen.getByRole("menuitem", { name: "Restore this one" }));
     const asking = await screen.findByRole("alertdialog", { name: "Restore from this backup?" });
-    expect(asking).toHaveTextContent("The current data is kept in a dated folder, not deleted.");
+    expect(asking).toHaveTextContent("Nothing changes until Outpost starts again.");
+    expect(asking).toHaveTextContent("moved to a dated folder in its data folder, not deleted, and until the restart you can cancel");
     expect(requests).toEqual([]);
     await userEvent.click(within(asking).getByRole("button", { name: "Check and stage restore" }));
     expect(requests).toEqual([{ call: "POST /api/backup/stored/outpost-backup-2026-11-16T03-00-00-000Z-scheduled.zip/restore", body: {} }]);

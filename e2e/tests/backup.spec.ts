@@ -35,6 +35,12 @@ test.describe("automatic backups", () => {
     await expect(row.getByText(/Started by hand · .+ · made by Outpost \d/)).toBeVisible();
     await expect(section.getByText(/^Last backup just now\./)).toBeVisible();
 
+    // Storage says which location holds them.
+    await page.goto("/storage");
+    const internal = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: "Internal storage" }) });
+    await expect(internal.getByText(/Automatic backups are kept here, in the folder outpost-backups\./)).toBeVisible();
+    await page.goto("/settings");
+
     // The file is on the location, in Outpost's own folder, and downloads as a zip.
     const { backups } = await api(page, "GET", "/api/backup/stored");
     expect(backups).toHaveLength(1);
@@ -46,8 +52,13 @@ test.describe("automatic backups", () => {
     await row.getByRole("button", { name: /^Actions for the backup of/ }).click();
     await page.getByRole("menuitem", { name: "Restore this one" }).click();
     const asking = page.getByRole("alertdialog", { name: "Restore from this backup?" });
-    await expect(asking.getByText(/The current data is kept in a dated folder, not deleted\./)).toBeVisible();
+    await expect(asking.getByText(/Nothing changes until Outpost starts again\./)).toBeVisible();
+    await expect(
+      asking.getByText(/moved to a dated folder in its data folder, not deleted, and until the restart you can cancel\./),
+    ).toBeVisible();
     await asking.getByRole("button", { name: "Check and stage restore" }).click();
+    // And afterwards, which backup it was and what to do next.
+    await expect(page.getByText(/^The backup of .+ has been checked\./)).toBeVisible();
     const waiting = page.getByRole("region", { name: "Backup", exact: true }).getByText("A restore is waiting for a restart");
     await expect(waiting).toBeVisible();
     expect((await api(page, "GET", "/api/backup/status")).restorePending).toBe(true);

@@ -12,9 +12,16 @@ import { UpdateNotice } from "./update-notice";
 // Quick search is fetched the first time it is opened, not with every page of the app.
 const CommandPalette = lazy(() => import("./command-palette").then((module) => ({ default: module.CommandPalette })));
 
-function isTyping(target: EventTarget | null): boolean {
-  const element = target as HTMLElement | null;
-  return Boolean(element && (element.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(element.tagName)));
+/**
+ * Whether a key pressed here belongs to what has focus, not to the app's shortcuts: a field
+ * being typed in, or an open menu, list or dialog, whose letters choose an item by its name
+ * ("g" then "s" in a menu must not leave the screen).
+ */
+export function isTyping(target: EventTarget | null): boolean {
+  const element = target instanceof HTMLElement ? target : null;
+  if (!element) return false;
+  if (element.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(element.tagName)) return true;
+  return element.closest('[role="menu"], [role="listbox"], [role="dialog"], [role="alertdialog"], [role="textbox"]') !== null;
 }
 
 function PageFallback() {
@@ -101,7 +108,7 @@ export function AppShell({ notesTree, onNewPage }: { notesTree?: ReactNode; onNe
     return () => window.removeEventListener("keydown", onKey);
   }, [navigate, toggleSidebar]);
 
-  // Move focus to the content on navigation so keyboard and screen-reader users land in the new screen.
+  // A new screen starts at its top.
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs on every path change by design
   useEffect(() => {
     mainRef.current?.scrollTo?.({ top: 0 });

@@ -59,6 +59,13 @@ describe("what a removal says before it happens", () => {
     expect(lines).toContain("1 document in the library is the same file as a catalogue item here, and goes with it.");
     expect(lines).toContain("1 item (5.00 MB) is your own and cannot be downloaded again.");
     expect(lines).toContain("1 unfinished download will be cancelled and its partial file deleted.");
+    // Whether it can be undone, said before the press.
+    expect(lines).toContain("Deleting cannot be undone. What came from the catalogue or the map can be downloaded again.");
+    const ownOnly = planSentences(plan({ remove: { count: 1, bytes: 5_000_000 }, own: { count: 1, bytes: 5_000_000 } }), {
+      files: "delete",
+      disconnected: "leave",
+    });
+    expect(ownOnly).toContain("Deleting cannot be undone.");
   });
 
   it("says plainly when no file is deleted", () => {

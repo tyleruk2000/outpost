@@ -312,16 +312,16 @@ export default function MergePage() {
 
   return (
     <Page>
+      {/* Above the title, as on the other screens under Storage. */}
+      <Link
+        to={id ? "/storage/merge" : "/storage"}
+        className="-ml-1 mb-3 inline-flex items-center gap-1.5 rounded-control px-1 py-1 text-small text-ink-muted transition-colors hover:text-ink max-md:min-h-11"
+      >
+        <ArrowLeft aria-hidden className="size-4" /> {id ? "All merges" : "Storage"}
+      </Link>
       <PageHeader
         title="Bring back changes from a drive"
         description="Bring home what you wrote and added while running Outpost from a portable drive. You see everything first, you choose what happens where both sides changed, and the drive itself is never changed."
-        actions={
-          <Button asChild variant="ghost">
-            <Link to={id ? "/storage/merge" : "/storage"}>
-              <ArrowLeft /> {id ? "All merges" : "Storage"}
-            </Link>
-          </Button>
-        }
       />
       <StepList current={stepOf(id ? current.data : undefined)} />
 

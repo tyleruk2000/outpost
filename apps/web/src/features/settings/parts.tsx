@@ -45,13 +45,14 @@ export function SettingRow({
 }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
-      <div className="min-w-48 flex-1">
+      <div className="min-w-[min(12rem,100%)] flex-1">
         <label htmlFor={htmlFor} className="text-small font-medium text-ink">
           {label}
         </label>
         {hint ? <p className="mt-0.5 text-small text-ink-muted">{hint}</p> : null}
       </div>
-      <div className="shrink-0">{control}</div>
+      {/* No wider than the row: on a narrow phone with large text a row of choices then wraps instead of running off the screen. */}
+      <div className="max-w-full shrink-0">{control}</div>
     </div>
   );
 }

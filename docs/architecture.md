@@ -85,7 +85,11 @@ except a few checks of things outside it that send no event (storage locations, 
 scheduled backups, network shares: see each module). The job runner sets a timer only
 for a job told to wait. Open live-events streams share one 50-second keep-alive, which
 stops with the last of them. The web app's files are compressed once, at build time,
-and sent as they are; fingerprinted files are cached by browsers for a year.
+and sent as they are; fingerprinted files, and the map's icons (in a folder named for
+their version), are cached by browsers for a year, the map's fonts for a week. The
+API's JSON answers over 1 kB are compressed as they are sent (`core/compress.ts`:
+Brotli at quality 4, else gzip; the 420 kB catalogue goes as 57 kB, in about 2 ms);
+streams, files, tiles and anything already compressed are not.
 
 CPU-heavy parsing (PDF text) runs in a worker thread so that one large document cannot
 stall the HTTP server. OCR does the same, on a queue of its own that runs one document

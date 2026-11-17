@@ -147,7 +147,7 @@ export function RemoveItemsDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        title={`Remove ${plural(items.length, "item")}`}
+        title={items.length === 1 ? `Remove “${items[0]!.title}”` : `Remove ${plural(items.length, "item")}`}
         description="Read what will happen, then confirm. Nothing is removed until you do."
       >
         {/* Mounted only while open, so every opening asks the server afresh. */}
@@ -275,7 +275,7 @@ export function MoveItemsDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title={`Move ${plural(items.length, "item")}`}>
+      <DialogContent title={items.length === 1 ? `Move “${items[0]!.title}”` : `Move ${plural(items.length, "item")}`}>
         {open ? <MoveSteps items={items} onClose={() => onOpenChange(false)} /> : null}
       </DialogContent>
     </Dialog>

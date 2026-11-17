@@ -9,6 +9,7 @@ import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyInstance } from "fastify";
 import { ZodError } from "zod";
 import type { Config } from "./config.ts";
+import { registerJsonCompression } from "./core/compress.ts";
 import type { AppContext, Services } from "./core/context.ts";
 import { AppError } from "./core/errors.ts";
 import { EventBus } from "./core/events.ts";
@@ -47,6 +48,20 @@ const APP_CSP = [
  * `docker stop` kills the process ten seconds after asking.
  */
 export const DRAIN_LIMIT_MS = 3_000;
+
+/**
+ * How long a browser may keep the map's fonts and icons without asking again. The icons'
+ * folder is named for their version (`sprites/v4/`), and a new version is a new folder, so
+ * they are kept for good. The fonts are fetched at one pinned commit and change only when
+ * that is changed on purpose (scripts/fetch-map-assets.mjs): a week, then asked again.
+ */
+export function mapAssetsCaching(relative: string): string | undefined {
+  const parts = relative.split(path.sep);
+  if (parts[0] !== "map-assets") return undefined;
+  if (parts[1] === "sprites" && /^v\d+$/.test(parts[2] ?? "") && parts.length > 3) return "public, max-age=31536000, immutable";
+  if (parts[1] === "fonts" && parts.length > 3) return "public, max-age=604800";
+  return undefined;
+}
 
 export interface BuiltApp {
   app: FastifyInstance;
@@ -120,6 +135,7 @@ export async function buildApp(config: Config): Promise<BuiltApp> {
   });
 
   ctx.services.settings = createSettingsService(ctx);
+  registerJsonCompression(app);
   await registerRequestGuard(app, ctx);
   await registerStorage(app, ctx);
   await registerSystem(app, ctx);
@@ -147,6 +163,9 @@ export async function buildApp(config: Config): Promise<BuiltApp> {
         } else if (file.includes(`${path.sep}assets${path.sep}`)) {
           // Vite fingerprints everything under assets/.
           reply.header("Cache-Control", "public, max-age=31536000, immutable");
+        } else {
+          const kept = mapAssetsCaching(path.relative(config.webDir, file));
+          if (kept) reply.header("Cache-Control", kept);
         }
       },
     });

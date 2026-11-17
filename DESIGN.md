@@ -41,10 +41,10 @@ Strategy: **restrained**, with one committed surface. All values are OKLCH.
 | `surface` | `0.972 0.004 200` | `0.232 0.009 215` | Panels, toolbars, table heads |
 | `surface-strong` | `0.945 0.006 200` | `0.265 0.011 215` | Hover, tracks, inline code |
 | `raised` | `1 0 0` | `0.245 0.01 215` | Menus, dialogs |
-| `border` / `border-strong` | `0.905 0.006 200` / `0.82 0.01 200` | `0.305 0.011 215` / `0.4 0.014 215` | Hairlines / control outlines |
+| `border` / `border-strong` | `0.905 0.006 200` / `0.64 0.01 200` | `0.305 0.011 215` / `0.54 0.014 215` | Hairlines / control outlines (3:1 on every surface) |
 | `ink` | `0.21 0.015 220` | `0.935 0.006 210` | Text |
 | `ink-muted` | `0.44 0.016 220` | `0.74 0.012 212` | Secondary text (still 4.5:1) |
-| `ink-faint` | `0.56 0.014 220` | `0.62 0.012 212` | Placeholders and disabled only |
+| `ink-faint` | `0.545 0.014 220` | `0.635 0.012 212` | Placeholders and disabled only (4.5:1 on every surface) |
 | `spine` | `0.285 0.042 200` | `0.165 0.024 200` | The sidebar |
 | `primary` | `0.45 0.074 200` | `0.76 0.09 195` | Main action, selection, links |
 | `primary-soft` | `0.95 0.022 200` | `0.29 0.04 200` | Selected rows, soft buttons, info notices |
@@ -144,6 +144,7 @@ All three are bundled and served locally. Fixed rem scale, ratio about 1.2:
 - 120–200ms, ease-out, on state changes only: opening, selecting, confirming.
 - Progress bars move with real progress. No page-load choreography.
 - Under `prefers-reduced-motion`, transitions are instant.
+- A loading skeleton shimmers five times (eight seconds) and then holds still.
 
 ## Writing
 

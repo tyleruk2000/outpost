@@ -168,7 +168,7 @@ describe("everything installed", () => {
     const user = userEvent.setup();
     await user.click(await screen.findByRole("checkbox", { name: "Select everything" }));
     await user.click(screen.getByRole("button", { name: "Remove" }));
-    const dialog = await screen.findByRole("dialog", { name: "Remove 1 item" });
+    const dialog = await screen.findByRole("dialog", { name: "Remove “VOACAP ionospheric and noise coefficients”" });
     expect(await within(dialog).findByText("Without VOACAP ionospheric and noise coefficients")).toBeVisible();
     expect(within(dialog).getByText(/HF propagation planner stops working/)).toBeVisible();
   });
