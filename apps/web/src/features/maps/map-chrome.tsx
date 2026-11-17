@@ -418,10 +418,13 @@ export function MapCard({
   titleHidden,
   onClose,
   closeLabel,
+  action,
   children,
   className,
 }: {
   title: ReactNode;
+  /** A button beside the close button, such as one that folds the card. */
+  action?: ReactNode;
   /**
    * The title is said to a screen reader but not written: for the card of a tool that has taken
    * over the sheet on a phone, where the sheet's own first line is the tool's title. One title, not two.
@@ -436,10 +439,15 @@ export function MapCard({
     <section className={cn(mapCard, className)}>
       <div className={mapCardHeader}>
         <h2 className={cn("min-w-0 text-body font-semibold text-ink", titleHidden && "sr-only")}>{title}</h2>
-        {onClose ? (
-          <Button variant="ghost" size="icon-sm" aria-label={closeLabel ?? "Close"} onClick={onClose} className="-mt-1 -mr-1.5">
-            <X />
-          </Button>
+        {action || onClose ? (
+          <div className="flex shrink-0 items-start gap-1">
+            {action}
+            {onClose ? (
+              <Button variant="ghost" size="icon-sm" aria-label={closeLabel ?? "Close"} onClick={onClose} className="-mt-1 -mr-1.5">
+                <X />
+              </Button>
+            ) : null}
+          </div>
         ) : null}
       </div>
       {children}

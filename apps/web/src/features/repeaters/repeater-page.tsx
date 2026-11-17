@@ -17,7 +17,7 @@ import {
   type RepeaterFields,
   toMaidenhead,
 } from "@outpost/shared";
-import { ArrowLeft, CircleAlert, MapPin, Pencil, RadioTower, Trash2, Undo2 } from "lucide-react";
+import { ArrowLeft, CircleAlert, MapPin, Pencil, Radar, RadioTower, Trash2, Undo2 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
@@ -264,6 +264,11 @@ export default function RepeaterPage() {
             <Button asChild>
               <Link to={sightHref}>
                 <RadioTower /> Check line of sight
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link to={`${mapHref}&range=1`}>
+                <Radar /> Estimated range
               </Link>
             </Button>
           </div>

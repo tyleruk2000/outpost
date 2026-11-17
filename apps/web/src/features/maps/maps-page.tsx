@@ -945,6 +945,7 @@ export default function MapsPage() {
       setSightStart(start);
       setTool("sight");
     }, []),
+    onOpenOffline: () => openOffline({ type: "add" }),
   });
 
   // Reference layers (features/layers): published data drawn when switched on in the Layers tab, opened by a press.

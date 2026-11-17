@@ -9,6 +9,7 @@ import { floodZoneLayers, populationLayers, referenceLayers } from "@/features/l
 import { nuclearLayers } from "@/features/nuclear/layers";
 import { propagationLayers } from "@/features/propagation/map/layers";
 import { repeaterLayers } from "@/features/repeaters/map/layers";
+import { rangeLayers } from "@/features/repeaters/map/range";
 import { greyLineLineLayers, greyLineShadeLayers } from "../grey-line/layers";
 import { bboxRing, circleRing, formatDistance, type LatLon, metersPerPixel } from "../lib/geo";
 import { measure } from "../lib/measure";
@@ -32,6 +33,7 @@ export const OVERLAY_SOURCES = [
   "o-tracks",
   "o-track-ends",
   "o-measure",
+  "o-range",
   "o-repeaters",
   "o-reference",
   "o-sight",
@@ -217,6 +219,8 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
       layout: { ...label, "text-field": ["get", "label"], "text-anchor": "bottom", "text-offset": [0, -0.8], "text-allow-overlap": false },
       paint: halo,
     },
+    // The estimated range of the repeater that is open, beneath the repeaters; see features/repeaters/map/range.ts.
+    ...rangeLayers(theme),
     // Repeaters, when they are switched on; see features/repeaters/map.
     ...repeaterLayers(theme),
     // Reference layers (features/layers): publicly mapped places, boundaries and historical records, under saved places.

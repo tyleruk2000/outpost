@@ -32,7 +32,7 @@ const MIN_STEP_METERS = 5;
 const round = (value: number, digits: number) => Math.round(value * 10 ** digits) / 10 ** digits;
 const gap = (startMeters: number, endMeters: number) => ({ startMeters: round(startMeters, 1), endMeters: round(endMeters, 1) });
 
-const position = (name: string) =>
+export const position = (name: string) =>
   z
     .string({ error: `Give \`${name}\` as latitude,longitude, for example 54.46,-3.09.` })
     .regex(/^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/, `Give \`${name}\` as latitude,longitude, for example 54.46,-3.09.`)

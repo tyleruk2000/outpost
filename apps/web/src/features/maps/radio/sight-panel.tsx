@@ -25,7 +25,7 @@ const BAND_OPTIONS: Array<{ value: BandId; label: string }> = [
 ];
 
 /** A number typed by hand. What is typed is kept as typed; a value is passed on only while it is one that can be used. */
-function NumberField({
+export function NumberField({
   label,
   value,
   min,

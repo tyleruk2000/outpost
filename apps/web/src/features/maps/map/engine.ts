@@ -594,12 +594,29 @@ export class MapEngine {
     this.map.jumpTo({ center: [view.lon, view.lat], zoom: view.zoom });
   }
 
-  /** `clearBottom` keeps that many more pixels at the foot of the map free, for a card that lies over it. */
-  fitBounds(bbox: Bbox, options: { maxZoom?: number; animate?: boolean; clearBottom?: number } = {}): void {
-    const { top, right, left } = this.padding;
+  /**
+   * `clearBottom` keeps that many more pixels at the foot of the map free, for a card that lies over it;
+   * `keepClear` is a measured card's room instead: pixels from each edge of the map that the fit stays inside,
+   * counted from the edge itself (not added to what the camera keeps), for a card whose place is measured.
+   */
+  fitBounds(
+    bbox: Bbox,
+    options: {
+      maxZoom?: number;
+      animate?: boolean;
+      clearBottom?: number;
+      keepClear?: { top?: number; right?: number; bottom?: number };
+    } = {},
+  ): void {
+    const { left } = this.padding;
     const canvas = this.map.getCanvas();
+    const keep = options.keepClear ?? {};
+    const top = Math.max(this.padding.top, Math.min(keep.top ?? 0, canvas.clientHeight - 72));
     // The space to keep at the foot gives way before the fit does: at least 72 px of map stay to fit into.
-    const bottom = Math.max(0, Math.min(this.paddingWith(options.clearBottom ?? 0).bottom, canvas.clientHeight - top - 72));
+    const asked =
+      keep.bottom !== undefined ? Math.max(this.padding.bottom, keep.bottom) : this.paddingWith(options.clearBottom ?? 0).bottom;
+    const bottom = Math.max(0, Math.min(asked, canvas.clientHeight - top - 72));
+    const right = Math.max(this.padding.right, Math.min(keep.right ?? 0, canvas.clientWidth - left - 72));
     // A margin round what is fitted: 48 px where there is room, less on a small phone, where 48 px each side
     // of little room left nothing to fit into and the map did not move at all.
     const margin = (across: number) => Math.max(8, Math.min(48, across / 8));
