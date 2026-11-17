@@ -89,7 +89,11 @@ passages found for it, to the model server in the `answers.endpoint` setting; wi
 semantic search set to a "local embedding server", Outpost sends passage text and
 search queries to the address in the `search.semantic.endpoint` setting. Both default to
 `http://127.0.0.1:11434/v1`, on the same machine. Point either at another machine and
-the text goes there. The complete list of every connection the server opens, with the
+the text goes there. **Look for Ollama** in Settings asks the setting's address, then
+`127.0.0.1:11434`, then `host.docker.internal:11434` (the computer a container runs on).
+The mesh radio link ([mesh-radio.md](mesh-radio.md)), once set up from the computer
+itself, connects to the household's MQTT broker or MeshCore radio at the address typed,
+and connects again after a lost connection for as long as it stays set up. The complete list of every connection the server opens, with the
 code that opens it, is in [security.md](security.md#no-telemetry).
 
 The same goes for answers: with "Answers from your library" switched on, pressing

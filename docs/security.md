@@ -1824,7 +1824,7 @@ to the cross-site rules above, except the few `GET`s named there.
 | What starts it | Where it goes | Code |
 | --- | --- | --- |
 | Catalogue **Refresh**; adding or downloading an entry; installing a pack | `opds.library.kiwix.org`; the manifests' `downloadHosts` and public mirrors they redirect to | `catalog/kiwix.ts`, `catalog/resolve.ts`, `downloads/http-fetcher.ts` |
-| Map region estimate and download; place names | `build-metadata.protomaps.dev`, `build.protomaps.com` or the `maps.tileSource` / `maps.terrainSource` archives; `download.geonames.org` | `maps/source.ts`, `maps/pmtiles/remote.ts`, `maps/places.ts` |
+| Map region estimate and download; place names | `build-metadata.protomaps.dev`, `build.protomaps.com` or the `maps.tileSource` / `maps.terrainSource` archives (the terrain archive is `download.mapterhorn.com` unless changed); `download.geonames.org` | `maps/source.ts`, `maps/pmtiles/remote.ts`, `maps/places.ts` |
 | Place names for Great Britain: **Check the size**, **Download** | `api.os.uk` (the check is held to it on every hop); the download starts there and follows its redirect to OS's file store, `omseprd1stdstordownload.blob.core.windows.net`; the file is checked against the MD5 `api.os.uk` gives | `maps/os-names/source.ts`, `maps/os-names/index.ts` |
 | Satellite imagery and aerial photographs: **Find pictures**, **Continue**, **Fetch**, **Download** | The fixed hosts in [Satellite imagery](#downloads-the-ssrf-guard) above | `maps/imagery/` |
 | **Search** in "Find a route", and adding a result | The declared route sources | `maps/route-finder/overpass.ts` |
@@ -1836,17 +1836,19 @@ to the cross-site rules above, except the few `GET`s named there.
 | The second HF model's maps | `raw.githubusercontent.com` | `propagation/p533/maps.ts` |
 | **Fetch the registry from the IEEE** under Devices on this network | `standards-oui.ieee.org` (`OUTPOST_IEEE_OUI_URL`) | `network/service.ts` |
 | Making a portable drive for a new kind of computer | `nodejs.org`, `download.kiwix.org` | `portable/runtimes.ts` |
-| Answers, Chat, **Test**, **Look for Ollama**, the model lists in Settings and Chat | The `answers.endpoint` setting; `127.0.0.1:11434` for the look | `answers/provider.ts`, `chat/models.ts` |
+| Answers, Chat, **Test**, **Look for Ollama**, the model lists in Settings and Chat | The `answers.endpoint` setting; `127.0.0.1:11434`, then `host.docker.internal:11434`, for the look | `answers/provider.ts`, `chat/models.ts` |
 | Passages newly indexed, five seconds after they settle, while search by meaning uses an embedding server; **Test** | The `search.semantic.endpoint` setting | `semantic/providers.ts` |
 | **Scan** under Devices on this network | Private addresses on the computer's own networks only | `network/scan.ts`, `network/system.ts` |
 | Connecting a share, listing its folders; on a Mac, at start and every five minutes, reconnecting a share whose password is remembered | The file server's checked private address | `storage/shares/` |
 | Opening a reference page, starting the server | kiwix-serve on this computer | `kiwix/index.ts`, `kiwix/server.ts` |
+| Setting up the mesh radio link (from the computer itself), then for as long as it stays set up, trying again after a lost connection | The household's MQTT broker or the MeshCore radio at the address typed (a host name or IP address, not checked to be on the home network); a serial radio in `/dev` | `mesh/mqtt/client.ts`, `mesh/meshcore/link.ts`, `mesh/serial.ts` |
 
-Two of these happen without a press at the moment they happen, each because a person
+Three of these happen without a press at the moment they happen, each because a person
 set it up earlier: vectors for new passages, sent to an embedding server the person
 chose (contact cards, map places and catalogue entries are passages too, so with an
-embedding server on another machine their words go there), and reconnecting a
-remembered network share. A download that was running when the server stopped carries
+embedding server on another machine their words go there), reconnecting a
+remembered network share, and the mesh radio link connecting, and connecting again, to
+the broker or radio it was set up with. A download that was running when the server stopped carries
 on when it starts again. The list does not include `apps/server/src/cli/` and
 `maps/build-regions.mjs`, which are tools run by hand, not by the server.
 
