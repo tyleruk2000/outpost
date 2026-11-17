@@ -8,6 +8,8 @@ export type ErrorCode =
   | "not_found"
   | "conflict"
   | "too_large"
+  /** Too many requests from one address in a short time. */
+  | "too_many"
   | "unsupported"
   | "storage_unavailable"
   | "insufficient_space"
@@ -21,6 +23,7 @@ const statusByCode: Record<ErrorCode, number> = {
   not_found: 404,
   conflict: 409,
   too_large: 413,
+  too_many: 429,
   unsupported: 415,
   storage_unavailable: 503,
   insufficient_space: 507,

@@ -42,7 +42,10 @@ Everything you have already installed or written:
   shadow, and the sundial and nocturnal templates are all worked out on the device (see
   [tools-solar-clock.md](tools-solar-clock.md)). Saved places come from the server; typed
   coordinates need nothing;
-- the games, all six of them (see [games.md](games.md)).
+- the games, all six of them (see [games.md](games.md));
+- the household board, Messages: messages, check-ins and files sent between devices go
+  through Outpost on the home network and nothing else (see [messages.md](messages.md)).
+  It does not wake a locked phone: there are no push notifications.
 
 The web app itself is served by Outpost: its scripts, styles, fonts, PDF viewer
 resources, map fonts and map icons are all local files.

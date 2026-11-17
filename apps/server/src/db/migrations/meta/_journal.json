@@ -197,6 +197,13 @@
       "when": 1794874500676,
       "tag": "0027_games",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "6",
+      "when": 1794915937224,
+      "tag": "0028_board",
+      "breakpoints": true
     }
   ]
 }

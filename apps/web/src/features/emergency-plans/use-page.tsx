@@ -12,6 +12,7 @@ import { ErrorState, Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/misc";
+import { BoardPlanLine } from "@/features/board/elsewhere";
 import { KeepPlanSection } from "@/features/kept/keep-plan";
 import { plural } from "@/lib/utils";
 import { usePlan, usePlanAction, useTick } from "./data";
@@ -71,6 +72,7 @@ export default function UsePlanPage() {
               {stateLine(plan, ticks, plan.use.startedAt)}
             </p>
             <HomeWarningLine className="mt-3" />
+            {plan.use.startedAt !== null ? <BoardPlanLine className="mt-2" /> : null}
             {plan.use.startedAt === null ? (
               <Button variant="primary" size="lg" className="mt-3" loading={start.isPending} onClick={() => start.mutate()}>
                 Start using this plan

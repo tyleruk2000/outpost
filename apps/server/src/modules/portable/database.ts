@@ -61,6 +61,8 @@ export function prepareDriveDatabase(file: string, contents: DriveContents): { c
         DELETE FROM settings WHERE key = 'contacts.carddav';
         DELETE FROM library_meta WHERE key = 'backup.state';
         DELETE FROM chat_conversations;
+        DELETE FROM board_messages;
+        DELETE FROM board_files;
       `);
 
       if (contents.contacts === false) {

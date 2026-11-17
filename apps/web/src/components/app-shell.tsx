@@ -1,6 +1,7 @@
 import { Component, lazy, type ReactNode, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
+import { BoardToasts } from "@/features/board/toasts";
 import { ReachNotice } from "@/features/kept/reach";
 import { RecordingIndicator } from "@/features/maps/recording/indicator";
 import { MobileNav } from "./mobile-nav";
@@ -167,6 +168,7 @@ export function AppShell({ notesTree, onNewPage }: { notesTree?: ReactNode; onNe
         <UpdateNotice />
         <RecordingIndicator />
         <ReachNotice />
+        <BoardToasts />
         <ScreenErrorBoundary path={location.pathname}>
           <Suspense fallback={<PageFallback />}>
             <Outlet />

@@ -137,6 +137,11 @@ const TABLES: Record<string, Decision> = {
   network_devices: { group: "other", drive: true },
   network_scans: { group: "other", drive: true },
   game_saves: { group: "other", drive: true },
+  board_messages: { group: "other", drive: "The household board stays with the household's Outpost (docs/portable.md)." },
+  board_files: {
+    group: "other",
+    drive: "Part of the household board; the files themselves are in the data folder, which a drive does not carry.",
+  },
 };
 
 /** A word put in every text column, to look for in the full-text indexes' own storage. */

@@ -57,4 +57,6 @@ export interface Settings {
   "maps.terrainSource": string;
   "maps.defaultMaxZoom": number;
   "storage.checkIntervalSeconds": number;
+  /** Days a file sent on the household board is kept; 0 keeps it until removed. */
+  "board.fileDays": number;
 }

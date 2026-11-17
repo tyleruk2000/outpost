@@ -913,6 +913,41 @@ reach Outpost can read and change all of it. What it adds:
   supplies and 40 links to a plan, field lengths as in `PLAN_LIMITS`. A GET changes
   nothing: opening a plan is recorded by a POST the screen sends.
 
+### The household board (Messages)
+
+Messages ([messages.md](messages.md)) is a board for everyone on the home network.
+
+- **What is stored.** Each message's channel, the name it was posted under, its words,
+  and for a check-in its status, any place in words and, if the person ticked it, the
+  device's position, with the times and who changed or removed it. Sent files are kept
+  in the data folder under `board/` until removed or their days are up (7 by default).
+  All of it is in backups, and none of it goes on a portable drive.
+- **Who can read it.** Everyone who can reach Outpost, as with everything else. A name is
+  what a device chose and proves nothing; anyone can post under any name, and change or
+  remove anything. The screen says so. A removed message keeps a line saying who removed
+  it, so a removal is never silent; its words are deleted from the database.
+- **What is not protected.** The words, places and positions are not encrypted, and on
+  plain http they cross the home network in the clear, as everything does
+  ([HTTPS on the home network](#https-on-the-home-network)). There are no private
+  messages. A position is shown to everyone on the network.
+- **Words are never markup.** They are drawn as text; only `http:` and `https:` addresses
+  become links, opened in a new tab with `noopener noreferrer`.
+- **A sent file is never run.** It is not opened, unpacked or read on the server, and is
+  only ever served as a download (`Content-Disposition: attachment`), as
+  `application/octet-stream` unless its first bytes show a PNG, JPEG, GIF or WebP
+  picture (never SVG, which can carry script), with the same `sandbox` policy and
+  `nosniff` as the library's originals. Its name is made safe for a file system (no path
+  separators, no leading dots) and its path goes through `resolveInside`. "Add to
+  library" goes through the library's own checks and asks first.
+- **Limits.** A name 40 characters, a message 10,000, a place 120; 30 posts, check-ins,
+  changes or removals a minute and 30 files an hour from one address (`429` past that);
+  a file 200 MB; at most 100 files and 4 GB kept; the data folder must keep 256 MB free.
+  Every input is checked with zod, and every route that changes something is held to the
+  cross-site rules above.
+- **Not searched, not sent anywhere.** Messages are not added to search and are never
+  sent to a model server. The board makes no outbound request; there are no push
+  notifications.
+
 ### Paths
 
 Content is recorded as *(storage location, relative path)*, and storage locations can

@@ -1027,6 +1027,32 @@ unfinished game of Solitaire, Peg solitaire, Sudoku, Draughts or Pairs is never 
 | `GET /api/games/allotment` | `{ plot, now, hemisphere, hemisphereFrom, season, awayMs, started }`: the household's plot worked out to the server's clock, without writing it (or a new plot, not stored, before the first action); `hemisphereFrom` is `setting`, `home place` or `default`. `409` with `details.damaged` when the stored plot cannot be read; it is not replaced. |
 | `POST /api/games/allotment/actions` | One action, stamped with the server's clock (never earlier than the plot's own): `{ type: "sow", bed, crop }`, `water`, `harvest` (each with `bed`, 0–13), `harvestAll`, `collect` (optional `thing`: `hens`, `beehive`, `appleTree`), `sell` (`item`, `count` 1–9,999 or `"all"`), `sellAll`, `buyBed`, `buy` (`thing`), `setHemisphere` (`auto`, `north`, `south`). Answers as the `GET` does. `409` with the reason for an action that cannot be done ("That bed already has carrots in it."); nothing changes. Publishes `games.changed`. |
 
+## Messages (the household board)
+
+Types: `packages/shared/src/board.ts`; see [messages.md](messages.md). Every message
+belongs to a `channel` (`board` is the household's own; the pattern is
+`^[a-z0-9][a-z0-9:._-]{0,63}$`) and has a `source` (`here`, or a transport's name).
+Names, words and places are plain text, never markup. Each address may post, check in,
+change or remove 30 times a minute and send 30 files an hour; past that, `429` with
+`details.retryAfterSeconds`. Every change publishes `board.changed` with
+`{ action, channel, kind?, author?, excerpt?, status? }`.
+
+| Route | What it does |
+| --- | --- |
+| `GET /api/board/messages` | `{ messages, older }`: a page of a channel's history, oldest first. Query: `channel` (default `board`), `before` (a message id: the page before it), `limit` (1–200, default 50). `older` is the id to pass as `before` for the page before, or null. `404` for a `before` that is not in the channel. |
+| `GET /api/board/messages/:id` | `{ message }`. |
+| `GET /api/board/summary` | `{ checkIns, people, newSince, newestAt, fileDays, limits }`: each person's latest check-in on the household's board (the household's people first, then anyone else), the names to offer a device choosing one, how many messages are newer than `since` (a query parameter, milliseconds), the newest message's time, how many days sent files are kept (0: until removed), and the limits. |
+| `POST /api/board/messages` | `{ author, body, channel? }`. A name of 1–40 characters (longer is cut; control characters removed) and 1–10,000 characters of words. Returns `{ message }`. |
+| `POST /api/board/check-ins` | `{ author, status: "safe" \| "help" \| "other", body?, place?, position?, channel? }`. `other` needs words. `place` up to 120 characters; `position` is `{ lat, lon, accuracyM }` (`accuracyM` may be null). Returns `{ message }`. |
+| `PATCH /api/board/messages/:id` | `{ by, body?, place?, status?, baseUpdatedAt }`: anyone may change any message; it records who and when. `place` and `status` only for a check-in. `409` when `baseUpdatedAt` is not the message's `updatedAt` (changed elsewhere meanwhile) or the message was removed; nothing changes. |
+| `POST /api/board/messages/:id/remove` | `{ by }`: removes a message for everyone. Its words, place, position and file go; the row stays with `removed: { by, at }`. Removing it again changes nothing. |
+| `POST /api/board/files` | `multipart/form-data`: the fields `author`, `body` (optional) and `channel` (optional), then one file of up to 200 MB. `413` over the size, `507` when the board already keeps 100 files or 4 GB, or the data folder lacks room, `400` for an empty file or fields after the file. Returns `{ message }` with `file: { id, name, sizeBytes, picture, expiresAt, gone, url }`. |
+| `GET /api/board/files/:id` | The file, always as `Content-Disposition: attachment`, with `Content-Security-Policy: sandbox; default-src 'none'`, `nosniff`, and `application/octet-stream` unless its first bytes show a PNG, JPEG, GIF or WebP picture. `404` once it is gone. |
+| `POST /api/board/files/:id/library` | Copies the file into the library through the same path as any file added there. Returns `{ status: "created" \| "duplicate", document }`. |
+
+Setting: `board.fileDays` (0–365, default 7; 0 keeps files until removed), through
+`PATCH /api/settings`.
+
 ## Nuclear preparedness
 
 Scenarios saved in the effects simulator (Preparedness → Nuclear preparedness). Only

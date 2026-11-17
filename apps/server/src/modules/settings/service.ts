@@ -3,6 +3,7 @@
  * settings can be added without a migration; the schema below is the single list of
  * what exists and what the defaults are.
  */
+import { BOARD_FILE_DAYS_DEFAULT, BOARD_FILE_DAYS_MAX } from "@outpost/shared";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError } from "../../core/errors.ts";
@@ -122,6 +123,8 @@ export const settingsSchema = z.object({
   "weather.updateOnOpen": z.boolean().default(false),
   /** How far round a weather place river and sea levels are asked for, km (one of RIVER_DISTANCES_KM in @outpost/shared). */
   "weather.riversKm": z.number().int().min(1).max(50).default(8),
+  /** Days a file sent on the household board is kept before it is removed by itself; 0 keeps it until someone removes it. */
+  "board.fileDays": z.number().int().min(0).max(BOARD_FILE_DAYS_MAX).default(BOARD_FILE_DAYS_DEFAULT),
   /** Seconds between checks that storage locations are still connected. */
   "storage.checkIntervalSeconds": z.number().int().min(5).max(3600).default(30),
 });

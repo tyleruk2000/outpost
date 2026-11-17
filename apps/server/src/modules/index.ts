@@ -8,6 +8,7 @@ import type { AppContext } from "../core/context.ts";
 import { registerAnswers } from "./answers/index.ts";
 import { registerAudiobooks } from "./audiobooks/index.ts";
 import { registerBackup } from "./backup/index.ts";
+import { registerBoard } from "./board/index.ts";
 import { registerBooks } from "./books/index.ts";
 import { registerCatalog } from "./catalog/index.ts";
 import { registerChat } from "./chat/index.ts";
@@ -84,4 +85,6 @@ export const modules: ModuleRegister[] = [
   registerGames,
   // Audiobooks (Library), after books, on a line of its own so that other additions merge cleanly.
   registerAudiobooks,
+  // Messages: the household board, on a line of its own so that other additions merge cleanly.
+  registerBoard,
 ];
