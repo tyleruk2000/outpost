@@ -592,6 +592,19 @@ describe("a prediction with an upright wire off its half-wave band", () => {
   });
 });
 
+describe("the reading of an hour", () => {
+  it("opens with the answer in plain words, then the MUF with what it is", () => {
+    server();
+    shown(<Results result={resultOf(requestWith(), () => "modelled")} hour={12} onHour={() => {}} />);
+    const reading = screen.getByText(/^At 12:00 UTC, SSB voice on 7\.10 MHz/).closest("p")!;
+    expect(reading.textContent).toBe(
+      "At 12:00 UTC, SSB voice on 7.10 MHz is predicted to get through on 40% of days: the share of days its signal-to-noise " +
+        "ratio reaches the 45.0 dB (in 1 Hz) it is taken to need. The median is 40 dB, below it by 5 dB. The path's MUF, " +
+        "the highest frequency it carries on half the days, is 9.50 MHz, and 7.10 MHz is below it on 90% of the days of the month.",
+    );
+  });
+});
+
 describe("charts", () => {
   it("draw a row that is not modelled as one hatched bar, name it in the legend, and never write it as a share", () => {
     render(

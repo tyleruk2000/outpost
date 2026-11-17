@@ -142,8 +142,9 @@ working, which the screen shows for one chosen hour.
 
 - **The notice at the top** says what kind of knowledge the answer rests on and how old
   it is.
-- **A few sentences** state, for the chosen hour: the path's MUF, on what share of days
-  the frequency is below it, the reliability for the mode, a better band if there is
+- **A few sentences** state, for the chosen hour: first the reliability for the mode (on
+  what share of days it is predicted to get through), then the path's MUF with what it
+  means and on what share of days the frequency is below it, a better band if there is
   one, and the hours at which the frequency reaches half the days or more.
 - **Frequency against time** is a grid: every whole megahertz from 2 to 30 against the
   24 hours (UTC), shaded by reliability, with the MUF drawn across it. Move over it, or
@@ -201,9 +202,9 @@ basis, and the planner says so.
 
 All four were read on 16 November 2026.
 
-**Needs, dB** and **Measured in, Hz** are each used whenever they are filled in. A
+**Signal-to-noise needed, dB** and **In a bandwidth of, Hz** are each used whenever they are filled in. A
 bandwidth typed on its own is applied to the mode's starting figure: CW with 500 in
-**Measured in, Hz** and **Needs, dB** left empty is asked as 24 dB in 500 Hz, which is
+**In a bandwidth of, Hz** and **Signal-to-noise needed, dB** left empty is asked as 24 dB in 500 Hz, which is
 24 + 10·log10(500) = 51 dB in 1 Hz. The answer then lists the mode as your own
 bandwidth with the published figure, because 24 dB in 500 Hz is not what the guide
 states.

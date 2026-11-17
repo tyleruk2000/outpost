@@ -30,6 +30,9 @@ export interface KeyPadProps {
   className?: string;
 }
 
+/** A phone or tablet with only a touch screen has no Ctrl or Z to press, so the keys' names are left off there. */
+const touchOnly = () => typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches === true;
+
 /** Keeps a held key from turning into a scroll, a selection, a zoom or a callout. */
 const holdable = "touch-none select-none [-webkit-touch-callout:none] [-webkit-user-select:none] [-webkit-tap-highlight-color:transparent]";
 
@@ -45,7 +48,7 @@ function Lamp({ keyDown }: { keyDown: boolean }) {
   );
 }
 
-function Lever({ side, label, keyLabel, held }: { side: "dit" | "dah"; label: string; keyLabel: string; held: boolean }) {
+function Lever({ side, label, keyLabel, held }: { side: "dit" | "dah"; label: string; keyLabel: string | null; held: boolean }) {
   return (
     <div
       data-side={side}
@@ -57,7 +60,7 @@ function Lever({ side, label, keyLabel, held }: { side: "dit" | "dah"; label: st
     >
       <span className="font-mono text-display leading-none text-ink">{label === "Dit" ? "·" : "−"}</span>
       <span className="text-body font-medium text-ink">{label}</span>
-      <span className="rounded-control bg-surface-strong px-1.5 py-0.5 text-micro text-ink-muted">{keyLabel}</span>
+      {keyLabel ? <span className="rounded-control bg-surface-strong px-1.5 py-0.5 text-micro text-ink-muted">{keyLabel}</span> : null}
     </div>
   );
 }
@@ -146,12 +149,17 @@ export function KeyPad({ keyType, keyDown, bindings, swapPaddles, onPress, onRel
   // Levers always send their own side; useKeyer applies the swap, so only the names change here.
   const leftLabel = swapPaddles ? "Dah" : "Dit";
   const rightLabel = swapPaddles ? "Dit" : "Dah";
+  const keys = touchOnly()
+    ? null
+    : { dit: keyCodeLabel(bindings.dit), dah: keyCodeLabel(bindings.dah), straight: keyCodeLabel(bindings.straight) };
+  const onKeyboard = keys ? (keyType === "straight" ? ` On a keyboard, ${keys.straight}.` : ` On a keyboard, ${keys.dit} and ${keys.dah}.`) : "";
   const instructions =
-    keyType === "straight"
-      ? `Straight key: hold it down for as long as each element lasts. On a keyboard, ${keyCodeLabel(bindings.straight)}.`
+    (keyType === "straight"
+      ? "Straight key: hold it down for as long as each element lasts."
       : keyType === "bug"
-        ? `Bug: hold the left lever for repeating dits, the right one for each dah. On a keyboard, ${keyCodeLabel(bindings.dit)} and ${keyCodeLabel(bindings.dah)}.`
-        : `${keyType === "single" ? "Single lever" : "Paddles"}: hold the left lever for ${leftLabel.toLowerCase()}s, the right for ${rightLabel.toLowerCase()}s${keyType === "paddle" ? ", or both at once to alternate" : ""}. On a keyboard, ${keyCodeLabel(bindings.dit)} and ${keyCodeLabel(bindings.dah)}.`;
+        ? "Bug: hold the left lever for repeating dits, the right one for each dah."
+        : `${keyType === "single" ? "Single lever" : "Paddles"}: hold the left lever for ${leftLabel.toLowerCase()}s, the right for ${rightLabel.toLowerCase()}s${keyType === "paddle" ? ", or both at once to alternate" : ""}.`) +
+    onKeyboard;
 
   return (
     <div className={cn("grid gap-3 rounded-panel border border-border bg-surface p-3 sm:p-4", !live && "opacity-60", className)}>
@@ -175,9 +183,7 @@ export function KeyPad({ keyType, keyDown, bindings, swapPaddles, onPress, onRel
             onLostPointerCapture={straightHandlers.onPointerUp}
           >
             <span className="text-lead font-medium text-ink">Key</span>
-            <span className="rounded-control bg-surface-strong px-1.5 py-0.5 text-micro text-ink-muted">
-              {keyCodeLabel(bindings.straight)}
-            </span>
+            {keys ? <span className="rounded-control bg-surface-strong px-1.5 py-0.5 text-micro text-ink-muted">{keys.straight}</span> : null}
           </div>
         </div>
       ) : (
@@ -189,8 +195,8 @@ export function KeyPad({ keyType, keyDown, bindings, swapPaddles, onPress, onRel
           data-testid="morse-paddles"
           {...paddleHandlers}
         >
-          <Lever side="dit" label={leftLabel} keyLabel={keyCodeLabel(bindings.dit)} held={held.dit} />
-          <Lever side="dah" label={rightLabel} keyLabel={keyCodeLabel(bindings.dah)} held={held.dah} />
+          <Lever side="dit" label={leftLabel} keyLabel={keys?.dit ?? null} held={held.dit} />
+          <Lever side="dah" label={rightLabel} keyLabel={keys?.dah ?? null} held={held.dah} />
         </div>
       )}
     </div>
