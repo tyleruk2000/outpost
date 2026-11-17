@@ -226,10 +226,16 @@ describe("automatic backups in Settings", () => {
     );
     await userEvent.click(screen.getByRole("menuitem", { name: "Restore this one" }));
     const asking = await screen.findByRole("alertdialog", { name: "Restore from this backup?" });
-    expect(asking).toHaveTextContent("Nothing changes until Outpost starts again.");
-    expect(asking).toHaveTextContent("moved to a dated folder in its data folder, not deleted, and until the restart you can cancel");
+    // What a worried person needs, one line each: what goes, what stays, when, and how to change their mind.
+    const what = within(asking).getByRole("list", { name: "What restoring does" });
+    expect(
+      within(what)
+        .getAllByRole("listitem")
+        .map((item) => item.textContent?.split(":")[0]),
+    ).toEqual(["Replaced", "Not touched", "When", "To cancel"]);
+    expect(what).toHaveTextContent("Not touched: the files of collections, maps and documents on your storage.");
     expect(requests).toEqual([]);
-    await userEvent.click(within(asking).getByRole("button", { name: "Check and stage restore" }));
+    await userEvent.click(within(asking).getByRole("button", { name: "Restore after restart" }));
     expect(requests).toEqual([{ call: "POST /api/backup/stored/outpost-backup-2026-11-16T03-00-00-000Z-scheduled.zip/restore", body: {} }]);
 
     await userEvent.click(await within(rows[1]!).findByRole("button", { name: `Actions for the backup of ${formatDateTime(OLDER)}` }));

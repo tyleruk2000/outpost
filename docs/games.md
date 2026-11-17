@@ -45,7 +45,10 @@ The game kept in the browser is read and written inside `try`/`catch` and checke
 by field when it is read back: in a private window, with site data blocked, or with a
 damaged copy, the game is played the same and simply not kept. It is written a moment
 after a move (a burst of moves is one write), at once when the page is hidden or the
-screen is left, and not at all when nothing has changed. It never leaves the
+screen is left, and not at all when nothing has changed. Two tabs of the same browser on
+the same game do not overwrite each other: each follows the other's saves (a `storage`
+event), the board shows the moves made in the other tab and says so, and the followed
+game is not written straight back. It never leaves the
 device; when a game ends (won, or given up by starting another after a move), only its
 result is sent, once (`POST /api/games/:game/results`). Without the server a game is
 played just the same, and the tally line says it could not be read.

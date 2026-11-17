@@ -42,21 +42,42 @@ export function clearDeviceSave(key: string): void {
   }
 }
 
+/** Said when a board takes up the moves made on the same game in another tab. */
+export const FOLLOWED_WORDS = "This board now shows the moves made in another tab.";
+
 /** How long after the last change the game is written: a burst of moves is one write. */
 export const SAVE_AFTER_MS = 400;
+
+/**
+ * Following the same game in another tab of this browser: `accept` checks what the other
+ * tab kept, as `readDeviceSave` does, and `onFollow` puts it on this board.
+ */
+export interface FollowOtherTab<T> {
+  accept: (value: unknown) => value is T;
+  onFollow: (value: T) => void;
+}
 
 /**
  * Keeps `value` under `key` while a game is played: `SAVE_AFTER_MS` after it last changed,
  * and at once when the page is hidden, left or closed. `toKeep` gives what is written (the
  * time played so far added in, say), or null to clear the key. A write that would put back
  * exactly what is there already is skipped.
+ *
+ * With `follow`, a game kept by another tab of this browser (a `storage` event, which a tab
+ * never receives for its own writes) is handed to `onFollow`, so two tabs on one game show
+ * the same board instead of each overwriting the other's moves. The game followed is not
+ * written back: only this tab's next move is. A cleared key (the other tab's game won) is
+ * left alone: the board stays as it is.
  */
-export function useDeviceSave<T>(key: string, value: T, toKeep: (value: T) => unknown = (same) => same): void {
-  const latest = useRef({ key, value, toKeep });
-  latest.current = { key, value, toKeep };
+export function useDeviceSave<T>(key: string, value: T, toKeep: (value: T) => unknown = (same) => same, follow?: FollowOtherTab<T>): void {
+  const latest = useRef({ key, value, toKeep, follow });
+  latest.current = { key, value, toKeep, follow };
   const written = useRef<string | null>(null);
+  /** The game last taken from another tab, until this tab moves on from it. */
+  const followed = useRef<unknown>(undefined);
   const flush = useRef(() => {
     const { key, value, toKeep } = latest.current;
+    if (value === followed.current) return;
     const kept = toKeep(value);
     const text = kept === null ? "" : JSON.stringify(kept);
     if (text === written.current) return;
@@ -64,6 +85,27 @@ export function useDeviceSave<T>(key: string, value: T, toKeep: (value: T) => un
     if (kept === null) clearDeviceSave(key);
     else writeDeviceSave(key, kept);
   }).current;
+
+  const following = follow !== undefined;
+  useEffect(() => {
+    if (!following) return;
+    const onStorage = (event: StorageEvent) => {
+      const { key, follow } = latest.current;
+      if (!follow || event.key !== PREFIX + key || event.newValue === null) return;
+      let other: unknown;
+      try {
+        other = JSON.parse(event.newValue);
+      } catch {
+        return;
+      }
+      if (!follow.accept(other)) return;
+      written.current = event.newValue;
+      followed.current = other;
+      follow.onFollow(other);
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [following]);
 
   useEffect(() => {
     const onVisibility = () => {

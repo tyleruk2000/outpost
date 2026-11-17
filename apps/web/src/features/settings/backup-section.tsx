@@ -12,8 +12,9 @@ import { notify } from "@/lib/notify";
 import { manageLink } from "../manage/manage-data";
 import { AutomaticBackups } from "./automatic-backups";
 import { BackupProtectionRow, passphraseHeader, passphraseProblem, RestorePassphrase, startsAsProtected } from "./backup-protection";
-import { RESTORE_WORDS, stagedText } from "./backup-text";
+import { stagedText } from "./backup-text";
 import { SettingRow, SettingsSection } from "./parts";
+import { RESTORE_LABEL, RestoreWords } from "./restore-words";
 
 /**
  * Reloads the page once the restarted server answers, rather than after a fixed wait that
@@ -215,15 +216,16 @@ export function BackupSection() {
           onOpenChange={(open) => !open && !restore.isPending && choose(undefined)}
           title="Restore from this backup?"
           description={
-            <>
-              <p>
-                <span className="font-medium text-ink [overflow-wrap:anywhere]">{chosen?.name}</span> is sent to Outpost and checked first.{" "}
-                {RESTORE_WORDS[0]}
-              </p>
-              <p className="mt-2">{RESTORE_WORDS[1]}</p>
-            </>
+            <RestoreWords
+              lead={
+                <>
+                  <span className="font-medium text-ink [overflow-wrap:anywhere]">{chosen?.name}</span> is sent to Outpost and checked
+                  first.
+                </>
+              }
+            />
           }
-          confirmLabel="Check and stage restore"
+          confirmLabel={RESTORE_LABEL}
           confirmVariant="primary"
           loading={restore.isPending}
           onConfirm={() => {

@@ -26,18 +26,9 @@ import { notify } from "@/lib/notify";
 import { useStorage } from "@/lib/queries";
 import { formatDateTime } from "@/lib/utils";
 import { passphraseProblem, RestorePassphrase } from "./backup-protection";
-import {
-  backupSummary,
-  checkText,
-  kindText,
-  protectionText,
-  RESTORE_WORDS,
-  retryText,
-  scheduleText,
-  stagedText,
-  waitingTitle,
-} from "./backup-text";
+import { backupSummary, checkText, kindText, protectionText, retryText, scheduleText, stagedText, waitingTitle } from "./backup-text";
 import { NumberSetting, SettingRow, SettingsSection } from "./parts";
+import { RESTORE_LABEL, RestoreWords } from "./restore-words";
 
 const OFF = "off";
 /** Monday first, as the week is written here. */
@@ -413,15 +404,16 @@ function StoredBackups({
         onOpenChange={(open) => !open && !restore.isPending && setRestoring(undefined)}
         title="Restore from this backup?"
         description={
-          <>
-            <p>
-              The backup of <span className="font-medium text-ink">{restoring ? formatDateTime(restoring.createdAt) : ""}</span>, from{" "}
-              {locationName}, is checked first. {RESTORE_WORDS[0]}
-            </p>
-            <p className="mt-2">{RESTORE_WORDS[1]}</p>
-          </>
+          <RestoreWords
+            lead={
+              <>
+                The backup of <span className="font-medium text-ink">{restoring ? formatDateTime(restoring.createdAt) : ""}</span>, from{" "}
+                {locationName}, is checked first.
+              </>
+            }
+          />
         }
-        confirmLabel="Check and stage restore"
+        confirmLabel={RESTORE_LABEL}
         confirmVariant="primary"
         loading={restore.isPending}
         onConfirm={() => {

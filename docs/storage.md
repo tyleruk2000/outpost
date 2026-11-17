@@ -786,8 +786,9 @@ who can open the file can read them: keep it on storage you trust, and on an enc
 disk if it leaves the house.
 
 Restoring replaces the database, attachments and extracted text after a restart. The
-backup is checked first; nothing changes until Outpost starts again, and until then
-**Cancel restore** drops it. Downloads that were under way stop. The files of
+dialog lists what is replaced, what is not touched, when it happens and how to cancel,
+and its button is **Restore after restart**. The backup is checked first; nothing
+changes until Outpost starts again, and until then **Cancel restore** drops it. Downloads that were under way stop. The files of
 collections, maps and documents on your storage locations are not touched. The
 data they replace is kept in the data directory in a folder named
 `before-restore-<time>`. After a restore, add the same storage locations again (their
