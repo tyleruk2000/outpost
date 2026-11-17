@@ -417,8 +417,10 @@ patches like every layer.
 press shows that kind alone (the same as Show only → Kind), so drinking water can be shown
 by itself. Then the nearest: of each kind (nearest first), or the nearest five of the kind
 shown alone, from the home place (the saved place with the home icon) or the middle of the
-map, chosen there and remembered on the device, with the distance in a straight line and
-the bearing, as the repeater lists give them. It is worked out from what is held
+map, chosen there and remembered on the device, with the distance in a straight line
+(kilometres with miles beside them, as everywhere on the map) and the bearing, as the
+repeater lists give them. The quick search's "supermarket", "shop", "pharmacy" and
+"drinking water" open the Layers tab (`/maps?tab=layers`). It is worked out from what is held
 (`GET /api/reference/nearest`), within 100 km; nothing is asked of any source. Then, in
 words: how complete the layer is likely to be, that neither source says a place is open,
 stocked or still there, and that in an emergency shops may be shut or empty.
