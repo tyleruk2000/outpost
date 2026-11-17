@@ -68,8 +68,11 @@ export function AutomaticBackups() {
   const status = useQuery({ queryKey: ["backup", "status"], queryFn: () => api.get<BackupStatus>("/api/backup/status") });
   const protection = status.data?.protection;
   const refresh = () => client.invalidateQueries({ queryKey: ["backup"] });
-  // A location coming or going, and each step of a backup under way, change what is said here.
-  useServerEvent("storage.changed", () => void refresh());
+  // A location coming or going changes whether backups can be made and which are there to
+  // list; each step of a backup under way changes the rest of what is said here.
+  useServerEvent("storage.changed", () => {
+    for (const key of ["schedule", "stored"]) void client.invalidateQueries({ queryKey: ["backup", key] });
+  });
   useServerEvent("job.updated", ({ data }) => {
     if ((data as JobDto | undefined)?.type === "backup.run") void refresh();
   });

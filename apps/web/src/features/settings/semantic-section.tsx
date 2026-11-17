@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Progress, Skeleton, Switch } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
+import { usePageVisible } from "@/lib/page-visible";
 import { cn, formatNumber, plural } from "@/lib/utils";
 import { GuideLink, MoreOptions, SettingsSection } from "./parts";
 import { indexCost, indexStage, LAPTOP_SECONDS_PER_THOUSAND, SemanticOptions } from "./semantic-options";
@@ -49,6 +50,7 @@ export function SemanticSection({
   const turnedOnRef = useRef(false);
   turnedOnRef.current = turnedOnAt !== null;
 
+  const shown = usePageVisible();
   const status = useQuery({
     queryKey: ["semantic", "status", enabled, provider, settings["search.semantic.model"], settings["search.semantic.endpoint"]],
     queryFn: () => api.get<SemanticStatus>("/api/semantic/status"),
@@ -57,7 +59,7 @@ export function SemanticSection({
     // While something is being read, or is about to be (new passages wait a few seconds), the screen keeps up with it.
     refetchInterval: (query) => {
       const data = query.state.data;
-      if (!data?.enabled || !data.ready) return false;
+      if (!shown || !data?.enabled || !data.ready) return false;
       if (data.indexing) return 2000;
       const behind = data.embeddedChunks < data.totalChunks;
       return behind && (turnedOnRef.current || data.build?.state === "succeeded") ? 2000 : false;

@@ -81,7 +81,8 @@ export function NoteScreen({ id }: { id: string }) {
   // the page is fetched again, except after a save this tab made, which it already has.
   useServerEvent("notes.changed", ({ data }) => {
     if ((data as NoteChangedEvent | undefined)?.origin === TAB_ORIGIN) return;
-    void client.invalidateQueries({ queryKey: noteKeys.detail(id) });
+    // Changes heard while the page was hidden are handed on together when it is shown: one fetch answers them all.
+    void client.invalidateQueries({ queryKey: noteKeys.detail(id) }, { cancelRefetch: false });
   });
 
   if (note.isPending) return <NoteSkeleton />;

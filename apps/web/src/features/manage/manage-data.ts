@@ -13,20 +13,33 @@ import type {
 } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { useServerEvent } from "@/lib/events";
+import { useServerConnection, useServerEvent } from "@/lib/events";
+import { usePageVisible } from "@/lib/page-visible";
 
 export const MANAGE_PATH = "/storage/manage";
 export type ManageView = "space" | "installed" | "leftovers" | "clean-up";
 export const manageLink = (view: ManageView = "space") => (view === "space" ? MANAGE_PATH : `${MANAGE_PATH}?view=${view}`);
 
 /**
- * While the server is still counting, ask again now and then in case the event was missed.
- * Not when there is no count and none under way: a count that failed is not retried every few seconds.
+ * While the server is still counting, it says when it is done (`manage.changed`). Only while
+ * that word cannot arrive is the count asked for now and then, and never while the page is
+ * hidden. Not when there is no count and none under way: a count that failed is not retried
+ * every few seconds.
  */
-const whileMeasuring = (query: { state: { data?: { measuring: boolean } } }) => (query.state.data?.measuring ? 3000 : false);
+function useWhileMeasuring() {
+  const shown = usePageVisible();
+  const connected = useServerConnection();
+  return (query: { state: { data?: { measuring: boolean } } }) => (shown && !connected && query.state.data?.measuring ? 3000 : false);
+}
 
-export const useUsage = () =>
-  useQuery({ queryKey: ["manage", "usage"], queryFn: () => api.get<UsageResponse>("/api/manage/usage"), refetchInterval: whileMeasuring });
+export function useUsage() {
+  const whileMeasuring = useWhileMeasuring();
+  return useQuery({
+    queryKey: ["manage", "usage"],
+    queryFn: () => api.get<UsageResponse>("/api/manage/usage"),
+    refetchInterval: whileMeasuring,
+  });
+}
 
 export const useItems = () =>
   useQuery({
@@ -35,12 +48,14 @@ export const useItems = () =>
     select: (data) => data.items,
   });
 
-export const useLeftovers = () =>
-  useQuery({
+export function useLeftovers() {
+  const whileMeasuring = useWhileMeasuring();
+  return useQuery({
     queryKey: ["manage", "leftovers"],
     queryFn: () => api.get<LeftoversResponse>("/api/manage/leftovers"),
     refetchInterval: whileMeasuring,
   });
+}
 
 /** Where things stand: whether erasing is offered here, what derived data there is, and the clean-up job. */
 export function useCleanup() {

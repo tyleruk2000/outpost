@@ -12,17 +12,23 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
+import { useServerConnection } from "@/lib/events";
 import { notify } from "@/lib/notify";
+import { usePageVisible } from "@/lib/page-visible";
 import { formatDateTime, timeAgo } from "@/lib/utils";
 import { countWords, duration, GROUP_WORDS, reclaimBlocked, schemaWords } from "./database-text";
 
-export const useDatabase = () =>
-  useQuery({
+export function useDatabase() {
+  const shown = usePageVisible();
+  const connected = useServerConnection();
+  return useQuery({
     queryKey: ["database"],
     queryFn: () => api.get<DatabaseStatus>("/api/database"),
-    // Looked at again while something is being worked out; otherwise only when the server says it changed.
-    refetchInterval: (query) => (query.state.data?.measuring || query.state.data?.active ? 1500 : false),
+    // The server says when what was being worked out is done (`database.changed`). Asked on a
+    // timer only while that word cannot arrive, and never while the page is hidden.
+    refetchInterval: (query) => (shown && !connected && (query.state.data?.measuring || query.state.data?.active) ? 1500 : false),
   });
+}
 
 /** One fact: its name in the margin on a wide screen, above it on a phone. */
 function Fact({ label, children }: { label: string; children: ReactNode }) {

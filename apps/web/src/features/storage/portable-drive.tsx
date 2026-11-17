@@ -14,7 +14,7 @@ import {
   type PortableRequest,
   type PortableStatus,
 } from "@outpost/shared";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, CircleAlert, CircleCheck, CornerDownLeft, TriangleAlert, Usb } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
@@ -23,11 +23,36 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox, Progress, Skeleton } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
+import { useServerConnection, useServerEvent } from "@/lib/events";
+import { usePageVisible } from "@/lib/page-visible";
 import { cn, formatDate, plural } from "@/lib/utils";
 import { FolderPicker, type PickedFolder } from "./folder-picker";
 import { dialogColumn, phoneSheet, phoneSheetFooter, SwitchRow } from "./parts";
 
 const steps = ["Where", "What to take", "Check and write"] as const;
+
+const FINISHED = ["succeeded", "failed", "cancelled"];
+
+/**
+ * The job writing a drive, kept current from its own progress events. Only while those
+ * cannot arrive (the event stream is down) is it asked for every few seconds, and not
+ * while the page is hidden; when the stream comes back every query is refreshed anyway.
+ */
+export function usePortableJob(jobId: string | undefined) {
+  const client = useQueryClient();
+  const shown = usePageVisible();
+  const connected = useServerConnection();
+  useServerEvent("job.updated", ({ id, data }) => {
+    if (jobId && id === jobId && data) client.setQueryData(["jobs", "detail", jobId], { job: data as JobDto });
+  });
+  return useQuery({
+    queryKey: ["jobs", "detail", jobId],
+    queryFn: () => api.get<{ job: JobDto }>(`/api/jobs/${jobId}`),
+    enabled: Boolean(jobId),
+    select: (data) => data.job,
+    refetchInterval: (query) => (shown && !connected && !FINISHED.includes(query.state.data?.job.state ?? "") ? 1500 : false),
+  });
+}
 
 function StepList({ current }: { current: number }) {
   return (
@@ -184,13 +209,7 @@ function Wizard({ status, onClose, startAt }: { status: PortableStatus; onClose:
     onSuccess: (data) => setJobId(data.job.id),
   });
 
-  const job = useQuery({
-    queryKey: ["jobs", "detail", jobId],
-    queryFn: () => api.get<{ job: JobDto }>(`/api/jobs/${jobId}`),
-    enabled: Boolean(jobId),
-    select: (data) => data.job,
-    refetchInterval: (query) => (["succeeded", "failed", "cancelled"].includes(query.state.data?.job.state ?? "") ? false : 1500),
-  });
+  const job = usePortableJob(jobId);
   const cancel = useMutation({ mutationFn: () => api.post(`/api/jobs/${jobId}/cancel`) });
 
   const toggle = <T,>(list: T[], value: T, on: boolean) => (on ? [...new Set([...list, value])] : list.filter((item) => item !== value));
