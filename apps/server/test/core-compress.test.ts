@@ -24,7 +24,10 @@ async function withRoutes(): Promise<FastifyInstance> {
   server.get("/stream", (_request, reply) => reply.type("application/json").send(Readable.from([JSON.stringify(big)])));
   server.get("/tile", (_request, reply) => reply.type("application/x-protobuf").send(Buffer.alloc(MIN_BYTES * 4)));
   server.get("/packed", (_request, reply) =>
-    reply.type("application/json").header("content-encoding", "gzip").send(zlib.gzipSync(JSON.stringify(big))),
+    reply
+      .type("application/json")
+      .header("content-encoding", "gzip")
+      .send(zlib.gzipSync(JSON.stringify(big))),
   );
   await server.ready();
   return server;
