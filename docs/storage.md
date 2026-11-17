@@ -122,8 +122,7 @@ minute. **Check drives** and a start always search.
 
 Only what you would call a change is announced to open screens: a location being
 disconnected or coming back, moving, or holding a different disk. Free space is
-recorded once it has moved by 256 MiB or half a per cent of the disk (whichever is
-more) and shown the next time the list is read, but it is not announced, because on a
+recorded once it has moved by 256 MiB and shown the next time the list is read, but it is not announced, because on a
 disk in use it moves all the time.
 
 ### Moving a library to another disk or folder

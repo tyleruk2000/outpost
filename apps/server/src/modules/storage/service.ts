@@ -116,14 +116,15 @@ declare module "../../core/context.ts" {
 export const SPACE_RESERVE_BYTES = 256 * 1024 * 1024;
 
 /**
- * Free space moves all the time on a disk in use. A move smaller than this (or than half
- * a per cent of the disk, if that is more) is not recorded or announced by a check.
+ * Free space moves all the time on a disk in use. A move smaller than this is not
+ * recorded or announced by a check. Not a share of the disk: on a large one that would
+ * leave the figure a download's choice of location reads gigabytes out.
  */
 const FREE_SPACE_STEP_BYTES = 256 * 1024 * 1024;
 
-function freeSpaceMoved(before: number | null, after: number | null, total: number | null): boolean {
+function freeSpaceMoved(before: number | null, after: number | null): boolean {
   if (before === null || after === null) return before !== after;
-  return Math.abs(after - before) >= Math.max(FREE_SPACE_STEP_BYTES, (total ?? 0) * 0.005);
+  return Math.abs(after - before) >= FREE_SPACE_STEP_BYTES;
 }
 
 async function capacity(dir: string): Promise<{ totalBytes: number; freeBytes: number } | undefined> {
@@ -293,7 +294,7 @@ export function createStorageService(ctx: AppContext): StorageService {
       patch.path !== row.path ||
       patch.statusDetail !== row.statusDetail ||
       patch.totalBytes !== row.totalBytes;
-    const spaceMoved = freeSpaceMoved(row.freeBytes, patch.freeBytes, patch.totalBytes);
+    const spaceMoved = freeSpaceMoved(row.freeBytes, patch.freeBytes);
     // When it was last seen is held here and written when it goes away (or hourly, for a restart).
     if (marker) seenAt.set(row.id, patch.lastSeenAt ?? Date.now());
     const stale = marker !== undefined && Date.now() - (row.lastSeenAt ?? 0) >= 3_600_000;

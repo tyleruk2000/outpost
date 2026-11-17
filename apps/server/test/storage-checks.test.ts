@@ -55,6 +55,21 @@ describe("the regular storage check", () => {
     expect(seen).toHaveLength(0);
   });
 
+  it("records gigabytes freed on a large disk, which a download's choice of location reads", async () => {
+    app = await createTestApp();
+    let free = 100 * GiB;
+    const real = fs.promises.statfs.bind(fs.promises);
+    vi.spyOn(fs.promises, "statfs").mockImplementation((async (target: fs.PathLike) => {
+      const stats = await real(target);
+      return { ...stats, bsize: 1024, blocks: (4096 * GiB) / 1024, bavail: Math.round(free / 1024) };
+    }) as typeof fs.promises.statfs);
+    await app.ctx.services.storage.refresh();
+
+    free += 10 * GiB; // a large collection removed, to make room for a download
+    await app.api("POST", "/api/storage/refresh");
+    expect((await app.api("GET", "/api/storage/locations")).body.locations[0].freeBytes).toBe(free);
+  });
+
   it("does announce a location going away", async () => {
     app = await createTestApp();
     const storage = app.ctx.services.storage;
