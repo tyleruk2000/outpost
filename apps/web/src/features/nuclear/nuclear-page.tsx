@@ -504,21 +504,11 @@ export default function NuclearPage() {
         >
           <Tabs value={tab} onValueChange={setTab}>
             <TabsList>
-              <TabsTrigger value="scenario" className="min-h-11 md:min-h-0">
-                Scenario
-              </TabsTrigger>
-              <TabsTrigger value="saved" className="min-h-11 md:min-h-0">
-                Saved{scenarios.data?.length ? ` (${scenarios.data.length})` : ""}
-              </TabsTrigger>
-              <TabsTrigger value="layers" className="min-h-11 md:min-h-0">
-                Layers
-              </TabsTrigger>
-              <TabsTrigger value="records" className="min-h-11 md:min-h-0">
-                Records
-              </TabsTrigger>
-              <TabsTrigger value="planning" className="min-h-11 md:min-h-0">
-                Plans
-              </TabsTrigger>
+              <TabsTrigger value="scenario">Scenario</TabsTrigger>
+              <TabsTrigger value="saved">Saved{scenarios.data?.length ? ` (${scenarios.data.length})` : ""}</TabsTrigger>
+              <TabsTrigger value="layers">Layers</TabsTrigger>
+              <TabsTrigger value="records">Records</TabsTrigger>
+              <TabsTrigger value="planning">Plans</TabsTrigger>
             </TabsList>
 
             <TabsContent value="scenario" className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4">

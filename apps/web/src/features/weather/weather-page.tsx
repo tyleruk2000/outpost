@@ -28,7 +28,6 @@ import type { TempUnit, WindUnit } from "./words";
 
 const VIEWS = ["forecast", "warnings", "flood", "climate", "barometer", "places", "kept"] as const;
 type View = (typeof VIEWS)[number];
-const tab = "min-h-11 md:min-h-0";
 const WIND_KEY = "outpost.weather.wind";
 const TEMP_KEY = "outpost.weather.temp";
 
@@ -233,28 +232,14 @@ export default function WeatherPage() {
           </div>
 
           <Tabs value={view} onValueChange={setView}>
-            <TabsList className="mb-6 flex-wrap gap-x-5 gap-y-1 overflow-visible" aria-label="Weather and hazards">
-              <TabsTrigger value="forecast" className={tab}>
-                Forecast
-              </TabsTrigger>
-              <TabsTrigger value="warnings" className={tab}>
-                Warnings
-              </TabsTrigger>
-              <TabsTrigger value="flood" className={tab}>
-                Flood
-              </TabsTrigger>
-              <TabsTrigger value="climate" className={tab}>
-                Climate
-              </TabsTrigger>
-              <TabsTrigger value="barometer" className={tab}>
-                Barometer
-              </TabsTrigger>
-              <TabsTrigger value="places" className={tab}>
-                Places
-              </TabsTrigger>
-              <TabsTrigger value="kept" className={tab}>
-                Kept and sources
-              </TabsTrigger>
+            <TabsList className="mb-6" aria-label="Weather and hazards">
+              <TabsTrigger value="forecast">Forecast</TabsTrigger>
+              <TabsTrigger value="warnings">Warnings</TabsTrigger>
+              <TabsTrigger value="flood">Flood</TabsTrigger>
+              <TabsTrigger value="climate">Climate</TabsTrigger>
+              <TabsTrigger value="barometer">Barometer</TabsTrigger>
+              <TabsTrigger value="places">Places</TabsTrigger>
+              <TabsTrigger value="kept">Kept and sources</TabsTrigger>
             </TabsList>
             <TabsContent value="forecast">
               {place ? (

@@ -22,8 +22,6 @@ import { TextTab } from "./text-tab";
 const TABS = ["keys", "text", "files", "hand"] as const;
 type TabId = (typeof TABS)[number];
 
-const tabTarget = "max-md:min-h-11";
-
 /** Where HTTPS is switched on. Another screen owns that setting; this one only points at it. */
 export const HTTPS_SETTING = "/settings#https";
 
@@ -98,19 +96,11 @@ export default function EncryptionPage() {
         }}
       >
         {/* Wrapped, not scrolled, with large text; a finger's height on a phone. */}
-        <TabsList aria-label="Encryption" className="flex-wrap">
-          <TabsTrigger value="keys" className={tabTarget}>
-            Keys
-          </TabsTrigger>
-          <TabsTrigger value="text" className={tabTarget}>
-            Text
-          </TabsTrigger>
-          <TabsTrigger value="files" className={tabTarget}>
-            Files
-          </TabsTrigger>
-          <TabsTrigger value="hand" className={tabTarget}>
-            By hand
-          </TabsTrigger>
+        <TabsList aria-label="Encryption">
+          <TabsTrigger value="keys">Keys</TabsTrigger>
+          <TabsTrigger value="text">Text</TabsTrigger>
+          <TabsTrigger value="files">Files</TabsTrigger>
+          <TabsTrigger value="hand">By hand</TabsTrigger>
         </TabsList>
         <TabsContent value="keys" className="pt-6 focus:outline-none">
           <ShelfTab>{(shelf) => <KeysTab shelf={shelf} />}</ShelfTab>

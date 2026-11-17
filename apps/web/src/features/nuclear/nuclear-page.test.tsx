@@ -234,7 +234,7 @@ describe("Nuclear preparedness", () => {
   it("gives the panel's tabs a 44 px touch target on a phone", () => {
     serve();
     for (const name of [/Scenario/, /Saved/, /Layers/, /Records/, /Plans/])
-      expect(screen.getByRole("tab", { name })).toHaveClass("min-h-11");
+      expect(screen.getByRole("tab", { name })).toHaveClass("max-md:min-h-11");
   });
 
   it("names the installed regions when there are some", async () => {

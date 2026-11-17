@@ -8,7 +8,6 @@ import { Planner } from "./planner";
 const TABS = ["plan", "equipment", "data"] as const;
 
 /** A thumb's height on a phone, as on the Morse trainer's tabs. */
-const tabHeight = "min-h-11 md:min-h-0";
 
 /** HF propagation: the planner, the equipment it is asked about, and the data it rests on. */
 export default function PropagationPage() {
@@ -22,15 +21,9 @@ export default function PropagationPage() {
       />
       <Tabs value={tab} onValueChange={(next) => setParams(next === "plan" ? {} : { tab: next }, { replace: true })}>
         <TabsList>
-          <TabsTrigger value="plan" className={tabHeight}>
-            Plan
-          </TabsTrigger>
-          <TabsTrigger value="equipment" className={tabHeight}>
-            Equipment
-          </TabsTrigger>
-          <TabsTrigger value="data" className={tabHeight}>
-            Engine and data
-          </TabsTrigger>
+          <TabsTrigger value="plan">Plan</TabsTrigger>
+          <TabsTrigger value="equipment">Equipment</TabsTrigger>
+          <TabsTrigger value="data">Engine and data</TabsTrigger>
         </TabsList>
         <TabsContent value="plan" className="pt-8">
           <Planner />
