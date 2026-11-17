@@ -13,6 +13,7 @@ import { Kbd } from "@/components/ui/misc";
 import { cn, modKey, plural } from "@/lib/utils";
 import { formatDistance, formatDistanceWithMiles, type LatLon } from "../lib/geo";
 import { measure } from "../lib/measure";
+import { pressWord } from "../lib/press";
 import { canRedo, canSave, canUndo, isChanged, isFull, type RouteEdit, redo, removePoint, reversePoints, undo } from "../lib/route-edit";
 import { ColorPicker } from "../ui";
 
@@ -165,7 +166,7 @@ export function RouteEditor({
           </p>
           <p className="tabular text-small text-ink-muted">
             {points.length === 0
-              ? "No points yet. Click or tap the map to place the first one."
+              ? `No points yet. ${pressWord()} the map to place the first one.`
               : points.length === 1
                 ? "First point placed. Place the next one."
                 : `${plural(points.length, "point")}. Drag a point to move it, or the small handle between two points to add one there.`}

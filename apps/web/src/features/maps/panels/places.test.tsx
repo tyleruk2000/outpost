@@ -316,3 +316,66 @@ describe("choosing a place's icon", () => {
     expect(isDraftChanged(draftOf(old as MarkerDto), old as MarkerDto)).toBe(false);
   });
 });
+
+describe("a new place on a phone with the keyboard up", () => {
+  it("asks for room when the name field is below what can be seen, and brings it into view", async () => {
+    vi.useFakeTimers();
+    const onNeedRoom = vi.fn();
+    const scrolled = vi.fn();
+    const rect = (top: number, height: number) =>
+      ({ top, bottom: top + height, left: 0, right: 390, width: 390, height, x: 0, y: top, toJSON() {} }) as DOMRect;
+    // The keyboard has left 420 px of screen; the field is at 372 px, under the bottom bar.
+    vi.stubGlobal("innerHeight", 420);
+    const field = vi.spyOn(HTMLInputElement.prototype, "getBoundingClientRect").mockReturnValue(rect(372, 44));
+    const box = vi.spyOn(HTMLDivElement.prototype, "getBoundingClientRect").mockReturnValue(rect(330, 38));
+    HTMLElement.prototype.scrollIntoView = scrolled;
+    render(
+      <PlaceEditor
+        draft={{ name: "", note: "", color: "teal", icon: "pin", isFavorite: false, lat: 54.46, lon: -3.18 }}
+        saved={undefined}
+        format="decimal"
+        saving={false}
+        deleting={false}
+        mapReady
+        onChange={() => {}}
+        onSave={() => {}}
+        onClose={() => {}}
+        onDelete={() => {}}
+        onNeedRoom={onNeedRoom}
+      />,
+      { wrapper: MemoryRouter },
+    );
+    expect(screen.getByLabelText("Name")).toHaveFocus();
+    // Looked at once the sheet has settled.
+    vi.advanceTimersByTime(300);
+    expect(onNeedRoom).toHaveBeenCalled();
+    vi.advanceTimersByTime(300);
+    expect(scrolled).toHaveBeenCalled();
+    field.mockRestore();
+    box.mockRestore();
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  it("asks for nothing while the field can be seen", async () => {
+    const onNeedRoom = vi.fn();
+    render(
+      <PlaceEditor
+        draft={{ name: "", note: "", color: "teal", icon: "pin", isFavorite: false, lat: 54.46, lon: -3.18 }}
+        saved={undefined}
+        format="decimal"
+        saving={false}
+        deleting={false}
+        mapReady
+        onChange={() => {}}
+        onSave={() => {}}
+        onClose={() => {}}
+        onDelete={() => {}}
+        onNeedRoom={onNeedRoom}
+      />,
+      { wrapper: MemoryRouter },
+    );
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(onNeedRoom).not.toHaveBeenCalled();
+  });
+});

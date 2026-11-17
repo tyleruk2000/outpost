@@ -2,7 +2,7 @@
 import { haversineMeters, type MarkerColor, type MarkerDto, type MarkerIcon } from "@outpost/shared";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { ArrowLeft, Copy, Move, Search, Star, Trash2, Undo2 } from "lucide-react";
-import { useId, useMemo, useState } from "react";
+import { type RefObject, useEffect, useId, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ErrorState, Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -57,6 +57,49 @@ export function isDraftChanged(draft: PlaceDraft, saved: MarkerDto | undefined):
   );
 }
 
+/**
+ * On a phone with the keyboard up, the field being typed in can be left under the edge of
+ * the sheet and the bottom bar. Then the sheet is raised (`onNeedRoom`) and, once it has
+ * risen, the field is scrolled into view.
+ */
+function useFieldInView(box: RefObject<HTMLElement | null>, onNeedRoom: (() => void) | undefined) {
+  useEffect(() => {
+    const element = box.current;
+    if (!element || !onNeedRoom) return;
+    let timer = 0;
+    const check = () => {
+      const field = document.activeElement;
+      if (!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) || !element.contains(field)) return;
+      const shown = element.getBoundingClientRect();
+      // The phone's bottom bar lies over the foot of the screen.
+      const bar = document.querySelector('nav[aria-label="Main"]')?.getBoundingClientRect();
+      const bottom = Math.min(
+        shown.bottom,
+        window.visualViewport?.height ?? window.innerHeight,
+        bar && bar.height > 0 ? bar.top : Infinity,
+      );
+      const at = field.getBoundingClientRect();
+      if (at.top >= shown.top && at.bottom <= bottom) return;
+      onNeedRoom();
+      window.clearTimeout(timer);
+      // The sheet takes 200 ms to rise.
+      timer = window.setTimeout(() => field.scrollIntoView({ block: "nearest" }), 250);
+    };
+    // A field focused as the form opens is looked at once the sheet has settled.
+    const first = window.setTimeout(check, 250);
+    element.addEventListener("focusin", check);
+    window.visualViewport?.addEventListener("resize", check);
+    window.addEventListener("resize", check);
+    return () => {
+      window.clearTimeout(first);
+      window.clearTimeout(timer);
+      element.removeEventListener("focusin", check);
+      window.visualViewport?.removeEventListener("resize", check);
+      window.removeEventListener("resize", check);
+    };
+  }, [box, onNeedRoom]);
+}
+
 export function PlaceEditor({
   draft,
   saved,
@@ -90,6 +133,8 @@ export function PlaceEditor({
   const coordinates = formatPosition(draft.lat, draft.lon, format).text;
   const moved = saved ? haversineMeters(saved.lat, saved.lon, draft.lat, draft.lon) : 0;
   const changed = isDraftChanged(draft, saved);
+  const fields = useRef<HTMLDivElement>(null);
+  useFieldInView(fields, onNeedRoom);
 
   return (
     <form
@@ -104,7 +149,7 @@ export function PlaceEditor({
           <ArrowLeft /> Places
         </Button>
       </div>
-      <div className="scroll-quiet grid min-h-0 flex-1 content-start gap-4 overflow-y-auto px-4 py-4">
+      <div ref={fields} className="scroll-quiet grid min-h-0 flex-1 content-start gap-4 overflow-y-auto px-4 py-4">
         {/* The Sun line sits straight under the name: on a phone the sheet shows little more than this at first. */}
         <div className="grid gap-1">
           <h3 className="flex items-start gap-2.5 font-title text-lead text-ink">

@@ -28,7 +28,7 @@ const SHEET = 'section[aria-label="Places, routes and offline maps"]';
 const TOOLS = [
   "Measure a distance",
   "Draw a route",
-  "Save a place: then click the map",
+  "Save a place: then tap the map",
   "Print or save as PDF",
   "Line of sight between two points",
   "Hill shading",

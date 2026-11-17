@@ -11,7 +11,14 @@ describe("the sentence at the top of Home", () => {
     fakeServer({
       "GET /api/storage/locations": {
         locations: [
-          { id: "loc1", name: "Internal", status: "available", freeBytes: 1_000_000_000, totalBytes: 2_000_000_000, usage: { locationId: "loc1", byKind: {}, totalBytes: 0 } },
+          {
+            id: "loc1",
+            name: "Internal",
+            status: "available",
+            freeBytes: 1_000_000_000,
+            totalBytes: 2_000_000_000,
+            usage: { locationId: "loc1", byKind: {}, totalBytes: 0 },
+          },
         ],
       },
       "GET /api/documents/facets": { total: 3, categories: [], formats: [], tags: [] },

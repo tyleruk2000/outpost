@@ -266,8 +266,8 @@ export default function DownloadsPage() {
             </>
           }
         >
-          The Library holds {plural(installed, "collection")}, added without a download here: included with Outpost or imported from a
-          file. Collections and maps you fetch from Explore or Maps are listed here, with their real size and progress.
+          The Library holds {plural(installed, "collection")}, added without a download here: included with Outpost or imported from a file.
+          Collections and maps you fetch from Explore or Maps are listed here, with their real size and progress.
         </EmptyState>
       ) : nothing ? (
         <EmptyState

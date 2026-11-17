@@ -53,6 +53,7 @@ import { formatPosition, isReadoutFormat, type ReadoutFormat } from "./lib/coord
 import { formatDistance, type LatLon } from "./lib/geo";
 import { MARKER_HEX } from "./lib/palette";
 import { iconOf, pinGlyphOf } from "./lib/place-icons";
+import { pressWord } from "./lib/press";
 import {
   addPoint,
   insertPoint,
@@ -190,6 +191,9 @@ function keepRouteDraft(draft: RouteDraft | null): void {
   }
 }
 
+/** The toast that asks for a press on the map while saving a place. */
+const ADD_PLACE_HINT = "add-place-hint";
+
 const isTyping = (target: EventTarget | null) =>
   target instanceof HTMLInputElement ||
   target instanceof HTMLTextAreaElement ||
@@ -248,6 +252,8 @@ export default function MapsPage() {
   const [nameRequested, setNameRequested] = useState(false);
   const nameShown = useCallback(() => setNameRequested(false), []);
   const [measurePoints, setMeasurePoints] = useState<LatLon[]>([]);
+  /** A position to bring into the clear part of the map once the sheet has moved: a place being saved. */
+  const [reveal, setReveal] = useState<LatLon | null>(null);
   /** The two ends a line-of-sight check starts with, when it is taken up from a measured path. */
   const [sightStart, setSightStart] = useState<SightStart | null>(null);
   const [draft, setDraft] = useState<PlaceDraft | null>(null);
@@ -433,6 +439,7 @@ export default function MapsPage() {
       setTool("browse");
       setDraft({ name, note: "", color: "teal", icon: "pin", isFavorite: false, lat: position.lat, lon: position.lon });
       showPanel("places");
+      setReveal(position);
     },
     [showPanel],
   );
@@ -768,6 +775,18 @@ export default function MapsPage() {
     engine.setPadding({ top, right: isDesktop ? 56 : 0, bottom, left: 0 }, !isDesktop, spare);
   }, [engine, isDesktop, detent, peekHeight, clear]);
 
+  // A place being saved is slid into the clear map if it is where the sheet, the readout or a card would hide it.
+  useEffect(() => {
+    if (!engine || !reveal) return;
+    setReveal(null);
+    if (!engine.isInView(reveal)) engine.panTo(reveal);
+  }, [engine, reveal]);
+
+  // The hint to tap the map goes as soon as the map has been tapped (or the tool put down): it lay over the form.
+  useEffect(() => {
+    if (tool !== "add-place") toast.dismiss(ADD_PLACE_HINT);
+  }, [tool]);
+
   // ── What the person does on the map ──
 
   const latest = useRef({
@@ -891,7 +910,7 @@ export default function MapsPage() {
     if (next === "print" && panel.tab === "offline") setPanel((current) => ({ ...current, tab: "places" }));
     // On a phone the sheet would cover the map being clicked on.
     setDetent("peek");
-    if (next === "add-place") toast("Click or tap the map where the place is.");
+    if (next === "add-place") toast(`${pressWord()} the map where the place is.`, { id: ADD_PLACE_HINT });
   };
   const changeTool = (next: Tool) => {
     setContextMenu(null);
@@ -993,6 +1012,11 @@ export default function MapsPage() {
         onSuccess: ({ marker }) => {
           toast.success(draft.id ? `Saved “${marker.name}”.` : `“${marker.name}” is saved to your places.`);
           setDraft(null);
+          if (!draft.id) {
+            // The sheet may have been raised for the keyboard: lower it so that the new place can be seen.
+            if (!isDesktop) setDetent((current) => (current === "full" ? "half" : current));
+            setReveal({ lat: marker.lat, lon: marker.lon });
+          }
         },
       },
     );

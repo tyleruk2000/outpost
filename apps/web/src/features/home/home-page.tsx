@@ -138,7 +138,11 @@ export default function HomePage() {
 
   const summary = !loaded
     ? null
-    : homeSummary({ documents: counts.documents ?? 0, pages: counts.pages ?? 0, collections: counts.collections ?? 0 }, free, connected.length);
+    : homeSummary(
+        { documents: counts.documents ?? 0, pages: counts.pages ?? 0, collections: counts.collections ?? 0 },
+        free,
+        connected.length,
+      );
 
   return (
     <>

@@ -8,6 +8,7 @@ import { Ban, CircleAlert, CircleCheck, CircleQuestionMark, Crosshair } from "lu
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/misc";
 import { cn } from "@/lib/utils";
+import { pressWord } from "../lib/press";
 import { MapCard } from "../map-chrome";
 import type { SightReading } from "./sight";
 import type { Sight } from "./use-sight";
@@ -53,8 +54,8 @@ export function SightCard({
         <div aria-live="polite">
           <p className="mt-1 text-small text-ink-muted">
             {picking === "from"
-              ? "Click or tap the map where the first antenna is: point A."
-              : "Now click or tap where the other antenna is: point B."}{" "}
+              ? `${pressWord()} the map where the first antenna is: point A.`
+              : `Now ${pressWord(true)} where the other antenna is: point B.`}{" "}
             Pressing a saved place puts the point exactly on it.
           </p>
           {onUseCentre ? (

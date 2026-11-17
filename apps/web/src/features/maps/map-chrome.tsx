@@ -31,6 +31,7 @@ import type { ContourReach } from "./lib/contours";
 import { formatPosition, type ReadoutFormat } from "./lib/coords";
 import { formatBearing, formatDistance, formatDistanceWithMiles, type LatLon } from "./lib/geo";
 import { measure } from "./lib/measure";
+import { pressWord, touchScreen } from "./lib/press";
 import { canRedo, canUndo, isFull, type RouteEdit } from "./lib/route-edit";
 import { STRAIGHT_LINES } from "./panels/route-editor";
 import { SunSection } from "./panels/sun";
@@ -190,7 +191,7 @@ export function mapTools({
   tools.push(
     take("measure", "Measure a distance", <Ruler />, "tools"),
     take("draw", "Draw a route", <PenLine />, "tools"),
-    take("add-place", "Save a place: then click the map", <PinPlus />, "tools"),
+    take("add-place", touchScreen() ? "Save a place: then tap the map" : "Save a place: then click the map", <PinPlus />, "tools"),
   );
   if (hillshade !== undefined) {
     tools.push({
@@ -484,10 +485,10 @@ export function MeasureCard({
     <MapCard title="Measure" onClose={onDone} closeLabel="Stop measuring">
       {points.length === 0 ? (
         <p className="mt-1 text-small text-ink-muted">
-          Click or tap the map to set the first point, then each point after it. Press Escape to stop.
+          {pressWord()} the map to set the first point, then each point after it.{touchScreen() ? "" : " Press Escape to stop."}
         </p>
       ) : points.length === 1 ? (
-        <p className="mt-1 text-small text-ink-muted">First point set. Click or tap the next one.</p>
+        <p className="mt-1 text-small text-ink-muted">First point set. {pressWord()} the next one.</p>
       ) : (
         <>
           <p className="tabular mt-1 text-lead font-semibold text-ink" aria-live="polite">
@@ -575,7 +576,9 @@ export function DrawCard({
   return (
     <MapCard title={reshaping ? "Edit shape" : "Draw a route"} onClose={onClose} closeLabel="Stop drawing">
       {points.length === 0 ? (
-        <p className="mt-1 text-small text-ink-muted">Click or tap the map to place the first point. {STRAIGHT_LINES}</p>
+        <p className="mt-1 text-small text-ink-muted">
+          {pressWord()} the map to place the first point. {STRAIGHT_LINES}
+        </p>
       ) : (
         <>
           <p className="tabular mt-1 text-lead font-semibold text-ink" aria-live="polite" aria-atomic>
