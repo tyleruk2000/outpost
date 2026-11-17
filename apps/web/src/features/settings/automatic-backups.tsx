@@ -146,7 +146,7 @@ export function AutomaticBackups() {
             label="Keep backups on"
             hint={
               <>
-                Outpost writes them to a folder named <span className="font-mono text-[0.8125rem] text-ink">{data.folder}</span> on the
+                Outpost writes them to a folder named <span className="font-mono text-[0.8125rem] text-ink [overflow-wrap:anywhere]">{data.folder}</span> on the
                 location you choose, and nowhere else.{" "}
                 {protection?.on
                   ? "Backups are encrypted with your passphrase: anyone who can open that folder can copy them and see when each was made, and cannot read them without it."

@@ -297,7 +297,7 @@ describe("Nuclear preparedness", () => {
     await waitFor(() => expect(screen.getByTestId("drawn")).toHaveTextContent(/A · 5 psi · 1\.1 km/));
     const before = overlays.length;
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Over the quarry" } });
-    fireEvent.change(screen.getByLabelText("Notes"), { target: { value: "For the talk on Thursday." } });
+    fireEvent.change(screen.getByLabelText(/^Notes/), { target: { value: "For the talk on Thursday." } });
     expect(overlays.length).toBe(before);
     fireEvent.change(screen.getByLabelText("Yield"), { target: { value: "10" } });
     await waitFor(() => expect(overlays.length).toBe(before + 1));

@@ -450,7 +450,7 @@ export function HttpsSection({
                   </p>
                   <p className="mt-1 text-ink-muted">
                     Whoever starts Outpost can allow it from every device by starting it with{" "}
-                    <span className="font-mono text-[0.8125rem]">{data.authorityRight.option}=true</span>.
+                    <span className="font-mono text-[0.8125rem] [overflow-wrap:anywhere]">{data.authorityRight.option}=true</span>.
                   </p>
                 </Notice>
               )}

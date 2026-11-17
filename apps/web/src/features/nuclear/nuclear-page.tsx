@@ -1041,7 +1041,7 @@ function ScenarioFields({
           and hazards are offered here when one is near ground zero.
         </p>
       </fieldset>
-      <Field label="Notes">
+      <Field label="Notes" optional>
         {(ids) => <Textarea {...ids} value={form.notes} onChange={(event) => set("notes", event.target.value)} rows={3} />}
       </Field>
     </div>
