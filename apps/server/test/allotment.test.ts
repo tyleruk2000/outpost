@@ -39,16 +39,19 @@ describe("the plot", () => {
     const events: AppEvent[] = [];
     const stop = app.ctx.events.subscribe((event) => events.push(event));
     try {
-      const sown = await act({ type: "sow", bed: 0, crop: "radishes" });
+      // Onions grow in every month, so this holds whatever the real date.
+      const sown = await act({ type: "sow", bed: 0, crop: "onions" });
       expect(sown.status).toBe(200);
-      expect(sown.body.plot.beds[0]).toMatchObject({ crop: "radishes", watered: false });
+      expect(sown.body.plot.beds[0]).toMatchObject({ crop: "onions", wetUntil: 0 });
+      const watered = await act({ type: "water", bed: 0 });
+      expect(watered.body.plot.beds[0]!.wetUntil).toBe(watered.body.now + 12 * 3600_000);
       expect(sown.body.started).toBe(true);
     } finally {
       stop();
     }
     expect(events).toContainEqual(expect.objectContaining({ type: "games.changed", id: "allotment" }));
     const read = await get();
-    expect(read.body.plot.beds[0]?.crop).toBe("radishes");
+    expect(read.body.plot.beds[0]?.crop).toBe("onions");
     expect(read.body.started).toBe(true);
     expect(app.ctx.services.games.kept.count()).toEqual({ saves: 1 });
   });
@@ -64,7 +67,7 @@ describe("the plot", () => {
     const before = app.ctx.services.games.saves.read("allotment");
     const refused = await act({ type: "sow", bed: 0, crop: "carrots" });
     expect(refused.status).toBe(409);
-    expect(refused.body.error).toMatchObject({ code: "conflict", message: "That bed already has radishes in it." });
+    expect(refused.body.error).toMatchObject({ code: "conflict", message: "That bed already has onions in it." });
     const poor = await act({ type: "buy", thing: "greenhouse" });
     expect(poor.body.error.message).toBe("The greenhouse costs 500 coins; you have 10.");
     expect(app.ctx.services.games.saves.read("allotment")?.version).toBe(before?.version);
@@ -90,35 +93,35 @@ describe("the plot", () => {
 
   it("is unharmed by a clock that jumps backwards", async () => {
     const real = Date.now();
-    vi.spyOn(Date, "now").mockReturnValue(real + 10 * 60_000);
+    vi.spyOn(Date, "now").mockReturnValue(real + 2 * 3600_000);
     const ripe = await get();
-    expect(ripe.body.plot.beds[0]?.grown).toBe(4 * 60_000);
-    // Stamped at the plot's clock, ten minutes ahead.
-    await act({ type: "sow", bed: 1, crop: "radishes" });
+    expect(ripe.body.plot.beds[0]?.grown).toBe(3600_000);
+    // Stamped at the plot's clock, two hours ahead.
+    await act({ type: "sow", bed: 1, crop: "onions" });
     vi.spyOn(Date, "now").mockReturnValue(real - 24 * 3600_000);
     const back = await get();
-    expect(back.body.plot.beds[0]?.grown).toBe(4 * 60_000);
-    expect(back.body.now).toBeGreaterThanOrEqual(real + 10 * 60_000);
+    expect(back.body.plot.beds[0]?.grown).toBe(3600_000);
+    expect(back.body.now).toBeGreaterThanOrEqual(real + 2 * 3600_000);
     const harvested = await act({ type: "harvest", bed: 0 });
     expect(harvested.status).toBe(200);
-    expect(harvested.body.plot.basket.radishes).toBe(3);
-    expect(harvested.body.plot.clock).toBe(real + 10 * 60_000);
+    expect(harvested.body.plot.basket.onions).toBe(3);
+    expect(harvested.body.plot.clock).toBe(real + 2 * 3600_000);
   });
 
   it("applies two actions sent at once, one after the other", async () => {
-    const [a, b] = await Promise.all([act({ type: "sow", bed: 2, crop: "radishes" }), act({ type: "sow", bed: 3, crop: "radishes" })]);
+    const [a, b] = await Promise.all([act({ type: "sow", bed: 2, crop: "onions" }), act({ type: "sow", bed: 3, crop: "onions" })]);
     expect([a.status, b.status]).toEqual([200, 200]);
     const plot = (await get()).body.plot;
-    expect(plot.beds[2]?.crop).toBe("radishes");
-    expect(plot.beds[3]?.crop).toBe("radishes");
+    expect(plot.beds[2]?.crop).toBe("onions");
+    expect(plot.beds[3]?.crop).toBe("onions");
   });
 
   it("says how long the household was away after six hours", async () => {
-    vi.spyOn(Date, "now").mockReturnValue(Date.now() + 7 * 3600_000);
+    vi.spyOn(Date, "now").mockReturnValue(Date.now() + 9 * 3600_000);
     const away = await get();
     expect(away.body.awayMs).toBeGreaterThan(6 * 3600_000);
-    // Everything waited: the radishes are ripe and still in their beds.
-    expect(away.body.plot.beds.filter((bed) => bed.crop === "radishes")).toHaveLength(3);
+    // Everything waited: the onions are still in their beds, none of their growth lost.
+    expect(away.body.plot.beds.filter((bed) => bed.crop === "onions")).toHaveLength(3);
   });
 });
 
@@ -132,6 +135,56 @@ describe("the hemisphere", () => {
     expect(set.body).toMatchObject({ hemisphere: "north", hemisphereFrom: "setting" });
     await act({ type: "setHemisphere", hemisphere: "auto" });
     expect((await get()).body.hemisphere).toBe("south");
+  });
+});
+
+describe("a plot kept before the rules changed", () => {
+  it("is read into the new rules without being written, and written in the new shape by the next action", async () => {
+    const clock = Date.now() - 3600_000;
+    const bed = (crop: string | null, grown: number, watered: boolean) => ({
+      crop,
+      grown,
+      watered,
+      composted: false,
+      sownAt: crop ? clock : null,
+    });
+    const crops = ["radishes", "salad", "peas", "carrots", "beetroot", "potatoes", "leeks", "squash"];
+    const old = {
+      v: 1,
+      startedAt: clock - 30 * 86_400_000,
+      clock,
+      lastActionAt: clock,
+      hemisphere: "auto",
+      coins: 123,
+      beds: [bed("leeks", 3600_000, true), bed("radishes", 240_000, false), bed(null, 0, false), bed(null, 0, false)],
+      glassBeds: [],
+      things: { waterButt: true, compostBin: false, hens: false, beehive: false, appleTree: false, greenhouse: false },
+      compost: 0,
+      producing: { hens: 0, beehive: 0, appleTree: 0 },
+      waiting: { eggs: 0, honey: 0, apples: 0 },
+      basket: { radishes: 2, salad: 0, peas: 0, carrots: 0, beetroot: 0, potatoes: 0, leeks: 0, squash: 0, eggs: 0, honey: 0, apples: 0 },
+      almanac: {
+        crops: Object.fromEntries(crops.map((id) => [id, { harvests: 1, produce: 3, firstAt: clock }])),
+        harvests: 8,
+        coinsEarned: 40,
+      },
+      milestones: { firstHarvest: clock },
+    };
+    app.ctx.sqlite.prepare("UPDATE game_saves SET state = ? WHERE id = 'allotment'").run(JSON.stringify(old));
+    const before = app.ctx.services.games.saves.read("allotment");
+    const read = await get();
+    expect(read.status).toBe(200);
+    expect(read.body.plot).toMatchObject({ v: 2, coins: 123, milestones: { firstHarvest: clock } });
+    expect(read.body.plot.beds[0]).toMatchObject({ crop: "leeks", wetUntil: clock + 12 * 3600_000 });
+    expect(read.body.plot.beds[0]!.grown).toBeGreaterThanOrEqual(3600_000);
+    expect(read.body.plot.almanac.crops.garlic).toEqual({ harvests: 0, produce: 0, firstAt: null });
+    expect(app.ctx.services.games.saves.read("allotment")).toEqual(before);
+    const harvested = await act({ type: "harvest", bed: 1 });
+    expect(harvested.status).toBe(200);
+    expect(harvested.body.plot.basket.radishes).toBe(5);
+    const kept = app.ctx.services.games.saves.read("allotment")!.state as { v: number; beds: Array<Record<string, unknown>> };
+    expect(kept.v).toBe(2);
+    expect(kept.beds[0]).not.toHaveProperty("watered");
   });
 });
 
