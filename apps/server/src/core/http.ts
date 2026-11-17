@@ -52,13 +52,42 @@ for (const [address, prefix] of [
   privateRanges.addSubnet(address, prefix, "ipv6");
 }
 
+/** The eight 16-bit groups of an IPv6 address, however it is written (`::`, a dotted IPv4 tail). */
+function ipv6Groups(address: string): number[] {
+  let text = address.replace(/%.*$/, "");
+  const tail = /(\d+)\.(\d+)\.(\d+)\.(\d+)$/.exec(text);
+  if (tail) {
+    const [a, b, c, d] = tail.slice(1).map(Number) as [number, number, number, number];
+    text = `${text.slice(0, tail.index)}${((a << 8) | b).toString(16)}:${((c << 8) | d).toString(16)}`;
+  }
+  const [head, rest] = text.split("::") as [string, string | undefined];
+  const left = head ? head.split(":") : [];
+  const right = rest ? rest.split(":") : [];
+  const groups = rest === undefined ? left : [...left, ...Array(8 - left.length - right.length).fill("0"), ...right];
+  return groups.map((group) => Number.parseInt(group, 16));
+}
+
+/**
+ * The IPv4 address an IPv6 one stands for on this host's own stack: IPv4-mapped
+ * (`::ffff:a.b.c.d`) and IPv4-translated (`::ffff:0:a.b.c.d`). Other forms that carry an
+ * IPv4 address (NAT64 `64:ff9b::/96`, 6to4 `2002::/16`, Teredo `2001::/32`) are not
+ * followed at all: they are in `privateRanges` whatever they carry.
+ */
+function embeddedIpv4(groups: number[]): string | undefined {
+  const zeros = (from: number, to: number) => groups.slice(from, to).every((group) => group === 0);
+  const carries = (zeros(0, 5) && groups[5] === 0xffff) || (zeros(0, 4) && groups[4] === 0xffff && groups[5] === 0);
+  if (!carries) return undefined;
+  const [high, low] = [groups[6]!, groups[7]!];
+  return [high >> 8, high & 0xff, low >> 8, low & 0xff].join(".");
+}
+
 /** True for addresses on the public internet. */
 export function isPublicAddress(address: string): boolean {
   const family = net.isIP(address);
   if (family === 4) return !privateRanges.check(address, "ipv4");
   if (family === 6) {
-    const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(address);
-    if (mapped) return isPublicAddress(mapped[1]!);
+    const carried = embeddedIpv4(ipv6Groups(address));
+    if (carried) return isPublicAddress(carried);
     return !privateRanges.check(address, "ipv6");
   }
   return false;

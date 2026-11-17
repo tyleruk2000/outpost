@@ -73,7 +73,9 @@ export async function registerRequestGuard(app: FastifyInstance, ctx: AppContext
         throw forbidden("Requests from other sites are not accepted.");
       }
       const origin = request.headers.origin;
-      if (origin && hostnameOf(new URL(origin).host) !== hostnameOf(request.headers.host)) {
+      // `null` (a sandboxed page, a file opened from disk) or anything else that is not an address is no origin of ours.
+      const from = origin ? URL.parse(origin)?.host : undefined;
+      if (origin && (!from || hostnameOf(from) !== hostnameOf(request.headers.host))) {
         throw forbidden("Requests from other sites are not accepted.");
       }
     }
