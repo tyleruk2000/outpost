@@ -1833,6 +1833,377 @@
         "name": "openwrt.org_en_all",
         "flavour": ""
       }
+    },
+    {
+      "id": "kiwix.gutenberg-en-lcc-pr",
+      "name": "Project Gutenberg: English literature",
+      "description": "English-language books from Project Gutenberg shelved under English literature (Library of Congress class PR): novels, poetry, plays and essays by writers from Britain and Ireland, from the Middle Ages to the early twentieth century. About 12,000 books.",
+      "category": "reading",
+      "publisher": "Project Gutenberg",
+      "language": "en",
+      "format": "zim",
+      "license": "Public domain in the United States",
+      "licenseNote": "Project Gutenberg describes its books as free of copyright in the United States. Most are also out of copyright in the United Kingdom, but a few by authors who died less than 70 years ago may not be. Project Gutenberg's own pages were not read for this entry (see sources.md, row 3).",
+      "attribution": "Project Gutenberg. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.gutenberg.org",
+      "lastVerified": "2026-11-17",
+      "tags": ["books", "literature", "novels", "poetry", "plays"],
+      "sizeBytes": 12959000000,
+      "source": {
+        "type": "kiwix",
+        "name": "gutenberg_en_lcc-pr",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.gutenberg-en-lcc-ps",
+      "name": "Project Gutenberg: American literature",
+      "description": "English-language books from Project Gutenberg shelved under American literature (Library of Congress class PS): novels, stories, poetry and essays by American writers, mostly from the nineteenth and early twentieth centuries. About 15,000 books.",
+      "category": "reading",
+      "publisher": "Project Gutenberg",
+      "language": "en",
+      "format": "zim",
+      "license": "Public domain in the United States",
+      "licenseNote": "Project Gutenberg describes its books as free of copyright in the United States. Most are also out of copyright in the United Kingdom, but a few by authors who died less than 70 years ago may not be. Project Gutenberg's own pages were not read for this entry (see sources.md, row 3).",
+      "attribution": "Project Gutenberg. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.gutenberg.org",
+      "lastVerified": "2026-11-17",
+      "tags": ["books", "literature", "novels", "poetry"],
+      "sizeBytes": 11588000000,
+      "source": {
+        "type": "kiwix",
+        "name": "gutenberg_en_lcc-ps",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.gutenberg-en-lcc-pz",
+      "name": "Project Gutenberg: Fiction and juvenile belles lettres",
+      "description": "English-language books from Project Gutenberg shelved under Fiction and juvenile belles lettres (Library of Congress class PZ): novels and stories, many of them written for children and young people. About 8,700 books. Some older children's books reflect the attitudes of their time.",
+      "category": "reading",
+      "publisher": "Project Gutenberg",
+      "language": "en",
+      "format": "zim",
+      "license": "Public domain in the United States",
+      "licenseNote": "Project Gutenberg describes its books as free of copyright in the United States. Most are also out of copyright in the United Kingdom, but a few by authors who died less than 70 years ago may not be. Project Gutenberg's own pages were not read for this entry (see sources.md, row 3).",
+      "attribution": "Project Gutenberg. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.gutenberg.org",
+      "lastVerified": "2026-11-17",
+      "tags": ["books", "fiction", "children"],
+      "sizeBytes": 14537000000,
+      "source": {
+        "type": "kiwix",
+        "name": "gutenberg_en_lcc-pz",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.gutenberg-en-lcc-pn",
+      "name": "Project Gutenberg: Literature (general)",
+      "description": "English-language books from Project Gutenberg shelved under Literature, general (Library of Congress class PN): collections of poetry and stories, drama and the theatre, literary history and criticism, and books on writing and journalism. About 1,400 books.",
+      "category": "reading",
+      "publisher": "Project Gutenberg",
+      "language": "en",
+      "format": "zim",
+      "license": "Public domain in the United States",
+      "licenseNote": "Project Gutenberg describes its books as free of copyright in the United States. Most are also out of copyright in the United Kingdom, but a few by authors who died less than 70 years ago may not be. Project Gutenberg's own pages were not read for this entry (see sources.md, row 3).",
+      "attribution": "Project Gutenberg. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.gutenberg.org",
+      "lastVerified": "2026-11-17",
+      "tags": ["books", "literature", "drama", "poetry"],
+      "sizeBytes": 3056000000,
+      "source": {
+        "type": "kiwix",
+        "name": "gutenberg_en_lcc-pn",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.gutenberg-en-lcc-pa",
+      "name": "Project Gutenberg: Greek and Latin language and literature",
+      "description": "English-language books from Project Gutenberg shelved under Greek and Latin language and literature (Library of Congress class PA): the classical authors, such as Homer, Plato and Virgil, mostly in English translation, with grammars of the two languages. About 470 books.",
+      "category": "reading",
+      "publisher": "Project Gutenberg",
+      "language": "en",
+      "format": "zim",
+      "license": "Public domain in the United States",
+      "licenseNote": "Project Gutenberg describes its books as free of copyright in the United States. Most are also out of copyright in the United Kingdom, but a few by authors who died less than 70 years ago may not be. Project Gutenberg's own pages were not read for this entry (see sources.md, row 3).",
+      "attribution": "Project Gutenberg. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.gutenberg.org",
+      "lastVerified": "2026-11-17",
+      "tags": ["books", "classics", "literature", "languages"],
+      "sizeBytes": 503000000,
+      "source": {
+        "type": "kiwix",
+        "name": "gutenberg_en_lcc-pa",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.gutenberg-en-lcc-pe",
+      "name": "Project Gutenberg: English language",
+      "description": "English-language books from Project Gutenberg shelved under English language (Library of Congress class PE): grammars, dictionaries, spelling books, readers and books on usage. About 450 books, mostly from the nineteenth and early twentieth centuries.",
+      "category": "reference",
+      "publisher": "Project Gutenberg",
+      "language": "en",
+      "format": "zim",
+      "license": "Public domain in the United States",
+      "licenseNote": "Project Gutenberg describes its books as free of copyright in the United States. Most are also out of copyright in the United Kingdom, but a few by authors who died less than 70 years ago may not be. Project Gutenberg's own pages were not read for this entry (see sources.md, row 3).",
+      "attribution": "Project Gutenberg. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.gutenberg.org",
+      "lastVerified": "2026-11-17",
+      "tags": ["books", "languages", "grammar", "dictionary"],
+      "sizeBytes": 620000000,
+      "source": {
+        "type": "kiwix",
+        "name": "gutenberg_en_lcc-pe",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.gutenberg-en-lcc-m",
+      "name": "Project Gutenberg: Music",
+      "description": "English-language books from Project Gutenberg shelved under Music (Library of Congress class M): books about music, its history and theory, and collections of songs, hymns and printed music. About 690 books.",
+      "category": "reading",
+      "publisher": "Project Gutenberg",
+      "language": "en",
+      "format": "zim",
+      "license": "Public domain in the United States",
+      "licenseNote": "Project Gutenberg describes its books as free of copyright in the United States. Most are also out of copyright in the United Kingdom, but a few by authors who died less than 70 years ago may not be. Project Gutenberg's own pages were not read for this entry (see sources.md, row 3).",
+      "attribution": "Project Gutenberg. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.gutenberg.org",
+      "lastVerified": "2026-11-17",
+      "tags": ["books", "music", "songs"],
+      "sizeBytes": 3689000000,
+      "source": {
+        "type": "kiwix",
+        "name": "gutenberg_en_lcc-m",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.gutenberg-en-lcc-b",
+      "name": "Project Gutenberg: Philosophy, psychology, religion",
+      "description": "English-language books from Project Gutenberg shelved under Philosophy, psychology and religion (Library of Congress class B): the works of philosophers from the ancient world to the early twentieth century, early psychology, and religious texts and commentary. About 6,300 books.",
+      "category": "reading",
+      "publisher": "Project Gutenberg",
+      "language": "en",
+      "format": "zim",
+      "license": "Public domain in the United States",
+      "licenseNote": "Project Gutenberg describes its books as free of copyright in the United States. Most are also out of copyright in the United Kingdom, but a few by authors who died less than 70 years ago may not be. Project Gutenberg's own pages were not read for this entry (see sources.md, row 3).",
+      "attribution": "Project Gutenberg. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.gutenberg.org",
+      "lastVerified": "2026-11-17",
+      "tags": ["books", "philosophy", "religion"],
+      "sizeBytes": 5417000000,
+      "source": {
+        "type": "kiwix",
+        "name": "gutenberg_en_lcc-b",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.wikiquote-en-all-nopic",
+      "name": "Wikiquote (without images)",
+      "description": "Wikiquote, the collection of quotations gathered by volunteers: sayings of people, lines from books, plays and films, and proverbs, each with its source where known. This edition has the full text without images.",
+      "category": "reference",
+      "publisher": "Wikiquote",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "licenseNote": "Wikiquote's copyright page (read 2026-11-17) says material produced by its editors, including the selection and arrangement of quotes, is under the Creative Commons Attribution-ShareAlike licence, and that quotations from copyrighted sources are subject to their own terms; Wikiquote includes short quotations from such works as fair use under US law.",
+      "attribution": "Wikiquote contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://en.wikiquote.org",
+      "lastVerified": "2026-11-17",
+      "tags": ["quotations", "proverbs"],
+      "sizeBytes": 401000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikiquote_en_all",
+        "flavour": "nopic"
+      }
+    },
+    {
+      "id": "kiwix.booksdash-en-all",
+      "name": "Book Dash picture books",
+      "description": "More than 150 illustrated picture books for reading aloud to young children, made by volunteer writers, illustrators and designers in South Africa. This archive was last built in June 2024.",
+      "category": "reading",
+      "publisher": "Book Dash",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY 4.0",
+      "licenseNote": "Book Dash's open content partners page (read 2026-11-17): \"We publish all of our books under a Creative Commons CC BY 4.0 license\". Copies and adaptations must acknowledge Book Dash and the books' creators.",
+      "attribution": "Book Dash and the books' creators (bookdash.org). Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://bookdash.org",
+      "lastVerified": "2026-11-17",
+      "tags": ["children", "picture books", "stories"],
+      "sizeBytes": 11704000000,
+      "source": {
+        "type": "kiwix",
+        "name": "booksdash_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.mutopiaproject.org-en-all",
+      "name": "Mutopia Project sheet music",
+      "description": "About 2,100 pieces of sheet music, typeset by volunteers from editions in the public domain: classical works by Bach, Beethoven, Chopin, Mozart and many others, and traditional pieces, for piano, voice, guitar, strings and other instruments.",
+      "category": "reading",
+      "publisher": "Mutopia Project",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA, CC BY or public domain, piece by piece",
+      "licenseNote": "Mutopia's licence page (read 2026-11-17): \"All music on Mutopia may be freely downloaded, printed, copied, distributed, modified, performed and recorded.\" Each piece is under Creative Commons Attribution-ShareAlike, Creative Commons Attribution, or dedicated to the public domain; the licence and the typesetter are named on each piece.",
+      "attribution": "The Mutopia Project and the typesetter named on each piece. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.mutopiaproject.org",
+      "lastVerified": "2026-11-17",
+      "tags": ["music", "sheet music", "scores"],
+      "sizeBytes": 6632000000,
+      "source": {
+        "type": "kiwix",
+        "name": "mutopiaproject.org_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.literature.stackexchange.com-en-all",
+      "name": "Literature Q&A",
+      "description": "Questions and answers from the Stack Exchange site for scholars and readers of literature: meanings, sources, allusions and the history of books and poems.",
+      "category": "reading",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://literature.stackexchange.com",
+      "lastVerified": "2026-11-17",
+      "tags": ["literature", "questions and answers"],
+      "sizeBytes": 74000000,
+      "source": {
+        "type": "kiwix",
+        "name": "literature.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.history.stackexchange.com-en-all",
+      "name": "History Q&A",
+      "description": "Questions and answers from the Stack Exchange site for historians and anyone interested in history.",
+      "category": "reference",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://history.stackexchange.com",
+      "lastVerified": "2026-11-17",
+      "tags": ["history", "questions and answers"],
+      "sizeBytes": 324000000,
+      "source": {
+        "type": "kiwix",
+        "name": "history.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.philosophy.stackexchange.com-en-all",
+      "name": "Philosophy Q&A",
+      "description": "Questions and answers from the Stack Exchange site for the study of knowledge, reality, ethics and existence.",
+      "category": "reference",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://philosophy.stackexchange.com",
+      "lastVerified": "2026-11-17",
+      "tags": ["philosophy", "questions and answers"],
+      "sizeBytes": 219000000,
+      "source": {
+        "type": "kiwix",
+        "name": "philosophy.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.english.stackexchange.com-en-all",
+      "name": "English Language & Usage Q&A",
+      "description": "Questions and answers from the Stack Exchange site on the finer points of the English language: meaning, grammar, usage, spelling and the origins of words.",
+      "category": "reference",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://english.stackexchange.com",
+      "lastVerified": "2026-11-17",
+      "tags": ["English", "grammar", "language", "questions and answers"],
+      "sizeBytes": 774000000,
+      "source": {
+        "type": "kiwix",
+        "name": "english.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.puzzling.stackexchange.com-en-all",
+      "name": "Puzzling Q&A",
+      "description": "Questions and answers from the Stack Exchange site for people who make, solve and study puzzles: riddles, logic puzzles, word puzzles and mathematical puzzles, with their solutions.",
+      "category": "reading",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://puzzling.stackexchange.com",
+      "lastVerified": "2026-11-17",
+      "tags": ["puzzles", "games", "questions and answers"],
+      "sizeBytes": 591000000,
+      "source": {
+        "type": "kiwix",
+        "name": "puzzling.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.music.stackexchange.com-en-all",
+      "name": "Music: Practice & Theory Q&A",
+      "description": "Questions and answers from the Stack Exchange site for musicians, students and enthusiasts: music theory, reading music, technique and practice on many instruments.",
+      "category": "reading",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://music.stackexchange.com",
+      "lastVerified": "2026-11-17",
+      "tags": ["music", "questions and answers"],
+      "sizeBytes": 345000000,
+      "source": {
+        "type": "kiwix",
+        "name": "music.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.parenting.stackexchange.com-en-all",
+      "name": "Parenting Q&A",
+      "description": "Questions and answers from the Stack Exchange site for parents, carers and others who look after children, from babies to teenagers.",
+      "category": "reference",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://parenting.stackexchange.com",
+      "lastVerified": "2026-11-17",
+      "tags": ["parenting", "children", "questions and answers"],
+      "sizeBytes": 60000000,
+      "source": {
+        "type": "kiwix",
+        "name": "parenting.stackexchange.com_en_all",
+        "flavour": ""
+      }
     }
   ]
 }

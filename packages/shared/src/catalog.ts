@@ -14,6 +14,7 @@ export const CATALOG_CATEGORIES = [
   { slug: "encyclopedias", label: "Wikipedia and encyclopedias" },
   { slug: "science", label: "Science and education" },
   { slug: "reference", label: "History and general reference" },
+  { slug: "reading", label: "Literature and reading" },
   { slug: "maps", label: "Offline maps" },
 ] as const;
 

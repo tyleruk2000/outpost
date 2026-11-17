@@ -4,8 +4,10 @@
     {
       "id": "first-things",
       "name": "First things",
-      "description": "The small set to fetch before anything else: what to have in the house, first aid, safe water, finding your way, the knots worth knowing, the signals that call for help, and which radio channels are for what. Small enough for a phone connection.",
+      "description": "The small set to fetch before anything else: the UK household emergency plan and checklist to fill in, what to have in the house, first aid, safe water, food in a power cut, generators and carbon monoxide, finding your way, the knots worth knowing, the signals that call for help, and which radio channels are for what. Small enough for a phone connection.",
       "entries": [
+        "cabinet-office.be-ready-household-emergency-plan",
+        "cabinet-office.be-ready-checklist",
         "ready.emergency-supply-list",
         "ready.are-you-ready-guide",
         "ready.hazard-information-sheets",
@@ -13,12 +15,106 @@
         "hse.indg347-basic-advice-on-first-aid-at-work",
         "uiaa.medcom-6-water-disinfection-in-the-mountains",
         "kiwix.zimgit-water-en",
+        "cdc.eat-safe-food-after-a-power-outage",
+        "cdc.carbon-monoxide-hazard-using-a-generator",
         "kiwix.nhs.uk-en-medicines",
         "usgs.finding-your-way-with-map-and-compass",
         "kiwix.wikipedia-en-knots-maxi",
         "mca.life-saving-signals",
         "outpost.radio.emergency-frequencies",
         "outpost.radio.licence-free-radio"
+      ]
+    },
+    {
+      "id": "few-days-without-power",
+      "name": "A few days without power",
+      "description": "For a household getting through a power cut, a storm or a few days cut off: plans to fill in, keeping warm or cool, food and water, gas, fire and carbon monoxide, medicines and long-term conditions, periods and nappies, people who need more help, pets, staying in touch, and coping afterwards. UK guidance first, then US.",
+      "entries": [
+        "cabinet-office.be-ready-household-emergency-plan",
+        "cabinet-office.be-ready-checklist",
+        "ready-scotland.home-emergency-plan",
+        "nidirect.household-emergency-life-saving-plan",
+        "nidirect.household-severe-weather-plan",
+        "ukhsa.staying-safe-in-cold-weather-easy-read",
+        "ukhsa.top-tips-keeping-warm-and-well",
+        "ukhsa.beat-the-heat-easy-read",
+        "ukhsa.keep-cool-at-home-easy-read",
+        "ukhsa.what-to-do-after-a-flood-easy-read",
+        "home-office.fire-safety-in-the-home",
+        "hse.indg238-gas-appliances",
+        "environment-agency.personal-flood-plan",
+        "cdc.eat-safe-food-after-a-power-outage",
+        "cdc.make-water-safe-during-an-emergency",
+        "cdc.carbon-monoxide-hazard-using-a-generator",
+        "cdc.wash-your-hands-emergency",
+        "cdc.managing-chronic-conditions-after-a-natural-disaster",
+        "cdc.managing-your-period-during-a-natural-disaster",
+        "cdc.safe-diaper-changing-in-emergency-settings",
+        "hse.indg347-basic-advice-on-first-aid-at-work",
+        "ready.disaster-preparedness-guide-for-caregivers",
+        "ready.preparing-makes-sense-for-people-with-disabilities",
+        "ready.disaster-preparedness-guide-for-older-adults",
+        "ready.prepare-your-pets-for-disasters",
+        "ready.family-emergency-communication-plan",
+        "cdc.coping-with-a-disaster-or-traumatic-event",
+        "epa.homeowners-and-renters-guide-to-mold-cleanup-after-disasters",
+        "outpost.radio.emergency-frequencies"
+      ]
+    },
+    {
+      "id": "months",
+      "name": "If it goes on for months",
+      "description": "For a long disruption: growing food in good soil, saving seed, keeping hens, preserving the harvest, water from the ground and sanitation without sewers, felling and cutting wood by hand, keeping a house dry and sound, nursing someone at home, childbirth, and looking after your own state of mind.",
+      "entries": [
+        "fao.a-vegetable-garden-for-all",
+        "sare.building-soils-for-better-crops-4th-edition",
+        "fao.importance-of-soil-organic-matter",
+        "fao.farmers-compost-handbook",
+        "fao.quality-declared-seed-system",
+        "fao.small-scale-poultry-production",
+        "usda.complete-guide-to-home-canning-part-1",
+        "usda.complete-guide-to-home-canning-part-2",
+        "usgs.basic-ground-water-hydrology",
+        "who.guidelines-on-sanitation-and-health",
+        "who.guidelines-for-drinking-water-quality",
+        "usfs.one-moving-part-ax-manual",
+        "usfs.crosscut-saw-manual",
+        "hse.indg317-chainsaws-at-work",
+        "nps.preservation-brief-39-controlling-moisture",
+        "nps.preservation-brief-02-repointing",
+        "openstax.fundamentals-of-nursing",
+        "openstax.maternal-newborn-nursing",
+        "who.managing-complications-pregnancy-childbirth",
+        "who.pocket-book-primary-health-care-children-adolescents",
+        "who.doing-what-matters-in-times-of-stress"
+      ]
+    },
+    {
+      "id": "rebuilding",
+      "name": "Rebuilding",
+      "description": "The knowledge underneath everything else, for the long run: mathematics, physics, chemistry, materials, heat and fluids, electricity from first principles, reading engineering drawings, units, small dams and trails, surgery for injuries, and nursing.",
+      "entries": [
+        "doe.mathematics-volume-1",
+        "doe.mathematics-volume-2",
+        "doe.classical-physics",
+        "doe.chemistry-volume-1",
+        "doe.chemistry-volume-2",
+        "doe.material-science-volume-1",
+        "doe.material-science-volume-2",
+        "doe.thermodynamics-heat-transfer-fluid-flow-volume-1",
+        "doe.thermodynamics-heat-transfer-fluid-flow-volume-2",
+        "doe.thermodynamics-heat-transfer-fluid-flow-volume-3",
+        "doe.electrical-science-volume-1",
+        "doe.mechanical-science-volume-1",
+        "doe.engineering-symbology-prints-and-drawings-volume-1",
+        "kuphaldt.lessons-in-electric-circuits-1-dc",
+        "nist.sp-811-guide-for-the-use-of-the-si",
+        "fao.manual-on-small-earth-dams",
+        "usfs.trail-construction-and-maintenance-notebook",
+        "openstax.chemistry-2e",
+        "openstax.university-physics-volume-1",
+        "icrc.war-surgery-volume-1",
+        "openstax.medical-surgical-nursing"
       ]
     },
     {
@@ -30,6 +126,11 @@
         "ready.are-you-ready-guide",
         "ready.hazard-information-sheets",
         "ready.disaster-preparedness-guide-for-older-adults",
+        "cabinet-office.be-ready-household-emergency-plan",
+        "home-office.fire-safety-in-the-home",
+        "hse.indg238-gas-appliances",
+        "ukhsa.staying-safe-in-cold-weather-easy-read",
+        "ready.prepare-your-pets-for-disasters",
         "nws.winter-storms-the-deceptive-killers",
         "nws.thunderstorms-tornadoes-lightning",
         "environment-agency.personal-flood-plan",
@@ -53,7 +154,7 @@
     {
       "id": "field-medicine",
       "name": "Medicine and first aid",
-      "description": "Reference for when a doctor is a long way off: first aid and emergency care, children, childbirth, essential medicines and a textbook on how medicines are used, altitude illness, and a medical encyclopedia to look things up in.",
+      "description": "Reference for when a doctor is a long way off: first aid and emergency care, nursing someone at home, children, pregnancy and childbirth, surgery for injuries, essential medicines and how they are used, long-term conditions, stress, altitude illness, and a medical encyclopedia to look things up in.",
       "entries": [
         "who.basic-emergency-care",
         "hse.indg347-basic-advice-on-first-aid-at-work",
@@ -62,6 +163,12 @@
         "who.model-list-of-essential-medicines-2023",
         "openstax.pharmacology-for-nurses",
         "uiaa.medcom-2-altitude-sickness-field-management",
+        "openstax.fundamentals-of-nursing",
+        "openstax.medical-surgical-nursing",
+        "openstax.maternal-newborn-nursing",
+        "icrc.war-surgery-volume-1",
+        "who.doing-what-matters-in-times-of-stress",
+        "cdc.managing-chronic-conditions-after-a-natural-disaster",
         "kiwix.nhs.uk-en-medicines",
         "kiwix.irp.fas.org-en-military-medicine",
         "kiwix.zimgit-medicine-en",
@@ -71,7 +178,7 @@
     {
       "id": "food-and-growing",
       "name": "Food and growing",
-      "description": "Growing vegetables, composting, and keeping what you grow: canning, preserving, brewing and plain recipes, including ones cooked with no refrigerator.",
+      "description": "Growing vegetables, soil and compost, saving seed, keeping hens, and keeping what you grow: canning, preserving, brewing and plain recipes, including ones cooked with no refrigerator.",
       "entries": [
         "kiwix.usda-2015-en",
         "kiwix.zimgit-food-preparation-en",
@@ -82,6 +189,10 @@
         "kiwix.homebrew.stackexchange.com-en-all",
         "fao.a-vegetable-garden-for-all",
         "fao.farmers-compost-handbook",
+        "fao.importance-of-soil-organic-matter",
+        "sare.building-soils-for-better-crops-4th-edition",
+        "fao.quality-declared-seed-system",
+        "fao.small-scale-poultry-production",
         "fao.small-scale-aquaponic-food-production",
         "kiwix.gardenology-en-all",
         "kiwix.sustainability.stackexchange.com-en-all"
@@ -260,7 +371,7 @@
     {
       "id": "repair",
       "name": "Repair and making",
-      "description": "Keeping things working: community repair guides, vehicles, bicycles, woodwork, electronics with Arduino, 3D printing, how fasteners are chosen, how engines, pumps and valves work, and working safely off a ladder.",
+      "description": "Keeping things working: community repair guides, vehicles, bicycles, woodwork, axes and crosscut saws, looking after an old house (damp, lime mortar, the outside), electronics with Arduino, 3D printing, how fasteners are chosen, how engines, pumps and valves work, and working safely off a ladder.",
       "entries": [
         "kiwix.restarters-en-all-maxi",
         "kiwix.mechanics.stackexchange.com-en-all",
@@ -269,6 +380,11 @@
         "kiwix.arduino.stackexchange.com-en-all",
         "kiwix.3dprinting.stackexchange.com-en-all",
         "kiwix.engineering.stackexchange.com-en-all",
+        "usfs.one-moving-part-ax-manual",
+        "usfs.crosscut-saw-manual",
+        "nps.preservation-brief-47-exteriors-small-medium-buildings",
+        "nps.preservation-brief-39-controlling-moisture",
+        "nps.preservation-brief-02-repointing",
         "nasa.fastener-design-manual",
         "doe.mechanical-science-volume-1",
         "doe.mechanical-science-volume-2",
@@ -300,18 +416,19 @@
     {
       "id": "general-reference",
       "name": "General reference",
-      "description": "A compact shelf for looking things up: the most-read Wikipedia articles, a dictionary, a travel guide to the world, and country facts.",
+      "description": "A compact shelf for looking things up: the most-read Wikipedia articles, a dictionary, a travel guide to the world, country facts, and quotations.",
       "entries": [
         "kiwix.wikipedia-en-top-mini",
         "kiwix.wiktionary-en-simple-all-nopic",
         "kiwix.wikivoyage-en-all-nopic",
-        "kiwix.theworldfactbook-en-all"
+        "kiwix.theworldfactbook-en-all",
+        "kiwix.wikiquote-en-all-nopic"
       ]
     },
     {
       "id": "schoolroom",
       "name": "Schoolroom",
-      "description": "For learning with no connection: a children's encyclopedia, Wikipedia in simple English, interactive science simulations, a school physics book, and college textbooks in maths, physics, chemistry and biology.",
+      "description": "For learning with no connection: a children's encyclopedia, Wikipedia in simple English, interactive science simulations, a school physics book, college textbooks in maths, physics, chemistry and biology, and a guide to writing.",
       "entries": [
         "kiwix.vikidia-en-all-maxi",
         "kiwix.wikipedia-en-simple-all-mini",
@@ -322,7 +439,41 @@
         "openstax.physics-high-school",
         "openstax.college-physics-2e",
         "openstax.chemistry-2e",
-        "openstax.biology-2e"
+        "openstax.biology-2e",
+        "openstax.algebra-and-trigonometry-2e",
+        "openstax.writing-guide-with-handbook"
+      ]
+    },
+    {
+      "id": "for-children",
+      "name": "For children",
+      "description": "For children at home with no connection: picture books about getting ready for emergencies, a children's encyclopedia, Wikipedia in simple English, interactive science simulations, a first maths book, and answers to parents' questions.",
+      "entries": [
+        "ready.prepare-with-pedro-activity-book",
+        "cdc.ready-wrigley-prepares-for-winter-weather",
+        "kiwix.vikidia-en-all-maxi",
+        "kiwix.wikipedia-en-simple-all-mini",
+        "kiwix.phet-en-all",
+        "openstax.prealgebra-2e",
+        "kiwix.parenting.stackexchange.com-en-all"
+      ]
+    },
+    {
+      "id": "good-reading",
+      "name": "Something good to read",
+      "description": "Because morale is a supply too: history of the world and of the United States, an introduction to philosophy, the story of flight and of exploring the solar system, a guide to writing well, a book of quotations, the Greek and Latin classics, questions and answers about books, and puzzles.",
+      "entries": [
+        "openstax.world-history-volume-1",
+        "openstax.world-history-volume-2",
+        "openstax.us-history",
+        "openstax.introduction-to-philosophy",
+        "nasa.naca-to-nasa-to-now",
+        "nasa.50-years-of-solar-system-exploration",
+        "openstax.writing-guide-with-handbook",
+        "kiwix.wikiquote-en-all-nopic",
+        "kiwix.gutenberg-en-lcc-pa",
+        "kiwix.literature.stackexchange.com-en-all",
+        "kiwix.puzzling.stackexchange.com-en-all"
       ]
     },
     {

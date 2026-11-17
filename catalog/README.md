@@ -57,7 +57,8 @@ your editor at it with `"$schema": "../schema/manifest.schema.json"`.
 - `id` is unique across every manifest: lower-case words joined by dots or hyphens.
 - `category` is one of: `survival`, `medicine`, `food`, `agriculture`, `engineering`,
   `repair`, `radio`, `navigation`, `preparedness`, `encyclopedias`, `science`,
-  `reference`, `maps`.
+  `reference`, `reading` (literature, poetry, plays, music and books read for pleasure),
+  `maps`.
 - `sizeBytes` is an estimate shown until Outpost has asked the source for the real size.
 - `downloadHosts` lists every host the first request for an entry may go to. Outpost
   refuses to contact any host that no manifest lists. It may be empty when every entry
@@ -291,7 +292,10 @@ node apps/server/src/cli/validate-catalog.ts --online   # also asks each source
 The online check asks one host at a time and waits ten seconds between requests to
 the same host (`--delay <seconds>` changes that), because several publishers ask
 automated clients for that pace. It takes a couple of minutes. Where a server refuses
-`HEAD`, it asks for the first byte of the file instead.
+`HEAD`, it asks for the first byte of the file instead. `--skip-host <host>` (as often as
+needed) leaves every entry on that host unasked; a Kiwix book counts as the feed's host,
+`opds.library.kiwix.org`. The skipped entries are counted as not checked, not reported as
+problems.
 
 The offline check also confirms that every bundled entry's file (or, for a book, every
 chapter) is present, is UTF-8 text that opens with its title, and carries a version,
