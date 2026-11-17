@@ -1019,7 +1019,7 @@ what the person typed is kept; the effects are worked out in the browser from
 | `GET` / `POST /api/nuclear/scenarios` | Saved scenarios, newest change first, as `{ scenarios }`. `POST` body: `name`, `notes`, `lat`, `lon`, `effects` (`{ yieldKt, burst, wind }`: `burst` is `{ kind: "surface" }`, `{ kind: "height", metres }` or `{ kind: "optimum", psi: 20 \| 10 \| 5 \| 2 \| 1 }`; `wind` is `{ fromDegrees, kmh }` or `null`). Returns the scenario, `201`. |
 | `GET` / `PATCH` / `DELETE /api/nuclear/scenarios/:id` | One scenario. `PATCH` takes the whole scenario, as `POST` does, and `baseUpdatedAt` (`NuclearScenarioUpdate`): if the stored scenario is newer the answer is `409 conflict` with `details.current` (`{ updatedAt, name }`), and nothing is overwritten. Without it the change is made regardless. |
 | `GET` / `POST /api/nuclear/sets` | Sets of scenarios kept together as they were on the map, as `{ sets }`. `POST` body: `name`, `members` (one to six, each a scenario as above with `letter`, `A` to `F`, each once, and `hidden`). Returns the set, `201`. Nothing about a set as a whole is worked out or answered. |
-| `GET` / `PATCH` / `DELETE /api/nuclear/sets/:id` | One set. `PATCH` takes the whole set. |
+| `GET` / `PATCH` / `DELETE /api/nuclear/sets/:id` | One set. `PATCH` takes the whole set, as `POST` does, and `baseUpdatedAt` (`NuclearSetUpdate`): if the stored set is newer the answer is `409 conflict` with `details.current` (`{ updatedAt, name }`), and nothing is overwritten. Without it the change is made regardless. |
 
 A scenario the model cannot answer (a yield outside 1 kiloton to 10 megatons, a height
 above 12,000 m or above the blast curves' scaled 5,000 feet, a wind outside 8 to 45

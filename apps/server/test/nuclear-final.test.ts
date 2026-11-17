@@ -76,6 +76,31 @@ describe("sets of scenarios", () => {
     expect(changed.body.members).toHaveLength(2);
   });
 
+  it("refuse a change made from an older copy, as scenarios do, so a set changed on another device is not lost", async () => {
+    const made = (await app.api("POST", "/api/nuclear/sets", { name: "Opened twice", members: [member("A")] })).body;
+    const base = made.updatedAt;
+    const a = await app.api("PATCH", `/api/nuclear/sets/${made.id}`, { name: "A", members: [member("A")], baseUpdatedAt: base });
+    expect(a.status).toBe(200);
+    expect(a.body.updatedAt).toBeGreaterThan(base);
+
+    const b = await app.api("PATCH", `/api/nuclear/sets/${made.id}`, { name: "B", members: [member("B")], baseUpdatedAt: base });
+    expect(b.status).toBe(409);
+    expect(b.body.error.code).toBe("conflict");
+    expect(b.body.error.details).toEqual({ current: { updatedAt: a.body.updatedAt, name: "A" } });
+    expect(b.body.error.message).toMatch(/changed somewhere else/);
+    expect((await app.api("GET", `/api/nuclear/sets/${made.id}`)).body).toEqual(a.body);
+
+    // Keeping one's own version is a change from the newer one, and is saved.
+    const kept = await app.api("PATCH", `/api/nuclear/sets/${made.id}`, {
+      name: "B",
+      members: [member("B")],
+      baseUpdatedAt: a.body.updatedAt,
+    });
+    expect(kept.status).toBe(200);
+    expect(kept.body.name).toBe("B");
+    expect(kept.body.updatedAt).toBeGreaterThan(a.body.updatedAt);
+  });
+
   it("hold no total or figure for the set as a whole, in what is stored or answered", async () => {
     const made = await app.api("POST", "/api/nuclear/sets", { name: "Pair", members: [member("A"), member("B")] });
     const keys = (value: unknown, out = new Set<string>()): Set<string> => {

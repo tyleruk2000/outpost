@@ -55,6 +55,15 @@ export interface NuclearSetInput {
 }
 
 /**
+ * What `PATCH /api/nuclear/sets/:id` takes: the whole set, and the `updatedAt` it was
+ * opened at. As for a scenario, a newer stored set refuses the change with 409 `conflict`
+ * and `details.current` (`NuclearScenarioConflictDetails`).
+ */
+export interface NuclearSetUpdate extends NuclearSetInput {
+  baseUpdatedAt?: number;
+}
+
+/**
  * Scenarios kept together as they were on the map. Only what was typed: nothing about
  * the set as a whole is worked out, kept or shown (no total of any kind across them).
  */
