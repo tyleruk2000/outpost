@@ -13,8 +13,10 @@ import { useNavigate } from "react-router";
 import { api } from "@/lib/api";
 import { referenceProgress, useReferenceSearch } from "@/lib/reference-search";
 import { useTheme } from "@/lib/theme";
+import { modKey } from "@/lib/utils";
 import { everyScreen } from "./nav";
 import { Highlighted, kindOf, resultHref } from "./search-hit";
+import { useFocusReturn } from "./ui/dialog";
 import { Kbd, Spinner } from "./ui/misc";
 
 interface PaletteAction {
@@ -91,6 +93,7 @@ export function CommandPalette({
   const { resolved, setTheme } = useTheme();
   const [query, setQuery] = useState("");
   const debounced = useDebounced(query.trim(), 140);
+  const focusReturn = useFocusReturn();
 
   useEffect(() => {
     if (!open) setQuery("");
@@ -144,6 +147,8 @@ export function CommandPalette({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-(--z-overlay) bg-overlay data-[state=open]:animate-fade" />
         <Dialog.Content
+          ref={focusReturn.ref}
+          onCloseAutoFocus={focusReturn.onCloseAutoFocus}
           aria-describedby={undefined}
           className="fixed top-[12dvh] left-1/2 z-(--z-dialog) w-[calc(100vw-1.5rem)] max-w-[40rem] -translate-x-1/2 overflow-hidden rounded-panel border border-border bg-raised shadow-dialog focus:outline-none data-[state=open]:animate-enter max-md:top-3"
         >
@@ -237,6 +242,18 @@ export function CommandPalette({
               ) : null}
             </Command.List>
           </Command>
+          {/* The keys, where someone with a keyboard will look for them. A phone has none of them. */}
+          <p className="hidden flex-wrap gap-x-5 gap-y-1 border-t border-border px-4 py-2.5 text-micro text-ink-muted md:flex">
+            <span>
+              <Kbd>{modKey} K</Kbd> or <Kbd>/</Kbd> opens this
+            </span>
+            <span>
+              <Kbd>g</Kbd> then a letter goes to a screen
+            </span>
+            <span>
+              <Kbd>{modKey} \</Kbd> folds the sidebar
+            </span>
+          </p>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

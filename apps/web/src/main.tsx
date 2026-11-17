@@ -21,6 +21,11 @@ const queryClient = new QueryClient({
   },
 });
 
+/**
+ * Toasts: above the phone's bottom bar (taller by the home indicator on some phones), six
+ * seconds to read (held while pointed at or touched, and while the page is hidden), each
+ * with a close button, three at most in view. Colours come from tokens (base.css).
+ */
 function ThemedToaster() {
   const { resolved } = useTheme();
   return (
@@ -28,15 +33,15 @@ function ThemedToaster() {
       theme={resolved}
       position="bottom-right"
       offset={{ bottom: 20, right: 20 }}
-      mobileOffset={{ bottom: 76 }}
+      mobileOffset={{ bottom: "calc(4.25rem + env(safe-area-inset-bottom))" }}
+      duration={6000}
+      closeButton
       toastOptions={{
+        closeButtonAriaLabel: "Hide this message",
         style: {
           fontFamily: "var(--font-sans)",
           fontSize: "0.875rem",
           borderRadius: "var(--radius-panel)",
-          border: "1px solid var(--border)",
-          background: "var(--raised)",
-          color: "var(--ink)",
           boxShadow: "var(--shadow-float)",
         },
       }}

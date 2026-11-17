@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import { AlertDialog as AlertPrimitive, Dialog as DialogPrimitive } from "radix-ui";
-import { type ComponentProps, type ReactNode, useLayoutEffect, useRef, useState } from "react";
+import { type ComponentProps, type ReactNode, useCallback, useLayoutEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button, type ButtonProps } from "./button";
 
@@ -20,12 +20,13 @@ const LEAST_BODY_REM = 6;
  * screen with large text, their wrapped lines can take all of it, and more, so that the footer's
  * buttons were below the screen. The whole dialog then scrolls, the body with it. Measured,
  * because what decides it is the length of the words on the day, not the size of the screen.
+ * Measured each time the panel is put on the page: a dialog that stays mounted while closed
+ * has no panel when this first runs.
  */
-function useCramped(): [React.RefObject<HTMLDivElement | null>, boolean] {
-  const ref = useRef<HTMLDivElement>(null);
+function useCramped(): [(panel: HTMLDivElement | null) => void, boolean] {
+  const [panel, setPanel] = useState<HTMLDivElement | null>(null);
   const [cramped, setCramped] = useState(false);
   useLayoutEffect(() => {
-    const panel = ref.current;
     if (!panel || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(() => check());
     const check = () => {
@@ -44,8 +45,59 @@ function useCramped(): [React.RefObject<HTMLDivElement | null>, boolean] {
     observer.observe(panel);
     check();
     return () => observer.disconnect();
+  }, [panel]);
+  return [setPanel, cramped];
+}
+
+/**
+ * The element that had focus before the one that has it now. A field with `autoFocus` takes
+ * focus while its dialog is being put on the page, before the dialog can note what had it.
+ */
+let focusedBefore: HTMLElement | null = null;
+let focusedNow: HTMLElement | null = null;
+// Followed from when this file is loaded, which is before any dialog in it can be opened.
+if (typeof document !== "undefined") {
+  focusedNow = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  document.addEventListener(
+    "focusin",
+    (event) => {
+      if (event.target === focusedNow || !(event.target instanceof HTMLElement)) return;
+      focusedBefore = focusedNow;
+      focusedNow = event.target;
+    },
+    true,
+  );
+}
+
+/**
+ * Puts focus back where it was when a dialog closes. Radix gives it back only to a
+ * `DialogTrigger`, and most dialogs here are opened from state (a button's onClick, a
+ * menu item), so focus fell to the top of the page and a keyboard user lost their place.
+ * The element in focus is noted as the dialog's panel is attached, before focus moves in;
+ * a menu item, gone by then, stands for its menu's button.
+ */
+export function useFocusReturn(onCloseAutoFocus?: (event: Event) => void) {
+  const opener = useRef<HTMLElement | null>(null);
+  const note = useCallback((node: HTMLElement | null) => {
+    if (!node) return;
+    let element = document.activeElement as HTMLElement | null;
+    if (element && node.contains(element)) element = focusedBefore;
+    const menu = element?.closest<HTMLElement>('[role="menu"]');
+    if (menu?.id) element = document.querySelector<HTMLElement>(`[aria-controls="${CSS.escape(menu.id)}"]`) ?? element;
+    opener.current = element && element !== document.body && !node.contains(element) ? element : null;
   }, []);
-  return [ref, cramped];
+  const onClose = useCallback(
+    (event: Event) => {
+      onCloseAutoFocus?.(event);
+      const element = opener.current;
+      opener.current = null;
+      if (event.defaultPrevented || !element?.isConnected) return;
+      event.preventDefault();
+      element.focus();
+    },
+    [onCloseAutoFocus],
+  );
+  return { ref: note, onCloseAutoFocus: onClose };
 }
 
 export function DialogContent({
@@ -54,6 +106,7 @@ export function DialogContent({
   size = "md",
   className,
   children,
+  onCloseAutoFocus,
   ...props
 }: Omit<ComponentProps<typeof DialogPrimitive.Content>, "title"> & {
   title: ReactNode;
@@ -61,27 +114,35 @@ export function DialogContent({
   size?: "sm" | "md" | "lg" | "xl";
 }) {
   const width = { sm: "max-w-sm", md: "max-w-lg", lg: "max-w-2xl", xl: "max-w-4xl" }[size];
-  const [ref, cramped] = useCramped();
+  const [measure, cramped] = useCramped();
+  const focusReturn = useFocusReturn(onCloseAutoFocus);
+  const attach = useCallback(
+    (node: HTMLDivElement | null) => {
+      measure(node);
+      focusReturn.ref(node);
+    },
+    [measure, focusReturn.ref],
+  );
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay className={overlay} />
       <DialogPrimitive.Content
-        ref={ref}
+        ref={attach}
         data-cramped={cramped}
         // It scrolls as a whole when what is in it is taller than it can be (a form round the body, or a header and
         // footer that leave the body no room); otherwise the body scrolls and the header and footer stay put.
         className={cn(panel, "group/dialog overflow-y-auto", width, className)}
         {...props}
-        aria-describedby={description ? undefined : undefined}
+        onCloseAutoFocus={focusReturn.onCloseAutoFocus}
+        // With no description the dialog is described by nothing, rather than by its own title read a second time.
+        {...(description ? {} : { "aria-describedby": undefined })}
       >
         <header className="flex items-start gap-4 border-b border-border px-5 py-4">
           <div className="min-w-0 flex-1">
             <DialogPrimitive.Title className="text-lead font-semibold text-ink">{title}</DialogPrimitive.Title>
             {description ? (
               <DialogPrimitive.Description className="mt-1 text-small text-ink-muted">{description}</DialogPrimitive.Description>
-            ) : (
-              <DialogPrimitive.Description className="sr-only">{typeof title === "string" ? title : "Dialog"}</DialogPrimitive.Description>
-            )}
+            ) : null}
           </div>
           <DialogPrimitive.Close asChild>
             <Button
@@ -146,12 +207,17 @@ export function ConfirmDialog({
   loading?: boolean;
   children?: ReactNode;
 }) {
+  const focusReturn = useFocusReturn();
   return (
     <AlertPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <AlertPrimitive.Portal>
         <AlertPrimitive.Overlay className={overlay} />
         {/* Its words can be longer than a small screen with large text: it then scrolls, the buttons with it. */}
-        <AlertPrimitive.Content className={cn(panel, "max-w-md overflow-y-auto")}>
+        <AlertPrimitive.Content
+          ref={focusReturn.ref}
+          onCloseAutoFocus={focusReturn.onCloseAutoFocus}
+          className={cn(panel, "max-w-md overflow-y-auto")}
+        >
           <div className="px-5 pt-5 pb-4">
             <AlertPrimitive.Title className="text-lead font-semibold text-ink">{title}</AlertPrimitive.Title>
             <AlertPrimitive.Description asChild>
