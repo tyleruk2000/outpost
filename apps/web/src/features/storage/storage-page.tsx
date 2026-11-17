@@ -411,7 +411,7 @@ export default function StoragePage() {
                           <span className="tabular block pl-5 text-ink-muted @min-[20rem]:hidden">{plural(entry.count, "item")}</span>
                         </td>
                         <td className="tabular py-2.5 pr-4 text-right text-ink-muted @max-[20rem]:hidden">{plural(entry.count, "item")}</td>
-                        <td className="tabular py-2.5 text-right font-medium text-ink">{formatBytes(entry.bytes)}</td>
+                        <td className="tabular py-2.5 text-right font-medium whitespace-nowrap text-ink">{formatBytes(entry.bytes)}</td>
                       </tr>
                     ))}
                   </tbody>

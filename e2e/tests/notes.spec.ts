@@ -253,6 +253,10 @@ test.describe("notes", () => {
       // A 30 px row cut 28 px text to a strip; the row is now 1.875rem, 60 px here.
       expect(sizes.row).toBe(60);
       expect(sizes.text).toBeLessThanOrEqual(sizes.row);
+      // The notes home's two columns do not run into each other: the side one gives up width first.
+      const recent = (await page.getByRole("heading", { name: "Recently opened" }).boundingBox())!;
+      const templates = (await page.getByRole("heading", { name: "Start from a template" }).boundingBox())!;
+      expect(recent.x + recent.width <= templates.x || recent.y + recent.height <= templates.y).toBe(true);
       expect(errors).toEqual([]);
     } finally {
       await api(page, "DELETE", `/api/notes/${note.id}`);

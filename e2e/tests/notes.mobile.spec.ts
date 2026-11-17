@@ -134,7 +134,8 @@ test.describe("notes on a phone", () => {
       expect(await back.locator("span").evaluate((span) => span.scrollWidth <= span.clientWidth + 1)).toBe(true);
 
       await page.goto("/notes");
-      const expand = page.getByRole("button", { name: "Expand Household" });
+      // Household is open, as the page under it was just visited.
+      const expand = page.getByRole("button", { name: /^(Expand|Collapse) Household$/ });
       const box = (await expand.boundingBox())!;
       expect([Math.round(box.width), Math.round(box.height)]).toEqual([88, 88]);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

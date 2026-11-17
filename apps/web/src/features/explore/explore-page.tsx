@@ -340,7 +340,7 @@ export default function ExplorePage() {
                   />
                 </div>
                 <Segmented label="Show" value={show} onChange={setShow} options={showOptions} className="max-md:hidden" />
-                <div className="flex gap-3 max-md:basis-full [&>*]:min-w-0 [&>*]:flex-1">
+                <div className="flex min-w-0 gap-3 max-md:basis-full [&>*]:min-w-0 [&>*]:flex-1">
                   <Select
                     aria-label="Show"
                     value={show}

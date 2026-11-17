@@ -21,7 +21,13 @@ function Facts({ parts }: { parts: ReactNode[] }) {
       {present.map((part, index) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: a fixed, ordered list of facts about one entry
         <Fragment key={index}>
-          {index > 0 ? <Slash /> : null}
+          {/* A line may break before the slash: a long publisher and its neighbour are otherwise one word, too wide for a phone with large text. */}
+          {index > 0 ? (
+            <>
+              <wbr />
+              <Slash />
+            </>
+          ) : null}
           {part}
         </Fragment>
       ))}
