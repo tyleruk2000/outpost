@@ -1,7 +1,7 @@
 /**
  * Looking things up in Outpost, on a phone: the stand-in model server (not a language
  * model) asks for the nearest supermarket from a fixture layer, Outpost runs the tool on
- * the server, and the reply shows what was looked at, which opens to the question asked
+ * the server, and the reply shows what was looked at ("the nearest places"), which opens to the question asked
  * and the answer given.
  */
 import { api, expect, test, watchForErrors } from "./fixtures";
@@ -65,7 +65,7 @@ test.describe("looking things up, on a phone", () => {
     const reply = page.getByRole("article", { name: /^Reply from/ }).last();
     const lookedAt = reply.getByRole("region", { name: "What the model looked up in Outpost" });
     await expect(lookedAt).toContainText("Looked at:", { timeout: 30_000 });
-    const name = lookedAt.getByRole("button", { name: /^places on the map/ });
+    const name = lookedAt.getByRole("button", { name: /^the nearest places/ });
     await expect(name).toBeVisible();
     expect((await name.boundingBox())!.height).toBeGreaterThanOrEqual(43);
     await expect(reply.getByTestId("reply-text")).toContainText("From Outpost", { timeout: 30_000 });
@@ -85,7 +85,7 @@ test.describe("looking things up, on a phone", () => {
       page
         .getByRole("article", { name: /^Reply from/ })
         .last()
-        .getByRole("button", { name: /^places on the map/ }),
+        .getByRole("button", { name: /^the nearest places/ }),
     ).toBeVisible();
     expect(errors).toEqual([]);
   });
