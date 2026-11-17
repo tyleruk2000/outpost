@@ -591,7 +591,7 @@ Types: `packages/shared/src/kiwix.ts`.
 | `POST /api/kiwix/books/:collectionId/files/add-all/plan` | What an "add all" would do. Body, an `ArchiveAddScope`: `{ kind: "list", q? }` for every document of the archive's list (those matching `q`), or `{ kind: "files", files: [{ path, title? }] }` for at most 300 files named one by one. Answers `ArchiveAddPlan`: `{ count, already, bytes, unsized, location: { id, name, freeBytes }, reserveBytes, refusal, ocrAuto }`. `count` files would be copied and `already` are in the library; `bytes` is what those with a known size come to and `unsized` how many have none; `refusal` is why it cannot start, in words, or `null`. Changes nothing. |
 | `POST /api/kiwix/books/:collectionId/files/add-all` | Starts the job that copies them (type `kiwix.add-files`, queue `reference-files`). Same body. Answers `{ job, already }` (`StartArchiveAddResponse`); `already` is true when one was under way for this collection, which is given back instead. A `507` when there is not room, a `409` when everything asked for is in the library, a `502` when the collection cannot be read. The job's progress is `current` of `total` files; it is cancelled with `POST /api/jobs/:id/cancel`; its `result` is an `ArchiveAddResult`: `{ scope, q, wanted, added, addedBytes, already, failed: [{ path, title, reason }], failedMore, notReached, stopped, stoppedReason, locationName }`, kept also when it was cancelled; `stopped` is `null`, `cancelled`, `space` (no room left), `storage` (the location went away) or `unreadable` (the collection did). |
 | `GET /api/kiwix/books/:collectionId/files/add-all` | `{ job }`: the "add all" for this collection that is waiting or running, failing that the last one that ended, or `null`. |
-| `GET` or `HEAD /kiwix/open/*` | The sandboxing proxy for article content. Not under `/api/`. Only `content/…` and a book's icon can be reached. Use the `contentBase` a book reports; the first segment after `/kiwix/` is fixed, and any other value is a `404`. Every answer carries a Content Security Policy `sandbox` without `allow-same-origin`, so a page runs in an origin of its own; a page also gets a small script that tells the reader which article is showing and which files it links to. kiwix-serve's redirects are sent back through the proxy. `502` while kiwix-serve is not answering. |
+| `GET` or `HEAD /kiwix/open/*` | The sandboxing proxy for article content. Not under `/api/`. Only `content/…` and a book's icon can be reached. Use the `contentBase` a book reports; the first segment after `/kiwix/` is fixed, and any other value is a `404`. Every answer carries a Content Security Policy `sandbox` without `allow-same-origin`, so a page runs in an origin of its own; a page also gets a small script that tells the reader which article is showing, which files and which other pages of the archive it links to, and when a video on it has played to the end. kiwix-serve's redirects are sent back through the proxy. `502` while kiwix-serve is not answering. |
 
 ## Downloads
 
@@ -1007,6 +1007,25 @@ unfinished game of Solitaire, Peg solitaire, Sudoku, Draughts or Pairs is never 
 | `DELETE /api/games/:game` | Forgets a game's tally ("Clear the tally"), or, for `allotment`, the whole plot ("Start again"). Returns `{ removed }`. |
 | `GET /api/games/allotment` | `{ plot, now, hemisphere, hemisphereFrom, season, awayMs, started }`: the household's plot worked out to the server's clock, without writing it (or a new plot, not stored, before the first action); `hemisphereFrom` is `setting`, `home place` or `default`. `409` with `details.damaged` when the stored plot cannot be read; it is not replaced. |
 | `POST /api/games/allotment/actions` | One action, stamped with the server's clock (never earlier than the plot's own): `{ type: "sow", bed, crop }`, `water`, `harvest` (each with `bed`, 0–13), `harvestAll`, `collect` (optional `thing`: `hens`, `beehive`, `appleTree`), `sell` (`item`, `count` 1–9,999 or `"all"`), `sellAll`, `buyBed`, `buy` (`thing`), `setHemisphere` (`auto`, `north`, `south`). Answers as the `GET` does. `409` with the reason for an action that cannot be done ("That bed already has carrots in it."); nothing changes. Publishes `games.changed`. |
+
+## Learning progress
+
+Types: `packages/shared/src/learning.ts`. Where each learner got to in a reference
+archive, written by the reader ([learning.md](learning.md)). A `learner` is a name of at
+most 40 characters (spaces tidied), or `""` for "Just me"; it proves nothing. Progress is
+kept under the archive's name without its date. `collectionId` must be an installed ZIM
+collection (`404` otherwise); `path` is the page's address inside it, at most 2,000
+characters, never holding `..` or control characters (`400`).
+
+| Method and path | Purpose |
+| --- | --- |
+| `POST /api/learning/visits` | A page left, hidden, or still open after a minute. Body: `learner`, `collectionId`, `path`, `title`, `seconds` (0–86,400), `opened` (the first write of a visit). The seconds added are held to two minutes and to the time since the page was last written plus five seconds. `409` beyond 50 learners. Returns `{ page }`. |
+| `POST /api/learning/done` | Marks a page done or not. Body: `learner`, `collectionId`, `path`, `title`, `done`, `how` (`marked`, the default, or `watched`). A page marked by hand stays `marked` when its video then ends. Returns `{ page }`. Publishes `learning.changed`. |
+| `POST /api/learning/topics` | The pages of the same archive a page links to: `collectionId`, `path`, `title`, `links` (at most 600), `home`. A page of more than 300 links that is not the first page is not kept (`{ kept: false }`). |
+| `GET /api/learning/page` | `{ page }` for `learner`, `collectionId`, `path`, or `null`. Changes nothing. |
+| `GET /api/learning/learners` | `{ learners: [{ name, courses, pages, lastAt }], household }`: everyone with progress, the most recent first, and the household's people from Supplies and the emergency plans. |
+| `GET /api/learning/progress` | `{ courses, weekFrom }` for `learner=<name>` or `everyone=1` (one is required), optionally one `collectionId`. Each course: `{ learner, archive, title, collectionId, last: { path, title, at }, pagesOpened, pagesDone, secondsThisWeek, secondsInAll, topics: [{ path, title, listed, done }] }`; `collectionId` is `null` when the archive is not installed now. `weekFrom` is Monday at midnight by the server's clock. |
+| `DELETE /api/learning/progress` | Removes `learner=<name>`'s progress, or `everyone=1`'s (and the topic lists). Returns `{ removed: { learners, pages } }`. Publishes `learning.changed`. |
 
 ## Nuclear preparedness
 

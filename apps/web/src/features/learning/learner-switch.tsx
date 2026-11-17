@@ -94,7 +94,7 @@ export function DeviceLearnerSwitch({ onChoose, className }: { onChoose: (name: 
           <Button
             variant="ghost"
             size="sm"
-            className={cn("max-w-[11rem] gap-1.5 px-2", !device.recording && "text-ink-muted", className)}
+            className={cn("max-w-[7.5rem] gap-1.5 px-2 md:max-w-[11rem]", !device.recording && "text-ink-muted", className)}
             aria-label={
               !device.recording
                 ? "Progress is not being recorded on this device. Change"

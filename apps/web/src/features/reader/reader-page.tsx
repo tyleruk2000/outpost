@@ -309,7 +309,7 @@ export default function ReaderPage() {
 
   return (
     <div className="flex h-dvh flex-col max-md:h-[calc(100dvh-3.25rem)] max-md:pb-[calc(3.5rem+env(safe-area-inset-bottom))]">
-      <header className="relative z-(--z-sticky) flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-page px-3 py-2 md:px-5">
+      <header className="relative z-(--z-sticky) flex flex-wrap items-center gap-x-2 gap-y-2 md:gap-x-3 border-b border-border bg-page px-3 py-2 md:px-5">
         <Tooltip label="Back to your collections">
           <Button asChild variant="ghost" size="icon" aria-label="Back to your collections">
             <Link to="/library?tab=collections">
@@ -317,7 +317,7 @@ export default function ReaderPage() {
             </Link>
           </Button>
         </Tooltip>
-        <div className="min-w-0 flex-1 basis-40">
+        <div className="min-w-0 flex-1 basis-20 md:basis-40">
           {/* The screen's main heading, unless the list or the search results over the page carry their own. */}
           <TitleTag className="truncate font-title text-body text-ink">{pageTitle ?? title}</TitleTag>
           {pageTitle ? <p className="truncate text-micro text-ink-muted">{title}</p> : null}
@@ -366,7 +366,7 @@ export default function ReaderPage() {
           ) : null}
         </form>
         {ready && !deciding && !listMode && collectionId ? (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center">
             <ReaderLearning tracker={learning} collectionId={collectionId} watched={watched} />
           </div>
         ) : null}

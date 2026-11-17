@@ -65,6 +65,8 @@ export function useLearningTracker(collectionId: string, active: boolean): Learn
   const visit = useRef<Visit | null>(null);
   const who = useRef<string | null>(learner);
   const listedOnce = useRef(new Set<string>());
+  /** Pages of links seen before anyone was being recorded, kept in memory to send once someone is (at most 20). */
+  const unsent = useRef(new Map<string, { title: string; links: string[]; home: boolean }>());
   const [page, setPage] = useState<{ path: string; title: string } | null>(null);
   const [inView, setInView] = useState(visible);
 
@@ -94,13 +96,20 @@ export function useLearningTracker(collectionId: string, active: boolean): Learn
     if (who.current === learner) return;
     flush();
     who.current = learner;
+    if (learner !== null) {
+      for (const [path, list] of unsent.current) {
+        listedOnce.current.add(path);
+        void postTopic({ collectionId, path, ...list });
+      }
+      unsent.current.clear();
+    }
     const current = visit.current;
     if (current) {
       current.ms = 0;
       current.since = visible() ? performance.now() : null;
       current.written = false;
     }
-  }, [learner, flush]);
+  }, [learner, flush, collectionId]);
 
   // The tab hidden or shown: time counts only while it is visible, and hiding it writes.
   useEffect(() => {
@@ -169,11 +178,17 @@ export function useLearningTracker(collectionId: string, active: boolean): Learn
 
   const listed = useCallback(
     (path: string, links: string[], home: boolean) => {
-      if (who.current === null || listedOnce.current.has(path)) return;
-      listedOnce.current.add(path);
+      if (listedOnce.current.has(path)) return;
       // A page of more links than a list of lessons holds is an index; the first page is kept for what it shares with the rest.
       if (!home && (links.length < 2 || links.length > TOPIC_LINKS_MAX)) return;
-      void postTopic({ collectionId, path, title: visit.current?.path === path ? visit.current.title : "", links, home });
+      const title = visit.current?.path === path ? visit.current.title : "";
+      if (who.current === null) {
+        // Nothing leaves the device until someone is being recorded.
+        if (unsent.current.size < 20 || unsent.current.has(path)) unsent.current.set(path, { title, links, home });
+        return;
+      }
+      listedOnce.current.add(path);
+      void postTopic({ collectionId, path, title, links, home });
     },
     [collectionId],
   );
