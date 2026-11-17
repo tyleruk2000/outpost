@@ -66,7 +66,9 @@ const lands: Array<[string, string | null]> = [
   ["patience", "Games: Solitaire"],
   ["checkers", "Games: Draughts"],
   ["chess", null],
-  ["help", "Settings: Set-up guide"],
+  ["help", "Help"],
+  ["manual", "Help"],
+  ["docker", "Help"],
   ["ask a question", "Chat"],
 ];
 

@@ -115,6 +115,7 @@ interface Context {
   resolve?: LinkResolver;
   /** The numbers of the pictures the file carries. */
   pictures?: ReadonlySet<number>;
+  link?: MarkdownOptions["link"];
 }
 
 /** A link that stays inside Outpost: to a heading of this document, or to a catalogue entry or chapter. */
@@ -165,7 +166,7 @@ function inline(node: Nodes, context: Context): MarkdownInline[] {
       const label = children();
       if (href) return [{ t: "link", href, c: label.length > 0 ? label : text(href) }];
       // A link Outpost will not follow keeps its words.
-      return innerLink(url.trim(), label, context) ?? label;
+      return innerLink(url.trim(), label, context) ?? context.link?.(url.trim(), label) ?? label;
     }
     case "image":
     case "imageReference": {
@@ -289,6 +290,12 @@ export interface MarkdownOptions {
   resolve?: LinkResolver;
   /** The numbers of the pictures the file carries; a reference to any other is shown as its description. */
   pictures?: ReadonlySet<number>;
+  /**
+   * What becomes of a link no other rule keeps (a relative path, a jump to no heading). Only Outpost's own
+   * guides use it (apps/web/guides-plugin.ts), to turn links between the pages of docs/ into links between guides.
+   * Undefined keeps the words alone, as without it.
+   */
+  link?: (url: string, label: MarkdownInline[]) => MarkdownInline[] | undefined;
 }
 
 export function markdownBlocks(source: string, options: MarkdownOptions = {}): MarkdownBlock[] {
@@ -304,6 +311,7 @@ export function markdownBlocks(source: string, options: MarkdownOptions = {}): M
       headingIds: new Set(headings.values()),
       resolve: options.resolve,
       pictures: options.pictures,
+      link: options.link,
     },
     0,
   );

@@ -153,14 +153,14 @@ As installed, Ollama answers only the computer it runs on (address `127.0.0.1`, 
 
    ```
    [Service]
-Environment="OLLAMA_HOST=0.0.0.0:11434"
+   Environment="OLLAMA_HOST=0.0.0.0:11434"
    ```
 
 3. Then type these two lines, pressing Enter after each:
 
    ```
    sudo systemctl daemon-reload
-sudo systemctl restart ollama
+   sudo systemctl restart ollama
    ```
 
 ### Raspberry Pi
@@ -175,14 +175,14 @@ sudo systemctl restart ollama
 
    ```
    [Service]
-Environment="OLLAMA_HOST=0.0.0.0:11434"
+   Environment="OLLAMA_HOST=0.0.0.0:11434"
    ```
 
 3. Then type these two lines, pressing Enter after each:
 
    ```
    sudo systemctl daemon-reload
-sudo systemctl restart ollama
+   sudo systemctl restart ollama
    ```
 
 Then tell Outpost where it is:

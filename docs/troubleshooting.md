@@ -679,6 +679,13 @@ After the restart, the data that was replaced is in the data directory in a fold
 named `before-restore-<time>`. Delete it yourself when you are sure you do not need
 it.
 
+### "Restoring is not offered on this device"
+
+Settings says this, under **Backup**, on any device but the computer Outpost runs on,
+for the reason in the next entry. Moving to a Raspberry Pi in Docker, where no device
+counts as that computer, has the steps in
+[deployment.md](deployment.md#6-bring-your-library-across).
+
 ### "Restoring a backup can only be done on the computer Outpost runs on."
 
 Restoring replaces everything at once, and Outpost has no accounts, so it is tied to
@@ -765,6 +772,81 @@ The drive is FAT32, which cannot hold a file of 4 GB or more.
 The Kiwix project publishes no Windows build of its reader at the version Outpost
 uses. Everything else works. See
 [portable.md](portable.md#which-computers-it-runs-on).
+
+## The Raspberry Pi scripts
+
+What `deploy/pi/install.sh` and `deploy/pi/hotspot.sh` print when they stop, and what
+to do. Neither script has been run on a real Raspberry Pi
+([deployment.md](deployment.md#what-has-been-tried-and-what-has-not)), so a message not
+listed here is possible: the script's own words, and the lines just above them, say
+what it was doing.
+
+### "A 64-bit system is needed: this one reports armv7l. Install Raspberry Pi OS (64-bit)."
+
+The card holds the 32-bit Raspberry Pi OS, and Outpost has no 32-bit build. The same
+goes for "The kernel is 64-bit but the system's programs are armhf". Write the card
+again with **Raspberry Pi OS (64-bit)** in Raspberry Pi Imager.
+
+### "Run this as your own user, not with sudo. It asks for sudo where it needs it."
+
+Run `./deploy/pi/install.sh …` without `sudo` in front.
+
+### "Docker with the Compose plugin is not installed."
+
+Run the script again with `--install-docker`, which installs both from Docker's own
+apt repository and needs the internet that once.
+
+### "compose.yaml was not found in … Run this from a checkout of Outpost."
+
+The script was copied out of the folder `git clone` made. Run it from there:
+`cd outpost`, then `./deploy/pi/install.sh …`.
+
+### "Outpost did not answer within five minutes. Look at: docker compose logs outpost"
+
+The containers started but the server did not answer at
+`http://127.0.0.1:8080/api/health`. Read the log it names (the last lines matter most).
+A first start that is still building its search index can be slow on a Pi: run
+`curl http://localhost:8080/api/health` again after a few minutes. If the log ends in an
+error, look it up on this page.
+
+### `permission denied while trying to connect to the Docker daemon socket`
+
+Docker was installed in this sign-in, and being allowed to use it without `sudo`
+counts from the next one. Sign out of the Pi and in again, or put `sudo` before
+`docker`.
+
+### "They could not be fetched now. The planner will offer a Download button; or run this again later."
+
+The coefficients for the HF propagation planner could not be downloaded, usually for
+want of the internet. Everything else is installed. Press **Download** on the HF
+propagation screen once the Pi is online, or run the script again.
+
+### "The Wi-Fi country is not set. Set it first: sudo raspi-config nonint do_wifi_country GB (with your own country code)."
+
+A Raspberry Pi keeps its Wi-Fi off until it knows which country it is in. Run the
+command it gives, with your own two-letter country code, then `hotspot.sh on` again.
+
+### "nmcli was not found." or "NetworkManager is not running."
+
+`hotspot.sh` needs NetworkManager, which Raspberry Pi OS uses from Bookworm on. An
+older system needs writing again with a current Raspberry Pi OS.
+
+### "wlan0 is not a Wi-Fi interface on this computer. Name yours with --interface."
+
+The Wi-Fi is called something else on this Pi. `nmcli device` lists the names; give
+the Wi-Fi one with `--interface`.
+
+### "The password must be 8 to 63 characters." or "The two did not match."
+
+The Wi-Fi network's password is checked before anything changes. Nothing was changed;
+run it again.
+
+### Phones join the Pi's network but Outpost does not open
+
+Outpost answers other devices only when it is shared with the network:
+`./deploy/pi/install.sh --lan` sets that up. `sudo ./deploy/pi/hotspot.sh status`
+says whether the network is on. A phone may say the network has no internet and ask
+whether to stay on it: stay.
 
 ## Still stuck
 

@@ -724,7 +724,13 @@ function MeshCorePart({ data }: { data: MeshResponse }) {
             {data.inContainer ? (
               <p className="text-small text-ink-muted">
                 Outpost runs in a container: the device must be passed through to it by the container's own settings (see{" "}
-                <span className={mono}>docs/deployment.md</span>).
+                <Link
+                  to="/help/deployment#h-mesh-radio-in-a-container"
+                  className="text-primary underline decoration-1 underline-offset-2 hover:decoration-2"
+                >
+                  Mesh radio in a container
+                </Link>
+                , in the guide to installing Outpost).
               </p>
             ) : null}
             <div>
@@ -919,7 +925,11 @@ function MoreAbout() {
         </p>
         <p>{TRADEMARK}</p>
         <p>
-          More in <span className={mono}>docs/mesh-radio.md</span>.
+          More in the guide,{" "}
+          <Link to="/help/mesh-radio" className="text-primary underline decoration-1 underline-offset-2 hover:decoration-2">
+            Mesh radio
+          </Link>
+          .
         </p>
       </div>
     </details>

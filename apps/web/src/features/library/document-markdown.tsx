@@ -33,6 +33,12 @@ export interface BookLinks {
 export const BookLinksContext = createContext<BookLinks | null>(null);
 
 /**
+ * How a block of code is drawn, where the usual block that scrolls sideways is not wanted:
+ * Help's guides show a command whole, with a button that copies it.
+ */
+export const CodeBlockContext = createContext<((code: string, lang?: string) => ReactNode) | null>(null);
+
+/**
  * Ids as the server makes them: a document or collection id is letters and digits, a
  * catalogue entry id is lower-case words joined by dots or hyphens, a heading id is
  * letters, digits, hyphens and underscores. The server only sends what it looked up;
@@ -294,6 +300,7 @@ function Item({ item }: { item: MarkdownListItem }) {
 }
 
 function Block({ block }: { block: MarkdownBlock }): ReactNode {
+  const drawCode = useContext(CodeBlockContext);
   switch (block.t) {
     case "heading": {
       // The page already has the document's name as its first heading.
@@ -368,6 +375,7 @@ function Block({ block }: { block: MarkdownBlock }): ReactNode {
           </Suspense>
         );
       }
+      if (drawCode) return drawCode(block.v, block.lang);
       return (
         <pre>
           <code>{block.v}</code>

@@ -32,6 +32,9 @@ const screens = [
   "/storage",
   "/kept",
   "/settings",
+  "/help",
+  // One long guide, with its tables and commands.
+  "/help/deployment",
 ];
 
 /** What reaches past the right of the screen inside the page, as in radio-large-text.mobile.spec.ts. */
