@@ -75,7 +75,8 @@ Tags and running times are read by Outpost's own small reader
 MP3's running time, the frame count of a Xing, Info or VBRI header, or else the bitrate of
 a constant-bitrate file; MP4 atoms (M4A, M4B); Vorbis comments in Ogg (Vorbis, Opus) and
 FLAC; a WAV file's INFO list. It reads at most the first 4 MB and the last 128 KB of a
-file. Chapters marked inside one M4B file are not read: such a book plays as one long
+file; an MP4 is instead walked by the headers of at most 1,000 top-level atoms, and only
+its `moov` atom, up to 16 MB, is read. Chapters marked inside one M4B file are not read: such a book plays as one long
 chapter.
 
 ### Where it is in the Library

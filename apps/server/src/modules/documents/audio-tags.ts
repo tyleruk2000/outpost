@@ -12,7 +12,7 @@
  *
  * The file is never read whole. At most the first 4 MB (where tags live) and the last
  * 128 KB (an ID3v1 tag, the end of an Ogg stream) are read; an MP4 is walked atom by
- * atom, and only its `moov` atom, up to 16 MB, is read into memory.
+ * atom (at most 1,000 of them), and only its `moov` atom, up to 16 MB, is read into memory.
  */
 import fs from "node:fs";
 
@@ -32,6 +32,7 @@ export interface AudioFacts {
 const HEAD_BYTES = 4 * 1024 * 1024;
 const TAIL_BYTES = 128 * 1024;
 const MAX_MOOV_BYTES = 16 * 1024 * 1024;
+const MAX_TOP_ATOMS = 1000;
 const MAX_TEXT = 300;
 
 /** Trims a value and drops control characters; an empty result is no value. */
@@ -457,8 +458,9 @@ function readMoov(moov: Buffer): AudioFacts {
 }
 
 async function readMp4(handle: fs.promises.FileHandle, size: number): Promise<AudioFacts> {
-  // Top-level atoms are walked by their headers; mdat, the sound itself, is skipped.
-  for (let at = 0; at + 8 <= size; ) {
+  // Top-level atoms are walked by their headers; mdat, the sound itself, is skipped. A real file has a
+  // handful; a file of nothing but tiny atoms would otherwise cost a read for every eight bytes.
+  for (let at = 0, walked = 0; at + 8 <= size && walked < MAX_TOP_ATOMS; walked += 1) {
     const header = await readAt(handle, at, 16);
     if (header.length < 8) break;
     let length = header.readUInt32BE(0);
