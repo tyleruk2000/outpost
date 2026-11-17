@@ -80,7 +80,7 @@ with the rest of Outpost's sources.
 | Provider | What | Terms, quoted | Verdict |
 | --- | --- | --- | --- |
 | Natural Earth | Countries (1:50m), first-level regions and populated places (1:10m) | [Terms of use](https://www.naturalearthdata.com/about/terms-of-use/): "All versions of Natural Earth raster + vector map data found on this website are in the public domain." "No permission is needed to use Natural Earth." "Crediting the authors is unnecessary." Nothing is said about automated downloads; downloads are "generously hosted by Amazon Web Services". | **Fetched on a press**, as GeoJSON from the project's repository pinned at release v5.1.2 (`raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/`). No checksum is published; the 1:50m countries file is pinned by a SHA-256 Outpost worked out from the file on the day (`3e458fc0…7fdeb`). |
-| OurAirports | Airports, airfields, heliports, seaplane bases, with their own `type` | ourairports.com could not be read: its certificate expired on 6 November 2026. The data repository's [licence](https://github.com/davidmegginson/ourairports-data/blob/main/LICENSE): "This is free and unencumbered software released into the public domain." Its README: "Open-data downloads for OurAirports, updated daily." | **Fetched on a press**: `airports.csv` (12.8 MB) from `davidmegginson.github.io`, the chosen countries or box kept. There is no field that says an airfield is military, and none is guessed from names. |
+| OurAirports | Airports, airfields, heliports, seaplane bases, with their own `type`; their radio frequencies | ourairports.com could not be read: its certificate expired on 6 November 2026 (still so on 17 November). The data repository's [licence](https://github.com/davidmegginson/ourairports-data/blob/main/LICENSE): "This is free and unencumbered software released into the public domain." Its README: "Open-data downloads for OurAirports, updated daily." | **Fetched on a press**: `airports.csv` (12.8 MB) from `davidmegginson.github.io`, the chosen countries or box kept, and `airport-frequencies.csv` (1.3 MB) from the same folder in the same install (see [Airport frequencies](#airport-frequencies)). There is no field that says an airfield is military, and none is guessed from names. |
 | OpenStreetMap by Overpass | Military sites, nuclear facilities, hospitals, police, fire and ambulance stations, shelters | [Copyright](https://www.openstreetmap.org/copyright): "If you alter or build upon our data, you may distribute the result only under the same license." [Overpass manual](https://dev.overpass-api.de/overpass-doc/en/preface/commons.html): users "keep their download volume below about 1 GB per day"; problematic is "Setting up an app for more than just OSM mappers and relying on the public instances as backend". [Wiki list of servers](https://wiki.openstreetmap.org/wiki/Overpass_API#Public_Overpass_API_instances) for dresel.systems: "Free to use, no API key. Limit of 4 parallel queries per IP address", "Please send a User-Agent or Referer that identifies your app." Private.coffee's own terms exclude "projects related to warfare, military applications". | **Fetched on a press**, one layer of one country (or a box up to about 20° by 20°) per question, one question at a time to a host with two seconds between and a minute after it says it is busy, from the servers of `catalog/route-sources.json` that hold the area (dresel.systems, Europe and North America) or from one the person declares. **Private.coffee is not used** for reference layers, because of its terms; overpass-api.de is not listed at all (see sources.md, T4). Elsewhere: a Geofabrik extract. |
 | OpenStreetMap from Geofabrik | The same five layers, from a country's `.osm.pbf` | [download.geofabrik.de](https://download.geofabrik.de/): "License: ODbL 1.0", "Data processed by Geofabrik GmbH and created by OpenStreetMap Contributors". [Download responsibly!](https://blog.geofabrik.de/index.php/2025/09/10/download-responsibly/) (10 September 2025): "There's a limit to the outgoing network bandwidth"; "monitor what your script is doing or build in appropriate catches". | **Fetched on a press**, one file per country, at most three per estimate, with the MD5 Geofabrik publishes beside it checked before reading; never retried in a loop beyond the download manager's own retries. Or imported from a file the person downloaded. |
 | Wikidata | Nuclear power stations (Q134447) and research reactors (Q1438105) with a position | [Licensing](https://www.wikidata.org/wiki/Wikidata:Licensing): "All structured data … is released into the public domain" (CC0). [Query service](https://www.mediawiki.org/wiki/Wikidata_Query_Service/User_Manual#Query_limits): 60 seconds a query, five at once per address. [User-Agent policy](https://foundation.wikimedia.org/wiki/Policy:Wikimedia_Foundation_User-Agent_Policy): "Scripts should use an informative User-Agent string with contact information, or they may be blocked without notice." | **Fetched on a press**, once the person has ticked that the name may be sent: one count and one query, with Outpost's name and the project's web address, which the policy requires. See [The name a source is given](#the-name-a-source-is-given). |
@@ -215,6 +215,57 @@ publish their own maps, which Outpost does not fetch.
   a local stand-in, not the live service (`OUTPOST_FLOOD_ZONES_URL` puts one in the
   Agency's place for tests), and there is no end-to-end test of it in a browser.
 
+
+### Airport frequencies
+
+The radio frequencies OurAirports' contributors list for each airport, from
+`airport-frequencies.csv` in the same repository as `airports.csv`, under the same
+licence (the Unlicense: public domain).
+
+- **What is fetched.** When the airports pack is downloaded or updated, the install
+  fetches `https://davidmegginson.github.io/ourairports-data/airport-frequencies.csv`
+  once, after `airports.csv` has arrived. On 17 November 2026 it was 1,302,744 bytes
+  (340 kB as sent, compressed) with 30,397 rows for 11,215 airports, at most 31 for one.
+  Show the size asks both files for their size and shows them together, naming each, with
+  a note that the second file is fetched at install. Only the rows for the airports kept
+  are stored; the file itself is not kept. A row without a usable frequency (some have 0)
+  is left out and counted.
+- **The columns.** ourairports.com's data dictionary could not be read (its certificate
+  had expired), so the columns are the file's own header row as found on 17 November
+  2026: `"id","airport_ref","airport_ident","type","description","frequency_mhz"`. A row
+  is joined to its airport by `airport_ident`, the airport's `ident`. The header is
+  checked before anything is used.
+- **Where it is kept.** In each airport's own fields (`props.frequencies`, with the
+  file's date in `props.frequencies_as_of`), so no table was added: the rows are counted
+  with the layer's records, backed up with the database, replaced when the pack is
+  updated, removed with the pack and erased by erase-everything. They are not searchable
+  text: an airport is found by its name and codes as before.
+- **When it fails.** If the file cannot be fetched, has another header, or is larger than
+  16 MB (about twelve times its size on the day), the airports are installed without
+  frequencies and the pack says so under Reference data for the map: "Radio frequencies
+  were not included: …, update this pack to try again." When they are included it says
+  for how many of the airports kept.
+- **On the card.** An airport's card lists its frequencies: what each is for (the file's
+  type and description as given; a type is put into words only where its meaning is
+  certain, the ICAO abbreviations TWR, GND, APP, DEP, ARR, DEL, INFO, RDO and RDR and the
+  same words typed out; anything else, such as `CLD` or `A/D`, is shown as given) and the
+  frequency in MHz with three decimals at least, tower first, then ATIS, AFIS, FIS and
+  information, then the rest in the file's order. On a wider screen the list scrolls
+  inside the card; on a phone it scrolls with the card. Under it, in a line: from
+  OurAirports, a community-maintained public-domain dataset, as of the file's date; not
+  for navigation or flight planning, and may be out of date or wrong; rules on listening
+  differ by country. Behind one disclosure: that Outpost has not checked them, the radio
+  screens' own line on listening to aviation traffic, and a link to the VHF air band in
+  Frequencies to listen to. An airport the file has no rows for says "No frequencies
+  listed", not that there are none. An airport from a pack installed before frequencies
+  were fetched, or whose frequencies could not be fetched, says they are not held yet and
+  links to Reference data for the map, where updating the pack gets them.
+- **Tried.** The file was fetched once by hand on 17 November 2026 to read its header,
+  size and rows; 33 of its rows are kept as the tests' fixture
+  (`apps/server/test/fixtures/layers/ourairports-stand-in.ts`) and the rest was deleted.
+  The download through Outpost was tested against a local stand-in only
+  (`OUTPOST_OURAIRPORTS_URL` puts one in the repository's place), not against the real
+  host.
 
 ### The name a source is given
 
@@ -438,7 +489,7 @@ its own data directory), each by an API call made by hand:
 | Provider | What | Size | Time | Records |
 | --- | --- | --- | --- | --- |
 | Natural Earth | Countries 1:50m, Luxembourg kept | 3,083,490 bytes (SHA-256 checked) | 1.0 s | 1 |
-| OurAirports | `airports.csv`, Luxembourg kept | 12,761,443 bytes | 3.1 s | 15 (1 large airport, 2 small, 11 heliports, 1 closed) |
+| OurAirports | `airports.csv`, Luxembourg kept | 12,761,443 bytes | 3.1 s | 15 (1 large airport, 2 small, 11 heliports, 1 closed); the frequencies file was added on 17 November and not tried through Outpost against the real host |
 | WorldPop | Luxembourg, 2020, 1 km | 23,719 bytes | 2.0 s | a grid; 10 km round Luxembourg city: about 220,000 people |
 | Wikidata | Belgium's nuclear power stations and research reactors | 4,808 bytes | count 29 s, query 59 s | 5 |
 | BABS | Swiss emergency meeting points | 1,473,452 bytes | 1.3 s | 2,958 |

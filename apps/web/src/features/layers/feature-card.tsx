@@ -20,6 +20,7 @@ import { MapCard } from "@/features/maps/map-chrome";
 import { Fact } from "@/features/maps/ui";
 import { errorMessage } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
+import { AirportFrequencies } from "./airport-frequencies";
 import { ProvenanceMark } from "./marks";
 
 function SourceFacts({ source }: { source: ReferenceSourceInfo }) {
@@ -127,6 +128,7 @@ function Body({ feature }: { feature: ReferenceFeatureDetail }) {
       ) : (
         <p className="mt-2 text-small text-ink-muted">Its place is not documented, so it is not on the map.</p>
       )}
+      {feature.airportFrequencies ? <AirportFrequencies frequencies={feature.airportFrequencies} /> : null}
       <p className="mt-2 border-t border-border pt-2 text-small text-ink-muted">
         {feature.source.providerName}, {feature.source.license}, fetched {formatDate(feature.source.retrievedAt)}.{" "}
         {feature.source.sourceUrl ? (

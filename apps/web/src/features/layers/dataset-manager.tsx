@@ -68,6 +68,11 @@ function PackRow({ pack, onUpdate }: { pack: ReferencePackDto; onUpdate: (reques
               </Badge>
             ) : null}
           </p>
+          {pack.notes?.map((note) => (
+            <p key={note} className="mt-1 max-w-[70ch] text-small text-ink-muted">
+              {note}
+            </p>
+          ))}
         </div>
         <Menu>
           <MenuTrigger asChild>
