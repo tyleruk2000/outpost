@@ -15,8 +15,14 @@ async function predict(page: Page) {
   await expect(page.getByRole("heading", { name: "London to Birmingham" })).toBeVisible();
 }
 
+/**
+ * Nothing spills sideways once the page has settled. Polled, because a width read at the instant an answer
+ * arrives can catch the page between two layouts: under load that read was 270 px wide once and never again.
+ */
 const fits = async (page: Page) =>
-  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+  expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), { timeout: 5000 })
+    .toBeLessThanOrEqual(0);
 
 test.describe("A sloping 20 m wire on the HF planner, at 390 px", () => {
   test.use({ viewport: { width: 390, height: 844 } });
