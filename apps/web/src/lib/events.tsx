@@ -105,6 +105,13 @@ export function EventsProvider({ children, enabled }: { children: ReactNode; ena
     let flush: number | undefined;
     const pending = new Set<string>();
     const staleWhileHidden = new Set<string>();
+    // Screens' own listeners (useServerEvent) mostly fetch something; while the tab is hidden
+    // what they would have heard is held, in order, and handed to them when it is shown.
+    const heardWhileHidden: Array<[string, { id?: string; data?: unknown }]> = [];
+    const tell = (type: string, payload: { id?: string; data?: unknown }) => {
+      const set = listeners.current.get(type);
+      if (set) for (const listener of set) listener(payload);
+    };
     const downloadStates = new Map<string, string>();
 
     const invalidate = (keys: string[][]) => {
@@ -154,7 +161,9 @@ export function EventsProvider({ children, enabled }: { children: ReactNode; ena
           invalidate([["downloads"], ["catalog"], ["collections"], ["storage"]]);
         }
       }
-      if (set) for (const listener of set) listener(payload);
+      if (!set?.size) return;
+      if (document.visibilityState === "hidden") heardWhileHidden.push([type, payload]);
+      else tell(type, payload);
     };
 
     const close = () => {
@@ -203,6 +212,7 @@ export function EventsProvider({ children, enabled }: { children: ReactNode; ena
       for (const key of staleWhileHidden)
         void client.refetchQueries({ queryKey: JSON.parse(key) as string[], type: "active", stale: true });
       staleWhileHidden.clear();
+      for (const [type, payload] of heardWhileHidden.splice(0)) tell(type, payload);
       if (!source) {
         failures = 0;
         open();

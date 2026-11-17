@@ -18,11 +18,11 @@ const button = cva(
         link: "h-auto! px-0! text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2",
       },
       size: {
-        sm: "h-8 px-2.5 text-small max-md:h-10",
+        sm: "h-8 px-2.5 text-small max-md:h-11",
         md: "h-9 px-3.5 text-small max-md:h-11",
         lg: "h-11 px-5 text-body",
         icon: "size-9 max-md:size-11",
-        "icon-sm": "size-7 max-md:size-10 [&_svg]:size-[15px]",
+        "icon-sm": "size-7 max-md:size-11 [&_svg]:size-[15px]",
       },
     },
     defaultVariants: { variant: "secondary", size: "md" },

@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider, useQueries, useQuery } from "@tanstack/react-query";
 import { act, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EventsProvider, HIDDEN_CLOSE_MS, reconnectDelayMs } from "./events";
+import { EventsProvider, HIDDEN_CLOSE_MS, reconnectDelayMs, useServerEvent } from "./events";
 
 class FakeEventSource {
   static all: FakeEventSource[] = [];
@@ -68,6 +68,11 @@ function mountReads(queries: Array<[string[], () => Promise<unknown>]>, onData?:
       </EventsProvider>
     </QueryClientProvider>,
   );
+}
+
+function Listening({ heard }: { heard: unknown[] }) {
+  useServerEvent("backup.changed", (payload) => heard.push(payload.id));
+  return null;
 }
 
 function mount(fetch = vi.fn(async () => "notes")) {
@@ -175,5 +180,24 @@ describe("live events", () => {
     act(() => FakeEventSource.all[0]!.emit("job.updated", { id: "j", data: job("succeeded", 3) }));
     await act(() => vi.advanceTimersByTimeAsync(600));
     expect(active).toHaveBeenCalledTimes(2);
+  });
+
+  it("holds what a screen's own listener would hear while the tab is hidden, and hands it over when shown", async () => {
+    const heard: unknown[] = [];
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <EventsProvider enabled>
+          <Listening heard={heard} />
+        </EventsProvider>
+      </QueryClientProvider>,
+    );
+    act(() => setVisibility("hidden"));
+    act(() => FakeEventSource.all[0]!.emit("backup.changed", { id: "a" }));
+    act(() => FakeEventSource.all[0]!.emit("backup.changed", { id: "b" }));
+    expect(heard).toEqual([]);
+    act(() => setVisibility("visible"));
+    expect(heard).toEqual(["a", "b"]);
+    act(() => FakeEventSource.all[0]!.emit("backup.changed", { id: "c" }));
+    expect(heard).toEqual(["a", "b", "c"]);
   });
 });
