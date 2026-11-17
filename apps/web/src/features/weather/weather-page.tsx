@@ -116,6 +116,7 @@ export default function WeatherPage() {
     if (weather.data.updateOnOpen) runUpdate(weather.data.places.length > 0 ? LIVE_KINDS : ["warnings"]);
   }, [weather.data]);
 
+  const noPlace = places.length === 0 && view !== "places" && view !== "barometer" && view !== "warnings";
   const place =
     places.find((candidate) => candidate.id === chosenPlace) ?? places.find((candidate) => candidate.isHome) ?? places[0] ?? null;
   const kept = weather.data?.kept ?? [];
@@ -149,20 +150,19 @@ export default function WeatherPage() {
       ) : (
         <>
           <div className="mb-6 grid gap-3">
-            <div className="flex max-w-[70ch] items-start gap-3 text-small text-ink">
-              <Checkbox
-                className="mt-0.5"
-                checked={weather.data.updateOnOpen}
-                onCheckedChange={(checked) => setOnOpen.mutate(checked === true)}
-                id="on-open"
-                aria-describedby="on-open-hint"
-              />
-              <span>
-                <label htmlFor="on-open">Also update when I open this screen</label>
-                <span id="on-open-hint" className="block text-ink-muted">
-                  Off unless ticked. When ticked, every opening of this screen, on any device, asks the publishers listed under Kept and
-                  sources, as Update now does.
-                </span>
+            <div className="max-w-[70ch] text-small text-ink">
+              <label htmlFor="on-open" className="flex min-h-11 cursor-pointer items-center gap-3">
+                <Checkbox
+                  checked={weather.data.updateOnOpen}
+                  onCheckedChange={(checked) => setOnOpen.mutate(checked === true)}
+                  id="on-open"
+                  aria-describedby="on-open-hint"
+                />
+                Also update when I open this screen
+              </label>
+              <span id="on-open-hint" className="block pl-[calc(1.125rem+0.75rem)] text-ink-muted">
+                Off unless ticked. When ticked, every opening of this screen, on any device, asks the publishers listed under Kept and
+                sources, as Update now does.
               </span>
             </div>
             {failures.length > 0 ? (
@@ -177,7 +177,7 @@ export default function WeatherPage() {
             ) : null}
           </div>
 
-          {places.length === 0 && view !== "places" && view !== "barometer" && view !== "warnings" ? (
+          {noPlace ? (
             <EmptyState
               seed={11}
               title="Choose a place for forecasts"
@@ -191,7 +191,7 @@ export default function WeatherPage() {
             </EmptyState>
           ) : null}
 
-          <div className="mb-4 flex flex-wrap items-end gap-3">
+          <div className={`mb-4 flex flex-wrap items-end gap-3${noPlace ? " mt-6" : ""}`}>
             {places.length > 1 ? (
               <div className="grid w-full gap-1.5 sm:w-64">
                 <span className="text-small font-medium text-ink">Place</span>

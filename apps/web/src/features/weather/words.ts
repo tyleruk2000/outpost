@@ -3,7 +3,7 @@
  * that they can be tested: a day of forecast in plain words, units, and what a river
  * level is beside its usual range.
  */
-import { compassWord, cToF, type ForecastDay, type ForecastHour, kmhToMph, type RiverStation, weatherWords } from "@outpost/shared";
+import { cToF, type ForecastDay, type ForecastHour, kmhToMph, type RiverStation, weatherWords } from "@outpost/shared";
 
 export type WindUnit = "kmh" | "mph";
 export type TempUnit = "c" | "f";
@@ -29,12 +29,6 @@ export function daySentence(day: ForecastDay, wind: WindUnit, temp: TempUnit): s
     );
   }
   return parts.join(" ");
-}
-
-/** The hour in plain words, for a list. */
-export function hourSentence(hour: ForecastHour, wind: WindUnit, temp: TempUnit): string {
-  const from = hour.windFrom === null ? "" : ` from the ${compassWord(hour.windFrom)}`;
-  return `${weatherWords(hour.code)}, ${tempText(hour.tempC, temp)}, wind ${windText(hour.windKmh, wind)}${from}`;
 }
 
 /** The hours from `now` to the end of the forecast. A forecast's past hours are not what is expected. */

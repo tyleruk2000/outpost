@@ -74,7 +74,18 @@ import { burstText, distanceText, placeSentence, windText, yieldText } from "./w
 // The map library is large; it is fetched when the map is first drawn.
 const PlanMap = lazy(() => import("@/features/propagation/map/plan-map").then((module) => ({ default: module.PlanMap })));
 
-const _PATH = "/prepare/nuclear";
+/** No saved places: one list, so that the map is not handed a new one on every render. */
+const NO_PLACES: never[] = [];
+
+/**
+ * The value kept from the last render while its key is the same: what is drawn is worked
+ * out afresh on every change to a form, and typing a name or notes must not redraw the map.
+ */
+function useSame<T>(value: T, key: string): T {
+  const kept = useRef({ key, value });
+  if (kept.current.key !== key) kept.current = { key, value };
+  return kept.current.value;
+}
 
 /** One scenario on the map. */
 export interface Slot {
@@ -155,17 +166,22 @@ export default function NuclearPage() {
   const { slot, checked, result, refusals } = current;
   const form = slot.form;
 
-  const drawn = useMemo<Drawn[]>(
-    () =>
-      worked
-        .filter((entry) => !entry.slot.hidden && entry.result && entry.checked.at)
-        .map((entry) => ({
-          letter: entry.slot.letter,
-          at: entry.checked.at!,
-          result: entry.result!,
-          selected: entry.slot.key === selectedKey,
-        })),
-    [worked, selectedKey],
+  const shown = worked.filter((entry) => !entry.slot.hidden && entry.result && entry.checked.at);
+  // What is drawn depends on each shown scenario's letter, ground zero, figures and whether it is selected; not its name or notes.
+  const drawnKey = shown
+    .map(
+      ({ slot, checked }) =>
+        `${slot.letter}|${slot.key === selectedKey}|${checked.at!.lat},${checked.at!.lon}|${JSON.stringify(checked.effects)}`,
+    )
+    .join(";");
+  const drawn = useSame<Drawn[]>(
+    shown.map((entry) => ({
+      letter: entry.slot.letter,
+      at: entry.checked.at!,
+      result: entry.result!,
+      selected: entry.slot.key === selectedKey,
+    })),
+    drawnKey,
   );
   const mapData = useMemo(() => nuclearData(drawn, visible), [drawn, visible]);
 
@@ -179,7 +195,7 @@ export default function NuclearPage() {
   const fieldError = (field: FormField) =>
     slot.triedSave || (field !== "name" && (field !== "where" || form.where.trim() !== "")) ? checked.problems[field] : undefined;
 
-  const places = markers.data ?? [];
+  const places = markers.data ?? NO_PLACES;
   const installedRegions = overview.data?.regions?.length ?? 0;
   const imagery = hasImagery(sources.data);
 
@@ -247,28 +263,26 @@ export default function NuclearPage() {
 
   /** A saved scenario onto the map: selected if it is there already, replacing a blank first scenario, or added. */
   function putOnMap(scenario: NuclearScenario) {
-    {
-      const already = slots.find((each) => each.savedId === scenario.id);
-      if (already) {
-        select(already.key);
-      } else {
-        const blank =
-          slots.length === 1 && !slots[0]!.savedId && !slots[0]!.form.where.trim() && !slots[0]!.form.name.trim() ? slots[0]! : null;
-        if (blank) {
-          patch(blank.key, (each) => ({
-            ...each,
-            form: formOf(scenario),
-            savedId: scenario.id,
-            updatedAt: scenario.updatedAt,
-            triedSave: false,
-          }));
-          setSelectedKey(blank.key);
-          setTab("scenario");
-        } else if (!addSlot(formOf(scenario), scenario.id, scenario.updatedAt)) return;
-      }
-      const opened = computeEffects(scenario.effects);
-      if (opened.ok) fitTo(opened.result, scenario, 100);
+    const already = slots.find((each) => each.savedId === scenario.id);
+    if (already) {
+      select(already.key);
+    } else {
+      const blank =
+        slots.length === 1 && !slots[0]!.savedId && !slots[0]!.form.where.trim() && !slots[0]!.form.name.trim() ? slots[0]! : null;
+      if (blank) {
+        patch(blank.key, (each) => ({
+          ...each,
+          form: formOf(scenario),
+          savedId: scenario.id,
+          updatedAt: scenario.updatedAt,
+          triedSave: false,
+        }));
+        setSelectedKey(blank.key);
+        setTab("scenario");
+      } else if (!addSlot(formOf(scenario), scenario.id, scenario.updatedAt)) return;
     }
+    const opened = computeEffects(scenario.effects);
+    if (opened.ok) fitTo(opened.result, scenario, 100);
   }
   const putRef = useRef(putOnMap);
   putRef.current = putOnMap;
@@ -452,11 +466,21 @@ export default function NuclearPage() {
         >
           <Tabs value={tab} onValueChange={setTab}>
             <TabsList>
-              <TabsTrigger value="scenario">Scenario</TabsTrigger>
-              <TabsTrigger value="saved">Saved{scenarios.data?.length ? ` (${scenarios.data.length})` : ""}</TabsTrigger>
-              <TabsTrigger value="layers">Layers</TabsTrigger>
-              <TabsTrigger value="records">Records</TabsTrigger>
-              <TabsTrigger value="planning">Plans</TabsTrigger>
+              <TabsTrigger value="scenario" className="min-h-11 md:min-h-0">
+                Scenario
+              </TabsTrigger>
+              <TabsTrigger value="saved" className="min-h-11 md:min-h-0">
+                Saved{scenarios.data?.length ? ` (${scenarios.data.length})` : ""}
+              </TabsTrigger>
+              <TabsTrigger value="layers" className="min-h-11 md:min-h-0">
+                Layers
+              </TabsTrigger>
+              <TabsTrigger value="records" className="min-h-11 md:min-h-0">
+                Records
+              </TabsTrigger>
+              <TabsTrigger value="planning" className="min-h-11 md:min-h-0">
+                Plans
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="scenario" className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4">
@@ -669,7 +693,7 @@ function OnTheMap({
     <section aria-label="Scenarios on the map" className="grid grid-cols-[minmax(0,1fr)] gap-1.5">
       <h2 className="text-body font-semibold text-ink">On the map</h2>
       <ul className="divide-y divide-border border-y border-border" aria-label="Scenarios on the map">
-        {worked.map(({ slot, checked, result }) => {
+        {worked.map(({ slot, checked }) => {
           const selected = slot.key === selectedKey;
           const name = slot.form.name.trim() || `Scenario ${slot.letter}`;
           const what = checked.effects ? `${yieldText(checked.effects.yieldKt)}, ${burstText(checked.effects)}` : "Not worked out yet";
@@ -688,7 +712,7 @@ function OnTheMap({
                   <span className={cn("block truncate text-small text-ink", selected && "font-semibold")}>{name}</span>
                   <span className="block truncate text-micro text-ink-muted">
                     {what}, {where}
-                    {slot.hidden ? ", hidden" : !result && checked.effects ? "" : ""}
+                    {slot.hidden ? ", hidden" : ""}
                   </span>
                 </span>
               </button>
@@ -1050,7 +1074,9 @@ function Results({ result, letter, onFit }: { result: EffectsResult; letter: Sce
                   </div>
                   {ring.why ? <p className="text-small text-ink-muted">{ring.why}</p> : null}
                   <details className="text-small text-ink-muted">
-                    <summary className="cursor-pointer text-ink-muted hover:text-ink">What this means, and its source</summary>
+                    <summary className="min-h-11 cursor-pointer py-2.5 text-ink-muted hover:text-ink md:min-h-0 md:py-0">
+                      What this means, and its source
+                    </summary>
                     <p className="mt-1">{ring.meaning}</p>
                     <p className="mt-1">Source: {ring.source}.</p>
                   </details>
@@ -1105,7 +1131,9 @@ function Results({ result, letter, onFit }: { result: EffectsResult; letter: Sce
         </ul>
       ) : null}
       <details className="text-small text-ink-muted">
-        <summary className="cursor-pointer font-medium text-ink">How this is worked out: assumptions, limits and source</summary>
+        <summary className="min-h-11 cursor-pointer py-2.5 font-medium text-ink md:min-h-0 md:py-0">
+          How this is worked out: assumptions, limits and source
+        </summary>
         <h4 className="mt-2 font-medium text-ink">Assumptions</h4>
         <ul className="mt-1 grid list-disc gap-1 pl-5">
           {EFFECTS_ASSUMPTIONS.map((item) => (

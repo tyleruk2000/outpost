@@ -6,7 +6,6 @@
  */
 import {
   HEIGHT_RANGE,
-  hpaToInHg,
   ISA,
   PRESSURE_RULES_OF_THUMB,
   type PressureUnit,
@@ -45,9 +44,6 @@ const localInput = (at: number) => {
   const date = new Date(at - new Date(at).getTimezoneOffset() * 60_000);
   return date.toISOString().slice(0, 16);
 };
-
-export const pressureText = (hpa: number, unit: PressureUnit) =>
-  unit === "inHg" ? `${hpaToInHg(hpa).toFixed(2)} inHg` : `${hpa.toFixed(1)} hPa`;
 
 export function BarometerView() {
   const readings = useReadings();
@@ -269,12 +265,24 @@ function ImportDialog({ defaultUnit, defaultHeight, onClose }: { defaultUnit: Pr
   const [height, setHeight] = useState(defaultHeight);
   const [preview, setPreview] = useState<ReadingImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const notes = preview ? preview.rows.filter((row) => row.notes.length > 0) : [];
+
+  /** A preview read with another unit or height no longer says what Add would do. */
+  const change =
+    <T,>(set: (next: T) => void) =>
+    (next: T) => {
+      set(next);
+      setPreview(null);
+    };
 
   const ask = (apply: boolean, body = text) => {
     if (body === null) return;
     setError(null);
+    const heightM = Number(height.trim().replace(",", "."));
+    if (!Number.isFinite(heightM) || heightM < HEIGHT_RANGE.min || heightM > HEIGHT_RANGE.max)
+      return setError(`Give the height above sea level for rows that give none, between ${HEIGHT_RANGE.min} and ${HEIGHT_RANGE.max} m.`);
     run.mutate(
-      { text: body, unit, heightM: Number(height) || 0, zone: deviceZone(), apply },
+      { text: body, unit, heightM, zone: deviceZone(), apply },
       {
         onSuccess: (result) => {
           if (apply) {
@@ -306,7 +314,12 @@ function ImportDialog({ defaultUnit, defaultHeight, onClose }: { defaultUnit: Pr
                   const file = event.target.files?.[0];
                   if (!file) return;
                   if (file.size > 4 * 1024 * 1024) return setError("That file is larger than 4 MB.");
-                  const body = await file.text();
+                  let body: string;
+                  try {
+                    body = await file.text();
+                  } catch {
+                    return setError("That file could not be opened. Choose it again.");
+                  }
                   setName(file.name);
                   setText(body);
                   ask(false, body);
@@ -320,7 +333,7 @@ function ImportDialog({ defaultUnit, defaultHeight, onClose }: { defaultUnit: Pr
               <Segmented
                 label="Unit where the file gives none"
                 value={unit}
-                onChange={setUnit}
+                onChange={change(setUnit)}
                 options={[
                   { value: "hPa", label: "hPa (mb)" },
                   { value: "inHg", label: "inHg" },
@@ -328,7 +341,7 @@ function ImportDialog({ defaultUnit, defaultHeight, onClose }: { defaultUnit: Pr
               />
             </div>
             <Field label="Height above sea level, m, where the file gives none">
-              {(ids) => <Input {...ids} inputMode="decimal" value={height} onChange={(event) => setHeight(event.target.value)} />}
+              {(ids) => <Input {...ids} inputMode="decimal" value={height} onChange={(event) => change(setHeight)(event.target.value)} />}
             </Field>
           </div>
           {text !== null ? (
@@ -353,6 +366,20 @@ function ImportDialog({ defaultUnit, defaultHeight, onClose }: { defaultUnit: Pr
                     </li>
                   ))}
                 </ul>
+              ) : null}
+              {notes.length > 0 ? (
+                <>
+                  <p id="numbers-read" className="mt-2 text-ink">
+                    Numbers that were not written plainly, and how they were read:
+                  </p>
+                  <ul aria-labelledby="numbers-read" className="mt-1 max-h-40 overflow-y-auto text-ink-muted">
+                    {notes.slice(0, 50).map((row) => (
+                      <li key={row.line}>
+                        Line {row.line}: {row.notes.join(" ")}
+                      </li>
+                    ))}
+                  </ul>
+                </>
               ) : null}
             </div>
           ) : null}

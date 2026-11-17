@@ -95,8 +95,6 @@ export const WEATHER_SOURCES: Record<WeatherSourceId, WeatherSourceInfo> = {
   },
 };
 
-export const WEATHER_HOSTS = [...new Set(Object.values(WEATHER_SOURCES).map((source) => source.host))];
-
 /** How far round a place flood warnings and river gauges are asked for, km. */
 export const FLOOD_WARNINGS_KM = 15;
 export const STATIONS_KM = 8;

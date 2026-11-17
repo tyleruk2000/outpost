@@ -48,6 +48,12 @@ describe("the scenario form", () => {
     expect(checkForm({ ...filled, yieldValue: "20", yieldUnit: "Mt", windFrom: "90" }).effects).toBeNull();
   });
 
+  it("reads a wind from 360 degrees as from the north, as the field's own hint allows", () => {
+    const checked = checkForm({ ...filled, windFrom: "360", windSpeed: "24" });
+    expect(checked.refused).toEqual([]);
+    expect(checked.input!.effects.wind).toEqual({ fromDegrees: 0, kmh: 24 });
+  });
+
   it("says what is missing or cannot be read", () => {
     expect(checkForm({ ...filled, where: "" }).problems.where).toMatch(/Choose ground zero/);
     expect(checkForm({ ...filled, where: "somewhere" }).problems.where).toMatch(/not a position/);

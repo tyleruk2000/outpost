@@ -602,6 +602,8 @@ export interface ReadingImportRow {
   seaLevelHpa: number;
   /** A reading at the same time is already kept; it is not added again. */
   duplicate: boolean;
+  /** How the pressure or the height was read where the cell was not a plain number ("“1.013,2” read as 1013.2."). */
+  notes: string[];
 }
 
 export interface ReadingImportResult {

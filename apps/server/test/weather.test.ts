@@ -334,6 +334,19 @@ describe("barometer readings", () => {
     expect(readings[2]).toMatchObject({ unit: "inHg", origin: "file" });
   });
 
+  it("says how each pressure or height that was not a plain number was read", async () => {
+    const text = ["time;pressure;height", "2026-11-16 06:00;1.013,2;12,5", "2026-11-16 09:00;1012;10"].join("\n");
+    const { status, body } = await app.api("POST", "/api/weather/readings/import", {
+      text,
+      unit: "hPa",
+      heightM: 0,
+      zone: "Europe/London",
+    });
+    expect(status).toBe(200);
+    expect(body.rows[0]).toMatchObject({ value: 1013.2, heightM: 12.5, notes: ["“1.013,2” read as 1013.2.", "“12,5” read as 12.5."] });
+    expect(body.rows[1]).toMatchObject({ value: 1012, heightM: 10, notes: [] });
+  });
+
   it("reads a time with no zone in the device's zone", async () => {
     const text = "date,time,hPa\n2026-07-01,12:00,1015\n";
     const { body } = await app.api("POST", "/api/weather/readings/import", { text, unit: "hPa", heightM: 0, zone: "Europe/London" });

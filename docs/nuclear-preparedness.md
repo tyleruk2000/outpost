@@ -237,7 +237,10 @@ the ground, not on the web-mercator map), rings stay whole across the antimeridi
 the plume lies downwind with the book's dimensions.
 
 **Speed.** On an Apple M2 Max, `computeEffects` takes about 0.1 ms; with the ring and
-plume geometry for the map, about 2 ms per scenario. It runs on every keystroke. It has
+plume geometry for the map, about 2 ms per scenario. The effects are worked out again on
+every keystroke; the map's overlay is rebuilt and handed to the map only when what it
+draws changes (a ground zero, a figure, which scenario is selected, a switch), not when a
+name or notes are typed. Nothing on the screen runs on a timer or animates. It has
 **not been measured on a Raspberry Pi**; on one several times slower it would still be
 a few tens of milliseconds at most.
 
@@ -378,7 +381,8 @@ name; another is refused rather than credited wrongly.
 ### The wind field
 
 The wind for the fallout pattern is a field of its own, labelled: the direction the wind
-blows **from**, as compass buttons (N to NW) or degrees, and its speed. Under it, in one
+blows **from**, as compass buttons (N to NW) or degrees (0 to 360; 360 is read as north,
+0), and its speed. Under it, in one
 line, the state: drawn ("Drawn: wind from the west, so the pattern runs east, at 24
 km/h"), or the one reason not (no wind given, one of the two missing, not numbers, a
 speed outside the model's 13 to 72 km/h, or a burst at a height, for which the model

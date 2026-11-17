@@ -270,9 +270,16 @@ not already kept: a reading at the same time is not added twice.
   file was chosen on, which the screen names.
 - Comma, semicolon or tab separators; at most 50,000 rows and 4 MB. A semicolon file
   uses the decimal comma (`1.013,2` or `1013,2`), a comma file the decimal point
-  (`"1,013.2"`), and a tab file is judged from its own numbers; a pressure the file does
-  not settle is listed as a problem with both readings, not guessed. The rule is the one
-  the supplies importer uses.
+  (`"1,013.2"`), and a tab file is judged from its own numbers; a pressure or height the
+  file does not settle is listed as a problem with both readings, not guessed. The rule
+  is the one the supplies importer uses. Every pressure or height that was not written
+  plainly is listed with its line and how it was read (`“1.013,2” read as 1013.2.`).
+- The unit and height chosen beside the file are for rows that give none. A height
+  with a decimal comma (`12,5`) is read; one that is not a number is refused, not taken
+  as nought. Changing either after the file has been read clears what it would add
+  until it is read again, so that Add never adds something other than what was shown.
+- Readings brought in from a file say "from a file" in the list; typed ones say
+  nothing. There is no export of readings.
 
 ### A weather station
 

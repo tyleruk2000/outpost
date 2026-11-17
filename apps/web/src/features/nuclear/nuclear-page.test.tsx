@@ -8,22 +8,29 @@ import NuclearPage from "./nuclear-page";
 
 // The map needs WebGL, which the test's browser has not got. What stands in for it
 // shows what it was handed and lets a test press a place on it.
+// Each overlay handed to the map that differs from the one before: the map redraws on each.
+const overlays = vi.hoisted(() => [] as unknown[]);
+const placesHanded = vi.hoisted(() => [] as unknown[]);
 vi.mock("@/features/propagation/map/plan-map", () => ({
-  PlanMap: ({ label, nuclear, places, onPress }: PlanMapProps) => (
-    <section aria-label={label}>
-      <output data-testid="drawn">
-        {nuclear?.features
-          .filter((feature) => feature.properties.kind !== "plume")
-          .map((feature) => String(feature.properties.label))
-          .join("|")}
-      </output>
-      <output data-testid="plumes">{nuclear?.features.filter((feature) => feature.properties.kind === "plume").length ?? 0}</output>
-      <output data-testid="places">{places?.length ?? 0}</output>
-      <button type="button" onClick={() => onPress?.({ position: { lat: 54.46, lon: -3.09 }, place: null })}>
-        press the map
-      </button>
-    </section>
-  ),
+  PlanMap: ({ label, nuclear, places, onPress }: PlanMapProps) => {
+    if (overlays.at(-1) !== nuclear) overlays.push(nuclear);
+    if (placesHanded.at(-1) !== places) placesHanded.push(places);
+    return (
+      <section aria-label={label}>
+        <output data-testid="drawn">
+          {nuclear?.features
+            .filter((feature) => feature.properties.kind !== "plume")
+            .map((feature) => String(feature.properties.label))
+            .join("|")}
+        </output>
+        <output data-testid="plumes">{nuclear?.features.filter((feature) => feature.properties.kind === "plume").length ?? 0}</output>
+        <output data-testid="places">{places?.length ?? 0}</output>
+        <button type="button" onClick={() => onPress?.({ position: { lat: 54.46, lon: -3.09 }, place: null })}>
+          press the map
+        </button>
+      </section>
+    );
+  },
 }));
 
 // Drawing the PDF's maps needs WebGL too: what stands in keeps which scenarios it was asked to draw.
@@ -45,6 +52,8 @@ vi.mock("./print-maps", () => ({
 
 afterEach(() => {
   printed.length = 0;
+  overlays.length = 0;
+  placesHanded.length = 0;
   vi.unstubAllGlobals();
   localStorage.clear();
 });
@@ -112,7 +121,7 @@ const layersSummary = (population: boolean) => ({
 interface Options {
   scenarios?: NuclearScenario[] | "fails";
   regions?: number;
-  markers?: MarkerDto[];
+  markers?: MarkerDto[] | "fails";
   population?: boolean;
   path?: string;
 }
@@ -139,7 +148,10 @@ function serve(options: Options = {}) {
         return json({ scenarios: options.scenarios ?? [] });
       }
       if (pathname === "/api/nuclear/sets") return json({ sets: [] });
-      if (pathname === "/api/maps/markers") return json({ markers: options.markers ?? [] });
+      if (pathname === "/api/maps/markers") {
+        if (options.markers === "fails") return json({ error: { code: "internal", message: "The database is busy." } }, 500);
+        return json({ markers: options.markers ?? [] });
+      }
       if (pathname === "/api/maps/overview")
         return json({ regions: Array.from({ length: options.regions ?? 0 }, (_, index) => ({ id: `r${index}` })), places: [] });
       if (pathname === "/api/maps/sources") return json({ hasTiles: (options.regions ?? 0) > 0, attributions: [], imagery: [] });
@@ -183,6 +195,12 @@ describe("Nuclear preparedness", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Nuclear preparedness" })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByTestId("offline-line")).toHaveTextContent(/No offline map region is installed/));
     expect(screen.getByTestId("offline-line")).toHaveTextContent(/nothing here uses the internet/);
+  });
+
+  it("gives the panel's tabs a 44 px touch target on a phone", () => {
+    serve();
+    for (const name of [/Scenario/, /Saved/, /Layers/, /Records/, /Plans/])
+      expect(screen.getByRole("tab", { name })).toHaveClass("min-h-11");
   });
 
   it("names the installed regions when there are some", async () => {
@@ -232,6 +250,26 @@ describe("Nuclear preparedness", () => {
     expect(screen.getByTestId("fallout-state")).toHaveTextContent("Drawn: wind from the west, so the pattern runs east, at 24 km/h.");
     // The legend names the pattern.
     expect(screen.getByRole("list", { name: "How the map draws each kind of effect" })).toHaveTextContent("Fallout (idealised)");
+  });
+
+  it("does not redraw the map while a name or notes are typed: only a change to what is drawn redraws it", async () => {
+    serve();
+    fireEvent.click(await screen.findByRole("button", { name: "press the map" }));
+    await waitFor(() => expect(screen.getByTestId("drawn")).toHaveTextContent(/A · 5 psi · 1\.1 km/));
+    const before = overlays.length;
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Over the quarry" } });
+    fireEvent.change(screen.getByLabelText("Notes"), { target: { value: "For the talk on Thursday." } });
+    expect(overlays.length).toBe(before);
+    fireEvent.change(screen.getByLabelText("Yield"), { target: { value: "10" } });
+    await waitFor(() => expect(overlays.length).toBe(before + 1));
+  });
+
+  it("hands the map the same empty list of places when they cannot be loaded, not a new one each time", async () => {
+    serve({ markers: "fails" });
+    fireEvent.click(await screen.findByRole("button", { name: "press the map" }));
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Over the quarry" } });
+    await waitFor(() => expect(screen.getByTestId("places")).toHaveTextContent("0"));
+    expect(placesHanded.length).toBe(1);
   });
 
   it("sets the direction from a compass point, and says when the burst height means no pattern", async () => {
