@@ -94,6 +94,32 @@ function issuesOf(error: z.ZodError): string {
     .join("; ");
 }
 
+/**
+ * What a small model sends, made to fit before it is checked. Tried with real models on
+ * 2026-11-17 (docs/ai.md, "Tried with a real model: tools"): llama3.2:3b sent every number
+ * as a string (`"count": "3"`, `"page": "1"`) and empty strings or null for arguments it
+ * meant to leave out, and each such call was refused. A number written as digits becomes
+ * that number where the schema asks for a number, and an empty or null value of an
+ * argument that may be left out is left out. Nothing else is changed: anything that still
+ * does not fit is refused in words, as before.
+ */
+export function lenient(args: unknown, schema: Record<string, unknown>): unknown {
+  if (!args || typeof args !== "object" || Array.isArray(args)) return args;
+  const properties = (schema.properties ?? {}) as Record<string, { type?: unknown }>;
+  const required = new Set((schema.required ?? []) as string[]);
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(args as Record<string, unknown>)) {
+    const type = properties[key]?.type;
+    if ((value === null || value === "") && !required.has(key)) continue;
+    if ((type === "number" || type === "integer") && typeof value === "string" && /^\s*-?\d+(\.\d+)?\s*$/.test(value)) {
+      out[key] = Number(value);
+      continue;
+    }
+    out[key] = value;
+  }
+  return out;
+}
+
 /** This computer's own addresses on the home network, IPv4 and private, for "the address to give a client". */
 function lanAddresses(): string[] {
   const found: string[] = [];
@@ -159,7 +185,7 @@ export function createToolsService(ctx: AppContext, tools: readonly ToolDefiniti
         // A tool whose area is off is refused in the same words as one that does not exist: it is not offered.
         return refuse(`There is no tool called "${String(name).slice(0, 60)}". The tools are: ${names || "none"}.`);
       }
-      const parsed = tool.input.safeParse(args ?? {});
+      const parsed = tool.input.safeParse(lenient(args, schemaOf(tool)));
       if (!parsed.success) {
         return refuse(
           `The arguments for ${tool.name} did not fit: ${issuesOf(parsed.error)}. Call it again with arguments that fit its schema.`,

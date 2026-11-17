@@ -254,7 +254,10 @@ describe("sun_and_compass", () => {
     expect(paris.text).toContain("No grid magnetic angle: the place is outside the National Grid.");
     expect(paris.text).not.toContain("local)");
     expect((await call("sun_and_compass", { date: "2026-02-30" })).held).toBe(false);
-    expect((await call("sun_and_compass", { date: "tomorrow" })).ok).toBe(false);
+    expect((await call("sun_and_compass", { date: "next week" })).ok).toBe(false);
+    // "today" and "tomorrow" are what small models send (docs/ai.md, "Tried with a real model: tools").
+    const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+    expect((await call("sun_and_compass", { near: "home", date: "tomorrow" })).text).toContain(`on ${tomorrow}:`);
   });
 });
 

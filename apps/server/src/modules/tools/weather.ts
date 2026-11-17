@@ -208,6 +208,8 @@ function clock(ms: number | null, where: Where): string {
 const hoursMinutes = (ms: number) => `${Math.floor(ms / 3_600_000)} h ${Math.round((ms % 3_600_000) / 60_000)} min`;
 
 const WHEN = /^(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}):(\d{2}))?$/;
+/** Words a small model sends for a date, tried with llama3.2:3b: "now" and "today" mean today. */
+const DAY_WORDS: Record<string, number> = { now: 0, today: 0, tonight: 0, tomorrow: 1, yesterday: -1 };
 
 export const sunAndCompass = defineTool({
   name: "sun_and_compass",
@@ -220,9 +222,9 @@ export const sunAndCompass = defineTool({
     date: z
       .string()
       .trim()
-      .regex(WHEN, "Give the date as YYYY-MM-DD, or YYYY-MM-DD HH:MM in UTC.")
+      .refine((value) => WHEN.test(value) || value.toLowerCase() in DAY_WORDS, "Give the date as YYYY-MM-DD, or YYYY-MM-DD HH:MM in UTC, or today or tomorrow.")
       .optional()
-      .describe("YYYY-MM-DD, or YYYY-MM-DD HH:MM (UTC) for the sun's position then. Default: now."),
+      .describe('YYYY-MM-DD, "today" or "tomorrow"; or YYYY-MM-DD HH:MM (UTC) for the sun\'s position then. Default: now.'),
   }),
   run({ near, date }, { ctx, now }) {
     let where: Where | null;
@@ -234,7 +236,8 @@ export const sunAndCompass = defineTool({
       if (!where) return { held: false, text: `No place was given, and ${NO_HOME_PLACE} Ask again with near.`, url: "/maps" };
     }
     const parts = date ? WHEN.exec(date) : null;
-    const day = parts ? parts[1]! : utcToDate(now);
+    const offset = date && !parts ? (DAY_WORDS[date.toLowerCase()] ?? 0) : 0;
+    const day = parts ? parts[1]! : utcToDate(now + offset * 86_400_000);
     if (!Number.isFinite(dateToUtc(day))) return { held: false, text: `${day} is not a date. Give it as YYYY-MM-DD.` };
     const instant = parts?.[2]
       ? dateToUtc(day) + Number(parts[2]) * 3_600_000 + Number(parts[3]) * 60_000
