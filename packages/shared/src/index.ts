@@ -43,6 +43,8 @@ export * from "./propagation-coverage.ts";
 export * from "./propagation-p533.ts";
 export * from "./propagation-plans.ts";
 export * from "./radio.ts";
+export * from "./radio-frequencies.ts";
+export * from "./radio-frequencies-data.ts";
 export * from "./radio-observations.ts";
 export * from "./recommended-models.ts";
 export * from "./reference-layers.ts";
