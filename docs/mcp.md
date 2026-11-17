@@ -7,7 +7,9 @@ network: a desktop assistant, a code editor, anything that speaks the Model Cont
 Protocol (MCP). Outpost answers them at one address, `/mcp`.
 
 The tools only read. None creates, changes or removes anything, starts a download or
-asks anything on the internet. Which tools are offered follows the same switches as in
+asks anything on the internet; the one request a tool can make is `search_library` sending
+its search words to the embedding server search by meaning uses, when one is set up
+([ai.md](ai.md#looking-things-up-in-outpost)). Which tools are offered follows the same switches as in
 Chat (Settings, "Looking things up in Outpost", "What the tools may read"); notes'
 encrypted pages are never read.
 

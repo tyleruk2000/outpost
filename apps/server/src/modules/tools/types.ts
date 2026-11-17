@@ -5,7 +5,9 @@
  * The rules every tool keeps (tested for the whole registry in test/tools-readonly.test.ts):
  *
  *  - It reads. It never creates, changes or removes anything, never queues a job, never
- *    starts a download, and never asks anything on the internet or the home network.
+ *    starts a download, and never asks anything on the internet or the home network,
+ *    except that a library search sends its words to the embedding server search by
+ *    meaning uses, when one is set up, as every search does.
  *  - It answers from the service that already answers the same question for a screen.
  *    No calculation is written a second time here.
  *  - Its answer is short, plainly labelled text: what it is, where it came from and how

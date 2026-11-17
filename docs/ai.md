@@ -1111,7 +1111,11 @@ schema asks for one, and an empty optional argument is left out: the real models
 both (see below).
 
 **Every tool reads.** None creates, changes, removes, queues a job, starts a download or
-makes a request to the internet or the network. `apps/server/test/tools-readonly.test.ts`
+makes a request to the internet or the network, with one exception: when search by
+meaning is on and its model runs on an embedding server (Settings, Search), `search_library`
+sends that server the words it was asked, as the Search screen does for every search, and
+nothing else (`apps/server/test/review2-mcp.test.ts`). With the built-in model nothing
+leaves the computer. `apps/server/test/tools-readonly.test.ts`
 runs every tool in the registry against a filled server while `fetch`, `http` and `https`
 requests, undici, sockets, the job queue, downloads and live events fail the test if
 touched, and checks that the database counted no change.

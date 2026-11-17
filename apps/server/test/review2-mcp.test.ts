@@ -75,3 +75,40 @@ describe("a page on another site", () => {
     }
   });
 });
+
+describe("what a tool sends anywhere", () => {
+  it("search_library sends its words to the embedding model search by meaning uses, and nothing more", async () => {
+    const { search, semantic, tools } = app.ctx.services;
+    search.upsert({
+      kind: "document",
+      entityId: "d-water",
+      title: "Field hygiene",
+      url: "/library/documents/d-water",
+      sections: [{ text: "Boil it for one minute before drinking." }],
+    });
+    const asked: string[][] = [];
+    semantic.overrideProvider({
+      modelId: "test:stand-in",
+      provider: "test",
+      model: "stand-in",
+      async embed(texts: string[]) {
+        asked.push(texts);
+        return texts.map(() => new Float32Array([1, 0, 0, 0]));
+      },
+      async check() {
+        return { ok: true as const, dimensions: 4 };
+      },
+    });
+    try {
+      expect((await app.api("POST", "/api/semantic/index")).status).toBe(200);
+      await app.ctx.jobs.whenIdle();
+      asked.length = 0;
+      const result = await tools.call("search_library", { query: "boil water" }, { signal: new AbortController().signal });
+      expect(result.ok).toBe(true);
+      // The query, and only the query, went to the embedding model: with a model server on another machine, that is a request on the network.
+      expect(asked).toEqual([["boil water"]]);
+    } finally {
+      semantic.overrideProvider(undefined);
+    }
+  });
+});
