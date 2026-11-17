@@ -34,6 +34,7 @@ import { haversineMeters, ownValue } from "@outpost/shared";
 import type { Statement } from "better-sqlite3";
 import type { AppContext } from "../../core/context.ts";
 import { yieldToEventLoop } from "../../core/event-loop.ts";
+import { splitFrequencies } from "./adapters/ourairports-frequencies.ts";
 import { kindLabel } from "./kinds.ts";
 import type { FeatureSink, GeoJsonGeometry, NewCountryFigure, NewFeature } from "./types.ts";
 
@@ -799,7 +800,7 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
         lat: primary.lat,
         lon: primary.lon,
         bbox,
-        props: JSON.parse(primary.props) as Record<string, string>,
+        ...splitFrequencies(primary.provider, primary.layer, JSON.parse(primary.props) as Record<string, string>),
         provenance: primary.provenance,
         source: sourceInfo(primary, packs),
         alsoFrom: others.map((other) => sourceInfo(other, packs)),

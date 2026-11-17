@@ -114,6 +114,8 @@ export interface ReadResult {
   bbox?: Bbox | null;
   /** Anything else worth keeping on the pack (a population grid's product and year). */
   extra?: Record<string, unknown>;
+  /** What the person should know about what was read (frequencies that could not be fetched), shown with the pack. */
+  notes?: string[];
 }
 
 /** What is kept on a reference download and on the pack it becomes. */

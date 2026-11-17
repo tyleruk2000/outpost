@@ -57,6 +57,7 @@ export interface PackMeta extends ReferenceMeta {
   skipped: number;
   problems: string[];
   extra?: Record<string, unknown>;
+  notes?: string[];
   sidecar?: string;
   /** The countries and box asked for, as a key: a later pack of the same source and key replaces this one. */
   scope?: string;
@@ -191,6 +192,7 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
       status: row.status,
       origin: meta.origin,
       request: meta.request,
+      ...(meta.notes ? { notes: meta.notes } : {}),
     };
   }
 
@@ -325,6 +327,7 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
       skipped: sink.skipped,
       problems: sink.problems,
       ...(result.extra ? { extra: result.extra } : {}),
+      ...(result.notes ? { notes: result.notes } : {}),
       ...(providerId === "worldpop" ? { sidecar: meta.options?.sidecar } : {}),
     };
     const firstPublisher = input.adapter === "import" ? (meta.options?.publisher ?? AS_IN_FILE) : provider.publisher;

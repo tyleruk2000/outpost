@@ -298,6 +298,8 @@ export interface ReferencePackDto {
   origin: "download" | "import";
   /** The estimate request that made it, to update it from. */
   request: ReferenceEstimateRequest | null;
+  /** What the person should know about this pack's contents (frequencies that could not be fetched). */
+  notes?: string[];
 }
 
 export interface ReferenceLayerSummary {
@@ -425,6 +427,29 @@ export interface ReferenceFeatureDetail {
   alsoFrom: ReferenceSourceInfo[];
   historical: HistoricalRecordDto | null;
   hasGeometry: boolean;
+  /** For an airport from OurAirports: its radio frequencies, or that they are not held. Absent for every other record. */
+  airportFrequencies?: AirportFrequenciesDto;
+}
+
+/** One row of OurAirports' `airport-frequencies.csv` for an airport. */
+export interface AirportFrequencyDto {
+  /** The file's `type`, as given (TWR, ATIS, CTAF, or anything else a contributor typed). */
+  type: string;
+  /** The type in words where that is certain (TWR is "Tower"); null where it is not, and the type is shown as given. */
+  typeLabel: string | null;
+  /** The file's `description`, as given; may be empty. */
+  description: string;
+  /** The file's `frequency_mhz`, as given. */
+  mhz: string;
+}
+
+export interface AirportFrequenciesDto {
+  /** False for an airport installed before frequencies were fetched, or when the file could not be fetched or read. */
+  held: boolean;
+  /** The date of the frequencies file (its Last-Modified, or the day it was fetched). */
+  asOf: string | null;
+  /** Tower first, then information services (ATIS, AFIS, information), then the rest in the file's order. */
+  list: AirportFrequencyDto[];
 }
 
 /**
