@@ -168,6 +168,12 @@ describe("imports a person brings", () => {
     const everything = await app.api("GET", "/api/search?q=Town%20Hall&mode=keyword");
     const result = (everything.body.results as Array<{ kind: string; url: string }>).find((entry) => entry.kind === "map-feature");
     expect(result?.url).toBe(`/maps?feature=${hit.id}`);
+
+    // With no publisher or licence given for the whole file, the map's credit names the import, not "As stated in the file" twice.
+    const layers = await app.api("GET", "/api/reference/layers");
+    expect(layers.body.credits).toContainEqual(
+      expect.objectContaining({ provider: "import", text: "Rest centres: publisher and licence as stated in the file" }),
+    );
   });
 
   it("imports historical records only with what section 6 requires, keeps the three kinds apart, and links the source document", async () => {
