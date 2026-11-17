@@ -136,6 +136,8 @@ pages themselves.
   network scanner and food and water inventory belong to other screens.
 - Telling the time from the sun and stars (clock recovery, sundials, a nocturnal) is its
   own screen, the Solar clock: [tools-solar-clock.md](tools-solar-clock.md).
+- Magnetic declination, grid north and the rule between map and compass, with the phone's
+  own compass, are their own screen, the Compass: [tools-compass.md](tools-compass.md).
 
 ## Not tested
 

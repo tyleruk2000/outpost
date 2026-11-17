@@ -79,6 +79,14 @@ test.describe("at an address that is not secure", () => {
     await expect(record.getByText(/This page was opened over plain HTTP, so it cannot record/)).toBeVisible();
     await expect(record.getByRole("link", { name: "Settings → HTTPS on your network" })).toBeVisible();
 
+    // ── The compass: a live heading needs a secure page; the rest of the screen works without one.
+    await page.goto("/tools/compass?lat=54.4542&lon=-3.2116");
+    const live = page.getByRole("region", { name: "Live compass" });
+    await expect(live.getByText("A live compass needs HTTPS and a phone")).toBeVisible();
+    await expect(live.getByRole("link", { name: "Settings, “HTTPS on your network”" })).toHaveAttribute("href", "/settings#https");
+    await expect(live.getByRole("button", { name: "Start the compass" })).toHaveCount(0);
+    await expect(page.getByRole("region", { name: "North here" }).getByText("With an Ordnance Survey map here")).toBeVisible();
+
     // ── Encryption: keys, text and files need SubtleCrypto; the screen says so and offers what works.
     await page.goto("/encryption?tab=keys");
     await expect(page.getByText("Keys, text, files and encrypted pages need HTTPS")).toBeVisible();

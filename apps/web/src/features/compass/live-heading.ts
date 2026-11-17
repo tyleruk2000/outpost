@@ -81,7 +81,7 @@ export type LiveState =
   | "none";
 
 interface PermissionCapable {
-  requestPermission?: () => Promise<"granted" | "denied" | "default">;
+  requestPermission?: (absolute?: boolean) => Promise<"granted" | "denied" | "default">;
 }
 
 /** How long to wait for a first heading before saying the device gives none. */
@@ -170,7 +170,8 @@ export function useLiveHeading(open: boolean): { state: LiveState; heading: Head
     if (typeof ask === "function") {
       setState("asking");
       try {
-        const answer = await ask.call(DeviceOrientationEvent);
+        // `true` asks for the magnetometer too, as the W3C specification has it; Safari takes no argument.
+        const answer = await ask.call(DeviceOrientationEvent, true);
         if (answer !== "granted") {
           setState("denied");
           return;

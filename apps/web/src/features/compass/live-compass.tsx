@@ -71,8 +71,9 @@ export function LiveCompass({ norths }: { norths: Norths | null }) {
         </Notice>
       ) : state === "denied" ? (
         <Notice tone="warning" title="The compass was not allowed">
-          This browser was told not to share the phone's motion and orientation. On an iPhone, close this tab, open the page again, press
-          Start the compass and choose Allow.
+          This browser was told not to share the phone's motion sensors with this page. On an iPhone, close this tab, open the page again,
+          press Start the compass and choose Allow. On Android, allow Motion sensors in the page's site settings (the icon beside the
+          address).
           <div className="mt-2">
             <Button size="sm" onClick={() => setOpen(false)}>
               Close
@@ -167,7 +168,7 @@ function Dial({ bearing }: { bearing: number }) {
       <g transform={`rotate(${-Math.round(bearing)})`}>
         <path d="M0 -40 L7 0 L-7 0 Z" fill="var(--danger)" />
         <path d="M0 40 L7 0 L-7 0 Z" fill="currentColor" opacity="0.35" />
-        <text y="-24" textAnchor="middle" fontSize="11" fontWeight="700" fill="currentColor" dy="-18">
+        <text x="12" y="-30" textAnchor="middle" dominantBaseline="middle" fontSize="12" fontWeight="700" fill="currentColor">
           N
         </text>
       </g>
