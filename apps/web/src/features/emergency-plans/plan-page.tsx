@@ -17,7 +17,7 @@ import {
 } from "@outpost/shared";
 import { ArrowLeft, Copy, ListChecks, Printer } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { ErrorState, Notice, Page, PageHeader, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
@@ -142,13 +142,21 @@ export default function EmergencyPlanPage() {
   const navigate = useNavigate();
   const [deleting, setDeleting] = useState(false);
   const opened = usePlanAction(id, "opened");
-  // When it was last opened before this time, said once; opening it now is recorded by this press, not by reading it.
-  const before = useRef<number | null | undefined>(undefined);
-  if (before.current === undefined && response.data) before.current = response.data.plan.openedAt;
+  // When it was last opened before this time, said once for each plan shown (a copy is shown in the same page);
+  // opening it now is recorded by this press, not by reading it.
+  const before = useRef<{ id: string; at: number | null } | null>(null);
+  if (response.data && before.current?.id !== response.data.plan.id)
+    before.current = { id: response.data.plan.id, at: response.data.plan.openedAt };
   const openedMutate = opened.mutate;
   useEffect(() => {
     if (response.isSuccess) openedMutate();
   }, [response.isSuccess, openedMutate]);
+  // A link to a part of the plan (from the cards: "#household") is followed once the plan is on the page.
+  const { hash } = useLocation();
+  const shown = draft !== null;
+  useEffect(() => {
+    if (shown && hash) document.getElementById(hash.slice(1))?.scrollIntoView?.();
+  }, [shown, hash]);
 
   if (response.isPending || (response.data && !draft)) {
     return (
@@ -188,7 +196,7 @@ export default function EmergencyPlanPage() {
           <>
             <span className="block">{planCaveat(draft.emergencyNumber)}</span>
             <span className="mt-1 block text-small" aria-live="polite">
-              {STATE_WORDS[state]} Last opened {before.current ? timeAgo(before.current) : "never before"}; changed{" "}
+              {STATE_WORDS[state]} Last opened {before.current?.at ? timeAgo(before.current.at) : "never before"}; changed{" "}
               {timeAgo(plan.updatedAt)}.
             </span>
           </>
@@ -215,7 +223,7 @@ export default function EmergencyPlanPage() {
           title="Time to look this plan over"
           className="mb-6"
           action={
-            <Button size="sm" loading={reviewed.isPending} onClick={() => reviewed.mutate()}>
+            <Button loading={reviewed.isPending} onClick={() => reviewed.mutate()}>
               Mark as looked over
             </Button>
           }
@@ -285,14 +293,16 @@ export default function EmergencyPlanPage() {
           </Field>
         </div>
         {!review.due ? (
-          <Button size="sm" variant="ghost" className="mt-2" loading={reviewed.isPending} onClick={() => reviewed.mutate()}>
+          <Button variant="ghost" className="mt-2" loading={reviewed.isPending} onClick={() => reviewed.mutate()}>
             Mark as looked over today
           </Button>
         ) : null}
       </Section>
 
       <StepsSection steps={body.steps} templateId={draft.templateId} onChange={(steps) => setBody({ steps })} />
-      <PeopleSection people={body.people} resolved={resolved} onChange={(people) => setBody({ people })} />
+      <div id="household" className="scroll-mt-4">
+        <PeopleSection people={body.people} resolved={resolved} onChange={(people) => setBody({ people })} />
+      </div>
       <ContactsSection contacts={body.contacts} resolved={resolved} onChange={(contacts) => setBody({ contacts })} />
       <PlacesSection places={body.places} resolved={resolved} onChange={(places) => setBody({ places })} />
       <CommsSection comms={body.comms} resolved={resolved} onChange={(comms) => setBody({ comms })} />

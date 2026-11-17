@@ -5,7 +5,14 @@
  * the date on them, and adds them to the stock. The list can be made a PDF, and copied
  * as text.
  */
-import { type ShoppingLine, SUPPLY_CATEGORIES, type SupplyCategory, type SupplyDateKind, type SupplyItem } from "@outpost/shared";
+import {
+  type ShoppingLine,
+  SUPPLY_CATEGORIES,
+  SUPPLY_LIMITS,
+  type SupplyCategory,
+  type SupplyDateKind,
+  type SupplyItem,
+} from "@outpost/shared";
 import { Check, ClipboardCopy, Minus, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -22,7 +29,7 @@ import { formatDate } from "@/lib/utils";
 import { useAddShoppingLine, useBought, useRemoveShoppingLine, useShopping, useUpdateShoppingLine, useWorkOutShopping } from "./data";
 import { Stepper } from "./item-form";
 import { shoppingPdf, shoppingTitle } from "./shopping-document";
-import { lineWords, reasonsWords, shoppingText } from "./words";
+import { amount, lineWords, reasonsWords, shoppingText } from "./words";
 
 function BoughtDialog({ line, model, onClose }: { line: ShoppingLine; model: SupplyItem | undefined; onClose: () => void }) {
   const [quantity, setQuantity] = useState(String(line.quantity ?? 1));
@@ -43,7 +50,7 @@ function BoughtDialog({ line, model, onClose }: { line: ShoppingLine; model: Sup
       {
         onSuccess: (result) => {
           toast.success(
-            `${result.item.name}: ${result.item.quantity} now in stock${result.item.location ? ` in ${result.item.location}` : ""}.`,
+            `${result.item.name}: ${amount(result.item.quantity)} now in stock${result.item.location ? ` in ${result.item.location}` : ""}.`,
           );
           onClose();
         },
@@ -87,7 +94,9 @@ function BoughtDialog({ line, model, onClose }: { line: ShoppingLine; model: Sup
               <p className="text-small text-ink-muted">Leave it empty if it has none.</p>
             </fieldset>
             <Field label="Kept in">
-              {(ids) => <Input {...ids} value={location} onChange={(event) => setLocation(event.target.value)} maxLength={80} />}
+              {(ids) => (
+                <Input {...ids} value={location} onChange={(event) => setLocation(event.target.value)} maxLength={SUPPLY_LIMITS.location} />
+              )}
             </Field>
             {model ? null : (
               <Field label="Category">
@@ -134,7 +143,7 @@ function OwnLine() {
       }}
     >
       <Field label="Something else to buy">
-        {(ids) => <Input {...ids} value={name} onChange={(event) => setName(event.target.value)} maxLength={200} />}
+        {(ids) => <Input {...ids} value={name} onChange={(event) => setName(event.target.value)} maxLength={SUPPLY_LIMITS.name} />}
       </Field>
       <Field label="How many">{(ids) => <Stepper id={ids.id} value={quantity} onChange={setQuantity} label="how many to buy" />}</Field>
       <Button type="submit" loading={add.isPending} className="max-md:h-11">

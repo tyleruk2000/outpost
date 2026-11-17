@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Switch } from "@/components/ui/misc";
+import { useDebounced } from "@/features/maps/hooks";
 import { errorMessage } from "@/lib/api";
 import { localId } from "@/lib/utils";
 import { useContactSearch } from "./data";
@@ -24,22 +25,27 @@ export interface PickedContact {
   phone: string;
 }
 
-/** Search Contacts and choose one, or type a name and number. */
-export function ContactPicker({
+/** Search Contacts and choose one, or (where a number typed is kept) type a name and number. */
+function ContactPicker({
   open,
   onOpenChange,
   title,
+  typed = true,
   onPick,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
+  /** Whether a name and number may be typed in instead; false where the plan has nowhere to keep the number. */
+  typed?: boolean;
   onPick: (picked: PickedContact) => void;
 }) {
   const [q, setQ] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const found = useContactSearch(q.trim(), open);
+  // Asked once typing pauses, not at every letter.
+  const asked = useDebounced(q.trim(), 250);
+  const found = useContactSearch(asked, open);
   const close = (next: boolean) => {
     if (!next) {
       setQ("");
@@ -54,7 +60,14 @@ export function ContactPicker({
   };
   return (
     <Dialog open={open} onOpenChange={close}>
-      <DialogContent title={title} description="Choose from Contacts, so that a changed number is changed here too, or type one in.">
+      <DialogContent
+        title={title}
+        description={
+          typed
+            ? "Choose from Contacts, so that a changed number is changed here too, or type one in."
+            : "Choose from Contacts, so that a changed number is changed here too."
+        }
+      >
         <DialogBody>
           <Field label="Find in Contacts">
             {(ids) => <Input {...ids} value={q} onChange={(event) => setQ(event.target.value)} placeholder="A name or number" />}
@@ -68,8 +81,10 @@ export function ContactPicker({
           ) : found.data.contacts.length === 0 ? (
             <p className="mt-2 text-small text-ink-muted">
               {found.data.all === 0
-                ? "There are no contacts in Outpost yet. Type the name and number below."
-                : `No contact matches “${q}”.`}
+                ? typed
+                  ? "There are no contacts in Outpost yet. Type the name and number below."
+                  : "There are no contacts in Outpost yet. Add them under Contacts, then link one here."
+                : `No contact matches “${asked}”.`}
             </p>
           ) : (
             <ul className="mt-2 max-h-64 divide-y divide-border overflow-y-auto border-y border-border" aria-label="Contacts found">
@@ -92,28 +107,30 @@ export function ContactPicker({
               ))}
             </ul>
           )}
-          <form
-            className="mt-5 grid gap-3 border-t border-border pt-4"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (name.trim()) pick({ contactId: null, name: name.trim(), phone: phone.trim() });
-            }}
-          >
-            <p className="text-small font-medium text-ink">Or type one in</p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Name">
-                {(ids) => <Input {...ids} value={name} maxLength={120} onChange={(event) => setName(event.target.value)} />}
-              </Field>
-              <Field label="Phone number">
-                {(ids) => (
-                  <Input {...ids} value={phone} inputMode="tel" maxLength={120} onChange={(event) => setPhone(event.target.value)} />
-                )}
-              </Field>
-            </div>
-            <Button type="submit" className="justify-self-start" disabled={!name.trim()}>
-              Add as typed
-            </Button>
-          </form>
+          {typed ? (
+            <form
+              className="mt-5 grid gap-3 border-t border-border pt-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (name.trim()) pick({ contactId: null, name: name.trim(), phone: phone.trim() });
+              }}
+            >
+              <p className="text-small font-medium text-ink">Or type one in</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Name">
+                  {(ids) => <Input {...ids} value={name} maxLength={120} onChange={(event) => setName(event.target.value)} />}
+                </Field>
+                <Field label="Phone number">
+                  {(ids) => (
+                    <Input {...ids} value={phone} inputMode="tel" maxLength={120} onChange={(event) => setPhone(event.target.value)} />
+                  )}
+                </Field>
+              </div>
+              <Button type="submit" className="justify-self-start" disabled={!name.trim()}>
+                Add as typed
+              </Button>
+            </form>
+          ) : null}
         </DialogBody>
         <DialogFooter>
           <Button onClick={() => close(false)}>Cancel</Button>
@@ -290,12 +307,12 @@ export function PeopleSection({
                 {person.contactId ? (
                   <div className="flex flex-wrap items-center gap-2">
                     <LinkedLine contactId={person.contactId} name={person.name} resolved={resolved} />
-                    <Button size="sm" variant="ghost" onClick={() => onChange(replaceAt(people, index, { ...person, contactId: null }))}>
+                    <Button variant="ghost" onClick={() => onChange(replaceAt(people, index, { ...person, contactId: null }))}>
                       Unlink
                     </Button>
                   </div>
                 ) : (
-                  <Button size="sm" className="justify-self-start" onClick={() => setLinking(index)}>
+                  <Button className="justify-self-start" onClick={() => setLinking(index)}>
                     Link their own number from Contacts
                   </Button>
                 )}
@@ -315,12 +332,11 @@ export function PeopleSection({
         open={linking !== null}
         onOpenChange={(open) => !open && setLinking(null)}
         title="Their own number"
+        typed={false}
         onPick={(picked) => {
           if (linking === null) return;
           const person = people[linking]!;
-          if (picked.contactId)
-            onChange(replaceAt(people, linking, { ...person, contactId: picked.contactId, name: person.name || picked.name }));
-          else onChange(replaceAt(people, linking, { ...person, name: person.name || picked.name }));
+          onChange(replaceAt(people, linking, { ...person, contactId: picked.contactId, name: person.name || picked.name }));
         }}
       />
     </Section>

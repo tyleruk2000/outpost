@@ -1015,7 +1015,7 @@ what the person typed is kept; the effects are worked out in the browser from
 
 A scenario the model cannot answer (a yield outside 1 kiloton to 10 megatons, a height
 above 12,000 m or above the blast curves' scaled 5,000 feet, a wind outside 8 to 45
-miles per hour) is `400` with the model's reason as the message and in
+miles per hour, or a wind direction outside 0 to 359 degrees) is `400` with the model's reason as the message and in
 `details.problems`. The event `nuclear.changed` follows every change.
 
 ## Backup
@@ -1137,21 +1137,21 @@ computer's.
 | --- | --- |
 | `GET /api/supplies` | Every row of stock, the household and the places in use (`SuppliesResponse`). |
 | `GET /api/supplies/outlook` | **For other screens (the scenario planner).** `SupplyOutlookResponse`: `outlook` (`SupplyOutlook`: `food` and `water`, each with `perDay` (kcal or litres a day for the household), `counted`, `items`, `days` (null with nobody to plan for), `lost` (reaches its use-by before its turn) and `leftOut` (rows not counted, with why); `water` also `basis`, `drinkingPerDay`, `allUsesPerDay`, `daysDrinking`, `daysAllUses`; `petFood`; `runsOutFirst` (`{ what: "food" \| "water", days }`); `daysWanted`; `expired`, `pastBestBefore` and `within` 30, 90 and 180 days, in date order; totals `byCategory` and `byLocation`) and `missing` (`ShoppingSuggestion[]`: what to buy to reach the days wanted, worked out now, each with `name`, `quantity` in whole packs or null, `unit`, `reasons` and `note`). Days are exact here; say them with `daysWords` (rounded down, "about"). |
-| `POST /api/supplies/items` | Add a row. Body: `name`, `category` (`food`, `water`, `pet-food`, `fuel`, `medical`, `hygiene`, `batteries`, `equipment`, `other`), `quantity`, and optionally `unit`, `location`, `dateKind` (`use-by` or `best-before`), `date`, `kcalPerUnit`, or `kcalPer100g` with `gramsPerUnit`, `litresPerUnit`, `minimum`, `barcode`, `notes`. A date with no kind is a best before. At most 5,000 rows. |
+| `POST /api/supplies/items` | Add a row. Body: `name`, `category` (`food`, `water`, `pet-food`, `fuel`, `medical`, `hygiene`, `batteries`, `equipment`, `other`), `quantity`, and optionally `unit`, `location`, `dateKind` (`use-by` or `best-before`), `date`, `kcalPerUnit`, or `kcalPer100g` with `gramsPerUnit`, `litresPerUnit`, `minimum`, `barcode`, `notes`. A date with no kind is a best before. At most 5,000 rows. Figures are at most `SUPPLY_FIGURE_MAX`: 1,000,000 for `quantity` and `minimum`, 100,000 `kcalPerUnit`, 1,000 `kcalPer100g`, 1,000,000 `gramsPerUnit`, 10,000 `litresPerUnit`. |
 | `GET /api/supplies/items/:id` | One row. |
 | `PATCH /api/supplies/items/:id` | Change the fields given. |
 | `POST /api/supplies/items/:id/adjust` | Body: `by` (negative to use some). Never below nought; two at once both count. |
 | `DELETE /api/supplies/items/:id` | Remove a row. Its barcode stays remembered. |
 | `PUT /api/supplies/household` | The household, whole (`HouseholdInput`): `daysWanted`, `drinkingLitres`, `allUsesLitres`, `waterBasis` (`drinking` or `all`), `members` (each `kind` `person` or `pet`, `name`, `band` and `sex` for a person, and optionally `kcalPerDay`, `drinkingLitres`, `allUsesLitres`, `note`). A person needs an age band or a figure. |
 | `GET /api/supplies/barcodes/:code` | What the supplies know of a barcode (`BarcodeLookup`): the rows with it and the product remembered. A retail number is matched as a 14-digit GTIN. |
-| `GET /api/supplies/shopping` | The stored list (`ShoppingList`), when it was worked out, and whether the stock has changed since (`stale`). |
+| `GET /api/supplies/shopping` | The stored list (`ShoppingList`), when it was worked out, and whether the stock or the household has changed since (`stale`). |
 | `POST /api/supplies/shopping/work-out` | Work the list out again: the worked-out lines are replaced, the person's own kept. |
 | `POST /api/supplies/shopping` | Add a line: `name`, and optionally `quantity`, `unit`, `note`. |
 | `PATCH /api/supplies/shopping/:id` | Change a line's `name`, `quantity`, `unit` or `note`. |
 | `DELETE /api/supplies/shopping/:id` | Take a line off. |
 | `POST /api/supplies/shopping/:id/bought` | Body: `quantity`, `dateKind`, `date`, and optionally `location`, and `category` for a line with no stock row behind it. Adds them to the stock (to a row of the same product, place and date, or a new row like the old one) and takes the line off, or lowers it when fewer were bought. Answers `{ item, line }`. |
 | `GET /api/supplies/export.csv` | Every row as a CSV download (see supplies.md for the columns). |
-| `POST /api/supplies/import/preview` | Body: `text` (the file, at most 2 MB). Reads it and says what each row is (`ImportPreview`), and which are already in the supplies. Changes nothing. |
+| `POST /api/supplies/import/preview` | Body: `text` (the file, at most 2 MB). Reads it and says what each row is (`ImportPreview`), and which are already in the supplies. A row with a figure above what an item takes (as for `POST /api/supplies/items`) is given an `error`, so that the rest can be brought in. Changes nothing. |
 | `POST /api/supplies/import/apply` | Body: `rows`, each `{ action: "add" \| "update" \| "skip", id?, item }`. All or nothing. Answers `ImportResult`. |
 ## Devices on this network
 
@@ -1192,7 +1192,7 @@ Types: `packages/shared/src/weather.ts`. See [weather.md](weather.md). Only
 | `GET /api/weather/readings` | Barometer readings, oldest first (`PressureReading[]`: `takenAt`, `value` and `unit` as given, `stationHpa`, `heightM`, `seaLevelHpa`, `note`, `origin` (`typed` or `file`)). |
 | `POST /api/weather/readings` | Keep a reading: `takenAt` (ms), `value`, `unit` (`hPa` or `inHg`), `heightM` (−450 to 3000), optionally `note`. Refused when it comes to under 850 or over 1100 hPa at sea level. |
 | `DELETE /api/weather/readings/:id` | Remove a reading. |
-| `POST /api/weather/readings/import` | Body: `text` (a CSV file, at most 4 MB), `unit` and `heightM` for rows that give none, `zone` (an IANA time zone, for times with none), `apply`. Answers `ReadingImportResult`: `rows` (each marked `duplicate` when a reading at that time is kept), `problems` (`line`, `message`) and `added` (0 unless `apply`). |
+| `POST /api/weather/readings/import` | Body: `text` (a CSV file, at most 4 MB), `unit` and `heightM` for rows that give none, `zone` (an IANA time zone, for times with none), `apply`. Answers `ReadingImportResult`: `rows` (each marked `duplicate` when a reading at that time is kept, with `notes`: how a pressure or height that was not written plainly was read, such as `“1.013,2” read as 1013.2.`), `problems` (`line`, `message`) and `added` (0 unless `apply`). |
 
 ## Emergency plans
 
@@ -1203,8 +1203,8 @@ fields are `name`, `kind` (`power-cut`, `flooding`, `comms-failure`, `severe-wea
 `reviewEveryDays` (null for never) and `body` (`PlanBody`: `steps`, `people`,
 `contacts`, `places`, `comms`, `days`, `supplies`, `powerPlanId`, `where`, `notes`,
 `links`). Every answer for one plan is `EmergencyPlanResponse`: `plan` and `resolved`,
-what each linked contact, saved place, communication plan, power plan, note and
-document is now, `null` for one deleted since.
+what each linked contact, saved place, communication plan, power plan, note,
+document and nuclear scenario is now, `null` for one deleted since.
 
 | Method and path | Purpose |
 | --- | --- |

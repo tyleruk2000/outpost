@@ -28,6 +28,8 @@ Every part may be empty.
   the tick is kept with its time.
 - **The household**: each person, what they need to remember, anything medical they
   choose to have on their own wallet card, and their own number, linked from Contacts.
+  The person's number can only be linked, not typed: the plan has nowhere to keep a
+  typed one, so that picker offers Contacts alone.
 - **Who to contact, in order**: linked from **Contacts** (the plan keeps the contact's
   id, and shows the name and numbers Contacts has now) or typed; one marked as the
   out-of-area contact.
@@ -273,7 +275,9 @@ The plan's supplies are set beside **Supplies** (`/prepare/supplies`):
   `packages/shared/src/emergency-plans.ts`, tested against cases worked by hand.
 - **One press** puts every missing and low thing on the Supplies shopping list
   (`POST /api/supplies/shopping`, one line each, with the shortfall where it can be
-  said and a note naming the plan).
+  said and a note naming the plan). If the server stops answering part way, the message
+  says how many lines went on before it stopped, so that pressing again is a choice
+  made knowing it adds those again.
 
 ## Using a plan
 
@@ -285,6 +289,10 @@ what has been done. "Reset for next time" clears the ticks and the start and cha
 no step. Ticks have routes of their own (`/ticks`, `/start`, `/reset`), apart from
 editing, so a tick on one phone never undoes an edit on another, nor the other way
 round; a step taken out of the plan takes its tick with it.
+
+Nothing on "Use now" changes by itself, so it runs no clock: no timer, no animation
+frame and no polling while it is open (a web test holds it to that). The time a step
+was ticked is the time kept with the tick, not counted on the page.
 
 From the Preparedness page a plan in use is two presses away: **Emergency plans**,
 then **Use now** beside it. On a phone, the "use now" page can be added to the Home
@@ -347,7 +355,8 @@ when the plan was last changed, so the same plan makes the same file.
 
 The nuclear preparedness workspace, and anything else, can use plans through
 `ctx.services.emergencyPlans` on the server (`list`, `get`, `create`, `update`,
-`copy`, `remove`, `tick`, `start`, `reset`) or the routes below. A plan's kind is one of
+`copy`, `remove`, `tick`, `start`, `mergeTicks`, `reset`, `reviewed`, `opened`, and
+`kept.count` and `kept.eraseAll` for the clean-up) or the routes below. A plan's kind is one of
 the known ones or `other` with free text in `kindText` ("Nuclear incident"), so a
 caller can file its plans under its own name and find them by `kind` and `kindText`.
 Its parts are general: ordered steps with phases, people, contacts, places, supplies,

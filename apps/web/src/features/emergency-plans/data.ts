@@ -16,6 +16,7 @@ import { localDay } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
+import { plural } from "@/lib/utils";
 
 export const planKeys = {
   all: ["emergency-plans", "list"] as const,
@@ -165,13 +166,20 @@ export const useOutlook = (enabled = true) =>
     queryFn: () => api.get<SupplyOutlookResponse>("/api/supplies/outlook", { today: localDay() }),
   });
 
-/** Puts lines on the supplies shopping list, one request each, and says how many went. */
+/** Puts lines on the supplies shopping list, one request each, and says how many went, also when it stops part way. */
 export function useAddToShopping() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (lines: Array<{ name: string; quantity: number | null; unit: string; note: string }>) => {
       const added: ShoppingLine[] = [];
-      for (const line of lines) added.push((await api.post<{ line: ShoppingLine }>("/api/supplies/shopping", line)).line);
+      try {
+        for (const line of lines) added.push((await api.post<{ line: ShoppingLine }>("/api/supplies/shopping", line)).line);
+      } catch (error) {
+        if (added.length === 0) throw error;
+        throw new Error(
+          `${added.length} of ${plural(lines.length, "line")} went on the shopping list, then it stopped: ${errorMessage(error)}`,
+        );
+      }
       return added;
     },
     onSettled: () => void client.invalidateQueries({ queryKey: ["supplies"] }),

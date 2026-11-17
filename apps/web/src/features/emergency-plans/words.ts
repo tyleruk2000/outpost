@@ -41,6 +41,3 @@ export const REVIEW_CHOICES: Array<{ value: string; label: string }> = [
   { value: "365", label: "Every year" },
   { value: "never", label: "Do not ask" },
 ];
-
-/** "3.5 days", "none", "not worked out": as Supplies says it. */
-export { daysWords } from "@outpost/shared";

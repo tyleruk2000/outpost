@@ -15,11 +15,13 @@ import userEvent from "@testing-library/user-event";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router";
+import { toast } from "sonner";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { textWidth } from "@/features/maps/print/helvetica";
 import { type DrawLine, writeLettered } from "@/features/maps/print/lettering";
 import type { Sheet } from "@/features/maps/print/sheet";
 import { fridgeSheets, grabSheets, walletSheets } from "./cards";
+import CardsPage from "./cards-page";
 import PlanPage from "./plan-page";
 import PlansPage from "./plans-page";
 import { readableOf } from "./printable";
@@ -327,6 +329,61 @@ describe("a plan", () => {
     expect(screen.getByRole("button", { name: /Add 10 missing or low things to the shopping list/ })).toBeEnabled();
   });
 
+  it("says when the copy was last opened, not the plan it was copied from", async () => {
+    const DAY = 86_400_000;
+    serve({
+      "/api/emergency-plans/p1": answer({ openedAt: Date.now() - 3 * DAY }),
+      "POST /api/emergency-plans/p1/opened": answer({ openedAt: Date.now() }),
+      "POST /api/emergency-plans/p1/copy": answer({ id: "p2", name: "Power cut (copy)" }),
+      "/api/emergency-plans/p2": answer({ id: "p2", name: "Power cut (copy)" }),
+      "POST /api/emergency-plans/p2/opened": answer({ id: "p2", name: "Power cut (copy)", openedAt: Date.now() }),
+      ...others,
+    });
+    show("/prepare/plans/p1", <PlanPage />, "/prepare/plans/:id");
+    expect(await screen.findByText(/Last opened 3 days ago/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Make a copy" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Power cut (copy)" })).toBeInTheDocument();
+    expect(screen.getByText(/Last opened never before/)).toBeInTheDocument();
+  });
+
+  it("links a person's own number from Contacts, without offering to type a number it would not keep", async () => {
+    serve({
+      "/api/emergency-plans/p1": answer(),
+      "POST /api/emergency-plans/p1/opened": answer(),
+      "/api/contacts": { contacts: [], all: 0 },
+      ...others,
+    });
+    show("/prepare/plans/p1", <PlanPage />, "/prepare/plans/:id");
+    await userEvent.click((await screen.findAllByRole("button", { name: "Link their own number from Contacts" }))[0]!);
+    const dialog = await screen.findByRole("dialog", { name: "Their own number" });
+    expect(await within(dialog).findByText(/There are no contacts in Outpost yet/)).toBeInTheDocument();
+    expect(within(dialog).queryByText("Or type one in")).toBeNull();
+    expect(within(dialog).queryByLabelText("Phone number")).toBeNull();
+  });
+
+  it("says how many lines went on the shopping list when it stops part way", async () => {
+    let posts = 0;
+    const failed = vi.spyOn(toast, "error");
+    serve({
+      "/api/emergency-plans/p1": answer(),
+      "POST /api/emergency-plans/p1/opened": answer(),
+      "POST /api/supplies/shopping": () => {
+        posts += 1;
+        return posts <= 2
+          ? new Response(JSON.stringify({ line: { id: `l${posts}` } }), { headers: { "content-type": "application/json" } })
+          : new Response(JSON.stringify({ error: { code: "internal", message: "The database is busy." } }), {
+              status: 500,
+              headers: { "content-type": "application/json" },
+            });
+      },
+      ...others,
+    });
+    show("/prepare/plans/p1", <PlanPage />, "/prepare/plans/:id");
+    await userEvent.click(await screen.findByRole("button", { name: /Add 10 missing or low things to the shopping list/ }));
+    await waitFor(() => expect(failed).toHaveBeenCalled());
+    expect(String(failed.mock.calls[0]![0])).toBe("2 of 10 lines went on the shopping list, then it stopped: The database is busy.");
+  });
+
   it("asks for a review when one is due", async () => {
     serve({
       "/api/emergency-plans/p1": answer({ reviewedAt: 0 }),
@@ -335,6 +392,19 @@ describe("a plan", () => {
     });
     show("/prepare/plans/p1", <PlanPage />, "/prepare/plans/:id");
     expect(await screen.findByText("Time to look this plan over")).toBeInTheDocument();
+  });
+});
+
+describe("the cards to print", () => {
+  it("with nobody in the plan, links to where the people are added", async () => {
+    const empty = answer();
+    empty.plan.body.people = [];
+    serve({ "/api/emergency-plans/p1": empty });
+    show("/prepare/plans/p1/cards", <CardsPage />, "/prepare/plans/:id/cards");
+    expect(await screen.findByRole("link", { name: "Add the household's people to the plan" })).toHaveAttribute(
+      "href",
+      "/prepare/plans/p1#household",
+    );
   });
 });
 
@@ -368,6 +438,25 @@ describe("a plan in use", () => {
     const keep = screen.getByRole("heading", { name: /^Keep on this / }).closest("section")!;
     expect(keep).toHaveTextContent(/needs Outpost opened at an HTTPS address/);
     expect(within(keep).getByRole("link", { name: "Settings, HTTPS on your network" })).toHaveAttribute("href", "/settings#https");
+  });
+
+  it("starts no clock: nothing on it changes by itself, so nothing ticks while it is open", async () => {
+    // Timers of the page's own, leaving out the test library's polling while it waits for the page.
+    const own: string[] = [];
+    const real = { interval: window.setInterval.bind(window), frame: window.requestAnimationFrame?.bind(window) };
+    vi.spyOn(window, "setInterval").mockImplementation(((run: () => void, ms?: number) => {
+      if (!new Error().stack?.includes("@testing-library")) own.push(`setInterval ${ms}`);
+      return real.interval(run, ms);
+    }) as typeof window.setInterval);
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((run) => {
+      own.push("requestAnimationFrame");
+      return real.frame ? real.frame(run) : 0;
+    });
+    serve({ "/api/emergency-plans/p1": answer(), "POST /api/emergency-plans/p1/opened": answer() });
+    show("/prepare/plans/p1/use", <UsePlanPage />, "/prepare/plans/:id/use");
+    expect(await screen.findByRole("link", { name: "Call the emergency services: 999" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(/Not in use\./)).toBeInTheDocument());
+    expect(own).toEqual([]);
   });
 
   it("resets for next time after asking", async () => {

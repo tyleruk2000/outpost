@@ -157,9 +157,7 @@ function TakenOut({ out, onPutBack }: { out: TemplateStep[]; onPutBack: (step: T
                 {PLAN_PHASES.find((phase) => phase.id === step.phase)?.label}. <SourceLine source={step.source} />
               </span>
             </span>
-            <Button size="sm" onClick={() => onPutBack(step)}>
-              Put back
-            </Button>
+            <Button onClick={() => onPutBack(step)}>Put back</Button>
           </li>
         ))}
       </ul>
