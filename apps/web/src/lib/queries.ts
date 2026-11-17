@@ -4,8 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api, errorMessage } from "./api";
 
+// Memory and load move all the time; once a minute is often enough for a figure read in passing. Jobs refresh it as they change.
 export const useSystem = () =>
-  useQuery({ queryKey: ["system"], queryFn: () => api.get<SystemInfo>("/api/system"), refetchInterval: 15_000 });
+  useQuery({ queryKey: ["system"], queryFn: () => api.get<SystemInfo>("/api/system"), refetchInterval: 60_000 });
 
 export const useStorage = () =>
   useQuery({ queryKey: ["storage", "locations"], queryFn: () => api.get<StorageLocationsResponse>("/api/storage/locations") });
