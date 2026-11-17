@@ -7,7 +7,7 @@
  * passages are, since it is Outpost's own data and not the model's wording. A call that
  * was refused is listed as refused, with what the model was told.
  */
-import { type AnswerSource, type ChatModel, type ChatStatus, RECOMMENDED_TOOL_MODELS, sameModelName } from "@outpost/shared";
+import { type AnswerSource, type ChatModel, type ChatStatus, MODEL_TRIALS, sameModelName } from "@outpost/shared";
 import { Fragment, useId, useState } from "react";
 import { Link } from "react-router";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/misc";
@@ -151,10 +151,6 @@ export function LookupMarker({ source }: { source: Lookup }) {
   );
 }
 
-/** "a, b and c". */
-const listWords = (names: readonly string[]) =>
-  names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
-
 /**
  * The one sentence under the message box about looking things up, when "Let the model
  * look things up in Outpost" is on: whether this model will be offered the tools, and
@@ -184,8 +180,11 @@ export function toolsNoteFor(input: {
       ? `Every area the model could look things up in is switched off in Settings, so ${otherwise}.`
       : "It can also look things up in Outpost with the tools switched on in Settings; what they answer is sent to the model too.";
   }
-  const can = RECOMMENDED_TOOL_MODELS.names.filter((name) => !sameModelName(name, model));
-  const suggest = can.length > 0 ? ` Of the suggested small models, ${listWords(can)} can.` : "";
+  // From what was measured here (model-trials.ts, the Which model screen), not from what a model's page claims:
+  // llama3.2:1b says it can call tools and, tried, could not.
+  const start = MODEL_TRIALS.recommendation.pi?.name;
+  const suggest =
+    start && !sameModelName(start, model) ? ` Of the models tried here, ${start} looks things up well: see Which model, under Help.` : "";
   return info?.tools === false
     ? `This model cannot look things up in Outpost; ${otherwise}.${suggest}`
     : `The model server does not say whether this model can look things up in Outpost, so it is not offered the tools; ${otherwise}.${suggest}`;

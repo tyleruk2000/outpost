@@ -146,7 +146,9 @@ export interface ChatToolsStatus {
  * with the "tools" capability tag, read from ollama.com/library/<model> on the day in
  * `checked`: llama3.2 (1b and 3b) and phi4-mini show "tools"; gemma3 shows "vision"
  * and not "tools". What decides whether a model is offered tools is what the model
- * server says (`ChatModel.tools`); this is only for suggesting one.
+ * server says (`ChatModel.tools`). Chat no longer suggests from this list: tried on
+ * 2026-11-17, llama3.2:1b has the tag and could not look things up, so suggestions come
+ * from what was measured (model-trials.ts). Kept as the record of what the pages said.
  */
 export const RECOMMENDED_TOOL_MODELS = {
   checked: "2026-11-17",

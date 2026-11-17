@@ -201,7 +201,7 @@ describe("the note about a model that cannot look things up", () => {
   it("says so once, under the message box, and names the suggested models that can", () => {
     const text = note();
     expect(text).toBe(
-      "This model cannot look things up in Outpost; it answers from your library’s passages only. Of the suggested small models, llama3.2:3b, llama3.2:1b and phi4-mini can.",
+      "This model cannot look things up in Outpost; it answers from your library’s passages only. Of the models tried here, lfm3:1.7b looks things up well: see Which model, under Help.",
     );
     render(
       <MemoryRouter>
