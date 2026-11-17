@@ -508,17 +508,21 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
     return reply.send(pipeline(Readable.from(lines()), createGzip(), () => undefined));
   });
 
-  // Import accepts the exported file as the raw request body.
-  app.addContentTypeParser(["application/gzip", "application/x-gzip", "application/octet-stream"], (_request, payload, done) =>
-    done(null, payload),
-  );
   const typeBeforeBody = async (request: import("fastify").FastifyRequest) => {
     // Checked before the body is read: a large upload is only accepted as one of the streamed types.
     if (!/^application\/(gzip|x-gzip|octet-stream)\b/i.test(request.headers["content-type"] ?? "")) {
       throw new AppError("unsupported", "Send the exported .jsonl.gz file with Content-Type application/gzip.");
     }
   };
-  app.post("/api/semantic/import", { bodyLimit: 8 * 1024 * 1024 * 1024, onRequest: typeBeforeBody }, async (request) => {
+  // In a context of its own, so that the raw-file body types are taken by this route and no other.
+  await app.register(async (scoped) => {
+    // Import accepts the exported file as the raw request body.
+    scoped.addContentTypeParser(["application/gzip", "application/x-gzip", "application/octet-stream"], (_request, payload, done) =>
+      done(null, payload),
+    );
+    scoped.post("/api/semantic/import", { bodyLimit: 8 * 1024 * 1024 * 1024, onRequest: typeBeforeBody }, importVectors);
+  });
+  async function importVectors(request: import("fastify").FastifyRequest) {
     const body = request.body as Readable | undefined;
     if (!body || typeof body.pipe !== "function") throw badRequest("Send the exported .jsonl.gz file as the request body.");
     const gunzip = createGunzip();
@@ -578,6 +582,15 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
             model: String(record.model),
             dimensions: record.dimensions,
           };
+          // Vectors of another size for a model already held would be compared with the ones there, and match nothing.
+          const held = sqlite.prepare("SELECT dimensions FROM embedding_models WHERE id = ?").pluck().get(header.modelId) as
+            | number
+            | undefined;
+          if (held !== undefined && held !== header.dimensions) {
+            throw badRequest(
+              `The file's vectors for “${header.modelId}” have ${header.dimensions} numbers each, but this Outpost already holds vectors of ${held} numbers for that model. Nothing was imported. Remove that model's vectors in Settings first, then import again.`,
+            );
+          }
           sqlite
             .prepare(
               "INSERT INTO embedding_models (id, provider, model, dimensions, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING",
@@ -605,7 +618,7 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
     if (!header) throw badRequest("That file is empty.");
     ctx.events.publish({ type: "semantic.changed" });
     return { modelId: header.modelId, vectorsInFile: vectors, passagesUpdated: applied, vectorsWithoutPassage: unmatched };
-  });
+  }
 
   app.post("/api/semantic/test", async (request) => {
     const body = z.object({ text: z.string().min(1).max(2000) }).parse(request.body);

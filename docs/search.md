@@ -568,6 +568,11 @@ The server must be on this computer or a private network. Every passage in your 
 is sent to it when the index is built, so an address on the public internet is refused
 unless Outpost was started with `OUTPOST_ALLOW_REMOTE_MODEL_SERVER=true`.
 
+**Every passage includes your contacts.** Contacts are in the search index with
+everything else (names, phone numbers, email and postal addresses, callsigns and
+notes), so an embedding server on another machine receives those details too, as it
+does the text of your documents and notes. The built-in model sends nothing anywhere.
+
 A minimal example with Ollama on the same machine. The model name is an example; use
 any embedding model your server offers. (The test suite exercises this provider
 against a stand-in server that speaks the same format, not against Ollama itself.)

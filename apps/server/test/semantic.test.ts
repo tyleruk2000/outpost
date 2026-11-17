@@ -206,6 +206,34 @@ describe("semantic and hybrid search", () => {
     }
   });
 
+  it("refuses vectors for a model it holds already at another size, and keeps the ones it has", async () => {
+    await buildIndex();
+    const before = app.ctx.services.semantic.index.count("test:concepts");
+    const header = { format: "outpost-embeddings", version: 1, modelId: "test:concepts", provider: "test", model: "concepts", dimensions: 8 };
+    const vector = Buffer.from(new Float32Array(8).fill(0.5).buffer).toString("base64");
+    const response = await app.app.inject({
+      method: "POST",
+      url: "/api/semantic/import",
+      headers: { host: "localhost", "x-outpost-request": "1", "content-type": "application/gzip" },
+      payload: gzipSync(`${JSON.stringify(header)}\n${JSON.stringify({ h: "x", v: vector })}\n`),
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error.message).toMatch(/8 numbers.*4/);
+    expect(app.ctx.services.semantic.index.count("test:concepts")).toBe(before);
+    const { body } = await app.api("GET", "/api/search?q=thirst&mode=semantic");
+    expect(body.results.length).toBeGreaterThan(0);
+  });
+
+  it("takes a raw file body on the import route only", async () => {
+    const response = await app.app.inject({
+      method: "PATCH",
+      url: "/api/settings",
+      headers: { host: "localhost", "x-outpost-request": "1", "content-type": "application/octet-stream" },
+      payload: Buffer.from("{}"),
+    });
+    expect(response.statusCode).toBe(415);
+  });
+
   it("rejects an import that is not an embeddings export", async () => {
     const response = await app.app.inject({
       method: "POST",

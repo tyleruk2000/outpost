@@ -321,7 +321,7 @@ Types: `SemanticStatus` in `packages/shared/src/semantic.ts`.
 | `POST /api/semantic/test` | Body: `text`. Embeds it once and answers `{ modelId, dimensions, tookMs }`. |
 | `DELETE /api/semantic/models/:modelId` | Deletes every vector of one model. `{ removed }`. |
 | `GET /api/semantic/export` | Downloads vectors as gzip-compressed JSON lines. Query: `model` (a model id; default the current one). |
-| `POST /api/semantic/import` | Body: the exported file itself, with `Content-Type: application/gzip`. Answers `{ modelId, vectorsInFile, passagesUpdated, vectorsWithoutPassage }`. |
+| `POST /api/semantic/import` | Body: the exported file itself, with `Content-Type: application/gzip`. Answers `{ modelId, vectorsInFile, passagesUpdated, vectorsWithoutPassage }`. `400`, with nothing imported, when this Outpost already holds vectors of another size for the file's model. Only this route takes `application/gzip` and `application/octet-stream` bodies. |
 
 The file format is described in
 [search.md](search.md#moving-vectors-between-installations).

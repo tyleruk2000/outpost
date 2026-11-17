@@ -691,6 +691,13 @@ that is a program on the same machine. If you enter the address of another machi
 your question and passages of your documents go to that machine, over plain HTTP
 unless you gave an `https` address.
 
+**Search by meaning is different.** Answers and chat are given passages of documents,
+notes and book chapters only, never contacts. But building the index for search by
+meaning embeds every passage in the search index, contacts included (names, numbers,
+addresses and notes). With the built-in model nothing leaves Outpost; with an embedding
+server on another machine, all of that is sent to it. See
+[search.md](search.md#a-local-embedding-server-local-server).
+
 ### Which addresses are contacted
 
 The rule is the one the embedding "local server" follows: **the address is a setting,
