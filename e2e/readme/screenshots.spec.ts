@@ -4,21 +4,37 @@
  *   node scripts/build-app.mjs
  *   cd e2e && pnpm exec playwright test -c readme-screenshots.config.ts
  *
+ * Photographed: Home; a search with an answer; a catalogue sheet in the reader; a route on the
+ * map; an HF prediction (light and dark); a power plan; the devices on a network; supplies; an
+ * emergency plan (to edit, and in use on a phone); the nuclear workspace; contacts; Explore; a
+ * page of notes (dark); a receive drill in the Morse trainer; the solar clock's clock recovery;
+ * food and supplies on the map; river and sea levels; a chat reply that looked things up;
+ * Which model; the allotment. On a phone: the water calculator, the map, frequencies to listen
+ * to, the compass, Messages and Help.
+ *
  * Everything shown is demonstration data written here for the purpose: made-up notes,
  * places on the test suite's made-up map (tests/map-fixture.ts, a hill and a lake with
  * invented names, drawn where Snowdonia is), contacts with invented names and the
- * telephone numbers Ofcom keeps for drama (07700 900xxx, 01632 960xxx), a household's
- * supplies, a power plan, a plan from a template, and a scenario in the nuclear
- * workspace. The HF prediction is VOACAP's real answer on the suite's copy of its data.
- * The network list is the made-up network the suite stands in with. Answers and chat are
+ * telephone numbers Ofcom keeps for drama (07700 900xxx, 01632 960xxx), a household of three
+ * with invented names and its supplies, a power plan, a plan from a template, a scenario in
+ * the nuclear workspace, an allotment with four beds sown, the Morse trainer set to lesson 4,
+ * check-ins and messages on the board from invented people, and a handful of made-up shops and
+ * water taps around the test map's villages for the food and supplies layer, which the spec
+ * serves itself as a stand-in Overpass server. The HF prediction is VOACAP's real answer on the
+ * suite's copy of its data. The network list is the made-up network the suite stands in with.
+ * River and sea levels are the suite's recorded answers from the Environment Agency (the
+ * stations near a place in Norfolk), served by its stand-in file server. Answers and chat are
  * written by the stand-in model server (apps/server/test/model-server.ts), which repeats
- * the first sentence of each source it is given: it is not a language model, and the
- * README says so under those pictures.
+ * the first sentence of each source it is given, or calls the tool its message names: it is
+ * not a language model, and the README says so under those pictures. The allotment is drawn
+ * with the browser's clock set to late morning, so that it is drawn by day whatever the hour
+ * of the run; the plot itself runs on the server's clock.
  *
  * Each picture is cropped to what matters and written as WebP by the browser's own
  * encoder, so that nothing beyond the suite's Playwright is needed.
  */
 import fs from "node:fs";
+import http from "node:http";
 import path from "node:path";
 import { type Browser, type BrowserContext, expect, type Locator, type Page, test } from "@playwright/test";
 import { newPowerPlan, type PowerLoad } from "../../packages/shared/src/power.ts";
@@ -27,6 +43,7 @@ import { CENTRE, installTestMaps } from "../tests/map-fixture";
 
 const OUT = path.resolve(import.meta.dirname, "../../docs/screenshots");
 const MODEL_URL = process.env.OUTPOST_README_MODEL_URL!;
+const OVERPASS_URL = process.env.OUTPOST_README_OVERPASS_URL!;
 /** Pictures written by this run, with their sizes, for the summary at the end. */
 const written: Array<{ name: string; bytes: number }> = [];
 
@@ -57,10 +74,23 @@ async function open(browser: Browser, look: Look = {}): Promise<{ context: Brows
   return { context, page };
 }
 
-/** Lets fonts, map tiles and anything animating settle before a picture is taken. */
+/**
+ * Lets fonts, map tiles and anything animating settle before a picture is taken, and scrolls
+ * the sidebar so that the screen's own entry stands in the middle of it, not under its fade.
+ */
 async function settle(page: Page, ms = 600): Promise<void> {
   await page.evaluate(() => document.fonts.ready);
   await page.waitForLoadState("networkidle");
+  await page.evaluate(() => {
+    const marked = [...document.querySelectorAll<HTMLElement>('nav [aria-current="page"]')].filter(
+      (element) => element.offsetParent !== null,
+    );
+    const scroll = window.scrollY;
+    marked.at(-1)?.scrollIntoView({ block: "center" });
+    window.scrollTo(0, scroll);
+  });
+  // No toast left over from what was pressed.
+  await expect(page.locator("[data-sonner-toast]")).toHaveCount(0, { timeout: 20_000 });
   await page.waitForTimeout(ms);
 }
 
@@ -94,6 +124,21 @@ async function shot(
  * column (the sidebar left out), the page scrolled as a whole.
  */
 async function shotBetween(page: Page, name: string, top: Locator, bottom: Locator, pad = 24) {
+  const viewport = page.viewportSize()!;
+  if (viewport.width < 600) {
+    // On a phone the header and the tab bar are fixed, and a whole-page picture paints them over the middle of
+    // it. The window is made as tall as the page instead, so that they sit at its ends, outside the picture.
+    const tall = await page.evaluate(() => document.documentElement.scrollHeight);
+    await page.setViewportSize({ width: viewport.width, height: tall });
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForTimeout(500);
+    const a = (await top.boundingBox())!;
+    const b = (await bottom.boundingBox())!;
+    const main = (await page.locator("main").first().boundingBox())!;
+    await shot(page, name, { clip: { x: main.x, y: a.y - pad, width: main.width, height: b.y + b.height - a.y + 2 * pad } });
+    await page.setViewportSize(viewport);
+    return;
+  }
   await top.scrollIntoViewIfNeeded();
   const scroll = await page.evaluate(() => window.scrollY);
   const a = (await top.boundingBox())!;
@@ -106,9 +151,13 @@ async function shotBetween(page: Page, name: string, top: Locator, bottom: Locat
   });
 }
 
+/** The "back" link at the top of a screen, in the main column (the sidebar has a link of the same name). */
+const backLink = (page: Page, name: string) => page.locator("main").getByRole("link", { name, exact: true }).first();
+
 /** Waits until no background work is running (text extraction, indexing), as the sidebar says. */
 async function idle(page: Page) {
-  await expect(page.getByText("Ready offline").first()).toBeVisible({ timeout: 180_000 });
+  await expect.poll(async () => ((await api(page, "GET", "/api/jobs?active=true")).jobs as unknown[]).length, { timeout: 180_000 }).toBe(0);
+  await expect(page.getByText("Ready offline").first()).toBeVisible({ timeout: 30_000 });
 }
 
 const text = (value: string) => ({ type: "text", text: value });
@@ -271,9 +320,9 @@ async function writeSupplies(page: Page) {
     allUsesLitres: 7.5,
     waterBasis: "drinking",
     members: [
-      { kind: "person", name: "Adult", band: "19-64", sex: "female" },
-      { kind: "person", name: "Adult", band: "19-64", sex: "male" },
-      { kind: "person", name: "Child", band: "7-10", sex: "unstated" },
+      { kind: "person", name: "Gwen", band: "19-64", sex: "female" },
+      { kind: "person", name: "Sam", band: "19-64", sex: "male" },
+      { kind: "person", name: "Nia", band: "7-10", sex: "unstated" },
     ],
   });
   const year = new Date().getFullYear();
@@ -382,6 +431,91 @@ async function writePowerPlan(page: Page): Promise<string> {
   return (await api(page, "POST", "/api/power/plans", plan)).plan.id;
 }
 
+/** The Morse trainer at Koch lesson 4, as if three lessons had been passed already. */
+async function writeMorse(page: Page) {
+  await api(page, "DELETE", "/api/morse");
+  await api(page, "PUT", "/api/morse/progress", { kochLesson: 4 });
+}
+
+/**
+ * A plot in use: onions sown and watered in two beds, salad and radishes in the others (in the
+ * months they are not sown they wait in the ground, which the plot shows too). Onion sets are
+ * free and go in in any month, so this works on any day of the year.
+ */
+async function writeAllotment(page: Page) {
+  await api(page, "DELETE", "/api/games/allotment");
+  const act = (action: Record<string, unknown>) => api(page, "POST", "/api/games/allotment/actions", action);
+  await act({ type: "sow", bed: 0, crop: "onions" });
+  await act({ type: "water", bed: 0 });
+  await act({ type: "sow", bed: 1, crop: "onions" });
+  await act({ type: "water", bed: 1 });
+  await act({ type: "sow", bed: 2, crop: "salad" });
+  await act({ type: "water", bed: 2 });
+  await act({ type: "sow", bed: 3, crop: "radishes" });
+}
+
+/** A household's check-ins and messages on the board, from made-up people. */
+async function writeBoard(page: Page) {
+  await api(page, "POST", "/api/board/messages", {
+    author: "Sam",
+    body: "Power's off on our side of the village too. Torches are in the blue crate.",
+  });
+  await api(page, "POST", "/api/board/check-ins", { author: "Gwen", status: "safe", place: "at the village hall" });
+  await api(page, "POST", "/api/board/messages", {
+    author: "Gwen",
+    body: "The hall has heat and a kettle. Bring the flasks if you come down.",
+  });
+  await api(page, "POST", "/api/board/check-ins", { author: "Sam", status: "safe", place: "at home" });
+  await api(page, "POST", "/api/board/check-ins", {
+    author: "Rhys",
+    status: "other",
+    place: "car park at Pont Arbrawf",
+    body: "Road closed, walking back",
+  });
+  await api(page, "POST", "/api/board/messages", { author: "Alex", body: "I'll meet you at the bridge with the big torch, Rhys." });
+}
+
+/**
+ * A stand-in for an Overpass server, for the food and supplies layer: it answers the layer's
+ * questions with a handful of made-up shops and a water tap around the test map's villages.
+ */
+const FOOD_PLACES: Array<{ id: number; lat: number; lon: number; tags: Record<string, string> }> = [
+  { id: 1, lat: 53.0905, lon: -4.1135, tags: { shop: "convenience", name: "Siop y Capel", opening_hours: "Mo-Sa 07:00-20:00" } },
+  { id: 2, lat: 53.0928, lon: -4.1172, tags: { shop: "bakery", name: "Popty Prawf" } },
+  { id: 3, lat: 53.0912, lon: -4.1098, tags: { amenity: "pharmacy", name: "Fferyllfa Capel Prawf" } },
+  { id: 4, lat: 53.0935, lon: -4.1121, tags: { amenity: "drinking_water" } },
+  { id: 5, lat: 53.0598, lon: -4.1238, tags: { shop: "farm", name: "Fferm Arbrawf farm shop" } },
+  { id: 6, lat: 53.0571, lon: -4.1281, tags: { amenity: "fuel", shop: "convenience", name: "Garej Pont Arbrawf" } },
+  { id: 7, lat: 53.0462, lon: -4.0372, tags: { shop: "general", name: "Siop Nant" } },
+  { id: 8, lat: 53.0448, lon: -4.0331, tags: { man_made: "water_tap", drinking_water: "yes" } },
+  { id: 9, lat: 53.0757, lon: -4.0921, tags: { shop: "supermarket", name: "Made-up Stores" } },
+];
+
+function startOverpassStandIn(address: string): Promise<http.Server> {
+  const { port } = new URL(address);
+  const server = http.createServer((request, response) => {
+    const chunks: Buffer[] = [];
+    request.on("data", (chunk: Buffer) => chunks.push(chunk));
+    request.on("end", () => {
+      const query = new URLSearchParams(Buffer.concat(chunks).toString("utf8")).get("data") ?? "";
+      const osm3s = { timestamp_osm_base: `${new Date().toISOString().slice(0, 19)}Z` };
+      const elements = query.includes("out count")
+        ? query
+            .split("out count")
+            .slice(1)
+            .map(() => ({
+              type: "count",
+              id: 0,
+              tags: { nodes: String(FOOD_PLACES.length), ways: "0", relations: "0", total: String(FOOD_PLACES.length) },
+            }))
+        : FOOD_PLACES.map((place) => ({ type: "node", ...place }));
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({ version: 0.6, generator: "Outpost's README stand-in", osm3s, elements }));
+    });
+  });
+  return new Promise((resolve) => server.listen(Number(port), "127.0.0.1", () => resolve(server)));
+}
+
 test("the README's pictures", async ({ browser }) => {
   fs.mkdirSync(OUT, { recursive: true });
   const { context, page } = await open(browser);
@@ -421,6 +555,27 @@ test("the README's pictures", async ({ browser }) => {
     "answers.endpoint": `${MODEL_URL}/v1`,
     "answers.model": "stand-in:latest",
   });
+  await writeAllotment(page);
+  await writeMorse(page);
+  await writeBoard(page);
+  // Food and supplies for the test map, from the spec's own Overpass stand-in.
+  const overpass = await startOverpassStandIn(OVERPASS_URL);
+  const estimate = await api<{ estimateId: string; items: Array<{ key: string }> }>(page, "POST", "/api/reference/estimate", {
+    provider: "osm",
+    clientNameAgreed: true,
+    scope: { bbox: [-4.16, 53.03, -4.0, 53.11] },
+    layers: ["food"],
+  });
+  await api(page, "POST", "/api/reference/downloads", { estimateId: estimate.estimateId, keys: estimate.items.map((item) => item.key) });
+  await expect
+    .poll(async () => (await api<{ packs: Array<{ records: number }> }>(page, "GET", "/api/reference/packs")).packs[0]?.records ?? 0, {
+      timeout: 30_000,
+    })
+    .toBe(FOOD_PLACES.length);
+  overpass.close();
+  // A place in England for river and sea levels: the weather stand-in's recorded answers are for the stations near it.
+  await api(page, "PUT", "/api/weather/options", { updateOnOpen: false, riversKm: 15 });
+  await api(page, "POST", "/api/weather/places", { name: "Fenland example", lat: 52.75, lon: 0.4 });
   // Text extraction and indexing are jobs: wait for the library to be searchable.
   await expect
     .poll(async () => (await api(page, "GET", "/api/search?q=frequency")).results?.length ?? 0, { timeout: 60_000 })
@@ -522,7 +677,101 @@ test("the README's pictures", async ({ browser }) => {
   await settle(page);
   await shot(page, "explore");
 
+  // ── Radio: the Morse trainer, a receive drill of lesson 4 played (unheard) and copied, and graded ──
+  await page.goto("/radio/morse?tab=receive");
+  const groups = page.getByRole("group", { name: "Groups" });
+  for (let i = 0; i < 7; i++) await groups.getByRole("button", { name: "Decrease groups" }).click();
+  await page.getByRole("button", { name: "Play", exact: true }).click();
+  await expect(page.getByText("Listen…")).toBeVisible();
+  const copy = page.getByLabel("What did you hear?");
+  await copy.fill("KMURE MKEUR RKUME");
+  await copy.press("Enter");
+  await expect(page.getByText(/copied/).first()).toBeVisible({ timeout: 60_000 });
+  await settle(page);
+  // The main column down to the end of "This session", above the settings that run on below.
+  const column = (await page.locator("main").first().boundingBox())!;
+  await shot(page, "morse-trainer", { clip: { x: column.x, y: 0, width: column.width, height: 848 } });
+
+  // ── Tools: the solar clock's clock recovery, worked for a place on the test map today ──
+  await page.evaluate(() => {
+    localStorage.setItem("outpost.tools.solar-clock.place", "typed");
+    localStorage.setItem("outpost.tools.text.solar-clock.typed", "53.091, -4.112");
+  });
+  await page.goto("/tools/solar-clock?tab=recover");
+  const noon = page.getByRole("region", { name: "Noon from a shadow" });
+  await expect(noon.getByText(/the clock should have read \d\d:\d\d, give or take/)).toBeVisible();
+  await expect(page.locator("figure[data-diagram]").first()).toBeVisible();
+  await settle(page);
+  await shotBetween(
+    page,
+    "solar-clock-recovery",
+    page.locator("figure[data-diagram]").first(),
+    page.locator("figure[data-diagram]").nth(1),
+  );
+
+  // ── Maps: food and supplies on the test map, with the nearest of each kind ──
+  // A taller window for this one, so that the panel's list of the nearest and the note under it end inside it.
+  await page.setViewportSize({ width: DESKTOP.width, height: 1292 });
+  await page.goto("/maps?lat=53.0893&lon=-4.1125&z=14.6");
+  await page.locator('.outpost-map[data-map-idle="true"]').waitFor({ timeout: 20_000 });
+  await page.getByRole("tab", { name: "Layers" }).click();
+  await page.getByRole("switch", { name: "Food and supplies" }).click();
+  await expect(page.getByRole("list", { name: "Kinds of place" })).toBeVisible();
+  await expect(
+    page
+      .getByRole("list", { name: /^Nearest to / })
+      .getByRole("button")
+      .first(),
+  ).toBeVisible();
+  await settle(page, 2500);
+  await shot(page, "maps-food");
+  await page.setViewportSize(DESKTOP);
+
+  // ── Weather and hazards: river and sea levels near a place in England, from the recorded answers ──
+  await page.goto("/prepare/weather?view=rivers");
+  await page.getByRole("button", { name: "Fetch river and sea levels" }).click();
+  await expect(page.getByRole("heading", { name: /stations within 15 km, nearest first/ })).toBeVisible();
+  await expect(page.getByText("Fetched just now.")).toBeVisible();
+  await settle(page);
+  await shotBetween(page, "river-levels", backLink(page, "Preparedness"), page.locator("[data-station]").nth(3));
+
+  // ── Chat: the stand-in asks Outpost for the nearest drinking water, and the reply says what was looked at ──
+  await api(page, "PATCH", "/api/settings", { "answers.model": "stand-in-tools:latest", "tools.enabled": true });
+  await page.goto("/chat");
+  await page
+    .getByRole("textbox", { name: "Your message" })
+    .fill('Where is the nearest drinking water to the village hall? use find_places {"kind":"drinking water","near":"53.091,-4.112"}');
+  await page.getByRole("button", { name: "Send" }).click();
+  const reply = page.getByRole("article", { name: /^Reply from/ }).last();
+  const lookedAt = reply.getByRole("region", { name: "What the model looked up in Outpost" });
+  await expect(lookedAt).toContainText("Looked at:", { timeout: 30_000 });
+  await expect(reply.getByTestId("reply-text")).toContainText("From Outpost", { timeout: 30_000 });
+  await lookedAt.getByRole("button").first().click();
+  await expect(lookedAt.locator("blockquote")).toBeVisible();
+  await settle(page);
+  await shot(page, "chat-looked-at");
+  await api(page, "PATCH", "/api/settings", { "answers.model": "stand-in:latest", "tools.enabled": false });
+
+  // ── Which model: what each model did when it was tried with Outpost ──
+  await page.goto("/help/which-model");
+  await expect(page.getByRole("heading", { level: 1, name: "Which model" })).toBeVisible();
+  await settle(page);
+  await shot(page, "which-model");
+
   await context.close();
+
+  // ── Games: the allotment by day, the browser's clock set to late morning so that the plot is drawn in daylight ──
+  {
+    const { context: day, page: a } = await open(browser);
+    const morning = new Date();
+    morning.setHours(11, 0, 0, 0);
+    await a.clock.setFixedTime(morning);
+    await a.goto("/games/allotment");
+    await expect(a.getByRole("button", { name: /^Bed 1, onions, / })).toBeVisible();
+    await settle(a);
+    await shot(a, "allotment");
+    await day.close();
+  }
 
   // ── Phone ──
   {
@@ -541,6 +790,49 @@ test("the README's pictures", async ({ browser }) => {
     await p.goto(`/maps?lat=${CENTRE.lat + 0.03}&lon=${CENTRE.lon + 0.05}&zoom=12`);
     await settle(p, 2500);
     await shot(p, "phone-maps");
+
+    // Frequencies to listen to: time signals, one opened to its source.
+    await p.goto("/radio/frequencies?kind=time-signals&place=any");
+    const row = p.getByTestId("frequency-row").first();
+    await row.getByRole("button").first().tap();
+    await expect(row.getByTestId("frequency-detail")).toBeVisible();
+    await settle(p);
+    await p
+      .getByText(/^\d+ entries of \d+$/)
+      .evaluate((element) => window.scrollTo(0, element.getBoundingClientRect().top + window.scrollY - 80));
+    await p.waitForTimeout(300);
+    await shot(p, "phone-frequencies");
+
+    // The compass, worked out for the middle of the test map: the three norths and the rule for a map.
+    await p.goto(`/tools/compass?lat=${CENTRE.lat}&lon=${CENTRE.lon}`);
+    const norths = p.getByRole("region", { name: "North here" });
+    await expect(norths.getByText(/^Grid north is [\d.]+° (west|east) of true north here\.$/)).toBeVisible();
+    await settle(p);
+    await shotBetween(
+      p,
+      "phone-compass",
+      norths.getByRole("heading", { name: "North here" }),
+      norths.locator("figure[data-diagram]").first(),
+    );
+
+    // Messages, as Alex reads them: the household's check-ins and what was said.
+    await p.evaluate(() => localStorage.setItem("outpost.board.name", "Alex"));
+    await p.goto("/messages");
+    await expect(p.getByRole("list", { name: "Latest check-ins" }).getByRole("listitem").first()).toBeVisible();
+    await expect(p.getByRole("list", { name: "Messages, oldest first" }).getByRole("listitem").last()).toBeVisible();
+    await settle(p);
+    await shotBetween(
+      p,
+      "phone-messages",
+      p.getByRole("heading", { name: "Check-ins" }),
+      p.getByRole("list", { name: "Messages, oldest first" }),
+    );
+
+    // Help: the guides, read with no connection.
+    await p.goto("/help");
+    await expect(p.getByRole("heading", { level: 2, name: "Getting it running" })).toBeVisible();
+    await settle(p);
+    await shot(p, "phone-help");
     await phone.close();
   }
 

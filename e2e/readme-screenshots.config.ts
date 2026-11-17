@@ -10,10 +10,11 @@
  * from any other Outpost: every note, place, contact and plan in the pictures is written
  * by the spec for the purpose.
  *
- * Ports: OUTPOST_README_PORT (default 9081) for Outpost, and the two after it for the file
- * server and the model stand-in. OUTPOST_README_WORK names a folder for the data
- * directory (made empty first); without it one is made in the system's temporary folder
- * and removed at the end.
+ * Ports: OUTPOST_README_PORT (default 9081) for Outpost, and the three after it for the file
+ * server, the model stand-in and the spec's own Overpass stand-in (made-up shops for the food
+ * and supplies layer; the shipped Overpass servers are left out of this Outpost's list).
+ * OUTPOST_README_WORK names a folder for the data directory (made empty first); without it
+ * one is made in the system's temporary folder and removed at the end.
  */
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -30,6 +31,9 @@ const port = Number(process.env.OUTPOST_README_PORT ?? 9081);
 const filesPort = port + 1;
 const modelPort = port + 2;
 process.env.OUTPOST_README_MODEL_URL = `http://127.0.0.1:${modelPort}`;
+// The spec answers here as an Overpass server for the food and supplies layer, with made-up shops.
+const overpassPort = port + 3;
+process.env.OUTPOST_README_OVERPASS_URL = `http://127.0.0.1:${overpassPort}/api/interpreter`;
 
 // The runner reads this file, and so does each worker it starts: only the runner makes the folder.
 const inherited = process.env.OUTPOST_README_INHERITED;
@@ -60,6 +64,28 @@ if (inherited && fs.existsSync(inherited)) {
     {
       stdio: "ignore",
     },
+  );
+  // The only Overpass server this Outpost knows is the spec's stand-in: the shipped ones are left out.
+  const routes = path.join(work, "data", "catalog", "routes");
+  fs.mkdirSync(routes, { recursive: true });
+  fs.writeFileSync(
+    path.join(routes, "route-sources.json"),
+    JSON.stringify({
+      schemaVersion: 1,
+      replaceShipped: true,
+      sources: [
+        {
+          id: "readme-stand-in",
+          name: "README stand-in",
+          type: "overpass",
+          endpoint: process.env.OUTPOST_README_OVERPASS_URL,
+          operator: "the README's picture spec",
+          coverage: "The test map",
+          termsUrl: "https://example.org/terms",
+          lastVerified: "2026-11-17",
+        },
+      ],
+    }),
   );
 }
 
@@ -131,6 +157,8 @@ export default defineConfig({
         OUTPOST_OLLAMA_ADDRESSES: "http://127.0.0.1:9/v1",
         OUTPOST_NETWORK_STAND_IN: networkStandIn,
         OUTPOST_WEATHER_STAND_IN: `http://127.0.0.1:${filesPort}/weather`,
+        // The spec's Overpass stand-in is on 127.0.0.1, which the server otherwise refuses to fetch from.
+        OUTPOST_ALLOW_PRIVATE_DOWNLOADS: "true",
       },
     },
   ],
