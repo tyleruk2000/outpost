@@ -27,6 +27,23 @@ export function formatFigure(value: number, { decimals = 1, significant }: Figur
   return text === "-0" ? "0" : text;
 }
 
+/**
+ * A time worked out from rough figures (a walking pace taken as 5 km an hour, a battery's
+ * usable share, the share of time a radio transmits), rounded to about two significant
+ * figures so that it claims no more than they support: to 5 minutes under 2 hours, to the
+ * quarter hour under 12 hours, to the hour under 4 days, and to 6 hours beyond. Shown with
+ * `ROUGH_MINUTES_WORDS` beside it.
+ */
+export function roughMinutes(minutes: number): number {
+  if (!Number.isFinite(minutes)) return minutes;
+  const step = minutes < 120 ? 5 : minutes < 12 * 60 ? 15 : minutes < 4 * 24 * 60 ? 60 : 6 * 60;
+  return Math.round(minutes / step) * step;
+}
+
+/** What `roughMinutes` does, said on the screen under a time it rounded. */
+export const ROUGH_MINUTES_WORDS =
+  "Rounded to 5 minutes under 2 hours, the quarter hour under 12 hours and the hour beyond, because the figures it comes from are estimates.";
+
 /** A length of time in minutes as people say it: "2 hours 35 minutes", "45 minutes", "1 hour". */
 export function formatDuration(minutes: number): string {
   if (!Number.isFinite(minutes)) return "–";

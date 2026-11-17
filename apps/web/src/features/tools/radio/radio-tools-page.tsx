@@ -12,6 +12,8 @@ import {
   NumberField,
   type NumberSpec,
   Result,
+  ROUGH_MINUTES_WORDS,
+  roughMinutes,
   ToolScreen,
   type Unit,
   u,
@@ -626,14 +628,14 @@ function BatteryCalculator() {
       </Inputs>
       <Result
         label="Running time"
-        figure={hours !== null ? formatDuration(hours * 60) : null}
+        figure={hours !== null ? formatDuration(roughMinutes(hours * 60)) : null}
         refusal={refusal}
         keep={
           hours !== null && values
             ? {
                 title: "Radio battery life",
                 lines: [
-                  `${formatDuration(hours * 60)} at an average of ${formatFigure(average, { decimals: 0 })} mA`,
+                  `${formatDuration(roughMinutes(hours * 60))} at an average of ${formatFigure(average, { decimals: 0 })} mA`,
                   `Duty cycle ${values[5]}% transmit, ${values[6]}% receive, ${formatFigure(100 - values[5] - values[6])}% standby`,
                 ],
               }
@@ -643,7 +645,8 @@ function BatteryCalculator() {
         {hours !== null && values ? (
           <p>
             The radio draws {formatFigure(average, { decimals: 0 })} mA on average, with {formatFigure(100 - values[5] - values[6])}% of the
-            time on standby. A common planning cycle is 5% transmit, 5% receive and 90% standby; a net you talk on a lot is far more.
+            time on standby. A common planning cycle is 5% transmit, 5% receive and 90% standby; a net you talk on a lot is far more.{" "}
+            {ROUGH_MINUTES_WORDS}
           </p>
         ) : null}
       </Result>

@@ -33,7 +33,10 @@ too:
   shared drop-down otherwise. `useText` for a line of text.
 - `units.ts`: units by their legal definitions (the international yard and pound of 1959,
   the UK gallon of the Weights and Measures Act 1985, the US gallon of NIST Handbook 44).
-- `format.ts`: figures in British style, rounded by significant figures or decimals.
+- `format.ts`: figures in British style, rounded by significant figures or decimals;
+  `roughMinutes` rounds a time worked out from round estimates (a walking pace, a usable
+  share) to about two figures: to 5 minutes under 2 hours, the quarter hour under 12 hours,
+  the hour under 4 days and 6 hours beyond. The screen says so under the time.
 - `Result`: the answer, said as soon as it can be, with **Copy** (which works on a plain
   http page too, through `lib/clipboard.ts`) and **Save as a note**.
 - `HowWorkedOut`: one disclosure with the formula, the range, what is left out and the
@@ -76,7 +79,7 @@ with [sic]. The CDC's ⅛ is written 1/8 so that the printed sheet can set it.
 
 | Calculator | Formula | Source | Range and limits |
 | --- | --- | --- | --- |
-| Walking time | distance ÷ 5 km/h + 1 minute a 10 m climbed; Langmuir: −10 minutes a 300 m of gentle descent (5° to 12°), +10 a 300 m of steep (over 12°); Tranter's table as an option | [Adventure Activities Licensing Regulations 2004, reg. 2](https://www.legislation.gov.uk/uksi/2004/1309/regulation/2/made); Langmuir, *Mountaincraft and Leadership* (2013) pp. 38–39, as cited by [Wikipedia](https://en.wikipedia.org/wiki/Naismith%27s_rule); Tranter's table as [Wikipedia](https://en.wikipedia.org/wiki/Naismith%27s_rule#Tranter's_corrections) gives it | Tranter's table has no primary source on Wikipedia and none was found to check it against: the screen says so. It starts at a 2-hour Naismith time and refuses beyond the last figure of a row ("too much"). Leaves out stops, navigation, heavy packs, snow and darkness. |
+| Walking time | distance ÷ 5 km/h + 1 minute a 10 m climbed; Langmuir: −10 minutes a 300 m of gentle descent (5° to 12°), +10 a 300 m of steep (over 12°); Tranter's table as an option | [Adventure Activities Licensing Regulations 2004, reg. 2](https://www.legislation.gov.uk/uksi/2004/1309/regulation/2/made); Langmuir, *Mountaincraft and Leadership* (2013) pp. 38–39, as cited by [Wikipedia](https://en.wikipedia.org/wiki/Naismith%27s_rule); Tranter's table as [Wikipedia](https://en.wikipedia.org/wiki/Naismith%27s_rule#Tranter's_corrections) gives it | Tranter's table has no primary source on Wikipedia and none was found to check it against: the screen says so. It starts at a 2-hour Naismith time and refuses beyond the last figure of a row ("too much"). Times are rounded with `roughMinutes` (5 minutes under 2 hours, the quarter hour under 12), as the rule's pace and climb are round figures and Tranter's table is in quarter hours. Leaves out stops, navigation, heavy packs, snow and darkness. |
 | Gradient | rise ÷ horizontal distance, as per cent, degrees and 1 in n | Trigonometry | An average: hides steeper parts. Links to the map's Routes panel for a profile from terrain. |
 | Distance, bearing and coordinates | haversine on a sphere of 6,371 km; initial great-circle bearing; OS grid and Maidenhead conversion | Outpost's own `packages/shared` code, as the map's measure tool uses | Crow-flies over sea level. Bearing is true, not magnetic. |
 | Sunrise, sunset and daylight | NOAA's solar calculator method (Meeus), sun's centre at −0.833° | `features/maps/lib/sun.ts`, the map's Sun tab | About a minute between 72° N and S; a flat horizon at sea level. Times on this device's clock, and with no date typed, today by that clock. |
@@ -93,7 +96,7 @@ with [sic]. The CDC's ⅛ is written 1/8 so that the printed sheet can set it.
 | Radio horizon | √(2kRh₁) + √(2kRh₂), k = 4/3 | [ITU-R P.834-9](https://www.itu.int/rec/R-REC-P.834/en); `maxSightDistanceMeters` | Smooth earth: says so, and links to the map's line of sight over real terrain. |
 | Cable loss | dB per 100 m × length ÷ 100, read between published points on log scales | Times Microwave LMR-400 and LMR-240, SSB Ecoflex 10, Belden 8267 (RG-213), 9258 (RG-8X), 8240 (RG-58): see `radio/coax-data.ts` for each sheet's link and revision; or your own figure | Refused outside the published frequencies. Belden's 8267 and 8240 figures are per 100 ft, converted. Some sheets were read from distributors' copies because the makers' sites refused the request. Leaves out SWR, connectors, water and age. |
 | Watts, dBm and S-units | dBm = 10 log mW; S9 = −73 dBm below 30 MHz, −93 dBm above; 6 dB a unit | [IARU Region 1 R.1, VHF Handbook v10.03](https://www.iaru-r1.org/wp-content/uploads/2026/02/VHF_Handbook_V10_03_final.pdf) | The handbook's own background note says the −93 dBm level was confirmed for 144 MHz and above, with nothing stated for 30 to 144 MHz: said on the screen. Real S-meters seldom follow it. |
-| Battery life | capacity × usable share ÷ (Itx·tx% + Irx·rx% + Isb·standby%) | Arithmetic | The usable share (80% by default) is a working figure the person sets, not a property of a battery. A power system with solar and several loads belongs to the power tools. |
+| Battery life | capacity × usable share ÷ (Itx·tx% + Irx·rx% + Isb·standby%) | Arithmetic | The usable share (80% by default) is a working figure the person sets, not a property of a battery. The time is rounded with `roughMinutes` (to the hour from 12 hours), since the usable share and the duty cycle are estimates. A power system with solar and several loads belongs to the power tools. |
 
 ## Building
 

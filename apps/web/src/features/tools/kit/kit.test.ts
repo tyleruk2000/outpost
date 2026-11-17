@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDuration, formatFigure, formatRange, roundSignificant } from "./format";
+import { formatDuration, formatFigure, formatRange, roughMinutes, roundSignificant } from "./format";
 import { readNumber } from "./read-number";
 import { celsius, convert, fahrenheit, ft, kg, lb, litre, ukGallon, usGallon } from "./units";
 
@@ -45,6 +45,16 @@ describe("writing figures", () => {
     expect(formatDuration(24 * 60 + 1)).toBe("1 day 1 minute");
     expect(formatRange(2.5, 3, "litres")).toBe("2.5 to 3 litres");
     expect(formatRange(3, 3, "litres")).toBe("3 litres");
+  });
+
+  it("rounds a time worked out from rough figures to about two figures, never to the minute", () => {
+    expect(roughMinutes(23)).toBe(25);
+    expect(roughMinutes(118)).toBe(120);
+    expect(roughMinutes(204)).toBe(210);
+    expect(roughMinutes(12 * 60 + 33)).toBe(13 * 60);
+    expect(roughMinutes(4 * 24 * 60 + 5 * 60)).toBe(4 * 24 * 60 + 6 * 60);
+    expect(roughMinutes(0)).toBe(0);
+    expect(formatDuration(roughMinutes(12.549 * 60))).toBe("13 hours");
   });
 });
 

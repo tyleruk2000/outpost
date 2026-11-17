@@ -92,8 +92,11 @@ describe("the outdoors screen", () => {
   it("works out Naismith's time for the walk it starts with", () => {
     show(<OutdoorsPage />);
     expect(screen.getByRole("heading", { level: 1, name: "Outdoors" })).toBeInTheDocument();
-    // 12 km and 600 m of climb: 2 h 24 min and 1 h.
-    expect(within(section("Walking time")).getByText("3 hours 24 minutes")).toBeInTheDocument();
+    // 12 km and 600 m of climb: 2 h 24 min and 1 h, 3 h 24 min, shown to the quarter hour the rule's round figures support.
+    expect(within(section("Walking time")).getByText("3 hours 30 minutes")).toBeInTheDocument();
+    expect(
+      within(section("Walking time")).getByText(/Rounded to 5 minutes under 2 hours, the quarter hour under 12 hours/),
+    ).toBeInTheDocument();
   });
 
   it("refuses wind chill outside the range it is defined for", async () => {
@@ -131,6 +134,12 @@ describe("the radio screen", () => {
     // 142.4 ÷ 7.1 = 20.06 m, in two legs.
     expect(within(section("Antenna lengths")).getByText("10.03 m")).toBeInTheDocument();
     expect(within(section("Cable loss")).getByText(/dB$/)).toBeInTheDocument();
+  });
+
+  it("gives a battery's running time to the hour its estimates support, not to the minute", () => {
+    show(<RadioToolsPage />);
+    // 2,000 mAh × 80% ÷ 127.5 mA on average = 12.55 hours.
+    expect(within(section("Battery life")).getByText("13 hours")).toBeInTheDocument();
   });
 
   it("does not guess a cable's loss outside its published frequencies", async () => {
@@ -184,6 +193,23 @@ describe("the cooking screen", () => {
     const safe = section("Safe cooking temperatures");
     expect(within(safe).getByText("70°C (158°F)")).toBeInTheDocument();
     expect(within(safe).getByText(/Save as PDF/)).toBeInTheDocument();
+  });
+
+  it("keeps the From unit of weight and of volume when switching between them", async () => {
+    const user = userEvent.setup();
+    show(<CookingPage />);
+    const convert = section("Weights and measures");
+    const pick = async (label: string, option: string) => {
+      await user.click(within(convert).getByRole("combobox", { name: label }));
+      await user.click(screen.getByRole("option", { name: option }));
+    };
+    await pick("From", "pounds");
+    await user.click(within(convert).getByRole("radio", { name: "Volume" }));
+    await pick("From", "US cups");
+    await user.click(within(convert).getByRole("radio", { name: "Weight" }));
+    expect(within(convert).getByRole("combobox", { name: "From" })).toHaveTextContent("pounds");
+    await user.click(within(convert).getByRole("radio", { name: "Volume" }));
+    expect(within(convert).getByRole("combobox", { name: "From" })).toHaveTextContent("US cups");
   });
 
   it("scales a recipe", () => {

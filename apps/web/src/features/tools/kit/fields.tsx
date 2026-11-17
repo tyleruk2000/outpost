@@ -134,16 +134,22 @@ export interface ChoiceOption<T extends string> {
   description?: string;
 }
 
-/** A choice remembered on this device. */
+/**
+ * A choice remembered on this device. `id` may change with another choice (the "From" unit
+ * of Weight, then of Volume): each id keeps its own choice, for the visit as well as on
+ * the device, so switching back finds it again even when the browser keeps nothing.
+ */
 export function useChoice<T extends string>(id: string, options: readonly ChoiceOption<T>[], initial: T): [T, (next: T) => void] {
-  const [value, setValue] = useState<T>(() => {
-    const stored = readPref(`choice.${id}`);
-    return options.some((option) => option.value === stored) ? (stored as T) : initial;
-  });
+  const read = (key: string): string | null => readPref(`choice.${key}`);
+  const [chosen, setChosen] = useState<Record<string, string | null>>(() => ({ [id]: read(id) }));
+  // An id not seen before on this visit is read from the device once, while rendering.
+  if (!(id in chosen)) setChosen((current) => ({ ...current, [id]: read(id) }));
+  const stored = id in chosen ? chosen[id] : read(id);
+  const value = options.some((option) => option.value === stored) ? (stored as T) : initial;
   return [
     value,
     (next: T) => {
-      setValue(next);
+      setChosen((current) => ({ ...current, [id]: next }));
       writePref(`choice.${id}`, next);
     },
   ];
