@@ -11,16 +11,21 @@
  * fetched, and `freshness` is the one place that decides what may be said about it.
  */
 
+import type { RiverReadingsData, RiversData } from "./weather-rivers.ts";
+
 // ── What is fetched, and from whom ──────────────────────────────────────────
 
 /** The kinds of thing kept, each fetched and replaced on its own. */
-export const WEATHER_KINDS = ["forecast", "warnings", "flood", "climate", "solar"] as const;
+export const WEATHER_KINDS = ["forecast", "warnings", "flood", "rivers", "river-readings", "climate", "solar"] as const;
 export type WeatherKind = (typeof WEATHER_KINDS)[number];
 
-/** The kinds "Update now" fetches. Climate averages and sunshine change over decades and are fetched on a press of their own. */
-export const LIVE_KINDS: WeatherKind[] = ["forecast", "warnings", "flood"];
+/** The kinds `POST /api/weather/update` takes. A station's readings are fetched on its own view, for one station (`river-readings`). */
+export const UPDATE_KINDS = ["forecast", "warnings", "flood", "rivers", "climate", "solar"] as const satisfies readonly WeatherKind[];
 
-export type WeatherSourceId = "open-meteo" | "met-office-warnings" | "ea-flood" | "nasa-power" | "pvgis";
+/** The kinds "Update now" fetches. Climate averages and sunshine change over decades and are fetched on a press of their own. */
+export const LIVE_KINDS: WeatherKind[] = ["forecast", "warnings", "flood", "rivers"];
+
+export type WeatherSourceId = "open-meteo" | "met-office-warnings" | "ea-flood" | "ea-levels" | "nasa-power" | "pvgis";
 
 export interface WeatherSourceInfo {
   id: WeatherSourceId;
@@ -183,26 +188,14 @@ export interface FloodWarning {
   changedAt: number | null;
 }
 
-export interface RiverStation {
-  id: string;
-  label: string;
-  river: string | null;
-  town: string | null;
-  lat: number;
-  lon: number;
-  distanceKm: number;
-  latest: { value: number; unit: string; at: number } | null;
-  typicalLow: number | null;
-  typicalHigh: number | null;
-  highestRecent: { value: number; at: number | null } | null;
-}
-
+/**
+ * Flood warnings near a place. Copies fetched before river levels had a view of their own
+ * also hold `stations`; they are not shown (River and sea levels is `rivers`).
+ */
 export interface FloodData {
-  /** How far from the place warnings and stations were asked for, km. */
+  /** How far from the place warnings were asked for, km. */
   warningsWithinKm: number;
-  stationsWithinKm: number;
   warnings: FloodWarning[];
-  stations: RiverStation[];
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
@@ -244,6 +237,8 @@ export interface WeatherDataByKind {
   forecast: ForecastData;
   warnings: WarningsData;
   flood: FloodData;
+  rivers: RiversData;
+  "river-readings": RiverReadingsData;
   climate: ClimateData;
   solar: SolarData;
 }
@@ -270,6 +265,8 @@ export interface WeatherResponse {
   kept: KeptCopy[];
   sources: WeatherSourceInfo[];
   updateOnOpen: boolean;
+  /** How far round a place river and sea levels are asked for, km: one setting for every device. */
+  riversKm: number;
   /** The server's clock, so that ages are worked out against one time. */
   now: number;
 }
@@ -323,6 +320,8 @@ export const FRESH_FOR: Record<WeatherKind, number> = {
   forecast: 6 * HOUR,
   warnings: 3 * HOUR,
   flood: 1 * HOUR,
+  rivers: 1 * HOUR,
+  "river-readings": 1 * HOUR,
   climate: Number.POSITIVE_INFINITY,
   solar: Number.POSITIVE_INFINITY,
 };
@@ -351,6 +350,8 @@ const KIND_WORDS: Record<WeatherKind, string> = {
   forecast: "forecast",
   warnings: "list of warnings",
   flood: "flood information",
+  rivers: "set of river and sea levels",
+  "river-readings": "set of readings",
   climate: "set of averages",
   solar: "set of averages",
 };
@@ -377,7 +378,9 @@ export function freshness(copy: Pick<KeptCopy, "kind" | "fetchedAt" | "validUnti
         ? "a newer forecast will have been made since, and the nearer hours of this one may have changed"
         : copy.kind === "warnings"
           ? "warnings may have been issued, changed or ended since"
-          : "rivers and warnings may have changed since";
+          : copy.kind === "flood"
+            ? "warnings may have been issued, changed or ended since"
+            : "levels may have changed since";
     return { state: "old", ageMs, age, sentence: `${fetched}: this ${KIND_WORDS[copy.kind]} is old, and ${why}.` };
   }
   return { state: "fresh", ageMs, age, sentence: `${fetched}.` };

@@ -59,4 +59,5 @@ export * from "./storage.ts";
 export * from "./supplies.ts";
 export * from "./system.ts";
 export * from "./weather.ts";
+export * from "./weather-rivers.ts";
 export * from "./webpages.ts";

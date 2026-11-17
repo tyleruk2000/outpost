@@ -120,6 +120,8 @@ export const settingsSchema = z.object({
    * opening is then an outbound request (docs/security.md).
    */
   "weather.updateOnOpen": z.boolean().default(false),
+  /** How far round a weather place river and sea levels are asked for, km (one of RIVER_DISTANCES_KM in @outpost/shared). */
+  "weather.riversKm": z.number().int().min(1).max(50).default(8),
   /** Seconds between checks that storage locations are still connected. */
   "storage.checkIntervalSeconds": z.number().int().min(5).max(3600).default(30),
 });

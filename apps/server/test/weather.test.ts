@@ -18,8 +18,33 @@ let base = "";
 const asked: string[] = [];
 /** Paths that answer with a failure until cleared. */
 const failing = new Set<string>();
+/** Paths that answer 200 with something that is not the publisher's format, until cleared. */
+const garbled = new Set<string>();
 /** While set, a forecast is not answered until it is. */
 let held: Promise<void> | null = null;
+/** What the stand-in does with one level measure's readings, by measure id: as recorded unless named here. */
+const readingsAs = new Map<string, "stopped" | "scrambled" | "fail" | "garbled">();
+
+/**
+ * The recorded readings (one station's, 17 November 2026) as the Agency would answer for
+ * any measure: the newest `_limit` of them, newest first. A measure named in `readingsAs`
+ * answers as a station that stopped reporting ten days ago, in no order, not at all, or
+ * with something that is not the Agency's format.
+ */
+function levelReadings(measure: string, limit: number): { status: number; body: string } {
+  const recorded = JSON.parse(fixture("ea-level-readings.json"));
+  let items = (recorded.items as Array<{ dateTime: string; value?: number; measure: string }>).slice(0, limit);
+  const as = readingsAs.get(measure);
+  if (as === "fail") return { status: 503, body: "busy" };
+  if (as === "garbled") return { status: 200, body: "<html>Service unavailable</html>" };
+  if (as === "stopped")
+    items = items.map((item) => ({
+      ...item,
+      dateTime: new Date(Date.parse(item.dateTime) - 10 * 86_400_000).toISOString().replace(".000Z", "Z"),
+    }));
+  if (as === "scrambled") items = [...items.filter((_, i) => i % 2 === 1), ...items.filter((_, i) => i % 2 === 0).reverse()];
+  return { status: 200, body: JSON.stringify({ ...recorded, items: items.map((item) => ({ ...item, measure })) }) };
+}
 
 beforeAll(async () => {
   standIn = http.createServer((request, response) => {
@@ -30,6 +55,7 @@ beforeAll(async () => {
       response.end(body);
     };
     if ([...failing].some((prefix) => url.pathname.startsWith(prefix))) return send(503, "busy", "text/plain");
+    if ([...garbled].some((prefix) => url.pathname.startsWith(prefix))) return send(200, "<html>Service unavailable</html>", "text/html");
     if (url.pathname === "/open-meteo/v1/forecast") {
       if (held) return void held.then(() => send(200, fixture("open-meteo-forecast.json")));
       return send(200, fixture("open-meteo-forecast.json"));
@@ -37,8 +63,12 @@ beforeAll(async () => {
     if (url.pathname === "/met-office-warnings/public/data/PWSCache/WarningsRSS/Region/UK")
       return send(200, fixture("met-office-uk.xml"), "application/rss+xml");
     if (url.pathname === "/ea-flood/flood-monitoring/id/floods") return send(200, fixture("ea-floods.json"));
-    if (url.pathname === "/ea-flood/flood-monitoring/id/stations") return send(200, fixture("ea-stations.json"));
-    if (url.pathname.startsWith("/ea-flood/flood-monitoring/id/stations/")) return send(200, fixture("ea-station-E21609.json"));
+    if (url.pathname === "/ea-levels/flood-monitoring/id/stations") return send(200, fixture("ea-level-stations.json"));
+    const measure = /^\/ea-levels\/flood-monitoring\/id\/measures\/([^/]+)\/readings$/.exec(url.pathname)?.[1];
+    if (measure) {
+      const answer = levelReadings(decodeURIComponent(measure), Number(url.searchParams.get("_limit") ?? 500));
+      return send(answer.status, answer.body, answer.status === 200 ? "application/json" : "text/plain");
+    }
     if (url.pathname === "/nasa-power/api/temporal/climatology/point") return send(200, fixture("nasa-power-climatology.json"));
     if (url.pathname === "/pvgis/api/v5_3/MRcalc") return send(200, fixture("pvgis-mrcalc.json"));
     send(404, "{}");
@@ -52,6 +82,8 @@ let app: TestApp;
 beforeEach(async () => {
   asked.length = 0;
   failing.clear();
+  readingsAs.clear();
+  garbled.clear();
   app = await createTestApp({ OUTPOST_WEATHER_STAND_IN: base }, undefined, { voacapData: false });
 });
 afterEach(() => app.close());
@@ -124,10 +156,11 @@ describe("weather and hazards", () => {
   it("starts empty, says nothing is kept, and asks nobody for anything", async () => {
     const { status, body } = await app.api("GET", "/api/weather");
     expect(status).toBe(200);
-    expect(body).toMatchObject({ places: [], kept: [], updateOnOpen: false });
+    expect(body).toMatchObject({ places: [], kept: [], updateOnOpen: false, riversKm: 8 });
     expect(body.sources.map((source: { host: string }) => source.host)).toEqual([
       "api.open-meteo.com",
       "www.metoffice.gov.uk",
+      "environment.data.gov.uk",
       "environment.data.gov.uk",
       "power.larc.nasa.gov",
       "re.jrc.ec.europa.eu",
@@ -155,7 +188,11 @@ describe("weather and hazards", () => {
     expect(asked.find((line) => line.startsWith("/met-office-warnings/"))).toBe(
       "/met-office-warnings/public/data/PWSCache/WarningsRSS/Region/UK",
     );
-    expect(asked.filter((line) => line.startsWith("/ea-flood/flood-monitoring/id/stations/"))).toHaveLength(3);
+    // Flood warnings are one request; river levels are fetched as their own kind.
+    expect(asked.filter((line) => line.startsWith("/ea-flood/"))).toEqual([
+      "/ea-flood/flood-monitoring/id/floods?lat=52.13&long=-0.46&dist=15",
+    ]);
+    expect(asked.some((line) => line.startsWith("/ea-levels/"))).toBe(false);
 
     const kept = (await app.api("GET", "/api/weather")).body.kept as Array<{
       kind: string;
@@ -266,6 +303,175 @@ describe("weather and hazards", () => {
     expect((await app.api("DELETE", `/api/weather/places/${place.id}`)).status).toBe(200);
     kept = (await app.api("GET", "/api/weather")).body.kept;
     expect(kept).toEqual([]);
+  });
+});
+
+interface HeldStation {
+  id: string;
+  distanceKm: number;
+  tidal: boolean;
+  unit: string;
+  typicalLow: number | null;
+  recent: Array<{ t: number; v: number }>;
+  readingsNote: string | null;
+}
+
+describe("river and sea levels", () => {
+  /** A place near King's Lynn, where the recorded stations are. */
+  async function lynn() {
+    const added = await app.api("POST", "/api/weather/places", { name: "Lynn", lat: 52.75, lon: 0.4 });
+    expect(added.status).toBe(200);
+    return added.body.place as { id: string };
+  }
+  const rivers = async (placeId: string) => {
+    const kept = (await app.api("GET", "/api/weather")).body.kept as Array<{
+      kind: string;
+      placeId: string;
+      fetchedAt: number;
+      sent: string;
+      bytes: number;
+      data: { withinKm: number; listed: number; stations: HeldStation[] };
+    }>;
+    return kept.find((copy) => copy.kind === "rivers" && copy.placeId === placeId) ?? null;
+  };
+
+  it("fetches the stations within the chosen distance on a press, nearest first, each with its latest readings", async () => {
+    const place = await lynn();
+    expect(asked).toEqual([]);
+    const { body } = await app.api("POST", "/api/weather/update", { kinds: ["rivers"], placeIds: [place.id] });
+    expect(body.outcomes).toEqual([expect.objectContaining({ kind: "rivers", source: "ea-levels", ok: true })]);
+    // One request for the list, with every station's scale; one for each station's readings.
+    expect(asked[0]).toBe("/ea-levels/flood-monitoring/id/stations?parameter=level&lat=52.75&long=0.40&dist=8&_view=full");
+    expect(asked.slice(1)).toEqual([
+      "/ea-levels/flood-monitoring/id/measures/E47901-level-tidal_level-i-15_min-mAOD/readings?_sorted&_limit=16",
+      "/ea-levels/flood-monitoring/id/measures/E41071-level-stage-i-15_min-m/readings?_sorted&_limit=16",
+      "/ea-levels/flood-monitoring/id/measures/E21183-level-stage-i-15_min-mAOD/readings?_sorted&_limit=16",
+      "/ea-levels/flood-monitoring/id/measures/E23740-level-stage-i-15_min-mASD/readings?_sorted&_limit=16",
+    ]);
+    const copy = (await rivers(place.id))!;
+    expect(copy.data).toMatchObject({ withinKm: 8, listed: 4 });
+    expect(copy.data.stations.map((station) => [station.id, station.distanceKm])).toEqual([
+      ["E47901", 0.5],
+      ["E41071", 1.4],
+      ["E21183", 5.3],
+      ["E23740", 6.3],
+    ]);
+    const kilhams = copy.data.stations[2]!;
+    expect(kilhams.recent).toHaveLength(16);
+    expect(kilhams.recent.at(-1)).toEqual({ t: Date.UTC(2026, 10, 17, 11, 15), v: 1.091 });
+    expect(copy.data.stations[0]).toMatchObject({ tidal: true, typicalLow: null, unit: "mAOD" });
+    expect(copy.sent).toBe(
+      "environment.data.gov.uk: latitude 52.75, longitude 0.40, within 8 km; then the level measure of each of 4 stations",
+    );
+    expect(copy.bytes).toBeGreaterThan(Buffer.byteLength(fixture("ea-level-stations.json")));
+  });
+
+  it("asks within the distance a person chooses, and refuses one not offered", async () => {
+    const place = await lynn();
+    expect((await app.api("PUT", "/api/weather/options", { riversKm: 7 })).status).toBe(400);
+    expect((await app.api("PUT", "/api/weather/options", { riversKm: 15 })).body).toEqual({ updateOnOpen: false, riversKm: 15 });
+    expect((await app.api("GET", "/api/weather")).body.riversKm).toBe(15);
+    expect(asked).toEqual([]);
+    await app.api("POST", "/api/weather/update", { kinds: ["rivers"] });
+    expect(asked[0]).toContain("dist=15&_view=full");
+    expect((await rivers(place.id))!.data.stations).toHaveLength(6);
+  });
+
+  it("keeps a station that has stopped reporting with its old readings, and reads readings out of order", async () => {
+    const place = await lynn();
+    await app.api("PUT", "/api/weather/options", { riversKm: 15 });
+    readingsAs.set("E21050-level-stage-i-15_min-m", "stopped");
+    readingsAs.set("E23740-level-stage-i-15_min-mASD", "scrambled");
+    await app.api("POST", "/api/weather/update", { kinds: ["rivers"] });
+    const copy = (await rivers(place.id))!;
+    const stopped = copy.data.stations.find((station) => station.id === "E21050")!;
+    expect(stopped.recent.at(-1)!.t).toBe(Date.UTC(2026, 10, 7, 11, 15));
+    const scrambled = copy.data.stations.find((station) => station.id === "E23740")!;
+    const times = scrambled.recent.map((reading) => reading.t);
+    expect(times).toEqual([...times].sort((a, b) => a - b));
+    expect(times).toHaveLength(16);
+  });
+
+  it("keeps the other stations when one station's readings cannot be had, and says why", async () => {
+    const place = await lynn();
+    readingsAs.set("E41071-level-stage-i-15_min-m", "fail");
+    readingsAs.set("E21183-level-stage-i-15_min-mAOD", "garbled");
+    const { body } = await app.api("POST", "/api/weather/update", { kinds: ["rivers"] });
+    expect(body.outcomes[0].ok).toBe(true);
+    const stations = (await rivers(place.id))!.data.stations;
+    expect(stations.find((station) => station.id === "E41071")).toMatchObject({
+      recent: [],
+      readingsNote: expect.stringMatching(/answered 503/),
+    });
+    expect(stations.find((station) => station.id === "E21183")).toMatchObject({
+      recent: [],
+      readingsNote: expect.stringMatching(/could not be read/),
+    });
+    expect(stations.find((station) => station.id === "E23740")!.recent).toHaveLength(16);
+  });
+
+  it("keeps the last copy when the Agency is down or answers with something else, and says why", async () => {
+    const place = await lynn();
+    await app.api("POST", "/api/weather/update", { kinds: ["rivers"] });
+    const before = (await rivers(place.id))!;
+    failing.add("/ea-levels/");
+    let outcome = (await app.api("POST", "/api/weather/update", { kinds: ["rivers"] })).body.outcomes[0];
+    expect(outcome).toMatchObject({ ok: false, message: "Environment Agency answered 503." });
+    failing.clear();
+    garbled.add("/ea-levels/flood-monitoring/id/stations");
+    outcome = (await app.api("POST", "/api/weather/update", { kinds: ["rivers"] })).body.outcomes[0];
+    expect(outcome).toMatchObject({ ok: false, message: "The Environment Agency did not answer with JSON. Nothing was changed." });
+    expect(await rivers(place.id)).toEqual(before);
+  });
+
+  it("says there is no station near a place outside the Agency's stations", async () => {
+    const place = await homePlace();
+    await app.api("POST", "/api/weather/update", { kinds: ["rivers"] });
+    expect((await rivers(place.id))!.data).toEqual({ withinKm: 8, listed: 0, stations: [] });
+    expect(asked.filter((line) => line.startsWith("/ea-levels/"))).toHaveLength(1);
+  });
+
+  it("fetches a station's last three days on its own press, keeps them with the place, and clears them with it", async () => {
+    const place = await lynn();
+    const early = await app.api("POST", "/api/weather/river-readings", { placeId: place.id, stationId: "E21183" });
+    expect(early.status).toBe(404);
+    await app.api("POST", "/api/weather/update", { kinds: ["rivers"] });
+    asked.length = 0;
+    const before = Date.now();
+    const { status, body } = await app.api("POST", "/api/weather/river-readings", { placeId: place.id, stationId: "E21183" });
+    expect(status).toBe(200);
+    expect(body.readings).toMatchObject({ stationId: "E21183", measureId: "E21183-level-stage-i-15_min-mAOD", unit: "mAOD" });
+    expect(body.readings.readings).toHaveLength(96);
+    expect(body.readings.since).toBeGreaterThanOrEqual(before - 3 * 86_400_000 - 1000);
+    expect(asked).toHaveLength(1);
+    expect(asked[0]).toMatch(
+      /^\/ea-levels\/flood-monitoring\/id\/measures\/E21183-level-stage-i-15_min-mAOD\/readings\?since=\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z&_limit=10000$/,
+    );
+    await app.api("POST", "/api/weather/river-readings", { placeId: place.id, stationId: "E47901" });
+    let kept = (await app.api("GET", "/api/weather")).body.kept;
+    const history = kept.find((copy: { kind: string }) => copy.kind === "river-readings");
+    expect(history.data.stations.map((entry: { stationId: string }) => entry.stationId)).toEqual(["E47901", "E21183"]);
+    expect(history.sent).toBe("environment.data.gov.uk: the level measure of station E47901; no position");
+
+    // The Agency down: refused with its reason, and what was held stays.
+    failing.add("/ea-levels/");
+    const down = await app.api("POST", "/api/weather/river-readings", { placeId: place.id, stationId: "E21183" });
+    expect(down.status).toBe(502);
+    expect(down.body.error.message).toBe("Environment Agency answered 503.");
+    kept = (await app.api("GET", "/api/weather")).body.kept;
+    expect(kept.find((copy: { kind: string }) => copy.kind === "river-readings").data).toEqual(history.data);
+
+    // Counted and cleared with the other copies under Manage and clean up.
+    expect(app.ctx.services.weather.count().copies).toBe(2);
+    expect((await app.api("DELETE", `/api/weather/places/${place.id}`)).status).toBe(200);
+    expect((await app.api("GET", "/api/weather")).body.kept).toEqual([]);
+  });
+
+  it("refuses a station's readings through Update now, and a station reference that is not one", async () => {
+    const place = await lynn();
+    expect((await app.api("POST", "/api/weather/update", { kinds: ["river-readings"] })).status).toBe(400);
+    expect((await app.api("POST", "/api/weather/river-readings", { placeId: place.id, stationId: "../x" })).status).toBe(400);
+    expect(asked).toEqual([]);
   });
 });
 
