@@ -789,8 +789,9 @@ describe("the model server", () => {
       parameters: "3.2B",
       quantization: "Q4_K_M",
       family: "llama",
-      // Ollama says what each model can do; this one can write.
+      // Ollama says what each model can do; this one can write, and call tools.
       writes: true,
+      tools: true,
     });
     expect(ollama.models.find((model) => model.id === "embed-only:latest")?.writes).toBe(false);
 

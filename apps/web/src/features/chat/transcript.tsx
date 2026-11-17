@@ -5,7 +5,9 @@
  * text on a narrow screen), the person's words are set a little heavier than the
  * model's, and a hairline separates one exchange from the next. A model's words are in
  * the interface face; passages quoted from the library are in the reading face. The
- * two are never mixed, so it is always plain which words are the library's.
+ * two are never mixed, so it is always plain which words are the library's. What a
+ * model looked up in Outpost with a tool is listed apart from the passages, under
+ * "Looked at" (looked-at.tsx), its answers in the reading face too.
  */
 import type { AnswerSource, ChatConversationDetail, ChatMessage } from "@outpost/shared";
 import { Check, ChevronDown, Copy, FilePlus2, Pencil, RotateCw, ShieldAlert } from "lucide-react";
@@ -18,6 +20,7 @@ import { routeOf, StrayMarkers } from "@/features/search/answer";
 import { whereOf } from "@/features/search/answer-text";
 import { cn, plural } from "@/lib/utils";
 import { type LiveReply, SETTINGS_MODEL, useElapsedSeconds } from "./chat-data";
+import { isLookup, LookedAt } from "./looked-at";
 import { ReplyBody, useCopied } from "./reply-body";
 
 /** The two columns of a turn: who is speaking, and what they said. One column on a narrow screen. */
@@ -234,6 +237,7 @@ function Waiting({ live }: { live: LiveReply | null }) {
   const finding = live?.phase === "finding";
   // Only Ollama can be asked whether the model is in memory. Elsewhere nothing says which of the two a slow start is.
   const loading = live?.phase === "loading";
+  const looking = live?.phase === "looking";
   return (
     <div className="text-ink" data-testid="reply-waiting">
       <p>
@@ -241,9 +245,11 @@ function Waiting({ live }: { live: LiveReply | null }) {
           {/* The margin already names the model. */}
           {finding
             ? "Finding passages in your library"
-            : loading
-              ? "The model server is loading the model into memory"
-              : "Waiting for the model to start writing"}
+            : looking
+              ? `Looking at ${live?.looking ?? "something in Outpost"}…`
+              : loading
+                ? "The model server is loading the model into memory"
+                : "Waiting for the model to start writing"}
           {seconds >= 3 ? <span className="tabular text-ink-muted">, {plural(seconds, "second")} so far</span> : null}
         </span>
       </p>
@@ -252,7 +258,7 @@ function Waiting({ live }: { live: LiveReply | null }) {
           It said the model was not loaded. That happens the first time a model is used and after it has sat idle. Outpost waits up to 3
           minutes for the first word.
         </p>
-      ) : !finding && seconds >= 8 ? (
+      ) : !finding && !looking && seconds >= 8 ? (
         <p className="mt-1.5 max-w-[60ch] text-small text-ink-muted">
           On a small computer a model can take a minute or more before its first word, more when it has to be loaded into memory first.
           Outpost waits up to 3 minutes.
@@ -317,12 +323,14 @@ function ReplyTurn({
   const writing = message.state === "writing";
   const blocks = live ? live.blocks : message.blocks;
   const sources = live && live.sources.length > 0 ? live.sources : message.sources;
+  // Passages of the library are listed as passages; what the model looked up is listed under "Looked at".
+  const passages = sources.filter((source) => !isLookup(source));
   const model = message.model ?? live?.model ?? "";
   const settled = message.state === "complete" || message.state === "cut-short";
-  const critical = sources.some((source) => source.safetyCritical);
+  const critical = passages.some((source) => source.safetyCritical);
   const declined = settled && message.declined;
   const uncited =
-    settled && message.grounded && !declined && sources.length > 0 && message.used.length === 0 && message.unsupported.length === 0;
+    settled && message.grounded && !declined && passages.length > 0 && message.used.length === 0 && message.unsupported.length === 0;
 
   return (
     <article
@@ -382,6 +390,7 @@ function ReplyTurn({
           </div>
         ) : null}
         {blocks.length > 0 ? <ReplyBody blocks={blocks} sources={sources} writing={writing} /> : null}
+        <LookedAt sources={sources} />
 
         {message.state === "nothing-found" ? (
           <div className="max-w-[60ch]">
@@ -452,7 +461,7 @@ function ReplyTurn({
           <StrayMarkers
             unsupported={message.unsupported}
             repointed={message.repointed}
-            count={sources.length}
+            count={sources.filter((source) => source.marker > 0).length}
             className="mt-3 max-w-[46rem]"
           />
         ) : null}
@@ -468,9 +477,9 @@ function ReplyTurn({
           </p>
         ) : null}
 
-        {writing ? null : <Sources message={message} sources={sources} settled={settled} last={last} />}
-        {writing && sources.length > 0 && blocks.length > 0 ? (
-          <p className="mt-3 text-small text-ink-muted">Being written from {plural(sources.length, "passage")} of your library.</p>
+        {writing ? null : <Sources message={message} sources={passages} settled={settled} last={last} />}
+        {writing && passages.length > 0 && blocks.length > 0 ? (
+          <p className="mt-3 text-small text-ink-muted">Being written from {plural(passages.length, "passage")} of your library.</p>
         ) : null}
         {writing ? null : <ReplyActions message={message} last={last} busy={busy} actions={actions} />}
       </div>

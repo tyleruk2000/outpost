@@ -95,8 +95,11 @@ export function storeDetail(client: QueryClient, detail: ChatConversationDetail)
 export interface LiveReply {
   messageId: string;
   phase: ChatPhase;
+  /** While `looking`: what is being looked at, as "Looked at" names it ("places on the map"). */
+  looking: string | null;
   model: string;
   grounded: boolean;
+  /** The passages, then each lookup as soon as it has been made. */
   sources: AnswerSource[];
   searchedFor: string | null;
   blocks: MarkdownBlock[];
@@ -111,6 +114,7 @@ export function applyStreamEvent(live: LiveReply | null, event: ChatStreamEvent,
       return {
         messageId: event.messageId,
         phase: event.phase,
+        looking: event.phase === "looking" ? (event.looking ?? null) : null,
         model: event.model,
         grounded: event.grounded,
         sources: event.sources,
@@ -121,10 +125,16 @@ export function applyStreamEvent(live: LiveReply | null, event: ChatStreamEvent,
       };
     case "phase":
       return live
-        ? { ...live, phase: event.phase, sources: event.sources ?? live.sources, searchedFor: event.searchedFor ?? live.searchedFor }
+        ? {
+            ...live,
+            phase: event.phase,
+            looking: event.phase === "looking" ? (event.looking ?? live.looking) : null,
+            sources: event.sources ?? live.sources,
+            searchedFor: event.searchedFor ?? live.searchedFor,
+          }
         : live;
     case "blocks":
-      return live ? { ...live, phase: "writing", blocks: [...live.blocks.slice(0, event.from), ...event.blocks] } : live;
+      return live ? { ...live, phase: "writing", looking: null, blocks: [...live.blocks.slice(0, event.from), ...event.blocks] } : live;
     default:
       return null;
   }

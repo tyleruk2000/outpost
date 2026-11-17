@@ -14,6 +14,14 @@
  *
  * While the model writes, its text is read as Markdown again and again and sent on as
  * the tree of plain values the web app draws. Only the blocks that changed are sent.
+ *
+ * When the model is offered tools (tools.ts) a reply can take more than one request.
+ * The model may end its turn asking for tools instead of writing; Outpost runs each
+ * here, on the server, feeds the answers back as numbered sources, and asks again,
+ * until the model answers in words or has had MAX_TOOL_ROUNDS rounds, when it is asked
+ * once more with no tools to answer from what it has. All of it is inside the one run:
+ * one at a time, Stop ends it at once (the tool being run is told too), and the time
+ * limits apply to each request.
  */
 import type { AnswerFailure, AnswerSource, ChatMessage, ChatPhase, ChatStreamEvent, MarkdownBlock } from "@outpost/shared";
 import type { AppContext } from "../../core/context.ts";
@@ -23,9 +31,21 @@ import { ANSWER_PASSAGES, namesNoSubject, subjectOf } from "../answers/index.ts"
 import { type ChatModelProvider, ModelServerError, withoutThinking } from "../answers/provider.ts";
 import { isSafetyCritical } from "../retrieval/index.ts";
 import { buildAnswerPrompt } from "../retrieval/prompt.ts";
-import type { AssembledContext, RetrievedPassage } from "../retrieval/types.ts";
-import { PLAIN_SYSTEM, planHistory, type Turn } from "./context.ts";
+import type { AssembledContext, GenerationStep, RetrievedPassage, ToolCallRequest } from "../retrieval/types.ts";
+import type { ToolCallResult } from "../tools/index.ts";
+import { PLAIN_SYSTEM, PLAIN_TOOLS_SYSTEM, planHistory, TOOLS_PARAGRAPH, type Turn } from "./context.ts";
 import { type ChatStore, replyBlocks, toMessage } from "./store.ts";
+import {
+  ANSWER_NOW,
+  callKey,
+  lookupSource,
+  MAX_CALLS_PER_ROUND,
+  MAX_TOOL_ROUNDS,
+  resultForModel,
+  TOOL_RESULTS_CHARS,
+  toolsForReply,
+  within,
+} from "./tools.ts";
 
 /** Most passages handed to the model for one question, as for an answer. */
 export const CHAT_PASSAGES = ANSWER_PASSAGES;
@@ -33,6 +53,10 @@ export const CHAT_PASSAGES = ANSWER_PASSAGES;
 export const CHAT_MAX_TOKENS = 1024;
 /** The longest reply accepted, in characters, whatever the server does with the limit above. */
 export const CHAT_MAX_CHARS = 24_000;
+/** Said to a model that can look things up, in a conversation from the library, when the library's search found nothing for the message. */
+const NOTHING_FOUND_LOOK =
+  "This conversation is answered from the household's library and data. Nothing in the library matched the message as it was written, so look it up with the tools; answer only from what they give, and if they hold nothing, say so plainly.";
+
 /** Characters set aside for the standing instructions when the budget is shared out. */
 const INSTRUCTIONS_ALLOWANCE = 1000;
 
@@ -54,6 +78,8 @@ export interface Run {
   model: string;
   grounded: boolean;
   phase: ChatPhase;
+  /** While `looking`: the title of the tool being run. */
+  looking: string | null;
   sources: AnswerSource[];
   searchedFor: string | null;
   omitted: number;
@@ -99,6 +125,8 @@ function noticeFor(error: ModelServerError): string {
 
 export function createRunner(ctx: AppContext, store: ChatStore) {
   const { answers, retrieval, settings, search } = ctx.services;
+  /** Read when used: the tools service is registered beside this one, and a test can put its own in its place. */
+  const toolsService = () => ctx.services.tools;
   let current: Run | undefined;
 
   /** Every passage of one document or note, in reading order. */
@@ -206,6 +234,7 @@ export function createRunner(ctx: AppContext, store: ChatStore) {
       model: request.model,
       grounded,
       phase: grounded ? "finding" : "waiting",
+      looking: null,
       sources: [],
       searchedFor: null,
       omitted: planned.omitted,
@@ -283,6 +312,11 @@ export function createRunner(ctx: AppContext, store: ChatStore) {
     async function write(): Promise<ChatMessage> {
       let plan = planned;
       let context: AssembledContext | null = null;
+      // Whether this reply offers tools is decided once, here. It can ask the model server what the model can do.
+      const offered = await toolsForReply(ctx, { model: request.model, scoped: request.scope !== null, address: provider.address });
+      controller.signal.throwIfAborted();
+      /** The library held nothing for the message, and the model is asked all the same, because it can look things up itself. */
+      let lookInstead = false;
       if (grounded) {
         const found = await findPassages(request, controller.signal);
         context = found.context;
@@ -302,7 +336,10 @@ export function createRunner(ctx: AppContext, store: ChatStore) {
           safetyCritical: isSafetyCritical({ title, collection }),
         }));
         store.patchReply(row.id, { sources: run.sources, searchedFor });
-        if (run.sources.length === 0) {
+        if (run.sources.length === 0 && offered.length > 0) {
+          context = null;
+          lookInstead = true;
+        } else if (run.sources.length === 0) {
           // Nothing was found, so there is nothing to answer from. The model is not asked.
           return settle({
             state: "nothing-found",
@@ -312,66 +349,175 @@ export function createRunner(ctx: AppContext, store: ChatStore) {
           });
         }
       }
+      const specs = offered.length > 0 ? toolsService().specs(offered) : [];
+      const specsChars = specs.length > 0 ? JSON.stringify(specs).length : 0;
+      /** What the tools add to the turn: their descriptions, the paragraph about them, and room for their answers. */
+      const toolsChars = specs.length > 0 ? specsChars + TOOLS_PARAGRAPH.length + TOOL_RESULTS_CHARS : 0;
+
       run.phase = "waiting";
       tell({ type: "phase", phase: "waiting", sources: run.sources, searchedFor: run.searchedFor });
 
       let finishReason: string | null = null;
       let used: { promptTokens?: number | null; replyTokens?: number | null } = {};
-      const contextTokens = contextTokensFor(settings.get("answers.contextChars"), CHAT_MAX_TOKENS);
+      // With tools, the context asked for has room for them too, so that the turn still fits it.
+      const contextTokens = contextTokensFor(settings.get("answers.contextChars") + toolsChars, CHAT_MAX_TOKENS);
       /** Said with the reply when it was written from less than was planned, because the model server refused the first try. */
       let shortened: string | null = null;
-      for (let attempt = 1; ; attempt += 1) {
-        // What the person said since the model last replied, with the newest message at the end.
-        const asked = plan.unanswered ? `${plan.unanswered}\n\n${request.question}` : request.question;
-        const { system, user: prompt } = context ? buildAnswerPrompt({ ...context, query: asked }) : { system: PLAIN_SYSTEM, user: asked };
-        const history = plan.sent.map(({ role, text: content }) => ({ role, content }));
-        try {
-          const pieces = provider.generate({
-            system,
-            prompt,
-            history,
-            temperature: settings.get("answers.temperature"),
-            maxTokens: CHAT_MAX_TOKENS,
-            // The same size an answer asks for, so that Ollama does not load the model afresh between the two.
-            contextTokens,
-            signal: controller.signal,
-            onLoading: () => {
-              run.phase = "loading";
-              tell({ type: "phase", phase: "loading" });
-            },
-            onFinish: (info) => {
-              finishReason = info.finishReason;
-              used = info;
-            },
-          });
-          for await (const piece of withoutThinking(pieces)) {
-            if (!text) {
-              run.phase = "writing";
-              tell({ type: "phase", phase: "writing" });
-            }
-            text += piece;
-            schedule();
-            if (text.length > CHAT_MAX_CHARS) {
-              // Leaving the loop closes the connection to the model, which stops it.
-              finishReason = "length";
-              break;
-            }
-          }
-          break;
-        } catch (error) {
-          // Refused as more than the model can read at once, before it wrote a word: once, send less of what came before.
-          if (!(attempt === 1 && !text && error instanceof ModelServerError && error.failure === "context-too-long" && error.sizes))
-            throw error;
-          const sentChars = system.length + prompt.length + history.reduce((sum, turn) => sum + turn.content.length, 0);
-          const room = charsThatFit(error.sizes, sentChars, CHAT_MAX_TOKENS);
-          const fewer = planHistory(request.earlier, Math.max(0, room - system.length - prompt.length));
-          if (fewer.omitted <= plan.omitted) throw error;
-          const more = fewer.omitted - plan.omitted;
-          shortened = `The model server said this turn was more than the model can read at once, so it was sent again without ${more === 1 ? "the earliest message" : `the ${more} earliest messages`} it had been given. This reply was written without the first ${fewer.omitted === 1 ? "message" : `${fewer.omitted} messages`} of the conversation.`;
-          plan = fewer;
-          run.omitted = plan.omitted;
-          store.patchReply(row.id, { omitted: plan.omitted });
+
+      // The turn after the newest message: the model's calls and what they answered.
+      const steps: GenerationStep[] = [];
+      let rounds = 0;
+      let resultsChars = 0;
+      let nextMarker = Math.max(0, ...run.sources.map((source) => source.marker)) + 1;
+      /** Calls already answered in this reply, so that one asked again is not run again. */
+      const answered = new Map<string, { marker: number; ok: boolean; text: string }>();
+      const moveTo = (phase: ChatPhase, looking: string | null, withSources = false) => {
+        run.phase = phase;
+        run.looking = looking;
+        tell({ type: "phase", phase, looking, ...(withSources ? { sources: run.sources } : {}) });
+      };
+
+      /** Runs one call the model asked for, keeps it with the reply, and gives what the model is to be told. */
+      const runCall = async (call: ToolCallRequest, position: number): Promise<string> => {
+        const definition = offered.find((tool) => tool.name === call.name) ?? null;
+        const key = callKey(call.name, call.arguments);
+        const before = answered.get(key);
+        if (before) {
+          // A model that asks the same thing again is going round in circles: it is told so, and nothing is run.
+          return before.ok
+            ? `You already asked that, and the answer is Source [${before.marker}] above. Do not ask for it again: answer from it, or ask something else.`
+            : `You already asked that, and it was refused: ${before.text}`;
         }
+        let result: ToolCallResult;
+        if (position >= MAX_CALLS_PER_ROUND) {
+          result = {
+            ok: false,
+            name: call.name,
+            tool: definition,
+            title: definition?.title ?? (call.name.slice(0, 60) || "a tool with no name"),
+            area: definition?.area ?? null,
+            arguments: call.arguments,
+            text: `Not run: at most ${MAX_CALLS_PER_ROUND} lookups are run at a time. Ask for it again if you still need it.`,
+            label: null,
+            url: null,
+            held: false,
+          };
+        } else {
+          moveTo("looking", definition?.title ?? "a tool that does not exist");
+          result = await toolsService().call(call.name, call.arguments, { signal: controller.signal, offered });
+        }
+        controller.signal.throwIfAborted();
+        const marker = result.ok ? nextMarker++ : 0;
+        const header = result.ok ? resultForModel({ ...result, text: "" }, marker) : "Refused (not a source): ";
+        const answer = within(result.text, Math.max(0, TOOL_RESULTS_CHARS - resultsChars - header.length));
+        const content = `${header}${answer}`;
+        resultsChars += content.length;
+        answered.set(key, { marker, ok: result.ok, text: answer });
+        run.sources = [...run.sources, lookupSource(result, marker, answer)];
+        store.patchReply(row.id, { sources: run.sources });
+        moveTo("looking", result.title, true);
+        return content;
+      };
+
+      for (;;) {
+        const offering = specs.length > 0 && rounds < MAX_TOOL_ROUNDS && resultsChars < TOOL_RESULTS_CHARS;
+        if (specs.length > 0 && !offering && rounds > 0 && steps.at(-1)?.role !== "user") steps.push({ role: "user", content: ANSWER_NOW });
+        let calls: ToolCallRequest[] | null = null;
+        const roundStart = text.length;
+        finishReason = null;
+        for (let attempt = 1; ; attempt += 1) {
+          // What the person said since the model last replied, with the newest message at the end.
+          const asked = plan.unanswered ? `${plan.unanswered}\n\n${request.question}` : request.question;
+          const built = context
+            ? buildAnswerPrompt({ ...context, query: asked })
+            : {
+                system: lookInstead ? `${PLAIN_TOOLS_SYSTEM} ${NOTHING_FOUND_LOOK}` : specs.length > 0 ? PLAIN_TOOLS_SYSTEM : PLAIN_SYSTEM,
+                user: asked,
+              };
+          const system =
+            context && specs.length > 0
+              ? `${built.system}\n\n${TOOLS_PARAGRAPH} The tools' answers are sources as well as the passages, numbered after them, and are cited the same way.`
+              : built.system;
+          const prompt = built.user;
+          const history = plan.sent.map(({ role, text: content }) => ({ role, content }));
+          try {
+            const pieces = provider.generate({
+              system,
+              prompt,
+              history,
+              tools: offering ? specs : undefined,
+              after: steps.length > 0 ? steps : undefined,
+              onToolCalls: (asked) => {
+                calls = asked;
+              },
+              temperature: settings.get("answers.temperature"),
+              maxTokens: CHAT_MAX_TOKENS,
+              // Without tools, the same size an answer asks for, so that Ollama does not load the model afresh between the two.
+              contextTokens,
+              signal: controller.signal,
+              onLoading: () => {
+                run.phase = "loading";
+                tell({ type: "phase", phase: "loading" });
+              },
+              onFinish: (info) => {
+                finishReason = info.finishReason;
+                used = info;
+              },
+            });
+            for await (const piece of withoutThinking(pieces)) {
+              if (run.phase !== "writing") {
+                run.phase = "writing";
+                run.looking = null;
+                tell({ type: "phase", phase: "writing" });
+              }
+              text += piece;
+              schedule();
+              if (text.length > CHAT_MAX_CHARS) {
+                // Leaving the loop closes the connection to the model, which stops it.
+                finishReason = "length";
+                break;
+              }
+            }
+            break;
+          } catch (error) {
+            // Refused as more than the model can read at once, before it wrote a word or looked anything up: once, send less of what came before.
+            if (
+              !(
+                attempt === 1 &&
+                !text &&
+                steps.length === 0 &&
+                error instanceof ModelServerError &&
+                error.failure === "context-too-long" &&
+                error.sizes
+              )
+            )
+              throw error;
+            const sentChars = system.length + prompt.length + specsChars + history.reduce((sum, turn) => sum + turn.content.length, 0);
+            const room = charsThatFit(error.sizes, sentChars, CHAT_MAX_TOKENS);
+            const fewer = planHistory(request.earlier, Math.max(0, room - system.length - prompt.length - specsChars));
+            if (fewer.omitted <= plan.omitted) throw error;
+            const more = fewer.omitted - plan.omitted;
+            shortened = `The model server said this turn was more than the model can read at once, so it was sent again without ${more === 1 ? "the earliest message" : `the ${more} earliest messages`} it had been given. This reply was written without the first ${fewer.omitted === 1 ? "message" : `${fewer.omitted} messages`} of the conversation.`;
+            plan = fewer;
+            run.omitted = plan.omitted;
+            store.patchReply(row.id, { omitted: plan.omitted });
+          }
+        }
+        // Set by the provider, inside the request above.
+        const asked = calls as ToolCallRequest[] | null;
+        if (!asked || !offering || finishReason === "length") break;
+        // The model asked for tools. Anything it wrote before asking is not the reply: it goes back to it with its calls.
+        const said = text.slice(roundStart);
+        text = text.slice(0, roundStart);
+        schedule();
+        rounds += 1;
+        steps.push({ role: "assistant", content: said, toolCalls: asked });
+        for (const [position, call] of asked.entries()) {
+          controller.signal.throwIfAborted();
+          steps.push({ role: "tool", callId: call.id, name: call.name, content: await runCall(call, position) });
+        }
+        controller.signal.throwIfAborted();
+        moveTo("waiting", null, true);
       }
       if (!text.trim()) {
         throw new ModelServerError(

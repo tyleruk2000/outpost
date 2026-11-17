@@ -6,7 +6,24 @@
  * server the person has set up: it sends one request to `<address>/chat/completions`
  * and reads the answer as it is written. The request uses the fields all three servers
  * document (`model`, `messages`, `stream`, `temperature`, `max_tokens`) and nothing
- * else. See docs/ai.md for what was checked against which server's documentation.
+ * else, but `tools` when Chat offers the model tools (modules/tools) and the server
+ * has said the model can call them. See docs/ai.md for what was checked against which
+ * server's documentation.
+ *
+ * Tool calling, both ways, as docs.ollama.com/capabilities/tool-calling and its
+ * OpenAI-compatibility page described it on 2026-11-17 (which list `tools` as taken and
+ * `tool_choice` as not, so `tool_choice` is never sent):
+ *
+ *  - OpenAI-compatible: the model's calls arrive in `delta.tool_calls`, in fragments
+ *    keyed by `index`, with `id`, `function.name`, and `function.arguments` as a string
+ *    that is put together and read as JSON; the turn ends with `finish_reason:
+ *    "tool_calls"`. The answers go back as the assistant's message with its
+ *    `tool_calls` (arguments as a string), then one `{role: "tool", tool_call_id,
+ *    content}` for each.
+ *  - Ollama's own: `message.tool_calls: [{function: {name, arguments}}]`, arguments as
+ *    an object, gathered across the streamed lines. The answers go back as the
+ *    assistant's message with its `tool_calls`, then one `{role: "tool", tool_name,
+ *    content}` for each.
  *
  * Ollama is asked in its own way when the server turns out to be one (`/api/chat`
  * beside the `/v1` address), for one reason: its OpenAI-compatible endpoint has no way
@@ -21,7 +38,7 @@
  */
 import type { AnswerFailure, AnswerTestFailure, AnswerTestResult } from "@outpost/shared";
 import { AppError } from "../../core/errors.ts";
-import type { GenerationRequest, ModelProvider } from "../retrieval/types.ts";
+import type { GenerationRequest, GenerationStep, ModelProvider, ToolCallRequest } from "../retrieval/types.ts";
 import type { ModelServerAddress } from "./address.ts";
 
 export interface ModelTimeouts {
@@ -63,6 +80,75 @@ const KNOWN_FOR_MS = 5 * 60_000;
 export function forgetModelServers(): void {
   knownServers.clear();
 }
+
+/** Arguments as a model sent them in a string: read as JSON, or kept as the string when they are not JSON (the tools service refuses them in words). */
+export function readArguments(raw: unknown): unknown {
+  if (typeof raw !== "string") return raw ?? {};
+  if (!raw.trim()) return {};
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return raw;
+  }
+}
+
+/** The steps after the newest message, as the OpenAI-compatible protocol takes them. */
+function openAiSteps(steps: readonly GenerationStep[]): unknown[] {
+  let made = 0;
+  const ids: string[] = [];
+  return steps.map((step) => {
+    if (step.role === "assistant") {
+      return {
+        role: "assistant",
+        content: step.content,
+        tool_calls: step.toolCalls.map((call) => {
+          // Every call needs an id for its answer to name. A server that gave none is given one.
+          made += 1;
+          const id = call.id ?? `call_outpost_${made}`;
+          ids.push(id);
+          return {
+            id,
+            type: "function",
+            function: {
+              name: call.name,
+              arguments: typeof call.arguments === "string" ? call.arguments : JSON.stringify(call.arguments ?? {}),
+            },
+          };
+        }),
+      };
+    }
+    if (step.role === "tool") {
+      // Answers follow their calls in order, so each takes the next call's id.
+      const next = ids.shift();
+      return { role: "tool", tool_call_id: step.callId ?? next ?? "", content: step.content };
+    }
+    return { role: "user", content: step.content };
+  });
+}
+
+/** The steps after the newest message, as Ollama's own `/api/chat` takes them. */
+function ollamaSteps(steps: readonly GenerationStep[]): unknown[] {
+  return steps.map((step) => {
+    if (step.role === "assistant") {
+      return {
+        role: "assistant",
+        content: step.content,
+        tool_calls: step.toolCalls.map((call) => ({
+          function: {
+            name: call.name,
+            // Ollama takes an object. Arguments that were not JSON are sent as none; the answer says they did not fit.
+            arguments: call.arguments && typeof call.arguments === "object" && !Array.isArray(call.arguments) ? call.arguments : {},
+          },
+        })),
+      };
+    }
+    if (step.role === "tool") return { role: "tool", tool_name: step.name, content: step.content };
+    return { role: "user", content: step.content };
+  });
+}
+
+/** The most tool calls read from one turn of a model. More are dropped: a small model that asks for dozens is looping. */
+const MOST_CALLS = 8;
 
 export interface ChatModelProvider extends ModelProvider {
   readonly model: string;
@@ -307,6 +393,14 @@ export function openAiChatProvider(
       ...(request.history ?? []).map(({ role, content }) => ({ role, content })),
       { role: "user", content: request.prompt },
     ];
+    const steps = request.after ?? [];
+    const tools = request.tools && request.tools.length > 0 ? request.tools : undefined;
+    /** Hands on the calls the model ended its turn with, once. */
+    const askedFor = (calls: ToolCallRequest[]) => {
+      const named = calls.filter((call) => call.name).slice(0, MOST_CALLS);
+      if (named.length > 0) request.onToolCalls?.(named);
+      return named.length > 0;
+    };
     const temperature = request.temperature ?? 0.2;
     const maxTokens = request.maxTokens ?? 1024;
 
@@ -373,7 +467,8 @@ export function openAiChatProvider(
       if (request.onLoading && (await needsLoading(request.contextTokens, controller.signal))) request.onLoading();
       const response = await post(`${ollamaRoot}/api/chat`, "application/x-ndjson", {
         model,
-        messages,
+        messages: [...messages, ...ollamaSteps(steps)],
+        ...(tools ? { tools } : {}),
         stream: true,
         // A prompt that does not fit is refused, not cut down behind Outpost's back; and a reply that runs
         // out of room stops there, where Ollama would otherwise make room by dropping the start of the prompt.
@@ -386,11 +481,12 @@ export function openAiChatProvider(
         },
       });
       let ended = false;
+      const calls: ToolCallRequest[] = [];
       for await (const line of linesOf(response)) {
         if (!line.trim()) continue;
         let event: {
           error?: unknown;
-          message?: { content?: unknown };
+          message?: { content?: unknown; tool_calls?: unknown };
           done?: unknown;
           done_reason?: unknown;
           prompt_eval_count?: unknown;
@@ -406,8 +502,20 @@ export function openAiChatProvider(
         waitFor(timeouts.idleMs, "idle");
         const content = event.message?.content;
         if (typeof content === "string" && content) yield content;
+        // Calls can come on any line, and on more than one; they are gathered and handed on when the turn ends.
+        if (Array.isArray(event.message?.tool_calls)) {
+          for (const entry of event.message.tool_calls as Array<{ id?: unknown; function?: { name?: unknown; arguments?: unknown } }>) {
+            if (!entry || typeof entry !== "object" || calls.length >= MOST_CALLS) continue;
+            calls.push({
+              id: typeof entry.id === "string" && entry.id ? entry.id : null,
+              name: typeof entry.function?.name === "string" ? entry.function.name.slice(0, 120) : "",
+              arguments: readArguments(entry.function?.arguments),
+            });
+          }
+        }
         if (event.done === true) {
           ended = true;
+          askedFor(calls);
           request.onFinish?.({
             finishReason: typeof event.done_reason === "string" ? event.done_reason : null,
             promptTokens: typeof event.prompt_eval_count === "number" ? event.prompt_eval_count : null,
@@ -423,7 +531,8 @@ export function openAiChatProvider(
     async function* viaOpenAi(): AsyncGenerator<string> {
       const response = await post(chatUrl, "text/event-stream", {
         model,
-        messages,
+        messages: [...messages, ...openAiSteps(steps)],
+        ...(tools ? { tools } : {}),
         stream: true,
         temperature,
         max_tokens: maxTokens,
@@ -434,9 +543,22 @@ export function openAiChatProvider(
         const text = await readLimited(response);
         let entire: string | undefined;
         try {
-          const body = JSON.parse(text) as { choices?: Array<{ message?: { content?: unknown }; finish_reason?: unknown }> };
+          const body = JSON.parse(text) as {
+            choices?: Array<{ message?: { content?: unknown; tool_calls?: unknown }; finish_reason?: unknown }>;
+          };
           const content = body.choices?.[0]?.message?.content;
-          if (typeof content === "string") {
+          const called = body.choices?.[0]?.message?.tool_calls;
+          if (Array.isArray(called) && called.length > 0) {
+            entire = typeof content === "string" ? content : "";
+            askedFor(
+              (called as Array<{ id?: unknown; function?: { name?: unknown; arguments?: unknown } }>).map((entry) => ({
+                id: typeof entry?.id === "string" && entry.id ? entry.id : null,
+                name: typeof entry?.function?.name === "string" ? entry.function.name.slice(0, 120) : "",
+                arguments: readArguments(entry?.function?.arguments),
+              })),
+            );
+            request.onFinish?.({ finishReason: "tool_calls" });
+          } else if (typeof content === "string") {
             entire = content;
             request.onFinish?.({
               finishReason: typeof body.choices?.[0]?.finish_reason === "string" ? body.choices[0].finish_reason : null,
@@ -452,6 +574,8 @@ export function openAiChatProvider(
 
       let finishReason: string | null = null;
       let sawDone = false;
+      /** Calls arrive in fragments, keyed by `index`: the name once, the arguments a piece at a time. */
+      const fragments = new Map<number, { id: string | null; name: string; arguments: string }>();
       for await (const line of linesOf(response)) {
         // Blank lines end an event; lines starting with a colon are keep-alive comments.
         if (!line.startsWith("data:")) continue;
@@ -462,7 +586,10 @@ export function openAiChatProvider(
         }
         let event: {
           error?: unknown;
-          choices?: Array<{ delta?: { content?: unknown; reasoning?: unknown; reasoning_content?: unknown }; finish_reason?: unknown }>;
+          choices?: Array<{
+            delta?: { content?: unknown; reasoning?: unknown; reasoning_content?: unknown; tool_calls?: unknown };
+            finish_reason?: unknown;
+          }>;
         };
         try {
           event = JSON.parse(data);
@@ -477,12 +604,38 @@ export function openAiChatProvider(
         if (typeof choice?.finish_reason === "string") finishReason = choice.finish_reason;
         const content = choice?.delta?.content;
         if (typeof content === "string" && content) yield content;
+        if (Array.isArray(choice?.delta?.tool_calls)) {
+          for (const [position, entry] of (
+            choice.delta.tool_calls as Array<{ index?: unknown; id?: unknown; function?: { name?: unknown; arguments?: unknown } }>
+          ).entries()) {
+            if (!entry || typeof entry !== "object") continue;
+            const index = typeof entry.index === "number" ? entry.index : position;
+            let call = fragments.get(index);
+            if (!call) {
+              if (fragments.size >= MOST_CALLS) continue;
+              call = { id: null, name: "", arguments: "" };
+              fragments.set(index, call);
+            }
+            if (typeof entry.id === "string" && entry.id) call.id = entry.id;
+            if (typeof entry.function?.name === "string") call.name = (call.name + entry.function.name).slice(0, 120);
+            if (typeof entry.function?.arguments === "string" && call.arguments.length < LONGEST_LINE)
+              call.arguments += entry.function.arguments;
+            else if (entry.function?.arguments && typeof entry.function.arguments === "object")
+              call.arguments = JSON.stringify(entry.function.arguments);
+          }
+        }
       }
       // Both a finish reason and the [DONE] line mean the model ended the answer itself.
       // A stream that simply closes means the server gave up; Ollama loses the reason.
       if (!sawDone && finishReason === null) {
         throw new ModelServerError("interrupted", "The model server stopped part-way through the answer.");
       }
+      // Some servers end a turn of calls with "stop" rather than "tool_calls": the calls themselves say what it was.
+      askedFor(
+        [...fragments.entries()]
+          .sort(([a], [b]) => a - b)
+          .map(([, call]) => ({ id: call.id, name: call.name, arguments: readArguments(call.arguments) })),
+      );
       request.onFinish?.({ finishReason });
     }
 

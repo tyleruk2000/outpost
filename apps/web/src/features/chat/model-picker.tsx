@@ -103,7 +103,11 @@ export function ModelPicker({
                         <span className="ml-2 text-micro text-ink-muted">default</span>
                       ) : null}
                     </span>
-                    {facts ? <span className="tabular block text-micro text-ink-muted">{facts}</span> : null}
+                    {facts || (status?.tools?.enabled && model.tools) ? (
+                      <span className="tabular block text-micro text-ink-muted">
+                        {[facts, status?.tools?.enabled && model.tools ? "can look things up" : ""].filter(Boolean).join(", ")}
+                      </span>
+                    ) : null}
                   </span>
                   <Primitive.ItemIndicator className="absolute top-2 right-2.5">
                     <Check aria-hidden className="size-4 text-primary" />

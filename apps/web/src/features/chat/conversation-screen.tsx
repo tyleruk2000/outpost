@@ -24,6 +24,7 @@ import { cn, formatDate, plural } from "@/lib/utils";
 import { chatApi, chatKeys, SETTINGS_MODEL, storeDetail, useChatModels, useChatStatus, useConversation, useLiveReply } from "./chat-data";
 import { Composer, type ComposerHandle } from "./composer";
 import { createEndFollower } from "./follow-end";
+import { toolsNoteFor } from "./looked-at";
 import { isMissing, ModelPicker, modelFacts } from "./model-picker";
 import { Transcript, type TranscriptActions, TURN } from "./transcript";
 import { useKeyboardInset } from "./use-keyboard-inset";
@@ -467,6 +468,14 @@ function Loaded({ detail }: { detail: ChatConversationDetail }) {
               setDraft("");
             }}
             autoFocus
+            toolsNote={toolsNoteFor({
+              status,
+              model,
+              info: modelInfo,
+              listed: Boolean(models && !models.message),
+              grounded: conversation.useLibrary,
+              scoped: conversation.scope !== null,
+            })}
             notice={
               refusal ? (
                 <Notice tone="warning" title="Not sent">
