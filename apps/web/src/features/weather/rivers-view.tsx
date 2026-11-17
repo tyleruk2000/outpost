@@ -365,7 +365,11 @@ function StationView({
       <h2 className="font-title text-heading text-ink">{station.label}</h2>
       <p className="text-body text-ink-muted">
         <Joined
-          parts={[[station.river, station.town].filter(Boolean).join(", "), `${station.distanceKm} km from ${place.name}`, station.tidal ? "tidal" : null]}
+          parts={[
+            [station.river, station.town].filter(Boolean).join(", "),
+            `${station.distanceKm} km from ${place.name}`,
+            station.tidal ? "tidal" : null,
+          ]}
         />
       </p>
       <p className="mt-2 max-w-[70ch] text-small text-ink">

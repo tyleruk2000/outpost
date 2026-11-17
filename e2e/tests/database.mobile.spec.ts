@@ -10,7 +10,9 @@ test.describe("the database on a phone", () => {
     await section.scrollIntoViewIfNeeded();
     await expect(section.getByText(/outpost\.db$/)).toBeVisible();
     // Worked out on a connection of its own, the first time anyone looks.
-    await expect(section.getByText(/by reading every part of the .* file\. The parts add up to the file exactly\./)).toBeVisible({ timeout: 20_000 });
+    await expect(section.getByText(/by reading every part of the .* file\. The parts add up to the file exactly\./)).toBeVisible({
+      timeout: 20_000,
+    });
     await expect(section.getByRole("table", { name: "Where the bytes of the database go" })).toBeVisible();
     await expect(section.getByText(/Up to date: all \d+ changes to its layout/)).toBeVisible();
     // The database's own terms are kept for those who want them, behind a disclosure.

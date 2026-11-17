@@ -89,7 +89,13 @@ export const knowledgeNav: NavItem[] = [
     key: "l",
     keywords: "documents books ebooks pdf files reading audiobooks learning school course lessons progress khan upload",
   },
-  { to: "/maps", label: "Maps", icon: MapIcon, key: "m", keywords: "map offline places routes gps location directions print sun times postcode grid reference" },
+  {
+    to: "/maps",
+    label: "Maps",
+    icon: MapIcon,
+    key: "m",
+    keywords: "map offline places routes gps location directions print sun times postcode grid reference",
+  },
   // Importing brings in pages (Markdown, Notion), so it is Notes'.
   {
     to: "/notes",

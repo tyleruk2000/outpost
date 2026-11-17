@@ -110,8 +110,8 @@ export function FoodSection({
           <p className="mt-1 text-small text-danger">The nearest could not be worked out. Try again in a moment.</p>
         ) : nearest.data.hits.length === 0 ? (
           <p className="mt-1 text-small text-ink-muted">
-            {alone ? `No ${aloneLabel} is held` : "Nothing is held"} within {formatDistanceWithMiles(nearest.data.withinMeters)} of {originName}.
-            Fetch the area under Manage reference data.
+            {alone ? `No ${aloneLabel} is held` : "Nothing is held"} within {formatDistanceWithMiles(nearest.data.withinMeters)} of{" "}
+            {originName}. Fetch the area under Manage reference data.
           </p>
         ) : (
           <ul className="mt-1 divide-y divide-border" aria-label={`Nearest to ${originName}`}>

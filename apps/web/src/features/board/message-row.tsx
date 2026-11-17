@@ -69,7 +69,16 @@ function CheckInHead({ message }: { message: BoardMessage }) {
   return (
     <p className={cn("flex flex-wrap items-baseline gap-x-1.5 font-medium", status.tone)}>
       <status.icon aria-hidden className="size-4 shrink-0 translate-y-0.5" />
-      <Joined parts={[<span key="status">{status.words}</span>, message.place ? <span className="font-normal text-ink">{message.place}</span> : null]} />
+      <Joined
+        parts={[
+          <span key="status">{status.words}</span>,
+          message.place ? (
+            <span key="place" className="font-normal text-ink">
+              {message.place}
+            </span>
+          ) : null,
+        ]}
+      />
     </p>
   );
 }
