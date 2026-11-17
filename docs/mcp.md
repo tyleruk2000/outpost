@@ -130,7 +130,7 @@ of these is checked on every request, before its body is read:
 | The connection comes from loopback (`127.0.0.0/8`, `::1`), a private IPv4 address (`10/8`, `172.16/12`, `192.168/16`), link-local (`169.254/16`, `fe80::/10`) or IPv6 unique-local (`fc00::/7`). Anything else, public addresses and the documentation and carrier-grade NAT ranges included, is refused | 403 |
 | No forwarding header (`Forwarded`, `X-Forwarded-For`, `X-Real-IP`, `X-Forwarded-Host`): through a proxy, where a request came from cannot be told | 403 |
 | The `Host` header names an address Outpost answers to (the request guard, `core/guard.ts`, for every route), which defeats DNS rebinding | 403 |
-| An `Origin` header, when sent, names this server (a page on another site sends its own) | 403 |
+| An `Origin` header, when sent, is this server's own origin: scheme, host and port (a page on another site sends its own, and so does a page of another program on another port of this computer) | 403 |
 | `Sec-Fetch-Site`, when sent, is `same-origin` or `none` | 403 |
 | The allowance per address (below) | 429, with `Retry-After` |
 | `Content-Type: application/json`. A page on another site can make a browser send `text/plain` without asking first, never `application/json` | 415 |

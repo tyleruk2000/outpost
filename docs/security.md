@@ -1514,7 +1514,8 @@ Model Context Protocol. It changes who can read what, so:
   that program is connected to receives the answers**: a desktop assistant using a model
   in the cloud would send the household's supplies and plans there. The switch says so.
 - `/mcp` is outside `/api/`, so the `X-Outpost-Request` header does not protect it. It has
-  its own rules: the Host check every route has; an `Origin` that is not this server, or
+  its own rules: the Host check every route has; an `Origin` that is not this server's own
+  (scheme, host and port, unlike the comparison by host name for `/api/`), or
   `Sec-Fetch-Site` other than `same-origin` or `none`, is refused (a page on another site
   cannot call it); the body must be `application/json`, which a page on another site cannot
   send without a preflight Outpost never approves; a request from an address that is not

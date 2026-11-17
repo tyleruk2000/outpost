@@ -329,8 +329,9 @@ describe("who may call it", () => {
       expect(status).toBe(403);
       expect(body.id).toBeUndefined();
     }
-    // This server's own origin is accepted.
-    expect((await send(rpc("ping"), { headers: { origin: "http://localhost:8080", "sec-fetch-site": "same-origin" } })).status).toBe(200);
+    // This server's own origin is accepted; the same host on another port is another site.
+    expect((await send(rpc("ping"), { headers: { origin: "http://localhost", "sec-fetch-site": "same-origin" } })).status).toBe(200);
+    expect((await send(rpc("ping"), { headers: { origin: "http://localhost:8080" } })).status).toBe(403);
   });
 
   it("refuses a body that is not application/json", async () => {
