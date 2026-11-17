@@ -19,7 +19,7 @@ import { Check, CircleCheck, Copy } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/misc";
-import { copyText } from "@/features/library/document-meta";
+import { copyText } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
 
 /** Something to type, set apart, with a button that copies it. */

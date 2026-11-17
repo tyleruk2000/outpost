@@ -37,8 +37,8 @@ import { ConfirmDialog } from "@/components/ui/dialog";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Badge, Skeleton } from "@/components/ui/misc";
 import { ApiError, api, errorMessage } from "@/lib/api";
+import { copyText } from "@/lib/clipboard";
 import { cn, timeAgo } from "@/lib/utils";
-import { copyText } from "../library/document-meta";
 import { birthdayWords, exportHref, labelOr, mailHref, safeWebHref, useContact, useRemoveContact, useSaveContact } from "./contacts-data";
 
 const action =

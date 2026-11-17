@@ -35,8 +35,8 @@ import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "
 import { Field, Input } from "@/components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Badge, Checkbox, Select, Skeleton } from "@/components/ui/misc";
-import { useDebounced } from "@/features/maps/hooks";
 import { formatBearing, formatDistance } from "@/features/maps/lib/geo";
+import { useDebounced } from "@/lib/use-debounced";
 import { formatDate, formatNumber, plural } from "@/lib/utils";
 import {
   exportHref,

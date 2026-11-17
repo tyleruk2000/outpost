@@ -1,10 +1,10 @@
 import { type KeyboardEvent, type PointerEvent, useMemo, useState } from "react";
+import { useWidth } from "@/lib/use-width";
 import { cn } from "@/lib/utils";
 import { ChartTooltip, TooltipValue } from "./chart-tooltip";
 import { bucketReadings, clamp, linearScale, nearestIndex, type Reading } from "./scale";
 import { formatRate, formatSpeed, speedTicks } from "./speed";
 import { useTextScale } from "./text-scale";
-import { useWidth } from "./use-width";
 
 /** Readings further apart than this were not one continuous transfer; the line breaks there. */
 const GAP_MS = 5000;
@@ -50,7 +50,7 @@ export function SpeedChart({
   tableBucketSeconds: number;
   className?: string;
 }) {
-  const [frame, measured] = useWidth<HTMLDivElement>();
+  const [frame, measured] = useWidth();
   const scale = useTextScale();
   const height = Math.round(baseHeight * scale);
   /** The width of a character of the axis labels, near enough to keep room for them. */

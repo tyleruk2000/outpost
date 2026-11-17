@@ -1,13 +1,5 @@
 /** Small things the emergency plan screens all say or work out the same way. */
-import {
-  DEFAULT_EMERGENCY_NUMBER,
-  DEFAULT_REVIEW_DAYS,
-  EMERGENCY_NUMBERS,
-  type EmergencyPlanInput,
-  emptyPlanBody,
-  type PlanTemplate,
-  planFromTemplate,
-} from "@outpost/shared";
+import { DEFAULT_EMERGENCY_NUMBER, DEFAULT_REVIEW_DAYS, EMERGENCY_NUMBERS, type EmergencyPlanInput, emptyPlanBody } from "@outpost/shared";
 
 export const blankPlan = (name: string, emergencyNumber: string): EmergencyPlanInput => ({
   name,
@@ -18,9 +10,6 @@ export const blankPlan = (name: string, emergencyNumber: string): EmergencyPlanI
   reviewEveryDays: DEFAULT_REVIEW_DAYS,
   body: emptyPlanBody(),
 });
-
-export const planFrom = (template: PlanTemplate, makeId: () => string, emergencyNumber: string) =>
-  planFromTemplate(template, makeId, emergencyNumber);
 
 /** The region the device says it is in, from its language: "GB" from "en-GB". */
 export function deviceRegion(language = typeof navigator === "undefined" ? "" : navigator.language): string | null {

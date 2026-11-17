@@ -18,9 +18,9 @@ import type { AnswerSource, MarkdownBlock, MarkdownInline, MarkdownListItem } fr
 import { Check, Copy } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { copyText } from "@/features/library/document-meta";
 import { DataTable } from "@/features/library/document-table";
 import { Marker } from "@/features/search/answer";
+import { copyText } from "@/lib/clipboard";
 import "./chat.css";
 
 /** "[2]", and "[1, 3]" as some models write it. The same rule as the server's `checkCitations`. */

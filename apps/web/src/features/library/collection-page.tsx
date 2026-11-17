@@ -19,6 +19,7 @@ import { ErrorState, Notice, Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { ApiError, api, errorMessage } from "@/lib/api";
+import { copyText } from "@/lib/clipboard";
 import { useStorage } from "@/lib/queries";
 import { formatDate, formatDateTime, formatNumber } from "@/lib/utils";
 import { languageName, sizeText } from "../explore/catalog";
@@ -53,33 +54,6 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 }
 
 const text = (value: unknown): string | null => (typeof value === "string" && value.trim() ? value : null);
-
-async function copyText(value: string): Promise<boolean> {
-  try {
-    // Not available when Outpost is reached over plain http on a local network.
-    if (navigator.clipboard) {
-      await navigator.clipboard.writeText(value);
-      return true;
-    }
-  } catch {
-    // Fall through to the older way.
-  }
-  const area = document.createElement("textarea");
-  area.value = value;
-  area.setAttribute("readonly", "");
-  area.style.position = "fixed";
-  area.style.opacity = "0";
-  document.body.append(area);
-  area.select();
-  let copied = false;
-  try {
-    copied = document.execCommand("copy");
-  } catch {
-    copied = false;
-  }
-  area.remove();
-  return copied;
-}
 
 function Checksum({ value }: { value: string }) {
   return (

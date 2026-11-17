@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
 import { useServerEvent } from "@/lib/events";
-import { usePageShown } from "../chat/use-page-shown";
+import { usePageVisible } from "@/lib/page-visible";
 
 export const downloadsKey = ["downloads", "list"] as const;
 
@@ -27,7 +27,7 @@ function patchDownload(client: QueryClient, download: DownloadDto): void {
  */
 export function useDownloadUpdates(): (download: DownloadDto) => void {
   const client = useQueryClient();
-  const shown = usePageShown();
+  const shown = usePageVisible();
   const missed = useRef(false);
   useEffect(() => {
     if (!shown || !missed.current) return;

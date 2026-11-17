@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { ErrorState, Page, PageHeader } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/misc";
-import { copyText } from "@/features/downloads/copy";
+import { copyText } from "@/lib/clipboard";
 import { exportHref, useSupplies } from "./data";
 import { HouseholdView } from "./household-view";
 import { ImportDialog } from "./import-dialog";

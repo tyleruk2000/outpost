@@ -4,9 +4,10 @@
  * lists every series there. The arrow keys move the crosshair when the plot has focus.
  */
 import { type KeyboardEvent, type ReactNode, useState } from "react";
+import { useWidth } from "@/lib/use-width";
 import { clamp, linear } from "../lib/scale";
 import { COLOR } from "./colors";
-import { HiddenTable, Legend, useMeasure } from "./figure";
+import { HiddenTable, Legend } from "./figure";
 import { Tip, TipBody, useTip } from "./tip";
 
 export interface LineSeries {
@@ -48,7 +49,7 @@ export function LinePlot({
   height?: number;
   endLabelRoom?: number;
 }) {
-  const [ref, width] = useMeasure<HTMLDivElement>(640);
+  const [ref, width] = useWidth(640);
   const tip = useTip();
   const [at, setAt] = useState<number | null>(null);
   const narrow = width < 480;

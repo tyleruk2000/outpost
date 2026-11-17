@@ -11,9 +11,9 @@ import { toast } from "sonner";
 import { ErrorState, Notice, Page, PageHeader, Section } from "@/components/page";
 import { Badge, Skeleton, Switch } from "@/components/ui/misc";
 import { api } from "@/lib/api";
+import { copyText } from "@/lib/clipboard";
 import { useSettings, useUpdateSettings } from "@/lib/queries";
 import { plural } from "@/lib/utils";
-import { copyText } from "../library/document-meta";
 import { usePhoneStatus } from "./contacts-data";
 import { SubscribeSteps } from "./phone-steps";
 

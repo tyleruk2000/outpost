@@ -5,27 +5,13 @@
  * a crosshair that answers the pointer and the arrow keys, and the same numbers as a
  * table for a screen reader.
  */
-import { type KeyboardEvent, type PointerEvent, useEffect, useId, useRef, useState } from "react";
+import { type KeyboardEvent, type PointerEvent, useId, useState } from "react";
 import { roundTicks } from "@/features/propagation/charts";
 import { formatTimeOfDay } from "@/lib/clock";
+import { useWidth } from "@/lib/use-width";
 
 const AXIS_TEXT = "tabular fill-ink-muted text-[11px]";
 const DAY = 86_400_000;
-
-function useWidth(fallback = 640): [React.RefObject<HTMLDivElement | null>, number] {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const [width, setWidth] = useState(fallback);
-  useEffect(() => {
-    const element = ref.current;
-    if (!element || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry && entry.contentRect.width > 0) setWidth(Math.round(entry.contentRect.width));
-    });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-  return [ref, width];
-}
 
 export interface TimePoint {
   t: number;
@@ -57,7 +43,7 @@ export function TimeLine({
   /** Drawn as a line marked "now" when it falls inside the chart. */
   now?: number;
 }) {
-  const [ref, width] = useWidth();
+  const [ref, width] = useWidth(640);
   const [chosen, setChosen] = useState<number | null>(null);
   const tableId = useId();
   if (points.length === 0) return null;

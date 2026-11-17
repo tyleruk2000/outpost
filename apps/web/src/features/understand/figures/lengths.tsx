@@ -1,7 +1,8 @@
 import type { ExplainOverview } from "@outpost/shared";
+import { useWidth } from "@/lib/use-width";
 import { formatNumber, plural } from "@/lib/utils";
 import { COLOR } from "../charts/colors";
-import { AxisNote, HiddenTable, useMeasure } from "../charts/figure";
+import { AxisNote, HiddenTable } from "../charts/figure";
 import { Tip, TipBody, useTip } from "../charts/tip";
 import { formatShare, linear, niceTicks } from "../lib/scale";
 import { readLengths } from "../lib/text";
@@ -26,7 +27,7 @@ const MARGIN = { top: 26, right: 22, bottom: 30, left: 40 };
 
 /** How long passages are: a column for each band of lengths, with the configured size marked. */
 export function LengthHistogram({ overview }: { overview: ExplainOverview }) {
-  const [ref, width] = useMeasure<HTMLDivElement>(720);
+  const [ref, width] = useWidth(720);
   const tip = useTip();
   const buckets = overview.chunkLengths;
   const target = overview.settings.chunkSize;

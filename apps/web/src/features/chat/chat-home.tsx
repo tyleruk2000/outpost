@@ -24,6 +24,7 @@ import { Composer } from "./composer";
 import { isMissing, ModelPicker } from "./model-picker";
 import { ChatSetup } from "./setup";
 import "./chat.css";
+import { useDebounced } from "@/lib/use-debounced";
 
 const ABOUT = /^(document|note):([0-9A-Za-z]{1,40})$/;
 
@@ -131,21 +132,11 @@ function ConversationRow({
   );
 }
 
-/** `value` once it has stopped changing for `delay` milliseconds. */
-function useSettled(value: string, delay: number): string {
-  const [settled, setSettled] = useState(value);
-  useEffect(() => {
-    const timer = window.setTimeout(() => setSettled(value), delay);
-    return () => window.clearTimeout(timer);
-  }, [value, delay]);
-  return settled;
-}
-
 function Conversations() {
   const client = useQueryClient();
   const [typed, setTyped] = useState("");
   // The list is asked for once typing pauses, not at every key.
-  const q = useSettled(typed.trim(), 220);
+  const q = useDebounced(typed.trim(), 220);
   const list = useConversations(q);
   const [renaming, setRenaming] = useState<ChatConversationSummary | null>(null);
   const [deleting, setDeleting] = useState<ChatConversationSummary | null>(null);

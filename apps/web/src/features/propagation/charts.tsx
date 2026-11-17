@@ -10,7 +10,7 @@
  */
 import { utcLabel } from "@outpost/shared";
 import { type KeyboardEvent, type PointerEvent, type ReactNode, useId, useState } from "react";
-import { useWidth } from "@/features/radio/use-width";
+import { useWidth } from "@/lib/use-width";
 import { cn } from "@/lib/utils";
 
 const AXIS_TEXT = "tabular fill-ink-muted text-[11px]";
@@ -169,7 +169,7 @@ export function HourGrid({
   line?: { label: string; rowAt: Array<number | null>; describe: (hour: number) => string };
   what?: string;
 }) {
-  const [ref, width] = useWidth();
+  const [ref, width] = useWidth(640);
   const [at, setAt] = useState<{ row: number; hour: number } | null>(null);
   const tableId = useId();
   const hatchId = useId();
@@ -440,7 +440,7 @@ export function HourLines({
   level?: { value: number; label: string };
   height?: number;
 }) {
-  const [ref, width] = useWidth();
+  const [ref, width] = useWidth(640);
   const [hover, setHover] = useState<number | null>(null);
   const tableId = useId();
   const right = 12;

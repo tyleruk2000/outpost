@@ -4,29 +4,10 @@
  * numbers for screen readers.
  */
 import type { ExplainResponse } from "@outpost/shared";
-import { type ReactNode, type RefObject, useLayoutEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { ErrorState } from "@/components/page";
 import { cn } from "@/lib/utils";
 import { useTraceState } from "../data";
-
-/** Width of an element, tracked as it resizes. `fallback` is used until it has been measured (and in tests). */
-export function useMeasure<T extends HTMLElement>(fallback = 720): [RefObject<T | null>, number] {
-  const ref = useRef<T | null>(null);
-  const [width, setWidth] = useState(fallback);
-  useLayoutEffect(() => {
-    const element = ref.current;
-    if (!element) return;
-    const read = () => {
-      const next = Math.round(element.clientWidth);
-      if (next > 0) setWidth((current) => (current === next ? current : next));
-    };
-    read();
-    const observer = new ResizeObserver(read);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-  return [ref, width];
-}
 
 export function Figure({
   id,

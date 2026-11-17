@@ -10,8 +10,8 @@ import { type ReactNode, useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { copyText } from "@/features/downloads/copy";
 import { api, errorMessage } from "@/lib/api";
+import { copyText } from "@/lib/clipboard";
 import { cn, formatDate } from "@/lib/utils";
 
 export interface ResultProps {

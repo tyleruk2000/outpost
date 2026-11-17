@@ -22,7 +22,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
-import { usePageVisible } from "../kit/play-time";
+import { usePageVisible } from "@/lib/page-visible";
 
 export const allotmentKey = ["games", "allotment"] as const;
 

@@ -5,8 +5,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
 import { useServerConnection } from "@/lib/events";
+import { usePageVisible } from "@/lib/page-visible";
 import { plural } from "@/lib/utils";
-import { usePageShown } from "../chat/use-page-shown";
 import type { Reading } from "./charts/scale";
 import { downloadsKey } from "./use-downloads";
 
@@ -27,7 +27,7 @@ const REFRESH_MS = 2500;
  * which the live events announce.
  */
 export function usePlan(options: { enabled?: boolean } = {}) {
-  const shown = usePageShown();
+  const shown = usePageVisible();
   return useQuery({
     queryKey: planKey,
     queryFn: () => api.get<DownloadPlan>("/api/downloads/plan"),
@@ -41,7 +41,7 @@ export function usePlan(options: { enabled?: boolean } = {}) {
 
 /** Everything known about one download; refreshed while it is transferring or being checked. A queued one changes state by event. */
 export function useDownloadDetail(id: string) {
-  const shown = usePageShown();
+  const shown = usePageVisible();
   return useQuery({
     queryKey: detailKey(id),
     queryFn: () => api.get<DownloadDetail>(`/api/downloads/${encodeURIComponent(id)}`),
@@ -65,17 +65,6 @@ export function useQueueAction() {
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
-}
-
-/** Whether the page is in view: false in a background tab or on a locked phone. */
-export function usePageVisible(): boolean {
-  const [visible, setVisible] = useState(() => document.visibilityState !== "hidden");
-  useEffect(() => {
-    const update = () => setVisible(document.visibilityState !== "hidden");
-    document.addEventListener("visibilitychange", update);
-    return () => document.removeEventListener("visibilitychange", update);
-  }, []);
-  return visible;
 }
 
 /** The present time, refreshed on an interval while the page is in view, for countdowns and clock times. */

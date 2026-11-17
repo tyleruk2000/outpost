@@ -31,6 +31,7 @@ import { Highlighted } from "@/components/search-hit";
 import { Button } from "@/components/ui/button";
 import { Skeleton, Tooltip } from "@/components/ui/misc";
 import { api } from "@/lib/api";
+import { useDebounced } from "@/lib/use-debounced";
 import { cn, formatNumber } from "@/lib/utils";
 import { ArchiveFile } from "./archive-file";
 import { ArchiveMedia } from "./archive-media";
@@ -48,15 +49,6 @@ const withFile = (path: string | undefined) => (before: URLSearchParams) => {
 };
 /** Marks a step in the history as a file opened from the reader, so that closing it can go back one step. */
 const OPENED_HERE = { state: { openedHere: true } };
-
-function useDebounced<T>(value: T, delay: number): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const timer = window.setTimeout(() => setDebounced(value), delay);
-    return () => window.clearTimeout(timer);
-  }, [value, delay]);
-  return debounced;
-}
 
 export default function ReaderPage() {
   const { collectionId = "", "*": routePath = "" } = useParams();

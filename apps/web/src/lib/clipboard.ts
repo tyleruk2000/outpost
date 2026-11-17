@@ -1,7 +1,8 @@
 /**
- * Copies text to the clipboard and says whether it worked. Outpost is often reached
- * over plain HTTP on a home network, where browsers do not offer the modern clipboard,
- * so there is an older path as well.
+ * Copies text and says whether it worked. Outpost is often reached over plain HTTP on a
+ * home network, where browsers do not offer the clipboard API, so there is an older,
+ * selection-based way as well. A caller that is told it failed leaves the text where it
+ * can be selected and copied by hand.
  */
 export async function copyText(text: string): Promise<boolean> {
   try {
@@ -17,14 +18,13 @@ export async function copyText(text: string): Promise<boolean> {
   area.setAttribute("readonly", "");
   area.style.position = "fixed";
   area.style.opacity = "0";
-  document.body.appendChild(area);
+  document.body.append(area);
   area.select();
-  let copied = false;
   try {
-    copied = document.execCommand("copy");
+    return document.execCommand("copy");
   } catch {
-    copied = false;
+    return false;
+  } finally {
+    area.remove();
   }
-  area.remove();
-  return copied;
 }

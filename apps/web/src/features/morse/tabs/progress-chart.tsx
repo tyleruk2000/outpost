@@ -7,7 +7,7 @@
  */
 import type { MorseSession, MorseSessionKind } from "@outpost/shared";
 import { type KeyboardEvent, type PointerEvent, useId, useState } from "react";
-import { useWidth } from "@/features/radio/use-width";
+import { useWidth } from "@/lib/use-width";
 import { formatDate, formatDateTime } from "@/lib/utils";
 
 export const KIND_LABELS: Record<MorseSessionKind, string> = {
@@ -38,7 +38,7 @@ export function sessionWords(session: MorseSession): string {
 }
 
 export function AccuracyChart({ sessions, height = 220 }: { sessions: readonly MorseSession[]; height?: number }) {
-  const [ref, width] = useWidth();
+  const [ref, width] = useWidth(640);
   const [chosen, setChosen] = useState<number | null>(null);
   const tableId = useId();
   if (sessions.length === 0) return null;

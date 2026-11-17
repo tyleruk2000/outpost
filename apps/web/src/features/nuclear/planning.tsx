@@ -14,6 +14,7 @@ import {
   haversineMeters,
   type MarkerDto,
   type NuclearScenario,
+  planFromTemplate,
   templateById,
 } from "@outpost/shared";
 import { useQueryClient } from "@tanstack/react-query";
@@ -26,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Select, Skeleton } from "@/components/ui/misc";
 import { conflictOf, inputOf, planKeys, useCreatePlan, usePlans } from "@/features/emergency-plans/data";
 import { DaysHeld } from "@/features/emergency-plans/supplies-section";
-import { guessEmergencyNumber, planFrom } from "@/features/emergency-plans/words";
+import { guessEmergencyNumber } from "@/features/emergency-plans/words";
 import { api, errorMessage } from "@/lib/api";
 import { localId } from "@/lib/utils";
 import { distanceText } from "./words";
@@ -90,7 +91,7 @@ export function PlanningPanel({
   const template = templateById(RADIATION_TEMPLATE_ID)!;
 
   const make = () =>
-    create.mutate(planFrom(template, localId, guessEmergencyNumber()), {
+    create.mutate(planFromTemplate(template, localId, guessEmergencyNumber()), {
       onSuccess: (response) => navigate(`/prepare/plans/${response.plan.id}`),
       onError: (error) => toast.error(errorMessage(error)),
     });

@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Skeleton } from "@/components/ui/misc";
+import { useDebounced } from "@/lib/use-debounced";
 import { cn, formatNumber, plural } from "@/lib/utils";
 import { ContactDetail } from "./contact-detail";
 import { ContactEditor } from "./contact-editor";
@@ -26,16 +27,6 @@ const ImportPage = lazy(() => import("./import-page"));
 const PhonesPage = lazy(() => import("./phones-page"));
 const EmergencySheetPage = lazy(() => import("./emergency-sheet"));
 const LargeView = lazy(() => import("./contact-large"));
-
-/** The words typed, once the person has paused: one request per pause rather than per key. */
-function useSettled(value: string, delay = 150): string {
-  const [settled, setSettled] = useState(value);
-  useEffect(() => {
-    const timer = window.setTimeout(() => setSettled(value), delay);
-    return () => window.clearTimeout(timer);
-  }, [value, delay]);
-  return settled;
-}
 
 /** Said once, on the list: there are no accounts, so there is no keeping contacts from anyone who can open Outpost. */
 function WhoCanSee() {
@@ -96,7 +87,7 @@ function ListSkeleton() {
 
 function ContactList({ filter, setFilter }: { filter: ListFilter; setFilter: (next: ListFilter) => void }) {
   const [draft, setDraft] = useState(filter.q);
-  const settled = useSettled(draft.trim());
+  const settled = useDebounced(draft.trim(), 150);
   // Only what was typed moves the filter from here. A change made elsewhere (a tag, "Show everyone") is not undone by it.
   const latest = useRef(filter);
   latest.current = filter;

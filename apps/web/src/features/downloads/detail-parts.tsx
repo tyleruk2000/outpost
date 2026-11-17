@@ -5,9 +5,9 @@ import { Check, Copy } from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { copyText } from "@/lib/clipboard";
 import { cn, timeAgo } from "@/lib/utils";
 import { clockTimeWithSeconds, shortDate } from "./charts/time-axis";
-import { copyText } from "./copy";
 import { describeEvents, regionDetail, regionExtent, type Tone } from "./plan-text";
 
 /**

@@ -1,13 +1,5 @@
 /** What the power screens ask the server for. */
-import {
-  type ApiErrorBody,
-  newPowerPlan,
-  type OwnDevice,
-  type OwnDeviceInput,
-  type PowerPlan,
-  type PowerPlanInput,
-  type RadioProfile,
-} from "@outpost/shared";
+import { newPowerPlan, type OwnDevice, type OwnDeviceInput, type PowerPlan, type PowerPlanInput, type RadioProfile } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ApiError, api, errorMessage } from "@/lib/api";
@@ -47,40 +39,6 @@ export function useCreatePowerPlan() {
   });
 }
 
-/** Browsers refuse a keepalive request with a larger body than this. */
-const KEEPALIVE_LIMIT = 60_000;
-
-/**
- * The save made as the page is hidden or closed. `keepalive` lets it finish after the
- * page has gone, which `api.put` cannot ask for. A plan too large for keepalive is sent
- * the ordinary way.
- */
-async function saveWhileLeaving(id: string, body: PowerPlanSave): Promise<PowerPlan> {
-  const json = JSON.stringify(body);
-  let response: Response;
-  try {
-    response = await fetch(`/api/power/plans/${id}`, {
-      method: "PUT",
-      headers: { Accept: "application/json", "Content-Type": "application/json", "X-Outpost-Request": "1" },
-      body: json,
-      credentials: "same-origin",
-      keepalive: json.length <= KEEPALIVE_LIMIT,
-    });
-  } catch {
-    throw new ApiError(0, "unreachable", "The Outpost server is not responding. It may be restarting.");
-  }
-  if (!response.ok) {
-    const error = ((await response.json().catch(() => null)) as ApiErrorBody | null)?.error;
-    throw new ApiError(
-      response.status,
-      error?.code ?? "http",
-      error?.message ?? `The server answered with an error (${response.status}).`,
-      error?.details,
-    );
-  }
-  return ((await response.json()) as { plan: PowerPlan }).plan;
-}
-
 /** A plan as saved: the whole plan, and the version it was changed from (`updatedAt` when opened or last saved). */
 type PowerPlanSave = PowerPlanInput & { baseUpdatedAt?: number };
 
@@ -91,7 +49,8 @@ export function useSavePowerPlan(id: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: ({ body, leaving }: { body: PowerPlanSave; leaving: boolean }) =>
-      leaving ? saveWhileLeaving(id, body) : api.put<{ plan: PowerPlan }>(`/api/power/plans/${id}`, body).then((data) => data.plan),
+      // The save made as the page is hidden or closed asks to finish after the page has gone.
+      api.put<{ plan: PowerPlan }>(`/api/power/plans/${id}`, body, { keepalive: leaving }).then((data) => data.plan),
     onSuccess: (plan) => {
       client.setQueryData(powerKeys.one(id), plan);
       void client.invalidateQueries({ queryKey: powerKeys.all, exact: true });

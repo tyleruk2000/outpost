@@ -13,8 +13,8 @@ import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Checkbox, Segmented, Select } from "@/components/ui/misc";
-import { copyText } from "@/features/downloads/copy";
 import { errorMessage } from "@/lib/api";
+import { copyText } from "@/lib/clipboard";
 import { formatDate } from "@/lib/utils";
 import { removeDevicePrivateKey, saveDevicePrivateKey, setKeyChecked } from "./device-keys";
 import { getEngine, type KeyAlgorithm, type KeyInfo } from "./engine";

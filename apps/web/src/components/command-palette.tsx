@@ -13,6 +13,7 @@ import { useNavigate } from "react-router";
 import { api } from "@/lib/api";
 import { referenceProgress, useReferenceSearch } from "@/lib/reference-search";
 import { useTheme } from "@/lib/theme";
+import { useDebounced } from "@/lib/use-debounced";
 import { modKey } from "@/lib/utils";
 import { everyScreen } from "./nav";
 import { Highlighted, kindOf, resultHref } from "./search-hit";
@@ -37,15 +38,6 @@ export function matchesWords(label: string, typed: string): boolean {
     .split(/[^\p{L}\p{N}]+/u)
     .filter(Boolean)
     .every((part) => words.some((word) => word.startsWith(part)));
-}
-
-function useDebounced<T>(value: T, delay: number): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const timer = window.setTimeout(() => setDebounced(value), delay);
-    return () => window.clearTimeout(timer);
-  }, [value, delay]);
-  return debounced;
 }
 
 const itemClass =
