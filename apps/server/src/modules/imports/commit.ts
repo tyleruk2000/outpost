@@ -100,6 +100,8 @@ const isPage = (item: ImportItem): boolean => item.kind === "page" || item.kind 
 const SKIPPED_BEFORE = "It was imported before and is left as it is.";
 const SKIPPED_SAME = "A page with the same title and text already exists and is left as it is.";
 const SKIPPED_OWN = "A page with the same title and text already exists. It did not come from an import, so it is never overwritten.";
+const SKIPPED_ENCRYPTED =
+  "It has been encrypted since it was imported. Replacing it would put text that is not encrypted in its place, so it is left as it is.";
 const SKIPPED_LATE = "It was imported by something else after the preview was made, so it is left as it is.";
 
 export async function runCommit(analysis: ImportAnalysis, options: ImportOptions, deps: CommitDeps): Promise<ImportReport> {
@@ -237,6 +239,10 @@ export async function runCommit(analysis: ImportAnalysis, options: ImportOptions
       if (duplicate && options.duplicates === "replace" && (duplicate.reason !== "imported-before" || !duplicate.planned)) {
         // Replacing was confirmed for the pages the preview named, and only ever for pages an import made.
         keep(item, duplicate, duplicate.reason === "imported-before" ? SKIPPED_LATE : SKIPPED_OWN);
+        continue;
+      }
+      if (duplicate && options.duplicates === "replace" && notes.get(duplicate.noteId).encrypted) {
+        keep(item, duplicate, SKIPPED_ENCRYPTED);
         continue;
       }
 

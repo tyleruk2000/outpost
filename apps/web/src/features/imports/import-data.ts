@@ -10,7 +10,7 @@ import {
 } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, uploadWithProgress } from "@/lib/api";
-import { useServerEvent } from "@/lib/events";
+import { useServerConnection, useServerEvent } from "@/lib/events";
 import { toCommitBody } from "./preview-model";
 
 export const importKeys = {
@@ -33,16 +33,18 @@ export const useRecentImports = () =>
 /**
  * One import, kept current. State changes arrive as `imports.changed`; progress in
  * between arrives with the job's own events and is written straight into the cache, so
- * the bar moves with the work rather than with a polling interval. The interval is
- * only a safety net for a dropped event stream.
+ * the bar moves with the work rather than with a polling interval. Only while the
+ * event stream is down is the import asked for every few seconds; when the stream comes
+ * back every query is refreshed anyway.
  */
 export function useImport(id: string | undefined) {
   const client = useQueryClient();
+  const connected = useServerConnection();
   const query = useQuery({
     queryKey: importKeys.detail(id ?? ""),
     queryFn: () => api.get<ImportResponse>(`/api/imports/${id}`).then((data) => data.import),
     enabled: Boolean(id),
-    refetchInterval: (current) => (isBusy(current.state.data) ? 3000 : false),
+    refetchInterval: (current) => (!connected && isBusy(current.state.data) ? 3000 : false),
   });
 
   useServerEvent("job.updated", ({ data }) => {

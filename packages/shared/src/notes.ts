@@ -303,6 +303,18 @@ export interface UpdateNoteBody {
    * refused with 409 `conflict` and `details.current`, so nothing is overwritten.
    */
   baseUpdatedAt?: number;
+  /**
+   * Names the browser tab that saves, and comes back in the `notes.changed` event this
+   * save causes, so that the tab can tell its own save from someone else's and does not
+   * fetch again the page it has just sent.
+   */
+  origin?: string;
+}
+
+/** What a `notes.changed` event carries after a save of one page. */
+export interface NoteChangedEvent {
+  updatedAt: number;
+  origin?: string;
 }
 
 /** `details` of the 409 answer to a save that would overwrite a newer version. */

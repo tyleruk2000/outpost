@@ -81,7 +81,10 @@ function show(route: string) {
   );
 }
 
-const system = { "GET /api/system": { lanAccess: true } };
+/** What the list reads to say who can see the contacts. */
+const system = {
+  "GET /api/contacts/phones": { enabled: false, unavailable: null, lanAccess: true, userName: "outpost", path: "/dav/", contacts: 3 },
+};
 
 describe("the list", () => {
   it("says once who can see the contacts, lists the marked ones first, and puts a call one touch away", async () => {
@@ -105,6 +108,17 @@ describe("the list", () => {
     // Nobody is offered a call to a contact without a number.
     expect(screen.queryByRole("link", { name: /Call Tom Abbott/ })).not.toBeInTheDocument();
     expect(screen.getByText("3 contacts, 1 marked for an emergency.")).toBeInTheDocument();
+  });
+
+  it("says when Outpost is open only on this computer, without asking the server every few seconds", async () => {
+    const api = fakeApi({
+      "GET /api/contacts/phones": { ...system["GET /api/contacts/phones"], lanAccess: false },
+      "GET /api/contacts": listOf(people),
+    });
+    show("/contacts");
+    expect(await screen.findByText(/Outpost is open only on this computer at the moment/)).toBeInTheDocument();
+    // The system summary is polled by the screens that show it; this sentence needs one fact that does not change.
+    expect(api.requests.some((request) => request.call === "GET /api/system")).toBe(false);
   });
 
   it("finds as the person types, and by tag", async () => {

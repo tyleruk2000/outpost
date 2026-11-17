@@ -12,6 +12,7 @@
  */
 import type {
   AttachmentDto,
+  NoteChangedEvent,
   NoteDetail,
   NoteDoc,
   NoteListItem,
@@ -76,6 +77,8 @@ export interface UpdateNoteInput {
    * that the page is the one they were shown.
    */
   guardEncryption?: boolean;
+  /** The browser tab that saved, repeated in the `notes.changed` event (see `UpdateNoteBody.origin`). */
+  origin?: string;
 }
 
 /** A page brought in whole from another library; see `NotesService.adopt`. */
@@ -189,7 +192,7 @@ export function createNotesService(ctx: AppContext, attachments: AttachmentStore
   const { db, sqlite } = ctx;
   const { search } = ctx.services;
 
-  const changed = (id: string) => ctx.events.publish({ type: "notes.changed", id });
+  const changed = (id: string, data?: NoteChangedEvent) => ctx.events.publish({ type: "notes.changed", id, data });
 
   // ── Reading the tree ──────────────────────────────────────────────────────
 
@@ -270,8 +273,9 @@ export function createNotesService(ctx: AppContext, attachments: AttachmentStore
     return rows.map((row) => toTreeItem(row, counts.get(row.id) ?? 0));
   }
 
+  const treeItemStatement = sqlite.prepare(`SELECT ${TREE_COLUMNS} FROM notes WHERE id = ?`);
   function treeItem(id: string): NoteTreeItem {
-    const row = sqlite.prepare(`SELECT ${TREE_COLUMNS} FROM notes WHERE id = ?`).get(id) as TreeRow;
+    const row = treeItemStatement.get(id) as TreeRow;
     return toTreeItem(row, childrenStatement.all(id).length);
   }
 
@@ -666,19 +670,22 @@ export function createNotesService(ctx: AppContext, attachments: AttachmentStore
     return copyId;
   });
 
+  const latestTrashedStatement = sqlite.prepare(`SELECT max(trashed_at) AS latest FROM notes`);
+  const markTrashed = sqlite.prepare(`UPDATE notes SET trashed_at = ? WHERE id = ?`);
+  const unmarkTrashed = sqlite.prepare(`UPDATE notes SET trashed_at = NULL WHERE id = ?`);
+
   const trash = sqlite.transaction((id: string): string[] => {
     const row = getRow(id);
     if (row.trashedAt !== null) return [];
     // Sub-pages already in the trash keep their own time, so they stay there when this
     // page is restored. A time later than any other keeps each trip to the trash apart.
-    const latest = (sqlite.prepare(`SELECT max(trashed_at) AS latest FROM notes`).get() as { latest: number | null }).latest ?? 0;
+    const latest = (latestTrashedStatement.get() as { latest: number | null }).latest ?? 0;
     const trashedAt = Math.max(Date.now(), latest + 1);
     const ids = subtree(id)
       .filter((entry) => entry.trashedAt === null)
       .map((entry) => entry.id);
-    const mark = sqlite.prepare(`UPDATE notes SET trashed_at = ? WHERE id = ?`);
     for (const entryId of ids) {
-      mark.run(trashedAt, entryId);
+      markTrashed.run(trashedAt, entryId);
       search.remove("note", entryId);
     }
     return ids;
@@ -692,8 +699,7 @@ export function createNotesService(ctx: AppContext, attachments: AttachmentStore
     // Back to where it was if that place still exists; otherwise to the top level.
     const parent = row.parentId ? db.select().from(notes).where(eq(notes.id, row.parentId)).get() : undefined;
     const parentUsable = parent !== undefined && parent.trashedAt === null && !parent.isTemplate;
-    const unmark = sqlite.prepare(`UPDATE notes SET trashed_at = NULL WHERE id = ?`);
-    for (const entry of batch) unmark.run(entry.id);
+    for (const entry of batch) unmarkTrashed.run(entry.id);
     if (row.parentId && !parentUsable) {
       db.update(notes)
         .set({ parentId: null, position: place(null, id, undefined) })
@@ -792,19 +798,35 @@ export function createNotesService(ctx: AppContext, attachments: AttachmentStore
     isFavorite: Boolean(row.isFavorite),
   });
 
-  const listRows = (statement: string, ...params: unknown[]): NoteListItem[] =>
-    (sqlite.prepare(statement).all(...params) as Array<Omit<NoteListItem, "isFavorite"> & { isFavorite: number }>).map(toListItem);
+  const recentStatement = sqlite.prepare(
+    `SELECT ${LIST_COLUMNS} FROM notes WHERE ${VISIBLE} AND last_viewed_at IS NOT NULL ORDER BY last_viewed_at DESC, id LIMIT ?`,
+  );
+  const favoritesStatement = sqlite.prepare(
+    `SELECT ${LIST_COLUMNS} FROM notes WHERE ${VISIBLE} AND is_favorite = 1 ORDER BY title COLLATE NOCASE, id`,
+  );
+  // Only the page that was deleted is listed, not each sub-page that went with it.
+  const trashStatement = sqlite.prepare(
+    `SELECT n.id AS id, n.title AS title, n.icon AS icon, n.trashed_at AS trashedAt
+     FROM notes n LEFT JOIN notes p ON p.id = n.parent_id
+     WHERE n.trashed_at IS NOT NULL AND (p.id IS NULL OR p.trashed_at IS NULL OR p.trashed_at != n.trashed_at)
+     ORDER BY n.trashed_at DESC, n.id`,
+  );
+  // Titles that start with what was typed come first, then the most recently edited.
+  const lookupStatement = sqlite.prepare(
+    `SELECT id, title, icon, updated_at AS updatedAt FROM notes
+     WHERE ${VISIBLE} AND title LIKE @contains ESCAPE '\\'
+     ORDER BY (title LIKE @prefix ESCAPE '\\') DESC, updated_at DESC, id
+     LIMIT @limit`,
+  );
+  const ownTemplatesStatement = sqlite.prepare(
+    `SELECT id, title, icon, content_text AS text FROM notes WHERE is_template = 1 AND trashed_at IS NULL ORDER BY title COLLATE NOCASE, id`,
+  );
+
+  const listRows = (statement: { all(...params: unknown[]): unknown[] }, ...params: unknown[]): NoteListItem[] =>
+    (statement.all(...params) as Array<Omit<NoteListItem, "isFavorite"> & { isFavorite: number }>).map(toListItem);
 
   function listTrash(): TrashedNote[] {
-    // Only the page that was deleted is listed, not each sub-page that went with it.
-    const rows = sqlite
-      .prepare(
-        `SELECT n.id AS id, n.title AS title, n.icon AS icon, n.trashed_at AS trashedAt
-         FROM notes n LEFT JOIN notes p ON p.id = n.parent_id
-         WHERE n.trashed_at IS NOT NULL AND (p.id IS NULL OR p.trashed_at IS NULL OR p.trashed_at != n.trashed_at)
-         ORDER BY n.trashed_at DESC, n.id`,
-      )
-      .all() as Array<NoteRef & { trashedAt: number }>;
+    const rows = trashStatement.all() as Array<NoteRef & { trashedAt: number }>;
     return rows.map((row) => ({
       ...row,
       descendantCount: subtree(row.id).filter((entry) => entry.trashedAt === row.trashedAt).length - 1,
@@ -813,15 +835,9 @@ export function createNotesService(ctx: AppContext, attachments: AttachmentStore
 
   function lookup(query: string, limit = 10): NoteLookupItem[] {
     const q = query.trim();
-    const rows = sqlite
-      .prepare(
-        // Titles that start with what was typed come first, then the most recently edited.
-        `SELECT id, title, icon, updated_at AS updatedAt FROM notes
-         WHERE ${VISIBLE} AND title LIKE @contains ESCAPE '\\'
-         ORDER BY (title LIKE @prefix ESCAPE '\\') DESC, updated_at DESC, id
-         LIMIT @limit`,
-      )
-      .all({ contains: `%${escapeLike(q)}%`, prefix: `${escapeLike(q)}%`, limit }) as Array<NoteRef & { updatedAt: number }>;
+    const rows = lookupStatement.all({ contains: `%${escapeLike(q)}%`, prefix: `${escapeLike(q)}%`, limit }) as Array<
+      NoteRef & { updatedAt: number }
+    >;
     return rows.map((row) => ({
       ...row,
       path: ancestors(row.id)
@@ -831,11 +847,7 @@ export function createNotesService(ctx: AppContext, attachments: AttachmentStore
   }
 
   function templates(): NoteTemplate[] {
-    const own = sqlite
-      .prepare(
-        `SELECT id, title, icon, content_text AS text FROM notes WHERE is_template = 1 AND trashed_at IS NULL ORDER BY title COLLATE NOCASE, id`,
-      )
-      .all() as Array<NoteRef & { text: string }>;
+    const own = ownTemplatesStatement.all() as Array<NoteRef & { text: string }>;
     return [
       ...BUILTIN_TEMPLATES.map(({ id, title, icon, description, builtin }) => ({ id, title, icon, description, builtin })),
       ...own.map((row) => ({
@@ -882,7 +894,7 @@ export function createNotesService(ctx: AppContext, attachments: AttachmentStore
       // the database file and the search index, rather than leaving it in freed space.
       const encrypting = patch.content !== undefined && encryptedNoteArmor(patch.content) !== null;
       const result = encrypting ? search.scrubbing(() => update.immediate(id, patch)) : update.immediate(id, patch);
-      if (result.dirty) changed(id);
+      if (result.dirty) changed(id, { updatedAt: result.row.updatedAt, origin: patch.origin });
       return toSaveResult(result.row);
     },
 
@@ -916,14 +928,11 @@ export function createNotesService(ctx: AppContext, attachments: AttachmentStore
     templates,
 
     recent(limit = 20) {
-      return listRows(
-        `SELECT ${LIST_COLUMNS} FROM notes WHERE ${VISIBLE} AND last_viewed_at IS NOT NULL ORDER BY last_viewed_at DESC, id LIMIT ?`,
-        limit,
-      );
+      return listRows(recentStatement, limit);
     },
 
     favorites() {
-      return listRows(`SELECT ${LIST_COLUMNS} FROM notes WHERE ${VISIBLE} AND is_favorite = 1 ORDER BY title COLLATE NOCASE, id`);
+      return listRows(favoritesStatement);
     },
 
     findByImportKey(key) {

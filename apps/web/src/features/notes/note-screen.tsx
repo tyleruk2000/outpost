@@ -4,7 +4,7 @@
  * every state a page can be in: loading, missing, in the trash, a template, offline, in
  * conflict with another device, or holding a draft from before a reload.
  */
-import { attachmentUrl, type NoteDetail, type NoteDoc, type NoteResponse } from "@outpost/shared";
+import { attachmentUrl, type NoteChangedEvent, type NoteDetail, type NoteDoc, type NoteResponse } from "@outpost/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Editor } from "@tiptap/react";
 import { ArchiveRestore, CircleAlert, History, LayoutTemplate, TriangleAlert } from "lucide-react";
@@ -15,15 +15,25 @@ import { ErrorState, Notice, Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { ApiError, api, errorMessage } from "@/lib/api";
+import { useServerEvent } from "@/lib/events";
 import { formatDateTime, timeAgo } from "@/lib/utils";
 import { NoteEditor } from "./editor/note-editor";
 import { MoveDialog } from "./move-dialog";
 import { NoteFooter } from "./note-footer";
 import { PageAdornments, PageCover, PageTitle } from "./note-header";
 import { NoteTopBar } from "./note-top-bar";
-import { noteKeys, saveNote, uploadAttachment, useNoteActions, useNoteTree } from "./notes-data";
+import { noteKeys, refreshNotes, saveNote, TAB_ORIGIN, uploadAttachment, useNoteActions, useNoteTree } from "./notes-data";
 import { TagEditor } from "./tag-editor";
-import { clearDraft, draftDiffers, PAGE_FIELDS, type PageDraft, type PageFields, readDraft, usePageSaver } from "./use-page-saver";
+import {
+  clearDraft,
+  draftDiffers,
+  draftIsBehind,
+  PAGE_FIELDS,
+  type PageDraft,
+  type PageFields,
+  readDraft,
+  usePageSaver,
+} from "./use-page-saver";
 
 // Encryption is not needed to read or write an ordinary page, so its code is fetched only when it is asked for.
 const EncryptPageDialog = lazy(() => import("./encrypt-page-dialog"));
@@ -51,6 +61,7 @@ function NoteSkeleton() {
 }
 
 export function NoteScreen({ id }: { id: string }) {
+  const client = useQueryClient();
   const viewed = useRef(false);
   const note = useQuery({
     queryKey: noteKeys.detail(id),
@@ -63,6 +74,13 @@ export function NoteScreen({ id }: { id: string }) {
     // A page shown from the cache is always checked against the server straight away.
     staleTime: 0,
     refetchOnMount: "always",
+  });
+
+  // Any change to the pages may show here (this page, its sub-pages, a link to it), so
+  // the page is fetched again, except after a save this tab made, which it already has.
+  useServerEvent("notes.changed", ({ data }) => {
+    if ((data as NoteChangedEvent | undefined)?.origin === TAB_ORIGIN) return;
+    void client.invalidateQueries({ queryKey: noteKeys.detail(id) });
   });
 
   if (note.isPending) return <NoteSkeleton />;
@@ -257,7 +275,7 @@ function LoadedNote({ note, reload }: { note: NoteDetail; reload(): Promise<Note
       const { note: saved } = await saveNote(note.id, { isTemplate });
       queue?.rebase(saved.updatedAt);
       client.setQueryData<NoteResponse>(noteKeys.detail(note.id), (data) => (data ? { note: { ...data.note, ...saved } } : data));
-      await client.invalidateQueries({ queryKey: noteKeys.all });
+      await refreshNotes(client);
       toast(
         isTemplate
           ? "This page is now a template. Find it under Templates when you start a new page."
@@ -395,10 +413,13 @@ function LoadedNote({ note, reload }: { note: NoteDetail; reload(): Promise<Note
               <p>
                 This tab was closed or reloaded {timeAgo(draft.at)} before your last changes to this page were saved. They were kept on this
                 device.
+                {draftIsBehind(draft, note.updatedAt)
+                  ? ` The page has been saved since then, at ${formatDateTime(note.updatedAt)}, perhaps in another tab or on another device. Restoring puts your kept version in place of what is shown now.`
+                  : null}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button size="sm" variant="primary" onClick={restoreDraft}>
-                  Restore my changes
+                  {draftIsBehind(draft, note.updatedAt) ? "Replace with my changes" : "Restore my changes"}
                 </Button>
                 <Button size="sm" onClick={discardDraft}>
                   Discard them

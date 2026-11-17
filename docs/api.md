@@ -115,7 +115,7 @@ When the server is stopping it sends `server.stopping` and ends the stream; a br
 | `storage.changed` | A location is added, changed, removed, connected or disconnected | |
 | `settings.changed` | Settings are saved | |
 | `documents.changed` | A document is added, changed or removed | document id, when one |
-| `notes.changed` | A page is created, changed, moved, trashed or restored | page id |
+| `notes.changed` | A page is created, changed, moved, trashed or restored | page id; after a save also `data: { updatedAt, origin }` (`NoteChangedEvent`) |
 | `collections.changed` | A collection is installed, changed or removed | collection id, when one |
 | `catalog.changed` | The catalogue is reloaded or refreshed, or a catalogue download starts | entry id, when one |
 | `maps.changed` | Regions, place names, markers or tracks change | |
@@ -491,7 +491,7 @@ Types: `packages/shared/src/notes.ts`. See
 | `GET /api/notes/lookup` | Pages whose title contains `q`, for the link menu. Query: `q`, `limit`. |
 | `POST /api/notes` | Creates a page. Body (`CreateNoteBody`): `parentId`, `title`, `icon`, `content`, `templateId`, `afterId`. `{ note }`. |
 | `GET /api/notes/:id` | `{ note }` (`NoteDetail`): content, tags, breadcrumbs, backlinks, children. Query `view=1` records that the page was opened. |
-| `PATCH /api/notes/:id` | Saves changes. Body (`UpdateNoteBody`): `title`, `icon`, `content`, `tags`, `isFavorite`, `coverAttachmentId`, `isTemplate`, `baseUpdatedAt`, `removeEncryption`. If the stored page is newer than `baseUpdatedAt` the answer is `409 conflict` with `details.current`, and nothing is overwritten. For an encrypted page see below. |
+| `PATCH /api/notes/:id` | Saves changes. Body (`UpdateNoteBody`): `title`, `icon`, `content`, `tags`, `isFavorite`, `coverAttachmentId`, `isTemplate`, `baseUpdatedAt`, `removeEncryption`, `origin` (up to 64 characters naming the tab that saves; it comes back in the `notes.changed` event, so that tab need not fetch the page again). If the stored page is newer than `baseUpdatedAt` the answer is `409 conflict` with `details.current`, and nothing is overwritten. For an encrypted page see below. |
 | `POST /api/notes/:id/move` | Body (`MoveNoteBody`): `parentId`, `afterId`. |
 | `POST /api/notes/:id/duplicate` | Body: `withChildren?`. |
 | `DELETE /api/notes/:id` | Moves the page and its sub-pages to the trash. `{ trashed: [ids] }`. |
@@ -550,7 +550,7 @@ Types: `packages/shared/src/imports.ts`. See
 | Method and path | Purpose |
 | --- | --- |
 | `POST /api/imports` | Uploads files as `multipart/form-data` (at most 500 per request): `.md`, `.markdown`, `.txt`, `.html`, `.htm`, `.pdf`, `.csv` or `.zip`. Analysis starts by itself. `{ import }` (`ImportDto`). |
-| `GET /api/imports` | Recent imports (`ImportSummary[]`). Query: `limit` (default 30). |
+| `GET /api/imports` | Recent imports (`ImportSummary[]`), with counts from their reports but not the plans or reports themselves. Query: `limit` (default 30). |
 | `GET /api/imports/:id` | One import with its analysis (the plan) and, later, its report. |
 | `POST /api/imports/:id/commit` | Carries out the plan. Body (`ImportOptions`): `duplicates` (`skip`, `copy`, `replace`), `pdfs` (`library`, `skip`), `parentId?`, `replaceConfirmed?`. |
 | `POST /api/imports/:id/cancel` | Stops the analysis or the commit that is running. |

@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { encryptedNoteDoc } from "@outpost/shared";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { analyse, buildZip, commit, findNote, getImport, notionZip, titleTree, uploadImport } from "./fixtures/imports/builders.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
@@ -124,6 +125,25 @@ describe("importing the same thing again", () => {
     expect(JSON.stringify(after.content)).toContain("Hut to hut, north to south.");
     expect(JSON.stringify(after.content)).not.toContain("My own words.");
     expect(await titleTree(app)).toEqual(["Trip plan", ["Packing list", "Route", "Tasks", ["Book huts", "Buy maps"]]]);
+  });
+
+  it("replace, confirmed: leaves a page that has been encrypted since as it is", async () => {
+    await commit(app, (await analyse(app, await notion())).id);
+    const route = await findNote(app, "Route");
+    const armor = fs.readFileSync(path.join(import.meta.dirname, "fixtures/pgp/message-symmetric.asc"), "utf8").trim();
+    const current = (await app.api("GET", `/api/notes/${route.id}`)).body.note;
+    const encrypted = await app.api("PATCH", `/api/notes/${route.id}`, {
+      content: encryptedNoteDoc(armor),
+      baseUpdatedAt: current.updatedAt,
+    });
+    expect(encrypted.status).toBe(200);
+
+    const dto = await commit(app, (await analyse(app, await notion())).id, { duplicates: "replace", replaceConfirmed: true });
+    expect(dto.report!.updated.map((entry) => entry.title)).not.toContain("Route");
+    expect(dto.report!.skipped).toContainEqual(
+      expect.objectContaining({ title: "Route", noteId: route.id, reason: expect.stringContaining("encrypted") }),
+    );
+    expect((await app.api("GET", `/api/notes/${route.id}`)).body.note.encrypted).toBe(true);
   });
 
   it("never replaces a page that was written by hand, even with the same title and text", async () => {

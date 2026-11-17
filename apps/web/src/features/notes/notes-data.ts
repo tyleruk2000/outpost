@@ -1,4 +1,8 @@
-/** Queries and actions for the notes workspace. Every key starts with "notes" so live updates reach it. */
+/**
+ * Queries and actions for the notes workspace. Every list key starts with "notes", so
+ * the live `notes.changed` event refreshes it. An open page is kept under "note" and
+ * refreshed by `NoteScreen` itself, which can tell its own saves from others'.
+ */
 import type {
   AttachmentResponse,
   CreateNoteBody,
@@ -22,17 +26,25 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { api, errorMessage, uploadWithProgress } from "@/lib/api";
+import { localId } from "@/lib/utils";
 import { buildTreeIndex, placeOf, type TreeIndex } from "./tree-model";
 
 export const noteKeys = {
   all: ["notes"] as const,
   tree: ["notes", "tree"] as const,
-  detail: (id: string) => ["notes", "detail", id] as const,
+  detail: (id: string) => ["note", id] as const,
   recent: ["notes", "recent"] as const,
   trash: ["notes", "trash"] as const,
   templates: ["notes", "templates"] as const,
   lookup: (query: string) => ["notes", "lookup", query] as const,
 };
+
+/** Names this tab in the saves it makes; see `UpdateNoteBody.origin`. */
+export const TAB_ORIGIN = localId();
+
+/** Refreshes every list of pages and every open page. */
+export const refreshNotes = (client: QueryClient) =>
+  Promise.all([client.invalidateQueries({ queryKey: noteKeys.all }), client.invalidateQueries({ queryKey: ["note"] })]);
 
 export const displayTitle = (title: string | null | undefined): string => title?.trim() || "Untitled";
 
@@ -87,7 +99,8 @@ export const lookupNotes = (query: string, signal?: AbortSignal) =>
 export const exportUrl = (id: string) => `/api/notes/${id}/export.md`;
 export const EXPORT_ALL_URL = "/api/notes/export.zip";
 
-export const saveNote = (id: string, body: UpdateNoteBody) => api.patch<NoteSaveResponse>(`/api/notes/${id}`, body);
+export const saveNote = (id: string, body: UpdateNoteBody) =>
+  api.patch<NoteSaveResponse>(`/api/notes/${id}`, { ...body, origin: TAB_ORIGIN } satisfies UpdateNoteBody);
 
 export function uploadAttachment(file: File, noteId: string, onProgress: (fraction: number) => void = () => {}, signal?: AbortSignal) {
   const form = new FormData();
@@ -126,7 +139,7 @@ export function useNoteActions(): NoteActions {
   const navigate = useNavigate();
 
   return useMemo<NoteActions>(() => {
-    const refresh = () => client.invalidateQueries({ queryKey: noteKeys.all });
+    const refresh = () => refreshNotes(client);
     const fail = (error: unknown) => {
       toast.error(errorMessage(error));
     };

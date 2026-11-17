@@ -27,6 +27,8 @@ export const PAGE_FIELDS = ["title", "icon", "tags", "coverAttachmentId", "conte
 export interface PageDraft {
   /** When the draft was last written. */
   at: number;
+  /** `updatedAt` of the saved page the changes were made on; absent in drafts kept before it was recorded. */
+  base?: number;
   fields: Partial<PageFields>;
 }
 
@@ -37,9 +39,10 @@ export function readDraft(noteId: string): PageDraft | null {
     const stored: unknown = JSON.parse(sessionStorage.getItem(draftKey(noteId)) ?? "null");
     if (typeof stored !== "object" || stored === null) return null;
     const draft = stored as Partial<PageDraft>;
-    return typeof draft.at === "number" && typeof draft.fields === "object" && draft.fields !== null
-      ? { at: draft.at, fields: draft.fields }
-      : null;
+    if (typeof draft.at !== "number" || typeof draft.fields !== "object" || draft.fields === null) return null;
+    return typeof draft.base === "number"
+      ? { at: draft.at, base: draft.base, fields: draft.fields }
+      : { at: draft.at, fields: draft.fields };
   } catch {
     return null;
   }
@@ -53,9 +56,9 @@ export function clearDraft(noteId: string): void {
   }
 }
 
-function writeDraft(noteId: string, fields: Partial<PageFields>): void {
+export function writeDraft(noteId: string, fields: Partial<PageFields>, base: number): void {
   try {
-    sessionStorage.setItem(draftKey(noteId), JSON.stringify({ at: Date.now(), fields } satisfies PageDraft));
+    sessionStorage.setItem(draftKey(noteId), JSON.stringify({ at: Date.now(), base, fields } satisfies PageDraft));
   } catch {
     // Storage is full or switched off. The changes are still in memory and still being saved.
   }
@@ -67,6 +70,13 @@ export function draftDiffers(draft: PageDraft, saved: PageFields): boolean {
     (key) => JSON.stringify(draft.fields[key]) !== JSON.stringify(saved[key]),
   );
 }
+
+/**
+ * True when the page was saved again, here or elsewhere, after the version the draft's
+ * changes were made on: restoring the draft would then put it in place of newer work.
+ * A draft without a recorded base is treated as behind, to be safe.
+ */
+export const draftIsBehind = (draft: PageDraft, savedUpdatedAt: number): boolean => draft.base === undefined || savedUpdatedAt > draft.base;
 
 // ── Sending ──
 
@@ -148,7 +158,7 @@ export function usePageSaver(options: {
       },
       classify: classifySaveError,
       onStatus: setStatus,
-      onDraft: (unsaved) => (unsaved ? writeDraft(noteId, unsaved) : clearDraft(noteId)),
+      onDraft: (unsaved) => (unsaved ? writeDraft(noteId, unsaved, queue.baseUpdatedAt()) : clearDraft(noteId)),
     });
     saver.current = queue;
     setStatus(queue.status());

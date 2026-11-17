@@ -23,7 +23,7 @@ import { emptyNewPassphrase, NewPassphrase, type NewPassphraseState, newPassphra
 import { lockAll, unlockedKey } from "@/features/encryption/session";
 import { errorMessage } from "@/lib/api";
 import { plural } from "@/lib/utils";
-import { displayTitle, noteKeys, saveNote } from "./notes-data";
+import { displayTitle, noteKeys, refreshNotes, saveNote } from "./notes-data";
 import { clearDraft } from "./use-page-saver";
 
 type Method = "passphrase" | "key";
@@ -88,7 +88,7 @@ export default function EncryptPageDialog({
       client.setQueryData<NoteResponse>(noteKeys.detail(note.id), (data) =>
         data ? { note: { ...data.note, ...saved, content, encrypted: true, backlinks: data.note.backlinks } } : data,
       );
-      await client.invalidateQueries({ queryKey: noteKeys.all });
+      await refreshNotes(client);
       toast(`“${title}” is encrypted.`);
       onClose();
     } catch (failure) {

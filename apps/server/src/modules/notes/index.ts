@@ -45,6 +45,7 @@ const updateBody = z.object({
   isTemplate: z.boolean().optional(),
   baseUpdatedAt: z.number().optional(),
   removeEncryption: z.boolean().optional(),
+  origin: z.string().max(64).optional(),
 });
 
 const moveBody = z.object({ parentId: id.nullable(), afterId: id.nullable().optional() });

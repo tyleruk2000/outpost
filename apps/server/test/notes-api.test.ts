@@ -315,14 +315,18 @@ describe("notes API", () => {
         if (event.type === "notes.changed") events.push(event);
       });
       const note = await create({ title: "Watched" });
-      await app.api("PATCH", `/api/notes/${note.id}`, { title: "Renamed" });
+      const renamed = (await app.api("PATCH", `/api/notes/${note.id}`, { title: "Renamed", origin: "tab-1" })).body.note;
       await app.api("PATCH", `/api/notes/${note.id}`, { title: "Renamed" });
       await app.api("POST", `/api/notes/${note.id}/move`, { parentId: null, afterId: null });
       await app.api("DELETE", `/api/notes/${note.id}`);
       await app.api("POST", `/api/notes/${note.id}/restore`);
       stop();
       // Create, rename (the identical second save is silent), move, trash, restore.
-      expect(events).toEqual(Array.from({ length: 5 }, () => ({ type: "notes.changed", id: note.id })));
+      const plain = { type: "notes.changed", id: note.id };
+      // A save says which tab made it and which version it made, so that tab need not fetch the page again.
+      const saved = { ...plain, data: { updatedAt: renamed.updatedAt, origin: "tab-1" } };
+      expect(events).toEqual([plain, saved, plain, plain, plain]);
+      expect((await app.api("PATCH", `/api/notes/${note.id}`, { title: "x", origin: "o".repeat(65) })).status).toBe(400);
     });
   });
 

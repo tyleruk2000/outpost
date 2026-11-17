@@ -175,4 +175,63 @@ test.describe("notes", () => {
     expect(markdown).toContain("1. Pack\n2. Tent\n3. Leave a note\n");
     expect(errors).toEqual([]);
   });
+  test("two tabs on one page: the idle one follows, and neither saves over the other", async ({ page, context }) => {
+    const note = (await api(page, "POST", "/api/notes", { title: "Two tabs" })).note as { id: string };
+    const other = await context.newPage();
+    await page.goto(`/notes/${note.id}`);
+    await other.goto(`/notes/${note.id}`);
+    const textOf = (tab: typeof page) => tab.getByRole("textbox", { name: "Page content" });
+
+    // A tab's own save is not fetched back; the other tab, with nothing unsaved, takes it up.
+    await textOf(page).click();
+    await expect(textOf(other)).toBeVisible();
+    const fetched: string[] = [];
+    page.on("request", (request) => {
+      if (request.method() === "GET" && new URL(request.url()).pathname === `/api/notes/${note.id}`) fetched.push(request.url());
+    });
+    await page.keyboard.type("Written in the first tab.");
+    await expect(page.getByText("Saved", { exact: true })).toBeVisible({ timeout: 10_000 });
+    await expect(textOf(other).getByText("Written in the first tab.")).toBeVisible();
+    await page.waitForTimeout(1500);
+    expect(fetched).toEqual([]);
+
+    // Both write before either has seen the other: the later save is refused, not saved over the first.
+    await textOf(page).click();
+    await page.keyboard.press("End");
+    await page.keyboard.type(" First again.");
+    await textOf(other).click();
+    await other.keyboard.press("End");
+    await other.keyboard.type(" Second tab.");
+    await expect(other.getByText("This page was changed somewhere else")).toBeVisible({ timeout: 10_000 });
+    const stored = JSON.stringify((await api(page, "GET", `/api/notes/${note.id}`)).note);
+    expect(stored).toContain("First again.");
+    expect(stored).not.toContain("Second tab.");
+    // Keeping the second version is a choice the person makes, and only then is the first replaced.
+    await other.getByRole("button", { name: "Keep my version" }).click();
+    await expect(other.getByText("Saved", { exact: true })).toBeVisible({ timeout: 10_000 });
+    expect(JSON.stringify((await api(page, "GET", `/api/notes/${note.id}`)).note)).toContain("Second tab.");
+    await other.close();
+  });
+
+  test("a kept draft says so when the page was saved again since, before it replaces anything", async ({ page }) => {
+    const note = (await api(page, "POST", "/api/notes", { title: "Kept draft" })).note as { id: string; updatedAt: number };
+    await page.goto(`/notes/${note.id}`);
+    await expect(page.getByLabel("Page title")).toHaveValue("Kept draft");
+    // As this tab would have left it on closing before its save went out, made on the version first loaded.
+    await page.evaluate(
+      ({ id, base }) =>
+        sessionStorage.setItem(`outpost.notes.draft.${id}`, JSON.stringify({ at: Date.now(), base, fields: { title: "From the draft" } })),
+      { id: note.id, base: note.updatedAt },
+    );
+    // The tab goes elsewhere; meanwhile another device saves the page; then the tab comes back.
+    await page.goto("/notes");
+    await api(page, "PATCH", `/api/notes/${note.id}`, { title: "From elsewhere" });
+    await page.goto(`/notes/${note.id}`);
+    await expect(page.getByText("Unsaved changes were found")).toBeVisible();
+    await expect(page.getByText(/The page has been saved since then/)).toBeVisible();
+    await expect(page.getByLabel("Page title")).toHaveValue("From elsewhere");
+    await page.getByRole("button", { name: "Replace with my changes" }).click();
+    await expect(page.getByLabel("Page title")).toHaveValue("From the draft");
+    await expect(page.getByText("Saved", { exact: true })).toBeVisible({ timeout: 10_000 });
+  });
 });
