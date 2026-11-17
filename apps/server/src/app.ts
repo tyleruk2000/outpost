@@ -173,7 +173,11 @@ export async function buildApp(config: Config): Promise<BuiltApp> {
 
   app.setNotFoundHandler((request, reply) => {
     const pathname = request.url.split("?")[0] ?? "";
-    const wantsPage = request.method === "GET" && !pathname.startsWith("/api/") && !path.extname(pathname);
+    // An address with no file extension is a screen of the app. So is anything under the
+    // reader, whose address carries the archive's own path ("…/index.html", "…/clip.mp4"):
+    // without this, reloading a page of an archive, or opening a link to one, was a 404.
+    const wantsPage =
+      request.method === "GET" && !pathname.startsWith("/api/") && (!path.extname(pathname) || pathname.startsWith("/library/read/"));
     if (wantsPage && fs.existsSync(indexFile)) {
       return reply
         .header("Content-Security-Policy", APP_CSP)

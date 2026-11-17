@@ -34,6 +34,34 @@ async function withWebApp(): Promise<TestApp> {
   return createTestApp({}, dir);
 }
 
+describe("an address inside the app", () => {
+  it("opens the app for a page of an archive whose own name ends in .html, and for one that does not", async () => {
+    app = await withWebApp();
+    // The reader's address carries the archive's own path, so most of them end in ".html".
+    for (const address of [
+      "/library/read/01m7mqbp6dr2dhvc4bpb4hnf3v/index.html",
+      "/library/read/01m7mqbp6dr2dhvc4bpb4hnf3v/A/Water_purification.html?from=search",
+      "/library/read/01m7mqbp6dr2dhvc4bpb4hnf3v/videos/clip.mp4",
+      "/library/read/01m7mqbp6dr2dhvc4bpb4hnf3v/A/Water_purification",
+      "/notes",
+    ]) {
+      const page = await app.api("GET", address);
+      expect(page.status, address).toBe(200);
+      expect(page.headers["content-type"], address).toContain("text/html");
+      expect(page.body, address).toContain("/assets/index-ABC.js");
+      expect(page.headers["cache-control"], address).toBe("no-cache");
+    }
+  });
+
+  it("still answers 404 for a file that is not there, and for an API address", async () => {
+    app = await withWebApp();
+    for (const address of ["/assets/gone-123.js", "/favicon-missing.png", "/library/missing.css", "/api/nothing-here"]) {
+      const missing = await app.api("GET", address);
+      expect(missing.status, address).toBe(404);
+    }
+  });
+});
+
 describe("the web app's files", () => {
   it("sends the compressed copy the browser accepts, cached for good when its name is fingerprinted", async () => {
     app = await withWebApp();
