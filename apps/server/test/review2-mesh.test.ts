@@ -174,3 +174,25 @@ describe("what is learnt from the radios", () => {
     }
   });
 });
+
+describe("setting the link up", () => {
+  it("is refused through a proxy and from another device, and the device list takes no path", async () => {
+    const app = await createTestApp({ OUTPOST_LAN_ACCESS: "true", OUTPOST_HOST: "0.0.0.0" }, undefined, { voacapData: false });
+    try {
+      const body = { mode: "broker", broker: { port: 9208, userName: USER, password: PASSWORD } };
+      for (const extra of [
+        { headers: { "x-forwarded-for": "127.0.0.1" } },
+        { headers: { forwarded: "for=127.0.0.1" } },
+        { remoteAddress: "::ffff:192.168.1.20" },
+        { remoteAddress: "fe80::1" },
+      ]) {
+        expect((await app.api("PUT", "/api/mesh/meshtastic", body, extra)).status, JSON.stringify(extra)).toBe(403);
+        expect((await app.api("PUT", "/api/mesh/meshcore", { mode: "serial", device: "/etc/passwd" }, extra)).status).toBe(403);
+      }
+      expect((await app.api("PUT", "/api/mesh/meshcore", { mode: "serial", device: "/etc/passwd" })).status).toBe(400);
+      expect(app.ctx.services.mesh.response().meshtastic.config.mode).toBe("off");
+    } finally {
+      await app.close();
+    }
+  });
+});
