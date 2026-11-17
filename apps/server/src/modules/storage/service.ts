@@ -14,7 +14,7 @@ import type { AppContext } from "../../core/context.ts";
 import { AppError, conflict, notFound } from "../../core/errors.ts";
 import { isInside, resolveInside } from "../../core/fs-safe.ts";
 import { newId } from "../../core/ids.ts";
-import { collections, documents, storageLocations } from "../../db/schema.ts";
+import { bookChapters, collections, documents, storageLocations } from "../../db/schema.ts";
 
 export type LocationRow = typeof storageLocations.$inferSelect;
 export type LocationKind = LocationRow["kind"];
@@ -494,6 +494,8 @@ export function createStorageService(ctx: AppContext): StorageService {
           count: sql<number>`count(*)`,
         })
         .from(collections)
+        // A file that became a document (a reference sheet) is counted with the documents.
+        .where(sql`json_extract(${collections.meta}, '$.documentId') is null`)
         .groupBy(collections.locationId, collections.kind)
         .all()) {
         add(row.locationId, row.kind, row.bytes, row.count);
@@ -505,6 +507,8 @@ export function createStorageService(ctx: AppContext): StorageService {
           count: sql<number>`count(*)`,
         })
         .from(documents)
+        // A book's chapters are the book, already counted with its collection.
+        .where(sql`not exists (select 1 from ${bookChapters} where ${bookChapters.documentId} = ${documents.id})`)
         .groupBy(documents.locationId)
         .all()) {
         add(row.locationId, "document", row.bytes, row.count);
