@@ -38,6 +38,10 @@ const sortOptions: Array<{ value: SortOrder; label: string }> = [
 ];
 
 const grid = "grid grid-cols-[repeat(auto-fill,minmax(min(100%,21rem),1fr))] gap-4";
+/** How many of a category the whole catalogue shows under its heading; the rest are a press away. */
+const PER_GROUP = 6;
+/** How many entries a list of one category (or one ranked by size) shows at a time. */
+const PAGE = 30;
 
 function refreshSummary(summary: CatalogRefreshSummary): string {
   const parts = [`${plural(summary.available, "collection")} confirmed with their current size and version`];
@@ -125,6 +129,8 @@ export default function ExplorePage() {
   const [show, setShow] = useState<ShowFilter>("all");
   const [sort, setSort] = useState<SortOrder>("name");
   const [downloading, setDownloading] = useState<{ entry: CatalogEntryDto; open: boolean }>();
+  // Pages shown of the list below, counted afresh whenever the list itself changes.
+  const [pages, setPages] = useState({ list: "", count: 1 });
 
   const refresh = useMutation({
     mutationFn: () => api.post<CatalogRefreshSummary>("/api/catalog/refresh"),
@@ -200,11 +206,25 @@ export default function ExplorePage() {
   const shown = sortEntries(inCategory, sort);
   // By name, the whole catalogue reads best under its category headings; by size it is one ranked list.
   const grouped = category === "all" && sort === "name";
+  const list = [category, query, show, sort].join("\n");
+  const pageCount = pages.list === list ? pages.count : 1;
+  // A linked entry is shown however far down the list it is.
+  const limit = Math.max(PAGE * pageCount, shown.findIndex((entry) => entry.id === markedId) + 1);
   const groups = grouped
     ? categories
-        .map((item) => ({ ...item, entries: shown.filter((entry) => entry.category === item.slug) }))
-        .filter((group) => group.entries.length > 0)
-    : [{ slug: category, label: category === "all" || category === "packs" ? "All collections" : labelOf(category), entries: shown }];
+        .map((item) => {
+          const all = shown.filter((entry) => entry.category === item.slug);
+          return { ...item, total: all.length, entries: all.slice(0, PER_GROUP) };
+        })
+        .filter((group) => group.total > 0)
+    : [
+        {
+          slug: category,
+          label: category === "all" || category === "packs" ? "All collections" : labelOf(category),
+          total: shown.length,
+          entries: shown.slice(0, limit),
+        },
+      ];
 
   const card = (entry: CatalogEntryDto) => (
     <EntryCard
@@ -374,9 +394,23 @@ export default function ExplorePage() {
                       <h2 id={`category-${group.slug}`} className="text-lead font-semibold text-ink">
                         {group.label}
                       </h2>
-                      <p className="tabular text-small text-ink-muted">{group.entries.length}</p>
+                      <p className="tabular text-small text-ink-muted">{group.total}</p>
                     </div>
                     <ul className={grid}>{group.entries.map(card)}</ul>
+                    {group.entries.length < group.total ? (
+                      grouped ? (
+                        <Button className="mt-4" onClick={() => setCategory(group.slug as CategoryChoice)}>
+                          Show all {group.total} in {group.label}
+                        </Button>
+                      ) : (
+                        <div className="mt-5 flex flex-wrap items-center gap-4">
+                          <Button onClick={() => setPages({ list, count: pageCount + 1 })}>Show more</Button>
+                          <p className="tabular text-small text-ink-muted">
+                            Showing {group.entries.length} of {group.total}
+                          </p>
+                        </div>
+                      )
+                    ) : null}
                   </section>
                 ))
               )}

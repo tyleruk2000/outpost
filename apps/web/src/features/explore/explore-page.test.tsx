@@ -88,6 +88,48 @@ describe("Explore", () => {
     expect(screen.getByRole("heading", { name: "Knots by Wikipedia" })).toBeInTheDocument();
   });
 
+  it("shows a few of each category at first, and the rest of a long list a page at a time", async () => {
+    const many = Array.from({ length: 70 }, (_, index) =>
+      entry({
+        id: `radio-${String(index).padStart(2, "0")}`,
+        name: `Radio sheet ${String(index).padStart(2, "0")}`,
+        category: "radio",
+        sizeBytes: (index + 1) * 1_000_000,
+      }),
+    );
+    const all = [entry(), ...many];
+    serve({
+      "GET /api/catalog": catalog({
+        entries: all,
+        categories: CATALOG_CATEGORIES.map((item) => ({ ...item, count: all.filter((one) => one.category === item.slug).length })),
+      }),
+    });
+    renderScreen(<ExplorePage />, "/explore");
+    await screen.findByRole("heading", { name: "Knots by Wikipedia" });
+    // Under its heading, a category shows its first few and says how many more there are.
+    expect(screen.getAllByRole("heading", { name: /^Radio sheet/ })).toHaveLength(6);
+    await userEvent.click(screen.getByRole("button", { name: "Show all 70 in Radio communications" }));
+    expect(categoryButton(/^Radio communications/)).toHaveAttribute("aria-current", "true");
+    // One category is a list of its own, a page at a time.
+    expect(screen.getAllByRole("heading", { name: /^Radio sheet/ })).toHaveLength(30);
+    expect(screen.getByText("Showing 30 of 70")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Show more" }));
+    expect(screen.getAllByRole("heading", { name: /^Radio sheet/ })).toHaveLength(60);
+    await userEvent.click(screen.getByRole("button", { name: "Show more" }));
+    expect(screen.getAllByRole("heading", { name: /^Radio sheet/ })).toHaveLength(70);
+    expect(screen.queryByRole("button", { name: "Show more" })).not.toBeInTheDocument();
+  });
+
+  it("shows a linked entry however far down its category it is", async () => {
+    const many = Array.from({ length: 50 }, (_, index) =>
+      entry({ id: `radio-${String(index).padStart(2, "0")}`, name: `Radio sheet ${String(index).padStart(2, "0")}`, category: "radio" }),
+    );
+    serve({ "GET /api/catalog": catalog({ entries: many }) });
+    renderScreen(<ExplorePage />, "/explore?entry=radio-44");
+    const heading = await screen.findByRole("heading", { name: "Radio sheet 44" });
+    expect(heading.closest("li")).toHaveAttribute("aria-current", "true");
+  });
+
   it("explains that maps are downloaded by region and links to Maps", async () => {
     serve();
     renderScreen(<ExplorePage />, "/explore?category=maps");
