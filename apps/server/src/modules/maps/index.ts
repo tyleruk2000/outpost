@@ -211,7 +211,10 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
     const tile = await tiles.getTile(tileType, ...coordinates);
     // MapLibre treats 204 as "nothing here" and draws the tile empty, without an error. It may
     // be a drive gone for a moment, so the browser asks again rather than keep the hole.
-    if (!tile) return reply.header("Cache-Control", raw ? "no-store" : "no-cache").status(204).send();
+    if (!tile) {
+      reply.header("Cache-Control", raw ? "no-store" : "no-cache");
+      return reply.status(204).send();
+    }
     reply.header("Cache-Control", raw ? "no-store" : TILE_CACHE_CONTROL);
     if (!raw) {
       reply.header("ETag", tile.etag);
