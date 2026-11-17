@@ -59,9 +59,16 @@ export function safeFileName(name: string, fallback = "file"): string {
   // Leading dots would hide the file or, as "..", mean the parent folder.
   cleaned = cleaned.replace(/^[. ]+/, "");
   if (!cleaned || reservedWindowsNames.test(cleaned.split(".")[0] ?? "")) cleaned = fallback;
-  if (cleaned.length > 120) {
+  // Disks count a name in bytes (255 at most): 120 characters, and 240 bytes, whole characters only.
+  if (cleaned.length > 120 || Buffer.byteLength(cleaned) > 240) {
     const ext = path.extname(cleaned).slice(0, 12);
-    cleaned = cleaned.slice(0, 120 - ext.length).trimEnd() + ext;
+    const stem = [...cleaned.slice(0, cleaned.length - path.extname(cleaned).length)];
+    let kept = "";
+    for (const character of stem) {
+      if (kept.length + character.length + ext.length > 120 || Buffer.byteLength(kept + character + ext) > 240) break;
+      kept += character;
+    }
+    cleaned = kept.trimEnd() + ext;
   }
   return cleaned;
 }
