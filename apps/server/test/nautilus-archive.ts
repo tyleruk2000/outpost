@@ -175,7 +175,13 @@ const APP_PAGE = `<!DOCTYPE html>
   </head>
   <body><div id="app">Loading…</div></body>
 </html>`;
-const APP_SCRIPT = `const data = await (await fetch(new URL("../app-data.json", import.meta.url))).json();
+const APP_SCRIPT = `// As a request library does before every request, and as an app does to remember a choice:
+// in a sandbox each of these throws unless the reader has put a stand-in there.
+const seen = document.cookie.length;
+localStorage.setItem("seen", String(seen));
+sessionStorage.setItem("lang", "en");
+if (localStorage.getItem("seen") !== "0" || sessionStorage.getItem("lang") !== "en" || localStorage.length !== 1) throw new Error("storage");
+const data = await (await fetch(new URL("../app-data.json", import.meta.url))).json();
 document.getElementById("app").innerHTML = "<h1>" + data.title + "</h1>";`;
 const APP_DATA = JSON.stringify({ title: "Winter prepping videos" });
 
