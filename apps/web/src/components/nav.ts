@@ -207,6 +207,7 @@ export const settingsSections: SettingsSection[] = [
   { id: "search", label: "Search", inContents: true, keywords: "reference collections wikipedia in results" },
   { id: "semantic", label: "Search by meaning", inContents: true, keywords: "semantic embeddings vectors model" },
   { id: "answers", label: "Answers", inContents: true, keywords: "ai language model ollama llm" },
+  { id: "tools", label: "Looking things up", inContents: true, keywords: "tools mcp model context protocol llm look up claude code" },
   { id: "maps", label: "Maps", inContents: true, keywords: "map source terrain tiles" },
   { id: "board", label: "Message board", inContents: true, keywords: "messages files keep" },
   { id: "mesh", label: "Mesh radio", inContents: true, keywords: "meshtastic meshcore lora mqtt radio link mesh off grid messages" },

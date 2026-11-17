@@ -19,6 +19,7 @@ import { HttpsSection } from "./https-section";
 import { NumberSetting, SettingRow, SettingsSection, TextSetting } from "./parts";
 import { SemanticSection } from "./semantic-section";
 import { TextSizeSetting } from "./text-size-setting";
+import { ToolsSection } from "./tools-section";
 
 function Fact({ label, value }: { label: string; value: ReactNode }) {
   return (
@@ -278,6 +279,7 @@ export default function SettingsPage() {
           <SemanticSection settings={s} disabled={disabled} save={save} />
 
           <AnswersSection settings={s} disabled={disabled} save={save} />
+          <ToolsSection settings={s} disabled={disabled} save={save} />
 
           <SettingsSection
             id="maps"
