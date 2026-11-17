@@ -742,16 +742,6 @@ export default function MapsPage() {
     engine?.setCursor(tool === "browse" || tool === "print" ? "" : "crosshair");
   }, [engine, tool]);
 
-  /**
-   * On a phone, today's sunrise and sunset are written under the readout while the sheet is lowered and nothing
-   * is being done on the map: a tool's card, or the card of a point that was found or is being moved, needs the
-   * room and has the person's attention (and a found point's card has sun times of its own).
-   */
-  // On a phone, while the sheet is lowered and nothing else is in hand. On a wide screen there is room for it
-  // always, except while the Sun tab itself is open beside the map and says the same and more.
-  const sunLine = isDesktop ? !(panel.open && panel.tab === "sun") : detent === "peek" && tool === "browse" && !pin && !moving;
-  inHand.current = tool !== "browse" || Boolean(pin) || Boolean(moving);
-
   // "Fit" and "fly" should land in the part of the map that is not under the chrome.
   useEffect(() => {
     if (!engine) return;
@@ -978,6 +968,25 @@ export default function MapsPage() {
       showPanel("offline");
     }, [showPanel]),
   });
+
+  /**
+   * On a phone, today's sunrise and sunset are written under the readout while the sheet is lowered and nothing
+   * is being done on the map: a tool's card, the card of a point that was found or is being moved, or of a repeater
+   * or a record opened on the map, needs the room and has the person's attention (and a found point's card has sun
+   * times of its own). A repeater's estimated range on a phone with large text was drawn about 70 px across for
+   * want of it.
+   */
+  const cardOpen = Boolean(repeaters.card ?? reference.card);
+  // On a phone, while the sheet is lowered and nothing else is in hand. On a wide screen there is room for it
+  // always, except while the Sun tab itself is open beside the map and says the same and more.
+  const sunLine = isDesktop ? !(panel.open && panel.tab === "sun") : detent === "peek" && tool === "browse" && !pin && !moving && !cardOpen;
+  inHand.current = tool !== "browse" || Boolean(pin) || Boolean(moving) || cardOpen;
+  // A record opened from the Layers tab (found by name) comes up as a card over the map: on a phone the sheet is
+  // lowered for it, as for a found place, or the card had a strip of map and showed none of an airport's frequencies.
+  const recordOpen = Boolean(reference.card);
+  useEffect(() => {
+    if (recordOpen && !isDesktop) setDetent("peek");
+  }, [recordOpen, isDesktop]);
 
   const chooseResult = (result: SearchResult) => {
     setContextMenu(null);

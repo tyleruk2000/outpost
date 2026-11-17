@@ -76,13 +76,18 @@ describe("an airport's radio frequencies on its card", () => {
       "CLDHeathrow Delivery121.975 MHz",
       "8.33123.425 MHz",
     ]);
-    // It scrolls inside the card when long.
-    expect(list.className).toContain("sm:overflow-y-auto");
+    // It scrolls inside the card when long, on a phone as on a wide screen: about five rows show at once.
+    expect(list.className).toMatch(/(^| )overflow-y-auto/);
+    expect(list.className).toMatch(/(^| )max-h-/);
     expect(screen.getByText("4 listed")).toBeTruthy();
-    expect(screen.getByText(/From OurAirports, a community-maintained public-domain dataset, as of 17 November 2026\./)).toBeTruthy();
-    expect(screen.getByText(/Not for navigation or flight planning: it may be out of date or wrong\./)).toBeTruthy();
-    expect(screen.getByText(/Rules on listening differ by country\./)).toBeTruthy();
+    // The caution in one line under the list; the rest behind the disclosure.
+    expect(
+      screen.getByText(
+        "Not for navigation or flight planning: OurAirports' community list, as of 17 November 2026, may be out of date or wrong.",
+      ),
+    ).toBeTruthy();
     await userEvent.click(screen.getByText("About these frequencies"));
+    expect(screen.getByText(/a community-maintained public-domain dataset/)).toBeTruthy();
     expect(screen.getByText(/Rules on listening to aviation and other non-broadcast traffic/)).toBeTruthy();
     expect(screen.getByRole("link", { name: "The VHF air band in Frequencies to listen to" }).getAttribute("href")).toBe(AIR_BAND_LINK);
     // Its fields stay listed, without the frequencies.
@@ -112,5 +117,31 @@ describe("an airport's radio frequencies on its card", () => {
     expect(formatMhz("122")).toBe("122.000");
     expect(formatMhz("121.9375")).toBe("121.9375");
     expect(formatMhz("abc")).toBe("abc");
+  });
+
+  it("puts the frequencies first on the card, straight under what the place is", () => {
+    show(airport({ held: true, asOf: "2026-11-17", list: [{ type: "TWR", typeLabel: "Tower", description: "", mhz: "118.5" }] }));
+    const list = screen.getByRole("list", { name: "Radio frequencies" });
+    const provenance = screen.getByText("Published public record");
+    expect(list.compareDocumentPosition(provenance) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("folds to one line to leave the map clear, and opens out again", async () => {
+    show(
+      airport({
+        held: true,
+        asOf: "2026-11-17",
+        list: [
+          { type: "TWR", typeLabel: "Tower", description: "", mhz: "118.5" },
+          { type: "ATIS", typeLabel: null, description: "", mhz: "113.75" },
+        ],
+      }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Show less" }));
+    const folded = screen.getByRole("region", { name: "London Heathrow Airport: radio frequencies" });
+    expect(folded).toHaveTextContent(/London Heathrow Airport\s*2 radio frequencies$/);
+    expect(screen.queryByRole("list", { name: "Radio frequencies" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Show the details" }));
+    expect(screen.getByRole("list", { name: "Radio frequencies" })).toBeTruthy();
   });
 });
