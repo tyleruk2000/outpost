@@ -530,8 +530,10 @@ source whose terms are not cleared.
 | UKHSA, [Nuclear emergencies: information for the public](https://www.gov.uk/government/publications/nuclear-emergencies-information-for-the-public/nuclear-emergencies-information-for-the-public) | Updated 28 September 2026 | GOV.UK, OGL v3.0 | Read; not quoted (background for councils) | |
 
 **Ready.gov and FEMA, read again.** Ready.gov's footer links "Website Information" to
-FEMA's page, which still refused a direct request (HTTP 403); its text was read from the
-Internet Archive's copy of 7 August 2026, word for word: "Most material on FEMA.gov is
+FEMA's page. It refused a direct request (HTTP 403) on 15 and 16 November, when its text
+was read from the Internet Archive's copy of 7 August 2026; on 17 November 2026 it
+answered Outpost's own client and was read directly (`docs/sources.md`, source 8), with
+the same words: "Most material on FEMA.gov is
 free of copyright and may be copied and distributed without permission", and "In
 addition to this fema.gov website, FEMA also owns and manages these these .gov domains"
 (Ready.gov among them); last updated 1 May 2023. It names FEMA.gov, and says "most", so

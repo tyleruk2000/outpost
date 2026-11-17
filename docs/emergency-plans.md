@@ -115,7 +115,7 @@ step of a publisher that allows only exact copies differs from its words.
 | European Commission | https://commission.europa.eu/legal-notice_en | “Unless otherwise indicated (e.g. in individual copyright notices), content owned by the EU on this website is licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0) licence. This means that reuse is allowed, provided appropriate credit is given and changes are indicated.” | Cleared: CC BY 4.0. Shown with its words: “© European Union, CC BY 4.0 (European Commission, “112 - the EU's emergency phone number”).” |
 | Queensland Government | https://www.qld.gov.au/legal/copyright | “Unless otherwise noted, all copyright material available on or through this website is licensed under a Creative Commons Attribution 4.0 International licence (CC BY 4.0). … You must keep the copyright notice on the copyright material and attribute the State of Queensland as the source of the copyright material.” | Cleared: CC BY 4.0. Shown with its words: “© State of Queensland, CC BY 4.0 (“Triple Zero (000)”, qld.gov.au).” |
 | British Red Cross | https://www.redcross.org.uk/terms-and-conditions | “We and our licensors reserve all of our and their rights in any intellectual property in connection with these Terms. … Commercial use or publication of any or all of the Content is strictly prohibited without prior authorisation from us. Nothing contained herein shall be construed as conferring any licence to use any item displayed, other than as necessary to enable you to access the Site.” | Not cleared: All rights reserved: pointed to, not quoted. |
-| Ready.gov and FEMA (United States) | https://www.fema.gov/about/website-information | “Not read directly: fema.gov refused every request from here (HTTP 403). Read through a summarising fetcher, the page says “Most material on FEMA.gov is free of copyright and may be copied and distributed without permission”, which names FEMA.gov and not Ready.gov; Ready.gov has no terms page of its own that could be found.” | Not cleared: Not established from a page that could be read: pointed to or left as a question, not quoted. |
+| Ready.gov and FEMA (United States) | https://www.fema.gov/about/website-information | “Read on 17 November 2026 (fema.gov had refused every request from here, HTTP 403, on 15 and 16 November): “Most material on FEMA.gov is free of copyright and may be copied and distributed without permission.” It says FEMA sometimes uses licensed or restricted photos or graphics, and names FEMA.gov, not Ready.gov; Ready.gov has no terms page of its own that could be found.” | Not cleared: Not established for Ready.gov: FEMA's statement names FEMA.gov and says “most”. Pointed to or left as a question, not quoted. |
 | New Zealand Police | https://www.police.govt.nz/about-site-and-nz-police-app/copyright | “You may save to disk and reprint images and other information contained on this site for non-commercial private purposes only. Requests and enquiries concerning the reproduction of information on this website, or the use of web scripts or code, for any other purpose requires permission.” | Not cleared: Permission needed: the number 111 is given as a fact, cited, with none of the page's words. |
 
 What follows on the screen and on paper:
@@ -134,9 +134,10 @@ What follows on the screen and on paper:
   the heatwave template uses Be Ready's own heat advice (OGL), which says to read the
   NHS's advice, and the one NHS cold-weather step is covered by Be Ready's.
 - **The British Red Cross** reserves all rights, so its pages are pointed to, never
-  quoted. **Ready.gov and FEMA** (US) are treated as not cleared: fema.gov refused every
-  direct request, and the statement found through a summarising fetcher names FEMA.gov,
-  not Ready.gov. **New Zealand Police** requires permission. Their numbers (911, 111)
+  quoted. **Ready.gov and FEMA** (US) are treated as not cleared: FEMA's website
+  information page, refused (HTTP 403) on 15 and 16 November and read directly with
+  Outpost's own client on 17 November 2026 (`docs/sources.md`, source 8), says "Most material on FEMA.gov is free of copyright", which names
+  FEMA.gov, not Ready.gov. **New Zealand Police** requires permission. Their numbers (911, 111)
   are given as facts, cited, without their words.
 
 ### What was replaced
