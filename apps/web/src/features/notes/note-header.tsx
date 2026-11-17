@@ -125,7 +125,7 @@ export function PageAdornments({
   if (!editable) return icon ? <div className="mb-2 text-[3rem] leading-none">{icon}</div> : null;
 
   return (
-    <div className={cn("flex items-end gap-1", icon ? "mb-2" : "-ml-2.5 mb-1 min-h-8")}>
+    <div className={cn("flex flex-wrap items-end gap-1", icon ? "mb-2" : "-ml-2.5 mb-1 min-h-8")}>
       <IconPicker icon={icon} onChange={onIcon}>
         {icon ? (
           <button

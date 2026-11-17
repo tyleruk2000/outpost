@@ -4,7 +4,7 @@
  * screen, the whole page tree is here too.
  */
 import type { NoteListItem, NoteTemplate } from "@outpost/shared";
-import { ArrowRight, Ellipsis, Plus, Star } from "lucide-react";
+import { ArrowRight, Ellipsis, LayoutTemplate, Plus, Star, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { EmptyState, ErrorState, Page, PageHeader, Section } from "@/components/page";
@@ -17,6 +17,9 @@ import { WorkspaceMenuItems } from "./notes-tree";
 import { PageIcon } from "./page-bits";
 import { PageTree } from "./page-tree";
 import type { TreeIndex } from "./tree-model";
+
+const sideLink =
+  "inline-flex min-h-9 items-center gap-1.5 rounded-control text-ink-muted underline-offset-[0.2em] hover:text-ink hover:underline max-md:min-h-11";
 
 function ListSkeleton({ rows = 4 }: { rows?: number }) {
   return (
@@ -44,17 +47,20 @@ function PageRow({
   const parent = page.parentId ? index?.byId.get(page.parentId) : undefined;
   return (
     <li>
-      <Link to={`/notes/${page.id}`} className="group flex items-center gap-3 py-2.5 text-ink max-md:py-3">
-        <PageIcon icon={page.icon} className="text-ink-muted" />
-        <span className="flex min-w-0 flex-1 items-baseline gap-2.5">
-          <span className="truncate font-title text-body decoration-primary decoration-1 underline-offset-[0.22em] group-hover:underline">
-            {displayTitle(page.title)}
+      {/* The title has the room first: the parent's name gives way to it, and the time moves under it when both do not fit. A long title takes two lines. */}
+      <Link to={`/notes/${page.id}`} className="group flex items-start gap-3 py-2.5 text-ink max-md:py-3">
+        <PageIcon icon={page.icon} className="mt-1 text-ink-muted" />
+        <span className="flex min-w-0 flex-1 flex-wrap items-baseline justify-between gap-x-3">
+          <span className="flex min-w-0 grow basis-36 items-baseline gap-2.5">
+            <span className="line-clamp-2 max-w-full shrink-0 font-title text-body [overflow-wrap:anywhere] decoration-primary decoration-1 underline-offset-[0.22em] group-hover:underline">
+              {displayTitle(page.title)}
+            </span>
+            {parent ? (
+              <span className="hidden min-w-0 truncate text-small text-ink-muted sm:block">in {displayTitle(parent.title)}</span>
+            ) : null}
           </span>
-          {parent ? (
-            <span className="hidden shrink truncate text-small text-ink-muted sm:block">in {displayTitle(parent.title)}</span>
-          ) : null}
+          {meta ? <span className="tabular min-w-0 text-small text-ink-muted">{meta}</span> : null}
         </span>
-        {meta ? <span className="tabular shrink-0 text-small text-ink-muted">{meta}</span> : null}
       </Link>
     </li>
   );
@@ -72,13 +78,14 @@ export function TemplateList({
   return (
     <ul className="divide-y divide-border border-y border-border">
       {templates.map((template) => (
-        <li key={template.id} className="flex items-start gap-3 py-3">
+        <li key={template.id} className="flex flex-wrap items-start gap-x-3 gap-y-2 py-3">
           <PageIcon icon={template.icon} className="mt-1 text-ink-muted" />
-          <div className="min-w-0 flex-1">
+          {/* With large text the button goes under the words rather than squeezing them into a column. */}
+          <div className="min-w-0 flex-1 basis-48">
             <h3 className="font-title text-body text-ink">{displayTitle(template.title)}</h3>
             <p className="mt-0.5 text-small text-ink-muted">{template.description || "One of your own pages, kept as a template."}</p>
           </div>
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="ml-auto flex shrink-0 items-center gap-1">
             {template.builtin ? null : (
               <Button asChild variant="ghost" size="sm">
                 <Link to={`/notes/${template.id}`}>Edit</Link>
@@ -189,13 +196,16 @@ export function NotesHome() {
               <>
                 {index ? (
                   <Section title="Pages" className="md:hidden">
-                    <div className="-mx-2 border-y border-border py-1.5">
-                      <PageTree index={index} tone="page" currentId={undefined} label="Pages" />
+                    {/* The hairlines line up with the other lists; the rows reach a little wider, for their hover. */}
+                    <div className="border-y border-border py-1.5">
+                      <div className="-mx-2">
+                        <PageTree index={index} tone="page" currentId={undefined} label="Pages" />
+                      </div>
                     </div>
                   </Section>
                 ) : null}
 
-                <Section title="Recently opened">
+                <Section title="Recently opened" className="md:mt-0">
                   {recent.isPending ? (
                     <ListSkeleton />
                   ) : recent.isError ? (
@@ -230,6 +240,15 @@ export function NotesHome() {
                 ) : null}
               </>
             )}
+            {/* Also in the "…" menu, but a page someone has just deleted is looked for here. */}
+            <nav aria-label="More in notes" className="mt-8 flex flex-wrap gap-x-6 text-small">
+              <Link to="/notes?view=trash" className={sideLink}>
+                <Trash2 aria-hidden className="size-4" strokeWidth={1.6} /> Trash
+              </Link>
+              <Link to="/notes?view=templates" className={sideLink}>
+                <LayoutTemplate aria-hidden className="size-4" strokeWidth={1.6} /> All templates
+              </Link>
+            </nav>
           </div>
 
           <aside className="min-w-0">

@@ -11,6 +11,7 @@ import {
   groupByReason,
   initiallyOpen,
   outcomeOf,
+  outcomeWords,
   type PreviewNode,
   sourceLabel,
   toCommitBody,
@@ -223,6 +224,24 @@ describe("words", () => {
     expect(describeState("completed", true)).toEqual({ label: "Imported, with some left out", tone: "warning" });
     expect(describeState("failed", true).label).toBe("Partly imported");
     expect(describeState("failed", false).tone).toBe("danger");
+  });
+
+  it("says before the press what will be created, replaced and left alone, and where", () => {
+    expect(outcomeWords({ create: 5, replace: 0, keep: 2, documents: 0 }, null)).toEqual([
+      "5 new pages are made at the top level of your notes.",
+      "2 pages you already have are left as they are.",
+      "Nothing is overwritten.",
+    ]);
+    expect(outcomeWords({ create: 1, replace: 3, keep: 1, documents: 2 }, "Household")).toEqual([
+      "1 new page is made under “Household”.",
+      "3 pages from the earlier import are overwritten.",
+      "1 page you already have is left as it is.",
+      "2 PDFs are added to the library.",
+    ]);
+    expect(outcomeWords({ create: 0, replace: 0, keep: 4, documents: 0 }, null)).toEqual([
+      "4 pages you already have are left as they are.",
+      "Nothing is overwritten.",
+    ]);
   });
 
   it("gathers entries that share a reason", () => {

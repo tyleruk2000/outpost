@@ -28,7 +28,7 @@ import {
   Phone,
   Trash2,
 } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
 import { ErrorState } from "@/components/page";
@@ -193,12 +193,29 @@ function Details({ contact }: { contact: ContactDto }) {
       },
     );
 
+  // Opened from the list (or with the list hidden, on a phone), the focus comes to the
+  // name, so that Tab goes on to this contact's actions rather than through the rest of
+  // the list. Focus anywhere else, such as a field being typed in, is left where it is.
+  const heading = useRef<HTMLHeadingElement>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once for each contact opened
+  useEffect(() => {
+    const active = document.activeElement;
+    if (active === null || active === document.body || active.closest("[data-contact-list]")) {
+      heading.current?.focus({ preventScroll: true });
+    }
+  }, [contact.id]);
+
   return (
     <article aria-labelledby="contact-name">
       <BackToList />
       <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <div className="min-w-0">
-          <h1 id="contact-name" className="font-title text-title text-ink [overflow-wrap:anywhere]">
+          <h1
+            ref={heading}
+            id="contact-name"
+            tabIndex={-1}
+            className="font-title text-title text-ink [overflow-wrap:anywhere] focus:outline-none"
+          >
             {contact.displayName}
           </h1>
           {under.map((line) => (

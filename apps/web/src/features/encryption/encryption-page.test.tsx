@@ -35,16 +35,21 @@ describe("over plain HTTP", () => {
     const user = userEvent.setup();
     renderPage();
 
-    // It opens on the half that works.
+    // It opens on the half that works, and says first, above the tabs, what does not work here.
     expect(screen.getByRole("tab", { name: "By hand" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByLabelText("Message")).toBeInTheDocument();
+    const httpsNotices = () => screen.getAllByRole("status").filter((status) => /need HTTPS/.test(status.textContent ?? ""));
+    expect(httpsNotices()).toHaveLength(1);
+    const notice = httpsNotices()[0]!;
+    expect(within(notice).getByText("Keys, text, files and encrypted pages need HTTPS")).toBeInTheDocument();
+    expect(within(notice).getByText(/encrypted page of your notes/)).toBeInTheDocument();
+    expect(within(notice).getByText(/anyone on the network could alter the page/)).toBeInTheDocument();
+    expect(within(notice).getByRole("link", { name: "Settings, HTTPS on your network" })).toHaveAttribute("href", "/settings#https");
 
     for (const name of ["Keys", "Text", "Files"]) {
       await user.click(screen.getByRole("tab", { name }));
-      const notice = screen.getByRole("status");
-      expect(within(notice).getByText("Keys, text and files need HTTPS")).toBeInTheDocument();
-      expect(within(notice).getByText(/anyone on the network could alter the page/)).toBeInTheDocument();
-      expect(within(notice).getByRole("link", { name: "Settings, HTTPS on your network" })).toHaveAttribute("href", "/settings#https");
+      expect(httpsNotices()).toHaveLength(1);
+      expect(screen.getByRole("tabpanel")).toHaveTextContent(/needs HTTPS, as the notice above says/);
       expect(screen.queryByRole("button", { name: "Make a key" })).not.toBeInTheDocument();
     }
     expect(fetched).not.toHaveBeenCalled();

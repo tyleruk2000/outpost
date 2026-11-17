@@ -86,6 +86,21 @@ const system = {
   "GET /api/contacts/phones": { enabled: false, unavailable: null, lanAccess: true, userName: "outpost", path: "/dav/", contacts: 3 },
 };
 
+describe("opening a contact from the keyboard", () => {
+  it("takes the focus to the contact's name, so the next Tab is its first action and not the rest of the list", async () => {
+    fakeApi({ ...system, "GET /api/contacts": listOf(people), "GET /api/contacts/c1": { contact: contact() } });
+    const user = userEvent.setup();
+    show("/contacts");
+    const row = await screen.findByRole("link", { name: /^Maya Okafor/ });
+    row.focus();
+    await user.keyboard("{Enter}");
+    const name = await screen.findByRole("heading", { name: "Maya Okafor", level: 1 });
+    await waitFor(() => expect(name).toHaveFocus());
+    await user.tab();
+    expect(screen.getByRole("link", { name: /Large type/ })).toHaveFocus();
+  });
+});
+
 describe("the list", () => {
   it("says once who can see the contacts, lists the marked ones first, and puts a call one touch away", async () => {
     fakeApi({ ...system, "GET /api/contacts": listOf(people, { tags: [{ name: "Family", count: 2 }] }) });
@@ -137,8 +152,11 @@ describe("the list", () => {
     fakeApi({ ...system, "GET /api/contacts": listOf([]) });
     const first = show("/contacts");
     expect(await screen.findByRole("heading", { name: "No contacts yet" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Add a contact" })).toHaveAttribute("href", "/contacts/new");
-    expect(screen.getByRole("link", { name: "Bring in from a phone" })).toHaveAttribute("href", "/contacts/import");
+    // The empty list's button has the header's name: one action, one name.
+    const adds = screen.getAllByRole("link", { name: "Add contact" });
+    expect(adds).toHaveLength(2);
+    for (const add of adds) expect(add).toHaveAttribute("href", "/contacts/new");
+    expect(screen.getByRole("link", { name: "Bring in from a phone or a file" })).toHaveAttribute("href", "/contacts/import");
     first.unmount();
 
     fakeApi({ ...system, "GET /api/contacts": { status: 500, error: { code: "internal", message: "The database is busy." } } });

@@ -222,8 +222,10 @@ function RecentImports() {
           <li key={entry.id} className="flex items-center gap-4 py-3">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                {/* The button at the row's end is the way in from the keyboard; this is the larger target for a pointer. */}
                 <Link
                   to={`/import?id=${entry.id}`}
+                  tabIndex={-1}
                   className="min-w-0 truncate text-body font-medium text-ink underline-offset-2 hover:underline"
                 >
                   {entry.originalName}
@@ -238,7 +240,7 @@ function RecentImports() {
                 {timeAgo(entry.createdAt)}
               </p>
             </div>
-            <Button asChild variant="ghost" size="sm">
+            <Button asChild variant="ghost" size="sm" className="max-md:h-11">
               <Link to={`/import?id=${entry.id}`} aria-label={`${open}: ${entry.originalName}`}>
                 {open}
               </Link>

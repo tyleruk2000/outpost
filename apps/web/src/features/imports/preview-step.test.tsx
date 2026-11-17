@@ -115,7 +115,11 @@ describe("the import preview", () => {
   it("leaves existing pages alone by default and imports only the new one", async () => {
     const requests = renderStep();
     expect(screen.getByRole("radio", { name: /Leave them as they are/ })).toBeChecked();
-    expect(screen.getAllByText("Already here")).toHaveLength(3);
+    expect(screen.getAllByText("Already here, left as it is")).toHaveLength(3);
+    // Beside the button, before it is pressed: what is made, where, and what is left alone.
+    expect(screen.getByText("1 new page is made at the top level of your notes.")).toBeInTheDocument();
+    expect(screen.getByText("3 pages you already have are left as they are.")).toBeInTheDocument();
+    expect(screen.getByText("Nothing is overwritten.")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Import 1 page" }));
     expect(requests).toEqual([
       {
@@ -135,7 +139,9 @@ describe("the import preview", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Tick the box to confirm that 2 existing pages will be overwritten.");
     // The tree shows which pages are at stake; the one written by hand is not among them.
     expect(screen.getAllByText("Will be overwritten")).toHaveLength(2);
-    expect(screen.getAllByText("Already here")).toHaveLength(1);
+    expect(screen.getByText("2 pages from the earlier import are overwritten.")).toBeInTheDocument();
+    expect(screen.getByText("1 page you already have is left as it is.")).toBeInTheDocument();
+    expect(screen.getAllByText("Already here, left as it is")).toHaveLength(1);
     await userEvent.click(submit);
     expect(requests).toEqual([]);
 

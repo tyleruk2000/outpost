@@ -58,7 +58,7 @@ A page's content is made of blocks. The complete list is in
 | Bulleted list, numbered list | Can be nested; a numbered list can start at any number |
 | Task list | Items with a tick box |
 | Quote | |
-| Code block | With an optional language |
+| Code block | With an optional language. A long line scrolls sideways inside the block rather than wrapping |
 | Divider | |
 | Table | With a header row; cells can hold blocks, and can be merged |
 | Image | A picture stored as an attachment |
@@ -101,10 +101,15 @@ A page can hold up to 5 MB of content and 40 levels of nesting.
 - Each move of a list item, by dragging, menu or keyboard, is one step of undo.
 - **Pictures** can be pasted, dropped in or chosen from the block menu. Upload progress
   is shown in place.
-- **On a phone or tablet** there is no floating bar and no grip; a formatting bar sits
-  above the keyboard. Its "Block actions" menu does what the grip's menu does, for the
-  list item the cursor is in or for the whole list. List items are not dragged by
-  touch.
+- **On a phone or tablet** there is no floating bar and no grip, so the phone's own
+  menu over a selection (copy, paste) is never covered; a formatting bar sits above the
+  keyboard instead. **Add a block** and **Block actions** are at its left end and
+  **Undo** and **Redo** at its right, always in sight; the formatting between them
+  scrolls sideways when the screen is too narrow for all of it, and fades at the edge
+  that has more. "Block actions" does what the grip's menu does, for the list item the
+  cursor is in or for the whole list. With the cursor in a link, its address shows over
+  it, to open, change or remove. Tick boxes, a callout's icon and a toggle's arrow have a
+  finger-sized target. List items are not dragged by touch.
 
 ### Links and backlinks
 
@@ -126,7 +131,9 @@ trash are left out.
 
 ### Saving, and editing in two places
 
-Pages save as you type. Each save says which version it was based on. If the page was
+Pages save as you type, and the bar above the page says "Saving…" and "Saved". A screen
+reader is told only when something needs attention (offline, refused, not saved) and
+when the page is saved again after it. Each save says which version it was based on. If the page was
 changed in another tab or on another device in the meantime, the save is refused and
 nothing is overwritten: "This page was changed somewhere else after you opened it".
 There is no live co-editing; see
@@ -168,7 +175,8 @@ covered, and how the page is stored.
 
 ### Trash
 
-Deleting a page moves it, and its sub-pages, to the trash. Nothing is lost.
+Deleting a page moves it, and its sub-pages, to the trash. Nothing is lost. The trash is
+reached from **Trash** at the foot of the Notes screen, or from its "…" menu.
 
 - A page in the trash keeps everything and can be restored. Its sub-pages come back
   with it. If its old parent is gone, it returns to the top level.
@@ -270,13 +278,17 @@ a page from the web is a separate thing, asked for separately: see
    exist. Your notes are not touched.
 3. **Your choices.** Where to put the pages (under an existing page or at the top
    level), what to do with pages that already exist, and whether PDFs go to the
-   library.
+   library. Beside the button, before it is pressed, the plan says in sentences what
+   the import will do with these choices: how many new pages are made and where, how
+   many are overwritten (or "Nothing is overwritten"), how many already here are left
+   as they are, and how many PDFs go to the library.
 4. **Commit.** A background job creates the pages. One page failing does not stop the
    rest.
 5. **Report.** What was created, updated, skipped and failed, with reasons.
 
 The screen follows the work by the server's live events, so its progress bar moves
-with the job. Only while the connection to the server is down does it ask every few
+with the job. A screen reader hears the stage (reading, importing) and a pause, not each
+page as it is made; the count is on the bar. Only while the connection to the server is down does it ask every few
 seconds instead. You can leave the screen; the job carries on.
 
 You can cancel while it is analysing or importing, and discard an import you have not

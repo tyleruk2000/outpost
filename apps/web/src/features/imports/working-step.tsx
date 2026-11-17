@@ -47,8 +47,12 @@ export function WorkingStep({ dto, onLeave }: { dto: ImportDto; onLeave: () => v
   const action = importing ? actions.stop : actions.discard;
 
   return (
-    <section className="max-w-[40rem]" aria-live="polite">
+    <section className="max-w-[40rem]">
       <h2 className="font-title text-heading break-words text-ink">{words.title}</h2>
+      {/* Spoken: the stage, and a pause. The count and the page being made change with every page, and are read from the bar when asked. */}
+      <p role="status" className="sr-only">
+        {paused ? `${words.title}: paused` : words.title}
+      </p>
       <div className="mt-5 flex items-baseline justify-between gap-4">
         <p className="text-small font-medium text-ink">{paused ? "Paused" : (progress?.message ?? words.waiting)}</p>
         {known ? (

@@ -22,16 +22,20 @@ import { TextTab } from "./text-tab";
 const TABS = ["keys", "text", "files", "hand"] as const;
 type TabId = (typeof TABS)[number];
 
+const tabTarget = "max-md:min-h-11";
+
 /** Where HTTPS is switched on. Another screen owns that setting; this one only points at it. */
 export const HTTPS_SETTING = "/settings#https";
 
+/** Said once, above the tabs, on a page opened over plain HTTP: what does not work here, why, and how to get it. */
 function NeedsHttps() {
   return (
-    <Notice tone="warning" icon={<TriangleAlert />} title="Keys, text and files need HTTPS" className="max-w-[46rem]">
+    <Notice tone="warning" icon={<TriangleAlert />} title="Keys, text, files and encrypted pages need HTTPS" className="mb-6 max-w-[46rem]">
       <p>
-        This page was opened over plain HTTP ({window.location.host}). Browsers only allow the cryptography this needs on a page opened over
-        HTTPS, or on the computer Outpost itself runs on, because over plain HTTP anyone on the network could alter the page on its way to
-        you and take your passphrase.
+        This page was opened over plain HTTP ({window.location.host}). Here you cannot make or use a key, encrypt or decrypt text or a file,
+        or open or encrypt an encrypted page of your notes. Browsers only allow the cryptography this needs on a page opened over HTTPS, or
+        on the computer Outpost itself runs on, because over plain HTTP anyone on the network could alter the page on its way to you and
+        take your passphrase.
       </p>
       <p className="mt-2">
         Turn it on under{" "}
@@ -48,7 +52,13 @@ function NeedsHttps() {
 function ShelfTab({ children }: { children(shelf: NonNullable<ReturnType<typeof useShelf>["data"]>): React.ReactNode }) {
   const available = cryptographyAvailable();
   const shelf = useShelf(available);
-  if (!available) return <NeedsHttps />;
+  if (!available) {
+    return (
+      <p className="max-w-[46rem] text-small text-ink-muted">
+        This needs HTTPS, as the notice above says. The ciphers under “By hand” work here.
+      </p>
+    );
+  }
   if (shelf.isPending) {
     return (
       <div className="grid gap-4" aria-busy>
@@ -77,6 +87,8 @@ export default function EncryptionPage() {
         description="Keep text, files and pages of your notes readable only by the people you choose, with OpenPGP keys that work with GnuPG. Or work a classical cipher with pencil and paper."
       />
 
+      {cryptographyAvailable() ? null : <NeedsHttps />}
+
       <Tabs
         value={tab}
         onValueChange={(next) => {
@@ -85,11 +97,20 @@ export default function EncryptionPage() {
           setParams(copy, { replace: true });
         }}
       >
-        <TabsList aria-label="Encryption">
-          <TabsTrigger value="keys">Keys</TabsTrigger>
-          <TabsTrigger value="text">Text</TabsTrigger>
-          <TabsTrigger value="files">Files</TabsTrigger>
-          <TabsTrigger value="hand">By hand</TabsTrigger>
+        {/* Wrapped, not scrolled, with large text; a finger's height on a phone. */}
+        <TabsList aria-label="Encryption" className="flex-wrap">
+          <TabsTrigger value="keys" className={tabTarget}>
+            Keys
+          </TabsTrigger>
+          <TabsTrigger value="text" className={tabTarget}>
+            Text
+          </TabsTrigger>
+          <TabsTrigger value="files" className={tabTarget}>
+            Files
+          </TabsTrigger>
+          <TabsTrigger value="hand" className={tabTarget}>
+            By hand
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="keys" className="pt-6 focus:outline-none">
           <ShelfTab>{(shelf) => <KeysTab shelf={shelf} />}</ShelfTab>

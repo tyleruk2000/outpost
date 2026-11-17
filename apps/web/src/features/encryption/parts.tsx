@@ -372,7 +372,7 @@ export function RecipientPicker({
                     … {fingerprintGroups(entry.fingerprint).slice(-4).join(" ")}
                   </span>
                 </label>
-                {!entry.mine && entry.checkedAt === null ? <Badge tone="warning">Not checked</Badge> : null}
+                {!entry.mine && entry.checkedAt === null ? <Badge tone="warning">Fingerprint not compared</Badge> : null}
               </li>
             );
           })}
