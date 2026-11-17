@@ -205,3 +205,52 @@ for (const setUp of SET_UPS) {
     });
   });
 }
+
+test.describe("saving a place on a phone", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+  let maps: InstalledTestMaps | undefined;
+  test.beforeEach(async ({ page }) => {
+    maps = await installTestMaps(page);
+  });
+  test.afterEach(async ({ page }) => {
+    const { markers } = await api<{ markers: Array<{ id: string; name: string }> }>(page, "GET", "/api/maps/markers");
+    for (const marker of markers.filter((each) => each.name === "Layout check spring"))
+      await api(page, "DELETE", `/api/maps/markers/${marker.id}`);
+    await removeTestMaps(page, maps);
+  });
+
+  test("the hint goes once the map is tapped, the name field stays above the keyboard, and the place is left in view", async ({ page }) => {
+    const errors = watchForErrors(page);
+    await page.goto(VIEW);
+    await atRest(page);
+    await takeUp(page, "Save a place: then tap the map");
+    // On a touch screen the words say tap, never click.
+    const hint = page.getByText("Tap the map where the place is.");
+    await expect(hint).toBeVisible();
+    const centre = await cross(page);
+    // Low on the map, where the sheet rising for the form would cover it.
+    await page.touchscreen.tap(centre.x - 60, centre.y + 150);
+    const name = page.getByLabel("Name", { exact: true });
+    await expect(name).toBeFocused();
+    await expect(hint).toBeHidden();
+    // The place being saved is moved into the clear map above the sheet.
+    await page.waitForTimeout(600);
+    const pin = (await page.locator(".outpost-pin").boundingBox())!;
+    const sheet = (await page.locator(SHEET).boundingBox())!;
+    expect(pin.y + pin.height, "the new place above the sheet").toBeLessThanOrEqual(sheet.y);
+
+    // The on-screen keyboard leaves 420 px: the sheet rises and the field is above the bottom bar.
+    await page.setViewportSize({ width: 390, height: 420 });
+    await page.waitForTimeout(700);
+    const field = (await name.boundingBox())!;
+    const bar = (await page.locator('nav[aria-label="Main"]').boundingBox())!;
+    expect(field.y + field.height, "the Name field above the bottom bar").toBeLessThanOrEqual(bar.y);
+    expect(field.y).toBeGreaterThanOrEqual(0);
+
+    await name.fill("Layout check spring");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByRole("button", { name: "Save place" }).tap();
+    await expect(page.getByText("“Layout check spring” is saved to your places.")).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+});

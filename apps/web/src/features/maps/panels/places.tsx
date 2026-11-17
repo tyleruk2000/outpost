@@ -87,15 +87,22 @@ function useFieldInView(box: RefObject<HTMLElement | null>, onNeedRoom: (() => v
     };
     // A field focused as the form opens is looked at once the sheet has settled.
     const first = window.setTimeout(check, 250);
+    // Measured once the page has been laid out again for the new size: a resize is told before that.
+    let frame = 0;
+    const later = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(check);
+    };
     element.addEventListener("focusin", check);
-    window.visualViewport?.addEventListener("resize", check);
-    window.addEventListener("resize", check);
+    window.visualViewport?.addEventListener("resize", later);
+    window.addEventListener("resize", later);
     return () => {
       window.clearTimeout(first);
       window.clearTimeout(timer);
+      cancelAnimationFrame(frame);
       element.removeEventListener("focusin", check);
-      window.visualViewport?.removeEventListener("resize", check);
-      window.removeEventListener("resize", check);
+      window.visualViewport?.removeEventListener("resize", later);
+      window.removeEventListener("resize", later);
     };
   }, [box, onNeedRoom]);
 }
