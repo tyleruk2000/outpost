@@ -635,9 +635,11 @@ describe("the line about warnings held for the home place", () => {
   });
 
   it("shows on the list of plans and on Use now, linking to Weather and hazards, and not at all when there is none", async () => {
+    // One reading of the clock: two could straddle a millisecond and make it "2 hours ago".
+    const at = Date.now();
     serve({
       "/api/emergency-plans": { plans: [summary()] },
-      "/api/weather/home-warnings": held({ now: Date.now(), fetchedAt: Date.now() - 3 * HOUR }),
+      "/api/weather/home-warnings": held({ now: at, fetchedAt: at - 3 * HOUR }),
     });
     show("/prepare/plans", <PlansPage />, "/prepare/plans");
     const line = await screen.findByTestId("home-warning-line");
@@ -648,10 +650,11 @@ describe("the line about warnings held for the home place", () => {
   });
 
   it("shows on Use now", async () => {
+    const at = Date.now();
     serve({
       "/api/emergency-plans/p1": answer(),
       "POST /api/emergency-plans/p1/opened": answer(),
-      "/api/weather/home-warnings": held({ now: Date.now(), fetchedAt: Date.now() - HOUR }),
+      "/api/weather/home-warnings": held({ now: at, fetchedAt: at - HOUR }),
     });
     show("/prepare/plans/p1/use", <UsePlanPage />, "/prepare/plans/:id/use");
     expect(await screen.findByTestId("home-warning-line")).toHaveTextContent(/when Outpost last checked, 1 hour ago/);
