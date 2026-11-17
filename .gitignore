@@ -40,6 +40,8 @@ apps/server/models/
 
 # A local Compose override (for example the HTTPS port published by deploy/pi/install.sh --https)
 compose.override.yaml
+# Written by deploy/pi/nas-share.sh: the folder NAS shares are mounted in, for both containers
+compose.nas.yaml
 
 # The ITU's P.533 software is built on each computer and never committed
 # (scripts/build-p533-engine.mjs; docs/hf-propagation.md, "Licences and attribution")
