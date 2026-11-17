@@ -126,9 +126,23 @@ export default function ExplorePage() {
   const client = useQueryClient();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const [query, setQuery] = useState("");
-  const [show, setShow] = useState<ShowFilter>("all");
-  const [sort, setSort] = useState<SortOrder>("name");
+  // The filter, what is shown and the order are in the address, as every other filter is, so a reload keeps them.
+  const query = params.get("q") ?? "";
+  const show = showOptions.find((option) => option.value === params.get("show"))?.value ?? "all";
+  const sort = sortOptions.find((option) => option.value === params.get("sort"))?.value ?? "name";
+  const setParam = (key: string, value: string, unset: string) =>
+    setParams(
+      (current) => {
+        const updated = new URLSearchParams(current);
+        if (value === unset) updated.delete(key);
+        else updated.set(key, value);
+        return updated;
+      },
+      { replace: true },
+    );
+  const setQuery = (next: string) => setParam("q", next, "");
+  const setShow = (next: ShowFilter) => setParam("show", next, "all");
+  const setSort = (next: SortOrder) => setParam("sort", next, "name");
   const [downloading, setDownloading] = useState<{ entry: CatalogEntryDto; open: boolean }>();
   // Pages shown of the list below, counted afresh whenever the list itself changes.
   const [pages, setPages] = useState({ list: "", count: 1 });
@@ -207,10 +221,16 @@ export default function ExplorePage() {
   ];
 
   const filtered = query.trim() !== "" || show !== "all";
-  const clearFilters = () => {
-    setQuery("");
-    setShow("all");
-  };
+  const clearFilters = () =>
+    setParams(
+      (current) => {
+        const updated = new URLSearchParams(current);
+        updated.delete("q");
+        updated.delete("show");
+        return updated;
+      },
+      { replace: true },
+    );
 
   const inCategory = category === "all" || category === "packs" ? matching : matching.filter((entry) => entry.category === category);
   const shown = sortEntries(inCategory, sort);
