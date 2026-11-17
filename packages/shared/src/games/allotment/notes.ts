@@ -64,10 +64,7 @@ export const CROP_NOTES: Record<CropId, CropNotes> = {
     family: "brassicas",
     cold: "A cool-weather crop: best in spring and late summer",
     water: "A lot. Keep the soil evenly moist, or the roots stay small or split.",
-    facts: [
-      "Radishes are in the cabbage family, though they look nothing like a cabbage.",
-      "Sown in hot, dry weather they tend to flower early (bolt), and then the root does not swell.",
-    ],
+    facts: ["Sown in hot, dry weather they tend to flower early (bolt), and then the root does not swell."],
     source: rhs("radishes"),
   },
   salad: {
@@ -132,10 +129,10 @@ export const CROP_NOTES: Record<CropId, CropNotes> = {
   },
   broadBeans: {
     family: "legumes",
-    cold: "Hardy kinds can be sown in autumn and stand the winter",
+    cold: "Hardy kinds stand the winter in the ground",
     water: "Seldom in the ground, but a good soak as they flower, and again two weeks later, gives a much bigger harvest.",
     facts: [
-      "Early sowings want a hardy kind, and fleece or a cloche over them in cold spells.",
+      "Early sowings want fleece or a cloche over them in cold spells.",
       "Sown in late autumn in a mild, sheltered spot, they can be ready as early as May.",
     ],
     source: rhs("broad-beans"),
@@ -162,7 +159,7 @@ export const CROP_NOTES: Record<CropId, CropNotes> = {
   },
   garlic: {
     family: "onions",
-    cold: "Hardy, and needs the cold",
+    cold: "Hardy",
     water: "Only in dry spells in spring and early summer.",
     facts: [
       "Garlic is grown from cloves, the segments of a bulb, not from seed.",

@@ -21,6 +21,7 @@ afterEach(() => {
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;
+const DAY = 24 * HOUR;
 const NOW = Date.now();
 
 const home: WeatherPlace = { id: "p1", name: "Home", lat: 52.75, lon: 0.4, markerId: "m1", isHome: true, region: "ee", createdAt: 1 };
@@ -207,6 +208,11 @@ describe("River and sea levels", () => {
     expect(screen.getByText("Not reporting")).toBeInTheDocument();
     // A station that names no datum says so.
     expect(screen.getByText(/^0\.20 m, measured/)).toBeInTheDocument();
+  });
+
+  it("says only how long ago a reading from an earlier day was, so that its row stays at three lines", async () => {
+    show({ kept: [rivers(NOW - 2 * DAY, [kilhams(2 * DAY)])] }, "?view=rivers");
+    expect(await screen.findByText(/^1\.\d\d m above Ordnance Datum, measured 2 days ago$/)).toBeInTheDocument();
   });
 
   it("keeps what was held, and says what failed, when the Agency cannot be reached", async () => {

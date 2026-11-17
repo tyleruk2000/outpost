@@ -6,6 +6,7 @@
  */
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
+import { JumpLinks } from "@/components/page";
 import { Field } from "@/components/ui/input";
 import { type IsoDate, isIsoDate } from "@/features/maps/lib/sun";
 import { dateIn, deviceZone } from "@/features/maps/lib/sun-text";
@@ -265,25 +266,17 @@ export function RecoveryTab({ place, zone }: { place: ChosenPlace | null; zone: 
           keep" above: if this device's time zone may be wrong too, choose the offset by hand there.
         </p>
       </div>
-      <nav aria-label="Parts of clock recovery" className="mb-4">
-        <ul className="flex flex-wrap gap-x-4 gap-y-1 text-small">
-          {SECTIONS.map((section) => (
-            <li key={section.id}>
-              <a
-                href={`#${section.id}`}
-                onClick={(event) => {
-                  event.preventDefault();
-                  document.getElementById(section.id)?.scrollIntoView({ block: "start" });
-                  document.getElementById(`${section.id}-title`)?.focus({ preventScroll: true });
-                }}
-                className="inline-flex min-h-11 items-center text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2 md:min-h-8"
-              >
-                {section.title}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      <JumpLinks
+        label="Parts of clock recovery"
+        items={SECTIONS.map((section) => ({ id: section.id, label: section.title }))}
+        // The tabs own the address: move to the part, and put focus on its heading, without changing it.
+        onJump={(id, event) => {
+          event.preventDefault();
+          document.getElementById(id)?.scrollIntoView({ block: "start" });
+          document.getElementById(`${id}-title`)?.focus({ preventScroll: true });
+        }}
+        className="mt-0 mb-4"
+      />
       <div className="mb-2 max-w-sm">
         <Field
           label="The date of the measurement"
