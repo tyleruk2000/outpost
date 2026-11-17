@@ -87,6 +87,11 @@ const lands: Array<[string, string | null]> = [
   ["shop", "Maps: Layers"],
   ["pharmacy", "Maps: Layers"],
   ["drinking water", "Maps: Layers"],
+  // The Help section.
+  // A guide by its own name comes first; Help, with every guide, is offered next (below).
+  ["guide", "Settings: Set-up guide"],
+  ["raspberry pi", "Help"],
+  ["docker", "Help"],
 ];
 
 describe("the quick search's places, for the words people use", () => {
@@ -110,6 +115,10 @@ describe("the quick search's places, for the words people use", () => {
 
   it("lists the Settings screen for “settings”, not each of its sections as well", () => {
     expect(findPlaces("settings").map(placeName)).toEqual(["Settings", "Settings: Set-up guide"]);
+  });
+
+  it("offers Help, where every guide is, for “guide”", () => {
+    expect(findPlaces("guide").map(placeName).slice(0, 2)).toEqual(["Settings: Set-up guide", "Help"]);
   });
 
   it("opens a tab of Maps by its words, at an address the Maps screen reads", () => {

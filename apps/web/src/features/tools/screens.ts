@@ -77,7 +77,7 @@ export const toolScreens: SectionScreen[] = [
     to: "/tools/network",
     label: "Devices on this network",
     icon: MonitorSmartphone,
-    keywords: "network wifi lan scan ip address router nas printer raspberry pi",
+    keywords: "network wifi lan scan ip address router nas printer",
     about:
       "See what answers on the network the computer running Outpost is on: a NAS, a printer, a Raspberry Pi whose address you have forgotten.",
   },
