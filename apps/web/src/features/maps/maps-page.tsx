@@ -1505,6 +1505,7 @@ export default function MapsPage() {
               format={format}
               onFormatChange={setFormat}
               credits={engine ? credits : []}
+              heights={{ terrain: sources.data?.hasTerrain ?? false, onGetTerrain: () => openOffline({ type: "add" }) }}
               underReadout={
                 engine && (sunLine || isDesktop) ? (
                   <CentreLines

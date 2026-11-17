@@ -6,7 +6,20 @@
 import type { SearchResponse, SearchResult } from "@outpost/shared";
 import { useQuery } from "@tanstack/react-query";
 import { Command } from "cmdk";
-import { CornerDownLeft, Eraser, FolderInput, Globe, ListChecks, type LucideIcon, Moon, Plus, Search, Sun, Upload } from "lucide-react";
+import {
+  CornerDownLeft,
+  Eraser,
+  FolderInput,
+  Globe,
+  ListChecks,
+  type LucideIcon,
+  Moon,
+  Mountain,
+  Plus,
+  Search,
+  Sun,
+  Upload,
+} from "lucide-react";
 import { Dialog } from "radix-ui";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
@@ -24,6 +37,8 @@ interface PaletteAction {
   label: string;
   icon: LucideIcon;
   run: () => void;
+  /** Other words it is found by. */
+  keywords?: string;
 }
 
 /** True when every word typed begins some word of the label. Nothing typed matches everything. */
@@ -135,12 +150,19 @@ export function CommandPalette({
       icon: resolved === "dark" ? Sun : Moon,
       run: () => run(() => setTheme(resolved === "dark" ? "light" : "dark")),
     },
+    {
+      id: "heights",
+      label: "Heights in metres or feet",
+      icon: Mountain,
+      keywords: "units meters elevation altitude height",
+      run: () => go("/settings#heights"),
+    },
   ];
   // Every screen, those under another with its name first ("Radio: Repeaters"), matched on both names.
   const places = everyScreen.filter((item) =>
     matchesWords(`${item.parent ? `${item.parent.label} ` : ""}${item.label}${item.keywords ? ` ${item.keywords}` : ""}`, typed),
   );
-  const actions = everyAction.filter((action) => matchesWords(action.label, typed));
+  const actions = everyAction.filter((action) => matchesWords(`${action.label}${action.keywords ? ` ${action.keywords}` : ""}`, typed));
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>

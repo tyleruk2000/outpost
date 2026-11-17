@@ -1,5 +1,6 @@
 /** Arithmetic on positions, boxes and distances. Pure, so it can be tested without a map. */
 import { type Bbox, haversineMeters, initialBearingDeg } from "@outpost/shared";
+import { formatHeight as formatGroundHeight } from "@/lib/heights";
 import { formatNumber } from "@/lib/utils";
 
 export interface LatLon {
@@ -144,9 +145,9 @@ export function formatDistanceWithMiles(meters: number): string {
   return `${formatDistance(meters)} (${formatMiles(meters)})`;
 }
 
-/** "1,046 m" for a height or a height gained. */
+/** "1,046 m" (or "3,430 ft") for a height of the ground or a height gained: see `@/lib/heights`. */
 export function formatHeight(meters: number): string {
-  return `${formatNumber(Math.round(meters))} m`;
+  return formatGroundHeight(meters);
 }
 
 /** Ground metres per CSS pixel at a latitude and zoom. MapLibre's zoom 0 is one 512 px tile. */

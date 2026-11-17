@@ -303,7 +303,7 @@ export function SightChart({
           {rows.map((row) => (
             <tr key={row.distanceMeters}>
               <th scope="row">{formatDistance(row.distanceMeters)}</th>
-              <td>{row.groundMeters === null ? "No terrain" : formatMeters(row.groundMeters)}</td>
+              <td>{row.groundMeters === null ? "No terrain" : formatHeight(row.groundMeters)}</td>
               <td>{formatMeters(row.bulgeMeters)}</td>
               <td>{formatMeters(row.rayMeters)}</td>
               <td>

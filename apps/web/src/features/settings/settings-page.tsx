@@ -11,6 +11,7 @@ import { plural } from "@/lib/utils";
 import { AnswersSection } from "./answers-section";
 import { BackupSection } from "./backup-section";
 import { ClockSetting } from "./clock-setting";
+import { HeightSetting } from "./height-setting";
 import { HttpsSection } from "./https-section";
 import { NumberSetting, SettingRow, SettingsSection, TextSetting } from "./parts";
 import { SemanticSection } from "./semantic-section";
@@ -141,6 +142,7 @@ export default function SettingsPage() {
           }
         />
         <ClockSetting />
+        <HeightSetting />
       </SettingsSection>
 
       {settings.isPending ? (

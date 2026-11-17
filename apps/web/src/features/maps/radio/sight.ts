@@ -5,7 +5,7 @@
  * check them.
  */
 import { FRESNEL_GUIDE, type SightResult, type SightSample, type TerrainProfile } from "@outpost/shared";
-import { formatNumber } from "@/lib/utils";
+import { formatHeight } from "@/lib/heights";
 import { formatDistance } from "../lib/geo";
 
 // ── What is asked ───────────────────────────────────────────────────────────
@@ -70,10 +70,12 @@ export function formatFrequency(mhz: number): string {
   return `${Number(mhz.toPrecision(4))} MHz`;
 }
 
-/** A height or a clearance: to the decimetre under ten metres, where a decimetre matters, and whole metres above. */
+/**
+ * A height or a clearance, without its sign: to the decimetre under ten metres, where a
+ * decimetre matters, and whole metres above; or to the foot (`@/lib/heights`).
+ */
 export function formatMeters(meters: number): string {
-  const size = Math.abs(meters);
-  return `${size < 9.95 ? size.toFixed(1) : formatNumber(Math.round(size))} m`;
+  return formatHeight(Math.abs(meters), "fine");
 }
 
 /** "84%" of the zone's radius, or "2.3 times" it. */
@@ -370,7 +372,7 @@ export function columnAt(columns: ChartColumn[], distanceMeters: number): ChartC
 export function describeSample(sample: SightSample): string {
   const where = `${formatDistance(sample.distanceMeters)} from A`;
   if (sample.groundMeters === null || sample.clearanceMeters === null) return `${where}: no terrain installed here`;
-  const ground = `ground ${formatMeters(sample.groundMeters)}`;
+  const ground = `ground ${formatHeight(sample.groundMeters)}`;
   if (sample.clearanceMeters < 0) return `${where}: ${ground}, ${formatMeters(sample.clearanceMeters)} above the ray`;
   const clear = `${where}: ${ground}, ray ${formatMeters(sample.clearanceMeters)} above it`;
   return sample.fresnelRadiusMeters > 0 ? `${clear}, Fresnel radius ${formatMeters(sample.fresnelRadiusMeters)}` : clear;
