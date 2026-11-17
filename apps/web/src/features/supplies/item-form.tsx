@@ -5,8 +5,12 @@
  * the date, so that the next batch of the same tins is a date and a press.
  */
 import {
+  type EnergyNote,
+  type FoodMatch,
+  gramsInUnit,
   isCalendarDay,
   kcalOfUnit,
+  readEnergyNote,
   SUPPLY_CATEGORIES,
   SUPPLY_FIGURE_MAX,
   SUPPLY_LIMITS,
@@ -15,6 +19,8 @@ import {
   type SupplyDateKind,
   type SupplyItem,
   type SupplyItemInput,
+  withEnergyNote,
+  withoutEnergyNote,
 } from "@outpost/shared";
 import { Minus, Plus } from "lucide-react";
 import { useId, useRef, useState } from "react";
@@ -27,6 +33,7 @@ import { Segmented, Select } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
 import { formatNumber } from "@/lib/utils";
 import { useAddItem, useUpdateItem } from "./data";
+import { EnergySource, FoodOffers, filledFrom, noteOf, weightWanted } from "./energy-lookup";
 
 const REMEMBER = "outpost.supplies.last.v1";
 
@@ -64,7 +71,10 @@ interface Draft {
   litresPerUnit: string;
   minimum: string;
   barcode: string;
+  /** The person's own notes; the line saying where a figure came from is kept apart, in `energyFrom`. */
   notes: string;
+  /** The food in USDA FoodData Central's table the energy per 100 g came from, while it is still that figure. */
+  energyFrom: EnergyNote | null;
 }
 
 const text = (value: number | null) => (value === null ? "" : String(value));
@@ -72,6 +82,7 @@ const text = (value: number | null) => (value === null ? "" : String(value));
 export function draftOf(item: Partial<SupplyItemInput> | undefined): Draft {
   const last = remembered();
   const category = item?.category ?? last.category;
+  const note = readEnergyNote(item?.notes ?? "");
   return {
     name: item?.name ?? "",
     category,
@@ -87,7 +98,9 @@ export function draftOf(item: Partial<SupplyItemInput> | undefined): Draft {
     litresPerUnit: text(item?.litresPerUnit ?? null),
     minimum: text(item?.minimum ?? null),
     barcode: item?.barcode ?? "",
-    notes: item?.notes ?? "",
+    notes: withoutEnergyNote(item?.notes ?? ""),
+    // Only while the figure is still the table's: one typed over it is the person's own.
+    energyFrom: note && item?.kcalPerUnit == null && item?.kcalPer100g === note.kcalPer100g ? note : null,
   };
 }
 
@@ -128,6 +141,14 @@ export function inputOf(draft: Draft): SupplyItemInput | Problem {
     if (value !== null && value > SUPPLY_FIGURE_MAX[field]) return { field, text: `At most ${formatNumber(SUPPLY_FIGURE_MAX[field])}.` };
     values[field] = value;
   }
+  const fromTable =
+    draft.energyFrom && draft.energyBy === "100g" && values.kcalPer100g === draft.energyFrom.kcalPer100g ? draft.energyFrom : null;
+  const notes = withEnergyNote(draft.notes, fromTable);
+  if (notes.length > SUPPLY_LIMITS.notes)
+    return {
+      field: "notes",
+      text: `At most ${formatNumber(SUPPLY_LIMITS.notes)} characters, with the line saying where the energy came from.`,
+    };
   return {
     name,
     category: draft.category,
@@ -142,7 +163,7 @@ export function inputOf(draft: Draft): SupplyItemInput | Problem {
     litresPerUnit: values.litresPerUnit,
     minimum: values.minimum,
     barcode: draft.barcode.trim() || null,
-    notes: draft.notes,
+    notes,
   };
 }
 
@@ -192,6 +213,8 @@ export function ItemDialog({
   start,
   locations,
   onClose,
+  onSaved,
+  description,
 }: {
   /** The item being changed; absent when adding. */
   item?: SupplyItem;
@@ -199,6 +222,10 @@ export function ItemDialog({
   start?: Partial<SupplyItemInput>;
   locations: string[];
   onClose: () => void;
+  /** Called in place of `onClose` once a change is saved (going through several items, one after another). */
+  onSaved?: (saved: SupplyItem) => void;
+  /** Said under the title in place of the usual words. */
+  description?: string;
 }) {
   const [draft, setDraft] = useState<Draft>(() => draftOf(item ?? start));
   const [problem, setProblem] = useState<Problem | null>(null);
@@ -210,6 +237,7 @@ export function ItemDialog({
   const nameRef = useRef<HTMLInputElement>(null);
   const dateRef = useRef<HTMLInputElement>(null);
   const moreRef = useRef<HTMLDetailsElement>(null);
+  const gramsRef = useRef<HTMLInputElement>(null);
   const listId = useId();
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -225,12 +253,12 @@ export function ItemDialog({
     if ("field" in input) {
       setProblem(input);
       // The minimum is in the part of the form that starts closed: open it, so that what is wrong can be seen.
-      if (input.field === "minimum" && moreRef.current) moreRef.current.open = true;
+      if ((input.field === "minimum" || input.field === "notes") && moreRef.current) moreRef.current.open = true;
       return;
     }
     const done = (saved: SupplyItem) => {
       remember(saved.category, saved.location);
-      if (!another) return onClose();
+      if (!another) return onSaved ? onSaved(saved) : onClose();
       toast.success(`Added ${saved.name}. Now the next one like it.`);
       setAdded((count) => count + 1);
       // Everything stays but the date, which is what differs from one batch to the next.
@@ -240,6 +268,19 @@ export function ItemDialog({
     const failed = (cause: unknown) => setFailure(errorMessage(cause));
     if (item) update.mutate({ id: item.id, input }, { onSuccess: done, onError: failed });
     else add.mutate(input, { onSuccess: done, onError: failed });
+  };
+
+  // Offered while there is no figure: one typed from the label is never replaced.
+  const offering =
+    food &&
+    !draft.energyFrom &&
+    (draft.energyBy === "pack" ? !draft.kcalPerUnit.trim() : !draft.kcalPer100g.trim() && !draft.kcalPerUnit.trim());
+  const choose = (match: FoodMatch, source: string) => {
+    const filled = filledFrom(match, draft.unit, draft.gramsPerUnit);
+    setDraft((current) => ({ ...current, energyBy: "100g", kcalPerUnit: "", ...filled, energyFrom: noteOf(source, match) }));
+    if (problem && ["kcalPer100g", "gramsPerUnit", "kcalPerUnit"].includes(problem.field)) setProblem(null);
+    // A tin or a pack: its weight is the one thing left to give.
+    if (!filled.gramsPerUnit) window.setTimeout(() => gramsRef.current?.focus(), 0);
   };
 
   const kcal = food
@@ -256,11 +297,12 @@ export function ItemDialog({
         size="lg"
         title={item ? `Change ${item.name}` : "Add to supplies"}
         description={
-          item
+          description ??
+          (item
             ? undefined
             : added > 0
               ? `${added} added so far.`
-              : "Only the name and how many are needed. The rest makes the days and the shopping list better."
+              : "Only the name and how many are needed. The rest makes the days and the shopping list better.")
         }
         onOpenAutoFocus={(event) => {
           event.preventDefault();
@@ -288,6 +330,7 @@ export function ItemDialog({
                 />
               )}
             </Field>
+            {offering ? <FoodOffers name={draft.name} onChoose={choose} /> : null}
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="How many" error={error("quantity")}>
                 {(ids) => (
@@ -308,7 +351,16 @@ export function ItemDialog({
                       {...ids}
                       list={`${listId}-units`}
                       value={draft.unit}
-                      onChange={(event) => set("unit", event.target.value)}
+                      onChange={(event) => {
+                        const unit = event.target.value;
+                        setDraft((current) => {
+                          // A weight filled from the old unit ("kg": 1000 g) is not the weight of the new one ("bag").
+                          const was = gramsInUnit(current.unit);
+                          const filled = current.energyFrom && was !== null && current.gramsPerUnit === String(was);
+                          const now = gramsInUnit(unit);
+                          return { ...current, unit, gramsPerUnit: filled ? (now !== null ? String(now) : "") : current.gramsPerUnit };
+                        });
+                      }}
                       maxLength={SUPPLY_LIMITS.unit}
                     />
                     <datalist id={`${listId}-units`}>
@@ -424,7 +476,12 @@ export function ItemDialog({
                         <Input
                           {...ids}
                           value={draft.kcalPer100g}
-                          onChange={(event) => set("kcalPer100g", event.target.value)}
+                          onChange={(event) => {
+                            const typed = event.target.value;
+                            set("kcalPer100g", typed);
+                            // Typed over the table's figure: the label wins, and the note of the table goes.
+                            if (draft.energyFrom && number(typed) !== draft.energyFrom.kcalPer100g) set("energyFrom", null);
+                          }}
                           inputMode="decimal"
                           className="tabular"
                         />
@@ -434,6 +491,7 @@ export function ItemDialog({
                       {(ids) => (
                         <Input
                           {...ids}
+                          ref={gramsRef}
                           value={draft.gramsPerUnit}
                           onChange={(event) => set("gramsPerUnit", event.target.value)}
                           inputMode="decimal"
@@ -443,11 +501,21 @@ export function ItemDialog({
                     </Field>
                   </div>
                 )}
-                <p className="text-small text-ink-muted">
-                  {kcal !== null
-                    ? `${formatNumber(Math.round(kcal))} kcal in one, ${formatNumber(Math.round(kcal * (number(draft.quantity) ?? 0)))} kcal in all.`
-                    : "Without it, this is not counted in the days of food."}
-                </p>
+                {draft.energyFrom && draft.energyBy === "100g" ? (
+                  <EnergySource
+                    note={draft.energyFrom}
+                    onAnother={() => setDraft((current) => ({ ...current, kcalPer100g: "", energyFrom: null }))}
+                  />
+                ) : null}
+                {draft.energyFrom && draft.energyBy === "100g" && kcal === null ? (
+                  <p className="text-small font-medium text-ink">{weightWanted(draft.unit, draft.energyFrom)}</p>
+                ) : (
+                  <p className="text-small text-ink-muted">
+                    {kcal !== null
+                      ? `${formatNumber(Math.round(kcal))} kcal in one, ${formatNumber(Math.round(kcal * (number(draft.quantity) ?? 0)))} kcal in all.`
+                      : "Without it, this is not counted in the days of food."}
+                  </p>
+                )}
               </fieldset>
             ) : null}
 
@@ -492,7 +560,7 @@ export function ItemDialog({
                     />
                   )}
                 </Field>
-                <Field label="Notes">
+                <Field label="Notes" error={error("notes")}>
                   {(ids) => (
                     <Textarea
                       {...ids}

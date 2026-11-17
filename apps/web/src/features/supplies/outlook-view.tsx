@@ -21,6 +21,7 @@ import { Link } from "react-router";
 import { Notice, Section } from "@/components/page";
 import { Segmented } from "@/components/ui/misc";
 import { formatNumber, plural } from "@/lib/utils";
+import { EnergyLines } from "./energy-outlook";
 import { itemPath } from "./stock-view";
 import { amount, dayWords, LEFT_OUT_WORDS, quantityWords, whenWords } from "./words";
 
@@ -128,16 +129,13 @@ export function OutlookView({ items, household, onHousehold }: { items: SupplyIt
                   : `You want ${plural(outlook.daysWanted, "day")}: the shopping list says what would close the gap.`}
               </p>
             ) : null}
-            <p>
-              <span className="text-ink">Food:</span> <Days days={food.days} wanted={outlook.daysWanted} /> for{" "}
-              {plural(outlook.people, "person", "people")}. Counted {formatNumber(Math.round(food.counted))} kcal in{" "}
-              {plural(food.items, "row")} against {formatNumber(Math.round(food.perDay))} kcal a day.
+            <EnergyLines outlook={outlook} household={household} items={items}>
               <Lost stretch={food} unit="kcal" />
-              <LeftOutList rows={food.leftOut} />
+              <LeftOutList rows={food.leftOut.filter((row) => row.reason !== "no-energy")} />
               {outlook.peopleWithoutFigure.length > 0
                 ? ` ${outlook.peopleWithoutFigure.join(", ")} ${outlook.peopleWithoutFigure.length === 1 ? "has" : "have"} no energy figure and ${outlook.peopleWithoutFigure.length === 1 ? "is" : "are"} not in the daily need: give one under Household.`
                 : ""}
-            </p>
+            </EnergyLines>
             <p>
               <span className="text-ink">Water {waterBasis}:</span> <Days days={water.days} wanted={outlook.daysWanted} />. Counted{" "}
               {amount(water.counted)} litres in {plural(water.items, "row")} against {amount(water.perDay)} litres a day.
@@ -159,6 +157,10 @@ export function OutlookView({ items, household, onHousehold }: { items: SupplyIt
                 <li>
                   Food is counted by energy: each row's kcal (per pack, or per 100 g times the weight) times how many. Rows with no energy
                   given, none left, or past their use-by are left out.
+                </li>
+                <li>
+                  An item's energy per 100 g can come from USDA FoodData Central's table (SR Legacy, April 2018), chosen by name when it is
+                  added. Those are averages for a kind of food, not your packet's figure: the label's figure, typed in, always wins.
                 </li>
                 <li>
                   It is eaten in date order: what reaches its use-by first is eaten first, and what would reach its use-by before its turn

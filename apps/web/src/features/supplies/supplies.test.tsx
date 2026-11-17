@@ -260,8 +260,8 @@ describe("the Supplies screen", () => {
       view: "days",
     });
     // 10 tins at 336 kcal: 3,360 against 2,000 a day.
-    expect(await screen.findByText(/Counted 3,360 kcal in 1 row against 2,000 kcal a day/)).toBeInTheDocument();
-    expect(screen.getAllByText("about 1.6 days").length).toBeGreaterThan(0);
+    expect(await screen.findByText(/That is 3,360 kcal in 1 item against 2,000 kcal a day/)).toBeInTheDocument();
+    expect(screen.getByText(/The food holds about 1.6 days of energy/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Salt" })).toHaveAttribute("href", "/prepare/supplies/items/i2");
   });
 

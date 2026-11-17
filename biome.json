@@ -12,6 +12,7 @@
       "!**/*.gen.ts",
       "!catalog/schema",
       "!engines/solar/predicted-solar-cycle.json",
+      "!apps/server/src/modules/supplies/foods/fdc-sr-legacy.json",
       "!**/*.md"
     ]
   },

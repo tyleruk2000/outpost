@@ -6,12 +6,16 @@
  * `GET /api/supplies/outlook` is the one other screens ask: how many days of food and
  * water there are for the household, and what is missing to reach the days wanted.
  *
+ * `GET /api/supplies/foods?q=` finds a food's energy per 100 g in USDA FoodData Central's
+ * table, which ships with Outpost (`foods.ts`).
+ *
  * Nothing here makes a request anywhere. A barcode is looked up in the inventory and
  * nowhere else; see docs/supplies.md for why, and for what an open product database
  * would allow.
  */
 import {
   AGE_BAND_IDS,
+  energySummary,
   type ImportResult,
   isCalendarDay,
   localDay,
@@ -28,6 +32,7 @@ import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { contentDisposition } from "../notes/attachments.ts";
 import { previewCsv, toCsv } from "./csv.ts";
+import { findFoods } from "./foods.ts";
 import { createSuppliesService, type SuppliesService } from "./service.ts";
 
 declare module "../../core/context.ts" {
@@ -152,7 +157,16 @@ export async function registerSupplies(app: FastifyInstance, ctx: AppContext): P
     const today = todayOf(request.query);
     const items = service.items();
     const household = service.household();
-    return { outlook: supplyOutlook(items, household, today), missing: shoppingSuggestions(items, household, today) };
+    const outlook = supplyOutlook(items, household, today);
+    return { outlook, missing: shoppingSuggestions(items, household, today), energy: energySummary(outlook, household) };
+  });
+
+  /** Foods in USDA FoodData Central's table that match a name typed, best first, with energy per 100 g. Local; nothing is fetched. */
+  app.get("/api/supplies/foods", async (request) => {
+    const { q, limit } = z
+      .object({ q: z.string().max(100), limit: z.coerce.number().int().min(1).max(20).default(8) })
+      .parse(request.query);
+    return findFoods(q, limit);
   });
 
   // ── The shopping list ──
