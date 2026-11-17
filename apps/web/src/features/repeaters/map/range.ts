@@ -25,26 +25,52 @@ import { formatNumber } from "@/lib/utils";
 export const RANGE_SOURCE = "o-range";
 export const RANGE_KEY = "outpost.maps.repeaters.range";
 
-/** What this device remembers: whether the outline is shown, the other station, and the aerial height assumed where a list gives none. */
+/** At most this many ranges are shown at once: each is asked of the server and drawn, and more would be hard to tell apart. */
+export const RANGE_MOST = 8;
+
+/**
+ * What this device remembers: the repeaters whose range is shown, the other station,
+ * and the aerial height assumed where a list gives none. The station and the assumed
+ * height apply to every range shown.
+ */
 export interface RangePrefs {
-  on: boolean;
+  chosen: string[];
   station: RangeStationId;
   assumedAerial: number;
 }
 
-export const DEFAULT_RANGE_PREFS: RangePrefs = { on: false, station: "handheld", assumedAerial: RANGE_DEFAULT_AERIAL_METERS };
+export const DEFAULT_RANGE_PREFS: RangePrefs = { chosen: [], station: "handheld", assumedAerial: RANGE_DEFAULT_AERIAL_METERS };
+
+const isStation = (value: unknown): value is RangeStationId => RANGE_STATIONS.some((station) => station.id === value);
+const isHeight = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= RANGE_MAX_HEIGHT_METERS;
 
 export function isRangePrefs(value: unknown): value is RangePrefs {
   if (!value || typeof value !== "object") return false;
   const prefs = value as Partial<RangePrefs>;
   return (
-    typeof prefs.on === "boolean" &&
-    RANGE_STATIONS.some((station) => station.id === prefs.station) &&
-    typeof prefs.assumedAerial === "number" &&
-    Number.isFinite(prefs.assumedAerial) &&
-    prefs.assumedAerial >= 0 &&
-    prefs.assumedAerial <= RANGE_MAX_HEIGHT_METERS
+    Array.isArray(prefs.chosen) &&
+    prefs.chosen.length <= RANGE_MOST &&
+    prefs.chosen.every((id) => typeof id === "string") &&
+    new Set(prefs.chosen).size === prefs.chosen.length &&
+    isStation(prefs.station) &&
+    isHeight(prefs.assumedAerial)
   );
+}
+
+/**
+ * What is stored, made into the present shape. The first shape had one switch for the
+ * device (`on`) in place of the repeaters chosen: its station and assumed height are kept,
+ * and a range that was on is taken as none chosen, since it was never said for which.
+ */
+export function migrateRangePrefs(value: unknown): RangePrefs {
+  if (isRangePrefs(value)) return value;
+  const old = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+  return {
+    chosen: [],
+    station: isStation(old.station) ? old.station : DEFAULT_RANGE_PREFS.station,
+    assumedAerial: isHeight(old.assumedAerial) ? old.assumedAerial : DEFAULT_RANGE_PREFS.assumedAerial,
+  };
 }
 
 export const stationOf = (id: RangeStationId) => RANGE_STATIONS.find((station) => station.id === id) ?? RANGE_STATIONS[0];
@@ -146,10 +172,17 @@ export function readRange(range: SightRange): RangeReading {
     );
   }
   const partial = range.coverage === "partial";
+  // A few words that do not hide a spike: where most bearings end, and the furthest (or the nearest, when none goes further).
+  const [km, far, near] = [formatKm(typical), formatKm(most), formatKm(least)];
+  const tail = far !== km ? `, up to ${far}` : near !== km ? `, down to ${near}` : "";
   return {
     coverage: range.coverage,
     title,
-    short: partial ? `About ${formatKm(typical)}, terrain partial` : `In sight to about ${formatKm(typical)}`,
+    short: partial
+      ? `${tail ? `Mostly ${km}${tail}` : `About ${km}`}, terrain partial`
+      : tail
+        ? `Mostly about ${km}${tail}`
+        : `In sight to about ${km}`,
     note: partial ? `Terrain covers only part of the area within ${max}.` : null,
     sentences,
     needsTerrain: partial,
@@ -190,12 +223,20 @@ function outlineOf(range: SightRange): { ring: Ring; dashed: boolean[] } {
   return { ring, dashed };
 }
 
-/** The outline as map data: one shape for the wash, and its edge in runs of solid and dashed line. */
-export function rangeData(range: SightRange | undefined): FeatureCollection {
+/**
+ * Outlines as map data: for each, one shape for the wash, and its edge in runs of solid
+ * and dashed line named with the repeater's callsign, which is written along it.
+ */
+export function rangesData(ranges: Array<{ range: SightRange; name: string }>): FeatureCollection {
+  return { type: "FeatureCollection", features: ranges.flatMap(({ range, name }) => rangeData(range, name).features) };
+}
+
+/** One outline as map data. */
+export function rangeData(range: SightRange | undefined, name = ""): FeatureCollection {
   if (!range) return { type: "FeatureCollection", features: [] };
   const { ring, dashed } = outlineOf(range);
   const features: FeatureCollection["features"] = [
-    { type: "Feature", properties: { kind: "area" }, geometry: { type: "Polygon", coordinates: [ring] } },
+    { type: "Feature", properties: { kind: "area", name }, geometry: { type: "Polygon", coordinates: [ring] } },
   ];
   // Runs of sides that are drawn the same way, so the edge is a few lines rather than one per side.
   let start = 0;
@@ -203,7 +244,7 @@ export function rangeData(range: SightRange | undefined): FeatureCollection {
     if (index < dashed.length && dashed[index] === dashed[start]) continue;
     features.push({
       type: "Feature",
-      properties: { kind: "edge", dashed: dashed[start]! },
+      properties: { kind: "edge", dashed: dashed[start]!, name },
       geometry: { type: "LineString", coordinates: ring.slice(start, index + 1) },
     });
     start = index;
@@ -224,7 +265,9 @@ export function rangeBounds(range: SightRange): Bbox {
  * cased in the page colour like the map's other lines, so that it reads on the plain
  * map, on satellite imagery and in the dark theme alike. No colour of its own: the HF
  * coverage map is shaded cells in hues, the nuclear effects are rings in hues, and this
- * is neither. Its name is written along the edge.
+ * is neither. The repeater's callsign is written along the edge, so that where several
+ * are shown each can be told from the others; where they cross, the labels give way to
+ * each other rather than overprint, and each line is cased in the page colour.
  */
 export function rangeLayers(theme: MapTheme): LayerSpecification[] {
   const edge = ["==", ["get", "kind"], "edge"];
@@ -267,9 +310,9 @@ export function rangeLayers(theme: MapTheme): LayerSpecification[] {
       filter: edge as never,
       layout: {
         "symbol-placement": "line",
-        "symbol-spacing": 400,
+        "symbol-spacing": 250,
         "text-font": [MAP_FONTS.medium] as string[],
-        "text-field": "Estimated range",
+        "text-field": ["get", "name"],
         "text-size": 11.5,
         "text-offset": [0, -0.8],
         "text-optional": true,

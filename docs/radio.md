@@ -333,15 +333,29 @@ merged repeater once.
 ### The estimated range
 
 A repeater open on the map has a switch in its card, **Estimated range**, and its own
-screen has a button of the same name that opens the map with it on. It is off until
-switched on, and the choice is remembered on the device. While it is off, or no
-repeater is open, nothing is worked out and nothing is drawn.
+screen has a button of the same name that opens the map with it on. The switch belongs
+to that repeater: switched on, its outline is drawn and stays on the map after its card
+is closed and while other repeaters are opened, until it is switched off in its own
+card. Another repeater's switch is off until it is switched on too. Up to eight can be
+on at once; switching on a ninth leaves it off and the card says that eight are shown,
+as many as can be at once. Which repeaters are on is remembered on the device, with the
+other station and the assumed aerial height, which apply to every outline. A repeater
+that is no longer held (its list was removed) is dropped quietly. The outlines are drawn
+only while the map's repeaters are switched on, as the dots are. While none is on,
+nothing is worked out and nothing is drawn.
+
+When more than one is on, an open repeater's card says how many are shown and has
+**Hide all ranges**, which switches them all off. There is no other place for it: the
+map's tools have only the one button for repeaters, which hides the outlines with the
+dots and leaves the choice as it was.
 
 **What it is.** An estimate of line of sight only: on each of 72 bearings, 5° apart,
 how far out a station at a stated height above the ground still has line of sight to
 the repeater's aerial, over the terrain installed on this device, out to 100 km. The
 reach on each bearing is joined into one outline, drawn as a thin ink line with a light
-wash inside, labelled "Estimated range" along its edge. Where there is terrain the
+wash inside, labelled with the repeater's callsign along its edge, so that where
+several are on each can be told from the others. Where outlines cross, the washes add
+up and the labels give way to each other rather than overprint. Where there is terrain the
 outline is an irregular shape, not a circle. It has no colour of its own, so that it is
 not taken for an HF coverage map (shaded cells) or the nuclear effects (rings in hues).
 
@@ -357,10 +371,12 @@ to 100 km, through the same terrain code as the check between two points (tiles 
 cells are about the size of the step). A bearing ends where the aerial has been out of
 sight for more than 1 km, so a small hollow or a fold in a slope does not end it.
 
-**On screen.** Once the outline is drawn the card folds to two short lines (the
-callsign with the switch, a button to open it out and the close button; then the answer
-in a few words, such as "About 68 km, terrain partial"), and the map is fitted round the
-outline in the part the card leaves clear: above it on a phone, below or beside it on a
+**On screen.** Once the outline of a repeater just switched on is drawn the card folds
+to two short lines (the callsign with the switch, a button to open it out and the close
+button; then the answer in a few words, such as "Mostly about 1 km, up to 8 km" or
+"Mostly 18 km, up to 41 km, terrain partial": where most bearings end, and the furthest
+when one goes further, so that a spike is not hidden), and the map is fitted round that
+outline, not the others, in the part the card leaves clear: above it on a phone, below or beside it on a
 wide screen, whichever is larger. Opened out, the card says the heights and the limit,
 the answer in one sentence (distances to the whole kilometre from 10 km, the half
 kilometre below that, with miles beside them), and one more line where the terrain is
@@ -406,7 +422,11 @@ wide, so a narrow ridge or a cutting can be missed.
 (`GET /api/maps/sight-range`, see [api.md](api.md)): one answer is a few kilobytes,
 where working it out in the browser would mean dozens of profile requests. It is worked
 out once for each place, pair of heights and installed terrain, and kept (the last 32
-answers); moving or zooming the map asks nothing, and a hidden page asks nothing. One
+answers); moving or zooming the map asks nothing, and a hidden page asks nothing. With
+several on, each is asked once, at the same time, and each outline is drawn as its
+answer comes, so the map is not held up while the rest are worked out. Where each
+chosen repeater is comes from its own record (`GET /api/repeaters/:id`, the request its
+card makes), not from the dots in view, so one off the screen is still drawn. One
 outline at 100 km over 512-pixel lossless WebP terrain took about 250 to 300 ms on the
 development Mac, with the server never held up for more than about 30 ms at a time
 (the terrain sampler yields between tiles).
@@ -417,10 +437,13 @@ The sums are in `packages/shared/src/radio-range.ts`, the request in
 (flat ground against the formula, the pass against the two-point check, a ridge, a hill
 against a valley, short and long shadows, partial and no terrain, refused input),
 `apps/web/src/features/repeaters/map/range.test.tsx` (the switch off, working, with
-terrain, without, with part, failed, and the card folding), and
+terrain, without, with part, failed, and the card folding; one repeater at a time, two
+on at once each labelled, remembered, the earlier stored shape, the limit of eight,
+hiding all, a removed repeater dropped, nothing asked with none on), and
 `e2e/tests/repeater-range.mobile.spec.ts` and `repeater-range.spec.ts` (switched on over
 the suite's terrain fixture at 390 and 1280 px wide: the outline at least 120 px across
-on screen and none of it under the card).
+on screen and none of it under the card; two switched on from their cards, both kept
+with the card closed, and one switched off alone).
 
 ### Taking a set out
 

@@ -76,12 +76,13 @@ export function useRepeaterList(filters: RepeaterFilters, near: LatLon | null, w
   });
 }
 
-export const useRepeater = (id: string | null | undefined) =>
-  useQuery({
-    queryKey: ["repeaters", "one", id],
-    queryFn: ({ signal }) => api.get<RepeaterDetailResponse>(`/api/repeaters/${id}`, undefined, signal),
-    enabled: Boolean(id),
-  });
+/** One repeater with its list: what its card and its page show, and where the map finds a chosen range's repeater. */
+export const repeaterQuery = (id: string | null | undefined) => ({
+  queryKey: ["repeaters", "one", id],
+  queryFn: ({ signal }: { signal: AbortSignal }) => api.get<RepeaterDetailResponse>(`/api/repeaters/${id}`, undefined, signal),
+});
+
+export const useRepeater = (id: string | null | undefined) => useQuery({ ...repeaterQuery(id), enabled: Boolean(id) });
 
 /** What to draw in a box of the map. The last answer stays up while the next is fetched, so the map does not blink. */
 export function useRepeaterOverlay(bbox: string | null, filters: Partial<RepeaterFilters>) {
