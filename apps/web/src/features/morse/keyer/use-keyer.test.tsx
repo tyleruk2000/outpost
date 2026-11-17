@@ -102,3 +102,47 @@ describe("useKeyer keyboard path", () => {
     expect(tone.clearSchedule).not.toHaveBeenCalled();
   });
 });
+
+describe("useKeyer's frame pump for the automatic keyers", () => {
+  let frames: FrameRequestCallback[] = [];
+  beforeEach(() => {
+    frames = [];
+    applyMorsePrefs({ keyType: "paddle", keyerWpm: 20 });
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      frames.push(callback);
+      return frames.length;
+    });
+    vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.clearAllMocks();
+  });
+
+  /** Runs the frames asked for, at a given time, and says how many there were. */
+  const runFrames = (at: number) => {
+    const due = frames;
+    frames = [];
+    vi.spyOn(performance, "now").mockReturnValue(at);
+    act(() => {
+      for (const callback of due) callback(at);
+    });
+    return due.length;
+  };
+
+  it("asks for no frames while nobody is keying", () => {
+    renderHook(() => useKeyer(true));
+    expect(runFrames(0)).toBe(0);
+  });
+
+  it("runs while an element is under way and stops once the keyer is idle again", () => {
+    const { result } = renderHook(() => useKeyer(true));
+    act(() => result.current.press("dit", 1000));
+    act(() => result.current.release("dit", 1010));
+    expect(runFrames(1030)).toBe(1);
+    // A dit at 20 wpm is 60 ms, then a 60 ms space: done by 1120.
+    expect(runFrames(1200)).toBe(1);
+    expect(frames).toHaveLength(0);
+    expect(tone.keyAt).toHaveBeenCalledWith(false, 1060);
+  });
+});

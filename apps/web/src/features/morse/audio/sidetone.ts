@@ -14,12 +14,19 @@
  * Web Audio unless the page asks for media playback: `navigator.audioSession` where
  * Safari has it, and otherwise a moment of silence played through an audio element.
  * `soundState()` says whether sound is getting out, for the screen to say what to do.
+ *
+ * A running context keeps the audio hardware busy even when it is silent, so the
+ * context is suspended two seconds after the last sound ends (and at once when the page
+ * is hidden with nothing playing), and resumed by the next key or playback. A browser
+ * that has been let play once resumes it without another press.
  */
 import type { TimelineSegment } from "@outpost/shared";
 
 const RAMP_S = 0.005;
 /** Headroom when turning performance.now() into the AudioContext's clock. */
 const KEY_LATENCY_S = 0.03;
+/** How long the context stays awake after the last sound, so a run of keying does not wake it per element. */
+const IDLE_MS = 2000;
 
 export interface Impairments {
   /** 0–1 band noise. */
@@ -97,7 +104,21 @@ export class Sidetone {
   private mediaAsked = false;
   /** A resume has been asked for and answered: until then a suspended context is only starting. */
   private settled = false;
+  /** Suspended by this class to save power, not refused by the browser. */
+  private asleep = false;
+  /** performance.now() until which something is scheduled to sound. */
+  private soundingUntil = 0;
+  /** A straight key or a keyer element is down. */
+  private held = false;
+  /** Band noise is mixed in, which is meant to be heard between the signals. */
+  private noiseOn = false;
+  private idleTimer: number | undefined;
   private readonly listeners = new Set<() => void>();
+  private readonly onVisibility = (): void => {
+    if (document.visibilityState === "hidden") {
+      if (!this.held && performance.now() >= this.soundingUntil) this.sleep();
+    } else if (this.noiseOn) this.wake();
+  };
 
   /** Whether this browser can play the tone at all. */
   get supported(): boolean {
@@ -107,7 +128,7 @@ export class Sidetone {
   soundState(): SoundState {
     if (!this.supported) return "unsupported";
     if (!this.ctx) return "none";
-    if (this.ctx.state === "running") return "running";
+    if (this.ctx.state === "running" || this.asleep) return "running";
     return this.settled ? "suspended" : "none";
   }
 
@@ -156,8 +177,10 @@ export class Sidetone {
       this.askForMedia();
       this.ctx = new Context();
       this.ctx.addEventListener?.("statechange", () => this.notify());
+      document.addEventListener("visibilitychange", this.onVisibility);
       this.build(this.ctx);
     }
+    this.asleep = false;
     const resumed = this.ctx.state === "suspended" ? this.ctx.resume() : null;
     if (resumed) {
       try {
@@ -168,11 +191,46 @@ export class Sidetone {
     }
     this.settled = true;
     this.notify();
+    this.armIdle();
+  }
+
+  /** Resumes a context this class put to sleep. */
+  private wake(): void {
+    if (!this.ctx || !this.asleep) return;
+    this.asleep = false;
+    if (this.ctx.state === "suspended") void this.ctx.resume().catch(() => undefined);
+  }
+
+  /** Something sounds until `untilMs` (performance.now()): keep awake till then, and sleep a little after. */
+  private sounding(untilMs: number): void {
+    this.soundingUntil = Math.max(this.soundingUntil, untilMs);
+    this.wake();
+    this.armIdle();
+  }
+
+  private armIdle(): void {
+    window.clearTimeout(this.idleTimer);
+    this.idleTimer = undefined;
+    if (!this.ctx || this.held || this.asleep || (this.noiseOn && document.visibilityState !== "hidden")) return;
+    const wait = Math.max(0, this.soundingUntil - performance.now()) + IDLE_MS;
+    this.idleTimer = window.setTimeout(() => {
+      this.idleTimer = undefined;
+      if (performance.now() < this.soundingUntil) this.armIdle();
+      else this.sleep();
+    }, wait);
+  }
+
+  private sleep(): void {
+    window.clearTimeout(this.idleTimer);
+    this.idleTimer = undefined;
+    if (!this.ctx || this.asleep || this.ctx.state !== "running") return;
+    this.asleep = true;
+    void this.ctx.suspend().catch(() => undefined);
   }
 
   /** Resumes a suspended context from a press that browsers count (a tap's pointerup or click). */
   unlock(): void {
-    if (this.ctx && this.ctx.state === "suspended")
+    if (this.ctx && this.ctx.state === "suspended" && !this.asleep)
       void this.ctx.resume().then(
         () => this.notify(),
         () => this.notify(),
@@ -236,6 +294,9 @@ export class Sidetone {
     const d = Math.max(0, Math.min(0.9, impairments.qsb));
     this.qsbGain.gain.setTargetAtTime(1 - d / 2, t, 0.1);
     this.qsbLfoGain.gain.setTargetAtTime(d / 2, t, 0.1);
+    this.noiseOn = impairments.noise > 0;
+    if (this.noiseOn && document.visibilityState !== "hidden") this.wake();
+    this.armIdle();
   }
 
   get isReady(): boolean {
@@ -260,6 +321,9 @@ export class Sidetone {
   /** Key down now (a straight key: the least delay). */
   keyDown(): void {
     if (!this.ctx || !this.keyGain) return;
+    this.held = true;
+    this.wake();
+    this.armIdle();
     const gain = this.keyGain.gain;
     const t = this.ctx.currentTime;
     gain.cancelScheduledValues(t);
@@ -270,6 +334,8 @@ export class Sidetone {
   /** Key up now. */
   keyUp(): void {
     if (!this.ctx || !this.keyGain) return;
+    this.held = false;
+    this.sounding(performance.now());
     const gain = this.keyGain.gain;
     const t = this.ctx.currentTime;
     gain.cancelScheduledValues(t);
@@ -283,6 +349,8 @@ export class Sidetone {
    */
   keyAt(on: boolean, atPerfMs: number): void {
     if (!this.ctx || !this.keyGain) return;
+    this.held = on;
+    this.sounding(atPerfMs + KEY_LATENCY_S * 1000);
     let at = this.ctx.currentTime + (atPerfMs - performance.now()) / 1000 + KEY_LATENCY_S;
     if (at < this.ctx.currentTime) at = this.ctx.currentTime;
     const gain = this.keyGain.gain;
@@ -293,6 +361,8 @@ export class Sidetone {
   /** Cancels anything scheduled on the key and silences it. */
   clearSchedule(): void {
     if (!this.ctx || !this.keyGain) return;
+    this.held = false;
+    this.sounding(performance.now());
     const gain = this.keyGain.gain;
     const t = this.ctx.currentTime;
     gain.cancelScheduledValues(t);
@@ -328,6 +398,7 @@ export class Sidetone {
       };
     }
     const peak = options.level ?? (options.channel === "qrm" ? 0.3 : 1);
+    this.sounding(performance.now() + totalMs + 50);
     const ctx = this.ctx;
     const gain = node.gain;
     const t0 = ctx.currentTime + 0.05;
@@ -367,6 +438,10 @@ export class Sidetone {
   }
 
   dispose(): void {
+    window.clearTimeout(this.idleTimer);
+    this.idleTimer = undefined;
+    document.removeEventListener("visibilitychange", this.onVisibility);
+    this.asleep = false;
     this.osc?.stop();
     this.osc?.disconnect();
     this.keyGain?.disconnect();

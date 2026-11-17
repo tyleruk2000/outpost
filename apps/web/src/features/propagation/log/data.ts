@@ -43,13 +43,16 @@ export const useImportAdif = () =>
     return api.upload<ObservationImportResponse>("/api/radio/observations/import", form);
   }, true);
 
-/** The job bringing a large file in, asked about several times a second while it runs. */
+/**
+ * The job bringing a large file in. The live-events stream refreshes it as the job moves (its key is under
+ * "jobs"); the slow poll is only for when that stream is down.
+ */
 export const useImportJob = (id: string | null) =>
   useQuery({
     queryKey: ["jobs", "propagation-adif-import", id ?? ""],
     queryFn: () => api.get<{ job: JobDto }>(`/api/jobs/${id}`).then((data) => data.job),
     enabled: id !== null,
-    refetchInterval: (query) => (["succeeded", "failed", "cancelled"].includes(query.state.data?.state ?? "") ? false : 400),
+    refetchInterval: (query) => (["succeeded", "failed", "cancelled"].includes(query.state.data?.state ?? "") ? false : 5_000),
   });
 
 export const stopImport = (id: string) => api.post(`/api/jobs/${id}/cancel`);

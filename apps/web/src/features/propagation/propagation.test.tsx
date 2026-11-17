@@ -347,6 +347,19 @@ describe("charts", () => {
     expect(onHour).toHaveBeenCalledWith(6);
   });
 
+  it("draws a chart at the width it has from the first paint, never wider than a phone", () => {
+    // A chart used to be laid out 640 px wide until the resize observer answered, a frame later:
+    // at 390 px that was a sideways scroll of 270 px for an instant each time a chart appeared.
+    const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({ width: 358 } as DOMRect);
+    try {
+      const values = Array.from({ length: 24 }, () => 0.5);
+      const { container } = render(<HourGrid name="Reliability by band" hour={12} onHour={() => {}} rows={[{ label: "40 m", values }]} />);
+      expect(container.querySelector("svg")?.getAttribute("width")).toBe("358");
+    } finally {
+      rect.mockRestore();
+    }
+  });
+
   it("writes every bar's figure beside it", () => {
     render(
       <ShareBars
