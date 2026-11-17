@@ -27,7 +27,7 @@ import { plural, timeAgo } from "@/lib/utils";
 function Block({ title, more, children }: { title: string; more?: { to: string; label: string }; children: ReactNode }) {
   return (
     <section className="mt-10 first:mt-0">
-      <div className="mb-2 flex items-baseline justify-between gap-4">
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="text-lead font-semibold text-ink">{title}</h2>
         {more ? (
           <Link to={more.to} className="flex items-center gap-1 text-small text-primary hover:underline">

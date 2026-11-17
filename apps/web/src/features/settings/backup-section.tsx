@@ -163,7 +163,7 @@ export function BackupSection() {
             </p>
             <p className="mt-1 text-ink-muted">
               Whoever starts Outpost can allow it from every device by starting it with{" "}
-              <span className="font-mono text-[0.8125rem]">{right.option}=true</span>.
+              <span className="font-mono text-[0.8125rem] [overflow-wrap:anywhere]">{right.option}=true</span>.
             </p>
           </Notice>
         ) : null}
@@ -195,7 +195,8 @@ export function BackupSection() {
         {status.data && status.data.previousData.length > 0 ? (
           <p className="text-small text-ink-muted">
             Data from before earlier restores is kept in the data directory:{" "}
-            <span className="font-mono text-[0.8125rem] text-ink">{status.data.previousData.join(", ")}</span>. Delete them from{" "}
+            <span className="font-mono text-[0.8125rem] [overflow-wrap:anywhere] text-ink">{status.data.previousData.join(", ")}</span>.
+            Delete them from{" "}
             <Link to={manageLink("leftovers")} className="text-primary underline underline-offset-2">
               Leftovers
             </Link>{" "}

@@ -390,29 +390,33 @@ export default function StoragePage() {
                 Your library is empty. Space used will be listed here as you add documents, collections and maps.
               </p>
             ) : (
-              <table className="w-full max-w-xl text-small">
-                <thead className="sr-only">
-                  <tr>
-                    <th>Kind</th>
-                    <th>Items</th>
-                    <th>Size</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border border-y border-border">
-                  {totals.map((entry) => (
-                    <tr key={entry.kind}>
-                      <td className="py-2.5 pr-4">
-                        <span className="flex items-center gap-2.5 text-ink">
-                          <span aria-hidden className="size-2.5 rounded-[2px]" style={{ background: entry.color }} />
-                          {entry.label}
-                        </span>
-                      </td>
-                      <td className="tabular py-2.5 pr-4 text-right text-ink-muted">{plural(entry.count, "item")}</td>
-                      <td className="tabular py-2.5 text-right font-medium text-ink">{formatBytes(entry.bytes)}</td>
+              <div className="@container">
+                <table className="w-full max-w-xl text-small">
+                  <thead className="sr-only">
+                    <tr>
+                      <th>Kind</th>
+                      <th>Items</th>
+                      <th>Size</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-border border-y border-border">
+                    {totals.map((entry) => (
+                      <tr key={entry.kind}>
+                        <td className="py-2.5 pr-4">
+                          <span className="flex items-center gap-2.5 text-ink">
+                            <span aria-hidden className="size-2.5 shrink-0 rounded-[2px]" style={{ background: entry.color }} />
+                            {entry.label}
+                          </span>
+                          {/* Where three columns do not fit (a phone with large text: rem here follows the text), the count goes under the kind. */}
+                          <span className="tabular block pl-5 text-ink-muted @min-[20rem]:hidden">{plural(entry.count, "item")}</span>
+                        </td>
+                        <td className="tabular py-2.5 pr-4 text-right text-ink-muted @max-[20rem]:hidden">{plural(entry.count, "item")}</td>
+                        <td className="tabular py-2.5 text-right font-medium text-ink">{formatBytes(entry.bytes)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </Section>
 

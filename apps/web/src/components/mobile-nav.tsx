@@ -7,10 +7,11 @@ import { Lamp } from "./lamp";
 import { LogoMark } from "./logo";
 import { allNav, isOwnScreen, knowledgeNav } from "./nav";
 
-// The five names grow with the text up to 15 px and no further, as a phone's own tab bars do: at a 32 px root
-// "More" went past the edge of a 390 px screen. Everything in the More sheet grows with the text.
+// The five names are the smallest size DESIGN.md allows (micro, 12.5 px; five fit a 320 px screen) and grow with the
+// text up to 15 px and no further, as a phone's own tab bars do: at a 32 px root "More" went past the edge of a 390 px
+// screen. Everything in the More sheet grows with the text.
 const tab =
-  "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 pt-1.5 pb-1 text-[min(0.6875rem,15px)] font-medium text-ink-muted aria-[current=page]:text-primary";
+  "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 pt-1.5 pb-1 text-[min(var(--text-micro),15px)] font-medium text-ink-muted aria-[current=page]:text-primary";
 
 /** Top bar and bottom tabs for phones. The spine does not fit, so its job is split in two. */
 export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {

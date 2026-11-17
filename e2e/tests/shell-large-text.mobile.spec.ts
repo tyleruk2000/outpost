@@ -1,44 +1,119 @@
 /**
- * The shared parts of every screen on a 390 px phone with the text at 150% and at 200% (a
- * root font size of 24 and 32 px): each of the bottom bar's five names fits in it, uncut.
- * A shared button's label wraps, and the button grows taller, when it is wider than the
- * screen; at the normal size it is one line, as before. (What a screen's own layout does
- * at large text is held by that screen's own tests.)
+ * Every top-level screen on a 390 px phone with the text at 150% and at 200% (a root font
+ * size of 24 and 32 px): nothing on it reaches past the right of the screen, and each of
+ * the bottom bar's five names fits in it, uncut. Long words wrap, a table moves a column
+ * under another, and a box that scrolls sideways on purpose (a strip of chips) is allowed
+ * when the box itself is on screen. On a 320 px phone the five names are at the smallest
+ * size DESIGN.md allows and still fit. A shared button's label wraps, and the button grows
+ * taller, when it is wider than the screen; at the normal size it is one line.
  */
+import type { Page } from "@playwright/test";
 import { expect, test, watchForErrors } from "./fixtures";
 
 test.use({ viewport: { width: 390, height: 844 } });
 
-const screens = ["/", "/library", "/explore", "/notes", "/downloads", "/storage", "/settings", "/radio"];
+/** The screens the navigation lists at the top level (apps/web/src/components/nav.ts). */
+const screens = [
+  "/",
+  "/search",
+  "/explore",
+  "/library",
+  "/maps",
+  "/chat",
+  "/contacts",
+  "/encryption",
+  "/radio",
+  "/tools",
+  "/prepare",
+  "/games",
+  "/notes",
+  "/downloads",
+  "/storage",
+  "/kept",
+  "/settings",
+];
+
+/** What reaches past the right of the screen inside the page, as in radio-large-text.mobile.spec.ts. */
+function tooWide(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const width = document.documentElement.clientWidth;
+    return (
+      [...document.querySelectorAll("main *")]
+        .filter((element) => !element.closest("svg") || element.tagName.toLowerCase() === "svg")
+        // A table kept for screen readers (sr-only: a box of one pixel that hides what overflows it) is out of sight on purpose.
+        .filter((element) => {
+          for (let box: Element | null = element; box && box !== document.body; box = box.parentElement) {
+            if (box.getBoundingClientRect().width <= 1 && getComputedStyle(box).overflow === "hidden") return false;
+          }
+          return true;
+        })
+        .filter((element) => {
+          // Inside a box that scrolls sideways, or in text cut short with an ellipsis on purpose, and that box within
+          // the screen, is not past the edge. Anything else clipped is: words cut off are as lost as words off screen.
+          for (let parent = element.parentElement; parent && parent !== document.body; parent = parent.parentElement) {
+            const style = getComputedStyle(parent);
+            if (/auto|scroll/.test(style.overflowX) || style.textOverflow === "ellipsis")
+              return parent.getBoundingClientRect().right > width + 1;
+          }
+          return true;
+        })
+        .map((element) => ({ element, box: element.getBoundingClientRect() }))
+        .filter(({ box }) => box.width > 0 && box.right > width + 1)
+        .slice(0, 5)
+        .map(
+          ({ element, box }) =>
+            `${element.tagName.toLowerCase()} "${(element.textContent ?? "").trim().slice(0, 40)}" to ${Math.round(box.right)}`,
+        )
+    );
+  });
+}
+
+/** Each of the bottom bar's five that reaches past the bar or has its name cut. */
+function barCut(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const bar = document.querySelector('nav[aria-label="Main"]')!.getBoundingClientRect();
+    return [...document.querySelectorAll('nav[aria-label="Main"] > a, nav[aria-label="Main"] > button')]
+      .filter((tab) => tab.getBoundingClientRect().right > bar.right + 1 || tab.scrollWidth > tab.clientWidth + 1)
+      .map((tab) => `${tab.tagName.toLowerCase()} "${(tab.textContent ?? "").trim()}" to ${Math.round(tab.getBoundingClientRect().right)}`);
+  });
+}
 
 for (const root of [24, 32]) {
-  test(`the bar's five names fit in it at a ${root} px root`, async ({ page }) => {
+  test(`every top-level screen fits a phone with the root text at ${root} px`, async ({ page }) => {
+    test.setTimeout(180_000);
     const errors = watchForErrors(page);
     await page.addInitScript((size) => {
-      document.addEventListener("DOMContentLoaded", () => {
-        document.documentElement.style.fontSize = `${size}px`;
-      });
+      const apply = () => document.documentElement.style.setProperty("font-size", `${size}px`, "important");
+      if (document.documentElement) apply();
+      document.addEventListener("DOMContentLoaded", apply);
     }, root);
     for (const path of screens) {
       await page.goto(path);
       await expect(page.locator("main h1").first()).toBeVisible();
-      const past = await page.evaluate(() => {
-        // The bar spans the page, which a screen's own content can make wider than the phone at large text (that is
-        // the screen's to fix, and its own tests hold it): here, each of the five fits in the bar, its name uncut.
-        const bar = document.querySelector('nav[aria-label="Main"]')!.getBoundingClientRect();
-        const tabs = [...document.querySelectorAll('nav[aria-label="Main"] > a, nav[aria-label="Main"] > button')].filter(
-          (tab) => tab.getBoundingClientRect().right > bar.right + 1 || tab.scrollWidth > tab.clientWidth + 1,
-        );
-        return tabs.map(
-          (element) =>
-            `${element.tagName.toLowerCase()} "${(element.textContent ?? "").trim().slice(0, 40)}" to ${Math.round(element.getBoundingClientRect().right)}`,
-        );
-      });
-      expect(past, path).toEqual([]);
+      // What a screen loads after its heading (lists, figures) is drawn before it is measured.
+      await page.waitForLoadState("networkidle");
+      expect(await tooWide(page), `${path} at ${root} px`).toEqual([]);
+      expect(await barCut(page), `the bar on ${path} at ${root} px`).toEqual([]);
     }
     expect(errors).toEqual([]);
   });
 }
+
+test.describe("on a 320 px phone", () => {
+  test.use({ viewport: { width: 320, height: 640 } });
+
+  test("the bar's five names are at the smallest size DESIGN.md allows, and fit", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.locator("main h1").first()).toBeVisible();
+    const sizes = await page
+      .getByRole("navigation", { name: "Main" })
+      .locator(":scope > a, :scope > button")
+      .evaluateAll((tabs) => tabs.map((tab) => Number.parseFloat(getComputedStyle(tab).fontSize)));
+    // micro, 0.78125rem.
+    expect(sizes).toEqual([12.5, 12.5, 12.5, 12.5, 12.5]);
+    expect(await barCut(page)).toEqual([]);
+  });
+});
 
 test("a button is one line at the normal size and wraps only when it does not fit", async ({ page }) => {
   await page.goto("/storage");
