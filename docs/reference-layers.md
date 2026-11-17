@@ -455,6 +455,139 @@ and the flow through Outpost was tested against local stand-ins
 (`OUTPOST_FSA_URL` puts one in the Agency's place). The layer was not looked at over
 satellite imagery.
 
+### Food and supplies for a state or region
+
+Asked for by the owner on 17 November 2026: "for the food and supplies layer do we have US
+and EU stuff also? Only needs to be downloaded if the user selects it, guess for the US we
+would want state also". The layer already worked anywhere OpenStreetMap is mapped, but only
+for the area on screen (about a county). A whole state, Land or county is fetched as
+Geofabrik's extract for it, through the same provider that already read a country's
+extract for the other five OpenStreetMap layers.
+
+**What a person sees.** Maps → Offline maps → Reference data for the map → **Get reference
+data**; source **OpenStreetMap, from a Geofabrik extract**; area **A state or region, by
+name** (beside **A whole country**). The first time, a line says that choosing needs
+Geofabrik's list and that reading it asks `download.geofabrik.de` for one file of about
+500 kB, with **Read the list of regions**. After that the list is kept on the server
+(`reference/geofabrik-index.json` in the data directory) with the day it was read, and
+**Read it again** is offered under it. Then:
+
+- A box, **Find a country, state or region**: typing "ohio" or "bay" lists the matches from
+  every country, those whose names begin with what was typed first, each with where it
+  sits ("Oberbayern · Bayern, Germany").
+- With nothing typed: **For the home place** first, then **Countries**. The home place is
+  the saved place with the home icon; the server offers a region pack already held whose
+  box holds it, the region the Natural Earth regions layer (if held) names there, and the
+  country whose box holds it. Nothing is asked of anyone to work this out.
+- A country opens onto **The whole of …** and its parts, and their parts indented under
+  them (Germany: its Länder, and Bayern's seven Regierungsbezirke; the United Kingdom:
+  England, Scotland, Wales, and England's counties; the United States: its states, Puerto
+  Rico and the US Virgin Islands).
+- Up to three are ticked; under the list each says what the layer will be made from:
+  "OpenStreetMap only: likely to be fuller in towns than in the country", or in the UK
+  that the Food Standards Agency's list can be added for the area on screen.
+- With **Food and supplies** ticked, a note says that one download serves every layer and
+  lists the other five; ticking them reads them from the same file.
+- **Show the size** asks Geofabrik one `HEAD` (the index gives no sizes) and the `.md5` of
+  the dated file it leads to, per region. The answer gives the file's size, what stays on
+  the device afterwards, and **Keep the downloaded file too**, unticked.
+- **Download** goes through the download manager: resumable, pausable, with progress; the
+  MD5 is checked before reading; reading is part of the same job and can be stopped. Each
+  region becomes its own pack, updated or removed on its own; a place in two regions'
+  files (they overlap at their edges) is shown once.
+
+For **Ohio**: United States of America → Ohio, tick Food and supplies, Show the size: "1
+file to download, 328 MB, and at most 26.3 MB in Outpost's database"; afterwards only the
+places. For **Bavaria**: type "bay" → Bayern (858 MB on 17 November 2026), or one of its
+Regierungsbezirke (Oberbayern, with Munich, 260 MB).
+
+**Sizes, and what is kept.** Sizes by `HEAD` on 17 November 2026: Monaco 708,123 bytes,
+Rutland 1.95 MB, District of Columbia 21.1 MB, Cumbria 45.9 MB, Oberbayern 260 MB, Ohio
+328 MB, Bayern 858 MB, California 1.34 GB, England 1.72 GB, the United States 12.3 GB.
+Almost all of a file is roads, buildings and paths. Before this, a country's extract was
+kept in the storage location "so that it can be read again"; nothing in Outpost reads it
+again (an update downloads the file afresh), so:
+
+- for a **region**, or any file read for **food and supplies**, the file is deleted once it
+  has been read and the pack is in, unless **Keep the downloaded file too** is ticked; the
+  pack keeps a short record in its place (`….read.json`: source, MD5, size, layers, how
+  many places, when) so that it can be moved, checked and removed like every pack, and
+  says "Only the places were kept: the … extract was deleted once read";
+- for a **whole country read for the five layers only**, the default is unchanged: the file
+  is kept, and the same box can untick it.
+
+The space is needed while the file is downloaded and read: the download manager refuses to
+start when the location has not the room. The database allowance shown is "at most": it is
+worked out from Monaco's extract (84 places of food and supplies and 23 of the other layers
+in 708,123 bytes), a city state, so a region with countryside holds fewer a megabyte.
+
+**Reading a large file.** No new reader: the `.osm.pbf` reader written for the five layers
+(`adapters/pbf.ts`, no dependency) now asks for food and supplies only when it is chosen.
+Measured on this Mac (Apple silicon), at `nice 15` while other builders' test suites ran,
+on a file made for the purpose: every element of Monaco's real extract (41,844 nodes,
+6,281 ways, 351 relations) repeated 559 times with its ids shifted and each copy moved to
+its own cell of a grid over an Ohio-sized area, written in blocks of 8,000 elements as
+Geofabrik's files are, to 344 MB, Ohio's size. It is denser in places than a real state,
+so these are on the heavy side:
+
+| Read for | Places | Time | Peak memory of the process | Longest pause of the server |
+| --- | --- | --- | --- | --- |
+| Food and supplies, through a real server (download from a local stand-in, MD5, read, duplicates) | 46,956 | 2 s to download, 58 s to read | 664 MB (196 MB before) | health checks every ¼ s: median 5 ms, 95th percentile 52 ms, worst 175 ms |
+| Food and supplies, the install alone, heap capped at 256 MB | 46,956 | 35.5 s | 447 MB (328 MB before) | 255 ms |
+| All six layers, the install alone | 59,813 | 24 s | 639 MB (342 MB before) | none over 200 ms |
+
+The reader holds only what matched and the positions of the nodes those ways need; the
+rest of the peak is memory the runtime has not yet given back, as the capped run shows (it
+finished in the same way with a heap of 256 MB). Reading is part of the download's job: it
+shows its pass and how many places so far, and **Stop** under Downloads ends it between two
+blocks of the file (tried on this file eight seconds into reading: stopped in 38 ms, the
+pack already held untouched, nothing of the new one left in the database; the downloaded
+file stays beside it as a partial file, as for every stopped download, until the download
+is retried or removed). One thing found on the way: a lookup for "the same OpenStreetMap
+object from the other source" written as `provider IN (…)` made SQLite scan every row for
+each row, so the first try at this file never finished; it is asked once a source.
+**On a Raspberry Pi** (not tried): expect four to eight times as long, a few minutes for a
+state of this size; a Pi with 1 GB of memory should start Outpost with a capped heap.
+
+**Nearest, search, cards, legend** work over a region's pack as over a box's; the map counts
+marks into patches above 1,500 in a view, as for every layer. Measured through the API on the same pack of 46,956
+places: the nearest of each kind 23 to 75 ms, the nearest five pharmacies 2 to 15 ms;
+a phone's view (390 by 844) of the whole state at zoom 7 in 80 to 216 ms the first time, as
+22 patches; at zoom 9, 13 to 18 ms as 48 patches; at zoom 11, 6 to 8 ms with up to 504
+marks. In headless Chromium at 390 by 844, eight pans across the state at zoom 9 and at
+zoom 11 each settled 54 to 82 ms after the finger lifted, with frames at 16.7 ms (the
+95th percentile; the worst 33 ms). Not measured on a phone.
+
+**What was not done, and why.** No whole state or country was ever downloaded: the flow was
+tested against a stand-in Geofabrik (`OUTPOST_GEOFABRIK_URL`;
+`apps/server/test/fixtures/layers/geofabrik-stand-in.ts`), and the large-file figures come
+from Monaco's real extract repeated, as said above. Germany's whole-country address
+redirects to a mirror on another host (`ftp5.gwdg.de`), which Outpost does not follow:
+choosing "The whole of Germany" says so and asks for its Länder instead. Geofabrik's
+"Great Britain" entry is not listed (the United Kingdom's covers it), nor are groups such as
+"US Midwest". A file imported by hand is still read for the five layers only.
+
+### A second source for the United States (not built)
+
+The US Department of Agriculture publishes the retailers authorised to accept SNAP benefits
+(the "SNAP Retailer Locator" data), with names, addresses, positions and a store type. On
+17 November 2026 `www.fns.usda.gov` answered HTTP 403 to one ordinary request for the
+locator page, its data page and `robots.txt`, so its terms could not be read and nothing was
+built ([sources.md](sources.md), R19). The data.gov record lists CC BY 4.0 (last modified
+2014). What it would take, once FNS's own pages can be read and allow it: an adapter like
+the Food Standards Agency's, fetching one state's file on a press; its store types (not read
+here, as the data could not be) mapped to the layer's kinds only where the meaning is plain,
+everything else "other shop selling food"; joined to OpenStreetMap's places by the same rule
+as the Agency's; and nothing about benefits on the card beyond the source's name.
+
+### The European Union
+
+There is no single official list of food shops: OpenStreetMap is the source, and coverage
+varies by country and between towns and countryside. One search found no EU-wide or
+multi-country open register on Eurostat or data.europa.eu; ESPON's "Location of Shops in
+Europe" (2016 and 2021 snapshots, made mostly from OpenStreetMap) could not be read and would
+add nothing to a current extract ([sources.md](sources.md), R20).
+
 ## The data model
 
 Migration **0020** (`apps/server/src/db/migrations/0020_reference_layers.sql`).

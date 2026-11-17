@@ -6,7 +6,7 @@
  * out by the server from what it holds), then the countries, each opening onto its parts.
  */
 import type { ReferenceRegionDto } from "@outpost/shared";
-import { ArrowLeft, ChevronRight, Search } from "lucide-react";
+import { ArrowLeft, ChevronRight, Search, X } from "lucide-react";
 import { useDeferredValue, useMemo, useState } from "react";
 import { ErrorState, Joined } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -139,10 +139,20 @@ export function RegionChooser({
           placeholder="Find a country, state or region"
           value={text}
           onChange={(event) => setText(event.target.value)}
-          className="pl-8"
+          className="pr-10 pl-8 [&::-webkit-search-cancel-button]:hidden"
           autoComplete="off"
           enterKeyHint="search"
         />
+        {text ? (
+          <button
+            type="button"
+            aria-label="Clear what is typed"
+            onClick={() => setText("")}
+            className="absolute top-1/2 right-1 grid size-9 -translate-y-1/2 place-content-center rounded-control text-ink-muted hover:text-ink"
+          >
+            <X aria-hidden className="size-4" />
+          </button>
+        ) : null}
       </div>
 
       <div className="max-h-72 overflow-y-auto overscroll-contain rounded-control border border-border px-2" aria-live="polite">
