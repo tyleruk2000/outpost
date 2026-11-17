@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Segmented } from "@/components/ui/misc";
 import { useClockStyle } from "@/lib/clock";
 import { cn } from "@/lib/utils";
-import { useMapMoment, useSunClock } from "../grey-line/time";
+import { useMapMoment, useSunClock, useToday } from "../grey-line/time";
 import type { LatLon } from "../lib/geo";
 import { moonPhase } from "../lib/moon";
 import { addDays, dateToUtc, dayLengthChange, type IsoDate, isIsoDate, sunDay } from "../lib/sun";
@@ -67,10 +67,11 @@ function useSun(position: LatLon, zone: string | undefined, shared = false) {
   const device = useMemo(() => zone ?? deviceZone(), [zone]);
   const style = useClockStyle();
   const [clock, setClock] = useSunClock();
-  const [today] = useState(() => dateIn(device, Date.now()));
-  const [ownDate, setOwnDate] = useState<IsoDate>(today);
+  const today = useToday(device);
+  // Null: today, whichever day that is by now.
+  const [ownDate, setOwnDate] = useState<IsoDate | null>(null);
   const [moment, setMoment] = useMapMoment();
-  const date = shared ? (moment === null ? today : dateIn(device, moment)) : ownDate;
+  const date = shared ? (moment === null ? today : dateIn(device, moment)) : (ownDate ?? today);
   /** Another day, at the same time of day: the moment moves by whole days. */
   const setDate = (next: IsoDate) => {
     if (!shared) return setOwnDate(next);
@@ -78,7 +79,7 @@ function useSun(position: LatLon, zone: string | undefined, shared = false) {
     setMoment((moment ?? Date.now()) + dateToUtc(next) - dateToUtc(date));
   };
   /** Back to today: for the shared moment, back to now. */
-  const goToday = () => (shared ? setMoment(null) : setOwnDate(today));
+  const goToday = () => (shared ? setMoment(null) : setOwnDate(null));
 
   const { lat, lon } = position;
   const utc = clock === "utc";

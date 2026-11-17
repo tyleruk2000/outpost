@@ -8,7 +8,7 @@
  * and remembered in this browser as the Sun tab always remembered it.
  */
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { dateToUtc, type IsoDate } from "../lib/sun";
+import { addDays, dateToUtc, type IsoDate } from "../lib/sun";
 import { dateIn, zoneOffsetMinutes } from "../lib/sun-text";
 import { readStored, writeStored } from "../lib/view";
 
@@ -62,6 +62,33 @@ export function useMinute(active: boolean): number {
     };
   }, [active]);
   return now;
+}
+
+/**
+ * Today's date on a zone's clock, read again at that clock's midnight and when the page is
+ * shown after being out of sight. Nothing is timed while it is hidden.
+ */
+export function useToday(zone: string): IsoDate {
+  const [today, setToday] = useState(() => dateIn(zone, Date.now()));
+  useEffect(() => {
+    let timer: number | undefined;
+    const read = () => {
+      window.clearTimeout(timer);
+      if (document.visibilityState === "hidden") return;
+      const now = Date.now();
+      const date = dateIn(zone, now);
+      setToday(date);
+      const midnight = momentOf(addDays(date, 1), "00:00", zone);
+      timer = window.setTimeout(read, Math.max(1_000, midnight - now + 1_000));
+    };
+    read();
+    document.addEventListener("visibilitychange", read);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", read);
+    };
+  }, [zone]);
+  return today;
 }
 
 // ── The clock the Sun's times are written on ──
