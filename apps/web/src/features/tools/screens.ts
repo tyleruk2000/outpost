@@ -4,7 +4,7 @@
  * a route in app.tsx. Keep one entry to one line group, so that two people adding tools
  * at once meet only here.
  */
-import { BatteryCharging, CookingPot, Droplets, Hammer, MonitorSmartphone, Mountain, QrCode, RadioTower } from "lucide-react";
+import { BatteryCharging, CookingPot, Droplets, Hammer, MonitorSmartphone, Mountain, QrCode, RadioTower, SunMedium } from "lucide-react";
 import type { SectionScreen } from "@/components/section";
 
 export const toolScreens: SectionScreen[] = [
@@ -61,5 +61,12 @@ export const toolScreens: SectionScreen[] = [
     icon: MonitorSmartphone,
     about:
       "See what answers on the network the computer running Outpost is on: a NAS, a printer, a Raspberry Pi whose address you have forgotten.",
+  },
+  {
+    to: "/tools/solar-clock",
+    label: "Solar clock",
+    icon: SunMedium,
+    about:
+      "The sun's place now, setting your clocks from a shadow after a power cut, and how to make a sundial and a nocturnal. Works with no internet.",
   },
 ];

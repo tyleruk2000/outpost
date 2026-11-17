@@ -132,31 +132,54 @@ function hourAngleFor(lat: number, declination: number, altitude: number): numbe
   return acos((sin(altitude) - sin(lat) * sin(declination)) / (cos(lat) * cos(declination)));
 }
 
+/** Solar noon on a date at a longitude, and noon by mean time on the place's own meridian. */
+function noonOf(longitude: number, date: IsoDate): { meanNoon: number; noon: number } {
+  // Noon mean time on the place's own meridian; apparent noon is the equation of time away from it.
+  const meanNoon = dateToUtc(date) + 12 * 60 * MINUTE - longitude * 4 * MINUTE;
+  let noon = meanNoon;
+  for (let pass = 0; pass < 2; pass += 1) noon = meanNoon - solarPosition(noon).equationOfTime * MINUTE;
+  return { meanNoon, noon };
+}
+
+/** A latitude at a pole itself is taken a hair short of it, where the arithmetic still holds. */
+const usableLatitude = (latitude: number) => Math.max(-89.99, Math.min(89.99, latitude));
+
+/**
+ * When the sun's centre is at a geometric altitude (degrees, no refraction) on a date:
+ * on the way up before noon (side -1) or on the way down after it (side 1). Null when it
+ * does not reach that altitude on that side: it stays above it, or never climbs to it.
+ */
+export function altitudeCrossing(latitude: number, longitude: number, date: IsoDate, altitude: number, side: -1 | 1): number | null {
+  const lat = usableLatitude(latitude);
+  const { meanNoon, noon } = noonOf(longitude, date);
+  if (altitudeAt(lat, solarPosition(noon).declination, 0) < altitude) return null;
+  return crossingFrom(lat, meanNoon, noon, altitude, side);
+}
+
+function crossingFrom(lat: number, meanNoon: number, noon: number, altitude: number, side: -1 | 1): number | null {
+  // The sun is lowest half a day from noon. Still above the altitude then: no crossing on this side.
+  const lowest = noon + side * 12 * 60 * MINUTE;
+  if (altitudeAt(lat, solarPosition(lowest).declination, 180) > altitude) return null;
+  let at = noon;
+  for (let pass = 0; pass < 4; pass += 1) {
+    const sun = solarPosition(at);
+    at = meanNoon - sun.equationOfTime * MINUTE + side * hourAngleFor(lat, sun.declination, altitude) * 4 * MINUTE;
+  }
+  return at;
+}
+
 /**
  * The sun's day at a place. Latitude and longitude in degrees, north and east positive.
  * A latitude at a pole itself is taken a hair short of it, where the arithmetic still holds.
  */
 export function sunDay(latitude: number, longitude: number, date: IsoDate): SunDay {
-  const lat = Math.max(-89.99, Math.min(89.99, latitude));
-  // Noon mean time on the place's own meridian; apparent noon is the equation of time away from it.
-  const meanNoon = dateToUtc(date) + 12 * 60 * MINUTE - longitude * 4 * MINUTE;
-  let noon = meanNoon;
-  for (let pass = 0; pass < 2; pass += 1) noon = meanNoon - solarPosition(noon).equationOfTime * MINUTE;
+  const lat = usableLatitude(latitude);
+  const { meanNoon, noon } = noonOf(longitude, date);
   const atNoon = solarPosition(noon);
   const noonAltitude = altitudeAt(lat, atNoon.declination, 0);
 
   /** One crossing of an altitude: on the way up before noon (side -1) or on the way down after it (side 1). */
-  const crossing = (altitude: number, side: -1 | 1): number | null => {
-    // The sun is lowest half a day from noon. Still above the altitude then: no crossing on this side.
-    const lowest = noon + side * 12 * 60 * MINUTE;
-    if (altitudeAt(lat, solarPosition(lowest).declination, 180) > altitude) return null;
-    let at = noon;
-    for (let pass = 0; pass < 4; pass += 1) {
-      const sun = solarPosition(at);
-      at = meanNoon - sun.equationOfTime * MINUTE + side * hourAngleFor(lat, sun.declination, altitude) * 4 * MINUTE;
-    }
-    return at;
-  };
+  const crossing = (altitude: number, side: -1 | 1): number | null => crossingFrom(lat, meanNoon, noon, altitude, side);
 
   const band = (altitude: number): Band => {
     if (noonAltitude < altitude) return { kind: "below" };
@@ -193,4 +216,71 @@ export function sunDay(latitude: number, longitude: number, date: IsoDate): SunD
 /** How much longer (positive) or shorter this day is than the one before it, in milliseconds. */
 export function dayLengthChange(latitude: number, longitude: number, date: IsoDate): number {
   return sunDay(latitude, longitude, date).dayLength - sunDay(latitude, longitude, addDays(date, -1)).dayLength;
+}
+
+// ── The sun at an instant ───────────────────────────────────────────────────
+
+/**
+ * Hours on the sundial at a longitude at an instant: local apparent solar time, 0 to 24,
+ * with 12 when the sun crosses the meridian. NOAA's "true solar time": the clock at
+ * Greenwich, plus four minutes for every degree east, plus the equation of time.
+ */
+export function apparentSolarHours(ms: number, longitude: number): number {
+  const utcMinutes = (((ms % DAY) + DAY) % DAY) / MINUTE;
+  const minutes = utcMinutes + solarPosition(ms).equationOfTime + 4 * longitude;
+  return (((minutes / 60) % 24) + 24) % 24;
+}
+
+export interface SunAt {
+  /** Geometric altitude of the centre, degrees above a flat horizon, without refraction. */
+  altitude: number;
+  /** As it is seen: with NOAA's model of the air's refraction added. */
+  apparentAltitude: number;
+  /** True bearing, degrees clockwise from north. */
+  azimuth: number;
+  /** Degrees west of the meridian: negative in the morning. */
+  hourAngle: number;
+  declination: number;
+  equationOfTime: number;
+}
+
+/**
+ * Where the sun is in the sky at an instant, seen from a place. The hour angle from the
+ * apparent solar time (NOAA), then the altitude and the azimuth of the navigational
+ * triangle as Bowditch gives them (American Practical Navigator, 2019, vol. 1, appendix
+ * B, article 5): sin h = sin L sin d + cos L cos d cos LHA; the azimuth by its "time
+ * azimuth formula", here with atan2 so that it falls in the right quarter by itself.
+ * The tests beside this file hold it to the US Naval Observatory's computed altitude and
+ * azimuth.
+ */
+export function sunAt(ms: number, latitude: number, longitude: number): SunAt {
+  const lat = usableLatitude(latitude);
+  const { declination, equationOfTime } = solarPosition(ms);
+  const hourAngle = apparentSolarHours(ms, longitude) * 15 - 180;
+  const altitude = altitudeAt(lat, declination, hourAngle);
+  // Clockwise from north: measured from south, as the triangle gives it, and turned half round.
+  const fromSouth = Math.atan2(sin(hourAngle), cos(hourAngle) * sin(lat) - Math.tan(declination * DEG) * cos(lat)) / DEG;
+  const azimuth = (((fromSouth + 180) % 360) + 360) % 360;
+  return { altitude, apparentAltitude: altitude + refraction(altitude), azimuth, hourAngle, declination, equationOfTime };
+}
+
+/**
+ * How much the air lifts the sun, in degrees, at a geometric altitude: NOAA's model, as
+ * its "Solar Calculation Details" page gives it (gml.noaa.gov/grad/solcalc/calcdetails.html).
+ * An average: the real figure moves with the air's temperature and pressure, most of all
+ * near the horizon.
+ */
+export function refraction(altitude: number): number {
+  if (altitude > 85) return 0;
+  const t = Math.tan(altitude * DEG);
+  if (altitude > 5) return (58.1 / t - 0.07 / t ** 3 + 0.000086 / t ** 5) / 3600;
+  if (altitude > -0.575) return (1735 + altitude * (-518.2 + altitude * (103.4 + altitude * (-12.79 + altitude * 0.711)))) / 3600;
+  return -20.774 / t / 3600;
+}
+
+/** The geometric altitude that refraction lifts to an apparent one: what a shadow measures, taken back to the arithmetic's altitude. */
+export function geometricFromApparent(apparent: number): number {
+  let altitude = apparent;
+  for (let pass = 0; pass < 6; pass += 1) altitude = apparent - refraction(altitude);
+  return altitude;
 }
