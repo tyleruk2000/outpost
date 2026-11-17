@@ -25,7 +25,17 @@ import { useServerEvent } from "@/lib/events";
 import { useStorage } from "@/lib/queries";
 import { formatDateTime } from "@/lib/utils";
 import { passphraseProblem, RestorePassphrase } from "./backup-protection";
-import { backupSummary, checkText, kindText, protectionText, retryText, scheduleText, waitingTitle } from "./backup-text";
+import {
+  backupSummary,
+  checkText,
+  kindText,
+  protectionText,
+  RESTORE_WORDS,
+  retryText,
+  scheduleText,
+  stagedText,
+  waitingTitle,
+} from "./backup-text";
 import { NumberSetting, SettingRow, SettingsSection } from "./parts";
 
 const OFF = "off";
@@ -284,11 +294,7 @@ function StoredBackups({
       ),
     onSuccess: (staged) => {
       setRestoring(undefined);
-      toast.success(
-        staged.supervised
-          ? "The backup has been checked. Restart Outpost to switch to it."
-          : "The backup has been checked. Stop Outpost and start it again to switch to it.",
-      );
+      toast.success(stagedText(staged.createdAt, staged.supervised));
       return refresh();
     },
     onError: (error) => {
@@ -407,9 +413,11 @@ function StoredBackups({
         title="Restore from this backup?"
         description={
           <>
-            The backup of <span className="font-medium text-ink">{restoring ? formatDateTime(restoring.createdAt) : ""}</span> will replace
-            the notes, settings and library index on this Outpost after a restart. Anything added since then will no longer be here. The
-            current data is kept in a dated folder, not deleted.
+            <p>
+              The backup of <span className="font-medium text-ink">{restoring ? formatDateTime(restoring.createdAt) : ""}</span>, from{" "}
+              {locationName}, is checked first. {RESTORE_WORDS[0]}
+            </p>
+            <p className="mt-2">{RESTORE_WORDS[1]}</p>
           </>
         }
         confirmLabel="Check and stage restore"

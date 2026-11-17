@@ -60,3 +60,20 @@ export const checkText: Record<StoredBackup["check"], { label: string; tone: "su
     explain: "It has the name of a backup but does not read as one. Outpost leaves it alone.",
   },
 };
+
+/**
+ * What restoring a backup does, said in the dialog before the press, in the same words
+ * for a stored backup and a file chosen from this device.
+ */
+export const RESTORE_WORDS = [
+  "Nothing changes until Outpost starts again. Then the backup takes the place of what Outpost keeps in its database: notes, saved places, contacts, plans, settings, the library’s records and the search index, as they were when it was made. Anything added or changed since then will not be here, and downloads under way stop.",
+  "The files of collections, maps and documents on your storage are not touched. What Outpost holds now is moved to a dated folder in its data folder, not deleted, and until the restart you can cancel.",
+] as const;
+
+/** Said once a backup has been checked and is waiting for the restart. */
+export function stagedText(createdAt: string | number, supervised: boolean): string {
+  const made = formatDateTime(typeof createdAt === "string" ? Date.parse(createdAt) : createdAt);
+  return supervised
+    ? `The backup of ${made} has been checked. Restart Outpost to switch to it.`
+    : `The backup of ${made} has been checked. Stop Outpost and start it again to switch to it.`;
+}

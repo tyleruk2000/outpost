@@ -271,7 +271,7 @@ function EraseSteps({ onClose }: { onClose: () => void }) {
                 <span className="font-semibold">This cannot be undone.</span> It deletes files and erases your own work because you are
                 asking it to.
               </p>
-              {planSentences(data, { files: "delete", disconnected: "forget" }).map((line) => (
+              {planSentences(data, { files: "delete", disconnected: "forget", undoSaid: true }).map((line) => (
                 <p key={line}>{line}</p>
               ))}
               {data.personal ? <p>{personalWords(data.personal)}</p> : null}

@@ -41,7 +41,7 @@ export default function ManagePage() {
     <Page>
       <Link
         to="/storage"
-        className="-ml-1 mb-3 inline-flex items-center gap-1.5 rounded-control px-1 py-1 text-small text-ink-muted transition-colors hover:text-ink"
+        className="-ml-1 mb-3 inline-flex items-center gap-1.5 rounded-control px-1 py-1 text-small text-ink-muted transition-colors hover:text-ink max-md:min-h-11"
       >
         <ArrowLeft aria-hidden className="size-4" /> Storage
       </Link>

@@ -1,5 +1,13 @@
-import { formatBytes, type NetworkShare, type StorageKind, type StorageLocation, type StorageUsage, shareAddress } from "@outpost/shared";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  type BackupSchedule,
+  formatBytes,
+  type NetworkShare,
+  type StorageKind,
+  type StorageLocation,
+  type StorageUsage,
+  shareAddress,
+} from "@outpost/shared";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, CircleAlert, Ellipsis, FolderInput, HardDrive, Network, Pencil, Plus, RefreshCw, Star, Trash2, Usb } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
@@ -29,9 +37,14 @@ export const kindLabels: Record<StorageKind, { label: string; icon: typeof HardD
 
 type Location = StorageLocation & { usage: StorageUsage };
 
-function UsageLegend({ usage }: { usage: StorageUsage }) {
+function UsageLegend({ usage, holdsBackups }: { usage: StorageUsage; holdsBackups: boolean }) {
   const present = usageKinds.filter((entry) => (usage.byKind[entry.kind]?.bytes ?? 0) > 0);
-  if (present.length === 0) return <p className="text-small text-ink-muted">Nothing from Outpost is stored here yet.</p>;
+  if (present.length === 0)
+    return (
+      <p className="text-small text-ink-muted">
+        {holdsBackups ? "None of the library is stored here yet." : "Nothing from Outpost is stored here yet."}
+      </p>
+    );
   return (
     <ul className="flex flex-wrap gap-x-5 gap-y-1 text-small text-ink-muted">
       {present.map((entry) => {
@@ -53,12 +66,15 @@ function LocationRow({
   onlyOne,
   documentsElsewhere,
   share,
+  backupsFolder,
 }: {
   location: Location;
   onlyOne: boolean;
   documentsElsewhere: number;
   /** The network share this location lives on, when Outpost connected it. */
   share?: NetworkShare;
+  /** The folder automatic backups are written to, when this is the location chosen for them. */
+  backupsFolder: string | null;
 }) {
   const client = useQueryClient();
   const [renaming, setRenaming] = useState(false);
@@ -161,7 +177,7 @@ function LocationRow({
           <>
             <StorageBar location={location} usage={location.usage} />
             <div className="mt-2.5 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1.5">
-              <UsageLegend usage={location.usage} />
+              <UsageLegend usage={location.usage} holdsBackups={backupsFolder !== null} />
               <p className="tabular text-small text-ink-muted">
                 <span className="font-semibold text-ink">{formatBytes(location.freeBytes)}</span> free of {formatBytes(location.totalBytes)}
               </p>
@@ -181,6 +197,14 @@ function LocationRow({
             </p>
           </Notice>
         )}
+        {backupsFolder !== null ? (
+          <p className="mt-2 text-small text-ink-muted">
+            Automatic backups are kept here, in the folder <span className="font-mono text-[0.8125rem] text-ink">{backupsFolder}</span>.{" "}
+            <Link to="/settings#automatic-backups" className="text-primary underline underline-offset-2">
+              Backup settings
+            </Link>
+          </p>
+        ) : null}
       </div>
 
       <Dialog open={renaming} onOpenChange={setRenaming}>
@@ -219,15 +243,47 @@ function LocationRow({
         loading={moveDocuments.isPending}
       />
 
-      <ConfirmDialog
-        open={removing}
-        onOpenChange={setRemoving}
-        title={`Remove “${location.name}”?`}
-        description="Outpost will stop using this folder. Nothing in it is deleted, and you can add it again later to bring its contents back."
-        confirmLabel="Remove location"
-        onConfirm={() => remove.mutate()}
-        loading={remove.isPending}
-      />
+      {items > 0 ? (
+        // Said before the press: the server refuses to forget a location that still holds part of the library.
+        <Dialog open={removing} onOpenChange={setRemoving}>
+          <DialogContent title={`“${location.name}” still holds ${plural(items, "item")}`} size="sm">
+            <DialogBody>
+              <p className="text-small text-ink-muted">
+                Outpost stops using a location only when none of the library is on it, and it will not delete anything for you. Move what is
+                here to another location, or remove it, under Manage and clean up. Then remove the location.
+              </p>
+            </DialogBody>
+            <DialogFooter>
+              <Button onClick={() => setRemoving(false)}>Close</Button>
+              <Button variant="primary" asChild>
+                <Link to={manageLink("installed")}>Manage and clean up</Link>
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      ) : (
+        <ConfirmDialog
+          open={removing}
+          onOpenChange={setRemoving}
+          title={`Remove “${location.name}”?`}
+          description={
+            <>
+              <p>
+                Outpost will stop using this folder. Nothing in it is deleted, and you can add it again later to bring its contents back.
+              </p>
+              {backupsFolder !== null ? (
+                <p className="mt-2">
+                  Automatic backups are made here. They will stop until you choose another location for them in Settings; the backups
+                  already in {backupsFolder} stay where they are.
+                </p>
+              ) : null}
+            </>
+          }
+          confirmLabel="Remove location"
+          onConfirm={() => remove.mutate()}
+          loading={remove.isPending}
+        />
+      )}
     </li>
   );
 }
@@ -235,6 +291,9 @@ function LocationRow({
 export default function StoragePage() {
   const storage = useStorage();
   const shares = useShares();
+  // Only to say which location holds the automatic backups.
+  const schedule = useQuery({ queryKey: ["backup", "schedule"], queryFn: () => api.get<BackupSchedule>("/api/backup/schedule") });
+  const backupsAt = schedule.data?.settings.locationId ?? null;
   const client = useQueryClient();
   const [adding, setAdding] = useState(false);
   const refresh = useMutation({
@@ -306,6 +365,7 @@ export default function StoragePage() {
                 share={shares.data?.shares.find(
                   (share) => share.status !== "connected" && share.locations.some((entry) => entry.id === location.id),
                 )}
+                backupsFolder={backupsAt === location.id ? (schedule.data?.folder ?? null) : null}
                 documentsElsewhere={locations
                   .filter((other) => other.id !== location.id)
                   .reduce((sum, other) => sum + (other.usage.byKind.document?.count ?? 0), 0)}

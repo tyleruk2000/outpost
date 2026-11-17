@@ -194,7 +194,11 @@ export function stateOf(item: ManagedItem): { label: string; tone: "warning" | "
 // ── Summaries and accounts ──
 
 /** What a removal will do, as the sentences shown before it is confirmed. */
-export function planSentences(plan: CleanupPlan, options: { files: "delete" | "keep"; disconnected: "forget" | "leave" }): string[] {
+export function planSentences(
+  plan: CleanupPlan,
+  /** `undoSaid`: the screen has already said, more strongly, that this cannot be undone. */
+  options: { files: "delete" | "keep"; disconnected: "forget" | "leave"; undoSaid?: boolean },
+): string[] {
   const lines: string[] = [];
   const staying = plan.byLocation.reduce((sum, location) => sum + location.stays.count, 0);
   if (options.files === "keep") {
@@ -216,6 +220,13 @@ export function planSentences(plan: CleanupPlan, options: { files: "delete" | "k
   if (options.files === "delete" && plan.own.count > 0) {
     lines.push(
       `${plural(plan.own.count, "item")} (${formatBytes(plan.own.bytes)}) ${plan.own.count === 1 ? "is" : "are"} your own and cannot be downloaded again.`,
+    );
+  }
+  if (options.files === "delete" && plan.remove.count > 0 && !options.undoSaid) {
+    lines.push(
+      plan.own.count < plan.remove.count
+        ? "Deleting cannot be undone. What came from the catalogue or the map can be downloaded again."
+        : "Deleting cannot be undone.",
     );
   }
   if (plan.downloads.count > 0) {

@@ -305,7 +305,7 @@ export function DatabaseSection() {
               </li>
               <li>
                 {status.backup.lastAt
-                  ? `Last backed up ${timeAgo(status.backup.lastAt)} (${formatDateTime(status.backup.lastAt)}), ${status.backup.kind === "scheduled" ? "on the schedule" : "with Back up now"}.`
+                  ? `Last backed up ${timeAgo(status.backup.lastAt)} (${formatDateTime(status.backup.lastAt)}), ${status.backup.kind === "scheduled" ? "on the schedule" : "started by hand"}.`
                   : status.backup.scheduled
                     ? "Not backed up to a storage location yet; the first scheduled backup has not run."
                     : "Not backed up to a storage location. Backups downloaded from Settings are not recorded here."}{" "}
