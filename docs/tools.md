@@ -35,7 +35,7 @@ too:
   the UK gallon of the Weights and Measures Act 1985, the US gallon of NIST Handbook 44).
 - `format.ts`: figures in British style, rounded by significant figures or decimals.
 - `Result`: the answer, said as soon as it can be, with **Copy** (which works on a plain
-  http page too, through `features/downloads/copy.ts`) and **Save as a note**.
+  http page too, through `lib/clipboard.ts`) and **Save as a note**.
 - `HowWorkedOut`: one disclosure with the formula, the range, what is left out and the
   sources (each with the date it was read).
 - `ToolScreen` and `Calculator`: the page, a line of links to each calculator on it, and

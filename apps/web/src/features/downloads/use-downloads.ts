@@ -2,9 +2,9 @@
 import type { DownloadDto, DownloadResponse, DownloadsResponse } from "@outpost/shared";
 import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef } from "react";
-import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
 import { useServerEvent } from "@/lib/events";
+import { notify } from "@/lib/notify";
 import { usePageVisible } from "@/lib/page-visible";
 
 export const downloadsKey = ["downloads", "list"] as const;
@@ -70,7 +70,7 @@ export function useDownloadAction(id: string) {
       patchDownload(client, data.download);
       void client.invalidateQueries({ queryKey: ["catalog"] });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 }
 
@@ -86,6 +86,6 @@ export function useRemoveDownload(id: string) {
       void client.invalidateQueries({ queryKey: ["downloads"] });
       void client.invalidateQueries({ queryKey: ["catalog"] });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 }

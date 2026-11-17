@@ -23,6 +23,7 @@ import { Notice, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Select, Skeleton } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { useStorage } from "@/lib/queries";
 
 const statusKey = ["propagation", "second-model"] as const;
@@ -51,7 +52,7 @@ function Setup({ status }: { status: SecondModelStatus }) {
       toast.success("Fetching the P.533 maps. Progress is under Downloads.");
       void client.invalidateQueries({ queryKey: statusKey });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
   return (
     <div className="max-w-[75ch]">

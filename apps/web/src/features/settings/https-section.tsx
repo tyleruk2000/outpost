@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Skeleton, Spinner, Switch } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { formatDate } from "@/lib/utils";
 import type { SecureWay } from "./https-own";
 import { guessDevice, HTTPS_STATUS_KEY as STATUS_KEY } from "./https-shared";
@@ -113,7 +114,7 @@ export function HttpsSection({
     },
     onError: (error) => {
       setAsking(null);
-      toast.error(errorMessage(error));
+      notify.error(errorMessage(error));
     },
   });
 

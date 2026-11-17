@@ -8,6 +8,7 @@ import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { ApiError, api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { manageLink } from "../manage/manage-data";
 import { AutomaticBackups } from "./automatic-backups";
 import { BackupProtectionRow, passphraseHeader, passphraseProblem, RestorePassphrase, startsAsProtected } from "./backup-protection";
@@ -31,7 +32,7 @@ async function reloadWhenBack(): Promise<void> {
     await wait(1000);
     if (await answers()) return window.location.reload();
   }
-  toast.error("Outpost has not come back after two minutes. Check the computer it runs on, then reload this page.");
+  notify.error("Outpost has not come back after two minutes. Check the computer it runs on, then reload this page.");
 }
 
 export function BackupSection() {
@@ -85,7 +86,7 @@ export function BackupSection() {
         return setProblem(errorMessage(error));
       }
       choose(undefined);
-      toast.error(errorMessage(error));
+      notify.error(errorMessage(error));
     },
   });
   const cancel = useMutation({ mutationFn: () => api.delete("/api/backup/restore"), onSuccess: refresh });
@@ -95,7 +96,7 @@ export function BackupSection() {
       toast.message("Outpost is restarting. This page will reload by itself once it is back.");
       void reloadWhenBack();
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 
   // Restoring replaces everything at once, so it is offered where "erase everything" is.

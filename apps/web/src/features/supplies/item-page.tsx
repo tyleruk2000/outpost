@@ -7,12 +7,12 @@ import { categoryLabel, localDay, type SupplyItemInput } from "@outpost/shared";
 import { ArrowLeft, CopyPlus, Link2, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { toast } from "sonner";
 import { ErrorState, Notice, Page, PageHeader } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/misc";
 import { ApiError, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { formatDateTime } from "@/lib/utils";
 import { useRemoveItem, useSupplies, useSupplyItem, useUpdateItem } from "./data";
 import { ItemDialog } from "./item-form";
@@ -100,7 +100,9 @@ export default function SupplyItemPage() {
         {data.quantity > 0 ? (
           <Button
             loading={update.isPending}
-            onClick={() => update.mutate({ id: data.id, input: { quantity: 0 } }, { onError: (error) => toast.error(errorMessage(error)) })}
+            onClick={() =>
+              update.mutate({ id: data.id, input: { quantity: 0 } }, { onError: (error) => notify.error(errorMessage(error)) })
+            }
           >
             All used up
           </Button>

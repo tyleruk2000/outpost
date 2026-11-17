@@ -18,6 +18,7 @@ import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/compo
 import { Badge, Checkbox, Progress, Skeleton } from "@/components/ui/misc";
 import { ChoiceList } from "@/features/downloads/choice-list";
 import { errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { formatNumber } from "@/lib/utils";
 import { useRemoveRegion } from "../data";
 import { formatBboxSize, isValidBbox } from "../lib/geo";
@@ -188,7 +189,7 @@ function WorldRow({ option }: { option: ImageryWorldOption }) {
                 setConfirming(false);
                 toast.success(`Downloading ${option.name.toLowerCase()} to ${destination.location?.name ?? "the chosen location"}.`);
               },
-              onError: (error) => toast.error(errorMessage(error)),
+              onError: (error) => notify.error(errorMessage(error)),
             },
           )
         }

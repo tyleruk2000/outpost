@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { Checkbox, Select, Skeleton } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { localId, plural } from "@/lib/utils";
 import { useAddToShopping, useOutlook, useSupplies } from "./data";
 import { move, RowTools, removeAt, replaceAt } from "./list-edit";
@@ -132,7 +133,7 @@ export function SuppliesSection({
       toBuy.map((check) => ({ name: check.name, quantity: check.short, unit: check.unit, note: `For the emergency plan “${planName}”` })),
       {
         onSuccess: (lines) => toast.success(`${plural(lines.length, "line")} added to the shopping list.`),
-        onError: (error) => toast.error(errorMessage(error)),
+        onError: (error) => notify.error(errorMessage(error)),
       },
     );
 

@@ -28,6 +28,7 @@ import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/menu";
 import { Checkbox, Skeleton, Spinner } from "@/components/ui/misc";
 import { KeepTrackButton } from "@/features/kept/keep-controls";
 import { errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { formatDate, formatNumber, plural } from "@/lib/utils";
 import { importGpx, useDeleteTrack, useSaveRoute, useTrack, useUpdateTrack } from "../data";
 import { FoundRouteFacts, FoundRouteHeights, FoundRouteNote, foundRouteSource } from "../find-route/source-credit";
@@ -152,7 +153,7 @@ export function RouteDetail({
                           elevation === "none"
                             ? toast("No heights were found: the installed terrain does not reach this route.")
                             : toast.success(`Heights filled in for “${track.name}”.`),
-                        onError: (error) => toast.error(errorMessage(error)),
+                        onError: (error) => notify.error(errorMessage(error)),
                       },
                     )
                   }

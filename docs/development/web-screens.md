@@ -15,7 +15,13 @@ apps/web/src/
                          checkbox, progress, badge, tooltip, popover, segmented, skeleton, kbd)
   components/page.tsx    Page, PageHeader, Section, EmptyState, Notice, Rows, ErrorState
   components/            shell: sidebar, mobile nav, command palette, lamp, contour, storage bar
-  lib/api.ts             the only way to call the server (`api.get/post/patch/delete/upload`)
+  lib/api.ts             the only way to call the server (`api.get/post/patch/delete/upload`;
+                         `{ keepalive: true }` on `patch` and `put` for the save made as a page closes)
+  lib/notify.tsx         `notify.error`: every error toast, also said at once to a screen reader
+  lib/use-debounced.ts   `useDebounced(value, ms)`: typed words, asked for once the person pauses
+  lib/page-visible.ts    `usePageVisible()`, `isPageVisible()`: stop clocks and sampling while hidden
+  lib/use-width.ts       `useWidth(fallback)`: an element's width in pixels, for hand-drawn charts
+  lib/clipboard.ts       `copyText(text)`: copies, with the older way for plain http; says if it worked
   lib/events.tsx         live updates; maps server events to query keys to refresh
   lib/queries.ts         shared data hooks (system, storage, jobs, settings)
   lib/utils.ts           cn, timeAgo, formatDate, formatDateTime, plural, modKey
@@ -28,6 +34,13 @@ apps/web/src/
 
 `features/storage/storage-page.tsx` is the reference screen. Match its structure and
 tone before inventing anything.
+
+Use the helpers in `lib` rather than writing another copy in a feature folder:
+`lib/one-copy.test.ts` fails if `useDebounced`, `usePageVisible`, `copyText` or
+`useWidth` is defined anywhere else, and `lib/notify.test.tsx` fails if `toast.error` is
+called anywhere but `lib/notify.tsx`. The shared `TabsList` and `TabsTrigger` already
+wrap on to a second line and give each name 44 px of height on a phone: do not add
+`flex-wrap` or a minimum height of your own.
 
 ## The look, in practice
 
@@ -137,9 +150,11 @@ foot. Look at it at those heights when you add a screen.
 
 - **Loading:** skeletons shaped like the content (`Skeleton`), not a centred spinner.
 - **Empty:** `EmptyState` with a title that says what belongs here and a first action.
-- **Error:** `ErrorState` (with retry) for a failed load; `Notice tone="danger"` or a
-  toast (`sonner`) for a failed action. Use `errorMessage(error)`: the server already
-  writes messages for people.
+- **Error:** `ErrorState` (with retry) for a failed load; `Notice tone="danger"` or
+  `notify.error(...)` (`lib/notify.tsx`) for a failed action. `notify.error` shows the
+  usual toast and also writes the message to an assertive live region, so a screen
+  reader says it at once rather than after the polite toasts; never call `toast.error`
+  directly. Use `errorMessage(error)`: the server already writes messages for people.
 - **Partial trouble:** a disconnected storage location, a job still running, a
   document whose text could not be read. Say it plainly where it matters.
 - **No permission state.** There are no accounts or roles, so every action is there
@@ -159,7 +174,7 @@ foot. Look at it at those heights when you add a screen.
   stream after a minute hidden. A job's progress is patched into the shared active-jobs
   list (`useActiveJobs`) from the event, without a fetch.
 - Types come from `@outpost/shared`. Do not redeclare API shapes.
-- Mutations: `useMutation`, invalidate the affected keys on success, toast on error.
+- Mutations: `useMutation`, invalidate the affected keys on success, `notify.error` on error.
 - Long work is a server job; show it with `Progress` fed by real numbers. Never fake
   progress, never show a control that does nothing.
 

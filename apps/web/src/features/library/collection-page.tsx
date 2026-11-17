@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { ApiError, api, errorMessage } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
+import { notify } from "@/lib/notify";
 import { useStorage } from "@/lib/queries";
 import { formatDate, formatDateTime, formatNumber } from "@/lib/utils";
 import { languageName, sizeText } from "../explore/catalog";
@@ -66,7 +67,7 @@ function Checksum({ value }: { value: string }) {
         className="-my-1 shrink-0"
         onClick={async () => {
           if (await copyText(value)) toast.success("Checksum copied");
-          else toast.error("The checksum could not be copied. Select it and copy it by hand.");
+          else notify.error("The checksum could not be copied. Select it and copy it by hand.");
         }}
       >
         <Copy />
@@ -182,7 +183,7 @@ export default function CollectionPage() {
       activity.follow(job);
       void client.invalidateQueries({ queryKey: ["jobs"] });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 
   if (query.isPending) return <LoadingCollection />;

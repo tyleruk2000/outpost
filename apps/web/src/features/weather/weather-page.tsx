@@ -16,6 +16,7 @@ import { EmptyState, ErrorState, Notice, Page, PageHeader } from "@/components/p
 import { Button } from "@/components/ui/button";
 import { Checkbox, Segmented, Select, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { plural } from "@/lib/utils";
 import { BarometerView } from "./barometer-view";
 import { ClimateView } from "./climate-view";
@@ -100,7 +101,7 @@ export default function WeatherPage() {
           else if (done > 0)
             toast.message(`${plural(done, "copy", "copies")} fetched; ${failed.length} could not be. What was kept before is still kept.`);
         },
-        onError: (error) => toast.error(errorMessage(error)),
+        onError: (error) => notify.error(errorMessage(error)),
       },
     );
 

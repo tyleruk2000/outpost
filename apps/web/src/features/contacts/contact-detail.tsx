@@ -38,6 +38,7 @@ import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/compo
 import { Badge, Skeleton } from "@/components/ui/misc";
 import { ApiError, api, errorMessage } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
+import { notify } from "@/lib/notify";
 import { cn, timeAgo } from "@/lib/utils";
 import { birthdayWords, exportHref, labelOr, mailHref, safeWebHref, useContact, useRemoveContact, useSaveContact } from "./contacts-data";
 
@@ -46,7 +47,7 @@ const action =
 
 async function copy(text: string, what: string) {
   if (await copyText(text)) toast.success(`Copied ${what}.`);
-  else toast.error("This browser would not copy it. Select the text and copy it by hand.");
+  else notify.error("This browser would not copy it. Select the text and copy it by hand.");
 }
 
 function CopyButton({ text, what }: { text: string; what: string }) {
@@ -189,7 +190,7 @@ function Details({ contact }: { contact: ContactDto }) {
       {
         onSuccess: () =>
           toast.success(isEmergency ? "Marked for an emergency. It is now on the emergency sheet." : "No longer marked for an emergency."),
-        onError: (error) => toast.error(errorMessage(error)),
+        onError: (error) => notify.error(errorMessage(error)),
       },
     );
 
@@ -495,7 +496,7 @@ function Details({ contact }: { contact: ContactDto }) {
               toast.success(`Deleted ${contact.displayName}.`);
               void navigate("/contacts");
             },
-            onError: (error) => toast.error(errorMessage(error)),
+            onError: (error) => notify.error(errorMessage(error)),
           })
         }
       />

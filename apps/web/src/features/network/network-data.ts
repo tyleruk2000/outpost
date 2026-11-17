@@ -1,9 +1,9 @@
 import type { JobDto, NetworkDevice, NetworkDevicePatch, NetworkStatus } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
 import { useServerEvent } from "@/lib/events";
+import { notify } from "@/lib/notify";
 
 export const NETWORK_KEY = ["network"] as const;
 const FINAL = new Set(["succeeded", "failed", "cancelled"]);
@@ -38,7 +38,7 @@ function useNetworkMutation<T, V = void>(run: (vars: V) => Promise<T>, failure: 
   return useMutation({
     mutationFn: run,
     onSuccess: () => void client.invalidateQueries({ queryKey: NETWORK_KEY }),
-    onError: (error) => toast.error(failure, { description: errorMessage(error) }),
+    onError: (error) => notify.error(failure, { description: errorMessage(error) }),
   });
 }
 

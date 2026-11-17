@@ -6,7 +6,6 @@
 import { Check, Copy, FileImage, FileType, Printer } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { toast } from "sonner";
 import { Notice } from "@/components/page";
 import { PrintNotice } from "@/components/print-notice";
 import { Button } from "@/components/ui/button";
@@ -18,6 +17,7 @@ import { type DrawLine, writeLettered } from "@/features/maps/print/lettering";
 import { PAPERS } from "@/features/maps/print/paper";
 import { errorMessage } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
+import { notify } from "@/lib/notify";
 import { usePrinting } from "@/lib/printing";
 import { cn, formatDate, plural } from "@/lib/utils";
 import { type Described, printAdvice, type QrKind, sensitive } from "./content";
@@ -182,7 +182,7 @@ export function QrOutput({
 
   const copyPicture = async () => {
     if (!canCopyPicture()) {
-      toast.error("A picture can be copied only at an HTTPS address. Save it as a file instead.");
+      notify.error("A picture can be copied only at an HTTPS address. Save it as a file instead.");
       return;
     }
     try {
@@ -190,12 +190,12 @@ export function QrOutput({
       await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
       setCopied("picture");
     } catch (error) {
-      toast.error(`The picture was not copied. ${errorMessage(error)}`);
+      notify.error(`The picture was not copied. ${errorMessage(error)}`);
     }
   };
   const copyContents = async () => {
     if (await copyText(described.payload)) setCopied("text");
-    else toast.error("This browser would not copy the text.");
+    else notify.error("This browser would not copy the text.");
   };
 
   return (
@@ -226,7 +226,7 @@ export function QrOutput({
           onClick={() =>
             pngBlob(code).then(
               (blob) => saveFile(blob, codeFileName(described.title, "png")),
-              (error: unknown) => toast.error(errorMessage(error)),
+              (error: unknown) => notify.error(errorMessage(error)),
             )
           }
         >

@@ -10,13 +10,13 @@
 import { type FeatureProvenance, REFERENCE_LAYERS, type ReferenceFilter, type ReferenceLayerId } from "@outpost/shared";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router";
-import { toast } from "sonner";
 import { useStoredState } from "@/features/maps/hooks";
 import type { LatLon } from "@/features/maps/lib/geo";
 import type { MapEngine } from "@/features/maps/map/engine";
 import { EMPTY } from "@/features/maps/map/overlays";
 import type { Credit } from "@/features/maps/map-footer";
 import { overlayBox } from "@/features/repeaters/map/layers";
+import { notify } from "@/lib/notify";
 import { featuresAt, useFeature, useLayersSummary, useOverlay, usePopulationGrid } from "./data";
 import { FeatureCard } from "./feature-card";
 import { LayersPanel } from "./layers-panel";
@@ -207,7 +207,7 @@ export function useReferenceLayers({
     if (!engine || linkedId === null || handled.current === location.key || selectedId !== linkedId) return;
     if (detail.isError) {
       handled.current = location.key;
-      toast.error("That record is no longer held: its pack may have been removed or updated.");
+      notify.error("That record is no longer held: its pack may have been removed or updated.");
       setSelectedId(null);
       return;
     }

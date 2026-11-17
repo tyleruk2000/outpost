@@ -20,8 +20,8 @@ import {
 } from "@outpost/shared/games/allotment";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { usePageVisible } from "@/lib/page-visible";
 
 export const allotmentKey = ["games", "allotment"] as const;
@@ -50,7 +50,7 @@ export function useAllotmentAction(onDone?: (action: AllotmentAction, before: Al
       onDone?.(action, before, after);
     },
     // A refused action is said in the server's own words; nothing on the plot changed.
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 }
 

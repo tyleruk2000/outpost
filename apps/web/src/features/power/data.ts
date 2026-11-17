@@ -1,8 +1,8 @@
 /** What the power screens ask the server for. */
 import { newPowerPlan, type OwnDevice, type OwnDeviceInput, type PowerPlan, type PowerPlanInput, type RadioProfile } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { ApiError, api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 
 export const powerKeys = {
   all: ["power", "plans"] as const,
@@ -57,7 +57,7 @@ export function useSavePowerPlan(id: string) {
     },
     // A conflict is shown on the plan itself, with the choice of which to keep.
     onError: (error) => {
-      if (!isConflict(error)) toast.error(errorMessage(error));
+      if (!isConflict(error)) notify.error(errorMessage(error));
     },
   });
 }
@@ -67,7 +67,7 @@ export function useCopyPowerPlan() {
   return useMutation({
     mutationFn: (id: string) => api.post<{ plan: PowerPlan }>(`/api/power/plans/${id}/copy`).then((data) => data.plan),
     onSuccess: () => void client.invalidateQueries({ queryKey: powerKeys.all, exact: true }),
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 }
 
@@ -76,7 +76,7 @@ export function useRemovePowerPlan() {
   return useMutation({
     mutationFn: (id: string) => api.delete(`/api/power/plans/${id}`),
     onSuccess: () => void client.invalidateQueries({ queryKey: powerKeys.all, exact: true }),
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 }
 
@@ -113,6 +113,6 @@ export function useRemoveOwnDevice() {
   return useMutation({
     mutationFn: (id: string) => api.delete(`/api/power/devices/${id}`),
     onSuccess: () => void client.invalidateQueries({ queryKey: powerKeys.devices }),
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 }

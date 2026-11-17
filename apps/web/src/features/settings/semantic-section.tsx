@@ -12,11 +12,11 @@ import { formatBytes, formatDuration, type SemanticStatus, type Settings, second
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleAlert, CircleCheck } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Progress, Skeleton, Switch } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { cn, formatNumber, plural } from "@/lib/utils";
 import { GuideLink, MoreOptions, SettingsSection } from "./parts";
 import { indexCost, indexStage, LAPTOP_SECONDS_PER_THOUSAND, SemanticOptions } from "./semantic-options";
@@ -64,7 +64,7 @@ export function SemanticSection({
     },
   });
   const refresh = () => client.invalidateQueries({ queryKey: ["semantic"] });
-  const failed = (error: unknown) => toast.error(errorMessage(error));
+  const failed = (error: unknown) => notify.error(errorMessage(error));
   // The repair changes two settings on the server; the screen reads them again, and the state with them.
   const settled = () => {
     setTurnedOnAt(Date.now());

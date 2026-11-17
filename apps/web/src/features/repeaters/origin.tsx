@@ -6,12 +6,12 @@
  */
 import { type MarkerDto, parseCoordinateReadings } from "@outpost/shared";
 import { useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
 import { Field, Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/misc";
 import { useMarkers } from "@/features/maps/data";
 import { useStoredState } from "@/features/maps/hooks";
 import { type CameraView, isCameraView, readStored, STORAGE_KEYS } from "@/features/maps/lib/view";
+import { notify } from "@/lib/notify";
 import type { LatLon } from "./data";
 
 /** "none", "map", "here", "typed", "place:" and the id of a saved place, or "home" before anything is chosen. */
@@ -58,7 +58,7 @@ export function useOrigin(initial?: LatLon | null): Origin {
   useEffect(() => {
     if (choice !== "here" || given || here) return;
     if (!("geolocation" in navigator) || !window.isSecureContext) {
-      toast.error(
+      notify.error(
         "Browsers only share a device's location with pages opened over HTTPS or on the device itself. Turn on Settings → HTTPS on your network, then open Outpost at its https address.",
       );
       setChoice("none");
@@ -71,7 +71,7 @@ export function useOrigin(initial?: LatLon | null): Origin {
         setLocating(false);
       },
       () => {
-        toast.error("This device could not say where it is. Choose a saved place, or type a position or a locator.");
+        notify.error("This device could not say where it is. Choose a saved place, or type a position or a locator.");
         setLocating(false);
         setChoice("none");
       },

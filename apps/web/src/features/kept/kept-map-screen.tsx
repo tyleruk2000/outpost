@@ -9,7 +9,6 @@ import type { Bbox, InstalledRegion, MapSources, MarkerDto, TrackWithGeometryDto
 import { CircleAlert, LocateFixed, Minus, Plus } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router";
-import { toast } from "sonner";
 import "@/features/maps/maps.css";
 import { Notice } from "@/components/page";
 import { Skeleton } from "@/components/ui/misc";
@@ -25,6 +24,7 @@ import { creditsFor, MapFooter } from "@/features/maps/map-footer";
 import { type Detent, MobileSheet } from "@/features/maps/side-panel";
 import { ColorDot, ControlButton, ControlGroup, PanelHeading, PlaceMark } from "@/features/maps/ui";
 import { errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { plural } from "@/lib/utils";
 import { DEVICE } from "./device";
 import { MARKERS_PATH, PLACES_ID, trackPath } from "./keep";
@@ -187,7 +187,7 @@ export default function KeptMapScreen() {
     (fix, first) => {
       if (first) engine?.flyTo(fix, Math.max(engine.getZoom(), 14));
     },
-    (message) => toast.error(message),
+    (message) => notify.error(message),
   );
   useEffect(() => {
     engine?.setOverlay("o-location", locationData(locate.fix));

@@ -1,8 +1,8 @@
 /** What the communication plans screens ask the server for. */
 import type { CommunicationPlan, PlanConflictDetails, PlanInput, PlanPatch, PlanResult, SearchResult } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { ApiError, api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { todayUtc } from "../data";
 
 export const planKeys = {
@@ -87,7 +87,7 @@ export function useSavePlan(id: string, onChangedElsewhere: (patch: Partial<Plan
     onError: (error, patch) => {
       const theirs = planChangedElsewhere(error);
       if (theirs) onChangedElsewhere(patch, theirs);
-      else toast.error(errorMessage(error));
+      else notify.error(errorMessage(error));
     },
   });
 }
@@ -106,7 +106,7 @@ export function useRemovePlan() {
   return useMutation({
     mutationFn: (id: string) => api.delete(`/api/radio/communication-plans/${id}`),
     onSuccess: () => void client.invalidateQueries({ queryKey: planKeys.all, exact: true }),
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 }
 

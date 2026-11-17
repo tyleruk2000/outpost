@@ -15,6 +15,7 @@ import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/compo
 import { Checkbox, Segmented, Select } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
+import { notify } from "@/lib/notify";
 import { formatDate } from "@/lib/utils";
 import { removeDevicePrivateKey, saveDevicePrivateKey, setKeyChecked } from "./device-keys";
 import { getEngine, type KeyAlgorithm, type KeyInfo } from "./engine";
@@ -477,7 +478,7 @@ function KeyRow({ entry }: { entry: ShelfKey }) {
       setDialog(null);
       if (done) toast(done);
     } catch (failure) {
-      toast.error(errorMessage(failure));
+      notify.error(errorMessage(failure));
     } finally {
       setBusy(false);
     }
@@ -538,7 +539,7 @@ function KeyRow({ entry }: { entry: ShelfKey }) {
             <MenuItem
               onSelect={async () => {
                 if (await copyText(entry.publicKey)) toast("Public key copied.");
-                else toast.error("This browser would not copy that. Save the key as a file instead.");
+                else notify.error("This browser would not copy that. Save the key as a file instead.");
               }}
             >
               Copy public key
@@ -969,7 +970,7 @@ export function KeysTab({ shelf }: { shelf: Shelf }) {
                       removeDevicePrivateKey(entry.fingerprint);
                       await refresh();
                     } catch (failure) {
-                      toast.error(errorMessage(failure));
+                      notify.error(errorMessage(failure));
                     }
                   }}
                 >

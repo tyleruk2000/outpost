@@ -29,6 +29,7 @@ import { conflictOf, inputOf, planKeys, useCreatePlan, usePlans } from "@/featur
 import { DaysHeld } from "@/features/emergency-plans/supplies-section";
 import { guessEmergencyNumber } from "@/features/emergency-plans/words";
 import { api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { localId } from "@/lib/utils";
 import { distanceText } from "./words";
 
@@ -93,7 +94,7 @@ export function PlanningPanel({
   const make = () =>
     create.mutate(planFromTemplate(template, localId, guessEmergencyNumber()), {
       onSuccess: (response) => navigate(`/prepare/plans/${response.plan.id}`),
-      onError: (error) => toast.error(errorMessage(error)),
+      onError: (error) => notify.error(errorMessage(error)),
     });
 
   const attach = async (plan: EmergencyPlanSummary) => {
@@ -105,7 +106,7 @@ export function PlanningPanel({
       await client.invalidateQueries({ queryKey: planKeys.one(plan.id) });
       toast.success(`“${chosen.name}” is attached to “${plan.name}” as an illustration.`);
     } catch (error) {
-      toast.error(errorMessage(error));
+      notify.error(errorMessage(error));
     } finally {
       setAttaching(null);
     }

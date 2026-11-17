@@ -11,8 +11,8 @@ import type {
   WeatherResponse,
 } from "@outpost/shared";
 import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 
 export const weatherKeys = {
   all: ["weather"] as const,
@@ -34,7 +34,7 @@ function useChange<T, R>(run: (input: T) => Promise<R>, options: { quiet?: boole
   return useMutation({
     mutationFn: run,
     onSuccess: () => refresh(client),
-    onError: options.quiet ? undefined : (error) => toast.error(errorMessage(error)),
+    onError: options.quiet ? undefined : (error) => notify.error(errorMessage(error)),
   });
 }
 

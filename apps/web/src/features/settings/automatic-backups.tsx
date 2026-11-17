@@ -22,6 +22,7 @@ import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/compo
 import { Badge, Progress, Segmented, Select, Skeleton } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
 import { useServerEvent } from "@/lib/events";
+import { notify } from "@/lib/notify";
 import { useStorage } from "@/lib/queries";
 import { formatDateTime } from "@/lib/utils";
 import { passphraseProblem, RestorePassphrase } from "./backup-protection";
@@ -88,12 +89,12 @@ export function AutomaticBackups() {
       client.setQueryData(["backup", "schedule"], data);
       return client.invalidateQueries({ queryKey: ["backup", "stored"] });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
   const run = useMutation({
     mutationFn: () => api.post<{ job: JobDto }>("/api/backup/run"),
     onSuccess: refresh,
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 
   const data = schedule.data;
@@ -301,7 +302,7 @@ function StoredBackups({
       // A passphrase that was wrong is said beside the field, and the dialog stays for another try.
       if (passphraseProblem(error)) return setProblem(errorMessage(error));
       setRestoring(undefined);
-      toast.error(errorMessage(error));
+      notify.error(errorMessage(error));
     },
   });
   const remove = useMutation({
@@ -312,7 +313,7 @@ function StoredBackups({
     },
     onError: (error) => {
       setDeleting(undefined);
-      toast.error(errorMessage(error));
+      notify.error(errorMessage(error));
     },
   });
 

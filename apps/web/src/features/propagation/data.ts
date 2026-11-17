@@ -41,6 +41,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type Dispatch, type SetStateAction, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 
 export const keys = {
   engines: ["propagation", "engines"] as const,
@@ -114,7 +115,7 @@ function useChange<T>(run: (input: T) => Promise<unknown>, key: readonly string[
       void client.invalidateQueries({ queryKey: key });
       if (done) toast.success(done);
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 }
 

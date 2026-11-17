@@ -20,6 +20,7 @@ import { Field, Input } from "@/components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Badge, Skeleton } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { useStorage } from "@/lib/queries";
 import { plural, timeAgo } from "@/lib/utils";
 import { manageLink } from "../manage/manage-data";
@@ -92,7 +93,7 @@ function LocationRow({
       setRenaming(false);
       return invalidate();
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
   const moveDocuments = useMutation({
     mutationFn: () => api.post<{ documents: number }>("/api/documents/move", { locationId: location.id }),
@@ -100,7 +101,7 @@ function LocationRow({
       setMovingDocuments(false);
       toast.success(`Moving ${plural(result.documents, "document")} to “${location.name}”. Progress is under Downloads.`);
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
   const remove = useMutation({
     mutationFn: () => api.delete(`/api/storage/locations/${location.id}`),
@@ -109,7 +110,7 @@ function LocationRow({
       toast.success(`Removed “${location.name}” from Outpost. Its files were left in place.`);
       return invalidate();
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 
   return (
@@ -306,7 +307,7 @@ export default function StoragePage() {
       else toast.warning(`Checked: ${plural(away, "location")} cannot be reached.`);
       return client.invalidateQueries({ queryKey: ["storage"] });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 
   const locations = storage.data?.locations ?? [];

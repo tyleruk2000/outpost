@@ -39,6 +39,7 @@ import { Checkbox, Select, Skeleton } from "@/components/ui/misc";
 import { PdfButtons } from "@/features/library/made/pdf-actions";
 import { pdfFileName } from "@/features/maps/print/pdf";
 import { errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { formatDateTime } from "@/lib/utils";
 import { APPROXIMATE_SIGN, HourGrid } from "../charts";
 import { useEngines, usePlaces, useProfiles } from "../data";
@@ -576,7 +577,7 @@ export default function PlanPage() {
                   onBlur={() => {
                     const value = Number(ssn);
                     if (ssn.trim() !== "" && value >= 0 && value <= 300) change({ solar: { source: "manual", ssn: value } });
-                    else toast.error("Give a smoothed sunspot number between 0 and 300.");
+                    else notify.error("Give a smoothed sunspot number between 0 and 300.");
                   }}
                 />
               )}

@@ -11,6 +11,7 @@ import { Fragment, type ReactNode, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Menu, MenuCheckItem, MenuContent, MenuLabel, MenuTrigger } from "@/components/ui/menu";
 import { copyText } from "@/lib/clipboard";
+import { notify } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 import { parseAttribution } from "./lib/attribution";
 import { formatPosition, READOUT_FORMATS, READOUT_LABELS, type ReadoutFormat } from "./lib/coords";
@@ -84,7 +85,7 @@ function CoordinateReadout({
     const value = text.current?.textContent ?? "";
     if (!value) return;
     if (await copyText(value)) toast.success(`Copied ${value}`);
-    else toast.error("The browser did not allow copying. Select the coordinates and copy them by hand.");
+    else notify.error("The browser did not allow copying. Select the coordinates and copy them by hand.");
   };
 
   return (

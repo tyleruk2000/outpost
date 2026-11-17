@@ -9,6 +9,7 @@ import { Mountain } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { trackLines } from "../lib/profile";
 import { terrainCover } from "../panels/route-editor";
 import { Fact } from "../ui";
@@ -110,7 +111,7 @@ export function FoundRouteHeights({
                 elevation === "none"
                   ? toast("No heights were found: the installed terrain does not reach this route.")
                   : toast.success(`Heights filled in for “${track.name}”.`),
-              onError: (error) => toast.error(errorMessage(error)),
+              onError: (error) => notify.error(errorMessage(error)),
             })
           }
         >

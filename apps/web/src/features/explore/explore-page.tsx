@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Segmented, Select, Skeleton } from "@/components/ui/misc";
 import { ApiError, api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { plural, timeAgo } from "@/lib/utils";
 import { useDownloads } from "../downloads/use-downloads";
 import { manageLink } from "../manage/manage-data";
@@ -164,7 +165,7 @@ export default function ExplorePage() {
       void client.invalidateQueries({ queryKey: ["collections"] });
       return client.invalidateQueries({ queryKey: ["catalog"] });
     },
-    onError: (error, entry) => toast.error(`“${entry.name}” could not be added`, { description: errorMessage(error) }),
+    onError: (error, entry) => notify.error(`“${entry.name}” could not be added`, { description: errorMessage(error) }),
   });
 
   const entries = catalog.data?.entries ?? [];

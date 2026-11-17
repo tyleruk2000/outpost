@@ -17,6 +17,7 @@ import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Badge, Progress, Skeleton } from "@/components/ui/misc";
 import { copyText } from "@/lib/clipboard";
+import { notify } from "@/lib/notify";
 import { formatDate, plural } from "@/lib/utils";
 import {
   useFetchMakers,
@@ -184,7 +185,7 @@ function DeviceList({ status }: { status: NetworkStatus }) {
   const copy = async () => {
     const ok = await copyText(listText(devices, status.makers.present));
     if (ok) toast.success(`Copied ${plural(devices.length, "device")}`);
-    else toast.error("This browser would not copy the list");
+    else notify.error("This browser would not copy the list");
   };
 
   return (

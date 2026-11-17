@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
 import { useServerConnection } from "@/lib/events";
+import { notify } from "@/lib/notify";
 import { usePageVisible } from "@/lib/page-visible";
 import { plural } from "@/lib/utils";
 import type { Reading } from "./charts/scale";
@@ -63,7 +64,7 @@ export function useQueueAction() {
       else toast.success(action === "pause-all" ? `Paused ${plural(changed, "download")}.` : `Resumed ${plural(changed, "download")}.`);
       return client.invalidateQueries({ queryKey: ["downloads"] });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 }
 

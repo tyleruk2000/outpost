@@ -14,6 +14,7 @@ import { pdfOptions } from "./pdf-assets";
 import { MAX_ZOOM, MIN_ZOOM } from "./pdf-layout";
 import { PdfPages, type PdfViewState } from "./pdf-pages";
 import "./pdf-viewer.css";
+import { notify } from "@/lib/notify";
 
 type Phase =
   | { kind: "loading" }
@@ -296,7 +297,7 @@ export default function PdfViewer({ url, title, initialPage, locationName, downl
             size="sm"
             onClick={async () => {
               if (await copyText(link)) toast.success("Address copied.");
-              else toast.error("The address could not be copied. Select it and copy it by hand.");
+              else notify.error("The address could not be copied. Select it and copy it by hand.");
             }}
           >
             <Copy /> Copy address

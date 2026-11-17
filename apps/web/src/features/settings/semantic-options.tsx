@@ -15,6 +15,7 @@ import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Progress, Segmented } from "@/components/ui/misc";
 import { ApiError, api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { formatNumber, plural } from "@/lib/utils";
 import { NumberSetting, SettingRow, TextSetting } from "./parts";
 
@@ -76,7 +77,7 @@ export function SemanticOptions({
   const enabled = settings["search.semantic.enabled"];
   const provider = settings["search.semantic.provider"];
   const refresh = () => client.invalidateQueries({ queryKey: ["semantic"] });
-  const failed = (error: unknown) => toast.error(errorMessage(error));
+  const failed = (error: unknown) => notify.error(errorMessage(error));
 
   const build = useMutation({ mutationFn: () => api.post<SemanticStatus>("/api/semantic/index"), onSuccess: refresh, onError: failed });
   const recheck = useMutation({

@@ -25,6 +25,7 @@ import type { MapEngine } from "@/features/maps/map/engine";
 import { EMPTY } from "@/features/maps/map/overlays";
 import { MapCard } from "@/features/maps/map-chrome";
 import type { SightEnd } from "@/features/maps/radio/use-sight";
+import { notify } from "@/lib/notify";
 import { useRepeater, useRepeaterOverlay, useRepeatersOverview } from "../data";
 import { accessParts, isApproximate, modesLine, precisionText, shiftWords, sourceOf } from "../words";
 import { nearestHit, overlayBox, REPEATER_SOURCE, repeatersData } from "./layers";
@@ -215,7 +216,7 @@ export function useRepeatersOnMap({
     if (!engine || !linked || handled.current === location.key || selectedId !== linked) return;
     if (detail.isError) {
       handled.current = location.key;
-      toast.error("That repeater is no longer held.");
+      notify.error("That repeater is no longer held.");
       setSelectedId(null);
       return;
     }

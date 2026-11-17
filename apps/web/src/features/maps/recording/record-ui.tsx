@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { formatTimeOfDay } from "@/lib/clock";
+import { notify } from "@/lib/notify";
 import { usePageVisible } from "@/lib/page-visible";
 import { cn, formatDate, formatNumber, plural } from "@/lib/utils";
 import { formatDistance, formatDistanceWithMiles, formatHeight } from "../lib/geo";
@@ -307,8 +308,8 @@ function Unfinished({
             setBusy(null);
             if (outcome === "started") setCardView("open");
             else if (outcome === "insecure")
-              toast.error("This page was opened over plain HTTP, so it cannot record. The recording can still be saved.");
-            else if (outcome === "elsewhere") toast.error("A recording is open in another tab of this browser.");
+              notify.error("This page was opened over plain HTTP, so it cannot record. The recording can still be saved.");
+            else if (outcome === "elsewhere") notify.error("A recording is open in another tab of this browser.");
           }}
         >
           Continue
@@ -589,7 +590,7 @@ function Waiting({
                 onClick={async () => {
                   const file = await recorder.gpxFile(entry.id, entry.name);
                   if (file) download(file.filename, file.gpx);
-                  else toast.error("The recording could not be read from this device.");
+                  else notify.error("The recording could not be read from this device.");
                 }}
               >
                 <Download /> Download GPX
@@ -640,7 +641,7 @@ function SaveDialog({
     if (outcome.state === "saved") onSaved(outcome.track);
     else if (outcome.state === "waiting") {
       toast(`Outpost is out of reach. “${chosen}” is kept on this device and will be saved when Outpost is back.`, { duration: 10_000 });
-    } else toast.error(`Outpost would not take “${chosen}”. ${outcome.message} It is still on this device.`, { duration: 10_000 });
+    } else notify.error(`Outpost would not take “${chosen}”. ${outcome.message} It is still on this device.`, { duration: 10_000 });
   };
 
   return (

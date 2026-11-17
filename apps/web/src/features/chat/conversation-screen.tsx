@@ -19,6 +19,7 @@ import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/compo
 import { Skeleton } from "@/components/ui/misc";
 import { placeWords } from "@/features/search/answer-text";
 import { ApiError, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { cn, formatDate, plural } from "@/lib/utils";
 import { chatApi, chatKeys, SETTINGS_MODEL, storeDetail, useChatModels, useChatStatus, useConversation, useLiveReply } from "./chat-data";
 import { Composer, type ComposerHandle } from "./composer";
@@ -320,7 +321,7 @@ function Loaded({ detail }: { detail: ChatConversationDetail }) {
           action: { label: "Open it", onClick: () => navigate(`/notes/${saved.noteId}`) },
         });
       } catch (error) {
-        toast.error(errorMessage(error));
+        notify.error(errorMessage(error));
       }
     },
     chooseModel: () => setPickerOpen(true),
@@ -335,7 +336,7 @@ function Loaded({ detail }: { detail: ChatConversationDetail }) {
       void client.invalidateQueries({ queryKey: ["chat", "list"] });
       navigate("/chat", { replace: true });
     } catch (error) {
-      toast.error(errorMessage(error));
+      notify.error(errorMessage(error));
       setRemoving(false);
     }
   };

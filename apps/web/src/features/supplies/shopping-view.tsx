@@ -25,6 +25,7 @@ import { madePdf } from "@/features/library/made/made-pdf";
 import { PdfActions } from "@/features/library/made/pdf-actions";
 import { errorMessage } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
+import { notify } from "@/lib/notify";
 import { formatDate } from "@/lib/utils";
 import { useAddShoppingLine, useBought, useRemoveShoppingLine, useShopping, useUpdateShoppingLine, useWorkOutShopping } from "./data";
 import { Stepper } from "./item-form";
@@ -277,7 +278,7 @@ export function ShoppingView({ items }: { items: SupplyItem[] }) {
               onClick={async () => {
                 const copied = await copyText(shoppingText(lines));
                 if (copied) toast.success("The list is copied as text.");
-                else toast.error("This browser would not copy. Save the PDF, or select the list and copy it yourself.");
+                else notify.error("This browser would not copy. Save the PDF, or select the list and copy it yourself.");
               }}
             >
               <ClipboardCopy />

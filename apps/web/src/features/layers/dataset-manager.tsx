@@ -29,6 +29,7 @@ import type { MapEngine } from "@/features/maps/map/engine";
 import { DestinationPicker, useDestination } from "@/features/maps/panels/destination";
 import { PanelHeading } from "@/features/maps/ui";
 import { api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { formatDate, formatNumber, plural } from "@/lib/utils";
 import { layersKeys, useCatalogue, useEstimate, usePacks, useRemovePack, useStartDownloads } from "./data";
 
@@ -462,7 +463,7 @@ function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (op
       const started = await api.upload<{ jobId: string }>("/api/reference/imports", form);
       setJobId(started.jobId);
     } catch (error) {
-      toast.error(errorMessage(error));
+      notify.error(errorMessage(error));
     } finally {
       setSending(false);
     }
