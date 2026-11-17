@@ -344,7 +344,8 @@ population grid in anything but EPSG:4326 is refused.
 of two of a degree, about eight to the height of the view, per layer and per provenance
 class. Areas are sent for boundaries, regions and planning zones at any zoom and for
 other layers from zoom 9, simplified (Douglas–Peucker) to the view's scale, at most 600.
-The last 64 answers are kept until a record is written or removed. The browser asks only
+The last 64 answers are kept until a record is written or removed, and the statements
+that ask them are prepared once and kept (the last 64). The browser asks only
 when the map comes to rest, for the view rounded outwards so that a small nudge asks
 nothing new.
 
