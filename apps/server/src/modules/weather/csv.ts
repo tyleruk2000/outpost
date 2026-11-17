@@ -96,12 +96,15 @@ export function readTime(text: string, zone: string): number | null {
   return wall - zoneOffsetMinutes(first, zone) * 60_000;
 }
 
-/** A pressure or a height, with the file's decimal mark; a message when the file does not settle which number it is. */
-function readNumber(text: string, mark: DecimalMark | null): number | string | null {
+/**
+ * A pressure or a height, with the file's decimal mark, and how it was read when the cell
+ * was not a plain number; a message when the file does not settle which number it is.
+ */
+function readNumber(text: string, mark: DecimalMark | null): { value: number; note: string | null } | string | null {
   const cleaned = text.trim().replace(/\s*(hpa|mb|mbar|inhg|in|m)$/i, "");
   const read = readSpreadsheetNumber(cleaned, mark);
   if (read.kind === "ambiguous") return read.message;
-  return read.kind === "number" ? read.value : null;
+  return read.kind === "number" ? { value: read.value, note: read.note } : null;
 }
 
 function readUnit(text: string): PressureUnit | null {
@@ -174,15 +177,16 @@ export function readReadingsCsv(text: string, options: ReadCsvOptions): ReadingI
       problem("The time is in the future.");
       continue;
     }
-    const value = readNumber(cell(pressureColumn), mark);
-    if (typeof value === "string") {
-      problem(value);
+    const pressure = readNumber(cell(pressureColumn), mark);
+    if (typeof pressure === "string") {
+      problem(pressure);
       continue;
     }
-    if (value === null) {
+    if (pressure === null) {
       problem(`"${cell(pressureColumn).slice(0, 20)}" is not a pressure.`);
       continue;
     }
+    const value = pressure.value;
     const unitText = cell(unitColumn);
     const unit = unitText ? readUnit(unitText) : (headerUnit ?? options.unit);
     if (!unit) {
@@ -190,11 +194,12 @@ export function readReadingsCsv(text: string, options: ReadCsvOptions): ReadingI
       continue;
     }
     const heightText = cell(heightColumn);
-    const heightM = heightText ? readNumber(heightText, mark) : options.heightM;
-    if (typeof heightM === "string") {
-      problem(heightM);
+    const height = heightText ? readNumber(heightText, mark) : { value: options.heightM, note: null };
+    if (typeof height === "string") {
+      problem(height);
       continue;
     }
+    const heightM = height?.value ?? null;
     if (heightM === null || heightM < HEIGHT_RANGE.min || heightM > HEIGHT_RANGE.max) {
       problem(`The height must be between ${HEIGHT_RANGE.min} and ${HEIGHT_RANGE.max} metres.`);
       continue;
@@ -211,7 +216,8 @@ export function readReadingsCsv(text: string, options: ReadCsvOptions): ReadingI
       continue;
     }
     seen.add(takenAt);
-    rows.push({ line, takenAt, value, unit, heightM, seaLevelHpa, duplicate: options.existing.has(takenAt) });
+    const notes = [pressure.note, height?.note ?? null].filter((note): note is string => note !== null);
+    rows.push({ line, takenAt, value, unit, heightM, seaLevelHpa, duplicate: options.existing.has(takenAt), notes });
   }
   return { rows, problems, added: 0 };
 }

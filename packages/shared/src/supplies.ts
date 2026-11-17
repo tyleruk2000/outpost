@@ -82,6 +82,16 @@ export const SUPPLY_LIMITS = {
   csvBytes: 2 * 1024 * 1024,
 } as const;
 
+/** The largest figure an item takes for each of its numbers, so that a slip (kJ for kcal) is refused where it is typed. */
+export const SUPPLY_FIGURE_MAX = {
+  quantity: SUPPLY_LIMITS.quantity,
+  kcalPerUnit: 100_000,
+  kcalPer100g: 1_000,
+  gramsPerUnit: 1_000_000,
+  litresPerUnit: 10_000,
+  minimum: SUPPLY_LIMITS.quantity,
+} as const;
+
 /** Energy in one unit, from the label's figure per pack, or per 100 g and the weight of the pack. */
 export function kcalOfUnit(item: Pick<SupplyItem, "kcalPerUnit" | "kcalPer100g" | "gramsPerUnit">): number | null {
   if (item.kcalPerUnit !== null && item.kcalPerUnit >= 0) return item.kcalPerUnit;
@@ -137,7 +147,6 @@ export const ENERGY_BANDS = [
 ] as const;
 export type AgeBand = (typeof ENERGY_BANDS)[number]["id"];
 export const AGE_BAND_IDS = ENERGY_BANDS.map((band) => band.id) as [AgeBand, ...AgeBand[]];
-export const ADULT_BANDS: readonly AgeBand[] = ["19-64", "65-74", "75+"];
 export const ENERGY_SOURCE =
   "Public Health England, Government Dietary Recommendations (2016), tables 1 and 2, from SACN Dietary Reference Values for Energy (2011)";
 
@@ -392,7 +401,9 @@ export function supplyOutlook(items: SupplyItem[], household: Household, today: 
   const food = stretch(of("food"), today, kcalPerDay, kcalOfUnit, "no-energy");
   const litres = (item: SupplyItem) => item.litresPerUnit;
   const water = stretch(of("water"), today, waterPerDay, litres, "no-litres");
-  const daysAt = (perDay: number) => (perDay > 0 ? stretch(of("water"), today, perDay, litres, "no-litres").days : null);
+  // The basis not chosen, worked out as well; the chosen one is `water` itself.
+  const daysAt = (perDay: number) =>
+    perDay === waterPerDay ? water.days : perDay > 0 ? stretch(of("water"), today, perDay, litres, "no-litres").days : null;
   const petKcal = sum(pets.map((need) => need.kcal));
   const petFood = pets.some((need) => need.kcal !== null) ? stretch(of("pet-food"), today, petKcal, kcalOfUnit, "no-energy") : null;
 

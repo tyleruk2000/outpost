@@ -31,9 +31,9 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
     if (!file) return;
     setProblem(null);
     setPreview(null);
+    setName(file.name);
     if (file.size > SUPPLY_LIMITS.csvBytes) return setProblem("That file is larger than Outpost reads as a list of supplies (2 MB).");
     setReading(true);
-    setName(file.name);
     try {
       setPreview(await previewImport(await file.text()));
     } catch (error) {
@@ -87,7 +87,11 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
               type="file"
               accept=".csv,text/csv,text/plain"
               className="sr-only"
-              onChange={(event) => void read(event.target.files?.[0])}
+              onChange={(event) => {
+                void read(event.target.files?.[0]);
+                // So that the same file, changed and saved again, can be chosen again.
+                event.target.value = "";
+              }}
             />
             <Button asChild variant={preview ? "secondary" : "primary"}>
               <label htmlFor="supplies-csv" className="cursor-pointer">

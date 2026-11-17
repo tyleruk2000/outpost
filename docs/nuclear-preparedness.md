@@ -237,7 +237,10 @@ the ground, not on the web-mercator map), rings stay whole across the antimeridi
 the plume lies downwind with the book's dimensions.
 
 **Speed.** On an Apple M2 Max, `computeEffects` takes about 0.1 ms; with the ring and
-plume geometry for the map, about 2 ms per scenario. It runs on every keystroke. It has
+plume geometry for the map, about 2 ms per scenario. The effects are worked out again on
+every keystroke; the map's overlay is rebuilt and handed to the map only when what it
+draws changes (a ground zero, a figure, which scenario is selected, a switch), not when a
+name or notes are typed. Nothing on the screen runs on a timer or animates. It has
 **not been measured on a Raspberry Pi**; on one several times slower it would still be
 a few tens of milliseconds at most.
 
@@ -271,7 +274,11 @@ at once stops being readable; at the limit the screen says so and "Add another
 scenario" is turned off. A new one is put at the middle of the map; a press moves the
 selected one. Each can be selected to edit, hidden, removed from the map, or saved; a
 saved scenario is put back on the map from the Saved tab, beside the others. On a
-phone the list is the switcher, with a row of letters under the map as well.
+phone the list is the switcher, with a row of letters under the map as well. "Save
+changes" sends the time of the saved version the scenario was opened at; if another tab
+or device has saved it since, nothing is overwritten, and the screen offers **Keep my
+version** or **Load the other version**, as Notes does. Sets are saved without this
+check: the last set saved wins.
 
 - **Telling them apart.** The letter on each ground zero and at the start of every ring
   and contour label is the first cue. The selected scenario is drawn at full strength
@@ -378,7 +385,8 @@ name; another is refused rather than credited wrongly.
 ### The wind field
 
 The wind for the fallout pattern is a field of its own, labelled: the direction the wind
-blows **from**, as compass buttons (N to NW) or degrees, and its speed. Under it, in one
+blows **from**, as compass buttons (N to NW) or degrees (0 to 360; 360 is read as north,
+0), and its speed. Under it, in one
 line, the state: drawn ("Drawn: wind from the west, so the pattern runs east, at 24
 km/h"), or the one reason not (no wind given, one of the two missing, not numbers, a
 speed outside the model's 13 to 72 km/h, or a burst at a height, for which the model
@@ -526,8 +534,10 @@ source whose terms are not cleared.
 | UKHSA, [Nuclear emergencies: information for the public](https://www.gov.uk/government/publications/nuclear-emergencies-information-for-the-public/nuclear-emergencies-information-for-the-public) | Updated 28 September 2026 | GOV.UK, OGL v3.0 | Read; not quoted (background for councils) | |
 
 **Ready.gov and FEMA, read again.** Ready.gov's footer links "Website Information" to
-FEMA's page, which still refused a direct request (HTTP 403); its text was read from the
-Internet Archive's copy of 7 August 2026, word for word: "Most material on FEMA.gov is
+FEMA's page. It refused a direct request (HTTP 403) on 15 and 16 November, when its text
+was read from the Internet Archive's copy of 7 August 2026; on 17 November 2026 it
+answered Outpost's own client and was read directly (`docs/sources.md`, source 8), with
+the same words: "Most material on FEMA.gov is
 free of copyright and may be copied and distributed without permission", and "In
 addition to this fema.gov website, FEMA also owns and manages these these .gov domains"
 (Ready.gov among them); last updated 1 May 2023. It names FEMA.gov, and says "most", so
@@ -544,6 +554,9 @@ anything the household would do differently.
 ## Tests
 
 - `apps/server/test/nuclear-effects.test.ts`: the model against the book (above).
+- `apps/server/test/nuclear-scenarios.test.ts`: saved scenarios kept as typed, refused
+  with the model's reason, a change from an older copy refused with nothing changed,
+  counted and erased.
 - `apps/server/test/nuclear-final.test.ts`: sets saved, reopened, refused past six or
   with a letter twice; no total in what is stored or answered; a scenario linked to a
   plan, named, missing once deleted, steps unchanged; the radiation template's sources
@@ -560,7 +573,8 @@ anything the household would do differently.
   the PDF; stronger levels more opaque; the selected scenario full, the others quiet);
   `nuclear-page.test.tsx` (up to six scenarios and the limit; select, hide, remove;
   people per ring of the selected scenario only, and no total; the layers, records and
-  plans tabs); `geometry.test.ts`, `form.test.ts`; `print-frames.test.ts` (the PDF's
+  plans tabs; a scenario changed elsewhere, kept or loaded; a scenario attached to a
+  plan changed in between); `geometry.test.ts`, `form.test.ts`; `print-frames.test.ts` (the PDF's
   map frames: rings only, rings and pattern, far-apart scenarios, 70° N, across the
   antimeridian); `print-maps.test.ts` (a picture for each scenario, an overview only for
   several, places only when chosen, no reference layer in the style, no region, a device

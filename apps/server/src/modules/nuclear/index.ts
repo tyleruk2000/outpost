@@ -24,7 +24,7 @@ import { desc, eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
-import { badRequest, notFound } from "../../core/errors.ts";
+import { badRequest, conflict, notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
 import { nuclearScenarioSets, nuclearScenarios } from "../../db/schema.ts";
 
@@ -71,6 +71,9 @@ const setSchema = z
       .max(MAX_SCENARIOS_SHOWN, `A set holds at most ${MAX_SCENARIOS_SHOWN} scenarios, as the map shows.`),
   })
   .strict();
+
+/** The version a change was made from (`NuclearScenarioUpdate`); the rest of the body is the scenario. */
+const baseSchema = z.object({ baseUpdatedAt: z.number().optional() }).passthrough();
 
 const idParams = z.object({ id: z.string().min(1).max(64) });
 
@@ -164,10 +167,22 @@ export async function registerNuclear(app: FastifyInstance, ctx: AppContext): Pr
 
   app.patch("/api/nuclear/scenarios/:id", async (request) => {
     const { id } = idParams.parse(request.params);
-    get(id);
-    const input = checked(request.body);
+    const current = get(id);
+    const { baseUpdatedAt, ...body } = baseSchema.parse(request.body);
+    const input = checked(body);
+    if (baseUpdatedAt !== undefined && current.updatedAt > baseUpdatedAt) {
+      throw conflict(
+        "This scenario was changed somewhere else after you opened it, in another tab or on another device. Your changes were not saved over it; reload to see the newer version.",
+        { current: { updatedAt: current.updatedAt, name: current.name } },
+      );
+    }
     db.update(nuclearScenarios)
-      .set({ ...input, effects: input.effects as unknown as Record<string, unknown>, updatedAt: Date.now() })
+      // Always later than the version it replaces, so a base taken from it is never mistaken for it.
+      .set({
+        ...input,
+        effects: input.effects as unknown as Record<string, unknown>,
+        updatedAt: Math.max(Date.now(), current.updatedAt + 1),
+      })
       .where(eq(nuclearScenarios.id, id))
       .run();
     changed();

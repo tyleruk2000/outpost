@@ -61,7 +61,7 @@ export function Adjuster({ item }: { item: SupplyItem }) {
   const adjust = useAdjust();
   const unit = item.unit || "one";
   return (
-    <div className="flex shrink-0 items-center gap-1">
+    <div className="relative flex shrink-0 items-center gap-1">
       <Button
         variant="secondary"
         size="icon"
@@ -171,11 +171,12 @@ export function StockView({ items, locations, onAdd }: { items: SupplyItem[]; lo
       ) : (
         <ul className="divide-y divide-border border-y border-border" aria-label="Supplies">
           {shown.map((item) => (
-            <li key={item.id} className={cn("flex items-center gap-3 py-2.5", item.quantity <= 0 && "opacity-70")}>
+            <li key={item.id} className={cn("relative flex items-center gap-3 py-2.5", item.quantity <= 0 && "opacity-70")}>
               <div className="min-w-0 flex-1">
                 <Link
                   to={itemPath(item.id)}
-                  className="block text-body font-medium text-ink hover:text-primary focus-visible:outline-2 focus-visible:outline-focus"
+                  // The whole row, not only the name's line of text, opens the item; plus and minus sit above it.
+                  className="block text-body font-medium text-ink after:absolute after:inset-0 after:content-[''] hover:text-primary focus-visible:outline-2 focus-visible:outline-focus"
                 >
                   {item.name}
                   {item.quantity <= 0 ? <span className="font-normal text-ink-muted"> (used up)</span> : null}

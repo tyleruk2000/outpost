@@ -156,7 +156,8 @@ beans' share (3,360/12,335 of it, 1,406.9 kcal) is 4.19 tins, so 5; the pasta's
 
 Every line can be made more or fewer, or taken off; lines can be added. **Work it out
 again** replaces the worked-out lines and keeps the person's own. When the stock or the
-household changes afterwards, the list says so.
+household changes afterwards, the list says so (ticking a line off as bought changes the
+stock, so it is one such change).
 
 **Bought** (the tick on a line) asks how many, the date on them and its kind, and where
 they are kept, and adds them to the stock: to a row of the same product with the same
@@ -180,12 +181,17 @@ The list can be made a PDF (Save as PDF, Add to library, Share: see
   is not available at this address", why, and to turn on **Settings → HTTPS on your
   network** and open the https address; the other two ways stay.
 
+The camera is let go (every track of it stopped, and the reading of frames with it) when
+the scan ends: a code read, **Stop the camera**, **Done** or the dialog closed, and also
+when the page is hidden (another tab, a locked phone). Coming back, the dialog says the
+camera was stopped; **Use the camera** starts it again.
+
 The result is matched against the supplies. A retail number with a right check digit
 (EAN-8, UPC-A, EAN-13, GTIN-14) is matched as 14 digits, as GS1 stores GTINs, so that
 a UPC-A read as 12 digits by one scanner and 13 by another is the same product.
 
 - Found: each row of it, with plus and minus, "All used up", and "Add another batch".
-- Not found, but remembered from an item that had it: "Add it again", filled in.
+- Not found, but remembered from an item that had it: "Add" and its name, filled in.
 - Unknown: "New item: type its name". The barcode is filled in, and remembered from then
   on.
 
@@ -280,7 +286,10 @@ cells mean one thing in any file: `1,5` and `0,250` are decimals, `1.234,5` and
 `1,234.5` are both 1234.5. A tab-separated file is judged from its own numbers; where
 they do not settle it, a cell such as `1,250` (1250 or 1.25) is refused with both
 readings rather than guessed. Every number that was not plain is listed under its row
-with how it was read.
+with how it was read. A number larger than an item takes in that column is refused on
+its row, with the largest allowed: 1,000 kcal per 100 g (a figure above it is usually
+kJ), 100,000 kcal a pack, 1,000,000 grams a pack, 10,000 litres a container, 1,000,000
+for how many and the minimum. The add and change form refuses the same figures.
 
 A row is **already in the supplies** when it carries the id of one (a file exported from
 here), or is the same product kept in the same place with the same date. For those the
@@ -301,6 +310,8 @@ answers how long the supplies last and what is missing; see [api.md](api.md#supp
 
 - A real iPhone's camera, and photos from one. The plain-http state is tested in a
   browser at an address it does not treat as secure; the photo path and the decoder are
-  tested with generated pictures; the live camera with `getUserMedia` is not tested at
-  all (the suites have no camera).
+  tested with generated pictures. The live camera is tested only with a stand-in for
+  `getUserMedia` (`barcode/camera.test.ts`: every track stopped when the scan is ended,
+  when the page is hidden, and when it was ended while the camera was being asked for;
+  and when the dialog is closed); no test has a real camera.
 - The browser's own `BarcodeDetector` path: no test exercises it.

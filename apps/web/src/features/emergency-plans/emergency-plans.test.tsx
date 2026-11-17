@@ -15,11 +15,13 @@ import userEvent from "@testing-library/user-event";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router";
+import { toast } from "sonner";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { textWidth } from "@/features/maps/print/helvetica";
 import { type DrawLine, writeLettered } from "@/features/maps/print/lettering";
 import type { Sheet } from "@/features/maps/print/sheet";
 import { fridgeSheets, grabSheets, walletSheets } from "./cards";
+import CardsPage from "./cards-page";
 import PlanPage from "./plan-page";
 import PlansPage from "./plans-page";
 import { readableOf } from "./printable";
@@ -327,6 +329,61 @@ describe("a plan", () => {
     expect(screen.getByRole("button", { name: /Add 10 missing or low things to the shopping list/ })).toBeEnabled();
   });
 
+  it("says when the copy was last opened, not the plan it was copied from", async () => {
+    const DAY = 86_400_000;
+    serve({
+      "/api/emergency-plans/p1": answer({ openedAt: Date.now() - 3 * DAY }),
+      "POST /api/emergency-plans/p1/opened": answer({ openedAt: Date.now() }),
+      "POST /api/emergency-plans/p1/copy": answer({ id: "p2", name: "Power cut (copy)" }),
+      "/api/emergency-plans/p2": answer({ id: "p2", name: "Power cut (copy)" }),
+      "POST /api/emergency-plans/p2/opened": answer({ id: "p2", name: "Power cut (copy)", openedAt: Date.now() }),
+      ...others,
+    });
+    show("/prepare/plans/p1", <PlanPage />, "/prepare/plans/:id");
+    expect(await screen.findByText(/Last opened 3 days ago/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Make a copy" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Power cut (copy)" })).toBeInTheDocument();
+    expect(screen.getByText(/Last opened never before/)).toBeInTheDocument();
+  });
+
+  it("links a person's own number from Contacts, without offering to type a number it would not keep", async () => {
+    serve({
+      "/api/emergency-plans/p1": answer(),
+      "POST /api/emergency-plans/p1/opened": answer(),
+      "/api/contacts": { contacts: [], all: 0 },
+      ...others,
+    });
+    show("/prepare/plans/p1", <PlanPage />, "/prepare/plans/:id");
+    await userEvent.click((await screen.findAllByRole("button", { name: "Link their own number from Contacts" }))[0]!);
+    const dialog = await screen.findByRole("dialog", { name: "Their own number" });
+    expect(await within(dialog).findByText(/There are no contacts in Outpost yet/)).toBeInTheDocument();
+    expect(within(dialog).queryByText("Or type one in")).toBeNull();
+    expect(within(dialog).queryByLabelText("Phone number")).toBeNull();
+  });
+
+  it("says how many lines went on the shopping list when it stops part way", async () => {
+    let posts = 0;
+    const failed = vi.spyOn(toast, "error");
+    serve({
+      "/api/emergency-plans/p1": answer(),
+      "POST /api/emergency-plans/p1/opened": answer(),
+      "POST /api/supplies/shopping": () => {
+        posts += 1;
+        return posts <= 2
+          ? new Response(JSON.stringify({ line: { id: `l${posts}` } }), { headers: { "content-type": "application/json" } })
+          : new Response(JSON.stringify({ error: { code: "internal", message: "The database is busy." } }), {
+              status: 500,
+              headers: { "content-type": "application/json" },
+            });
+      },
+      ...others,
+    });
+    show("/prepare/plans/p1", <PlanPage />, "/prepare/plans/:id");
+    await userEvent.click(await screen.findByRole("button", { name: /Add 10 missing or low things to the shopping list/ }));
+    await waitFor(() => expect(failed).toHaveBeenCalled());
+    expect(String(failed.mock.calls[0]![0])).toBe("2 of 10 lines went on the shopping list, then it stopped: The database is busy.");
+  });
+
   it("asks for a review when one is due", async () => {
     serve({
       "/api/emergency-plans/p1": answer({ reviewedAt: 0 }),
@@ -335,6 +392,104 @@ describe("a plan", () => {
     });
     show("/prepare/plans/p1", <PlanPage />, "/prepare/plans/:id");
     expect(await screen.findByText("Time to look this plan over")).toBeInTheDocument();
+  });
+
+  describe("changed on another device while open here", () => {
+    const THEIRS = MADE.getTime() + 60_000;
+    /** The plan as another device left it, and a server that refuses the first change made from the older copy. */
+    function changedElsewhere() {
+      let current = answer();
+      let puts = 0;
+      const json = (body: unknown, status = 200) =>
+        new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+      const server = serve({
+        "/api/emergency-plans/p1": () => json(current),
+        "POST /api/emergency-plans/p1/opened": () => json(current),
+        "PUT /api/emergency-plans/p1": () => {
+          puts += 1;
+          if (puts === 1) {
+            current = answer({ name: "Power cut (from the kitchen)", updatedAt: THEIRS });
+            return json(
+              {
+                error: {
+                  code: "conflict",
+                  message:
+                    "This plan was changed somewhere else after you opened it, in another tab or on another device. Your changes were not saved over it; reload to see the newer version.",
+                  details: { current: { updatedAt: THEIRS, name: "Power cut (from the kitchen)" } },
+                },
+              },
+              409,
+            );
+          }
+          const sent = server.posted.at(-1)!.body as EmergencyPlan;
+          current = answer({ name: sent.name, updatedAt: THEIRS + 1000 * puts });
+          return json(current);
+        },
+        ...others,
+      });
+      return server;
+    }
+    /** The plan's own name: the people in it have names too. */
+    const nameBox = () => screen.getAllByRole("textbox", { name: "Name" })[0]!;
+    const puts = (server: Server) => server.posted.filter((post) => post.path === "PUT /api/emergency-plans/p1");
+
+    async function editName() {
+      show("/prepare/plans/p1", <PlanPage />, "/prepare/plans/:id");
+      const name = (await screen.findAllByRole("textbox", { name: "Name" }))[0]!;
+      await userEvent.clear(name);
+      await userEvent.type(name, "Power cut (mine)");
+      expect(await screen.findByText("This plan was changed somewhere else", {}, { timeout: 3000 })).toBeInTheDocument();
+    }
+
+    it("says so instead of saving over it, and keeps what was typed", async () => {
+      const server = changedElsewhere();
+      await editName();
+      expect(puts(server)).toHaveLength(1);
+      expect(puts(server)[0]!.body).toMatchObject({ name: "Power cut (mine)", baseUpdatedAt: MADE.getTime() });
+      expect(screen.getByText(/Your version is still here, unsaved, and nothing has been overwritten/)).toBeInTheDocument();
+      expect(screen.getByText(/Not saved: this plan was changed somewhere else/)).toBeInTheDocument();
+      expect(nameBox()).toHaveValue("Power cut (mine)");
+      // Typing more does not send anything until a side is chosen.
+      await userEvent.type(nameBox(), "!");
+      await new Promise((resolve) => setTimeout(resolve, 900));
+      expect(puts(server)).toHaveLength(1);
+    });
+
+    it("keeps my version by sending it again on top of the newer one", async () => {
+      const server = changedElsewhere();
+      await editName();
+      await userEvent.click(screen.getByRole("button", { name: "Keep my version" }));
+      await waitFor(() => expect(puts(server)).toHaveLength(2));
+      expect(puts(server)[1]!.body).toMatchObject({ name: "Power cut (mine)", baseUpdatedAt: THEIRS });
+      expect(await screen.findByText(/^Saved\./)).toBeInTheDocument();
+      expect(screen.queryByText("This plan was changed somewhere else")).toBeNull();
+      expect(screen.getByRole("heading", { level: 1, name: "Power cut (mine)" })).toBeInTheDocument();
+    });
+
+    it("loads the other version into the plan instead, and later changes build on it", async () => {
+      const server = changedElsewhere();
+      await editName();
+      await userEvent.click(screen.getByRole("button", { name: "Load the other version" }));
+      await waitFor(() => expect(nameBox()).toHaveValue("Power cut (from the kitchen)"));
+      expect(screen.queryByText("This plan was changed somewhere else")).toBeNull();
+      expect(puts(server)).toHaveLength(1);
+      await userEvent.type(screen.getByRole("textbox", { name: "In your words" }), "Storm");
+      await waitFor(() => expect(puts(server)).toHaveLength(2), { timeout: 3000 });
+      expect(puts(server)[1]!.body).toMatchObject({ name: "Power cut (from the kitchen)", kindText: "Storm", baseUpdatedAt: THEIRS });
+    });
+  });
+});
+
+describe("the cards to print", () => {
+  it("with nobody in the plan, links to where the people are added", async () => {
+    const empty = answer();
+    empty.plan.body.people = [];
+    serve({ "/api/emergency-plans/p1": empty });
+    show("/prepare/plans/p1/cards", <CardsPage />, "/prepare/plans/:id/cards");
+    expect(await screen.findByRole("link", { name: "Add the household's people to the plan" })).toHaveAttribute(
+      "href",
+      "/prepare/plans/p1#household",
+    );
   });
 });
 
@@ -368,6 +523,25 @@ describe("a plan in use", () => {
     const keep = screen.getByRole("heading", { name: /^Keep on this / }).closest("section")!;
     expect(keep).toHaveTextContent(/needs Outpost opened at an HTTPS address/);
     expect(within(keep).getByRole("link", { name: "Settings, HTTPS on your network" })).toHaveAttribute("href", "/settings#https");
+  });
+
+  it("starts no clock: nothing on it changes by itself, so nothing ticks while it is open", async () => {
+    // Timers of the page's own, leaving out the test library's polling while it waits for the page.
+    const own: string[] = [];
+    const real = { interval: window.setInterval.bind(window), frame: window.requestAnimationFrame?.bind(window) };
+    vi.spyOn(window, "setInterval").mockImplementation(((run: () => void, ms?: number) => {
+      if (!new Error().stack?.includes("@testing-library")) own.push(`setInterval ${ms}`);
+      return real.interval(run, ms);
+    }) as typeof window.setInterval);
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((run) => {
+      own.push("requestAnimationFrame");
+      return real.frame ? real.frame(run) : 0;
+    });
+    serve({ "/api/emergency-plans/p1": answer(), "POST /api/emergency-plans/p1/opened": answer() });
+    show("/prepare/plans/p1/use", <UsePlanPage />, "/prepare/plans/:id/use");
+    expect(await screen.findByRole("link", { name: "Call the emergency services: 999" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(/Not in use\./)).toBeInTheDocument());
+    expect(own).toEqual([]);
   });
 
   it("resets for next time after asking", async () => {

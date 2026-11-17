@@ -1,14 +1,5 @@
 /** How the Supplies screen says things: quantities, dates, reasons. Kept apart so they can be tested on their own. */
-import {
-  categoryLabel,
-  type DatedRow,
-  daysBetween,
-  kcalOfUnit,
-  type LeftOutReason,
-  type ShoppingLine,
-  type ShoppingReason,
-  type SupplyItem,
-} from "@outpost/shared";
+import { daysBetween, kcalOfUnit, type LeftOutReason, type ShoppingLine, type ShoppingReason, type SupplyItem } from "@outpost/shared";
 import { formatNumber } from "@/lib/utils";
 
 const longDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
@@ -80,10 +71,8 @@ export const reasonsWords = (reasons: ShoppingReason[]): string => [...new Set(r
 export function lineWords(line: Pick<ShoppingLine, "name" | "quantity" | "unit" | "note">): string {
   if (line.quantity === null) return line.note ? `${line.name}: ${line.note.replace(/^About/, "about")}` : line.name;
   const what = line.unit ? `${quantityWords(line.quantity, line.unit)} of ${line.name}` : `${amount(line.quantity)} × ${line.name}`;
-  return line.note && line.quantity !== null ? `${what} (${line.note})` : what;
+  return line.note ? `${what} (${line.note})` : what;
 }
 
 /** The whole list as plain text, for pasting into a message. */
 export const shoppingText = (lines: ShoppingLine[]): string => lines.map((line) => `- ${lineWords(line)}`).join("\n");
-
-export const datedLine = (row: DatedRow): string => `${row.name}, ${categoryLabel(row.category).toLowerCase()}`;

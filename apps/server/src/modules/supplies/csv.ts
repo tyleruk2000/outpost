@@ -21,6 +21,7 @@ import {
   productKey,
   SUPPLY_CATEGORIES,
   SUPPLY_CSV_COLUMNS,
+  SUPPLY_FIGURE_MAX,
   SUPPLY_LIMITS,
   type SupplyCategory,
   type SupplyItem,
@@ -169,7 +170,16 @@ export function previewCsv(text: string, existing: SupplyItem[]): ImportPreview 
   const dateHeader = index.has("date") ? header[index.get("date")!]! : "";
   const headerKind = /useby/.test(dateHeader) ? "use-by" : /bestbefore|bbe/.test(dateHeader) ? "best-before" : null;
 
-  const NUMERIC = ["quantity", "kcal_per_unit", "kcal_per_100g", "grams_per_unit", "litres_per_unit", "minimum"] as const;
+  /** The numeric columns, each with the largest figure an item takes in it. */
+  const LARGEST = {
+    quantity: SUPPLY_FIGURE_MAX.quantity,
+    kcal_per_unit: SUPPLY_FIGURE_MAX.kcalPerUnit,
+    kcal_per_100g: SUPPLY_FIGURE_MAX.kcalPer100g,
+    grams_per_unit: SUPPLY_FIGURE_MAX.gramsPerUnit,
+    litres_per_unit: SUPPLY_FIGURE_MAX.litresPerUnit,
+    minimum: SUPPLY_FIGURE_MAX.minimum,
+  } as const;
+  const NUMERIC = Object.keys(LARGEST) as Array<keyof typeof LARGEST>;
   // The decimal mark: from the separator when it decides it, otherwise from the file's own numbers.
   const mark: DecimalMark | null =
     decimalMarkOfDelimiter(delimiter) ??
@@ -203,8 +213,12 @@ export function previewCsv(text: string, existing: SupplyItem[]): ImportPreview 
         numbers[column] = null;
         continue;
       }
-      if (read.kind === "invalid" || read.value < 0 || read.value > SUPPLY_LIMITS.quantity)
+      if (read.kind === "invalid" || read.value < 0)
         return fail(`“${get(column)}” in the ${label} column is not a number Outpost can use.`);
+      if (read.value > LARGEST[column])
+        return fail(
+          `“${get(column)}” in the ${label} column is more than Outpost takes there (${LARGEST[column].toLocaleString("en-GB")}).`,
+        );
       if (read.note) warnings.push(`${read.note.replace(/ read as /, ` in the ${label} column read as `)}`);
       numbers[column] = read.value;
     }

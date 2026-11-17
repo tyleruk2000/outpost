@@ -475,7 +475,6 @@ export function NotesSection({
                   </span>
                 </span>
                 <Button
-                  size="sm"
                   variant="ghost"
                   onClick={() => onChange({ links: body.links.filter((each) => !(each.kind === link.kind && each.id === link.id)) })}
                 >
@@ -517,7 +516,6 @@ export function NotesSection({
                   <span className="text-small text-ink-muted">{item.kind === "note" ? "Note" : "Document"}</span>
                 </span>
                 <Button
-                  size="sm"
                   disabled={has(item.kind, item.entityId)}
                   onClick={() => onChange({ links: [...body.links, { kind: item.kind as "note" | "document", id: item.entityId }] })}
                 >

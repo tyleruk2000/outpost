@@ -7,11 +7,12 @@ import { categoryLabel, localDay, type SupplyItemInput } from "@outpost/shared";
 import { ArrowLeft, CopyPlus, Link2, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import { toast } from "sonner";
 import { ErrorState, Notice, Page, PageHeader } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/misc";
-import { ApiError } from "@/lib/api";
+import { ApiError, errorMessage } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
 import { useRemoveItem, useSupplies, useSupplyItem, useUpdateItem } from "./data";
 import { ItemDialog } from "./item-form";
@@ -97,7 +98,10 @@ export default function SupplyItemPage() {
           Add another like this
         </Button>
         {data.quantity > 0 ? (
-          <Button onClick={() => update.mutate({ id: data.id, input: { quantity: 0 } }, { onSuccess: () => void item.refetch() })}>
+          <Button
+            loading={update.isPending}
+            onClick={() => update.mutate({ id: data.id, input: { quantity: 0 } }, { onError: (error) => toast.error(errorMessage(error)) })}
+          >
             All used up
           </Button>
         ) : null}
@@ -123,7 +127,6 @@ export default function SupplyItemPage() {
           start={editing.start}
           locations={supplies.data?.locations ?? []}
           onClose={() => setEditing(null)}
-          onSaved={() => void item.refetch()}
         />
       ) : null}
       <ConfirmDialog

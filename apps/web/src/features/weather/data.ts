@@ -65,12 +65,17 @@ export const useAddReading = () =>
     { quiet: true },
   );
 export const useRemoveReading = () => useChange((id: string) => api.delete(`/api/weather/readings/${encodeURIComponent(id)}`));
-export const useImportReadings = () =>
-  useChange(
-    (input: { text: string; unit: PressureUnit; heightM: number; zone: string; apply: boolean }) =>
+/** A preview changes nothing, so only an import that adds refreshes the screen. */
+export const useImportReadings = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { text: string; unit: PressureUnit; heightM: number; zone: string; apply: boolean }) =>
       api.post<ReadingImportResult>("/api/weather/readings/import", input),
-    { quiet: true },
-  );
+    onSuccess: (_, input) => {
+      if (input.apply) refresh(client);
+    },
+  });
+};
 
 /** The device's time zone, for times in a file that carry none. */
 export const deviceZone = (): string => {

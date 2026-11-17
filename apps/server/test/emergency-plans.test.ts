@@ -247,6 +247,39 @@ describe("emergency plans", () => {
     await ok("DELETE", `/api/emergency-plans/${copy.plan.id}`);
     expect(app.ctx.services.emergencyPlans.kept.count()).toBe(2);
   });
+
+  it("refuses a change made from an older copy, so an edit on another device is not lost", async () => {
+    const opened = await ok("POST", "/api/emergency-plans", blank("Flood"));
+    const base = opened.plan.updatedAt;
+    // Device A saves first, from the copy both devices opened.
+    const a = await ok("PUT", `/api/emergency-plans/${opened.plan.id}`, { ...inputOf(opened), name: "Flood (A)", baseUpdatedAt: base });
+    expect(a.plan.updatedAt).toBeGreaterThan(base);
+
+    // Device B still has that copy.
+    const b = await app.api("PUT", `/api/emergency-plans/${opened.plan.id}`, {
+      ...inputOf(opened),
+      name: "Flood (B)",
+      baseUpdatedAt: base,
+    });
+    expect(b.status).toBe(409);
+    expect(b.body.error.code).toBe("conflict");
+    expect(b.body.error.details).toEqual({ current: { updatedAt: a.plan.updatedAt, name: "Flood (A)" } });
+    expect(b.body.error.message).toMatch(/changed somewhere else/);
+    expect((await ok("GET", `/api/emergency-plans/${opened.plan.id}`)).plan).toEqual(a.plan);
+
+    // From the newer copy B can save, and each save builds on the time the last one gave back.
+    let current = a.plan.updatedAt;
+    for (const name of ["Flood (B)", "Flood at home"]) {
+      const next = await ok("PUT", `/api/emergency-plans/${opened.plan.id}`, { ...inputOf(a), name, baseUpdatedAt: current });
+      expect(next.plan.name).toBe(name);
+      expect(next.plan.updatedAt).toBeGreaterThan(current);
+      current = next.plan.updatedAt;
+    }
+    // Without a base the change is made as before.
+    expect((await ok("PUT", `/api/emergency-plans/${opened.plan.id}`, { ...inputOf(a), name: "Forced" })).plan.name).toBe("Forced");
+    expect((await app.api("PUT", `/api/emergency-plans/${opened.plan.id}`, { ...inputOf(a), baseUpdatedAt: "soon" })).status).toBe(400);
+    await ok("DELETE", `/api/emergency-plans/${opened.plan.id}`);
+  });
 });
 
 describe("a person's own data", () => {

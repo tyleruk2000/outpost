@@ -8,6 +8,7 @@ import {
   isCalendarDay,
   kcalOfUnit,
   SUPPLY_CATEGORIES,
+  SUPPLY_FIGURE_MAX,
   SUPPLY_LIMITS,
   SUPPLY_UNITS,
   type SupplyCategory,
@@ -105,21 +106,28 @@ export function inputOf(draft: Draft): SupplyItemInput | Problem {
   if (!name) return { field: "name", text: "Give it a name: “Baked beans”, “AA batteries”." };
   const quantity = number(draft.quantity);
   if (quantity === undefined || quantity === null) return { field: "quantity", text: "Say how many: a number, nought or more." };
+  if (quantity > SUPPLY_FIGURE_MAX.quantity) return { field: "quantity", text: `At most ${formatNumber(SUPPLY_FIGURE_MAX.quantity)}.` };
   if (draft.date && !isCalendarDay(draft.date)) return { field: "date", text: "Give the date from the label, or leave it empty." };
-  const fields = ["kcalPerUnit", "kcalPer100g", "gramsPerUnit", "litresPerUnit", "minimum"] as const;
-  const values: Record<(typeof fields)[number], number | null> = {
+  const food = draft.category === "food" || draft.category === "pet-food";
+  // Only the fields on the form for this category and way of giving energy are read: one hidden since holds nothing that counts.
+  const shown = [
+    ...(food ? (draft.energyBy === "pack" ? (["kcalPerUnit"] as const) : (["kcalPer100g", "gramsPerUnit"] as const)) : []),
+    ...(draft.category === "water" ? (["litresPerUnit"] as const) : []),
+    "minimum" as const,
+  ];
+  const values: Record<(typeof shown)[number], number | null> = {
     kcalPerUnit: null,
     kcalPer100g: null,
     gramsPerUnit: null,
     litresPerUnit: null,
     minimum: null,
   };
-  for (const field of fields) {
+  for (const field of shown) {
     const value = number(draft[field]);
     if (value === undefined) return { field, text: "A number, or leave it empty." };
+    if (value !== null && value > SUPPLY_FIGURE_MAX[field]) return { field, text: `At most ${formatNumber(SUPPLY_FIGURE_MAX[field])}.` };
     values[field] = value;
   }
-  const food = draft.category === "food" || draft.category === "pet-food";
   return {
     name,
     category: draft.category,
@@ -128,10 +136,10 @@ export function inputOf(draft: Draft): SupplyItemInput | Problem {
     location: draft.location.trim(),
     dateKind: draft.date ? draft.dateKind : null,
     date: draft.date || null,
-    kcalPerUnit: food && draft.energyBy === "pack" ? values.kcalPerUnit : null,
-    kcalPer100g: food && draft.energyBy === "100g" ? values.kcalPer100g : null,
-    gramsPerUnit: food && draft.energyBy === "100g" ? values.gramsPerUnit : null,
-    litresPerUnit: draft.category === "water" ? values.litresPerUnit : null,
+    kcalPerUnit: values.kcalPerUnit,
+    kcalPer100g: values.kcalPer100g,
+    gramsPerUnit: values.gramsPerUnit,
+    litresPerUnit: values.litresPerUnit,
     minimum: values.minimum,
     barcode: draft.barcode.trim() || null,
     notes: draft.notes,
@@ -184,7 +192,6 @@ export function ItemDialog({
   start,
   locations,
   onClose,
-  onSaved,
 }: {
   /** The item being changed; absent when adding. */
   item?: SupplyItem;
@@ -192,15 +199,17 @@ export function ItemDialog({
   start?: Partial<SupplyItemInput>;
   locations: string[];
   onClose: () => void;
-  onSaved?: (item: SupplyItem) => void;
 }) {
   const [draft, setDraft] = useState<Draft>(() => draftOf(item ?? start));
   const [problem, setProblem] = useState<Problem | null>(null);
+  /** What the server said when it would not save. */
+  const [failure, setFailure] = useState<string | null>(null);
   const [added, setAdded] = useState(0);
   const add = useAddItem();
   const update = useUpdateItem();
   const nameRef = useRef<HTMLInputElement>(null);
   const dateRef = useRef<HTMLInputElement>(null);
+  const moreRef = useRef<HTMLDetailsElement>(null);
   const listId = useId();
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -212,13 +221,15 @@ export function ItemDialog({
 
   const save = (another: boolean) => {
     const input = inputOf(draft);
+    setFailure(null);
     if ("field" in input) {
       setProblem(input);
+      // The minimum is in the part of the form that starts closed: open it, so that what is wrong can be seen.
+      if (input.field === "minimum" && moreRef.current) moreRef.current.open = true;
       return;
     }
     const done = (saved: SupplyItem) => {
       remember(saved.category, saved.location);
-      onSaved?.(saved);
       if (!another) return onClose();
       toast.success(`Added ${saved.name}. Now the next one like it.`);
       setAdded((count) => count + 1);
@@ -226,7 +237,7 @@ export function ItemDialog({
       setDraft((current) => ({ ...current, date: "" }));
       dateRef.current?.focus();
     };
-    const failed = (cause: unknown) => setProblem({ field: "name", text: errorMessage(cause) });
+    const failed = (cause: unknown) => setFailure(errorMessage(cause));
     if (item) update.mutate({ id: item.id, input }, { onSuccess: done, onError: failed });
     else add.mutate(input, { onSuccess: done, onError: failed });
   };
@@ -454,7 +465,7 @@ export function ItemDialog({
               </Field>
             ) : null}
 
-            <details className="group rounded-panel border border-border px-4 py-3 open:pb-4">
+            <details ref={moreRef} className="group rounded-panel border border-border px-4 py-3 open:pb-4">
               <summary className="cursor-pointer text-small font-medium text-ink select-none">More: minimum, barcode, notes</summary>
               <div className="mt-3 grid gap-4">
                 <Field label="Keep at least" hint="Fewer than this of it, and it goes on the shopping list." error={error("minimum")}>
@@ -493,12 +504,7 @@ export function ItemDialog({
                 </Field>
               </div>
             </details>
-            {problem &&
-            !["name", "quantity", "date", "kcalPerUnit", "kcalPer100g", "gramsPerUnit", "litresPerUnit", "minimum"].includes(
-              problem.field,
-            ) ? (
-              <Notice tone="danger">{problem.text}</Notice>
-            ) : null}
+            {failure ? <Notice tone="danger">{failure}</Notice> : null}
           </DialogBody>
           <DialogFooter className="max-sm:flex-col-reverse max-sm:items-stretch">
             <Button variant="secondary" onClick={onClose}>

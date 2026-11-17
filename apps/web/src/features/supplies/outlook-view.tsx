@@ -111,7 +111,7 @@ export function OutlookView({ items, household, onHousehold }: { items: SupplyIt
           <Notice
             title="Say who the supplies are for"
             action={
-              <button type="button" onClick={onHousehold} className="shrink-0 font-medium underline underline-offset-2">
+              <button type="button" onClick={onHousehold} className="min-h-11 shrink-0 font-medium underline underline-offset-2">
                 Household
               </button>
             }

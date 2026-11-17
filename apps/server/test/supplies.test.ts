@@ -252,6 +252,19 @@ describe("CSV", () => {
     await ok("DELETE", `/api/supplies/items/${existing.id}`);
   });
 
+  it("refuses in the preview a row the inventory would refuse, so that bringing in the rest still works", async () => {
+    // kJ in the kcal column is the usual slip: 1,550 kJ per 100 g is more than any food has in kcal.
+    const text = ["name,kcal_per_100g,grams_per_unit,litres_per_unit", "Oats,1550,500,", "Rice,350,1000,", "Tank,,,20000"].join("\n");
+    const preview: ImportPreview = await ok("POST", "/api/supplies/import/preview", { text });
+    const [oats, rice, tank] = preview.rows;
+    expect(oats!.error).toContain("kcal per 100g");
+    expect(tank!.error).toContain("litres per unit");
+    expect(rice!.item).toMatchObject({ name: "Rice", kcalPer100g: 350 });
+    const rows = preview.rows.filter((row) => row.item).map((row) => ({ action: "add", item: row.item }));
+    expect(await ok("POST", "/api/supplies/import/apply", { rows })).toEqual({ added: 1, updated: 0, skipped: 0 });
+    for (const row of (await ok("GET", "/api/supplies")).items as SupplyItem[]) await ok("DELETE", `/api/supplies/items/${row.id}`);
+  });
+
   it("refuses a file with no name column, or one that is a web page", async () => {
     expect((await app.api("POST", "/api/supplies/import/preview", { text: "qty,unit\n1,tin" })).status).toBe(400);
     expect((await app.api("POST", "/api/supplies/import/preview", { text: "<!doctype html><p>hi" })).status).toBe(400);

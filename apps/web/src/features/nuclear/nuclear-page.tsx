@@ -40,7 +40,7 @@ import {
   SCENARIO_LETTERS,
   type ScenarioLetter,
 } from "@outpost/shared";
-import { CloudOff, Eye, EyeOff, PanelRightClose, PanelRightOpen, Plus, Trash2, X } from "lucide-react";
+import { CloudOff, Eye, EyeOff, PanelRightClose, PanelRightOpen, Plus, Trash2, TriangleAlert, X } from "lucide-react";
 import { lazy, type ReactNode, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router";
 import { toast } from "sonner";
@@ -55,9 +55,9 @@ import { useReferenceLayers } from "@/features/layers/use-reference-layers";
 import { useMapOverview, useMapSources, useMarkers } from "@/features/maps/data";
 import { hasImagery } from "@/features/maps/imagery/style";
 import type { MapEngine } from "@/features/maps/map/engine";
-import { errorMessage } from "@/lib/api";
+import { api, errorMessage } from "@/lib/api";
 import { cn, formatDateTime, localId, plural } from "@/lib/utils";
-import { useDeleteScenario, useDeleteSet, useSaveScenario, useSaveSet, useScenarios, useSets } from "./data";
+import { scenarioConflictOf, useDeleteScenario, useDeleteSet, useSaveScenario, useSaveSet, useScenarios, useSets } from "./data";
 import type { Written } from "./document";
 import { COMPASS_POINTS, falloutState, fitArea, fromTowards, pointOf } from "./fallout";
 import { type Checked, checkForm, EMPTY_FORM, type FormField, formOf, type ScenarioForm } from "./form";
@@ -74,7 +74,18 @@ import { burstText, distanceText, placeSentence, windText, yieldText } from "./w
 // The map library is large; it is fetched when the map is first drawn.
 const PlanMap = lazy(() => import("@/features/propagation/map/plan-map").then((module) => ({ default: module.PlanMap })));
 
-const _PATH = "/prepare/nuclear";
+/** No saved places: one list, so that the map is not handed a new one on every render. */
+const NO_PLACES: never[] = [];
+
+/**
+ * The value kept from the last render while its key is the same: what is drawn is worked
+ * out afresh on every change to a form, and typing a name or notes must not redraw the map.
+ */
+function useSame<T>(value: T, key: string): T {
+  const kept = useRef({ key, value });
+  if (kept.current.key !== key) kept.current = { key, value };
+  return kept.current.value;
+}
 
 /** One scenario on the map. */
 export interface Slot {
@@ -83,7 +94,10 @@ export interface Slot {
   form: ScenarioForm;
   /** The saved scenario it holds, or null for one not saved. */
   savedId: string | null;
+  /** When this scenario was last changed here or saved. */
   updatedAt: number;
+  /** The saved version's `updatedAt` this one was opened or last saved at: sent with a change so that a newer one is not overwritten. */
+  baseUpdatedAt: number;
   hidden: boolean;
   /** Saving was tried: a missing name or place is said from then on. */
   triedSave: boolean;
@@ -95,6 +109,7 @@ const newSlot = (letter: ScenarioLetter, form: ScenarioForm = EMPTY_FORM, savedI
   form,
   savedId,
   updatedAt,
+  baseUpdatedAt: updatedAt,
   hidden: false,
   triedSave: false,
 });
@@ -134,6 +149,9 @@ export default function NuclearPage() {
   const [tab, setTab] = useState("scenario");
   const [deleting, setDeleting] = useState<NuclearScenario | null>(null);
   const [deletingSet, setDeletingSet] = useState<NuclearSet | null>(null);
+  /** A save refused because the scenario was saved elsewhere since it was opened: which slot, and the newer version. */
+  const [conflict, setConflict] = useState<{ key: string; updatedAt: number; name: string } | null>(null);
+  const [choosing, setChoosing] = useState(false);
   const [fit, setFit] = useState<Bbox | null>(null);
   const [engine, setEngine] = useState<MapEngine | null>(null);
 
@@ -155,17 +173,22 @@ export default function NuclearPage() {
   const { slot, checked, result, refusals } = current;
   const form = slot.form;
 
-  const drawn = useMemo<Drawn[]>(
-    () =>
-      worked
-        .filter((entry) => !entry.slot.hidden && entry.result && entry.checked.at)
-        .map((entry) => ({
-          letter: entry.slot.letter,
-          at: entry.checked.at!,
-          result: entry.result!,
-          selected: entry.slot.key === selectedKey,
-        })),
-    [worked, selectedKey],
+  const shown = worked.filter((entry) => !entry.slot.hidden && entry.result && entry.checked.at);
+  // What is drawn depends on each shown scenario's letter, ground zero, figures and whether it is selected; not its name or notes.
+  const drawnKey = shown
+    .map(
+      ({ slot, checked }) =>
+        `${slot.letter}|${slot.key === selectedKey}|${checked.at!.lat},${checked.at!.lon}|${JSON.stringify(checked.effects)}`,
+    )
+    .join(";");
+  const drawn = useSame<Drawn[]>(
+    shown.map((entry) => ({
+      letter: entry.slot.letter,
+      at: entry.checked.at!,
+      result: entry.result!,
+      selected: entry.slot.key === selectedKey,
+    })),
+    drawnKey,
   );
   const mapData = useMemo(() => nuclearData(drawn, visible), [drawn, visible]);
 
@@ -179,7 +202,7 @@ export default function NuclearPage() {
   const fieldError = (field: FormField) =>
     slot.triedSave || (field !== "name" && (field !== "where" || form.where.trim() !== "")) ? checked.problems[field] : undefined;
 
-  const places = markers.data ?? [];
+  const places = markers.data ?? NO_PLACES;
   const installedRegions = overview.data?.regions?.length ?? 0;
   const imagery = hasImagery(sources.data);
 
@@ -247,28 +270,27 @@ export default function NuclearPage() {
 
   /** A saved scenario onto the map: selected if it is there already, replacing a blank first scenario, or added. */
   function putOnMap(scenario: NuclearScenario) {
-    {
-      const already = slots.find((each) => each.savedId === scenario.id);
-      if (already) {
-        select(already.key);
-      } else {
-        const blank =
-          slots.length === 1 && !slots[0]!.savedId && !slots[0]!.form.where.trim() && !slots[0]!.form.name.trim() ? slots[0]! : null;
-        if (blank) {
-          patch(blank.key, (each) => ({
-            ...each,
-            form: formOf(scenario),
-            savedId: scenario.id,
-            updatedAt: scenario.updatedAt,
-            triedSave: false,
-          }));
-          setSelectedKey(blank.key);
-          setTab("scenario");
-        } else if (!addSlot(formOf(scenario), scenario.id, scenario.updatedAt)) return;
-      }
-      const opened = computeEffects(scenario.effects);
-      if (opened.ok) fitTo(opened.result, scenario, 100);
+    const already = slots.find((each) => each.savedId === scenario.id);
+    if (already) {
+      select(already.key);
+    } else {
+      const blank =
+        slots.length === 1 && !slots[0]!.savedId && !slots[0]!.form.where.trim() && !slots[0]!.form.name.trim() ? slots[0]! : null;
+      if (blank) {
+        patch(blank.key, (each) => ({
+          ...each,
+          form: formOf(scenario),
+          savedId: scenario.id,
+          updatedAt: scenario.updatedAt,
+          baseUpdatedAt: scenario.updatedAt,
+          triedSave: false,
+        }));
+        setSelectedKey(blank.key);
+        setTab("scenario");
+      } else if (!addSlot(formOf(scenario), scenario.id, scenario.updatedAt)) return;
     }
+    const opened = computeEffects(scenario.effects);
+    if (opened.ok) fitTo(opened.result, scenario, 100);
   }
   const putRef = useRef(putOnMap);
   putRef.current = putOnMap;
@@ -303,18 +325,48 @@ export default function NuclearPage() {
     if (answer.ok) fitTo(answer.result, first, 100);
   }
 
-  async function onSave() {
+  /** Saves the selected scenario; a saved one with the version it was opened at, or `base` to keep this version over a newer one. */
+  async function onSave(base = slot.baseUpdatedAt) {
     patch(selectedKey, (each) => ({ ...each, triedSave: true }));
     if (!checked.input) {
       toast.error("The scenario cannot be saved yet. See what the form says.");
       return;
     }
+    const key = selectedKey;
     try {
-      const saved = await save.mutateAsync({ id: slot.savedId, input: checked.input });
-      patch(selectedKey, (each) => ({ ...each, savedId: saved.id, updatedAt: saved.updatedAt }));
+      const saved = await save.mutateAsync({
+        id: slot.savedId,
+        input: slot.savedId ? { ...checked.input, baseUpdatedAt: base } : checked.input,
+      });
+      patch(key, (each) => ({ ...each, savedId: saved.id, updatedAt: saved.updatedAt, baseUpdatedAt: saved.updatedAt }));
+      setConflict(null);
       toast.success(slot.savedId ? "Changes saved." : "Scenario saved.");
     } catch (error) {
+      const newer = scenarioConflictOf(error);
+      if (newer) setConflict({ key, ...newer });
+      else toast.error(errorMessage(error));
+    }
+  }
+
+  /** After a conflict: puts the newer saved version in the form, in place of this one. */
+  async function loadOther() {
+    if (!slot.savedId) return;
+    const key = selectedKey;
+    setChoosing(true);
+    try {
+      const fresh = await api.get<NuclearScenario>(`/api/nuclear/scenarios/${slot.savedId}`);
+      patch(key, (each) => ({
+        ...each,
+        form: formOf(fresh),
+        updatedAt: fresh.updatedAt,
+        baseUpdatedAt: fresh.updatedAt,
+        triedSave: false,
+      }));
+      setConflict(null);
+    } catch (error) {
       toast.error(errorMessage(error));
+    } finally {
+      setChoosing(false);
     }
   }
 
@@ -452,11 +504,21 @@ export default function NuclearPage() {
         >
           <Tabs value={tab} onValueChange={setTab}>
             <TabsList>
-              <TabsTrigger value="scenario">Scenario</TabsTrigger>
-              <TabsTrigger value="saved">Saved{scenarios.data?.length ? ` (${scenarios.data.length})` : ""}</TabsTrigger>
-              <TabsTrigger value="layers">Layers</TabsTrigger>
-              <TabsTrigger value="records">Records</TabsTrigger>
-              <TabsTrigger value="planning">Plans</TabsTrigger>
+              <TabsTrigger value="scenario" className="min-h-11 md:min-h-0">
+                Scenario
+              </TabsTrigger>
+              <TabsTrigger value="saved" className="min-h-11 md:min-h-0">
+                Saved{scenarios.data?.length ? ` (${scenarios.data.length})` : ""}
+              </TabsTrigger>
+              <TabsTrigger value="layers" className="min-h-11 md:min-h-0">
+                Layers
+              </TabsTrigger>
+              <TabsTrigger value="records" className="min-h-11 md:min-h-0">
+                Records
+              </TabsTrigger>
+              <TabsTrigger value="planning" className="min-h-11 md:min-h-0">
+                Plans
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="scenario" className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4">
@@ -499,10 +561,31 @@ export default function NuclearPage() {
                 </Notice>
               ) : null}
               <div className="flex flex-wrap gap-2">
-                <Button variant="primary" onClick={onSave} loading={save.isPending}>
+                <Button variant="primary" onClick={() => void onSave()} loading={save.isPending}>
                   {slot.savedId ? "Save changes" : "Save scenario"}
                 </Button>
               </div>
+              {conflict && conflict.key === slot.key ? (
+                <Notice tone="warning" icon={<TriangleAlert />} title="This scenario was changed somewhere else">
+                  <p>
+                    Another tab or device saved a newer version at {formatDateTime(conflict.updatedAt)}. Your version is still here,
+                    unsaved, and nothing has been overwritten. Choose which one to keep.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      disabled={choosing || save.isPending}
+                      onClick={() => void onSave(conflict.updatedAt)}
+                    >
+                      Keep my version
+                    </Button>
+                    <Button size="sm" loading={choosing} onClick={() => void loadOther()}>
+                      Load the other version
+                    </Button>
+                  </div>
+                </Notice>
+              ) : null}
               {result && checked.at ? (
                 <>
                   <Results result={result} letter={slot.letter} onFit={() => fitTo(result, checked.at!, 1)} />
@@ -669,7 +752,7 @@ function OnTheMap({
     <section aria-label="Scenarios on the map" className="grid grid-cols-[minmax(0,1fr)] gap-1.5">
       <h2 className="text-body font-semibold text-ink">On the map</h2>
       <ul className="divide-y divide-border border-y border-border" aria-label="Scenarios on the map">
-        {worked.map(({ slot, checked, result }) => {
+        {worked.map(({ slot, checked }) => {
           const selected = slot.key === selectedKey;
           const name = slot.form.name.trim() || `Scenario ${slot.letter}`;
           const what = checked.effects ? `${yieldText(checked.effects.yieldKt)}, ${burstText(checked.effects)}` : "Not worked out yet";
@@ -688,7 +771,7 @@ function OnTheMap({
                   <span className={cn("block truncate text-small text-ink", selected && "font-semibold")}>{name}</span>
                   <span className="block truncate text-micro text-ink-muted">
                     {what}, {where}
-                    {slot.hidden ? ", hidden" : !result && checked.effects ? "" : ""}
+                    {slot.hidden ? ", hidden" : ""}
                   </span>
                 </span>
               </button>
@@ -1050,7 +1133,9 @@ function Results({ result, letter, onFit }: { result: EffectsResult; letter: Sce
                   </div>
                   {ring.why ? <p className="text-small text-ink-muted">{ring.why}</p> : null}
                   <details className="text-small text-ink-muted">
-                    <summary className="cursor-pointer text-ink-muted hover:text-ink">What this means, and its source</summary>
+                    <summary className="min-h-11 cursor-pointer py-2.5 text-ink-muted hover:text-ink md:min-h-0 md:py-0">
+                      What this means, and its source
+                    </summary>
                     <p className="mt-1">{ring.meaning}</p>
                     <p className="mt-1">Source: {ring.source}.</p>
                   </details>
@@ -1105,7 +1190,9 @@ function Results({ result, letter, onFit }: { result: EffectsResult; letter: Sce
         </ul>
       ) : null}
       <details className="text-small text-ink-muted">
-        <summary className="cursor-pointer font-medium text-ink">How this is worked out: assumptions, limits and source</summary>
+        <summary className="min-h-11 cursor-pointer py-2.5 font-medium text-ink md:min-h-0 md:py-0">
+          How this is worked out: assumptions, limits and source
+        </summary>
         <h4 className="mt-2 font-medium text-ink">Assumptions</h4>
         <ul className="mt-1 grid list-disc gap-1 pl-5">
           {EFFECTS_ASSUMPTIONS.map((item) => (

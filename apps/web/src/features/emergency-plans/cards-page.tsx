@@ -7,7 +7,7 @@
  */
 import { type EmergencyPlan, planKindLabel } from "@outpost/shared";
 import { ArrowLeft } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 import { ErrorState, Notice, Page, PageHeader } from "@/components/page";
 import { Segmented, Skeleton } from "@/components/ui/misc";
@@ -164,12 +164,21 @@ export default function CardsPage() {
   const [paper, setPaper] = useState<CardPaper>(() => readStored(AID_PAPER_KEY, isAidPaper, likelyPaper(navigator.language)));
   const readable = useMemo(() => (response.data ? readableOf(response.data.plan, response.data.resolved) : null), [response.data]);
 
-  const about: Record<Kind, string> = {
-    wallet: readable
-      ? readable.people.length === 0
-        ? "Add the household's people to the plan to make a card for each."
-        : `A card for each of ${plural(readable.people.length, "person", "people")}: who they are, who to call, where to meet, the out-of-area contact, and anything medical they chose to put on it. Four to a sheet; each folds to the size of a bank card.`
-      : "",
+  const about: Record<Kind, ReactNode> = {
+    wallet: readable ? (
+      readable.people.length === 0 ? (
+        <>
+          <Link to={`/prepare/plans/${id}#household`} className="text-primary underline underline-offset-2">
+            Add the household's people to the plan
+          </Link>{" "}
+          to make a card for each.
+        </>
+      ) : (
+        `A card for each of ${plural(readable.people.length, "person", "people")}: who they are, who to call, where to meet, the out-of-area contact, and anything medical they chose to put on it. Four to a sheet; each folds to the size of a bank card.`
+      )
+    ) : (
+      ""
+    ),
     fridge:
       "The steps for during and after, the numbers and the places to meet, on one page, as large as they will go. The steps for before stay in the plan.",
     grab: "What to take if leaving: the plan's supplies, with the amount for the household and a box to tick for each.",

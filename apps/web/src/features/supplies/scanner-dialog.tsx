@@ -74,6 +74,7 @@ export function ScannerDialog({ onClose, onNew }: { onClose: () => void; onNew: 
     try {
       const read = await scanCamera(video.current, stop.signal);
       if (read) await look(read.text, `Read by the camera (${formatWords(read.format)})`);
+      else if (!stop.signal.aborted) setProblem("The camera was stopped while the page was hidden. Use the camera again to go on.");
     } catch (error) {
       const name = error instanceof DOMException ? error.name : "";
       setProblem(
@@ -190,6 +191,7 @@ export function ScannerDialog({ onClose, onNew }: { onClose: () => void; onNew: 
                             <Button
                               variant="link"
                               size="sm"
+                              className="max-md:min-h-11"
                               onClick={() =>
                                 used.mutate(
                                   { id: item.id, input: { quantity: 0 } },
@@ -205,6 +207,7 @@ export function ScannerDialog({ onClose, onNew }: { onClose: () => void; onNew: 
                                             },
                                           },
                                       ),
+                                    onError: (error) => setProblem(errorMessage(error)),
                                   },
                                 )
                               }

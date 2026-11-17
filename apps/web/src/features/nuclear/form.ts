@@ -90,7 +90,8 @@ export function checkForm(form: ScenarioForm): Checked {
   if (from !== null || speed !== null) {
     if (from === null || speed === null || Number.isNaN(from) || Number.isNaN(speed))
       problems.wind = "Give both the direction the wind blows from and its speed, or leave both empty.";
-    else wind = { fromDegrees: from, kmh: speed * (form.windUnit === "mph" ? 1.609344 : 1) };
+    // 360 is north, as a wind direction is often written.
+    else wind = { fromDegrees: from === 360 ? 0 : from, kmh: speed * (form.windUnit === "mph" ? 1.609344 : 1) };
   }
 
   if (!form.name.trim()) problems.name = "Give the scenario a name to save it.";

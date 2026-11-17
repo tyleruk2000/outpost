@@ -77,8 +77,3 @@ export function ringPeople(radiusM: number, answer: PopulationSumResponse): Ring
         : `About ${number(answer.people)} ${answer.people === 1 ? "person lives" : "people live"} inside this ring, by ${who}. ${NOT_HARM}`,
   };
 }
-
-/** Whether an installed grid's box holds a point: the grid is worth asking about rings there. */
-export function gridCovers(bbox: [number, number, number, number], at: { lat: number; lon: number }): boolean {
-  return at.lon >= bbox[0] && at.lon <= bbox[2] && at.lat >= bbox[1] && at.lat <= bbox[3];
-}

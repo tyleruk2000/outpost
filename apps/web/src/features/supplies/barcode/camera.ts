@@ -50,8 +50,6 @@ export function nativeDetector(): Promise<Detector | null> {
   return detector;
 }
 
-export const whichReader = async (): Promise<"browser" | "outpost"> => ((await nativeDetector()) ? "browser" : "outpost");
-
 const FORMAT_WORDS: Record<string, string> = { ean_13: "EAN-13", upc_a: "UPC-A", ean_8: "EAN-8", code_128: "Code 128", upc_e: "UPC-E" };
 export const formatWords = (format: string): string => FORMAT_WORDS[format] ?? format;
 
@@ -108,28 +106,51 @@ export async function readPhoto(file: File): Promise<BarcodeRead | null> {
 }
 
 /**
- * Watches the camera until a code is read the same twice in a row, or `signal` ends it.
- * Frames are read about five times a second, which leaves a phone room to draw.
+ * Watches the camera until a code is read the same twice in a row, or `signal` ends it,
+ * or the page is hidden (another tab, a locked phone): then every track of the camera is
+ * stopped and the reading of frames with it. Frames are read about five times a second,
+ * which leaves a phone room to draw.
  */
 export async function scanCamera(video: HTMLVideoElement, signal: AbortSignal): Promise<BarcodeRead | null> {
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 } },
-    audio: false,
-  });
+  const ended = new AbortController();
+  const end = () => ended.abort();
+  const hidden = () => {
+    if (document.visibilityState === "hidden") end();
+  };
+  signal.addEventListener("abort", end, { once: true });
+  document.addEventListener("visibilitychange", hidden);
+  if (signal.aborted) end();
+  let stream: MediaStream | null = null;
   const stop = () => {
-    for (const track of stream.getTracks()) track.stop();
+    for (const track of stream?.getTracks() ?? []) track.stop();
     video.srcObject = null;
   };
-  signal.addEventListener("abort", stop, { once: true });
+  ended.signal.addEventListener("abort", stop, { once: true });
+  /** A fifth of a second, or less when the scan is ended meanwhile. */
+  const pause = () =>
+    new Promise<void>((resolve) => {
+      const timer = setTimeout(done, 200);
+      ended.signal.addEventListener("abort", done, { once: true });
+      function done() {
+        clearTimeout(timer);
+        ended.signal.removeEventListener("abort", done);
+        resolve();
+      }
+    });
   try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 } },
+      audio: false,
+    });
+    if (ended.signal.aborted) return null;
     video.srcObject = stream;
     video.setAttribute("playsinline", "");
     video.muted = true;
     await video.play();
     let last: string | null = null;
-    while (!signal.aborted) {
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      if (signal.aborted || video.videoWidth === 0) continue;
+    while (!ended.signal.aborted) {
+      await pause();
+      if (ended.signal.aborted || video.videoWidth === 0) continue;
       const read = await readSource(video, video.videoWidth, video.videoHeight, true);
       if (!read) {
         last = null;
@@ -141,5 +162,7 @@ export async function scanCamera(video: HTMLVideoElement, signal: AbortSignal): 
     return null;
   } finally {
     stop();
+    signal.removeEventListener("abort", end);
+    document.removeEventListener("visibilitychange", hidden);
   }
 }

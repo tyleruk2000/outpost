@@ -4,6 +4,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { draftOf, inputOf } from "./item-form";
 import SuppliesPage from "./supplies-page";
 import { lineWords, quantityWords, shoppingText, whenWords } from "./words";
 
@@ -41,6 +42,8 @@ interface Server {
 function show(
   options: {
     items?: SupplyItem[] | "fails" | "never";
+    /** What the server says to adding an item, in place of taking it. */
+    refuseAdd?: string;
     household?: Household;
     shopping?: ShoppingList;
     lookup?: unknown;
@@ -58,6 +61,8 @@ function show(
         const body = init.body ? JSON.parse(String(init.body)) : null;
         server.posted.push({ path: `${init.method} ${pathname}`, body });
         if (pathname.endsWith("/adjust")) return json({ item: item({ quantity: 9 }) });
+        if (pathname === "/api/supplies/items" && options.refuseAdd)
+          return json({ error: { code: "bad_request", message: options.refuseAdd } }, 400);
         if (pathname === "/api/supplies/items") return json({ item: item({ id: "new", ...body }) });
         if (pathname.endsWith("/bought")) return json({ item: item({ id: "new", quantity: body.quantity, date: body.date }), line: null });
         return json({ ok: true });
@@ -182,6 +187,51 @@ describe("the Supplies screen", () => {
     expect(server.posted).toEqual([]);
   });
 
+  it("saves a row whose hidden fields hold something that is not a number", () => {
+    // Typed in the per-100 g fields, then switched to per pack; or typed as food, then made equipment.
+    const switched = inputOf({ ...draftOf({ name: "Oats", category: "food" }), energyBy: "pack", kcalPerUnit: "380", kcalPer100g: "abc" });
+    expect(switched).toMatchObject({ name: "Oats", kcalPerUnit: 380, kcalPer100g: null });
+    const recategorised = inputOf({ ...draftOf({ name: "Torch", category: "equipment" }), kcalPerUnit: "x", litresPerUnit: "y" });
+    expect(recategorised).toMatchObject({ name: "Torch", kcalPerUnit: null, litresPerUnit: null });
+    // kJ typed for kcal is caught where it is typed.
+    expect(inputOf({ ...draftOf({ name: "Oats", category: "food" }), energyBy: "100g", kcalPer100g: "1550", gramsPerUnit: "500" })).toEqual(
+      {
+        field: "kcalPer100g",
+        text: "At most 1,000.",
+      },
+    );
+    // A field that is shown still has to be a number.
+    expect(inputOf({ ...draftOf({ name: "Oats", category: "food" }), energyBy: "pack", kcalPerUnit: "abc" })).toEqual({
+      field: "kcalPerUnit",
+      text: "A number, or leave it empty.",
+    });
+  });
+
+  it("opens the closed part of the form to show what is wrong in it", async () => {
+    const server = show();
+    await userEvent.click(await screen.findByRole("button", { name: "Add" }));
+    const dialog = await screen.findByRole("dialog", { name: "Add to supplies" });
+    await userEvent.type(within(dialog).getByLabelText("Name"), "Rice");
+    await userEvent.click(within(dialog).getByText("More: minimum, barcode, notes"));
+    await userEvent.type(within(dialog).getByLabelText("Keep at least"), "lots");
+    const more = within(dialog).getByText("More: minimum, barcode, notes").closest("details")!;
+    more.open = false;
+    await userEvent.click(within(dialog).getByRole("button", { name: "Add" }));
+    expect(await within(dialog).findByText("A number, or leave it empty.")).toBeVisible();
+    expect(more.open).toBe(true);
+    expect(server.posted).toEqual([]);
+  });
+
+  it("says what the server refused as a notice, not as a fault in the name", async () => {
+    show({ refuseAdd: "The inventory holds at most 5,000 rows." });
+    await userEvent.click(await screen.findByRole("button", { name: "Add" }));
+    const dialog = await screen.findByRole("dialog", { name: "Add to supplies" });
+    await userEvent.type(within(dialog).getByLabelText("Name"), "Rice");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Add" }));
+    expect(await within(dialog).findByText("The inventory holds at most 5,000 rows.")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Name")).not.toHaveAttribute("aria-invalid");
+  });
+
   it("says who the days are for before working them out", async () => {
     show({ items: [item({})], view: "days" });
     expect(await screen.findByText("Say who the supplies are for")).toBeInTheDocument();
@@ -277,6 +327,27 @@ describe("the scanner", () => {
     const form = await screen.findByRole("dialog", { name: "Add to supplies" });
     await userEvent.click(within(form).getByText("More: minimum, barcode, notes"));
     expect(within(form).getByLabelText("Barcode")).toHaveValue("5012345678900");
+  });
+
+  it("lets the camera go when the dialog is closed", async () => {
+    vi.stubGlobal("isSecureContext", true);
+    const track = { stop: vi.fn() };
+    const getUserMedia = vi.fn(async () => ({ getTracks: () => [track] }) as unknown as MediaStream);
+    Object.defineProperty(navigator, "mediaDevices", { value: { getUserMedia }, configurable: true });
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+    try {
+      show();
+      await userEvent.click(await screen.findByRole("button", { name: "Scan" }));
+      const dialog = await screen.findByRole("dialog", { name: "Scan a barcode" });
+      await userEvent.click(within(dialog).getByRole("button", { name: "Use the camera" }));
+      expect(await within(dialog).findByRole("button", { name: "Stop the camera" })).toBeInTheDocument();
+      expect(getUserMedia).toHaveBeenCalledTimes(1);
+      await userEvent.click(within(dialog).getByRole("button", { name: "Done" }));
+      await waitFor(() => expect(track.stop).toHaveBeenCalled());
+      expect(screen.queryByRole("dialog")).toBeNull();
+    } finally {
+      Reflect.deleteProperty(navigator, "mediaDevices");
+    }
   });
 
   it("finds an item already kept, to change how many", async () => {

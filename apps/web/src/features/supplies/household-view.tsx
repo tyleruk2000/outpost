@@ -170,11 +170,11 @@ export function HouseholdView({ household }: { household: Household }) {
         }
         actions={
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={() => addMember("person")}>
+            <Button onClick={() => addMember("person")}>
               <UserPlus />
               Add a person
             </Button>
-            <Button size="sm" onClick={() => addMember("pet")}>
+            <Button onClick={() => addMember("pet")}>
               <PawPrint />
               Add a pet
             </Button>

@@ -16,6 +16,14 @@ the database a backup holds, counted under Storage → Database ("Preparedness")
 the plan of **Erase everything**, and erased with everything else. Each plan is deleted
 on its own from its screen.
 
+A plan is saved a moment after each change, with the time of the version the change was
+made from. If another tab or device has saved the plan since, nothing is saved over it:
+the screen says so, keeps what was typed, and offers **Keep my version** (saved again on
+top of the newer one) or **Load the other version** (the newer one replaces what is on
+the screen). Saving waits until one is chosen. A change saved elsewhere while this
+screen has nothing unsaved is shown in its place. Ticking a step, a review and an
+opening are not changes to what the plan says, so they never cause this.
+
 ## What a plan holds
 
 Every part may be empty.
@@ -28,6 +36,8 @@ Every part may be empty.
   the tick is kept with its time.
 - **The household**: each person, what they need to remember, anything medical they
   choose to have on their own wallet card, and their own number, linked from Contacts.
+  The person's number can only be linked, not typed: the plan has nowhere to keep a
+  typed one, so that picker offers Contacts alone.
 - **Who to contact, in order**: linked from **Contacts** (the plan keeps the contact's
   id, and shows the name and numbers Contacts has now) or typed; one marked as the
   out-of-area contact.
@@ -113,7 +123,7 @@ step of a publisher that allows only exact copies differs from its words.
 | European Commission | https://commission.europa.eu/legal-notice_en | “Unless otherwise indicated (e.g. in individual copyright notices), content owned by the EU on this website is licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0) licence. This means that reuse is allowed, provided appropriate credit is given and changes are indicated.” | Cleared: CC BY 4.0. Shown with its words: “© European Union, CC BY 4.0 (European Commission, “112 - the EU's emergency phone number”).” |
 | Queensland Government | https://www.qld.gov.au/legal/copyright | “Unless otherwise noted, all copyright material available on or through this website is licensed under a Creative Commons Attribution 4.0 International licence (CC BY 4.0). … You must keep the copyright notice on the copyright material and attribute the State of Queensland as the source of the copyright material.” | Cleared: CC BY 4.0. Shown with its words: “© State of Queensland, CC BY 4.0 (“Triple Zero (000)”, qld.gov.au).” |
 | British Red Cross | https://www.redcross.org.uk/terms-and-conditions | “We and our licensors reserve all of our and their rights in any intellectual property in connection with these Terms. … Commercial use or publication of any or all of the Content is strictly prohibited without prior authorisation from us. Nothing contained herein shall be construed as conferring any licence to use any item displayed, other than as necessary to enable you to access the Site.” | Not cleared: All rights reserved: pointed to, not quoted. |
-| Ready.gov and FEMA (United States) | https://www.fema.gov/about/website-information | “Not read directly: fema.gov refused every request from here (HTTP 403). Read through a summarising fetcher, the page says “Most material on FEMA.gov is free of copyright and may be copied and distributed without permission”, which names FEMA.gov and not Ready.gov; Ready.gov has no terms page of its own that could be found.” | Not cleared: Not established from a page that could be read: pointed to or left as a question, not quoted. |
+| Ready.gov and FEMA (United States) | https://www.fema.gov/about/website-information | “Read on 17 November 2026 (fema.gov had refused every request from here, HTTP 403, on 15 and 16 November): “Most material on FEMA.gov is free of copyright and may be copied and distributed without permission.” It says FEMA sometimes uses licensed or restricted photos or graphics, and names FEMA.gov, not Ready.gov; Ready.gov has no terms page of its own that could be found.” | Not cleared: Not established for Ready.gov: FEMA's statement names FEMA.gov and says “most”. Pointed to or left as a question, not quoted. |
 | New Zealand Police | https://www.police.govt.nz/about-site-and-nz-police-app/copyright | “You may save to disk and reprint images and other information contained on this site for non-commercial private purposes only. Requests and enquiries concerning the reproduction of information on this website, or the use of web scripts or code, for any other purpose requires permission.” | Not cleared: Permission needed: the number 111 is given as a fact, cited, with none of the page's words. |
 
 What follows on the screen and on paper:
@@ -132,9 +142,10 @@ What follows on the screen and on paper:
   the heatwave template uses Be Ready's own heat advice (OGL), which says to read the
   NHS's advice, and the one NHS cold-weather step is covered by Be Ready's.
 - **The British Red Cross** reserves all rights, so its pages are pointed to, never
-  quoted. **Ready.gov and FEMA** (US) are treated as not cleared: fema.gov refused every
-  direct request, and the statement found through a summarising fetcher names FEMA.gov,
-  not Ready.gov. **New Zealand Police** requires permission. Their numbers (911, 111)
+  quoted. **Ready.gov and FEMA** (US) are treated as not cleared: FEMA's website
+  information page, refused (HTTP 403) on 15 and 16 November and read directly with
+  Outpost's own client on 17 November 2026 (`docs/sources.md`, source 8), says "Most material on FEMA.gov is free of copyright", which names
+  FEMA.gov, not Ready.gov. **New Zealand Police** requires permission. Their numbers (911, 111)
   are given as facts, cited, without their words.
 
 ### What was replaced
@@ -273,7 +284,9 @@ The plan's supplies are set beside **Supplies** (`/prepare/supplies`):
   `packages/shared/src/emergency-plans.ts`, tested against cases worked by hand.
 - **One press** puts every missing and low thing on the Supplies shopping list
   (`POST /api/supplies/shopping`, one line each, with the shortfall where it can be
-  said and a note naming the plan).
+  said and a note naming the plan). If the server stops answering part way, the message
+  says how many lines went on before it stopped, so that pressing again is a choice
+  made knowing it adds those again.
 
 ## Using a plan
 
@@ -285,6 +298,10 @@ what has been done. "Reset for next time" clears the ticks and the start and cha
 no step. Ticks have routes of their own (`/ticks`, `/start`, `/reset`), apart from
 editing, so a tick on one phone never undoes an edit on another, nor the other way
 round; a step taken out of the plan takes its tick with it.
+
+Nothing on "Use now" changes by itself, so it runs no clock: no timer, no animation
+frame and no polling while it is open (a web test holds it to that). The time a step
+was ticked is the time kept with the tick, not counted on the page.
 
 From the Preparedness page a plan in use is two presses away: **Emergency plans**,
 then **Use now** beside it. On a phone, the "use now" page can be added to the Home
@@ -347,7 +364,11 @@ when the plan was last changed, so the same plan makes the same file.
 
 The nuclear preparedness workspace, and anything else, can use plans through
 `ctx.services.emergencyPlans` on the server (`list`, `get`, `create`, `update`,
-`copy`, `remove`, `tick`, `start`, `reset`) or the routes below. A plan's kind is one of
+`copy`, `remove`, `tick`, `start`, `mergeTicks`, `reset`, `reviewed`, `opened`, and
+`kept.count` and `kept.eraseAll` for the clean-up) or the routes below. A screen that
+changes a plan sends the `updatedAt` it read as `baseUpdatedAt`; the nuclear Plans tab,
+attaching a scenario, reads the plan again and adds its link to the newer version if
+the plan changed in between. A plan's kind is one of
 the known ones or `other` with free text in `kindText` ("Nuclear incident"), so a
 caller can file its plans under its own name and find them by `kind` and `kindText`.
 Its parts are general: ordered steps with phases, people, contacts, places, supplies,

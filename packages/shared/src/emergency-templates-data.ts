@@ -113,11 +113,11 @@ export const SOURCE_TERMS_DATA: SourceTerms[] = [
     publisher: "Ready.gov and FEMA (United States)",
     url: "https://www.fema.gov/about/website-information",
     quote:
-      "Not read directly: fema.gov refused every request from here (HTTP 403). Read through a summarising fetcher, the page says “Most material on FEMA.gov is free of copyright and may be copied and distributed without permission”, which names FEMA.gov and not Ready.gov; Ready.gov has no terms page of its own that could be found.",
-    read: "16 November 2026",
+      "Read on 17 November 2026 (fema.gov had refused every request from here, HTTP 403, on 15 and 16 November): “Most material on FEMA.gov is free of copyright and may be copied and distributed without permission.” It says FEMA sometimes uses licensed or restricted photos or graphics, and names FEMA.gov, not Ready.gov; Ready.gov has no terms page of its own that could be found.",
+    read: "17 November 2026",
     cleared: false,
     adapt: false,
-    licence: "Not established from a page that could be read: pointed to or left as a question, not quoted",
+    licence: "Not established for Ready.gov: FEMA's statement names FEMA.gov and says “most”. Pointed to or left as a question, not quoted",
     attribution: null,
   },
   {

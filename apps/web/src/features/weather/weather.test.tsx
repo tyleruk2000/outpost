@@ -1,4 +1,4 @@
-import type { KeptCopy, WeatherPlace, WeatherResponse, WeatherSourceInfo } from "@outpost/shared";
+import type { KeptCopy, ReadingImportResult, WeatherPlace, WeatherResponse, WeatherSourceInfo } from "@outpost/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -62,6 +62,25 @@ function forecast(fetchedAt: number, hoursAhead: number): KeptCopy {
   };
 }
 
+/** What the server says of a file of readings. */
+const importAnswer: ReadingImportResult = {
+  rows: [
+    {
+      line: 2,
+      takenAt: NOW - 6 * HOUR,
+      value: 1013.2,
+      unit: "hPa",
+      heightM: 12.5,
+      seaLevelHpa: 1014.7,
+      duplicate: false,
+      notes: ["“1.013,2” read as 1013.2.", "“12,5” read as 12.5."],
+    },
+    { line: 3, takenAt: NOW - 3 * HOUR, value: 1012, unit: "hPa", heightM: 10, seaLevelHpa: 1013.2, duplicate: false, notes: [] },
+  ],
+  problems: [],
+  added: 0,
+};
+
 function show(response: Partial<WeatherResponse> | "fails" | "never", view = "", markers: unknown[] = []) {
   const posted: Array<{ path: string; body: unknown }> = [];
   vi.stubGlobal(
@@ -73,6 +92,7 @@ function show(response: Partial<WeatherResponse> | "fails" | "never", view = "",
       if (init?.method && init.method !== "GET") {
         posted.push({ path: `${init.method} ${pathname}`, body: init.body ? JSON.parse(String(init.body)) : null });
         if (pathname === "/api/weather/update") return json({ outcomes: [] });
+        if (pathname === "/api/weather/readings/import") return json(importAnswer);
         return json({ ok: true });
       }
       if (pathname === "/api/weather") {
@@ -123,6 +143,16 @@ describe("the Weather and hazards screen", () => {
     expect(posted[0]!.body).toEqual({ kinds: ["forecast", "warnings", "flood"] });
   });
 
+  it("makes the whole 'update when I open' row the thing to press, at least 44 px tall", async () => {
+    const posted = show({});
+    const box = await screen.findByRole("checkbox", { name: "Also update when I open this screen" });
+    const row = box.closest("label");
+    expect(row).toHaveClass("min-h-11");
+    expect(box).toHaveAccessibleDescription(/Off unless ticked/);
+    await userEvent.click(screen.getByText("Also update when I open this screen"));
+    await waitFor(() => expect(posted).toEqual([{ path: "PUT /api/weather/options", body: { updateOnOpen: true } }]));
+  });
+
   it("fetches when Update now is pressed", async () => {
     const posted = show({ places: [home] });
     await userEvent.click(await screen.findByRole("button", { name: "Update now" }));
@@ -145,9 +175,61 @@ describe("the Weather and hazards screen", () => {
     expect(screen.queryByRole("heading", { name: "Temperature through the hours ahead" })).not.toBeInTheDocument();
   });
 
+  it("names the place on each kept copy's remove button, so that two forecasts are told apart", async () => {
+    const cottage: WeatherPlace = { ...home, id: "p2", name: "Cottage", markerId: "m2", isHome: false };
+    show({ places: [home, cottage], kept: [forecast(NOW, 24), { ...forecast(NOW, 24), id: "c2", placeId: "p2" }] }, "?view=kept");
+    expect(await screen.findByRole("button", { name: "Remove the kept copy: Forecast, Home" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove the kept copy: Forecast, Cottage" })).toBeInTheDocument();
+  });
+
   it("says when warnings have never been fetched", async () => {
     show({ places: [home] }, "?view=warnings");
     expect(await screen.findByText(/Warnings have not been fetched yet/)).toBeInTheDocument();
+  });
+});
+
+describe("bringing in barometer readings from a file", () => {
+  const file = () => new File(["time;pressure;height\n"], "logger.csv", { type: "text/csv" });
+
+  it("says under each row how a number that was not plain was read", async () => {
+    show({}, "?view=barometer");
+    await userEvent.click(await screen.findByRole("button", { name: "Bring in a CSV file" }));
+    const reads = () => vi.mocked(fetch).mock.calls.filter(([, init]) => !init?.method || init.method === "GET").length;
+    const before = reads();
+    await userEvent.upload(screen.getByLabelText("File"), file());
+    expect(await screen.findByText(/logger\.csv: 2 readings read/)).toBeInTheDocument();
+    // A preview changes nothing, so nothing is asked for again.
+    expect(reads()).toBe(before);
+    const list = screen.getByRole("list", { name: /how they were read/ });
+    expect(list).toHaveTextContent("Line 2: “1.013,2” read as 1013.2. “12,5” read as 12.5.");
+    expect(list).not.toHaveTextContent("Line 3");
+  });
+
+  it("reads a height with a decimal comma, and refuses one that is not a number instead of taking nought", async () => {
+    const posted = show({}, "?view=barometer");
+    await userEvent.click(await screen.findByRole("button", { name: "Bring in a CSV file" }));
+    const height = screen.getByRole("textbox", { name: "Height above sea level, m, where the file gives none" });
+    await userEvent.clear(height);
+    await userEvent.type(height, "12,5");
+    await userEvent.upload(screen.getByLabelText("File"), file());
+    await waitFor(() => expect(posted.filter((call) => call.path === "POST /api/weather/readings/import")).toHaveLength(1));
+    expect(posted[0]!.body).toMatchObject({ heightM: 12.5, apply: false });
+
+    await userEvent.clear(height);
+    await userEvent.type(height, "high");
+    await userEvent.click(screen.getByRole("button", { name: "Read it again with these" }));
+    expect(await screen.findByText(/Give the height above sea level/)).toBeInTheDocument();
+    expect(posted.filter((call) => call.path === "POST /api/weather/readings/import")).toHaveLength(1);
+  });
+
+  it("does not offer to add what a preview showed once the unit or height has changed", async () => {
+    show({}, "?view=barometer");
+    await userEvent.click(await screen.findByRole("button", { name: "Bring in a CSV file" }));
+    await userEvent.upload(screen.getByLabelText("File"), file());
+    expect(await screen.findByRole("button", { name: "Add 2 readings" })).toBeEnabled();
+    await userEvent.type(screen.getByRole("textbox", { name: "Height above sea level, m, where the file gives none" }), "5");
+    expect(screen.queryByRole("button", { name: "Add 2 readings" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add readings" })).toBeDisabled();
   });
 });
 

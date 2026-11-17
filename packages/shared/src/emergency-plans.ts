@@ -179,6 +179,20 @@ export interface EmergencyPlanInput {
   body: PlanBody;
 }
 
+/** What `PUT /api/emergency-plans/:id` takes: the whole plan, and the version it was changed from. */
+export interface EmergencyPlanUpdate extends EmergencyPlanInput {
+  /**
+   * The `updatedAt` this change was based on. When the stored plan is newer the change
+   * is refused with 409 `conflict` and `details.current`, so nothing is overwritten.
+   */
+  baseUpdatedAt?: number;
+}
+
+/** `details` of the 409 answer to a change that would overwrite a newer version. */
+export interface EmergencyPlanConflictDetails {
+  current: { updatedAt: number; name: string };
+}
+
 /** A plan in use: when it was started, and when each step was ticked. */
 export interface PlanUse {
   startedAt: number | null;
