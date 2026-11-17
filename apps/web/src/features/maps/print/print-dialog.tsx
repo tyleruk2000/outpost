@@ -539,7 +539,8 @@ export function PrintDialog({
             </div>
           ) : made.status === "ready" ? (
             <div className="min-w-0 flex-1 text-small" role="status">
-              <p className="truncate font-medium text-ink">
+              {/* The name says where, at what scale and when, so it is long: it wraps rather than widening the dialog. */}
+              <p className="font-medium text-ink [overflow-wrap:anywhere]">
                 {made.file.name} <span className="tabular font-normal text-ink-muted">· {formatBytes(made.file.size)}</span>
               </p>
               <p className="text-ink-muted">
