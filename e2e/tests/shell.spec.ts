@@ -49,9 +49,22 @@ test.describe("the shell", () => {
     await page.getByRole("radio", { name: "System" }).click();
   });
 
+  test("sends the app's files compressed, fingerprinted ones cached for good, and the page itself never cached", async ({ page }) => {
+    const response = await page.goto("/");
+    expect(response!.headers()["cache-control"]).toBe("no-cache");
+    const entry = /\/assets\/index-[\w-]+\.js/.exec(await response!.text())![0];
+    const script = await page.request.get(entry, { headers: { "accept-encoding": "gzip" } });
+    expect(script.headers()["content-encoding"]).toBe("gzip");
+    expect(script.headers()["cache-control"]).toContain("immutable");
+    const worker = await page.request.get("/sw.js", { headers: { "accept-encoding": "gzip" } });
+    expect(worker.headers()["cache-control"]).toBe("no-cache");
+  });
+
   test("answers unknown addresses with a page, and unknown API routes with JSON", async ({ page }) => {
     await page.goto("/no/such/place");
     await expect(page.getByRole("heading", { name: "There is nothing at this address" })).toBeVisible();
+    await page.getByRole("link", { name: "Go to Home" }).click();
+    await expect(page.getByRole("heading", { name: "Your library" })).toBeVisible();
     const response = await page.request.get("/api/no-such-route");
     expect(response.status()).toBe(404);
     expect((await response.json()).error.code).toBe("not_found");
