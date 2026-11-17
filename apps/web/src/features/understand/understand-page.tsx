@@ -16,7 +16,7 @@ import { Prose } from "./charts/figure";
 import { libraryCount, TraceProvider, type TraceState, useChunks, useEntities, useOverview, useProjection, useTrace } from "./data";
 import { entityKey } from "./figures/ribbon";
 import { formatMs } from "./lib/scale";
-import { buildExamples } from "./lib/text";
+import { buildExamples, type Example } from "./lib/text";
 import { CuttingSection, JourneySection, WordsSection } from "./sections/early";
 import { ContextSection, FusionSection, ModelSection, WrongSection } from "./sections/late";
 import { MeaningSection } from "./sections/meaning";
@@ -180,7 +180,7 @@ function QuestionBox({
 }: {
   query: string;
   onTrace: (query: string) => void;
-  examples: string[];
+  examples: Example[];
   state: TraceState;
 }) {
   const id = useId();
@@ -221,12 +221,12 @@ function QuestionBox({
           <span>From your library:</span>
           {examples.map((example) => (
             <button
-              key={example}
+              key={example.query}
               type="button"
-              onClick={() => onTrace(example)}
+              onClick={() => onTrace(example.query)}
               className="rounded-full border border-border-strong bg-page px-3 py-0.5 text-ink transition-colors hover:border-ink-faint hover:bg-surface-strong max-md:py-1.5"
             >
-              {example}
+              {example.label}
             </button>
           ))}
         </div>
@@ -283,7 +283,7 @@ export default function UnderstandPage() {
   const active = useActiveStage();
 
   // Examples come from the first document shown, and stay put when another is picked.
-  const examples = useRef<string[]>([]);
+  const examples = useRef<Example[]>([]);
   if (examples.current.length === 0 && entities.data && chunks.data) {
     examples.current = buildExamples(
       entities.data.filter((entity) => entityKey(entity) !== entityKey(chunks.data.entity)).map((entity) => entity.title),

@@ -34,8 +34,9 @@ Browsers only allow the cryptography this needs (`crypto.subtle`) on a page open
 usually reached on a home network as `http://<address>:8080`, and there:
 
 - The screen opens on **By hand** with a notice above the tabs that says what does not
-  work there (keys, text, files and encrypted pages of notes), why, and links to
-  **Settings, HTTPS on your network** (`/settings#https`). **Keys, Text and Files** each
+  work there (keys, text, files and encrypted pages of notes) and links to
+  **Settings, HTTPS on your network** (`/settings#https`), with the reason behind
+  **Why**. **Keys, Text and Files** each
   point back to it. The encryption library is not even fetched.
 - An encrypted page of notes shows its title and tags and the same notice in place of
   its text.
