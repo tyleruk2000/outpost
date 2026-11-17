@@ -66,6 +66,13 @@
   --color-game-piece-dark: var(--game-piece-dark);
   --color-game-piece-dark-edge: var(--game-piece-dark-edge);
   --color-game-board-hint: var(--game-board-hint);
+  --color-game-peg-board: var(--game-peg-board);
+  --color-game-peg-board-edge: var(--game-peg-board-edge);
+  --color-game-peg-hole: var(--game-peg-hole);
+  --color-game-peg: var(--game-peg);
+  --color-game-peg-edge: var(--game-peg-edge);
+  --color-game-peg-shine: var(--game-peg-shine);
+  --color-game-peg-hint: var(--game-peg-hint);
   --color-game-grass: var(--game-grass);
   --color-game-path: var(--game-path);
   --color-game-soil: var(--game-soil);

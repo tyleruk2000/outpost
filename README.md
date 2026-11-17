@@ -224,6 +224,19 @@ real network's devices are shown.*
 
 ![An emergency plan's steps, each saying where its words come from](docs/screenshots/emergency-plan.webp)
 
+### Games
+
+Small games for when the internet is out, drawn in code, with no sound and nothing fetched.
+
+| Feature | What it does | Docs |
+| --- | --- | --- |
+| Allotment | One plot for the household, the same on every device: sow, grow in real time, harvest, sell at the stall, and add beds, hens, a hive or a greenhouse. Nothing withers or runs out; left for a year, everything is ripe and waiting. | [Games](docs/games.md#allotment) |
+| Solitaire | The card game also called patience or Klondike: draw one or three, undo, tap a card to send it where it fits. | [Games](docs/games.md#solitaire) |
+| Peg solitaire | The English board of 33 holes: jump pegs until one is left. | [Games](docs/games.md#peg-solitaire) |
+| Sudoku | Puzzles made on the device at three levels, each with exactly one answer; notes, undo and a check. | [Games](docs/games.md#sudoku) |
+| Draughts | English draughts against the computer or two at one device. | [Games](docs/games.md#draughts) |
+| Pairs | A memory game for children, in three sizes. | [Games](docs/games.md#pairs) |
+
 *A plan made from the power cut template: each step says whose words it is.*
 
 ![The nuclear preparedness workspace with two educational scenarios on the test map, one with an idealised fallout pattern](docs/screenshots/nuclear.webp)
@@ -587,6 +600,7 @@ reaches the internet or a real model server.
 | [Supplies](docs/supplies.md) | Stock, the household, barcodes, CSV |
 | [Weather and hazards](docs/weather.md) | What is fetched, from whom, and how old it is |
 | [Nuclear preparedness](docs/nuclear-preparedness.md) | The workspace, the effects simulator, its rules and its sources |
+| [Games](docs/games.md) | The six games, their rules, and what is kept where |
 | [Sources](docs/sources.md) | Every content source considered, and its terms |
 | [Security](docs/security.md) | Threat model and controls |
 | [API](docs/api.md) | HTTP API reference |

@@ -34,7 +34,8 @@ Everything you have already installed or written:
 - writing a portable drive, once the programs it needs are cached (see below);
 - the Morse trainer, every tab of it (see [morse-trainer.md](morse-trainer.md)). Its one
   link out, to the Reverse Beacon Network's page, is your browser following a link you
-  pressed; Outpost itself asks the network nothing.
+  pressed; Outpost itself asks the network nothing;
+- the games, all six of them (see [games.md](games.md)).
 
 The web app itself is served by Outpost: its scripts, styles, fonts, PDF viewer
 resources, map fonts and map icons are all local files.
