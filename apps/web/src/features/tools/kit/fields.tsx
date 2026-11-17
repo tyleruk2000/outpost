@@ -90,7 +90,8 @@ export function NumberField({ input, className }: { input: NumberInput; classNam
   return (
     <Field label={spec.label} optional={spec.optional} hint={spec.hint} error={input.error} className={className}>
       {(ids) => (
-        <div className="flex min-w-0 items-center gap-2">
+        // Wraps the unit under the figure when both do not fit (a narrow box, a phone with large text).
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <input
             {...ids}
             type="text"
