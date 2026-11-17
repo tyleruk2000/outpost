@@ -6,7 +6,7 @@
  * game going on after a reload.
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -203,7 +203,7 @@ describe("the Solitaire screen", () => {
     await user.click(screen.getByRole("button", { name: "King of clubs, face up" }));
     expect(screen.getByText("Won in 4 minutes 12 seconds and 96 moves.")).toBeInTheDocument();
     await vi.waitFor(() => expect(posted).toEqual([{ variant: "draw-1", won: true, seconds: 252, moves: 96 }]));
-    expect(localStorage.getItem("outpost.games.solitaire")).toBeNull();
+    await waitFor(() => expect(localStorage.getItem("outpost.games.solitaire")).toBeNull());
     await user.click(screen.getByRole("button", { name: "New game" }));
     expect(screen.getByRole("button", { name: "Stock, 24 cards" })).toBeInTheDocument();
     expect(posted).toHaveLength(1);
@@ -252,18 +252,30 @@ describe("the Solitaire screen", () => {
     expect(await screen.findByText("The tally could not be read from the server.")).toBeInTheDocument();
   });
 
-  it("counts the time only while the screen is in view", async () => {
-    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "setTimeout", "clearTimeout"] });
+  it("counts the time only while the screen is in view, and sets no timer while it is hidden", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "setTimeout", "clearTimeout", "performance"] });
+    const visibility = vi.spyOn(document, "visibilityState", "get");
+    const turnTo = (state: DocumentVisibilityState) =>
+      act(() => {
+        visibility.mockReturnValue(state);
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
     try {
       show();
       act(() => screen.getByRole("button", { name: "Stock, 24 cards" }).click());
       act(() => vi.advanceTimersByTime(3000));
       expect(screen.getByText(/3 seconds/)).toBeInTheDocument();
-      const hidden = vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+      turnTo("hidden");
       act(() => vi.advanceTimersByTime(5000));
+      expect(vi.getTimerCount()).toBe(0);
       expect(screen.getByText(/3 seconds/)).toBeInTheDocument();
-      hidden.mockRestore();
+      // Kept as it stood when it was hidden, with the time.
+      expect(JSON.parse(localStorage.getItem("outpost.games.solitaire") ?? "null")).toMatchObject({ seconds: 3 });
+      turnTo("visible");
+      act(() => vi.advanceTimersByTime(2000));
+      expect(screen.getByText(/5 seconds/)).toBeInTheDocument();
     } finally {
+      visibility.mockRestore();
       vi.useRealTimers();
     }
   });

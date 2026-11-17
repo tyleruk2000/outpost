@@ -16,16 +16,17 @@ import {
   pegCount,
   replay,
 } from "@outpost/shared/games/peg-solitaire";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { plural } from "@/lib/utils";
-import { readDeviceSave, writeDeviceSave } from "../kit/device-save";
+import { readDeviceSave, useDeviceSave } from "../kit/device-save";
 import { GameAbout, GameFrame } from "../kit/frame";
+import { usePlayTime } from "../kit/play-time";
 import { useRecordResult } from "../kit/queries";
 import { GameTallyLine, gameTime } from "../kit/tally";
 import { PegBoard } from "./board";
-import { isPegGame, newGame, type PegGame, SAVE_KEY, secondsSince } from "./game";
+import { isPegGame, newGame, type PegGame, SAVE_KEY } from "./game";
 
 const VARIANT = "english";
 
@@ -63,16 +64,20 @@ export default function PegSolitairePage() {
   const [asking, setAsking] = useState(false);
   const record = useRecordResult("peg-solitaire");
 
-  useEffect(() => {
-    writeDeviceSave(SAVE_KEY, game);
-  }, [game]);
-
   // The save was checked on load and every jump is checked before it is kept, so the replay always succeeds.
   const board = useMemo(() => replay(game.jumps)?.board ?? replay([])!.board, [game.jumps]);
   const ending = useMemo(() => endingOf(board), [board]);
   const over = ending.kind !== "playing";
   const pegs = pegCount(board);
   const moves = game.jumps.length;
+
+  // Time runs from the first jump to the last, only while the board is in view.
+  const time = usePlayTime(moves > 0 && !over);
+  const played = (of: PegGame) => Math.min(86_400, Math.round((of.seconds ?? 0) + time.peek()));
+  // Kept a moment after each jump, and when the screen is hidden or left.
+  useDeviceSave(SAVE_KEY, game, (current) =>
+    current.recorded || current.jumps.length === 0 ? current : { ...current, seconds: (current.seconds ?? 0) + time.peek() },
+  );
 
   const targets = useMemo(() => new Set(picked === null ? [] : jumpsFrom(board, picked).map((jump) => jump.to)), [board, picked]);
 
@@ -84,11 +89,11 @@ export default function PegSolitairePage() {
     const jumps = [...game.jumps, [from, to] as const];
     const after = replay(jumps)!.board;
     const ended = endingOf(after);
-    let next: PegGame = { ...game, jumps, startedAt: game.startedAt ?? now };
+    let next: PegGame = { ...game, jumps, startedAt: game.startedAt ?? now, seconds: (game.seconds ?? 0) + time.lap() };
     const left = pegCount(after);
     let words = `${jumpWords(made)}. ${plural(left, "peg")} left.`;
     if (ended.kind !== "playing") {
-      const seconds = secondsSince(next.startedAt, now);
+      const seconds = Math.min(86_400, Math.round(next.seconds ?? 0));
       next = { ...next, seconds, recorded: true };
       record.mutate({ variant: VARIANT, won: left === 1, left, moves: jumps.length, seconds });
       words = `${jumpWords(made)}. ${endingWords(ended)}`;
@@ -142,16 +147,15 @@ export default function PegSolitairePage() {
     const last = game.jumps[game.jumps.length - 1];
     if (!last || over) return;
     const jumps = game.jumps.slice(0, -1);
-    setGame({ ...game, jumps, startedAt: jumps.length > 0 ? game.startedAt : null });
+    setGame(jumps.length > 0 ? { ...game, jumps } : newGame());
     setPicked(null);
     setNotice("");
     setSpoken(`The jump from ${holeName(last[0])} to ${holeName(last[1])} was taken back. ${plural(pegs + 1, "peg")} left.`);
   };
 
   const startAgain = (givenUp: boolean) => {
-    if (givenUp && !game.recorded && moves > 0) {
-      record.mutate({ variant: VARIANT, won: false, moves, seconds: secondsSince(game.startedAt, Date.now()) });
-    }
+    if (givenUp && !game.recorded && moves > 0) record.mutate({ variant: VARIANT, won: false, moves, seconds: played(game) });
+    time.lap();
     setGame(newGame());
     setPicked(null);
     setNotice("");

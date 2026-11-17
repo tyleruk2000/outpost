@@ -16,7 +16,7 @@ export interface PegGame {
   jumps: JumpPair[];
   /** When the first jump was made, milliseconds; null before it. */
   startedAt: number | null;
-  /** Seconds the game took, kept when it ended. */
+  /** Seconds played so far, counted only while the board was in view (rounded when the game ended); null before the first jump. */
   seconds: number | null;
   /** The result has been sent to the tally. */
   recorded: boolean;
@@ -39,10 +39,4 @@ export function isPegGame(value: unknown): value is PegGame {
   if (game.seconds !== null && !(isCount(game.seconds) && game.seconds <= 86_400)) return false;
   if (typeof game.recorded !== "boolean") return false;
   return replay(game.jumps as JumpPair[]) !== null;
-}
-
-/** Seconds from the first jump to now, as the tally takes them (at most a day). */
-export function secondsSince(startedAt: number | null, now: number): number {
-  if (startedAt === null) return 0;
-  return Math.min(86_400, Math.max(0, Math.round((now - startedAt) / 1000)));
 }

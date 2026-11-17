@@ -4,8 +4,9 @@
  * lasting things. Nothing withers: a plot left for a year is all ripe and waiting.
  *
  * The server applies every action with its own clock. Between fetches the screen moves
- * growth on with `advance`, for drawing only, and it refreshes every minute while open
- * and whenever another device changes the plot ("games.changed").
+ * growth on with `advance`, for drawing only: it draws again when the next bed ripens or
+ * at most once a minute, never while hidden, and fetches the plot again only when a
+ * device changes it ("games.changed").
  */
 import {
   type AllotmentAction,
@@ -17,6 +18,7 @@ import {
   PRODUCER,
   type ProducerId,
   readyInMs,
+  seasonAt,
   stageOf,
 } from "@outpost/shared/games/allotment";
 import { useEffect, useRef, useState } from "react";
@@ -29,7 +31,7 @@ import { GameAbout, GameFrame } from "../kit/frame";
 import { useClearGame } from "../kit/queries";
 import { Almanac, BedPanel, Seasons, Stall } from "./panels";
 import { Plot, VIEW } from "./plot";
-import { type AllotmentView, useAllotment, useAllotmentAction, useServerNow } from "./queries";
+import { type AllotmentView, untilNextChange, useAllotment, useAllotmentAction, useServerNow } from "./queries";
 import { aboutWords, awayWords, collectWords, doneWords, readyWords } from "./words";
 
 export default function AllotmentPage() {
@@ -113,8 +115,10 @@ function StartAgain({ damaged, message }: { damaged?: boolean; message?: string 
 }
 
 function Allotment({ view }: { view: AllotmentView }) {
-  const now = useServerNow(view.clockOffset);
+  const now = useServerNow(view.clockOffset, (at) => untilNextChange(advance(view.plot, at, view.hemisphere), view.hemisphere));
   const plot = advance(view.plot, now, view.hemisphere);
+  // The season by the time shown, so that a screen left open over the turn of a month moves with it.
+  const season = seasonAt(now, view.hemisphere);
   const [selected, setSelected] = useState<number | null>(null);
   const [said, setSaid] = useState("");
   const panel = useRef<HTMLElement>(null);
@@ -184,7 +188,7 @@ function Allotment({ view }: { view: AllotmentView }) {
         <Plot
           plot={plot}
           hemisphere={view.hemisphere}
-          season={view.season}
+          season={season}
           now={now}
           local={new Date()}
           selected={selected}
@@ -204,7 +208,7 @@ function Allotment({ view }: { view: AllotmentView }) {
             plot={plot}
             index={selected}
             hemisphere={view.hemisphere}
-            season={view.season}
+            season={season}
             busy={busy}
             act={act}
             onClose={() => setSelected(null)}
@@ -217,7 +221,7 @@ function Allotment({ view }: { view: AllotmentView }) {
 
       <div className="grid gap-8 md:col-span-2 md:grid-cols-2">
         <Almanac plot={plot} />
-        <Seasons plot={plot} hemisphere={view.hemisphere} from={view.hemisphereFrom} season={view.season} busy={busy} act={act} />
+        <Seasons plot={plot} hemisphere={view.hemisphere} from={view.hemisphereFrom} season={season} busy={busy} act={act} />
       </div>
 
       <div className="md:col-span-2">

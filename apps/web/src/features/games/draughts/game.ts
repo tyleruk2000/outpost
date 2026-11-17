@@ -19,7 +19,7 @@ export interface Game {
   startedAt: number | null;
   /** Both players agreed a draw (two-player). */
   agreed: boolean;
-  /** Seconds the finished game took, kept when it ended. */
+  /** Seconds played so far, counted only while the board was in view (rounded when the game ended); null before the first move. */
   seconds: number | null;
   /** The result has been sent to the tally. */
   recorded: boolean;

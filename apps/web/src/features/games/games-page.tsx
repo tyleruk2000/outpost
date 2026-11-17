@@ -9,7 +9,8 @@ export default function GamesPage() {
       screens={gameScreens}
     >
       The allotment and each game's tally of wins are kept on this Outpost for the whole household, so every device sees the same. A game of
-      cards, Sudoku, draughts or pairs still being played stays on the device it is being played on, so two people can play at once.
+      Solitaire, Peg solitaire, Sudoku, Draughts or Pairs still being played stays on the device it is being played on, so two people can
+      play at once.
     </SectionPage>
   );
 }

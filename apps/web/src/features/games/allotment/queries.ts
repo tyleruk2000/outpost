@@ -3,14 +3,26 @@
  * The server is the authority and stamps every action with its own clock. Between
  * fetches the screen draws growth with the device's clock, corrected by how far it is
  * from the server's (`clockOffset`), so a device set to the wrong time still shows the
- * plot as it is. The key starts with "games", which the "games.changed" event refreshes.
+ * plot as it is. The key starts with "games", which the "games.changed" event refreshes
+ * when any device changes the plot; nothing else asks the server again, since growth is
+ * worked out from the time.
  */
-import type { AllotmentAction, AllotmentResponse } from "@outpost/shared/games/allotment";
+import {
+  type AllotmentAction,
+  type AllotmentResponse,
+  type AllotmentState,
+  bedIndices,
+  type Hemisphere,
+  MINUTE,
+  PRODUCER,
+  PRODUCERS,
+  readyInMs,
+} from "@outpost/shared/games/allotment";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
-import { gamesKey } from "../kit/queries";
+import { usePageVisible } from "../kit/play-time";
 
 export const allotmentKey = ["games", "allotment"] as const;
 
@@ -25,8 +37,6 @@ export function useAllotment() {
   return useQuery({
     queryKey: allotmentKey,
     queryFn: async () => withOffset(await api.get<AllotmentResponse>("/api/games/allotment")),
-    // Every minute while the screen is open; never while the tab is hidden (the default).
-    refetchInterval: 60_000,
   });
 }
 
@@ -37,8 +47,6 @@ export function useAllotmentAction(onDone?: (action: AllotmentAction, before: Al
     onSuccess: (after, action) => {
       const before = client.getQueryData<AllotmentView>(allotmentKey);
       client.setQueryData(allotmentKey, after);
-      // The Games page says whether the allotment has been started.
-      void client.invalidateQueries({ queryKey: gamesKey, exact: true });
       onDone?.(action, before, after);
     },
     // A refused action is said in the server's own words; nothing on the plot changed.
@@ -47,28 +55,43 @@ export function useAllotmentAction(onDone?: (action: AllotmentAction, before: Al
 }
 
 /**
- * The device's time now, corrected to the server's, moving every few seconds while the
- * page is visible and not at all while it is hidden.
+ * The device's time now, corrected to the server's. It moves on once, `nextMs` after it
+ * was last read (the screen asks for the moment the next thing on the plot changes), and
+ * not at all while the page is hidden: shown again, it is read afresh.
  */
-export function useServerNow(offset: number, everyMs = 5000): number {
+export function useServerNow(offset: number, nextMs: (now: number) => number): number {
+  const visible = usePageVisible();
   const [now, setNow] = useState(() => Date.now());
+  const shown = now + offset;
+  const wait = nextMs(shown);
   useEffect(() => {
-    let timer: ReturnType<typeof setInterval> | undefined;
-    const start = () => {
+    if (!visible) return;
+    // Back in view after a while: the time is read again at once.
+    if (Date.now() - now > 1000) {
       setNow(Date.now());
-      timer ??= setInterval(() => setNow(Date.now()), everyMs);
-    };
-    const stop = () => {
-      if (timer !== undefined) clearInterval(timer);
-      timer = undefined;
-    };
-    const onVisibility = () => (document.hidden ? stop() : start());
-    if (!document.hidden) start();
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      stop();
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
-  }, [everyMs]);
-  return now + offset;
+      return;
+    }
+    const timer = window.setTimeout(() => setNow(Date.now()), wait);
+    return () => window.clearTimeout(timer);
+  }, [visible, now, wait]);
+  return shown;
+}
+
+/**
+ * How long until something on the plot changes that the screen should show: a bed
+ * ripening or an egg, a jar or an apple waiting. At most a minute, for the time left on
+ * each bed and the light; never less than a second.
+ */
+export function untilNextChange(plot: AllotmentState, hemisphere: Hemisphere): number {
+  let wait = MINUTE;
+  for (const index of bedIndices(plot)) {
+    const ms = readyInMs(plot, index, hemisphere);
+    if (ms !== null && ms > 0) wait = Math.min(wait, ms);
+  }
+  for (const producer of PRODUCERS) {
+    const { gives, everyMs, cap } = PRODUCER[producer];
+    if (plot.things[producer] && plot.waiting[gives] < cap) wait = Math.min(wait, everyMs - plot.producing[producer]);
+  }
+  // A moment past the change, so that it has happened when the plot is drawn again.
+  return Math.max(1000, Math.ceil(wait) + 50);
 }

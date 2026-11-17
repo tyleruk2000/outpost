@@ -11,8 +11,9 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Segmented } from "@/components/ui/misc";
 import { plural } from "@/lib/utils";
-import { clearDeviceSave, readDeviceSave, writeDeviceSave } from "../kit/device-save";
+import { readDeviceSave, useDeviceSave, writeDeviceSave } from "../kit/device-save";
 import { GameAbout, GameFrame } from "../kit/frame";
+import { type PlayTime, useEverySecond, usePlayTime } from "../kit/play-time";
 import { useRecordResult } from "../kit/queries";
 import { newSeed } from "../kit/rng";
 import { GameTallyLine, gameTime } from "../kit/tally";
@@ -28,8 +29,14 @@ const TAP_KEY = "solitaire-tap";
 export type TapMode = "send" | "pick";
 const isTapMode = (value: unknown): value is TapMode => value === "send" || value === "pick";
 
+/** The time played, drawn again each second while the game is going and in view: only this line, not the table. */
+function Elapsed({ seconds, time, running }: { seconds: number; time: PlayTime; running: boolean }) {
+  useEverySecond(running);
+  return <>{gameTime(seconds + (running ? time.peek() : 0))}</>;
+}
+
 /** A seed from the address (`?seed=`), when it is a whole number a seed can be. */
-export function seedFromParams(params: URLSearchParams): number | null {
+function seedFromParams(params: URLSearchParams): number | null {
   const text = params.get("seed");
   if (!text || !/^\d{1,10}$/.test(text)) return null;
   const seed = Number(text);
@@ -91,40 +98,15 @@ export default function SolitairePage() {
   }, []);
 
   // The clock runs from the first move to the last, and only while the screen is in view.
-  const running = game.played && !game.won;
-  useEffect(() => {
-    if (!running) return;
-    const timer = window.setInterval(() => {
-      if (document.visibilityState !== "visible") return;
-      setGame((current) => (current.played && !current.won ? { ...current, seconds: current.seconds + 1 } : current));
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [running]);
-
-  // Kept after every move, and every few seconds of the clock; a won game is not kept.
-  const latest = useRef(game);
-  latest.current = game;
-  const lastKept = useRef<{ now: Game["now"]; draw: Draw; seconds: number } | null>(null);
-  useEffect(() => {
-    if (game.won) {
-      clearDeviceSave(SAVE_KEY);
-      return;
-    }
-    const last = lastKept.current;
-    if (last && last.now === game.now && last.draw === game.draw && game.seconds - last.seconds < 5) return;
-    writeDeviceSave(SAVE_KEY, game);
-    lastKept.current = { now: game.now, draw: game.draw, seconds: game.seconds };
-  }, [game]);
-  useEffect(() => {
-    const keep = () => {
-      if (document.visibilityState === "hidden" && !latest.current.won) writeDeviceSave(SAVE_KEY, latest.current);
-    };
-    document.addEventListener("visibilitychange", keep);
-    return () => document.removeEventListener("visibilitychange", keep);
-  }, []);
+  const time = usePlayTime(game.played && !game.won);
+  /** The game with the time played since the last move added (none before the first move). */
+  const timed = (of: Game): Game => ({ ...of, seconds: of.seconds + time.lap() });
+  // Kept a moment after each move and when the screen is hidden or left; a won game is not kept.
+  useDeviceSave(SAVE_KEY, game, (current) => (current.won ? null : { ...current, seconds: current.seconds + time.peek() }));
 
   /** A move made: the game it led to, and what to say. A win is posted to the tally here, once. */
-  const play = (next: Game, words: string) => {
+  const play = (moved: Game, words: string) => {
+    const next = timed(moved);
     setGame(next);
     setPicked(null);
     if (next.won && !game.won) {
@@ -197,7 +179,7 @@ export default function SolitairePage() {
 
   const takeBack = () => {
     if (game.history.length === 0 || game.won) return;
-    setGame(undo(game));
+    setGame(timed(undo(game)));
     setPicked(null);
     say("Took back the last move.");
   };
@@ -226,7 +208,8 @@ export default function SolitairePage() {
 
   /** A new deal; a game with a move made in it and not won is counted as played. */
   const deal = (draw: Draw) => {
-    if (game.played && !game.won) record.mutate(result(game, false));
+    const left = timed(game);
+    if (left.played && !left.won) record.mutate(result(left, false));
     setGame(newGame(newSeed(), draw));
     setPicked(null);
     setAsking(null);
@@ -275,7 +258,7 @@ export default function SolitairePage() {
           {plural(game.now.moves, "move")}
           <span aria-hidden> · </span>
           <span className="sr-only">, </span>
-          {gameTime(game.seconds)}
+          <Elapsed seconds={game.seconds} time={time} running={game.played && !game.won} />
         </p>
         <Button onClick={putAway} disabled={away.cards.length === 0 || game.won}>
           Put away all that can go

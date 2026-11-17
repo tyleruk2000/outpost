@@ -6,10 +6,11 @@
  */
 import type { GamesResponse } from "@outpost/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { chooseMove } from "./ai";
 import DraughtsPage from "./draughts-page";
 import { parseSquare } from "./engine";
 import { type Game, newGame } from "./game";
@@ -83,8 +84,8 @@ describe("the board", () => {
     await waitFor(() => expect(turn()).toHaveTextContent("Your move. You play dark."), { timeout: 4000 });
     // One light man has left rank 6 (or 7), and the move is named on its square.
     expect(screen.getAllByRole("button", { name: /computer's man, just moved here from/ })).toHaveLength(1);
-    expect(kept().paths).toHaveLength(2);
-    expect(kept().seed).toBe(5);
+    await waitFor(() => expect(kept().paths).toHaveLength(2));
+    await waitFor(() => expect(kept().seed).toBe(5));
   });
 
   it("says a capture is compulsory when a piece that cannot move is tapped", async () => {
@@ -116,8 +117,59 @@ describe("the board", () => {
     keep({ ...newGame(9, "computer", "dark"), paths: [path("c3", "d4"), path("f6", "e5")], startedAt: Date.now() });
     show();
     await user.click(screen.getByRole("button", { name: "Undo" }));
-    expect(kept().paths).toEqual([]);
+    await waitFor(() => expect(kept().paths).toEqual([]));
     expect(screen.getByRole("button", { name: "Square c3, your man" })).toBeInTheDocument();
+  });
+});
+
+describe("the computer", () => {
+  it("thinks in a worker of its own, ended as soon as it has answered", async () => {
+    const workers: Array<{ ended: boolean }> = [];
+    class FakeWorker {
+      ended = false;
+      onmessage: ((event: MessageEvent) => void) | null = null;
+      onerror: (() => void) | null = null;
+      constructor() {
+        workers.push(this);
+      }
+      postMessage({ id, position, seed }: { id: number; position: Parameters<typeof chooseMove>[0]; seed: number }) {
+        setTimeout(() => this.onmessage?.({ data: { id, path: chooseMove(position, seed).path } } as MessageEvent), 0);
+      }
+      terminate() {
+        this.ended = true;
+      }
+    }
+    vi.stubGlobal("Worker", FakeWorker);
+    const user = userEvent.setup();
+    show("/games/draughts?seed=5");
+    await user.click(screen.getByRole("button", { name: "Square c3, your man" }));
+    await user.click(screen.getByRole("button", { name: "Square d4, empty, you can move here" }));
+    await waitFor(() => expect(turn()).toHaveTextContent("Your move. You play dark."), { timeout: 4000 });
+    expect(workers).toHaveLength(1);
+    expect(workers[0]!.ended).toBe(true);
+  });
+
+  it("does not think while the page is hidden, and replies once it is shown", async () => {
+    const visibility = vi.spyOn(document, "visibilityState", "get");
+    const turnTo = (state: DocumentVisibilityState) =>
+      act(() => {
+        visibility.mockReturnValue(state);
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+    try {
+      const user = userEvent.setup();
+      show("/games/draughts?seed=5");
+      await user.click(screen.getByRole("button", { name: "Square c3, your man" }));
+      turnTo("hidden");
+      await user.click(screen.getByRole("button", { name: "Square d4, empty, you can move here" }));
+      await new Promise((resolve) => setTimeout(resolve, 900));
+      expect(turn()).toHaveTextContent("The computer is thinking…");
+      expect(screen.queryByRole("button", { name: /just moved here/ })).toBeNull();
+      turnTo("visible");
+      await waitFor(() => expect(turn()).toHaveTextContent("Your move. You play dark."), { timeout: 4000 });
+    } finally {
+      visibility.mockRestore();
+    }
   });
 });
 

@@ -4,14 +4,15 @@
  * playing: the time is only said in the line at the end. The game in progress is kept
  * in this browser after every turn.
  */
-import { type KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Segmented } from "@/components/ui/misc";
 import { cn, plural } from "@/lib/utils";
-import { readDeviceSave, writeDeviceSave } from "../kit/device-save";
+import { readDeviceSave, useDeviceSave } from "../kit/device-save";
 import { boardSurface, GameAbout, GameFrame } from "../kit/frame";
+import { usePlayTime } from "../kit/play-time";
 import { useRecordResult } from "../kit/queries";
 import { newSeed } from "../kit/rng";
 import { GameTallyLine, gameTime } from "../kit/tally";
@@ -83,29 +84,11 @@ export default function PairsPage() {
     if (params.has("seed") || params.has("size")) setParams({}, { replace: true });
   }, []);
 
-  // Time counts only while the game is on screen and unfinished; it is never shown while playing.
-  const since = useRef<number | null>(null);
-  const withTime = useCallback((current: PairsGame): PairsGame => {
-    const now = performance.now();
-    const from = since.current;
-    since.current = current.finished || document.visibilityState === "hidden" ? null : now;
-    return from === null || current.finished ? current : { ...current, seconds: current.seconds + (now - from) / 1000 };
-  }, []);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the clock is started once; withTime keeps it going from then on
-  useEffect(() => {
-    since.current = game.finished ? null : performance.now();
-    const onVisibility = () => setGame((current) => withTime(current));
-    document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("pagehide", onVisibility);
-    return () => {
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("pagehide", onVisibility);
-    };
-  }, [withTime]);
-
-  useEffect(() => {
-    writeDeviceSave(SAVE_KEY, game);
-  }, [game]);
+  // Time counts only while the game is on screen and unfinished.
+  const time = usePlayTime(!game.finished);
+  const withTime = (current: PairsGame): PairsGame => ({ ...current, seconds: current.seconds + time.lap() });
+  // Kept a moment after each move, and when the screen is hidden or left.
+  useDeviceSave(SAVE_KEY, game, (current) => ({ ...current, seconds: current.seconds + time.peek() }));
 
   // A miss turns back by itself after a second.
   const showingMiss = missShowing(game);
@@ -135,7 +118,6 @@ export default function PairsPage() {
       record.mutate({ variant: current.size, won: false, seconds: Math.round(current.seconds), moves: current.turns });
     }
     const next = deal(newSeed(), size);
-    since.current = performance.now();
     setGame(next);
     setAsking(null);
     setSaid(`A new game of ${next.cards.length} cards, all face down.`);

@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Segmented } from "@/components/ui/misc";
 import { plural } from "@/lib/utils";
-import { readDeviceSave, writeDeviceSave } from "../kit/device-save";
+import { readDeviceSave, useDeviceSave } from "../kit/device-save";
 import { GameAbout, GameFrame } from "../kit/frame";
+import { usePageVisible, usePlayTime } from "../kit/play-time";
 import { useRecordResult } from "../kit/queries";
 import { newSeed } from "../kit/rng";
 import { GameTallyLine, gameTime } from "../kit/tally";
@@ -54,13 +55,16 @@ export default function DraughtsPage() {
     if (params.has("seed")) setParams({}, { replace: true });
   }, [params, setParams]);
 
-  useEffect(() => {
-    writeDeviceSave(SAVE_KEY, game);
-  }, [game]);
-
   const played = useMemo(() => play(game), [game]);
   const { position, moves, outcome } = played;
   const over = outcome.kind !== "playing";
+
+  // Time runs from the first move to the end, only while the board is in view.
+  const time = usePlayTime(game.paths.length > 0 && !over);
+  // Kept a moment after each move, and when the screen is hidden or left.
+  useDeviceSave(SAVE_KEY, game, (current) =>
+    current.recorded || current.paths.length === 0 ? current : { ...current, seconds: (current.seconds ?? 0) + time.peek() },
+  );
   const vsComputer = game.mode === "computer";
   const computerSide = other(game.human);
   const computerToMove = vsComputer && !over && position.turn === computerSide;
@@ -94,14 +98,14 @@ export default function DraughtsPage() {
   const finish = useCallback(
     (ended: Game, won: boolean): Game => {
       if (ended.recorded) return ended;
-      const seconds = ended.startedAt === null ? 0 : Math.min(86_400, Math.round((Date.now() - ended.startedAt) / 1000));
+      const seconds = Math.min(86_400, Math.round((ended.seconds ?? 0) + time.lap()));
       if (!sent.current.has(ended.seed)) {
         sent.current.add(ended.seed);
         sendResult({ variant: ended.mode, won, ...(won ? { seconds, moves: Math.max(1, humanMoves(ended)) } : {}) });
       }
       return { ...ended, recorded: true, seconds };
     },
-    [sendResult],
+    [sendResult, time],
   );
 
   useEffect(() => {
@@ -112,12 +116,21 @@ export default function DraughtsPage() {
   }, [over, outcome, game, finish]);
 
   // ── Moves ──
-  const commit = useCallback((move: Move, by: "person" | "computer") => {
-    setGame((current) => ({ ...current, paths: [...current.paths, move.path], startedAt: current.startedAt ?? Date.now() }));
-    setChosen([]);
-    setNotice("");
-    setMarked(by === "computer" ? move : null);
-  }, []);
+  const commit = useCallback(
+    (move: Move, by: "person" | "computer") => {
+      const lap = time.lap();
+      setGame((current) => ({
+        ...current,
+        paths: [...current.paths, move.path],
+        startedAt: current.startedAt ?? Date.now(),
+        seconds: (current.seconds ?? 0) + lap,
+      }));
+      setChosen([]);
+      setNotice("");
+      setMarked(by === "computer" ? move : null);
+    },
+    [time],
+  );
 
   // Words for what just happened, said once the position has changed.
   const lastSpoken = useRef(game.paths.length);
@@ -141,9 +154,11 @@ export default function DraughtsPage() {
   }, [moves.length]);
 
   // ── The computer ──
+  // It thinks only while the board is in view: hidden, the search is stopped and its worker ended, and it starts again when shown.
+  const visible = usePageVisible();
   // biome-ignore lint/correctness/useExhaustiveDependencies: the search starts afresh when the position changes, and only then
   useEffect(() => {
-    if (!computerToMove) return;
+    if (!computerToMove || !visible) return;
     let live = true;
     const asked = Date.now();
     const thinking = think(position, moveSeed(game.seed, moves.length));
@@ -159,7 +174,7 @@ export default function DraughtsPage() {
       thinking.cancel();
       if (waited) clearTimeout(waited);
     };
-  }, [computerToMove, position]);
+  }, [computerToMove, position, visible]);
 
   // ── Taps ──
   const ownSide = position.turn;

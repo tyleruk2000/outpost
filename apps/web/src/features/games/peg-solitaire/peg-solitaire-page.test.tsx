@@ -97,7 +97,7 @@ describe("the board", () => {
     expect(hole("Hole d6, empty")).toBeInTheDocument();
     expect(count()).toHaveTextContent("31 pegs left.");
     expect(screen.getByText("d6 over d5 to d4. 31 pegs left.")).toBeInTheDocument();
-    expect(kept().jumps).toEqual([pair("d6-d4")]);
+    await waitFor(() => expect(kept().jumps).toEqual([pair("d6-d4")]));
     // After that jump, b5 can jump into d5's hole; d7 has nothing to jump over.
     expect(hole("Hole b5, peg, can jump to d5")).toBeInTheDocument();
     expect(hole("Hole d7, peg")).toBeInTheDocument();
@@ -106,7 +106,7 @@ describe("the board", () => {
     expect(count()).toHaveTextContent("32 pegs left.");
     expect(hole("Hole d4, centre, empty")).toBeInTheDocument();
     expect(hole("Hole d5, peg")).toBeInTheDocument();
-    expect(kept()).toEqual(newGame());
+    await waitFor(() => expect(kept()).toEqual(newGame()));
   });
 
   it("says why a tap does nothing, and a second tap on the picked peg puts it down", async () => {
@@ -148,7 +148,7 @@ describe("the board", () => {
 describe("the end", () => {
   it("says the game is solved with the last peg in the centre, and sends the result once", async () => {
     const user = userEvent.setup();
-    keep({ ...newGame(), jumps: SOLUTION.slice(0, 30), startedAt: Date.now() - 95_000 });
+    keep({ ...newGame(), jumps: SOLUTION.slice(0, 30), startedAt: Date.now() - 95_000, seconds: 94.6 });
     show();
     expect(count()).toHaveTextContent("2 pegs left.");
     await user.click(hole("Hole d2, peg, can jump to d4"));
@@ -158,12 +158,38 @@ describe("the end", () => {
     expect(screen.getByRole("button", { name: "Undo" })).toBeDisabled();
     await waitFor(() => expect(posted).toHaveLength(1));
     expect(posted[0]).toMatchObject({ variant: "english", won: true, left: 1, moves: 31 });
-    expect(kept().recorded).toBe(true);
+    await waitFor(() => expect(kept().recorded).toBe(true));
     // Start again does not ask once the game is over, and sends nothing more.
     await user.click(screen.getByRole("button", { name: "Start again" }));
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     expect(count()).toHaveTextContent("32 pegs left.");
     expect(posted).toHaveLength(1);
+  });
+
+  it("counts the time only while the board is in view, not while the phone is locked", async () => {
+    let clock = 1_000_000;
+    vi.spyOn(performance, "now").mockImplementation(() => clock);
+    const visibility = vi.spyOn(document, "visibilityState", "get");
+    const turnTo = (state: DocumentVisibilityState) => {
+      visibility.mockReturnValue(state);
+      document.dispatchEvent(new Event("visibilitychange"));
+    };
+    try {
+      const user = userEvent.setup();
+      keep({ ...newGame(), jumps: SOLUTION.slice(0, 30), startedAt: Date.now() - 4 * 3_600_000, seconds: 60 });
+      show();
+      clock += 10_000;
+      turnTo("hidden");
+      clock += 3_600_000;
+      turnTo("visible");
+      clock += 5_000;
+      await user.click(hole("Hole d2, peg, can jump to d4"));
+      await user.click(hole(/^Hole d4, centre, empty, the peg on d2 can jump here/));
+      expect(screen.getByText("31 moves in 1 minute 15 seconds.")).toBeInTheDocument();
+      await waitFor(() => expect(posted[0]).toMatchObject({ won: true, seconds: 75 }));
+    } finally {
+      vi.restoreAllMocks();
+    }
   });
 
   it("says how many pegs remain when no move is left", async () => {
@@ -203,7 +229,7 @@ describe("starting again", () => {
     await user.click(within(dialog).getByRole("button", { name: "Start again" }));
     expect(count()).toHaveTextContent("32 pegs left.");
     await waitFor(() => expect(posted).toEqual([expect.objectContaining({ variant: "english", won: false, moves: 3 })]));
-    expect(kept().jumps).toEqual([]);
+    await waitFor(() => expect(kept().jumps).toEqual([]));
   });
 
   it("starts at once when nothing has been played", async () => {
@@ -223,11 +249,11 @@ describe("what is kept", () => {
     expect(hole("Hole d5, peg")).toBeInTheDocument();
   });
 
-  it("refuses a damaged save and starts afresh", () => {
+  it("refuses a damaged save and starts afresh", async () => {
     keep({ ...newGame(), jumps: [pair("d6-d4"), pair("d6-d4")] });
     show();
     expect(count()).toHaveTextContent("32 pegs left.");
-    expect(kept()).toEqual(newGame());
+    await waitFor(() => expect(kept()).toEqual(newGame()));
   });
 
   it("refuses a save of another shape", () => {

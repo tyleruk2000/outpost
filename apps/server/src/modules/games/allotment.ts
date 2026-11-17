@@ -29,6 +29,7 @@ import {
   seasonAt,
   THING_IDS,
 } from "@outpost/shared/games/allotment";
+import { eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
@@ -67,7 +68,12 @@ const damaged = () =>
 export async function registerAllotment(app: FastifyInstance, ctx: AppContext, saves: GameSaves): Promise<void> {
   /** The latitude of the home place (the saved place with the home icon), or null. */
   function homeLatitude(): number | null {
-    const rows = ctx.db.select({ id: markers.id, icon: markers.icon, createdAt: markers.createdAt, lat: markers.lat }).from(markers).all();
+    // Only the places with the home icon are read: a map may hold thousands of others.
+    const rows = ctx.db
+      .select({ id: markers.id, icon: markers.icon, createdAt: markers.createdAt, lat: markers.lat })
+      .from(markers)
+      .where(eq(markers.icon, "home"))
+      .all();
     return homePlaceOf(rows)?.lat ?? null;
   }
 
