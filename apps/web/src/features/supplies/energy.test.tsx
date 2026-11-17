@@ -135,7 +135,7 @@ describe("energy from USDA FoodData Central, in the form", () => {
     expect(within(offers).getByRole("button", { name: /Rice, white, long-grain, regular, enriched, cooked\s*130 kcal/ })).toBeVisible();
     // Four keys, one question: the typing settled first.
     expect(searched).toEqual(["Rice"]);
-    expect(within(dialog).getByLabelText("kcal in one")).toHaveValue("");
+    expect(within(dialog).getByLabelText(/^kcal in one/)).toHaveValue("");
     expect(within(dialog).getByText("Without it, this is not counted in the days of food.")).toBeVisible();
   });
 
@@ -145,12 +145,12 @@ describe("energy from USDA FoodData Central, in the form", () => {
     await userEvent.type(within(dialog).getByLabelText("Name"), "Rice");
     await userEvent.clear(within(dialog).getByLabelText("How many", { selector: "input" }));
     await userEvent.type(within(dialog).getByLabelText("How many", { selector: "input" }), "5");
-    await userEvent.clear(within(dialog).getByLabelText("Of what"));
-    await userEvent.type(within(dialog).getByLabelText("Of what"), "kg");
+    await userEvent.clear(within(dialog).getByLabelText(/^Of what/));
+    await userEvent.type(within(dialog).getByLabelText(/^Of what/), "kg");
     await userEvent.click(await within(dialog).findByRole("button", { name: /raw, unenriched/ }));
 
-    expect(within(dialog).getByLabelText("kcal per 100 g")).toHaveValue("365");
-    expect(within(dialog).getByLabelText("Grams in one")).toHaveValue("1000");
+    expect(within(dialog).getByLabelText(/^kcal per 100 g/)).toHaveValue("365");
+    expect(within(dialog).getByLabelText(/^Grams in one/)).toHaveValue("1000");
     expect(within(dialog).getByText("3,650 kcal in one, 18,250 kcal in all.")).toBeVisible();
     expect(within(dialog).getByText(/From USDA FoodData Central \(SR Legacy, April 2018\), per 100 g of “Rice, white/)).toHaveTextContent(
       "Check the label; products differ.",
@@ -176,15 +176,15 @@ describe("energy from USDA FoodData Central, in the form", () => {
     const dialog = await openAdd();
     await userEvent.type(within(dialog).getByLabelText("Name"), "Tuna");
     await userEvent.click(await within(dialog).findByRole("button", { name: /Fish, tuna, light/ }));
-    expect(within(dialog).getByLabelText("kcal per 100 g")).toHaveValue("86");
-    expect(within(dialog).getByLabelText("Grams in one")).toHaveValue("");
-    await waitFor(() => expect(within(dialog).getByLabelText("Grams in one")).toHaveFocus());
+    expect(within(dialog).getByLabelText(/^kcal per 100 g/)).toHaveValue("86");
+    expect(within(dialog).getByLabelText(/^Grams in one/)).toHaveValue("");
+    await waitFor(() => expect(within(dialog).getByLabelText(/^Grams in one/)).toHaveFocus());
     expect(
       within(dialog).getByText(
         "Give the weight of one tin from the label: it is not counted until you do. The food chosen is drained, so give the drained weight.",
       ),
     ).toBeVisible();
-    await userEvent.type(within(dialog).getByLabelText("Grams in one"), "112");
+    await userEvent.type(within(dialog).getByLabelText(/^Grams in one/), "112");
     // 86 × 1.12 = 96.3 kcal a tin.
     expect(within(dialog).getByText("96 kcal in one, 96 kcal in all.")).toBeVisible();
   });
@@ -192,18 +192,18 @@ describe("energy from USDA FoodData Central, in the form", () => {
   it("makes no offer over a figure typed from the label, and drops the table's note when its figure is typed over", async () => {
     const { posted } = show();
     const dialog = await openAdd();
-    await userEvent.type(within(dialog).getByLabelText("kcal in one"), "1800");
+    await userEvent.type(within(dialog).getByLabelText(/^kcal in one/), "1800");
     await userEvent.type(within(dialog).getByLabelText("Name"), "Rice");
     await new Promise((resolve) => setTimeout(resolve, 400));
     expect(within(dialog).queryByRole("region", { name: "Energy from USDA FoodData Central" })).toBeNull();
 
     // Cleared, chosen from the table, then the label's figure typed over it.
-    await userEvent.clear(within(dialog).getByLabelText("kcal in one"));
+    await userEvent.clear(within(dialog).getByLabelText(/^kcal in one/));
     await userEvent.click(await within(dialog).findByRole("button", { name: /raw, unenriched/ }));
-    await userEvent.clear(within(dialog).getByLabelText("kcal per 100 g"));
-    await userEvent.type(within(dialog).getByLabelText("kcal per 100 g"), "350");
+    await userEvent.clear(within(dialog).getByLabelText(/^kcal per 100 g/));
+    await userEvent.type(within(dialog).getByLabelText(/^kcal per 100 g/), "350");
     expect(within(dialog).queryByText(/From USDA FoodData Central/)).toBeNull();
-    await userEvent.type(within(dialog).getByLabelText("Grams in one"), "1000");
+    await userEvent.type(within(dialog).getByLabelText(/^Grams in one/), "1000");
     await userEvent.click(within(dialog).getByRole("button", { name: /^Add$/ }));
     await waitFor(() => expect(posted).toHaveLength(1));
     expect(posted[0]!.body).toMatchObject({ kcalPer100g: 350, notes: "" });
@@ -215,9 +215,9 @@ describe("energy from USDA FoodData Central, in the form", () => {
     await userEvent.type(within(dialog).getByLabelText("Name"), "Rice");
     await userEvent.click(await within(dialog).findByRole("button", { name: /raw, unenriched/ }));
     await userEvent.click(within(dialog).getByRole("button", { name: "Choose another food" }));
-    expect(within(dialog).getByLabelText("kcal per 100 g")).toHaveValue("");
+    expect(within(dialog).getByLabelText(/^kcal per 100 g/)).toHaveValue("");
     await userEvent.click(await within(dialog).findByRole("button", { name: /cooked/ }));
-    expect(within(dialog).getByLabelText("kcal per 100 g")).toHaveValue("130");
+    expect(within(dialog).getByLabelText(/^kcal per 100 g/)).toHaveValue("130");
 
     await userEvent.clear(within(dialog).getByLabelText("Name"));
     await userEvent.click(within(dialog).getByRole("button", { name: "Choose another food" }));
@@ -281,7 +281,7 @@ describe("days of energy, under How long it lasts", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Give them their energy" }));
     let dialog = await screen.findByRole("dialog", { name: "Change Baked beans" });
     expect(within(dialog).getByText(/1 of 2 without an energy figure/)).toBeVisible();
-    await userEvent.type(within(dialog).getByLabelText("kcal in one"), "390");
+    await userEvent.type(within(dialog).getByLabelText(/^kcal in one/), "390");
     await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
     dialog = await screen.findByRole("dialog", { name: "Change Oats" });
     expect(within(dialog).getByText(/2 of 2 without an energy figure/)).toBeVisible();

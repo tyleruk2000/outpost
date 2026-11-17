@@ -4,7 +4,7 @@
  * typed here could be saved anywhere.
  */
 import type { NoteDetail, NoteResponse } from "@outpost/shared";
-import { ChevronLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 import { Page } from "@/components/page";
@@ -67,7 +67,7 @@ function KeptNoteView({ note, item }: { note: NoteDetail; item: KeptNote }) {
           to={parentKept ? `/notes/${parent.id}` : "/kept"}
           className="-ml-1.5 flex h-10 min-w-0 flex-1 items-center gap-1 text-small text-ink-muted hover:text-ink"
         >
-          <ChevronLeft aria-hidden className="size-4 shrink-0" />
+          <ArrowLeft aria-hidden className="size-4 shrink-0" />
           <span className="truncate">{parentKept ? parent.title.trim() || "Untitled" : ON_THIS_DEVICE}</span>
         </Link>
         <p className="tabular shrink-0 text-small text-ink-muted">Kept copy from {formatDateTime(item.refreshedAt)}</p>

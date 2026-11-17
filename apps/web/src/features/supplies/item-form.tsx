@@ -1,7 +1,7 @@
 /**
  * Adding an item, or changing one. Made for a phone in a cupboard: the name first, the
  * count with large plus and minus, the category and place remembered from the last
- * item on this device, and "Add, then another like this", which keeps everything but
+ * item on this device, and "Add, then another", which keeps everything but
  * the date, so that the next batch of the same tins is a date and a press.
  */
 import {
@@ -584,13 +584,13 @@ export function ItemDialog({
             </details>
             {failure ? <Notice tone="danger">{failure}</Notice> : null}
           </DialogBody>
-          <DialogFooter className="max-sm:flex-col-reverse max-sm:items-stretch">
+          <DialogFooter>
             <Button variant="secondary" onClick={onClose}>
               {added > 0 ? "Done" : "Cancel"}
             </Button>
             {item ? null : (
               <Button variant="secondary" onClick={() => save(true)} disabled={busy}>
-                Add, then another like this
+                Add, then another
               </Button>
             )}
             <Button type="submit" variant="primary" loading={busy}>

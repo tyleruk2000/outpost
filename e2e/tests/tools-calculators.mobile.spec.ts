@@ -2,7 +2,7 @@ import { api, expect, test, watchForErrors } from "./fixtures";
 
 /** The calculators under Tools, on a phone: the main path of each screen. */
 test.describe("the calculators, on a phone", () => {
-  test("water: an answer as one types, a figure that is wrong said to be, a planning figure picked from a list, and the result kept as a note", async ({
+  test("water: an answer as one types, a figure that is wrong said to be, a planning figure picked from a list, and the result kept as a page", async ({
     page,
   }) => {
     const errors = watchForErrors(page);
@@ -27,8 +27,8 @@ test.describe("the calculators, on a phone", () => {
     await storage.getByText("How this is worked out").click();
     await expect(storage.getByText(/people × days × litres a person a day/)).toBeVisible();
 
-    await storage.getByRole("button", { name: "Save as a note" }).click();
-    await expect(page.getByText("Saved as a new note")).toBeVisible();
+    await storage.getByRole("button", { name: "Save as a page" }).click();
+    await expect(page.getByText("Saved as a new page in Notes")).toBeVisible();
     const notes = await api(page, "GET", "/api/notes/tree");
     expect(JSON.stringify(notes)).toContain("Water to store for 4 people, 3 days");
 

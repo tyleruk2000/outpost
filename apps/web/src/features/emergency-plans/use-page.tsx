@@ -5,10 +5,10 @@
  * done to whoever opens it next. With the server out of reach, a copy kept on this
  * phone ("Keep on this phone", below) is shown instead (`features/kept/kept-plan-screen.tsx`).
  */
-import { ArrowLeft, RotateCcw } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router";
-import { ErrorState, Page } from "@/components/page";
+import { useParams } from "react-router";
+import { BackLink, ErrorState, Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/misc";
@@ -64,9 +64,9 @@ export default function UsePlanPage() {
         onTick={(stepId, checked) => tick.mutate({ stepId, done: checked })}
         head={
           <>
-            <Link to={`/prepare/plans/${id}`} className="mb-2 inline-flex min-h-11 items-center gap-1.5 text-small text-primary">
-              <ArrowLeft aria-hidden className="size-4" /> The whole plan
-            </Link>
+            <BackLink to={`/prepare/plans/${id}`} className="mb-2">
+              The whole plan
+            </BackLink>
             <h1 className="font-title text-title text-ink">{plan.name}</h1>
             <p className="mt-1 text-body text-ink-muted" aria-live="polite">
               {stateLine(plan, ticks, plan.use.startedAt)}

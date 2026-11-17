@@ -26,7 +26,7 @@ server.
   > grid north here.
 
   Outside Great Britain there is no grid: the rule is for a map drawn to true north, from
-  the declination alone. **Copy** and **Save as a note** keep the answer.
+  the declination alone. **Copy** and **Save as a page** keep the answer.
 - **Live compass** (see below).
 - **Convert a bearing**: a bearing from one north, from each of the others, to the whole
   degree.

@@ -291,7 +291,7 @@ function ReplyActions({
       ) : null}
       {hasWords ? (
         <Button variant="ghost" size="sm" className={TOUCH} onClick={() => actions.saveAsNote(message)}>
-          <FilePlus2 aria-hidden /> Save as a note
+          <FilePlus2 aria-hidden /> Save as a page
         </Button>
       ) : null}
     </div>

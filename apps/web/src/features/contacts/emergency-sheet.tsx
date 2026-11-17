@@ -8,11 +8,11 @@
  * the library asks first, because the sheet is other people's details.
  */
 import { addressLines, type ContactDto } from "@outpost/shared";
-import { ArrowLeft, Download, Printer } from "lucide-react";
+import { Download, Printer } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router";
-import { EmptyState, ErrorState, Notice, Page, PageHeader } from "@/components/page";
+import { BackLink, EmptyState, ErrorState, Notice, Page, PageHeader } from "@/components/page";
 import { PrintNotice } from "@/components/print-notice";
 import { Button } from "@/components/ui/button";
 import { Segmented, Skeleton } from "@/components/ui/misc";
@@ -228,9 +228,9 @@ export default function EmergencySheetPage() {
   const printing = usePrinting();
   return (
     <Page width="reading">
-      <Link to="/contacts" className="mb-2 inline-flex min-h-11 items-center gap-1.5 text-small text-primary">
-        <ArrowLeft aria-hidden className="size-4" /> Contacts
-      </Link>
+      <BackLink to="/contacts" className="mb-2">
+        Contacts
+      </BackLink>
       <PageHeader
         title="Emergency sheet"
         description="The contacts marked for an emergency, on a page to print and keep by the door, in the car or in a grab bag."

@@ -15,7 +15,6 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import {
   ALargeSmall,
-  ArrowLeft,
   Copy,
   Download,
   Ellipsis,
@@ -31,7 +30,7 @@ import {
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
-import { ErrorState } from "@/components/page";
+import { BackLink, ErrorState } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
@@ -168,9 +167,9 @@ export function DetailSkeleton() {
 
 export function BackToList() {
   return (
-    <Link to="/contacts" className="mb-4 inline-flex min-h-11 items-center gap-1.5 text-small text-primary lg:hidden">
-      <ArrowLeft aria-hidden className="size-4" /> Contacts
-    </Link>
+    <BackLink to="/contacts" className="mb-2 lg:hidden">
+      Contacts
+    </BackLink>
   );
 }
 

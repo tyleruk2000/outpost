@@ -404,7 +404,7 @@ importing the same file therefore changes nothing unless asked.
 
 Each item has an address of its own, `/prepare/supplies/items/<id>`, with **Copy the
 link** on its page; the whole inventory is `/prepare/supplies` (and `?view=days`,
-`?view=shopping`, `?view=household`). In a note, select some words and paste the
+`?view=shopping`, `?view=household`). On a page in Notes, select some words and paste the
 address as the link.
 
 For other screens (the emergency scenario planner), `GET /api/supplies/outlook`

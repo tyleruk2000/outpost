@@ -17,11 +17,11 @@ import {
   type RepeaterFields,
   toMaidenhead,
 } from "@outpost/shared";
-import { ArrowLeft, CircleAlert, MapPin, Pencil, Radar, RadioTower, Trash2, Undo2 } from "lucide-react";
+import { CircleAlert, MapPin, Pencil, Radar, RadioTower, Trash2, Undo2 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
-import { ErrorState, Notice, Page } from "@/components/page";
+import { BackLink, ErrorState, Notice, Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/misc";
@@ -92,11 +92,9 @@ export default function RepeaterPage() {
   const [removing, setRemoving] = useState(false);
 
   const back = (
-    <Button asChild variant="ghost" size="sm" className="-ml-2.5 mb-4">
-      <Link to="/radio/repeaters">
-        <ArrowLeft /> Repeaters
-      </Link>
-    </Button>
+    <BackLink to="/radio/repeaters" className="mb-2">
+      Repeaters
+    </BackLink>
   );
 
   if (detail.isPending) {

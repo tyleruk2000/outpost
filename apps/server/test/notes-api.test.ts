@@ -620,13 +620,14 @@ describe("notes API", () => {
         "builtin:daily-log",
       ]);
       for (const template of body.templates) {
-        expect(template).toMatchObject({ builtin: true, title: expect.any(String), icon: expect.any(String) });
+        // Outpost's own templates carry no emoji: the app draws line icons, and an emoji is only ever one a person chose.
+        expect(template).toMatchObject({ builtin: true, title: expect.any(String), icon: null });
         expect(template.description.length).toBeGreaterThan(20);
       }
 
       const parent = await create({ title: "2026" });
       const kit = await create({ templateId: "builtin:kit-list", parentId: parent.id });
-      expect(kit).toMatchObject({ title: "Kit list", icon: "🎒", parentId: parent.id, isTemplate: false });
+      expect(kit).toMatchObject({ title: "Kit list", icon: null, parentId: parent.id, isTemplate: false });
       expect(kit.content.content.some((block: Json) => block.type === "taskList")).toBe(true);
       expect(await searchIds("purification tablets ")).toEqual([kit.id]);
 

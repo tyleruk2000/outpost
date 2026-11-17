@@ -273,6 +273,20 @@ describe("the list of plans", () => {
     expect(screen.getByRole("link", { name: "Use now: Flood" })).toHaveAttribute("href", "/prepare/plans/p2/use");
   });
 
+  it("titles each plan as every other list does, without saying its name twice or a stray arrow", async () => {
+    serve({
+      "/api/emergency-plans": { plans: [summary({ steps: 22 }), summary({ id: "p2", name: "Grandad's house", kind: "flooding" })] },
+    });
+    show("/prepare/plans", <PlansPage />, "/prepare/plans");
+    const title = await screen.findByRole("link", { name: "Power cut" });
+    expect(title.closest(".font-title")).not.toBeNull();
+    // The kind is said only where the name does not already say it.
+    expect(screen.getByText("22 steps")).toBeInTheDocument();
+    expect(screen.queryByText(/Power cut\. 22 steps/)).toBeNull();
+    expect(screen.getByText(/^Flooding/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /^Open / })).toBeNull();
+  });
+
   it("says when the plans could not be loaded", async () => {
     serve({
       "/api/emergency-plans": () => new Response(JSON.stringify({ error: { code: "internal", message: "Busy." } }), { status: 500 }),

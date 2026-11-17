@@ -4,7 +4,7 @@
  * with a hairline above it.
  */
 import type { ReactNode } from "react";
-import { Page, PageHeader } from "@/components/page";
+import { JumpLinks, Page, PageHeader } from "@/components/page";
 import { cn } from "@/lib/utils";
 
 export interface CalculatorLink {
@@ -29,26 +29,16 @@ export function ToolScreen({
   return (
     <Page width="reading">
       <PageHeader title={title} description={description} />
-      <nav aria-label="Calculators on this screen" className="-mt-4 mb-6">
-        <ul className="flex flex-wrap gap-x-4 gap-y-1 text-small">
-          {calculators.map((calculator) => (
-            <li key={calculator.id}>
-              <a
-                href={`#${calculator.id}`}
-                onClick={(event) => {
-                  // The app's router owns the address; move to the section without changing it.
-                  event.preventDefault();
-                  document.getElementById(calculator.id)?.scrollIntoView({ block: "start" });
-                  document.getElementById(`${calculator.id}-title`)?.focus({ preventScroll: true });
-                }}
-                className="inline-flex min-h-11 items-center text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2 md:min-h-8"
-              >
-                {calculator.title}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      <JumpLinks
+        label="Calculators on this screen"
+        items={calculators.map((calculator) => ({ id: calculator.id, label: calculator.title }))}
+        onJump={(id, event) => {
+          // The app's router owns the address; move to the section without changing it.
+          event.preventDefault();
+          document.getElementById(id)?.scrollIntoView({ block: "start" });
+          document.getElementById(`${id}-title`)?.focus({ preventScroll: true });
+        }}
+      />
       <div className="grid">{children}</div>
       {footer ? <div className="mt-10 border-t border-border pt-4 text-small text-ink-muted">{footer}</div> : null}
     </Page>

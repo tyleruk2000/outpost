@@ -1,4 +1,3 @@
-import { ArrowLeft } from "lucide-react";
 import { lazy, Suspense } from "react";
 import { Link, useSearchParams } from "react-router";
 import { ErrorState, Page, PageHeader } from "@/components/page";
@@ -39,12 +38,6 @@ export default function ManagePage() {
 
   return (
     <Page>
-      <Link
-        to="/storage"
-        className="-ml-1 mb-3 inline-flex items-center gap-1.5 rounded-control px-1 py-1 text-small text-ink-muted transition-colors hover:text-ink max-md:min-h-11"
-      >
-        <ArrowLeft aria-hidden className="size-4" /> Storage
-      </Link>
       <PageHeader
         title="Manage and clean up"
         description="Everything Outpost is storing, in one place. See what takes the space, remove or move what is installed, and clear what is left over. Nothing here is removed until you choose it and confirm."

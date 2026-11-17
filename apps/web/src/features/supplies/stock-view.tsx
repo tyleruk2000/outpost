@@ -155,7 +155,7 @@ export function StockView({ items, locations, onAdd }: { items: SupplyItem[]; lo
       </div>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <p className="text-small text-ink-muted" aria-live="polite">
-          {shown.length === items.length ? plural(items.length, "row") : `${plural(shown.length, "row")} of ${items.length}`}
+          {shown.length === items.length ? plural(items.length, "item") : `${plural(shown.length, "item")} of ${items.length}`}
         </p>
         <Segmented<Order>
           label="Order"

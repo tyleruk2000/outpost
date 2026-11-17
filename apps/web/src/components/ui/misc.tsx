@@ -4,6 +4,7 @@ import {
   Checkbox as CheckboxPrimitive,
   Popover as PopoverPrimitive,
   Progress as ProgressPrimitive,
+  RadioGroup as RadioPrimitive,
   Select as SelectPrimitive,
   Switch as SwitchPrimitive,
   Tabs as TabsPrimitive,
@@ -128,6 +129,29 @@ export function Segmented<T extends string>({
         </TogglePrimitive.Item>
       ))}
     </TogglePrimitive.Root>
+  );
+}
+
+// ── Radio ──────────────────────────────────────────────────────────────────
+
+/**
+ * One choice of a radio group with words beside it: a round 18 px mark, with a dot when chosen.
+ * The same look wherever a radio is drawn (a native `<input type="radio">` with `accent-primary`
+ * looks alike). Its reach is 44 px for a finger, from an invisible box round it, so the mark itself
+ * never grows into a square. `outpost-radio` lets a screen's own touch rule tell it from a
+ * segmented control, which is a radio group too.
+ */
+export function RadioItem({ className, ...props }: Omit<ComponentProps<typeof RadioPrimitive.Item>, "children">) {
+  return (
+    <RadioPrimitive.Item
+      className={cn(
+        "outpost-radio relative mt-0.5 grid size-[18px] shrink-0 place-content-center rounded-full border-[1.5px] border-border-strong bg-page transition-colors before:absolute before:-inset-[13px] data-[state=checked]:border-primary disabled:opacity-50",
+        className,
+      )}
+      {...props}
+    >
+      <RadioPrimitive.Indicator className="block size-2.5 rounded-full bg-primary" />
+    </RadioPrimitive.Item>
   );
 }
 

@@ -19,7 +19,7 @@ import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Checkbox, Progress } from "@/components/ui/misc";
+import { Checkbox, Progress, RadioItem } from "@/components/ui/misc";
 import { ApiError, api, errorMessage } from "@/lib/api";
 import { cn, formatDate, formatDateTime, formatNumber, plural } from "@/lib/utils";
 import {
@@ -42,14 +42,7 @@ function Choice({ value, title, detail }: { value: string; title: string; detail
   const id = useId();
   return (
     <div className="flex items-start gap-3 py-2.5">
-      <RadioGroup.Item
-        id={id}
-        value={value}
-        aria-describedby={`${id}-detail`}
-        className="relative mt-0.5 grid size-[18px] shrink-0 place-content-center rounded-full border-[1.5px] border-border-strong bg-page transition-colors before:absolute before:-inset-3 data-[state=checked]:border-primary"
-      >
-        <RadioGroup.Indicator className="block size-2.5 rounded-full bg-primary" />
-      </RadioGroup.Item>
+      <RadioItem id={id} value={value} aria-describedby={`${id}-detail`} />
       <label htmlFor={id} className="min-w-0 flex-1">
         <span className="block text-small font-medium text-ink">{title}</span>
         <span id={`${id}-detail`} className="block text-small text-ink-muted [overflow-wrap:anywhere]">

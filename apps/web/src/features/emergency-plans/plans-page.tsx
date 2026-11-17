@@ -4,10 +4,10 @@
  * blank.
  */
 import { type EmergencyPlanSummary, PLAN_TEMPLATES, type PlanTemplate, planFromTemplate, planKindLabel, reviewDue } from "@outpost/shared";
-import { ChevronRight, ListChecks } from "lucide-react";
+import { ListChecks } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { EmptyState, ErrorState, Page, PageHeader, Rows } from "@/components/page";
+import { EmptyState, ErrorState, Joined, Page, PageHeader, Rows } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
@@ -22,31 +22,36 @@ import { blankPlan, guessEmergencyNumber } from "./words";
 function PlanRow({ plan }: { plan: EmergencyPlanSummary }) {
   const review = reviewDue(plan, Date.now());
   const kind = plan.kindText.trim() || planKindLabel(plan.kind);
-  const state = [
+  const facts = [
+    // "Power cut" under a plan called "Power cut" says nothing.
+    kind.toLowerCase() === plan.name.trim().toLowerCase() ? null : kind,
     plan.startedAt !== null
       ? `In use since ${formatDate(plan.startedAt)}, ${plan.ticked} of ${plan.steps} steps done`
       : plural(plan.steps, "step"),
     plan.missing > 0 ? `${plural(plan.missing, "linked contact or place", "linked contacts or places")} missing` : null,
     review.due ? "Due for a look over" : null,
-  ].filter(Boolean);
+  ];
   return (
-    <li className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
-      <Link to={`/prepare/plans/${plan.id}`} className="group min-w-0 flex-1 basis-60">
-        <span className="block text-lead text-ink group-hover:text-primary">{plan.name}</span>
-        <span className="mt-0.5 block text-small text-ink-muted">
-          {kind}. {state.join(". ")}.
-        </span>
-      </Link>
-      <div className="flex items-center gap-2">
-        <Button asChild variant={plan.startedAt !== null ? "primary" : "secondary"}>
-          <Link to={`/prepare/plans/${plan.id}/use`} aria-label={`Use now: ${plan.name}`}>
-            <ListChecks aria-hidden /> Use now
+    <li className="group relative flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
+      <div className="min-w-0 flex-1 basis-60">
+        <h2 className="font-title text-lead text-ink">
+          {/* The link is stretched over the row; "Use now" sits above it. */}
+          <Link
+            to={`/prepare/plans/${plan.id}`}
+            className="decoration-primary decoration-1 underline-offset-[0.22em] after:absolute after:inset-0 group-hover:underline"
+          >
+            {plan.name}
           </Link>
-        </Button>
-        <Link to={`/prepare/plans/${plan.id}`} aria-label={`Open ${plan.name}`} className="grid size-11 place-items-center text-ink-faint">
-          <ChevronRight aria-hidden className="size-4" />
-        </Link>
+        </h2>
+        <p className="mt-0.5 text-small text-ink-muted">
+          <Joined parts={facts} />
+        </p>
       </div>
+      <Button asChild variant={plan.startedAt !== null ? "primary" : "secondary"} className="relative">
+        <Link to={`/prepare/plans/${plan.id}/use`} aria-label={`Use now: ${plan.name}`}>
+          <ListChecks aria-hidden /> Use now
+        </Link>
+      </Button>
     </li>
   );
 }

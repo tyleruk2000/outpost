@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 import { useMemo } from "react";
 import { Link } from "react-router";
-import { ErrorState, Page } from "@/components/page";
+import { ErrorState, Joined, Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
@@ -84,12 +84,6 @@ export function useDocumentList(collectionId: string, query: string, enabled: bo
     enabled,
   });
 }
-
-const Slash = () => (
-  <span aria-hidden className="mx-2 text-border-strong">
-    /
-  </span>
-);
 
 /**
  * "Add to library" for one file, and what has become of it: being copied, waiting its
@@ -208,25 +202,18 @@ function DocumentRow({
           )}
         </h2>
         <p className="mt-0.5 text-small text-ink-muted">
-          {only ? fileKindLabel(only) : plural(document.files.length, "file")}
-          {only && sizes.has(only.path) ? (
-            <>
-              <Slash />
-              <span className="tabular">{formatBytes(sizes.get(only.path))}</span>
-            </>
-          ) : null}
-          {document.author ? (
-            <>
-              <Slash />
-              {document.author}
-            </>
-          ) : null}
-          {only && !opensInReader(only) ? (
-            <>
-              <Slash />
-              opens in a new tab
-            </>
-          ) : null}
+          <Joined
+            parts={[
+              only ? fileKindLabel(only) : plural(document.files.length, "file"),
+              only && sizes.has(only.path) ? (
+                <span key="size" className="tabular">
+                  {formatBytes(sizes.get(only.path))}
+                </span>
+              ) : null,
+              document.author,
+              only && !opensInReader(only) ? "opens in a new tab" : null,
+            ]}
+          />
         </p>
         {description ? <p className="mt-1 line-clamp-2 text-small leading-relaxed text-ink-muted">{description}</p> : null}
         {!only ? (

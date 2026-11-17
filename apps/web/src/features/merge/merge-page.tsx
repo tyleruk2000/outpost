@@ -9,13 +9,13 @@
 import type { DriveSource, MergeDto } from "@outpost/shared";
 import { formatBytes } from "@outpost/shared";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Check, CircleAlert, CircleCheck } from "lucide-react";
+import { Check, CircleAlert, CircleCheck } from "lucide-react";
 import { RadioGroup } from "radix-ui";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
-import { ErrorState, Notice, Page, PageHeader, Rows, Section } from "@/components/page";
+import { EmptyState, ErrorState, Notice, Page, PageHeader, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
-import { Progress, Skeleton } from "@/components/ui/misc";
+import { Progress, RadioItem, Skeleton } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
 import { cn, formatDate, formatDateTime, formatNumber } from "@/lib/utils";
 import { FolderPicker, type PickedFolder } from "../storage/folder-picker";
@@ -133,13 +133,7 @@ function ChooseStep({ onStarted }: { onStarted: (merge: MergeDto) => void }) {
                           htmlFor={`source-${entry.folder}`}
                           className="flex cursor-pointer items-start gap-3 py-2.5"
                         >
-                          <RadioGroup.Item
-                            id={`source-${entry.folder}`}
-                            value={entry.folder}
-                            className="relative mt-0.5 grid size-[18px] shrink-0 place-content-center rounded-full border-[1.5px] border-border-strong bg-page transition-colors before:absolute before:-inset-3 data-[state=checked]:border-primary"
-                          >
-                            <RadioGroup.Indicator className="block size-2.5 rounded-full bg-primary" />
-                          </RadioGroup.Item>
+                          <RadioItem id={`source-${entry.folder}`} value={entry.folder} />
                           <span className="min-w-0">
                             <span className="block text-small font-medium text-ink">{words.title}</span>
                             <span className="block text-small break-words text-ink-muted">{words.detail}</span>
@@ -186,7 +180,9 @@ function ChooseStep({ onStarted }: { onStarted: (merge: MergeDto) => void }) {
           ) : merges.isError ? (
             <ErrorState error={merges.error} onRetry={() => merges.refetch()} />
           ) : merges.data.length === 0 ? (
-            <p className="border-y border-border py-4 text-small text-ink-muted">Nothing has been brought back from a drive yet.</p>
+            <EmptyState title="No merges yet" compact level={3} seed={5}>
+              Each time changes are brought back from a drive, its record is kept here.
+            </EmptyState>
           ) : (
             <Rows>
               {merges.data.map((merge) => (
@@ -312,14 +308,8 @@ export default function MergePage() {
 
   return (
     <Page>
-      {/* Above the title, as on the other screens under Storage. */}
-      <Link
-        to={id ? "/storage/merge" : "/storage"}
-        className="-ml-1 mb-3 inline-flex items-center gap-1.5 rounded-control px-1 py-1 text-small text-ink-muted transition-colors hover:text-ink max-md:min-h-11"
-      >
-        <ArrowLeft aria-hidden className="size-4" /> {id ? "All merges" : "Storage"}
-      </Link>
       <PageHeader
+        back={id ? { to: "/storage/merge", label: "All merges" } : undefined}
         title="Bring back changes from a drive"
         description="Bring home what you wrote and added while running Outpost from a portable drive. You see everything first, you choose what happens where both sides changed, and the drive itself is never changed."
       />

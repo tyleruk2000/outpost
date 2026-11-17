@@ -117,7 +117,7 @@ describe("a conversation as it reads", () => {
     expect(within(theirs).queryByText("from your library")).toBeNull();
   });
 
-  it("offers Copy, Regenerate and Save as a note on the newest reply; older replies cannot be regenerated", async () => {
+  it("offers Copy, Regenerate and Save as a page on the newest reply; older replies cannot be regenerated", async () => {
     const actions = show([said("u1", "One"), reply("a1", "First reply."), said("u2", "Two"), reply("a2", "Second reply.")]);
     const [older, newest] = screen.getAllByRole("article", { name: /^Reply from/ });
     expect(within(older!).getByRole("button", { name: "Copy" })).toBeVisible();
@@ -125,7 +125,7 @@ describe("a conversation as it reads", () => {
     const user = userEvent.setup();
     await user.click(within(newest!).getByRole("button", { name: "Regenerate" }));
     expect(actions.regenerate).toHaveBeenCalledTimes(1);
-    await user.click(within(older!).getByRole("button", { name: "Save as a note" }));
+    await user.click(within(older!).getByRole("button", { name: "Save as a page" }));
     expect(actions.saveAsNote).toHaveBeenCalledWith(expect.objectContaining({ id: "a1" }));
     // Only the last thing the person said can be written again.
     const [first, second] = screen.getAllByRole("article", { name: "You said" });

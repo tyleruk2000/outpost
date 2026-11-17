@@ -503,8 +503,12 @@ export function Planner() {
           </div>
         ) : result ? (
           <>
-            <PredictionExport result={result} savedName={opened && !("problem" in opened) ? opened.name : undefined} />
-            <Results result={result} hour={hour} onHour={setHour} />
+            <Results
+              result={result}
+              hour={hour}
+              onHour={setHour}
+              extra={<PredictionExport result={result} savedName={opened && !("problem" in opened) ? opened.name : undefined} />}
+            />
             <SecondModel result={result} hour={hour} onHour={setHour} />
           </>
         ) : (

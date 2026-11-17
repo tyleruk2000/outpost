@@ -23,7 +23,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
-import { EmptyState, ErrorState, Notice, Page, PageHeader, Rows, Section } from "@/components/page";
+import { Disclosure, EmptyState, ErrorState, Notice, Page, PageHeader, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
@@ -556,26 +556,34 @@ export default function LogPage() {
     compare.mutate({ myAntenna: mine.spec, theirAntenna: theirs.spec, noise, defaultPowerWatts: watts, ssnByMonth });
   };
 
+  const logButton = <Button onClick={() => setAdding(true)}>Log an entry</Button>;
+  const importButton = (
+    <Button variant="primary" loading={importing} onClick={() => picker.current?.click()}>
+      <Upload aria-hidden />
+      Import an ADIF file
+    </Button>
+  );
+  // In the header the main button is last, at the end of the row; in the empty state, under its words, it is first.
+  const filePicker = (
+    <input
+      ref={picker}
+      type="file"
+      accept=".adi,.adif,text/plain"
+      className="sr-only"
+      aria-label="ADIF file to import"
+      tabIndex={-1}
+      onChange={(event) => {
+        const file = event.target.files?.[0];
+        event.target.value = "";
+        if (file) startImport(file);
+      }}
+    />
+  );
   const actions = (
     <>
-      <Button onClick={() => setAdding(true)}>Log an entry</Button>
-      <Button variant="primary" loading={importing} onClick={() => picker.current?.click()}>
-        <Upload aria-hidden />
-        Import an ADIF file
-      </Button>
-      <input
-        ref={picker}
-        type="file"
-        accept=".adi,.adif,text/plain"
-        className="sr-only"
-        aria-label="ADIF file to import"
-        tabIndex={-1}
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          event.target.value = "";
-          if (file) startImport(file);
-        }}
-      />
+      {logButton}
+      {importButton}
+      {filePicker}
     </>
   );
 
@@ -627,7 +635,16 @@ export default function LogPage() {
       ) : log.isError ? (
         <ErrorState error={log.error} onRetry={() => void log.refetch()} />
       ) : log.data.total === 0 ? (
-        <EmptyState title="Nothing is logged yet" action={actions}>
+        <EmptyState
+          title="Nothing is logged yet"
+          action={
+            <>
+              {importButton}
+              {logButton}
+              {filePicker}
+            </>
+          }
+        >
           Log a contact as you make it, or import the ADIF file your logging program exports. Once there are entries with a position at both
           ends, they can be set beside what the engine predicted.
         </EmptyState>
@@ -781,16 +798,24 @@ export default function LogPage() {
       )}
 
       {log.data ? (
-        <p className="mt-10 max-w-[75ch] text-small text-ink-muted">
-          ADIF files are read as version {log.data.adif.version} of the specification describes the .adi form ({log.data.adif.source}, read{" "}
-          {log.data.adif.read}). Fields read: <span className="font-mono">{log.data.adif.fields.join(", ")}</span>. A position is taken only
-          from a latitude and longitude or a locator of four characters or more that the file states. The same contact (minute, callsigns,
-          band and mode) is never added twice. The XML form (.adx) is not read. Positions for comparison can also be{" "}
-          <Link to="/radio/propagation" className="text-primary underline underline-offset-2">
-            tried one path at a time in the planner
-          </Link>
-          .
-        </p>
+        <div className="mt-10 max-w-[75ch]">
+          <p className="text-small text-ink-muted">
+            A file from your logging program brings in each contact once: the same contact is never added twice. A contact is placed on the
+            map only where the file gives its position. Positions for comparison can also be{" "}
+            <Link to="/radio/propagation" className="text-primary underline underline-offset-2">
+              tried one path at a time in the planner
+            </Link>
+            .
+          </p>
+          <Disclosure summary="What is read from an ADIF file" className="mt-2">
+            <p className="text-ink-muted">
+              ADIF files are read as version {log.data.adif.version} of the specification describes the .adi form ({log.data.adif.source},
+              read {log.data.adif.read}). Fields read: <span className="font-mono">{log.data.adif.fields.join(", ")}</span>. A position is
+              taken only from a latitude and longitude or a locator of four characters or more that the file states. The same contact is one
+              with the same minute, callsigns, band and mode. The XML form (.adx) is not read.
+            </p>
+          </Disclosure>
+        </div>
       ) : null}
 
       {adding ? <EntryDialog onClose={() => setAdding(false)} /> : null}

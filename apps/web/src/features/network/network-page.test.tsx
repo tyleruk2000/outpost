@@ -85,6 +85,9 @@ describe("the Devices on this network screen", () => {
     expect(screen.getByText("192.168.77.0/24")).toBeInTheDocument();
     expect(screen.getByText(/253 addresses asked/)).toBeInTheDocument();
     expect(screen.getByText(/port 80, then on port 443/)).toBeInTheDocument();
+    // Ports, ARP and mDNS are for those who ask: the household reads the plain sentence above them.
+    expect(screen.getByText(/port 80, then on port 443/).closest("details")).not.toHaveAttribute("open");
+    expect(screen.getByText(/It does not log in to anything, look for weaknesses/)).toBeInTheDocument();
     expect(screen.getByText(/At most 20 of these a second, 8 at a time/)).toBeInTheDocument();
     expect(screen.getByText(/No other port is tried/)).toBeInTheDocument();
     expect(screen.getByText(/1 address of this computer’s not looked at/)).toBeInTheDocument();

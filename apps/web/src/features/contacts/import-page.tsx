@@ -6,10 +6,10 @@
  */
 import type { ContactImportChoice, ContactImportDuplicate, ContactImportPreview, ContactImportResult } from "@outpost/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CircleAlert, CircleCheck, FileUp, Smartphone } from "lucide-react";
+import { CircleAlert, CircleCheck, FileUp, Smartphone } from "lucide-react";
 import { useRef, useState } from "react";
 import { Link } from "react-router";
-import { Notice, Page, PageHeader, Section } from "@/components/page";
+import { BackLink, Notice, Page, PageHeader, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Checkbox, Select } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
@@ -363,9 +363,9 @@ export default function ImportPage() {
 
   return (
     <Page width="reading">
-      <Link to="/contacts" className="mb-2 inline-flex min-h-11 items-center gap-1.5 text-small text-primary">
-        <ArrowLeft aria-hidden className="size-4" /> Contacts
-      </Link>
+      <BackLink to="/contacts" className="mb-2">
+        Contacts
+      </BackLink>
       <PageHeader
         title="Bring in contacts"
         description="From a vCard file, which every phone can make, or picked on this phone. Outpost reads them first and shows what it would do. Nothing changes until you say so."

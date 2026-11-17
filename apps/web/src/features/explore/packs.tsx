@@ -207,9 +207,9 @@ function PackDialog({ pack, entries, onClose }: { pack: CatalogPack; entries: Ca
               </p>
             ) : (
               <>
-                <p className="mb-1.5 text-small font-semibold text-ink">Save to</p>
+                <p className="mb-1.5 text-small font-semibold text-ink">Where to keep it</p>
                 <LocationPicker
-                  label="Save to"
+                  label="Where to keep it"
                   locations={locations}
                   value={location?.id}
                   onChange={setChosenLocation}

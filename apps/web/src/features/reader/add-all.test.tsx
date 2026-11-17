@@ -133,9 +133,9 @@ describe("what adding to the library means, said where the choice is made", () =
     );
     // Each line says how large its file is, where the collection said.
     const rows = within(screen.getByRole("list", { name: "Documents" })).getAllByRole("listitem");
-    await waitFor(() => expect(rows[0]).toHaveTextContent("PDF/2.40 MB"));
+    await waitFor(() => expect(rows[0]).toHaveTextContent("PDF · , 2.40 MB"));
     expect(rows[1]).not.toHaveTextContent("MB");
-    expect(rows[2]).toHaveTextContent("PDF/210 MB");
+    expect(rows[2]).toHaveTextContent("PDF · , 210 MB");
     expect(screen.getByRole("button", { name: "Add all 3 to library" })).toBeInTheDocument();
   });
 

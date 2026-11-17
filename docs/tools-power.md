@@ -256,14 +256,14 @@ closed or left (a save made as the page closes asks the browser to finish it aft
 page has gone). A plan whose name has been emptied is not saved until it has one again.
 Each save says which version it was made from; if another tab or device has saved the
 plan since, nothing is written over it, saving stops, and the page says so and offers
-**Keep my version** or **Load the other version**, as a note does. A save made as the
+**Keep my version** or **Load the other version**, as a page in Notes does. A save made as the
 page closes while another save is still under way goes without that check, since it
 cannot know the version the first will make. A device of your own changed in two places
 is refused the same way, and the dialog says to open it again. Plans can be copied (named "… (copy)"), deleted, compared
 side by side on the Power and batteries screen, and written out as a PDF with Save as
 PDF, Add to library and Share (the PDF is made from the plan as last saved, dated by its
-last change, and linked back to `/tools/power/plans/:id`). To link one from a note, put
-that address in the note's link field; the plan's page shows it.
+last change, and linked back to `/tools/power/plans/:id`). To link one from a page in Notes,
+put that address in the page’s link field; the plan's page shows it.
 
 ### Peak sun hours from Weather and hazards
 

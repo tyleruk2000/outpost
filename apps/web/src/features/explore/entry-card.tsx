@@ -1,36 +1,18 @@
 import type { CatalogEntryDto, DownloadDto } from "@outpost/shared";
 import { Check, CircleAlert, Download, Plus } from "lucide-react";
-import { Fragment, type ReactNode, useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import { Link } from "react-router";
+import { Joined } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { cn, formatNumber } from "@/lib/utils";
 import { DownloadControls, DownloadProgress } from "../downloads/download-progress";
 import { editionText, entryAction, entrySituation, isIncluded, kindText, languageName, licenceText, openTarget, sizeText } from "./catalog";
 
-const Slash = () => (
-  <span aria-hidden className="mx-2 text-border-strong">
-    /
-  </span>
-);
-
 function Facts({ parts }: { parts: ReactNode[] }) {
-  const present = parts.filter(Boolean);
   return (
     <p className="mt-1 text-small text-ink-muted">
-      {present.map((part, index) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: a fixed, ordered list of facts about one entry
-        <Fragment key={index}>
-          {/* A line may break before the slash: a long publisher and its neighbour are otherwise one word, too wide for a phone with large text. */}
-          {index > 0 ? (
-            <>
-              <wbr />
-              <Slash />
-            </>
-          ) : null}
-          {part}
-        </Fragment>
-      ))}
+      <Joined parts={parts} />
     </p>
   );
 }
