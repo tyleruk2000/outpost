@@ -59,6 +59,7 @@ export function prepareDriveDatabase(file: string, contents: DriveContents): { c
         DELETE FROM drive_merges;
         DELETE FROM settings WHERE key = 'backup.schedule';
         DELETE FROM settings WHERE key = 'contacts.carddav';
+        DELETE FROM settings WHERE key = 'tools.mcp';
         DELETE FROM library_meta WHERE key = 'backup.state';
         DELETE FROM chat_conversations;
         DELETE FROM board_messages;
