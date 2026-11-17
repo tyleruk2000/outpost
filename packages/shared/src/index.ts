@@ -57,6 +57,7 @@ export * from "./setup-guide.ts";
 export * from "./shares.ts";
 export * from "./storage.ts";
 export * from "./supplies.ts";
+export * from "./supplies-energy.ts";
 export * from "./system.ts";
 export * from "./weather.ts";
 export * from "./webpages.ts";

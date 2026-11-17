@@ -8,6 +8,8 @@
  * store cupboard, not dietary advice.
  */
 
+import type { EnergySummary } from "./supplies-energy.ts";
+
 // ── What an item is ─────────────────────────────────────────────────────────
 
 export const SUPPLY_CATEGORIES = [
@@ -728,6 +730,8 @@ export interface SupplyOutlookResponse {
   outlook: SupplyOutlook;
   /** What it would take to reach the days wanted, worked out now (not the stored shopping list). */
   missing: ShoppingSuggestion[];
+  /** Days of energy said in sentences, with what is not counted (supplies-energy.ts). */
+  energy: EnergySummary;
 }
 
 // ── CSV ─────────────────────────────────────────────────────────────────────
