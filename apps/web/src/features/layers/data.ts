@@ -1,7 +1,6 @@
 /** Data hooks for the reference layers. Every key starts with "layers" so live events refresh them. */
 import type {
   Bbox,
-  CountryFigureDto,
   DownloadDto,
   LayerSearchResponse,
   PopulationGridResponse,
@@ -28,7 +27,6 @@ export const layersKeys = {
   population: (query: string) => ["layers", "population", query] as const,
   feature: (id: number) => ["layers", "feature", id] as const,
   search: (query: string) => ["layers", "search", query] as const,
-  figures: (country: string) => ["layers", "figures", country] as const,
 };
 
 const filterParams = (filter: ReferenceFilter) => {
@@ -102,13 +100,6 @@ export const useLayerSearch = (text: string, filter: ReferenceFilter) => {
     placeholderData: keepPreviousData,
   });
 };
-
-export const useFigures = (country: string | null) =>
-  useQuery({
-    queryKey: layersKeys.figures(country ?? ""),
-    queryFn: () => api.get<{ figures: CountryFigureDto[] }>(`/api/reference/figures${country ? `?country=${country}` : ""}`),
-    select: (data) => data.figures,
-  });
 
 export async function featuresAt(lat: number, lon: number, filter: ReferenceFilter) {
   const params = filterParams(filter);
