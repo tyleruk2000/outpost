@@ -210,7 +210,11 @@ export function createRunner(ctx: AppContext, store: ChatStore) {
       searchedFor: null,
       omitted: planned.omitted,
       startedAt: Date.now(),
-      blocks: [],
+      // Read from the text when asked for, so that it is never older than the text.
+      get blocks() {
+        reparse();
+        return blocks;
+      },
       listeners: new Set(),
       stop() {
         stoppedByPerson = true;
@@ -228,29 +232,41 @@ export function createRunner(ctx: AppContext, store: ChatStore) {
       for (const listener of run.listeners) listener(event);
     };
 
-    // The reply's text, read into blocks no more often than the reading itself can keep up with.
+    // The reply's text, read into blocks no more often than the reading itself can keep up with,
+    // and only while someone is watching: a reply nobody is looking at is read when someone comes
+    // to look (`run.blocks`).
     let text = "";
+    let readText = "";
+    let blocks: MarkdownBlock[] = [];
     let lastJson: string[] = [];
     let parseTimer: NodeJS.Timeout | undefined;
     let parseCost = 0;
     let savedAt = Date.now();
-    const publish = () => {
-      parseTimer = undefined;
+    /** Reads the text into blocks if it has changed since. Gives the first block that changed, or null when none did. */
+    const reparse = (): number | null => {
+      if (readText === text) return null;
+      readText = text;
       const before = performance.now();
-      const blocks = replyBlocks(text);
-      const json = blocks.map((block) => JSON.stringify(block));
+      const next = replyBlocks(text);
+      const json = next.map((block) => JSON.stringify(block));
       let from = 0;
       while (from < json.length && from < lastJson.length && json[from] === lastJson[from]) from += 1;
       parseCost = performance.now() - before;
-      if (from === json.length && json.length === lastJson.length) return;
+      if (from === json.length && json.length === lastJson.length) return null;
       lastJson = json;
-      run.blocks = blocks;
-      tell({ type: "blocks", from, blocks: blocks.slice(from) });
+      blocks = next;
+      return from;
+    };
+    const publish = () => {
+      parseTimer = undefined;
       // Kept as it grows, so that a server that stops loses a few seconds of a reply and not all of it.
       if (Date.now() - savedAt > 2000) {
         savedAt = Date.now();
         store.patchReply(row.id, { text });
       }
+      if (run.listeners.size === 0) return;
+      const from = reparse();
+      if (from !== null) tell({ type: "blocks", from, blocks: blocks.slice(from) });
     };
     const schedule = () => {
       if (parseTimer) return;

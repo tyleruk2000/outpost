@@ -23,6 +23,7 @@ import type {
 import { type QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { usePageShown } from "./use-page-shown";
 
 export const chatKeys = {
   all: ["chat"] as const,
@@ -51,7 +52,8 @@ export const useChatModels = (enabled: boolean) =>
 export const useConversations = (q: string) =>
   useQuery({
     queryKey: chatKeys.list(q),
-    queryFn: () => api.get<{ conversations: ChatConversationSummary[] }>("/api/chat/conversations", { q }),
+    // A list asked for while the name was still being typed is not wanted any more: its request is dropped.
+    queryFn: ({ signal }) => api.get<{ conversations: ChatConversationSummary[] }>("/api/chat/conversations", { q }, signal),
     placeholderData: (previous) => previous,
   });
 
@@ -171,17 +173,22 @@ function settle(client: QueryClient, id: string, message: ChatMessage): void {
 /**
  * Watches the reply being written in a conversation, while there is one. The reply
  * belongs to the server: leaving this screen, or losing the connection, does not stop
- * it, and coming back picks it up where it now stands.
+ * it, and coming back picks it up where it now stands. So while the page is hidden
+ * (a background tab, a locked phone) nothing is watched at all, and showing it again
+ * asks for the reply as it then stands.
  */
 export function useLiveReply(id: string, writing: boolean): LiveReply | null {
   const client = useQueryClient();
   const [live, setLive] = useState<LiveReply | null>(null);
+  const shown = usePageShown();
+  const watching = writing && shown;
 
   useEffect(() => {
     if (!writing) {
       setLive(null);
       return;
     }
+    if (!watching) return;
     const controller = new AbortController();
     let stopped = false;
     void (async () => {
@@ -225,19 +232,21 @@ export function useLiveReply(id: string, writing: boolean): LiveReply | null {
       stopped = true;
       controller.abort();
     };
-  }, [client, id, writing]);
+  }, [client, id, writing, watching]);
 
   return writing ? live : null;
 }
 
-/** Seconds since `since`, counted while `running`. For a wait that must not look frozen. */
+/** Seconds since `since`, counted while `running` and the page can be seen. For a wait that must not look frozen. */
 export function useElapsedSeconds(since: number | null, running: boolean): number {
   const [now, setNow] = useState(() => Date.now());
+  const shown = usePageShown();
+  const counting = running && shown;
   useEffect(() => {
-    if (!running) return;
+    if (!counting) return;
     setNow(Date.now());
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
-  }, [running]);
+  }, [counting]);
   return since === null ? 0 : Math.max(0, Math.round((now - since) / 1000));
 }

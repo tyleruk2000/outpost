@@ -218,7 +218,7 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
     const subject = `semantic:${provider.modelId}`;
     const last = jobs.findBySubject(subject).at(-1);
     if (!byPerson) {
-      const asked = settings.get("search.semantic.enabled") || last !== undefined || index.count(provider.modelId) > 0;
+      const asked = settings.get("search.semantic.enabled") || last !== undefined || index.has(provider.modelId);
       if (!asked || last?.state === "paused" || last?.state === "cancelled") return;
       if (health && health.modelId === provider.modelId && !health.result.ok && Date.now() - health.at < 60_000) return;
     }
@@ -282,7 +282,7 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
     layer: "semantic",
     isAvailable: () => {
       const provider = currentProvider();
-      return Boolean(provider && index.count(provider.modelId) > 0);
+      return Boolean(provider && index.has(provider.modelId));
     },
     weight: () => settings.get("search.hybrid.semanticWeight"),
     async searchPassages({ q, kinds, limit, within, signal }) {

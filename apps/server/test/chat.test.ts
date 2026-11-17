@@ -368,6 +368,25 @@ describe("a reply as it is written", () => {
     expect(model.abandoned()).toBe(0);
   });
 
+  it("with nobody watching, is still read whole for whoever asks for it part-way", async () => {
+    const { send, watch, open, app, detail } = await station("stand-in-long", { longChunkDelayMs: 3 });
+    const id = await open();
+    await send(id, "Tell me about stoves");
+    await sleep(120);
+    const run = app.ctx.services.chat.runner.of(id);
+    expect(run?.listeners.size).toBe(0);
+    // The conversation as it stands, asked for while nobody watches, holds the reply so far.
+    const midway = (await detail(id)).messages.at(-1)!;
+    expect(midway.state).toBe("writing");
+    expect(wordsOf(midway.blocks)).toMatch(/Paragraph 1\./);
+    const events = await watch(id);
+    expect(events[1]).toMatchObject({ type: "blocks", from: 0 });
+    let built: MarkdownBlock[] = [];
+    for (const event of events) if (event.type === "blocks") built = [...built.slice(0, event.from), ...event.blocks];
+    const done = events.at(-1)!;
+    expect(done.type === "done" && done.message.blocks.slice(0, built.length - 1)).toEqual(built.slice(0, -1));
+  });
+
   it("hides a model's private reasoning", async () => {
     const { open, exchange } = await station("stand-in-think-tags");
     const reply = await exchange(await open(), "Hello there");

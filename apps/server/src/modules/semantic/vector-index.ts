@@ -22,6 +22,8 @@ export interface VectorIndex {
   /** Nearest `limit` chunks to `vector`, optionally restricted to some entity kinds, or to the passages of one item. */
   query(modelId: string, vector: Float32Array, limit: number, kinds?: string[], within?: { kind: string; entityId: string }): VectorHit[];
   count(modelId: string): number;
+  /** Whether any vector is stored for the model. Asked on every search, so it does not count them. */
+  has(modelId: string): boolean;
   removeModel(modelId: string): number;
 }
 
@@ -42,6 +44,8 @@ export function createFlatVectorIndex(sqlite: Sqlite): VectorIndex {
      VALUES (?, ?, ?, ?, ?)
      ON CONFLICT (chunk_id, model_id) DO UPDATE SET vector = excluded.vector, content_hash = excluded.content_hash, created_at = excluded.created_at`,
   );
+  const counted = sqlite.prepare("SELECT count(*) AS n FROM embeddings WHERE model_id = ?");
+  const anyFor = sqlite.prepare("SELECT 1 FROM embeddings WHERE model_id = ? LIMIT 1").pluck();
   const upsertMany = sqlite.transaction((modelId: string, items: Array<{ chunkId: number; contentHash: string; vector: Float32Array }>) => {
     const now = Date.now();
     for (const item of items) insert.run(item.chunkId, modelId, vectorToBlob(item.vector), item.contentHash, now);
@@ -81,7 +85,11 @@ export function createFlatVectorIndex(sqlite: Sqlite): VectorIndex {
     },
 
     count(modelId) {
-      return (sqlite.prepare("SELECT count(*) AS n FROM embeddings WHERE model_id = ?").get(modelId) as { n: number }).n;
+      return (counted.get(modelId) as { n: number }).n;
+    },
+
+    has(modelId) {
+      return anyFor.get(modelId) !== undefined;
     },
 
     removeModel(modelId) {

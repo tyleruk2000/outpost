@@ -476,11 +476,11 @@ export function createSearchService(ctx: AppContext): SearchService {
   function keywordSearch(
     params: SearchParams,
     limit: number,
-  ): { results: SearchResult[]; relaxed: boolean; facets: Record<string, number> } {
+  ): { results: SearchResult[]; relaxed: boolean; facets: Record<string, number>; total: number } {
     const parsed = parseQuery(params.q);
     const tagClause = params.tag ? ` AND {tags}: "${params.tag.replace(/"/g, '""')}"` : "";
     let match = toFtsQuery(parsed, "all");
-    if (!match) return { results: [], relaxed: false, facets: {} };
+    if (!match) return { results: [], relaxed: false, facets: {}, total: 0 };
 
     // Fetch more passages than results wanted: several can belong to one entity.
     let rows = keywordRows(match + tagClause, params, limit * 6);
@@ -533,8 +533,10 @@ export function createSearchService(ctx: AppContext): SearchService {
       .all(match + tagClause) as Array<{ kind: string; n: number }>;
     const facets: Record<string, number> = {};
     for (const row of facetRows) facets[row.kind] = row.n;
+    // Every item that matches, of the kinds asked for: the rows above stop at what this page needs.
+    const total = facetRows.filter((row) => !params.kinds?.length || params.kinds.includes(row.kind)).reduce((sum, row) => sum + row.n, 0);
 
-    return { results: results.map(({ best: _best, ...result }) => result), relaxed, facets };
+    return { results: results.map(({ best: _best, ...result }) => result), relaxed, facets, total };
   }
 
   /** The passages whose words match, best first, with the share of the question's words each holds. */
@@ -762,7 +764,7 @@ export function createSearchService(ctx: AppContext): SearchService {
         return { query: q, mode, relaxed: false, total: 0, results: [], facets: {}, warnings, ...later, tookMs: 0 };
       }
 
-      const keyword = mode === "semantic" ? { results: [], relaxed: false, facets: {} } : keywordSearch(params, window);
+      const keyword = mode === "semantic" ? { results: [], relaxed: false, facets: {}, total: 0 } : keywordSearch(params, window);
       const lists =
         mode === "semantic" ? [] : [{ weight: ctx.services.settings.get("search.hybrid.keywordWeight"), items: keyword.results }];
 
@@ -826,7 +828,8 @@ export function createSearchService(ctx: AppContext): SearchService {
         query: q,
         mode,
         relaxed: keyword.relaxed,
-        total: results.length,
+        // Results found another way can only add to what the words found.
+        total: Math.max(results.length, keyword.total),
         results: results.slice(offset, offset + limit),
         facets: keyword.facets,
         warnings,

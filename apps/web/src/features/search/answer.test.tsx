@@ -523,6 +523,37 @@ describe("Answer from my library", () => {
     expect(within(panel).getByText("Water treatment in the field, Boiling, page 3")).toBeInTheDocument();
   });
 
+  it("draws nothing while the page is hidden, and everything that arrived once it is shown", async () => {
+    const served = serve(ready);
+    const { store } = show("how long to boil water");
+    await ask();
+    await served.send(sourcesEvent(), { type: "delta", text: "Boil it " });
+    const panel = screen.getByRole("region", { name: "Generated answer" });
+    const drawn = vi.fn();
+    const unsubscribe = store.subscribe(drawn);
+    const hide = (hidden: boolean) =>
+      act(() => {
+        Object.defineProperty(document, "visibilityState", { configurable: true, get: () => (hidden ? "hidden" : "visible") });
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+    try {
+      hide(true);
+      await served.send({ type: "delta", text: "for one " }, { type: "delta", text: "minute [1]." });
+      expect(drawn).not.toHaveBeenCalled();
+      expect(within(panel).getByTestId("answer-text")).toHaveTextContent("Boil it");
+      hide(false);
+      expect(drawn).toHaveBeenCalledTimes(1);
+      expect(within(panel).getByTestId("answer-text")).toHaveTextContent("Boil it for one minute [1].");
+      // Hidden again when it finishes: what was held is drawn with the end, and nothing is lost.
+      hide(true);
+      await served.send({ type: "delta", text: " Let it cool." }, done());
+      expect(within(panel).getByTestId("answer-text")).toHaveTextContent("Boil it for one minute [1]. Let it cool.");
+    } finally {
+      unsubscribe();
+      Reflect.deleteProperty(document, "visibilityState");
+    }
+  });
+
   it("keeps the answer while the person is away reading a source, labelled with its question", async () => {
     const served = serve(ready);
     const first = show("how long to boil water");
