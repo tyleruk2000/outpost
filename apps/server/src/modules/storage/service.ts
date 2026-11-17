@@ -31,6 +31,36 @@ interface Marker {
   createdAt: number;
 }
 
+/** The path with every symbolic link in the part of it that exists followed. */
+function realPathOf(target: string): string {
+  let existing = path.resolve(target);
+  const tail: string[] = [];
+  while (!fs.existsSync(existing)) {
+    const parent = path.dirname(existing);
+    if (parent === existing) break;
+    tail.unshift(path.basename(existing));
+    existing = parent;
+  }
+  try {
+    return path.join(fs.realpathSync(existing), ...tail);
+  } catch {
+    return path.resolve(target);
+  }
+}
+
+/**
+ * Whether `target` is inside one of the storage roots, both as written and once symbolic
+ * links are followed. A link inside a root can lead anywhere: macOS keeps one in the
+ * default root itself (`/Volumes/Macintosh HD` is a link to `/`), so a path through it
+ * is "inside /Volumes" as written and is really the whole computer.
+ */
+export function isInsideRoots(roots: readonly string[], target: string): boolean {
+  const resolved = path.resolve(target);
+  if (!roots.some((root) => isInside(root, resolved))) return false;
+  const real = realPathOf(resolved);
+  return roots.some((root) => isInside(realPathOf(root), real));
+}
+
 export interface BrowseEntry {
   name: string;
   path: string;
@@ -165,7 +195,7 @@ export function createStorageService(ctx: AppContext): StorageService {
   const roots = config.storageRoots;
 
   function insideRoots(target: string): boolean {
-    return roots.some((root) => isInside(root, target));
+    return isInsideRoots(roots, target);
   }
 
   function get(id: string): LocationRow {

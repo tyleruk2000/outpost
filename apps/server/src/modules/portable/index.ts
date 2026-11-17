@@ -24,7 +24,7 @@ import { createHttpClient, type HttpClient } from "../../core/http.ts";
 import { newId } from "../../core/ids.ts";
 import { PermanentJobError, toJobDto } from "../../core/jobs.ts";
 import { collections, documents } from "../../db/schema.ts";
-import { SPACE_RESERVE_BYTES } from "../storage/service.ts";
+import { isInsideRoots, SPACE_RESERVE_BYTES } from "../storage/service.ts";
 import { VERSION } from "../system/index.ts";
 import { prepareDriveDatabase } from "./database.ts";
 import {
@@ -168,7 +168,7 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
   /** The folder must be inside a storage root, and must not be somewhere Outpost itself lives. */
   function resolveTarget(input: string): string {
     const target = path.resolve(input);
-    if (!config.storageRoots.some((root) => isInside(root, target) && root !== target)) {
+    if (config.storageRoots.includes(target) || !isInsideRoots(config.storageRoots, target)) {
       throw new AppError("forbidden", "Choose a folder on a drive that is inside one of the storage roots this server allows.");
     }
     if (isInside(config.dataDir, target) || isInside(target, config.dataDir)) {
