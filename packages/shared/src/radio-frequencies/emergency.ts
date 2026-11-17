@@ -81,7 +81,7 @@ export const EMERGENCY: FrequencyEntry[] = [
     bands: ["fm"],
     where: ["IE"],
     expect: "Local and national stations with news and official advice. The booklet names no station or frequency.",
-    reception: "FM throughout Ireland. " + LOCAL_FM,
+    reception: `FM throughout Ireland. ${LOCAL_FM}`,
     status: "on-air",
     notes: [
       "RTÉ Radio 1's long-wave service on 252 kHz ended on 14 April 2023: a long-wave set will not find it (see the closed entry).",
@@ -131,7 +131,7 @@ export const EMERGENCY: FrequencyEntry[] = [
     where: ["US"],
     expect:
       "The EAS attention tones and a spoken alert breaking into a station's programme, then local news and instructions. Any local AM or FM station will carry it; there is no single EAS frequency.",
-    reception: "Every AM and FM broadcast station takes part. " + LOCAL_FM,
+    reception: `Every AM and FM broadcast station takes part. ${LOCAL_FM}`,
     status: "on-air",
     notes: [
       "Ready.gov: EAS 'is also used when all other means of alerting the public are unavailable'.",
@@ -193,7 +193,7 @@ export const EMERGENCY: FrequencyEntry[] = [
     where: ["DE"],
     expect:
       "Official warnings read on air, with what to do. When a siren sounds, the BBK says to find out about the danger on the radio, in warning apps or on websites.",
-    reception: "FM and DAB+ nationwide. " + LOCAL_FM,
+    reception: `FM and DAB+ nationwide. ${LOCAL_FM}`,
     status: "on-air",
     notes: [
       "The BBK names the kinds of station that carry warnings (überregionale, landesweite and many local stations, analogue and DAB+), not particular ones.",
@@ -226,7 +226,7 @@ export const EMERGENCY: FrequencyEntry[] = [
     bands: ["fm"],
     where: ["AT"],
     expect: "Information on the situation and official instructions on Ö3 and ORF radio, round the clock in a blackout.",
-    reception: "FM throughout Austria. " + LOCAL_FM,
+    reception: `FM throughout Austria. ${LOCAL_FM}`,
     status: "on-air",
     notes: [
       "Suitable sets that do not need mains power: crank or battery radios with spare batteries, or the car radio (oesterreich.gv.at).",
@@ -292,7 +292,7 @@ export const EMERGENCY: FrequencyEntry[] = [
     where: ["SE"],
     expect:
       "VMA announcements, official announcements, local news, where to get water, where to go for help, evacuations. On hearing the outdoor warning signal: go indoors and listen to P4.",
-    reception: "FM nationwide, chosen because the FM network keeps working when power, phone and internet are down. " + LOCAL_FM,
+    reception: `FM nationwide, chosen because the FM network keeps working when power, phone and internet are down. ${LOCAL_FM}`,
     status: "on-air",
     notes: [
       "Listen on a battery, solar or wind-up radio, or a car radio (MCF).",
@@ -355,7 +355,7 @@ export const EMERGENCY: FrequencyEntry[] = [
     bands: ["fm"],
     where: ["DK"],
     expect: "The beredskabsmeddelelse: what the situation is and what to do.",
-    reception: "FM nationwide. " + LOCAL_FM,
+    reception: `FM nationwide. ${LOCAL_FM}`,
     status: "on-air",
     sources: [
       src(
@@ -380,7 +380,7 @@ export const EMERGENCY: FrequencyEntry[] = [
     bands: ["fm"],
     where: ["FI"],
     expect: "Emergency warnings read on air, and instructions from the authorities.",
-    reception: "FM nationwide. " + LOCAL_FM,
+    reception: `FM nationwide. ${LOCAL_FM}`,
     status: "on-air",
     notes: ["Keep a battery-powered radio and spare batteries (72 tuntia)."],
     sources: [
@@ -447,7 +447,7 @@ export const EMERGENCY: FrequencyEntry[] = [
     bands: ["fm"],
     where: ["LT"],
     expect: "Official warnings, evacuation orders and safety advice from state institutions.",
-    reception: "FM nationwide. " + LOCAL_FM,
+    reception: `FM nationwide. ${LOCAL_FM}`,
     status: "on-air",
     sources: [
       src(
@@ -472,7 +472,7 @@ export const EMERGENCY: FrequencyEntry[] = [
     bands: ["fm"],
     where: ["CZ"],
     expect: "Special news bulletins with official instructions after the 140-second wavering siren tone.",
-    reception: "FM nationwide. " + LOCAL_FM,
+    reception: `FM nationwide. ${LOCAL_FM}`,
     status: "on-air",
     sources: [src("Hasičský záchranný sbor České republiky", "Varování obyvatelstva", "https://hzscr.gov.cz/varovani-obyvatelstva")],
     aliases: ["Radiožurnál", "Radiozurnal", "Český rozhlas", "Cesky rozhlas", "HZS", "všeobecná výstraha"],
@@ -559,7 +559,7 @@ export const EMERGENCY: FrequencyEntry[] = [
     where: ["BE"],
     expect:
       "Official instructions (shelter, evacuation, when it is safe to go out). The National Crisis Centre names no station or frequency.",
-    reception: "FM nationwide. " + LOCAL_FM,
+    reception: `FM nationwide. ${LOCAL_FM}`,
     status: "on-air",
     notes: ["BE-Alert, the alert by text message and call, needs registration in advance at be-alert.be."],
     sources: [
@@ -589,7 +589,7 @@ export const EMERGENCY: FrequencyEntry[] = [
     bands: ["fm"],
     where: ["FR"],
     expect: "Alert messages and official instructions, local on ici (formerly France Bleu).",
-    reception: "FM nationwide. " + LOCAL_FM,
+    reception: `FM nationwide. ${LOCAL_FM}`,
     status: "on-air",
     notes: ["FR-Alert, alerts to mobile phones, and the sirens of the national alert system are separate channels."],
     sources: [

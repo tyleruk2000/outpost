@@ -14,10 +14,9 @@ import {
   formatFrequency,
   isCountryCode,
   isDay,
-  RADIO_FREQUENCIES,
-  RADIO_FREQUENCY_GUIDES,
   regionById,
 } from "@outpost/shared";
+import { RADIO_FREQUENCIES, RADIO_FREQUENCY_GUIDES } from "@outpost/shared/radio-frequencies-data";
 import { describe, expect, it } from "vitest";
 
 /** No entry may be checked after the day this file was last changed by more than a year: a slip in the year. */
