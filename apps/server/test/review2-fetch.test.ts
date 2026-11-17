@@ -116,7 +116,8 @@ describe("the hosts Outpost asks, against what the documentation says", () => {
   it("names every host the code asks in security.md and offline.md", () => {
     const missing: string[] = [];
     for (const [host, files] of inCode) {
-      if (LINKS_ONLY.has(host) || NAMESPACES.has(host) || host.endsWith(".invalid") || host === "127.0.0.1" || host === "localhost") continue;
+      if (LINKS_ONLY.has(host) || NAMESPACES.has(host) || host.endsWith(".invalid") || host === "127.0.0.1" || host === "localhost")
+        continue;
       const where = ` (${[...new Set(files)].join(", ")})`;
       if (!security.includes(host)) missing.push(`security.md lacks ${host}${where}`);
       if (!SECURITY_ONLY.has(host) && !NAMED_AS_A_SETTING.has(host) && !offline.includes(host))

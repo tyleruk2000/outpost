@@ -15,7 +15,9 @@ const SECRET_PHONE = "07700 900461";
 const SECRET_NOTE = "Zebedee keeps the spare key under the third flowerpot";
 const ARMOR = fs.readFileSync(path.join(import.meta.dirname, "fixtures/pgp/message-symmetric.asc"), "utf8").trim();
 /** A piece of the armour's body, to look for in what the tools say. */
-const CIPHER = ARMOR.split("\n").find((line) => line.length > 40)!.slice(0, 30);
+const CIPHER = ARMOR.split("\n")
+  .find((line) => line.length > 40)!
+  .slice(0, 30);
 const DIARY = "the diary says the bothy combination is nine three one";
 
 beforeAll(async () => {

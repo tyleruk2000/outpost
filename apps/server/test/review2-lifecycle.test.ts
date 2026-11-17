@@ -31,9 +31,10 @@ function setMesh(app: TestApp, host: string): void {
     .run();
 }
 
-const meshRow = (app: TestApp) => app.ctx.db.select().from(settings).where(eq(settings.key, "mesh.config")).get()?.value as
-  | { meshtastic?: { mode?: string; client?: { host?: string } } }
-  | undefined;
+const meshRow = (app: TestApp) =>
+  app.ctx.db.select().from(settings).where(eq(settings.key, "mesh.config")).get()?.value as
+    | { meshtastic?: { mode?: string; client?: { host?: string } } }
+    | undefined;
 
 const opened: Array<() => Promise<void>> = [];
 afterEach(async () => {

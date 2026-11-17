@@ -38,7 +38,11 @@ describe("a Geofabrik extract whose MD5 cannot be read", () => {
 
   it("is not fetched or read without the checksum", async () => {
     expect((await app.api("POST", "/api/reference/regions", {})).status).toBe(200);
-    const found = await app.api("POST", "/api/reference/estimate", { provider: "osm-extract", scope: { regions: ["us/ohio"] }, layers: ["food"] });
+    const found = await app.api("POST", "/api/reference/estimate", {
+      provider: "osm-extract",
+      scope: { regions: ["us/ohio"] },
+      layers: ["food"],
+    });
     if (found.status === 200) {
       const started = await app.api("POST", "/api/reference/downloads", {
         estimateId: found.body.estimateId,

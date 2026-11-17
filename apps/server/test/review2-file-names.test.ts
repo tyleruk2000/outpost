@@ -17,7 +17,7 @@ describe("a long name in a script of several bytes a character", () => {
       expect(Buffer.byteLength(safe)).toBeLessThanOrEqual(240);
       expect(path.extname(safe)).toBe(path.extname(name));
       expect(safe).not.toMatch(/�/);
-      expect(safe.isWellFormed()).toBe(true);
+      expect(safe).not.toMatch(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/);
       fs.writeFileSync(path.join(dir, safe), "x");
     }
   });

@@ -70,7 +70,13 @@ describe("a page on another site", () => {
   });
 
   it("is refused for every way of writing an origin that is not this one", async () => {
-    for (const origin of ["http://localhost.evil.example:8080", "http://localhost@evil.example:8080", "null", "file://", "http://[::1]:8080"]) {
+    for (const origin of [
+      "http://localhost.evil.example:8080",
+      "http://localhost@evil.example:8080",
+      "null",
+      "file://",
+      "http://[::1]:8080",
+    ]) {
       expect((await send({ "content-type": "application/json", origin })).statusCode, origin).toBe(403);
     }
   });
