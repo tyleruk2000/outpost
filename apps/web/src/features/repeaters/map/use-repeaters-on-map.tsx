@@ -45,6 +45,8 @@ export interface RepeatersOnMap {
   setOn(on: boolean): void;
   /** The card for the repeater that is open, or for having none to show. Null when there is nothing to say. */
   card: ReactNode | null;
+  /** The repeater's estimated range is drawn and its card folded to one line: on a phone the readout steps aside for the outline. */
+  ranging: boolean;
 }
 
 /** The end of a line-of-sight path that a repeater makes, named so that the check says what its position is worth. */
@@ -346,5 +348,5 @@ export function useRepeatersOnMap({
     }
   }
 
-  return { on, setOn, card };
+  return { on, setOn, card, ranging: Boolean(card && range.folded && card === range.folded) };
 }

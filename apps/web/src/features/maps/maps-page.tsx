@@ -30,7 +30,7 @@ import { useReferenceLayers } from "@/features/layers/use-reference-layers";
 import { type SightStart, useRepeatersOnMap } from "@/features/repeaters/map/use-repeaters-on-map";
 import { errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
-import { plural } from "@/lib/utils";
+import { cn, plural } from "@/lib/utils";
 import { CentreMark } from "./centre-mark";
 import {
   useDeleteMarker,
@@ -1551,7 +1551,12 @@ export default function MapsPage() {
               }
               // On a phone the credits always have a line of their own under the readout, never the space beside it:
               // what the readout has room for is worked out from their height, which must not depend on the answer.
-              className="w-full max-md:flex-col max-md:flex-nowrap max-md:items-stretch"
+              // While a repeater's estimated range is drawn on a phone, the coordinates of the centre step aside (they are
+              // in the Sun tab and under a long press) so that the outline has the room: at large text it was 70 px across.
+              className={cn(
+                "w-full max-md:flex-col max-md:flex-nowrap max-md:items-stretch",
+                repeaters.ranging && "max-md:[&_.outpost-readout-row]:hidden",
+              )}
             />
           }
         />

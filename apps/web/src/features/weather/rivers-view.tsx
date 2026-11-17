@@ -39,6 +39,7 @@ import { BackLink, Joined, Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
+import { formatTimeOfDay } from "@/lib/clock";
 import { formatDateTime, plural } from "@/lib/utils";
 import { AgeLine, Credit } from "./age-line";
 import { useSetRiversKm, useStationReadings } from "./data";
@@ -49,10 +50,11 @@ const link = "text-primary underline underline-offset-2";
 /** "1.09 m above Ordnance Datum". */
 export const levelText = (value: number, unit: string): string => `${value.toFixed(2)} ${DATUM_SHORT[datumOf(unit)]}`;
 
-/** "measured 17 Nov, 11:15 (14 hours ago)": when the Agency measured it, against now. */
+/** "measured 11:15 (2 hours ago)" today, "measured 16 Nov 2026, 11:15 (a day ago)" before: when the Agency measured it, against now. */
 export const measuredText = (t: number, now: number): string => {
   const ago = now - t < 60_000 ? "just now" : `${ageWords(Math.max(0, now - t))} ago`;
-  return `measured ${formatDateTime(t)} (${ago})`;
+  const today = new Date(t).toDateString() === new Date(now).toDateString();
+  return `measured ${today ? formatTimeOfDay(t) : formatDateTime(t)} (${ago})`;
 };
 
 /** "Rising 0.05 m over the 3 hours to 11:15 (Outpost's reading of the figures held)". */
