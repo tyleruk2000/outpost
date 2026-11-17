@@ -80,6 +80,29 @@ describe("the database on the Storage screen", () => {
     expect(JSON.stringify(now)).not.toMatch(/passphrase|secret|privateKey/i);
   });
 
+  it("counts documents as the Library does: a book's chapters are the book, not documents", async () => {
+    const app = await start();
+    const location = (app.ctx.sqlite.prepare("SELECT id FROM storage_locations").get() as { id: string }).id;
+    const now = Date.now();
+    const document = app.ctx.sqlite.prepare(
+      "INSERT INTO documents (id, title, original_name, mime, ext, size_bytes, sha256, location_id, rel_path, created_at, updated_at) VALUES (?, ?, ?, 'text/markdown', 'md', 10, 'x', ?, ?, ?, ?)",
+    );
+    document.run("own", "Kit list", "a.md", location, "documents/a/a.md", now, now);
+    app.ctx.sqlite
+      .prepare(
+        "INSERT INTO collections (id, kind, title, location_id, rel_path, size_bytes, meta, installed_at, updated_at) VALUES ('book', 'file', 'Handbook', ?, 'b', 20, '{}', ?, ?)",
+      )
+      .run(location, now, now);
+    for (const n of [1, 2]) {
+      document.run(`ch-${n}`, `Chapter ${n}`, `${n}.md`, location, `b/${n}.md`, now, now);
+      app.ctx.sqlite
+        .prepare("INSERT INTO book_chapters (collection_id, document_id, key, position) VALUES ('book', ?, ?, ?)")
+        .run(`ch-${n}`, String(n), n);
+    }
+    const counts = Object.fromEntries((await measured(app, true)).contents!.counts.map((entry) => [entry.id, entry.count]));
+    expect(counts.documents).toBe(1);
+  });
+
   it("counts what is kept, and says where every byte of the file goes", async () => {
     const app = await start();
     for (const title of ["One", "Two"]) expect((await app.api("POST", "/api/notes", { title })).status).toBe(200);

@@ -113,7 +113,7 @@ describe("the Database section", () => {
     show();
     expect(document.querySelector("[aria-busy]")).not.toBeNull();
     expect(await screen.findByText("/data/outpost.db")).toBeTruthy();
-    expect(screen.getByText(/in the write-ahead log beside it/)).toBeTruthy();
+    expect(screen.getByText(/of recent changes kept beside it/)).toBeTruthy();
     expect(
       screen.getByText(
         /68,600 passages in the search index, 68,600 passages read for search by meaning, 400 pages of notes and 1 saved place\./,
@@ -124,7 +124,18 @@ describe("the Database section", () => {
     // Parts with nothing in them are left out; unused space is always shown.
     expect(within(table).queryByText("Radio")).toBeNull();
     expect(within(table).getByText("Unused")).toBeTruthy();
-    expect(screen.getByText(/with SQLite's dbstat table/)).toBeTruthy();
+    expect(screen.getByText(/by reading every part of the .* file\. The parts add up to the file exactly\./)).toBeTruthy();
+    // A household's words in plain view; the database's own terms only behind "Technical details".
+    const details = screen.getByText("Technical details").closest("details")!;
+    for (const word of [/SQLite/, /write-ahead log/, /dbstat/]) {
+      const outside = [...document.body.querySelectorAll("p, li, dd > span, dd > div")].filter(
+        (element) => !details.contains(element) && word.test(element.textContent ?? ""),
+      );
+      expect(outside.map((element) => element.textContent)).toEqual([]);
+    }
+    expect(details).toHaveTextContent(/SQLite 3\.54\.1/);
+    expect(details).toHaveTextContent(/write-ahead log/);
+    expect(details).toHaveTextContent(/dbstat/);
     expect(screen.getByText(/Last backed up 2 hours ago .*on the schedule/)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Backup settings" }).getAttribute("href")).toBe("/settings#backup");
     expect(screen.getByText(/No problems found by the quick check/)).toBeTruthy();
@@ -197,7 +208,7 @@ describe("the Database section", () => {
     show();
     await userEvent.click(await screen.findByRole("button", { name: "Check the database" }));
     expect(requests).toEqual([{ call: "POST /api/database/check", body: { kind: "quick" } }]);
-    expect(await screen.findByText("Checking every page now.")).toBeTruthy();
+    expect(await screen.findByText("Checking every part now.")).toBeTruthy();
 
     vi.unstubAllGlobals();
     serve(

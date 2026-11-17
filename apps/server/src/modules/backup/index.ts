@@ -21,8 +21,9 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { pipeline as pipe, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import type { BackupStatus } from "@outpost/shared";
+import type { BackupDownloaded, BackupStatus } from "@outpost/shared";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest } from "../../core/errors.ts";
@@ -36,15 +37,28 @@ import { assertBackupRight, backupRight } from "./right.ts";
 export { applyPendingRestore } from "./restore.ts";
 
 const BACKUP_TYPES = /^application\/(zip|vnd\.outpost\.backup)\b/i;
+/** The last backup saved from Settings: a fact about this library, kept with the others. */
+const DOWNLOADED_KEY = "backup.downloaded";
 
 export async function registerBackup(app: FastifyInstance, ctx: AppContext): Promise<void> {
   const { dataDir } = ctx.config;
   const stager = createRestoreStager(ctx);
   const protection = registerProtection(app, ctx);
 
+  const lastDownload = (): BackupDownloaded | null => {
+    const row = ctx.sqlite.prepare("SELECT value FROM library_meta WHERE key = ?").get(DOWNLOADED_KEY) as { value: string } | undefined;
+    try {
+      const value = JSON.parse(row?.value ?? "null") as BackupDownloaded | null;
+      return value && typeof value.at === "number" && typeof value.name === "string" && typeof value.bytes === "number" ? value : null;
+    } catch {
+      return null;
+    }
+  };
+
   app.get("/api/backup/status", async (request): Promise<BackupStatus> => {
     const kept = (await fs.promises.readdir(dataDir)).filter((name) => name.startsWith("before-restore-")).sort();
     return {
+      lastDownload: lastDownload(),
       restorePending: stager.pending(),
       previousData: kept,
       supervised: process.env.OUTPOST_SUPERVISED === "true",
@@ -67,10 +81,26 @@ export async function registerBackup(app: FastifyInstance, ctx: AppContext): Pro
     fileKey?.fill(0);
     reply.raw.on("close", cleanup);
     const stamp = manifest.createdAt.slice(0, 16).replace(/[:T]/g, "-");
+    const name = `outpost-backup-${stamp}.zip${fileKey ? ".enc" : ""}`;
+    // Counted on the way out, and recorded once the whole file has been sent, so that Settings can say it was made.
+    let bytes = 0;
+    const counted = new Transform({
+      transform(chunk: Buffer, _encoding, done) {
+        bytes += chunk.length;
+        done(null, chunk);
+      },
+    });
+    pipe(output, counted, () => {});
+    reply.raw.on("finish", () => {
+      const value: BackupDownloaded = { at: Date.now(), name, bytes };
+      ctx.sqlite
+        .prepare("INSERT INTO library_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+        .run(DOWNLOADED_KEY, JSON.stringify(value));
+    });
     reply
       .header("Content-Type", fileKey ? PROTECTED_TYPE : "application/zip")
-      .header("Content-Disposition", `attachment; filename="outpost-backup-${stamp}.zip${fileKey ? ".enc" : ""}"`);
-    return reply.send(output);
+      .header("Content-Disposition", `attachment; filename="${name}"`);
+    return reply.send(counted);
   });
 
   // The backup is sent as the raw request body and streamed straight to disk.

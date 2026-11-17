@@ -395,7 +395,8 @@ describe("a plan", () => {
 
   it("asks for two stations before there is anything to work out", async () => {
     show("/radio/plans/p1", { plan: planOf({ stations: [], workedOut: false }) });
-    expect(await screen.findByText(/No stations yet\. Add the first/)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "No stations yet" })).toBeInTheDocument();
+    expect(screen.getByText(/^Add the first: home, a shelter/)).toBeInTheDocument();
     expect(screen.getByText("A plan needs at least two stations before there is a pair to work out.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Work out the plan" })).toBeDisabled();
   });

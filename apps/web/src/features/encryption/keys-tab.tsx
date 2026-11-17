@@ -738,12 +738,12 @@ function RevocationDialog({ entry, onClose }: { entry: ShelfKey; onClose(): void
           ) : null}
         </DialogBody>
         <DialogFooter>
+          <Button onClick={onClose}>{certificate ? "Done" : "Cancel"}</Button>
           {!certificate && unlocked.has(entry.fingerprint) ? (
             <Button variant="primary" onClick={() => void make()}>
               Make certificate
             </Button>
           ) : null}
-          <Button onClick={onClose}>{certificate ? "Done" : "Cancel"}</Button>
         </DialogFooter>
         <ConfirmDialog
           open={confirming}

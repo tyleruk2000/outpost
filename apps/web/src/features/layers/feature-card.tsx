@@ -12,14 +12,16 @@ import {
   type ReferenceSourceInfo,
 } from "@outpost/shared";
 import type { UseQueryResult } from "@tanstack/react-query";
-import { ExternalLink, FileText } from "lucide-react";
+import { ChevronDown, ChevronUp, ExternalLink, FileText, X } from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { formatPosition } from "@/features/maps/lib/coords";
 import { MapCard } from "@/features/maps/map-chrome";
-import { Fact } from "@/features/maps/ui";
+import { Fact, mapCard } from "@/features/maps/ui";
 import { errorMessage } from "@/lib/api";
-import { formatDate } from "@/lib/utils";
+import { cn, formatDate, plural } from "@/lib/utils";
 import { AirportFrequencies } from "./airport-frequencies";
 import { ProvenanceMark } from "./marks";
 
@@ -78,6 +80,8 @@ function Body({ feature }: { feature: ReferenceFeatureDetail }) {
         {feature.kindLabel}, in {layer.label.toLowerCase()}
         {feature.country ? `, ${feature.country}` : ""}
       </p>
+      {/* An airport's frequencies come first: they are what its card is opened for, and on a phone there is room for little else. */}
+      {feature.airportFrequencies ? <AirportFrequencies frequencies={feature.airportFrequencies} /> : null}
       <details className="mt-2">
         <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
           <ProvenanceLine provenance={feature.provenance} />
@@ -128,7 +132,6 @@ function Body({ feature }: { feature: ReferenceFeatureDetail }) {
       ) : (
         <p className="mt-2 text-small text-ink-muted">Its place is not documented, so it is not on the map.</p>
       )}
-      {feature.airportFrequencies ? <AirportFrequencies frequencies={feature.airportFrequencies} /> : null}
       <p className="mt-2 border-t border-border pt-2 text-small text-ink-muted">
         {feature.source.providerName}, {feature.source.license}, fetched {formatDate(feature.source.retrievedAt)}.{" "}
         {feature.source.sourceUrl ? (
@@ -205,12 +208,52 @@ export function FeatureCard({
       </MapCard>
     );
   }
-  const feature = query.data;
+  return <RecordCard feature={query.data} alsoHere={alsoHere} onOpen={onOpen} onClose={onClose} />;
+}
+
+function RecordCard({
+  feature,
+  alsoHere,
+  onOpen,
+  onClose,
+}: {
+  feature: ReferenceFeatureDetail;
+  alsoHere: Array<{ id: number; name: string; kindLabel: string; provenance: FeatureProvenance }>;
+  onOpen: (id: number) => void;
+  onClose: () => void;
+}) {
+  const [folded, setFolded] = useState(false);
+  const name = feature.name || feature.kindLabel;
+  // An airport's card is long; as the repeater's card does, it folds to one line to give the map back.
+  const listed = feature.airportFrequencies?.list.length ?? 0;
+  if (folded) {
+    return (
+      <section aria-label={`${name}: radio frequencies`} className={cn(mapCard, "py-1.5")}>
+        <div className="flex items-center gap-2">
+          <h2 className="min-w-0 flex-1 truncate font-title text-body font-semibold text-ink">{name}</h2>
+          <Button variant="ghost" size="icon-sm" aria-label="Show the details" aria-expanded={false} onClick={() => setFolded(false)}>
+            <ChevronUp />
+          </Button>
+          <Button variant="ghost" size="icon-sm" aria-label="Close this record" onClick={onClose} className="-mr-1.5">
+            <X />
+          </Button>
+        </div>
+        <p className="tabular text-small text-ink-muted">{plural(listed, "radio frequency", "radio frequencies")}</p>
+      </section>
+    );
+  }
   return (
     <MapCard
-      title={<span className="font-title">{feature.name || feature.kindLabel}</span>}
+      title={<span className="font-title">{name}</span>}
       onClose={onClose}
       closeLabel="Close this record"
+      action={
+        listed > 0 ? (
+          <Button variant="ghost" size="icon-sm" aria-label="Show less" aria-expanded onClick={() => setFolded(true)} className="-mt-1">
+            <ChevronDown />
+          </Button>
+        ) : undefined
+      }
     >
       <Body feature={feature} />
       {alsoHere.length > 0 ? (

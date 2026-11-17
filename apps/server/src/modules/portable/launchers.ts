@@ -155,7 +155,7 @@ export function readme(input: { version: string; createdAt: string; platforms: P
     "  data/      your notes, settings and the library index",
     "  library/   documents, collections and maps",
     "",
-    "Changes you make while running from this drive (new notes, new documents) are saved",
+    "Changes you make while running from this drive (new pages, new documents) are saved",
     "on the drive. To take them home, plug the drive into the computer that runs your",
     'main Outpost and choose Storage, then "Bring back changes from a drive". Nothing',
     "on the drive is changed by that.",

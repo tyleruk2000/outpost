@@ -1,5 +1,6 @@
 import { RadioGroup } from "radix-ui";
 import type { ReactNode } from "react";
+import { RadioItem } from "@/components/ui/misc";
 import { cn } from "@/lib/utils";
 
 export interface Choice<T extends string> {
@@ -41,14 +42,7 @@ export function ChoiceList<T extends string>({
         const id = `choice-${label.replace(/\W+/g, "-")}-${choice.value}`;
         return (
           <div key={choice.value} className={cn("flex items-start gap-3 py-2.5 max-md:py-3", choice.disabled && "text-ink-muted")}>
-            <RadioGroup.Item
-              id={id}
-              value={choice.value}
-              disabled={choice.disabled}
-              className="mt-0.5 grid size-[18px] shrink-0 place-content-center rounded-full border-[1.5px] border-border-strong bg-page transition-colors data-[state=checked]:border-primary disabled:bg-surface-strong"
-            >
-              <RadioGroup.Indicator className="size-2.5 rounded-full bg-primary" />
-            </RadioGroup.Item>
+            <RadioItem id={id} value={choice.value} disabled={choice.disabled} />
             <label
               htmlFor={id}
               className={cn(

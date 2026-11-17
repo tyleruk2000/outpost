@@ -46,10 +46,9 @@ import {
   pieceView,
 } from "./export";
 import { graticule } from "./graticule";
-import { mapLibraryTitle, mapViewPath, mapWords, withMapWords } from "./map-words";
+import { mapFileName, mapLibraryTitle, mapViewPath, mapWords, withMapWords } from "./map-words";
 import { overlayOn, PRINT_OVERLAYS, type PrintContext, type PrintSelection, partsOn, printStyle } from "./overlays";
 import { type PageGeometry, paperName } from "./paper";
-import { pdfFileName } from "./pdf";
 import { planNote, type RasterPlan, type Resolution } from "./pieces";
 import { formatScale, frameOfBox } from "./scale";
 import { layoutSheet } from "./sheet";
@@ -324,7 +323,7 @@ export function PrintDialog({
       setMade({
         status: "ready",
         url: held.hold(file.blob),
-        file: new File([file.blob], pdfFileName(shownTitle), { type: "application/pdf" }),
+        file: new File([file.blob], mapFileName(shownTitle, bbox, scale, now), { type: "application/pdf" }),
         libraryTitle: mapLibraryTitle(shownTitle, bbox, scale, now),
         plan: drawn.plan,
         pictures: drawn.pictures.map((picture) => ({ ...picture, url: held.hold(picture.blob) })),
@@ -527,7 +526,8 @@ export function PrintDialog({
           </div>
         </DialogBody>
 
-        <DialogFooter className="justify-between max-md:flex-col max-md:items-stretch max-md:gap-3">
+        {/* On a phone what is said about the page takes the first line, and the buttons a row of their own under it. */}
+        <DialogFooter className="justify-between max-md:gap-3 max-md:[&>:first-child]:basis-full">
           {made.status === "making" ? (
             <div className="grid min-w-0 flex-1 gap-1.5" role="status">
               <Progress value={made.of ? made.done / made.of : null} tone="lamp" label="Drawing the page" />
@@ -540,7 +540,8 @@ export function PrintDialog({
             </div>
           ) : made.status === "ready" ? (
             <div className="min-w-0 flex-1 text-small" role="status">
-              <p className="truncate font-medium text-ink">
+              {/* The name says where, at what scale and when, so it is long: it wraps rather than widening the dialog. */}
+              <p className="font-medium text-ink [overflow-wrap:anywhere]">
                 {made.file.name} <span className="tabular font-normal text-ink-muted">· {formatBytes(made.file.size)}</span>
               </p>
               <p className="text-ink-muted">
@@ -565,7 +566,7 @@ export function PrintDialog({
               Made on this device from the maps installed here. Nothing is sent anywhere.
             </p>
           )}
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 max-md:w-full max-md:shrink">
             {made.status === "making" ? (
               <Button
                 onClick={() => {

@@ -1,6 +1,6 @@
 /**
  * The answer of a calculator, and what goes with it: the answer in figures and in words,
- * Copy and Save as a note to keep it, and "How this is worked out" with the formula, its
+ * Copy and Save as a page to keep it, and "How this is worked out" with the formula, its
  * source, the range it holds for and what it leaves out.
  */
 import type { NoteDoc, NoteResponse } from "@outpost/shared";
@@ -22,7 +22,7 @@ export interface ResultProps {
   figure: ReactNode | null;
   /** The same answer in a sentence. */
   children?: ReactNode;
-  /** The answer as plain text, for Copy and Save as a note. Leave out to offer neither. */
+  /** The answer as plain text, for Copy and Save as a page. Leave out to offer neither. */
   keep?: { title: string; lines: string[] };
   /** Said instead of the answer when it cannot be worked out for another reason than a bad input. */
   refusal?: ReactNode;
@@ -73,7 +73,7 @@ export function KeepButtons({ title, lines }: { title: string; lines: string[] }
       const from = `Worked out with Outpost's Tools on ${formatDate(Date.now())}. A calculator's answer is only as good as the figures typed into it.`;
       const { note } = await api.post<NoteResponse>("/api/notes", { title, content: noteDoc(lines, from) });
       void client.invalidateQueries({ queryKey: ["notes"] });
-      toast.success("Saved as a new note", {
+      toast.success("Saved as a new page in Notes", {
         description: title,
         action: { label: "Open it", onClick: () => navigate(`/notes/${note.id}`) },
       });
@@ -89,7 +89,7 @@ export function KeepButtons({ title, lines }: { title: string; lines: string[] }
         <Copy aria-hidden /> Copy
       </Button>
       <Button variant="ghost" size="sm" onClick={save} loading={saving}>
-        <FilePlus2 aria-hidden /> Save as a note
+        <FilePlus2 aria-hidden /> Save as a page
       </Button>
     </div>
   );

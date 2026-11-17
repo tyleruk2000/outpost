@@ -24,6 +24,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { formatTimeOfDay } from "@/lib/clock";
 import { HourGrid, ShareBars } from "./charts";
 import { coverageRequestOf, emptyCoverageForm } from "./coverage-map/data";
 import { AS_SAVED, antennaOf, antennaSummary, exampleForm, formOf, openSaved, requestOf, wireBandsNote, wireHint } from "./data";
@@ -624,12 +625,40 @@ describe("the reading of an hour", () => {
   it("opens with the answer in plain words, then the MUF with what it is", () => {
     server();
     shown(<Results result={resultOf(requestWith(), () => "modelled")} hour={12} onHour={() => {}} />);
-    const reading = screen.getByText(/^At 12:00 UTC, SSB voice on 7\.10 MHz/).closest("p")!;
-    expect(reading.textContent).toBe(
+    const reading = screen.getByText(/^At 12:00 UTC \(\d\d:00 here\), SSB voice on 7\.10 MHz/).closest("p")!;
+    expect(reading.textContent?.replace(/ \(\d\d:00 here\)/, "")).toBe(
       "At 12:00 UTC, SSB voice on 7.10 MHz is predicted to get through on 40% of days: the share of days its signal-to-noise " +
         "ratio reaches the 45.0 dB (in 1 Hz) it is taken to need. The median is 40 dB, below it by 5 dB. The path's MUF, " +
         "the highest frequency it carries on half the days, is 9.50 MHz, and 7.10 MHz is below it on 90% of the days of the month.",
     );
+  });
+});
+
+describe("the answer comes first", () => {
+  it("says the hour on this device's own clock as well as in UTC", () => {
+    server();
+    const result = resultOf(requestWith(), () => "modelled");
+    shown(<Results result={result} hour={12} onHour={() => {}} />);
+    const [y, m, d] = result.request.date.split("-").map(Number) as [number, number, number];
+    const here = formatTimeOfDay(Date.UTC(y, m - 1, d, 12));
+    expect(screen.getByText(/^At 12:00 UTC/).closest("p")!.textContent).toMatch(new RegExp(`^At 12:00 UTC \\(${here} here\\), SSB voice`));
+  });
+
+  it("puts the answer above what it rests on and above the buttons that keep it", () => {
+    server();
+    shown(
+      <Results
+        result={resultOf(requestWith(), () => "modelled")}
+        hour={12}
+        onHour={() => {}}
+        extra={<button type="button">Save as PDF</button>}
+      />,
+    );
+    const answer = screen.getByText(/^At 12:00 UTC/);
+    const basis = screen.getByText(/It is not a reading of the ionosphere today/);
+    const save = screen.getByRole("button", { name: "Save as PDF" });
+    expect(answer.compareDocumentPosition(basis) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(answer.compareDocumentPosition(save) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
 

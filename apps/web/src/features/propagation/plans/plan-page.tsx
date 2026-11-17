@@ -31,7 +31,7 @@ import { FileDown, TriangleAlert, Unlink } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
-import { ErrorState, Notice, Page, PageHeader, Rows, Section } from "@/components/page";
+import { EmptyState, ErrorState, Notice, Page, PageHeader, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
@@ -472,9 +472,9 @@ export default function PlanPage() {
         }
       >
         {current.stations.length === 0 ? (
-          <p className="rounded-panel border border-border px-4 py-6 text-small text-ink-muted">
-            No stations yet. Add the first: home, a shelter, a relative's house, a portable station, a rendezvous point.
-          </p>
+          <EmptyState title="No stations yet" compact level={3} seed={5}>
+            Add the first: home, a shelter, a relative's house, a portable station, a rendezvous point.
+          </EmptyState>
         ) : (
           <Rows className="border-y border-border">
             {current.stations.map((station) => (

@@ -267,7 +267,7 @@ describe("how old the solar table is", () => {
           kind: "recent-solar",
           ssn: 83,
           summary:
-            "Monthly median for November 2026 at smoothed sunspot number 83, which is NOAA's forecast for the month in the table that came with Outpost, dated 2026-11-16.",
+            "Monthly median for November 2026 at smoothed sunspot number 83, which is NOAA's forecast for the month in the table that came with Outpost, dated 16 Nov 2026.",
           tableDate: "2026-11-16",
           tableAgeDays: 0,
           ssnLow: null,
@@ -275,7 +275,7 @@ describe("how old the solar table is", () => {
         }}
       />,
     );
-    expect(screen.getByText(/dated 2026-11-16\. That is (today|\d+ days? ago)\. It is not a reading/)).toBeInTheDocument();
+    expect(screen.getByText(/dated 16 Nov 2026\. That is (today|\d+ days? ago)\. It is not a reading/)).toBeInTheDocument();
   });
 });
 

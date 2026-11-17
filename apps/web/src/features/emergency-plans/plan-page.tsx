@@ -15,7 +15,7 @@ import {
   sourcesOfPlan,
   templateById,
 } from "@outpost/shared";
-import { ArrowLeft, Copy, ListChecks, Printer, TriangleAlert } from "lucide-react";
+import { Copy, ListChecks, Printer, TriangleAlert } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { ErrorState, Notice, Page, PageHeader, Section } from "@/components/page";
@@ -242,7 +242,7 @@ export default function EmergencyPlanPage() {
   if (response.isError || !draft || !response.data) {
     return (
       <Page width="reading">
-        <PageHeader title="Emergency plan" />
+        <PageHeader back={{ to: "/prepare/plans", label: "Emergency plans" }} title="Emergency plan" />
         <ErrorState error={response.error} onRetry={() => void response.refetch()} />
         <p className="mt-4 text-small">
           <Link to="/prepare/plans" className="text-primary underline underline-offset-2">
@@ -259,10 +259,8 @@ export default function EmergencyPlanPage() {
 
   return (
     <Page width="reading">
-      <Link to="/prepare/plans" className="mb-2 inline-flex min-h-11 items-center gap-1.5 text-small text-primary">
-        <ArrowLeft aria-hidden className="size-4" /> Emergency plans
-      </Link>
       <PageHeader
+        back={{ to: "/prepare/plans", label: "Emergency plans" }}
         title={draft.name.trim() || "Emergency plan"}
         description={
           <>

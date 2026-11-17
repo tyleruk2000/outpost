@@ -6,7 +6,7 @@
 import { ArrowRight } from "lucide-react";
 import { type FormEvent, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { EmptyState, ErrorState, Page } from "@/components/page";
+import { BackLink, EmptyState, ErrorState, Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, Skeleton } from "@/components/ui/misc";
@@ -309,18 +309,9 @@ export default function UnderstandPage() {
         <div className="xl:grid xl:grid-cols-[minmax(0,49rem)_13rem] xl:justify-between xl:gap-12">
           <div className="min-w-0 max-w-[49rem]">
             <header className="mb-8">
-              <p className="mb-2 text-small text-ink-muted">
-                <Link
-                  to={query ? `/search?q=${encodeURIComponent(query)}` : "/search"}
-                  className="underline decoration-border-strong decoration-1 underline-offset-[0.22em] hover:text-ink hover:decoration-primary"
-                >
-                  Search
-                </Link>
-                <span aria-hidden className="mx-2 text-border-strong">
-                  /
-                </span>
-                How it works
-              </p>
+              <BackLink to={query ? `/search?q=${encodeURIComponent(query)}` : "/search"} className="mb-2">
+                Search
+              </BackLink>
               <h1 className="font-title text-title text-ink">How search works</h1>
               <Prose className="mt-4">
                 <p>

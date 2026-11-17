@@ -6,10 +6,12 @@
  * airport; not held yet (a pack installed before frequencies were fetched, or one whose
  * frequencies file could not be fetched).
  *
- * On a phone the card is itself a short box that scrolls, so the list scrolls with it; on
- * a wider screen the list has a height of its own and scrolls inside the card.
+ * The list has a height of its own, about five rows, and scrolls inside the card, so
+ * that on a phone the card shows the airport's name, the first rows and the caution in
+ * the room a card has over the map (docs/development/web-screens.md, "Things over a
+ * map"). The card can also be folded to one line (feature-card.tsx).
  *
- * The cautions are on the card in a line, the rest behind one disclosure: a community
+ * The caution is on the card in a line, the rest behind one disclosure: a community
  * list, not for navigation, and the radio screens' own line on listening.
  */
 import type { AirportFrequenciesDto, AirportFrequencyDto } from "@outpost/shared";
@@ -34,18 +36,17 @@ export function formatMhz(mhz: string): string {
   return `${match[1]}.${(match[2] ?? "").padEnd(3, "0")}`;
 }
 
+/** One line where it fits: what it is for, the file's description beside it, and the frequency at the end. */
 function Row({ entry }: { entry: AirportFrequencyDto }) {
   const description = entry.description && entry.description.toLowerCase() !== entry.type.toLowerCase() ? entry.description : "";
   return (
-    <li className="flex items-baseline justify-between gap-4 py-1.5">
-      <span className="min-w-0">
-        <span className="text-small text-ink">
-          {entry.typeLabel ?? entry.type}
-          {entry.typeLabel && entry.typeLabel.toLowerCase() !== entry.type.toLowerCase() ? (
-            <span className="ml-1.5 font-mono text-[0.8125rem] text-ink-muted">{entry.type}</span>
-          ) : null}
-        </span>
-        {description ? <span className="block text-small text-ink-muted [overflow-wrap:anywhere]">{description}</span> : null}
+    <li className="flex items-baseline justify-between gap-3 py-1.5">
+      <span className="min-w-0 text-small [overflow-wrap:anywhere]">
+        <span className="text-ink">{entry.typeLabel ?? entry.type}</span>
+        {entry.typeLabel && entry.typeLabel.toLowerCase() !== entry.type.toLowerCase() ? (
+          <span className="ml-1.5 font-mono text-[0.8125rem] text-ink-muted">{entry.type}</span>
+        ) : null}
+        {description ? <span className="text-ink-muted"> · {description}</span> : null}
       </span>
       <span className="tabular shrink-0 font-mono text-[0.8125rem] text-ink select-text">{formatMhz(entry.mhz)} MHz</span>
     </li>
@@ -80,7 +81,7 @@ export function AirportFrequencies({ frequencies }: { frequencies: AirportFreque
         <>
           <ul
             aria-label="Radio frequencies"
-            className="mt-1 divide-y divide-border border-y border-border sm:max-h-52 sm:overflow-y-auto sm:overscroll-contain sm:pr-1"
+            className="scroll-quiet mt-1 max-h-[10.5rem] divide-y divide-border overflow-y-auto overscroll-contain border-y border-border pr-1 sm:max-h-52"
           >
             {frequencies.list.map((entry, index) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: a fixed list, never reordered, in which two rows may be the same
@@ -88,15 +89,15 @@ export function AirportFrequencies({ frequencies }: { frequencies: AirportFreque
             ))}
           </ul>
           <p className="mt-1.5 text-small text-ink-muted">
-            From OurAirports, a community-maintained public-domain dataset{asOf ? `, as of ${asOf}` : ""}. Not for navigation or flight
-            planning: it may be out of date or wrong. Rules on listening differ by country.
+            Not for navigation or flight planning: OurAirports' community list{asOf ? `, as of ${asOf},` : ""} may be out of date or wrong.
           </p>
           <details className="mt-1">
             <summary className="cursor-pointer py-3 text-small font-medium text-ink">About these frequencies</summary>
             <div className="mt-1 grid gap-1 text-small text-ink-muted">
               <p>
-                OurAirports' contributors list them; Outpost has not checked them. The type and description are shown as the file gives
-                them, with a type put into words only where its meaning is certain (TWR is the tower).
+                From OurAirports, a community-maintained public-domain dataset. Its contributors list them; Outpost has not checked them.
+                The type and description are shown as the file gives them, with a type put into words only where its meaning is certain (TWR
+                is the tower).
               </p>
               <p>
                 Rules on listening to aviation and other non-broadcast traffic, and on using what is heard, differ by country (in the UK,

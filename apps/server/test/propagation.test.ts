@@ -210,7 +210,7 @@ describeWithVoacapData("where the sunspot number comes from", () => {
     expect(body.basis.tableDate).toBe("2026-11-16");
     expect(body.basis.summary).toContain("the table that came with Outpost");
     // Dated, and not aged: the sentence is kept with the answer and printed in its PDF, and read on other days.
-    expect(body.basis.summary).toMatch(/, dated 2026-11-16\.$/);
+    expect(body.basis.summary).toMatch(/, dated 16 Nov 2026\.$/);
     expect(body.basis.summary).not.toMatch(/today|\bago\b/);
     expect(["recent-solar", "climatology"]).toContain(body.basis.kind);
     expect(body.basis.kind).toBe(body.basis.tableAgeDays! <= 45 ? "recent-solar" : "climatology");

@@ -9,6 +9,7 @@ import { ErrorState, Notice, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Badge, Select, Skeleton } from "@/components/ui/misc";
 import { useStorage } from "@/lib/queries";
+import { formatDate } from "@/lib/utils";
 import { useDatasets, useDownloadSolar, useEngines } from "./data";
 import { EngineDataLine, RemoveEngineData } from "./engine-data";
 
@@ -137,7 +138,7 @@ export function Datasets() {
 
       <Section
         title="The solar table in use"
-        description={`Dated ${solar.dataDate}, ${solar.origin === "included" ? "included with Outpost" : "downloaded"}. NOAA's forecast of the smoothed sunspot number, with the low and high figures it gives.`}
+        description={`Dated ${formatDate(Date.parse(`${solar.dataDate}T12:00:00Z`))}, ${solar.origin === "included" ? "included with Outpost" : "downloaded"}. NOAA's forecast of the smoothed sunspot number, with the low and high figures it gives.`}
       >
         <div className="max-h-72 overflow-auto rounded-panel border border-border">
           <table className="tabular w-full text-small">

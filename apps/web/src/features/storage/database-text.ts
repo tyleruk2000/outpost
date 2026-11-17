@@ -21,7 +21,7 @@ const COUNT_WORDS: Record<DatabaseCountId, [string, string]> = {
   predictions: ["saved prediction or coverage map", "saved predictions and coverage maps"],
   powerPlans: ["power plan", "power plans"],
   powerDevices: ["device of your own for the battery calculators", "devices of your own for the battery calculators"],
-  supplies: ["row of supplies", "rows of supplies"],
+  supplies: ["item of supplies", "items of supplies"],
   scenarios: ["saved nuclear effects scenario or set", "saved nuclear effects scenarios and sets"],
   networkDevices: ["device found on the network", "devices found on the network"],
   pressureReadings: ["barometer reading", "barometer readings"],
@@ -92,7 +92,7 @@ export function reclaimBlocked(status: DatabaseStatus, formatBytes: (bytes: numb
   if (file.unusedBytes < WORTH_RECLAIMING) return "So little is unused that rewriting the file for it is not worth the wait.";
   if (!reclaim.enoughRoom) {
     if (reclaim.tempNeededBytes !== null && (reclaim.tempFreeBytes ?? 0) < reclaim.tempNeededBytes) {
-      return `It needs ${formatBytes(reclaim.tempNeededBytes)} free in the folder SQLite keeps temporary files in, and that drive has ${formatBytes(reclaim.tempFreeBytes)}.`;
+      return `It needs ${formatBytes(reclaim.tempNeededBytes)} free in the folder for temporary files, and that drive has ${formatBytes(reclaim.tempFreeBytes)}.`;
     }
     return `It needs ${formatBytes(reclaim.neededBytes)} free on this drive, and there is ${formatBytes(disk.freeBytes)}. Free some space first.`;
   }

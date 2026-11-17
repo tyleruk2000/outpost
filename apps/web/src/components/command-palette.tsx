@@ -1,25 +1,14 @@
 /**
- * The palette: one box to go anywhere or find anything. Empty, it lists places and
- * actions. With text, places and actions whose names match stay at the top, and the
- * whole library is searched underneath as you type.
+ * The palette ("quick search"): one box to go anywhere or find anything. Empty, it lists
+ * places and actions. With text, places (screens and sections of Settings, found by their
+ * names and everyday words: find-places.ts) and actions whose names match stay at the top,
+ * and the whole library is searched underneath as you type. What would have to be
+ * downloaded comes last of all.
  */
 import type { SearchResponse, SearchResult } from "@outpost/shared";
 import { useQuery } from "@tanstack/react-query";
 import { Command } from "cmdk";
-import {
-  CornerDownLeft,
-  Eraser,
-  FolderInput,
-  Globe,
-  ListChecks,
-  type LucideIcon,
-  Moon,
-  Mountain,
-  Plus,
-  Search,
-  Sun,
-  Upload,
-} from "lucide-react";
+import { CornerDownLeft, Eraser, FolderInput, Globe, ListChecks, type LucideIcon, Moon, Plus, Search, Sun, Upload } from "lucide-react";
 import { Dialog } from "radix-ui";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
@@ -28,7 +17,7 @@ import { referenceProgress, useReferenceSearch } from "@/lib/reference-search";
 import { useTheme } from "@/lib/theme";
 import { useDebounced } from "@/lib/use-debounced";
 import { modKey } from "@/lib/utils";
-import { everyScreen } from "./nav";
+import { everyPlace, findPlaces, matchesWords } from "./find-places";
 import { Highlighted, kindOf, resultHref } from "./search-hit";
 import { useFocusReturn } from "./ui/dialog";
 import { Kbd, Spinner } from "./ui/misc";
@@ -42,18 +31,8 @@ interface PaletteAction {
   keywords?: string;
 }
 
-/** True when every word typed begins some word of the label. Nothing typed matches everything. */
-export function matchesWords(label: string, typed: string): boolean {
-  const words = label
-    .toLowerCase()
-    .split(/[^\p{L}\p{N}]+/u)
-    .filter(Boolean);
-  return typed
-    .toLowerCase()
-    .split(/[^\p{L}\p{N}]+/u)
-    .filter(Boolean)
-    .every((part) => words.some((word) => word.startsWith(part)));
-}
+/** Kept here too for those that look for it here. */
+export { matchesWords };
 
 const itemClass =
   "flex cursor-default items-center gap-3 rounded-control px-3 py-2 text-small text-ink data-[selected=true]:bg-primary-soft data-[selected=true]:text-primary-soft-ink max-md:py-3 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-ink-muted";
@@ -128,6 +107,10 @@ export function CommandPalette({
   const searching = debounced.length > 1 && typed.length > 1;
   const stillSearching = searching && reference.status === "searching";
   const referenceShown = searching ? reference.best.slice(0, REFERENCE_SHOWN) : [];
+  // What would have to be downloaded comes after everything on this device, the reference collections included. It is
+  // added once they have answered, so that nothing above it moves when it comes.
+  const own = results.data?.results.filter((result) => result.kind !== "catalog") ?? [];
+  const toDownload = stillSearching ? [] : (results.data?.results.filter((result) => result.kind === "catalog") ?? []);
 
   const everyAction: PaletteAction[] = [
     { id: "new-page", label: "New page", icon: Plus, run: () => run(onNewPage) },
@@ -142,18 +125,10 @@ export function CommandPalette({
       icon: resolved === "dark" ? Sun : Moon,
       run: () => run(() => setTheme(resolved === "dark" ? "light" : "dark")),
     },
-    {
-      id: "heights",
-      label: "Heights in metres or feet",
-      icon: Mountain,
-      keywords: "units meters elevation altitude height",
-      run: () => go("/settings#heights"),
-    },
   ];
-  // Every screen, those under another with its name first ("Radio: Repeaters"), matched on both names.
-  const places = everyScreen.filter((item) =>
-    matchesWords(`${item.parent ? `${item.parent.label} ` : ""}${item.label}${item.keywords ? ` ${item.keywords}` : ""}`, typed),
-  );
+  // Every screen, those under another with its name first ("Radio: Repeaters"); with words typed, the sections of
+  // Settings too. Nothing typed lists the screens alone.
+  const places = typed ? findPlaces(typed) : everyPlace.filter((place) => !place.section);
   const actions = everyAction.filter((action) => matchesWords(`${action.label}${action.keywords ? ` ${action.keywords}` : ""}`, typed));
 
   return (
@@ -191,8 +166,9 @@ export function CommandPalette({
                         {item.parent ? " " : null}
                         {item.label}
                       </span>
+                      {/* The keys are for a keyboard: on a touch screen, where there is none, they are not shown. */}
                       {item.key ? (
-                        <span className="flex gap-1">
+                        <span className="hidden gap-1 pointer-fine:flex">
                           <Kbd>g</Kbd>
                           <Kbd>{item.key}</Kbd>
                         </span>
@@ -227,11 +203,13 @@ export function CommandPalette({
                     </Command.Item>
                   </Command.Group>
                   {searching && results.data && results.data.results.length > 0 ? (
-                    <Command.Group heading={results.data.relaxed ? "Closest matches" : "Top matches"} className={groupClass}>
-                      {results.data.results.map((result) => (
-                        <ResultItem key={`${result.kind}:${result.entityId}`} result={result} onSelect={() => go(resultHref(result))} />
-                      ))}
-                    </Command.Group>
+                    own.length > 0 ? (
+                      <Command.Group heading={results.data.relaxed ? "Closest matches" : "Top matches"} className={groupClass}>
+                        {own.map((result) => (
+                          <ResultItem key={`${result.kind}:${result.entityId}`} result={result} onSelect={() => go(resultHref(result))} />
+                        ))}
+                      </Command.Group>
+                    ) : null
                   ) : searching && results.isSuccess && !stillSearching && referenceShown.length === 0 ? (
                     <p className="px-3 py-4 text-small text-ink-muted">
                       Nothing in your library matches “{debounced}”. Check the spelling, or try fewer words.
@@ -243,6 +221,13 @@ export function CommandPalette({
                   {referenceShown.length > 0 ? (
                     <Command.Group heading="In reference collections" className={groupClass}>
                       {referenceShown.map((result) => (
+                        <ResultItem key={`${result.kind}:${result.entityId}`} result={result} onSelect={() => go(resultHref(result))} />
+                      ))}
+                    </Command.Group>
+                  ) : null}
+                  {toDownload.length > 0 ? (
+                    <Command.Group heading="Available to download" className={groupClass}>
+                      {toDownload.map((result) => (
                         <ResultItem key={`${result.kind}:${result.entityId}`} result={result} onSelect={() => go(resultHref(result))} />
                       ))}
                     </Command.Group>

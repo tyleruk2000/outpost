@@ -10,7 +10,7 @@ import { newPowerPlan, type PowerLoad, type PowerPlanInput, USB_CHARGING, USB_CO
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Notice } from "@/components/page";
+import { EmptyState, Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
@@ -88,10 +88,21 @@ export function DeviceMix({
   return (
     <div className="grid gap-4">
       {loads.length === 0 ? (
-        <p className="rounded-panel border border-border px-4 py-5 text-small text-ink-muted">
-          Nothing yet. Add what the battery should run or charge: a Raspberry Pi, the phones, a radio, a router, a lamp. Each comes with its
-          maker's figure and where it was published.
-        </p>
+        <EmptyState
+          title="Nothing to run yet"
+          compact
+          level={3}
+          seed={5}
+          action={
+            <Button onClick={() => setPicking(true)}>
+              <Plus aria-hidden />
+              Add a device
+            </Button>
+          }
+        >
+          Add what the battery should run or charge: a Raspberry Pi, the phones, a radio, a router, a lamp. Each comes with its maker's
+          figure and where it was published.
+        </EmptyState>
       ) : (
         <ul aria-label="What it runs and charges" className="divide-y divide-border border-y border-border">
           {loads.map((load) => (
@@ -104,12 +115,14 @@ export function DeviceMix({
           ))}
         </ul>
       )}
-      <div>
-        <Button onClick={() => setPicking(true)}>
-          <Plus aria-hidden />
-          Add a device
-        </Button>
-      </div>
+      {loads.length === 0 ? null : (
+        <div>
+          <Button onClick={() => setPicking(true)}>
+            <Plus aria-hidden />
+            Add a device
+          </Button>
+        </div>
+      )}
       {entryNote ? <Notice>{entryNote}</Notice> : null}
 
       <Fields>

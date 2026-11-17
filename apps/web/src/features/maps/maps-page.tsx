@@ -30,7 +30,7 @@ import { useReferenceLayers } from "@/features/layers/use-reference-layers";
 import { type SightStart, useRepeatersOnMap } from "@/features/repeaters/map/use-repeaters-on-map";
 import { errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
-import { plural } from "@/lib/utils";
+import { cn, plural } from "@/lib/utils";
 import { CentreMark } from "./centre-mark";
 import {
   useDeleteMarker,
@@ -53,6 +53,7 @@ import { formatPosition, isReadoutFormat, type ReadoutFormat } from "./lib/coord
 import { formatDistance, type LatLon } from "./lib/geo";
 import { MARKER_HEX } from "./lib/palette";
 import { iconOf, pinGlyphOf } from "./lib/place-icons";
+import { pressWord } from "./lib/press";
 import {
   addPoint,
   insertPoint,
@@ -190,6 +191,9 @@ function keepRouteDraft(draft: RouteDraft | null): void {
   }
 }
 
+/** The toast that asks for a press on the map while saving a place. */
+const ADD_PLACE_HINT = "add-place-hint";
+
 const isTyping = (target: EventTarget | null) =>
   target instanceof HTMLInputElement ||
   target instanceof HTMLTextAreaElement ||
@@ -248,6 +252,8 @@ export default function MapsPage() {
   const [nameRequested, setNameRequested] = useState(false);
   const nameShown = useCallback(() => setNameRequested(false), []);
   const [measurePoints, setMeasurePoints] = useState<LatLon[]>([]);
+  /** A position to bring into the clear part of the map once the sheet has moved: a place being saved. */
+  const [reveal, setReveal] = useState<LatLon | null>(null);
   /** The two ends a line-of-sight check starts with, when it is taken up from a measured path. */
   const [sightStart, setSightStart] = useState<SightStart | null>(null);
   const [draft, setDraft] = useState<PlaceDraft | null>(null);
@@ -433,6 +439,7 @@ export default function MapsPage() {
       setTool("browse");
       setDraft({ name, note: "", color: "teal", icon: "pin", isFavorite: false, lat: position.lat, lon: position.lon });
       showPanel("places");
+      setReveal(position);
     },
     [showPanel],
   );
@@ -735,16 +742,6 @@ export default function MapsPage() {
     engine?.setCursor(tool === "browse" || tool === "print" ? "" : "crosshair");
   }, [engine, tool]);
 
-  /**
-   * On a phone, today's sunrise and sunset are written under the readout while the sheet is lowered and nothing
-   * is being done on the map: a tool's card, or the card of a point that was found or is being moved, needs the
-   * room and has the person's attention (and a found point's card has sun times of its own).
-   */
-  // On a phone, while the sheet is lowered and nothing else is in hand. On a wide screen there is room for it
-  // always, except while the Sun tab itself is open beside the map and says the same and more.
-  const sunLine = isDesktop ? !(panel.open && panel.tab === "sun") : detent === "peek" && tool === "browse" && !pin && !moving;
-  inHand.current = tool !== "browse" || Boolean(pin) || Boolean(moving);
-
   // "Fit" and "fly" should land in the part of the map that is not under the chrome.
   useEffect(() => {
     if (!engine) return;
@@ -767,6 +764,18 @@ export default function MapsPage() {
     // centre of the map is in the part that shows. On a wide screen nothing lies over the middle of the map.
     engine.setPadding({ top, right: isDesktop ? 56 : 0, bottom, left: 0 }, !isDesktop, spare);
   }, [engine, isDesktop, detent, peekHeight, clear]);
+
+  // A place being saved is slid into the clear map if it is where the sheet, the readout or a card would hide it.
+  useEffect(() => {
+    if (!engine || !reveal) return;
+    setReveal(null);
+    if (!engine.isInView(reveal)) engine.panTo(reveal);
+  }, [engine, reveal]);
+
+  // The hint to tap the map goes as soon as the map has been tapped (or the tool put down): it lay over the form.
+  useEffect(() => {
+    if (tool !== "add-place") toast.dismiss(ADD_PLACE_HINT);
+  }, [tool]);
 
   // ── What the person does on the map ──
 
@@ -891,7 +900,7 @@ export default function MapsPage() {
     if (next === "print" && panel.tab === "offline") setPanel((current) => ({ ...current, tab: "places" }));
     // On a phone the sheet would cover the map being clicked on.
     setDetent("peek");
-    if (next === "add-place") toast("Click or tap the map where the place is.");
+    if (next === "add-place") toast(`${pressWord()} the map where the place is.`, { id: ADD_PLACE_HINT });
   };
   const changeTool = (next: Tool) => {
     setContextMenu(null);
@@ -960,6 +969,25 @@ export default function MapsPage() {
     }, [showPanel]),
   });
 
+  /**
+   * On a phone, today's sunrise and sunset are written under the readout while the sheet is lowered and nothing
+   * is being done on the map: a tool's card, the card of a point that was found or is being moved, or of a repeater
+   * or a record opened on the map, needs the room and has the person's attention (and a found point's card has sun
+   * times of its own). A repeater's estimated range on a phone with large text was drawn about 70 px across for
+   * want of it.
+   */
+  const cardOpen = Boolean(repeaters.card ?? reference.card);
+  // On a phone, while the sheet is lowered and nothing else is in hand. On a wide screen there is room for it
+  // always, except while the Sun tab itself is open beside the map and says the same and more.
+  const sunLine = isDesktop ? !(panel.open && panel.tab === "sun") : detent === "peek" && tool === "browse" && !pin && !moving && !cardOpen;
+  inHand.current = tool !== "browse" || Boolean(pin) || Boolean(moving);
+  // A record opened from the Layers tab (found by name) comes up as a card over the map: on a phone the sheet is
+  // lowered for it, as for a found place, or the card had a strip of map and showed none of an airport's frequencies.
+  const recordOpen = Boolean(reference.card);
+  useEffect(() => {
+    if (recordOpen && !isDesktop) setDetent("peek");
+  }, [recordOpen, isDesktop]);
+
   const chooseResult = (result: SearchResult) => {
     setContextMenu(null);
     if (result.kind === "marker") return openMarker(result.marker);
@@ -993,6 +1021,11 @@ export default function MapsPage() {
         onSuccess: ({ marker }) => {
           toast.success(draft.id ? `Saved “${marker.name}”.` : `“${marker.name}” is saved to your places.`);
           setDraft(null);
+          if (!draft.id) {
+            // The sheet may have been raised for the keyboard: lower it so that the new place can be seen.
+            if (!isDesktop) setDetent((current) => (current === "full" ? "half" : current));
+            setReveal({ lat: marker.lat, lon: marker.lon });
+          }
         },
       },
     );
@@ -1318,13 +1351,14 @@ export default function MapsPage() {
           What you see is an outline of the world that comes with Outpost. Detailed maps are downloaded one region at a time, and then work
           with no connection.
         </p>
-        {/* Both lead to the choices before a download, which include where it is kept: nothing starts from here. */}
+        {/* Both lead to the choices before a download, which include where it is kept: nothing starts from here. The
+            person's own area comes first: the world overview is the outline again with a little more in it. */}
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button size="sm" variant="primary" onClick={() => openOffline({ type: "add", presetId: "world" })}>
-            World overview (about 45 MB)
+          <Button size="sm" variant="primary" onClick={() => openOffline({ type: "add" })}>
+            Choose your area
           </Button>
-          <Button size="sm" onClick={() => openOffline({ type: "add" })}>
-            Choose a region
+          <Button size="sm" onClick={() => openOffline({ type: "add", presetId: "world" })}>
+            World overview (about 45 MB)
           </Button>
         </div>
       </MapCard>
@@ -1517,7 +1551,12 @@ export default function MapsPage() {
               }
               // On a phone the credits always have a line of their own under the readout, never the space beside it:
               // what the readout has room for is worked out from their height, which must not depend on the answer.
-              className="w-full max-md:flex-col max-md:flex-nowrap max-md:items-stretch"
+              // While a repeater's estimated range is drawn on a phone, the coordinates of the centre step aside (they are
+              // in the Sun tab and under a long press) so that the outline has the room: at large text it was 70 px across.
+              className={cn(
+                "w-full max-md:flex-col max-md:flex-nowrap max-md:items-stretch",
+                repeaters.ranging && "max-md:[&_.outpost-readout-row]:hidden",
+              )}
             />
           }
         />

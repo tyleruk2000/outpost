@@ -1,7 +1,7 @@
 /** The slim bar above a page: where it sits, whether it is saved, and the page's own actions. */
 import type { NoteDetail } from "@outpost/shared";
 import {
-  ChevronLeft,
+  ArrowLeft,
   CloudOff,
   Download,
   Ellipsis,
@@ -69,7 +69,7 @@ export function Breadcrumbs({ note }: { note: NoteDetail }) {
         to={parent ? `/notes/${parent.id}` : "/notes"}
         className="-ml-1.5 flex h-10 min-w-0 items-center gap-1 text-ink-muted md:hidden"
       >
-        <ChevronLeft aria-hidden className="size-4 shrink-0" />
+        <ArrowLeft aria-hidden className="size-4 shrink-0" />
         <span className="truncate">{parent ? displayTitle(parent.title) : note.isTemplate ? "Templates" : "Notes"}</span>
       </Link>
       <ol className="hidden min-w-0 items-center gap-1.5 md:flex">

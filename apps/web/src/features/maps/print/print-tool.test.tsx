@@ -79,6 +79,10 @@ describe("laying out a page on the map", () => {
     const scale = scaleOfBox(box!, portrait);
     expect(Number(scale.toPrecision(3))).toBeCloseTo(scale, 3);
     expect(screen.getByText(/km on A4 portrait at 1:[\d,]+$/)).toBeInTheDocument();
+    // In the card's foot with its buttons, which stays in view on a phone while the rest scrolls: it was cut off under it.
+    expect(screen.getByText(/km on A4 portrait at 1:/).parentElement).toContainElement(
+      screen.getByRole("button", { name: "Preview the page" }),
+    );
 
     // A handle dragged anywhere gives a page-shaped box back.
     const keep = fake.setBoxShape.mock.calls[fake.setBoxShape.mock.calls.length - 1]![0]!;

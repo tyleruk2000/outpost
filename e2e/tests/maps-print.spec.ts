@@ -108,7 +108,8 @@ test.describe("printing the map", () => {
     expect(paths.length).toBeGreaterThan(0);
     for (const path of paths) expect(path).toMatch(/^\/(api\/maps\/(tiles|terrain)\/|map-assets\/|world\/)/);
 
-    expect(file.name).toBe("llyn-prawf-the-hill.pdf");
+    // Named for what it is: the title, the scale and the day it was made.
+    expect(file.name).toMatch(/^map-llyn-prawf-the-hill-1-[\d-]+-\d{1,2}-[a-z]{3}-\d{4}\.pdf$/);
     await keep(testInfo, "llyn-prawf-the-hill.pdf", file.bytes, "application/pdf");
     const pdf = readPdf(file.bytes);
     expect(pdf.pages).toBe(1);
@@ -267,13 +268,13 @@ test.describe("printing the map", () => {
     await layOut(page, CENTRE, { paper: "A3" });
     const dialog = await preview(page);
     await dialog.getByRole("checkbox", { name: /Lines of latitude and longitude/ }).check();
-    // Saved places and any routes are left on this one. Without a title the page is dated and the file is "map.pdf".
+    // Saved places and any routes are left on this one. Without a title the file is named for the page's centre.
     await expect(dialog.getByRole("checkbox", { name: /Saved places/ })).toBeChecked();
     await dialog.getByRole("textbox", { name: "Title" }).fill("");
     const file = await makeAndSave(page, dialog);
     // A3 at 300 dots per inch is 3,270 × 4,420 pixels: taller than the 4,096 a canvas is kept to.
     await expect(dialog.getByText(/drawn in 2 pieces to stay within what this device can draw at once/)).toBeVisible();
-    expect(file.name).toBe("map.pdf");
+    expect(file.name).toMatch(/^map-\d+-\d+-[ns]-\d+-\d+-[ew]-1-[\d-]+-\d{1,2}-[a-z]{3}-\d{4}\.pdf$/);
     await keep(testInfo, "a3.pdf", file.bytes, "application/pdf");
 
     const pdf = readPdf(file.bytes);

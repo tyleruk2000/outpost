@@ -5,8 +5,9 @@
  */
 import type { ChapterLinkDto, DocumentChapterDto, DocumentResponse } from "@outpost/shared";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, ChevronLeft } from "lucide-react";
-import { Link, type To } from "react-router";
+import { ArrowLeft, ArrowRight } from "lucide-react";
+import { createPath, Link, type To } from "react-router";
+import { BackLink } from "@/components/page";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { documentKeys } from "./document-meta";
@@ -37,13 +38,7 @@ export interface TurnTo {
 export function BookPlace({ contents, where }: { contents: TurnTo; where: string }) {
   return (
     <nav aria-label="Book" className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-small">
-      <Link
-        to={contents.to}
-        className="-ml-1 inline-flex items-center gap-1 rounded-control font-medium text-primary underline-offset-[0.2em] hover:underline"
-      >
-        <ChevronLeft aria-hidden className="size-4 self-center" />
-        {contents.title}
-      </Link>
+      <BackLink to={typeof contents.to === "string" ? contents.to : createPath(contents.to)}>{contents.title}</BackLink>
       <span className="tabular text-ink-muted">{where}</span>
     </nav>
   );

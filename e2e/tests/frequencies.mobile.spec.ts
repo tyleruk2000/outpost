@@ -16,6 +16,8 @@ test.describe("Frequencies to listen to on a phone", () => {
     await page.goto("/");
 
     await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "More" }).tap();
+    // The screens under Radio are folded away until asked for.
+    await page.getByRole("dialog", { name: "More" }).getByRole("button", { name: "Show the screens under Radio" }).tap();
     await page.getByRole("dialog", { name: "More" }).locator('a[href="/radio/frequencies"]').first().tap();
     await expect(page.getByRole("heading", { level: 1, name: "Frequencies to listen to" })).toBeVisible();
     await expect(page.getByText(/^Last checked /)).toBeVisible();

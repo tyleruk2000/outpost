@@ -1,7 +1,7 @@
-import type { BackupStagedResponse, BackupStatus } from "@outpost/shared";
+import { type BackupStagedResponse, type BackupStatus, formatBytes } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, MonitorSmartphone, RotateCcw, Upload } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
 import { Notice } from "@/components/page";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { ApiError, api, errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
+import { formatDateTime } from "@/lib/utils";
 import { manageLink } from "../manage/manage-data";
 import { AutomaticBackups } from "./automatic-backups";
 import { BackupProtectionRow, passphraseHeader, passphraseProblem, RestorePassphrase, startsAsProtected } from "./backup-protection";
@@ -51,7 +52,25 @@ export function BackupSection() {
     setChosen(file);
     if (file) void startsAsProtected(file).then(setLocked);
   };
-  const status = useQuery({ queryKey: ["backup", "status"], queryFn: () => api.get<BackupStatus>("/api/backup/status") });
+  /**
+   * After "Download backup": when the last backup saved from here had been made before the press (0 for none). The
+   * server records each one once it has been sent in full; until a newer one is recorded, the status is asked for
+   * again every second and a half, for up to two minutes.
+   */
+  const [asked, setAsked] = useState<number | null>(null);
+  const [gaveUp, setGaveUp] = useState(false);
+  const status = useQuery({
+    queryKey: ["backup", "status"],
+    queryFn: () => api.get<BackupStatus>("/api/backup/status"),
+    refetchInterval: (query) => (asked !== null && !gaveUp && (query.state.data?.lastDownload?.at ?? 0) === asked ? 1500 : false),
+  });
+  const lastDownload = status.data?.lastDownload ?? null;
+  const made = asked !== null && lastDownload !== null && lastDownload.at !== asked;
+  useEffect(() => {
+    if (asked === null) return;
+    const timer = window.setTimeout(() => setGaveUp(true), 120_000);
+    return () => window.clearTimeout(timer);
+  }, [asked]);
   const refresh = () => client.invalidateQueries({ queryKey: ["backup"] });
 
   const restore = useMutation({
@@ -117,18 +136,45 @@ export function BackupSection() {
         <SettingRow
           label="Save a backup"
           hint={
-            status.data?.protection.on
-              ? "One file, encrypted with your passphrase (.zip.enc). Keep it somewhere other than this device."
-              : "One .zip file. Keep it somewhere other than this device."
+            <>
+              {status.data?.protection.on
+                ? "One file, encrypted with your passphrase (.zip.enc). Keep it somewhere other than this device."
+                : "One .zip file. Keep it somewhere other than this device."}
+              {lastDownload && !made ? ` Last saved ${formatDateTime(lastDownload.at)}.` : null}
+            </>
           }
           control={
             <Button asChild>
-              <a href="/api/backup/download" download>
+              <a
+                href="/api/backup/download"
+                download
+                onClick={() => {
+                  setGaveUp(false);
+                  setAsked(lastDownload?.at ?? 0);
+                }}
+              >
                 <Download /> Download backup
               </a>
             </Button>
           }
         />
+        {/* Said where the button is, not only in a toast: what was made, where it went, and what is not in it. */}
+        <div aria-live="polite" className="empty:hidden">
+          {asked === null ? null : made && lastDownload ? (
+            <Notice tone="success" title="Backup made">
+              {lastDownload.name}, {formatBytes(lastDownload.bytes)}, made {formatDateTime(lastDownload.at)}. Your browser put it where it
+              keeps downloads: the Downloads folder on a computer, or Files, then Downloads, on an iPhone or iPad. It holds notes, tags,
+              saved places, settings and the library index; original documents, collections and maps are not in it, so keep those where they
+              are stored too.
+            </Notice>
+          ) : gaveUp ? (
+            <Notice tone="warning">
+              Outpost has not finished sending the backup. If your browser shows no download, press Download backup again.
+            </Notice>
+          ) : (
+            <Notice>Making the backup. Your browser saves it as soon as it is ready.</Notice>
+          )}
+        </div>
         <BackupProtectionRow status={status.data} isPending={status.isPending} error={status.error} onRetry={() => status.refetch()} />
         <SettingRow
           label="Restore from a backup"

@@ -73,6 +73,18 @@ describe("Explore", () => {
     expect(screen.getByText("Sizes are estimates until the catalogue is refreshed")).toBeInTheDocument();
   });
 
+  it("leads with what a new household wants first: an encyclopedia, then medicine, then maps", async () => {
+    serve();
+    renderScreen(<ExplorePage />, "/explore");
+    await screen.findByRole("heading", { name: "Knots by Wikipedia" });
+    const groups = screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent);
+    expect(groups.slice(0, 2)).toEqual(["Wikipedia and encyclopedias", "Medicine and first aid"]);
+    const nav = within(screen.getByRole("navigation", { name: "Categories" }))
+      .getAllByRole("button")
+      .map((button) => button.textContent?.replace(/\d+$/, "").trim());
+    expect(nav.slice(0, 4)).toEqual(["All collections", "Wikipedia and encyclopedias", "Medicine and first aid", "Offline maps"]);
+  });
+
   it("filters as the person types and can clear the filter again", async () => {
     serve();
     renderScreen(<ExplorePage />, "/explore");

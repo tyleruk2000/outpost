@@ -124,7 +124,9 @@ trash are left out.
   it does not change the page's "last changed" time.
 - **Built-in templates.** Five ship with Outpost: Meeting notes, Trip plan, Kit list,
   Reference card and Daily log. Creating a page from a template copies its title,
-  icon and content.
+  icon and content. The built-in ones have no icon of their own, so a page made from
+  one shows the plain page icon until you choose one: Outpost draws line icons, and an
+  emoji on a page is always one somebody picked.
 - **Your own templates.** Any page without sub-pages can be turned into a template. A
   template lives outside the page tree, is not listed in search, and cannot have
   sub-pages. Turning it back makes it an ordinary top-level page.

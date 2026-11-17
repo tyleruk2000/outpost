@@ -17,7 +17,7 @@ export const gameScreens: SectionScreen[] = [
   {
     to: "/games/solitaire",
     label: "Solitaire",
-    keywords: "patience klondike cards",
+    keywords: "patience klondike cards card game",
     icon: Spade,
     about:
       "The card game for one also called patience or Klondike: build the four suits up from the aces. Draw one card at a time, or three.",
@@ -25,12 +25,13 @@ export const gameScreens: SectionScreen[] = [
   {
     to: "/games/peg-solitaire",
     label: "Peg solitaire",
-    keywords: "pegs marbles board",
+    keywords: "pegs marbles board puzzle",
     icon: CircleDot,
     about: "The traditional board of 33 holes: jump one peg over another to take it, until one is left, at best in the middle.",
   },
   {
     to: "/games/sudoku",
+    keywords: "numbers puzzle",
     label: "Sudoku",
     icon: Hash,
     about:
@@ -38,12 +39,14 @@ export const gameScreens: SectionScreen[] = [
   },
   {
     to: "/games/draughts",
+    keywords: "checkers board game",
     label: "Draughts",
     icon: Crown,
     about: "English draughts on an 8 by 8 board, against the computer or with two people at one device.",
   },
   {
     to: "/games/pairs",
+    keywords: "memory matching cards children",
     label: "Pairs",
     icon: Shapes,
     about: "Turn over two cards at a time to find the matching pictures. Three sizes, for small hands and bigger ones.",

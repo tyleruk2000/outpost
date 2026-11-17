@@ -28,10 +28,10 @@ const ScannerDialog = lazy(() => import("./scanner-dialog").then((module) => ({ 
 const VIEWS = ["stock", "days", "shopping", "household"] as const;
 type View = (typeof VIEWS)[number];
 
-/** Copies an address inside Outpost, for pasting as a link in a note; says so, or shows it to copy by hand. */
+/** Copies an address inside Outpost, for pasting as a link on a page in Notes; says so, or shows it to copy by hand. */
 export async function copyAddress(path: string): Promise<void> {
   const copied = await copyText(path);
-  if (copied) toast.success(`Copied ${path}. In a note, select some words and paste it as the link.`);
+  if (copied) toast.success(`Copied ${path}. On a page in Notes, select some words and paste it as the link.`);
   else toast.message(`This browser would not copy. The address is ${path}`);
 }
 
@@ -119,7 +119,7 @@ export default function SuppliesPage() {
         </Button>
         <Button variant="ghost" onClick={() => void copyAddress(`/prepare/supplies${view === "stock" ? "" : `?view=${view}`}`)}>
           <Link2 />
-          Copy a link for a note
+          Copy a link for a page
         </Button>
       </footer>
 

@@ -18,7 +18,7 @@ import {
 import { Copy, TriangleAlert } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { ErrorState, Notice, Page, PageHeader, Rows, Section } from "@/components/page";
+import { EmptyState, ErrorState, Notice, Page, PageHeader, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
@@ -552,9 +552,9 @@ export default function PowerPlanPage() {
         }
       >
         {draft.loads.length === 0 ? (
-          <p className="rounded-panel border border-border px-4 py-6 text-small text-ink-muted">
-            No loads yet. Add the first: the Raspberry Pi Outpost runs on, a radio, lights, a phone charger.
-          </p>
+          <EmptyState title="No loads yet" compact level={3} seed={5}>
+            Add the first: the Raspberry Pi Outpost runs on, a radio, lights, a phone charger.
+          </EmptyState>
         ) : (
           <Rows>
             {draft.loads.map((load) => (
@@ -784,7 +784,7 @@ export default function PowerPlanPage() {
             {(ids) => <Textarea {...ids} value={draft.notes} maxLength={20_000} onChange={(event) => set({ notes: event.target.value })} />}
           </Field>
           <p className="text-small text-ink-muted">
-            To link to this plan from a note, put this address in the note's link field:{" "}
+            To link to this plan from a page in Notes, put this address in the page’s link field:{" "}
             <span className="font-mono break-all text-ink select-all">/tools/power/plans/{saved.id}</span>
           </p>
         </div>

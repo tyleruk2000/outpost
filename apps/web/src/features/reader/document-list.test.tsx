@@ -83,7 +83,7 @@ describe("the list of a collection's documents", () => {
     const rows = within(screen.getByRole("list", { name: "Documents" })).getAllByRole("listitem");
     const first = within(rows[0]!);
     expect(first.getByRole("heading", { level: 2, name: "Boiling water to make it safe" })).toBeInTheDocument();
-    expect(rows[0]).toHaveTextContent("PDF/A. Writer");
+    expect(rows[0]).toHaveTextContent("PDF · , A. Writer");
     expect(first.getByText("Water: how long to boil")).toBeInTheDocument();
     await userEvent.click(first.getByRole("button", { name: "Boiling water to make it safe" }));
     expect(onOpen).toHaveBeenCalledWith(documents[0]!.files[0], documents[0]);

@@ -106,7 +106,7 @@ describe("the battery runtime calculator, from devices", () => {
   it("invites the first device and has no answers until there is one", async () => {
     show("/tools/power");
     fireEvent.click(await screen.findByText("Battery runtime"));
-    expect(within(runtime()).getByText(/Nothing yet\. Add what the battery should run or charge/)).toBeInTheDocument();
+    expect(within(runtime()).getByText(/^Add what the battery should run or charge/)).toBeInTheDocument();
     expect(within(runtime()).queryByText("Runs what runs")).not.toBeInTheDocument();
   });
 

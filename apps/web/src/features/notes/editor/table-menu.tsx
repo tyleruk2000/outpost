@@ -1,17 +1,78 @@
 /** A compact bar over the table being edited: rows, columns, the header row, and removing the table. */
+
+import { PluginKey } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import { ArrowDownToLine, ArrowLeftToLine, ArrowRightToLine, ArrowUpToLine, ChevronDown, PanelTop, Trash2 } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useMemo, useRef } from "react";
 import { floating, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Tooltip } from "@/components/ui/misc";
 import { cn } from "@/lib/utils";
 import { toolButton } from "./link-field";
 
 const appendToBody = () => document.body;
-const placement = { placement: "top-start" as const, offset: 6, flip: true, shift: { padding: 8 } };
+const MENU_KEY = new PluginKey("tableMenu");
+const GAP = 6;
+const placement = { placement: "top-start" as const, offset: GAP, flip: true, shift: { padding: 8 } };
+
+/**
+ * How much more room to make above a table for the bar, in pixels: the bar sits above the
+ * table it is about, and with no room there it lay over the lines before it.
+ */
+export function roomToMake(gapAbove: number, barHeight: number): number {
+  return Math.max(0, Math.ceil(barHeight + GAP * 2 - gapAbove));
+}
+
+/**
+ * Makes room above the table being edited for the bar, and gives it back when the bar
+ * goes. The margin is set on the <table>, whose attributes the table's view leaves alone.
+ */
+function useRoomAbove(editor: Editor, bar: { current: HTMLElement | null }) {
+  const held = useRef<{ table: HTMLElement; margin: string } | null>(null);
+  return useMemo(() => {
+    const release = () => {
+      if (held.current) held.current.table.style.marginTop = held.current.margin;
+      held.current = null;
+    };
+    /** True when the room changed, so the bar has to be placed again. */
+    const reserve = (): boolean => {
+      const table = innerTable(editor);
+      if (!table || held.current?.table === table) return false;
+      release();
+      const block = table.closest(".tableWrapper") ?? table;
+      const before = block.previousElementSibling?.getBoundingClientRect().bottom;
+      if (before === undefined) return false;
+      const extra = roomToMake(table.getBoundingClientRect().top - before, bar.current?.offsetHeight ?? 0);
+      if (extra === 0) return false;
+      held.current = { table, margin: table.style.marginTop };
+      table.style.marginTop = `${Number.parseFloat(getComputedStyle(table).marginTop) + extra}px`;
+      return true;
+    };
+    // Placed again once the room is made: the bar is placed against where the table was.
+    const replace = () =>
+      requestAnimationFrame(() => {
+        if (!editor.isDestroyed) editor.view.dispatch(editor.state.tr.setMeta(MENU_KEY, "updatePosition"));
+      });
+    return {
+      onShow: () => {
+        if (reserve()) replace();
+      },
+      onUpdate: () => {
+        if (reserve()) replace();
+      },
+      onHide: release,
+      onDestroy: release,
+    };
+  }, [editor, bar]);
+}
 const textButton =
   "flex h-8 items-center gap-1 rounded-[4px] pr-1.5 pl-2 text-small text-ink hover:bg-surface-strong data-[state=open]:bg-surface-strong max-md:h-10";
+
+/** The <table> itself, inside the wrapper that lets a wide table scroll. */
+function innerTable(editor: Editor): HTMLElement | null {
+  const dom = tableElement(editor);
+  return dom?.tagName === "TABLE" ? dom : (dom?.querySelector("table") ?? null);
+}
 
 function tableElement(editor: Editor): HTMLElement | null {
   const { $from } = editor.state.selection;
@@ -41,6 +102,8 @@ function TableSubmenu({ label, children }: { label: string; children: ReactNode 
 }
 
 export function TableMenu({ editor }: { editor: Editor }) {
+  const bar = useRef<HTMLDivElement>(null);
+  const room = useRoomAbove(editor, bar);
   const run = (command: (chain: ReturnType<Editor["chain"]>) => ReturnType<Editor["chain"]>) => () => {
     command(editor.chain().focus()).run();
   };
@@ -48,10 +111,10 @@ export function TableMenu({ editor }: { editor: Editor }) {
   return (
     <BubbleMenu
       editor={editor}
-      pluginKey="tableMenu"
+      pluginKey={MENU_KEY}
       appendTo={appendToBody}
       updateDelay={0}
-      options={placement}
+      options={{ ...placement, ...room }}
       className="z-(--z-dropdown)"
       // Hidden while text is selected, so it never sits under the selection toolbar.
       shouldShow={({ editor: current, state, view, element }) =>
@@ -61,11 +124,11 @@ export function TableMenu({ editor }: { editor: Editor }) {
         current.isActive("table")
       }
       getReferencedVirtualElement={() => {
-        const table = tableElement(editor);
+        const table = innerTable(editor);
         return table ? { getBoundingClientRect: () => table.getBoundingClientRect() } : null;
       }}
     >
-      <div role="toolbar" aria-label="Table" data-editor-popup className={cn(floating, "flex min-w-0 items-center gap-0.5 p-1")}>
+      <div ref={bar} role="toolbar" aria-label="Table" data-editor-popup className={cn(floating, "flex min-w-0 items-center gap-0.5 p-1")}>
         <TableSubmenu label="Row">
           <MenuItem onSelect={run((chain) => chain.addRowBefore())}>
             <ArrowUpToLine /> Add row above

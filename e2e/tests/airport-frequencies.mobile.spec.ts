@@ -42,10 +42,30 @@ test.describe("airport frequencies on a phone", () => {
     await expect(card).toContainText("Not for navigation or flight planning");
     await expect(card).toContainText("as of 17 November 2026");
     await expect(card).toContainText("15 listed");
-    // The list scrolls with the card, its last row can be reached, and the page does not scroll sideways.
+    // On a phone (390 x 844) the card shows the name, at least four rows and the caution, without taking the map:
+    // the list scrolls inside the card, about five rows high.
+    await page.waitForTimeout(400);
+    const shown = await list.getByRole("listitem").evaluateAll(
+      (items) =>
+        items.filter((item) => {
+          const row = item.getBoundingClientRect();
+          const box = item.closest("ul")!.getBoundingClientRect();
+          const outer = item.closest(".outpost-map-card")!.getBoundingClientRect();
+          return row.top >= Math.max(box.top, outer.top) - 1 && row.bottom <= Math.min(box.bottom, outer.bottom) + 1;
+        }).length,
+    );
+    expect(shown).toBeGreaterThanOrEqual(4);
+    expect(await list.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
+    await expect(card.getByText(/^Not for navigation or flight planning/)).toBeAttached();
+    // Its last row can be reached by scrolling the list, and the page does not scroll sideways.
     const last = list.getByRole("listitem").last();
     await last.scrollIntoViewIfNeeded();
     await expect(last).toBeInViewport();
+    // It folds to one line, as a repeater's card does, and opens out again.
+    await card.getByRole("button", { name: "Show less" }).click();
+    await expect(page.getByRole("region", { name: "London Heathrow Airport: radio frequencies" })).toContainText("15 radio frequencies");
+    await page.getByRole("button", { name: "Show the details" }).click();
+    await expect(list).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
 
     expect(errors).toEqual([]);

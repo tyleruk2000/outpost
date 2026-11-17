@@ -6,7 +6,6 @@
  * names, numbers and where they will be.
  */
 import { type EmergencyPlan, planKindLabel } from "@outpost/shared";
-import { ArrowLeft } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 import { ErrorState, Notice, Page, PageHeader } from "@/components/page";
@@ -186,10 +185,8 @@ export default function CardsPage() {
 
   return (
     <Page width="reading">
-      <Link to={`/prepare/plans/${id}`} className="mb-2 inline-flex min-h-11 items-center gap-1.5 text-small text-primary">
-        <ArrowLeft aria-hidden className="size-4" /> The whole plan
-      </Link>
       <PageHeader
+        back={{ to: `/prepare/plans/${id}`, label: "The whole plan" }}
         title="Cards to print"
         description={
           response.data

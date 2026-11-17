@@ -11,7 +11,7 @@ import { formatBytes, type JobDto, NETWORK_TEXT_LIMITS, type NetworkDevice, type
 import { Copy, Download, ExternalLink, Pencil, Radar, Square, Trash2 } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { toast } from "sonner";
-import { EmptyState, ErrorState, Notice, Page, PageHeader, Rows, Section } from "@/components/page";
+import { Disclosure, EmptyState, ErrorState, Notice, Page, PageHeader, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
@@ -364,53 +364,59 @@ function WhatItDoes({ status }: { status: NetworkStatus }) {
           It looks only at the networks this computer is itself on, read from the computer when you press, and only at private ones. Nothing
           you type or choose here can widen it.
         </p>
-        {status.subnets.length > 0 ? (
-          <ul className="grid gap-1.5">
-            {status.subnets.map((subnet) => (
-              <li key={`${subnet.interface}-${subnet.cidr}`}>
-                <span className="font-mono">{subnet.swept ?? subnet.cidr}</span> on {subnet.interface}
-                {subnet.plan === "listen" ? ": not swept (IPv6). " : `: ${plural(subnet.addresses, "address", "addresses")} asked. `}
-                {subnet.reason ? <span className="text-ink-muted">{subnet.reason}</span> : null}
-              </li>
-            ))}
-          </ul>
-        ) : null}
-        {status.skipped.length > 0 ? (
-          <details>
-            <summary className="min-h-11 cursor-pointer py-2 text-primary md:min-h-0">
-              {plural(status.skipped.length, "address", "addresses")} of this computer’s not looked at
-            </summary>
-            <ul className="mt-1 grid gap-1 text-ink-muted">
-              {status.skipped.map((entry) => (
-                <li key={`${entry.interface}-${entry.address}`}>
-                  <span className="font-mono">{entry.address}</span> on {entry.interface}: {entry.reason}
+        <p>
+          It asks each address whether something is there, and listens for what devices already say about themselves. It does not log in to
+          anything, look for weaknesses or record what passes over the network.
+        </p>
+        <Disclosure summary="How it asks, step by step">
+          {status.subnets.length > 0 ? (
+            <ul className="grid gap-1.5">
+              {status.subnets.map((subnet) => (
+                <li key={`${subnet.interface}-${subnet.cidr}`}>
+                  <span className="font-mono">{subnet.swept ?? subnet.cidr}</span> on {subnet.interface}
+                  {subnet.plan === "listen" ? ": not swept (IPv6). " : `: ${plural(subnet.addresses, "address", "addresses")} asked. `}
+                  {subnet.reason ? <span className="text-ink-muted">{subnet.reason}</span> : null}
                 </li>
               ))}
             </ul>
-          </details>
-        ) : null}
-        <ol className="grid list-decimal gap-1.5 pl-5">
-          <li>
-            Each address is sent one ping. One that does not answer is sent a connection attempt on port 80, then on port 443, closed the
-            moment it opens. Nothing is sent over it.
-          </li>
-          <li>
-            At most {limits.packetsPerSecond} of these a second, {limits.concurrent} at a time, each waiting {limits.timeoutMs / 1000}{" "}
-            second for an answer. One scan at a time; it can be stopped.
-          </li>
-          <li>
-            The computer’s own list of neighbours (ARP and NDP) is read: a device that ignores every probe still answers the computer’s “who
-            has this address?”.
-          </li>
-          <li>
-            What devices already announce (Bonjour, mDNS) is read from the computer’s own listener, and names are asked of its resolver.
-          </li>
-        </ol>
-        <p className="text-ink-muted">
-          No other port is tried, no service is asked anything, nothing is logged in to, nothing is checked for weaknesses and no traffic is
-          recorded. A link to a device’s web page is opened by your browser; Outpost does not fetch it. Anyone who can open Outpost can
-          start a scan; any device on this network could do the same itself.
-        </p>
+          ) : null}
+          {status.skipped.length > 0 ? (
+            <details>
+              <summary className="min-h-11 cursor-pointer py-2 text-primary md:min-h-0">
+                {plural(status.skipped.length, "address", "addresses")} of this computer’s not looked at
+              </summary>
+              <ul className="mt-1 grid gap-1 text-ink-muted">
+                {status.skipped.map((entry) => (
+                  <li key={`${entry.interface}-${entry.address}`}>
+                    <span className="font-mono">{entry.address}</span> on {entry.interface}: {entry.reason}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
+          <ol className="grid list-decimal gap-1.5 pl-5">
+            <li>
+              Each address is sent one ping. One that does not answer is sent a connection attempt on port 80, then on port 443, closed the
+              moment it opens. Nothing is sent over it.
+            </li>
+            <li>
+              At most {limits.packetsPerSecond} of these a second, {limits.concurrent} at a time, each waiting {limits.timeoutMs / 1000}{" "}
+              second for an answer. One scan at a time; it can be stopped.
+            </li>
+            <li>
+              The computer’s own list of neighbours (ARP and NDP) is read: a device that ignores every probe still answers the computer’s
+              “who has this address?”.
+            </li>
+            <li>
+              What devices already announce (Bonjour, mDNS) is read from the computer’s own listener, and names are asked of its resolver.
+            </li>
+          </ol>
+          <p className="text-ink-muted">
+            No other port is tried, no service is asked anything, nothing is logged in to, nothing is checked for weaknesses and no traffic
+            is recorded. A link to a device’s web page is opened by your browser; Outpost does not fetch it. Anyone who can open Outpost can
+            start a scan; any device on this network could do the same itself.
+          </p>
+        </Disclosure>
         {missing.length > 0 ? (
           <Notice tone="info" title="Not available on this computer">
             <ul className="grid gap-1">

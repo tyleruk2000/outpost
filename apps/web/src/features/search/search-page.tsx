@@ -1,8 +1,9 @@
 import type { SearchMode, SearchResponse, SearchResult } from "@outpost/shared";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { LoaderCircle, Search as SearchIcon, X } from "lucide-react";
+import { ChevronRight, LoaderCircle, Search as SearchIcon, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
+import { findPlaces, type Place } from "@/components/find-places";
 import { EmptyState, ErrorState, Notice, Page } from "@/components/page";
 import { ScreensUnder } from "@/components/screens-under";
 import { Highlighted, kindMeta, kindOf, resultHref } from "@/components/search-hit";
@@ -14,6 +15,42 @@ import { cn, plural } from "@/lib/utils";
 import { AnswerArea, AnswerHint } from "./answer";
 
 const PAGE_SIZE = 20;
+/** How many screens a search offers to go to, at most: the quick search's matching, on the search page. */
+const PLACES_SHOWN = 3;
+
+/**
+ * The screens of Outpost that match the words, as the quick search finds them: "safe drinking water" offers
+ * Tools: Water, which holds the treatment tables. Above the results, since it is a place to go, not a match.
+ */
+function GoTo({ places }: { places: Place[] }) {
+  return (
+    <section aria-labelledby="go-to" className="mt-4 max-w-[46rem]">
+      <h2 id="go-to" className="text-small font-medium text-ink-muted">
+        Go to
+      </h2>
+      <ul className="mt-1 divide-y divide-border border-y border-border">
+        {places.map((place) => (
+          <li key={place.to}>
+            <Link to={place.to} className="group flex min-h-11 items-start gap-3 py-2.5 text-ink">
+              <place.icon aria-hidden className="mt-0.5 size-[18px] shrink-0 text-ink-muted" strokeWidth={1.6} />
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium group-hover:underline group-hover:decoration-primary group-hover:underline-offset-4">
+                  {place.parent ? <span className="font-normal text-ink-muted">{place.parent.label}:</span> : null}
+                  {place.parent ? " " : null}
+                  {place.label}
+                </span>
+                {"about" in place && typeof place.about === "string" ? (
+                  <span className="mt-0.5 line-clamp-2 block text-small text-ink-muted">{place.about}</span>
+                ) : null}
+              </span>
+              <ChevronRight aria-hidden className="mt-1 size-4 shrink-0 text-ink-faint" />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 function ResultRow({ result, heading: Heading = "h2" }: { result: SearchResult; heading?: "h2" | "h3" }) {
   const kind = kindOf(result.kind);
@@ -196,7 +233,8 @@ export default function SearchPage() {
   const data = search.data;
   const facets = Object.entries(data?.facets ?? {})
     .filter(([key]) => key !== "reference")
-    .sort((a, b) => b[1] - a[1]);
+    // Most first, and what would have to be downloaded after every kind that is on this device.
+    .sort((a, b) => Number(a[0] === "catalog") - Number(b[0] === "catalog") || b[1] - a[1]);
   // Reference comes last and is there from the first results, so the other tabs never move when its count arrives.
   const referenceTab = data?.referenceToCome || kind === "reference" || reference.results.length > 0;
   const referenceCount = reference.results.length > 0 || reference.status === "done" ? reference.results.length : undefined;
@@ -206,6 +244,14 @@ export default function SearchPage() {
   const referenceHasSomething = reference.status === "searching" || reference.results.length > 0 || trouble.length > 0;
   const referencePages = Math.max(1, Math.ceil(reference.results.length / PAGE_SIZE));
   const referencePage = Math.min(page, referencePages);
+  // On "Everything", what would have to be downloaded is listed apart, last of all: after a person's own results and after
+  // what the reference collections hold, which are on this device too. The server ranks it last as well (docs/search.md).
+  const everything = kind === "";
+  const own = data ? (everything ? data.results.filter((result) => result.kind !== "catalog") : data.results) : [];
+  const toDownload = everything && data ? data.results.filter((result) => result.kind === "catalog") : [];
+  // Added once the reference collections have answered, so that it never moves under a finger.
+  const toDownloadShown = toDownload.length > 0 && !(referenceBelow && reference.status !== "done");
+  const places = everything && page === 1 && q.trim() ? findPlaces(q).slice(0, PLACES_SHOWN) : [];
   const semanticOffered = data && !data.warnings.some((warning) => warning.source === "semantic") && data.mode !== "keyword";
 
   return (
@@ -309,6 +355,7 @@ export default function SearchPage() {
             ) : null}
           </div>
 
+          {places.length > 0 ? <GoTo places={places} /> : null}
           {kind === "reference" ? (
             <section aria-label="Reference results">
               {reference.results.length > 0 ? (
@@ -367,7 +414,7 @@ export default function SearchPage() {
           ) : data ? (
             <>
               <div className={cn("transition-opacity", search.isPlaceholderData && "opacity-60")}>
-                {data.results.length === 0 ? (
+                {own.length === 0 ? (
                   <p className="mt-4 text-small text-ink-muted" aria-live="polite">
                     Nothing of your own matches “{data.query}”.
                   </p>
@@ -390,11 +437,13 @@ export default function SearchPage() {
                     {warning.message}
                   </Notice>
                 ))}
-                <ol className="mt-1 divide-y divide-border">
-                  {data.results.map((result) => (
-                    <ResultRow key={`${result.kind}:${result.entityId}`} result={result} />
-                  ))}
-                </ol>
+                {own.length > 0 ? (
+                  <ol className="mt-1 divide-y divide-border">
+                    {own.map((result) => (
+                      <ResultRow key={`${result.kind}:${result.entityId}`} result={result} />
+                    ))}
+                  </ol>
+                ) : null}
                 {data.total > PAGE_SIZE ? (
                   <Pager page={page} pages={Math.ceil(data.total / PAGE_SIZE)} onPage={(next) => setParam("page", String(next))} />
                 ) : null}
@@ -424,6 +473,19 @@ export default function SearchPage() {
                       See all {reference.results.length} reference results
                     </Button>
                   ) : null}
+                </section>
+              ) : null}
+              {toDownloadShown ? (
+                <section aria-labelledby="download-results" className="mt-8 border-t border-border pt-5">
+                  <h2 id="download-results" className="text-lead font-medium text-ink">
+                    Available to download
+                  </h2>
+                  <p className="mt-1 text-small text-ink-muted">Not on this device: each needs a connection to download first.</p>
+                  <ol className="divide-y divide-border">
+                    {toDownload.map((result) => (
+                      <ResultRow key={`${result.kind}:${result.entityId}`} result={result} heading="h3" />
+                    ))}
+                  </ol>
                 </section>
               ) : null}
             </>

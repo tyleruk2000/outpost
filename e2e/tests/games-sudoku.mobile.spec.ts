@@ -16,6 +16,8 @@ test.describe("Sudoku on a phone", () => {
 
     // Reached from the More sheet, under Games.
     await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "More" }).tap();
+    // The screens under Games are folded away until asked for.
+    await page.getByRole("dialog", { name: "More" }).getByRole("button", { name: "Show the screens under Games" }).tap();
     await page.getByRole("dialog", { name: "More" }).getByRole("list", { name: "Under Games" }).getByRole("link", { name: "Sudoku" }).tap();
     await expect(page.getByRole("heading", { level: 1, name: "Sudoku" })).toBeVisible();
     await expect(page.getByRole("grid", { name: "Sudoku grid" })).toBeVisible();

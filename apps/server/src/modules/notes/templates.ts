@@ -46,7 +46,7 @@ export const BUILTIN_TEMPLATES: BuiltinTemplate[] = [
   {
     id: `${BUILTIN_PREFIX}meeting-notes`,
     title: "Meeting notes",
-    icon: "🗒️",
+    icon: null,
     description: "Who was there, what was discussed, what was decided and who does what next.",
     builtin: true,
     content: doc(
@@ -67,7 +67,7 @@ export const BUILTIN_TEMPLATES: BuiltinTemplate[] = [
   {
     id: `${BUILTIN_PREFIX}trip-plan`,
     title: "Trip plan",
-    icon: "🧭",
+    icon: null,
     description: "Route, timings, bail-out points and who to tell, for a day out or a longer journey.",
     builtin: true,
     content: doc(
@@ -101,7 +101,7 @@ export const BUILTIN_TEMPLATES: BuiltinTemplate[] = [
   {
     id: `${BUILTIN_PREFIX}kit-list`,
     title: "Kit list",
-    icon: "🎒",
+    icon: null,
     description: "A packing checklist by category. Tick items off as they go in the bag; untick to reuse.",
     builtin: true,
     content: doc(
@@ -129,7 +129,7 @@ export const BUILTIN_TEMPLATES: BuiltinTemplate[] = [
   {
     id: `${BUILTIN_PREFIX}reference-card`,
     title: "Reference card",
-    icon: "📇",
+    icon: null,
     description: "One page for a procedure or a piece of equipment: key facts, steps, warnings and a quick table.",
     builtin: true,
     content: doc(
@@ -148,7 +148,7 @@ export const BUILTIN_TEMPLATES: BuiltinTemplate[] = [
   {
     id: `${BUILTIN_PREFIX}daily-log`,
     title: "Daily log",
-    icon: "📅",
+    icon: null,
     description: "A dated entry: conditions, what happened, what was used up and what is next.",
     builtin: true,
     content: doc(

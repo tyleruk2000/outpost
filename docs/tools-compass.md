@@ -26,7 +26,7 @@ server.
   > grid north here.
 
   Outside Great Britain there is no grid: the rule is for a map drawn to true north, from
-  the declination alone. **Copy** and **Save as a note** keep the answer.
+  the declination alone. **Copy** and **Save as a page** keep the answer.
   Under it, the three norths drawn as a map's margin draws them; the angles between them
   are drawn a stated whole number of times their size (10 in most of Britain) so that
   they can be seen, and the figures written on the drawing are the real ones.

@@ -22,7 +22,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowUpRight, ChevronRight, Wifi } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "react-router";
-import { Page, PageHeader } from "@/components/page";
+import { JumpLinks, Page, PageHeader } from "@/components/page";
 import { Badge, Segmented } from "@/components/ui/misc";
 import { SETTINGS_MODEL } from "@/features/chat/chat-data";
 import { CommandLine, RecommendedModels } from "@/features/setup/recommended-models";
@@ -234,20 +234,7 @@ export default function SetupGuidePage() {
         ))}
       />
 
-      <nav aria-label="On this page" className="mb-8 text-small">
-        <ul className="flex flex-wrap gap-x-5 gap-y-1">
-          {SETUP_GUIDE.sections.map((section) => (
-            <li key={section.id}>
-              <a
-                href={`#${section.id}`}
-                className="inline-flex min-h-9 items-center text-primary underline decoration-1 underline-offset-2 hover:decoration-2"
-              >
-                {section.title}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      <JumpLinks label="On this page" items={SETUP_GUIDE.sections.map((section) => ({ id: section.id, label: section.title }))} />
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-10 text-body text-ink">
         {SETUP_GUIDE.sections.map((section) => (

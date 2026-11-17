@@ -8,7 +8,7 @@
  */
 import type { ChatConversationDetail, ChatMessage } from "@outpost/shared";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ChevronLeft, Ellipsis, PencilLine, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowLeft, Ellipsis, PencilLine, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -316,7 +316,7 @@ function Loaded({ detail }: { detail: ChatConversationDetail }) {
       try {
         const saved = await chatApi.saveAsNote(message.id);
         void client.invalidateQueries({ queryKey: ["notes"] });
-        toast.success("Saved as a new note", {
+        toast.success("Saved as a new page in Notes", {
           description: saved.title,
           action: { label: "Open it", onClick: () => navigate(`/notes/${saved.noteId}`) },
         });
@@ -353,7 +353,7 @@ function Loaded({ detail }: { detail: ChatConversationDetail }) {
             to="/chat"
             className="-ml-1 flex h-11 min-w-11 shrink-0 items-center gap-1 rounded-control px-1 text-ink-muted hover:text-ink md:h-8 md:min-w-0"
           >
-            <ChevronLeft aria-hidden className="size-4 md:hidden" />
+            <ArrowLeft aria-hidden className="size-4 md:hidden" />
             Chat
           </Link>
           <span aria-hidden className="text-border-strong max-md:hidden">

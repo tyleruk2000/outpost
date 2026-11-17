@@ -169,7 +169,7 @@ describe("the Supplies screen", () => {
     await userEvent.type(within(dialog).getByLabelText("Name"), "Chickpeas");
     await userEvent.click(within(dialog).getByRole("button", { name: "One more: how many" }));
     await userEvent.type(within(dialog).getByLabelText("kcal in one (optional)"), "400");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Add, then another like this" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Add, then another" }));
     await waitFor(() => expect(server.posted.filter((post) => post.path === "POST /api/supplies/items")).toHaveLength(1));
     expect(server.posted[0]!.body).toMatchObject({
       name: "Chickpeas",
@@ -269,6 +269,38 @@ describe("the Supplies screen", () => {
     expect(await screen.findByText(/That is 3,360 kcal in 1 item against 2,000 kcal a day/)).toBeInTheDocument();
     expect(screen.getByText(/The food holds about 1.6 days of energy/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Salt" })).toHaveAttribute("href", "/prepare/supplies/items/i2");
+  });
+
+  it("says plainly that there is no water, rather than that it runs out in none", async () => {
+    show({
+      items: [item({})],
+      household: {
+        ...DEFAULT_HOUSEHOLD,
+        daysWanted: 7,
+        members: [
+          {
+            id: "m",
+            kind: "person",
+            name: "",
+            band: "19-64",
+            sex: "female",
+            kcalPerDay: null,
+            drinkingLitres: null,
+            allUsesLitres: null,
+            note: "",
+          },
+        ],
+      },
+      view: "days",
+    });
+    expect(await screen.findByText(/^There is no water stored\./)).toBeInTheDocument();
+    expect(screen.queryByText(/in none/)).toBeNull();
+  });
+
+  it("counts the stock in items, a household's word, not in rows", async () => {
+    show({ items: [item({}), item({ id: "i2", name: "Rice" })] });
+    expect(await screen.findByText("2 items")).toBeInTheDocument();
+    expect(screen.queryByText(/\brows?\b/)).toBeNull();
   });
 
   it("offers the shopping list as a PDF and as text", async () => {

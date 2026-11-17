@@ -1466,7 +1466,7 @@ with its formatting, which an answer is not, so how that is done matters:
   code, not drawn.
 - **The only links are Outpost's own**: citation markers and the list of passages,
   which lead to routes inside Outpost taken from Outpost's own record of what it sent.
-- **A reply saved as a note** keeps its headings, lists, tables and code, and loses its
+- **A reply saved as a page** keeps its headings, lists, tables and code, and loses its
   links and pictures in the same way (`modules/chat/note.ts`): a page of notes would
   otherwise fetch a picture the moment it was opened. It is always a new page.
 

@@ -68,6 +68,11 @@ const RESULT_VERSION = 1;
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const monthName = (month: string) => `${MONTHS[Number(month.slice(5, 7)) - 1]} ${month.slice(0, 4)}`;
+/** "16 Nov 2026": a day written as everywhere else in Outpost, from "2026-11-16". */
+const dayName = (day: string) =>
+  new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(
+    Date.parse(`${day}T00:00:00Z`),
+  );
 
 /**
  * What a key gains when a level wire longer than a half-wave is among the antennas and
@@ -251,7 +256,7 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
       ssn: Math.round(row.ssn),
       // Dated, not aged: this sentence is kept with the answer and printed in its PDF, read on other days. The
       // screen says how old the table is now (BasisNotice in the web app), from `tableDate`.
-      summary: `Monthly median for ${monthName(month)} at smoothed sunspot number ${Math.round(row.ssn)}, which is NOAA's forecast for the month in ${where}, dated ${table.dataDate}.`,
+      summary: `Monthly median for ${monthName(month)} at smoothed sunspot number ${Math.round(row.ssn)}, which is NOAA's forecast for the month in ${where}, dated ${dayName(table.dataDate)}.`,
       tableDate: table.dataDate,
       tableAgeDays: age,
       ssnLow: row.low === null ? null : Math.round(row.low),

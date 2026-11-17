@@ -243,14 +243,16 @@ describe("the contact log", () => {
   it("starts empty, and says which ADIF it reads and that a position is never worked out", async () => {
     show();
     expect(await screen.findByRole("heading", { name: "Nothing is logged yet" })).toBeInTheDocument();
-    // The empty log offers its own buttons, once, with the main one last as across the app.
+    // The empty log offers its own buttons, once: in the flow of the page the main one comes first, as across the app.
     const empty = screen.getByRole("heading", { name: "Nothing is logged yet" }).parentElement!;
     expect(
       within(empty)
         .getAllByRole("button")
         .map((button) => button.textContent),
-    ).toEqual(["Log an entry", "Import an ADIF file"]);
+    ).toEqual(["Import an ADIF file", "Log an entry"]);
     expect(screen.getAllByRole("button", { name: "Log an entry" })).toHaveLength(1);
+    // The file's field names are a radio amateur's detail: said, but behind a disclosure.
+    expect(screen.getByText("What is read from an ADIF file").closest("details")).not.toHaveAttribute("open");
     const footer = screen.getByText(/ADIF files are read as version 3\.1\.8 of the specification/);
     expect(footer.textContent).toContain("QSO_DATE, TIME_ON, CALL");
     expect(footer.textContent).toContain("MY_GRIDSQUARE");

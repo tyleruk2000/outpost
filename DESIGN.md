@@ -110,14 +110,15 @@ All three are bundled and served locally. Fixed rem scale, ratio about 1.2:
 ```
 ┌────────────┬──────────────────────────────────────────┐
 │ ▮ Outpost  │                                          │
-│ Search  ⌘K │   Title in Literata                      │
+│ Quick s ⌘K │   Title in Literata                      │
 │            │   content                                │
 │ Home       │   reading: max 46rem, left aligned       │
-│ Explore    │   browsing: max 70rem                    │
+│ Search     │   browsing: max 70rem                    │
 │ Library    │   map and readers: full bleed            │
 │ Maps       │                                          │
-│ Chat       │                                          │
 │ Notes      │                                          │
+│ Explore …  │                                          │
+│ Pages      │                                          │
 │  ▸ pages   │                                          │
 │ ─────────  │                                          │
 │ Downloads  │                                          │
@@ -128,13 +129,16 @@ All three are bundled and served locally. Fixed rem scale, ratio about 1.2:
         spine: verdigris            pages: white
 ```
 
-- Desktop: a 16rem spine, collapsible to icons. Knowledge at the top, the page tree in
-  the middle, upkeep at the bottom, and the lamp (one line of status) at the foot. A
-  screen reached from inside another is listed indented under it, by name only, behind
-  a chevron that shows or hides the group. On a short window everything between the
-  search field and the lamp scrolls as one.
+- Desktop: a 16rem spine, collapsible to icons. The quick search field at the top,
+  then the screens (the four of the phone's bottom bar first, with Search), then the
+  page tree; upkeep and the lamp (one line of status) at the foot. Only the screens and
+  the page tree scroll, as one part, with a fade at its foot when there is more below;
+  upkeep is always in view. A screen reached from inside another is listed indented
+  under it, by name only, behind a chevron that shows or hides the group. Each screen is
+  named by its own title.
 - Mobile: a spine-coloured top bar and a bottom bar with Home, Library, Maps, Notes
-  and More.
+  and More. The More sheet is the sidebar's two parts, each heading's screens folded
+  under it until asked for.
 - Lists before cards. A card appears only when an item is an object picked from a set
   (a catalogue collection, a map region). Cards are never nested.
 - Home is written as sentences and lists, not tiles of numbers.

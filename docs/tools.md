@@ -10,7 +10,7 @@ opens the formula, its source, the range it holds for and what it leaves out.
 Nothing here needs the server or stores anything on it. The unit chosen for each input
 and the last figure typed into it are kept in the browser as a preference of the device,
 like the theme (`outpost.tools.*` in local storage). The exceptions are **Save as a
-note**, which makes a new note on the server when you press it, as any note is made, and
+page**, which makes a new page in Notes when you press it, as any page is made, and
 **Add to library** on the two printable sheets, which files the PDF in the library.
 
 **General information, not advice.** A calculator gives the answer its formula gives.
@@ -38,7 +38,7 @@ too:
   share) to about two figures: to 5 minutes under 2 hours, the quarter hour under 12 hours,
   the hour under 4 days and 6 hours beyond. The screen says so under the time.
 - `Result`: the answer, said as soon as it can be, with **Copy** (which works on a plain
-  http page too, through `lib/clipboard.ts`) and **Save as a note**.
+  http page too, through `lib/clipboard.ts`) and **Save as a page**.
 - `HowWorkedOut`: one disclosure with the formula, the range, what is left out and the
   sources (each with the date it was read).
 - `ToolScreen` and `Calculator`: the page, a line of links to each calculator on it, and

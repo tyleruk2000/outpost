@@ -19,7 +19,7 @@ import { type ReactNode, useId, useMemo, useState } from "react";
 import { Notice, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/misc";
+import { Checkbox, RadioItem } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
 import { cn, plural } from "@/lib/utils";
 import { useImportActions } from "./import-data";
@@ -61,15 +61,7 @@ function Choice({
   return (
     <div className="py-2.5">
       <div className="flex items-start gap-3">
-        <RadioGroup.Item
-          id={id}
-          value={value}
-          disabled={disabled}
-          aria-describedby={`${id}-detail`}
-          className="relative mt-0.5 grid size-[18px] shrink-0 place-content-center rounded-full border-[1.5px] border-border-strong bg-page transition-colors before:absolute before:-inset-3 data-[state=checked]:border-primary disabled:opacity-50"
-        >
-          <RadioGroup.Indicator className="block size-2.5 rounded-full bg-primary" />
-        </RadioGroup.Item>
+        <RadioItem id={id} value={value} disabled={disabled} aria-describedby={`${id}-detail`} />
         <label htmlFor={id} className={cn("min-w-0 flex-1", disabled && "opacity-60")}>
           <span className="block text-small font-medium text-ink">{title}</span>
           <span id={`${id}-detail`} className="block text-small text-ink-muted">

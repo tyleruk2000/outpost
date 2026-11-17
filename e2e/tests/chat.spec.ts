@@ -159,7 +159,7 @@ test.describe("chat with a local model", () => {
     expect(errors).toEqual([]);
   });
 
-  test("draws a reply's Markdown safely, copies a code block, and saves the reply as a new note", async ({ page, context }) => {
+  test("draws a reply's Markdown safely, copies a code block, and saves the reply as a new page", async ({ page, context }) => {
     const errors = watchForErrors(page);
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     await page.goto("/chat");
@@ -169,7 +169,7 @@ test.describe("chat with a local model", () => {
     await page.getByRole("button", { name: "Send" }).click();
 
     const reply = replies(page).last();
-    await expect(reply.getByRole("button", { name: "Save as a note" })).toBeVisible();
+    await expect(reply.getByRole("button", { name: "Save as a page" })).toBeVisible();
     const body = reply.getByTestId("reply-text");
     await expect(body.getByRole("heading", { name: "Lighting the stove" })).toBeVisible();
     await expect(body.getByRole("columnheader", { name: "Burn time" })).toBeVisible();
@@ -183,7 +183,7 @@ test.describe("chat with a local model", () => {
     await expect(body.getByText("Copied")).toBeVisible();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('stove --prime --wait 30\necho "<b>lit</b>"');
 
-    await reply.getByRole("button", { name: "Save as a note" }).click();
+    await reply.getByRole("button", { name: "Save as a page" }).click();
     await page.getByRole("button", { name: "Open it" }).click();
     await expect(page).toHaveURL(/\/notes\/[0-9a-z]+$/);
     made.push(new URL(page.url()).pathname.split("/").pop()!);

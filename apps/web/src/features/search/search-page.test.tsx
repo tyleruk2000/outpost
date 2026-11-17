@@ -23,6 +23,60 @@ const OWN = [ownResult("d1", "Water purification"), ownResult("n1", "Water kit",
 const titles = () => screen.getAllByRole("heading").map((heading) => heading.textContent);
 const tab = (name: RegExp) => screen.getByRole("tab", { name });
 
+describe("what can be opened now, and what would have to be downloaded", () => {
+  const CATALOG = [
+    ownResult("c1", "Water Treatment Library", "catalog"),
+    ownResult("c2", "Water Disinfection in the Mountains", "catalog"),
+  ];
+
+  it("lists a person's own results first and what is to download last, after the reference collections have answered", async () => {
+    // As an older server might send them, best match first whatever it is.
+    const server = serveSearch(() => ownAnswer([...CATALOG, ownResult("n1", "Kit for a power cut", "note")]));
+    show("/search?q=safe%20drinking%20water");
+    expect(await screen.findByRole("link", { name: "Kit for a power cut" })).toBeInTheDocument();
+    // Not yet: it would be pushed down when the articles of reference collections come.
+    expect(screen.queryByRole("heading", { name: "Available to download" })).not.toBeInTheDocument();
+    await waitFor(() => expect(server.reference).toHaveLength(1));
+    await server.send({ type: "start", collections: 1 }, collectionLine("Wikipedia", "Drinking water"));
+    await server.end({ searched: 1 });
+    expect(titles()).toEqual([
+      "Search",
+      "Go to",
+      "Kit for a power cut",
+      "In reference collections",
+      "Drinking water",
+      "Available to download",
+      "Water Treatment Library",
+      "Water Disinfection in the Mountains",
+    ]);
+  });
+
+  it("offers the screen that answers the words, as the quick search does", async () => {
+    serveSearch(() => ownAnswer([], { referenceToCome: false }));
+    show("/search?q=safe%20drinking%20water");
+    const goTo = await screen.findByRole("region", { name: "Go to" });
+    const water = within(goTo).getByRole("link", { name: /Tools: Water/ });
+    expect(water).toHaveAttribute("href", "/tools/water");
+    // With what it is for, so that it is plain why it is offered.
+    expect(water).toHaveTextContent(/making water safe to drink/);
+  });
+
+  it("offers no screen where none fits, and none on another tab", async () => {
+    serveSearch(() => ownAnswer([], { referenceToCome: false }));
+    show("/search?q=torch");
+    expect(await screen.findByRole("heading", { name: "Nothing matches “torch”" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Go to" })).not.toBeInTheDocument();
+  });
+
+  it("keeps what is to download in the list on its own tab", async () => {
+    serveSearch(() => ownAnswer(CATALOG, { referenceToCome: false }));
+    show("/search?q=water&kind=catalog");
+    expect(await screen.findByRole("link", { name: "Water Treatment Library" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Available to download" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Go to" })).not.toBeInTheDocument();
+  });
+});
+
 describe("the search page, with reference collections answering later", () => {
   it("shows a person's own results at once and says reference collections are still being searched", async () => {
     const server = serveSearch(() => ownAnswer(OWN));
@@ -52,12 +106,20 @@ describe("the search page, with reference collections answering later", () => {
     await server.send({ type: "start", collections: 3 });
 
     await server.send(collectionLine("Appropedia", "Water filter", "Rainwater"));
-    expect(titles()).toEqual(["Search", "Water purification", "Water kit", "In reference collections", "Water filter"]);
+    expect(titles()).toEqual(["Search", "Go to", "Water purification", "Water kit", "In reference collections", "Water filter"]);
     expect(screen.getAllByText("Still searching reference collections… 1 of 3 searched.").length).toBeGreaterThan(0);
 
     await server.send(collectionLine("Wikivoyage"), collectionLine("Knots", "Water knot"));
     // The newcomer goes to the end; the best match of each collection is shown, not every article.
-    expect(titles()).toEqual(["Search", "Water purification", "Water kit", "In reference collections", "Water filter", "Water knot"]);
+    expect(titles()).toEqual([
+      "Search",
+      "Go to",
+      "Water purification",
+      "Water kit",
+      "In reference collections",
+      "Water filter",
+      "Water knot",
+    ]);
     // The very same elements, where they were: nothing was drawn again or reordered.
     expect(screen.getByRole("link", { name: "Water purification" })).toBe(first);
     expect(screen.getByRole("link", { name: "Water kit" })).toBe(second);

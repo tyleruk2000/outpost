@@ -13,6 +13,7 @@ import { Select, Skeleton } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
 import { formatPosition, type ReadoutFormat } from "../lib/coords";
 import { formatBearing, formatDistanceWithMiles, initialBearing } from "../lib/geo";
+import { pressWord } from "../lib/press";
 import { locatorOf } from "./locator";
 import { BANDS, type BandId, describeTerrain, formatFrequency, MAX_ANTENNA_METERS, MAX_MHZ, MIN_MHZ } from "./sight";
 import { SIGHT_ICONS } from "./sight-card";
@@ -147,8 +148,8 @@ export function SightPanel({
         {picking ? (
           <p className="text-small text-ink-muted" aria-live="polite">
             {picking === "from"
-              ? "Click or tap the map where the first antenna is: point A."
-              : "Now click or tap where the other antenna is: point B."}{" "}
+              ? `${pressWord()} the map where the first antenna is: point A.`
+              : `Now ${pressWord(true)} where the other antenna is: point B.`}{" "}
             Pressing a saved place puts the point exactly on it.
           </p>
         ) : null}

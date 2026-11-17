@@ -254,7 +254,7 @@ export function SemanticOptions({
             </p>
           ) : null}
           {stage === "empty" && data.totalChunks === 0 ? (
-            <p className="mt-2 text-small text-ink-muted">There is nothing to index yet. Add a document or write a note first.</p>
+            <p className="mt-2 text-small text-ink-muted">There is nothing to index yet. Add a document or write a page in Notes first.</p>
           ) : null}
           {stage === "paused" || stage === "partial" ? (
             <p className="mt-2 text-small text-ink-muted">

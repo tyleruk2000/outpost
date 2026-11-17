@@ -388,7 +388,7 @@ export async function registerChat(app: FastifyInstance, ctx: AppContext): Promi
     const { id } = idParams.parse(request.params);
     const message = store.message(id);
     if (message.role !== "assistant" || !message.text.trim())
-      throw new AppError("bad_request", "Only a reply with words in it can be saved as a note.");
+      throw new AppError("bad_request", "Only a reply with words in it can be saved as a page.");
     if (message.state === "writing") throw conflict("This reply is still being written. Save it when it has finished.");
     const conversation = store.row(message.conversationId);
     const question = store

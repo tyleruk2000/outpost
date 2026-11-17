@@ -19,6 +19,8 @@ test.describe("Morse trainer on a phone", () => {
 
     // Reached from the More sheet, under Radio.
     await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "More" }).tap();
+    // The screens under Radio are folded away until asked for.
+    await page.getByRole("dialog", { name: "More" }).getByRole("button", { name: "Show the screens under Radio" }).tap();
     await page.getByRole("dialog", { name: "More" }).locator('a[href="/radio/morse"]').first().tap();
     await expect(page.getByRole("heading", { level: 1, name: "Morse trainer" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Receive, Koch lesson 1" })).toHaveAttribute("aria-selected", "true");

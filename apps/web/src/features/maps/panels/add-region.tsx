@@ -400,7 +400,7 @@ export function AddRegion({
           )}
         </div>
         {mode === "draw" ? (
-          <footer className="flex border-t border-border px-4 py-3">
+          <footer className="flex justify-end border-t border-border px-4 py-3">
             <Button variant="primary" disabled={!(area?.kind === "custom" && area.bbox && name.trim())} onClick={() => setStep("options")}>
               Continue
             </Button>
@@ -510,7 +510,11 @@ export function AddRegion({
               ) : null}
             </dl>
           ) : (
-            <p className="text-small text-ink-muted">The exact size depends on what is in the area. Checking it needs a connection.</p>
+            <p className="text-small text-ink-muted">
+              {bbox ? <>{formatNumber(countTiles(bbox, 0, maxZoom))} map tiles. </> : null}
+              How many megabytes that is depends on what is in the area, so Outpost asks the map server. That needs an internet connection;
+              nothing is downloaded until you press Download.
+            </p>
           )}
           {!estimate.data ? (
             <Button
@@ -519,7 +523,7 @@ export function AddRegion({
               loading={estimate.isPending}
               disabled={!bbox || tooLarge(maxZoom)}
             >
-              {estimate.isError ? "Check size again" : "Check size"}
+              {estimate.isError ? "Check the size again" : "Check the size"}
             </Button>
           ) : null}
         </div>
@@ -545,12 +549,13 @@ export function AddRegion({
             whereRef.current?.querySelector<HTMLElement>('[role="radio"]:not([disabled])')?.focus({ preventScroll: true });
           }}
         />
-        <div className="flex flex-wrap items-center gap-2">
+        {/* In a row, the main button on the right, as in every other form. */}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {!estimate.data && !estimate.isPending ? <span className="mr-auto text-small text-ink-muted">Check the size first.</span> : null}
+          <Button onClick={onClose}>Cancel</Button>
           <Button variant="primary" onClick={download} disabled={!canDownload} loading={start.isPending}>
             Download
           </Button>
-          <Button onClick={onClose}>Cancel</Button>
-          {!estimate.data && !estimate.isPending ? <span className="text-small text-ink-muted">Check the size first.</span> : null}
         </div>
       </footer>
     </div>

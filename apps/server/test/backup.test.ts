@@ -165,3 +165,15 @@ describe("backup and restore", () => {
     expect((await open.api("POST", "/api/system/restart", undefined, phone)).status).toBe(409);
   });
 });
+
+describe("a backup saved from Settings", () => {
+  it("is recorded once it has been sent, with its file name and size", async () => {
+    const app = await createTestApp({}, undefined, { voacapData: false });
+    apps.push(app);
+    expect((await app.api("GET", "/api/backup/status")).body.lastDownload).toBeNull();
+    const response = await app.app.inject({ method: "GET", url: "/api/backup/download", headers: { host: "localhost" } });
+    const name = /filename="([^"]+)"/.exec(String(response.headers["content-disposition"]))![1];
+    const { lastDownload } = (await app.api("GET", "/api/backup/status")).body;
+    expect(lastDownload).toEqual({ at: expect.any(Number), name, bytes: response.rawPayload.length });
+  });
+});

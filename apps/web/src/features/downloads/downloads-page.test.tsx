@@ -178,9 +178,23 @@ describe("Downloads", () => {
   });
 
   it("points to Explore when nothing has ever been downloaded", async () => {
-    serve({ "GET /api/downloads": { downloads: [] }, "GET /api/jobs": { jobs: [] } });
+    serve({ "GET /api/downloads": { downloads: [] }, "GET /api/jobs": { jobs: [] }, "GET /api/collections": { collections: [] } });
     renderScreen(<DownloadsPage />);
     expect(await screen.findByRole("heading", { name: "Nothing has been downloaded yet" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Explore collections" })).toHaveAttribute("href", "/explore");
+  });
+
+  it("does not say nothing is here when the Library holds collections that were never downloaded", async () => {
+    // A map imported from a file, or a book included with Outpost, has no download record.
+    serve({
+      "GET /api/downloads": { downloads: [] },
+      "GET /api/jobs": { jobs: [] },
+      "GET /api/collections": { collections: [collection({ id: "m", kind: "map" }), collection({ id: "b", kind: "file" })] },
+    });
+    renderScreen(<DownloadsPage />);
+    expect(await screen.findByRole("heading", { name: "Nothing is downloading" })).toBeInTheDocument();
+    expect(screen.queryByText("Nothing has been downloaded yet")).not.toBeInTheDocument();
+    expect(screen.getByText(/The Library holds 2 collections/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "See your collections" })).toHaveAttribute("href", "/library?tab=collections");
   });
 });

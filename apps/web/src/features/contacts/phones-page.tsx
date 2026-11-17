@@ -5,10 +5,10 @@
  */
 import type { HttpsStatus } from "@outpost/shared";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Copy } from "lucide-react";
+import { Copy } from "lucide-react";
 import { Link } from "react-router";
 import { toast } from "sonner";
-import { ErrorState, Notice, Page, PageHeader, Section } from "@/components/page";
+import { BackLink, ErrorState, Notice, Page, PageHeader, Section } from "@/components/page";
 import { Badge, Skeleton, Switch } from "@/components/ui/misc";
 import { api } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
@@ -55,9 +55,9 @@ export default function PhonesPage() {
 
   return (
     <Page width="reading">
-      <Link to="/contacts" className="mb-2 inline-flex min-h-11 items-center gap-1.5 text-small text-primary">
-        <ArrowLeft aria-hidden className="size-4" /> Contacts
-      </Link>
+      <BackLink to="/contacts" className="mb-2">
+        Contacts
+      </BackLink>
       <PageHeader
         title="Keep a copy on a phone"
         description="A phone or computer can subscribe to these contacts and keep its own copy up to date. The copy is still on the phone when Outpost cannot be reached."

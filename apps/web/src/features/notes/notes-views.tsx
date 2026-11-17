@@ -1,6 +1,5 @@
 /** The two side rooms of the notes workspace: the trash and the full list of templates. */
 import type { TrashedNote } from "@outpost/shared";
-import { ChevronLeft } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
@@ -12,17 +11,6 @@ import { plural, timeAgo } from "@/lib/utils";
 import { displayTitle, useNoteActions, useTemplates, useTrash } from "./notes-data";
 import { TemplateList, useTemplateStarter } from "./notes-home";
 import { PageIcon } from "./page-bits";
-
-function BackToNotes() {
-  return (
-    <Link
-      to="/notes"
-      className="-ml-1 mb-3 inline-flex h-8 items-center gap-1 rounded-control text-small text-ink-muted hover:text-ink max-md:h-10"
-    >
-      <ChevronLeft aria-hidden className="size-4" /> Notes
-    </Link>
-  );
-}
 
 function RowsSkeleton() {
   return (
@@ -86,8 +74,8 @@ export function TrashView() {
 
   return (
     <Page width="reading">
-      <BackToNotes />
       <PageHeader
+        back={{ to: "/notes", label: "Notes" }}
         title="Trash"
         description="Pages you moved to the trash stay here, with their sub-pages, until they are restored or deleted for good."
       />
@@ -143,8 +131,8 @@ export function TemplatesView() {
 
   return (
     <Page width="reading">
-      <BackToNotes />
       <PageHeader
+        back={{ to: "/notes", label: "Notes" }}
         title="Templates"
         description="A template is a page to start from. Using one makes a new page with its title, icon and text; the template itself is left as it is."
       />

@@ -23,7 +23,9 @@ import { Progress, Skeleton } from "@/components/ui/misc";
 import { BoardHomeLine } from "@/features/board/elsewhere";
 import { api } from "@/lib/api";
 import { useActiveJobs, useStorage } from "@/lib/queries";
-import { plural, timeAgo } from "@/lib/utils";
+import { timeAgo } from "@/lib/utils";
+import { homeSummary } from "./home-summary";
+import { PreparedLines } from "./prepared-lines";
 
 function Block({ title, more, children }: { title: string; more?: { to: string; label: string }; children: ReactNode }) {
   return (
@@ -110,6 +112,12 @@ export default function HomePage() {
     // their documents (listed above), and terrain is part of the map it shades.
     select: (data) => data.collections.filter((item) => item.kind !== "terrain" && !(item.kind === "file" && item.meta?.documentId)),
   });
+  // The sentence at the top counts every collection, as the Library's Collections tab does.
+  const collectionCount = useQuery({
+    queryKey: ["collections", "all"],
+    queryFn: () => api.get<CollectionsResponse>("/api/collections"),
+    select: (data) => data.collections.length,
+  });
   const downloads = useQuery({
     queryKey: ["downloads", "list"],
     queryFn: () => api.get<DownloadsResponse>("/api/downloads"),
@@ -119,7 +127,7 @@ export default function HomePage() {
   const locations = storage.data?.locations ?? [];
   const connected = locations.filter((location) => location.status === "available");
   const free = connected.reduce((sum, location) => sum + (location.freeBytes ?? 0), 0);
-  const counts = { documents: facets.data?.total, pages: tree.data, collections: collections.data?.length };
+  const counts = { documents: facets.data?.total, pages: tree.data, collections: collectionCount.data };
   const loaded = counts.documents !== undefined && counts.pages !== undefined && counts.collections !== undefined && storage.isSuccess;
   const empty = loaded && counts.documents === 0 && counts.pages === 0 && counts.collections === 0;
   const otherWork = (jobs.data ?? []).filter((job) => job.queue !== "download" && job.state === "running");
@@ -131,16 +139,11 @@ export default function HomePage() {
 
   const summary = !loaded
     ? null
-    : empty
-      ? `Nothing is stored yet. There is ${formatBytes(free)} of room across ${plural(connected.length, "storage location")}.`
-      : `${[
-          counts.documents ? plural(counts.documents, "document") : null,
-          counts.pages ? plural(counts.pages, "page") : null,
-          counts.collections ? plural(counts.collections, "collection") : null,
-        ]
-          .filter(Boolean)
-          .join(", ")
-          .replace(/, ([^,]*)$/, " and $1")}, all on this device and readable with no connection. ${formatBytes(free)} free.`;
+    : homeSummary(
+        { documents: counts.documents ?? 0, pages: counts.pages ?? 0, collections: counts.collections ?? 0 },
+        free,
+        connected.length,
+      );
 
   return (
     <>
@@ -156,6 +159,7 @@ export default function HomePage() {
           <h1 className="font-title text-display text-ink">Your library</h1>
           <div className="mt-3 max-w-[56ch] text-lead text-ink-muted">{summary ?? <Skeleton className="h-6 w-96 max-w-full" />}</div>
           <BoardHomeLine className="mt-2" />
+          <PreparedLines className="mt-2" />
           {/* biome-ignore lint/a11y/useSemanticElements: a form with role="search" is the search landmark every browser and screen reader knows */}
           <form onSubmit={submit} role="search" className="relative mt-6 max-w-[34rem]">
             <Search aria-hidden className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-ink-muted" />

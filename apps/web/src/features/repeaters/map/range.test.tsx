@@ -166,7 +166,7 @@ describe("the estimated range switch", () => {
     await unfold();
     expect(screen.getByText("In sight to about 18 km (11 mi) on most bearings.")).toBeInTheDocument();
     expect(drawn()).toHaveLength(1);
-    expect(engine.fitBounds).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(engine.fitBounds).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole("button", { name: "Get terrain in Offline maps" })).toBeNull();
     // What it is not, behind one disclosure.
     await userEvent.click(screen.getByText("What this is, and is not"));
@@ -233,7 +233,7 @@ describe("the estimated range switch", () => {
     const folded = await screen.findByRole("region", { name: "QZ3RNG: estimated range" });
     expect(folded).toHaveTextContent(/QZ3RNG\s*In sight to about 18 km$/);
     expect(screen.queryByRole("radio", { name: "Handheld" })).toBeNull();
-    expect(engine.fitBounds).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(engine.fitBounds).toHaveBeenCalledTimes(1));
     await userEvent.click(screen.getByRole("button", { name: "Show the details" }));
     expect(screen.getByRole("radio", { name: "Handheld" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Show less" }));

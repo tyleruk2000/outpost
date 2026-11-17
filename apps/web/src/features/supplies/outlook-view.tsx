@@ -123,7 +123,9 @@ export function OutlookView({ items, household, onHousehold }: { items: SupplyIt
           <div className="grid gap-4 text-body text-ink-muted">
             {outlook.runsOutFirst ? (
               <p className="text-lead text-ink">
-                {outlook.runsOutFirst.what === "food" ? "Food" : "Water"} runs out first, in {daysWords(outlook.runsOutFirst.days)}.{" "}
+                {outlook.runsOutFirst.days === 0
+                  ? `There is no ${outlook.runsOutFirst.what} stored.`
+                  : `${outlook.runsOutFirst.what === "food" ? "Food" : "Water"} runs out first, in ${daysWords(outlook.runsOutFirst.days)}.`}{" "}
                 {outlook.runsOutFirst.days >= outlook.daysWanted
                   ? `That covers the ${plural(outlook.daysWanted, "day")} wanted.`
                   : `You want ${plural(outlook.daysWanted, "day")}: the shopping list says what would close the gap.`}
@@ -138,7 +140,7 @@ export function OutlookView({ items, household, onHousehold }: { items: SupplyIt
             </EnergyLines>
             <p>
               <span className="text-ink">Water {waterBasis}:</span> <Days days={water.days} wanted={outlook.daysWanted} />. Counted{" "}
-              {amount(water.counted)} litres in {plural(water.items, "row")} against {amount(water.perDay)} litres a day.
+              {amount(water.counted)} litres in {plural(water.items, "item")} against {amount(water.perDay)} litres a day.
               {water.basis === "all"
                 ? ` To drink alone, at ${amount(water.drinkingPerDay)} litres a day: ${daysWords(water.daysDrinking)}.`
                 : ` For drinking, cooking and washing as well, at ${amount(water.allUsesPerDay)} litres a day: ${daysWords(water.daysAllUses)}.`}
@@ -227,7 +229,7 @@ export function OutlookView({ items, household, onHousehold }: { items: SupplyIt
                 <li key={row.category} className="flex items-baseline justify-between gap-4 py-2 text-body">
                   <span className="text-ink">{categoryLabel(row.category)}</span>
                   <span className="tabular text-small text-ink-muted">
-                    {plural(row.rows, "row")}
+                    {plural(row.rows, "item")}
                     {row.kcal > 0 ? `, ${formatNumber(Math.round(row.kcal))} kcal` : ""}
                     {row.litres > 0 ? `, ${amount(row.litres)} litres` : ""}
                   </span>
@@ -243,7 +245,7 @@ export function OutlookView({ items, household, onHousehold }: { items: SupplyIt
                 <li key={row.location} className="flex items-baseline justify-between gap-4 py-2 text-body">
                   <span className={row.location ? "text-ink" : "text-ink-muted"}>{row.location || "No place given"}</span>
                   <span className="tabular text-small text-ink-muted">
-                    {plural(row.rows, "row")}: {row.categories.map((id) => categoryLabel(id).toLowerCase()).join(", ")}
+                    {plural(row.rows, "item")}: {row.categories.map((id) => categoryLabel(id).toLowerCase()).join(", ")}
                   </span>
                 </li>
               ))}

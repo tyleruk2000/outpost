@@ -17,7 +17,7 @@
  * - **An angle** is an arc in the accent from one line to the other, its value outside
  *   the arc on the bisector.
  * - **Ground** is a line with short hatching under it, as in a technical drawing.
- * - **The sun** is the astronomer's sign ☉: a ring with a dot. Stars are dots sized by
+ * - **The sun** is the astronomer's sign for it, a ring with a dot. Stars are dots sized by
  *   brightness; Polaris has a ring.
  * - **Labels** are real text in the app's face at the small size (never smaller), muted
  *   ink for names and ink for figures, upright, haloed in the page colour where they sit

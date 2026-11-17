@@ -5,9 +5,9 @@
  * paper. See docs/learning.md.
  */
 import { aboutTime, type LearningCourse, learnerLabel } from "@outpost/shared";
-import { Fragment, type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { EmptyState, ErrorState, Rows, Section } from "@/components/page";
+import { EmptyState, ErrorState, Joined, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { madePdf } from "@/features/library/made/made-pdf";
@@ -19,22 +19,10 @@ import { WhoseSwitch } from "./learner-switch";
 import { progressPdf, progressTitle, topicsWords } from "./progress-document";
 import { choose } from "./reader-controls";
 
-const Slash = () => (
-  <span aria-hidden className="mx-2 text-border-strong">
-    /
-  </span>
-);
-
 function Facts({ parts }: { parts: ReactNode[] }) {
   return (
     <p className="mt-0.5 text-small text-ink-muted">
-      {parts.map((part, index) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: a fixed, ordered list of facts
-        <Fragment key={index}>
-          {index > 0 ? <Slash /> : null}
-          {part}
-        </Fragment>
-      ))}
+      <Joined parts={parts} />
     </p>
   );
 }

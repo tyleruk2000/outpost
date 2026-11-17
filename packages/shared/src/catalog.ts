@@ -1,21 +1,24 @@
 import type { DownloadDto } from "./downloads.ts";
 
-/** Catalogue categories, in the order Explore shows them. */
+/**
+ * Catalogue categories, in the order Explore shows them: what a new household wants first (an
+ * encyclopedia, a medical reference, maps), then being ready, then the skills and the rest.
+ */
 export const CATALOG_CATEGORIES = [
-  { slug: "survival", label: "Survival and wilderness skills" },
+  { slug: "encyclopedias", label: "Wikipedia and encyclopedias" },
   { slug: "medicine", label: "Medicine and first aid" },
+  { slug: "maps", label: "Offline maps" },
+  { slug: "preparedness", label: "Disaster preparedness" },
+  { slug: "survival", label: "Survival and wilderness skills" },
   { slug: "food", label: "Food preservation and cooking" },
   { slug: "agriculture", label: "Agriculture and gardening" },
+  { slug: "navigation", label: "Mountaineering and navigation" },
+  { slug: "radio", label: "Radio communications" },
   { slug: "engineering", label: "Engineering and electronics" },
   { slug: "repair", label: "Vehicle and equipment repair" },
-  { slug: "radio", label: "Radio communications" },
-  { slug: "navigation", label: "Mountaineering and navigation" },
-  { slug: "preparedness", label: "Disaster preparedness" },
-  { slug: "encyclopedias", label: "Wikipedia and encyclopedias" },
   { slug: "science", label: "Science and education" },
   { slug: "reference", label: "History and general reference" },
   { slug: "reading", label: "Literature and reading" },
-  { slug: "maps", label: "Offline maps" },
 ] as const;
 
 export type CatalogCategorySlug = (typeof CATALOG_CATEGORIES)[number]["slug"];

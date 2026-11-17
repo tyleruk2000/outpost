@@ -7,7 +7,7 @@ import { CircleAlert, TriangleAlert, Upload } from "lucide-react";
 import { type DragEvent, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { Contour } from "@/components/contour";
-import { ErrorState, Notice, Rows, Section } from "@/components/page";
+import { EmptyState, ErrorState, Notice, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Badge, Progress, Skeleton } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
@@ -210,7 +210,11 @@ function RecentImports() {
   }
   if (recent.isError) return <ErrorState error={recent.error} onRetry={() => recent.refetch()} />;
   if (recent.data.length === 0)
-    return <p className="text-small text-ink-muted">Nothing has been imported yet. Imports you make are listed here with their reports.</p>;
+    return (
+      <EmptyState title="Nothing imported yet" compact level={3} seed={5}>
+        Imports you make are listed here with their reports.
+      </EmptyState>
+    );
 
   return (
     <Rows>

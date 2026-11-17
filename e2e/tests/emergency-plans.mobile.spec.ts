@@ -26,6 +26,8 @@ test.describe("Emergency plans on a phone", () => {
 
     // Reached from the More sheet, under Preparedness.
     await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "More" }).tap();
+    // The screens under Preparedness are folded away until asked for.
+    await page.getByRole("dialog", { name: "More" }).getByRole("button", { name: "Show the screens under Preparedness" }).tap();
     await page.getByRole("dialog", { name: "More" }).locator('a[href="/prepare/plans"]').first().tap();
     await expect(page.getByRole("heading", { level: 1, name: "Emergency plans" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "No emergency plans yet" })).toBeVisible();

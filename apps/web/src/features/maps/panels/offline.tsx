@@ -442,10 +442,10 @@ export function OfflinePanel({
               time, so you keep only the areas you need, and they then work with no connection.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Button variant="primary" onClick={() => setAdding({ presetId: "world" })}>
-                World overview (about 45 MB)
+              <Button variant="primary" onClick={() => setAdding({})}>
+                Choose your area
               </Button>
-              <Button onClick={() => setAdding({})}>Choose a region</Button>
+              <Button onClick={() => setAdding({ presetId: "world" })}>World overview (about 45 MB)</Button>
             </div>
           </div>
         ) : (

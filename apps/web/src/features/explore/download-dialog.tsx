@@ -153,7 +153,7 @@ function DownloadForm({
 
         <div>
           <p className="mb-1.5 text-small font-semibold text-ink" id="download-location-label">
-            Save to
+            Where to keep it
           </p>
           {storage.isPending ? (
             <div className="grid gap-2" aria-busy>
@@ -173,7 +173,7 @@ function DownloadForm({
           ) : (
             <>
               <LocationPicker
-                label="Save to"
+                label="Where to keep it"
                 locations={locations}
                 value={selected?.id}
                 onChange={setChosen}

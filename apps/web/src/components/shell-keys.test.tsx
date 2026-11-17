@@ -51,12 +51,12 @@ describe("the quick search", () => {
     palette();
     const field = screen.getByPlaceholderText(/Search your library/);
     const expected: Array<[string, string]> = [
-      ["backup", "Settings"],
+      ["backup", "Settings: Backup"],
       ["free space", "Storage: Manage and clean up"],
       ["address book", "Contacts"],
       ["pgp", "Encryption"],
       ["logbook", "Radio: Contact log"],
-      ["notion", "Notes: Import files"],
+      ["notion", "Notes: Import"],
       ["wikipedia", "Explore"],
     ];
     for (const [typed, screenName] of expected) {
@@ -92,6 +92,49 @@ describe("the phone's bottom bar", () => {
     const nav = bar("/settings");
     expect(within(nav).getByRole("button", { name: "More" })).toHaveAttribute("aria-current", "true");
     for (const link of within(nav).getAllByRole("link")) expect(link).not.toHaveAttribute("aria-current");
+  });
+
+  it("groups the More sheet as the sidebar is, with the screens under each folded away and Settings in it", async () => {
+    const user = userEvent.setup();
+    const nav = bar("/");
+    await user.click(within(nav).getByRole("button", { name: "More" }));
+    const sheet = screen.getByRole("dialog", { name: "More" });
+    const knowledge = within(sheet).getByRole("navigation", { name: "Knowledge" });
+    const upkeep = within(sheet).getByRole("navigation", { name: "Upkeep" });
+    expect(
+      within(upkeep)
+        .getAllByRole("link")
+        .map((link) => link.textContent),
+    ).toEqual(["Downloads", "Storage", "On this computer", "Settings"]);
+    // The four tabs are not here again, except Notes, as the heading of the screen under it.
+    const names = within(knowledge)
+      .getAllByRole("link")
+      .map((link) => link.textContent);
+    expect(names).toEqual([
+      "Search",
+      "Notes",
+      "Explore",
+      "Chat",
+      "Contacts",
+      "Messages",
+      "Encryption",
+      "Radio",
+      "Tools",
+      "Preparedness",
+      "Games",
+    ]);
+    expect(within(sheet).queryByRole("link", { name: "Repeaters" })).toBeNull();
+    await user.click(within(sheet).getByRole("button", { name: "Show the screens under Radio" }));
+    expect(within(sheet).getByRole("list", { name: "Under Radio" })).toHaveTextContent("Repeaters");
+    expect(within(sheet).getByRole("button", { name: "Hide the screens under Radio" })).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("opens the group of the screen in view in the More sheet", async () => {
+    const user = userEvent.setup();
+    const nav = bar("/storage/manage");
+    await user.click(within(nav).getByRole("button", { name: "More" }));
+    const under = within(screen.getByRole("dialog", { name: "More" })).getByRole("list", { name: "Under Storage" });
+    expect(within(under).getByRole("link", { name: "Manage and clean up" })).toHaveAttribute("aria-current", "page");
   });
 
   it("marks the tab, not More, for a screen a tab holds", () => {

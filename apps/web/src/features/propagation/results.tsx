@@ -34,6 +34,7 @@ import { Notice, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Select, Skeleton } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
+import { formatTimeOfDay, useClockStyle } from "@/lib/clock";
 import { APPROXIMATE_SIGN, ChartFrame, HourGrid, HourLines, NOT_MODELLED, percent, ShareBars } from "./charts";
 import { useCompare, useListing } from "./data";
 import { ComparisonExport } from "./prediction-export";
@@ -166,7 +167,19 @@ export function windows(hours: PredictionHour[], level: number): string[] {
 }
 
 /** What the chosen hour's figures say, in sentences. Nothing is concluded that the figures do not state. */
+/**
+ * An hour of the day planned for, in UTC and on this device's own clock: "15:00 UTC (16:00 here)". The engine
+ * works in UTC; the person reading plans their evening by the clock on the wall.
+ */
+export function hourBothWays(date: string, utcHour: number): string {
+  const [y, m, d] = date.split("-").map(Number) as [number, number, number];
+  const here = formatTimeOfDay(Date.UTC(y, m - 1, d, utcHour));
+  return `${utcLabel(utcHour)} UTC (${here} here)`;
+}
+
 function Reading({ result, hour }: { result: PredictionResult; hour: PredictionHour }) {
+  useClockStyle();
+  const at = hourBothWays(result.request.date, hour.utc);
   const cell = hour.asked;
   const f = mhz(cell.mhz);
   const noMode = result.mode.requiredSnrDbHz === null;
@@ -183,19 +196,19 @@ function Reading({ result, hour }: { result: PredictionResult; hour: PredictionH
       ) : null}
       {cell.path === null ? (
         <p>
-          At {utcLabel(hour.utc)} UTC the engine finds no way for {f} to reach the receiver.
+          At {at} the engine finds no way for {f} to reach the receiver.
         </p>
       ) : (
         // The answer first, in plain words; then the figures behind it.
         <p>
           {noMode ? (
             <>
-              At {utcLabel(hour.utc)} UTC the median signal-to-noise ratio on {f} is {db(cell.snrDbHz)} in 1 Hz. Give the ratio your mode
-              needs to get a reliability.
+              At {at} the median signal-to-noise ratio on {f} is {db(cell.snrDbHz)} in 1 Hz. Give the ratio your mode needs to get a
+              reliability.
             </>
           ) : (
             <>
-              At {utcLabel(hour.utc)} UTC, {result.mode.label} on {f} is predicted to get through on{" "}
+              At {at}, {result.mode.label} on {f} is predicted to get through on{" "}
               <strong className="font-semibold">{percent(cell.reliability)}</strong> of days: the share of days its signal-to-noise ratio
               reaches the {db(result.mode.requiredSnrDbHz!, 1)} (in 1 Hz) it is taken to need. The median is {db(cell.snrDbHz)},{" "}
               {cell.snrDbHz >= result.mode.requiredSnrDbHz! ? "above" : "below"} it by{" "}
@@ -317,7 +330,18 @@ function Listing({ result }: { result: PredictionResult }) {
   );
 }
 
-export function Results({ result, hour, onHour }: { result: PredictionResult; hour: number; onHour: (hour: number) => void }) {
+export function Results({
+  result,
+  hour,
+  onHour,
+  extra,
+}: {
+  result: PredictionResult;
+  hour: number;
+  onHour: (hour: number) => void;
+  /** What keeps the answer (Save as PDF, Add to library), put under it rather than above it. */
+  extra?: ReactNode;
+}) {
   const at = result.hours[hour - 1]!;
   const cell = at.asked;
   const { mode } = result;
@@ -366,7 +390,6 @@ export function Results({ result, hour, onHour }: { result: PredictionResult; ho
 
   return (
     <div>
-      <BasisNotice basis={result.basis} />
       {askedNotModelled ? (
         <Notice tone="warning" icon={<TriangleAlert />} title={`No figure for ${f}: an antenna is not modelled there`} className="mt-4">
           {notModelledOn(request.txAntenna, request.rxAntenna, request.frequencyMhz)}{" "}
@@ -394,6 +417,9 @@ export function Results({ result, hour, onHour }: { result: PredictionResult; ho
         ) : (
           <Reading result={result} hour={at} />
         )}
+        {/* The answer first; then what it rests on, and how old that is; then what keeps it. */}
+        <BasisNotice basis={result.basis} className="mt-4 max-w-[70ch]" />
+        {extra ? <div className="mt-6">{extra}</div> : null}
       </Section>
 
       <Section title="Frequency against time" description="Pick an hour on any chart and the figures below follow it.">

@@ -1,21 +1,10 @@
 import { type CollectionDto, type CollectionJobResponse, formatBytes } from "@outpost/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  BookOpen,
-  ChevronLeft,
-  CircleAlert,
-  CircleArrowUp,
-  Copy,
-  FolderInput,
-  Map as MapIcon,
-  ShieldCheck,
-  Trash2,
-  Unplug,
-} from "lucide-react";
+import { BookOpen, CircleAlert, CircleArrowUp, Copy, FolderInput, Map as MapIcon, ShieldCheck, Trash2, Unplug } from "lucide-react";
 import { lazy, type ReactNode, Suspense, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
-import { ErrorState, Notice, Page } from "@/components/page";
+import { BackLink, ErrorState, Notice, Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { CarryOn } from "@/features/learning/carry-on";
@@ -38,15 +27,12 @@ const AudiobookPanel = lazy(() => import("../audiobooks/audiobook-panel"));
 
 const collectionsTab = "/library?tab=collections";
 
-function BackLink({ audiobook = false }: { audiobook?: boolean }) {
+function BackToList({ audiobook = false }: { audiobook?: boolean }) {
   return (
-    <Link
-      // An audiobook is found in the Library under Type: Audiobooks, so that is where back leads.
-      to={audiobook ? "/library?type=audio" : collectionsTab}
-      className="-ml-1 mb-5 inline-flex items-center gap-1 rounded-control text-small text-ink-muted hover:text-ink max-md:min-h-11"
-    >
-      <ChevronLeft aria-hidden className="size-4" /> {audiobook ? "Audiobooks" : "Collections"}
-    </Link>
+    // An audiobook is found in the Library under Type: Audiobooks, so that is where back leads.
+    <BackLink to={audiobook ? "/library?type=audio" : collectionsTab} className="mb-5">
+      {audiobook ? "Audiobooks" : "Collections"}
+    </BackLink>
   );
 }
 
@@ -196,7 +182,7 @@ export default function CollectionPage() {
     const missing = query.error instanceof ApiError && query.error.status === 404;
     return (
       <Page width="reading">
-        <BackLink />
+        <BackToList />
         {missing ? (
           <>
             <h1 className="font-title text-title text-ink">This collection is not in the library</h1>
@@ -240,7 +226,7 @@ export default function CollectionPage() {
 
   return (
     <Page width="reading">
-      <BackLink audiobook={audiobook} />
+      <BackToList audiobook={audiobook} />
       <h1 className="font-title text-title text-ink">{collection.title}</h1>
       {collection.description ? <p className="mt-2 text-body text-ink-muted">{collection.description}</p> : null}
 

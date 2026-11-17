@@ -856,7 +856,7 @@ rule about which addresses may be contacted, with the same one-at-a-time turn.
   last message back in the box; sending replaces it and its reply. Only the last
   exchange can be changed.
 - **Copy** copies a reply as the model wrote it. A code block has its own **Copy
-  code**. **Save as a note** makes a *new* page of notes from a reply, never changes
+  code**. **Save as a page** makes a *new* page of notes from a reply, never changes
   an existing one, and opens the page with a line saying what wrote it and when.
 - **Model**: the picker at the top lists the model server's own models. A
   conversation remembers its choice; one that has made none uses the model in
@@ -876,7 +876,7 @@ box that says which you are getting.
 | --- | --- | --- |
 | What the model is given | The conversation so far. Nothing from your library. | The conversation so far, and passages found in your documents, notes and book chapters for the newest message. |
 | What it is told | That it is a model on your own computer having a plain conversation, that it cannot look anything up, and to say so when it does not know. | The same rules as an answer: [the prompt](#the-prompt), with the passages fenced as data. |
-| What the reply shows | The model's name, and nothing else: there is nothing to cite. | "from your library", each `[n]` as a button that shows the passage, and the list of passages given, each a link to the page, the note or the document at its page. A finished reply is settled as an answer is ([The answer on screen](#the-answer-on-screen)): one that says the passages hold no answer is shown as not covered, citing nothing, and a marker to a number no passage carried is taken out or pointed at the passage whose own sentences it stood on. The stored text stays as the model wrote it, and **Copy** copies that; **Save as a note** saves the reply as shown. |
+| What the reply shows | The model's name, and nothing else: there is nothing to cite. | "from your library", each `[n]` as a button that shows the passage, and the list of passages given, each a link to the page, the note or the document at its page. A finished reply is settled as an answer is ([The answer on screen](#the-answer-on-screen)): one that says the passages hold no answer is shown as not covered, citing nothing, and a marker to a number no passage carried is taken out or pointed at the passage whose own sentences it stood on. The stored text stays as the model wrote it, and **Copy** copies that; **Save as a page** saves the reply as shown. |
 
 It is off by default because a plain conversation is what "chat" means to most
 people, and because the library's rules ("answer only from the sources") make a poor

@@ -2,7 +2,8 @@ import { formatBytes, type Settings } from "@outpost/shared";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { type ReactNode, useEffect } from "react";
 import { useLocation } from "react-router";
-import { ErrorState, Page, PageHeader } from "@/components/page";
+import { settingsSections } from "@/components/nav";
+import { ErrorState, JumpLinks, Page, PageHeader } from "@/components/page";
 import { Segmented, Skeleton, Switch } from "@/components/ui/misc";
 import { BoardSettingsSection } from "@/features/board/settings-section";
 import { MeshSettingsSection } from "@/features/mesh/mesh-settings-section";
@@ -17,6 +18,7 @@ import { HeightSetting } from "./height-setting";
 import { HttpsSection } from "./https-section";
 import { NumberSetting, SettingRow, SettingsSection, TextSetting } from "./parts";
 import { SemanticSection } from "./semantic-section";
+import { TextSizeSetting } from "./text-size-setting";
 
 function Fact({ label, value }: { label: string; value: ReactNode }) {
   return (
@@ -52,42 +54,11 @@ function queueText(queue: string, counts: { running: number; queued: number; pau
   return `${QUEUE_NAMES[queue] ?? queue}: ${parts.filter(Boolean).join(", ")}`;
 }
 
-/** The sections in the order they come, so that a person on a phone can go straight to one. */
-const SECTIONS = [
-  ["appearance", "Appearance"],
-  ["downloads", "Downloads"],
-  ["indexing", "Reading documents"],
-  ["search", "Search"],
-  ["semantic", "Search by meaning"],
-  ["answers", "Answers"],
-  ["maps", "Maps"],
-  ["board", "Message board"],
-  ["mesh", "Mesh radio"],
-  ["backup", "Backup"],
-  ["automatic-backups", "Automatic backups"],
-  ["https", "HTTPS"],
-  ["access", "Who can use it"],
-  ["about", "This installation"],
-] as const;
-
-function Contents() {
-  return (
-    <nav aria-label="Sections of Settings" className="-mt-4 mb-6">
-      <ul className="flex flex-wrap gap-x-5 text-small">
-        {SECTIONS.map(([id, label]) => (
-          <li key={id}>
-            <a
-              href={`#${id}`}
-              className="inline-flex min-h-11 items-center text-ink-muted underline decoration-border-strong underline-offset-4 hover:text-primary hover:decoration-primary md:min-h-8"
-            >
-              {label}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </nav>
-  );
-}
+/**
+ * The sections in the order they come, so that a person on a phone can go straight to one. They are listed in
+ * components/nav.ts, where the quick search finds each by its everyday words ("backup", "dark mode").
+ */
+const SECTIONS = settingsSections.filter((section) => section.inContents);
 
 export default function SettingsPage() {
   const settings = useSettings();
@@ -101,18 +72,32 @@ export default function SettingsPage() {
   const s = settings.data;
   const info = system.data;
 
-  // A link such as /settings#semantic-title lands on that section once it has been drawn.
+  // A link such as /settings#backup (the quick search's "Settings: Backup") lands on that section once it has been
+  // drawn, and stays on it while the sections above it fill in, until the person scrolls or presses a key.
   const { hash } = useLocation();
   const drawn = settings.isSuccess;
   useEffect(() => {
     if (!hash || !drawn) return;
-    document.getElementById(decodeURIComponent(hash.slice(1)))?.scrollIntoView({ block: "start" });
+    const land = () => document.getElementById(decodeURIComponent(hash.slice(1)))?.scrollIntoView({ block: "start" });
+    land();
+    if (typeof ResizeObserver === "undefined") return;
+    const watch = new ResizeObserver(land);
+    watch.observe(document.getElementById("content") ?? document.body);
+    const stop = () => watch.disconnect();
+    const done = window.setTimeout(stop, 2000);
+    const leave = ["wheel", "touchstart", "keydown"] as const;
+    for (const event of leave) window.addEventListener(event, stop, { once: true, passive: true });
+    return () => {
+      window.clearTimeout(done);
+      stop();
+      for (const event of leave) window.removeEventListener(event, stop);
+    };
   }, [hash, drawn]);
 
   return (
     <Page>
       <PageHeader title="Settings" under="/settings" />
-      <Contents />
+      <JumpLinks label="Sections of Settings" items={SECTIONS} />
 
       <SettingsSection id="appearance" title="Appearance" description="Saved in this browser, so each device can have its own.">
         <SettingRow
@@ -145,6 +130,7 @@ export default function SettingsPage() {
             />
           }
         />
+        <TextSizeSetting />
         <ClockSetting />
         <HeightSetting />
       </SettingsSection>

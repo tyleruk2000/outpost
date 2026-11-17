@@ -8,7 +8,7 @@
  */
 import type { ImportDto } from "@outpost/shared";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Check, CircleAlert } from "lucide-react";
+import { Check, CircleAlert } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { ErrorState, Notice, Page, PageHeader } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -112,18 +112,9 @@ export default function ImportPage() {
   return (
     <Page>
       <PageHeader
+        back={id ? { to: "/import", label: "All imports" } : undefined}
         title="Import"
         description="Bring in notes you already have, from Markdown files, a Notion export or other files. You see exactly what would be created before anything is added."
-        actions={
-          id ? (
-            // On a phone the link sits under the words; its arrow lines up with them.
-            <Button asChild variant="ghost" className="max-md:-ml-3.5">
-              <Link to="/import">
-                <ArrowLeft /> All imports
-              </Link>
-            </Button>
-          ) : null
-        }
       />
       <StepList current={stepOf(id ? current.data : undefined)} />
 

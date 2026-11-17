@@ -26,6 +26,9 @@ const queryClient = new QueryClient({
  * Toasts: above the phone's bottom bar (taller by the home indicator on some phones), six
  * seconds to read (held while pointed at or touched, and while the page is hidden), each
  * with a close button, three at most in view. Colours come from tokens (base.css).
+ * One look for all of them: words and no icon (a tick on one screen and none on the next
+ * made them two things); an error, through `notify.error`, keeps its icon, so it is not told
+ * apart by its words alone. An action (Undo, Open it) is drawn as the app's own secondary button.
  */
 function ThemedToaster() {
   const { resolved } = useTheme();
@@ -37,6 +40,7 @@ function ThemedToaster() {
       mobileOffset={{ bottom: "calc(4.25rem + env(safe-area-inset-bottom))" }}
       duration={6000}
       closeButton
+      icons={{ success: null, info: null, warning: null }}
       toastOptions={{
         closeButtonAriaLabel: "Hide this message",
         style: {
@@ -44,6 +48,13 @@ function ThemedToaster() {
           fontSize: "0.875rem",
           borderRadius: "var(--radius-panel)",
           boxShadow: "var(--shadow-float)",
+        },
+        actionButtonStyle: {
+          background: "var(--raised)",
+          color: "var(--ink)",
+          border: "1px solid var(--border-strong)",
+          borderRadius: "var(--radius-control)",
+          fontWeight: 600,
         },
       }}
     />

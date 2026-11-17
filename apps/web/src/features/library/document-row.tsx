@@ -6,10 +6,12 @@ import { Skeleton } from "@/components/ui/misc";
 import { cn, timeAgo } from "@/lib/utils";
 import { isReading, kindLine, kindOfDocument } from "./document-meta";
 
-const Slash = () => (
-  <span aria-hidden className="mx-2 text-border-strong">
-    /
-  </span>
+/** The app's one separator between facts (as `Joined`), here by hand: on a wide screen the size and date move to a column of their own and take theirs with them. */
+const Dot = () => (
+  <>
+    <span aria-hidden> · </span>
+    <span className="sr-only">, </span>
+  </>
 );
 
 /** The state of a document's text, shown only when it is something other than "read and searchable". */
@@ -90,7 +92,7 @@ export function DocumentRow({ document, locationName }: { document: DocumentDto;
                 {index > 0 ? (
                   // The size and date move to their own column on wide screens, and take their separators with them.
                   <span className={typeof part === "object" ? "md:hidden" : undefined}>
-                    <Slash />
+                    <Dot />
                   </span>
                 ) : null}
                 {part}

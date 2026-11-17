@@ -4,7 +4,7 @@
  */
 import { type DatabaseJobResponse, type DatabaseStatus, formatBytes, localByReason } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CircleAlert, CircleCheck, RefreshCw } from "lucide-react";
+import { ChevronRight, CircleAlert, CircleCheck, RefreshCw } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Link } from "react-router";
 import { ErrorState, Notice, Section } from "@/components/page";
@@ -15,7 +15,7 @@ import { api, errorMessage } from "@/lib/api";
 import { useServerConnection } from "@/lib/events";
 import { notify } from "@/lib/notify";
 import { usePageVisible } from "@/lib/page-visible";
-import { formatDateTime, timeAgo } from "@/lib/utils";
+import { formatDateTime, formatNumber, timeAgo } from "@/lib/utils";
 import { countWords, duration, GROUP_WORDS, reclaimBlocked, schemaWords } from "./database-text";
 
 export function useDatabase() {
@@ -108,14 +108,14 @@ function Contents({ status, onAgain, again }: { status: DatabaseStatus; onAgain:
           </tbody>
         </table>
       ) : (
-        <p>This build of SQLite cannot say how many bytes each part takes (it has no dbstat table), so only the counts are shown.</p>
+        <p>The database software here cannot say how much room each part takes, so only the counts are shown.</p>
       )}
       <div className="flex max-w-[70ch] flex-wrap items-center gap-x-4 gap-y-2">
         <p>
           Worked out {timeAgo(contents.workedOutAt)}, in {duration(contents.milliseconds)},{" "}
           {contents.method === "dbstat"
-            ? `by reading every page of the ${formatBytes(contents.fileBytes)} file with SQLite's dbstat table. The parts add up to the file exactly.`
-            : "by counting the rows of each table."}
+            ? `by reading every part of the ${formatBytes(contents.fileBytes)} file. The parts add up to the file exactly.`
+            : "by counting what is in each part."}
         </p>
         <Button size="sm" onClick={onAgain} loading={again || status.measuring} className="max-md:min-h-11">
           {again || status.measuring ? null : <RefreshCw />} Work out again
@@ -138,13 +138,11 @@ function CheckRow({ status }: { status: DatabaseStatus }) {
   return (
     <div className="space-y-3">
       <p className="max-w-[70ch]">
-        SQLite reads every page and confirms each is sound. It reads only, on a connection of its own, so Outpost carries on as usual. The
-        full check also confirms that every index matches its table, and takes a little longer.
+        Outpost reads every part of the file and confirms each is sound. It only reads, so everything carries on as usual. The full check
+        also confirms that the lists Outpost uses to find things quickly match what they list, and takes a little longer.
       </p>
       {running ? (
-        <Live>
-          {running.title === "Check the database fully" ? "Checking every page and every index now." : "Checking every page now."}
-        </Live>
+        <Live>{running.title === "Check the database fully" ? "Checking every part and every list now." : "Checking every part now."}</Live>
       ) : last ? (
         last.ok ? (
           <p className="flex items-start gap-2 text-ink">
@@ -156,7 +154,7 @@ function CheckRow({ status }: { status: DatabaseStatus }) {
           </p>
         ) : (
           <Notice tone="danger" icon={<CircleAlert />} title={`The ${last.kind} check ${timeAgo(last.at)} found problems`}>
-            <p>SQLite reported, in its own words:</p>
+            <p>The database software reported, in its own words:</p>
             <ul className="mt-1 space-y-0.5 font-mono text-[0.8125rem] break-all">
               {last.problems.map((line) => (
                 <li key={line}>{line}</li>
@@ -254,6 +252,37 @@ function ReclaimRow({ status }: { status: DatabaseStatus }) {
   );
 }
 
+/** The database's own terms, for those who want them: kept out of the sentences above. */
+function TechnicalDetails({ status }: { status: DatabaseStatus }) {
+  return (
+    <details className="group mt-2">
+      <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-primary md:min-h-8 [&::-webkit-details-marker]:hidden">
+        <ChevronRight aria-hidden className="size-4 transition-transform duration-150 group-open:rotate-90" />
+        Technical details
+      </summary>
+      <ul className="mt-1 max-w-[70ch] space-y-1 pl-5.5">
+        <li>
+          An SQLite {status.sqlite.version} database, in journal mode {status.sqlite.journalMode}
+          {status.sqlite.journalMode === "wal"
+            ? `: changes are written first to the write-ahead log beside it (${formatBytes(status.file.walBytes)} now) and checkpointed into the file.`
+            : "."}
+        </li>
+        <li>
+          {status.contents?.method === "dbstat"
+            ? "What is in it is measured with SQLite's dbstat table, page by page."
+            : status.sqlite.dbstat
+              ? "What is in it is measured by counting the rows of each table."
+              : "This build of SQLite has no dbstat table, so what is in it is measured by counting the rows of each table."}
+        </li>
+        <li>
+          Schema: {status.schema.applied} of {status.schema.known} migrations applied. Unused: {formatNumber(status.file.unusedPages)} free
+          pages. The checks are PRAGMA quick_check and integrity_check; reclaiming is VACUUM.
+        </li>
+      </ul>
+    </details>
+  );
+}
+
 export function DatabaseSection() {
   const database = useDatabase();
   const client = useQueryClient();
@@ -267,7 +296,7 @@ export function DatabaseSection() {
   return (
     <Section
       title="Database"
-      description="Notes, library records, the search index and everything else that is not a file, in one SQLite file on this device."
+      description="Notes, library records, the search index and everything else that is not a file, kept together in one file on this device."
     >
       {database.isPending ? (
         <div className="grid gap-3" aria-busy>
@@ -295,8 +324,8 @@ export function DatabaseSection() {
           </Fact>
           <Fact label="Size">
             <span className="tabular">
-              <span className="font-medium text-ink">{formatBytes(status.file.bytes)}</span>, and {formatBytes(status.file.walBytes)} in the
-              write-ahead log beside it: recent changes, folded into the file as it goes.
+              <span className="font-medium text-ink">{formatBytes(status.file.bytes)}</span>, and {formatBytes(status.file.walBytes)} of
+              recent changes kept beside it, which are folded into the file as it goes.
             </span>
           </Fact>
           <Fact label="What is in it">
@@ -305,10 +334,6 @@ export function DatabaseSection() {
           <Fact label="State">
             <ul className="space-y-1">
               <li>{schemaWords(status.schema)}</li>
-              <li>
-                SQLite {status.sqlite.version}, with changes written to a write-ahead log first
-                {status.sqlite.journalMode === "wal" ? "" : ` (journal mode: ${status.sqlite.journalMode})`}.
-              </li>
               <li>
                 {status.backup.lastAt
                   ? `Last backed up ${timeAgo(status.backup.lastAt)} (${formatDateTime(status.backup.lastAt)}), ${status.backup.kind === "scheduled" ? "on the schedule" : "started by hand"}.`
@@ -320,6 +345,7 @@ export function DatabaseSection() {
                 </Link>
               </li>
             </ul>
+            <TechnicalDetails status={status} />
           </Fact>
           <Fact label="Check">
             <CheckRow status={status} />
