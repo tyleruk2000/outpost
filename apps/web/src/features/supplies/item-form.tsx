@@ -507,14 +507,15 @@ export function ItemDialog({
                     onAnother={() => setDraft((current) => ({ ...current, kcalPer100g: "", energyFrom: null }))}
                   />
                 ) : null}
-                {draft.energyFrom && draft.energyBy === "100g" && kcal === null && gramsInUnit(draft.unit) === null ? (
+                {draft.energyFrom && draft.energyBy === "100g" && kcal === null ? (
                   <p className="text-small font-medium text-ink">{weightWanted(draft.unit, draft.energyFrom)}</p>
-                ) : null}
-                <p className="text-small text-ink-muted">
-                  {kcal !== null
-                    ? `${formatNumber(Math.round(kcal))} kcal in one, ${formatNumber(Math.round(kcal * (number(draft.quantity) ?? 0)))} kcal in all.`
-                    : "Without it, this is not counted in the days of food."}
-                </p>
+                ) : (
+                  <p className="text-small text-ink-muted">
+                    {kcal !== null
+                      ? `${formatNumber(Math.round(kcal))} kcal in one, ${formatNumber(Math.round(kcal * (number(draft.quantity) ?? 0)))} kcal in all.`
+                      : "Without it, this is not counted in the days of food."}
+                  </p>
+                )}
               </fieldset>
             ) : null}
 

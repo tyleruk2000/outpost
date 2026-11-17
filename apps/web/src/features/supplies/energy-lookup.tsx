@@ -101,12 +101,14 @@ export function FoodOffers({ name, onChoose }: { name: string; onChoose: (match:
 /** Where the figure came from, under the energy, while it is still the table's. */
 export function EnergySource({ note, onAnother }: { note: EnergyNote; onAnother: () => void }) {
   return (
-    <p className="text-small text-ink-muted">
-      From USDA FoodData Central ({note.dataset}, {note.release}), per 100 g of “{note.description}”. {PROTECTED}{" "}
+    <div className="grid justify-items-start gap-1">
+      <p className="text-small text-ink-muted">
+        From USDA FoodData Central ({note.dataset}, {note.release}), per 100 g of “{note.description}”. {PROTECTED}
+      </p>
       <Button variant="link" size="sm" className="text-small" onClick={onAnother}>
         Choose another food
       </Button>
-    </p>
+    </div>
   );
 }
 
