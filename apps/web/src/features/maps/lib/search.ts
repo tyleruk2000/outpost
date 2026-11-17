@@ -50,7 +50,9 @@ export function countryName(code: string | null): string | null {
   }
 }
 
-export function placeRegion(place: Pick<PlaceDto, "country" | "admin1">): string | null {
+export function placeRegion(place: Pick<PlaceDto, "country" | "admin1"> & { source?: PlaceDto["source"] }): string | null {
+  // OS Open Names gives the area in words: "Aberystwyth, Ceredigion, Wales".
+  if (place.source === "os") return place.admin1;
   const country = countryName(place.country);
   const nation = place.country === "GB" && place.admin1 ? UK_NATIONS[place.admin1] : undefined;
   return nation && country ? `${nation}, ${country}` : country;
