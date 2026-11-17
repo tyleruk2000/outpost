@@ -153,7 +153,12 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
       title="This could not be loaded"
       action={
         onRetry ? (
-          <button type="button" onClick={onRetry} className="shrink-0 font-medium underline underline-offset-2">
+          <button
+            type="button"
+            onClick={onRetry}
+            // 44 px tall for a finger, without making the notice round it taller.
+            className="shrink-0 font-medium underline underline-offset-2 max-md:-my-3 max-md:min-h-11"
+          >
             Try again
           </button>
         ) : undefined

@@ -14,12 +14,13 @@
   --surface-strong: oklch(0.945 0.006 200);
   --raised: oklch(1 0 0);
   --border: oklch(0.905 0.006 200);
-  --border-strong: oklch(0.82 0.01 200);
+  /* The outline of a control (an input, a checkbox, a secondary button): 3:1 or more on every surface. */
+  --border-strong: oklch(0.64 0.01 200);
 
   /* Ink */
   --ink: oklch(0.21 0.015 220);
   --ink-muted: oklch(0.44 0.016 220);
-  --ink-faint: oklch(0.56 0.014 220);
+  --ink-faint: oklch(0.545 0.014 220);
 
   /* The spine */
   --spine: oklch(0.285 0.042 200);
@@ -223,11 +224,11 @@
   --surface-strong: oklch(0.265 0.011 215);
   --raised: oklch(0.245 0.01 215);
   --border: oklch(0.305 0.011 215);
-  --border-strong: oklch(0.4 0.014 215);
+  --border-strong: oklch(0.54 0.014 215);
 
   --ink: oklch(0.935 0.006 210);
   --ink-muted: oklch(0.74 0.012 212);
-  --ink-faint: oklch(0.62 0.012 212);
+  --ink-faint: oklch(0.635 0.012 212);
 
   --spine: oklch(0.165 0.024 200);
   --spine-raised: oklch(0.215 0.03 200);
@@ -368,4 +369,14 @@
   --shadow-float: 0 1px 2px oklch(0 0 0 / 0.3), 0 8px 24px -6px oklch(0 0 0 / 0.5);
   --shadow-dialog: 0 2px 4px oklch(0 0 0 / 0.3), 0 24px 56px -12px oklch(0 0 0 / 0.6);
   --overlay: oklch(0.08 0.01 215 / 0.6);
+}
+
+/* With more contrast asked for: hairlines as firm as the outlines of controls, and secondary text as dark as the rest. */
+@media (prefers-contrast: more) {
+  :root,
+  :root[data-theme="dark"] {
+    --border: var(--border-strong);
+    --ink-muted: var(--ink);
+    --spine-ink-muted: var(--spine-ink);
+  }
 }

@@ -74,13 +74,13 @@ export const knowledgeNav: NavItem[] = [
     key: "s",
     children: [{ to: "/search/how-it-works", label: "How search works", icon: Waypoints }],
   },
-  { to: "/explore", label: "Explore", icon: Compass, key: "e" },
-  { to: "/library", label: "Library", icon: BookOpen, key: "l" },
-  { to: "/maps", label: "Maps", icon: MapIcon, key: "m" },
-  { to: "/chat", label: "Chat", icon: MessagesSquare, key: "c" },
+  { to: "/explore", label: "Explore", icon: Compass, key: "e", keywords: "catalogue download collections wikipedia kiwix books" },
+  { to: "/library", label: "Library", icon: BookOpen, key: "l", keywords: "documents books pdf files reading" },
+  { to: "/maps", label: "Maps", icon: MapIcon, key: "m", keywords: "map offline places routes gps" },
+  { to: "/chat", label: "Chat", icon: MessagesSquare, key: "c", keywords: "ask model questions answers" },
   // "a" for address book: "c" is Chat's.
-  { to: "/contacts", label: "Contacts", icon: Contact, key: "a" },
-  { to: "/encryption", label: "Encryption", icon: LockKeyhole, key: "k" },
+  { to: "/contacts", label: "Contacts", icon: Contact, key: "a", keywords: "address book people phone numbers" },
+  { to: "/encryption", label: "Encryption", icon: LockKeyhole, key: "k", keywords: "pgp keys cipher one-time pad secret" },
   {
     to: "/radio",
     label: "Radio",
@@ -88,13 +88,13 @@ export const knowledgeNav: NavItem[] = [
     key: "r",
     // The radio tools, in the order the Radio screen lists them.
     children: [
-      { to: "/radio/propagation", label: "HF propagation", icon: Waves },
+      { to: "/radio/propagation", label: "HF propagation", icon: Waves, keywords: "band conditions voacap" },
       { to: "/radio/coverage", label: "HF coverage", icon: Grid3x3 },
       { to: "/radio/plans", label: "Communication plans", icon: ListTree },
-      { to: "/radio/log", label: "Contact log", icon: ClipboardList },
+      { to: "/radio/log", label: "Contact log", icon: ClipboardList, keywords: "logbook qso adif" },
       { to: "/radio/repeaters", label: "Repeaters", icon: RadioReceiver },
-      { to: "/radio/morse", label: "Morse trainer", icon: AudioWaveform },
-      { to: "/radio/frequencies", label: "Frequencies to listen to", icon: Radio },
+      { to: "/radio/morse", label: "Morse trainer", icon: AudioWaveform, keywords: "cw code" },
+      { to: "/radio/frequencies", label: "Frequencies to listen to", icon: Radio, keywords: "scanner shortwave broadcast" },
     ],
   },
   // Two sections that are lists of screens, each drawn from its own registry (features/<section>/screens.ts).
@@ -104,31 +104,39 @@ export const knowledgeNav: NavItem[] = [
   // Games, drawn from features/games/screens.ts. "b" for board games: "g" begins every shortcut.
   { to: "/games", label: "Games", icon: Puzzle, key: "b", children: gameScreens },
   // Last, so that the tree of pages sits under it in the sidebar. Importing brings in pages (Markdown, Notion), so it is Notes'.
-  { to: "/notes", label: "Notes", icon: NotebookText, key: "n", children: [{ to: "/import", label: "Import files", icon: FolderInput }] },
+  {
+    to: "/notes",
+    label: "Notes",
+    icon: NotebookText,
+    key: "n",
+    children: [{ to: "/import", label: "Import files", icon: FolderInput, keywords: "markdown notion" }],
+  },
 ];
 
 /** Where the library is looked after. */
 export const upkeepNav: NavItem[] = [
-  { to: "/downloads", label: "Downloads", icon: Download, key: "d" },
+  { to: "/downloads", label: "Downloads", icon: Download, key: "d", keywords: "queue progress" },
   {
     to: "/storage",
     label: "Storage",
     icon: HardDrive,
     key: "t",
+    keywords: "disk space drives nas folders",
     children: [
-      { to: "/storage/manage", label: "Manage and clean up", icon: ListChecks },
-      { to: "/storage/merge", label: "Bring back from a drive", icon: Undo2 },
+      { to: "/storage/manage", label: "Manage and clean up", icon: ListChecks, keywords: "free space delete remove erase" },
+      { to: "/storage/merge", label: "Bring back from a drive", icon: Undo2, keywords: "merge restore portable" },
     ],
   },
   // "On this phone", "On this tablet" or "On this computer": what is kept in this browser for when the server is out of reach.
-  { to: "/kept", label: ON_THIS_DEVICE, icon: DeviceIcon, key: "p" },
+  { to: "/kept", label: ON_THIS_DEVICE, icon: DeviceIcon, key: "p", keywords: "offline phone kept" },
   {
     to: "/settings",
     label: "Settings",
     icon: Settings,
     key: ",",
+    keywords: "preferences theme dark light backup https passphrase",
     // How to set up search by meaning, answers and chat (SETUP_GUIDE_PATH): its settings link to it part by part.
-    children: [{ to: "/help/search-and-answers", label: "Set-up guide", icon: LifeBuoy }],
+    children: [{ to: "/help/search-and-answers", label: "Set-up guide", icon: LifeBuoy, keywords: "help models ollama" }],
   },
 ];
 

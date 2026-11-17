@@ -19,12 +19,15 @@ export function Textarea({ className, ref, ...props }: TextareaHTMLAttributes<HT
  */
 export function Field({
   label,
+  optional,
   hint,
   error,
   className,
   children,
 }: {
   label: ReactNode;
+  /** Says "optional" after the label, in words, for a field that may be left empty in a form where others may not. */
+  optional?: boolean;
   hint?: ReactNode;
   error?: ReactNode;
   className?: string;
@@ -39,6 +42,7 @@ export function Field({
     <div className={cn("grid grid-cols-[minmax(0,1fr)] gap-1.5", className)}>
       <label htmlFor={id} className="text-small font-medium text-ink">
         {label}
+        {optional ? <span className="font-normal text-ink-muted"> (optional)</span> : null}
       </label>
       {children({
         id,

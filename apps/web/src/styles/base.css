@@ -166,6 +166,17 @@
     outline-offset: 2px;
   }
 
+  /* A date or time field is focused part by part, and its picker button with it: the whole field shows the ring. */
+  input:is([type="date"], [type="time"], [type="datetime-local"], [type="month"], [type="week"]):focus {
+    border-color: var(--focus);
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+  ::-webkit-calendar-picker-indicator:focus-visible {
+    outline: 2px solid var(--focus);
+    border-radius: 2px;
+  }
+
   ::selection {
     background: color-mix(in oklch, var(--primary) 28%, transparent);
   }
@@ -185,6 +196,28 @@
     cursor: not-allowed;
   }
 
+  /*
+   * Forced colours (Windows high contrast) draw every background in one colour, so what is told apart only by
+   * a fill (a switch's knob, a checked box, the tab or row that is selected) is given an outline or a system colour.
+   */
+  @media (forced-colors: active) {
+    [role="switch"] > span,
+    [role="checkbox"][data-state="checked"],
+    [role="checkbox"][data-state="indeterminate"],
+    [role="progressbar"] > div {
+      forced-color-adjust: none;
+      background: Highlight;
+    }
+    [role="switch"][data-state="unchecked"] > span {
+      background: ButtonText;
+    }
+    [role="tab"][data-state="active"],
+    [aria-current="page"] {
+      outline: 2px solid Highlight;
+      outline-offset: -2px;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -196,6 +229,37 @@
       scroll-behavior: auto !important;
       /* biome-ignore-end lint/complexity/noImportantStyles: end of the reduced-motion override */
     }
+  }
+}
+
+/* Toasts (sonner), in the app's colours rather than the library's own greys. */
+[data-sonner-toaster][data-sonner-theme][dir] {
+  --normal-bg: var(--raised);
+  --normal-bg-hover: var(--surface-strong);
+  --normal-border: var(--border);
+  --normal-border-hover: var(--border-strong);
+  --normal-text: var(--ink);
+  --gray2: var(--surface-strong);
+  --gray5: var(--border-strong);
+}
+[data-sonner-toaster][data-sonner-theme][dir] [data-sonner-toast] [data-description] {
+  color: var(--ink-muted);
+}
+/* The close and action buttons (Undo) are drawn small, but on a phone a finger gets 44 px round them. */
+@media (pointer: coarse) {
+  [data-sonner-toaster][data-sonner-theme][dir] [data-sonner-toast] [data-close-button]::after {
+    content: "";
+    position: absolute;
+    inset: -12px;
+  }
+  [data-sonner-toaster][data-sonner-theme][dir] [data-sonner-toast] :is([data-button], [data-cancel]) {
+    position: relative;
+    height: 2rem;
+  }
+  [data-sonner-toaster][data-sonner-theme][dir] [data-sonner-toast] :is([data-button], [data-cancel])::after {
+    content: "";
+    position: absolute;
+    inset: -6px -4px;
   }
 }
 
@@ -215,7 +279,8 @@
   border-radius: var(--radius-control);
   background: linear-gradient(90deg, var(--surface) 0%, var(--surface-strong) 50%, var(--surface) 100%);
   background-size: 200% 100%;
-  animation: shimmer 1.6s linear infinite;
+  /* Five passes, then still: a screen whose answer is slow does not keep the processor busy drawing it. */
+  animation: shimmer 1.6s linear 5;
 }
 
 /* Thin scrollbars that follow the theme, without replacing native behaviour. */

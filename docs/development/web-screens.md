@@ -189,6 +189,15 @@ not given these buttons. [library.md](../library.md) has the whole of it.
 - Everything works from the keyboard, with visible focus (the global `:focus-visible`
   ring; do not remove it). Icon-only buttons have an `aria-label`. Form controls are
   labelled (`Field`).
+  A field that may be left empty, among others that may not, says so (`Field optional`).
+- A dialog gives focus back to what opened it when it closes, also when it was opened
+  from state or a menu item rather than a `DialogTrigger` (`DialogContent` and
+  `ConfirmDialog` do it; a Radix dialog built by hand uses `useFocusReturn`). A dialog
+  with no `description` is described by nothing, not by its title again.
+- The app's shortcuts (`/` and Ctrl or ⌘ K for the quick search, `g` then a letter,
+  Ctrl or ⌘ \ for the sidebar) are listed at the foot of the quick search, and act only
+  when focus is not in a field, a menu, a list or a dialog. A screen's own keys follow
+  the same rule.
 - Layout is mobile-first and must hold from 320 px wide. The sidebar becomes a bottom
   bar under `md`, so leave the bottom padding `Page` provides. Touch targets are at
   least 44 px on small screens (the `ui` controls already grow under `md`).
