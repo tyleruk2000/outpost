@@ -9,7 +9,7 @@
  * Work runs inside the server process, one named queue per kind of work, each with its
  * own concurrency limit so that, say, three downloads do not starve text extraction.
  */
-import { and, asc, eq, inArray, lte, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, lte, sql } from "drizzle-orm";
 import type { FastifyBaseLogger } from "fastify";
 import type { Db } from "../db/client.ts";
 import { jobs } from "../db/schema.ts";
@@ -79,7 +79,8 @@ export class StoppedWithResult extends Error {
 type StopReason = "paused" | "cancelled" | "shutdown";
 
 const PROGRESS_WRITE_INTERVAL_MS = 500;
-const POLL_INTERVAL_MS = 2_000;
+/** The longest a timer may be set for; a job due later than this is looked at again then. */
+const LONGEST_WAIT_MS = 2 ** 31 - 1;
 
 /** Delay before retry `attempt` (1-based): 2s, 4s, 8s … capped at 5 minutes, with jitter. */
 export function retryDelayMs(attempt: number, random: () => number = Math.random): number {
@@ -91,7 +92,8 @@ export class JobQueue {
   private readonly handlers = new Map<string, JobHandler<never>>();
   private readonly limits = new Map<string, number>();
   private readonly running = new Map<string, { controller: AbortController; queue: string }>();
-  private timer: NodeJS.Timeout | undefined;
+  /** Set only while a queued job is waiting for a time in the future: its `runAfter`. */
+  private timer: { at: number; handle: NodeJS.Timeout } | undefined;
   private started = false;
   private closing = false;
   /** While set, only this queue starts work; what is queued on the others waits (see `holdFor`). */
@@ -147,14 +149,13 @@ export class JobQueue {
       .set({ state: "queued", updatedAt: Date.now(), progressMessage: "Resuming after restart" })
       .where(eq(jobs.state, "running"))
       .run();
-    this.timer = setInterval(() => this.pump(), POLL_INTERVAL_MS);
-    this.timer.unref();
     this.pump();
   }
 
   async close(): Promise<void> {
     this.closing = true;
-    if (this.timer) clearInterval(this.timer);
+    if (this.timer) clearTimeout(this.timer.handle);
+    this.timer = undefined;
     for (const { controller } of this.running.values()) controller.abort("shutdown" satisfies StopReason);
     await this.whenIdle(5_000);
   }
@@ -311,9 +312,39 @@ export class JobQueue {
         .orderBy(asc(jobs.createdAt))
         .limit(free)
         .all();
-      for (const job of next) void this.execute(job);
+      for (const job of next) {
+        this.execute(job).catch((error) => this.log.error({ job: job.id, err: error }, "the job runner could not record a job's end"));
+      }
     }
+    this.wakeAtNextDue(now);
     this.wakeIfIdle();
+  }
+
+  /**
+   * Nothing polls. Work is started when it is queued, resumed or released, when a slot
+   * frees up and when the concurrency changes; the one thing left is a job told to wait
+   * (a retry, or one a previous process left waiting), so the runner sets one timer for
+   * the earliest of those and is otherwise asleep.
+   */
+  private wakeAtNextDue(now: number): void {
+    const next = this.db
+      .select({ at: sql<number | null>`min(${jobs.runAfter})` })
+      .from(jobs)
+      .where(and(eq(jobs.state, "queued"), gt(jobs.runAfter, now)))
+      .get()?.at;
+    if (this.timer && this.timer.at === next) return;
+    if (this.timer) clearTimeout(this.timer.handle);
+    this.timer = undefined;
+    if (next == null) return;
+    const handle = setTimeout(
+      () => {
+        this.timer = undefined;
+        this.pump();
+      },
+      Math.min(next - now + 10, LONGEST_WAIT_MS),
+    );
+    handle.unref();
+    this.timer = { at: next, handle };
   }
 
   private wakeIfIdle(): void {
@@ -399,8 +430,6 @@ export class JobQueue {
             errorKind: kind,
             progressMessage: network === "offline" ? "Waiting for a connection" : "Waiting to retry",
           });
-          const timer = setTimeout(() => this.pump(), delay + 50);
-          timer.unref();
         } else {
           this.log.error({ job: job.id, err: error }, "job failed");
           this.update(job.id, { state: "failed", error: messageOf(error), errorKind: kind, finishedAt: Date.now() });
