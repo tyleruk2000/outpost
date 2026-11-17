@@ -28,9 +28,13 @@ export const mapCard = cn(
   "max-md:min-h-[52px] max-md:shrink max-md:overflow-y-auto max-md:overscroll-contain",
 );
 
-/** The first row of such a card: its title, and what closes or folds it. It stays in view while the rest scrolls. */
+/**
+ * The first row of such a card: its title, and what closes or folds it. It stays in view while the rest scrolls.
+ * It sticks at the card's own padding above its place (-top-3.5), at every width: a card that scrolls measures
+ * the header from inside its padding, and at top-0 the header sat that much lower, over the first line.
+ */
 export const mapCardHeader =
-  "sticky top-0 z-[1] -mx-3.5 -mt-3.5 flex items-start justify-between gap-3 rounded-t-panel bg-raised px-3.5 pt-3.5 max-md:-top-3.5";
+  "sticky -top-3.5 z-[1] -mx-3.5 -mt-3.5 flex items-start justify-between gap-3 rounded-t-panel bg-raised px-3.5 pt-3.5";
 
 /**
  * The row of buttons at the foot of a map card. On a phone the card scrolls in what room the

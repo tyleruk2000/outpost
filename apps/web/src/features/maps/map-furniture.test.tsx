@@ -115,7 +115,8 @@ describe("a card over the map", () => {
       </MapCard>,
     );
     const title = screen.getByRole("heading", { name: "Measure" });
-    expect(title.parentElement).toHaveClass("sticky", "top-0");
+    // Above its place by the card's own padding, at every width: a card that scrolls measures the header from inside its padding.
+    expect(title.parentElement).toHaveClass("sticky", "-top-3.5");
     expect(title.closest("section")).toHaveClass("outpost-map-card", "max-md:overflow-y-auto");
     expect(screen.getByRole("button", { name: "Stop measuring" })).toBeInTheDocument();
   });

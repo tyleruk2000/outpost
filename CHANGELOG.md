@@ -1791,6 +1791,9 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   Radio Exterior de España were removed, with every mention of them in the shortwave
   guide. Their sites allow personal use only, and Outpost is published for anyone to
   copy. See [docs/sources.md](docs/sources.md).
+- Estimated range on the map is now chosen repeater by repeater: each outline stays after
+  its card closes, labelled with its callsign, up to eight at once, with "Hide all
+  ranges" in the card. The folded card says the furthest reach as well as the usual one.
 
 ### Fixed
 
@@ -1839,6 +1842,8 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - A long file name in Japanese, or made of emoji, is shortened instead of failing to
   save.
 - Explore: the filter box's hint is no longer cut short on a narrow window.
+- A repeater's card on a wide screen no longer hides its first line under its title while
+  its range is on.
 
 ### Security
 

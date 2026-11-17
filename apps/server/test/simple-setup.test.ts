@@ -300,7 +300,7 @@ describe("answers: which model to offer first", () => {
 
   it("keeps a short list that a Raspberry Pi 5 with 8 GB could run, with one model to start with", () => {
     expect(RECOMMENDED_MODELS.filter((entry) => entry.start)).toEqual([STARTING_MODEL]);
-    expect(STARTING_MODEL.name).toBe("llama3.2:3b");
+    expect(STARTING_MODEL.name).toBe("lfm3:1.7b");
     for (const entry of RECOMMENDED_MODELS) {
       // Nothing that needs more than half of 8 GB, and what is said to fit 4 GB leaves room for the system.
       expect(entry.memoryGb, entry.name).toBeLessThanOrEqual(4);
