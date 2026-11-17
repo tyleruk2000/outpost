@@ -20,7 +20,14 @@
  */
 
 import type { PlaceDto, PlaceSearchResponse, PlacesDataset } from "@outpost/shared";
-import { haversineMeters, ownValue, parseCoordinateReadings } from "@outpost/shared";
+import {
+  haversineMeters,
+  isNorthernIrelandPostcode,
+  OS_NAMES_DATASET,
+  ownValue,
+  parseCoordinateReadings,
+  parsePostcode,
+} from "@outpost/shared";
 import { sql } from "drizzle-orm";
 import yauzl from "yauzl";
 import { z } from "zod";
@@ -30,6 +37,7 @@ import { yieldToEventLoop } from "../../core/event-loop.ts";
 import { PermanentJobError } from "../../core/jobs.ts";
 import { places } from "../../db/schema.ts";
 import type { DownloadRow, Installer } from "../downloads/types.ts";
+import { isOsCode, isStreetLevel, osKindLabel, osProminence } from "./os-names/convert.ts";
 import { ATTRIBUTIONS } from "./source.ts";
 
 export const GEONAMES_BASE_URL = "https://download.geonames.org/export/dump/";
@@ -261,6 +269,7 @@ const placesMetaSchema = z.object({ dataset: z.string().min(1), country: z.strin
 
 interface PlaceRow {
   id: number;
+  collectionId: string;
   geonameId: number | null;
   name: string;
   asciiName: string;
@@ -486,43 +495,69 @@ export function createPlacesService(ctx: AppContext, options: { baseUrl?: string
 
   // ── Search ──
 
-  const columns = `p.id AS id, p.geoname_id AS geonameId, p.name AS name, p.ascii_name AS asciiName, p.alt_names AS altNames,
+  const columns = `p.id AS id, p.collection_id AS collectionId, p.geoname_id AS geonameId, p.name AS name, p.ascii_name AS asciiName, p.alt_names AS altNames,
     p.lat AS lat, p.lon AS lon, p.feature_class AS featureClass, p.feature_code AS featureCode, p.country AS country,
     p.admin1 AS admin1, p.population AS population, p.elevation AS elevation`;
   const from = "FROM places_fts JOIN places p ON p.id = places_fts.rowid WHERE places_fts MATCH ?";
   // Name matches count ten times an alternate-name match, as in the table's column order.
   const byText = sqlite.prepare(`SELECT ${columns} ${from} ORDER BY bm25(places_fts, 10.0, 1.0) LIMIT ?`);
-  const byPopulation = sqlite.prepare(`SELECT ${columns} ${from} ORDER BY p.population DESC LIMIT ?`);
+  // OS Open Names gives no population: among its rows, settlements and then other named
+  // features come before roads and postcodes, and shorter names (the whole word) first.
+  const byPopulation = sqlite.prepare(
+    `SELECT ${columns} ${from} ORDER BY p.population DESC, CASE p.feature_class WHEN 'P' THEN 0 WHEN 'R' THEN 2 WHEN 'Z' THEN 2 ELSE 1 END, length(p.name) LIMIT ?`,
+  );
   const byDistance = sqlite.prepare(`SELECT ${columns} ${from} ORDER BY (p.lat - ?) * (p.lat - ?) + (p.lon - ?) * (p.lon - ?) * ? LIMIT ?`);
 
-  function scoreOf(row: PlaceRow, query: string, tokens: string[], near?: { lat: number; lon: number }): number {
+  /**
+   * How a row ranks. Three things decide, in this order, so that none can outweigh the
+   * one before it: whether the whole name is what was typed (or one of its other names
+   * is); whether it is a place, hill or the like rather than a road or postcode, which
+   * share their names by the thousand ("Ambleside" is a town and thirty roads); and
+   * then a score of how well the text matches, the population, the distance from the
+   * middle of the map and the kind of place.
+   */
+  function rankOf(row: PlaceRow, query: string, tokens: string[], near?: { lat: number; lon: number }) {
     const name = fold(row.name);
     const ascii = fold(row.asciiName);
+    const alternates = fold(row.altNames)
+      .split(",")
+      .map((alternate) => alternate.trim());
+    const exact = name === query || ascii === query || alternates.includes(query);
     let text: number;
     if (name === query || ascii === query) text = 1;
     else if (name.startsWith(query) || ascii.startsWith(query)) text = 0.8 + 0.1 * (query.length / Math.max(name.length, 1));
     else {
       const words = `${name} ${ascii}`.split(/[^\p{L}\p{N}]+/u);
       const inName = tokens.every((token) => words.some((word) => word.startsWith(token)));
-      const alternates = fold(row.altNames).split(",");
       if (inName) text = 0.7;
-      else if (alternates.some((alternate) => alternate.trim() === query)) text = 0.75;
+      else if (exact) text = 0.75;
       else text = 0.45;
     }
     // Population on a log scale: ten million people is the top of it.
     const population = Math.min(1, Math.log10(row.population + 1) / 7);
     const distance = near ? 1 / (1 + haversineMeters(near.lat, near.lon, row.lat, row.lon) / 75_000) : 0;
-    const prominence = row.featureCode === "PPLC" ? 0.1 : row.featureClass === "P" ? 0.05 : 0;
-    return text + population * 0.6 + distance * 0.8 + prominence;
+    const prominence = isOsCode(row.featureCode)
+      ? osProminence(row.featureCode!)
+      : row.featureCode === "PPLC"
+        ? 0.1
+        : row.featureClass === "P"
+          ? 0.05
+          : 0;
+    return {
+      exact,
+      street: isOsCode(row.featureCode) && isStreetLevel(row.featureClass),
+      score: text + population * 0.6 + distance * 0.8 + prominence,
+    };
   }
 
   const toDto = (row: PlaceRow): PlaceDto => ({
     id: row.id,
+    source: isOsCode(row.featureCode) ? "os" : "geonames",
     name: row.name,
     country: row.country,
     admin1: row.admin1,
     featureCode: row.featureCode,
-    kindLabel: kindLabelOf(row.featureClass, row.featureCode, row.population),
+    kindLabel: isOsCode(row.featureCode) ? osKindLabel(row.featureCode!) : kindLabelOf(row.featureClass, row.featureCode, row.population),
     lat: row.lat,
     lon: row.lon,
     population: row.population,
@@ -533,16 +568,24 @@ export function createPlacesService(ctx: AppContext, options: { baseUrl?: string
     const text = query.trim().slice(0, 200);
     // Nearly always one reading or none; a few four-character texts are both a grid reference and a locator.
     const [reading, ...otherReadings] = parseCoordinateReadings(text);
+    // A postcode, whole or begun, is looked for as OS writes it ("sy233by" as "SY23 3BY").
+    const postcode = parsePostcode(text);
     // Coordinates and grid references are never the name of a place. A locator can be:
     // six characters such as "CB12AB" are also a postcode written without its space, and
     // four such as "IO83" could begin a name. So a locator is offered, and names are
-    // looked for as well.
-    if (reading && reading.format !== "maidenhead") {
+    // looked for as well. So is a postcode district that is also a grid reference: "SY23"
+    // is a 10 km square in Dorset and the district of Aberystwyth.
+    if (reading && reading.format !== "maidenhead" && !postcode) {
       return { query: text, coordinate: reading, ...(otherReadings.length > 0 ? { otherReadings } : {}), places: [] };
     }
     const coordinate = reading ?? null;
-    const tokens = searchTokens(text).map(fold).filter(Boolean);
-    if (tokens.length === 0) return { query: text, coordinate, places: [] };
+    const others = reading && otherReadings.length > 0 ? { otherReadings } : {};
+    const notice = isNorthernIrelandPostcode(postcode)
+      ? "Northern Ireland's postcodes (BT) are not in the place names Outpost can download: OS Open Names covers Great Britain only."
+      : undefined;
+    const sought = postcode ? postcode.canonical : text;
+    const tokens = searchTokens(sought).map(fold).filter(Boolean);
+    if (tokens.length === 0) return { query: text, coordinate, ...others, places: [] };
 
     const limit = Math.min(50, Math.max(1, searchOptions.limit ?? 10));
     // Every word must be there; the last may still be being typed, so all match as prefixes.
@@ -559,32 +602,59 @@ export function createPlacesService(ctx: AppContext, options: { baseUrl?: string
     }
     for (const list of lists) for (const row of list) found.set(row.id, row);
 
-    const folded = fold(text).replace(/\s+/g, " ");
-    const ranked = [...found.values()].map((row) => ({ row, score: scoreOf(row, folded, tokens, near) })).sort((a, b) => b.score - a.score);
+    const folded = fold(sought).replace(/\s+/g, " ");
+    const ranked = [...found.values()]
+      .map((row) => ({ row, rank: rankOf(row, folded, tokens, near) }))
+      .sort(
+        (a, b) =>
+          Number(b.rank.exact) - Number(a.rank.exact) || Number(a.rank.street) - Number(b.rank.street) || b.rank.score - a.rank.score,
+      );
     // The same place can be in two datasets (a world list and a country); show it once.
+    // OS Open Names says which GeoNames record a settlement is, so it is shown once too.
     const seen = new Set<number>();
     const results: PlaceDto[] = [];
+    const owners = new Set<string>();
     for (const { row } of ranked) {
       if (row.geonameId !== null) {
         if (seen.has(row.geonameId)) continue;
         seen.add(row.geonameId);
       }
       results.push(toDto(row));
+      owners.add(row.collectionId);
       if (results.length === limit) break;
     }
-    return { query: text, coordinate, places: results };
+    const credits = [...new Set(datasetsOf().flatMap((dataset) => (owners.has(dataset.id) ? [dataset.credit] : [])))];
+    return {
+      query: text,
+      coordinate,
+      ...others,
+      places: results,
+      ...(credits.length > 0 ? { credits } : {}),
+      ...(notice ? { notice } : {}),
+    };
   }
 
   function datasetsOf(): PlacesDataset[] {
-    return ctx.services.collections.list({ kind: "places" }).map((row) => ({
-      id: row.id,
-      name: row.title,
-      dataset: typeof row.meta.dataset === "string" ? row.meta.dataset : "",
-      countries: row.meta.places?.countries ?? [],
-      count: row.meta.places?.count ?? 0,
-      sizeBytes: row.sizeBytes,
-      installedAt: row.installedAt,
-    }));
+    const { storage } = ctx.services;
+    const locations = new Map(storage.list().map((location) => [location.id, location.name]));
+    return ctx.services.collections.list({ kind: "places" }).map((row) => {
+      const os = row.meta.dataset === OS_NAMES_DATASET;
+      return {
+        id: row.id,
+        name: row.title,
+        dataset: typeof row.meta.dataset === "string" ? row.meta.dataset : "",
+        countries: row.meta.places?.countries ?? [],
+        count: row.meta.places?.count ?? 0,
+        sizeBytes: row.sizeBytes,
+        installedAt: row.installedAt,
+        source: os ? "os" : "geonames",
+        edition: os && typeof row.meta.edition === "string" ? row.meta.edition : null,
+        ...(os ? { roads: row.meta.roads !== false } : {}),
+        credit: os ? (row.attribution ?? "Contains OS data © Crown copyright and database right") : "Place names: GeoNames (CC BY 4.0)",
+        locationName: locations.get(row.locationId) ?? "Unknown location",
+        available: storage.isAvailable(row.locationId),
+      };
+    });
   }
 
   // Rows whose dataset is gone (removed while the server was down, or an import that

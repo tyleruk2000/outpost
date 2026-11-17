@@ -546,6 +546,7 @@ describe("searching places", () => {
     expect(london.places.map((place) => `${place.name} ${place.country}`)).toEqual(["London GB", "London CA"]);
     expect(london.places[0]).toEqual({
       id: expect.any(Number),
+      source: "geonames",
       name: "London",
       country: "GB",
       admin1: "ENG",

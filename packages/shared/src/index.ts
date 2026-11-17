@@ -35,6 +35,7 @@ export * from "./network.ts";
 export * from "./notes.ts";
 export * from "./nuclear.ts";
 export * from "./nuclear-effects.ts";
+export * from "./os-names.ts";
 export * from "./portable.ts";
 export * from "./power.ts";
 export * from "./power-devices.ts";
