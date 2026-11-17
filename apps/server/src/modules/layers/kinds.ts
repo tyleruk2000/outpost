@@ -1,5 +1,6 @@
 /** What each stored `kind` is called on screen. Kinds are the sources' own codes; these are their names. */
 import { ownValue } from "@outpost/shared";
+import { foodKindLabel } from "./adapters/food-tags.ts";
 import { osmKindLabel } from "./adapters/osm-tags.ts";
 
 const LABELS: Record<string, string> = {
@@ -22,7 +23,7 @@ const LABELS: Record<string, string> = {
 };
 
 export function kindLabel(kind: string): string {
-  const label = ownValue(LABELS, kind);
+  const label = ownValue(LABELS, kind) ?? foodKindLabel(kind);
   if (label) return label;
   if (kind.includes("=")) return osmKindLabel(kind);
   if (kind.startsWith("ne:region:")) return kind.slice("ne:region:".length) || "Region";

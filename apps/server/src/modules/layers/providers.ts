@@ -67,8 +67,8 @@ export const PROVIDERS: ReferenceProviderDto[] = [
       "OpenStreetMap: “If you alter or build upon our data, you may distribute the result only under the same license.” The Overpass manual lists as problematic “Setting up an app for more than just OSM mappers and relying on the public instances as backend”; users “keep their download volume below about 1 GB per day”. The dresel.systems servers (Europe, North America): “Free to use, no API key. Limit of 4 parallel queries per IP address”, “Please send a User-Agent or Referer that identifies your app.”",
     termsRead: READ,
     verdict: "fetch",
-    why: "One layer of one country or box per question, one question at a time, to a public server whose operator allows it (dresel.systems, for Europe and North America) or to one you declare yourself. Private.coffee's server is not used: its terms exclude “projects related to warfare, military applications”. overpass-api.de is not used: its operators ask that applications not rely on it. Elsewhere, use a Geofabrik extract.",
-    layers: ["military", "nuclear", "hospitals", "emergency", "shelters"],
+    why: "One layer of one country or box per question, one question at a time, to a public server whose operator allows it (dresel.systems, for Europe and North America) or to one you declare yourself. Food and supplies only for the area on screen, up to about a county. Private.coffee's server is not used: its terms exclude “projects related to warfare, military applications”. overpass-api.de is not used: its operators ask that applications not rely on it. Elsewhere, use a Geofabrik extract.",
+    layers: ["military", "nuclear", "hospitals", "emergency", "shelters", "food"],
     scopes: ["country", "bbox"],
     importFormats: [],
     caution: MILITARY_CAUTION,
@@ -172,6 +172,25 @@ export const PROVIDERS: ReferenceProviderDto[] = [
     incremental: "No: the area is fetched again whole.",
   },
   {
+    id: "fsa",
+    name: "Food Standards Agency: registered food businesses (UK)",
+    publisher: "Food Standards Agency",
+    url: "https://ratings.food.gov.uk/open-data",
+    license: "Open Government Licence v3.0",
+    licenseUrl: "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+    termsUrl: "https://ratings.food.gov.uk/terms-and-conditions",
+    termsQuote:
+      "Terms and conditions: “Use of proprietary food hygiene ratings information and services is subject to the terms of the Open Government Licence”; “It is the responsibility of users to ensure that the current rating is used or to indicate the date when the information was updated.” Open data page: the API “is a free service and there is no need to register to use it”; “The data is updated daily.” The API's help: free, no registration or key “at this time”; no limit on requests is stated.",
+    termsRead: "2026-11-17",
+    verdict: "fetch",
+    why: "Every business in the UK registered with its council as selling food, updated daily: a fuller list of shops than the map has. Only retailers (supermarkets and other shops) are fetched, not restaurants or takeaways, for the area on screen up to about a county, on a press. Hygiene ratings are not kept or shown.",
+    layers: ["food"],
+    scopes: ["bbox"],
+    importFormats: [],
+    caution: null,
+    incremental: "No: the area is asked for again whole, and the new pack replaces the old.",
+  },
+  {
     id: "import",
     name: "A file you import",
     publisher: "As stated by the person importing",
@@ -183,7 +202,7 @@ export const PROVIDERS: ReferenceProviderDto[] = [
     termsRead: READ,
     verdict: "import",
     why: "For sources that do not allow automated download, or publish only for you to fetch: emergency planning zones, official shelter registers, historical records you have transcribed or obtained, and country-level figures from published reports. Every row says who published it, under what licence, how exactly it is placed, and whether it is a published record or unverified.",
-    layers: ["shelters", "planning-zones", "military", "nuclear", "hospitals", "emergency", "historical"],
+    layers: ["shelters", "planning-zones", "military", "nuclear", "hospitals", "emergency", "historical", "food"],
     scopes: [],
     importFormats: ["features-csv", "geojson", "historical-csv", "country-figures-csv", "osm-pbf"],
     caution: null,
@@ -193,6 +212,15 @@ export const PROVIDERS: ReferenceProviderDto[] = [
 
 /** Sources the specification names that Outpost links to and does not fetch, with the reason. */
 export const LINKED: ReferenceCatalogueResponse["linked"] = [
+  {
+    id: "give-food",
+    name: "Give Food: UK food banks",
+    url: "https://www.givefood.org.uk/",
+    why: "The fullest list of UK food banks, with what each needs, through a free API. But it asks to be told before anything is launched with its data and to have its information kept up to date, and it changes several times a day: a copy kept offline cannot do that. Look food banks up there; OpenStreetMap's mapped food banks are in the food and supplies layer. The project could be asked whether an offline copy is acceptable.",
+    termsQuote:
+      "API page: “Please contact us at mail@givefood.org.uk if you're going to launch something using our data.” “Keep the information up to date.” “This data changes multiple times per day with updates to locations, contact information, closures and food bank needs.” “Do good with the data, and credit us with a link when you use it.” No licence is stated.",
+    termsRead: "2026-11-17",
+  },
   {
     id: "fas",
     name: "FAS Nuclear Notebook and Status of World Nuclear Forces",
