@@ -41,7 +41,7 @@ test.describe("VOACAP's data, which Outpost does not ship", () => {
     await page.getByRole("searchbox", { name: "Filter by name" }).fill("VOACAP");
     await page.getByRole("checkbox", { name: "Select VOACAP ionospheric and noise coefficients" }).click();
     await page.getByRole("button", { name: "Remove", exact: true }).click();
-    const dialog = page.getByRole("dialog", { name: "Remove 1 item" });
+    const dialog = page.getByRole("dialog", { name: "Remove “VOACAP ionospheric and noise coefficients”" });
     await expect(dialog.getByText(/HF propagation planner, coverage maps, radio plans/)).toBeVisible();
     await dialog.getByRole("button", { name: "Cancel" }).click();
 

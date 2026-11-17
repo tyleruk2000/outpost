@@ -83,7 +83,7 @@ const ActiveRow = memo(function ActiveRow({
             ]}
           />
         </div>
-        <div className="flex shrink-0 items-center gap-1 max-md:-ml-2.5 md:-mr-2.5">
+        <div className="flex max-w-full shrink-0 flex-wrap items-center gap-1 max-md:-ml-2.5 md:-mr-2.5">
           <DownloadControls download={download} />
           <DetailsLink download={download} />
         </div>
@@ -102,7 +102,7 @@ function FailedRow({ download }: { download: DownloadDto }) {
           <h3 className="font-title text-lead text-ink">{download.title}</h3>
           <MetaLine parts={[`To ${download.locationName}`, download.finishedAt ? `Stopped ${timeAgo(download.finishedAt)}` : null]} />
         </div>
-        <div className="flex items-center gap-1 max-md:-ml-2.5 md:-mr-2.5">
+        <div className="flex max-w-full flex-wrap items-center gap-1 max-md:-ml-2.5 md:-mr-2.5">
           <DownloadControls download={download} />
           <RemoveDownloadButton download={download} label="Remove" />
           <DetailsLink download={download} />
@@ -150,7 +150,7 @@ function HistoryRow({ download, installed }: { download: DownloadDto; installed:
         />
         {view.detail ? <p className="text-small text-ink-muted">{view.detail}</p> : null}
       </div>
-      <div className="flex items-center gap-1 max-md:-ml-2.5 md:-mr-2.5">
+      <div className="flex max-w-full flex-wrap items-center gap-1 max-md:-ml-2.5 md:-mr-2.5">
         {completed ? null : <DownloadControls download={download} />}
         <RemoveDownloadButton download={download} label={completed ? "Remove from history" : "Remove"} />
         <DetailsLink download={download} />

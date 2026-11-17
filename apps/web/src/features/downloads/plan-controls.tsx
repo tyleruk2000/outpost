@@ -204,12 +204,12 @@ export function PlanControls({ plan, className }: { plan: PlanSettings; classNam
           </div>
         </div>
 
-        <div className="grid gap-1.5">
+        <div className="grid max-w-full gap-1.5">
           <span id={onceId} className="text-small font-medium text-ink">
             At once
           </span>
           {/* biome-ignore lint/a11y/useSemanticElements: a stepper is a labelled group of two buttons and a value, not a fieldset */}
-          <div role="group" aria-labelledby={onceId} className="flex items-center gap-3">
+          <div role="group" aria-labelledby={onceId} className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="inline-flex items-center rounded-control border border-border-strong">
               <Button
                 variant="ghost"
