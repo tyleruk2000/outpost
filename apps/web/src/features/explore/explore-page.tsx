@@ -337,7 +337,7 @@ export default function ExplorePage() {
                 </p>
               ) : null}
               <div className="flex flex-wrap items-center gap-3">
-                <div className="relative min-w-[min(100%,14rem)] flex-1 max-md:basis-full">
+                <div className="relative min-w-[min(100%,19rem)] flex-1 max-md:basis-full">
                   <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-muted" />
                   <Input
                     type="search"

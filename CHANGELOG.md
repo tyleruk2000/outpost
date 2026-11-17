@@ -1825,6 +1825,12 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Allotment: a bed's time label no longer covers its plants.
 - The set-up guide's page in the repository keeps multi-line commands inside their
   steps.
+- Mesh radio: a radio can no longer rename another, and one message on a very long
+  topic no longer wipes what was learnt from the radios.
+- An M4A or M4B made of thousands of tiny parts no longer holds up reading its tags.
+- A long file name in Japanese, or made of emoji, is shortened instead of failing to
+  save.
+- Explore: the filter box's hint is no longer cut short on a narrow window.
 
 ### Security
 
@@ -1885,6 +1891,24 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   are kept outside the database, and a broker connection from outside the home network
   is closed before anything is read. See
   [docs/security.md](docs/security.md#the-mesh-radio-link).
+
+- **A restored backup or a portable drive no longer carries the mesh radio set-up or the
+  MCP switch to another machine.** A restored server had connected, on its next start,
+  to the broker the backup named. A restore now keeps this computer's own set-up, and a
+  drive leaves both out.
+- The MQTT broker stops checking passwords from an address after five wrong ones in a
+  minute, and lets one address hold at most two connections that have not signed in.
+  Each wrong password had cost the server about 27 ms of its only thread.
+- A page in the reader can no longer fill the disk through learning progress: the reader
+  passes on a list of links only for the page on show, and the server keeps at most
+  2,000 lists for an archive, each of at most 64 kB.
+- A download stops as soon as more arrives than its server's stated length, or, with no
+  length, than the size it was offered at plus a tenth and 1 MB.
+- A Geofabrik extract is read only when its MD5 was published with it, and Ordnance
+  Survey's answers about its downloads are read up to 1 MB.
+- The MCP endpoint compares the whole origin of a request, scheme and port included.
+- A test fails when the server asks a host that [docs/security.md](docs/security.md) and
+  [docs/offline.md](docs/offline.md) do not both name.
 
 ### Who is told what is asking
 

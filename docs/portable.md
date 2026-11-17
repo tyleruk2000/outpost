@@ -37,6 +37,9 @@ What travels:
   that form, with or without contacts.
 - **Your choice:** all documents or none; your contacts or not; and any installed
   collections and maps you tick.
+- **Never:** the mesh radio link's set-up and the names of radios heard, and the MCP
+  switch. Both are set only at the computer Outpost runs on, so a drive starts with
+  the mesh link not set up and the MCP endpoint off.
 - **Contacts travel unless you turn them off.** They are on by default, as notes are,
   because a list of who to reach is the thing to have on a drive. They are also other
   people's names, numbers and addresses, and a drive is not encrypted: turn **Contacts**

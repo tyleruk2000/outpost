@@ -143,6 +143,8 @@ backed up and erased with the board.
 
 - `mesh.config` (a row in the settings table, not in the settings schema, so
   `PATCH /api/settings` cannot change it): the ways in as set up, without passwords.
+  A restored backup keeps this computer's own row, not the backup's, and a portable
+  drive leaves it and `mesh.heard` out, so a set-up never travels to another machine.
 - `mesh.heard` (also a settings row): the names of radios heard (at most 200), which
   radio connects to MQTT, its root topic, and each channel's index. The radios' names
   go when the board is emptied; both rows go with erase-everything.
