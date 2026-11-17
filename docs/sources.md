@@ -206,8 +206,8 @@ Every quotation was read on that day on the page linked, through Outpost's own c
 
 ### Kiwix's robots.txt, read on 2026-11-17
 
-A finding about the source Outpost's Kiwix downloads rest on (rows 1 and 2), set down
-for the owner to decide on; nothing has been changed because of it.
+A finding about the source Outpost's Kiwix downloads rest on (rows 1 and 2), with what
+the owner decided at the end.
 
 - **What the files say.** Read through Outpost's own client on 2026-11-17:
   `https://opds.library.kiwix.org/robots.txt` (the feed every Kiwix entry is resolved
@@ -247,14 +247,19 @@ for the owner to decide on; nothing has been changed because of it.
   and one file because a person pressed Download is doing what Kiwix's own apps do.
   The other: the file names no exception, and the rule this catalogue keeps for its
   sources is that a path `robots.txt` disallows is left alone.
-- **What stands.** The existing Kiwix entries and Outpost's own on-press downloads from
-  Kiwix are unchanged pending the owner's decision. The Kiwix entries added on
-  2026-11-17 are in a commit of their own so that they can be kept or dropped whole.
+- **What was decided.** The owner decided on 17 November 2026: Outpost goes on as it
+  was. It fetches Kiwix's feed and a file only when a person presses Download, which is
+  what the feed is published for and what Kiwix's own readers do, and is not crawling.
+  What changed: the catalogue's online check, which walks every entry, now leaves Kiwix's
+  hosts alone unless `--include-kiwix` is given (`KIWIX_HOSTS` in
+  `apps/server/src/cli/validate-catalog.ts`), and no development tool or builder asks
+  those hosts for anything. Kiwix has not been asked for its view; writing to the project
+  to ask would settle it, and nothing depends on the answer for now. The Kiwix entries
+  added on 2026-11-17 were kept.
 
 ### Kiwix entries added on 2026-11-17
 
-Prepared in a commit of their own, because of [Kiwix's robots.txt](#kiwixs-robotstxt-read-on-2026-11-17):
-keep or drop the commit whole. Names, editions and sizes were taken from the one copy of
+Kept, by the owner's decision on [Kiwix's robots.txt](#kiwixs-robotstxt-read-on-2026-11-17). Names, editions and sizes were taken from the one copy of
 the English feed fetched on 2026-11-17 (1,312 books), and each name was checked against
 that copy; none of these entries was checked online. **18 entries** in `kiwix-more`:
 

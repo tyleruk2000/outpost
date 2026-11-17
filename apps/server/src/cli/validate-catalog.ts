@@ -5,10 +5,12 @@
  *   node apps/server/src/cli/validate-catalog.ts --online     also ask the sources
  *   node apps/server/src/cli/validate-catalog.ts --online --delay 10
  *                                                             seconds between requests to one host (default 10)
- *   node apps/server/src/cli/validate-catalog.ts --online --skip-host opds.library.kiwix.org
- *                                                             ask no source on that host (repeatable; a
- *                                                             Kiwix entry's host is the feed's); the
+ *   node apps/server/src/cli/validate-catalog.ts --online --skip-host example.org
+ *                                                             ask no source on that host (repeatable); the
  *                                                             entries skipped are counted, not checked
+ *   node apps/server/src/cli/validate-catalog.ts --online --include-kiwix
+ *                                                             also ask Kiwix's feed, which the online check
+ *                                                             leaves alone unless told (see KIWIX_HOSTS)
  *   node apps/server/src/cli/validate-catalog.ts --write-schema
  *   node apps/server/src/cli/validate-catalog.ts --dir <path-to-catalog-folder>
  *
@@ -194,6 +196,22 @@ export function hostAskedFor(entry: LoadedCatalog["entries"][number]): string | 
 }
 
 /** Splits the entries into those the online check asks about and those on a host it was told to leave alone. */
+/**
+ * Kiwix's hosts, which the online check does not ask unless `--include-kiwix` is given.
+ * Since October 2026 their robots.txt reads "User-agent: * / Disallow: /", put there
+ * against crawlers. A person pressing Download in Outpost is not one, and the owner
+ * decided on 17 November 2026 that the app goes on fetching the feed and a file on a
+ * press, as Kiwix's own readers do. A check that walks every Kiwix entry in the
+ * catalogue is the robot-like part, so it is off by default (docs/sources.md).
+ */
+export const KIWIX_HOSTS = ["opds.library.kiwix.org", "download.kiwix.org", "lb.download.kiwix.org", "library.kiwix.org"] as const;
+
+/** The hosts an online check leaves unasked: those named with `--skip-host`, and Kiwix's unless `--include-kiwix`. */
+export function hostsToSkip(argv: readonly string[]): string[] {
+  const named = argv.flatMap((arg, index) => (arg === "--skip-host" && argv[index + 1] ? [argv[index + 1]!] : []));
+  return argv.includes("--include-kiwix") ? named : [...new Set([...named, ...KIWIX_HOSTS])];
+}
+
 export function entriesToCheck(entries: LoadedCatalog["entries"], skipHosts: Iterable<string> = []) {
   const skip = new Set([...skipHosts].map((host) => host.toLowerCase()));
   const check: LoadedCatalog["entries"] = [];
@@ -262,12 +280,14 @@ async function main(argv: string[]): Promise<number> {
       const delayIndex = argv.indexOf("--delay");
       const delaySeconds = delayIndex >= 0 ? Number(argv[delayIndex + 1]) : 10;
       if (!Number.isFinite(delaySeconds) || delaySeconds < 0) throw new Error("--delay takes a number of seconds, for example --delay 10");
-      const skipHosts = argv.flatMap((arg, index) => (arg === "--skip-host" && argv[index + 1] ? [argv[index + 1]!] : []));
+      const skipHosts = hostsToSkip(argv);
       const online = await validateOnline(offline.catalog, { hostIntervalMs: delaySeconds * 1000, skipHosts });
       const checked = offline.entries - online.skipped.length;
       console.log(`${online.resolved} of ${checked} entries checked resolve at their source.`);
       if (online.skipped.length > 0) {
-        console.log(`${online.skipped.length} entries were not checked: their host was skipped (${skipHosts.join(", ")}).`);
+        console.log(
+          `${online.skipped.length} entries were not checked: their host was skipped (${skipHosts.join(", ")}). Kiwix's hosts are left alone unless --include-kiwix is given.`,
+        );
       }
       problems.push(...online.problems);
     } catch (error) {

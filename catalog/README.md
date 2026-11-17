@@ -293,9 +293,15 @@ The online check asks one host at a time and waits ten seconds between requests 
 the same host (`--delay <seconds>` changes that), because several publishers ask
 automated clients for that pace. It takes a couple of minutes. Where a server refuses
 `HEAD`, it asks for the first byte of the file instead. `--skip-host <host>` (as often as
-needed) leaves every entry on that host unasked; a Kiwix book counts as the feed's host,
-`opds.library.kiwix.org`. The skipped entries are counted as not checked, not reported as
-problems.
+needed) leaves every entry on that host unasked. The skipped entries are counted as not
+checked, not reported as problems.
+
+**Kiwix's hosts are skipped unless `--include-kiwix` is given** (a Kiwix book counts as
+the feed's host, `opds.library.kiwix.org`). Since October 2026 Kiwix's `robots.txt` asks
+all automated clients to stay out. Outpost itself still fetches the feed and a file when
+a person presses Download, as Kiwix's own readers do; a check that walks every Kiwix
+entry in the catalogue is what that rule is aimed at, so it is not run as a matter of
+course. See `docs/sources.md`, "Kiwix's robots.txt".
 
 The offline check also confirms that every bundled entry's file (or, for a book, every
 chapter) is present, is UTF-8 text that opens with its title, and carries a version,

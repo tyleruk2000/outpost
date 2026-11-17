@@ -4,7 +4,7 @@ import path from "node:path";
 import type { CatalogEntryDto, CatalogResponse } from "@outpost/shared";
 import { CATALOG_CATEGORIES } from "@outpost/shared";
 import { afterEach, describe, expect, it } from "vitest";
-import { entriesToCheck, validateCatalog } from "../src/cli/validate-catalog.ts";
+import { entriesToCheck, hostsToSkip, KIWIX_HOSTS, validateCatalog } from "../src/cli/validate-catalog.ts";
 import { createHttpClient } from "../src/core/http.ts";
 import {
   type KiwixBook,
@@ -926,6 +926,15 @@ describe("the online check's skipped hosts", () => {
     loaded("h.other", { type: "http", url: "https://Other.example.org/b.pdf" }),
     loaded("b.sheet", { type: "bundled", file: "radio/a.md" }),
   ];
+
+  it("leaves Kiwix's hosts unasked in an online check unless told to include them", () => {
+    // Their robots.txt disallows everything; the bulk check is the robot-like part (docs/sources.md).
+    expect(hostsToSkip(["--online"])).toEqual([...KIWIX_HOSTS]);
+    expect(hostsToSkip(["--online", "--skip-host", "example.org"])).toEqual(["example.org", ...KIWIX_HOSTS]);
+    expect(hostsToSkip(["--online", "--include-kiwix"])).toEqual([]);
+    expect(hostsToSkip(["--online", "--include-kiwix", "--skip-host", "example.org"])).toEqual(["example.org"]);
+    expect(KIWIX_HOSTS).toContain("opds.library.kiwix.org");
+  });
 
   it("asks about everything when no host is named", () => {
     const { check, skipped } = entriesToCheck(entries);
