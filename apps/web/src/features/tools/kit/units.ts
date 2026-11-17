@@ -29,7 +29,6 @@ export const m = linear("m", "m", "metres", 1);
 export const km = linear("km", "km", "kilometres", 1000);
 export const inch = linear("in", "in", "inches", 0.0254);
 export const ft = linear("ft", "ft", "feet", 0.3048);
-export const yd = linear("yd", "yd", "yards", 0.9144);
 export const mile = linear("mi", "miles", "miles", 1609.344);
 
 // ── Area, in square metres ───────────────────────────────────────────────────
@@ -54,7 +53,6 @@ export const tsp = linear("tsp", "tsp", "teaspoons (5 ml)", 0.005);
 // ── Mass, in kilograms ───────────────────────────────────────────────────────
 export const g = linear("g", "g", "grams", 0.001);
 export const kg = linear("kg", "kg", "kilograms", 1);
-export const tonne = linear("t", "t", "tonnes", 1000);
 export const oz = linear("oz", "oz", "ounces", 0.028349523125);
 export const lb = linear("lb", "lb", "pounds", 0.45359237);
 export const stone = linear("st", "st", "stone", 6.35029318);

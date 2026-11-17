@@ -135,12 +135,10 @@ const bucketSpec: NumberSpec = {
   hint: "Measure it with a jug.",
 };
 
+const MIX_OPTIONS = MIXES.map((mix) => ({ value: mix.id, label: mix.label, description: mix.use }));
+
 export function ConcreteCalculator() {
-  const [mixId, setMix] = useChoice(
-    "building.concrete.mix",
-    MIXES.map((mix) => ({ value: mix.id, label: mix.label, description: mix.use })),
-    "gp",
-  );
+  const [mixId, setMix] = useChoice("building.concrete.mix", MIX_OPTIONS, "gp");
   const mix = MIXES.find((item) => item.id === mixId) ?? MIXES[0]!;
   const volume = useNumber(volumeSpec);
   const allowance = useNumber(allowanceSpec);
@@ -168,13 +166,7 @@ export function ConcreteCalculator() {
       intro="How much cement, sand and aggregate to mix by volume for a job, by the mixes on a UK cement maker's data sheet."
     >
       <Inputs>
-        <ChoiceField
-          label="Mix"
-          value={mixId}
-          onChange={setMix}
-          options={MIXES.map((item) => ({ value: item.id, label: item.label, description: item.use }))}
-          className="sm:col-span-2"
-        />
+        <ChoiceField label="Mix" value={mixId} onChange={setMix} options={MIX_OPTIONS} className="sm:col-span-2" />
         <NumberField input={volume} />
         <NumberField input={allowance} />
         <NumberField input={bulking} />

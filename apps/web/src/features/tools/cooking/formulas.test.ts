@@ -47,6 +47,9 @@ describe("scaling a recipe", () => {
     expect(readQuantity("1½")).toBe(1.5);
     expect(readQuantity("200")).toBe(200);
     expect(readQuantity("a pinch")).toBeNull();
+    // A fraction over nothing is not an amount, and is left as it is rather than scaled to "Infinity".
+    expect(readQuantity("1/0")).toBeNull();
+    expect(scaleRecipe("1/0 egg", 2)).toEqual([{ line: "1/0 egg", scaled: false }]);
   });
 
   it("scales the amount at the start of each line and leaves the rest", () => {

@@ -4,7 +4,6 @@
  * types, and how it is worked out one press away. Formulas live in pure functions beside
  * each screen, not here. See docs/tools.md.
  */
-export { useDevicePref } from "./device-pref";
 export {
   allValues,
   ChoiceField,
@@ -17,7 +16,7 @@ export {
   useNumber,
   useText,
 } from "./fields";
-export { formatDuration, formatFigure, formatQuantity, formatRange, roundSignificant } from "./format";
+export { formatDuration, formatFigure, formatRange, roundSignificant } from "./format";
 export { Calculator, ToolScreen } from "./layout";
 export { type NumberLimits, readNumber } from "./read-number";
 export { Formula, HowWorkedOut, KeepButtons, Result, type Source, SourceList } from "./result";

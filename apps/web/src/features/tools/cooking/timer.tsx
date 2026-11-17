@@ -3,6 +3,9 @@
  * is right again when the screen comes back after the phone has slept, and it is kept on
  * this device so that a reload does not lose it. When it ends it sounds a tone (made in
  * the browser, no file), vibrates where the phone can, and says so on the screen.
+ *
+ * It wakes the page as little as it can: nothing while it is stopped or paused, one
+ * redraw a second while it counts on screen, and only the alarm while the page is hidden.
  */
 import { Pause, Play, RotateCcw } from "lucide-react";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useRef, useState } from "react";
@@ -112,31 +115,78 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   );
   const reset = useCallback(() => save(STOPPED), [save]);
   useEffect(() => {
-    if (state.endsAt === null) return;
+    const endsAt = state.endsAt;
+    if (endsAt === null) return;
+    let alarm: number | undefined;
     const check = () => {
-      if (state.endsAt !== null && Date.now() >= state.endsAt && !rang.current) {
-        rang.current = true;
-        sound();
-        toast.success("Time is up", { description: state.label || undefined, duration: 30_000 });
-        save({ ...state, endsAt: null, remaining: 0 });
+      window.clearTimeout(alarm);
+      const left = endsAt - Date.now();
+      if (left > 0) {
+        alarm = window.setTimeout(check, left);
+        return;
       }
+      if (rang.current) return;
+      rang.current = true;
+      sound();
+      toast.success("Time is up", { description: state.label || undefined, duration: 30_000 });
+      save({ ...state, endsAt: null, remaining: 0 });
     };
     check();
-    const id = window.setInterval(check, 250);
-    return () => window.clearInterval(id);
+    // A browser may hold a hidden page's timeout back: look again as soon as it is shown.
+    const onShow = () => {
+      if (document.visibilityState !== "hidden") check();
+    };
+    document.addEventListener("visibilitychange", onShow);
+    return () => {
+      window.clearTimeout(alarm);
+      document.removeEventListener("visibilitychange", onShow);
+    };
   }, [state, save]);
   return <TimerContext.Provider value={{ state, start, pause, reset }}>{children}</TimerContext.Provider>;
+}
+
+/** Whether the page can be seen: false in a background tab or on a locked phone. */
+function usePageVisible(): boolean {
+  const [visible, setVisible] = useState(() => document.visibilityState !== "hidden");
+  useEffect(() => {
+    const update = () => setVisible(document.visibilityState !== "hidden");
+    document.addEventListener("visibilitychange", update);
+    return () => document.removeEventListener("visibilitychange", update);
+  }, []);
+  return visible;
+}
+
+/**
+ * Redraws as the seconds shown change, while the timer runs and the page can be seen. The
+ * display rounds up to a whole second, so it changes each time what is left crosses one.
+ */
+function useSecondTick(endsAt: number | null) {
+  const visible = usePageVisible();
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (endsAt === null || !visible) return;
+    let id: number | undefined;
+    const next = () => {
+      const left = endsAt - Date.now();
+      if (left <= 0) return;
+      id = window.setTimeout(
+        () => {
+          tick((n) => n + 1);
+          next();
+        },
+        ((left - 1) % 1000) + 1,
+      );
+    };
+    next();
+    return () => window.clearTimeout(id);
+  }, [endsAt, visible]);
 }
 
 /** The timer itself: set a time, start, pause, reset. */
 export function TimerPanel() {
   const api = useTimer();
-  const [, tick] = useState(0);
   const [minutesText, setMinutesText] = useState("10");
-  useEffect(() => {
-    const id = window.setInterval(() => tick((n) => n + 1), 250);
-    return () => window.clearInterval(id);
-  }, []);
+  useSecondTick(api?.state.endsAt ?? null);
   if (!api) return null;
   const { state, start } = api;
   const running = state.endsAt !== null;

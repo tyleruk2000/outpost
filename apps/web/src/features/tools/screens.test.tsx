@@ -191,3 +191,75 @@ describe("the cooking screen", () => {
     expect(within(section("Scaling a recipe")).getByText("750 g minced beef")).toBeInTheDocument();
   });
 });
+
+describe("figures at the edges", () => {
+  it("water: a filter whose figures run past any calendar says so instead of failing", async () => {
+    const user = userEvent.setup();
+    show(<WaterPage />);
+    const filter = section("Filter life");
+    const rated = within(filter).getByLabelText("Rated capacity, from its label");
+    await user.clear(rated);
+    await user.type(rated, "1e15");
+    expect(within(filter).getByText(/more than 100 years/)).toBeInTheDocument();
+  });
+
+  it("water: gives UK gallons for both ends of a range", () => {
+    localStorage.setItem("outpost.tools.choice.water.storage.figure", "who-basic");
+    show(<WaterPage />);
+    // 2 people, 3 days, 7.5 to 15 litres: 45 to 90 litres.
+    expect(within(section("Water to store")).getByText(/About 10 to 20 UK gallons/)).toBeInTheDocument();
+  });
+
+  it("water: says how long rain lasts in days, no more precisely than the yield", () => {
+    localStorage.setItem("outpost.tools.input.water.rain.use", JSON.stringify({ text: "8", unit: "l" }));
+    show(<WaterPage />);
+    // 360 to 405 litres at 8 litres a day.
+    expect(within(section("Rainwater from a roof")).getByText(/lasts 45 to 51 days/)).toBeInTheDocument();
+  });
+
+  it("radio: path loss needs no transmitter power, which is optional", async () => {
+    const user = userEvent.setup();
+    show(<RadioToolsPage />);
+    const pathLoss = section("Free-space path loss");
+    await user.clear(within(pathLoss).getByLabelText(/Transmitter power/));
+    expect(within(pathLoss).queryByRole("alert")).toBeNull();
+    expect(within(pathLoss).getByText(/^\d+(\.\d)? dB$/)).toBeInTheDocument();
+  });
+
+  it("radio: gives no path loss closer than a wavelength, where the formula would give less than none", async () => {
+    const user = userEvent.setup();
+    show(<RadioToolsPage />);
+    const pathLoss = section("Free-space path loss");
+    const frequency = within(pathLoss).getByLabelText("Frequency");
+    await user.clear(frequency);
+    await user.type(frequency, "7.1");
+    const distance = within(pathLoss).getByLabelText("Distance");
+    await user.clear(distance);
+    await user.type(distance, "0.001");
+    expect(within(pathLoss).getByText(/wavelength/)).toBeInTheDocument();
+    expect(within(pathLoss).queryByText(/^-?\d+(\.\d)? dB$/)).toBeNull();
+  });
+
+  it("radio: an S-unit reading below S9 is not held up by the hidden decibels-over field", async () => {
+    localStorage.setItem("outpost.tools.choice.radio.levels.scale", "s-hf");
+    localStorage.setItem("outpost.tools.input.radio.levels.value", JSON.stringify({ text: "9" }));
+    localStorage.setItem("outpost.tools.input.radio.levels.over", JSON.stringify({ text: "" }));
+    const user = userEvent.setup();
+    show(<RadioToolsPage />);
+    const levels = section("Watts, dBm and S-units");
+    const level = within(levels).getByLabelText("Level");
+    await user.clear(level);
+    await user.type(level, "8");
+    expect(within(levels).getAllByText("-79 dBm")[0]).toHaveClass("text-heading");
+  });
+
+  it("building: one sheet is one sheet", async () => {
+    const user = userEvent.setup();
+    show(<BuildingPage />);
+    const sheets = section("Sheets and fixings");
+    const area = within(sheets).getByLabelText("Area to cover");
+    await user.clear(area);
+    await user.type(area, "1");
+    expect(within(sheets).getByText("1 sheet")).toBeInTheDocument();
+  });
+});

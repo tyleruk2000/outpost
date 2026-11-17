@@ -13,8 +13,8 @@ import { Link } from "react-router";
 import { Field } from "@/components/ui/input";
 import { formatBearing, formatDistanceWithMiles } from "@/features/maps/lib/geo";
 import { moonPhase } from "@/features/maps/lib/moon";
-import { dayLengthChange, isIsoDate, sunDay, utcToDate } from "@/features/maps/lib/sun";
-import { deviceZone, sunRows } from "@/features/maps/lib/sun-text";
+import { dayLengthChange, isIsoDate, sunDay } from "@/features/maps/lib/sun";
+import { dateIn, deviceZone, sunRows } from "@/features/maps/lib/sun-text";
 import { useClockStyle } from "@/lib/clock";
 import {
   allValues,
@@ -217,7 +217,7 @@ function GradientCalculator() {
             ? {
                 title: "Gradient",
                 lines: [
-                  `${formatFigure(result.percent, { decimals: 1 })}%, ${formatFigure(result.degrees, { decimals: 1 })}°, 1 in ${formatFigure(result.oneIn, { decimals: 1 })}`,
+                  `${formatFigure(result.percent, { decimals: 1 })}%, ${formatFigure(result.degrees, { decimals: 1 })}°${Number.isFinite(result.oneIn) ? `, 1 in ${formatFigure(result.oneIn, { decimals: 1 })}` : ""}`,
                 ],
               }
             : undefined
@@ -376,8 +376,8 @@ function SunCalculator() {
   const [placeText, setPlace] = useText("outdoors.sun.place", "54.4609, -3.0886");
   const [date, setDate] = useText("outdoors.sun.date", "");
   const place = useMemo(() => parseCoordinates(placeText), [placeText]);
-  const day = date && isIsoDate(date) ? date : utcToDate(Date.now());
   const zone = deviceZone();
+  const day = date && isIsoDate(date) ? date : dateIn(zone, Date.now());
   const rows = useMemo(() => {
     if (!place) return null;
     const sun = sunDay(place.lat, place.lon, day);
