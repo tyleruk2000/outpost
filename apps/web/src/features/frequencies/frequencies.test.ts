@@ -160,7 +160,15 @@ describe("what a set like mine can receive", () => {
 describe("filtering and finding", () => {
   const all = [
     entry({ id: "wwv", name: "WWV", frequencies: [{ khz: 5000 }, { khz: 10_000 }], where: ["US", "world"] }),
-    entry({ id: "msf", name: "MSF", kind: "time-signals", frequencies: [{ khz: 60 }], bands: ["lf"], where: ["GB"], modes: ["TIME-CODE-DIGITAL"] }),
+    entry({
+      id: "msf",
+      name: "MSF",
+      kind: "time-signals",
+      frequencies: [{ khz: 60 }],
+      bands: ["lf"],
+      where: ["GB"],
+      modes: ["TIME-CODE-DIGITAL"],
+    }),
     entry({
       id: "ch16",
       name: "Marine channel 16",

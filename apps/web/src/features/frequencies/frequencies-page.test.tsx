@@ -121,7 +121,21 @@ describe("Frequencies to listen to", () => {
   });
 
   it("starts from the home place's country, and can show every place", async () => {
-    markers = [{ id: "h", name: "Home", note: "", lat: 51.5, lon: -0.12, color: "teal", icon: "home", isFavorite: false, noteId: null, createdAt: 1, updatedAt: 1 }];
+    markers = [
+      {
+        id: "h",
+        name: "Home",
+        note: "",
+        lat: 51.5,
+        lon: -0.12,
+        color: "teal",
+        icon: "home",
+        isFavorite: false,
+        noteId: null,
+        createdAt: 1,
+        updatedAt: 1,
+      },
+    ];
     renderAt("/radio/frequencies?kind=time-signals");
     expect(await screen.findByText(/Starting from United Kingdom, where your home place is/)).toBeInTheDocument();
     // WWV is heard worldwide and MSF is the UK's: both apply. The broadcaster is not a time signal.
@@ -159,6 +173,20 @@ describe("Frequencies to listen to", () => {
     expect(within(row).getByText("Schedule expired")).toBeInTheDocument();
     fireEvent.click(within(row).getByRole("button", { name: "A broadcaster on shortwave" }));
     expect(within(row).getByText(/Schedule for A26 ran out on 24 October 2026/)).toBeInTheDocument();
+  });
+
+  it("leaves out what could not be checked, says so, and shows it when asked", async () => {
+    load = async () => ({
+      entries: [...ENTRIES, { ...ENTRIES[1]!, id: "ts-unchecked", name: "A station not checked", status: "not-verified" as const }],
+      guides: [],
+    });
+    renderAt("/radio/frequencies");
+    await screen.findByText("Last checked 17 November 2026");
+    expect(rows()).not.toContain("ts-unchecked");
+    expect(screen.getByText(/1 entry could not be checked against a primary source and is left out/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Show them" }));
+    expect(rows()).toContain("ts-unchecked");
+    expect(screen.getAllByText("Not verified against a primary source").length).toBeGreaterThan(0);
   });
 
   it("offers the list as a PDF, with Save as PDF and Add to library", async () => {

@@ -972,3 +972,88 @@ it is built on is named here.
 | What a Reverse Beacon Network skimmer needs | The RBN's "How to get spotted by the RBN", <https://www.reversebeacon.net/pages/How+to+get+spotted+by+the+RBN+44>, and HamSCI's "Getting Spotted by the RBN", <https://www.hamsci.org/node/188> | Both read on 16 November 2026. Quoted: "you must send one of the key-words: TEST or CQ"; "Skimmer may want to "hear" two, three, or four repetitions of the call before it will be spotted."; "Skimmer may copy the T in CWT and run it together with the real callsign."; a node that has spotted you "will ignore you until 10 minutes have passed", or "QSY 300 Hz or more between transmissions"; HamSCI: "(1) calling CQ and (2) having a valid call sign", "The CQ word may have one other word between the CQ word and the call sign", unusual prefixes "can require up to 4 repetitions before they are spotted". |
 | The network's own page, linked from On the air | <https://www.reversebeacon.net/main.php> | Read on 16 November 2026. The site's own pages give no address for the spots of one call (its search is a box on the page), so the link is to the page with that box. Outpost makes no request to the network; the link is opened only by a person. |
 | The keyer presets (what each maker's radio does out of the box) | As LogBook73 recorded them | Not checked against each maker's manual; the screen says so. |
+
+## Frequencies to listen to (read 2026-11-17)
+
+Radio → Frequencies to listen to ([radio-frequencies.md](radio-frequencies.md)) ships a
+list of facts (frequencies, channels, hours, places) with, for each entry, the page it
+was checked against and the day. Nothing is fetched by Outpost: the addresses are plain
+links. Each entry's sources are in its file under `packages/shared/src/radio-frequencies/`
+and on the screen; this section records how they were chosen and the terms that bore on
+them.
+
+**How pages were read.** Each page was read on 17 November 2026 with an ordinary fetch
+that names itself as an AI agent. Where a site refused that fetch, or its `robots.txt` or
+terms forbid AI agents, that was taken as the site's answer: the page was not read another
+way (no other user-agent, cache or mirror), and nothing in the set rests on it. Two
+researchers had first read some pages with a browser user-agent; every such page was read
+again the ordinary way, or its content was removed. The US regulations were first read
+through the eCFR's API, which `ecfr.gov`'s `robots.txt` disallows; they were replaced by
+the Government Publishing Office's 1 October 2025 edition of the Code of Federal
+Regulations on govinfo.gov.
+
+**Primary sources used**, by kind (the full list is in the data files):
+
+| Kind | Sources |
+| --- | --- |
+| Time signals | NIST (WWV, WWVH, WWVB), NPL (MSF), PTB (DCF77), NICT (JJY), ANFR (ALS162), GUM (e-Czas, Poland), the BIPM's annual table of time signals (February and March 2026 returns: HLA, RWM, RBU, RTZ, Beta, MIKES, LOL, BPM), NTSC's bulletin, ITU-R TF.768-4, INRiM, METAS, Royal Museums Greenwich (the pips) |
+| Emergency broadcasting | GOV.UK and Be Ready, Ireland's Be Emergency Ready booklet, Ready.gov, Alert Ready and canada.ca, BBK, oesterreich.gv.at, BABS, Krisinformation and MCF, Statsforvalteren, borger.dk, FMI, kriis.ee and ERR, LRT, HZS ČR, Denk vooruit, centredecrise.be, Radio France's convention with the Ministry of the Interior, Protección Civil, Io non rischio, Yamanashi Prefecture |
+| News broadcasters | Ofcom's transmitter parameters, RTÉ, 2RN, ANFR, Polskie Radio, Antena Satelor, NMHH, 47 CFR Part 73, MIC (Japan), EBC (Brazil), Radio Nacional (Argentina), Český rozhlas, RÚV, Deutschlandradio; for shortwave, RRI, RTVE, RTI, WRMI, Radio Prague International, RFA, RFE/RL, VOV, Channel Africa |
+| Weather | NWS (NOAA Weather Radio, US marine broadcasts, the radiofax schedule compilation), canada.ca and the Canadian Coast Guard's Radio Aids to Marine Navigation 2026, the MCA's MSI leaflet, the Met Office, Ofcom, NATS's UK AIP and AirNav Ireland's AIP (VOLMET), the IMO NAVTEX Manual and the IHO's WWNWS reports, DWD, Kystverket, Météo-France, ANFR, ICAO regional air navigation plans, Airservices Australia |
+| Distress and calling | Ofcom's distress and safety annex, the MCA (MGN 324), 47 CFR Parts 80 and 87 (govinfo), the UK AIP, Transport Canada's AIM, the Canadian Coast Guard, NSW and Queensland maritime pages, the IMO, NOAA SARSAT, the Wireless Telegraphy Act 2006 |
+| Amateur | IARU Regions 1, 2 and 3 (emergency frequencies page, band plans, the VHF Handbook), ARRL, JARL, WIA, NZART, SARL HAMNET, the Hurricane Watch Net, NCDXF, JS8Call's own source, 47 CFR Part 97 (govinfo) |
+| Licence-free | CEPT ECC/DEC/(15)05 and (11)03, ERC/REC 70-03, Ofcom IR 2027, IR 2027.2, IR 2030 and its CB guidance, BNetzA, 47 CFR Part 95 (govinfo), ISED RSS-210 and RIC-18, ACMA's CB class licence 2025, the New Zealand Gazette and RSM, Japan's Radio Act regulations (e-Gov), MCMC, ICASA |
+| Bands | Ofcom's UK Frequency Allocation Table, NTIA's Redbook, 47 CFR Part 2 (govinfo), the IARU's summary of amateur allocations, ITU-R BS.1660-7, MIC, the Bureau of Meteorology's introduction to HF radio |
+
+**Secondary sources**, each used for one fact and said so in the entry's notes: the RSGB
+and WorldDAB (BBC Radio 4 long wave ending, 27 June 2026), Radio World (RTL 234 kHz, the
+end of German medium wave, the CBC time signal), Avvenire (RAI medium wave), L'Adige (the
+RAI time signal), the SWLing Post (CHU's closure, 22 June 2026, and Channel Africa's),
+Keep Long Wave (the delay of the pips on digital radio), a district council page (the
+UK's Radio 2 and Radio 4 frequencies in its own area), Hackaday and CERN's amateur radio
+club (what sideband sounds like; the word "utility").
+
+**Terms that bore on reuse**, as read:
+
+- GOV.UK: "This publication is licensed under the terms of the Open Government Licence
+  v3.0 except where otherwise stated."
+- Ofcom: material "may be reproduced free of charge in any format or medium … provided
+  that it is reproduced accurately and not used in a misleading context", and "must be
+  acknowledged as Ofcom copyright and the title of the document/publication specified."
+- Denk vooruit (Netherlands): "Unless stated otherwise, CC0 (Creative Commons Zero)
+  applies to the content on our website… CC0 does not apply to photographs, videos,
+  infographics or other images."
+- ISED: "Unless otherwise specified, you may reproduce the materials in whole or in part
+  for non-commercial purposes", with attribution and a link to the original.
+- VOA: "All text, audio and video material produced exclusively by the Voice of America
+  is in the public domain."
+- IARU Region 1 VHF Handbook: copying "is allowed for IARU member societies and for
+  non-commercial purposes provided the source of information is quoted."
+- WIA band plan: CC BY-NC-ND 4.0, "copying and redistribution of the material in its
+  original, unaltered form for non-commercial purposes only"; "You must not adapt,
+  modify, transform, or build upon this material without prior written permission."
+  Only single frequencies are taken from it, credited, not the plan.
+- Radio Romania International: "The content of this Website cannot be copied, reproduced,
+  republished, recompiled … with the exception of personal, non-commercial use."
+  RTVE reserves the rights of reproduction of its content; the SABC grants use "for your
+  personal, non-commercial use". From these three, only the frequencies and times of
+  the current season's schedule are given, in Outpost's own words, with the source;
+  no text or table is copied. That a list of frequencies and times is a fact and not
+  the broadcaster's text is Outpost's reading, not legal advice; an owner who disagrees
+  can remove those entries (`bc-sw-radio-romania-international`,
+  `bc-sw-radio-exterior-de-espana`).
+- US federal works (NIST, NWS, the CFR) carry no restriction.
+- Natural Earth (countries' boxes, used to find the home place's country) is already in
+  this page under reference layers.
+
+**Not used because of their terms or because they refuse AI agents**: the BBC (its
+`robots.txt` forbids "agentic AI or grounding using BBC content"), ABC (Australia), RNZ,
+CBC, NHK, NRK, DR, Yle, KBS, Vatican News, RFI, Deutsche Welle, USAGM, Radio France's
+radiofrance.fr, the Bureau of Meteorology's own pages, USCG NAVCEN, the FAA's AIP,
+gov.ie, Cospas-Sarsat, aprs.org, the WSJT-X source on SourceForge, and Google Docs
+(WRMI's schedule grid). What each would have given is listed as a gap in
+[radio-frequencies.md](radio-frequencies.md#gaps), so that someone can fill it in by hand
+from the broadcaster's own page.
+
+**Not used as sources at all**: Wikipedia, hobbyist schedule lists (EiBi, Aoki and the
+like), HFCC data, commercial frequency guides and RepeaterBook.

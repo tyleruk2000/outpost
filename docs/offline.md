@@ -32,6 +32,9 @@ Everything you have already installed or written:
   there;
 - moving and checking collections, backup and restore;
 - writing a portable drive, once the programs it needs are cached (see below);
+- the list of frequencies to listen to (see [radio-frequencies.md](radio-frequencies.md)),
+  which ships with the app; its sources are plain links that your browser follows only if
+  you press one;
 - the Morse trainer, every tab of it (see [morse-trainer.md](morse-trainer.md)). Its one
   link out, to the Reverse Beacon Network's page, is your browser following a link you
   pressed; Outpost itself asks the network nothing.

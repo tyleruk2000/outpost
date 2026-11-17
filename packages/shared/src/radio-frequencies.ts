@@ -143,7 +143,7 @@ export const FREQUENCY_BANDS: readonly FrequencyBand[] = [
   // Broadcasting.
   { id: "lw", name: "Long wave broadcasting", fromKhz: 148.5, toKhz: 283.5, group: "broadcast" },
   { id: "mw", name: "Medium wave broadcasting", fromKhz: 525, toKhz: 1705, group: "broadcast" },
-  { id: "sw-120m", name: "120 m broadcast band", fromKhz: 2300, toKhz: 2495, group: "broadcast" },
+  { id: "sw-120m", name: "120 m broadcast band", fromKhz: 2300, toKhz: 2498, group: "broadcast" },
   { id: "sw-90m", name: "90 m broadcast band", fromKhz: 3200, toKhz: 3400, group: "broadcast" },
   { id: "sw-75m", name: "75 m broadcast band", fromKhz: 3900, toKhz: 4000, group: "broadcast" },
   { id: "sw-60m", name: "60 m broadcast band", fromKhz: 4750, toKhz: 5060, group: "broadcast" },
@@ -157,12 +157,12 @@ export const FREQUENCY_BANDS: readonly FrequencyBand[] = [
   { id: "sw-15m", name: "15 m broadcast band", fromKhz: 18_900, toKhz: 19_020, group: "broadcast" },
   { id: "sw-13m", name: "13 m broadcast band", fromKhz: 21_450, toKhz: 21_850, group: "broadcast" },
   { id: "sw-11m", name: "11 m broadcast band", fromKhz: 25_670, toKhz: 26_100, group: "broadcast" },
-  { id: "fm-oirt", name: "FM, the old OIRT band", fromKhz: 65_800, toKhz: 74_000, group: "broadcast" },
-  { id: "fm-japan", name: "FM in Japan", fromKhz: 76_000, toKhz: 95_000, group: "broadcast" },
+  { id: "fm-oirt", name: "FM, the old OIRT band (about 66 to 74 MHz)", fromKhz: 65_800, toKhz: 74_000, group: "broadcast" },
+  { id: "fm-japan", name: "FM in Japan (76 to 99 MHz)", fromKhz: 76_000, toKhz: 99_000, group: "broadcast" },
   { id: "fm", name: "FM broadcasting", fromKhz: 87_500, toKhz: 108_000, group: "broadcast" },
   { id: "dab", name: "DAB, Band III", fromKhz: 174_000, toKhz: 240_000, group: "broadcast" },
   // Time and standard frequencies (ITU allocations round 2.5, 5, 10, 15, 20 and 25 MHz).
-  { id: "sfts", name: "Standard frequency and time signal bands", fromKhz: 2498, toKhz: 25_010, group: "other" },
+  { id: "sfts", name: "Standard frequency and time signal bands", fromKhz: 2495, toKhz: 25_010, group: "other" },
   // Marine.
   { id: "marine-mf", name: "Marine MF (NAVTEX, 2182 kHz and coast stations)", fromKhz: 415, toKhz: 4000, group: "marine" },
   { id: "marine-hf", name: "Marine HF (4 to 27.5 MHz)", fromKhz: 4000, toKhz: 27_500, group: "marine" },
@@ -170,7 +170,7 @@ export const FREQUENCY_BANDS: readonly FrequencyBand[] = [
   { id: "weather-vhf", name: "VHF weather radio (162.400 to 162.550 MHz)", fromKhz: 162_400, toKhz: 162_550, group: "other" },
   // Aviation.
   { id: "air-hf", name: "Aeronautical HF", fromKhz: 2850, toKhz: 23_350, group: "aviation" },
-  { id: "air-vhf", name: "Air band, VHF (118 to 137 MHz)", fromKhz: 108_000, toKhz: 137_000, group: "aviation" },
+  { id: "air-vhf", name: "Air band, VHF (voice from 117.975 to 137 MHz)", fromKhz: 108_000, toKhz: 137_000, group: "aviation" },
   { id: "air-uhf", name: "Military air band, UHF (225 to 400 MHz)", fromKhz: 225_000, toKhz: 400_000, group: "aviation" },
   { id: "beacon-406", name: "406 MHz distress beacons", fromKhz: 406_000, toKhz: 406_100, group: "other" },
   // Amateur (edges wide enough for every region).
@@ -189,7 +189,7 @@ export const FREQUENCY_BANDS: readonly FrequencyBand[] = [
   { id: "ham-6m", name: "Amateur 6 m", fromKhz: 50_000, toKhz: 54_000, group: "amateur" },
   { id: "ham-4m", name: "Amateur 4 m", fromKhz: 70_000, toKhz: 70_500, group: "amateur" },
   { id: "ham-2m", name: "Amateur 2 m", fromKhz: 144_000, toKhz: 148_000, group: "amateur" },
-  { id: "ham-1.25m", name: "Amateur 1.25 m", fromKhz: 219_000, toKhz: 225_000, group: "amateur" },
+  { id: "ham-1.25m", name: "Amateur 1.25 m", fromKhz: 220_000, toKhz: 225_000, group: "amateur" },
   { id: "ham-70cm", name: "Amateur 70 cm", fromKhz: 420_000, toKhz: 450_000, group: "amateur" },
   { id: "ham-23cm", name: "Amateur 23 cm", fromKhz: 1_240_000, toKhz: 1_300_000, group: "amateur" },
   // Licence-free and citizens' radio.
@@ -415,7 +415,12 @@ export function checkedOn(day: string): string {
 
 /** The latest day any source of the entry was checked. */
 export function entryChecked(entry: Pick<FrequencyEntry, "sources">): string {
-  return entry.sources.map((source) => source.checked).sort().at(-1) ?? "";
+  return (
+    entry.sources
+      .map((source) => source.checked)
+      .sort()
+      .at(-1) ?? ""
+  );
 }
 
 /** The earliest day any entry in a set was last checked: the set is no fresher than that. */

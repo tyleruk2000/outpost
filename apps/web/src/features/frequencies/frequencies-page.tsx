@@ -333,6 +333,7 @@ export default function FrequenciesPage() {
   const band = params.get("band") || null;
   const set = params.get("set") || null;
   const text = params.get("q") ?? "";
+  const showUnverified = params.get("unverified") === "1";
 
   const change = (key: string, value: string | null) =>
     setParams(
@@ -348,8 +349,8 @@ export default function FrequenciesPage() {
   const entries = data.data?.entries ?? [];
   const guides = data.data?.guides ?? [];
   const shown = useMemo(
-    () => ordered(filterFrequencies(entries, { kind, place, band, receiver: set, text }), place),
-    [entries, kind, place, band, set, text],
+    () => ordered(filterFrequencies(entries, { kind, place, band, receiver: set, text, showUnverified }), place),
+    [entries, kind, place, band, set, text, showUnverified],
   );
   const places = useMemo(() => placesIn(entries), [entries]);
   const bands = useMemo(() => {
@@ -361,6 +362,8 @@ export default function FrequenciesPage() {
   const kindGuides = guides.filter((guide) => (kind ? guide.kind === kind : false));
   const filtered = kind !== null || place !== null || band !== null || set !== null || text.trim() !== "";
   const profile = set ? receiverById(set) : undefined;
+  const unverified = entries.filter((entry) => entry.status === "not-verified").length;
+  const total = showUnverified ? entries.length : entries.length - unverified;
 
   return (
     <Page>
@@ -477,7 +480,7 @@ export default function FrequenciesPage() {
             className="mt-8"
             title={
               <span className="tabular" aria-live="polite">
-                {filtered ? `${plural(shown.length, "entry", "entries")} of ${entries.length}` : plural(shown.length, "entry", "entries")}
+                {filtered ? `${plural(shown.length, "entry", "entries")} of ${total}` : plural(shown.length, "entry", "entries")}
               </span>
             }
             actions={
@@ -509,6 +512,21 @@ export default function FrequenciesPage() {
               </Rows>
             )}
           </Section>
+
+          {unverified > 0 ? (
+            <p className="mt-4 max-w-[70ch] text-small text-ink-muted">
+              {showUnverified
+                ? `Showing ${plural(unverified, "entry", "entries")} that could not be checked against a primary source; each says so.`
+                : `${plural(unverified, "entry", "entries")} could not be checked against a primary source and ${unverified === 1 ? "is" : "are"} left out.`}{" "}
+              <button
+                type="button"
+                className={cn(linkClass, "rounded-control max-md:-my-3 max-md:py-3")}
+                onClick={() => change("unverified", showUnverified ? null : "1")}
+              >
+                {showUnverified ? "Leave them out" : "Show them"}
+              </button>
+            </p>
+          ) : null}
 
           <p className="mt-8 max-w-[70ch] text-small text-ink-muted">
             For amateur repeaters near you, see{" "}

@@ -31,6 +31,15 @@ drills, a send trainer for the screen, a keyboard or a real key, a practice cont
 made ready for the air, a code chart and progress. It has a page of its own:
 [morse-trainer.md](morse-trainer.md).
 
+And **Frequencies to listen to** (Radio → Frequencies to listen to): where to tune, with no
+connection, to hear the time, news, emergency broadcasts, weather, distress and calling
+channels, amateur emergency nets and licence-free channels, by country and region, each
+entry with the page it was checked against and the day. Time signals are covered in detail,
+with how each one is laid out so a clock can be set by ear. It filters by kind, country,
+band and the kind of set you have, and prints as a PDF. It has a page of its own:
+[radio-frequencies.md](radio-frequencies.md). The reference sheets below overlap with it for
+the UK and the United States; the list is wider and is the one kept up to date.
+
 ## Radio tools on the map
 
 Both are on the **Maps** screen and work from what is installed, with no connection.

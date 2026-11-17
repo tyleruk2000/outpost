@@ -858,6 +858,26 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   (migration `0026_morse_trainer`): counted in Storage → Database and Manage and clean
   up, erased with everything else, in backups, and cleared by Start again.
 
+#### Frequencies to listen to (Radio)
+
+- Radio → Frequencies to listen to (`/radio/frequencies`): where to tune, with no
+  connection, to hear the time, news, emergency broadcasts, weather, distress and
+  calling channels, amateur emergency nets and licence-free channels. A reference set
+  bundled with the app, kind by kind and country by country, each entry with the page it
+  was checked against and the day; nothing is fetched.
+- Time signals in detail: each station's frequencies, power, hours, how the signal is
+  laid out so that a clock can be set by ear, which time it gives, and where it is heard;
+  closed stations kept with their closing dates; a guide to setting a clock.
+- Filters by kind, country or region (starting from the home place's country), band and
+  "a set like mine", and a search box that finds frequencies by their first figures and
+  channels by number. `?kind=time-signals` (and the other kinds) opens one kind.
+- A shortwave schedule with an end date is shown as expired from the day after, worked
+  out on the device.
+- The filtered list as a PDF, with Save as PDF, Add to library and Share.
+- A data test that fails on an entry with no source, no checked date, a frequency outside
+  its band, an unknown place, a duplicate or a bad date. See
+  [docs/radio-frequencies.md](docs/radio-frequencies.md).
+
 #### Supplies (Preparedness)
 
 - **Preparedness → Supplies** keeps stored food, water, fuel, medicine, batteries and
