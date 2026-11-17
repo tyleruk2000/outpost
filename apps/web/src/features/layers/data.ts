@@ -13,6 +13,7 @@ import type {
   ReferenceLayersResponse,
   ReferenceOverlayResponse,
   ReferencePackDto,
+  ReferenceRegionsResponse,
   ReferenceStartRequest,
 } from "@outpost/shared";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -29,6 +30,7 @@ export const layersKeys = {
   feature: (id: number) => ["layers", "feature", id] as const,
   search: (query: string) => ["layers", "search", query] as const,
   nearest: (query: string) => ["layers", "nearest", query] as const,
+  regions: (query: string) => ["layers", "regions", query] as const,
 };
 
 const filterParams = (filter: ReferenceFilter) => {
@@ -128,6 +130,26 @@ export async function featuresAt(lat: number, lon: number, filter: ReferenceFilt
   params.set("lat", lat.toFixed(6));
   params.set("lon", lon.toFixed(6));
   return api.get<{ hits: LayerSearchResponse["hits"] }>(`/api/reference/at?${params}`);
+}
+
+/** Geofabrik's regions as kept on this device, those for `home` first. Asks nothing of Geofabrik. */
+export const useRegions = (home: { lat: number; lon: number } | null, enabled = true) => {
+  const query = home ? `lat=${home.lat.toFixed(3)}&lon=${home.lon.toFixed(3)}` : "";
+  return useQuery({
+    queryKey: layersKeys.regions(query),
+    queryFn: () => api.get<ReferenceRegionsResponse>(`/api/reference/regions${query ? `?${query}` : ""}`),
+    enabled,
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+};
+
+/** Reads Geofabrik's list of regions: one request to download.geofabrik.de, on a press. */
+export function useReadRegions() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<ReferenceRegionsResponse>("/api/reference/regions", {}),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["layers", "regions"] }),
+  });
 }
 
 export const useEstimate = () =>
