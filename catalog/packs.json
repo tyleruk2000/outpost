@@ -416,12 +416,13 @@
     {
       "id": "general-reference",
       "name": "General reference",
-      "description": "A compact shelf for looking things up: the most-read Wikipedia articles, a dictionary, a travel guide to the world, and country facts.",
+      "description": "A compact shelf for looking things up: the most-read Wikipedia articles, a dictionary, a travel guide to the world, country facts, and quotations.",
       "entries": [
         "kiwix.wikipedia-en-top-mini",
         "kiwix.wiktionary-en-simple-all-nopic",
         "kiwix.wikivoyage-en-all-nopic",
-        "kiwix.theworldfactbook-en-all"
+        "kiwix.theworldfactbook-en-all",
+        "kiwix.wikiquote-en-all-nopic"
       ]
     },
     {
@@ -446,20 +447,21 @@
     {
       "id": "for-children",
       "name": "For children",
-      "description": "For children at home with no connection: picture books about getting ready for emergencies, a children's encyclopedia, Wikipedia in simple English, interactive science simulations, and a first maths book.",
+      "description": "For children at home with no connection: picture books about getting ready for emergencies, a children's encyclopedia, Wikipedia in simple English, interactive science simulations, a first maths book, and answers to parents' questions.",
       "entries": [
         "ready.prepare-with-pedro-activity-book",
         "cdc.ready-wrigley-prepares-for-winter-weather",
         "kiwix.vikidia-en-all-maxi",
         "kiwix.wikipedia-en-simple-all-mini",
         "kiwix.phet-en-all",
-        "openstax.prealgebra-2e"
+        "openstax.prealgebra-2e",
+        "kiwix.parenting.stackexchange.com-en-all"
       ]
     },
     {
       "id": "good-reading",
       "name": "Something good to read",
-      "description": "Because morale is a supply too: history of the world and of the United States, an introduction to philosophy, the story of flight and of exploring the solar system, and a guide to writing well.",
+      "description": "Because morale is a supply too: history of the world and of the United States, an introduction to philosophy, the story of flight and of exploring the solar system, a guide to writing well, a book of quotations, the Greek and Latin classics, questions and answers about books, and puzzles.",
       "entries": [
         "openstax.world-history-volume-1",
         "openstax.world-history-volume-2",
@@ -467,7 +469,11 @@
         "openstax.introduction-to-philosophy",
         "nasa.naca-to-nasa-to-now",
         "nasa.50-years-of-solar-system-exploration",
-        "openstax.writing-guide-with-handbook"
+        "openstax.writing-guide-with-handbook",
+        "kiwix.wikiquote-en-all-nopic",
+        "kiwix.gutenberg-en-lcc-pa",
+        "kiwix.literature.stackexchange.com-en-all",
+        "kiwix.puzzling.stackexchange.com-en-all"
       ]
     },
     {
