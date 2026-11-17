@@ -21,6 +21,10 @@ test.describe("finding a route", () => {
       page.getByText(/Search sends this name and the edges of the map view to 127\.0\.0\.1:\d+ \(the Outpost test suite\)/),
     ).toBeVisible();
     await expect(page.getByText(/It needs the internet\. A route you add is kept here and works offline\./)).toBeVisible();
+    // The name the server asks for is long and has no spaces: it wraps, and the Search button stays inside the panel.
+    const search = (await page.getByRole("button", { name: "Search", exact: true }).boundingBox())!;
+    const panel = (await page.getByRole("complementary", { name: /^Places, routes/ }).boundingBox())!;
+    expect(search.x + search.width).toBeLessThanOrEqual(panel.x + panel.width - 12);
 
     await page.getByLabel("Name of the route").fill("kestrel");
     await page.getByRole("button", { name: "Search", exact: true }).click();

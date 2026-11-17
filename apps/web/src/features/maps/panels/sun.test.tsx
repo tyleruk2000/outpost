@@ -300,3 +300,35 @@ describe("the Sun section of a place", () => {
     expect(screen.getByText("20 Mar: Sunrise 06:03, sunset 18:13")).toBeInTheDocument();
   });
 });
+
+describe("the Sun's today, on a screen left open", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("moves on to the new day at midnight on the device's clock, and not before", () => {
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+    // 23:50 on 21 June in London.
+    vi.setSystemTime(new Date("2026-06-21T22:50:00Z"));
+    render(<SunTimes position={GREENWICH} zone="Europe/London" />);
+    expect(screen.getByText(/^Today, Sunday 21 June/)).toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(9 * 60_000));
+    expect(screen.getByText(/^Today, Sunday 21 June/)).toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(2 * 60_000));
+    expect(screen.getByText(/^Today, Monday 22 June/)).toBeInTheDocument();
+  });
+
+  it("reads the day again when the page is shown after being out of sight, and sets no timer while hidden", () => {
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+    vi.setSystemTime(new Date("2026-06-21T12:00:00Z"));
+    render(<SunTimes position={GREENWICH} zone="Europe/London" />);
+    const hidden = vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+    act(() => document.dispatchEvent(new Event("visibilitychange")));
+    expect(vi.getTimerCount()).toBe(0);
+    vi.setSystemTime(new Date("2026-06-23T12:00:00Z"));
+    hidden.mockReturnValue("visible");
+    act(() => document.dispatchEvent(new Event("visibilitychange")));
+    expect(screen.getByText(/^Today, Tuesday 23 June/)).toBeInTheDocument();
+    hidden.mockRestore();
+  });
+});

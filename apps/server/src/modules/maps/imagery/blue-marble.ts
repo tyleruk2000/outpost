@@ -236,7 +236,3 @@ export async function buildWorld(
     for (const item of opened) await item.close().catch(() => undefined);
   }
 }
-
-export async function removeWorldFiles(dir: string): Promise<void> {
-  await fs.promises.rm(dir, { recursive: true, force: true });
-}

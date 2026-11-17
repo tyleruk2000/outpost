@@ -1,7 +1,8 @@
 /**
  * The page's side of contour lines: hands each tile the map asks for to the worker and
  * passes the answer back. The worker is started the first time a tile is wanted, so a
- * map without contour lines never pays for it.
+ * map without contour lines never pays for it, and ended a minute after the last one, so a
+ * map at rest holds no worker either.
  */
 import type { ContourWorkerRequest, ContourWorkerResponse } from "./contour.worker";
 
@@ -13,6 +14,20 @@ interface Waiting {
 let worker: Worker | undefined;
 let nextId = 1;
 const waiting = new Map<number, Waiting>();
+
+const IDLE_MS = 60_000;
+let idleTimer: ReturnType<typeof setTimeout> | undefined;
+
+/** Ends the worker once it has had nothing to do for a minute. */
+function settle(): void {
+  clearTimeout(idleTimer);
+  if (waiting.size > 0) return;
+  idleTimer = setTimeout(() => {
+    if (waiting.size > 0) return;
+    worker?.terminate();
+    worker = undefined;
+  }, IDLE_MS);
+}
 
 function failAll(message: string): void {
   for (const request of waiting.values()) request.reject(new Error(message));
@@ -29,6 +44,7 @@ function startWorker(): Worker {
     waiting.delete(response.id);
     if ("data" in response) request.resolve({ data: response.data });
     else request.reject(new Error(response.error));
+    settle();
   };
   created.onerror = () => {
     // The worker itself broke (its file could not be loaded, say). Let the next tile try again with a new one.
@@ -41,6 +57,7 @@ function startWorker(): Worker {
 
 /** The loader behind the contour protocol, in the shape MapLibre's `addProtocol` wants. */
 export function loadContourTile(request: { url: string }, abort: AbortController): Promise<{ data: ArrayBuffer }> {
+  clearTimeout(idleTimer);
   worker ??= startWorker();
   const target = worker;
   const id = nextId;
@@ -52,6 +69,7 @@ export function loadContourTile(request: { url: string }, abort: AbortController
       () => {
         if (!waiting.delete(id)) return;
         target.postMessage({ type: "cancel", id } satisfies ContourWorkerRequest);
+        settle();
         const error = new Error("The contour tile is no longer wanted.");
         error.name = "AbortError";
         reject(error);

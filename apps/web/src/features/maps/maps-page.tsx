@@ -94,7 +94,7 @@ import {
 } from "./map-chrome";
 import { creditsFor, MapFooter } from "./map-footer";
 import { type ClearSpace, MapFurniture } from "./map-furniture";
-import { type OfflineIntent, OfflinePanel } from "./panels/offline";
+import type { OfflineIntent } from "./panels/offline";
 import { draftOf, type PlaceDraft, PlaceEditor, PlacesList } from "./panels/places";
 import { hasUnsavedWork, type RouteDraft, RouteEditor } from "./panels/route-editor";
 import { ImportGpxDialog, RouteDetail, RoutesList } from "./panels/routes";
@@ -108,9 +108,12 @@ import { useSight } from "./radio/use-sight";
 import { foldRecordingCard, TrackRecording, useRecordTool } from "./recording/record-ui";
 import { SearchBox } from "./search-box";
 import { DesktopPanel, type Detent, detentHeight, MobileSheet, PANEL_TABS, type PanelTab, PanelTabs, PEEK_HEIGHT } from "./side-panel";
+import { PanelLoading } from "./ui";
 
 /** "Print or save as PDF", fetched when it is first asked for. */
 const PrintTool = lazy(() => import("./print/print-tool"));
+/** The Offline maps tab, with downloads, satellite imagery and reference data: fetched when the tab is first opened. */
+const OfflinePanel = lazy(() => import("./panels/offline").then((module) => ({ default: module.OfflinePanel })));
 
 interface PanelState {
   open: boolean;
@@ -949,8 +952,8 @@ export default function MapsPage() {
     engine,
     browsing: tool === "browse" && !moving && !draft,
     onManage: useCallback(() => {
+      setOfflineIntent({ type: "reference" });
       showPanel("offline");
-      window.setTimeout(() => document.getElementById("reference-data")?.scrollIntoView({ block: "start" }), 50);
     }, [showPanel]),
   });
 
@@ -1186,14 +1189,16 @@ export default function MapsPage() {
         ),
         layers: reference.panel,
         offline: (
-          <OfflinePanel
-            overview={overview}
-            engine={engine}
-            intent={offlineIntent}
-            onIntentHandled={clearIntent}
-            onNeedMap={lowerSheet}
-            onNeedRoom={raiseSheet}
-          />
+          <Suspense fallback={<PanelLoading />}>
+            <OfflinePanel
+              overview={overview}
+              engine={engine}
+              intent={offlineIntent}
+              onIntentHandled={clearIntent}
+              onNeedMap={lowerSheet}
+              onNeedRoom={raiseSheet}
+            />
+          </Suspense>
         ),
         sun: <SunPanel engine={engine} format={format} locate={locate.supported ? locate.state : undefined} onLocate={toggleLocate} />,
       }}

@@ -168,6 +168,12 @@ describe("imports a person brings", () => {
     const everything = await app.api("GET", "/api/search?q=Town%20Hall&mode=keyword");
     const result = (everything.body.results as Array<{ kind: string; url: string }>).find((entry) => entry.kind === "map-feature");
     expect(result?.url).toBe(`/maps?feature=${hit.id}`);
+
+    // With no publisher or licence given for the whole file, the map's credit names the import, not "As stated in the file" twice.
+    const layers = await app.api("GET", "/api/reference/layers");
+    expect(layers.body.credits).toContainEqual(
+      expect.objectContaining({ provider: "import", text: "Rest centres: publisher and licence as stated in the file" }),
+    );
   });
 
   it("imports historical records only with what section 6 requires, keeps the three kinds apart, and links the source document", async () => {
@@ -796,6 +802,29 @@ describe("downloading through the download manager from an Overpass server", () 
   it("will not start from an estimate it did not make", async () => {
     const started = await app.api("POST", "/api/reference/downloads", { estimateId: "nothing", keys: ["x"] });
     expect(started.status).toBe(409);
+  });
+
+  it("will not start from an estimate more than half an hour old, even when no other has been made since", async () => {
+    declare("local-test");
+    const estimate = await app.api("POST", "/api/reference/estimate", {
+      provider: "osm",
+      clientNameAgreed: true,
+      scope: { countries: ["LU"] },
+      layers: ["military"],
+    });
+    expect(estimate.status).toBe(200);
+    const now = Date.now();
+    const clock = vi.spyOn(Date, "now").mockReturnValue(now + 31 * 60_000);
+    try {
+      const started = await app.api("POST", "/api/reference/downloads", {
+        estimateId: estimate.body.estimateId,
+        keys: ["osm:military:LU"],
+      });
+      expect(started.status).toBe(409);
+      expect(started.body.error.message).toMatch(/more than half an hour old/);
+    } finally {
+      clock.mockRestore();
+    }
   });
 });
 

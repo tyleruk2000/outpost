@@ -247,11 +247,9 @@ export interface ImageryDeps {
   worldEntries?: WorldEntry[];
 }
 
-const isImagery = (row: CollectionRow) => row.kind === "map" && (row.meta.map as { tileType?: string } | undefined)?.tileType === "imagery";
-
 /** Whether a collection is a set of satellite imagery rather than a vector map region. */
 export function isImageryCollection(row: CollectionRow): boolean {
-  return isImagery(row);
+  return row.kind === "map" && (row.meta.map as { tileType?: string } | undefined)?.tileType === "imagery";
 }
 
 /** Whether a download builds imagery. */
@@ -301,7 +299,7 @@ export function createImageryService(ctx: AppContext, deps: ImageryDeps): Imager
   function sets(): ImagerySet[] {
     return collections
       .list({ kind: "map" })
-      .filter(isImagery)
+      .filter(isImageryCollection)
       .map(setOf)
       .filter((set): set is ImagerySet => Boolean(set));
   }
@@ -1101,14 +1099,13 @@ export function registerImagery(app: FastifyInstance, ctx: AppContext, deps: Ima
     const row = collections.get(id);
     if (
       !row ||
-      !isImagery(row) ||
+      !isImageryCollection(row) ||
       (row.status !== "installed" && row.status !== "moving") ||
       !ctx.services.storage.isAvailable(row.locationId)
     ) {
       throw new AppError("not_found", "That imagery is not installed.");
     }
     const raw = (request.query as { raw?: unknown }).raw === "1";
-    reply.header("Cache-Control", raw ? "no-store" : "private, max-age=3600");
     const archive = await archiveFor(row);
     const data = await archive?.getTile(Number(z), Number(x), Number(match[1])).catch((error: unknown) => {
       ctx.log.warn({ err: error, collection: id }, "imagery tile could not be read");
@@ -1116,7 +1113,12 @@ export function registerImagery(app: FastifyInstance, ctx: AppContext, deps: Ima
       return undefined;
     });
     // As for map tiles: 204 is "nothing here", and the map draws the imagery beneath instead.
-    if (!data) return reply.status(204).send();
+    if (!data) {
+      reply.header("Cache-Control", raw ? "no-store" : "no-cache");
+      return reply.status(204).send();
+    }
+    // A set's tiles never change: another download is another set, at another address.
+    reply.header("Cache-Control", raw ? "no-store" : "private, max-age=31536000, immutable");
     return reply.header("Content-Type", "image/webp").send(data);
   });
 

@@ -11,8 +11,9 @@ import { ChevronRight } from "lucide-react";
 import { useMemo } from "react";
 import { useClockStyle } from "@/lib/clock";
 import { cn } from "@/lib/utils";
+import { useToday } from "../grey-line/time";
 import { sunDay } from "../lib/sun";
-import { dateIn, deviceZone, sunGlance } from "../lib/sun-text";
+import { deviceZone, sunGlance } from "../lib/sun-text";
 import type { MapEngine } from "../map/engine";
 import { useRestingView } from "./sun-panel";
 
@@ -38,11 +39,9 @@ export function SunGlance({
   const view = useRestingView(engine);
   const style = useClockStyle();
   const device = useMemo(() => zone ?? deviceZone(), [zone]);
-  const pieces = useMemo(() => {
-    if (!view) return [];
-    // Today as this device has it, asked again each time the map comes to rest: the line is on screen for hours.
-    return sunGlance(sunDay(view.lat, view.lon, dateIn(device, Date.now())), device, { style });
-  }, [view, device, style]);
+  // Today as this device has it, moving on at midnight: the line is on screen for hours.
+  const today = useToday(device);
+  const pieces = useMemo(() => (view ? sunGlance(sunDay(view.lat, view.lon, today), device, { style }) : []), [view, device, style, today]);
   if (pieces.length === 0) return null;
 
   return (

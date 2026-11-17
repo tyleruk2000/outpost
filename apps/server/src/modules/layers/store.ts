@@ -31,6 +31,7 @@ import type {
   ReferenceSourceInfo,
 } from "@outpost/shared";
 import { haversineMeters, ownValue } from "@outpost/shared";
+import type { Statement } from "better-sqlite3";
 import type { AppContext } from "../../core/context.ts";
 import { yieldToEventLoop } from "../../core/event-loop.ts";
 import { kindLabel } from "./kinds.ts";
@@ -284,6 +285,22 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
    */
   const answers = new Map<string, ReferenceOverlayResponse>();
   const forget = () => answers.clear();
+  /**
+   * Statements for the map's questions, kept by their text: a view asks the same few each
+   * time it moves, and preparing one costs several times what running it on a small view does.
+   */
+  const statements = new Map<string, Statement<unknown[]>>();
+  const prepared = (sql: string) => {
+    let statement = statements.get(sql);
+    if (statement) {
+      statements.delete(sql);
+    } else {
+      statement = sqlite.prepare(sql);
+      if (statements.size >= 64) statements.delete(statements.keys().next().value as string);
+    }
+    statements.set(sql, statement);
+    return statement;
+  };
 
   const insertFeature = sqlite.prepare(
     `INSERT INTO reference_features (collection_id, provider, source_id, layer, kind, name, alt_names, country, lat, lon, min_lon, min_lat,
@@ -622,9 +639,14 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
           (pointLayers.length === 0
             ? 0
             : (
-                sqlite
-                  .prepare(`SELECT count(*) AS n FROM (SELECT 1 ${rtreeJoin} WHERE ${rtreeWhere} AND ${pointWhere.sql} LIMIT ?)`)
-                  .get(box[0], box[2], box[1], box[3], ...pointWhere.args, POINT_LIMIT + 1) as { n: number }
+                prepared(`SELECT count(*) AS n FROM (SELECT 1 ${rtreeJoin} WHERE ${rtreeWhere} AND ${pointWhere.sql} LIMIT ?)`).get(
+                  box[0],
+                  box[2],
+                  box[1],
+                  box[3],
+                  ...pointWhere.args,
+                  POINT_LIMIT + 1,
+                ) as { n: number }
               ).n),
         0,
       );
@@ -633,12 +655,10 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
       if (pointLayers.length > 0 && total <= POINT_LIMIT) {
         points = boxes.flatMap(
           (box) =>
-            sqlite
-              .prepare(
-                `SELECT f.id AS id, f.layer AS layer, f.provenance AS provenance, f.name AS name, f.kind AS kind, f.lat AS lat, f.lon AS lon
+            prepared(
+              `SELECT f.id AS id, f.layer AS layer, f.provenance AS provenance, f.name AS name, f.kind AS kind, f.lat AS lat, f.lon AS lon
                  ${rtreeJoin} WHERE ${rtreeWhere} AND ${pointWhere.sql} ORDER BY f.id`,
-              )
-              .all(box[0], box[2], box[1], box[3], ...pointWhere.args) as ReferencePoint[],
+            ).all(box[0], box[2], box[1], box[3], ...pointWhere.args) as ReferencePoint[],
         );
       } else if (pointLayers.length > 0) {
         // Patches a power of two of a degree on a fixed grid, about eight to the height of the view.
@@ -648,13 +668,11 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
         const lonSize = 2 ** Math.round(Math.log2(latSize / Math.cos((middle * Math.PI) / 180)));
         cells = boxes.flatMap(
           (box) =>
-            sqlite
-              .prepare(
-                `SELECT f.layer AS layer, f.provenance AS provenance, count(*) AS count, avg(f.lat) AS lat, avg(f.lon) AS lon
+            prepared(
+              `SELECT f.layer AS layer, f.provenance AS provenance, count(*) AS count, avg(f.lat) AS lat, avg(f.lon) AS lon
                  ${rtreeJoin} WHERE ${rtreeWhere} AND ${pointWhere.sql}
                  GROUP BY f.layer, f.provenance, CAST((f.lat + 90) / ? AS INTEGER), CAST((f.lon + 180) / ? AS INTEGER)`,
-              )
-              .all(box[0], box[2], box[1], box[3], ...pointWhere.args, latSize, lonSize) as ReferenceCell[],
+            ).all(box[0], box[2], box[1], box[3], ...pointWhere.args, latSize, lonSize) as ReferenceCell[],
         );
         total = cells.reduce((sum, cell) => sum + cell.count, 0);
       }
@@ -665,13 +683,11 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
         const shapeWhere = filterSql({ ...filter, layers });
         const rows = boxes.flatMap(
           (box) =>
-            sqlite
-              .prepare(
-                `SELECT f.id AS id, f.layer AS layer, f.provenance AS provenance, f.name AS name, f.kind AS kind, f.geometry AS geometry
+            prepared(
+              `SELECT f.id AS id, f.layer AS layer, f.provenance AS provenance, f.name AS name, f.kind AS kind, f.geometry AS geometry
                  ${rtreeJoin} WHERE ${rtreeWhere} AND ${shapeWhere.sql} AND f.geometry IS NOT NULL
                  AND (r.max_lon - r.min_lon > ? OR r.max_lat - r.min_lat > ?) LIMIT ?`,
-              )
-              .all(box[0], box[2], box[1], box[3], ...shapeWhere.args, tolerance * 2, tolerance * 2, limit + 1) as Array<{
+            ).all(box[0], box[2], box[1], box[3], ...shapeWhere.args, tolerance * 2, tolerance * 2, limit + 1) as Array<{
               id: number;
               layer: ReferenceLayerId;
               provenance: FeatureProvenance;
@@ -703,13 +719,11 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
 
     at({ lat, lon, ...filter }) {
       const where = filterSql(filter);
-      const rows = sqlite
-        .prepare(
-          `SELECT f.id AS id, f.layer AS layer, f.provenance AS provenance, f.name AS name, f.kind AS kind, f.country AS country,
+      const rows = prepared(
+        `SELECT f.id AS id, f.layer AS layer, f.provenance AS provenance, f.name AS name, f.kind AS kind, f.country AS country,
              f.lat AS lat, f.lon AS lon, f.geometry AS geometry, (r.max_lon - r.min_lon) * (r.max_lat - r.min_lat) AS area
            ${rtreeJoin} WHERE ${rtreeWhere} AND ${where.sql} AND f.geometry IS NOT NULL ORDER BY area LIMIT 200`,
-        )
-        .all(lon, lon, lat, lat, ...where.args) as Array<{
+      ).all(lon, lon, lat, lat, ...where.args) as Array<{
         id: number;
         layer: ReferenceLayerId;
         provenance: FeatureProvenance;
@@ -736,25 +750,21 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
     },
 
     detail(id, packs) {
-      const row = sqlite.prepare(`SELECT ${COLUMNS} FROM reference_features f WHERE f.id = ?`).get(id) as FeatureRow | undefined;
+      const row = prepared(`SELECT ${COLUMNS} FROM reference_features f WHERE f.id = ?`).get(id) as FeatureRow | undefined;
       if (!row || row.collectionId.startsWith("pending:")) return null;
       const primary =
         row.duplicateOf !== null
-          ? ((sqlite.prepare(`SELECT ${COLUMNS} FROM reference_features f WHERE f.id = ?`).get(row.duplicateOf) as
-              | FeatureRow
-              | undefined) ?? row)
+          ? ((prepared(`SELECT ${COLUMNS} FROM reference_features f WHERE f.id = ?`).get(row.duplicateOf) as FeatureRow | undefined) ?? row)
           : row;
       const others = (
-        sqlite.prepare(`SELECT ${COLUMNS} FROM reference_features f WHERE f.duplicate_of = ? ORDER BY f.id`).all(primary.id) as FeatureRow[]
+        prepared(`SELECT ${COLUMNS} FROM reference_features f WHERE f.duplicate_of = ? ORDER BY f.id`).all(primary.id) as FeatureRow[]
       ).filter((other) => !other.collectionId.startsWith("pending:"));
-      const h = sqlite.prepare("SELECT * FROM historical_records WHERE feature_id = ?").get(primary.id) as
-        | Record<string, unknown>
-        | undefined;
+      const h = prepared("SELECT * FROM historical_records WHERE feature_id = ?").get(primary.id) as Record<string, unknown> | undefined;
       let historical: HistoricalRecordDto | null = null;
       if (h) {
         const documentId = (h.library_document_id as string | null) ?? null;
         const document = documentId
-          ? (sqlite.prepare("SELECT id, title FROM documents WHERE id = ?").get(documentId) as { id: string; title: string } | undefined)
+          ? (prepared("SELECT id, title FROM documents WHERE id = ?").get(documentId) as { id: string; title: string } | undefined)
           : undefined;
         historical = {
           recordType: h.record_type as HistoricalRecordType,
@@ -806,51 +816,47 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
       if (tokens.length === 0) return [];
       const match = tokens.map((token) => `"${token.replaceAll('"', "")}"*`).join(" ");
       const where = filterSql(filter);
-      const rows = sqlite
-        .prepare(
-          `SELECT f.id AS id, f.layer AS layer, f.provenance AS provenance, f.name AS name, f.kind AS kind, f.country AS country,
+      const rows = prepared(
+        `SELECT f.id AS id, f.layer AS layer, f.provenance AS provenance, f.name AS name, f.kind AS kind, f.country AS country,
              f.lat AS lat, f.lon AS lon
            FROM reference_features_fts JOIN reference_features f ON f.id = reference_features_fts.rowid
            WHERE reference_features_fts MATCH ? AND ${where.sql} ORDER BY bm25(reference_features_fts, 10.0, 1.0) LIMIT ?`,
-        )
-        .all(match, ...where.args, Math.min(100, Math.max(1, limit))) as Array<Omit<LayerSearchHit, "kindLabel"> & { kind: string }>;
+      ).all(match, ...where.args, Math.min(100, Math.max(1, limit))) as Array<Omit<LayerSearchHit, "kindLabel"> & { kind: string }>;
       return rows.map(({ kind, ...row }) => ({ ...row, kindLabel: kindLabel(kind) }));
     },
 
     summary(providerNames) {
       const live = "duplicate_of IS NULL AND collection_id NOT LIKE 'pending:%'";
-      const layers = sqlite.prepare(`SELECT layer, count(*) AS n FROM reference_features WHERE ${live} GROUP BY layer`).all() as Array<{
+      const layers = prepared(`SELECT layer, count(*) AS n FROM reference_features WHERE ${live} GROUP BY layer`).all() as Array<{
         layer: ReferenceLayerId;
         n: number;
       }>;
       return layers.map(({ layer, n }) => {
         const countries = (
-          sqlite
-            .prepare(`SELECT DISTINCT country FROM reference_features WHERE ${live} AND layer = ? AND country IS NOT NULL ORDER BY country`)
-            .all(layer) as Array<{ country: string }>
+          prepared(
+            `SELECT DISTINCT country FROM reference_features WHERE ${live} AND layer = ? AND country IS NOT NULL ORDER BY country`,
+          ).all(layer) as Array<{ country: string }>
         ).map((row) => row.country);
         const providers = (
-          sqlite
-            .prepare(
-              `SELECT provider, count(*) AS n FROM reference_features WHERE ${live} AND layer = ? GROUP BY provider ORDER BY provider`,
-            )
-            .all(layer) as Array<{
+          prepared(
+            `SELECT provider, count(*) AS n FROM reference_features WHERE ${live} AND layer = ? GROUP BY provider ORDER BY provider`,
+          ).all(layer) as Array<{
             provider: string;
             n: number;
           }>
         ).map((row) => ({ id: row.provider, name: providerNames.get(row.provider) ?? row.provider, count: row.n }));
         const kinds = (
-          sqlite
-            .prepare(`SELECT kind, count(*) AS n FROM reference_features WHERE ${live} AND layer = ? GROUP BY kind ORDER BY kind`)
-            .all(layer) as Array<{
+          prepared(`SELECT kind, count(*) AS n FROM reference_features WHERE ${live} AND layer = ? GROUP BY kind ORDER BY kind`).all(
+            layer,
+          ) as Array<{
             kind: string;
             n: number;
           }>
         ).map((row) => ({ kind: row.kind, label: kindLabel(row.kind), count: row.n }));
         const provenance = (
-          sqlite
-            .prepare(`SELECT provenance, count(*) AS n FROM reference_features WHERE ${live} AND layer = ? GROUP BY provenance`)
-            .all(layer) as Array<{
+          prepared(`SELECT provenance, count(*) AS n FROM reference_features WHERE ${live} AND layer = ? GROUP BY provenance`).all(
+            layer,
+          ) as Array<{
             provenance: FeatureProvenance;
             n: number;
           }>
@@ -860,19 +866,16 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
     },
 
     countsOf(collectionId) {
-      const records = (
-        sqlite.prepare("SELECT count(*) AS n FROM reference_features WHERE collection_id = ?").get(collectionId) as { n: number }
-      ).n;
+      const records = (prepared("SELECT count(*) AS n FROM reference_features WHERE collection_id = ?").get(collectionId) as { n: number })
+        .n;
       const duplicates = (
-        sqlite
-          .prepare("SELECT count(*) AS n FROM reference_features WHERE collection_id = ? AND duplicate_of IS NOT NULL")
-          .get(collectionId) as { n: number }
+        prepared("SELECT count(*) AS n FROM reference_features WHERE collection_id = ? AND duplicate_of IS NOT NULL").get(collectionId) as {
+          n: number;
+        }
       ).n;
-      const figures = (
-        sqlite.prepare("SELECT count(*) AS n FROM country_figures WHERE collection_id = ?").get(collectionId) as { n: number }
-      ).n;
+      const figures = (prepared("SELECT count(*) AS n FROM country_figures WHERE collection_id = ?").get(collectionId) as { n: number }).n;
       const layers = (
-        sqlite.prepare("SELECT DISTINCT layer FROM reference_features WHERE collection_id = ?").all(collectionId) as Array<{
+        prepared("SELECT DISTINCT layer FROM reference_features WHERE collection_id = ?").all(collectionId) as Array<{
           layer: ReferenceLayerId;
         }>
       ).map((row) => row.layer);
@@ -880,13 +883,11 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
     },
 
     figures(country) {
-      const rows = sqlite
-        .prepare(
-          `SELECT id, country, indicator, value, value_text AS valueText, unit, year, source_title AS sourceTitle, publisher,
+      const rows = prepared(
+        `SELECT id, country, indicator, value, value_text AS valueText, unit, year, source_title AS sourceTitle, publisher,
              published_at AS publishedAt, url, page, license, notes, collection_id AS packId
            FROM country_figures WHERE collection_id NOT LIKE 'pending:%' ${country ? "AND country = ?" : ""} ORDER BY country, indicator, year`,
-        )
-        .all(...(country ? [country] : [])) as CountryFigureDto[];
+      ).all(...(country ? [country] : [])) as CountryFigureDto[];
       return rows;
     },
 
@@ -895,15 +896,13 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
       const args = recordType ? [recordType] : [];
       const from =
         "FROM historical_records h JOIN reference_features f ON f.id = h.feature_id LEFT JOIN documents d ON d.id = h.library_document_id";
-      const total = (sqlite.prepare(`SELECT count(*) AS n ${from} WHERE ${where}`).get(...args) as { n: number }).n;
-      const rows = sqlite
-        .prepare(
-          `SELECT f.id AS id, f.name AS name, f.provenance AS provenance, h.record_type AS recordType, h.period AS period,
+      const total = (prepared(`SELECT count(*) AS n ${from} WHERE ${where}`).get(...args) as { n: number }).n;
+      const rows = prepared(
+        `SELECT f.id AS id, f.name AS name, f.provenance AS provenance, h.record_type AS recordType, h.period AS period,
              f.country AS country, f.lat AS lat, f.lon AS lon, h.location_text AS locationText, h.document_title AS documentTitle,
              h.document_date AS documentDate, h.document_url AS documentUrl, d.id AS documentId, d.title AS documentName
            ${from} WHERE ${where} ORDER BY h.period, f.name, f.id LIMIT ? OFFSET ?`,
-        )
-        .all(...args, limit, offset) as Array<
+      ).all(...args, limit, offset) as Array<
         Omit<HistoricalRecordRow, "libraryDocument"> & { documentId: string | null; documentName: string | null }
       >;
       return {
@@ -917,16 +916,14 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
 
     owners() {
       return (
-        sqlite
-          .prepare(
-            "SELECT DISTINCT collection_id AS id FROM reference_features UNION SELECT DISTINCT collection_id AS id FROM country_figures",
-          )
-          .all() as Array<{ id: string }>
+        prepared(
+          "SELECT DISTINCT collection_id AS id FROM reference_features UNION SELECT DISTINCT collection_id AS id FROM country_figures",
+        ).all() as Array<{ id: string }>
       ).map((row) => row.id);
     },
 
     total() {
-      return (sqlite.prepare("SELECT count(*) AS n FROM reference_features").get() as { n: number }).n;
+      return (prepared("SELECT count(*) AS n FROM reference_features").get() as { n: number }).n;
     },
   };
   const answer = store.overlay;

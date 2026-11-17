@@ -9,6 +9,7 @@
 import type { Bbox, ImageryStyleSource, InstalledRegion, MapSources, MapTileType } from "@outpost/shared";
 import type { AppContext } from "../../core/context.ts";
 import type { CollectionRow } from "../collections/service.ts";
+import { isImageryCollection } from "./imagery/index.ts";
 import { contentEncodingOf, contentTypeOf } from "./pmtiles/header.ts";
 import { LocalArchive } from "./pmtiles/reader.ts";
 import { tileToBbox } from "./pmtiles/tiles.ts";
@@ -23,6 +24,8 @@ export interface ServedTile {
   data: Buffer;
   contentType: string;
   contentEncoding: string | undefined;
+  /** Names the archive that answered: the same address answers with other bytes once the regions change. */
+  etag: string;
 }
 
 interface Candidate {
@@ -49,9 +52,6 @@ export interface TileServer {
 }
 
 const kindOf = (tileType: MapTileType) => (tileType === "vector" ? "map" : "terrain") as "map" | "terrain";
-
-/** Satellite imagery is a map collection too, but it is served by imagery/index.ts, never as a region. */
-const isImageryRow = (row: CollectionRow) => (row.meta.map as { tileType?: string } | undefined)?.tileType === "imagery";
 
 function overlaps(a: Bbox, b: Bbox): boolean {
   return a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1];
@@ -81,7 +81,7 @@ export function createTileServer(ctx: AppContext): TileServer {
     for (const row of collections.list({ kind: kindOf(tileType) })) {
       const map = row.meta.map;
       // A file that is mid-move is still in place and in use; missing or damaged ones are not served.
-      if (map?.format !== "pmtiles" || isImageryRow(row) || (row.status !== "installed" && row.status !== "moving")) continue;
+      if (map?.format !== "pmtiles" || isImageryCollection(row) || (row.status !== "installed" && row.status !== "moving")) continue;
       if (!storage.isAvailable(row.locationId)) continue;
       const [west, south, east, north] = map.bounds;
       list.push({
@@ -135,7 +135,7 @@ export function createTileServer(ctx: AppContext): TileServer {
 
   function toRegion(row: CollectionRow, tileType: MapTileType): InstalledRegion | undefined {
     const map = row.meta.map;
-    if (!map || isImageryRow(row)) return undefined;
+    if (!map || isImageryCollection(row)) return undefined;
     const location = storage.list().find((entry) => entry.id === row.locationId);
     return {
       id: row.id,
@@ -166,7 +166,7 @@ export function createTileServer(ctx: AppContext): TileServer {
     z: number,
     x: number,
     y: number,
-    read: (archive: LocalArchive) => Promise<T | undefined>,
+    read: (archive: LocalArchive, row: CollectionRow) => Promise<T | undefined>,
   ): Promise<T | undefined> {
     const size = 2 ** z;
     if (
@@ -188,7 +188,7 @@ export function createTileServer(ctx: AppContext): TileServer {
       const archive = await archiveFor(candidate.row);
       if (!archive) continue;
       try {
-        const found = await read(archive);
+        const found = await read(archive, candidate.row);
         if (found !== undefined) return found;
       } catch (error) {
         // A drive pulled out mid-read, or a damaged file: drop the handle and try the next region.
@@ -201,13 +201,14 @@ export function createTileServer(ctx: AppContext): TileServer {
 
   return {
     async getTile(tileType, z, x, y) {
-      return find(tileType, z, x, y, async (archive) => {
+      return find(tileType, z, x, y, async (archive, row) => {
         const data = await archive.getTile(z, x, y);
         return data
           ? {
               data,
               contentType: contentTypeOf(archive.header.tileType),
               contentEncoding: contentEncodingOf(archive.header.tileCompression),
+              etag: `"${row.id}"`,
             }
           : undefined;
       });

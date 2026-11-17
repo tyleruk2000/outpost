@@ -8,15 +8,11 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useStoredState } from "../hooks";
 import { parseAttribution } from "../lib/attribution";
-import { readStored } from "../lib/view";
 import type { MapEngine } from "../map/engine";
 import type { Credit } from "../map-footer";
 
 export const SATELLITE_KEY = "outpost.maps.satellite";
 const isBoolean = (value: unknown): value is boolean => typeof value === "boolean";
-
-/** Whether satellite imagery is switched on for the map on screen, for anything that starts from how the map is set (a printed page). */
-export const satelliteShown = (): boolean => readStored(SATELLITE_KEY, isBoolean, false);
 
 export type SatelliteReach = "drawn" | "none-installed" | "none-here";
 

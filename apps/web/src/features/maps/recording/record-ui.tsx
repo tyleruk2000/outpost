@@ -20,10 +20,11 @@ import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "
 import { Field, Input } from "@/components/ui/input";
 import { formatTimeOfDay } from "@/lib/clock";
 import { cn, formatDate, formatNumber, plural } from "@/lib/utils";
+import { usePageVisible } from "../hooks";
 import { formatDistance, formatDistanceWithMiles, formatHeight } from "../lib/geo";
 import type { MapEngine } from "../map/engine";
 import type { MapTool } from "../map-chrome";
-import { ColorPicker, ControlButton, ControlGroup, Fact, mapCard, mapCardHeader } from "../ui";
+import { ColorPicker, ControlButton, ControlGroup, Fact, mapCard, mapCardFoot, mapCardHeader } from "../ui";
 import { useRecorder } from "./browser";
 import { recordingData } from "./overlay";
 import type { PendingSave, Recorder, RecorderSnapshot } from "./recorder";
@@ -57,15 +58,16 @@ export function foldRecordingCard(): void {
 
 const timeOfDay = (time: number) => formatTimeOfDay(time);
 
-/** The time, ticking once a second while something on screen is counting. */
-function useNow(ticking: boolean): number {
+/** The time, ticking once a second while something on screen is counting and the page is in sight. */
+export function useNow(ticking: boolean): number {
   const [now, setNow] = useState(() => Date.now());
+  const visible = usePageVisible();
   useEffect(() => {
-    if (!ticking) return;
+    if (!ticking || !visible) return;
     setNow(Date.now());
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
-  }, [ticking]);
+  }, [ticking, visible]);
   return now;
 }
 
@@ -294,7 +296,7 @@ function Unfinished({
         {totals.lastTime === null ? "" : `, the last at ${timeOfDay(totals.lastTime)}`}.
       </p>
       <p className="mt-1 text-small text-ink-muted">It is kept on this device. Nothing has been recorded since that last point.</p>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className={cn(mapCardFoot, "mt-3")}>
         <Button
           variant="primary"
           loading={busy === "continue"}
@@ -442,7 +444,7 @@ function Running({ recorder, state, folded }: { recorder: Recorder; state: Recor
         <p className="mt-2 text-small text-ink-muted">Nothing is being recorded while paused. Resuming starts a new stretch of the line.</p>
       )}
       {gaps ? <p className="tabular mt-1 text-small text-ink-muted">{gaps}</p> : null}
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className={cn(mapCardFoot, "mt-3 max-md:mt-1")}>
         {pauseOrResume}
         {stop}
       </div>
@@ -477,7 +479,7 @@ function Stopped({
           ? `${formatDistanceWithMiles(totals.distanceMeters)} in ${plural(totals.points, "point")}. It is on this device, and not yet saved to Outpost.`
           : "Fewer than two positions were recorded, so there is no line to save."}
       </p>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className={cn(mapCardFoot, "mt-3")}>
         {savable ? (
           <Button variant="primary" onClick={onName}>
             Name and save
@@ -712,12 +714,14 @@ export function TrackRecording({ engine, onShowTrack }: { engine: MapEngine | nu
   }, [recorder]);
 
   // The line so far, and where it ends while it is live.
+  // Out of sight nothing is drawn, so the line is handed to the map when the page is shown again.
+  const visible = usePageVisible();
   // biome-ignore lint/correctness/useExhaustiveDependencies: the revision says when the line has changed
   useEffect(() => {
-    if (!engine) return;
+    if (!engine || !visible) return;
     const head = state.phase === "recording" ? state.position : null;
     engine.setOverlay("o-recording", recordingData(recorder.displayLines(), head));
-  }, [engine, recorder, state.lineRevision, state.phase, state.position]);
+  }, [engine, recorder, visible, state.lineRevision, state.phase, state.position]);
 
   // The first position after starting or resuming brings the map to where the walker is.
   const shown = useRef(false);

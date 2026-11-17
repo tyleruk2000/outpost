@@ -659,9 +659,32 @@ describe("serving tiles", () => {
     const empty = await getRaw("/api/maps/tiles/5/2/20.mvt");
     expect(empty.status).toBe(204);
     expect(empty.body.length).toBe(0);
-    expect(empty.headers["cache-control"]).toBe("private, max-age=3600");
+    // "Nothing here" may be a drive that has gone for a moment: the browser asks again rather than keep the hole.
+    expect(empty.headers["cache-control"]).toBe("no-cache");
     // Beyond every archive's zooms.
     expect((await getRaw("/api/maps/tiles/9/260/170.mvt")).status).toBe(204);
+  });
+
+  it("lets a browser that kept a tile ask cheaply whether it is still the same", async () => {
+    const first = await getRaw("/api/maps/tiles/6/34/20.mvt");
+    const etag = first.headers.etag as string;
+    expect(etag).toMatch(/^"[^"]+"$/);
+
+    const again = await getRaw("/api/maps/tiles/6/34/20.mvt", { "if-none-match": etag });
+    expect(again.status).toBe(304);
+    expect(again.body.length).toBe(0);
+    expect(again.headers.etag).toBe(etag);
+    expect(again.headers["cache-control"]).toBe("private, max-age=3600");
+
+    // A tile answered by another region is another tile, even at the same address once the regions change.
+    const fromOverview = await getRaw("/api/maps/tiles/3/1/5.mvt");
+    expect(fromOverview.headers.etag).not.toBe(etag);
+    expect((await getRaw("/api/maps/tiles/3/1/5.mvt", { "if-none-match": etag })).status).toBe(200);
+
+    // What a phone fetches to keep is never answered from a cache.
+    const raw = await getRaw("/api/maps/tiles/6/34/20.mvt?raw=1", { "if-none-match": etag });
+    expect(raw.status).toBe(200);
+    expect(raw.headers.etag).toBeUndefined();
   });
 
   it("rejects addresses that are not tiles", async () => {
@@ -694,7 +717,7 @@ describe("serving tiles", () => {
   });
 
   it("stops serving a region, and lets go of its file, when the collection is removed", async () => {
-    await getRaw("/api/maps/tiles/6/34/20.mvt");
+    const before = await getRaw("/api/maps/tiles/3/4/2.mvt");
     const collection = app.ctx.services.collections.list({ kind: "map" }).find((row) => row.title === "Detail")!;
     const file = app.ctx.services.collections.absolutePath(collection.id);
     const removed = await app.api("DELETE", `/api/collections/${collection.id}`, { deleteFiles: true });
@@ -704,6 +727,10 @@ describe("serving tiles", () => {
     expect((await getRaw("/api/maps/tiles/6/34/20.mvt")).status).toBe(204);
     // The overview now answers where the detailed map used to.
     expect((await getRaw("/api/maps/tiles/3/4/2.mvt")).body.equals(overview.tiles.get("3/4/2")!)).toBe(true);
+    // A browser holding the detailed tile is told it has changed.
+    const revalidated = await getRaw("/api/maps/tiles/3/4/2.mvt", { "if-none-match": before.headers.etag as string });
+    expect(revalidated.status).toBe(200);
+    expect(revalidated.body.equals(overview.tiles.get("3/4/2")!)).toBe(true);
     const sources = (await app.api<MapSources>("GET", "/api/maps/sources")).body;
     expect(sources.sources.basemap).toMatchObject({ maxzoom: 3 });
     expect((await app.api("GET", "/api/maps/overview")).body.regions.map((region: { name: string }) => region.name)).toEqual([

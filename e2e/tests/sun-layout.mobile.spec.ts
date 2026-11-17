@@ -266,6 +266,15 @@ test.describe("sun times on a phone", () => {
   }
 
   for (const size of SIZES) {
+    test(`put the five names on the sheet on one line at ${size.width} pixels wide`, async ({ page }) => {
+      await page.setViewportSize(size);
+      await openMaps(page);
+      await expect(page.getByRole("tab", { name: "Sun" })).toBeVisible();
+      const tops = await page.getByRole("tab").evaluateAll((tabs) => tabs.map((tab) => Math.round(tab.getBoundingClientRect().top)));
+      expect(tops).toHaveLength(5);
+      expect(new Set(tops).size, `tabs at ${tops.join(", ")}`).toBe(1);
+    });
+
     for (const root of [20, 24]) {
       test(`keep every name on the sheet in reach at ${size.width} pixels wide with the text at ${root} pixels`, async ({ page }) => {
         await page.setViewportSize(size);

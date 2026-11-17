@@ -32,7 +32,8 @@ that has four tabs.
   and adds it (see [Finding a known route](#finding-a-known-route)); it is the one
   thing here that needs the internet. Drop a `.gpx` file anywhere on the map to import
   it.
-- **Offline maps** lists installed regions and is where you download more: pick a
+- **Offline maps** (written **Offline** on the tab, so that the five names fit on one
+  line) lists installed regions and is where you download more: pick a
   ready-made region, or draw a box on the map (or use the current view), choose how
   much detail and which storage location it goes to, and see the exact size before
   anything is fetched.
@@ -337,9 +338,9 @@ The height between lines follows the zoom, in metres:
   shows the shape of a hillside well; it does not show a crag, a small knoll or a
   narrow gully, and it is not a surveyed contour. Do not rely on it where a few metres
   matter.
-- Tracing happens in a background worker, so the map stays responsive, and what has
-  been traced is kept while the page is open. The first look at a new area takes a
-  moment longer than hill shading does.
+- Tracing happens in a background worker, so the map stays responsive. The worker is
+  started for the first tile and ended a minute after the last, so a map at rest holds
+  none. The first look at a new area takes a moment longer than hill shading does.
 - A browser needs `OffscreenCanvas` in workers for this (every current browser; Safari
   from 16.4). In one that lacks it the button says contour lines cannot be drawn.
 
@@ -821,7 +822,8 @@ The **Sun** tab of the panel gives the whole day for **the centre of the map**: 
 same point the readout at the bottom of the map gives, and the one the cross on the map
 marks (see [The centre of the map](#the-centre-of-the-map)). Move the map and the times
 follow, once it has come to rest. Nothing has to be saved, searched for, or pressed and
-held. An empty Places tab says so too, with a button that opens the Sun tab, for
+held. Left open past midnight, the tab and the line under the coordinates move on to
+the new day by themselves. An empty Places tab says so too, with a button that opens the Sun tab, for
 someone who looks for sun times among their places.
 
 The times are laid out to be read on a phone held at arm's length:
@@ -2401,6 +2403,31 @@ places, from "Map areas on this phone" in the **Offline maps** tab. The tiles ar
 copied from the regions installed here, so download the region first. How it works,
 its limits and what browsers do with the kept data are in
 [offline.md](offline.md#a-phone-out-of-reach-of-the-server).
+
+## What the screen costs at rest
+
+Outpost is meant to sit open on a low-power machine for days, so the Maps screen does
+nothing it does not have to while nobody touches it. Measured with
+`e2e/tools/idle-cost.mjs` and a script of the same kind in headless Chromium on a Mac
+(17 November 2026), over 12 seconds per state:
+
+- At rest, with any of the panel's tabs open, the grey line, satellite imagery, contour
+  lines and a reference layer on: no animation frames, no running animations and no
+  requests of the screen's own. The grey line redraws once a minute (one frame), and
+  the Sun tab and the line under the coordinates read the date again at midnight.
+- While the page is hidden (a background tab, a locked phone): no frames and no timers
+  of the screen's own.
+- Map tiles are kept by the browser for an hour and asked about again with a tag the
+  server answers with "not changed" (`docs/api.md`). The map itself is not given an
+  expiry: it used to fetch every tile it held again each hour. A tile's address
+  changes when the regions do, so nothing is missed.
+- Recording a track: the work happens when a position arrives (about once a second on
+  most phones). The card's clock ticks once a second while the page is in sight and not
+  at all while it is hidden, when the line is not handed to the map either; both catch
+  up when the page is looked at again. Stopping releases the screen and the position
+  watch (checked in the same script: one lock taken, one released, one watch cleared).
+- Panning by hand costs what MapLibre costs: frames while the map moves, none once it
+  stops.
 
 ## What is not included
 

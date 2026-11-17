@@ -15,6 +15,17 @@ export function useDebounced<T>(value: T, delay: number): T {
   return debounced;
 }
 
+/** Whether the page is in sight: false in a background tab or on a locked phone. */
+export function usePageVisible(): boolean {
+  const [visible, setVisible] = useState(() => document.visibilityState !== "hidden");
+  useEffect(() => {
+    const onChange = () => setVisible(document.visibilityState !== "hidden");
+    document.addEventListener("visibilitychange", onChange);
+    return () => document.removeEventListener("visibilitychange", onChange);
+  }, []);
+  return visible;
+}
+
 /** True from the `md` breakpoint up, where the sidebar and the side panel are shown. */
 export function useIsDesktop(): boolean {
   const [desktop, setDesktop] = useState(() => window.matchMedia("(min-width: 48rem)").matches);

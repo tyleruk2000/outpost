@@ -102,6 +102,15 @@ export interface LayersService {
   close(): Promise<void>;
 }
 
+/** An import's publisher and licence when the file gives them row by row rather than once for all. */
+const AS_IN_FILE = "As stated in the file";
+
+/** The map's credit for an imported pack: its publisher and licence, or its name where those are only in the file. */
+function importCredit(row: Pick<CollectionRow, "title" | "publisher" | "license">): string {
+  const parts = [...new Set([row.publisher, row.license].filter((part): part is string => Boolean(part) && part !== AS_IN_FILE))];
+  return parts.length > 0 ? parts.join(", ") : `${row.title}: publisher and licence as stated in the file`;
+}
+
 export function createLayersService(ctx: AppContext, client: HttpClient): LayersService {
   const { collections, storage } = ctx.services;
   const providerNames = new Map(PROVIDERS.map((provider) => [provider.id, provider.name]));
@@ -318,7 +327,7 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
       ...(result.extra ? { extra: result.extra } : {}),
       ...(providerId === "worldpop" ? { sidecar: meta.options?.sidecar } : {}),
     };
-    const firstPublisher = input.adapter === "import" ? (meta.options?.publisher ?? "As stated in the file") : provider.publisher;
+    const firstPublisher = input.adapter === "import" ? (meta.options?.publisher ?? AS_IN_FILE) : provider.publisher;
     const collection = await collections.create({
       kind: "dataset",
       title: input.title,
@@ -328,7 +337,7 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
           : `${sink.count.toLocaleString("en-GB")} records for the map's reference layers`,
       category: "Maps",
       publisher: firstPublisher,
-      license: input.adapter === "import" ? (meta.options?.license ?? "As stated in the file") : provider.license,
+      license: input.adapter === "import" ? (meta.options?.license ?? AS_IN_FILE) : provider.license,
       attribution: provider.name,
       version: result.version ?? new Date(retrievedAt).toISOString().slice(0, 10),
       locationId: input.locationId,
@@ -436,7 +445,8 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
 
     async start({ estimateId, keys, locationId }) {
       const estimate = estimates.get(estimateId);
-      if (!estimate) throw new AppError("conflict", "That estimate is more than half an hour old or was not made here. Estimate again.");
+      if (!estimate || Date.now() - estimate.at > ESTIMATE_TTL_MS)
+        throw new AppError("conflict", "That estimate is more than half an hour old or was not made here. Estimate again.");
       const adapter = adapters.get(estimate.request.provider)!;
       const started: DownloadRow[] = [];
       for (const key of keys) {
@@ -574,11 +584,7 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
         } else if (meta.provider === "worldpop") {
           credits.set("worldpop", { provider: "worldpop", text: "Population: WorldPop, CC BY 4.0", url: "https://www.worldpop.org" });
         } else if (meta.provider === "import") {
-          credits.set(`import:${row.id}`, {
-            provider: "import",
-            text: `${row.publisher ?? "Imported"}${row.license ? `, ${row.license}` : ""}`,
-            url: meta.sourceUrl,
-          });
+          credits.set(`import:${row.id}`, { provider: "import", text: importCredit(row), url: meta.sourceUrl });
         } else if (meta.provider === "ea-flood-zones") {
           credits.set("ea-flood-zones", {
             provider: "ea-flood-zones",
