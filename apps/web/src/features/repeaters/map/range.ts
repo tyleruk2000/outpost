@@ -19,6 +19,7 @@ import {
 import { MAP_FONTS, type MapTheme } from "@/features/maps/lib/style";
 import type { LayerSpecification } from "@/features/maps/lib/style-types";
 import type { FeatureCollection } from "@/features/maps/map/overlays";
+import { formatHeight as formatFineHeight } from "@/lib/heights";
 import { formatNumber } from "@/lib/utils";
 
 export const RANGE_SOURCE = "o-range";
@@ -73,9 +74,9 @@ export function formatReach(meters: number): string {
 /** A reach as `formatReach` gives it, without the miles: for the card folded to one line. */
 export const formatKm = (meters: number) => formatReach(meters).replace(/ \(.*\)$/, "");
 
-/** Heights to a tenth of a metre below 10 m, whole metres above. */
+/** An aerial's height above the ground: to a tenth of a metre below 10 m and whole metres above, or to the foot (`@/lib/heights`). */
 export function formatHeight(meters: number): string {
-  return `${meters < 9.95 ? Number(meters.toFixed(1)) : Math.round(meters)} m`;
+  return formatFineHeight(meters, "fine");
 }
 
 const median = (values: number[]) => {

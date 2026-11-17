@@ -190,7 +190,7 @@ export function SightPanel({
             unit="m"
             onChange={(antennaTo) => setSettings((current) => ({ ...current, antennaTo }))}
           />
-          <p className="col-span-2 -mt-1.5 text-small text-ink-muted">Height above the ground each antenna stands on.</p>
+          <p className="col-span-2 -mt-1.5 text-small text-ink-muted">Height above the ground each antenna stands on, in metres.</p>
           <Field label="Band" className={settings.band === "other" ? "" : "col-span-2"}>
             {(ids) => (
               <Select

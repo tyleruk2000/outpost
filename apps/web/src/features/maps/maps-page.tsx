@@ -1504,6 +1504,7 @@ export default function MapsPage() {
               format={format}
               onFormatChange={setFormat}
               credits={engine ? credits : []}
+              heights={{ terrain: sources.data?.hasTerrain ?? false, onGetTerrain: () => openOffline({ type: "add" }) }}
               underReadout={
                 sunLine && engine ? (
                   <SunGlance engine={engine} onOpen={showSun} where={isDesktop ? "At the centre" : undefined} />

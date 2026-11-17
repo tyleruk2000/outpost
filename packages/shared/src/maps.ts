@@ -759,3 +759,12 @@ export function formatDdm(lat: number, lon: number, minutesDigits = 3): string {
   };
   return `${part(lat, "N", "S")} ${part(lon, "E", "W")}`;
 }
+
+/** `GET /api/maps/height`: the height of the ground at one point, read from the terrain installed. */
+export interface PointHeight {
+  at: { lat: number; lon: number };
+  /** Metres above sea level as the terrain gives it, to a tenth of a metre; null where no installed terrain covers the point. */
+  heightMeters: number | null;
+  /** How wide the terrain cell the height was read from is, in metres; null with no height. */
+  cellMeters: number | null;
+}

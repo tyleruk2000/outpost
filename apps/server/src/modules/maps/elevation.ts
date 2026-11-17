@@ -25,6 +25,13 @@ const COARSEST_USEFUL_ZOOM = 9;
 /** Nothing on Earth is outside this range; a value beyond it is a hole in the data. */
 const LOWEST = -11_500;
 const HIGHEST = 9_000;
+/**
+ * Decoded tiles kept from one request to the next, for the height at a single point,
+ * which is asked for again and again over the same few tiles as a pointer rests here and
+ * there. Each is about 1 MB at 512 px. Kept by the archive that served them, so a tile
+ * from terrain that has since been replaced is never read again.
+ */
+const KEPT_TILES = 4;
 
 export interface ElevationSampler {
   /**
@@ -101,6 +108,27 @@ function interpolate(tile: HeightTile, u: number, v: number): number | null {
 }
 
 export function createElevationSampler(ctx: AppContext, tiles: TileServer): ElevationSampler {
+  /** Tiles decoded by earlier requests, least recently used first, keyed by archive and tile. */
+  const kept = new Map<string, HeightTile>();
+  const decodeKept = (served: ServedTile, key: string): HeightTile | null => {
+    const keptKey = `${served.etag}|${key}`;
+    const found = kept.get(keptKey);
+    if (found) {
+      kept.delete(keptKey);
+      kept.set(keptKey, found);
+      return found;
+    }
+    const tile = decodeTile(served);
+    if (tile) {
+      kept.set(keptKey, tile);
+      for (const oldest of kept.keys()) {
+        if (kept.size <= KEPT_TILES) break;
+        kept.delete(oldest);
+      }
+    }
+    return tile;
+  };
+
   const sampler: ElevationSampler = {
     async sample(positions, spacingMeters) {
       return (await sampler.sampleWithCells(positions, spacingMeters)).heights;
@@ -133,7 +161,7 @@ export function createElevationSampler(ctx: AppContext, tiles: TileServer): Elev
         let tile: HeightTile | null = null;
         try {
           const served = await tiles.getTile("terrain", z, x, y);
-          if (served) tile = decodeTile(served);
+          if (served) tile = decodeKept(served, key);
         } catch (error) {
           // A tile that cannot be read is a gap in the heights, not a failed request.
           ctx.log.warn({ err: error, tile: key }, "terrain tile could not be read for heights");
