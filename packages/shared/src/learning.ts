@@ -17,6 +17,10 @@ export const LEARNING_PAGES_MAX = 20_000;
 export const LEARNING_SECONDS_PER_WRITE_MAX = 120;
 /** A page of links counts as listing lessons only with this many links or fewer, and at least two. */
 export const TOPIC_LINKS_MAX = 300;
+/** The most a page's list of links may come to, written out; a longer one is not a list of lessons. */
+export const TOPIC_LINKS_BYTES_MAX = 64 * 1024;
+/** How many pages of links are kept for one archive; the one seen longest ago makes room. */
+export const LEARNING_TOPICS_MAX = 2_000;
 
 /** The words used for the learner who chose not to give a name. */
 export const JUST_ME = "Just me";

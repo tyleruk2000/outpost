@@ -124,8 +124,11 @@ export function createGeofabrikAdapter({ client }: AdapterDeps, regions: RegionI
     }
     // The MD5 of the dated file the size is for, not of whatever "latest" is a moment later.
     const md5 = /^([0-9a-f]{32})\b/i.exec((await fetchText(client, `${head.finalUrl}.md5`, { max: 4096, signal })).trim())?.[1];
+    // The download is held to Geofabrik's host on its first request only: the MD5, asked of
+    // that host alone, is what checks the bytes, so a file without one is not offered.
+    if (!md5) throw new AppError("upstream", `Geofabrik did not give an MD5 for ${name}'s file, so it was not offered. Try again later.`);
     // The dated address the "latest" one leads to, so that resuming fetches the same file, and its MD5.
-    return { head, extra: { url: head.finalUrl, ...(md5 ? { md5: md5.toLowerCase() } : {}) } };
+    return { head, extra: { url: head.finalUrl, md5: md5.toLowerCase() } };
   }
 
   return {

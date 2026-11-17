@@ -529,7 +529,11 @@ device, address or browser is recorded with it.
   nine tenths of the video was played. A page can lie in these messages; the most it can
   do is mark itself watched or make a topic's count wrong.
 - **Limits.** 50 learners, 20,000 pages a learner, two minutes of time a write, and no
-  more than could have passed since the page was last written.
+  more than could have passed since the page was last written. A page's list of links
+  is passed on only for the page on show, and the server keeps at most 2,000 such lists
+  an archive, each of at most 300 links and 64 KB, letting the one seen longest ago go:
+  a page that names made-up pages in a loop cannot fill the disk
+  (`apps/server/test/review2-learning.test.ts`).
 
 ### Downloads (the SSRF guard)
 
@@ -552,7 +556,13 @@ Integrity comes from the publisher's checksum, not from the mirror that served t
 bytes. A Kiwix download without a published SHA-256 is refused; a file that does not
 match is deleted and nothing is installed. Files are written as `<name>.part` and
 renamed only when complete and verified, and an existing file is never overwritten.
-Code: `apps/server/src/modules/downloads/service.ts`.
+A file cannot be larger than stated: the download stops as soon as more arrives than the
+server's `Content-Length`, or, when the server sends none, than the size the download
+stated plus a tenth and 1 MB, so a mirror that goes on sending cannot fill the disk
+before the checksum is checked (`apps/server/test/review2-download-size.test.ts`). A
+download that states no size and is served with no length is bounded only by the room
+on the drive.
+Code: `apps/server/src/modules/downloads/service.ts`, `http-fetcher.ts`.
 
 **Saving a link.** When a reference page links to a file that is not in its archive,
 a person can have Outpost fetch it into the library. This is the one download whose
@@ -643,7 +653,7 @@ manager, and only from these hosts, each named in code:
 | `raw.githubusercontent.com` | Natural Earth's GeoJSON, at release v5.1.2 | Public domain |
 | `davidmegginson.github.io` | OurAirports' `airports.csv`, and `airport-frequencies.csv` from the same folder in the same install | Public domain |
 | `ovp.dresel.systems`, or a server the person declares in their route source file | One Overpass question per layer and country | The operator's terms; private.coffee is excluded for this use |
-| `download.geofabrik.de` | The index (read on a press, then kept as the list of regions), a country's or a region's `.osm.pbf` and its `.md5` | ODbL, fetched once per press; a redirect to another host (a mirror) is not followed |
+| `download.geofabrik.de` | The index (read on a press, then kept as the list of regions), a country's or a region's `.osm.pbf` and its `.md5` | ODbL, fetched once per press; a file that Show the size finds is sent from another host (a mirror) is refused, and the size and the `.md5` are asked of `download.geofabrik.de` alone on every hop. The download itself is held to that host on its first request only, like every download; what arrives is checked against that MD5 before it is read |
 | `query.wikidata.org` | One count and one query, once the person has agreed to the client name being sent | CC0; within the service's limits, with the project's address as the contact the service asks for |
 | `data.worldpop.org` | One country's population GeoTIFF | CC BY 4.0 |
 | `data.geo.admin.ch` | The Swiss emergency meeting points | Open use with the source given |
@@ -978,8 +988,11 @@ Messages ([messages.md](messages.md)) is a board for everyone on the home networ
   a file 200 MB; at most 100 files and 4 GB kept; the data folder must keep 256 MB free.
   Every input is checked with zod, and every route that changes something is held to the
   cross-site rules above.
-- **Not searched, not sent anywhere.** Messages are not added to search and are never
-  sent to a model server. The board makes no outbound request; there are no push
+- **Not searched, not sent anywhere unless asked.** Messages are not added to search.
+  They reach a model server only when model tools and their "Messages on the board" area
+  are both turned on (the area is off by default, and anyone on the network can turn it
+  on, as any setting): then the household channel's words, places in words, names and times, never a
+  radio channel's, a file or a position (`modules/tools/board.ts`). The board makes no outbound request; there are no push
   notifications.
 
 ### The mesh radio link
@@ -1003,8 +1016,10 @@ with a real radio.
   knows the user name and password. MQTT here is plain TCP, not TLS: the password and
   every message cross the home network in the clear, as Meshtastic's own MQTT does
   without TLS. Do not forward the port on the router.
-- **Limits.** 64 KiB a packet, 8 connections, 20 publishes a second (bursts of 50) per
-  connection, 32 subscriptions, 10 seconds to sign in; a malformed packet, a QoS 2
+- **Limits.** 64 KiB a packet, 8 connections (2 from one address before signing in), 20
+  publishes a second (bursts of 50) per connection, 32 subscriptions, 10 seconds to sign
+  in, 5 wrong passwords a minute from one address (then refused unchecked: each check is
+  a scrypt run, and the server waits for it); a malformed packet, a QoS 2
   publish or a wildcard in a published topic closes the connection. Nothing is retained,
   and no session or will is kept.
 - **The passwords.** The broker's is kept as a scrypt hash and checked in constant time;
@@ -1487,7 +1502,7 @@ holds for them and for the same tools over `/mcp`.
 
 | | |
 | --- | --- |
-| **They read, and only read.** | No tool creates, changes or removes anything, queues a job, starts a download, or makes any request to the internet or the network. `test/tools-readonly.test.ts` runs every tool in the registry (so a new one is covered by being added) while `fetch`, `http`/`https`, undici, sockets, the job queue, downloads and live events fail the test if touched, and checks that SQLite counted no change. Two reads that wrote were found and avoided: the catalogue's list matches installed archives to entries (a write), so the tool reads it with that turned off; a propagation result marks itself used, so the tool reads the saved rows instead. |
+| **They read, and only read.** | No tool creates, changes or removes anything, queues a job, starts a download, or makes any request to the internet or the network, but one: with search by meaning on an embedding server (`search.semantic.endpoint`, under the own-network rule above), `search_library` sends it the search words, as every search does. `test/tools-readonly.test.ts` runs every tool in the registry (so a new one is covered by being added) while `fetch`, `http`/`https`, undici, sockets, the job queue, downloads and live events fail the test if touched, and checks that SQLite counted no change. Two reads that wrote were found and avoided: the catalogue's list matches installed archives to entries (a write), so the tool reads it with that turned off; a propagation result marks itself used, so the tool reads the saved rows instead. |
 | **What is never readable** | Contacts; private keys and anything under Encryption; notes' encrypted pages (no text of them is in the index); the board's files; network-share credentials; settings that are secrets; the network scan. `read_passage` reads documents and notes only, by kind, so a contact's passage in the search index cannot be read by number. |
 | **Run on the server** | The model asks; the server checks the name against the tools offered, checks the arguments against the tool's schema, and runs it. The browser never runs a tool. A name not offered (including one whose area is switched off) is refused in the same words as one that does not exist. |
 | **Where the answers go** | To the model server, as passages do: the one address in `answers.endpoint`, under the same own-network rule. If that is another machine, so is what the tools return. Settings says so at the switch. |
@@ -1508,7 +1523,8 @@ Model Context Protocol. It changes who can read what, so:
   that program is connected to receives the answers**: a desktop assistant using a model
   in the cloud would send the household's supplies and plans there. The switch says so.
 - `/mcp` is outside `/api/`, so the `X-Outpost-Request` header does not protect it. It has
-  its own rules: the Host check every route has; an `Origin` that is not this server, or
+  its own rules: the Host check every route has; an `Origin` that is not this server's own
+  (scheme, host and port, unlike the comparison by host name for `/api/`), or
   `Sec-Fetch-Site` other than `same-origin` or `none`, is refused (a page on another site
   cannot call it); the body must be `application/json`, which a page on another site cannot
   send without a preflight Outpost never approves; a request from an address that is not
@@ -1529,10 +1545,13 @@ database must pass SQLite's integrity check, and it must not come from a newer
 Outpost. Only then is it marked ready. It is applied at the next start, before the
 database is opened, and the data it replaces is kept in a dated folder. An upload that
 was interrupted is discarded, never applied. A restore puts back the database,
-attachments and extracted text only. Catalogue manifests in the file are ignored,
-because they name the hosts downloads may start from; unfinished jobs and remembered
-network shares in the restored database are deleted, so a backup from another machine
-cannot make this one start work or connect to a file server. Each file unpacked must
+attachments, extracted text and the files sent on the board only. Catalogue manifests
+in the file are ignored, because they name the hosts downloads may start from;
+unfinished jobs and remembered network shares in the restored database are deleted, and
+the mesh radio link's set-up in it is replaced by the one in use here (none if there is
+none), so a backup from another machine cannot make this one start work, connect to a
+file server or a radio broker, or open a radio or a port. Neither the mesh link's
+passwords file nor the reference reader's `reader-token` is in a backup. Each file unpacked must
 match the checksum the archive recorded for it, so a backup damaged where it was kept
 is refused whole.
 Code: `apps/server/src/modules/backup/restore.ts`.
@@ -1811,7 +1830,7 @@ to the cross-site rules above, except the few `GET`s named there.
 | What starts it | Where it goes | Code |
 | --- | --- | --- |
 | Catalogue **Refresh**; adding or downloading an entry; installing a pack | `opds.library.kiwix.org`; the manifests' `downloadHosts` and public mirrors they redirect to | `catalog/kiwix.ts`, `catalog/resolve.ts`, `downloads/http-fetcher.ts` |
-| Map region estimate and download; place names | `build-metadata.protomaps.dev`, `build.protomaps.com` or the `maps.tileSource` / `maps.terrainSource` archives; `download.geonames.org` | `maps/source.ts`, `maps/pmtiles/remote.ts`, `maps/places.ts` |
+| Map region estimate and download; place names | `build-metadata.protomaps.dev`, `build.protomaps.com` or the `maps.tileSource` / `maps.terrainSource` archives (the terrain archive is `download.mapterhorn.com` unless changed); `download.geonames.org` | `maps/source.ts`, `maps/pmtiles/remote.ts`, `maps/places.ts` |
 | Place names for Great Britain: **Check the size**, **Download** | `api.os.uk` (the check is held to it on every hop); the download starts there and follows its redirect to OS's file store, `omseprd1stdstordownload.blob.core.windows.net`; the file is checked against the MD5 `api.os.uk` gives | `maps/os-names/source.ts`, `maps/os-names/index.ts` |
 | Satellite imagery and aerial photographs: **Find pictures**, **Continue**, **Fetch**, **Download** | The fixed hosts in [Satellite imagery](#downloads-the-ssrf-guard) above | `maps/imagery/` |
 | **Search** in "Find a route", and adding a result | The declared route sources | `maps/route-finder/overpass.ts` |
@@ -1823,17 +1842,19 @@ to the cross-site rules above, except the few `GET`s named there.
 | The second HF model's maps | `raw.githubusercontent.com` | `propagation/p533/maps.ts` |
 | **Fetch the registry from the IEEE** under Devices on this network | `standards-oui.ieee.org` (`OUTPOST_IEEE_OUI_URL`) | `network/service.ts` |
 | Making a portable drive for a new kind of computer | `nodejs.org`, `download.kiwix.org` | `portable/runtimes.ts` |
-| Answers, Chat, **Test**, **Look for Ollama**, the model lists in Settings and Chat | The `answers.endpoint` setting; `127.0.0.1:11434` for the look | `answers/provider.ts`, `chat/models.ts` |
+| Answers, Chat, **Test**, **Look for Ollama**, the model lists in Settings and Chat | The `answers.endpoint` setting; `127.0.0.1:11434`, then `host.docker.internal:11434`, for the look | `answers/provider.ts`, `chat/models.ts` |
 | Passages newly indexed, five seconds after they settle, while search by meaning uses an embedding server; **Test** | The `search.semantic.endpoint` setting | `semantic/providers.ts` |
 | **Scan** under Devices on this network | Private addresses on the computer's own networks only | `network/scan.ts`, `network/system.ts` |
 | Connecting a share, listing its folders; on a Mac, at start and every five minutes, reconnecting a share whose password is remembered | The file server's checked private address | `storage/shares/` |
 | Opening a reference page, starting the server | kiwix-serve on this computer | `kiwix/index.ts`, `kiwix/server.ts` |
+| Setting up the mesh radio link (from the computer itself), then for as long as it stays set up, trying again after a lost connection | The household's MQTT broker or the MeshCore radio at the address typed (a host name or IP address, not checked to be on the home network); a serial radio in `/dev` | `mesh/mqtt/client.ts`, `mesh/meshcore/link.ts`, `mesh/serial.ts` |
 
-Two of these happen without a press at the moment they happen, each because a person
+Three of these happen without a press at the moment they happen, each because a person
 set it up earlier: vectors for new passages, sent to an embedding server the person
 chose (contact cards, map places and catalogue entries are passages too, so with an
-embedding server on another machine their words go there), and reconnecting a
-remembered network share. A download that was running when the server stopped carries
+embedding server on another machine their words go there), reconnecting a
+remembered network share, and the mesh radio link connecting, and connecting again, to
+the broker or radio it was set up with. A download that was running when the server stopped carries
 on when it starts again. The list does not include `apps/server/src/cli/` and
 `maps/build-regions.mjs`, which are tools run by hand, not by the server.
 

@@ -108,6 +108,18 @@ interface Connection {
 /** How long a connection that has been told to go is given to close by itself. */
 const CLOSE_GRACE_MS = 2_000;
 
+/**
+ * Wrong logins from one address before its logins are refused unchecked, within this long.
+ * Each check is a scrypt run on the event loop the whole server shares, so without this an
+ * address could guess without end and keep every page of Outpost waiting meanwhile.
+ */
+const LOGIN_FAILURES = 5;
+const LOGIN_WINDOW_MS = 60_000;
+/** Addresses whose wrong logins are remembered; past this, the oldest are forgotten. */
+const LOGIN_ADDRESSES = 1000;
+/** Connections from one address that have not signed in yet, at once. */
+const MAX_WAITING_PER_ADDRESS = 2;
+
 const noop: Settle = () => {};
 
 export function createBroker(options: BrokerOptions): MqttBroker {
@@ -122,6 +134,8 @@ export function createBroker(options: BrokerOptions): MqttBroker {
   const clientsListeners = new Set<() => void>();
   /** Finishers of `publish` calls still waiting for acknowledgements, so `close` can end them. */
   const waiting = new Set<() => void>();
+  /** When each address last gave a wrong login, newest last. */
+  const failedLogins = new Map<string, number[]>();
 
   const server = net.createServer((socket) => accept(socket));
   server.on("error", (error) => log.warn({ err: error.message }, "MQTT listener error"));
@@ -179,6 +193,14 @@ export function createBroker(options: BrokerOptions): MqttBroker {
     }
     if (connections.size >= limits.maxConnections) {
       log.warn({ address, limit: limits.maxConnections }, "Refused an MQTT connection: too many connections");
+      socket.destroy();
+      return;
+    }
+    // One address may not hold every place by connecting and saying nothing: the radio would never get in.
+    let waitingHere = 0;
+    for (const other of connections) if (other.clientId === null && other.address === address) waitingHere += 1;
+    if (waitingHere >= MAX_WAITING_PER_ADDRESS) {
+      log.warn({ address, limit: MAX_WAITING_PER_ADDRESS }, "Refused an MQTT connection: too many from one address not signed in");
       socket.destroy();
       return;
     }
@@ -314,6 +336,12 @@ export function createBroker(options: BrokerOptions): MqttBroker {
       refuse(CONNACK.badUserNameOrPassword, "no user name or password");
       return;
     }
+    const now = Date.now();
+    const failed = (failedLogins.get(conn.address) ?? []).filter((at) => now - at < LOGIN_WINDOW_MS);
+    if (failed.length >= LOGIN_FAILURES) {
+      refuse(CONNACK.badUserNameOrPassword, "too many wrong logins from this address; not checked");
+      return;
+    }
     let ok = false;
     try {
       ok = options.checkLogin(packet.userName, packet.password);
@@ -321,9 +349,14 @@ export function createBroker(options: BrokerOptions): MqttBroker {
       log.warn({ err: (error as Error).message }, "Checking an MQTT login failed");
     }
     if (!ok) {
+      failed.push(now);
+      failedLogins.delete(conn.address);
+      failedLogins.set(conn.address, failed);
+      if (failedLogins.size > LOGIN_ADDRESSES) failedLogins.delete(failedLogins.keys().next().value!);
       refuse(CONNACK.badUserNameOrPassword, "wrong user name or password");
       return;
     }
+    failedLogins.delete(conn.address);
 
     // The will message is read and thrown away: Outpost never publishes it, which a client
     // cannot tell from a broker that sends wills only on rare kinds of loss.

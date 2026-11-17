@@ -22,6 +22,8 @@ export const OS_DOWNLOADS_API = "https://api.os.uk/downloads/v1/";
 /** The file store api.os.uk redirects downloads to, as seen on 17 November 2026. */
 export const OS_FILE_HOST = "omseprd1stdstordownload.blob.core.windows.net";
 const PRODUCT = "OpenNames";
+/** The most one answer from the API may be. */
+const MAX_ANSWER_BYTES = 1024 * 1024;
 
 const productSchema = z.object({ id: z.string(), version: z.string().regex(/^\d{4}-\d{2}$/) }).passthrough();
 const downloadsSchema = z.array(
@@ -69,7 +71,18 @@ async function getJson(client: HttpClient, url: string, signal?: AbortSignal): P
         `Ordnance Survey's download service answered with an error (HTTP ${response.status}). Try again later.`,
       );
     }
-    return await response.json();
+    // Counted as it arrives: the product's details and its list of downloads are a few kilobytes.
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
+      size += chunk.byteLength;
+      if (size > MAX_ANSWER_BYTES) {
+        await response.body?.cancel().catch(() => undefined);
+        throw new AppError("upstream", "Ordnance Survey's download service sent far more than its list of downloads should be.");
+      }
+      chunks.push(chunk);
+    }
+    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
   } catch (error) {
     if (error instanceof AppError) throw error;
     if (classifyNetworkError(error) === "offline") {

@@ -168,7 +168,9 @@ how many pages are done.
 
 Limits: 50 learners; 20,000 pages a learner (beyond that the page opened longest ago
 that is not done makes room); names of at most 40 characters; addresses of at most
-2,000; titles cut at 200.
+2,000; titles cut at 200; 2,000 pages of links an archive (the one seen longest ago
+makes room), each list at most 300 links and 64 KB written out. A list of links is
+passed on only for the page on show.
 
 ## Not done
 

@@ -143,13 +143,6 @@ function header(request: FastifyRequest, name: string): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
-function hostnameOf(value: string | undefined): string {
-  if (!value) return "";
-  const text = value.trim().toLowerCase();
-  if (text.startsWith("[")) return text.slice(1, text.indexOf("]"));
-  return text.split(":")[0] ?? "";
-}
-
 /** An address as a socket gives it, without a zone and with IPv4 unwrapped. */
 function plainAddress(address: string): string {
   const value = address.trim().toLowerCase().replace(/%.*$/, "");
@@ -233,8 +226,11 @@ export async function registerMcp(app: FastifyInstance, ctx: AppContext, tools: 
     const origin = header(request, "origin");
     if (origin !== undefined) {
       // `null` (a sandboxed page, a file opened from disk) and anything that is not an address are no origin of ours.
-      const from = URL.parse(origin)?.host;
-      if (!from || hostnameOf(from) !== hostnameOf(header(request, "host"))) {
+      // The whole origin, scheme and port too: a page of another program on this computer is another site, and over
+      // plain http at a network address a browser sends no Sec-Fetch-Site to say so.
+      const from = URL.parse(origin)?.origin;
+      const own = URL.parse(`${request.protocol}://${header(request, "host") ?? ""}`)?.origin;
+      if (!from || from === "null" || from !== own) {
         return refuse(reply, 403, INVALID_REQUEST, "Requests from web pages on other sites are not accepted.");
       }
     }

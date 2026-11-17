@@ -182,6 +182,18 @@ export function createRestoreStager(ctx: AppContext): RestoreStager {
             UPDATE downloads SET state = 'cancelled', job_id = NULL, error = 'This download was in progress when the backup was made.' WHERE state IN ('queued', 'running', 'verifying', 'paused');
             UPDATE imports SET state = 'discarded' WHERE state NOT IN ('completed', 'discarded');
           `);
+          // Nor does the mesh radio link's set-up (modules/mesh): the backup's would open a radio, a
+          // port or a connection here that nobody set up from this computer. The one in use here
+          // stays, with the passwords file beside it that a backup never holds.
+          const meshHere = ctx.sqlite.prepare("SELECT value, updated_at FROM settings WHERE key = 'mesh.config'").get() as
+            | { value: string; updated_at: number }
+            | undefined;
+          clean.exec("DELETE FROM settings WHERE key = 'mesh.config'");
+          if (meshHere) {
+            clean
+              .prepare("INSERT INTO settings (key, value, updated_at) VALUES ('mesh.config', ?, ?)")
+              .run(meshHere.value, meshHere.updated_at);
+          }
           // Nor does the passphrase backups were protected with then take over from the one in use here now.
           settleStagedProtection(clean, readProtection(ctx), sealedTo);
         } finally {
