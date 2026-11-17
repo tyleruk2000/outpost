@@ -84,8 +84,12 @@ async function saveWhileLeaving(id: string, body: PowerPlanSave): Promise<PowerP
 /** A plan as saved: the whole plan, and the version it was changed from (`updatedAt` when opened or last saved). */
 type PowerPlanSave = PowerPlanInput & { baseUpdatedAt?: number };
 
-/** Whether a save was refused because the plan or device was saved over somewhere else since it was opened. */
-export const isConflict = (error: unknown): error is ApiError => error instanceof ApiError && error.code === "conflict";
+/**
+ * Whether a save was refused because the plan or device was saved over somewhere else since it was opened. Such a
+ * refusal says which version is kept; a 409 without it (the database busy) is an ordinary failure.
+ */
+export const isConflict = (error: unknown): error is ApiError =>
+  error instanceof ApiError && error.code === "conflict" && typeof error.details?.updatedAt === "number";
 
 export function useSavePowerPlan(id: string) {
   const client = useQueryClient();

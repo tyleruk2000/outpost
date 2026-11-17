@@ -488,3 +488,13 @@ describe("the plan written out", () => {
     expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe("%PDF-");
   });
 });
+
+describe("telling a save made over another from another refusal", () => {
+  it("takes a 409 for a conflict only when it says which version is kept", async () => {
+    const { ApiError } = await import("@/lib/api");
+    const { isConflict } = await import("./data");
+    expect(isConflict(new ApiError(409, "conflict", "This plan was changed somewhere else.", { updatedAt: 5 }))).toBe(true);
+    // The server's answer while the database is busy: nobody else saved, so "keep mine" would only be refused again.
+    expect(isConflict(new ApiError(409, "conflict", "Outpost's database is busy with other work."))).toBe(false);
+  });
+});
