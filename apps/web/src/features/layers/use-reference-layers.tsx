@@ -84,6 +84,8 @@ export function useReferenceLayers({
   const location = useLocation();
   const [choice, setChoice] = useStoredState<LayerChoice>(KEY, isChoice, NONE);
   const [view, setView] = useState<{ box: string; zoom: number } | null>(null);
+  /** The middle of the map when it last came to rest: the nearest list measures from it. */
+  const [centre, setCentre] = useState<LatLon | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [alsoHere, setAlsoHere] = useState<Array<{ id: number; name: string; kindLabel: string; provenance: FeatureProvenance }>>([]);
   const summary = useLayersSummary();
@@ -108,7 +110,10 @@ export function useReferenceLayers({
 
   useEffect(() => {
     if (!engine || (drawn.length === 0 && !populationOn)) return;
-    const read = () => setView({ box: overlayBox(engine.getBounds()), zoom: engine.getZoom() });
+    const read = () => {
+      setView({ box: overlayBox(engine.getBounds()), zoom: engine.getZoom() });
+      setCentre(engine.getCenter());
+    };
     read();
     return engine.on("moveend", read);
   }, [engine, drawn.length, populationOn]);
@@ -272,6 +277,7 @@ export function useReferenceLayers({
       onManage={onManage}
       onOpen={open}
       floodZones={overlay.data?.floodZones ?? null}
+      centre={centre}
     />
   );
 

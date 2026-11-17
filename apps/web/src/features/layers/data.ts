@@ -3,6 +3,7 @@ import type {
   Bbox,
   DownloadDto,
   LayerSearchResponse,
+  NearestResponse,
   PopulationGridResponse,
   ReferenceCatalogueResponse,
   ReferenceEstimate,
@@ -27,6 +28,7 @@ export const layersKeys = {
   population: (query: string) => ["layers", "population", query] as const,
   feature: (id: number) => ["layers", "feature", id] as const,
   search: (query: string) => ["layers", "search", query] as const,
+  nearest: (query: string) => ["layers", "nearest", query] as const,
 };
 
 const filterParams = (filter: ReferenceFilter) => {
@@ -97,6 +99,26 @@ export const useLayerSearch = (text: string, filter: ReferenceFilter) => {
     queryKey: layersKeys.search(query),
     queryFn: () => api.get<LayerSearchResponse>(`/api/reference/search?${query}`),
     enabled: text.trim().length >= 2,
+    placeholderData: keepPreviousData,
+  });
+};
+
+/** The nearest held records of a layer to a point: Outpost's own answer from what is held; no source is asked. */
+export const useNearest = (from: { lat: number; lon: number } | null, layer: string, kind: string | null, enabled = true) => {
+  const params = new URLSearchParams();
+  // Rounded to about ten metres, so that a nudge of the map asks nothing new.
+  if (from) {
+    params.set("lat", from.lat.toFixed(4));
+    params.set("lon", from.lon.toFixed(4));
+  }
+  params.set("layer", layer);
+  if (kind) params.set("kind", kind);
+  params.set("limit", "5");
+  const query = params.toString();
+  return useQuery({
+    queryKey: layersKeys.nearest(query),
+    queryFn: () => api.get<NearestResponse>(`/api/reference/nearest?${query}`),
+    enabled: enabled && from !== null,
     placeholderData: keepPreviousData,
   });
 };

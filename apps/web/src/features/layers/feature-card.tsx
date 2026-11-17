@@ -21,6 +21,7 @@ import { Fact } from "@/features/maps/ui";
 import { errorMessage } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { AirportFrequencies } from "./airport-frequencies";
+import { FoodFacts } from "./food-facts";
 import { ProvenanceMark } from "./marks";
 
 function SourceFacts({ source }: { source: ReferenceSourceInfo }) {
@@ -75,7 +76,9 @@ function Body({ feature }: { feature: ReferenceFeatureDetail }) {
   return (
     <>
       <p className="mt-0.5 text-small text-ink-muted">
-        {feature.kindLabel}, in {layer.label.toLowerCase()}
+        {feature.kindLabel}
+        {feature.food?.alsoKinds.length ? `, also ${feature.food.alsoKinds.join(" and ").toLowerCase()}` : ""}, in{" "}
+        {layer.label.toLowerCase()}
         {feature.country ? `, ${feature.country}` : ""}
       </p>
       <details className="mt-2">
@@ -129,6 +132,7 @@ function Body({ feature }: { feature: ReferenceFeatureDetail }) {
         <p className="mt-2 text-small text-ink-muted">Its place is not documented, so it is not on the map.</p>
       )}
       {feature.airportFrequencies ? <AirportFrequencies frequencies={feature.airportFrequencies} /> : null}
+      {feature.food ? <FoodFacts food={feature.food} source={feature.source} /> : null}
       <p className="mt-2 border-t border-border pt-2 text-small text-ink-muted">
         {feature.source.providerName}, {feature.source.license}, fetched {formatDate(feature.source.retrievedAt)}.{" "}
         {feature.source.sourceUrl ? (

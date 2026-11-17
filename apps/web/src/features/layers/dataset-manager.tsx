@@ -336,6 +336,11 @@ export function GetDialog({
                       />
                       <label htmlFor={`get-layer-${layer}`} className="text-small text-ink">
                         {REFERENCE_LAYER_INFO[layer].label}
+                        {layer === "food" ? (
+                          <span className="block text-micro text-ink-muted">
+                            Only when ticked, and only for the area on screen, up to about a county across.
+                          </span>
+                        ) : null}
                       </label>
                     </div>
                   ))}
