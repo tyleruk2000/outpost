@@ -63,7 +63,7 @@ export function Breadcrumbs({ note }: { note: NoteDetail }) {
   const parent = note.breadcrumbs.at(-1);
   const crumb = "truncate rounded-control text-ink-muted hover:text-ink hover:underline underline-offset-[0.2em] decoration-1";
   return (
-    <nav aria-label="Where this page is" className="min-w-0 flex-1 text-small">
+    <nav aria-label="Where this page is" className="min-w-[min(100%,7em)] flex-1 text-small">
       {/* Phones get the one step that matters: back up to the parent. */}
       <Link
         to={parent ? `/notes/${parent.id}` : "/notes"}
@@ -124,11 +124,12 @@ export function NoteTopBar({
 }) {
   const trashed = note.trashedAt !== null;
   return (
-    <div className="sticky top-0 z-(--z-sticky) flex h-12 items-center gap-2 bg-page px-5 max-md:top-13 md:px-6">
+    // With large text on a phone the way back keeps room for a word or two, and what follows it goes on to a second line.
+    <div className="sticky top-0 z-(--z-sticky) flex min-h-12 flex-wrap items-center gap-x-2 bg-page px-5 max-md:top-13 md:px-6">
       <Breadcrumbs note={note} />
       {trashed ? <p className="shrink-0 text-small text-ink-muted">In the trash</p> : <SaveState status={status} />}
       {trashed ? null : (
-        <div className="-mr-2 flex shrink-0 items-center">
+        <div className="-mr-2 ml-auto flex shrink-0 items-center">
           {note.isTemplate ? null : (
             <Tooltip label={note.isFavorite ? "Remove from favourites" : "Add to favourites"}>
               <Button
