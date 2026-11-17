@@ -2,7 +2,7 @@
 
 This page lists the information sources that have been considered for Outpost's
 catalogue, says what Outpost does with each one, and gives the reason wherever a source
-is not used. It was last checked on 2026-11-16.
+is not used. It was last checked on 2026-11-16; the rows for FEMA and the CDC were checked again on 2026-11-17.
 
 The catalogue itself lives in [`catalog/manifests/`](../catalog/manifests):
 
@@ -10,7 +10,7 @@ The catalogue itself lives in [`catalog/manifests/`](../catalog/manifests):
 | --- | --- | --- |
 | `kiwix-essentials.json` | A starter selection of archives from the Kiwix library | 61 |
 | `kiwix-more.json` | Further Kiwix archives: programming documentation, more Project Gutenberg shelves, medical and science references, courses, talks, preparedness, and more question-and-answer sites | 89 |
-| `official-publications.json` | Individual PDF handbooks, guides, leaflets and textbooks, each fetched from its publisher's own website | 92 |
+| `official-publications.json` | Individual PDF handbooks, guides, leaflets and textbooks, each fetched from its publisher's own website | 107 |
 | `radio.json` | Radio rules, frequency tables, field guides, broadcast guides and band plans as PDFs from their publishers (38), and five more Kiwix archives | 43 |
 | `outpost-reference.json` | Reference sheets written for Outpost and shipped with it; see [radio.md](radio.md) | 9 |
 | `logbook73.json` | The Radio Engineering Handbook and fifteen radio companion guides, written by this project's author for LogBook73 (MIT) and shipped as books; generated, see [radio.md](radio.md#the-handbook-and-the-radio-guides) | 16 |
@@ -38,7 +38,7 @@ the publisher's own website. Links in the last column go to the page that was re
 | --- | --- | --- | --- | --- |
 | 1 | Kiwix Library (library.kiwix.org) | A library of websites packaged as ZIM archives for offline reading | **Built in, and 155 catalogue entries** (61 in `kiwix-essentials`, 89 in `kiwix-more`, 5 in `radio`). Each entry names a book; Outpost looks the book up in the library's feed at download time and takes the address, size and checksum from there. | No single licence: every book keeps its publisher's licence. Entries state the licence where it is known and say "See source" where it has not been checked. Kiwix's English terms-of-use page returned "not found" on the day, so no terms page is linked. |
 | 2 | Kiwix direct downloads (download.kiwix.org/zim/) | The file servers behind the library | **Built in.** Files are fetched from these servers and their mirrors, but manifests never contain the address of a `.zim` file: Kiwix rebuilds most books every month or two and removes old builds. | As for source 1. |
-| 3 | Project Gutenberg (gutenberg.org) | Public-domain books | **Via Kiwix: 9 entries.** Seven shelves and the complete English library in `kiwix-more` (medicine, agriculture, technology, science, geography and recreation, naval science, military science, everything), one shelf in `kiwix-essentials`. **No direct entries, by decision.** On 2026-11-15 www.gutenberg.org answered every request with "403 Forbidden". On 2026-11-16 it answered, and its [robot access policy](https://www.gutenberg.org/policy/robot_access.html) was read: the website "is intended for human users only", automated tools are blocked, and the exceptions are for people who mirror or harvest the collection. It also says the generated formats (EPUB among them) "are re-built monthly". An entry that had Outpost fetch a book from the website would go against the first statement, and its pinned checksum would stop matching every month, so none is listed and nothing further was fetched. A single book is best downloaded in a browser and added under Library. | Entries are marked "Public domain in the United States", as Project Gutenberg describes its books. `robots.txt` (read 2026-11-16) disallows only the search pages; the policy page is what rules out automated downloads. |
+| 3 | Project Gutenberg (gutenberg.org) | Public-domain books | **Via Kiwix: 9 entries.** Seven shelves and the complete English library in `kiwix-more` (medicine, agriculture, technology, science, geography and recreation, naval science, military science, everything), one shelf in `kiwix-essentials`. **No direct entries, by decision.** On 2026-11-15 www.gutenberg.org answered every request with "403 Forbidden". On 2026-11-16 it answered, and its [robot access policy](https://www.gutenberg.org/policy/robot_access.html) was read: the website "is intended for human users only", automated tools are blocked, and the exceptions are for people who mirror or harvest the collection. It also says the generated formats (EPUB among them) "are re-built monthly". An entry that had Outpost fetch a book from the website would go against the first statement, and its pinned checksum would stop matching every month, so none is listed and nothing further was fetched. On 2026-11-17 the site answered 503 (Service Unavailable) with a retry-after of an hour, was not asked again, and the decision stands. A single book is best downloaded in a browser and added under Library. | Entries are marked "Public domain in the United States", as Project Gutenberg describes its books. `robots.txt` (read 2026-11-16) disallows only the search pages; the policy page is what rules out automated downloads. |
 | 4 | OpenStax (openstax.org) | Peer-reviewed college textbooks from Rice University | **Direct: 15 entries** in `official-publications` (Anatomy and Physiology 2e, Microbiology, Clinical Nursing Skills, Biology 2e, Chemistry 2e, College Physics 2e, Astronomy 2e, Precalculus 2e, Introductory Statistics 2e; and, added on 2026-11-16, University Physics Volume 2, Calculus Volume 1, Prealgebra 2e, Pharmacology for Nurses, Additive Manufacturing Essentials and the high-school Physics). The PDF addresses come from OpenStax's own catalogue. The Kiwix library has no OpenStax archive. | CC BY-NC-SA 4.0. This is stated inside each PDF and in the licence fields of [OpenStax's catalogue](https://openstax.org/apps/cms/api/v2/pages/207/). Note that this is a non-commercial licence, not CC BY. The one exception listed is the high-school *Physics*, which its own copyright page and the catalogue give as CC BY 4.0. For the five other books added on 2026-11-16 the licence was taken from the catalogue; each file was seen to say its content is under a Creative Commons licence, and was deleted before the full line was copied down. |
 | 5 | Internet Archive (archive.org) | A very large archive of books, recordings, software and web pages | **Add your own files.** Not in the catalogue: rights differ from item to item, so no general entry would be honest. | The [terms of use](https://archive.org/about/terms) page is drawn by a script and could not be read by the catalogue check. Read the rights statement on each item. |
 | 6 | NASA (nasa.gov) | The US space agency | **Direct: 2 entries** from the NASA Technical Reports Server (NASA Systems Engineering Handbook; Fastener Design Manual). **Via Kiwix: 2 entries** in `kiwix-more` (Astronomy Picture of the Day; TED talks about NASA). | Each [Technical Reports Server record](https://ntrs.nasa.gov/api/citations/20170001761) gives the document's copyright status; both documents are marked as public use permitted. Astronomy Picture of the Day [says](https://apod.nasa.gov/apod/lib/about_apod.html) that NASA images are in the public domain but that some pictures are copyrighted by the people credited. |
@@ -48,7 +48,7 @@ the publisher's own website. Links in the last column go to the page that was re
 | # | Source | What it is | How Outpost uses it | Licence and terms |
 | --- | --- | --- | --- | --- |
 | 7 | Ready.gov | The US government's public preparedness campaign, run by FEMA | **Direct: 4 entries** (Are You Ready?; the full set of hazard information sheets; Emergency Supply List; Disaster Preparedness Guide for Older Adults). **Via Kiwix: 1 entry** in `kiwix-essentials` (the whole site). | The [publications page](https://www.ready.gov/publications) says the files may be downloaded at no cost and reproduced, provided nothing is altered and no endorsement is implied. |
-| 8 | FEMA (fema.gov) | The US Federal Emergency Management Agency | **Not integrated directly.** www.fema.gov answered the catalogue check with "Access Denied" (HTTP 403), so nothing hosted there was fetched. It refused again on 2026-11-16 (HTTP 403 for `robots.txt`); www.usfa.fema.gov answered but was not looked through. Ready.gov's page for Community Emergency Response Teams redirects to fema.gov, so the CERT Basic Training manual could not be looked for. FEMA publications hosted on Ready.gov are covered by source 7. | Could not be read. |
+| 8 | FEMA (fema.gov) | The US Federal Emergency Management Agency | **Direct: 7 entries** (changed 2026-11-17): Planning Guidance for Response to a Nuclear Detonation (Third Edition); Taking Shelter from the Storm (FEMA P-320, December 2024); and the five *Protect Your Property* brochures (earthquakes, flooding, severe winds, storm surge, wildfires). On 2026-11-15 and 2026-11-16 www.fema.gov answered with HTTP 403 and nothing there was fetched. On 2026-11-17 it answered Outpost's own client, unchanged, with 200; `robots.txt` was read (it asks for `crawl-delay: 15` and disallows `/disaster/*`, search and the non-English paths) and every request to the host was at least 15 seconds after the last. **Left out:** the CERT Basic Training participant manual, because neither FEMA's CERT page nor Ready.gov's (which now redirects to it) links a copy, and Earthquake Safety at Home (FEMA P-530), because it was prepared by a contractor and some 40 of its photographs and graphics are credited to outside people and bodies. See [the 2026-11-17 section](#what-was-added-on-2026-11-17-for-cdc-and-fema-and-how). FEMA publications hosted on Ready.gov are covered by source 7. | The [website information page](https://www.fema.gov/about/website-information) (read 2026-11-17, last updated 1 May 2023): "Most material on FEMA.gov is free of copyright and may be copied and distributed without permission." It says FEMA sometimes uses licensed or restricted photos or graphics, to be checked for a copyright notice or photo credit, and that the DHS seal and marks have their own rules. |
 | 9 | Survivor Library (survivorlibrary.com) | A private collection of scanned older books on pre-industrial skills | **Not in the catalogue.** It is a third party's collection of other people's works, and the site's home page states no licence for the scans. Kiwix does publish the site as an archive (`survivorlibrary.com_en_all`, about 220 GB); it has been left out until someone has checked the rights. | No licence statement found on the [home page](https://www.survivorlibrary.com/). |
 | 10 | TruePrepper survival PDF collection | A preparedness website's page of downloadable manuals | **Not in the catalogue.** The page re-hosts manuals written by other publishers. The site says it will not infringe copyrights but gives no licence for the individual files, and the site itself is marked "All rights reserved". Where a manual has an official publisher (FEMA, the US Army, the FAA), the catalogue points at that publisher instead. Kiwix publishes the site's own articles as `trueprepper.com_en_all` (about 1.4 GB); it has been left out for the same reason. | [The page](https://trueprepper.com/survival-pdfs-downloads/): "All rights reserved". |
 
@@ -56,7 +56,7 @@ the publisher's own website. Links in the last column go to the page that was re
 
 | # | Source | What it is | How Outpost uses it | Licence and terms |
 | --- | --- | --- | --- | --- |
-| 11 | CDC (cdc.gov) | The US Centers for Disease Control and Prevention | **Via Kiwix: 1 entry** in `kiwix-essentials` (Travelers' Health). **No direct entries**: www.cdc.gov answered the catalogue check with HTTP 403, so no file there was fetched. Both www.cdc.gov and its document repository stacks.cdc.gov refused again on 2026-11-16 (HTTP 403 for `robots.txt`). | Could not be read. |
+| 11 | CDC (cdc.gov) | The US Centers for Disease Control and Prevention | **Direct: 8 entries** (changed 2026-11-17), one-page sheets: Make Water Safe During an Emergency; Water treatment while hiking, camping, and traveling; Eat Safe Food after a Power Outage; Emergency Wound Care After a Natural Disaster; Preventing Diarrhea After A Disaster; Heat-Related Illnesses; Carbon Monoxide Hazard: Using a Generator; Wash Your Hands. **Via Kiwix: 1 entry** in `kiwix-essentials` (Travelers' Health). On 2026-11-15 and 2026-11-16 www.cdc.gov and stacks.cdc.gov answered with HTTP 403. On 2026-11-17 www.cdc.gov answered Outpost's own client, unchanged, with 200; `robots.txt` was read (it disallows `/travel/`, `/flu/espanol/`, `/migration/`, `/niosh/archive/` and template paths, none of which is used). stacks.cdc.gov was not asked again and nothing is listed from it. **Left out:** Extreme Cold: A Prevention Guide, because its old page is gone (404) and the current winter weather pages link no PDF. | The [Use of Agency Materials page](https://www.cdc.gov/other/agencymaterials.html) (read 2026-11-17): "Most of the information on the CDC and ATSDR websites is not subject to copyright, is in the public domain, and may be freely used or reproduced without obtaining copyright permission." Conditions: credit CDC, imply no endorsement, do not change the substantive content, and say the material is available on the agency's website at no charge. Exceptions: material by contractors, grantees or third parties (which should carry a copyright statement), and the CDC logo. None of the eight sheets carries a copyright statement or outside credit. |
 | 12 | WHO publications (who.int) | The World Health Organization's guidelines and manuals, held in its IRIS repository | **Direct: 6 entries** (Basic Emergency Care; Pocket Book of Primary Health Care for Children and Adolescents; Managing Complications in Pregnancy and Childbirth; Model List of Essential Medicines; Guidelines for Drinking-water Quality; Preventing Drowning). The repository answers a `HEAD` request with HTTP 500 although an ordinary download works, so the online check asks it for the first byte of each file instead. | CC BY-NC-SA 3.0 IGO for WHO's own publications, per its [copyright page](https://www.who.int/about/policies/publishing/copyright). Older documents need care: the 2013 *Pocket book of hospital care for children* is marked CC in the repository record but "All rights reserved" inside the file, so it was dropped. |
 | 13 | National Center for Home Food Preservation (nchfp.uga.edu) | A US centre for research-based home food preservation, hosted by the University of Georgia | **Direct: 8 entries**: the eight files that make up the *USDA Complete Guide to Home Canning* (2015 revision). **Via Kiwix: 1 entry** in `kiwix-essentials` (the same guide as an archive). | The guide is a US Department of Agriculture bulletin, offered by the centre as ["the electronic version of the USDA canning guide"](https://nchfp.uga.edu/resources/entry/about-the-usda-guide-to-home-canning-2015-revision). No reuse licence is stated in the files or on the page, and the website is marked "All rights reserved", so the entries say "See source". |
 
@@ -608,7 +608,8 @@ was checked should not arrive silently.
   host. A catalogue refresh in the app does not contact these publishers at all: every
   direct entry pins its size and checksum, and the download itself is the check. Hosts that
   refused the client (gutenberg.org, fema.gov, cdc.gov) were left alone after one or
-  two requests, and nothing was done to get round the refusal. No search pages were
+  two requests, and nothing was done to get round the refusal. (fema.gov and cdc.gov
+  answered the same client on 2026-11-17; see below.) No search pages were
   crawled and no site was scraped.
 
 ## What was added on 2026-11-15 for radio, and how
@@ -667,7 +668,7 @@ was checked should not arrive silently.
   entries resolve at their source.
 - **Conduct.** One request at a time, `robots.txt` read first for every new host, at
   least two seconds between requests to one host and more where asked. Hosts that
-  refused (cdc.gov, stacks.cdc.gov, fema.gov, phmsa.dot.gov, nwcg.gov, fsis.usda.gov,
+  refused (cdc.gov, stacks.cdc.gov, fema.gov (cdc.gov and fema.gov answered on 2026-11-17), phmsa.dot.gov, nwcg.gov, fsis.usda.gov,
   spherestandards.org, ifrc.org, nrc.canada.ca, noaa.gov's disclaimer page) or failed
   (msi.nga.mil, fpl.fs.usda.gov) were left alone after one or two requests, and nothing
   was done to get round a refusal. One mistake: a faulty script sent ten requests to
@@ -719,6 +720,54 @@ The whole catalogue was not run through the online check again after this change
 is some three hundred requests to other people's servers, made once already that day.
 The two new entries were checked as above, by hand, and `pnpm catalog:validate` passes
 with 310 entries.
+
+## What was added on 2026-11-17 for CDC and FEMA, and how
+
+- **Why now.** On 2026-11-15 and 2026-11-16 www.cdc.gov, stacks.cdc.gov and
+  www.fema.gov refused the catalogue check with HTTP 403. On 2026-11-17 `robots.txt`
+  for www.cdc.gov and www.fema.gov was requested with Outpost's own HTTP client
+  (`apps/server/src/core/http.ts`, user agent "Outpost (self-hosted offline library)",
+  unchanged) and both answered 200. Every request below went through that client. No
+  other user agent, browser, proxy, mirror, cache or summarising fetcher was used.
+  stacks.cdc.gov was not asked again.
+- **Terms read.** CDC's [Use of Agency Materials](https://www.cdc.gov/other/agencymaterials.html)
+  and FEMA's [website information](https://www.fema.gov/about/website-information) page,
+  both quoted in rows 11 and 8 above. Each CDC entry's attribution carries the credit,
+  the no-endorsement line and "available at no charge on www.cdc.gov", as CDC's page
+  asks. Each file was searched for copyright notices and credits before it was listed.
+- **Addresses** were taken from the agencies' own pages: CDC's water emergency and
+  natural disaster communication resources pages and the page of each sheet, CDC's
+  hiking water page and power-cut food page; FEMA's safe room resources page and its
+  *Protect Your Property* brochures page. The one exception is the nuclear detonation
+  planning guidance: none of the FEMA pages read (planning guides, radiological,
+  hazardous response, the Office of Emerging Threats) links it, so its address came
+  from a search engine. It is FEMA's own file store, the file names FEMA as publisher,
+  and the entry's homepage is the Office of Emerging Threats page the guidance itself
+  names. Search engines were used to find pages; neither agency's own search was used.
+- **Files.** Sixteen PDFs, each fetched once (about 53 MB): measured, hashed, and the title,
+  page count, edition and date read from the file. Fifteen were listed. FEMA's P-320
+  address without a date redirects to the April 2025 file, so the entry names that file.
+  P-320's own copyright note says its illustrations are by FEMA or a FEMA contractor
+  and its photographs public domain or FEMA's; the ICC 500 section it reproduces with
+  permission, and a copyright line on its design drawing sheets that names no holder,
+  are stated in the entry. The nuclear guidance credits one figure to an outside
+  author; the entry says so.
+- **Left out.** FEMA P-530, Earthquake Safety at Home (fetched, not listed: prepared by
+  the Applied Technology Council for FEMA, with some 40 photographs and graphics credited
+  to outside people and organisations); the CERT Basic Training participant manual
+  (FEMA's CERT page lists "Participant manuals" with no link, and Ready.gov's CERT page
+  redirects there); CDC's Extreme Cold guide (no current page offers the PDF). Spanish
+  and other language editions were not listed; the brief was English only.
+- **Conduct.** At least 15 seconds between requests to www.fema.gov, as its
+  `robots.txt` asks, and a few seconds between requests to www.cdc.gov. About 25 pages (twelve at the CDC,
+  twelve at FEMA, one at Ready.gov that redirected to FEMA) and 16 files were requested,
+  besides the online check. The downloaded files were kept outside the repository
+  and deleted.
+- **Checks.** `pnpm catalog:validate` passes with 325 entries, and
+  `pnpm catalog:validate --online --delay 16` reports 325 of 325 entries resolving at
+  their source. One entry from each host (the CDC generator flyer and FEMA's earthquake
+  brochure) was downloaded through a throwaway Outpost server started from the
+  repository, and both completed at the pinned size and checksum.
 
 ## What was read on 2026-11-16 for repeaters, and how
 
@@ -877,7 +926,7 @@ Those quotations should be read again on the page before being relied on.
   satisfied with, and add it under **Library → Add documents**. It is stored on your
   disk, indexed for search, and opens in the built-in viewer like any other document.
   This is the right route for Internet Archive items, single Project Gutenberg books,
-  CDC and FEMA guides, Hesperian's books, the Sphere Handbook, and anything you hold a
+  CDC and FEMA guides the catalogue does not list, Hesperian's books, the Sphere Handbook, and anything you hold a
   licence for.
 - **Contribute a manifest entry.** If a publisher offers a stable address for a file
   and a licence that allows free download, it can be listed. The format, the rules and
