@@ -5,6 +5,11 @@
   margin-block: 0.85em;
 }
 
+/* A long address or command written in a sentence wraps rather than run off a phone's screen. */
+.guide-doc :not(pre) > code {
+  overflow-wrap: anywhere;
+}
+
 /* The command's own box is the one drawn: the reading surface's box for code would be a second one inside it. */
 .guide-doc .guide-code pre {
   margin: 0;
@@ -15,6 +20,11 @@
   overflow-x: visible;
   font-size: 0.8125rem;
   line-height: 1.25rem;
+}
+
+/* One block, as wide as the box: a command of several lines is measured as the box it is in. */
+.guide-doc .guide-code pre code {
+  display: block;
 }
 
 /* A link that leaves Outpost: a small arrow after it, and words for a screen reader. It needs the internet. */

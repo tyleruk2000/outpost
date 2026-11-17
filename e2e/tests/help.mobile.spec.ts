@@ -74,7 +74,9 @@ test("the long list of sources has its own contents, folded on a phone", async (
   const contents = page.getByRole("navigation", { name: "On this page" });
   await contents.getByRole("link", { name: "Mesh radio (read 2026-11-17)" }).click();
   await expect(page).toHaveURL(/#h-mesh-radio-read-2026-11-17$/);
-  await expect.poll(async () => Math.round((await page.locator("#h-mesh-radio-read-2026-11-17").boundingBox())?.y ?? 9999)).toBeLessThan(300);
+  await expect
+    .poll(async () => Math.round((await page.locator("#h-mesh-radio-read-2026-11-17").boundingBox())?.y ?? 9999))
+    .toBeLessThan(300);
   expect(await overflow(page)).toBeLessThanOrEqual(0);
   expect(errors).toEqual([]);
 });
