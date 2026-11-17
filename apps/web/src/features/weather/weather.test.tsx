@@ -6,7 +6,7 @@ import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { positionAvailable } from "./places-view";
 import WeatherPage from "./weather-page";
-import { daySentence, levelWords, windText } from "./words";
+import { daySentence, windText } from "./words";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -98,7 +98,7 @@ function show(response: Partial<WeatherResponse> | "fails" | "never", view = "",
       if (pathname === "/api/weather") {
         if (response === "never") return new Promise<Response>(() => {});
         if (response === "fails") return json({ error: { code: "internal", message: "The database is busy." } }, 500);
-        return json({ places: [], kept: [], sources, updateOnOpen: false, now: NOW, ...response });
+        return json({ places: [], kept: [], sources, updateOnOpen: false, riversKm: 8, now: NOW, ...response });
       }
       if (pathname === "/api/weather/readings") return json({ readings: [] });
       if (pathname === "/api/maps/markers") return json({ markers });
@@ -140,7 +140,7 @@ describe("the Weather and hazards screen", () => {
   it("fetches once on opening when the tick is on, and only then", async () => {
     const posted = show({ places: [home], updateOnOpen: true });
     await waitFor(() => expect(posted.filter((call) => call.path === "POST /api/weather/update")).toHaveLength(1));
-    expect(posted[0]!.body).toEqual({ kinds: ["forecast", "warnings", "flood"] });
+    expect(posted[0]!.body).toEqual({ kinds: ["forecast", "warnings", "flood", "rivers"] });
   });
 
   it("makes the whole 'update when I open' row the thing to press, at least 44 px tall", async () => {
@@ -280,23 +280,5 @@ describe("the words", () => {
       "Moderate rain. 41 to 55 °F. 15.2 mm of rain or snow; the chance of some is 100%. Wind up to 14 mph, gusts to 31 mph.",
     );
     expect(windText(null, "mph")).toBe("no figure");
-  });
-
-  it("places a river level against its typical range", () => {
-    const station = {
-      id: "s",
-      label: "Bedford",
-      river: null,
-      town: null,
-      lat: 0,
-      lon: 0,
-      distanceKm: 1,
-      highestRecent: null,
-      typicalLow: 0.25,
-      typicalHigh: 0.52,
-    };
-    expect(levelWords({ ...station, latest: { value: 0.29, unit: "m", at: 0 } })).toBe("within its typical range");
-    expect(levelWords({ ...station, latest: { value: 0.6, unit: "m", at: 0 } })).toBe("above its typical range");
-    expect(levelWords({ ...station, latest: null })).toBeNull();
   });
 });

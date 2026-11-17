@@ -8,18 +8,24 @@
  */
 import {
   type FloodData,
-  type FloodWarning,
   freshness,
+  HELD_STATION_HISTORIES,
   type HomeWarningsResponse,
   homePlaceOf,
   type KeptCopy,
+  type LevelReading,
+  MAX_RIVER_STATIONS,
   type MetOfficeRegionId,
   type PressureReading,
   type PressureUnit,
   type ReadingImportResult,
-  type RiverStation,
+  type RiverLevelStation,
+  type RiverReadingsData,
+  type RiversData,
   regionName,
   SEA_LEVEL_RANGE,
+  STATION_HISTORY_DAYS,
+  type StationReadings,
   seaLevelPressure,
   toHpa,
   type UpdateOutcome,
@@ -45,15 +51,18 @@ import {
   distanceKm,
   type Parsed,
   parseEaFloods,
-  parseEaStation,
-  parseEaStations,
+  parseEaLevelStations,
+  parseEaReadings,
   parseMetOfficeWarnings,
   parseNasaPower,
   parseOpenMeteo,
   parsePvgis,
   SourceFormatError,
 } from "./parsers.ts";
-import { FLOOD_WARNINGS_KM, MAX_STATIONS, type SourceFetcher, STATIONS_KM, sentWords, sourceUrls, WEATHER_SOURCES } from "./sources.ts";
+import { FLOOD_WARNINGS_KM, type SourceFetcher, sentWords, sourceUrls, WEATHER_SOURCES } from "./sources.ts";
+
+/** Readings asked for with each station's latest, enough for three hours at the usual 15 minutes and a margin. */
+const LATEST_COUNT = 16;
 
 export interface PlaceInput {
   markerId?: string | null;
@@ -80,6 +89,8 @@ export interface WeatherService {
   removeCopy(id: string): void;
   /** Fetches, from the publishers, the kinds asked for, for the places asked for (all of them when none are named). */
   update(input: { kinds: WeatherKind[]; placeIds?: string[] }, signal?: AbortSignal): Promise<UpdateOutcome[]>;
+  /** Fetches one station's last few days of readings, for a station held in a place's river and sea levels. */
+  stationReadings(input: { placeId: string; stationId: string }, signal?: AbortSignal): Promise<StationReadings>;
   homeWarnings(now?: number): HomeWarningsResponse;
   readings(): PressureReading[];
   addReading(input: ReadingInput): PressureReading;
@@ -96,11 +107,13 @@ const SOURCE_OF: Record<WeatherKind, WeatherSourceId> = {
   forecast: "open-meteo",
   warnings: "met-office-warnings",
   flood: "ea-flood",
+  rivers: "ea-levels",
+  "river-readings": "ea-levels",
   climate: "nasa-power",
   solar: "pvgis",
 };
 
-export function createWeatherService(ctx: AppContext, fetcher: SourceFetcher): WeatherService {
+export function createWeatherService(ctx: AppContext, fetcher: SourceFetcher, options: { riversKm: () => number }): WeatherService {
   const { db, sqlite } = ctx;
   // Copies kept for places that are no longer in the list (an update an earlier version
   // finished after the place was removed) are counted as fetched with nowhere to show
@@ -208,28 +221,11 @@ export function createWeatherService(ctx: AppContext, fetcher: SourceFetcher): W
     if (kind === "flood") {
       const floodsUrl = sourceUrls.floods(target.lat, target.lon);
       const floods = await fetcher.get(source, floodsUrl, signal);
-      const warnings: FloodWarning[] = parseEaFloods(floods.text);
-      const stationsUrl = sourceUrls.stations(target.lat, target.lon);
-      const list = await fetcher.get(source, stationsUrl, signal);
-      let bytes = floods.bytes + list.bytes;
-      const nearest = parseEaStations(list.text)
-        .map((station) => ({ station, km: distanceKm(target, station) }))
-        .sort((a, b) => a.km - b.km)
-        .slice(0, MAX_STATIONS);
-      const stations: RiverStation[] = [];
-      for (const { station, km } of nearest) {
-        const full = await fetcher.get(source, sourceUrls.station(station.id), signal);
-        bytes += full.bytes;
-        try {
-          stations.push(parseEaStation(full.text, station, Math.round(km * 10) / 10));
-        } catch {
-          // One station's odd answer does not lose the others; it is left out.
-        }
-      }
-      const data: FloodData = { warningsWithinKm: FLOOD_WARNINGS_KM, stationsWithinKm: STATIONS_KM, warnings, stations };
-      keep(kind, target.id, { data, validFrom: null, validUntil: null }, bytes, sentWords(floodsUrl));
-      return { bytes };
+      const data: FloodData = { warningsWithinKm: FLOOD_WARNINGS_KM, warnings: parseEaFloods(floods.text) };
+      keep(kind, target.id, { data, validFrom: null, validUntil: null }, floods.bytes, sentWords(floodsUrl));
+      return { bytes: floods.bytes };
     }
+    if (kind === "rivers") return fetchRivers(target, signal);
     const url =
       kind === "forecast"
         ? sourceUrls.forecast(target.lat, target.lon)
@@ -242,6 +238,54 @@ export function createWeatherService(ctx: AppContext, fetcher: SourceFetcher): W
     keep(kind, target.id, parsed, answer.bytes, sentWords(url));
     return { bytes: answer.bytes };
   }
+
+  /**
+   * The level stations within the chosen distance, nearest first, each with its latest
+   * readings: one request for the list (with every station's scale), then one for each
+   * station's readings. A station whose readings cannot be had is kept with a note; a list
+   * that cannot be had changes nothing.
+   */
+  async function fetchRivers(target: WeatherPlace, signal?: AbortSignal): Promise<{ bytes: number }> {
+    const km = options.riversKm();
+    const listUrl = sourceUrls.levelStations(target.lat, target.lon, km);
+    const list = await fetcher.get("ea-levels", listUrl, signal);
+    let bytes = list.bytes;
+    const within = parseEaLevelStations(list.text)
+      .map((station) => ({ station, km: distanceKm(target, station) }))
+      // The Agency says its distance "may be approximated by a bounding box".
+      .filter((entry) => entry.km <= km)
+      .sort((a, b) => a.km - b.km);
+    const stations: RiverLevelStation[] = [];
+    for (const { station, km: away } of within.slice(0, MAX_RIVER_STATIONS)) {
+      if (signal?.aborted) break;
+      let recent: LevelReading[] = [];
+      let readingsNote: string | null = null;
+      try {
+        const answer = await fetcher.get("ea-levels", sourceUrls.latestReadings(station.measureId, LATEST_COUNT), signal);
+        bytes += answer.bytes;
+        recent = parseEaReadings(answer.text);
+        if (recent.length === 0) readingsNote = "The Agency gave no recent readings for this station.";
+      } catch (error) {
+        if ((error as Error).name === "AbortError") throw error;
+        readingsNote = `Its readings could not be fetched. ${error instanceof AppError ? error.message : "The answer could not be read."}`;
+      }
+      stations.push({ ...station, distanceKm: Math.round(away * 10) / 10, recent, readingsNote });
+    }
+    const data: RiversData = { withinKm: km, listed: within.length, stations };
+    const at = new URL(listUrl).searchParams;
+    const sent = `environment.data.gov.uk: latitude ${at.get("lat")}, longitude ${at.get("long")}, within ${km} km; then the level measure of ${stations.length === 1 ? "the one station" : `each of ${stations.length} stations`}`;
+    keep("rivers", target.id, { data, validFrom: null, validUntil: null }, bytes, sent);
+    return { bytes };
+  }
+
+  const copyFor = <K extends WeatherKind>(kind: K, placeId: string): KeptCopy<K> | null => {
+    const row = db
+      .select()
+      .from(weatherCache)
+      .all()
+      .find((candidate) => candidate.kind === kind && candidate.placeId === placeId);
+    return row ? (toCopy(row) as KeptCopy<K>) : null;
+  };
 
   function readings(): PressureReading[] {
     return db
@@ -338,6 +382,49 @@ export function createWeatherService(ctx: AppContext, fetcher: SourceFetcher): W
       changed();
     },
 
+    async stationReadings({ placeId, stationId }, signal) {
+      const target = place(placeId);
+      const rivers = copyFor("rivers", target.id);
+      const station = rivers?.data.stations.find((candidate) => candidate.id === stationId);
+      if (!station) throw gone("That station is not among the river and sea levels kept for this place. Fetch them again.");
+      const fetchedAt = Date.now();
+      const since = fetchedAt - STATION_HISTORY_DAYS * 86_400_000;
+      const url = sourceUrls.readingsSince(station.measureId, since);
+      let answer: { text: string; bytes: number };
+      let readings: LevelReading[];
+      try {
+        answer = await fetcher.get("ea-levels", url, signal);
+        readings = parseEaReadings(answer.text);
+      } catch (error) {
+        throw error instanceof AppError ? error : new AppError("upstream", failure(error));
+      }
+      const entry: StationReadings = {
+        stationId,
+        measureId: station.measureId,
+        unit: station.unit,
+        fetchedAt,
+        since,
+        bytes: answer.bytes,
+        readings,
+      };
+      // Read, merge and write with nothing awaited between, so two presses cannot lose each other's.
+      if (!stillThere(target.id)) throw gone(REMOVED);
+      const held = copyFor("river-readings", target.id)?.data.stations ?? [];
+      const data: RiverReadingsData = {
+        stations: [entry, ...held.filter((other) => other.stationId !== stationId)].slice(0, HELD_STATION_HISTORIES),
+      };
+      const bytes = data.stations.reduce((sum, other) => sum + other.bytes, 0);
+      keep(
+        "river-readings",
+        target.id,
+        { data, validFrom: null, validUntil: null },
+        bytes,
+        `environment.data.gov.uk: the level measure of station ${stationId}; no position`,
+      );
+      changed();
+      return entry;
+    },
+
     async update(input, signal) {
       if (updating) throw conflict("An update is already under way. Wait for it to finish.");
       updating = true;
@@ -346,6 +433,7 @@ export function createWeatherService(ctx: AppContext, fetcher: SourceFetcher): W
         const all = places();
         const chosen = input.placeIds ? all.filter((candidate) => input.placeIds!.includes(candidate.id)) : all;
         if (input.placeIds && chosen.length !== input.placeIds.length) throw gone("One of those places is not in the list any more.");
+        if (input.kinds.includes("river-readings")) throw badRequest("A station's readings are fetched from its own view.");
         const perPlace = input.kinds.filter((kind) => kind !== "warnings");
         if (perPlace.length > 0 && chosen.length === 0)
           throw badRequest("Choose a place first: forecasts are fetched for the places in the list.");

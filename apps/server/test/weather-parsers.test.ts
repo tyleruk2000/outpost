@@ -10,8 +10,8 @@ import {
   eaTime,
   londonTime,
   parseEaFloods,
-  parseEaStation,
-  parseEaStations,
+  parseEaLevelStations,
+  parseEaReadings,
   parseMetOfficeWarnings,
   parseNasaPower,
   parseOpenMeteo,
@@ -126,15 +126,67 @@ describe("the Environment Agency's flood-monitoring API", () => {
     expect(warnings[0]!.message).toMatch(/^Higher than normal tides tomorrow morning may lead to flooding\./);
   });
 
-  it("reads stations and one station's latest level with its typical range", () => {
-    const stations = parseEaStations(fixture("ea-stations.json"));
-    expect(stations.map((station) => station.id).sort()).toEqual(["E21046", "E21609", "E26141"]);
-    const bedford = stations.find((station) => station.id === "E21609")!;
-    expect(bedford).toMatchObject({ label: "Bedford", river: "River Great Ouse" });
-    const full = parseEaStation(fixture("ea-station-E21609.json"), bedford, 2.4);
-    expect(full.latest).toEqual({ value: 0.29, unit: "mASD", at: Date.UTC(2026, 10, 16, 16, 0) });
-    expect(full).toMatchObject({ typicalLow: 0.252, typicalHigh: 0.524, distanceKm: 2.4 });
-    expect(full.highestRecent).toEqual({ value: 0.981, at: Date.UTC(2014, 1, 10, 0, 0) });
+  it("reads level stations near a point with the measure shown, its unit and its scale", () => {
+    // Recorded near King's Lynn on 17 November 2026 (fixtures/weather/ea-level-stations.json).
+    const stations = parseEaLevelStations(fixture("ea-level-stations.json"));
+    expect(stations.map((station) => station.id)).toEqual(["E21183", "E21050", "E23745", "E41071", "E23740", "E47901"]);
+    const kilhams = stations[0]!;
+    expect(kilhams).toMatchObject({
+      label: "Kilham's Bridge",
+      river: "River Wallington",
+      rloiId: "6269",
+      qualifier: "Stage",
+      tidal: false,
+      measureId: "E21183-level-stage-i-15_min-mAOD",
+      unit: "mAOD",
+      periodS: 900,
+      status: "active",
+      typicalLow: 0.028,
+      typicalHigh: 3.448,
+    });
+    // As the Agency publishes it, even where its typical top is above the highest on record.
+    expect(kilhams.maxOnRecord).toEqual({ value: 2.172, at: Date.UTC(2012, 3, 23, 7, 15) });
+    expect(kilhams.highestRecent).toEqual({ value: 2.172, at: Date.UTC(2012, 3, 23, 7, 15) });
+  });
+
+  it("marks a tidal station as tidal, with no typical range, and prefers its 15-minute measure", () => {
+    const stations = parseEaLevelStations(fixture("ea-level-stations.json"));
+    const lynn = stations.find((station) => station.id === "E47901")!;
+    expect(lynn).toMatchObject({
+      tidal: true,
+      qualifier: "Tidal Level",
+      measureId: "E47901-level-tidal_level-i-15_min-mAOD",
+      typicalLow: null,
+      typicalHigh: null,
+    });
+    expect(lynn.maxOnRecord?.value).toBe(4.954);
+    // Two tidal measures, one in plain metres and one above the station's datum: the one that names its datum.
+    expect(stations.find((station) => station.id === "E23745")).toMatchObject({ unit: "mASD", tidal: true });
+  });
+
+  it("keeps a station with no scale and no status, with nothing judged", () => {
+    const freebridge = parseEaLevelStations(fixture("ea-level-stations.json")).find((station) => station.id === "E41071")!;
+    expect(freebridge).toMatchObject({ status: null, typicalLow: null, typicalHigh: null, maxOnRecord: null, unit: "m", river: null });
+  });
+
+  it("reads readings oldest first, one for each time, and leaves out those with no value", () => {
+    const readings = parseEaReadings(fixture("ea-level-readings.json"));
+    expect(readings).toHaveLength(96);
+    expect(readings.at(-1)).toEqual({ t: Date.UTC(2026, 10, 17, 11, 15), v: 1.091 });
+    expect(readings[0]!.t).toBeLessThan(readings[1]!.t);
+    const scrambled = JSON.stringify({
+      items: [
+        { dateTime: "2026-11-17T11:00:00Z", value: 1.09 },
+        { dateTime: "2026-11-17T11:15:00Z" },
+        { dateTime: "2026-11-17T10:45:00Z", value: 1.089 },
+        { dateTime: "2026-11-17T11:00:00Z", value: 1.09 },
+        { dateTime: "not a time", value: 3 },
+      ],
+    });
+    expect(parseEaReadings(scrambled)).toEqual([
+      { t: Date.UTC(2026, 10, 17, 10, 45), v: 1.089 },
+      { t: Date.UTC(2026, 10, 17, 11, 0), v: 1.09 },
+    ]);
   });
 
   it("reads times with no zone as UK times and with Z as UTC", () => {
@@ -145,7 +197,8 @@ describe("the Environment Agency's flood-monitoring API", () => {
 
   it("refuses what is not a list", () => {
     expect(() => parseEaFloods("{}")).toThrow(SourceFormatError);
-    expect(() => parseEaStations("[]")).toThrow(SourceFormatError);
+    expect(() => parseEaLevelStations("[]")).toThrow(SourceFormatError);
+    expect(() => parseEaReadings("<html>busy</html>")).toThrow(SourceFormatError);
   });
 });
 

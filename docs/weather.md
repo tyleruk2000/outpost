@@ -14,8 +14,11 @@ are not shown as current.
 
 Outpost contacts the publishers only when a person presses a button:
 
-- **Update now** fetches the UK's warnings, and the forecast and flood data for every
-  place in the list.
+- **Update now** fetches the UK's warnings, and the forecast, flood warnings and river
+  and sea levels for every place in the list.
+- **Fetch river and sea levels**, under River and sea levels, fetches them for the place
+  chosen; **Fetch the last 3 days**, on a station's own view, fetches that station's
+  readings.
 - **Fetch the averages for this place**, under Climate, fetches climate averages and
   sunshine figures for one place. They change over decades, so they are not part of
   Update now.
@@ -69,7 +72,8 @@ These are Outpost's choices, not any publisher's. They are in `FRESH_FOR` in
 | --- | --- | --- |
 | Forecast | 6 hours | "old": a newer forecast will have been made, and the nearer hours may have changed. Once its last hour has passed, it has "run out". The screen then shows no figures from it as expected, only that it has run out. |
 | Warnings | 3 hours | "old": warnings may have been issued, changed or ended since. Each warning's own period is also checked: not begun, in force, or ended. |
-| Flood warnings and river levels | 1 hour | "old". The Environment Agency's readings come every 15 minutes. |
+| Flood warnings | 1 hour | "old". The Environment Agency's readings come every 15 minutes. |
+| River and sea levels, a station's last days | 1 hour | "old", and each level also says when it was measured ("measured 17 Nov 2026, 11:15 (14 hours ago)"), which can be much older than when it was fetched (below). |
 | Climate averages, sunshine | Always | They are averages over many years, not a forecast, and are labelled so. |
 
 At every age the copy says "Fetched 3 days ago" (or minutes, or hours), followed by
@@ -85,7 +89,8 @@ Each publisher's terms are quoted, with the date they were read, in
 | --- | --- | --- |
 | Forecast, seven days | [Open-Meteo](https://open-meteo.com/), asked for the Met Office's models (`models=ukmo_seamless`): UKV at 2 km over the UK and Ireland, the global model at 10 km elsewhere | Position to two decimal places |
 | Severe-weather warnings | The Met Office's RSS feed for the whole UK | Nothing about the person: the one UK feed |
-| Flood warnings within 15 km, river levels within 8 km | The Environment Agency's real-time flood-monitoring API | Position to two decimal places, and the distance |
+| Flood warnings within 15 km | The Environment Agency's real-time flood-monitoring API | Position to two decimal places, and the distance |
+| River and sea levels within 3, 8, 15 or 25 km | The same API | Position to two decimal places and the distance; then each station's measure name, with no position |
 | Climate averages by month | NASA POWER climatology | Position to two decimal places |
 | Sunshine on a solar panel by month | PVGIS (European Commission Joint Research Centre), `MRcalc` | Position to two decimal places |
 
@@ -108,11 +113,11 @@ house than that.
   the rest of the UK is behind a disclosure. A line says that this is Outpost's copy,
   that it may be out of date, and where the live page is.
 - **Flood.** The Environment Agency's warnings in force within 15 km, in its words
-  and with its severity ("Flood alert", "Flood warning", "Severe flood warning"). Up to
-  five river gauges within 8 km, with the latest level, its time, and whether it is
-  above, within or below the range the Agency calls typical there. The Agency's own
-  caveat is quoted: its data "should not be relied upon for safety critical
-  applications".
+  and with its severity ("Flood alert", "Flood warning", "Severe flood warning"). The
+  Agency's own caveat is quoted: its data "should not be relied upon for safety critical
+  applications". River levels used to be listed here too (five gauges within 8 km);
+  they are now their own view, and a line links to it.
+- **River and sea levels.** See [below](#river-and-sea-levels).
 - **Climate.** Mean temperature, rain, wind and sunshine on level ground, month by
   month, averaged over NASA POWER's stated period (January 2001 to December 2025 when
   read). It is on a grid of about 50 km, not a weather station's record. Rain for a
@@ -174,6 +179,85 @@ through `POST /api/weather/update`, the same route this screen uses. See
   with no registration; Natural Resources Wales's API needs a key; Northern Ireland's
   flood maps are licensed commercially. None was built. The Environment Agency covers
   England only, and the screen says so.
+
+## River and sea levels
+
+The **River and sea levels** view lists the Environment Agency's measuring stations near
+the place chosen (home by default), nearest first, on a press. Each shows:
+
+- the river or coast it is on and how far away it is;
+- its latest level, with the time it was measured and how long ago that is;
+- what the level is measured from, because a level means nothing without it. The Agency
+  names this in its unit: `mAOD` is metres above Ordnance Datum, the level heights on
+  Ordnance Survey maps are measured from; `mASD` is metres above the station's own
+  datum, a point fixed for that gauge; `m` is metres from a datum the Agency does not
+  name. Levels at two stations measured from different points cannot be compared;
+- whether the level is within, above or below the **typical range the Agency publishes
+  for that station**. In the Agency's words its top is the level "the measurement
+  exceeded … for 5% of the relevant data on record", and its bottom the level exceeded
+  for 95%. A station with no published range is not judged. A **tidal** station (the
+  Agency's qualifier "Tidal Level") is marked as tidal and not judged against a range:
+  it rises and falls with the tide;
+- whether it is rising, steady or falling over the readings held (below);
+- "Not reporting" when its latest reading is more than two days older than the moment
+  it was fetched, and the Agency's own "suspended" or "closed" status and reason where
+  it gives one.
+
+**The distance** is a drop-down: 3, 8 (the default), 15 or 25 km, with miles beside.
+It is one setting on the server (`weather.riversKm`), so every device and Update now
+use it. Choosing one fetches nothing. The Agency says its distance "may be approximated
+by a bounding box", so only stations truly within it are kept, and at most the nearest
+ten, since each is one more request. The kept copy says which distance it was fetched
+for.
+
+**What is asked.** One request for the stations within the distance with each one's
+scale (`/id/stations?parameter=level&lat=…&long=…&dist=…&_view=full`), then one for each
+of the nearest ten's latest 16 readings (`/id/measures/{id}/readings?_sorted&_limit=16`).
+A station measures several things; the one shown is its river level ("Stage"), else its
+tidal level, else the level below a weir ("Downstream Stage"), preferring the measure
+read every 15 minutes and the one whose unit names a datum. Groundwater is left out. A
+station whose readings cannot be had is kept with a note saying why; a list that cannot
+be had changes nothing, and the old copy stays with its age.
+
+**A station's own view** (tap a station) shows the same figures with the highest level
+on record and the highest in recent years, as the Agency gives them, and a link to the
+Agency's own page for the station. **Fetch the last 3 days** asks for the station's
+readings since three days before (about 288 for a station read every 15 minutes, about
+70 kB) and draws them as a line, with the typical range as a quiet band behind it and
+the highest on record as a dashed line, and the same figures as a table behind a
+disclosure. The readings of up to ten stations are kept for each place.
+
+### Rising, steady or falling: Outpost's rule
+
+The Agency's API publishes no trend, so this is Outpost's rule, and the screen says so
+(`levelTrend` in `packages/shared/src/weather-rivers.ts`): the latest reading held,
+against the earliest held within the three hours before it. The two must be at least 45
+minutes apart, or no trend is given. The change is rounded to the millimetre the Agency
+gives; under 2 cm either way is "steady". The tests work it on cases
+(`apps/server/test/weather-rivers.test.ts`).
+
+### What the figures mean, and do not mean
+
+The screen says, where the levels are read:
+
+- These are the Environment Agency's measurements, not a forecast.
+- A level within its typical range is not a promise that a place will not flood.
+- Flood warnings are under Flood (a link).
+- In an emergency, call 999. Floodline, the Agency's flood advice line, is 0345 988
+  1188, 24 hours a day (from its "Check for flooding" pages, read 17 November 2026).
+- England only. Scotland (SEPA), Wales (Natural Resources Wales) and Northern Ireland
+  publish their own, which Outpost does not fetch.
+
+Outpost adds no score of its own and never calls a level safe. The Agency measures
+"usually every 15 minutes", but sends readings back "typically once or twice per day,
+but usually increases during times of heightened flood risk". So a latest reading hours
+old is ordinary, and every level says how long ago it was measured. With no connection
+the last kept levels show with both ages, the copy is marked old after an hour, and
+nothing is fetched on a timer. River levels follow **Also update when I open this
+screen**, as part of Update now.
+
+Emergency plans already shows a line when a flood warning is held for the home place
+(`GET /api/weather/home-warnings`); river levels are not added there, nor to Home.
 
 ## The barometer
 
@@ -296,7 +380,8 @@ today (`core/guard.ts`), so it needs a design of its own.
 ## Under Manage and clean up
 
 - The fetched copies are listed under Storage → Manage and clean up → Leftovers, as
-  "Forecasts, warnings and flood data fetched for offline use", with their count and
+  "Forecasts, warnings and flood data fetched for offline use" (river and sea levels
+  and stations' readings among them), with their count and
   size, and are cleared there in one go. Places and readings stay. On the Weather
   screen, Kept and sources lists each copy with its size, when it was fetched and what
   was sent for it, and removes one at a time.
@@ -320,7 +405,8 @@ was last fetched. It fetches nothing. See [api.md](api.md#weather-and-hazards).
   [reference-layers.md](reference-layers.md#flood-zones-england). The Agency's "Risk
   of Flooding from Rivers and Sea" is not, as it has no feature service.
 - **Wildfire risk** is linked, not fetched (above).
-- **Scotland, Wales and Northern Ireland** have no flood data here (above).
+- **Scotland, Wales and Northern Ireland** have no flood data or river levels here
+  (above).
 
 ## What was not tested
 
@@ -331,6 +417,17 @@ was last fetched. It fetches nothing. See [api.md](api.md#weather-and-hazards).
   gauges). Climate: 1,569 bytes. Sunshine: 15,169 bytes (2005 to 2023, best tilt 40°).
   The whole update took 47 seconds. Everything in the suites uses recorded answers
   (`apps/server/test/fixtures/weather`), and nothing in them touches the internet.
+- River and sea levels: one real answer for an area (the level stations within 10 km
+  of King's Lynn, 52.75, 0.40: 11 stations, 14,313 bytes) and one for a station (300
+  readings of Kilham's Bridge, 96,344 bytes) were fetched by hand on 17 November 2026,
+  to learn their shape. Trimmed copies are the test fixtures
+  (`ea-level-stations.json`, `ea-level-readings.json`). A station that stopped
+  reporting, readings out of order and failures are made from them by the test
+  stand-in, not seen in a real answer. A whole press for a real place was not timed.
+- King's Lynn's answer lists several stations with no river name, no status and no
+  scale ("FREEBRIDGE TS KINGS LYNN", "KINGS LYNN SOUTH QUAY GSM"), and one (Kilham's
+  Bridge) whose typical top, 3.448 mAOD, is above its highest on record, 2.172. Outpost
+  shows what the Agency gives.
 - One gauge the Environment Agency lists at 0.4 km from Bedford is labelled "BEDFORD
   ROAD SLUICE NORTHAMPTON AUTOMATION". Its position in the Agency's data may be wrong.
   Outpost shows what the Agency gives.

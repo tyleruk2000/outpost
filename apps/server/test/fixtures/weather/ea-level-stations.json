@@ -1,0 +1,278 @@
+{
+  "_fixture": "Trimmed from the Environment Agency real-time flood-monitoring API, fetched by hand on 17 November 2026 (/flood-monitoring/id/stations?parameter=level&lat=52.75&long=0.40&dist=10&_view=full), keeping 6 of its 11 stations. This uses Environment Agency flood and river level data from the real-time data API (Beta). Open Government Licence v3.0.",
+  "@context": "http://environment.data.gov.uk/flood-monitoring/meta/context.jsonld",
+  "meta": {
+    "publisher": "Environment Agency",
+    "licence": "http://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+    "documentation": "http://environment.data.gov.uk/flood-monitoring/doc/reference",
+    "version": "0.9",
+    "comment": "Status: Beta service",
+    "hasFormat": [
+      "http://environment.data.gov.uk/flood-monitoring/id/stations.csv?parameter=level&lat=52.75&long=0.40&dist=10&_view=full",
+      "http://environment.data.gov.uk/flood-monitoring/id/stations.rdf?parameter=level&lat=52.75&long=0.40&dist=10&_view=full",
+      "http://environment.data.gov.uk/flood-monitoring/id/stations.ttl?parameter=level&lat=52.75&long=0.40&dist=10&_view=full",
+      "http://environment.data.gov.uk/flood-monitoring/id/stations.html?parameter=level&lat=52.75&long=0.40&dist=10&_view=full"
+    ]
+  },
+  "items": [
+    {
+      "@id": "http://environment.data.gov.uk/flood-monitoring/id/stations/E21183",
+      "RLOIid": "6269",
+      "catchmentName": "North West Norfolk",
+      "dateOpened": "1988-05-17",
+      "easting": 562429,
+      "gridReference": "TF6242924973",
+      "label": "Kilham's Bridge",
+      "lat": 52.797857,
+      "long": 0.407775,
+      "measures": [
+        {
+          "@id": "http://environment.data.gov.uk/flood-monitoring/id/measures/E21183-level-stage-i-15_min-mAOD",
+          "parameter": "level",
+          "parameterName": "Water Level",
+          "period": 900,
+          "qualifier": "Stage",
+          "unitName": "mAOD"
+        }
+      ],
+      "northing": 324973,
+      "notation": "E21183",
+      "riverName": "River Wallington",
+      "stageScale": {
+        "@id": "http://environment.data.gov.uk/flood-monitoring/id/stations/E21183/stageScale",
+        "highestRecent": {
+          "@id": "http://environment.data.gov.uk/flood-monitoring/id/stations/E21183/stageScale/highestRecent",
+          "dateTime": "2012-04-23T08:15:00",
+          "value": 2.172
+        },
+        "maxOnRecord": {
+          "@id": "http://environment.data.gov.uk/flood-monitoring/id/stations/E21183/stageScale/maxOnRecord",
+          "dateTime": "2012-04-23T08:15:00",
+          "value": 2.172
+        },
+        "minOnRecord": {
+          "@id": "http://environment.data.gov.uk/flood-monitoring/id/stations/E21183/stageScale/minOnRecord",
+          "dateTime": "2003-11-16T20:15:00",
+          "value": -0.249
+        },
+        "scaleMax": 3,
+        "typicalRangeHigh": 3.448,
+        "typicalRangeLow": 0.028
+      },
+      "stationReference": "E21183",
+      "status": "http://environment.data.gov.uk/flood-monitoring/def/core/statusActive",
+      "town": "North Wootton",
+      "wiskiID": "L33869"
+    },
+    {
+      "@id": "http://environment.data.gov.uk/flood-monitoring/id/stations/E21050",
+      "RLOIid": "6248",
+      "catchmentName": "North West Norfolk",
+      "dateOpened": "1979-02-07",
+      "easting": 568006,
+      "gridReference": "TF 68006 25230",
+      "label": "Castle Rising",
+      "lat": 52.798728,
+      "long": 0.490559,
+      "measures": [
+        {
+          "@id": "http://environment.data.gov.uk/flood-monitoring/id/measures/E21050-level-stage-i-15_min-m",
+          "parameter": "level",
+          "parameterName": "Water Level",
+          "period": 900,
+          "qualifier": "Stage",
+          "unitName": "m"
+        }
+      ],
+      "northing": 325260,
+      "notation": "E21050",
+      "riverName": "Babingley River",
+      "stageScale": {
+        "@id": "http://environment.data.gov.uk/flood-monitoring/id/stations/E21050/stageScale",
+        "highestRecent": {
+          "@id": "http://environment.data.gov.uk/flood-monitoring/id/stations/E21050/stageScale/highestRecent",
+          "dateTime": "2012-07-06T14:00:00",
+          "value": 0.358
+        },
+        "maxOnRecord": {
+          "@id": "http://environment.data.gov.uk/flood-monitoring/id/stations/E21050/stageScale/maxOnRecord",
+          "dateTime": "2022-02-26T20:45:00",
+          "value": 0.568
+        },
+        "minOnRecord": {
+          "@id": "http://environment.data.gov.uk/flood-monitoring/id/stations/E21050/stageScale/minOnRecord",
+          "dateTime": "1995-01-08T16:30:00",
+          "value": 0.071
+        },
+        "scaleMax": 1,
+        "typicalRangeHigh": 0.292,
+        "typicalRangeLow": 0.15
+      },
+      "stationReference": "E21050",
+      "status": "http://environment.data.gov.uk/flood-monitoring/def/core/statusActive",
+      "town": "Castle Rising",
+      "wiskiID": "033054"
+    },
+    {
+      "@id": "http://environment.data.gov.uk/flood-monitoring/id/stations/E23745",
+      "RLOIid": "6290",
+      "catchmentName": "North West Norfolk",
+      "dateOpened": "1998-08-23",
+      "easting": 560088,
+      "gridReference": "TF60088 11398",
+      "label": "Magdalen Bridge",
+      "lat": 52.676627,
+      "long": 0.36647,
+      "measures": [
+        {
+          "@id": "http://environment.data.gov.uk/flood-monitoring/id/measures/E23745-level-tidal_level-i-15_min-m",
+          "parameter": "level",
+          "parameterName": "Water Level",
+          "period": 900,
+          "qualifier": "Tidal Level",
+          "unitName": "m"
+        },
+        {
+          "@id": "http://environment.data.gov.uk/flood-monitoring/id/measures/E23745-level-tidal_level-i-15_min-mASD",
+          "parameter": "level",
+          "parameterName": "Water Level",
+          "period": 900,
+          "qualifier": "Tidal Level",
+          "unitName": "mASD"
+        }
+      ],
+      "northing": 311398,
+      "notation": "E23745",
+      "riverName": "River Great Ouse",
+      "stageScale": {
+        "@id": "http://environment.data.gov.uk/flood-monitoring/id/stations/E23745/stageScale",
+        "maxOnRecord": {
+          "@id": "http://environment.data.gov.uk/flood-monitoring/id/stations/E23745/stageScale/maxOnRecord",
+          "dateTime": "2017-01-13T19:30:00",
+          "value": 5.16
+        },
+        "scaleMax": 6
+      },
+      "stationReference": "E23745",
+      "status": "http://environment.data.gov.uk/flood-monitoring/def/core/statusActive",
+      "town": "Watlington",
+      "wiskiID": "T33852"
+    },
+    {
+      "@id": "http://environment.data.gov.uk/flood-monitoring/id/stations/E41071",
+      "easting": 561254,
+      "gridReference": "TF6125418547",
+      "label": "Kings Lynn Freebridge",
+      "lat": 52.740493,
+      "long": 0.387203,
+      "measures": [
+        {
+          "@id": "http://environment.data.gov.uk/flood-monitoring/id/measures/E41071-level-stage-i-15_min-m",
+          "parameter": "level",
+          "parameterName": "Water Level",
+          "period": 900,
+          "qualifier": "Stage",
+          "unitName": "m"
+        }
+      ],
+      "northing": 318547,
+      "notation": "E41071",
+      "stationReference": "E41071"
+    },
+    {
+      "@id": "http://environment.data.gov.uk/flood-monitoring/id/stations/E23740",
+      "RLOIid": "6277",
+      "catchmentName": "Cam and Ely Ouse (Including South Level)",
+      "dateOpened": "1993-03-01",
+      "datumOffset": 1.4,
+      "easting": 563598,
+      "gridReference": "TF 63598 13473",
+      "label": "Setchey Bridge",
+      "lat": 52.694217,
+      "long": 0.419367,
+      "measures": [
+        {
+          "@id": "http://environment.data.gov.uk/flood-monitoring/id/measures/E23740-level-stage-i-15_min-mASD",
+          "parameter": "level",
+          "parameterName": "Water Level",
+          "period": 900,
+          "qualifier": "Stage",
+          "unitName": "mASD"
+        }
+      ],
+      "northing": 313473,
+      "notation": "E23740",
+      "riverName": "River Nar",
+      "stageScale": {
+        "@id": "http://environment.data.gov.uk/flood-monitoring/id/stations/E23740/stageScale",
+        "highestRecent": {
+          "@id": "http://environment.data.gov.uk/flood-monitoring/id/stations/E23740/stageScale/highestRecent",
+          "dateTime": "2012-07-08T02:45:00",
+          "value": 1.353
+        },
+        "maxOnRecord": {
+          "@id": "http://environment.data.gov.uk/flood-monitoring/id/stations/E23740/stageScale/maxOnRecord",
+          "dateTime": "1993-11-14T21:30:00",
+          "value": 1.813
+        },
+        "minOnRecord": {
+          "@id": "http://environment.data.gov.uk/flood-monitoring/id/stations/E23740/stageScale/minOnRecord",
+          "dateTime": "2010-12-27T19:00:00",
+          "value": 0.027
+        },
+        "scaleMax": 2,
+        "typicalRangeHigh": 1.076,
+        "typicalRangeLow": 0.249
+      },
+      "stationReference": "E23740",
+      "status": "http://environment.data.gov.uk/flood-monitoring/def/core/statusActive",
+      "town": "West Winch",
+      "wiskiID": "L33623"
+    },
+    {
+      "@id": "http://environment.data.gov.uk/flood-monitoring/id/stations/E47901",
+      "RLOIid": "6009",
+      "catchmentName": "North West Norfolk",
+      "dateOpened": "2015-09-11",
+      "easting": 561626,
+      "gridReference": "TF6162619770",
+      "label": "King's Lynn",
+      "lat": 52.751366,
+      "long": 0.393311,
+      "measures": [
+        {
+          "@id": "http://environment.data.gov.uk/flood-monitoring/id/measures/E47901-level-tidal_level-i-15_min-mAOD",
+          "parameter": "level",
+          "parameterName": "Water Level",
+          "period": 900,
+          "qualifier": "Tidal Level",
+          "unitName": "mAOD"
+        },
+        {
+          "@id": "http://environment.data.gov.uk/flood-monitoring/id/measures/E47901-level-tidal_level-i-5_min-mAOD",
+          "parameter": "level",
+          "parameterName": "Water Level",
+          "period": 300,
+          "qualifier": "Tidal Level",
+          "unitName": "mAOD"
+        }
+      ],
+      "northing": 319770,
+      "notation": "E47901",
+      "riverName": "River Great Ouse",
+      "stageScale": {
+        "@id": "http://environment.data.gov.uk/flood-monitoring/id/stations/E47901/stageScale",
+        "maxOnRecord": {
+          "@id": "http://environment.data.gov.uk/flood-monitoring/id/stations/E47901/stageScale/maxOnRecord",
+          "dateTime": "2017-01-13T19:00:00",
+          "value": 4.954
+        },
+        "scaleMax": 7
+      },
+      "stationReference": "E47901",
+      "status": "http://environment.data.gov.uk/flood-monitoring/def/core/statusActive",
+      "town": "King's Lynn",
+      "wiskiID": "T33853"
+    }
+  ]
+}

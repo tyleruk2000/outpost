@@ -1,6 +1,7 @@
 /**
  * One quantity over time, as a line: a forecast's temperature through the next days, a
- * barometer's pressure through the last days. Drawn by hand in SVG like every chart in
+ * barometer's pressure through the last days, a river's level. A range may be drawn
+ * behind it as a quiet band, and a level marked across it as a dashed line, each named. Drawn by hand in SVG like every chart in
  * Outpost (docs/development/web-screens.md, "Charts"): thin marks, chart tokens only,
  * a crosshair that answers the pointer and the arrow keys, and the same numbers as a
  * table for a screen reader.
@@ -45,6 +46,9 @@ export function TimeLine({
   marks = false,
   height = 170,
   now,
+  band,
+  rules = [],
+  minSpan = 1,
 }: {
   points: TimePoint[];
   /** Accessible name and table caption: what the line is. */
@@ -56,6 +60,12 @@ export function TimeLine({
   height?: number;
   /** Drawn as a line marked "now" when it falls inside the chart. */
   now?: number;
+  /** A range drawn behind the line as a quiet band (a river's typical range). */
+  band?: { low: number; high: number } | null;
+  /** Levels marked across the chart as dashed lines, each labelled (the highest on record). */
+  rules?: Array<{ value: number; label: string }>;
+  /** The smallest span of the value axis, so that small changes are not drawn as large ones. */
+  minSpan?: number;
 }) {
   const [ref, width] = useWidth();
   const [chosen, setChosen] = useState<number | null>(null);
@@ -64,11 +74,13 @@ export function TimeLine({
   const sorted = [...points].sort((a, b) => a.t - b.t);
   const first = sorted[0]!.t;
   const last = Math.max(sorted[sorted.length - 1]!.t, first + 3_600_000);
-  let low = Math.min(...sorted.map((point) => point.value));
-  let high = Math.max(...sorted.map((point) => point.value));
-  if (high - low < 1) {
-    low -= 0.5;
-    high += 0.5;
+  const values = [...sorted.map((point) => point.value), ...(band ? [band.low, band.high] : []), ...rules.map((rule) => rule.value)];
+  let low = Math.min(...values);
+  let high = Math.max(...values);
+  if (high - low < minSpan) {
+    const pad = (minSpan - (high - low)) / 2;
+    low -= pad;
+    high += pad;
   }
   const ticks = roundTicks(low, high);
   const step = ticks.length > 1 ? ticks[1]! - ticks[0]! : 1;
@@ -126,6 +138,16 @@ export function TimeLine({
           onPointerMove={(event) => setChosen(nearest(event))}
           onPointerDown={(event) => setChosen(nearest(event))}
         >
+          {band ? (
+            <rect
+              x={left}
+              width={width - left - right}
+              y={y(band.high)}
+              height={Math.max(1, y(band.low) - y(band.high))}
+              style={{ fill: "var(--chart-seq-1)" }}
+              data-band
+            />
+          ) : null}
           {shownTicks.map((tick) => (
             <g key={tick}>
               <line x1={left} x2={width - right} y1={y(tick)} y2={y(tick)} style={{ stroke: "var(--chart-grid)" }} />
@@ -152,6 +174,26 @@ export function TimeLine({
               </text>
             </g>
           ) : null}
+          {rules.map((rule) => (
+            <g key={rule.label} data-rule>
+              <line
+                x1={left}
+                x2={width - right}
+                y1={y(rule.value)}
+                y2={y(rule.value)}
+                style={{ stroke: "var(--chart-axis)" }}
+                strokeDasharray="6 4"
+              />
+              <text
+                x={width - right - 2}
+                y={y(rule.value) - 4}
+                textAnchor="end"
+                className="fill-ink-muted stroke-page text-[11px] [paint-order:stroke] [stroke-width:3px]"
+              >
+                {rule.label}
+              </text>
+            </g>
+          ))}
           <path d={d} fill="none" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" style={{ stroke: color }} />
           {marks ? sorted.map((point) => <circle key={point.t} cx={x(point.t)} cy={y(point.value)} r={3} style={{ fill: color }} />) : null}
           <line x1={x(shown.t)} x2={x(shown.t)} y1={top} y2={height - bottom} className="stroke-ink" strokeWidth={1} opacity={0.6} />

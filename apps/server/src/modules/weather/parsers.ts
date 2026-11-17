@@ -16,8 +16,12 @@ import {
   type ForecastData,
   type ForecastDay,
   type ForecastHour,
-  type RiverStation,
+  type LevelMark,
+  type LevelReading,
+  orderReadings,
+  type RiverLevelStation,
   type SolarData,
+  type StationStatus,
   type WarningItem,
   type WarningLevel,
   type WarningsData,
@@ -292,11 +296,11 @@ export function eaTime(value: unknown): number | null {
   return londonTime(y!, mo! - 1, d!, h!, mi!) + Number(match[6] ?? 0) * 1000;
 }
 
-function eaItems(text: string, what: string): unknown[] {
+function eaItems(text: string, what: string, most = 500): unknown[] {
   const body = json(text, "The Environment Agency");
   if (!isRecord(body) || !Array.isArray(body.items))
     throw new SourceFormatError(`The Environment Agency's answer is not a list of ${what}.`);
-  return body.items.slice(0, 500);
+  return body.items.slice(0, most);
 }
 
 export function parseEaFloods(text: string): FloodWarning[] {
@@ -320,60 +324,95 @@ export function parseEaFloods(text: string): FloodWarning[] {
     .sort((a, b) => a.severityLevel - b.severityLevel);
 }
 
-export interface EaStationRef {
-  id: string;
-  label: string;
-  river: string | null;
-  town: string | null;
-  lat: number;
-  lon: number;
-}
+/** A level station from the Agency's list (`_view=full`), before its readings are asked for. */
+export type EaLevelStation = Omit<RiverLevelStation, "distanceKm" | "recent" | "readingsNote">;
 
-export function parseEaStations(text: string): EaStationRef[] {
-  const stations: EaStationRef[] = [];
+const QUALIFIER_RANK = ["Stage", "Tidal Level", "Downstream Stage"];
+const STATUS: Record<string, StationStatus> = { statusActive: "active", statusSuspended: "suspended", statusClosed: "closed" };
+
+const mark = (value: unknown): LevelMark | null => {
+  if (!isRecord(value)) return null;
+  const level = num(value.value, -100, 1000);
+  return level === null ? null : { value: level, at: eaTime(value.dateTime) };
+};
+
+/**
+ * The level stations the Agency lists near a point, with the scale of each. A station
+ * gives several measures; the one shown is its river level ("Stage"), else its tidal
+ * level, else the level below a weir ("Downstream Stage"); groundwater is left out. Of
+ * two measures with the same qualifier, the one read every 15 minutes, then the one whose
+ * unit names a datum, is taken. A station with no level measure, no position or an
+ * unexpected reference is left out.
+ */
+export function parseEaLevelStations(text: string): EaLevelStation[] {
+  const stations: EaLevelStation[] = [];
   for (const item of eaItems(text, "stations").filter(isRecord)) {
     const lat = num(item.lat, -90, 90);
     const lon = num(item.long, -180, 180);
     const id = str(item.stationReference, 40);
     if (lat === null || lon === null || !/^[A-Za-z0-9_-]+$/.test(id)) continue;
+    const measures = (Array.isArray(item.measures) ? item.measures : [item.measures])
+      .filter(isRecord)
+      .map((measure) => ({
+        id: str(measure["@id"], 400).split("/").pop() ?? "",
+        parameter: str(measure.parameter, 40),
+        qualifier: str(measure.qualifier, 60),
+        unit: str(measure.unitName, 20),
+        period: num(measure.period, 1, 86_400),
+      }))
+      .filter(
+        (measure) => measure.parameter === "level" && QUALIFIER_RANK.includes(measure.qualifier) && /^[A-Za-z0-9_.-]+$/.test(measure.id),
+      )
+      .sort(
+        (a, b) =>
+          QUALIFIER_RANK.indexOf(a.qualifier) - QUALIFIER_RANK.indexOf(b.qualifier) ||
+          Number(a.period !== 900) - Number(b.period !== 900) ||
+          Number(a.unit === "m") - Number(b.unit === "m"),
+      );
+    const measure = measures[0];
+    if (!measure) continue;
+    const scaleOf = measure.qualifier === "Downstream Stage" ? item.downstageScale : item.stageScale;
+    const scale = isRecord(scaleOf) ? scaleOf : {};
+    const tidal = measure.qualifier === "Tidal Level";
+    const status = typeof item.status === "string" ? (STATUS[item.status.split("/").pop() ?? ""] ?? null) : null;
+    const rloi = str(item.RLOIid, 12);
     stations.push({
       id,
+      rloiId: /^\d{1,8}$/.test(rloi) ? rloi : null,
       label: str(item.label, 200) || id,
       river: str(item.riverName, 200) || null,
       town: str(item.town, 200) || null,
       lat,
       lon,
+      qualifier: measure.qualifier,
+      tidal,
+      measureId: measure.id,
+      unit: measure.unit || "m",
+      periodS: measure.period,
+      status,
+      statusReason: str(item.statusReason, 300) || null,
+      typicalLow: tidal ? null : num(scale.typicalRangeLow, -100, 1000),
+      typicalHigh: tidal ? null : num(scale.typicalRangeHigh, -100, 1000),
+      highestRecent: mark(scale.highestRecent),
+      maxOnRecord: mark(scale.maxOnRecord),
     });
   }
   return stations;
 }
 
-/** One station's full view: its level measure's latest reading and the typical range. */
-export function parseEaStation(text: string, ref: EaStationRef, distanceKm: number): RiverStation {
-  const body = json(text, "The Environment Agency");
-  const item = isRecord(body) ? (Array.isArray(body.items) ? body.items[0] : body.items) : null;
-  if (!isRecord(item)) throw new SourceFormatError("The Environment Agency's answer is not a station.");
-  const measures = (Array.isArray(item.measures) ? item.measures : [item.measures]).filter(isRecord);
-  const level =
-    measures.find((measure) => measure.parameter === "level" && measure.qualifier === "Stage") ??
-    measures.find((measure) => measure.parameter === "level");
-  let latest: RiverStation["latest"] = null;
-  if (level && isRecord(level.latestReading)) {
-    const value = num(level.latestReading.value, -100, 1000);
-    const at = eaTime(level.latestReading.dateTime);
-    if (value !== null && at !== null) latest = { value, unit: str(level.unitName, 20) || "m", at };
+/**
+ * A measure's readings, oldest first, one for each time. A reading the Agency sends with
+ * no value (it omits NaN in JSON), or with a time or value that cannot be read, is left
+ * out. The Agency may send them newest first, or in no order.
+ */
+export function parseEaReadings(text: string): LevelReading[] {
+  const readings: LevelReading[] = [];
+  for (const item of eaItems(text, "readings", 10_000).filter(isRecord)) {
+    const v = num(item.value, -100, 1000);
+    const t = eaTime(item.dateTime);
+    if (v !== null && t !== null) readings.push({ t, v });
   }
-  const scale = isRecord(item.stageScale) ? item.stageScale : {};
-  const recent = isRecord(scale.highestRecent) ? scale.highestRecent : null;
-  const recentValue = recent ? num(recent.value, -100, 1000) : null;
-  return {
-    ...ref,
-    distanceKm,
-    latest,
-    typicalLow: num(scale.typicalRangeLow, -100, 1000),
-    typicalHigh: num(scale.typicalRangeHigh, -100, 1000),
-    highestRecent: recentValue === null ? null : { value: recentValue, at: eaTime(recent?.dateTime) },
-  };
+  return orderReadings(readings);
 }
 
 // ── NASA POWER ──────────────────────────────────────────────────────────────

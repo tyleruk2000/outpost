@@ -61,4 +61,5 @@ export * from "./supplies.ts";
 export * from "./supplies-energy.ts";
 export * from "./system.ts";
 export * from "./weather.ts";
+export * from "./weather-rivers.ts";
 export * from "./webpages.ts";

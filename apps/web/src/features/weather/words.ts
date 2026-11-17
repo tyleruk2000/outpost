@@ -1,9 +1,9 @@
 /**
  * The words and figures of the Weather and hazards screen, kept apart from the screen so
- * that they can be tested: a day of forecast in plain words, units, and what a river
- * level is beside its usual range.
+ * that they can be tested: a day of forecast in plain words, and units. River levels'
+ * words are in rivers-view.tsx and @outpost/shared's weather-rivers.ts.
  */
-import { cToF, type ForecastDay, type ForecastHour, kmhToMph, type RiverStation, weatherWords } from "@outpost/shared";
+import { cToF, type ForecastDay, type ForecastHour, kmhToMph, weatherWords } from "@outpost/shared";
 
 export type WindUnit = "kmh" | "mph";
 export type TempUnit = "c" | "f";
@@ -39,15 +39,6 @@ export const daysAhead = (days: ForecastDay[], now: number): ForecastDay[] => {
   const today = new Date(now).toISOString().slice(0, 10);
   return days.filter((day) => day.date >= today);
 };
-
-/** Where a river's latest level sits against the range the Environment Agency calls typical there. */
-export function levelWords(station: RiverStation): string | null {
-  if (!station.latest || station.typicalLow === null || station.typicalHigh === null) return null;
-  const value = station.latest.value;
-  if (value > station.typicalHigh) return "above its typical range";
-  if (value < station.typicalLow) return "below its typical range";
-  return "within its typical range";
-}
 
 const weekday = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 /** "Tuesday 17 November", for a UTC calendar day. */

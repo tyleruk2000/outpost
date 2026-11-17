@@ -49,7 +49,7 @@ export const WEATHER_SOURCES: Record<WeatherSourceId, WeatherSourceInfo> = {
     id: "ea-flood",
     kind: "flood",
     publisher: "Environment Agency",
-    name: "Flood warnings and river levels",
+    name: "Flood warnings",
     covers: "England only. Scotland, Wales and Northern Ireland publish their own (see Sources).",
     host: "environment.data.gov.uk",
     sends: "The place's latitude and longitude, rounded to two decimal places, and a distance to look within.",
@@ -59,6 +59,22 @@ export const WEATHER_SOURCES: Record<WeatherSourceId, WeatherSourceInfo> = {
     liveUrl: "https://check-for-flooding.service.gov.uk/",
     termsUrl: "https://environment.data.gov.uk/flood-monitoring/doc/reference",
     termsRead: TERMS_READ,
+  },
+  "ea-levels": {
+    id: "ea-levels",
+    kind: "rivers",
+    publisher: "Environment Agency",
+    name: "River and sea levels",
+    covers: "England only. Scotland, Wales and Northern Ireland publish their own (see Sources).",
+    host: "environment.data.gov.uk",
+    sends:
+      "The place's latitude and longitude, rounded to two decimal places, and a distance to look within; then the name of each nearby station's level measure.",
+    licence: "Open Government Licence v3.0",
+    licenceUrl: "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+    attribution: "This uses Environment Agency flood and river level data from the real-time data API (Beta)",
+    liveUrl: "https://check-for-flooding.service.gov.uk/river-and-sea-levels",
+    termsUrl: "https://environment.data.gov.uk/flood-monitoring/doc/reference",
+    termsRead: "2026-11-17",
   },
   "nasa-power": {
     id: "nasa-power",
@@ -95,11 +111,8 @@ export const WEATHER_SOURCES: Record<WeatherSourceId, WeatherSourceInfo> = {
   },
 };
 
-/** How far round a place flood warnings and river gauges are asked for, km. */
+/** How far round a place flood warnings are asked for, km. River and sea levels use the distance a person chooses (`weather.riversKm`). */
 export const FLOOD_WARNINGS_KM = 15;
-export const STATIONS_KM = 8;
-/** The most river gauges kept for one place, nearest first. */
-export const MAX_STATIONS = 5;
 
 const position = (lat: number, lon: number) => ({ lat: roundForSending(lat).toFixed(2), lon: roundForSending(lon).toFixed(2) });
 
@@ -126,12 +139,19 @@ export const sourceUrls = {
     const at = position(lat, lon);
     return `https://environment.data.gov.uk/flood-monitoring/id/floods?lat=${at.lat}&long=${at.lon}&dist=${FLOOD_WARNINGS_KM}`;
   },
-  stations(lat: number, lon: number): string {
+  /** The level stations within `km`, with each one's scale (its typical range and highest on record): one request. */
+  levelStations(lat: number, lon: number, km: number): string {
     const at = position(lat, lon);
-    return `https://environment.data.gov.uk/flood-monitoring/id/stations?parameter=level&lat=${at.lat}&long=${at.lon}&dist=${STATIONS_KM}`;
+    return `https://environment.data.gov.uk/flood-monitoring/id/stations?parameter=level&lat=${at.lat}&long=${at.lon}&dist=${km}&_view=full`;
   },
-  station(id: string): string {
-    return `https://environment.data.gov.uk/flood-monitoring/id/stations/${encodeURIComponent(id)}?_view=full`;
+  /** A measure's latest `count` readings, newest first ("_sorted ... enabling you to fetch the most recent n readings"). */
+  latestReadings(measureId: string, count: number): string {
+    return `https://environment.data.gov.uk/flood-monitoring/id/measures/${encodeURIComponent(measureId)}/readings?_sorted&_limit=${count}`;
+  },
+  /** A measure's readings since a moment, up to the Agency's hard limit of 10,000. */
+  readingsSince(measureId: string, since: number): string {
+    const at = new Date(since).toISOString().replace(/\.\d{3}Z$/, "Z");
+    return `https://environment.data.gov.uk/flood-monitoring/id/measures/${encodeURIComponent(measureId)}/readings?since=${at}&_limit=10000`;
   },
   climate(lat: number, lon: number): string {
     const at = position(lat, lon);

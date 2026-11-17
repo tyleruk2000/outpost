@@ -1,5 +1,5 @@
 /**
- * Warnings and flood data as they were when fetched. Warnings are safety information:
+ * Warnings and flood warnings as they were when fetched. Warnings are safety information:
  * the publisher's words are shown as they were written, with its own level, the period
  * it states, when Outpost fetched them, and where the live source is.
  */
@@ -13,11 +13,11 @@ import {
   type WeatherSourceInfo,
   warningState,
 } from "@outpost/shared";
+import { Link } from "react-router";
 import { Notice } from "@/components/page";
 import { Badge } from "@/components/ui/misc";
 import { formatDateTime, plural } from "@/lib/utils";
 import { AgeLine, Credit } from "./age-line";
-import { levelWords } from "./words";
 
 const LEVEL_TONE = { yellow: "warning", amber: "warning", red: "danger" } as const;
 const STATE_WORDS = { ahead: "Not yet begun", "in-force": "In force", ended: "Its period has ended", unknown: "Period as stated" } as const;
@@ -153,43 +153,13 @@ export function FloodView({ copy, source, now }: { copy: KeptCopy<"flood"> | nul
         <p className="mt-2 text-small text-ink-muted">{plural(ended.length, "nearby warning")} no longer in force.</p>
       ) : null}
 
-      <h3 className="mt-8 text-body font-semibold text-ink">River levels within {data.stationsWithinKm} km</h3>
-      {data.stations.length === 0 ? (
-        <p className="mt-1 text-body text-ink">No river level gauge within {data.stationsWithinKm} km.</p>
-      ) : (
-        <ul className="mt-1 divide-y divide-border border-y border-border">
-          {data.stations.map((station) => {
-            const words = levelWords(station);
-            return (
-              <li key={station.id} className="py-3">
-                <p className="font-semibold text-ink">
-                  {station.label}
-                  {station.river ? `, ${station.river}` : ""}
-                  <span className="font-normal text-ink-muted"> · {station.distanceKm} km away</span>
-                </p>
-                {station.latest ? (
-                  <p className="tabular mt-0.5 text-body text-ink">
-                    {station.latest.value.toFixed(2)} {station.latest.unit} at {formatDateTime(station.latest.at)}
-                    {words ? `: ${words}` : ""}
-                    {station.typicalLow !== null && station.typicalHigh !== null
-                      ? ` (${station.typicalLow.toFixed(2)} to ${station.typicalHigh.toFixed(2)})`
-                      : ""}
-                    .
-                  </p>
-                ) : (
-                  <p className="mt-0.5 text-body text-ink-muted">No recent reading.</p>
-                )}
-                {station.highestRecent ? (
-                  <p className="tabular text-small text-ink-muted">
-                    Highest recent: {station.highestRecent.value.toFixed(2)} {station.latest?.unit ?? "m"}
-                    {station.highestRecent.at ? `, ${formatDateTime(station.highestRecent.at)}` : ""}.
-                  </p>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <p className="mt-8 text-body text-ink">
+        River and sea levels near this place are under{" "}
+        <Link className="text-primary underline underline-offset-2" to="?view=rivers">
+          River and sea levels
+        </Link>
+        .
+      </p>
       <Credit source={source} />
     </div>
   );
