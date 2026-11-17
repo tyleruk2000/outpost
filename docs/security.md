@@ -95,7 +95,7 @@ public internet and must not be exposed to it.
 | --- | --- | --- |
 | Local by default | The server listens on `127.0.0.1`. In Docker the port is published on `127.0.0.1` unless `OUTPOST_BIND` says otherwise. | `apps/server/src/config.ts`, `compose.yaml` |
 | LAN access is a start-up decision | `OUTPOST_LAN_ACCESS` cannot be changed from the browser. Without it the server refuses to start on an address other devices can reach (and, in a container, unless told its port is published on `127.0.0.1` only). | `apps/server/src/config.ts` |
-| Host allow-list | Requests whose `Host` header is not a name this server answers to are refused. This defeats DNS rebinding, where a hostile site points its own name at your machine. | `isAllowedHost` in `apps/server/src/core/guard.ts` |
+| Host allow-list | Requests whose `Host` header is not a name this server answers to are refused. This defeats DNS rebinding, where a hostile site points its own name at your machine. Always answered: `localhost`, `127.0.0.1`, `::1` and the names in `OUTPOST_ALLOWED_HOSTS`. With LAN access on, also any IP address, any one-word name (`outpost`, as a router's DNS hands out) and names ending `.local`, `.lan`, `.home`, `.internal` or `.home.arpa`; a name with a dot in it and any other ending (every name a site on the internet can own) must be listed. A rebinding attack through a one-word name would need control of the home network's own DNS. | `isAllowedHost` in `apps/server/src/core/guard.ts` |
 | kiwix-serve is never exposed | The browser reaches it only through Outpost's proxy. In Compose it has no published port. | `apps/server/src/modules/kiwix/`, `compose.yaml` |
 
 ### HTTPS on the home network
@@ -117,7 +117,7 @@ accounts: everyone who can reach Outpost can still use all of it, over either ad
 | No route serves a key | The only things read from `tls/` for a browser are public certificates: the authority's (`GET /api/https/outpost-authority.crt`, `.pem`) and, for a certificate the person brought, the root it chains to when they gave it (`GET /api/https/own-root.crt`, `.pem`). Tests ask for the keys by a list of guessed addresses over both listeners, and check the backup archive. | `modules/https/index.ts`, `apps/server/test/https.test.ts`, `https-own.test.ts` |
 | Certificates are checked before use | Outpost lays certificates out itself (Node cannot write one) and has Node sign them. Each one is then read back by Node and its signature, issuer and kind verified before it is saved or served. | `certificates.ts` |
 | A certificate of the person's own | The listener can present a certificate and key the person brought instead of one from Outpost's authority (`https.certificate` is `own`). They live in `tls/own/` as `fullchain.pem` and `privkey.pem`: written at `0600` in a `0700` folder when given in Settings, left with the person's own permissions when put there by hand (a key other accounts can read is reported, not changed). The key is kept unencrypted, for the same reason as Outpost's own; it is never served, never logged, and not in a backup or on a portable drive. Outpost never writes through a symbolic link in that folder. | `modules/https/store.ts`, `own.ts` |
-| Who may hand over a key | Choosing which certificate is presented, and taking up files already in the folder, are open to every device: no secret moves, and either can be put back. **Uploading a key** is accepted without a question when the request is local (`isLocalRequest`, which includes a browser on the computer at the computer's own network address: that connection never leaves the computer) or itself arrived over the HTTPS listener (`socket.encrypted`). From another device over plain http the key crosses the network in the clear; that is the owner's call to make, so it is accepted only when the request carries `acceptKeyOverPlainHttp=yes`, which Settings sends only after the person has read what it gives away (anyone listening could copy the key, and with it pass off another server as this Outpost to devices that trust the certificate) and ticked a box saying they accept it. There is no default: a missing field, or any other value, is refused with the reason, the folder, and HTTPS as the better ways. An accepted one is logged with the address it came from, never the key. `OUTPOST_ALLOW_REMOTE_ERASE` does not widen or narrow this. A password for a PKCS#12 file travels in the same request, in the clear in the same way (Settings says so), is used once and is not stored. **Deleting** the person's certificate and key follows the rule for deleting the authority, since HTTPS could not then be put back from another device. | `keyRight` in `modules/https/index.ts` |
+| Who may hand over a key | Choosing which certificate is presented, and taking up files already in the folder, are open to every device: no secret moves, and either can be put back. **Uploading a key** is accepted without a question when the request is local (`isLocalRequest`, which includes a browser on the computer at the computer's own network address: that connection never leaves the computer) or itself arrived over the HTTPS listener (`socket.encrypted`). From another device over plain http the key crosses the network in the clear; that is the owner's call to make, so it is accepted only when the request carries `acceptKeyOverPlainHttp=yes`, which Settings sends only after the person has read what it gives away (anyone listening could copy the key, and with it pass off another server as this Outpost to devices that trust the certificate) and ticked a box saying they accept it. There is no default: a missing field, or any other value, is refused with the reason, the folder, and HTTPS as the better ways. An accepted one is logged with the address it came from, never the key. `OUTPOST_ALLOW_REMOTE_ERASE` does not widen or narrow this. A password for a PKCS#12 file travels in the same request, in the clear in the same way (Settings says so), is used once and is not stored. **Deleting** the person's certificate and key follows the rule for deleting the authority, since HTTPS could not then be put back from another device, and so does **giving a new pair while one is already in `tls/own`**, which deletes the old key as surely (`apps/server/test/https-own.test.ts`). | `keyRight` in `modules/https/index.ts` |
 | What is checked before it is used | The key belongs to the certificate; the chain is put in order; dates; names (a subject alternative name is required); key kind and size; signature hash; purpose; and Node is asked to build a TLS context from it. What cannot work is refused and nothing of it is kept. | `inspectOwn` in `modules/https/own.ts` |
 | Outpost never changes certificate by itself | A certificate of the person's own that expires goes on being served, and one whose files become unusable is replaced by nothing (the pair read before is served until a restart; after one, HTTPS does not start). Outpost does not fall back to its own authority: that would present an identity the person's devices were never told to trust, and would make a certificate authority nobody asked for. Plain HTTP is unaffected throughout. | `sync`, `takeUpOwn` in `modules/https/service.ts` |
 | Who may do what | Turning HTTPS on or off and listing another name are ordinary settings, open to every device: neither breaks anything that cannot be put back. Replacing or deleting the authority stops every device that trusted it from trusting Outpost, so those two are accepted only from the computer Outpost runs on, on the same terms as [erasing everything](#erasing-everything), including the `OUTPOST_ALLOW_REMOTE_ERASE` option. An authority that cannot be read is reported, never silently replaced. | `authorityRight` in `modules/https/index.ts`, `core/local.ts` |
@@ -207,9 +207,22 @@ or `OPTIONS`) must:
 
 A page on another site cannot add a custom header without the browser first asking
 Outpost's permission (a CORS preflight), and Outpost never grants it: it sends no CORS
-headers at all. With no sign-in, this is the whole of what stands between a page you
+headers at all. The header is the rule that does the work; the other two are a second
+line. The `Origin` comparison is by host name only, not port or scheme, so it does not
+by itself tell Outpost's two listeners from another program on the same computer's
+other ports; `Sec-Fetch-Site` (which calls another port `same-site`, and is refused)
+and the header do. A page in a sandbox, such as a reference page from a ZIM archive,
+sends `Origin: null`; that is refused as well. With no sign-in, this is the whole of what stands between a page you
 visit and your library, which is why it applies to every changing request without
-exception, however its address is written. A `GET` never changes anything.
+exception, however its address is written. A `GET` never changes anything. A few
+`GET`s do reach outside Outpost, each only to a place fixed by settings or by the
+network: `GET /api/answers/models` and `GET /api/chat/models` ask the model server the
+settings name for its list of models (while answers are switched on);
+`GET /api/semantic/status` asks the embedding server whether it answers (at most once a minute, or at once with `fresh=1`) while one is chosen; and
+`GET /api/storage/shares/discover` listens for file servers announcing themselves on
+the home network (on a Mac). A page on another site can make a browser send any of them
+(as an image address, say); it cannot read the answer, and nothing is sent but the
+question.
 The one set of routes outside `/api/` that is not the web app's own files is the
 address book for phones, which cannot change anything by any method; see
 [Contacts](#the-address-book-for-phones-carddav).
@@ -529,9 +542,16 @@ each only as the direct result of a press (see [maps.md](maps.md#satellite-image
 | What is read | The files are parsed by Outpost's own GeoTIFF reader, which reads only tiled or striped 8- and 16-bit pictures, Deflate or uncompressed, refuses anything else, and checks every length against the file before using it; a directory loop, more than 64 directories or 4,096 entries is refused. Decompressed tiles must be the size the header says. The catalogue's answer is checked field by field (zod) and anything malformed is dropped. | `cog.ts`, `stac.ts` |
 | Nothing billed | Both buckets are public and not requester-pays: no AWS account, no credential and no bill exist in this feature. The billed EOX route was not built (see [sources.md](sources.md#satellite-imagery)). | |
 
-Three outbound paths do not use this client, because their address is a setting: the
-embedding server for semantic search, the model server for answers (see
-[below](#answers-from-a-language-model)), and kiwix-serve.
+The outbound paths that do not use this client: the embedding server for semantic
+search and the model server for answers and Chat (see
+[below](#answers-from-a-language-model)), because their address is a setting and is
+held to the home network instead of away from it; kiwix-serve, Outpost's own helper on
+this computer; listing a network share's folders, which is Outpost's own SMB client
+connecting to the address it has just checked is on the home network
+([Network shares](#network-shares)); and the network scan, which pings and connects
+only to private addresses worked out from the computer's own interfaces
+([Devices on this network](#devices-on-this-network)). Every path, with what starts
+it, is listed under [No telemetry](#no-telemetry).
 
 ### Reference layers
 
@@ -768,7 +788,8 @@ behaviour described above. (`scanRight` in `modules/network/index.ts`; tested in
 **What is kept.** Device names can be people's names ("Anna's iPhone"). The list is
 in the database (and so in backups), shown only on its own screen, never put in search,
 never written to the log (a scan logs only its counts), and leaves Outpost only when
-someone presses "Copy the list" or "Save as CSV". "Erase everything" removes it. The
+someone presses "Copy the list" or "Save as CSV", or in a backup or on a portable
+drive, which carry the whole database. "Erase everything" removes it. The
 names and announcements devices send are text from the network: they are stripped of
 control characters, cut to 80 characters and shown as text, never as markup. The link
 to a device's web page is opened by the person's browser in a new tab with
@@ -853,6 +874,23 @@ request input goes through `resolveInside`, which refuses anything that escapes 
 folder; `safeFileName` reduces any name to one safe path segment on every supported
 file system. Code: `apps/server/src/core/fs-safe.ts`,
 `apps/server/src/modules/storage/service.ts`.
+
+Whether a folder is inside the storage roots is decided twice: as it is written, and
+again with every symbolic link in it followed (`isInsideRoots`). Both must hold. On a
+Mac the default root is `/Volumes`, where `/Volumes/Macintosh HD` is a link to `/`;
+checked by spelling alone, that let any device on the network list every folder on
+the computer and make a storage location in a person's home folder. The same test
+decides the folders the storage screen lists, a new storage location, the check of
+each location at start-up, where a portable drive is made and which drive is read
+back home. Tested in `apps/server/test/storage-roots.test.ts`.
+
+What this does not cover: **a link inside a storage location**. Once a location
+exists, a path within it is checked by spelling (`resolveInside`), so a symbolic link
+placed on a USB stick or a network share that is a location can lead a request that
+names a file on it (importing a ZIM archive, a map or reference data from storage)
+to read a file elsewhere on the computer. Following links there too would refuse
+links people use on purpose and touches every caller; it is not done. Make a removable
+drive or share a storage location only if you trust what is on it.
 
 ### Archives
 
@@ -1445,14 +1483,21 @@ anything else. What they can and cannot touch:
 | Ids, not paths | A request names items by id, and leftovers by ids Outpost issued. A path inside an id goes through `resolveInside`; `..`, an absolute path or another location's file is refused. | `manage/index.ts`, `manage/leftovers.ts` |
 | Never touched | Storage locations and their marker files, network shares and Keychain items, catalogue manifests, and anything outside the data directory and the two folders above. | |
 | Changing requests only | Everything that removes is a `POST` and so needs the `X-Outpost-Request` header and the same origin. Measuring is read-only. | `apps/server/src/core/guard.ts` |
+| A person's own files, one at a time from another device | Deleting the files of more than one item the person added themselves (documents they uploaded, archives Outpost was pointed at) in one request is held to the rule for [erasing everything](#erasing-everything): from another device it is refused with `403`, and they can be removed one at a time, or forgotten with their files kept. Downloaded content can be removed in bulk from anywhere. | `POST /api/manage/remove` in `manage/index.ts`; `apps/server/test/manage.test.ts` |
 
 #### Erasing everything
 
 Removing downloaded content loses nothing that cannot be fetched again, so, like
 removing items one at a time, any device that can reach Outpost may do it. **Erase
-everything** destroys notes, contacts, chat conversations, repeaters, radio plans and
-logged contacts, power plans, and documents, and
-Outpost has no accounts to ask "who is this?". It asks "where from?" instead:
+everything** destroys what a person made and cannot fetch again: notes, documents,
+contacts, chat conversations, places and routes, repeaters, radio plans and logged
+contacts, power plans, supplies, weather places and readings, emergency plans, nuclear
+scenarios, the network device list, OpenPGP keys and game saves. Nothing of it is left
+readable in the database file: the keyword index's own storage is rebuilt and the file
+is compacted (`erasePersonal` in `manage/cleanup.ts`; every table is checked in
+`apps/server/test/table-coverage.test.ts`, which fails when a new table has not been
+given a rule for erasing, backups and portable drives). Outpost has no accounts to ask
+"who is this?". It asks "where from?" instead:
 
 - The request must come from **the computer Outpost runs on**. It counts as local when
   it did not come through a proxy and either nothing but this computer can reach
@@ -1554,6 +1599,39 @@ download, a catalogue refresh, a weather update (or opens Weather and hazards wi
 "also update when I open this screen" ticked, which is off by default) or one of the
 other actions listed in
 [offline.md](offline.md#what-needs-a-connection).
+
+Every place in the server that opens a connection, read from the code on 17 November
+2026 (a search for `fetch(`, `http.request`, `net.connect`, `dns.lookup` and the
+guarded client across `apps/server/src`). Each route that starts one is a `POST`, held
+to the cross-site rules above, except the few `GET`s named there.
+
+| What starts it | Where it goes | Code |
+| --- | --- | --- |
+| Catalogue **Refresh**; adding or downloading an entry; installing a pack | `opds.library.kiwix.org`; the manifests' `downloadHosts` and public mirrors they redirect to | `catalog/kiwix.ts`, `catalog/resolve.ts`, `downloads/http-fetcher.ts` |
+| Map region estimate and download; place names | `build-metadata.protomaps.dev`, `build.protomaps.com` or the `maps.tileSource` / `maps.terrainSource` archives; `download.geonames.org` | `maps/source.ts`, `maps/pmtiles/remote.ts`, `maps/places.ts` |
+| Satellite imagery and aerial photographs: **Find pictures**, **Continue**, **Fetch**, **Download** | The fixed hosts in [Satellite imagery](#downloads-the-ssrf-guard) above | `maps/imagery/` |
+| **Search** in "Find a route", and adding a result | The declared route sources | `maps/route-finder/overpass.ts` |
+| Reference data for the map: **Show the size**, **Download** | The sources named in [Reference layers](#reference-layers) | `layers/query-fetcher.ts`, `layers/adapters/` |
+| **Save to library** on a link; **Look at the page** and **Save page** | The host in the address, and its redirects | `links/index.ts`, `webpages/fetch.ts`, `webpages/pictures.ts` |
+| **Get the list** for a repeater source | The source's own host | `repeaters/fetch.ts` |
+| **Update now** on Weather and hazards (or opening it with the option ticked); climate averages | `api.open-meteo.com`, `www.metoffice.gov.uk`, `environment.data.gov.uk`; `power.larc.nasa.gov`, `re.jrc.ec.europa.eu` | `weather/sources.ts` |
+| A newer solar cycle table | `services.swpc.noaa.gov` (`OUTPOST_SOLAR_TABLE_URL`) | `propagation/datasets.ts` |
+| The second HF model's maps | `raw.githubusercontent.com` | `propagation/p533/maps.ts` |
+| **Fetch the registry from the IEEE** under Devices on this network | `standards-oui.ieee.org` (`OUTPOST_IEEE_OUI_URL`) | `network/service.ts` |
+| Making a portable drive for a new kind of computer | `nodejs.org`, `download.kiwix.org` | `portable/runtimes.ts` |
+| Answers, Chat, **Test**, **Look for Ollama**, the model lists in Settings and Chat | The `answers.endpoint` setting; `127.0.0.1:11434` for the look | `answers/provider.ts`, `chat/models.ts` |
+| Passages newly indexed, five seconds after they settle, while search by meaning uses an embedding server; **Test** | The `search.semantic.endpoint` setting | `semantic/providers.ts` |
+| **Scan** under Devices on this network | Private addresses on the computer's own networks only | `network/scan.ts`, `network/system.ts` |
+| Connecting a share, listing its folders; on a Mac, at start and every five minutes, reconnecting a share whose password is remembered | The file server's checked private address | `storage/shares/` |
+| Opening a reference page, starting the server | kiwix-serve on this computer | `kiwix/index.ts`, `kiwix/server.ts` |
+
+Two of these happen without a press at the moment they happen, each because a person
+set it up earlier: vectors for new passages, sent to an embedding server the person
+chose (contact cards, map places and catalogue entries are passages too, so with an
+embedding server on another machine their words go there), and reconnecting a
+remembered network share. A download that was running when the server stopped carries
+on when it starts again. The list does not include `apps/server/src/cli/` and
+`maps/build-regions.mjs`, which are tools run by hand, not by the server.
 
 ## Network shares
 
