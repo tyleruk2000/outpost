@@ -1,4 +1,4 @@
-import type { BackupStatus } from "@outpost/shared";
+import type { BackupStagedResponse, BackupStatus } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, MonitorSmartphone, RotateCcw, Upload } from "lucide-react";
 import { useRef, useState } from "react";
@@ -11,6 +11,7 @@ import { ApiError, api, errorMessage } from "@/lib/api";
 import { manageLink } from "../manage/manage-data";
 import { AutomaticBackups } from "./automatic-backups";
 import { BackupProtectionRow, passphraseHeader, passphraseProblem, RestorePassphrase, startsAsProtected } from "./backup-protection";
+import { RESTORE_WORDS, stagedText } from "./backup-text";
 import { SettingRow, SettingsSection } from "./parts";
 
 /**
@@ -72,8 +73,9 @@ export function BackupSection() {
         );
       return body;
     },
-    onSuccess: () => {
+    onSuccess: (staged: BackupStagedResponse) => {
       choose(undefined);
+      toast.success(stagedText(staged.createdAt, staged.supervised));
       return refresh();
     },
     onError: (error) => {
@@ -128,7 +130,7 @@ export function BackupSection() {
         <BackupProtectionRow status={status.data} isPending={status.isPending} error={status.error} onRetry={() => status.refetch()} />
         <SettingRow
           label="Restore from a backup"
-          hint="Replaces what this Outpost holds with the backup. What is here now is kept in a dated folder in the data directory."
+          hint="Replaces what this Outpost holds with the backup, once it has been checked and Outpost has started again. What is here now is kept in a dated folder in the data folder, not deleted."
           control={
             mayRestore ? (
               <>
@@ -213,8 +215,11 @@ export function BackupSection() {
           title="Restore from this backup?"
           description={
             <>
-              <span className="font-medium text-ink">{chosen?.name}</span> will replace the notes, settings and library index on this
-              Outpost after a restart. The current data is kept in a dated folder, not deleted.
+              <p>
+                <span className="font-medium text-ink [overflow-wrap:anywhere]">{chosen?.name}</span> is sent to Outpost and checked first.{" "}
+                {RESTORE_WORDS[0]}
+              </p>
+              <p className="mt-2">{RESTORE_WORDS[1]}</p>
             </>
           }
           confirmLabel="Check and stage restore"

@@ -517,7 +517,7 @@ export function PortableDriveSection() {
       description="Put Outpost and part of your library on a USB drive that runs on another computer with nothing to install."
     >
       <div className="flex max-w-[70ch] flex-wrap items-start gap-x-6 gap-y-3">
-        <p className="min-w-64 flex-1 text-small text-ink-muted">
+        <p className="min-w-[min(16rem,100%)] flex-1 text-small text-ink-muted">
           {status.data?.runningFromDrive
             ? "This Outpost is running from a portable drive. You can make another drive from it."
             : "The drive holds its own copy of the app, your notes, and the documents, collections and maps you choose. Plug it in, double-click, and it opens in the browser, with no network needed. What you write on it while away can be brought back here afterwards."}

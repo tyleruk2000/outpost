@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { ChartTooltip, TooltipValue } from "./chart-tooltip";
 import { bucketReadings, clamp, linearScale, nearestIndex, type Reading } from "./scale";
 import { formatRate, formatSpeed, speedTicks } from "./speed";
+import { useTextScale } from "./text-scale";
 import { useWidth } from "./use-width";
 
 /** Readings further apart than this were not one continuous transfer; the line breaks there. */
@@ -23,7 +24,7 @@ export function SpeedChart({
   domain,
   xTicks,
   limit,
-  height = 168,
+  height: baseHeight = 168,
   label,
   timeLabel,
   placeholder,
@@ -50,6 +51,10 @@ export function SpeedChart({
   className?: string;
 }) {
   const [frame, measured] = useWidth<HTMLDivElement>();
+  const scale = useTextScale();
+  const height = Math.round(baseHeight * scale);
+  /** The width of a character of the axis labels, near enough to keep room for them. */
+  const character = 6.7 * scale;
   const width = measured || 640;
   const [pointing, setPointing] = useState<Pointing>(null);
 
@@ -59,10 +64,15 @@ export function SpeedChart({
   );
   const peak = shown.reduce((max, reading) => Math.max(max, reading.value), 0);
   const limitDrawn = limit && (peak === 0 || limit <= peak * LIMIT_WITHIN) ? limit : null;
-  const y = speedTicks(Math.max(peak, limitDrawn ?? 0), height < 150 ? 2 : 4);
+  const y = speedTicks(Math.max(peak, limitDrawn ?? 0), baseHeight < 150 ? 2 : 4);
   const tickLabels = y.ticks.map((tick) => (tick === 0 ? "0" : formatRate(tick)));
 
-  const margin = { top: 20, right: 10, bottom: 26, left: Math.max(30, Math.max(...tickLabels.map((text) => text.length)) * 6.7 + 12) };
+  const margin = {
+    top: 20 * scale,
+    right: 10,
+    bottom: 26 * scale,
+    left: Math.max(30 * scale, Math.max(...tickLabels.map((text) => text.length)) * character + 12),
+  };
   const plot = { left: margin.left, right: width - margin.right, top: margin.top, bottom: height - margin.bottom };
   const toX = linearScale(domain, [plot.left, plot.right]);
   const toY = linearScale([0, y.max], [plot.bottom, plot.top]);
@@ -73,7 +83,7 @@ export function SpeedChart({
   for (const tick of [...xTicks].sort((a, b) => b.at - a.at)) {
     const x = toX(tick.at);
     if (x < plot.left - 0.5 || x > plot.right + 0.5) continue;
-    const wide = tick.label.length * 6.7;
+    const wide = tick.label.length * character;
     const right = x > plot.right - 24 ? x : x < plot.left + 14 ? x + wide : x + wide / 2;
     if (right + 14 > freeUntil) continue;
     spacedTicks.push(tick);
@@ -160,7 +170,7 @@ export function SpeedChart({
             return (
               <g key={tick.at}>
                 <line x1={x} x2={x} y1={plot.bottom} y2={plot.bottom + 4} className="stroke-chart-axis" strokeWidth={1} />
-                <text x={x} y={plot.bottom + 18} textAnchor={anchor} className="tabular fill-ink-muted">
+                <text x={x} y={plot.bottom + 18 * scale} textAnchor={anchor} className="tabular fill-ink-muted">
                   {tick.label}
                 </text>
               </g>
@@ -241,7 +251,7 @@ export function SpeedChart({
       {!drawable && placeholder ? (
         <p
           className="pointer-events-none absolute text-center text-small text-ink-muted"
-          style={{ left: plot.left, right: margin.right, top: (plot.top + plot.bottom) / 2 - 10 }}
+          style={{ left: plot.left, right: margin.right, top: (plot.top + plot.bottom) / 2 - 10 * scale }}
         >
           {placeholder}
         </p>

@@ -1,9 +1,11 @@
 /** The downloads list, kept live, and the things a person can do to one download. */
 import type { DownloadDto, DownloadResponse, DownloadsResponse } from "@outpost/shared";
 import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
 import { useServerEvent } from "@/lib/events";
+import { usePageShown } from "../chat/use-page-shown";
 
 export const downloadsKey = ["downloads", "list"] as const;
 
@@ -19,14 +21,37 @@ function patchDownload(client: QueryClient, download: DownloadDto): void {
 }
 
 /**
+ * What to do with a download that changed. Progress arrives about twice a second, and a
+ * page nobody can see has no bar to move: while hidden nothing is drawn, and once shown
+ * the list is asked for again, so that it is right however much was missed.
+ */
+export function useDownloadUpdates(): (download: DownloadDto) => void {
+  const client = useQueryClient();
+  const shown = usePageShown();
+  const missed = useRef(false);
+  useEffect(() => {
+    if (!shown || !missed.current) return;
+    missed.current = false;
+    void client.invalidateQueries({ queryKey: downloadsKey });
+  }, [shown, client]);
+  return useCallback(
+    (download: DownloadDto) => {
+      if (document.visibilityState === "hidden") missed.current = true;
+      else patchDownload(client, download);
+    },
+    [client],
+  );
+}
+
+/**
  * Every download, newest first. Progress events carry the whole download, so the cached
  * list is patched as they arrive and the bar moves without waiting for a refetch.
  */
 export function useDownloads() {
-  const client = useQueryClient();
+  const update = useDownloadUpdates();
   useServerEvent("download.updated", ({ data }) => {
     const download = data as DownloadDto | undefined;
-    if (download?.id) patchDownload(client, download);
+    if (download?.id) update(download);
   });
   return useQuery({
     queryKey: downloadsKey,

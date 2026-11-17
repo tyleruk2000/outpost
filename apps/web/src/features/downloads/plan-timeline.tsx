@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { cn } from "@/lib/utils";
 import { ChartTooltip } from "./charts/chart-tooltip";
 import { linearScale } from "./charts/scale";
+import { useTextScale } from "./charts/text-scale";
 import { aheadLabel, atClock, clockAt, clockTime, durationTicks } from "./charts/time-axis";
 import { useWidth } from "./charts/use-width";
 import { finishWords, startWords, unscheduledReason } from "./plan-text";
@@ -60,6 +61,9 @@ export const PlanTimeline = memo(function PlanTimeline({
     .map((item, index) => ({ item, index }))
     .sort((a, b) => phaseOrder[a.item.phase] - phaseOrder[b.item.phase] || a.index - b.index)
     .map((row) => row.item);
+  // With large text the labels are wider and taller; the room kept for them grows with it.
+  const scale = useTextScale();
+  const character = CHARACTER * scale;
   const reasonFor = (item: DownloadPlanItem) => unscheduledReason(item, plan, stalled.get(item.id));
   const scheduled = rows.filter((item) => reasonFor(item) === null);
   const horizon = Math.max(0, ...scheduled.map((item) => item.finishesInSeconds ?? 0));
@@ -70,7 +74,7 @@ export const PlanTimeline = memo(function PlanTimeline({
     return clockAt(at, now) === clockTime(at) ? clockTime(at) : clockAt(at, now).replace(" at ", " ");
   };
   // Room is kept to the right of the longest bar for the widest of those labels, so none is ever cut off.
-  const tipRoom = 14 + Math.max(0, ...scheduled.map((item) => tipLabel(item).length)) * CHARACTER;
+  const tipRoom = 14 + Math.max(0, ...scheduled.map((item) => tipLabel(item).length)) * character;
   const reach = Math.max(60, plotWidth - tipRoom);
   const toX = linearScale([0, horizon || 1], [0, reach]);
   const ticks = hasAxis ? durationTicks(horizon, Math.max(1, Math.floor(reach / 92))) : [];
@@ -135,9 +139,15 @@ export const PlanTimeline = memo(function PlanTimeline({
             <span className="max-md:hidden" />
             <div ref={plot} className="min-w-0">
               {hasAxis ? (
-                <svg width={plotWidth} height={24} aria-hidden className="block text-micro">
+                <svg width={plotWidth} height={24 * scale} aria-hidden className="block text-micro">
                   {ticks.map((tick) => (
-                    <text key={tick} x={toX(tick)} y={15} textAnchor={tick === 0 ? "start" : "middle"} className="tabular fill-ink-muted">
+                    <text
+                      key={tick}
+                      x={toX(tick)}
+                      y={15 * scale}
+                      textAnchor={tick === 0 ? "start" : "middle"}
+                      className="tabular fill-ink-muted"
+                    >
                       {aheadLabel(tick)}
                     </text>
                   ))}
@@ -175,7 +185,7 @@ export const PlanTimeline = memo(function PlanTimeline({
                 const active = item.phase === "active";
                 const share = active && item.totalBytes ? Math.min(1, item.receivedBytes / item.totalBytes) : 0;
                 const tip = tipLabel(item);
-                const tipFits = x1 + 8 + tip.length * CHARACTER <= plotWidth + 4;
+                const tipFits = x1 + 8 + tip.length * character <= plotWidth + 4;
                 return (
                   <li key={item.id}>
                     <Link

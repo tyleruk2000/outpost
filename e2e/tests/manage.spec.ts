@@ -45,7 +45,10 @@ test.describe("managing and cleaning up", () => {
     await page.getByRole("checkbox", { name: `Select ${SHEET}` }).click();
     await expect(page.getByRole("region", { name: "Selection" }).getByText("1 item selected")).toBeVisible();
     await page.getByRole("button", { name: "Remove", exact: true }).click();
-    const dialog = page.getByRole("dialog", { name: "Remove 1 item" });
+    const dialog = page.getByRole("dialog", { name: `Remove “${SHEET}”` });
+    await expect(
+      dialog.getByText("Deleting cannot be undone. What came from the catalogue or the map can be downloaded again."),
+    ).toBeVisible();
     await expect(dialog.getByText(/1 item will be deleted, files and all/)).toBeVisible();
     await expect(dialog.getByText("1 document in the library is the same file as a catalogue item here, and goes with it.")).toBeVisible();
     await expect(dialog.getByRole("row", { name: /Internal storage/ })).toBeVisible();

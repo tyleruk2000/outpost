@@ -1,7 +1,7 @@
 import { type HttpsStatus, localByReason, type Settings } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, CircleAlert, CircleCheck, Download, MonitorSmartphone } from "lucide-react";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { toast } from "sonner";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -9,9 +9,51 @@ import { ConfirmDialog } from "@/components/ui/dialog";
 import { Skeleton, Spinner, Switch } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import { OwnCertificateChoice, OwnCertificateInUse, HTTPS_STATUS_KEY as STATUS_KEY } from "./https-own";
-import { guessDevice, TrustSteps } from "./https-steps";
+import type { SecureWay } from "./https-own";
+import { guessDevice, HTTPS_STATUS_KEY as STATUS_KEY } from "./https-shared";
 import { SettingRow, SettingsSection, TextSetting } from "./parts";
+
+// Most of a visit to Settings never needs these: the steps for each kind of device show only once
+// HTTPS has been turned on, and a certificate of one's own only when asked for. They load then.
+const TrustSteps = lazy(() => import("./https-steps").then((module) => ({ default: module.TrustSteps })));
+const OwnCertificateInUse = lazy(() => import("./https-own").then((module) => ({ default: module.OwnCertificateInUse })));
+const WaysIn = lazy(() => import("./https-own").then((module) => ({ default: module.WaysIn })));
+
+const loading = (
+  <div className="grid gap-2" aria-busy>
+    <Skeleton className="h-5" />
+    <Skeleton className="h-5 w-2/3" />
+  </div>
+);
+
+/**
+ * The way in to a certificate of one's own, for a server still on Outpost's own (or with
+ * HTTPS off). One closed line: a person who wants the simple case reads no further, and
+ * what is under it is loaded when it is first opened.
+ */
+function OwnCertificateChoice({ data, secure, refresh }: { data: HttpsStatus; secure: SecureWay; refresh: () => void }) {
+  const [opened, setOpened] = useState(false);
+  return (
+    <details className="group border-t border-border pt-3" onToggle={(event) => event.currentTarget.open && setOpened(true)}>
+      <summary className="flex min-h-11 cursor-default items-center gap-2 py-2 text-small font-medium text-ink marker:content-none hover:text-primary [&::-webkit-details-marker]:hidden">
+        <ChevronRight aria-hidden className="size-4 text-ink-muted transition-transform duration-150 group-open:rotate-90" />
+        Use a certificate of your own instead
+      </summary>
+      <div className="grid gap-5 pb-2 pl-6">
+        <p className="text-small text-ink-muted">
+          For when you already have a certificate for this server: from a public authority for a name you own, from an authority you or your
+          organisation run, or from a tool such as mkcert. HTTPS then presents that certificate in place of Outpost’s own. Outpost’s
+          certificate authority is kept as it is, and going back to it is one press. Most people do not need this.
+        </p>
+        {opened ? (
+          <Suspense fallback={loading}>
+            <WaysIn data={data} secure={secure} refresh={refresh} />
+          </Suspense>
+        ) : null}
+      </div>
+    </details>
+  );
+}
 
 const mono = "font-mono text-[0.8125rem] text-ink [overflow-wrap:anywhere]";
 
@@ -129,10 +171,7 @@ export function HttpsSection({
       />
 
       {status.isPending ? (
-        <div className="grid gap-2" aria-busy>
-          <Skeleton className="h-5" />
-          <Skeleton className="h-5 w-2/3" />
-        </div>
+        loading
       ) : status.isError || !data ? (
         <Notice
           tone="danger"
@@ -248,14 +287,16 @@ export function HttpsSection({
           ) : null}
 
           {usingOwn && !data.unavailable ? (
-            <OwnCertificateInUse
-              data={data}
-              disabled={disabled}
-              address={exampleAddress}
-              secure={secure}
-              refresh={refresh}
-              goBack={() => save("https.certificate", "outpost")}
-            />
+            <Suspense fallback={loading}>
+              <OwnCertificateInUse
+                data={data}
+                disabled={disabled}
+                address={exampleAddress}
+                secure={secure}
+                refresh={refresh}
+                goBack={() => save("https.certificate", "outpost")}
+              />
+            </Suspense>
           ) : null}
 
           {data.authority && !usingOwn ? (
@@ -271,15 +312,17 @@ export function HttpsSection({
                   On a phone or another computer, open this page there first: <span className={mono}>{elsewhere}</span>
                 </p>
               ) : null}
-              <TrustSteps
-                certificate={{
-                  name: data.authority.name,
-                  downloads: { der: "/api/https/outpost-authority.crt", pem: "/api/https/outpost-authority.pem" },
-                  files: { der: "outpost-authority.crt", pem: "outpost-authority.pem" },
-                  address: exampleAddress,
-                }}
-                open={guessDevice(navigator.userAgent, navigator.maxTouchPoints)}
-              />
+              <Suspense fallback={loading}>
+                <TrustSteps
+                  certificate={{
+                    name: data.authority.name,
+                    downloads: { der: "/api/https/outpost-authority.crt", pem: "/api/https/outpost-authority.pem" },
+                    files: { der: "outpost-authority.crt", pem: "outpost-authority.pem" },
+                    address: exampleAddress,
+                  }}
+                  open={guessDevice(navigator.userAgent, navigator.maxTouchPoints)}
+                />
+              </Suspense>
               <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
                 <div className="grid gap-1.5">
                   <Button asChild>
@@ -291,7 +334,7 @@ export function HttpsSection({
                     As text (PEM), for Linux and commands
                   </a>
                 </div>
-                <dl className="min-w-56 flex-1 text-small">
+                <dl className="min-w-[min(14rem,100%)] flex-1 text-small">
                   <div className="flex flex-wrap gap-x-2">
                     <dt className="text-ink-muted">Listed on devices as</dt>
                     <dd className="text-ink">{data.authority.name}</dd>

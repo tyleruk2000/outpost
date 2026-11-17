@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { download } from "./test-support";
 import { downloadsKey } from "./use-downloads";
-import { useNow, useThroughput } from "./use-plan";
+import { detailKey, planKey, useDownloadDetail, useNow, usePlan, useThroughput } from "./use-plan";
 
 function setVisibility(state: "visible" | "hidden") {
   Object.defineProperty(document, "visibilityState", { configurable: true, get: () => state });
@@ -72,6 +72,31 @@ describe("the speed readings", () => {
 describe("the clock for countdowns", () => {
   it("does not tick while the page is hidden", () => {
     renderHook(() => useNow(1000), { wrapper });
+    expect(ticking()).toBe(1);
+    act(() => setVisibility("hidden"));
+    expect(ticking()).toBe(0);
+  });
+});
+
+describe("asking the server again while something is transferring", () => {
+  beforeEach(() => {
+    // Every request waits for ever: only the timers that would make them are looked at.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() => new Promise<Response>(() => {}));
+  });
+
+  it("stops for one download's details while the page is hidden, and starts again when it is shown", () => {
+    client.setQueryData(detailKey("d1"), { download: download({ id: "d1", state: "running" }) });
+    renderHook(() => useDownloadDetail("d1"), { wrapper });
+    expect(ticking()).toBe(1);
+    act(() => setVisibility("hidden"));
+    expect(ticking()).toBe(0);
+    act(() => setVisibility("visible"));
+    expect(ticking()).toBe(1);
+  });
+
+  it("stops for the plan while the page is hidden", () => {
+    client.setQueryData(planKey, { counts: { active: 1, waiting: 0, paused: 0 } });
+    renderHook(() => usePlan(), { wrapper });
     expect(ticking()).toBe(1);
     act(() => setVisibility("hidden"));
     expect(ticking()).toBe(0);
