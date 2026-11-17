@@ -32,7 +32,9 @@ test.describe("the solar clock, on a phone", () => {
 
     const length = page.getByRole("region", { name: "The time from a shadow's length" });
     await length.getByRole("textbox", { name: "Length of the shadow" }).fill("400");
-    await expect(length.getByText(/When you measured it, the time was \d\d:\d\d, give or take \d+ minutes \(between \d\d:\d\d and \d\d:\d\d\)/)).toBeVisible();
+    await expect(
+      length.getByText(/When you measured it, the time was \d\d:\d\d, give or take \d+ minutes \(between \d\d:\d\d and \d\d:\d\d\)/),
+    ).toBeVisible();
     expect(await overflow()).toBeLessThanOrEqual(1);
 
     await page.getByRole("tab", { name: "Make a sundial" }).click();

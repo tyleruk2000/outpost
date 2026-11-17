@@ -2,8 +2,8 @@
 import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { toolScreens } from "../tools/screens";
 import { fakeApi, renderScreen } from "../manage/test-support";
+import { toolScreens } from "../tools/screens";
 import SolarClockPage from "./solar-clock-page";
 
 const marker = (over: Record<string, unknown>) => ({
@@ -56,7 +56,10 @@ describe("the solar clock", () => {
   });
 
   it("shows a skeleton while saved places load", () => {
-    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => undefined)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise(() => undefined)),
+    );
     renderScreen(<SolarClockPage />, "/tools/solar-clock");
     expect(screen.getByLabelText("Loading saved places")).toBeInTheDocument();
   });
@@ -87,7 +90,9 @@ describe("the solar clock", () => {
 
     // Two equal shadows: halfway, 11:45 UTC (USNO's transit), to the minute.
     const noon = region("Noon from a shadow");
-    expect(await within(noon).findByText(/Halfway between your two marks, the clock should have read 11:45, give or take/)).toBeInTheDocument();
+    expect(
+      await within(noon).findByText(/Halfway between your two marks, the clock should have read 11:45, give or take/),
+    ).toBeInTheDocument();
     fireEvent.change(within(noon).getByLabelText("At the morning mark"), { target: { value: "09:30" } });
     fireEvent.change(within(noon).getByLabelText("At the afternoon mark"), { target: { value: "14:30" } });
     expect(within(noon).getByText(/That clock is 15 minutes fast: put it back by that much/)).toBeInTheDocument();
