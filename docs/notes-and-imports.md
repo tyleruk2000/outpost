@@ -132,8 +132,17 @@ nothing is overwritten: "This page was changed somewhere else after you opened i
 There is no live co-editing; see
 [the limits table](architecture.md#limits-and-trade-offs).
 
+A tab with nothing unsaved follows a change made elsewhere as soon as it is saved.
+With unsaved changes it is left alone, and its next save is the one refused; the
+notice then offers **Keep my version** (which replaces the other one) or **Load the
+other version**.
+
 If the server cannot be reached, unsaved changes are kept and retried until it
-answers.
+answers. Changes not yet saved are also kept in the tab itself, so that a reload or a
+tab closed too soon does not lose them: the page then offers **Restore my changes**.
+When the page has been saved since (in another tab, on another device), the notice
+says so and the button reads **Replace with my changes**, because restoring puts the
+kept version in place of the newer one.
 
 A page can also be kept on a phone, from its menu, to be read where the server cannot
 be reached at all. The pages inside it come too. A kept page cannot be edited there,
@@ -266,6 +275,10 @@ a page from the web is a separate thing, asked for separately: see
    rest.
 5. **Report.** What was created, updated, skipped and failed, with reasons.
 
+The screen follows the work by the server's live events, so its progress bar moves
+with the job. Only while the connection to the server is down does it ask every few
+seconds instead. You can leave the screen; the job carries on.
+
 You can cancel while it is analysing or importing, and discard an import you have not
 committed, which removes its uploaded files. Uploads that are never finished are
 cleared after a week.
@@ -361,9 +374,11 @@ You choose one policy for the import:
 | --- | --- | --- |
 | **Skip** | Left untouched, nothing new created | Left untouched |
 | **Copy** | A second page is created | A second page is created |
-| **Replace** | Updated in place from the new files | Left untouched: hand-written pages are never overwritten |
+| **Replace** | Updated in place from the new files, except a page encrypted since, which is left untouched | Left untouched: hand-written pages are never overwritten |
 
 Replace overwrites pages, so it is refused until you confirm it (`replaceConfirmed`).
+It overwrites what was changed in those pages since they were imported, as the
+preview says.
 Pages in the trash do not count as existing. New sub-pages of a skipped page are put
 under the existing page.
 

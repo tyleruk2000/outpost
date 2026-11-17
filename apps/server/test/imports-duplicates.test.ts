@@ -132,7 +132,10 @@ describe("importing the same thing again", () => {
     const route = await findNote(app, "Route");
     const armor = fs.readFileSync(path.join(import.meta.dirname, "fixtures/pgp/message-symmetric.asc"), "utf8").trim();
     const current = (await app.api("GET", `/api/notes/${route.id}`)).body.note;
-    const encrypted = await app.api("PATCH", `/api/notes/${route.id}`, { content: encryptedNoteDoc(armor), baseUpdatedAt: current.updatedAt });
+    const encrypted = await app.api("PATCH", `/api/notes/${route.id}`, {
+      content: encryptedNoteDoc(armor),
+      baseUpdatedAt: current.updatedAt,
+    });
     expect(encrypted.status).toBe(200);
 
     const dto = await commit(app, (await analyse(app, await notion())).id, { duplicates: "replace", replaceConfirmed: true });
