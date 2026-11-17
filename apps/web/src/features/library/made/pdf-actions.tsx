@@ -238,27 +238,39 @@ const FAILURE_TITLE = {
   refused: "Not added",
 } as const;
 
-/** Where the next PDF goes, with the way to change it. Asked once, by whoever wants to; kept on this device. */
+/**
+ * What each of the three does, said where the choice is made, with the way to change
+ * where the library files it. Saving leaves a file on the device that Outpost never sees
+ * again; adding keeps it in Outpost. Before this, people saved a map and later looked for
+ * it in the library.
+ */
 function WhereItGoes({ made }: { made: MadePdfHandle }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(made.category);
   const id = useId();
   if (!editing) {
     return (
-      <p className="text-small text-ink-muted">
-        “Add to library” files it under “{made.category}”, where search and backups reach it.{" "}
-        <button
-          type="button"
-          // Set in the line like a link; the padding makes it a full-sized target for a finger without moving the lines apart.
-          className={cn(linkClass, "inline rounded-control max-md:-my-3 max-md:py-3")}
-          onClick={() => {
-            setDraft(made.category);
-            setEditing(true);
-          }}
-        >
-          Change where
-        </button>
-      </p>
+      <ul className="grid gap-1 text-small text-ink-muted">
+        <li>
+          “Save as PDF” puts <span className="text-ink [overflow-wrap:anywhere]">{made.pdf?.file.name}</span> on this device, where the
+          browser keeps downloads. Outpost keeps no copy.
+        </li>
+        <li>
+          “Add to library” files it under “{made.category}”: Outpost keeps it, where search and backups reach it.{" "}
+          <button
+            type="button"
+            // Set in the line like a link; the padding makes it a full-sized target for a finger without moving the lines apart.
+            className={cn(linkClass, "inline rounded-control max-md:-my-3 max-md:py-3")}
+            onClick={() => {
+              setDraft(made.category);
+              setEditing(true);
+            }}
+          >
+            Change where
+          </button>
+        </li>
+        {made.canShare ? <li>“Share” hands it to another app on this device, such as mail or messages.</li> : null}
+      </ul>
     );
   }
   const submit = (event: FormEvent) => {

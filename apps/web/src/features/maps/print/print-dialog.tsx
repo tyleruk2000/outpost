@@ -46,10 +46,9 @@ import {
   pieceView,
 } from "./export";
 import { graticule } from "./graticule";
-import { mapLibraryTitle, mapViewPath, mapWords, withMapWords } from "./map-words";
+import { mapFileName, mapLibraryTitle, mapViewPath, mapWords, withMapWords } from "./map-words";
 import { overlayOn, PRINT_OVERLAYS, type PrintContext, type PrintSelection, partsOn, printStyle } from "./overlays";
 import { type PageGeometry, paperName } from "./paper";
-import { pdfFileName } from "./pdf";
 import { planNote, type RasterPlan, type Resolution } from "./pieces";
 import { formatScale, frameOfBox } from "./scale";
 import { layoutSheet } from "./sheet";
@@ -324,7 +323,7 @@ export function PrintDialog({
       setMade({
         status: "ready",
         url: held.hold(file.blob),
-        file: new File([file.blob], pdfFileName(shownTitle), { type: "application/pdf" }),
+        file: new File([file.blob], mapFileName(shownTitle, bbox, scale, now), { type: "application/pdf" }),
         libraryTitle: mapLibraryTitle(shownTitle, bbox, scale, now),
         plan: drawn.plan,
         pictures: drawn.pictures.map((picture) => ({ ...picture, url: held.hold(picture.blob) })),

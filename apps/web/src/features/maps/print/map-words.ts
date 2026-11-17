@@ -18,6 +18,7 @@ import { type Bbox, toMaidenhead } from "@outpost/shared";
 import { formatBboxSize } from "../lib/geo";
 import { encodeWinAnsi, wrapText } from "./helvetica";
 import type { Rect } from "./paper";
+import { pdfFileName } from "./pdf";
 import { formatScale } from "./scale";
 import { MUTED, type Sheet, type SheetItem } from "./sheet";
 
@@ -124,6 +125,11 @@ export function mapLibraryTitle(title: string, bbox: Bbox, scale: number, made: 
   const [west, south, east, north] = bbox;
   const where = title.trim() || position((south + north) / 2, (west + east) / 2);
   return `Map, ${where}, ${formatScale(scale)}, ${shortDate.format(made)}`;
+}
+
+/** The name the saved file goes by: the library's title for it, so that it says where, at what scale and when. */
+export function mapFileName(title: string, bbox: Bbox, scale: number, made: Date): string {
+  return pdfFileName(mapLibraryTitle(title, bbox, scale, made));
 }
 
 /** The address of the map screen showing about the same ground, for the way back from the library. */

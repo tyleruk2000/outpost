@@ -86,13 +86,21 @@ describe("what is offered", () => {
     expect(save).toHaveAttribute("href", "blob:made-pdf");
     expect(screen.getByRole("button", { name: "Add to library" })).toBeEnabled();
     expect(screen.queryByRole("button", { name: "Share" })).not.toBeInTheDocument();
-    expect(status()).toHaveTextContent("“Add to library” files it under “Made in Outpost”, where search and backups reach it.");
+    // What each one does, said where the choice is made: the saved file is not kept by Outpost; the library's copy is.
+    expect(status()).toHaveTextContent(
+      "“Save as PDF” puts hf-prediction-london-to-edinburgh-20-m-for-16-nov-2026.pdf on this device, where the browser keeps downloads. Outpost keeps no copy.",
+    );
+    expect(status()).toHaveTextContent(
+      "“Add to library” files it under “Made in Outpost”: Outpost keeps it, where search and backups reach it.",
+    );
+    expect(status()).not.toHaveTextContent("“Share”");
     unmount();
 
     const share = vi.fn(() => Promise.resolve());
     vi.stubGlobal("navigator", Object.assign(Object.create(navigator), { canShare: () => true, share }));
     const pdf = prediction();
     show(pdf, heldUpload().send);
+    expect(status()).toHaveTextContent("“Share” hands it to another app on this device, such as mail or messages.");
     screen.getByRole("button", { name: "Share" }).click();
     expect(share).toHaveBeenCalledWith({ files: [pdf.file], title: pdf.title });
   });

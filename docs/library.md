@@ -198,7 +198,10 @@ What the screen adds to the request, and why:
 
 - **Where it goes.** The category **Made in Outpost**, so that everything made here can
   be listed together in the Library (filter by category) and told apart from what was
-  brought in. **Change where**, under the buttons, sets another category; the choice is
+  brought in. Under the buttons, before anything is pressed, a line for each says what
+  it does: **Save as PDF** puts the named file on this device and Outpost keeps no copy;
+  **Add to library** files it under the category, where search and backups reach it;
+  **Share** (where offered) hands it to another app. **Change where** sets another category; the choice is
   kept in the browser (`outpost.library.madeCategory`) and used from then on, on every
   screen that makes a PDF. It is not asked each time. The library has no folders or
   collections of a person's own; a category is the nearest thing it has to one.

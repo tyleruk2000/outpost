@@ -453,9 +453,12 @@ until you save or share it.
    | Lines of latitude and longitude | never | The figures round the edge are printed either way; this draws the lines across the map as well. |
    | Maidenhead grid squares | the grid is switched on for the map on screen | Fields, squares, subsquares or extended squares as the scale allows, each with its locator, as on screen. |
 
-4. **Make the PDF**, then **Save the PDF**, **Share** (where the browser can share
-   files, which needs HTTPS) or **Print**. The file is named after the title:
-   “Helvellyn from Glenridding” becomes `helvellyn-from-glenridding.pdf`.
+4. **Make the PDF**, then **Save as PDF**, **Add to library**, **Share** (where the
+   browser can share files, which needs HTTPS) or **Print**. Under the buttons a line
+   says what each does: a saved file stays on the device and Outpost keeps no copy; the
+   library's copy is kept by Outpost. The file is named for what it is, with the title
+   (or, with none, the page's centre), the scale and the day: “Helvellyn from
+   Glenridding” becomes `map-helvellyn-from-glenridding-1-25-000-16-nov-2026.pdf`.
 
 The map on each paper, inside a 10 mm margin and above the strip of lettering:
 

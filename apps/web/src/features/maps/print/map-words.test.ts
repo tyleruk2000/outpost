@@ -5,7 +5,7 @@
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { describe, expect, it } from "vitest";
 import { graticule } from "./graticule";
-import { mapLibraryTitle, mapViewPath, mapWords, withMapWords } from "./map-words";
+import { mapFileName, mapLibraryTitle, mapViewPath, mapWords, withMapWords } from "./map-words";
 import { pageGeometry } from "./paper";
 import { writePdf } from "./pdf";
 import { boxAtScale } from "./scale";
@@ -59,6 +59,12 @@ describe("what a printed map says of itself", () => {
     );
     expect(mapLibraryTitle("  ", bbox, 25_000, made)).toBe("Map, 54.5270°N 3.0170°W, 1:25,000, 16 Nov 2026");
     expect(mapViewPath(bbox, 13.2)).toBe("/maps?lat=54.5270&lon=-3.0170&z=12.2");
+  });
+
+  it("names the saved file for what it is, not map.pdf", () => {
+    const made = new Date(2026, 10, 16, 14, 30);
+    expect(mapFileName("", bbox, 25_000, made)).toBe("map-54-5270-n-3-0170-w-1-25-000-16-nov-2026.pdf");
+    expect(mapFileName("Helvellyn from Glenridding", bbox, 25_000, made)).toBe("map-helvellyn-from-glenridding-1-25-000-16-nov-2026.pdf");
   });
 
   it("is in the file as text over the map, drawn in no ink, and a reader of the PDF finds it", async () => {
