@@ -390,7 +390,7 @@ function StationView({
           </Notice>
         ) : null}
         {held && fresh ? (
-          <div className="grid gap-3">
+          <div className="grid grid-cols-1 gap-3">
             <p
               data-freshness={fresh.state}
               className={
