@@ -46,7 +46,9 @@ contact is left out when the contact comes in, and the import says how many were
 - **Find as you type.** By name (accents do not matter: "zoe lukas" finds Zoë
   Łukasiewicz), part of a number however it was spaced ("07700 900" finds
   "+44 7700 900123"), an email address, a place, a tag or a callsign. Contacts are also
-  in the search across everything.
+  in the search across everything. The tags above the list show one tag's contacts.
+  Opening a contact from the keyboard takes the focus to its name, so the next Tab is
+  its first action.
 - **Reach someone in one touch.** Each number has Call (`tel:`), Text (`sms:`) and Copy;
   each email address has Email (`mailto:`) and Copy. What happens next is up to the
   device: a phone dials, a computer asks which app to use.

@@ -219,7 +219,7 @@ function ContactList({ filter, setFilter }: { filter: ListFilter; setFilter: (ne
           </button>
         </p>
       ) : (
-        <div className={cn("mt-2", list.isPlaceholderData && "opacity-70")}>
+        <div data-contact-list className={cn("mt-2", list.isPlaceholderData && "opacity-70")}>
           {groups.map((group) => (
             <section key={group.key} aria-label={group.emergency ? "In an emergency" : `Names under ${group.title}`}>
               <h2 className="sticky top-13 z-(--z-sticky) flex items-center gap-2 border-b border-border bg-page px-2.5 pt-4 pb-1.5 text-small font-semibold text-ink-muted md:top-0">

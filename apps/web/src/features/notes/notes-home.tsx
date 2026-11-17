@@ -196,8 +196,11 @@ export function NotesHome() {
               <>
                 {index ? (
                   <Section title="Pages" className="md:hidden">
-                    <div className="-mx-2 border-y border-border py-1.5">
-                      <PageTree index={index} tone="page" currentId={undefined} label="Pages" />
+                    {/* The hairlines line up with the other lists; the rows reach a little wider, for their hover. */}
+                    <div className="border-y border-border py-1.5">
+                      <div className="-mx-2">
+                        <PageTree index={index} tone="page" currentId={undefined} label="Pages" />
+                      </div>
                     </div>
                   </Section>
                 ) : null}

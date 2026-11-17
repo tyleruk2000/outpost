@@ -86,6 +86,21 @@ const system = {
   "GET /api/contacts/phones": { enabled: false, unavailable: null, lanAccess: true, userName: "outpost", path: "/dav/", contacts: 3 },
 };
 
+describe("opening a contact from the keyboard", () => {
+  it("takes the focus to the contact's name, so the next Tab is its first action and not the rest of the list", async () => {
+    fakeApi({ ...system, "GET /api/contacts": listOf(people), "GET /api/contacts/c1": { contact: contact() } });
+    const user = userEvent.setup();
+    show("/contacts");
+    const row = await screen.findByRole("link", { name: /^Maya Okafor/ });
+    row.focus();
+    await user.keyboard("{Enter}");
+    const name = await screen.findByRole("heading", { name: "Maya Okafor", level: 1 });
+    await waitFor(() => expect(name).toHaveFocus());
+    await user.tab();
+    expect(screen.getByRole("link", { name: /Large type/ })).toHaveFocus();
+  });
+});
+
 describe("the list", () => {
   it("says once who can see the contacts, lists the marked ones first, and puts a call one touch away", async () => {
     fakeApi({ ...system, "GET /api/contacts": listOf(people, { tags: [{ name: "Family", count: 2 }] }) });

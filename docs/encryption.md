@@ -33,9 +33,10 @@ Browsers only allow the cryptography this needs (`crypto.subtle`) on a page open
 **HTTPS**, or on the computer Outpost itself runs on (`http://localhost`). Outpost is
 usually reached on a home network as `http://<address>:8080`, and there:
 
-- **Keys, Text and Files** show a notice that says why they cannot work and links to
-  **Settings, HTTPS on your network** (`/settings#https`). The encryption library is not
-  even fetched.
+- The screen opens on **By hand** with a notice above the tabs that says what does not
+  work there (keys, text, files and encrypted pages of notes), why, and links to
+  **Settings, HTTPS on your network** (`/settings#https`). **Keys, Text and Files** each
+  point back to it. The encryption library is not even fetched.
 - An encrypted page of notes shows its title and tags and the same notice in place of
   its text.
 - **By hand** works, including making pads, because it needs only random numbers.
@@ -151,7 +152,8 @@ aloud. Compare it with the key's owner in person or on a call, then tick **I hav
 compared this fingerprint**. That mark is kept in the browser, by fingerprint, and never
 on the server: Outpost has no accounts, so a mark kept there could be set by anyone on
 the network. A key that someone swapped on the server for another shows up as not
-checked.
+checked. Where you pick whom to encrypt to, a key not yet marked says **Fingerprint not
+compared**.
 
 The same box takes a **private key of your own** exported from elsewhere
 (`gpg --armor --export-secret-keys`), which must have a passphrase, and a **revocation
