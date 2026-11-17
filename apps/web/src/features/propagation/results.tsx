@@ -198,8 +198,8 @@ function Reading({ result, hour }: { result: PredictionResult; hour: PredictionH
               At {utcLabel(hour.utc)} UTC, {result.mode.label} on {f} is predicted to get through on{" "}
               <strong className="font-semibold">{percent(cell.reliability)}</strong> of days: the share of days its signal-to-noise ratio
               reaches the {db(result.mode.requiredSnrDbHz!, 1)} (in 1 Hz) it is taken to need. The median is {db(cell.snrDbHz)},{" "}
-              {cell.snrDbHz >= result.mode.requiredSnrDbHz! ? "above" : "below"} it by {db(Math.abs(cell.snrDbHz - result.mode.requiredSnrDbHz!))}
-              .
+              {cell.snrDbHz >= result.mode.requiredSnrDbHz! ? "above" : "below"} it by{" "}
+              {db(Math.abs(cell.snrDbHz - result.mode.requiredSnrDbHz!))}.
             </>
           )}{" "}
           The path's MUF, the highest frequency it carries on half the days, is {mhz(hour.mufMhz)}, and {f} is below it on{" "}

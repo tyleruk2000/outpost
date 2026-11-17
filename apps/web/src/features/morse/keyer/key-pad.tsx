@@ -152,7 +152,11 @@ export function KeyPad({ keyType, keyDown, bindings, swapPaddles, onPress, onRel
   const keys = touchOnly()
     ? null
     : { dit: keyCodeLabel(bindings.dit), dah: keyCodeLabel(bindings.dah), straight: keyCodeLabel(bindings.straight) };
-  const onKeyboard = keys ? (keyType === "straight" ? ` On a keyboard, ${keys.straight}.` : ` On a keyboard, ${keys.dit} and ${keys.dah}.`) : "";
+  const onKeyboard = keys
+    ? keyType === "straight"
+      ? ` On a keyboard, ${keys.straight}.`
+      : ` On a keyboard, ${keys.dit} and ${keys.dah}.`
+    : "";
   const instructions =
     (keyType === "straight"
       ? "Straight key: hold it down for as long as each element lasts."
@@ -183,7 +187,9 @@ export function KeyPad({ keyType, keyDown, bindings, swapPaddles, onPress, onRel
             onLostPointerCapture={straightHandlers.onPointerUp}
           >
             <span className="text-lead font-medium text-ink">Key</span>
-            {keys ? <span className="rounded-control bg-surface-strong px-1.5 py-0.5 text-micro text-ink-muted">{keys.straight}</span> : null}
+            {keys ? (
+              <span className="rounded-control bg-surface-strong px-1.5 py-0.5 text-micro text-ink-muted">{keys.straight}</span>
+            ) : null}
           </div>
         </div>
       ) : (

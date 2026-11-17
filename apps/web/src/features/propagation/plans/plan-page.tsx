@@ -188,42 +188,46 @@ export function Pair({ pair, plan, result }: { pair: PlanPair; plan: Communicati
             All 24 hours are shown; the plan's window is {utcLabel(plan.fromUtc)} to {utcLabel(plan.toUtc)} UTC. Press an hour to read each
             direction.
           </p>
-          <table className="tabular mt-3 w-full max-w-xl text-small">
-            <caption className="mb-1 text-left font-medium text-ink">At {utcLabel(hour)} UTC, share of days</caption>
-            <thead>
-              <tr className="border-b border-border text-ink-muted">
-                <th scope="col" className="py-1 pr-3 text-left font-medium">
-                  Band
-                </th>
-                <th scope="col" className="px-2 py-1 text-right font-medium">
-                  {name(pair.a)} heard at {name(pair.b)}
-                </th>
-                <th scope="col" className="px-2 py-1 text-right font-medium">
-                  {name(pair.b)} heard at {name(pair.a)}
-                </th>
-                <th scope="col" className="py-1 pl-2 text-right font-medium">
-                  Both ways
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {pair.bands.map((band) => (
-                <tr key={band.bandId} className="border-b border-border">
-                  <th scope="row" className="whitespace-nowrap py-1 pr-3 text-left font-medium text-ink">
-                    {planBandLabel(band.bandId)}
-                    {rough.get(band.bandId) ? ` ${APPROXIMATE_SIGN}` : ""}
+          <div className="scroll-quiet mt-3 max-w-xl overflow-x-auto">
+            <table className="tabular w-full text-small">
+              <caption className="mb-1 text-left font-medium text-ink">At {utcLabel(hour)} UTC, share of days</caption>
+              <thead>
+                <tr className="border-b border-border text-ink-muted">
+                  <th scope="col" className="py-1 pr-3 text-left font-medium">
+                    Band
                   </th>
-                  <td className="px-2 py-1 text-right text-ink">
-                    {mark(band.bandId, share(band.forward.reliability[hour - 1] ?? null, band.bandId))}
-                  </td>
-                  <td className="px-2 py-1 text-right text-ink">
-                    {mark(band.bandId, share(band.back.reliability[hour - 1] ?? null, band.bandId))}
-                  </td>
-                  <td className="py-1 pl-2 text-right text-ink">{mark(band.bandId, share(planTwoWay(band, hour, false), band.bandId))}</td>
+                  <th scope="col" className="px-2 py-1 text-right font-medium">
+                    {name(pair.a)} heard at {name(pair.b)}
+                  </th>
+                  <th scope="col" className="px-2 py-1 text-right font-medium">
+                    {name(pair.b)} heard at {name(pair.a)}
+                  </th>
+                  <th scope="col" className="py-1 pl-2 text-right font-medium">
+                    Both ways
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {pair.bands.map((band) => (
+                  <tr key={band.bandId} className="border-b border-border">
+                    <th scope="row" className="whitespace-nowrap py-1 pr-3 text-left font-medium text-ink">
+                      {planBandLabel(band.bandId)}
+                      {rough.get(band.bandId) ? ` ${APPROXIMATE_SIGN}` : ""}
+                    </th>
+                    <td className="px-2 py-1 text-right text-ink">
+                      {mark(band.bandId, share(band.forward.reliability[hour - 1] ?? null, band.bandId))}
+                    </td>
+                    <td className="px-2 py-1 text-right text-ink">
+                      {mark(band.bandId, share(band.back.reliability[hour - 1] ?? null, band.bandId))}
+                    </td>
+                    <td className="py-1 pl-2 text-right text-ink">
+                      {mark(band.bandId, share(planTwoWay(band, hour, false), band.bandId))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
       {byRatio ? (
@@ -422,7 +426,11 @@ export default function PlanPage() {
         actions={
           <>
             <PdfButtons made={pdf.made} lead="none" />
-            <Button disabled={!result} onClick={exportMarkdown}>
+            <Button
+              disabled={!result}
+              onClick={exportMarkdown}
+              className="h-auto min-h-9 max-w-full py-2 whitespace-normal max-md:h-auto max-md:min-h-11"
+            >
               <FileDown aria-hidden />
               Export as Markdown
             </Button>

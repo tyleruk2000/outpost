@@ -164,7 +164,12 @@ export function PlaceInput({
                 options={places.map((place) => ({ value: place.id, label: place.name }))}
               />
             ) : null}
-            <Button type="button" onClick={() => setPicking(true)} aria-label={`${label}: choose on the map`}>
+            <Button
+              type="button"
+              onClick={() => setPicking(true)}
+              aria-label={`${label}: choose on the map`}
+              className="h-auto min-h-9 max-w-full py-2 whitespace-normal max-md:h-auto max-md:min-h-11"
+            >
               <MapPin aria-hidden />
               Choose on the map
             </Button>

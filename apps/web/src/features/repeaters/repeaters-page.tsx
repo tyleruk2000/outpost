@@ -90,11 +90,11 @@ function RepeaterRow({ repeater, list, from }: { repeater: RepeaterDto; list: Re
         <span className="min-w-0 text-small text-ink-muted sm:col-span-2">
           {[repeater.place, repeater.locator, repeater.modes.map(modeName).join(", "), bandName(repeater.band)].filter(Boolean).join(" · ")}
           {repeater.status === "off-air" ? (
-            <Badge tone="warning" className="ml-2">
+            <Badge tone="warning" className="ml-2 whitespace-normal">
               Listed as not operational
             </Badge>
           ) : repeater.status === "reduced" ? (
-            <Badge className="ml-2">Listed as on reduced output</Badge>
+            <Badge className="ml-2 whitespace-normal">Listed as on reduced output</Badge>
           ) : null}
           {repeater.edited ? <Badge className="ml-2">Changed by you</Badge> : null}
           <span className="block">

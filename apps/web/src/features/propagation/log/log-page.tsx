@@ -53,14 +53,22 @@ import {
 const OUTCOME_WORDS: Record<ObservationOutcome, string> = { contact: "Contact", heard: "Heard, no contact", failed: "Called, not heard" };
 
 /** One end as it is listed: its callsign, and where its position came from or that it has none. */
+function whereOf(end: ObservationEnd): string {
+  if (end.lat === null || end.lon === null) return "no position";
+  return end.from.startsWith("locator ") ? end.from.slice(8) : `${end.lat.toFixed(2)}, ${end.lon.toFixed(2)}`;
+}
+
 function endWords(end: ObservationEnd): string {
-  const where =
-    end.lat === null || end.lon === null
-      ? "no position"
-      : end.from.startsWith("locator ")
-        ? end.from.slice(8)
-        : `${end.lat.toFixed(2)}, ${end.lon.toFixed(2)}`;
-  return `${end.call || "No callsign"} (${where})`;
+  return `${end.call || "No callsign"} (${whereOf(end)})`;
+}
+
+function End({ end }: { end: ObservationEnd }) {
+  // The call is what a person looks for; its position stays on one line.
+  return (
+    <>
+      <span className="text-ink">{end.call || "No callsign"}</span> <span className="whitespace-nowrap">({whereOf(end)})</span>
+    </>
+  );
 }
 
 function ImportSummary({ result }: { result: ObservationImport }) {
@@ -623,14 +631,14 @@ export default function LogPage() {
           <Section title="Entries" description={`${plural(log.data.total, "entry", "entries")}, newest first. Times are UTC.`}>
             <Rows className="border-y border-border">
               {log.data.observations.map((item) => (
-                <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5">
+                <li key={item.id} className="flex items-start justify-between gap-3 py-2.5">
                   <span className="min-w-0">
                     <span className="tabular block text-ink">
                       {utcStamp(item.at)} · {item.frequencyMhz === null ? item.band : `${item.frequencyMhz.toFixed(3)} MHz`} · {item.mode} ·{" "}
                       {OUTCOME_WORDS[item.outcome]}
                     </span>
                     <span className="block font-mono text-small text-ink-muted">
-                      {endWords(item.tx)} to {endWords(item.rx)}
+                      <End end={item.tx} /> to <End end={item.rx} />
                     </span>
                     <span className="tabular block text-small text-ink-muted">
                       {[

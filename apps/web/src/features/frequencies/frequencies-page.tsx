@@ -107,13 +107,14 @@ const FrequencyRow = memo(function FrequencyRow({ entry, today }: { entry: Frequ
         ))}
         {more > 0 ? <span className="font-sans text-small text-ink-muted">and {more} more</span> : null}
       </p>
-      <h3 className="mt-0.5">
+      {/* The same space above and below a name of one line or of two: a touch target's height alone would centre one line and not two. */}
+      <h3>
         <button
           type="button"
           aria-expanded={open}
           aria-controls={detailId}
           onClick={() => setOpen((was) => !was)}
-          className="group -mx-2 flex min-h-11 w-[calc(100%+1rem)] items-center gap-3 rounded-control px-2 text-left hover:bg-surface focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+          className="group -mx-2 flex min-h-11 w-[calc(100%+1rem)] items-center gap-3 rounded-control px-2 py-2.5 text-left hover:bg-surface focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
         >
           <span className="min-w-0 flex-1 text-body font-semibold text-ink group-hover:text-primary">{entry.name}</span>
           <ChevronRight
@@ -127,7 +128,11 @@ const FrequencyRow = memo(function FrequencyRow({ entry, today }: { entry: Frequ
       </p>
       {status || schedule === "expired" ? (
         <p className="mt-1 flex flex-wrap gap-1.5">
-          {status ? <Badge tone={entry.status === "closed" ? "warning" : "neutral"}>{status}</Badge> : null}
+          {status ? (
+            <Badge tone={entry.status === "closed" ? "warning" : "neutral"} className="whitespace-normal">
+              {status}
+            </Badge>
+          ) : null}
           {schedule === "expired" ? <Badge tone="warning">Schedule expired</Badge> : null}
         </p>
       ) : null}

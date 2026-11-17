@@ -19,8 +19,9 @@ export interface StepperProps {
 export function Stepper({ label, value, onChange, min, max, step = 1, unit, hint, className }: StepperProps) {
   const clamp = (n: number): number => Math.min(max, Math.max(min, Math.round(n * 100) / 100));
   const id = useId();
+  // Icon-only, so in pixels: a finger is the same size whatever the text size (as on the map).
   const button =
-    "inline-flex size-9 items-center justify-center rounded-control border border-border-strong bg-page text-ink transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40 max-md:size-11";
+    "inline-flex size-[36px] shrink-0 items-center justify-center rounded-control border border-border-strong bg-page text-ink transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40 max-md:size-[44px]";
   return (
     <div className={cn("grid gap-1.5", className)}>
       <span id={id} className="text-small font-medium text-ink">
@@ -37,7 +38,7 @@ export function Stepper({ label, value, onChange, min, max, step = 1, unit, hint
         >
           <Minus aria-hidden className="size-4" />
         </button>
-        <output className="tabular min-w-[4.5rem] text-center text-body font-medium text-ink" aria-live="polite">
+        <output className="tabular min-w-[4rem] text-center text-body font-medium text-ink" aria-live="polite">
           {value}
           {unit ? <span className="ml-1 text-small font-normal text-ink-muted">{unit}</span> : null}
         </output>

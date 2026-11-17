@@ -36,6 +36,7 @@ import {
   rememberForm,
   requestOf,
   useEngines,
+  useHomeAsTransmitter,
   usePlaces,
   usePredict,
   useProfiles,
@@ -73,6 +74,7 @@ export function Planner() {
   const removeSaved = useRemoveSaved();
 
   useEffect(() => rememberForm(form), [form]);
+  useHomeAsTransmitter(places.data, setForm);
   const set = <K extends keyof PlannerForm>(key: K, value: PlannerForm[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
     if (problem?.field === key) setProblem(null);
@@ -507,6 +509,7 @@ export function Planner() {
             action={
               <Button
                 variant="primary"
+                className="h-auto min-h-9 max-w-full py-2 whitespace-normal max-md:h-auto max-md:min-h-11"
                 disabled={engine ? !engine.ready : false}
                 onClick={() => {
                   const example = exampleForm();

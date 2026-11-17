@@ -180,7 +180,10 @@ describe("the Send tab's practice", () => {
 describe("the on-screen key's keyboard hints", () => {
   function pointer(coarse: boolean) {
     const original = window.matchMedia;
-    window.matchMedia = ((query: string) => ({ ...original(query), matches: coarse && query === "(pointer: coarse)" })) as typeof window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      ...original(query),
+      matches: coarse && query === "(pointer: coarse)",
+    })) as typeof window.matchMedia;
     return () => {
       window.matchMedia = original;
     };

@@ -56,7 +56,12 @@ const profile = (spec: AntennaSpec, change: Partial<AntennaProfile> = {}): Anten
 
 /** A server that keeps what was sent to it and answers with `answer`, or refuses. */
 function server(
-  options: { antennas?: AntennaProfile[]; saved?: SavedPrediction[]; answer?: (path: string, body: unknown) => unknown } = {},
+  options: {
+    antennas?: AntennaProfile[];
+    saved?: SavedPrediction[];
+    markers?: unknown[];
+    answer?: (path: string, body: unknown) => unknown;
+  } = {},
 ) {
   const sent: Array<{ method: string; path: string; body: unknown }> = [];
   vi.stubGlobal("scrollTo", vi.fn());
@@ -78,7 +83,7 @@ function server(
         return json({ engines: [{ id: "voacap", name: "VOACAP", ready: true, problem: null }] });
       if (pathname === "/api/radio/profiles") return json({ radios: [], antennas: options.antennas ?? [] });
       if (pathname === "/api/radio/propagation/saved") return json({ saved: options.saved ?? [] });
-      if (pathname === "/api/maps/markers") return json({ markers: [] });
+      if (pathname === "/api/maps/markers") return json({ markers: options.markers ?? [] });
       return json({}, 404);
     }),
   );
@@ -589,6 +594,29 @@ describe("a prediction with an upright wire off its half-wave band", () => {
     expect(screen.queryByRole("list", { name: "The wire on each band" })).toBeNull();
     expect(screen.queryByText(/wavelengths/)).toBeNull();
     expect(screen.getByText(/LUF 4\.00 MHz/)).toBeTruthy();
+  });
+});
+
+describe("a first visit to the planner", () => {
+  const home = { id: "h", name: "Home", lat: 54.43, lon: -2.96, icon: "home", color: null, note: "", isFavorite: false };
+  const hut = { ...home, id: "c", name: "Club hut", icon: "mast", lat: 54.6 };
+
+  it("puts the transmitter at the home place, so the first thing to say is where the other station is", async () => {
+    server({ markers: [hut, home] });
+    shown(<Planner />);
+    const tx = await screen.findByRole("textbox", { name: "Transmitter" });
+    await waitFor(() => expect(tx).toHaveValue("54.43000, -2.96000"));
+    expect(screen.getByText(/· Home$/)).toBeTruthy();
+    expect(screen.getByRole("textbox", { name: "Receiver" })).toHaveValue("");
+  });
+
+  it("leaves a transmitter already given alone, and leaves it empty with no home place", async () => {
+    localStorage.setItem("outpost.propagation.form.v1", JSON.stringify({ tx: { text: "IO91WM", name: "" } }));
+    server({ markers: [home] });
+    shown(<Planner />);
+    await screen.findByRole("combobox", { name: "Transmitter: choose a saved place" });
+    expect(screen.getByRole("textbox", { name: "Transmitter" })).toHaveValue("IO91WM");
+    localStorage.clear();
   });
 });
 

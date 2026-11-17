@@ -95,34 +95,42 @@ export function CodeChartTab() {
             Prosigns
           </h3>
           <p className="mt-1 text-small text-ink-muted">Each is sent as one run, with no gaps between its letters.</p>
-          <table className="mt-2 w-full text-left text-body">
-            <thead>
-              <tr className="border-b border-border-strong text-small text-ink-muted">
-                <th scope="col" className="py-1.5 pr-4 font-medium">
-                  Prosign
-                </th>
-                <th scope="col" className="py-1.5 pr-4 font-medium">
-                  Code
-                </th>
-                <th scope="col" className="py-1.5 font-medium">
-                  Meaning
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {MORSE_PROSIGNS.map((prosign) => (
-                <tr key={prosign.sign} className="border-b border-border align-baseline">
-                  <th scope="row" className="py-1.5 pr-4 font-mono font-semibold text-ink">
-                    {prosign.sign}
+          {/* With large text the three columns are wider than a phone: the table scrolls in its own box, not the page. */}
+          <section
+            aria-label="Table of prosigns"
+            // biome-ignore lint/a11y/noNoninteractiveTabindex: a box that scrolls must be reachable to be scrolled with the keyboard
+            tabIndex={0}
+            className="mt-2 overflow-x-auto rounded-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+          >
+            <table className="w-full text-left text-body">
+              <thead>
+                <tr className="border-b border-border-strong text-small text-ink-muted">
+                  <th scope="col" className="py-1.5 pr-4 font-medium">
+                    Prosign
                   </th>
-                  <td className="py-1.5 pr-4 font-mono tracking-widest whitespace-nowrap text-ink">
-                    <Code code={prosign.code} />
-                  </td>
-                  <td className="py-1.5 text-ink">{prosign.meaning}</td>
+                  <th scope="col" className="py-1.5 pr-4 font-medium">
+                    Code
+                  </th>
+                  <th scope="col" className="py-1.5 font-medium">
+                    Meaning
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {MORSE_PROSIGNS.map((prosign) => (
+                  <tr key={prosign.sign} className="border-b border-border align-baseline">
+                    <th scope="row" className="py-1.5 pr-4 font-mono font-semibold text-ink">
+                      {prosign.sign}
+                    </th>
+                    <td className="py-1.5 pr-4 font-mono tracking-widest whitespace-nowrap text-ink">
+                      <Code code={prosign.code} />
+                    </td>
+                    <td className="py-1.5 text-ink">{prosign.meaning}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
         </section>
       </section>
 

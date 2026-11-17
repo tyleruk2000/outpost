@@ -43,6 +43,8 @@ Read [What it is not](#what-it-is-not) before relying on it.
    a British grid reference or a Maidenhead locator (`IO91WM`), choose a saved place, or
    press **Choose on the map**. Saved places are the markers you keep on the map; there
    is no second list. See [Choosing a place on the map](#choosing-a-place-on-the-map).
+   A transmitter not yet given starts at the home place (the saved place with the home
+   icon), here and on HF coverage; one typed or kept from last time is left as it is.
 2. **Date.** Any day. The model works by month, so every day of a month gets the same
    answer. The planner opens on today's date (UTC). The rest of the form is remembered
    in the browser from one visit to the next; a date you chose is remembered only until

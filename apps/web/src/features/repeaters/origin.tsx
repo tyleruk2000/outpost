@@ -1,7 +1,8 @@
 /**
  * The place distances and bearings are measured from: a saved place, the middle of the
- * map as it was last left, where the device is, or a position or locator typed in. The
- * choice is remembered in this browser.
+ * map as it was last left, where the device is, or a position or locator typed in. Until
+ * one is chosen it is the home place (the saved place with the home icon), if there is
+ * one. The choice is remembered in this browser.
  */
 import { type MarkerDto, parseCoordinateReadings } from "@outpost/shared";
 import { useEffect, useMemo, useState } from "react";
@@ -13,7 +14,7 @@ import { useStoredState } from "@/features/maps/hooks";
 import { type CameraView, isCameraView, readStored, STORAGE_KEYS } from "@/features/maps/lib/view";
 import type { LatLon } from "./data";
 
-/** "none", "map", "here", "typed", or "place:" and the id of a saved place. */
+/** "none", "map", "here", "typed", "place:" and the id of a saved place, or "home" before anything is chosen. */
 type OriginChoice = string;
 
 const KEY = "outpost.repeaters.from";
@@ -44,8 +45,11 @@ export const lastMapCentre = (): LatLon | null => {
 
 export function useOrigin(initial?: LatLon | null): Origin {
   const markers = useMarkers();
-  const [choice, setChoice] = useStoredState<OriginChoice>(KEY, isString, "none");
+  const [stored, setChoice] = useStoredState<OriginChoice>(KEY, isString, "home");
   const [typed, setTyped] = useStoredState(TYPED_KEY, isString, "");
+  const list = markers.data ?? [];
+  const home = list.find((item) => item.icon === "home");
+  const choice = stored === "home" ? (home ? `place:${home.id}` : "none") : stored;
   const [here, setHere] = useState<LatLon | null>(null);
   const [locating, setLocating] = useState(false);
   /** A place handed in by the address (the map's "open the list" link): it stands until another is chosen. */
@@ -76,7 +80,6 @@ export function useOrigin(initial?: LatLon | null): Origin {
   }, [choice, given, here, setChoice]);
 
   const reading = useMemo(() => (typed.trim() ? (parseCoordinateReadings(typed)[0] ?? null) : null), [typed]);
-  const list = markers.data ?? [];
   const marker = choice.startsWith("place:") ? list.find((item) => item.id === choice.slice(6)) : undefined;
 
   let position: LatLon | null = null;
