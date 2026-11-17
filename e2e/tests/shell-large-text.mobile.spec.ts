@@ -21,6 +21,7 @@ const screens = [
   "/maps",
   "/chat",
   "/contacts",
+  "/messages",
   "/encryption",
   "/radio",
   "/tools",

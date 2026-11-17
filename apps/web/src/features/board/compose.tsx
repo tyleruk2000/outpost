@@ -48,7 +48,7 @@ export function ChooseName({ people, current, onDone }: { people: string[]; curr
           choose(typed);
         }}
       >
-        <Field label={people.length > 0 ? "Or type a name" : "Your name"} className="min-w-[12rem] flex-1">
+        <Field label={people.length > 0 ? "Or type a name" : "Your name"} className="min-w-[min(12rem,100%)] flex-1">
           {(ids) => (
             <Input {...ids} value={typed} maxLength={40} autoComplete="given-name" onChange={(event) => setTyped(event.target.value)} />
           )}
