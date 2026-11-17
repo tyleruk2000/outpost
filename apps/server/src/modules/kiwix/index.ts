@@ -14,6 +14,7 @@
  * responses or make changing requests that Outpost accepts, and cannot load anything
  * from the internet.
  */
+import fs from "node:fs";
 import path from "node:path";
 import { Readable } from "node:stream";
 import { XMLParser } from "fast-xml-parser";
@@ -75,10 +76,6 @@ declare module "../../core/context.ts" {
 /** What a proxied page may do: run its own scripts, in an origin of its own. */
 const SANDBOX = "sandbox allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads";
 
-/**
- * Tells the reader which article is showing and hands links that leave the library to
- * it, since a sandboxed page cannot be inspected from outside.
- */
 /**
  * A small script added to every archive page, so that the reader around it knows which
  * page is on show and what was pressed. It is placed before the archive's own scripts
@@ -572,7 +569,7 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
     if (!uuid) throw badRequest("That file is not a ZIM archive.");
     if (zimCollections().some((row) => zimOf(row)?.uuid === uuid))
       throw new AppError("conflict", "That archive is already in your library.");
-    const { size } = await import("node:fs").then((fs) => fs.promises.stat(file));
+    const { size } = await fs.promises.stat(file);
     const row = await collections.create({
       kind: "zim",
       title: body.title || path.basename(file, path.extname(file)),

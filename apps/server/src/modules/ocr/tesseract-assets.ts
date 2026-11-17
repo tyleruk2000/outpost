@@ -29,56 +29,62 @@ export interface InstalledLanguage extends OcrLanguageFile {
   builtIn: boolean;
 }
 
+let engine: boolean | undefined;
+let english: Promise<string | undefined> | undefined;
+
 /**
  * Whether the engine itself is here. Packaged, it is part of the OCR worker's bundle;
- * from source it is the `tesseract.js-core` package.
+ * from source it is the `tesseract.js-core` package. Neither changes while the server runs.
  */
 export function engineInstalled(): boolean {
-  try {
-    if (isBundled) return fs.statSync(fileURLToPath(workerUrl(new URL("./ocr.worker.ts", import.meta.url), "ocr"))).isFile();
-    createRequire(import.meta.url).resolve("tesseract.js-core/package.json");
-    return true;
-  } catch {
-    return false;
+  if (engine === undefined) {
+    try {
+      if (isBundled) engine = fs.statSync(fileURLToPath(workerUrl(new URL("./ocr.worker.ts", import.meta.url), "ocr"))).isFile();
+      else {
+        createRequire(import.meta.url).resolve("tesseract.js-core/package.json");
+        engine = true;
+      }
+    } catch {
+      engine = false;
+    }
   }
+  return engine;
 }
 
-function builtInEnglish(): string | undefined {
-  try {
-    const file = isBundled
-      ? path.join(appRoot, "server/ocr/eng.traineddata.gz")
-      : createRequire(import.meta.url).resolve("@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz");
-    return fs.statSync(file).isFile() ? file : undefined;
-  } catch {
-    return undefined;
-  }
+/** The English data that ships with Outpost. Part of the installation, so looked for once. */
+function builtInEnglish(): Promise<string | undefined> {
+  english ??= (async () => {
+    try {
+      const file = isBundled
+        ? path.join(appRoot, "server/ocr/eng.traineddata.gz")
+        : createRequire(import.meta.url).resolve("@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz");
+      return (await fs.promises.stat(file)).isFile() ? file : undefined;
+    } catch {
+      return undefined;
+    }
+  })();
+  return english;
 }
 
 /**
  * Every language whose data is on this machine, English first. A file a person added
  * takes the place of the built-in one with the same code.
  */
-export function installedLanguages(dataDir: string): InstalledLanguage[] {
+export async function installedLanguages(dataDir: string): Promise<InstalledLanguage[]> {
   const found = new Map<string, InstalledLanguage>();
-  const english = builtInEnglish();
-  if (english) found.set("eng", { code: "eng", path: english, builtIn: true });
+  const builtIn = await builtInEnglish();
+  if (builtIn) found.set("eng", { code: "eng", path: builtIn, builtIn: true });
 
   const folder = path.join(dataDir, LANGUAGE_FOLDER);
-  let names: string[] = [];
-  try {
-    names = fs.readdirSync(folder).sort();
-  } catch {
-    // The folder exists only once somebody has added a language.
-  }
+  // The folder exists only once somebody has added a language.
+  const names = (await fs.promises.readdir(folder).catch(() => [] as string[])).sort();
   for (const name of names) {
     const match = DATA_FILE.exec(name);
     if (!match?.[1]) continue;
     const file = path.join(folder, name);
-    try {
-      if (fs.statSync(file).isFile()) found.set(match[1], { code: match[1], path: file, builtIn: false });
-    } catch {
-      // Removed between listing and looking; simply not there.
-    }
+    // A file removed between listing and looking is simply not there.
+    const stat = await fs.promises.stat(file).catch(() => undefined);
+    if (stat?.isFile()) found.set(match[1], { code: match[1], path: file, builtIn: false });
   }
   return [...found.values()].sort((a, b) => Number(b.code === "eng") - Number(a.code === "eng") || a.code.localeCompare(b.code));
 }
