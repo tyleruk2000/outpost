@@ -91,7 +91,9 @@ export async function registerBackup(app: FastifyInstance, ctx: AppContext): Pro
       },
     });
     pipe(output, counted, () => {});
-    reply.raw.on("finish", () => {
+    // Once: a response can say it has finished twice (light-my-request's stand-in does, the
+    // second time after the server may have closed the database).
+    reply.raw.once("finish", () => {
       const value: BackupDownloaded = { at: Date.now(), name, bytes };
       ctx.sqlite
         .prepare("INSERT INTO library_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { ZipArchive } from "archiver";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createTestApp, type TestApp } from "./helpers.ts";
 import { tempDir } from "./temp.ts";
 
@@ -175,5 +175,23 @@ describe("a backup saved from Settings", () => {
     const name = /filename="([^"]+)"/.exec(String(response.headers["content-disposition"]))![1];
     const { lastDownload } = (await app.api("GET", "/api/backup/status")).body;
     expect(lastDownload).toEqual({ at: expect.any(Number), name, bytes: response.rawPayload.length });
+  });
+
+  it("is written once, when the file has gone, so nothing is left to write after the server stops", async () => {
+    const app = await createTestApp({}, undefined, { voacapData: false });
+    apps.push(app);
+    const writes: string[] = [];
+    const prepare = app.ctx.sqlite.prepare.bind(app.ctx.sqlite);
+    vi.spyOn(app.ctx.sqlite, "prepare").mockImplementation(((sql: string) => {
+      if (/INSERT INTO library_meta/.test(sql)) writes.push(sql);
+      return prepare(sql);
+    }) as typeof app.ctx.sqlite.prepare);
+    const response = await app.app.inject({ method: "GET", url: "/api/backup/download", headers: { host: "localhost" } });
+    expect(response.statusCode).toBe(200);
+    // A response may say "finished" more than once (the test server's stand-in does, the
+    // second time a moment later); the record is made on the first, so nothing is left to
+    // write into the database after the server has closed it.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(writes).toHaveLength(1);
   });
 });
