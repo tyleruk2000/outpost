@@ -408,7 +408,7 @@ const hostOf = (address: string) => {
 };
 
 function summaryOf(overview: RepeatersOverview): string {
-  const parts = [`${plural(overview.total, "repeater")} held on this device`];
+  const parts = [`${plural(overview.total, "repeater")} kept in Outpost`];
   if (overview.lists.length > 0) parts.push(`from ${plural(overview.lists.length, "list")}`);
   if (overview.ownCount > 0) parts.push(`${formatNumber(overview.ownCount)} entered by hand`);
   return `${parts.join(", ")}.`;
@@ -483,7 +483,7 @@ export default function RepeatersPage() {
     <Page>
       <PageHeader
         title="Repeaters"
-        description="Amateur radio repeaters kept on this device: found, measured from a place and written out for a radio with no connection."
+        description="Amateur radio repeaters kept in Outpost: found, measured from a place and written out for a radio with no connection."
         actions={held > 0 ? actions : undefined}
       />
 
