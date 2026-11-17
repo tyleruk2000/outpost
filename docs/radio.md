@@ -315,7 +315,8 @@ merged repeater once.
 
 - **The list** filters by band, by mode, and by distance from a place: a saved
   place, the middle of the map as you last left it, where the device is, or a position
-  or locator you type. With a place chosen, entries are in order of distance, each with
+  or locator you type. Until you choose, it is the home place (the saved place with the
+  home icon) when there is one. With a place chosen, entries are in order of distance, each with
   its distance and compass bearing; those with no position come last. Distances are
   measured on the great circle from the listed position, and say "about" for a
   position that is approximate.

@@ -43,6 +43,8 @@ Read [What it is not](#what-it-is-not) before relying on it.
    a British grid reference or a Maidenhead locator (`IO91WM`), choose a saved place, or
    press **Choose on the map**. Saved places are the markers you keep on the map; there
    is no second list. See [Choosing a place on the map](#choosing-a-place-on-the-map).
+   A transmitter not yet given starts at the home place (the saved place with the home
+   icon), here and on HF coverage; one typed or kept from last time is left as it is.
 2. **Date.** Any day. The model works by month, so every day of a month gets the same
    answer. The planner opens on today's date (UTC). The rest of the form is remembered
    in the browser from one visit to the next; a date you chose is remembered only until
@@ -142,8 +144,9 @@ working, which the screen shows for one chosen hour.
 
 - **The notice at the top** says what kind of knowledge the answer rests on and how old
   it is.
-- **A few sentences** state, for the chosen hour: the path's MUF, on what share of days
-  the frequency is below it, the reliability for the mode, a better band if there is
+- **A few sentences** state, for the chosen hour: first the reliability for the mode (on
+  what share of days it is predicted to get through), then the path's MUF with what it
+  means and on what share of days the frequency is below it, a better band if there is
   one, and the hours at which the frequency reaches half the days or more.
 - **Frequency against time** is a grid: every whole megahertz from 2 to 30 against the
   24 hours (UTC), shaded by reliability, with the MUF drawn across it. Move over it, or
@@ -201,9 +204,9 @@ basis, and the planner says so.
 
 All four were read on 16 November 2026.
 
-**Needs, dB** and **Measured in, Hz** are each used whenever they are filled in. A
+**Signal-to-noise, dB** and **Bandwidth, Hz** are each used whenever they are filled in. A
 bandwidth typed on its own is applied to the mode's starting figure: CW with 500 in
-**Measured in, Hz** and **Needs, dB** left empty is asked as 24 dB in 500 Hz, which is
+**Bandwidth, Hz** and **Signal-to-noise, dB** left empty is asked as 24 dB in 500 Hz, which is
 24 + 10·log10(500) = 51 dB in 1 Hz. The answer then lists the mode as your own
 bandwidth with the published figure, because 24 dB in 500 Hz is not what the guide
 states.

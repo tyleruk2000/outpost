@@ -150,7 +150,7 @@ function SourceRow({
             {source.held ? <RefreshCw /> : <Download />} {source.held ? "Get it again" : "Get the list"}
           </Button>
         ) : source.kind === "link" ? (
-          <Button asChild size="sm">
+          <Button asChild size="sm" className="h-auto min-h-8 max-w-full py-1.5 text-left whitespace-normal max-md:h-auto max-md:min-h-10">
             <a href={source.pageUrl} target="_blank" rel="noreferrer noopener">
               <ExternalLink /> Open {host}
             </a>
@@ -181,7 +181,12 @@ function SourceRow({
             ))}
           </ol>
           <div>
-            <Button size="sm" variant="ghost" onClick={() => onImport(source)}>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => onImport(source)}
+              className="h-auto min-h-8 max-w-full py-1.5 text-left whitespace-normal max-md:h-auto max-md:min-h-10"
+            >
               <FileUp /> Import the file from {source.publisher.replace(/\s*\(.*\)$/, "")}
             </Button>
           </div>

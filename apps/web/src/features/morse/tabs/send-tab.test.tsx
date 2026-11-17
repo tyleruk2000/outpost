@@ -176,3 +176,38 @@ describe("the Send tab's practice", () => {
     for (const request of requests) expect(request.url.startsWith("/api/")).toBe(true);
   });
 });
+
+describe("the on-screen key's keyboard hints", () => {
+  function pointer(coarse: boolean) {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      ...original(query),
+      matches: coarse && query === "(pointer: coarse)",
+    })) as typeof window.matchMedia;
+    return () => {
+      window.matchMedia = original;
+    };
+  }
+
+  it("name the keyboard's keys where there is a mouse and a keyboard", () => {
+    const restore = pointer(false);
+    try {
+      renderTab();
+      expect(screen.getByTestId("morse-paddles")).toHaveAccessibleName(/On a keyboard, Left Ctrl and Right Ctrl/);
+      expect(screen.getAllByText("Left Ctrl").length).toBeGreaterThan(0);
+    } finally {
+      restore();
+    }
+  });
+
+  it("are left off a phone, where there are no such keys", () => {
+    const restore = pointer(true);
+    try {
+      renderTab();
+      expect(screen.getByTestId("morse-paddles")).not.toHaveAccessibleName(/keyboard/);
+      expect(screen.getByTestId("morse-paddles")).toHaveTextContent(/^·Dit−Dah$/);
+    } finally {
+      restore();
+    }
+  });
+});

@@ -9,7 +9,9 @@ works with no internet connection.
 ## The tabs
 
 The tab is in the address (`?tab=`), so each can be linked to. The ids are LogBook73's
-and stay as they are whatever the tabs are called.
+and stay as they are whatever the tabs are called. Receive, the Code chart and Progress
+come with the screen; Send, QSO practice and On the air are fetched the first time one
+of them is opened.
 
 | Tab | `?tab=` | What it does |
 | --- | --- | --- |
@@ -56,7 +58,7 @@ within 5 to 40 wpm, and says why; it can be turned off.
 | Key | How |
 | --- | --- |
 | On the screen | Two levers (or one knob for a straight key) made for thumbs. Each finger is followed on its own, so both levers can be held at once for an iambic squeeze, and a thumb slid across moves to the other lever. The levers take no part in scrolling, selecting, zooming or the long-press menu. At least 160 px tall. |
-| A keyboard, or a USB interface that types keys | Key bindings, by `KeyboardEvent.code`, so the layout does not matter: press the button, then the key or the paddle. Left and right Ctrl and Space to start with. |
+| A keyboard, or a USB interface that types keys | Key bindings, by `KeyboardEvent.code`, so the layout does not matter: press the button, then the key or the paddle. Left and right Ctrl and Space to start with. The on-screen key names the keys, except on a phone or tablet with only a touch screen, which has none. |
 | A two-button mouse adapter | **Start mouse paddle**: left button dit, right dah, until Escape or Stop. Off unless started, so ordinary clicking is never taken over. |
 | A paddle wired to a USB serial adapter | **Connect a wired key**: dit on CTS, dah on DSR or DCD. Needs Web Serial, which is only in Chrome and Edge on a computer, and only on a secure page (https, or the computer Outpost runs on). At a plain http address the panel says so and points to Settings → HTTPS on your network. |
 | A game-controller interface | **Connect a game controller**: first and third buttons dit, second and fourth dah. Some browsers list controllers only on a secure page; the panel says so where that is why. |

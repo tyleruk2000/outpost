@@ -36,6 +36,7 @@ import {
   rememberForm,
   requestOf,
   useEngines,
+  useHomeAsTransmitter,
   usePlaces,
   usePredict,
   useProfiles,
@@ -73,6 +74,7 @@ export function Planner() {
   const removeSaved = useRemoveSaved();
 
   useEffect(() => rememberForm(form), [form]);
+  useHomeAsTransmitter(places.data, setForm);
   const set = <K extends keyof PlannerForm>(key: K, value: PlannerForm[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
     if (problem?.field === key) setProblem(null);
@@ -283,8 +285,10 @@ export function Planner() {
           </Field>
           <div className="grid grid-cols-2 gap-4">
             <Field
-              label="Needs, dB"
-              hint={mode.requiredSnrDb === null ? "Your mode's figure." : `Leave empty for ${mode.requiredSnrDb} dB.`}
+              label="Signal-to-noise, dB"
+              hint={
+                mode.requiredSnrDb === null ? "What your mode needs." : `What the mode needs. Leave empty for ${mode.requiredSnrDb} dB.`
+              }
               error={fieldError("requiredSnrDb")}
             >
               {(ids) => (
@@ -299,8 +303,8 @@ export function Planner() {
               )}
             </Field>
             <Field
-              label="Measured in, Hz"
-              hint={`Leave empty for ${mode.referenceBandwidthHz} Hz.`}
+              label="Bandwidth, Hz"
+              hint={`What the ratio is measured in. Leave empty for ${mode.referenceBandwidthHz} Hz.`}
               error={fieldError("referenceBandwidthHz")}
             >
               {(ids) => (
@@ -507,6 +511,7 @@ export function Planner() {
             action={
               <Button
                 variant="primary"
+                className="h-auto min-h-9 max-w-full py-2 whitespace-normal max-md:h-auto max-md:min-h-11"
                 disabled={engine ? !engine.ready : false}
                 onClick={() => {
                   const example = exampleForm();

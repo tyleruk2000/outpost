@@ -42,7 +42,7 @@ import { CoverageGreyLine, coverageMoment, useCoverageGreyLine } from "@/feature
 import { errorMessage } from "@/lib/api";
 import { formatDateTime, formatNumber } from "@/lib/utils";
 import { AntennaPicker, antennaChoices } from "../antenna-picker";
-import { antennaOf, formOf, rememberForm, useEngines, usePlaces, useProfiles, wireHint } from "../data";
+import { antennaOf, formOf, rememberForm, useEngines, useHomeAsTransmitter, usePlaces, useProfiles, wireHint } from "../data";
 import { EngineNotReady } from "../engine-data";
 import { CELL_OPACITY, coverageFeatures } from "../map/layers";
 import type { PlanMapHandle } from "../map/plan-map";
@@ -257,6 +257,7 @@ export default function CoveragePage() {
   const remove = useRemoveCoverage();
 
   useEffect(() => rememberCoverageForm(form), [form]);
+  useHomeAsTransmitter(places.data, setForm);
   const set = <K extends keyof CoverageForm>(key: K, value: CoverageForm[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
     if (problem?.field === key) setProblem(null);
@@ -392,7 +393,7 @@ export default function CoveragePage() {
         title="HF coverage"
         description="Where one transmitter is predicted to be heard, over the offline map. VOACAP is asked about every cell of a grid, for each hour of the day. A monthly median for planning, not a reading of today's conditions."
         actions={
-          <Button asChild variant="ghost">
+          <Button asChild className="h-auto min-h-9 max-w-full py-2 whitespace-normal max-md:h-auto max-md:min-h-11">
             <Link to="/radio/propagation">One path, in the planner</Link>
           </Button>
         }

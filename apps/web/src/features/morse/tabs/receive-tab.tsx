@@ -428,7 +428,7 @@ export function ReceiveTab() {
         ) : null}
       </div>
 
-      <section aria-labelledby="receive-settings" className="min-w-0 space-y-5 rounded-panel border border-border p-4">
+      <section aria-labelledby="receive-settings" className="min-w-0 space-y-5 rounded-panel border border-border p-3 sm:p-4">
         <h2 id="receive-settings" className="text-lead font-semibold text-ink">
           Settings
         </h2>

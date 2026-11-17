@@ -38,6 +38,7 @@ import {
   wireOn,
 } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type Dispatch, type SetStateAction, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
 
@@ -76,6 +77,25 @@ export const usePlaces = () =>
     queryFn: () => api.get<{ markers: MarkerDto[] }>("/api/maps/markers"),
     select: (data) => data.markers,
   });
+
+/**
+ * A transmitter not yet given starts at the home place (the saved place with the home
+ * icon), once, so that the first thing to say is where the other station is. A position
+ * typed, or kept from last time, is left alone.
+ */
+export function useHomeAsTransmitter<F extends { tx: PlaceField }>(places: MarkerDto[] | undefined, setForm: Dispatch<SetStateAction<F>>) {
+  const home = places?.find((place) => place.icon === "home");
+  const offered = useRef(false);
+  useEffect(() => {
+    if (!home || offered.current) return;
+    offered.current = true;
+    setForm((current) =>
+      current.tx.text.trim() === ""
+        ? { ...current, tx: { text: `${home.lat.toFixed(5)}, ${home.lon.toFixed(5)}`, name: home.name } }
+        : current,
+    );
+  }, [home, setForm]);
+}
 
 export const usePredict = () =>
   useMutation({ mutationFn: (request: PredictionRequest) => api.post<PredictionResult>("/api/radio/propagation/predict", request) });

@@ -8,19 +8,22 @@
  *
  * Everything works with no connection. Ported from LogBook73's Morse trainer.
  */
-import { lazy, Suspense } from "react";
+import { lazy, type ReactNode, Suspense } from "react";
 import { useSearchParams } from "react-router";
 import { Page, PageHeader } from "@/components/page";
 import { Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/misc";
 import { useKochLesson, useSyncedMorse } from "./data";
 import { CodeChartTab } from "./tabs/code-chart-tab";
 import { ProgressTab } from "./tabs/progress-tab";
-import { QsoTab } from "./tabs/qso-tab";
 import { ReceiveTab } from "./tabs/receive-tab";
-import { SendTab } from "./tabs/send-tab";
 
-// Most visits never open it, so it loads when it is first opened.
+// Receive is the tab the screen opens on; each of the others is fetched when it is first opened.
+const SendTab = lazy(() => import("./tabs/send-tab").then((module) => ({ default: module.SendTab })));
+const QsoTab = lazy(() => import("./tabs/qso-tab").then((module) => ({ default: module.QsoTab })));
 const OnTheAirTab = lazy(() => import("./tabs/on-the-air-tab"));
+
+/** A tab's content, with a placeholder while its code is fetched the first time it is opened. */
+const Later = ({ children }: { children: ReactNode }) => <Suspense fallback={<Skeleton className="h-64" />}>{children}</Suspense>;
 
 export const MORSE_TABS = ["receive", "send", "qso", "rbn", "reference", "progress"] as const;
 export type MorseTab = (typeof MORSE_TABS)[number];
@@ -77,21 +80,29 @@ export default function MorsePage() {
           <ReceiveTab />
         </TabsContent>
         <TabsContent value="send">
-          <SendTab />
+          <Later>
+            <SendTab />
+          </Later>
         </TabsContent>
         <TabsContent value="qso">
-          <QsoTab />
+          <Later>
+            <QsoTab />
+          </Later>
         </TabsContent>
         <TabsContent value="rbn">
-          <Suspense fallback={<Skeleton className="h-64" />}>
+          <Later>
             <OnTheAirTab />
-          </Suspense>
+          </Later>
         </TabsContent>
         <TabsContent value="reference">
-          <CodeChartTab />
+          <Later>
+            <CodeChartTab />
+          </Later>
         </TabsContent>
         <TabsContent value="progress">
-          <ProgressTab />
+          <Later>
+            <ProgressTab />
+          </Later>
         </TabsContent>
       </Tabs>
     </Page>

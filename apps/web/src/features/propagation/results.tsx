@@ -186,19 +186,24 @@ function Reading({ result, hour }: { result: PredictionResult; hour: PredictionH
           At {utcLabel(hour.utc)} UTC the engine finds no way for {f} to reach the receiver.
         </p>
       ) : (
+        // The answer first, in plain words; then the figures behind it.
         <p>
-          At {utcLabel(hour.utc)} UTC the path's MUF is {mhz(hour.mufMhz)}, and {f} is below it on {percent(cell.mufDays)} of the days of
-          the month.{" "}
           {noMode ? (
-            <>The median signal-to-noise ratio is {db(cell.snrDbHz)} in 1 Hz. Give the ratio your mode needs to get a reliability.</>
+            <>
+              At {utcLabel(hour.utc)} UTC the median signal-to-noise ratio on {f} is {db(cell.snrDbHz)} in 1 Hz. Give the ratio your mode
+              needs to get a reliability.
+            </>
           ) : (
             <>
-              {result.mode.label} reaches the {db(result.mode.requiredSnrDbHz!, 1)} (in 1 Hz) it is taken to need on{" "}
-              <strong className="font-semibold">{percent(cell.reliability)}</strong> of days; the median is {db(cell.snrDbHz)},{" "}
+              At {utcLabel(hour.utc)} UTC, {result.mode.label} on {f} is predicted to get through on{" "}
+              <strong className="font-semibold">{percent(cell.reliability)}</strong> of days: the share of days its signal-to-noise ratio
+              reaches the {db(result.mode.requiredSnrDbHz!, 1)} (in 1 Hz) it is taken to need. The median is {db(cell.snrDbHz)},{" "}
               {cell.snrDbHz >= result.mode.requiredSnrDbHz! ? "above" : "below"} it by{" "}
               {db(Math.abs(cell.snrDbHz - result.mode.requiredSnrDbHz!))}.
             </>
-          )}
+          )}{" "}
+          The path's MUF, the highest frequency it carries on half the days, is {mhz(hour.mufMhz)}, and {f} is below it on{" "}
+          {percent(cell.mufDays)} of the days of the month.
         </p>
       )}
       {hour.reply && !noMode ? (

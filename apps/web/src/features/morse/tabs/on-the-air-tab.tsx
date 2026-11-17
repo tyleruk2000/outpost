@@ -200,7 +200,7 @@ export default function OnTheAirTab() {
                   spellCheck={false}
                   aria-describedby={`${callId}-hint`}
                   aria-invalid={callsign !== "" && !callOk ? true : undefined}
-                  className="w-44 font-mono uppercase"
+                  className="w-full max-w-44 font-mono uppercase"
                 />
               </div>
               <div className="grid gap-1.5">

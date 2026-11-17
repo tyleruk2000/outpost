@@ -116,6 +116,7 @@ export default function RepeaterPage() {
     return (
       <Page width="reading">
         {back}
+        <h1 className="mb-6 font-title text-title text-ink">Repeater</h1>
         <ErrorState error={detail.error} onRetry={() => void detail.refetch()} />
       </Page>
     );
