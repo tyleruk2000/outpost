@@ -188,10 +188,11 @@ describe("River and sea levels", () => {
     for (const row of rows) expect(row.querySelectorAll(":scope > *")).toHaveLength(3);
     const tidal = within(rows[0]!);
     expect(tidal.getByText("Tidal")).toBeInTheDocument();
-    expect(rows[0]!.lastElementChild).toHaveTextContent(/^Tidal · (, )?falling 0\.40 m$/);
+    expect(rows[0]!.lastElementChild).toHaveTextContent(/^Tidal · (, )?falling 0\.40 m · (, )?20 minutes ago$/);
     const river = within(rows[1]!);
-    expect(river.getByText(/^1\.05 m above Ordnance Datum, measured .* \(20 minutes ago\)$/)).toBeInTheDocument();
-    expect(rows[1]!.lastElementChild).toHaveTextContent(/^Within its typical range · (, )?rising 0\.05 m$/);
+    // The level and when, on one line; how long ago with the state, so that each stays one line on a phone.
+    expect(river.getByText(/^1\.05 m above Ordnance Datum, \d\d:\d\d$/)).toBeInTheDocument();
+    expect(rows[1]!.lastElementChild).toHaveTextContent(/^Within its typical range · (, )?rising 0\.05 m · (, )?20 minutes ago$/);
     // What the figures mean is said once, under the list, not in every row.
     expect(screen.queryByText(/A tidal level: it rises and falls with the tide/)).toBeNull();
     expect(screen.getByText("What the figures mean")).toBeInTheDocument();
@@ -204,15 +205,16 @@ describe("River and sea levels", () => {
       /Fetched 14 hours ago: this set of river and sea levels is old, and levels may have changed since\./,
     );
     expect(age.closest("[data-freshness]")).toHaveAttribute("data-freshness", "old");
-    expect(screen.getByText(/measured .* \(14 hours ago\)$/)).toBeInTheDocument();
+    expect(screen.getAllByText(/14 hours ago$/).length).toBeGreaterThan(0);
     expect(screen.getByText("Not reporting")).toBeInTheDocument();
     // A station that names no datum says so.
-    expect(screen.getByText(/^0\.20 m, measured/)).toBeInTheDocument();
+    expect(screen.getByText(/^0\.20 m, /)).toBeInTheDocument();
   });
 
-  it("says only how long ago a reading from an earlier day was, so that its row stays at three lines", async () => {
+  it("gives a reading from an earlier day its date, not its time, so that its row stays at three lines", async () => {
     show({ kept: [rivers(NOW - 2 * DAY, [kilhams(2 * DAY)])] }, "?view=rivers");
-    expect(await screen.findByText(/^1\.\d\d m above Ordnance Datum, measured 2 days ago$/)).toBeInTheDocument();
+    expect(await screen.findByText(/^1\.\d\d m above Ordnance Datum, \d{1,2} Nov 2026$/)).toBeInTheDocument();
+    expect(screen.getByText(/2 days ago$/)).toBeInTheDocument();
   });
 
   it("keeps what was held, and says what failed, when the Agency cannot be reached", async () => {

@@ -40,7 +40,7 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
 import { formatTimeOfDay } from "@/lib/clock";
-import { formatDateTime, plural } from "@/lib/utils";
+import { formatDate, formatDateTime, plural } from "@/lib/utils";
 import { AgeLine, Credit } from "./age-line";
 import { useSetRiversKm, useStationReadings } from "./data";
 import { TimeLine } from "./time-chart";
@@ -58,13 +58,16 @@ export const measuredText = (t: number, now: number): string => {
 };
 
 /**
- * The same, short enough for a station's row in the list on a phone: the time and how long ago
- * today, and only how long ago before then ("measured 14 hours ago"). The station's own view has the date.
+ * When, short enough for a station's row on a phone: the time today, the day before then. How long ago
+ * goes on the row's line of state, so that the level's line stays one line.
  */
 export const measuredShort = (t: number, now: number): string => {
   const today = new Date(t).toDateString() === new Date(now).toDateString();
-  return today ? measuredText(t, now) : `measured ${ageWords(Math.max(0, now - t))} ago`;
+  return today ? formatTimeOfDay(t) : formatDate(t);
 };
+
+/** "3 hours ago", or "just now". */
+const agoWords = (t: number, now: number): string => (now - t < 60_000 ? "just now" : `${ageWords(Math.max(0, now - t))} ago`);
 
 /** "Rising 0.05 m over the 3 hours to 11:15 (Outpost's reading of the figures held)". */
 export function trendText(trend: TrendResult): string {
@@ -144,6 +147,7 @@ function StationRow({ station, fetchedAt, now }: { station: RiverLevelStation; f
   const parts = [
     state ? <span key="state">{STATE_SHORT[state]}</span> : null,
     latest ? trendShort(levelTrend(station.recent)) : null,
+    latest ? agoWords(latest.t, now) : null,
     stopped ? (
       <span key="stopped" className="text-warning">
         Not reporting
@@ -168,8 +172,9 @@ function StationRow({ station, fetchedAt, now }: { station: RiverLevelStation; f
                 <span className="font-semibold">{station.label}</span>
                 {station.river ? `, ${station.river}` : null}
               </span>,
+              // The heading over the list says "nearest first": the distance is enough.
               <span key="far" className="text-ink-muted">
-                {station.distanceKm} km away
+                {station.distanceKm} km
               </span>,
             ]}
           />

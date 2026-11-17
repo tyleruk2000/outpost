@@ -107,7 +107,7 @@ test.describe("Weather and hazards on a phone", () => {
     await expect(page.getByText("Fetched just now.")).toBeVisible();
     const tidal = page.locator('[data-station="E47901"]');
     await expect(tidal.getByText("Tidal", { exact: true })).toBeVisible();
-    await expect(page.locator('[data-station="E21183"]').getByText(/^1\.09 m above Ordnance Datum, measured /)).toBeVisible();
+    await expect(page.locator('[data-station="E21183"]').getByText(/^1\.09 m above Ordnance Datum, (\d\d:\d\d|\d{1,2} [A-Z][a-z]{2} \d{4})$/)).toBeVisible();
 
     await page.getByRole("link", { name: /Kilham's Bridge/ }).tap();
     await expect(page.getByRole("heading", { level: 2, name: "Kilham's Bridge" })).toBeVisible();
