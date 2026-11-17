@@ -117,7 +117,7 @@ describe("the sidebar", () => {
       within(under)
         .getAllByRole("link")
         .map((link) => link.textContent),
-    ).toEqual(["HF propagation", "HF coverage", "Communication plans", "Contact log", "Repeaters", "Morse trainer"]);
+    ).toEqual(["HF propagation", "HF coverage", "Communication plans", "Contact log", "Repeaters", "Morse trainer", "Frequencies to listen to"]);
     expect(within(under).getByRole("link", { name: "Communication plans" })).toHaveAttribute("aria-current", "page");
     expect(within(sidebar).getByRole("link", { name: "Radio" })).not.toHaveAttribute("aria-current");
   });
@@ -141,7 +141,7 @@ describe("the sidebar", () => {
       within(menu)
         .getAllByRole("menuitem")
         .map((item) => item.textContent?.trim()),
-    ).toEqual(["Radio", "HF propagation", "HF coverage", "Communication plans", "Contact log", "Repeaters", "Morse trainer"]);
+    ).toEqual(["Radio", "HF propagation", "HF coverage", "Communication plans", "Contact log", "Repeaters", "Morse trainer", "Frequencies to listen to"]);
     await user.click(within(menu).getByRole("menuitem", { name: "Repeaters" }));
     expect(screen.getByRole("status", { name: "Address" })).toHaveTextContent("/radio/repeaters");
   });

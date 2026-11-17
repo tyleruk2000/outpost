@@ -9,21 +9,24 @@
  * (apps/web/src/features/frequencies/data.test.ts) fails on an entry with no source, no
  * date, a frequency outside the band it names, an unknown place, or a duplicate.
  */
-import type { FrequencyEntry, FrequencyGuide } from "./radio-frequencies.ts";
+
 import { AMATEUR, AMATEUR_GUIDES } from "./radio-frequencies/amateur.ts";
 import { BANDS, BANDS_GUIDES } from "./radio-frequencies/bands.ts";
 import { BROADCASTERS, BROADCASTERS_GUIDES } from "./radio-frequencies/broadcasters.ts";
 import { DISTRESS, DISTRESS_GUIDES } from "./radio-frequencies/distress.ts";
 import { EMERGENCY, EMERGENCY_GUIDES } from "./radio-frequencies/emergency.ts";
 import { LICENCE_FREE, LICENCE_FREE_GUIDES } from "./radio-frequencies/licence-free.ts";
+import { NATIONAL_BROADCASTERS, NATIONAL_BROADCASTERS_GUIDES } from "./radio-frequencies/national-broadcasters.ts";
 import { TIME_SIGNALS, TIME_SIGNALS_GUIDES } from "./radio-frequencies/time-signals.ts";
 import { WEATHER, WEATHER_GUIDES } from "./radio-frequencies/weather.ts";
+import type { FrequencyEntry, FrequencyGuide } from "./radio-frequencies.ts";
 
 /** Every entry, kind by kind in the order of FREQUENCY_KINDS. */
 export const RADIO_FREQUENCIES: readonly FrequencyEntry[] = [
   ...TIME_SIGNALS,
   ...EMERGENCY,
   ...BROADCASTERS,
+  ...NATIONAL_BROADCASTERS,
   ...WEATHER,
   ...DISTRESS,
   ...AMATEUR,
@@ -35,6 +38,7 @@ export const RADIO_FREQUENCY_GUIDES: readonly FrequencyGuide[] = [
   ...TIME_SIGNALS_GUIDES,
   ...EMERGENCY_GUIDES,
   ...BROADCASTERS_GUIDES,
+  ...NATIONAL_BROADCASTERS_GUIDES,
   ...WEATHER_GUIDES,
   ...DISTRESS_GUIDES,
   ...AMATEUR_GUIDES,

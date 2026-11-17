@@ -41,6 +41,12 @@ const TOOLS = [
       "Learn Morse by ear with the Koch method, send it on the screen or on a real key, work a practice contact, and get a call ready for the air. Progress is kept for everyone who uses this copy.",
   },
   {
+    to: "/radio/frequencies",
+    name: "Frequencies to listen to",
+    about:
+      "Where to tune to hear the time, news, warnings, weather and other people when the internet is out: time signals, emergency and news broadcasters, weather, distress, amateur and licence-free channels, by country.",
+  },
+  {
     to: "/maps",
     name: "Line of sight, on the map",
     about: "Whether two points can see each other over the terrain installed, for VHF and above. Geometry, not a prediction of signal.",

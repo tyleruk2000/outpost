@@ -61,7 +61,9 @@ function problems(entry: FrequencyEntry): string[] {
     if (!used) say(`names the band ${id} and has no frequency in it`);
   }
   // Two frequencies of one entry the same, on the same channel: written twice.
-  const keys = entry.frequencies.map((frequency) => `${frequency.khz}/${frequency.toKhz ?? ""}/${frequency.channel ?? ""}/${frequency.note ?? ""}`);
+  const keys = entry.frequencies.map(
+    (frequency) => `${frequency.khz}/${frequency.toKhz ?? ""}/${frequency.channel ?? ""}/${frequency.note ?? ""}`,
+  );
   if (new Set(keys).size !== keys.length) say("the same frequency twice");
   if (entry.sources.length === 0) say("no source");
   for (const source of entry.sources) {
@@ -71,7 +73,8 @@ function problems(entry: FrequencyEntry): string[] {
     else if (source.checked < EARLIEST_PLAUSIBLE || source.checked > LATEST_PLAUSIBLE) say(`checked date out of range: ${source.checked}`);
   }
   if (entry.schedule) {
-    if (!isDay(entry.schedule.from) || !isDay(entry.schedule.until)) say(`schedule dates are not YYYY-MM-DD days: ${JSON.stringify(entry.schedule)}`);
+    if (!isDay(entry.schedule.from) || !isDay(entry.schedule.until))
+      say(`schedule dates are not YYYY-MM-DD days: ${JSON.stringify(entry.schedule)}`);
     else if (entry.schedule.until < entry.schedule.from) say("schedule ends before it starts");
     if (!entry.schedule.season.trim()) say("schedule without a season");
   }
@@ -88,8 +91,12 @@ function problems(entry: FrequencyEntry): string[] {
 
 /** `FREQ_KIND=weather` checks one kind only, for whoever is working on that kind. */
 const only = typeof process !== "undefined" ? process.env.FREQ_KIND : undefined;
-const ENTRIES = only ? RADIO_FREQUENCIES.filter((entry) => entry.kind === only) : RADIO_FREQUENCIES;
-const GUIDES = only ? RADIO_FREQUENCY_GUIDES.filter((guide) => guide.kind === only) : RADIO_FREQUENCY_GUIDES;
+/** `FREQ_PREFIX=bc-nat-` checks only the entries and guides whose ids start so. */
+const prefix = typeof process !== "undefined" ? process.env.FREQ_PREFIX : undefined;
+const chosen = <T extends { id: string; kind: string }>(items: readonly T[]) =>
+  items.filter((item) => (!only || item.kind === only) && (!prefix || item.id.startsWith(prefix)));
+const ENTRIES = chosen(RADIO_FREQUENCIES);
+const GUIDES = chosen(RADIO_FREQUENCY_GUIDES);
 
 describe("the bundled frequencies", () => {
   it("has entries", () => {

@@ -13,15 +13,7 @@
 
 // ── Kinds ───────────────────────────────────────────────────────────────────
 
-export type FrequencyKindId =
-  | "time-signals"
-  | "emergency"
-  | "broadcasters"
-  | "weather"
-  | "distress"
-  | "amateur"
-  | "licence-free"
-  | "bands";
+export type FrequencyKindId = "time-signals" | "emergency" | "broadcasters" | "weather" | "distress" | "amateur" | "licence-free" | "bands";
 
 export const FREQUENCY_KINDS: ReadonlyArray<{ id: FrequencyKindId; label: string; about: string }> = [
   {
@@ -227,33 +219,28 @@ export interface FrequencyRegion {
 }
 
 // ITU Region 2: the Americas and Greenland (Radio Regulations, No. 5.3 and the map of the regions).
-const ITU_2 = [
-  "AG", "AI", "AR", "AW", "BB", "BL", "BM", "BO", "BQ", "BR", "BS", "BZ", "CA", "CL", "CO", "CR", "CU", "CW", "DM", "DO", "EC",
-  "FK", "GD", "GF", "GL", "GP", "GT", "GY", "HN", "HT", "JM", "KN", "KY", "LC", "MF", "MQ", "MS", "MX", "NI", "PA", "PE", "PM",
-  "PR", "PY", "SR", "SV", "SX", "TC", "TT", "US", "UY", "VC", "VE", "VG", "VI",
-] as const;
+const ITU_2: readonly string[] = (
+  "AG AI AR AW BB BL BM BO BQ BR BS BZ CA CL CO CR CU CW DM DO EC FK GD GF GL GP GT GY HN HT " +
+  "JM KN KY LC MF MQ MS MX NI PA PE PM PR PY SR SV SX TC TT US UY VC VE VG VI"
+).split(" ");
 // ITU Region 3: Asia east of the Region 1 line (Iran included), and Oceania.
-const ITU_3 = [
-  "AF", "AS", "AU", "BD", "BN", "BT", "CC", "CK", "CN", "CX", "FJ", "FM", "GU", "HK", "ID", "IN", "IO", "IR", "JP", "KH", "KI",
-  "KP", "KR", "LA", "LK", "MH", "MM", "MO", "MP", "MV", "MY", "NC", "NF", "NP", "NR", "NU", "NZ", "PF", "PG", "PH", "PK", "PN",
-  "PW", "SB", "SG", "TH", "TK", "TL", "TO", "TV", "TW", "UM", "VN", "VU", "WF", "WS",
-] as const;
+const ITU_3: readonly string[] = (
+  "AF AS AU BD BN BT CC CK CN CX FJ FM GU HK ID IN IO IR JP KH KI KP KR LA LK MH MM MO MP MV " +
+  "MY NC NF NP NR NU NZ PF PG PH PK PN PW SB SG TH TK TL TO TV TW UM VN VU WF WS"
+).split(" ");
 // ITU Region 1: Europe, Africa, the Middle East west of the Persian Gulf, the former Soviet Union and Mongolia.
-const ITU_1 = [
-  "AD", "AE", "AL", "AM", "AO", "AT", "AX", "AZ", "BA", "BE", "BF", "BG", "BH", "BI", "BJ", "BW", "BY", "CD", "CF", "CG", "CH",
-  "CI", "CM", "CV", "CY", "CZ", "DE", "DJ", "DK", "DZ", "EE", "EG", "EH", "ER", "ES", "ET", "FI", "FO", "FR", "GA", "GB", "GE",
-  "GG", "GH", "GI", "GM", "GN", "GQ", "GR", "GW", "HR", "HU", "IE", "IL", "IM", "IQ", "IS", "IT", "JE", "JO", "KE", "KG", "KM",
-  "KW", "KZ", "LB", "LI", "LR", "LS", "LT", "LU", "LV", "LY", "MA", "MC", "MD", "ME", "MG", "MK", "ML", "MN", "MR", "MT", "MU",
-  "MW", "MZ", "NA", "NE", "NG", "NL", "NO", "OM", "PL", "PS", "PT", "QA", "RE", "RO", "RS", "RU", "RW", "SA", "SC", "SD", "SE",
-  "SH", "SI", "SJ", "SK", "SL", "SM", "SN", "SO", "SS", "ST", "SY", "SZ", "TD", "TG", "TJ", "TM", "TN", "TR", "TZ", "UA", "UG",
-  "UZ", "VA", "XK", "YE", "YT", "ZA", "ZM", "ZW",
-] as const;
+const ITU_1: readonly string[] = (
+  "AD AE AL AM AO AT AX AZ BA BE BF BG BH BI BJ BW BY CD CF CG CH CI CM CV CY CZ DE DJ DK DZ " +
+  "EE EG EH ER ES ET FI FO FR GA GB GE GG GH GI GM GN GQ GR GW HR HU IE IL IM IQ IS IT JE JO " +
+  "KE KG KM KW KZ LB LI LR LS LT LU LV LY MA MC MD ME MG MK ML MN MR MT MU MW MZ NA NE NG NL " +
+  "NO OM PL PS PT QA RE RO RS RU RW SA SC SD SE SH SI SJ SK SL SM SN SO SS ST SY SZ TD TG TJ " +
+  "TM TN TR TZ UA UG UZ VA XK YE YT ZA ZM ZW"
+).split(" ");
 // CEPT's member administrations (where PMR446 and CEPT CB are harmonised), as listed by CEPT.
-const CEPT = [
-  "AL", "AD", "AT", "AZ", "BE", "BA", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "GE", "DE", "GR", "HU", "IS", "IE", "IT",
-  "LV", "LI", "LT", "LU", "MT", "MD", "MC", "ME", "NL", "MK", "NO", "PL", "PT", "RO", "SM", "RS", "SK", "SI", "ES", "SE", "CH",
-  "TR", "UA", "GB", "VA",
-] as const;
+const CEPT: readonly string[] = (
+  "AL AD AT AZ BE BA BG HR CY CZ DK EE FI FR GE DE GR HU IS IE IT LV LI LT LU MT MD MC ME NL " +
+  "MK NO PL PT RO SM RS SK SI ES SE CH TR UA GB VA"
+).split(" ");
 
 export const FREQUENCY_REGIONS: readonly FrequencyRegion[] = [
   { id: "world", name: "Worldwide" },
@@ -413,7 +400,7 @@ const mhzText = (khz: number) => trim((khz / 1000).toFixed(5));
 export function formatFrequency(frequency: Pick<Frequency, "khz" | "toKhz">): string {
   const { khz, toKhz } = frequency;
   if (toKhz === undefined) return formatKhz(khz);
-  if (toKhz <= 30_000) return `${trim(khz.toFixed(3))} to ${formatKhz(toKhz)}`;
+  if (toKhz <= 30_000) return `${trim(khz.toFixed(3))} to ${trim(toKhz.toFixed(3))} kHz`;
   if (khz >= 30_000) return `${mhzText(khz)} to ${mhzText(toKhz)} MHz`;
   return `${formatKhz(khz)} to ${mhzText(toKhz)} MHz`;
 }
@@ -428,7 +415,7 @@ export function checkedOn(day: string): string {
 
 /** The latest day any source of the entry was checked. */
 export function entryChecked(entry: Pick<FrequencyEntry, "sources">): string {
-  return entry.sources.reduce((latest, source) => (source.checked > latest ? source.checked : latest), "");
+  return entry.sources.map((source) => source.checked).sort().at(-1) ?? "";
 }
 
 /** The earliest day any entry in a set was last checked: the set is no fresher than that. */
@@ -447,12 +434,6 @@ export function isDay(day: string): boolean {
   const [year, month, date] = day.split("-").map(Number) as [number, number, number];
   const value = new Date(Date.UTC(year, month - 1, date));
   return value.getUTCFullYear() === year && value.getUTCMonth() === month - 1 && value.getUTCDate() === date;
-}
-
-/** Today on this device as YYYY-MM-DD, in its own time zone. */
-export function localDay(now: Date = new Date()): string {
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
 export type ScheduleState = "none" | "not-yet" | "current" | "expired";
@@ -559,7 +540,8 @@ export const RECEIVER_PROFILES: readonly ReceiverProfile[] = [
   {
     id: "ham-hf",
     label: "Amateur HF transceiver",
-    about: "An HF transceiver with general-coverage receive, about 0.1 to 30 MHz (and often 6 m): every mode, digital ones with a computer.",
+    about:
+      "An HF transceiver with general-coverage receive, about 0.1 to 30 MHz (and often 6 m): every mode, digital ones with a computer.",
     ranges: [
       [100, 30_000],
       [50_000, 54_000],
@@ -579,7 +561,8 @@ export const RECEIVER_PROFILES: readonly ReceiverProfile[] = [
   {
     id: "sdr",
     label: "SDR",
-    about: "A software-defined radio on a computer (an RTL-SDR or similar, with an upconverter or direct sampling for HF): almost everything, with decoders.",
+    about:
+      "A software-defined radio on a computer (an RTL-SDR or similar, with an upconverter or direct sampling for HF): almost everything, with decoders.",
     ranges: [[10, 1_766_000]],
     families: ["am", "fm", "nfm", "ssb", "cw", "digital", "dab"],
   },
@@ -617,10 +600,7 @@ export interface FrequencyFilter {
 
 /** Lower case, accents gone, so "reunion" finds "Réunion". */
 export function foldText(text: string): string {
-  return text
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
+  return text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
 /** Whether the entry applies to a place: named itself, through a region with that country in it, or worldwide. */

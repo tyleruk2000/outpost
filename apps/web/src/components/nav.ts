@@ -26,6 +26,7 @@ import {
   Map as MapIcon,
   MessagesSquare,
   NotebookText,
+  Radio,
   RadioReceiver,
   RadioTower,
   Search,
@@ -89,6 +90,7 @@ export const knowledgeNav: NavItem[] = [
       { to: "/radio/log", label: "Contact log", icon: ClipboardList },
       { to: "/radio/repeaters", label: "Repeaters", icon: RadioReceiver },
       { to: "/radio/morse", label: "Morse trainer", icon: AudioWaveform },
+      { to: "/radio/frequencies", label: "Frequencies to listen to", icon: Radio },
     ],
   },
   // Two sections that are lists of screens, each drawn from its own registry (features/<section>/screens.ts).

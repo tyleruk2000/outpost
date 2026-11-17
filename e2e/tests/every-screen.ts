@@ -23,6 +23,7 @@ export const AT_LEAST: Array<[string, string]> = [
   ["Communication plans", "/radio/plans"],
   ["Contact log", "/radio/log"],
   ["Repeaters", "/radio/repeaters"],
+  ["Frequencies to listen to", "/radio/frequencies"],
   ["Notes", "/notes"],
   ["Import files", "/import"],
   ["Downloads", "/downloads"],
