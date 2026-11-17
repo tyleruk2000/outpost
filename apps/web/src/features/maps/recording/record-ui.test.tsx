@@ -3,12 +3,12 @@
  * is not a secure origin unless told so, and it has no storage of the kind a recording
  * is kept in, which are exactly the two cases a person meets in a browser.
  */
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/components/ui/misc";
-import { beforeYouStart, RecordButton, TrackRecording } from "./record-ui";
+import { beforeYouStart, RecordButton, TrackRecording, useNow } from "./record-ui";
 
 beforeAll(() => {
   // A browser with geolocation, as every phone has. It is never asked for anything in these tests.
@@ -77,5 +77,26 @@ describe("what is said before a recording is relied on", () => {
     expect(beforeYouStart(true, true)[1]).toMatch(
       /Opened from a Home Screen icon on an iPhone or iPad older than iOS 18\.4, the screen is not kept on at all/,
     );
+  });
+});
+
+describe("the recording card's clock", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("ticks once a second while the page is in sight, not at all while it is hidden, and catches up when shown", () => {
+    vi.useFakeTimers({ toFake: ["Date", "setInterval", "clearInterval"] });
+    vi.setSystemTime(new Date("2026-06-21T12:00:00Z"));
+    const { result } = renderHook(() => useNow(true));
+    act(() => vi.advanceTimersByTime(3_000));
+    expect(result.current).toBe(Date.parse("2026-06-21T12:00:03Z"));
+    const visibility = vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+    act(() => document.dispatchEvent(new Event("visibilitychange")));
+    expect(vi.getTimerCount()).toBe(0);
+    vi.setSystemTime(new Date("2026-06-21T12:10:00Z"));
+    visibility.mockReturnValue("visible");
+    act(() => document.dispatchEvent(new Event("visibilitychange")));
+    expect(result.current).toBe(Date.parse("2026-06-21T12:10:00Z"));
+    expect(vi.getTimerCount()).toBe(1);
+    visibility.mockRestore();
   });
 });
