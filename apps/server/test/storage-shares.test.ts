@@ -29,6 +29,7 @@ import {
 } from "../src/modules/storage/shares/commands.ts";
 import { detectHost, shareHostMode } from "../src/modules/storage/shares/host.ts";
 import { MAC_HELPER } from "../src/modules/storage/shares/mac-helper.ts";
+import { keepLookingForShares } from "../src/modules/storage/shares/routes.ts";
 import type { ListedShare, ShareLister } from "../src/modules/storage/shares/smb-list.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
@@ -980,6 +981,22 @@ describe("reconnecting, disconnecting and forgetting", () => {
         { name: "WORKSHOP-NAS", host: "workshop-nas.local", port: null },
       ],
     });
+  });
+});
+
+describe("looking again for shares that should be connected", () => {
+  it("goes on while a share could not be connected", () => {
+    expect(keepLookingForShares(true, [{ status: "available" }])).toBe(true);
+  });
+
+  it("goes on while a location is away, though every share's mount is still listed", () => {
+    // A NAS that has just gone: the Mac still lists its mount, so no share reads as missing.
+    expect(keepLookingForShares(false, [{ status: "available" }, { status: "unavailable" }])).toBe(true);
+  });
+
+  it("stops once every share is connected and every location is there", () => {
+    expect(keepLookingForShares(false, [{ status: "available" }, { status: "available" }])).toBe(false);
+    expect(keepLookingForShares(false, [])).toBe(false);
   });
 });
 

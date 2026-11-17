@@ -13,6 +13,17 @@ const STARTUP_WAIT_MS = 8_000;
 const confirm = z.object({ confirm: z.boolean().optional() }).optional();
 
 /**
+ * Whether to look again in a few minutes for shares that should be connected. Yes while
+ * one could not be connected; and yes while any storage location is away, because a
+ * share's mount can stay listed for a while after its server has gone, so that the share
+ * looks connected when its location drops, and when the Mac lets go of the mount later
+ * nothing announces it.
+ */
+export function keepLookingForShares(missing: boolean, locations: ReadonlyArray<{ status: string }>): boolean {
+  return missing || locations.some((location) => location.status === "unavailable");
+}
+
+/**
  * Who is asking a server for something. The user name and password are checked by the
  * service, with its own words: a validation message must never repeat a password.
  */
@@ -76,9 +87,9 @@ export async function registerShares(app: FastifyInstance, ctx: AppContext): Pro
 
   // Bring back the shares that were connected before, so the library on them is there
   // from the start. Start-up does not wait long for a server that is slow or away.
-  // After that it is tried again every few minutes only while a share is still away,
-  // and at once when a storage location goes away or comes back (a share dropping shows
-  // up there); with every share connected, nothing wakes.
+  // After that it is tried again every few minutes only while a share or a storage
+  // location is still away, and at once when a location goes away or comes back (a share
+  // dropping shows up there); with everything connected, nothing wakes.
   let retry: NodeJS.Timeout | undefined;
   let running = false;
   const reconnect = async (): Promise<void> => {
@@ -87,7 +98,7 @@ export async function registerShares(app: FastifyInstance, ctx: AppContext): Pro
     clearTimeout(retry);
     retry = undefined;
     try {
-      if (await shares.reconnectRemembered()) {
+      if (keepLookingForShares(await shares.reconnectRemembered(), ctx.services.storage.list())) {
         retry = setTimeout(() => void reconnect(), RETRY_INTERVAL_MS);
         retry.unref();
       }

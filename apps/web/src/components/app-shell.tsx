@@ -1,5 +1,6 @@
-import { lazy, type ReactNode, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Component, lazy, type ReactNode, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router";
+import { toast } from "sonner";
 import { ReachNotice } from "@/features/kept/reach";
 import { RecordingIndicator } from "@/features/maps/recording/indicator";
 import { MobileNav } from "./mobile-nav";
@@ -9,8 +10,33 @@ import { Sidebar } from "./sidebar";
 import { Skeleton } from "./ui/misc";
 import { UpdateNotice } from "./update-notice";
 
-// Quick search is fetched the first time it is opened, not with every page of the app.
-const CommandPalette = lazy(() => import("./command-palette").then((module) => ({ default: module.CommandPalette })));
+/**
+ * Quick search is fetched the first time it is opened, not with every page of the app.
+ * Made afresh for each attempt, because a fetch that failed stays failed in the one it
+ * was made for.
+ */
+const fetchPalette = () => lazy(() => import("./command-palette").then((module) => ({ default: module.CommandPalette })));
+
+/**
+ * Quick search sits outside the screen's own error boundary, so a failure to fetch it (the
+ * server was updated since this tab was opened, or cannot be reached) would otherwise take
+ * the whole app with it and leave a blank window. Here it only fails to open.
+ */
+class PaletteBoundary extends Component<{ onFailed: () => void; children: ReactNode }, { failed: boolean }> {
+  override state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  override componentDidCatch() {
+    this.props.onFailed();
+  }
+
+  override render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
 
 /**
  * Whether a key pressed here belongs to what has focus, not to the app's shortcuts: a field
@@ -45,6 +71,18 @@ export function AppShell({ notesTree, onNewPage }: { notesTree?: ReactNode; onNe
   // Kept mounted once opened, so that it closes with its animation and opens at once the next time.
   const [paletteWanted, setPaletteWanted] = useState(false);
   if (paletteOpen && !paletteWanted) setPaletteWanted(true);
+  const [Palette, setPalette] = useState(fetchPalette);
+  const [paletteAttempt, setPaletteAttempt] = useState(0);
+  const paletteFailed = useCallback(() => {
+    setPaletteOpen(false);
+    setPaletteWanted(false);
+    setPalette(fetchPalette);
+    setPaletteAttempt((attempt) => attempt + 1);
+    toast.error("Quick search could not be loaded. Try it again, or reload the page.");
+  }, []);
+  // Read by the key handler, which is set up once.
+  const paletteOpenNow = useRef(paletteOpen);
+  paletteOpenNow.current = paletteOpen;
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem("outpost.sidebar") === "collapsed";
@@ -82,7 +120,8 @@ export function AppShell({ notesTree, onNewPage }: { notesTree?: ReactNode; onNe
         toggleSidebar();
         return;
       }
-      if (mod || event.altKey || isTyping(event.target)) return;
+      // With quick search open, or on its way, letters are for it and not for "g" then a letter.
+      if (mod || event.altKey || paletteOpenNow.current || isTyping(event.target)) return;
       if (event.key === "/") {
         event.preventDefault();
         setPaletteOpen(true);
@@ -135,9 +174,11 @@ export function AppShell({ notesTree, onNewPage }: { notesTree?: ReactNode; onNe
         </ScreenErrorBoundary>
       </main>
       {paletteWanted ? (
-        <Suspense fallback={null}>
-          <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} onNewPage={onNewPage} />
-        </Suspense>
+        <PaletteBoundary key={paletteAttempt} onFailed={paletteFailed}>
+          <Suspense fallback={null}>
+            <Palette open={paletteOpen} onOpenChange={setPaletteOpen} onNewPage={onNewPage} />
+          </Suspense>
+        </PaletteBoundary>
       ) : null}
     </div>
   );
