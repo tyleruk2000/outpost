@@ -77,9 +77,9 @@ export function OsNamesSection({ datasets, downloads }: { datasets: PlacesDatase
       <div>
         <h4 className="text-small font-semibold text-ink">{OS_NAMES_TITLE}</h4>
         <p className="mt-1 text-small text-ink-muted">
-          Ordnance Survey's OS Open Names: about three million towns, villages, hills, woods, lakes, streets and postcodes, so a postcode
-          such as SY23 3BY finds its street. England, Scotland and Wales only: Northern Ireland, the Isle of Man and the Channel Islands are
-          not covered.
+          Ordnance Survey's OS Open Names: about three million towns, villages, hills, woods, lakes, streets and postcodes, so the search
+          box finds a village, a hill or a postcode such as SY23 3BY. England, Scotland and Wales only: Northern Ireland, the Isle of Man
+          and the Channel Islands are not covered.
         </p>
       </div>
 

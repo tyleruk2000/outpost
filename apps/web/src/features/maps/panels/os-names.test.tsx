@@ -173,3 +173,30 @@ describe("OS place names in the search list", () => {
     ]);
   });
 });
+
+describe("a postcode district that is also a grid reference", () => {
+  it("lists the postcode first when OS place names found it, and the grid reference straight after", () => {
+    const district: PlaceDto = {
+      id: 1,
+      source: "os",
+      name: "SY23",
+      country: "GB",
+      admin1: "Aberystwyth, Ceredigion, Wales",
+      featureCode: "os:Postcode district",
+      kindLabel: "Postcode district",
+      lat: 52.41,
+      lon: -4.08,
+      population: 0,
+      elevation: null,
+    };
+    const grid = { lat: 50.7, lon: -3.0, format: "osgb" as const, precisionMeters: 10_000 };
+    const listed = (places: PlaceDto[]) =>
+      buildSearchResults({ query: "sy23", coordinate: grid, places, markers: [], tracks: [], center: null }).map((result) => result.kind);
+    expect(listed([district, { ...district, id: 2, name: "SY23 3", featureCode: "os:Postcode sector" }])).toEqual([
+      "place",
+      "coordinate",
+      "place",
+    ]);
+    expect(listed([])).toEqual(["coordinate"]);
+  });
+});

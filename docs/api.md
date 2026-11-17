@@ -754,6 +754,8 @@ The live event `layers.changed` is published when a pack is installed, updated o
 | `GET /api/maps/places/datasets` | Installed place-name datasets. |
 | `POST /api/maps/places/datasets` | Downloads one. Body: `dataset` (`cities500`, `cities15000` or `country`), `country` (two letters, with `country`), `locationId?`. `{ download }`. |
 | `DELETE /api/maps/places/datasets/:id` | Removes a dataset and its names. |
+| `POST /api/maps/places/os-names/check` | Asks Ordnance Survey's Downloads API (`api.os.uk`) for the current edition of OS Open Names, the size and MD5 of its CSV file for Great Britain, and says what is held (`OsNamesCheck`: `edition`, `editionLabel`, `sizeBytes`, `md5`, `fileName`, `host`, `installed`, `updateAvailable`, `checkedAt`). The answer is kept for half an hour. `503` (`offline`) or `502` (`upstream`) when OS cannot be reached or read. |
+| `POST /api/maps/places/os-names` | Downloads the edition the last check found, as a job. Body: `locationId?`, `roads?` (default `true`; `false` leaves streets and road numbers out). `{ download }`. `409` with no check in the last half hour, or when that edition (with the same choice of roads) is already installed. A newer edition replaces the one held once it is in. |
 
 ### Markers and tracks
 
