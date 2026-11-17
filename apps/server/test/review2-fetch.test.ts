@@ -129,3 +129,37 @@ describe("the hosts Outpost asks, against what the documentation says", () => {
     for (const host of LINKS_ONLY) expect(inCode.has(host), `${host} is no longer in the code; remove it from LINKS_ONLY`).toBe(true);
   });
 });
+
+describe("Ordnance Survey's answers about its downloads", () => {
+  it("are read only up to a bound, not however much the server sends", async () => {
+    const http = await import("node:http");
+    const { createHttpClient } = await import("../src/core/http.ts");
+    const { fetchOffer } = await import("../src/modules/maps/os-names/source.ts");
+    let sent = 0;
+    const server = http.createServer((request, response) => {
+      response.writeHead(200, { "content-type": "application/json" });
+      // A JSON string that never ends: 64 MB, a megabyte at a time, unless the reader stops first.
+      response.write('{"id":"OpenNames","version":"2026-10","padding":"');
+      const chunk = "x".repeat(1024 * 1024);
+      const more = () => {
+        while (sent < 64 && !response.destroyed) {
+          sent += 1;
+          if (!response.write(chunk)) return void response.once("drain", more);
+        }
+        if (!response.destroyed) response.end('"}');
+      };
+      more();
+      request.on("close", () => response.destroy());
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const client = createHttpClient({ allowPrivate: true });
+    try {
+      const base = `http://127.0.0.1:${(server.address() as import("node:net").AddressInfo).port}/downloads/v1/`;
+      await expect(fetchOffer(client, { base })).rejects.toThrow(/Ordnance Survey/);
+      expect(sent).toBeLessThan(16);
+    } finally {
+      await client.close();
+      await new Promise((resolve) => server.close(resolve));
+    }
+  }, 30_000);
+});
