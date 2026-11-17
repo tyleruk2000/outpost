@@ -1507,3 +1507,73 @@ export const gameSaves = sqliteTable("game_saves", {
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
+
+// ── Learning progress (the reader) ──────────────────────────────────────────
+
+/**
+ * Where each learner got to in a reference archive: one row per learner, archive and
+ * page. A learner is a name chosen on a device, or "" for someone who chose "Just me";
+ * it is not an account and proves nothing about who was holding the device. `archive`
+ * is the archive's own name without its date (`khanacademy_en_all`), so that progress
+ * outlives updating the archive to a newer edition. See docs/learning.md.
+ */
+export const learningPages = sqliteTable(
+  "learning_pages",
+  {
+    id: id(),
+    learner: text("learner").notNull(),
+    archive: text("archive").notNull(),
+    /** The archive's title when this page was last recorded, for when it is no longer installed. */
+    archiveTitle: text("archive_title").notNull(),
+    /** The page's address inside the archive, as the reader's address shows it. */
+    path: text("path").notNull(),
+    title: text("title").notNull().default(""),
+    firstOpenedAt: integer("first_opened_at").notNull(),
+    lastOpenedAt: integer("last_opened_at").notNull(),
+    /** Seconds the page was on show while the reader's tab was visible, in all. */
+    secondsInView: integer("seconds_in_view").notNull().default(0),
+    /** When the learner marked it done, or its video was played through; null when not done. */
+    doneAt: integer("done_at"),
+    /** "marked" (pressed Done) or "watched" (its video played to the end). */
+    doneHow: text("done_how"),
+    /** The last time anything was recorded for it: "where they got to" is the newest. */
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    uniqueIndex("learning_pages_page_idx").on(table.learner, table.archive, table.path),
+    index("learning_pages_recent_idx").on(table.learner, table.archive, table.updatedAt),
+  ],
+);
+
+/** Time in view by day, for "about 2 hours this week": one row per learner, archive and day. */
+export const learningDays = sqliteTable(
+  "learning_days",
+  {
+    learner: text("learner").notNull(),
+    archive: text("archive").notNull(),
+    /** The server's own calendar day, "2026-11-17". */
+    day: text("day").notNull(),
+    seconds: integer("seconds").notNull().default(0),
+  },
+  (table) => [primaryKey({ columns: [table.learner, table.archive, table.day] })],
+);
+
+/**
+ * What a page of links lists: the other pages of the same archive it links to, as the
+ * reader saw them when someone opened it. The same for every learner, since it is the
+ * archive's shape and not anyone's progress. Used only to say "3 of 5 done in Fractions".
+ */
+export const learningTopics = sqliteTable(
+  "learning_topics",
+  {
+    archive: text("archive").notNull(),
+    path: text("path").notNull(),
+    title: text("title").notNull().default(""),
+    /** The pages it links to, inside the same archive. */
+    links: json<string[]>("links").notNull(),
+    /** It is the archive's first page, whose links (subjects, a menu) are left out of every other page's list. */
+    isHome: integer("is_home", { mode: "boolean" }).notNull().default(false),
+    seenAt: integer("seen_at").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.archive, table.path] })],
+);

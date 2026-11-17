@@ -23,6 +23,7 @@ export * from "./imagery.ts";
 export * from "./imports.ts";
 export * from "./kept.ts";
 export * from "./kiwix.ts";
+export * from "./learning.ts";
 export * from "./links.ts";
 export * from "./locator.ts";
 export * from "./manage.ts";

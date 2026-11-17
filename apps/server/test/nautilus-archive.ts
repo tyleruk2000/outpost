@@ -17,6 +17,9 @@
  *                              archive made from a web site does. nautilus writes no such page; it is
  *                              here so that one stand-in serves the tests of both kinds of archive
  *
+ * It also serves a second archive, a small made-up course of topics and lessons, for the
+ * tests of learning progress: see course-archive.ts.
+ *
  * Nothing here is copied from nautilus or from any archive: the page, the script, the
  * documents and their words were written for these tests.
  *
@@ -29,6 +32,7 @@ import fs from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import { pathToFileURL } from "node:url";
+import { serveCourse } from "./course-archive.ts";
 import { buildPdf } from "./fixtures/documents/builders.ts";
 
 export const NAUTILUS_BOOK = "field-library_en_2026-11";
@@ -278,6 +282,8 @@ export async function startNautilusArchive(options: { port?: number } = {}): Pro
       archive.missing = new Set(asked.getAll("missing"));
       return response.end("ok");
     }
+    // A second archive, a small course, for the tests of learning progress (course-archive.ts).
+    if (serveCourse(request, response)) return;
     const head = request.method === "HEAD";
     (head ? archive.heads : archive.requests).push(url);
     // kiwix-serve sends its own, weaker, sandbox policy; Outpost must replace it.

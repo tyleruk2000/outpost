@@ -63,6 +63,8 @@ const invalidations: Record<string, string[][]> = {
   "morse.changed": [["morse"], ["manage"]],
   // The allotment or a game's tally changed, here or on another device.
   "games.changed": [["games"], ["manage"]],
+  // A page was marked done, or a learner's progress removed, here or on another device.
+  "learning.changed": [["learning"], ["manage"]],
   // The background count of what is on disk has finished.
   "manage.changed": [["manage"]],
 };

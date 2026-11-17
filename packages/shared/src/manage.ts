@@ -4,6 +4,7 @@
  */
 import type { JobDto, LocalBy } from "./common.ts";
 import type { GamesKept } from "./games.ts";
+import type { LearningKept } from "./learning.ts";
 import type { MorseKept } from "./morse.ts";
 import type { StorageKind } from "./storage.ts";
 import type { WeatherKept } from "./weather.ts";
@@ -139,6 +140,8 @@ export interface CleanupPlan {
     morse?: MorseKept;
     /** The games: the allotment's plot and each game's tally, one row each. Absent from a plan made before they were counted. */
     games?: GamesKept;
+    /** Learning progress in reference archives: learners and the pages recorded for them. Absent from a plan made before it was counted. */
+    learning?: LearningKept;
     /** PGP keys kept for contacts, any private key of the person's own among them. Absent from a plan made before they were counted. */
     pgpKeys?: number;
     /** Records of merges from portable drives, which hold earlier versions of pages. Absent from a plan made before they were counted. */
@@ -219,6 +222,7 @@ export interface CleanupResult extends Record<string, unknown> {
     emergencyPlans?: number;
     morse?: MorseKept;
     games?: GamesKept;
+    learning?: LearningKept;
     pgpKeys?: number;
     driveMerges?: number;
     settings: number;

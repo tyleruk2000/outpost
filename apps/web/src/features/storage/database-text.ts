@@ -28,6 +28,7 @@ const COUNT_WORDS: Record<DatabaseCountId, [string, string]> = {
   emergencyPlans: ["emergency plan", "emergency plans"],
   morseSessions: ["Morse practice session", "Morse practice sessions"],
   gameSaves: ["game kept for the household", "games kept for the household"],
+  learningPages: ["page of learning progress", "pages of learning progress"],
   repeaterLists: ["list of repeaters", "lists of repeaters"],
   weatherPlaces: ["weather place", "weather places"],
   pgpKeys: ["PGP key", "PGP keys"],
