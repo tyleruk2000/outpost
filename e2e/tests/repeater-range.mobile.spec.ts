@@ -31,7 +31,7 @@ test("a repeater's estimated range on a phone: folded out of the way, drawn larg
 
     // Once the outline is drawn the card folds to one line: the callsign, the answer in a few words, the switch.
     const folded = page.getByRole("region", { name: "QZ3RNG: estimated range" });
-    await expect(folded).toContainText(/QZ3RNG\s*About .* km, terrain partial/);
+    await expect(folded).toContainText(/QZ3RNG\s*(About|Mostly) .* km, terrain partial/);
     await expect(folded.getByRole("switch", { name: "Estimated range" })).toBeChecked();
     await idle(page);
     expect(await overflow(page)).toBeLessThanOrEqual(0);

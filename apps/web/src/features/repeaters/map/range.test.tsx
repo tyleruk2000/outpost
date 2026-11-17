@@ -2,9 +2,20 @@ import { RANGE_BEARINGS, RANGE_DEFAULT_AERIAL_METERS, type SightRange } from "@o
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MapEngine } from "@/features/maps/map/engine";
-import { aerialOf, DEFAULT_RANGE_PREFS, formatReach, RANGE_KEY, rangeData, readRange } from "./range";
+import {
+  aerialOf,
+  DEFAULT_RANGE_PREFS,
+  formatReach,
+  migrateRangePrefs,
+  RANGE_KEY,
+  RANGE_MOST,
+  rangeData,
+  rangeLayers,
+  readRange,
+} from "./range";
 import { useRepeaterRange } from "./use-repeater-range";
 
 const AT = { lat: 57, lon: -3.4 };
@@ -12,9 +23,10 @@ const AT = { lat: 57, lon: -3.4 };
 function range(
   coverage: SightRange["coverage"],
   shape: (bearing: number) => Partial<SightRange["bearings"][number]> = () => ({}),
+  at = AT,
 ): SightRange {
   return {
-    at: AT,
+    at,
     aerialMeters: 10,
     stationMeters: 1.5,
     maxMeters: 100_000,
@@ -63,6 +75,36 @@ describe("the estimate in words and on the map", () => {
     expect(reading.sentences).toContain("About 10% of the ground inside the outline is hidden from the aerial by nearer ground.");
     expect(reading.sentences).toContain("Higher ground beyond the outline is in sight again on 1 bearing, up to 41 km (25 mi) away.");
     expect(reading.needsTerrain).toBe(false);
+    // The few words for the folded card say the nearest as well, when none goes further than most.
+    expect(reading.short).toBe("Mostly about 18 km, down to 4 km");
+  });
+
+  it("says a spike in the few words too, rather than only where most bearings end", () => {
+    const spiked = readRange(range("terrain", (bearing) => (bearing === 45 ? { reachMeters: 8000 } : { reachMeters: 1000 })));
+    expect(spiked.short).toBe("Mostly about 1 km, up to 8 km");
+    expect(spiked.title).toBe("In sight to about 1 km (0.5 mi) on most bearings, from 1 km (0.5 mi) to 8 km (5 mi).");
+    expect(readRange(range("terrain")).short).toBe("In sight to about 18 km");
+    expect(readRange(range("partial", (bearing) => (bearing === 90 ? { reachMeters: 41_000 } : {}))).short).toBe(
+      "Mostly 18 km, up to 41 km, terrain partial",
+    );
+    expect(readRange(range("partial")).short).toBe("About 18 km, terrain partial");
+  });
+
+  it("labels each outline's edge with its repeater's callsign", () => {
+    const data = rangeData(range("terrain"), "QZ3RNG");
+    expect(data.features.filter((feature) => feature.properties.kind === "edge").every((edge) => edge.properties.name === "QZ3RNG")).toBe(
+      true,
+    );
+    const label = rangeLayers({ ink: "#000", page: "#fff" } as never).find((layer) => layer.id === "o-range-label")!;
+    expect((label.layout as Record<string, unknown>)["text-field"]).toEqual(["get", "name"]);
+  });
+
+  it("keeps the station and assumed height from what an earlier version stored, and takes a range that was on as none chosen", () => {
+    expect(migrateRangePrefs({ on: true, station: "roof", assumedAerial: 20 })).toEqual({ chosen: [], station: "roof", assumedAerial: 20 });
+    expect(migrateRangePrefs({ on: false, station: "nonsense", assumedAerial: -1 })).toEqual(DEFAULT_RANGE_PREFS);
+    expect(migrateRangePrefs(null)).toEqual(DEFAULT_RANGE_PREFS);
+    const present = { chosen: ["a", "b"], station: "car", assumedAerial: 12 };
+    expect(migrateRangePrefs(present)).toEqual(present);
   });
 
   it("draws an outline with a dashed edge where terrain ran out, and a dashed circle with none", () => {
@@ -77,43 +119,106 @@ describe("the estimate in words and on the map", () => {
   });
 });
 
-// ── The switch in the repeater's card ───────────────────────────────────────
+// ── The switch in each repeater's card ──────────────────────────────────────
 
 const engine = { setOverlay: vi.fn(), fitBounds: vi.fn() };
 const fetched = vi.fn();
 const json = (body: unknown, status = 200) =>
   Promise.resolve(new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } }));
 
-function Harness({ antennaMeters, onOpenOffline }: { antennaMeters: number | null; onOpenOffline?: () => void }) {
+interface Held {
+  id: string;
+  callsign: string;
+  lat: number;
+  lon: number;
+  antennaMeters: number | null;
+}
+/** The repeaters the server holds: r1 is QZ3RNG at AT, r2 to r9 are QZ3RN2 to QZ3RN9 further north. */
+let held: Record<string, Held> = {};
+/** How the server answers for an outline; by default, terrain all round at the place asked about. */
+let answerRange: (at: { lat: number; lon: number }) => Promise<Response> = (at) => json(range("terrain", () => ({}), at));
+
+function server(input: RequestInfo | URL) {
+  const url = new URL(String(input), "http://outpost.test");
+  if (url.pathname === "/api/maps/sight-range") {
+    const [lat, lon] = url.searchParams.get("at")!.split(",").map(Number);
+    return answerRange({ lat: lat!, lon: lon! });
+  }
+  const one = /^\/api\/repeaters\/([^/]+)$/.exec(url.pathname);
+  if (one) {
+    const repeater = held[one[1]!];
+    return repeater ? json({ repeater, list: null }) : json({ error: { code: "not_found", message: "No such repeater." } }, 404);
+  }
+  return json({ error: { code: "not_found", message: "Not here." } }, 404);
+}
+
+/** The outlines asked of the server, as their places. */
+const asked = () =>
+  fetched.mock.calls
+    .map(([input]) => new URL(String(input), "http://outpost.test"))
+    .filter((url) => url.pathname === "/api/maps/sight-range");
+const overlay = () => engine.setOverlay.mock.calls.at(-1)?.[1] ?? { features: [] };
+/** The callsigns written along the outlines on the map now. */
+const labelled = () =>
+  [
+    ...new Set(
+      overlay()
+        .features.filter((feature: { properties: { kind: string } }) => feature.properties.kind === "edge")
+        .map((feature: { properties: { name: string } }) => feature.properties.name),
+    ),
+  ].sort();
+
+function Harness({ open: first, visible, onOpenOffline }: { open: string | null; visible: boolean; onOpenOffline?: () => void }) {
+  const [open, setOpen] = useState(first);
   const range = useRepeaterRange({
     engine: engine as unknown as MapEngine,
-    repeater: { id: "r1", callsign: "QZ3RNG", ...AT, antennaMeters },
+    visible,
+    repeater: open ? held[open]! : null,
     onOpenOffline,
+    onClose: () => setOpen(null),
   });
   return (
     <div>
-      {range.folded ?? (
-        <>
-          {range.foldButton}
-          {range.control}
-        </>
-      )}
+      {Object.keys(held).map((id) => (
+        <button key={id} type="button" onClick={() => setOpen(id)}>
+          Open {held[id]!.callsign}
+        </button>
+      ))}
+      <button type="button" onClick={() => setOpen(null)}>
+        Close the card
+      </button>
+      {open ? (
+        <div data-testid="card">
+          {range.folded ?? (
+            <>
+              {range.foldButton}
+              {range.control}
+            </>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }
 
-/** A wide screen unless asked for a phone: the card folds to one line only on a phone. */
-function show(antennaMeters: number | null = 15, onOpenOffline = vi.fn(), phone = false) {
+/** A wide screen unless asked for a phone. QZ3RNG's card is open unless asked otherwise. */
+function show(
+  antennaMeters: number | null = 15,
+  onOpenOffline = vi.fn(),
+  phone = false,
+  { open = "r1" as string | null, visible = true } = {},
+) {
   vi.spyOn(window, "matchMedia").mockImplementation(
     (query: string) => ({ matches: !phone, media: query, addEventListener() {}, removeEventListener() {} }) as unknown as MediaQueryList,
   );
+  held.r1!.antennaMeters = antennaMeters;
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(
+  const view = render(
     <QueryClientProvider client={client}>
-      <Harness antennaMeters={antennaMeters} onOpenOffline={onOpenOffline} />
+      <Harness open={open} visible={visible} onOpenOffline={onOpenOffline} />
     </QueryClientProvider>,
   );
-  return { onOpenOffline };
+  return { onOpenOffline, view };
 }
 
 /** Once an outline is drawn the card is folded to one line; this opens it out again. */
@@ -122,12 +227,24 @@ async function unfold() {
 }
 
 const drawn = () => engine.setOverlay.mock.calls.filter(([, data]) => data.features.length > 0);
+const stored = () => JSON.parse(localStorage.getItem(RANGE_KEY) ?? "null");
 
 beforeEach(() => {
   localStorage.clear();
   engine.setOverlay.mockClear();
   engine.fitBounds.mockClear();
+  held = {
+    r1: { id: "r1", callsign: "QZ3RNG", ...AT, antennaMeters: 15 },
+    ...Object.fromEntries(
+      Array.from({ length: 8 }, (_, index) => [
+        `r${index + 2}`,
+        { id: `r${index + 2}`, callsign: `QZ3RN${index + 2}`, lat: 57.2 + index * 0.1, lon: -3.4, antennaMeters: 20 },
+      ]),
+    ),
+  };
+  answerRange = (at) => json(range("terrain", () => ({}), at));
   fetched.mockReset();
+  fetched.mockImplementation(server);
   vi.stubGlobal("fetch", fetched);
 });
 afterEach(() => {
@@ -145,15 +262,15 @@ describe("the estimated range switch", () => {
 
   it("says it is working, then draws the outline from terrain and says what it rests on", async () => {
     let answer: (value: Response) => void = () => {};
-    fetched.mockReturnValue(new Promise<Response>((resolve) => (answer = resolve)));
+    answerRange = () => new Promise<Response>((resolve) => (answer = resolve));
     show(15);
     await userEvent.click(screen.getByRole("switch", { name: "Estimated range" }));
     expect(screen.getByText("Working out the range from the terrain")).toBeInTheDocument();
-    // Remembered on this device.
-    expect(JSON.parse(localStorage.getItem(RANGE_KEY)!)).toMatchObject({ on: true, station: "handheld" });
-    const url = new URL(String(fetched.mock.calls[0]![0]), "http://outpost.test");
-    expect(url.pathname).toBe("/api/maps/sight-range");
-    expect(Object.fromEntries(url.searchParams)).toEqual({ at: "57.00000,-3.40000", aerial: "15", station: "1.5" });
+    // Remembered on this device, for this repeater.
+    expect(stored()).toMatchObject({ chosen: ["r1"], station: "handheld" });
+    await waitFor(() => expect(asked()).toHaveLength(1));
+    expect(asked()[0]!.pathname).toBe("/api/maps/sight-range");
+    expect(Object.fromEntries(asked()[0]!.searchParams)).toEqual({ at: "57.00000,-3.40000", aerial: "15", station: "1.5" });
     // The heights and the limit are said, the listed height as listed.
     expect(
       screen.getByText(
@@ -165,7 +282,7 @@ describe("the estimated range switch", () => {
     // Drawn, the card folds to one line and the outline is brought into view.
     await unfold();
     expect(screen.getByText("In sight to about 18 km (11 mi) on most bearings.")).toBeInTheDocument();
-    expect(drawn()).toHaveLength(1);
+    expect(labelled()).toEqual(["QZ3RNG"]);
     await waitFor(() => expect(engine.fitBounds).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole("button", { name: "Get terrain in Offline maps" })).toBeNull();
     // What it is not, behind one disclosure.
@@ -175,32 +292,32 @@ describe("the estimated range switch", () => {
     ).toBeVisible();
     expect(screen.getByText(/Ground read every 100 m out to 25 km and every 250 m beyond/)).toBeVisible();
 
-    // Another station asks again, with its own height.
-    fetched.mockReturnValue(json(range("terrain")));
+    // Another station asks again, with its own height: once, though the card and the map both want it.
     await userEvent.click(screen.getByRole("radio", { name: "Roof aerial" }));
-    await waitFor(() => expect(fetched).toHaveBeenCalledTimes(2));
-    expect(new URL(String(fetched.mock.calls[1]![0]), "http://outpost.test").searchParams.get("station")).toBe("8");
+    await waitFor(() => expect(asked()).toHaveLength(2));
+    expect(asked()[1]!.searchParams.get("station")).toBe("8");
     // Switched off: the outline goes.
     await userEvent.click(screen.getByRole("switch", { name: "Estimated range" }));
-    expect(engine.setOverlay.mock.calls.at(-1)![1].features).toEqual([]);
+    expect(overlay().features).toEqual([]);
+    expect(stored().chosen).toEqual([]);
   });
 
   it("with no terrain says it is the smooth-Earth horizon and where terrain is got, and uses the assumed aerial height", async () => {
-    fetched.mockReturnValue(json(range("none")));
+    answerRange = () => json(range("none"));
     const { onOpenOffline } = show(null);
     await userEvent.click(screen.getByRole("switch", { name: "Estimated range" }));
     await unfold();
     expect(screen.getByText("Without terrain: the smooth-Earth radio horizon, about 18 km (11 mi).")).toBeInTheDocument();
     expect(screen.getByText(/assumed: its list gives no height/)).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Repeater aerial" })).toHaveValue("10");
-    expect(new URL(String(fetched.mock.calls[0]![0]), "http://outpost.test").searchParams.get("aerial")).toBe("10");
+    expect(asked()[0]!.searchParams.get("aerial")).toBe("10");
     expect(screen.getByText("No terrain is held here, so it is a plain circle.")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Get terrain in Offline maps" }));
     expect(onOpenOffline).toHaveBeenCalled();
   });
 
   it("with part of the area's terrain says the outline stops short", async () => {
-    fetched.mockReturnValue(json(range("partial", (bearing) => (bearing < 30 ? { limit: "terrain", reachMeters: 9000 } : {}))));
+    answerRange = () => json(range("partial", (bearing) => (bearing < 30 ? { limit: "terrain", reachMeters: 9000 } : {})));
     show();
     await userEvent.click(screen.getByRole("switch", { name: "Estimated range" }));
     await unfold();
@@ -216,18 +333,17 @@ describe("the estimated range switch", () => {
   });
 
   it("says when it could not be worked out, and tries again", async () => {
-    fetched.mockReturnValue(json({ error: { code: "internal", message: "Something went wrong." } }, 500));
+    answerRange = () => json({ error: { code: "internal", message: "Something went wrong." } }, 500);
     show();
     await userEvent.click(screen.getByRole("switch", { name: "Estimated range" }));
     expect(await screen.findByText("The range could not be worked out")).toBeInTheDocument();
-    fetched.mockReturnValue(json(range("terrain")));
+    answerRange = (at) => json(range("terrain", () => ({}), at));
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     await unfold();
     expect(screen.getByText("In sight to about 18 km (11 mi) on most bearings.")).toBeInTheDocument();
   });
 
   it("folds the card to one line once the outline is drawn, on a phone as on a wide screen, and unfolds it again", async () => {
-    fetched.mockReturnValue(json(range("terrain")));
     show(15, vi.fn(), true);
     await userEvent.click(screen.getByRole("switch", { name: "Estimated range" }));
     const folded = await screen.findByRole("region", { name: "QZ3RNG: estimated range" });
@@ -242,6 +358,108 @@ describe("the estimated range switch", () => {
     await userEvent.click(screen.getByRole("switch", { name: "Estimated range" }));
     expect(screen.getByRole("switch", { name: "Estimated range" })).not.toBeChecked();
     expect(screen.queryByRole("region", { name: "QZ3RNG: estimated range" })).toBeNull();
-    expect(engine.setOverlay.mock.calls.at(-1)![1].features).toEqual([]);
+    expect(overlay().features).toEqual([]);
+  });
+});
+
+describe("ranges chosen repeater by repeater", () => {
+  it("switches on for one repeater only, keeps each outline after its card closes, and labels each", async () => {
+    show();
+    await userEvent.click(screen.getByRole("switch", { name: "Estimated range" }));
+    await screen.findByRole("region", { name: "QZ3RNG: estimated range" });
+    await waitFor(() => expect(engine.fitBounds).toHaveBeenCalledTimes(1));
+
+    // Another repeater's switch is its own, and off.
+    await userEvent.click(screen.getByRole("button", { name: "Open QZ3RN2" }));
+    expect(screen.getByRole("switch", { name: "Estimated range" })).not.toBeChecked();
+    expect(labelled()).toEqual(["QZ3RNG"]);
+    await userEvent.click(screen.getByRole("switch", { name: "Estimated range" }));
+    await screen.findByRole("region", { name: "QZ3RN2: estimated range" });
+    await waitFor(() => expect(labelled()).toEqual(["QZ3RN2", "QZ3RNG"]));
+    // The map is fitted to the one just switched on, not to both.
+    await waitFor(() => expect(engine.fitBounds).toHaveBeenCalledTimes(2));
+    const [south, , north] = [engine.fitBounds.mock.calls[1]![0][1], 0, engine.fitBounds.mock.calls[1]![0][3]];
+    expect((south + north) / 2).toBeCloseTo(57.2, 1);
+    expect(stored().chosen).toEqual(["r1", "r2"]);
+
+    // Closed, both stay; each was asked of the server once.
+    await userEvent.click(screen.getByRole("button", { name: "Close the card" }));
+    expect(labelled()).toEqual(["QZ3RN2", "QZ3RNG"]);
+    expect(asked()).toHaveLength(2);
+
+    // The first opened again shows its switch on, and switched off there it goes alone.
+    await userEvent.click(screen.getByRole("button", { name: "Open QZ3RNG" }));
+    expect(screen.getByRole("switch", { name: "Estimated range" })).toBeChecked();
+    expect(screen.getByText("2 ranges are shown on the map.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("switch", { name: "Estimated range" }));
+    expect(labelled()).toEqual(["QZ3RN2"]);
+    expect(screen.queryByText(/ranges are shown on the map/)).toBeNull();
+  });
+
+  it("is remembered on this device: drawn again with no card open, each asked once, as they come", async () => {
+    localStorage.setItem(RANGE_KEY, JSON.stringify({ chosen: ["r1", "r3"], station: "car", assumedAerial: 10 }));
+    let late: (value: Response) => void = () => {};
+    answerRange = (at) => (at.lat > 57.2 ? new Promise<Response>((resolve) => (late = resolve)) : json(range("terrain", () => ({}), at)));
+    show(15, vi.fn(), false, { open: null });
+    // The one answered first is drawn without waiting for the other.
+    await waitFor(() => expect(labelled()).toEqual(["QZ3RNG"]));
+    late(await json(range("terrain", () => ({}), { lat: 57.3, lon: -3.4 })));
+    await waitFor(() => expect(labelled()).toEqual(["QZ3RN3", "QZ3RNG"]));
+    expect(asked()).toHaveLength(2);
+    expect(asked().every((url) => url.searchParams.get("station") === "2")).toBe(true);
+    // Nothing is fitted or folded for ranges that were already on.
+    expect(engine.fitBounds).not.toHaveBeenCalled();
+  });
+
+  it("migrates what an earlier version stored: the station and height kept, nothing chosen", async () => {
+    localStorage.setItem(RANGE_KEY, JSON.stringify({ on: true, station: "roof", assumedAerial: 20 }));
+    show(null);
+    expect(screen.getByRole("switch", { name: "Estimated range" })).not.toBeChecked();
+    expect(fetched).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("switch", { name: "Estimated range" }));
+    await waitFor(() => expect(asked()).toHaveLength(1));
+    expect(Object.fromEntries(asked()[0]!.searchParams)).toMatchObject({ aerial: "20", station: "8" });
+    expect(stored()).toEqual({ chosen: ["r1"], station: "roof", assumedAerial: 20 });
+  });
+
+  it(`shows at most ${RANGE_MOST}, says so rather than refusing quietly, and hides them all`, async () => {
+    const eight = Array.from({ length: RANGE_MOST }, (_, index) => `r${index + 2}`);
+    localStorage.setItem(RANGE_KEY, JSON.stringify({ chosen: eight, station: "handheld", assumedAerial: 10 }));
+    show();
+    await waitFor(() => expect(labelled()).toHaveLength(RANGE_MOST));
+    expect(screen.getByText(`${RANGE_MOST} ranges are shown on the map.`)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("switch", { name: "Estimated range" }));
+    expect(screen.getByRole("switch", { name: "Estimated range" })).not.toBeChecked();
+    expect(
+      screen.getByText(
+        `${RANGE_MOST} ranges are shown, as many as can be at once. Switch one off in its card, or hide them all, to show this one.`,
+      ),
+    ).toBeInTheDocument();
+    expect(stored().chosen).toEqual(eight);
+
+    await userEvent.click(screen.getByRole("button", { name: "Hide all ranges" }));
+    expect(overlay().features).toEqual([]);
+    expect(stored().chosen).toEqual([]);
+    expect(screen.queryByRole("button", { name: "Hide all ranges" })).toBeNull();
+    // With room again, this one switches on.
+    await userEvent.click(screen.getByRole("switch", { name: "Estimated range" }));
+    await waitFor(() => expect(labelled()).toEqual(["QZ3RNG"]));
+  });
+
+  it("drops quietly a chosen repeater that is no longer held", async () => {
+    localStorage.setItem(RANGE_KEY, JSON.stringify({ chosen: ["gone", "r1"], station: "handheld", assumedAerial: 10 }));
+    show(15, vi.fn(), false, { open: null });
+    await waitFor(() => expect(labelled()).toEqual(["QZ3RNG"]));
+    await waitFor(() => expect(stored().chosen).toEqual(["r1"]));
+    expect(asked()).toHaveLength(1);
+  });
+
+  it("asks nothing while none is chosen, or while the map's repeaters are off", () => {
+    show(15, vi.fn(), false, { open: null });
+    expect(fetched).not.toHaveBeenCalled();
+    localStorage.setItem(RANGE_KEY, JSON.stringify({ chosen: ["r1"], station: "handheld", assumedAerial: 10 }));
+    show(15, vi.fn(), false, { open: null, visible: false });
+    expect(fetched).not.toHaveBeenCalled();
+    expect(drawn()).toEqual([]);
   });
 });

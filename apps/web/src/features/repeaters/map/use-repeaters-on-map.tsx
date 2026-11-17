@@ -1,7 +1,7 @@
 /**
  * Repeaters on the Maps screen: whether they are switched on (remembered in this
- * browser), keeping them drawn for the view, opening one when it is pressed, and
- * handing it to the line-of-sight check.
+ * browser), keeping them drawn for the view, opening one when it is pressed, handing it
+ * to the line-of-sight check, and the estimated ranges of those chosen.
  *
  * The Maps screen mounts this with one call and shows the card it returns. Everything
  * else about repeaters lives in this folder.
@@ -45,7 +45,7 @@ export interface RepeatersOnMap {
   setOn(on: boolean): void;
   /** The card for the repeater that is open, or for having none to show. Null when there is nothing to say. */
   card: ReactNode | null;
-  /** The repeater's estimated range is drawn and its card folded to one line: on a phone the readout steps aside for the outline. */
+  /** The open repeater's estimated range is drawn and its card folded to one line: on a phone the readout steps aside for the outline. */
   ranging: boolean;
 }
 
@@ -176,6 +176,7 @@ export function useRepeatersOnMap({
   const ringLon = selectedAt?.lon;
   const range = useRepeaterRange({
     engine,
+    visible: on,
     repeater: browsing && on && selectedId && selected ? selected : null,
     onOpenOffline,
     onClose: () => setSelectedId(null),
@@ -252,7 +253,7 @@ export function useRepeatersOnMap({
       });
     } else {
       engine.flyTo(end.position, Math.max(engine.getZoom(), 11), cardCover());
-      if (params.get("range")) range.show();
+      if (params.get("range")) range.show(linked);
       if (params.get("sight")) {
         const match = /^(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)$/.exec(params.get("from") ?? "");
         setSelectedId(null);

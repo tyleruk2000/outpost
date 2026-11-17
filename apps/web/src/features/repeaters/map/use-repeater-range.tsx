@@ -1,47 +1,53 @@
 /**
- * The estimated range of the repeater that is open on the map: a switch in its card,
- * the heights it is worked out with, the outline on the map and what it means.
+ * Estimated ranges on the map: a switch in each repeater's card, the heights they are
+ * worked out with, the outlines on the map and what they mean.
  *
- * Off by default and remembered on this device. While it is off, or no repeater is
- * open, nothing is asked of the server and nothing is drawn. While it is on, the server
- * is asked once for each repeater, pair of heights and installed terrain (the query's
- * key starts with "maps", so installing or removing terrain asks again); moving or
- * zooming the map asks nothing.
+ * The switch belongs to the repeater. Each repeater switched on keeps its outline on
+ * the map after its card is closed, until it is switched off in its card or all are
+ * hidden; up to RANGE_MOST at once, remembered on this device. While none is chosen, or
+ * the map's repeaters are switched off, nothing is asked of the server and nothing is
+ * drawn. Each chosen repeater is asked about once for each pair of heights and installed
+ * terrain (the query's key starts with "maps", so installing or removing terrain asks
+ * again), each outline drawn as its answer comes; moving or zooming the map asks nothing.
  */
 import {
   RANGE_BEARINGS,
   RANGE_MAX_HEIGHT_METERS,
   RANGE_MAX_METERS,
   RANGE_STATIONS,
+  type RepeaterDetailResponse,
   type RepeaterDto,
   type SightRange,
 } from "@outpost/shared";
-import { useQuery } from "@tanstack/react-query";
+import { type UseQueryResult, useQueries, useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, ChevronUp, CircleAlert, X } from "lucide-react";
-import { type ReactNode, type Ref, useCallback, useEffect, useId, useRef, useState } from "react";
+import { type ReactNode, type Ref, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Segmented, Spinner, Switch } from "@/components/ui/misc";
 import { useStoredState } from "@/features/maps/hooks";
+import { readStored } from "@/features/maps/lib/view";
 import type { MapEngine } from "@/features/maps/map/engine";
 import { EMPTY } from "@/features/maps/map/overlays";
 import { NumberField } from "@/features/maps/radio/sight-panel";
 import { mapCard } from "@/features/maps/ui";
-import { api, errorMessage } from "@/lib/api";
+import { ApiError, api, errorMessage } from "@/lib/api";
 import { useDebounced } from "@/lib/use-debounced";
 import { cn } from "@/lib/utils";
+import { repeaterQuery } from "../data";
 import {
   aerialOf,
-  DEFAULT_RANGE_PREFS,
   describeRangeTerrain,
   formatHeight,
   formatReach,
   isRangePrefs,
+  migrateRangePrefs,
   RANGE_KEY,
+  RANGE_MOST,
   RANGE_SOURCE,
   type RangePrefs,
   rangeBounds,
-  rangeData,
+  rangesData,
   readRange,
   stationOf,
 } from "./range";
@@ -69,39 +75,62 @@ function cardClearance(inside: Element | null): { keepClear?: { top?: number; ri
 
 type Placed = Pick<RepeaterDto, "id" | "callsign" | "lat" | "lon" | "antennaMeters">;
 
-export function useSightRange(at: { lat: number; lon: number } | null, aerial: number, station: number) {
+function sightRangeQuery(at: { lat: number; lon: number } | null, aerial: number, station: number) {
   const where = at ? `${at.lat.toFixed(5)},${at.lon.toFixed(5)}` : "";
-  return useQuery({
+  return {
     queryKey: ["maps", "sight-range", where, aerial, station],
-    queryFn: ({ signal }) =>
+    queryFn: ({ signal }: { signal: AbortSignal }) =>
       api.get<SightRange>("/api/maps/sight-range", { at: where, aerial: String(aerial), station: String(station) }, signal),
     enabled: Boolean(at),
     // The answer changes only with the terrain installed, and installing it asks again.
     staleTime: Number.POSITIVE_INFINITY,
     retry: false,
-  });
+  };
 }
+
+export function useSightRange(at: { lat: number; lon: number } | null, aerial: number, station: number) {
+  return useQuery(sightRangeQuery(at, aerial, station));
+}
+
+// Kept outside the hook: with a stable `combine`, each list keeps its identity until an answer changes, so the
+// outlines are not drawn again on every render.
+const chosenRepeaters = (results: Array<UseQueryResult<RepeaterDetailResponse>>) =>
+  results.map((result) => ({
+    repeater: result.data?.repeater,
+    // Its list was removed, or it was: the range is dropped quietly.
+    gone: result.error instanceof ApiError && result.error.status === 404,
+  }));
+const outlinesOf = (results: Array<UseQueryResult<SightRange>>) => results.map((result) => result.data);
+
+const isPlaced = (repeater: Placed | undefined): repeater is Placed & { lat: number; lon: number } =>
+  Boolean(repeater && repeater.lat !== null && repeater.lon !== null);
+
+/** What is stored, read once and made into the present shape (see migrateRangePrefs). */
+const storedPrefs = () => migrateRangePrefs(readStored(RANGE_KEY, (value: unknown): value is unknown => true, null));
 
 export interface RepeaterRange {
   /** The switch and what it says, for the repeater's card; null for a repeater with no position. */
   control: ReactNode | null;
-  /** A button for the card's header that folds the card to one line, while the range is on. */
+  /** A button for the card's header that folds the card to one line, while its range is on. */
   foldButton: ReactNode | null;
   /** The card folded to one line (callsign, the answer in a few words, the switch), or null when it is not folded. */
   folded: ReactNode | null;
-  /** Classes for the repeater's card: while the range is on, on a wide screen, it scrolls inside a greatest height rather than growing over the map. */
+  /** Classes for the repeater's card: while its range is on, on a wide screen, it scrolls inside a greatest height rather than growing over the map. */
   cardClass: string | undefined;
-  /** Switches the range on and brings the outline into view once it is worked out: what a link from the repeater's page does. */
-  show(): void;
+  /** Switches this repeater's range on and brings its outline into view once it is worked out: what a link from the repeater's page does. */
+  show(id: string): void;
 }
 
 export function useRepeaterRange({
   engine,
+  visible,
   repeater,
   onOpenOffline,
   onClose,
 }: {
   engine: MapEngine | null;
+  /** The map's repeaters are switched on: the chosen ranges are drawn only then, as the dots are. */
+  visible: boolean;
   /** The repeater that is open on the map, or null when none is. */
   repeater: Placed | null;
   /** Opens the part of the map's panel where terrain is downloaded. */
@@ -109,79 +138,141 @@ export function useRepeaterRange({
   /** Closes the repeater's card. */
   onClose?: () => void;
 }): RepeaterRange {
-  const [prefs, setPrefs] = useStoredState<RangePrefs>(RANGE_KEY, isRangePrefs, DEFAULT_RANGE_PREFS);
+  const [initial] = useState(storedPrefs);
+  const [prefs, setPrefs] = useStoredState<RangePrefs>(RANGE_KEY, isRangePrefs, initial);
   const [folded, setFolded] = useState(false);
-  const placed = repeater && repeater.lat !== null && repeater.lon !== null ? { lat: repeater.lat, lon: repeater.lon } : null;
-  const aerial = aerialOf(repeater?.antennaMeters ?? null, prefs);
+  // The repeater whose switch was pressed with RANGE_MOST already shown: its card says so.
+  const [full, setFull] = useState<string | null>(null);
   // A height being typed is asked about once the typing stops.
-  const aerialMeters = useDebounced(aerial.meters, 600);
+  const assumed = useDebounced(prefs.assumedAerial, 600);
   const station = stationOf(prefs.station);
-  const asked = prefs.on && placed ? placed : null;
-  const range = useSightRange(asked, aerialMeters, station.meters);
-  const shown = asked ? range.data : undefined;
 
+  // Every chosen repeater: where it is from its own record (the one its card shows), then its outline.
+  const chosen = useQueries({ queries: (visible ? prefs.chosen : []).map(repeaterQuery), combine: chosenRepeaters });
+  const placedChosen = chosen.flatMap(({ repeater: one }) => (isPlaced(one) ? [one] : []));
+  const outlines = useQueries({
+    queries: placedChosen.map((one) => sightRangeQuery(one, one.antennaMeters ?? assumed, station.meters)),
+    combine: outlinesOf,
+  });
+  const names = placedChosen.map((one) => one.callsign).join("\n");
+  const drawn = useMemo(() => {
+    const callsigns = names.split("\n");
+    return outlines.flatMap((range, index) => (range ? [{ range, name: callsigns[index] ?? "" }] : []));
+  }, [outlines, names]);
   useEffect(() => {
-    engine?.setOverlay(RANGE_SOURCE, shown ? rangeData(shown) : EMPTY);
-  }, [engine, shown]);
+    engine?.setOverlay(RANGE_SOURCE, drawn.length > 0 ? rangesData(drawn) : EMPTY);
+  }, [engine, drawn]);
   useEffect(() => () => engine?.setOverlay(RANGE_SOURCE, EMPTY), [engine]);
 
-  // Switched on, or another repeater opened with it on: once the outline is known the card folds to one line, so
-  // that there is room to see it, and the outline is brought into the part of the map the card leaves clear.
-  const pending = useRef(false);
+  // A repeater that is no longer held, or no longer has a position, is dropped from the chosen.
+  const dropped = prefs.chosen.filter((_, index) => {
+    const one = visible ? chosen[index] : undefined;
+    return Boolean(one && (one.gone || (one.repeater && !isPlaced(one.repeater))));
+  });
+  const droppedKey = dropped.join(",");
+  useEffect(() => {
+    if (!droppedKey) return;
+    const gone = new Set(droppedKey.split(","));
+    setPrefs((current) => ({ ...current, chosen: current.chosen.filter((id) => !gone.has(id)) }));
+  }, [droppedKey, setPrefs]);
+
+  // The open repeater: its own switch, and its outline's answer for the card (the same request as the one drawn).
+  const placed = isPlaced(repeater ?? undefined) ? { lat: repeater!.lat!, lon: repeater!.lon! } : null;
+  const aerial = aerialOf(repeater?.antennaMeters ?? null, prefs);
+  const id = repeater?.id;
+  const on = Boolean(id && prefs.chosen.includes(id));
+  const range = useSightRange(on && visible ? placed : null, repeater?.antennaMeters ?? assumed, station.meters);
+  const shown = on ? range.data : undefined;
+
+  // Switched on: once the outline is known the card folds to one line, so that there is room to see it, and that
+  // outline (not the others) is brought into the part of the map the card leaves clear.
+  const pending = useRef<string | null>(null);
   const card = useRef<HTMLElement | null>(null);
   const fitting = useRef<number | undefined>(undefined);
-  const id = repeater?.id;
+  // Another repeater opened, or none: its card starts open out, with nothing said of the limit.
+  const [opened, setOpened] = useState(id);
+  if (opened !== id) {
+    setOpened(id);
+    setFolded(false);
+    setFull(null);
+  }
   useEffect(() => {
-    if (id && prefs.on) pending.current = true;
-    if (!id) setFolded(false);
-  }, [id, prefs.on]);
-  useEffect(() => {
-    if (!engine || !shown || !pending.current) return;
+    if (!engine || !shown || !id || pending.current !== id) return;
     if (!folded) {
       setFolded(true);
       return;
     }
-    pending.current = false;
+    pending.current = null;
     // Once the folded card and the readout under it have settled (the line of sun times gives way to the card, and
     // the camera's room follows in 200 ms), so that the outline is fitted into the room there is, not the room there was.
     const bounds = rangeBounds(shown);
     window.clearTimeout(fitting.current);
     fitting.current = window.setTimeout(() => engine.fitBounds(bounds, cardClearance(card.current)), 260);
-  }, [engine, shown, folded]);
+  }, [engine, shown, folded, id]);
   useEffect(() => () => window.clearTimeout(fitting.current), []);
 
-  const setOn = useCallback(
-    (on: boolean) => {
-      pending.current = on;
-      if (!on) setFolded(false);
-      setPrefs((current) => ({ ...current, on }));
+  const latest = useRef(prefs.chosen);
+  latest.current = prefs.chosen;
+  const choose = useCallback(
+    (which: string, next: boolean) => {
+      const now = latest.current;
+      if (next && !now.includes(which) && now.length >= RANGE_MOST) {
+        setFull(which);
+        return;
+      }
+      setFull(null);
+      pending.current = next ? which : null;
+      if (!next) setFolded(false);
+      setPrefs((current) => ({
+        ...current,
+        chosen: next ? [...current.chosen.filter((one) => one !== which), which] : current.chosen.filter((one) => one !== which),
+      }));
     },
     [setPrefs],
   );
-  const show = useCallback(() => setOn(true), [setOn]);
+  const setOn = useCallback((next: boolean) => (id ? choose(id, next) : undefined), [choose, id]);
+  const show = useCallback((which: string) => choose(which, true), [choose]);
+  const hideAll = useCallback(() => {
+    setFull(null);
+    setFolded(false);
+    pending.current = null;
+    setPrefs((current) => ({ ...current, chosen: [] }));
+  }, [setPrefs]);
   const keep = useCallback((element: HTMLElement | null) => {
     if (element) card.current = element;
   }, []);
 
   const reading = range.data ? readRange(range.data) : null;
   const control = placed ? (
-    <RangeControl ref={keep} prefs={prefs} onPrefs={setPrefs} onOn={setOn} aerial={aerial} range={range} onOpenOffline={onOpenOffline} />
+    <RangeControl
+      ref={keep}
+      on={on}
+      count={visible ? prefs.chosen.length : 0}
+      full={full !== null && full === id}
+      onHideAll={hideAll}
+      prefs={prefs}
+      onPrefs={setPrefs}
+      onOn={setOn}
+      aerial={aerial}
+      range={range}
+      onOpenOffline={onOpenOffline}
+    />
   ) : null;
   const foldButton =
-    placed && prefs.on ? (
+    placed && on ? (
       <Button variant="ghost" size="icon-sm" aria-label="Show less" aria-expanded onClick={() => setFolded(true)} className="-mt-1">
         <ChevronDown />
       </Button>
     ) : null;
   const short = range.isPending ? "Working out the range" : range.isError ? "The range could not be worked out" : (reading?.short ?? "");
   const foldedCard =
-    placed && prefs.on && folded && repeater ? (
+    placed && on && folded && repeater ? (
       // Two short lines: the callsign with the switch and the buttons, then the answer in a few words. Kept that
       // small so that it fits in the room a phone gives a card even with large text, and leaves the map clear.
       <section ref={keep} aria-label={`${repeater.callsign}: estimated range`} className={cn(mapCard, "py-1.5")}>
         <div className="flex items-center gap-2">
           <h2 className="min-w-0 flex-1 text-body font-semibold text-ink">{repeater.callsign}</h2>
-          <Switch aria-label="Estimated range" checked={prefs.on} onCheckedChange={setOn} className="max-md:my-[10px]" />
+          <Switch aria-label="Estimated range" checked={on} onCheckedChange={setOn} className="max-md:my-[10px]" />
           <Button variant="ghost" size="icon-sm" aria-label="Show the details" aria-expanded={false} onClick={() => setFolded(false)}>
             <ChevronUp />
           </Button>
@@ -194,7 +285,7 @@ export function useRepeaterRange({
         <p className="tabular text-small text-ink-muted">{short}</p>
       </section>
     ) : null;
-  const cardClass = placed && prefs.on ? "md:max-h-[min(40rem,80vh)] md:overflow-y-auto md:overscroll-contain" : undefined;
+  const cardClass = placed && on ? "md:max-h-[min(40rem,80vh)] md:overflow-y-auto md:overscroll-contain" : undefined;
   return { control, foldButton, folded: foldedCard, cardClass, show };
 }
 
@@ -202,6 +293,10 @@ const STATION_OPTIONS = RANGE_STATIONS.map((station) => ({ value: station.id, la
 
 function RangeControl({
   ref,
+  on,
+  count,
+  full,
+  onHideAll,
   prefs,
   onPrefs,
   onOn,
@@ -210,6 +305,13 @@ function RangeControl({
   onOpenOffline,
 }: {
   ref: Ref<HTMLElement | null> | ((element: HTMLElement | null) => void);
+  /** This repeater's range is shown. */
+  on: boolean;
+  /** How many ranges are shown, this one among them or not. */
+  count: number;
+  /** This one was switched on with as many shown as there can be. */
+  full: boolean;
+  onHideAll: () => void;
   prefs: RangePrefs;
   onPrefs: (next: (current: RangePrefs) => RangePrefs) => void;
   onOn: (on: boolean) => void;
@@ -227,9 +329,25 @@ function RangeControl({
         <label htmlFor={id} className="min-w-0 flex-1 text-small font-medium text-ink">
           Estimated range
         </label>
-        <Switch id={id} checked={prefs.on} onCheckedChange={onOn} className="max-md:my-[10px]" />
+        <Switch id={id} checked={on} onCheckedChange={onOn} className="max-md:my-[10px]" />
       </div>
-      {prefs.on ? (
+      {full || count > 1 ? (
+        // One line of words with the way out written into it, as "Get terrain in Offline maps" is, so that it adds
+        // little to the card's height.
+        <p role="status" className="mt-0.5 text-small text-ink-muted">
+          {full
+            ? `${RANGE_MOST} ranges are shown, as many as can be at once. Switch one off in its card, or hide them all, to show this one.`
+            : `${count} ranges are shown on the map.`}{" "}
+          <button
+            type="button"
+            onClick={onHideAll}
+            className="font-medium text-primary underline underline-offset-2 hover:no-underline max-md:inline-flex max-md:min-h-11 max-md:items-center"
+          >
+            Hide all ranges
+          </button>
+        </p>
+      ) : null}
+      {on ? (
         <div className="mt-2.5 grid grid-cols-[minmax(0,1fr)] gap-2.5">
           <Segmented
             label="The other station"

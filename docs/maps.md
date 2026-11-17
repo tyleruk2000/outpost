@@ -2148,13 +2148,16 @@ Outpost holds none until you import a list or enter some; it downloads none.
 
 - **Estimated range** on the card draws an outline of where the repeater's aerial is in
   line of sight over installed terrain, for a handheld, a car or a roof aerial: a thin
-  ink line with a light wash, labelled along its edge, dashed where terrain ran out (a
-  plain dashed circle, the smooth-Earth radio horizon, where there is none). Off until
-  switched on, remembered on the device. See [radio.md](radio.md#the-estimated-range).
+  ink line with a light wash, labelled with the callsign along its edge, dashed where
+  terrain ran out (a plain dashed circle, the smooth-Earth radio horizon, where there is
+  none). The switch is that repeater's own: its outline stays after the card is closed,
+  until switched off in its card, and up to eight can be on at once, with **Hide all
+  ranges** in the card when more than one is. Off until switched on, remembered on the
+  device. See [radio.md](radio.md#the-estimated-range).
 
 Links of the form `/maps?repeater=<id>` open the map on a repeater, and with `&sight=1`
 (and optionally `&from=latitude,longitude`) go straight to the check, or with `&range=1`
-switch the estimated range on; the repeater's own screen and the search across
+switch that repeater's estimated range on; the repeater's own screen and the search across
 everything use them.
 
 Not drawn: repeaters with no position (a CHIRP file has none), repeaters on a printed
