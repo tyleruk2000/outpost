@@ -28,6 +28,7 @@ import type { SightEnd } from "@/features/maps/radio/use-sight";
 import { useRepeater, useRepeaterOverlay, useRepeatersOverview } from "../data";
 import { accessParts, isApproximate, modesLine, precisionText, shiftWords, sourceOf } from "../words";
 import { nearestHit, overlayBox, REPEATER_SOURCE, repeatersData } from "./layers";
+import { useRepeaterRange } from "./use-repeater-range";
 
 const KEY = "outpost.maps.repeaters";
 const isBoolean = (value: unknown): value is boolean => typeof value === "boolean";
@@ -62,12 +63,15 @@ function RepeaterCard({
   from,
   onSight,
   onClose,
+  range,
 }: {
   detail: RepeaterDetailResponse;
   /** Where distance and bearing are measured from, and what that place is called. */
   from: { position: LatLon; name: string } | null;
   onSight: (() => void) | undefined;
   onClose: () => void;
+  /** The estimated range's switch and words; see use-repeater-range. */
+  range: ReactNode;
 }) {
   const { repeater, list } = detail;
   const source = sourceOf(list);
@@ -102,6 +106,7 @@ function RepeaterCard({
           Its position is listed only {precisionText(repeater)}, so the dot and any line of sight from it are rough.
         </p>
       ) : null}
+      {range}
       <div className="mt-3 flex flex-wrap gap-2">
         <Button asChild size="sm" variant="primary">
           <Link to={`/radio/repeaters/${repeater.id}`}>Details</Link>
@@ -121,6 +126,7 @@ export function useRepeatersOnMap({
   browsing,
   here,
   onSight,
+  onOpenOffline,
 }: {
   engine: MapEngine | null;
   /** No tool is in hand, so a press on the map can open a repeater. */
@@ -129,6 +135,8 @@ export function useRepeatersOnMap({
   here: LatLon | null;
   /** Takes up the line-of-sight tool with these ends. */
   onSight: (start: SightStart) => void;
+  /** Opens the part of the map's panel where terrain is downloaded, for the estimated range. */
+  onOpenOffline?: () => void;
 }): RepeatersOnMap {
   const location = useLocation();
   const navigate = useNavigate();
@@ -157,6 +165,7 @@ export function useRepeatersOnMap({
   const selectedAt = selected && selected.lat !== null && selected.lon !== null ? { lat: selected.lat, lon: selected.lon } : null;
   const ringLat = selectedAt?.lat;
   const ringLon = selectedAt?.lon;
+  const range = useRepeaterRange({ engine, repeater: browsing && on && selectedId && selected ? selected : null, onOpenOffline });
   useEffect(() => {
     if (!engine) return;
     const ring = ringLat !== undefined && ringLon !== undefined ? { lat: ringLat, lon: ringLon } : null;
@@ -229,6 +238,7 @@ export function useRepeatersOnMap({
       });
     } else {
       engine.flyTo(end.position, Math.max(engine.getZoom(), 11), cardCover());
+      if (params.get("range")) range.show();
       if (params.get("sight")) {
         const match = /^(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)$/.exec(params.get("from") ?? "");
         setSelectedId(null);
@@ -236,10 +246,22 @@ export function useRepeatersOnMap({
       }
     }
     // The link has done its work; a reload should not do it again.
-    for (const name of ["repeater", "sight", "from"]) params.delete(name);
+    for (const name of ["repeater", "sight", "from", "range"]) params.delete(name);
     const rest = params.toString();
     window.history.replaceState(window.history.state, "", `${location.pathname}${rest ? `?${rest}` : ""}`);
-  }, [engine, linked, location.key, location.search, location.pathname, selectedId, detail.data, detail.isError, navigate, onSight]);
+  }, [
+    engine,
+    linked,
+    location.key,
+    location.search,
+    location.pathname,
+    selectedId,
+    detail.data,
+    detail.isError,
+    navigate,
+    onSight,
+    range.show,
+  ]);
 
   // Switched on by hand: once it is known that there are some to draw, say how to use them and where the list is.
   const announce = useRef(false);
@@ -285,6 +307,7 @@ export function useRepeatersOnMap({
           from={from}
           onSight={selectedAt ? () => sightFrom(here ? { position: here, name: "Where you are" } : null) : undefined}
           onClose={() => setSelectedId(null)}
+          range={range.control}
         />
       );
     } else if (overview.data && overview.data.withPosition === 0 && !emptyDismissed) {

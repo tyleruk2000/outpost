@@ -33,6 +33,7 @@ import { createPlanner } from "./planner.ts";
 import { removeExtractSidecars } from "./pmtiles/extract.ts";
 import { createRegionsService, estimateSchema, importSchema, type RegionsService, startRegionSchema } from "./regions.ts";
 import { registerRouteFinder } from "./route-finder/index.ts";
+import { createSightRanger, sightRangeQuery } from "./sight-range.ts";
 import { createSourceResolver } from "./source.ts";
 import { createTerrainProfiler, terrainProfileQuery } from "./terrain-profile.ts";
 import { createTileServer, type TileServer } from "./tile-server.ts";
@@ -94,6 +95,7 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
   const elevation = createElevationSampler(ctx, tiles);
   const annotations = createAnnotationsService(ctx, { elevation });
   const terrainProfile = createTerrainProfiler(elevation, tiles);
+  const sightRange = createSightRanger(elevation, tiles);
   const regions = createRegionsService(ctx, { planner, sources });
   const imagery = registerImagery(app, ctx, { client, ...ctx.config.imagery });
   tiles.setImagery(() => imagery.styleSources());
@@ -246,6 +248,12 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
   app.get("/api/maps/terrain-profile", async (request) => {
     const query = terrainProfileQuery.parse(request.query);
     return terrainProfile(query.from, query.to);
+  });
+
+  // How far out a station stays in sight of an aerial, bearing by bearing, from installed terrain: a repeater's estimated range.
+  app.get("/api/maps/sight-range", async (request) => {
+    const query = sightRangeQuery.parse(request.query);
+    return sightRange(query.at, query.aerial, query.station);
   });
 
   // ── Places ──
