@@ -14,13 +14,18 @@ export interface DiagramReport {
  * size. Returns what it checked.
  */
 export async function checkDiagrams(page: Page): Promise<DiagramReport[]> {
-  const figures = page.locator("figure[data-diagram]");
-  const count = await figures.count();
-  const reports: DiagramReport[] = [];
-  for (let index = 0; index < count; index += 1) {
-    const figure = figures.nth(index);
-    await figure.scrollIntoViewIfNeeded();
-    const found = await figure.evaluate((element) => {
+  // The plates are drawn after the screen has measured itself: wait until their number holds still.
+  let count = -1;
+  await expect
+    .poll(async () => {
+      const now = await page.locator("figure[data-diagram]").count();
+      const settled = now === count;
+      count = now;
+      return settled;
+    })
+    .toBe(true);
+  const found = await page.evaluate(() =>
+    [...document.querySelectorAll("figure[data-diagram]")].map((element) => {
       const svg = element.querySelector("svg[role=img]")!;
       const named = (attribute: string) =>
         (svg.getAttribute(attribute) ?? "")
@@ -31,8 +36,13 @@ export async function checkDiagrams(page: Page): Promise<DiagramReport[]> {
       const frame = svg.getBoundingClientRect();
       const small = parseFloat(getComputedStyle(document.documentElement).fontSize) * 0.875;
       const texts = [...svg.querySelectorAll("text")].filter((text) => (text.textContent ?? "").trim() !== "");
-      const boxes = texts.map((text) => ({ text: text.textContent!, box: text.getBoundingClientRect(), size: parseFloat(getComputedStyle(text).fontSize) }));
+      const boxes = texts.map((text) => ({
+        text: text.textContent!,
+        box: text.getBoundingClientRect(),
+        size: parseFloat(getComputedStyle(text).fontSize),
+      }));
       const problems: string[] = [];
+      if (frame.width < 100) problems.push(`the drawing is only ${frame.width}px wide`);
       for (const [i, a] of boxes.entries()) {
         if (a.size + 0.01 < small) problems.push(`"${a.text}" is ${a.size}px, under the small text size`);
         if (a.box.left < frame.left - 1 || a.box.right > frame.right + 1 || a.box.top < frame.top - 1 || a.box.bottom > frame.bottom + 1)
@@ -51,12 +61,13 @@ export async function checkDiagrams(page: Page): Promise<DiagramReport[]> {
         labels: boxes.length,
         problems,
       };
-    });
-    expect(found.problems, `${found.name}: ${found.problems.join("; ")}`).toEqual([]);
-    expect(found.label.length, `${found.name} has a caption`).toBeGreaterThan(30);
-    expect(found.description.length, `${found.name} has a description`).toBeGreaterThan(30);
-    expect(found.description, `${found.name}'s description is not its caption again`).not.toBe(found.label);
-    reports.push({ name: found.name, label: found.label, labels: found.labels });
+    }),
+  );
+  for (const each of found) {
+    expect(each.problems, `${each.name}: ${each.problems.join("; ")}`).toEqual([]);
+    expect(each.label.length, `${each.name} has a caption`).toBeGreaterThan(30);
+    expect(each.description.length, `${each.name} has a description`).toBeGreaterThan(30);
+    expect(each.description, `${each.name}'s description is not its caption again`).not.toBe(each.label);
   }
-  return reports;
+  return found.map(({ name, label, labels }) => ({ name, label, labels }));
 }
