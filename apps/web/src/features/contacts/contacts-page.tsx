@@ -17,11 +17,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Skeleton } from "@/components/ui/misc";
-import { useSystem } from "@/lib/queries";
 import { cn, formatNumber, plural } from "@/lib/utils";
 import { ContactDetail } from "./contact-detail";
 import { ContactEditor } from "./contact-editor";
-import { exportHref, LIST_STEP, type ListFilter, useContactList } from "./contacts-data";
+import { exportHref, LIST_STEP, type ListFilter, useContactList, usePhoneStatus } from "./contacts-data";
 
 const ImportPage = lazy(() => import("./import-page"));
 const PhonesPage = lazy(() => import("./phones-page"));
@@ -40,8 +39,8 @@ function useSettled(value: string, delay = 150): string {
 
 /** Said once, on the list: there are no accounts, so there is no keeping contacts from anyone who can open Outpost. */
 function WhoCanSee() {
-  const system = useSystem();
-  const shared = system.data?.lanAccess ?? true;
+  // The phones screen's status carries the one fact needed here, and is not polled.
+  const shared = usePhoneStatus().data?.lanAccess ?? true;
   return (
     <p className="max-w-[70ch] text-small text-ink-muted">
       {shared
