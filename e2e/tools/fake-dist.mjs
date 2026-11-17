@@ -14,6 +14,7 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
+import { serveOurAirportsStandIn } from "../../apps/server/test/fixtures/layers/ourairports-stand-in.ts";
 import { createImageryStandIn } from "../../apps/server/test/fixtures/maps/imagery-stand-in.ts";
 import { createOverpassStandIn } from "../../apps/server/test/fixtures/maps/overpass-answers.ts";
 import { serveP533StandIn } from "../../apps/server/test/fixtures/propagation/p533-maps-stand-in.ts";
@@ -78,6 +79,8 @@ http
       return response.end(body);
     }
     if (request.url?.startsWith("/imagery/")) return imagery.handle(request, response);
+    // OurAirports' airports.csv and airport-frequencies.csv (apps/server/test/fixtures/layers).
+    if (request.url?.startsWith("/ourairports/")) return serveOurAirportsStandIn(request, response);
     if (request.url === "/files/field-manual.bin") {
       response.setHeader("Content-Length", FIELD_MANUAL.length);
       return response.end(FIELD_MANUAL);

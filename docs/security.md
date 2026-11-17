@@ -562,7 +562,7 @@ manager, and only from these hosts, each named in code:
 | Host | What is asked | Why it is allowed |
 | --- | --- | --- |
 | `raw.githubusercontent.com` | Natural Earth's GeoJSON, at release v5.1.2 | Public domain |
-| `davidmegginson.github.io` | OurAirports' `airports.csv` | Public domain |
+| `davidmegginson.github.io` | OurAirports' `airports.csv`, and `airport-frequencies.csv` from the same folder in the same install | Public domain |
 | `ovp.dresel.systems`, or a server the person declares in their route source file | One Overpass question per layer and country | The operator's terms; private.coffee is excluded for this use |
 | `download.geofabrik.de` | The index, a country's `.osm.pbf` and its `.md5` | ODbL, fetched once per press |
 | `query.wikidata.org` | One count and one query, once the person has agreed to the client name being sent | CC0; within the service's limits, with the project's address as the contact the service asks for |
