@@ -5,6 +5,18 @@
   margin-block: 0.85em;
 }
 
+/* The command's own box is the one drawn: the reading surface's box for code would be a second one inside it. */
+.guide-doc .guide-code pre {
+  margin: 0;
+  padding: 0.375rem 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  overflow-x: visible;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+
 /* A link that leaves Outpost: a small arrow after it, and words for a screen reader. It needs the internet. */
 .guide-doc a[target="_blank"]::after {
   content: "" / " (opens in the browser, and needs the internet)";

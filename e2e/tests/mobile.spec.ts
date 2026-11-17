@@ -146,6 +146,7 @@ test.describe("on a phone", () => {
       ],
       ["On this phone", "/kept", []],
       ["Settings", "/settings", [["Set-up guide", "/help/search-and-answers"]]],
+      ["Help", "/help", []],
     ];
     await bar.getByRole("button", { name: "More" }).click();
     const sheet = page.getByRole("dialog", { name: "More" });
