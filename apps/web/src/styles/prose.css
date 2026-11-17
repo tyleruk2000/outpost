@@ -85,6 +85,16 @@
 .prose li > p + p {
   margin-top: 0.5em;
 }
+/* A list inside a list is told apart by its bullet, as in print: disc, then circle, then square. */
+.prose ul ul {
+  list-style: circle;
+}
+.prose ul ul ul {
+  list-style: square;
+}
+.prose ol ol {
+  list-style: lower-alpha;
+}
 .prose blockquote {
   margin-left: 0;
   padding-left: 1.1em;
@@ -260,8 +270,9 @@
   border-bottom: 2px solid var(--primary-ink);
   transform: translateY(-0.06em) rotate(-45deg);
 }
+/* Done, so quieter, but still read at 4.5:1: secondary ink, not the faint ink kept for placeholders. */
 .prose ul[data-type="taskList"] > li[data-checked="true"] > div {
-  color: var(--ink-faint);
+  color: var(--ink-muted);
   text-decoration: line-through;
   text-decoration-color: var(--border-strong);
 }

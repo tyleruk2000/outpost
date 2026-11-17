@@ -4,8 +4,10 @@ import { Slot } from "radix-ui";
 import type { ButtonHTMLAttributes, Ref } from "react";
 import { cn } from "@/lib/utils";
 
+// A label stays on one line while it fits, and wraps, with the button growing taller, only when it is wider than
+// the room it is in (a phone with large text): `max-w-full` caps the width, and the heights are least heights.
 const button = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-control font-medium whitespace-nowrap select-none transition-[background-color,border-color,color,box-shadow] duration-150 ease-out disabled:opacity-50 aria-disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex max-w-full shrink-0 items-center justify-center gap-2 rounded-control text-center font-medium select-none transition-[background-color,border-color,color,box-shadow] duration-150 ease-out disabled:opacity-50 aria-disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -18,9 +20,9 @@ const button = cva(
         link: "h-auto! px-0! text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2",
       },
       size: {
-        sm: "h-8 px-2.5 text-small max-md:h-11",
-        md: "h-9 px-3.5 text-small max-md:h-11",
-        lg: "h-11 px-5 text-body",
+        sm: "min-h-8 px-2.5 py-1 text-small max-md:min-h-11",
+        md: "min-h-9 px-3.5 py-1.5 text-small max-md:min-h-11",
+        lg: "min-h-11 px-5 py-2 text-body",
         icon: "size-9 max-md:size-11",
         "icon-sm": "size-7 max-md:size-11 [&_svg]:size-[15px]",
       },
