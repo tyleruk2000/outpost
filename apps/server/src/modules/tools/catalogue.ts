@@ -29,7 +29,7 @@ export const searchCatalogue = defineTool({
     page: z.number().int().min(1).max(20).optional().describe("Which page, from 1."),
   }),
   run({ subject, page }, { ctx }) {
-    const catalogue = ctx.services.catalog.list();
+    const catalogue = ctx.services.catalog.list({ adopt: false });
     let entries = catalogue.entries.filter((entry) => matchesQuery(entry, subject));
     let loose = false;
     if (entries.length === 0) {

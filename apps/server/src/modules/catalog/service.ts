@@ -90,7 +90,12 @@ export interface CatalogLinkTarget {
 export interface CatalogService {
   /** Reads the manifests from disk again and re-describes the entries to search. */
   reload(): LoadedCatalog;
-  list(): CatalogResponse;
+  /**
+   * The catalogue as Explore shows it. Matches installed archives to their entries first
+   * (a write), unless `adopt: false`: the model's tools read it that way, since a tool
+   * may never change anything (modules/tools).
+   */
+  list(options?: { adopt?: boolean }): CatalogResponse;
   getEntry(id: string): LoadedEntry | undefined;
   /** Hosts a first request may go to: every manifest's downloadHosts plus the configured extras. */
   allowedHosts(): string[];
@@ -462,8 +467,8 @@ export function createCatalogService(ctx: AppContext, options: CatalogServiceOpt
     }
   }
 
-  function list(): CatalogResponse {
-    adoptUnlinkedArchives();
+  function list(options: { adopt?: boolean } = {}): CatalogResponse {
+    if (options.adopt !== false) adoptUnlinkedArchives();
     const downloadsByEntry = new Map<string, DownloadRow[]>();
     for (const row of downloads.list()) {
       if (!row.catalogEntryId) continue;
