@@ -49,10 +49,10 @@ export function polyline(points: readonly Point[]): string {
 
 /**
  * How wide a label is reckoned to be, in pixels, at a font size. Atkinson Hyperlegible
- * Next averages a little over half an em a character; 0.58 errs wide, so that labels
+ * Next averages a little over half an em a character; 0.62 errs wide (its figures are wider), so that labels
  * placed by it never touch. The end-to-end suite measures the real boxes.
  */
-export const textWidth = (text: string, font: number) => text.length * font * 0.58;
+export const textWidth = (text: string, font: number) => text.length * font * 0.62;
 
 export type Anchor = "start" | "middle" | "end";
 

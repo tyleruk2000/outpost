@@ -1,3 +1,4 @@
+import { checkDiagrams } from "./diagrams";
 import { expect, test, watchForErrors } from "./fixtures";
 
 /**
@@ -47,6 +48,16 @@ test.describe("the compass, on a phone", () => {
     await expect(live.getByRole("button", { name: "Start the compass" })).toBeVisible();
     expect(await overflow()).toBeLessThanOrEqual(1);
     expect(errors).toEqual([]);
+  });
+
+  test("draws the norths and map to compass, labels apart, at 390 px", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/tools/compass?lat=54.45&lon=-3.09");
+    await page.getByRole("region", { name: "Convert a bearing" }).getByRole("textbox", { name: "Bearing" }).fill("90");
+    const drawn = await checkDiagrams(page);
+    expect(drawn.map((each) => each.name)).toEqual(["norths-rose", "map-to-compass"]);
+    expect(drawn[0]!.label).toMatch(/drawn \d+ times their real size/);
+    expect(drawn[1]!.label).toMatch(/the way is 090° from grid north/);
   });
 
   test("says when the device gives no heading", async ({ page }) => {

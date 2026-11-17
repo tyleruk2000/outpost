@@ -22,6 +22,9 @@ each linkable (`?tab=recover`, `?tab=sundial`, `?tab=nocturnal`):
   Polaris, the arithmetic of its date ring, a template to print made for the place, and
   a "read the star clock now" calculator.
 
+Each tab has diagrams drawn from the same figures as its answers (see "The diagrams"
+below).
+
 General information for approximate timekeeping. The screen says once, at the top:
 never look at the sun directly, and these methods are no good for navigation or for
 anything where safety depends on the time.
@@ -125,6 +128,39 @@ template made twice is the same file.
   of the year placed for the place's longitude and its clock's standard offset; page 2
   the hour disc with teeth for the Plough and Kochab, the arm, and how to use it. Not
   offered south of the equator.
+
+## The diagrams
+
+Drawn as SVG from the tokens in the shared diagram language
+([web-screens.md](development/web-screens.md#diagrams)), each from the functions the
+answers use (`plates.ts`), so that a picture and the figures beside it cannot disagree:
+
+- **Clock recovery**: the ground seen from above with the shadow's tip moving across it
+  on the date typed (two equal shadows: the circle, the two marks and the noon line;
+  the shortest shadow: a peg every quarter of an hour), the stick from the side drawn to
+  the lengths typed with the sun's height at the tip, the compass's view of the shadow's
+  bearing, and under each answer the sun's height (or bearing) through the day with the
+  reading laid across it and the answer's range as a band. South of the equator the
+  shadow is drawn pointing south at noon, as it does.
+- **Make a sundial**: the dial plate, laid out by the same function as the printed
+  template (`dialDrawing` in `sundial.ts`), with the shadow on the 3 o'clock line and
+  what the clock reads then today; the gnomon from the side, its edge rising at the
+  latitude to the celestial pole; true north from a shadow, drawn for a 1 m stick today.
+- **Make a nocturnal**: the northern sky facing north at the moment the star clock
+  reading gives, with a nocturnal held up to it. Polaris, Dubhe and Kochab are placed by
+  the calculator's own `angleFromPolaris`; the other stars of the Plough and Cassiopeia,
+  drawn for their shapes only, are their J2000 places (as the Yale Bright Star Catalogue
+  gives them) moved on in right ascension as far as the Observatory's Dubhe has moved.
+  **Those J2000 places were written from the catalogue's published values without a
+  source being read in this session**; no time is worked out from them. Not drawn south
+  of the equator, where the screen offers no star clock.
+- **Now**: the sun's path chart is drawn in the same language (the sun as ☉ in the
+  accent, the horizon as ground).
+
+The diagrams are not in the made PDFs. The sundial template already draws the dial and
+the gnomon itself, from the same layout function as the screen; the nocturnal template's
+second page is full, and the PDF writer would need a second renderer for the rest. The
+browser's own print carries them, as the SVG on the page.
 
 ## Where the code is
 

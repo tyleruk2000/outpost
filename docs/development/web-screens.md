@@ -98,6 +98,34 @@ not taste:
    available to screen readers (a visually hidden `<table>` is fine).
 7. **Look at it** in light, dark and at phone width before calling it done.
 
+## Diagrams
+
+A diagram explains a mechanism the words struggle with: where to look, which way a
+shadow points, how a reading becomes a time. A screen that is a form and an answer does
+not get one. They are drawn with `features/diagrams/` and nothing else, so they read as
+one set of plates:
+
+- `plate.tsx`: `Plate` (a `figure` holding an SVG drawn at the width it is given, in CSS
+  pixels, named by its caption and described by a sentence of its own for a screen
+  reader) and the parts: `Line`, `Path`, `Arrow`, `Angle`, `Ground`, `SunSign`,
+  `StarDot`, `Mark`, `Spread`, `ScaleBar`, `Label`. Its header is the language: lines by
+  what they are (`object` 1.5 px ink, `guide` 1 px muted, `sight` dashed, `subject` 2 px in
+  the one accent), open arrowheads, an angle as an accent arc with its value outside,
+  ground as a hatched line, the sun as ☉, a range as a tinted band, never a point.
+- `geometry.ts`: angles clockwise from straight up as a compass gives them, arcs,
+  `exaggeration` (a stated whole factor for angles too small to see), and label
+  placement (`placeLabel`, `firstFree`, `aroundGroup`), which puts a label in the first
+  free place or leaves it out rather than let two overlap.
+
+Rules: labels are real text at the small size or larger, upright, in the app's face, never
+on top of each other (the plate reads `box.font` and `box.rem`, so at 150% and 200% text
+it makes room); a live diagram is drawn from the same functions as the figures beside it,
+in the screen's own pure module, with a test that a known case gives the known angle in
+both hemispheres; nothing moves; a diagram that would have to be wrong somewhere (a star
+clock south of the equator) is not drawn there. `e2e/tests/diagrams.ts` (`checkDiagrams`)
+measures every plate on a page: named, described, no label overlapping another, none
+outside the drawing, none smaller than the small text.
+
 ## Every screen has a place in the navigation
 
 `components/nav.ts` is the one description of every screen and where it belongs. The

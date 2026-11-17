@@ -5,7 +5,18 @@
  * figures typed into the screen and from the same sun the answers use (plates.ts).
  */
 import { useMemo } from "react";
-import { exaggeration, heading, type Point, polar, polyline, textWidth } from "@/features/diagrams/geometry";
+import {
+  type Anchor,
+  type Box,
+  exaggeration,
+  firstFree,
+  heading,
+  type Point,
+  pointBox,
+  polar,
+  polyline,
+  textWidth,
+} from "@/features/diagrams/geometry";
 import { Angle, Arrow, Ground, Label, Line, Mark, Path, Plate, type PlateBox, ScaleBar, SunSign } from "@/features/diagrams/plate";
 import type { IsoDate } from "@/features/maps/lib/sun";
 import { equalShadows, noonWord, shortestShadow, type Tip } from "./plates";
@@ -96,7 +107,7 @@ export function ShadowPlan({ place, date, stick, mode }: { place: Place; date: I
       : `A plan of the ground with ${figures.marks.length} pegs along a curve ${pole === "true north" ? "north" : "south"} of the stick, one every 15 minutes. The pegs crowd together near the shortest shadow, ${metresWords(figures.noon.length)} long, which points ${pole} from the stick.`;
 
   return (
-    <Plate name={`shadow-plan-${figures.kind}`} caption={caption} description={description} height={(box) => layout(box).frame.height}>
+    <Plate name={`shadow-plan-${figures.kind}`} maxWidth={30} caption={caption} description={description} height={(box) => layout(box).frame.height}>
       {(box) => draw(layout(box), box)}
     </Plate>
   );
@@ -114,7 +125,7 @@ export function ShadowPlan({ place, date, stick, mode }: { place: Place; date: I
       // Room on the other side of the stick for its name.
       points.push([0, -Math.sign(Math.cos(figures!.noon.bearing * (Math.PI / 180))) * figures!.noon.length * 0.18]);
     }
-    const side = Math.max(textWidth("2nd mark", f) + f * 1.2, 24);
+    const side = Math.min(Math.max(textWidth("2nd mark", f) + f * 1.2, 24), box.width * 0.2);
     const frame = fitPlan(points, box, side, f * 2.4, f * 3.6, Math.max(box.rem * 14, Math.min(box.width * 0.85, box.rem * 22)));
     return { frame, f };
   }
@@ -129,6 +140,22 @@ export function ShadowPlan({ place, date, stick, mode }: { place: Place; date: I
     const away = (figures!.noon.bearing + 180) % 360;
     const stickLabel = polar(foot[0], foot[1], f * 1.3, away);
     const bottom = frame.height - f * 1.2;
+    // Labels are placed clear of each other and of the stick, the marks and the foot of the plate.
+    const taken: Box[] = [pointBox(foot, 6), { x: 0, y: bottom - f * 2.6, width: box.width, height: f * 4 }];
+    const bounds = { width: box.width, height: frame.height };
+    const place = (text: string, tries: Array<[number, number, Anchor]>, tone: "name" | "figure" | "accent" = "name") => {
+      const placed = firstFree(tries, text, f, taken, bounds);
+      return placed ? (
+        <Label at={placed.at} anchor={placed.anchor} tone={tone}>
+          {text}
+        </Label>
+      ) : null;
+    };
+    const stickTries: Array<[number, number, Anchor]> = [
+      [stickLabel[0], stickLabel[1], "middle"],
+      [foot[0] + f * 0.7, foot[1], "start"],
+      [foot[0] - f * 0.7, foot[1], "end"],
+    ];
     const common = (
       <>
         <Path d={track} stroke="sight" />
@@ -149,12 +176,17 @@ export function ShadowPlan({ place, date, stick, mode }: { place: Place; date: I
       const markLabel = (tip: Tip, words: string) => {
         const [mx, my] = at(tip);
         const left = mx < foot[0];
-        return (
-          <Label at={[mx + (left ? -f * 0.8 : f * 0.8), my - f * 0.9]} anchor={left ? "end" : "start"}>
-            {words}
-          </Label>
-        );
+        const out = left ? -1 : 1;
+        const anchor: Anchor = left ? "end" : "start";
+        return place(words, [
+          [mx + out * f * 0.8, my - f * 0.9, anchor],
+          [mx, my - f * 1.2, "middle"],
+          [mx + out * f * 0.8, my, anchor],
+          [mx, my + f * 1.2, "middle"],
+          [mx - out * f * 0.8, my + f * 1.1, left ? "start" : "end"],
+        ]);
       };
+      taken.push(pointBox(at(before), 5), pointBox(at(after), 5));
       return (
         <g>
           <circle cx={foot[0]} cy={foot[1]} r={r} className="stroke-ink-muted" strokeWidth={1} fill="none" />
@@ -170,15 +202,19 @@ export function ShadowPlan({ place, date, stick, mode }: { place: Place; date: I
           <Mark at={middle} accent r={3.5} />
           <Mark at={at(before)} />
           <Mark at={at(after)} />
+          {place(
+            "noon line",
+            [
+              [endLabel[0], endLabel[1], "middle"],
+              [end[0] + f * 0.6, end[1], "start"],
+              [end[0] - f * 0.6, end[1], "end"],
+            ],
+            "accent",
+          )}
           {markLabel(before, "1st mark")}
           {markLabel(after, "2nd mark")}
-          <Label at={endLabel} anchor="middle" tone="accent">
-            noon line
-          </Label>
           <circle cx={foot[0]} cy={foot[1]} r={4} className="fill-page stroke-ink" strokeWidth={1.5} />
-          <Label at={stickLabel} anchor="middle">
-            stick
-          </Label>
+          {place("stick", stickTries)}
         </g>
       );
     }
@@ -193,20 +229,25 @@ export function ShadowPlan({ place, date, stick, mode }: { place: Place; date: I
         <Arrow from={at(noon)} to={reach} stroke="subject-sight" />
         {marks.map((tip) => (tip === marks.find((m) => m.at === noon.at) ? null : <Mark key={tip.at} at={at(tip)} r={3} />))}
         <Mark at={[nx, ny]} accent r={4.5} />
-        <Label at={[nx + (noonRight ? f * 0.7 : -f * 0.7), ny + f * 1.1]} anchor={noonRight ? "start" : "end"} tone="accent">
-          {figures!.kind === "north" ? "nearest" : "shortest"}
-        </Label>
-        <Label
-          at={[reach[0], reach[1] + (Math.cos(noon.bearing * (Math.PI / 180)) >= 0 ? -f * 0.9 : f * 0.9)]}
-          anchor="middle"
-          tone="accent"
-        >
-          {pole}
-        </Label>
+        {place(
+          pole,
+          [
+            [reach[0], reach[1] + (Math.cos(noon.bearing * (Math.PI / 180)) >= 0 ? -f * 0.9 : f * 0.9), "middle"],
+            [reach[0] + f * 0.6, reach[1], "start"],
+          ],
+          "accent",
+        )}
+        {place(
+          figures!.kind === "north" ? "nearest" : "shortest",
+          [
+            [nx + (noonRight ? f * 0.7 : -f * 0.7), ny + f * 1.1, noonRight ? "start" : "end"],
+            [nx + (noonRight ? -f * 0.7 : f * 0.7), ny + f * 1.1, noonRight ? "end" : "start"],
+            [nx + (noonRight ? f * 0.7 : -f * 0.7), ny, noonRight ? "start" : "end"],
+          ],
+          "accent",
+        )}
         <circle cx={foot[0]} cy={foot[1]} r={4} className="fill-page stroke-ink" strokeWidth={1.5} />
-        <Label at={stickLabel} anchor="middle">
-          stick
-        </Label>
+        {place("stick", stickTries)}
       </g>
     );
   }

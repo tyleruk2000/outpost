@@ -4,7 +4,7 @@
  * the side, its edge rising at the latitude towards the celestial pole.
  */
 import { useMemo } from "react";
-import { type Box, labelBox, overlaps, polar, textWidth } from "@/features/diagrams/geometry";
+import { type Anchor, type Box, firstFree, labelBox, overlaps, polar, textWidth } from "@/features/diagrams/geometry";
 import { Angle, Arrow, Ground, Label, Line, Plate, type PlateBox, StarDot } from "@/features/diagrams/plate";
 import { type ClockStyle, clockText } from "@/lib/clock";
 import { dialDrawing, hourLines, signedMinutes, sundialToClock } from "./sundial";
@@ -86,6 +86,15 @@ export function DialPlate({
       ? [polar(rx, ry, 0, 0), polar(rx, ry, Math.hypot(shown.end[0] - rx, shown.end[1] - ry) * 0.92, shown.paper - 1.6), shadowEnd!]
       : null;
     const westLeft = north;
+    const bounds = { width: dialBox.right + 1, height: dialBox.bottom };
+    const name = (text: string, tries: Array<[number, number, Anchor]>) => {
+      const free = firstFree(tries, text, f, placed, bounds);
+      return free ? (
+        <Label at={free.at} anchor={free.anchor}>
+          {text}
+        </Label>
+      ) : null;
+    };
     return (
       <g>
         <rect
@@ -114,17 +123,20 @@ export function DialPlate({
         ))}
         {figures}
         <line x1={rx} y1={ry} x2={rx} y2={ry - gnomon} className="stroke-ink" strokeWidth={5} strokeLinecap="butt" />
-        <Label at={[rx - f * 0.7, ry - gnomon * 0.55]} anchor="end">
-          gnomon
-        </Label>
-        {shadowEnd ? (
-          <Label
-            at={polar(rx, ry, Math.hypot(shadowEnd[0] - rx, shadowEnd[1] - ry) * 0.55, shown!.paper + (north ? 9 : -9))}
-            anchor={north ? "start" : "end"}
-          >
-            shadow
-          </Label>
-        ) : null}
+        {name("gnomon", [
+          [rx - f * 0.7, ry - gnomon * 0.55, "end"],
+          [rx + f * 0.7, ry - gnomon * 0.55, "start"],
+          [rx - f * 0.7, ry - gnomon * 0.85, "end"],
+        ])}
+        {shadowEnd
+          ? name(
+              "shadow",
+              [0.55, 0.4, 0.7].map((share): [number, number, Anchor] => {
+                const [px, py] = polar(rx, ry, Math.hypot(shadowEnd[0] - rx, shadowEnd[1] - ry) * share, shown!.paper + (north ? 9 : -9));
+                return [px, py, north ? "start" : "end"];
+              }),
+            )
+          : null}
         <Arrow from={[rx, dialBox.top - 2]} to={[rx, dialBox.top - f * 1.5]} stroke="object" />
         <Label at={[rx + f * 0.6, dialBox.top - f * 0.9]} anchor="start">
           {`true ${pole}`}
@@ -173,7 +185,8 @@ export function GnomonSide({ latitude }: { latitude: number }) {
     const left = f * 0.8;
     const base = Math.min(box.width * 0.42, (box.rem * 9) / Math.max(tan, 0.05));
     const gnomonHeight = base * tan;
-    const reachX = box.width - left - f * 6.5;
+    const poleWords = textWidth("celestial", f) + f * 1.4;
+    const reachX = box.width - left - Math.min(poleWords, box.width * 0.45);
     const sightTop = Math.min(reachX * tan, box.rem * 11);
     const top = f * 2.4;
     const groundY = top + Math.max(gnomonHeight + f, sightTop);
@@ -185,8 +198,13 @@ export function GnomonSide({ latitude }: { latitude: number }) {
     const back: [number, number] = [corner[0] + base, groundY];
     const tip: [number, number] = [back[0], groundY - gnomonHeight];
     const rise = 90 - lat;
-    const reach = Math.min((width - corner[0] - f * 6.5) / Math.cos(lat * DEG), (groundY - f * 2.2) / Math.max(Math.sin(lat * DEG), 0.05));
+    const room = Math.min(textWidth("celestial", f) + f * 1.4, width * 0.45);
+    const reach = Math.min((width - corner[0] - room) / Math.cos(lat * DEG), (groundY - f * 2.2) / Math.max(Math.sin(lat * DEG), 0.05));
+    const poleRight = poleAtX(reach) + f * 0.9 + textWidth("celestial pole", f) <= width;
     const poleAt = polar(corner[0], corner[1], reach, rise);
+    function poleAtX(distance: number) {
+      return polar(corner[0], corner[1], distance, rise)[0];
+    }
     return (
       <g>
         <Ground x1={left} x2={width - f * 0.5} y={groundY} />
@@ -203,9 +221,20 @@ export function GnomonSide({ latitude }: { latitude: number }) {
         ) : (
           <circle cx={poleAt[0]} cy={poleAt[1]} r={4} className="stroke-ink fill-page" strokeWidth={1.5} />
         )}
-        <Label at={[poleAt[0] + f * 0.9, poleAt[1]]} anchor="start">
-          celestial pole
-        </Label>
+        {poleRight ? (
+          <Label at={[poleAt[0] + f * 0.9, poleAt[1]]} anchor="start">
+            celestial pole
+          </Label>
+        ) : (
+          <>
+            <Label at={[poleAt[0] + f * 0.9, poleAt[1] - f * 0.7]} anchor="start">
+              celestial
+            </Label>
+            <Label at={[poleAt[0] + f * 0.9, poleAt[1] + f * 0.7]} anchor="start">
+              pole
+            </Label>
+          </>
+        )}
         <Label at={[back[0] - f * 0.5, groundY - gnomonHeight * 0.42]} anchor="end" halo={false}>
           {base > textWidth("gnomon", f) * 1.6 ? "gnomon" : ""}
         </Label>
