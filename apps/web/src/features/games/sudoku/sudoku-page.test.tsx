@@ -27,7 +27,7 @@ function show(address = `/games/sudoku?seed=${SEED}&level=gentle`) {
   );
 }
 
-const tallies = { tallies: { patience: {}, sudoku: {}, draughts: {}, pairs: {} }, allotmentStarted: false };
+const tallies = { tallies: { solitaire: {}, "peg-solitaire": {}, sudoku: {}, draughts: {}, pairs: {} }, allotmentStarted: false };
 let reachable = true;
 
 beforeEach(() => {

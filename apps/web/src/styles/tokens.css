@@ -87,7 +87,7 @@
    * paper in both themes, as real ones are; the table, the board and the plot dim with
    * the theme. Each game's block is its own, so that one can change without the others.
    */
-  /* Cards (Patience, Pairs) */
+  /* Cards (Solitaire, Pairs) */
   --game-felt: oklch(0.4 0.05 192);
   --game-felt-line: oklch(0.56 0.045 192);
   --game-felt-ink: oklch(0.93 0.02 192);
@@ -120,6 +120,12 @@
   --game-wood: oklch(0.55 0.06 60);
   --game-glass: oklch(0.9 0.03 200 / 0.55);
   --game-water: oklch(0.6 0.09 230);
+  /* The allotment's seasons and its buildings: grass going over and frosted, blossom, a roof. */
+  --game-grass-autumn: oklch(0.85 0.07 100);
+  --game-grass-winter: oklch(0.87 0.025 160);
+  --game-frost: oklch(0.97 0.012 220);
+  --game-blossom: oklch(0.87 0.07 350);
+  --game-roof: oklch(0.42 0.04 30);
   /* The light over the plot: a wash laid over it, clear by day. */
   --game-dusk: oklch(0.6 0.12 50 / 0.12);
   --game-night: oklch(0.25 0.06 260 / 0.35);
@@ -230,7 +236,8 @@
   --game-piece-light: oklch(0.95 0.008 90);
   --game-piece-light-edge: oklch(0.55 0.02 90);
   --game-piece-dark: oklch(0.25 0.03 30);
-  --game-piece-dark-edge: oklch(0.12 0.02 30);
+  /* In the dark theme the dark pieces have a lighter rim, so they stand off the dark squares. */
+  --game-piece-dark-edge: oklch(0.56 0.05 40);
   --game-board-hint: oklch(0.82 0.14 78);
   --game-grass: oklch(0.33 0.045 135);
   --game-path: oklch(0.36 0.02 80);
@@ -245,6 +252,11 @@
   --game-wood: oklch(0.45 0.05 60);
   --game-glass: oklch(0.7 0.03 200 / 0.35);
   --game-water: oklch(0.65 0.09 230);
+  --game-grass-autumn: oklch(0.33 0.04 105);
+  --game-grass-winter: oklch(0.31 0.02 170);
+  --game-frost: oklch(0.72 0.02 220 / 0.7);
+  --game-blossom: oklch(0.8 0.07 350);
+  --game-roof: oklch(0.3 0.03 30);
   --game-dusk: oklch(0.6 0.12 50 / 0.1);
   --game-night: oklch(0.12 0.04 260 / 0.3);
 

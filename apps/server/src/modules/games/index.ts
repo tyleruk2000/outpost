@@ -5,7 +5,7 @@
  * - The allotment's row holds the household's one plot. Every change to it is an action
  *   the server applies with its own clock (`./allotment.ts`), so devices with wrong
  *   clocks agree.
- * - Patience, Sudoku, Draughts and Pairs keep a tally there: games played and won, and
+ * - Solitaire, Peg solitaire, Sudoku, Draughts and Pairs keep a tally there: games played and won, and
  *   the best time or fewest moves, for each way of playing. An unfinished game of them
  *   stays in the browser it is being played in.
  *
@@ -85,6 +85,7 @@ function readTally(state: Record<string, unknown> | undefined): GameTally {
       won: number(entry.won) ?? 0,
       bestSeconds: number(entry.bestSeconds),
       fewestMoves: number(entry.fewestMoves),
+      fewestLeft: number(entry.fewestLeft),
       lastAt: number(entry.lastAt),
     };
   }
@@ -99,6 +100,7 @@ const resultInput = (game: TallyGameId) =>
       // A day is longer than any game of these is played for in one sitting.
       seconds: z.number().int().min(0).max(86_400).optional(),
       moves: z.number().int().min(0).max(100_000).optional(),
+      left: z.number().int().min(0).max(100).optional(),
     })
     .strict();
 
@@ -163,7 +165,7 @@ export async function registerGames(app: FastifyInstance, ctx: AppContext): Prom
     recordResult(game, input) {
       return saves.update(game, (row) => {
         const tally = readTally(row?.state);
-        const had = tally[input.variant] ?? { played: 0, won: 0, bestSeconds: null, fewestMoves: null, lastAt: null };
+        const had = tally[input.variant] ?? { played: 0, won: 0, bestSeconds: null, fewestMoves: null, fewestLeft: null, lastAt: null };
         const better = (next: number | undefined, best: number | null) =>
           input.won && next !== undefined ? (best === null ? cap(next) : Math.min(best, cap(next))) : best;
         const entry: GameTallyEntry = {
@@ -171,6 +173,13 @@ export async function registerGames(app: FastifyInstance, ctx: AppContext): Prom
           won: cap(had.won + (input.won ? 1 : 0)),
           bestSeconds: better(input.seconds, had.bestSeconds),
           fewestMoves: better(input.moves, had.fewestMoves),
+          // What was left counts whether the game was won or not: fewer is better either way.
+          fewestLeft:
+            input.left === undefined
+              ? (had.fewestLeft ?? null)
+              : had.fewestLeft == null
+                ? cap(input.left)
+                : Math.min(had.fewestLeft, cap(input.left)),
           lastAt: Date.now(),
         };
         const next = { ...tally, [input.variant]: entry };

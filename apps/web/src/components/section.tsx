@@ -17,6 +17,8 @@ export interface SectionScreen {
   icon: LucideIcon;
   /** One or two sentences on what it is for, shown on the section's page. */
   about: string;
+  /** Other names the quick search finds it by. */
+  keywords?: string;
 }
 
 export function SectionPage({

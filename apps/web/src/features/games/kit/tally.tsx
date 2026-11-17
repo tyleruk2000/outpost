@@ -22,11 +22,15 @@ export function gameTime(seconds: number): string {
 }
 
 /** "Played 12, won 5. Best time 4 minutes 12 seconds." */
-export function tallyWords(entry: GameTallyEntry | undefined, { moves = "moves" }: { moves?: string } = {}): string {
+export function tallyWords(
+  entry: GameTallyEntry | undefined,
+  { moves = "moves", left = "left" }: { moves?: string; left?: string } = {},
+): string {
   if (!entry || entry.played === 0) return "Not played yet.";
   const parts = [`Played ${entry.played.toLocaleString("en-GB")}, won ${entry.won.toLocaleString("en-GB")}.`];
   if (entry.bestSeconds !== null) parts.push(`Best time ${gameTime(entry.bestSeconds)}.`);
   if (entry.fewestMoves !== null) parts.push(`Fewest ${moves} ${entry.fewestMoves.toLocaleString("en-GB")}.`);
+  if (entry.fewestLeft != null) parts.push(`Fewest ${left} ${entry.fewestLeft.toLocaleString("en-GB")}.`);
   return parts.join(" ");
 }
 
@@ -35,12 +39,15 @@ export function GameTallyLine({
   variant,
   variantLabel,
   moves,
+  left,
 }: {
   game: TallyGameId;
   variant: string;
   /** How this way of playing is named in the sentence: "Draw three". */
   variantLabel: string;
   moves?: string;
+  /** What `fewestLeft` counts, as the sentence says it: "pegs left". */
+  left?: string;
 }) {
   const games = useGames();
   const clear = useClearGame(game);
@@ -54,7 +61,7 @@ export function GameTallyLine({
   return (
     <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-small text-ink-muted">
       <p className="tabular">
-        {variantLabel}: {tallyWords(tally[variant], { moves })}
+        {variantLabel}: {tallyWords(tally[variant], { moves, left })}
       </p>
       {any ? (
         <>

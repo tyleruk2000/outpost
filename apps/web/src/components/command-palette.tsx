@@ -134,7 +134,9 @@ export function CommandPalette({
     },
   ];
   // Every screen, those under another with its name first ("Radio: Repeaters"), matched on both names.
-  const places = everyScreen.filter((item) => matchesWords(item.parent ? `${item.parent.label} ${item.label}` : item.label, typed));
+  const places = everyScreen.filter((item) =>
+    matchesWords(`${item.parent ? `${item.parent.label} ` : ""}${item.label}${item.keywords ? ` ${item.keywords}` : ""}`, typed),
+  );
   const actions = everyAction.filter((action) => matchesWords(action.label, typed));
 
   return (

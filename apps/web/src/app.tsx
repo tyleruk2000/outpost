@@ -41,7 +41,8 @@ const ToolsPage = lazy(() => import("./features/tools/tools-page"));
 const PreparePage = lazy(() => import("./features/prepare/prepare-page"));
 const GamesPage = lazy(() => import("./features/games/games-page"));
 const AllotmentPage = lazy(() => import("./features/games/allotment/allotment-page"));
-const PatiencePage = lazy(() => import("./features/games/patience/patience-page"));
+const SolitairePage = lazy(() => import("./features/games/solitaire/solitaire-page"));
+const PegSolitairePage = lazy(() => import("./features/games/peg-solitaire/peg-solitaire-page"));
 const SudokuPage = lazy(() => import("./features/games/sudoku/sudoku-page"));
 const DraughtsPage = lazy(() => import("./features/games/draughts/draughts-page"));
 const PairsPage = lazy(() => import("./features/games/pairs/pairs-page"));
@@ -167,7 +168,8 @@ export function App() {
           <Route path="radio/plans/:id" element={<PlanPage />} />
           <Route path="games" element={<GamesPage />} />
           <Route path="games/allotment" element={<AllotmentPage />} />
-          <Route path="games/patience" element={<PatiencePage />} />
+          <Route path="games/solitaire" element={<SolitairePage />} />
+          <Route path="games/peg-solitaire" element={<PegSolitairePage />} />
           <Route path="games/sudoku" element={<SudokuPage />} />
           <Route path="games/draughts" element={<DraughtsPage />} />
           <Route path="games/pairs" element={<PairsPage />} />

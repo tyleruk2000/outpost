@@ -32,22 +32,25 @@ async function waitForJob(id: string) {
 
 describe("a game's tally", () => {
   it("starts empty for every game", async () => {
-    expect(await get()).toEqual({ tallies: { patience: {}, sudoku: {}, draughts: {}, pairs: {} }, allotmentStarted: false });
+    expect(await get()).toEqual({
+      tallies: { solitaire: {}, "peg-solitaire": {}, sudoku: {}, draughts: {}, pairs: {} },
+      allotmentStarted: false,
+    });
     expect(app.ctx.services.games.kept.count()).toEqual({ saves: 0 });
   });
 
   it("counts games played and won for each way of playing, keeping the best time and fewest moves of a win", async () => {
-    expect((await app.api("POST", "/api/games/patience/results", { variant: "draw-1", won: false, seconds: 30, moves: 10 })).status).toBe(
+    expect((await app.api("POST", "/api/games/solitaire/results", { variant: "draw-1", won: false, seconds: 30, moves: 10 })).status).toBe(
       200,
     );
-    await app.api("POST", "/api/games/patience/results", { variant: "draw-1", won: true, seconds: 300, moves: 120 });
-    await app.api("POST", "/api/games/patience/results", { variant: "draw-1", won: true, seconds: 400, moves: 100 });
-    const answer = await app.api("POST", "/api/games/patience/results", { variant: "draw-3", won: true });
+    await app.api("POST", "/api/games/solitaire/results", { variant: "draw-1", won: true, seconds: 300, moves: 120 });
+    await app.api("POST", "/api/games/solitaire/results", { variant: "draw-1", won: true, seconds: 400, moves: 100 });
+    const answer = await app.api("POST", "/api/games/solitaire/results", { variant: "draw-3", won: true });
     expect(answer.body.tally["draw-3"]).toMatchObject({ played: 1, won: 1, bestSeconds: null, fewestMoves: null });
     const { tallies } = await get();
     // A lost game's quick time is not a best.
-    expect(tallies.patience["draw-1"]).toMatchObject({ played: 3, won: 2, bestSeconds: 300, fewestMoves: 100 });
-    expect(tallies.patience["draw-1"]?.lastAt).toBeGreaterThan(0);
+    expect(tallies.solitaire["draw-1"]).toMatchObject({ played: 3, won: 2, bestSeconds: 300, fewestMoves: 100 });
+    expect(tallies.solitaire["draw-1"]?.lastAt).toBeGreaterThan(0);
     expect(tallies.sudoku).toEqual({});
   });
 
@@ -61,14 +64,25 @@ describe("a game's tally", () => {
     expect((await get()).tallies.sudoku).toEqual({});
   });
 
+  it("keeps the fewest pegs left at the end of Peg solitaire, solved or not", async () => {
+    await app.api("POST", "/api/games/peg-solitaire/results", { variant: "english", won: false, left: 6 });
+    await app.api("POST", "/api/games/peg-solitaire/results", { variant: "english", won: false, left: 3 });
+    await app.api("POST", "/api/games/peg-solitaire/results", { variant: "english", won: false, left: 9 });
+    expect((await get()).tallies["peg-solitaire"].english).toMatchObject({ played: 3, won: 0, fewestLeft: 3 });
+    expect((await app.api("POST", "/api/games/peg-solitaire/results", { variant: "english", won: true, left: 200 })).status).toBe(400);
+    await app.api("POST", "/api/games/peg-solitaire/results", { variant: "english", won: true, left: 1, moves: 31 });
+    expect((await get()).tallies["peg-solitaire"].english).toMatchObject({ played: 4, won: 1, fewestLeft: 1, fewestMoves: 31 });
+    await app.api("DELETE", "/api/games/peg-solitaire");
+  });
+
   it("is cleared on request, one game at a time", async () => {
     await app.api("POST", "/api/games/pairs/results", { variant: "small", won: true, seconds: 40, moves: 9 });
-    const cleared = await app.api("DELETE", "/api/games/patience");
+    const cleared = await app.api("DELETE", "/api/games/solitaire");
     expect(cleared.body).toEqual({ removed: true });
     const after = await get();
-    expect(after.tallies.patience).toEqual({});
+    expect(after.tallies.solitaire).toEqual({});
     expect(after.tallies.pairs.small).toMatchObject({ played: 1, fewestMoves: 9 });
-    expect((await app.api("DELETE", "/api/games/patience")).body).toEqual({ removed: false });
+    expect((await app.api("DELETE", "/api/games/solitaire")).body).toEqual({ removed: false });
   });
 
   it("reads a damaged tally as nothing rather than failing", async () => {
@@ -76,7 +90,9 @@ describe("a game's tally", () => {
       .prepare("INSERT INTO game_saves (id, state, version, created_at, updated_at) VALUES ('draughts', ?, 1, 1, 1)")
       .run(JSON.stringify({ computer: { played: "many", won: -5 }, junk: 3 }));
     const { tallies } = await get();
-    expect(tallies.draughts).toEqual({ computer: { played: 0, won: 0, bestSeconds: null, fewestMoves: null, lastAt: null } });
+    expect(tallies.draughts).toEqual({
+      computer: { played: 0, won: 0, bestSeconds: null, fewestMoves: null, fewestLeft: null, lastAt: null },
+    });
     await app.api("POST", "/api/games/draughts/results", { variant: "computer", won: true });
     expect((await get()).tallies.draughts.computer).toMatchObject({ played: 1, won: 1 });
   });
@@ -103,6 +119,9 @@ describe("a person's own data", () => {
     const job = await waitForJob(started.body.job.id);
     expect(job?.state).toBe("succeeded");
     expect((job!.result as CleanupResult).personal?.games).toEqual({ saves: 2 });
-    expect(await get()).toEqual({ tallies: { patience: {}, sudoku: {}, draughts: {}, pairs: {} }, allotmentStarted: false });
+    expect(await get()).toEqual({
+      tallies: { solitaire: {}, "peg-solitaire": {}, sudoku: {}, draughts: {}, pairs: {} },
+      allotmentStarted: false,
+    });
   });
 });

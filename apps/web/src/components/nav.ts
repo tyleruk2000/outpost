@@ -47,6 +47,8 @@ export interface ChildScreen {
   to: string;
   label: string;
   icon: LucideIcon;
+  /** Other names the quick search finds it by: "patience klondike" for Solitaire. */
+  keywords?: string;
 }
 
 export interface NavItem extends ChildScreen {

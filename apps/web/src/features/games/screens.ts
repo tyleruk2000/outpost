@@ -3,7 +3,7 @@
  * and the Games page are both drawn from this list: to add a game, add an entry here and
  * a route in app.tsx.
  */
-import { Crown, Hash, Shapes, Spade, Sprout } from "lucide-react";
+import { CircleDot, Crown, Hash, Shapes, Spade, Sprout } from "lucide-react";
 import type { SectionScreen } from "@/components/section";
 
 export const gameScreens: SectionScreen[] = [
@@ -15,11 +15,19 @@ export const gameScreens: SectionScreen[] = [
       "A small plot for the household to sow, grow and harvest, slowly. Nothing ever withers: leave it a year and it will all be waiting.",
   },
   {
-    to: "/games/patience",
-    label: "Patience",
+    to: "/games/solitaire",
+    label: "Solitaire",
+    keywords: "patience klondike cards",
     icon: Spade,
     about:
-      "The traditional card game for one, also called Klondike: build the four suits up from the aces. Draw one card at a time, or three.",
+      "The card game for one also called patience or Klondike: build the four suits up from the aces. Draw one card at a time, or three.",
+  },
+  {
+    to: "/games/peg-solitaire",
+    label: "Peg solitaire",
+    keywords: "pegs marbles board",
+    icon: CircleDot,
+    about: "The traditional board of 33 holes: jump one peg over another to take it, until one is left, at best in the middle.",
   },
   {
     to: "/games/sudoku",

@@ -18,7 +18,7 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 
 const empty: GamesResponse = {
-  tallies: { patience: {}, sudoku: {}, draughts: {}, pairs: {} },
+  tallies: { solitaire: {}, "peg-solitaire": {}, sudoku: {}, draughts: {}, pairs: {} },
   allotmentStarted: false,
 };
 

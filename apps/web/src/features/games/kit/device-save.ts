@@ -1,7 +1,7 @@
 /**
  * An unfinished game, kept in this browser only. Two people playing at once on two
- * devices must not overwrite each other's board, so a game in progress of Patience,
- * Sudoku, Draughts or Pairs is never sent to the server; only its result is, when it
+ * devices must not overwrite each other's board, so a game in progress of Solitaire,
+ * Peg solitaire, Sudoku, Draughts or Pairs is never sent to the server; only its result is, when it
  * ends (`useRecordResult`). Every read and write is inside try/catch: a private window,
  * blocked site data or a full store leaves the game working, only not kept.
  */

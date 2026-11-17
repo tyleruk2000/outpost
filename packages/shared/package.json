@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./games/allotment": "./src/games/allotment/index.ts",
+    "./games/peg-solitaire": "./src/games/peg-solitaire/index.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

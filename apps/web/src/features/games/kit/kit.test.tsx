@@ -23,7 +23,8 @@ function show(ui: ReactElement) {
   );
 }
 
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 
 beforeEach(() => localStorage.clear());
 afterEach(() => vi.unstubAllGlobals());
@@ -107,16 +108,16 @@ describe("a game's tally", () => {
           tally = {};
           return json({ removed: true });
         }
-        return json({ tallies: { patience: tally, sudoku: {}, draughts: {}, pairs: {} }, allotmentStarted: false });
+        return json({ tallies: { solitaire: tally, "peg-solitaire": {}, sudoku: {}, draughts: {}, pairs: {} }, allotmentStarted: false });
       }),
     );
-    show(<GameTallyLine game="patience" variant="draw-1" variantLabel="Draw one" />);
+    show(<GameTallyLine game="solitaire" variant="draw-1" variantLabel="Draw one" />);
     expect(await screen.findByText("Draw one: Played 3, won 1. Fewest moves 120.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Clear the tally" }));
     expect(screen.getByRole("alertdialog", { name: "Clear the tally?" })).toHaveTextContent("3 games played");
     await user.click(screen.getByRole("button", { name: "Clear the tally" }));
     expect(await screen.findByText("Draw one: Not played yet.")).toBeInTheDocument();
-    expect(calls).toContain("DELETE /api/games/patience");
+    expect(calls).toContain("DELETE /api/games/solitaire");
   });
 
   it("says so when the server cannot be reached, and nothing else", async () => {
@@ -130,12 +131,12 @@ describe("a game's tally", () => {
 });
 
 describe("the Games page", () => {
-  it("lists the five games in order, each linking to its screen", () => {
+  it("lists the six games in order, each linking to its screen", () => {
     show(<GamesPage />);
     expect(screen.getByRole("heading", { level: 1, name: "Games" })).toBeInTheDocument();
     const links = screen.getAllByRole("link");
     expect(links.map((link) => link.getAttribute("href"))).toEqual(gameScreens.map((game) => game.to));
-    expect(gameScreens.map((game) => game.label)).toEqual(["Allotment", "Patience", "Sudoku", "Draughts", "Pairs"]);
+    expect(gameScreens.map((game) => game.label)).toEqual(["Allotment", "Solitaire", "Peg solitaire", "Sudoku", "Draughts", "Pairs"]);
     expect(screen.getByText(/stays on the device it is being played on/)).toBeInTheDocument();
   });
 });
