@@ -95,6 +95,9 @@ export default function ReaderPage() {
     queryFn: () => api.get<ReferenceBookResponse>(`/api/kiwix/books/${collectionId}`),
   });
   const contentBase = book.data?.book.contentBase;
+  // Pages are framed at an address of their own (see `readerSecret` on the server); files
+  // Outpost's own viewer opens, and links it shows, use the plain one.
+  const frameBase = book.data?.book.frameBase ?? contentBase;
   const ready = book.data?.book.ready === true;
 
   // Whether this collection is a list of documents. Asked once; the frame waits for the answer,
@@ -116,15 +119,16 @@ export default function ReaderPage() {
   // on their own and are only mirrored into the address bar.
   const [frameSrc, setFrameSrc] = useState<string>();
   useEffect(() => {
-    if (!contentBase) return;
+    if (!frameBase) return;
     if (shownPath.current === routePath) return;
     shownPath.current = routePath;
-    setFrameSrc(`${contentBase}${encodePath(routePath)}`);
-  }, [contentBase, routePath]);
+    setFrameSrc(`${frameBase}${encodePath(routePath)}`);
+  }, [frameBase, routePath]);
 
   useEffect(() => {
-    if (!contentBase) return;
-    const basePath = new URL(contentBase, window.location.origin).pathname;
+    if (!contentBase || !frameBase) return;
+    // What the page reports is its own address, which is the framed one.
+    const basePath = new URL(frameBase, window.location.origin).pathname;
     const onMessage = (event: MessageEvent) => {
       if (event.source !== frameRef.current?.contentWindow) return;
       const data = event.data as {
@@ -186,7 +190,7 @@ export default function ReaderPage() {
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [contentBase, collectionId, navigate, setSearchParams, fileLabels]);
+  }, [contentBase, frameBase, collectionId, navigate, setSearchParams, fileLabels]);
 
   const closeFile = () => {
     if ((location.state as { openedHere?: boolean } | null)?.openedHere) return navigate(-1);

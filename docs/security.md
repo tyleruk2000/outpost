@@ -229,8 +229,7 @@ address book for phones, which cannot change anything by any method; see
 Code: the `onRequest` hook in `apps/server/src/core/guard.ts`.
 
 Every response also carries `X-Content-Type-Options: nosniff`,
-`Referrer-Policy: no-referrer` (pages from ZIM archives have a policy of their own: see
-[Reference (ZIM) content](#reference-zim-content)), `Cross-Origin-Opener-Policy: same-origin` and
+`Referrer-Policy: no-referrer`, `Cross-Origin-Opener-Policy: same-origin` and
 `X-Frame-Options: SAMEORIGIN`. API responses are sent with `Cache-Control: no-store`. At a plain
 `http://` address other than this computer's own (a phone on the home network), a
 browser ignores `Cross-Origin-Opener-Policy` and Chrome writes a line saying so in its
@@ -412,23 +411,40 @@ is most collections of videos, therefore showed an empty page. Seen on 17 Novemb
 with a channel archive made by openZIM's youtube scraper: its page is
 `<script type="module" crossorigin …>` and a data file.
 
-The proxy now answers `Access-Control-Allow-Origin: null`, but only to a request that
-(1) says `Origin: null`, and (2) carries a `Referer` naming a page of **the same
-archive on this same Outpost**. The second is what keeps this closed to everyone else:
-a page on another site can put a sandboxed frame of its own on screen and so send
-`Origin: null`, but it cannot make the browser name one of Outpost's archive pages as
-where the request came from. A page of one archive cannot read another archive's files
-this way, and Outpost's own screens never ask this way. To make (2) possible, archive
-pages are now sent with `Referrer-Policy: strict-origin-when-cross-origin` instead of
-`no-referrer`: within this Outpost a page says which page asked; to any other site it
-would say only Outpost's bare address (`http://192.168.1.20:8080/`), never a page. In
-practice nothing reaches another site from an archive page: the policy's `default-src`
-forbids loading from elsewhere, and a link out is stopped and offered by the reader, not
-followed. No cookies or credentials are involved, and the sandbox itself is unchanged:
-no `allow-same-origin`. Checked in Chromium by the end-to-end suite (`reader.spec.ts`,
-"shows a page that is a small web app"); **not checked in Safari or Firefox**, which
-would at worst send no `Referer` and leave such an archive's page empty as before.
-Code: `askedByOwnArchivePage` in `apps/server/src/modules/kiwix/index.ts`; tests in
+Saying "you may read this" (`Access-Control-Allow-Origin: null`) at the plain address
+would have let any page on any site read what the library holds, through a sandboxed
+frame of its own: that address is the same on every Outpost, and archive names are
+public. Nor can the server tell an archive's own page from a stranger's by the request:
+a sandboxed page sends no `Referer` at all (tried, in Chromium, and so the browsers'
+shared specification says). So the reader frames archive pages at a second address,
+`/kiwix/<word>/content/…`, where `<word>` is 32 random characters made once for the
+installation and kept in the data folder (`reader-token`, readable by the server's user
+only). A page's own relative addresses carry the word without the page having been
+given anything; only under it, and only to a request with `Origin: null`, does the proxy
+say the answer may be read. The plain address, `/kiwix/open/content/…`, still works for
+Outpost's own viewer and for links people have kept, and says no such thing.
+
+What this rests on, and its limits:
+
+- **The word is given only to Outpost's own screens** (`frameBase` in
+  `GET /api/kiwix/books`), in answers another site's page cannot read. Anyone on the
+  home network can read it, as they can read the library itself.
+- **An archive's own scripts can see the address they run at**, the word included. A
+  hostile archive could send it out with `window.open` (the sandbox allows pop-ups so
+  that links out can be offered), and whoever received it could then read this library's
+  archives from a page the household later visits. What that gains them is the content
+  of downloaded archives, not notes, contacts or anything behind the API; and it needs a
+  hostile archive to have been installed first. Removing the file `reader-token` and
+  restarting makes a new word.
+- **A page of one archive can read another archive's files**, since both are framed
+  under the same word. They are all the same household's reference shelf.
+- A wrong word is a 404 and is never redirected to the right one. No cookies or
+  credentials are involved. The sandbox itself is unchanged: no `allow-same-origin`,
+  and `Referrer-Policy: no-referrer` as before.
+
+Checked in Chromium by the end-to-end suite (`reader.spec.ts`, "shows a page that is a
+small web app"); **not checked in Safari or Firefox**. Code: `readerSecret` and the
+proxy in `apps/server/src/modules/kiwix/index.ts`; tests in
 `apps/server/test/kiwix.test.ts`.
 
 **What the sandbox costs, and what was done about it.** A page without an origin of

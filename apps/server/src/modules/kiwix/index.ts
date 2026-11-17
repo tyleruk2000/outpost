@@ -22,6 +22,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, notFound } from "../../core/errors.ts";
+import { randomToken } from "../../core/ids.ts";
 import type { CollectionRow } from "../collections/service.ts";
 import { gatherParts, referenceBudgets, type SearchSource } from "../search/service.ts";
 import { type ArchiveAdding, registerArchiveAdding } from "./add-files.ts";
@@ -53,6 +54,11 @@ export interface BookDto {
   sizeBytes: number;
   /** Address of the book's pages, ending in "/". Append an article path. */
   contentBase: string;
+  /**
+   * The same pages at the address the reader frames them at: under this installation's
+   * secret word, where a page may read its own archive's files. For the frame alone.
+   */
+  frameBase: string;
   iconUrl: string | null;
   /** False while kiwix-serve cannot serve it (drive disconnected, server down, still loading). */
   ready: boolean;
@@ -86,39 +92,47 @@ const SANDBOX = "sandbox allow-scripts allow-forms allow-popups allow-popups-to-
 const BRIDGE = `<script>(function(){try{var G=Element.prototype.getAttribute,P=function(m){parent.postMessage(m,"*")};var F=/\\.(pdf|epub)$/i,X=/\\.(pdf|epub|txt|md|markdown)$/i;var R=function(a){var h=G.call(a,"href");if(h==null)return null;try{var u=new URL(h,location.href);return u.protocol==="http:"||u.protocol==="https:"?u:null}catch(x){return null}};var T=function(a){return(a.textContent||"").replace(/\\s+/g," ").trim().slice(0,200)};var s=function(){P({type:"outpost:reader",path:location.pathname,hash:location.hash,title:document.title})};var l=function(){try{var o=[],n={},a=document.querySelectorAll("a[href]");for(var i=0;i<a.length&&o.length<300;i++){var u=R(a[i]);if(!u)continue;var w=u.host===location.host;if(!(w?F:X).test(u.pathname))continue;u.hash="";var k=w?u.pathname:u.href;if(n[k])continue;n[k]=1;o.push({href:k,inside:w,text:T(a[i])})}P({type:"outpost:links",path:location.pathname,links:o})}catch(e){}};s();addEventListener("DOMContentLoaded",function(){s();l()});addEventListener("hashchange",s);addEventListener("click",function(e){var a=e.target&&e.target.closest&&e.target.closest("a[href]");if(!a)return;var u=R(a);if(!u)return;if(u.host!==location.host){e.preventDefault();P({type:"outpost:external",href:u.href})}else if(F.test(u.pathname)){e.preventDefault();P({type:"outpost:file",path:u.pathname,text:T(a)})}},true)}catch(e){}})();</script>`;
 
 /**
- * Whether a request for a file of an archive was made by a page of that same archive, here.
+ * The address archive pages are framed at, which only this Outpost's own screens can learn.
  *
  * A proxied page runs in a sandbox with an origin of its own, so to the browser its own
  * scripts loaded as modules, its fonts and its fetches of its own data are requests from
  * another origin ("Origin: null"), and the answers are kept from the page unless the server
  * says it may have them. Archives whose pages are a small web app (most video collections)
- * showed nothing at all for that reason. Saying so to every "null" origin would let any
- * page on any site, through a sandboxed frame of its own, read what this library holds; so
- * it is said only when the browser also reports that the request came from a page of the
- * same archive on this same Outpost, which another site's page cannot make it say.
+ * showed nothing at all for that reason. Saying so at the plain address would let any page
+ * on any site, through a sandboxed frame of its own, read what this library holds: the
+ * address is the same on every Outpost and archive names are public. A sandboxed page does
+ * not tell the server where a request came from either (browsers send no Referer from one),
+ * so there is nothing in the request to tell an archive's own page from a stranger's.
+ *
+ * So the reader frames archive pages under a second first segment, a long random word made
+ * once for this installation and kept in the data folder. The page's own relative addresses
+ * carry it without knowing it; the API hands it only to Outpost's own screens, whose answers
+ * another site cannot read; and only requests under it are told they may be read.
  */
-export function askedByOwnArchivePage(
-  headers: { origin?: string | string[]; referer?: string | string[]; host?: string | string[] },
-  prefix: string,
-  rest: string,
-): boolean {
-  if (headers.origin !== "null" || typeof headers.referer !== "string" || typeof headers.host !== "string") return false;
-  let from: URL;
+export function readerSecret(dataDir: string): string {
+  const file = path.join(dataDir, "reader-token");
   try {
-    from = new URL(headers.referer);
+    const kept = fs.readFileSync(file, "utf8").trim();
+    if (/^[A-Za-z0-9_-]{32,}$/.test(kept)) return kept;
   } catch {
-    return false;
+    // Not made yet.
   }
-  if (from.host !== headers.host) return false;
-  const content = `${prefix}/content/`;
-  if (!from.pathname.startsWith(content) || !rest.startsWith("content/")) return false;
-  const book = (path: string) => path.split("/")[0] ?? "";
-  const asked = book(rest.slice("content/".length));
-  return asked !== "" && asked === book(from.pathname.slice(content.length));
+  const made = randomToken(24);
+  try {
+    fs.mkdirSync(dataDir, { recursive: true });
+    fs.writeFileSync(file, `${made}\n`, { mode: 0o600 });
+  } catch {
+    // A folder that cannot be written to still gets a word, for as long as this process runs.
+  }
+  return made;
 }
 
 const MAX_HTML_BYTES = 32 * 1024 * 1024;
-/** The fixed first segment of reference-content addresses, kept so that links people have saved go on working. */
+/**
+ * The fixed first segment of reference-content addresses, kept so that links people have
+ * saved go on working and Outpost's own viewer can read a file. Pages are framed under
+ * the installation's secret instead (`readerSecret`).
+ */
 const CONTENT_TOKEN = "open";
 /** Only a book's pages and its icon are reachable; search and the rest of kiwix-serve are not. */
 const isAllowedPath = (rest: string) => rest.startsWith("content/") || /^raw\/[^/]+\/meta\/Illustration_48x48@1$/.test(rest);
@@ -153,6 +167,7 @@ const zimOf = (row: CollectionRow) => row.meta.zim;
 const kiwixOf = (row: CollectionRow) => (row.meta.kiwix ?? {}) as KiwixMeta;
 
 export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Promise<void> {
+  const secret = readerSecret(ctx.config.dataDir);
   const { config, log } = ctx;
   const { collections, storage, search, settings } = ctx.services;
   const connection = createKiwixConnection({ url: config.kiwix.url, bin: config.kiwix.bin, libraryPath: config.kiwix.libraryPath, log });
@@ -345,6 +360,7 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
       articleCount: zim.articleCount ?? null,
       sizeBytes: row.sizeBytes,
       contentBase: `/kiwix/${token}/content/${encodeURIComponent(zim.bookName)}/`,
+      frameBase: `/kiwix/${secret}/content/${encodeURIComponent(zim.bookName)}/`,
       iconUrl: `/kiwix/${token}/raw/${encodeURIComponent(zim.bookName)}/meta/Illustration_48x48@1`,
       ready: up && servable(row),
     };
@@ -641,7 +657,9 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
     method: ["GET", "HEAD"],
     url: "/kiwix/:token/*",
     async handler(request, reply) {
-      if (request.params.token !== CONTENT_TOKEN) return reply.status(404).type("text/plain").send("There is nothing at this address.");
+      if (request.params.token !== CONTENT_TOKEN && request.params.token !== secret) {
+        return reply.status(404).type("text/plain").send("There is nothing at this address.");
+      }
       const rest = request.params["*"];
       if (rest.includes("..") || !isAllowedPath(rest)) {
         return reply.status(404).type("text/plain").send("Not found.");
@@ -673,15 +691,14 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
       }
       reply
         .header("Content-Security-Policy", `default-src 'self' ${origin} data: blob: 'unsafe-inline' 'unsafe-eval'; ${SANDBOX}`)
-        // To this Outpost a page says which of its pages asked (which is how its own files
-        // are told from another site's request, below); to anywhere else, the origin alone.
-        .header("Referrer-Policy", "strict-origin-when-cross-origin")
-        .header("Vary", "Origin, Referer")
+        .header("Referrer-Policy", "no-referrer")
+        .header("Vary", "Origin")
         .header("X-Content-Type-Options", "nosniff")
         .header("Cache-Control", "private, max-age=3600")
         .removeHeader("X-Frame-Options");
 
-      if (askedByOwnArchivePage(request.headers, prefix, rest)) reply.header("Access-Control-Allow-Origin", "null");
+      // Only under the secret address, and only to a page with no origin of its own: see `readerSecret`.
+      if (request.params.token === secret && request.headers.origin === "null") reply.header("Access-Control-Allow-Origin", "null");
 
       // kiwix-serve redirects to its own addresses; send the browser back through the proxy.
       const location = response.headers.get("location");
