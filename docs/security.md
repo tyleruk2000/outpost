@@ -1007,8 +1007,10 @@ with a real radio.
   knows the user name and password. MQTT here is plain TCP, not TLS: the password and
   every message cross the home network in the clear, as Meshtastic's own MQTT does
   without TLS. Do not forward the port on the router.
-- **Limits.** 64 KiB a packet, 8 connections, 20 publishes a second (bursts of 50) per
-  connection, 32 subscriptions, 10 seconds to sign in; a malformed packet, a QoS 2
+- **Limits.** 64 KiB a packet, 8 connections (2 from one address before signing in), 20
+  publishes a second (bursts of 50) per connection, 32 subscriptions, 10 seconds to sign
+  in, 5 wrong passwords a minute from one address (then refused unchecked: each check is
+  a scrypt run, and the server waits for it); a malformed packet, a QoS 2
   publish or a wildcard in a published topic closes the connection. Nothing is retained,
   and no session or will is kept.
 - **The passwords.** The broker's is kept as a scrypt hash and checked in constant time;

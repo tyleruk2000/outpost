@@ -84,7 +84,7 @@ describe("Outpost's MQTT broker against a device guessing", () => {
     expect(checks()).toBeLessThanOrEqual(10);
   });
 
-  it.skip("does not let one address hold every connection without signing in", async () => {
+  it("does not let one address hold every connection without signing in", async () => {
     await start();
     const squatters: net.Socket[] = [];
     for (let i = 0; i < 8; i++) squatters.push(await open());

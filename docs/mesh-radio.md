@@ -179,9 +179,11 @@ doing what a radio needs and refusing the rest:
 - Not kept: sessions (a "clean session 0" is treated as clean), retained messages, wills.
   QoS 2 is not supported: a QoS 2 publish closes the connection, and QoS 2 asked for in a
   subscription is granted as 1.
-- Limits: 64 KiB a packet, 8 connections, 20 publishes a second (bursts of 50) a
-  connection, 32 subscriptions a connection, 10 seconds to sign in. Past any of them the
-  connection is closed.
+- Limits: 64 KiB a packet, 8 connections (at most 2 from one address that have not
+  signed in yet), 20 publishes a second (bursts of 50) a connection, 32 subscriptions a
+  connection, 10 seconds to sign in. Past any of them the connection is closed. After 5
+  wrong passwords from one address in a minute, its logins are refused without being
+  checked until the minute is up.
 - Only this computer and, when Outpost is open to the network, private home-network
   addresses (RFC 1918, link-local, IPv6 unique-local) may connect; others are closed
   before a byte is read.

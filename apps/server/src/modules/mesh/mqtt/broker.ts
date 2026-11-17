@@ -117,6 +117,8 @@ const LOGIN_FAILURES = 5;
 const LOGIN_WINDOW_MS = 60_000;
 /** Addresses whose wrong logins are remembered; past this, the oldest are forgotten. */
 const LOGIN_ADDRESSES = 1000;
+/** Connections from one address that have not signed in yet, at once. */
+const MAX_WAITING_PER_ADDRESS = 2;
 
 const noop: Settle = () => {};
 
@@ -191,6 +193,14 @@ export function createBroker(options: BrokerOptions): MqttBroker {
     }
     if (connections.size >= limits.maxConnections) {
       log.warn({ address, limit: limits.maxConnections }, "Refused an MQTT connection: too many connections");
+      socket.destroy();
+      return;
+    }
+    // One address may not hold every place by connecting and saying nothing: the radio would never get in.
+    let waitingHere = 0;
+    for (const other of connections) if (other.clientId === null && other.address === address) waitingHere += 1;
+    if (waitingHere >= MAX_WAITING_PER_ADDRESS) {
+      log.warn({ address, limit: MAX_WAITING_PER_ADDRESS }, "Refused an MQTT connection: too many from one address not signed in");
       socket.destroy();
       return;
     }
