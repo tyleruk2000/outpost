@@ -13,8 +13,9 @@ export const TILE_PROTOCOL = "outpost-tiles";
 
 /**
  * A MapLibre tile address for a server template such as "/api/maps/tiles/{z}/{x}/{y}.mvt".
- * `cacheKey` changes whenever the installed regions do: browsers keep tiles (and empty
- * answers) for an hour, and a newly downloaded region has to show up at once.
+ * `cacheKey` changes whenever the installed regions do: browsers keep tiles for an hour
+ * (an empty answer is asked about again each time), and a newly downloaded region has to
+ * show up at once.
  */
 export function tileTemplate(template: string, cacheKey: string): string {
   const path = template.startsWith("/") ? template : `/${template}`;

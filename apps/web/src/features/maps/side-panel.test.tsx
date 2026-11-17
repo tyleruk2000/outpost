@@ -37,6 +37,10 @@ describe("the tab names", () => {
       "Offline maps",
       "Sun",
     ]);
+    // Every phone writes the short name, so that the five fit on one line at 390 px (an iPhone) and the lowered sheet stays one line high.
+    const short = screen.getByText("Offline", { exact: true });
+    expect(short).toHaveClass("hidden", "max-md:inline");
+    expect(screen.getByText("Offline maps", { exact: true })).toHaveClass("max-md:hidden");
     // Each is tall enough to touch on a phone.
     for (const tab of screen.getAllByRole("tab")) expect(tab).toHaveClass("max-md:min-h-[44px]", "max-md:min-w-[44px]");
   });

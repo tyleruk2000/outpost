@@ -15,12 +15,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Segmented, Select } from "@/components/ui/misc";
+import { cn } from "@/lib/utils";
 import { useStoredState } from "../hooks";
 import type { ReadoutFormat } from "../lib/coords";
 import { formatBboxSize } from "../lib/geo";
 import type { StyleInput } from "../lib/style";
 import type { MapEngine } from "../map/engine";
 import { MapCard } from "../map-chrome";
+import { mapCardFoot } from "../ui";
 import { isOrientation, isPaperId, type Orientation, PAPER_IDS, PAPERS, type PaperId, pageGeometry, paperName } from "./paper";
 import { RESOLUTIONS, type Resolution } from "./pieces";
 import { PrintDialog } from "./print-dialog";
@@ -203,7 +205,7 @@ export default function PrintTool({
             <span className="md:hidden">The box is the page: </span>
             {formatBboxSize(box)} on {paperName(prefs.paper, prefs.orientation)} at {formatScale(scale)}
           </p>
-          <div className="mt-3 flex flex-wrap gap-2 max-md:mt-2">
+          <div className={cn(mapCardFoot, "mt-3 max-md:mt-1")}>
             <Button variant="primary" onClick={() => setStep("page")}>
               Preview the page
             </Button>

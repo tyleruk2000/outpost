@@ -20,7 +20,7 @@ import { ErrorState, Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
-import { Badge, Select, Skeleton } from "@/components/ui/misc";
+import { Badge, Select } from "@/components/ui/misc";
 import { ChoiceList } from "@/features/downloads/choice-list";
 import { DownloadControls, DownloadProgress } from "@/features/downloads/download-progress";
 import { useDownloads } from "@/features/downloads/use-downloads";
@@ -32,12 +32,12 @@ import { ImageryArea, SatelliteSection } from "../imagery/panel";
 import { formatBboxSize } from "../lib/geo";
 import { formatBuild } from "../lib/tracks";
 import type { MapEngine } from "../map/engine";
-import { PanelHeading } from "../ui";
+import { PanelHeading, PanelLoading } from "../ui";
 import { AddRegion, detailLabel } from "./add-region";
 import { DestinationPicker, useDestination } from "./destination";
 
 /** What the panel was opened to do, when it was opened from elsewhere on the screen. */
-export type OfflineIntent = { type: "add"; presetId?: string } | { type: "places" } | { type: "imagery" } | null;
+export type OfflineIntent = { type: "add"; presetId?: string } | { type: "places" } | { type: "imagery" } | { type: "reference" } | null;
 
 function ActiveDownloads({ downloads }: { downloads: DownloadDto[] }) {
   if (downloads.length === 0) return null;
@@ -363,6 +363,10 @@ export function OfflinePanel({
       setAdding(null);
       window.setTimeout(() => imageryRef.current?.scrollIntoView({ block: "start" }), 0);
     }
+    if (intent.type === "reference") {
+      setAdding(null);
+      window.setTimeout(() => document.getElementById("reference-data")?.scrollIntoView({ block: "start" }), 0);
+    }
     if (intent.type === "places") {
       setAdding(null);
       // After the list has rendered: the section may not exist on the first pass.
@@ -387,15 +391,7 @@ export function OfflinePanel({
     return <ImageryArea engine={engine} onClose={() => setChoosingImagery(false)} onNeedMap={onNeedMap} onNeedRoom={onNeedRoom} />;
   }
 
-  if (overview.isPending) {
-    return (
-      <div className="grid gap-3 p-4" aria-busy>
-        <Skeleton className="h-6 w-40" />
-        <Skeleton className="h-16" />
-        <Skeleton className="h-16" />
-      </div>
-    );
-  }
+  if (overview.isPending) return <PanelLoading />;
   if (overview.isError) {
     return (
       <div className="p-4">

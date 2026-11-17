@@ -6,7 +6,7 @@ import { RadioGroup } from "radix-ui";
 import type { ComponentProps, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { floating } from "@/components/ui/menu";
-import { Tooltip } from "@/components/ui/misc";
+import { Skeleton, Tooltip } from "@/components/ui/misc";
 import { cn } from "@/lib/utils";
 import { MARKER_COLOR_NAMES, MARKER_HEX } from "./lib/palette";
 import { BADGE, type DrawnIcon, GLYPH_ON, isDrawn, PLACE_GLYPHS, PLACE_ICON_NAMES } from "./lib/place-icons";
@@ -31,6 +31,13 @@ export const mapCard = cn(
 /** The first row of such a card: its title, and what closes or folds it. It stays in view while the rest scrolls. */
 export const mapCardHeader =
   "sticky top-0 z-[1] -mx-3.5 -mt-3.5 flex items-start justify-between gap-3 rounded-t-panel bg-raised px-3.5 pt-3.5 max-md:-top-3.5";
+
+/**
+ * The row of buttons at the foot of a map card. On a phone the card scrolls in what room the
+ * map leaves it, and this row stays in view at its foot, as the header stays at its head.
+ */
+export const mapCardFoot =
+  "flex flex-wrap items-center gap-2 max-md:sticky max-md:-bottom-3.5 max-md:-mx-3.5 max-md:-mb-3.5 max-md:rounded-b-panel max-md:bg-raised max-md:px-3.5 max-md:pt-2 max-md:pb-3.5";
 
 /** A group of icon buttons on one floating surface, stacked with hairlines between them. */
 export function ControlGroup({ className, ...props }: ComponentProps<"div">) {
@@ -213,6 +220,17 @@ export function PanelHeading({ children, actions, className }: { children: React
     <div className={cn("flex min-h-9 flex-wrap items-center justify-between gap-x-3 gap-y-1", className)}>
       <h3 className="text-body font-semibold text-ink">{children}</h3>
       {actions}
+    </div>
+  );
+}
+
+/** A tab of the panel while what it shows is on its way. */
+export function PanelLoading() {
+  return (
+    <div className="grid gap-3 p-4" aria-busy>
+      <Skeleton className="h-6 w-40" />
+      <Skeleton className="h-16" />
+      <Skeleton className="h-16" />
     </div>
   );
 }

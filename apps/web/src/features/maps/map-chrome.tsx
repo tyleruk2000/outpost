@@ -34,7 +34,7 @@ import { canRedo, canUndo, isFull, type RouteEdit } from "./lib/route-edit";
 import { STRAIGHT_LINES } from "./panels/route-editor";
 import { SunSection } from "./panels/sun";
 import { Locator, PathLocators } from "./radio/locator";
-import { ControlButton, ControlGroup, mapCard, mapCardHeader, mapSurface } from "./ui";
+import { ControlButton, ControlGroup, mapCard, mapCardFoot, mapCardHeader, mapSurface } from "./ui";
 
 export type Tool = "browse" | "measure" | "add-place" | "draw" | "sight" | "print";
 
@@ -578,7 +578,7 @@ export function DrawCard({
         </>
       )}
       {/* One row wherever it fits: on a phone this card shares the screen with the map being drawn on. */}
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className={cn(mapCardFoot, "mt-3")}>
         <Button size="icon" aria-label="Undo" title="Undo" onClick={onUndo} disabled={!canUndo(edit)}>
           <Undo2 />
         </Button>
@@ -634,7 +634,7 @@ export function MoveCard({
           </>
         )}
       </p>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className={cn(mapCardFoot, "mt-3")}>
         <Button variant="primary" onClick={onSave} loading={saving} disabled={!moved}>
           Save new position
         </Button>
