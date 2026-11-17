@@ -50,7 +50,7 @@ function BackLink() {
   return (
     <Link
       to="/downloads"
-      className="-ml-1 inline-flex items-center gap-1.5 rounded-control px-1 py-1 text-small text-ink-muted transition-colors hover:text-ink"
+      className="-ml-1 inline-flex items-center gap-1.5 rounded-control px-1 py-1 text-small text-ink-muted transition-colors hover:text-ink max-md:min-h-11"
     >
       <ArrowLeft aria-hidden className="size-4" /> Downloads
     </Link>

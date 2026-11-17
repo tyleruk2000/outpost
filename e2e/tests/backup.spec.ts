@@ -35,6 +35,12 @@ test.describe("automatic backups", () => {
     await expect(row.getByText(/Started by hand · .+ · made by Outpost \d/)).toBeVisible();
     await expect(section.getByText(/^Last backup just now\./)).toBeVisible();
 
+    // Storage says which location holds them.
+    await page.goto("/storage");
+    const internal = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: "Internal storage" }) });
+    await expect(internal.getByText(/Automatic backups are kept here, in the folder outpost-backups\./)).toBeVisible();
+    await page.goto("/settings");
+
     // The file is on the location, in Outpost's own folder, and downloads as a zip.
     const { backups } = await api(page, "GET", "/api/backup/stored");
     expect(backups).toHaveLength(1);

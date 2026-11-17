@@ -75,7 +75,11 @@ the Storage screen.
 Renaming changes only the name shown. Removing a location makes Outpost forget the
 folder: nothing in it is deleted, and the marker file stays. Outpost refuses to remove
 a location that still holds documents or collections, and refuses to remove the last
-one.
+one; for a location that still holds part of the library, **Remove from Outpost** says
+so and points to Manage and clean up before anything is pressed. The location chosen
+for automatic backups says so on the Storage screen, and removing it says that
+automatic backups stop until another location is chosen in Settings (the backups
+already written stay in the folder).
 
 ## The marker file and reconnecting
 
@@ -612,7 +616,7 @@ What is taking the space, by kind and by location, with free space.
 | Figure | Where it comes from |
 | --- | --- |
 | Reference archives, maps, terrain, place names, catalogue sheets and books, your documents | Outpost's records of what was installed. Available at once, and for a location that is not connected. |
-| Pictures and files in notes, text read from documents, programs for portable drives, search model files, data set aside by a restore, unfinished downloads, files no record refers to, the database file | Measured from the files. |
+| Pictures and files in notes, text read from documents, programs for portable drives, search model files, data set aside by a restore, unfinished downloads, files no record refers to, the database file | Measured from the files. "Unfinished downloads" are those that stopped (paused, failed or cancelled), the same ones Leftovers lists: a download still arriving is not left over. |
 | Search passages and semantic vectors | Estimates. Both live inside the database file, so their share can only be worked out: vectors are counted and multiplied by their size; passage text is summed and half as much again is added for the word index. They are shown as part of the database, not added to the total twice. |
 
 Measuring means walking folders, which on a network share with thousands of documents
@@ -782,6 +786,9 @@ who can open the file can read them: keep it on storage you trust, and on an enc
 disk if it leaves the house.
 
 Restoring replaces the database, attachments and extracted text after a restart. The
+backup is checked first; nothing changes until Outpost starts again, and until then
+**Cancel restore** drops it. Downloads that were under way stop. The files of
+collections, maps and documents on your storage locations are not touched. The
 data they replace is kept in the data directory in a folder named
 `before-restore-<time>`. After a restore, add the same storage locations again (their
 marker files are recognised) to bring the content back.

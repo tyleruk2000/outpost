@@ -158,7 +158,7 @@ export default function ItemsView({ busy }: { busy: boolean }) {
   return (
     <div className="mt-6">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-48 flex-1 max-md:basis-full">
+        <div className="relative min-w-[min(12rem,100%)] flex-1 max-md:basis-full">
           <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-faint" />
           <Input
             type="search"

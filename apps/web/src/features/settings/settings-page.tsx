@@ -7,7 +7,7 @@ import { Segmented, Skeleton, Switch } from "@/components/ui/misc";
 import { useClockStyle } from "@/lib/clock";
 import { useSettings, useSystem, useUpdateSettings } from "@/lib/queries";
 import { useTheme } from "@/lib/theme";
-import { cn, plural } from "@/lib/utils";
+import { plural } from "@/lib/utils";
 import { AnswersSection } from "./answers-section";
 import { BackupSection } from "./backup-section";
 import { ClockSetting } from "./clock-setting";
@@ -24,7 +24,67 @@ function Fact({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
-export default function SettingsPage({ extraSections }: { extraSections?: ReactNode }) {
+/** What each queue of background work is, in words; a queue not named here is shown by its own name. */
+const QUEUE_NAMES: Record<string, string> = {
+  download: "Downloads",
+  index: "Reading documents",
+  ocr: "Reading scans",
+  import: "Imports",
+  transfer: "Moves and copies",
+  backup: "Backups",
+  database: "Database upkeep",
+  manage: "Clean-up",
+  network: "Looking for devices",
+  propagation: "Radio predictions",
+  "reference-files": "Files from reference collections",
+  webpage: "Saving web pages",
+};
+
+function queueText(queue: string, counts: { running: number; queued: number; paused: number }): string {
+  const parts = [
+    counts.running > 0 ? `${counts.running} running` : null,
+    counts.queued > 0 ? `${counts.queued} waiting` : null,
+    counts.paused > 0 ? `${counts.paused} paused` : null,
+  ];
+  return `${QUEUE_NAMES[queue] ?? queue}: ${parts.filter(Boolean).join(", ")}`;
+}
+
+/** The sections in the order they come, so that a person on a phone can go straight to one. */
+const SECTIONS = [
+  ["appearance", "Appearance"],
+  ["downloads", "Downloads"],
+  ["indexing", "Reading documents"],
+  ["search", "Search"],
+  ["semantic", "Search by meaning"],
+  ["answers", "Answers"],
+  ["maps", "Maps"],
+  ["backup", "Backup"],
+  ["automatic-backups", "Automatic backups"],
+  ["https", "HTTPS"],
+  ["access", "Who can use it"],
+  ["about", "This installation"],
+] as const;
+
+function Contents() {
+  return (
+    <nav aria-label="Sections of Settings" className="-mt-4 mb-6">
+      <ul className="flex flex-wrap gap-x-5 text-small">
+        {SECTIONS.map(([id, label]) => (
+          <li key={id}>
+            <a
+              href={`#${id}`}
+              className="inline-flex min-h-11 items-center text-ink-muted underline decoration-border-strong underline-offset-4 hover:text-primary hover:decoration-primary md:min-h-8"
+            >
+              {label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
+export default function SettingsPage() {
   const settings = useSettings();
   const system = useSystem();
   const update = useUpdateSettings();
@@ -47,6 +107,7 @@ export default function SettingsPage({ extraSections }: { extraSections?: ReactN
   return (
     <Page>
       <PageHeader title="Settings" under="/settings" />
+      <Contents />
 
       <SettingsSection id="appearance" title="Appearance" description="Saved in this browser, so each device can have its own.">
         <SettingRow
@@ -262,8 +323,6 @@ export default function SettingsPage({ extraSections }: { extraSections?: ReactN
             />
           </SettingsSection>
 
-          {extraSections}
-
           <BackupSection />
 
           <HttpsSection settings={s} disabled={disabled} save={save} />
@@ -313,13 +372,13 @@ export default function SettingsPage({ extraSections }: { extraSections?: ReactN
                 Object.keys(info.queues).length === 0
                   ? "Nothing waiting"
                   : Object.entries(info.queues)
-                      .map(([queue, counts]) => `${queue}: ${counts.running} running, ${counts.queued} waiting`)
+                      .map(([queue, counts]) => queueText(queue, counts))
                       .join("; ")
               }
             />
           </dl>
         ) : (
-          <div className={cn("grid gap-2")} aria-busy>
+          <div className="grid gap-2" aria-busy>
             <Skeleton />
             <Skeleton />
             <Skeleton />

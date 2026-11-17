@@ -138,7 +138,7 @@ export function AnswersOptions({
           <Button onClick={() => test.mutate()} loading={test.isPending} disabled={disabled || !enabled}>
             Test
           </Button>
-          <p className="min-w-48 flex-1 text-small text-ink-muted">
+          <p className="min-w-[min(12rem,100%)] flex-1 text-small text-ink-muted">
             {enabled
               ? "Asks the model for one word, to check the address, the model’s name and that it can write. A model that has to be loaded first can take a while."
               : "The test runs once answers are switched on. The steps above try a model without that."}

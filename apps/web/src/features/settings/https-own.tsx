@@ -10,7 +10,7 @@
  */
 import { type HttpsOwnCertificate, type HttpsStatus, localByReason, PLAIN_HTTP_ACCEPTED_FIELD } from "@outpost/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ChevronRight, CircleAlert, FileUp } from "lucide-react";
+import { CircleAlert, FileUp } from "lucide-react";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Notice } from "@/components/page";
@@ -20,9 +20,9 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
 import { formatDate, plural } from "@/lib/utils";
-import { guessDevice, TrustSteps } from "./https-steps";
+import { guessDevice, HTTPS_STATUS_KEY } from "./https-shared";
+import { TrustSteps } from "./https-steps";
 
-export const HTTPS_STATUS_KEY = ["https", "status"];
 const DAY = 24 * 60 * 60 * 1000;
 const mono = "font-mono text-[0.8125rem] text-ink [overflow-wrap:anywhere]";
 
@@ -108,7 +108,7 @@ function FilePick({
   const id = useId();
   return (
     <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
-      <div className="min-w-48 flex-1">
+      <div className="min-w-[min(12rem,100%)] flex-1">
         <label htmlFor={id} className="text-small font-medium text-ink">
           {label}
         </label>
@@ -267,7 +267,7 @@ function GiveFiles({ data, secure, onDone }: { data: HttpsStatus; secure: Secure
       />
       {container ? (
         <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
-          <div className="min-w-48 flex-1">
+          <div className="min-w-[min(12rem,100%)] flex-1">
             <label htmlFor={passwordId} className="text-small font-medium text-ink">
               Password of the file
             </label>
@@ -328,7 +328,7 @@ function GiveFiles({ data, secure, onDone }: { data: HttpsStatus; secure: Secure
         >
           Use this certificate
         </Button>
-        <p className="min-w-48 flex-1 text-small text-ink-muted">
+        <p className="min-w-[min(12rem,100%)] flex-1 text-small text-ink-muted">
           Outpost checks it first and keeps nothing it cannot use.{" "}
           {data.own.keyRight.reason === "https"
             ? "Offered here because this page is open over HTTPS."
@@ -397,7 +397,17 @@ function FromFolder({ data, refresh }: { data: HttpsStatus; refresh: () => void 
   );
 }
 
-function WaysIn({ data, secure, refresh, onDone }: { data: HttpsStatus; secure: SecureWay; refresh: () => void; onDone?: () => void }) {
+export function WaysIn({
+  data,
+  secure,
+  refresh,
+  onDone,
+}: {
+  data: HttpsStatus;
+  secure: SecureWay;
+  refresh: () => void;
+  onDone?: () => void;
+}) {
   return (
     <div className="grid gap-6">
       <div className="grid gap-3">
@@ -409,29 +419,6 @@ function WaysIn({ data, secure, refresh, onDone }: { data: HttpsStatus; secure: 
         <FromFolder data={data} refresh={refresh} />
       </div>
     </div>
-  );
-}
-
-/**
- * The way in, for a server still on Outpost's own certificate (or with HTTPS off). One
- * closed line: a person who wants the simple case reads no further.
- */
-export function OwnCertificateChoice({ data, secure, refresh }: { data: HttpsStatus; secure: SecureWay; refresh: () => void }) {
-  return (
-    <details className="group border-t border-border pt-3">
-      <summary className="flex min-h-11 cursor-default items-center gap-2 py-2 text-small font-medium text-ink marker:content-none hover:text-primary [&::-webkit-details-marker]:hidden">
-        <ChevronRight aria-hidden className="size-4 text-ink-muted transition-transform duration-150 group-open:rotate-90" />
-        Use a certificate of your own instead
-      </summary>
-      <div className="grid gap-5 pb-2 pl-6">
-        <p className="text-small text-ink-muted">
-          For when you already have a certificate for this server: from a public authority for a name you own, from an authority you or your
-          organisation run, or from a tool such as mkcert. HTTPS then presents that certificate in place of Outpost’s own. Outpost’s
-          certificate authority is kept as it is, and going back to it is one press. Most people do not need this.
-        </p>
-        <WaysIn data={data} secure={secure} refresh={refresh} />
-      </div>
-    </details>
   );
 }
 

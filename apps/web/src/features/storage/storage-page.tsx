@@ -246,7 +246,7 @@ function LocationRow({
       {items > 0 ? (
         // Said before the press: the server refuses to forget a location that still holds part of the library.
         <Dialog open={removing} onOpenChange={setRemoving}>
-          <DialogContent title={`“${location.name}” still holds ${plural(items, "item")}`} size="sm">
+          <DialogContent title={`“${location.name}” still holds part of the library`} size="sm">
             <DialogBody>
               <p className="text-small text-ink-muted">
                 Outpost stops using a location only when none of the library is on it, and it will not delete anything for you. Move what is

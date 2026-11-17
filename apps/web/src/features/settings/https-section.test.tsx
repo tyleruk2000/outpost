@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HttpsSection } from "./https-section";
-import { guessDevice } from "./https-steps";
+import { guessDevice } from "./https-shared";
 
 const off = { "https.enabled": false, "https.certificate": "outpost", "https.names": "" } as Settings;
 const on = { "https.enabled": true, "https.certificate": "outpost", "https.names": "" } as Settings;
@@ -454,7 +454,10 @@ describe("a certificate of your own, in Settings", () => {
   const open = async () => {
     const summary = await screen.findByText("Use a certificate of your own instead", { selector: "summary" });
     await userEvent.click(summary);
-    return summary.closest("details") as HTMLElement;
+    const details = summary.closest("details") as HTMLElement;
+    // What is under it is loaded when it is first opened.
+    await within(details).findByRole("button", { name: "Use this certificate" });
+    return details;
   };
 
   it("is one closed line for a person who does not need it, with HTTPS on or off", async () => {
