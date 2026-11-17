@@ -7,7 +7,7 @@ import {
 } from "@outpost/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CircleAlert, RefreshCw, Search, WifiOff, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { EmptyState, ErrorState, Notice, Page, PageHeader } from "@/components/page";
@@ -131,6 +131,15 @@ export default function ExplorePage() {
   const [downloading, setDownloading] = useState<{ entry: CatalogEntryDto; open: boolean }>();
   // Pages shown of the list below, counted afresh whenever the list itself changes.
   const [pages, setPages] = useState({ list: "", count: 1 });
+  // After "Show all" at the foot of a long page, the category's own list starts at its heading.
+  const [jumpTo, setJumpTo] = useState<string>();
+  useEffect(() => {
+    if (!jumpTo) return;
+    const heading = document.getElementById(`category-${jumpTo}`);
+    heading?.scrollIntoView({ block: "start" });
+    heading?.focus({ preventScroll: true });
+    setJumpTo(undefined);
+  }, [jumpTo]);
 
   const refresh = useMutation({
     mutationFn: () => api.post<CatalogRefreshSummary>("/api/catalog/refresh"),
@@ -391,7 +400,11 @@ export default function ExplorePage() {
                 groups.map((group) => (
                   <section key={group.slug} className="mt-8 first-of-type:mt-6" aria-labelledby={`category-${group.slug}`}>
                     <div className="mb-3 flex items-baseline gap-3">
-                      <h2 id={`category-${group.slug}`} className="text-lead font-semibold text-ink">
+                      <h2
+                        id={`category-${group.slug}`}
+                        tabIndex={-1}
+                        className="scroll-mt-20 text-lead font-semibold text-ink focus:outline-none"
+                      >
                         {group.label}
                       </h2>
                       <p className="tabular text-small text-ink-muted">{group.total}</p>
@@ -399,7 +412,13 @@ export default function ExplorePage() {
                     <ul className={grid}>{group.entries.map(card)}</ul>
                     {group.entries.length < group.total ? (
                       grouped ? (
-                        <Button className="mt-4" onClick={() => setCategory(group.slug as CategoryChoice)}>
+                        <Button
+                          className="mt-4"
+                          onClick={() => {
+                            setCategory(group.slug as CategoryChoice);
+                            setJumpTo(group.slug);
+                          }}
+                        >
                           Show all {group.total} in {group.label}
                         </Button>
                       ) : (

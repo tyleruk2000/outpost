@@ -110,6 +110,8 @@ describe("Explore", () => {
     expect(screen.getAllByRole("heading", { name: /^Radio sheet/ })).toHaveLength(6);
     await userEvent.click(screen.getByRole("button", { name: "Show all 70 in Radio communications" }));
     expect(categoryButton(/^Radio communications/)).toHaveAttribute("aria-current", "true");
+    // The list starts at its heading, not wherever the page had been scrolled to.
+    expect(screen.getByRole("heading", { level: 2, name: "Radio communications" })).toHaveFocus();
     // One category is a list of its own, a page at a time.
     expect(screen.getAllByRole("heading", { name: /^Radio sheet/ })).toHaveLength(30);
     expect(screen.getByText("Showing 30 of 70")).toBeInTheDocument();
