@@ -7,7 +7,7 @@ import {
 } from "@outpost/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CircleAlert, RefreshCw, Search, WifiOff, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { EmptyState, ErrorState, Notice, Page, PageHeader } from "@/components/page";
@@ -38,6 +38,10 @@ const sortOptions: Array<{ value: SortOrder; label: string }> = [
 ];
 
 const grid = "grid grid-cols-[repeat(auto-fill,minmax(min(100%,21rem),1fr))] gap-4";
+/** How many of a category the whole catalogue shows under its heading; the rest are a press away. */
+const PER_GROUP = 6;
+/** How many entries a list of one category (or one ranked by size) shows at a time. */
+const PAGE = 30;
 
 function refreshSummary(summary: CatalogRefreshSummary): string {
   const parts = [`${plural(summary.available, "collection")} confirmed with their current size and version`];
@@ -125,6 +129,17 @@ export default function ExplorePage() {
   const [show, setShow] = useState<ShowFilter>("all");
   const [sort, setSort] = useState<SortOrder>("name");
   const [downloading, setDownloading] = useState<{ entry: CatalogEntryDto; open: boolean }>();
+  // Pages shown of the list below, counted afresh whenever the list itself changes.
+  const [pages, setPages] = useState({ list: "", count: 1 });
+  // After "Show all" at the foot of a long page, the category's own list starts at its heading.
+  const [jumpTo, setJumpTo] = useState<string>();
+  useEffect(() => {
+    if (!jumpTo) return;
+    const heading = document.getElementById(`category-${jumpTo}`);
+    heading?.scrollIntoView({ block: "start" });
+    heading?.focus({ preventScroll: true });
+    setJumpTo(undefined);
+  }, [jumpTo]);
 
   const refresh = useMutation({
     mutationFn: () => api.post<CatalogRefreshSummary>("/api/catalog/refresh"),
@@ -200,11 +215,25 @@ export default function ExplorePage() {
   const shown = sortEntries(inCategory, sort);
   // By name, the whole catalogue reads best under its category headings; by size it is one ranked list.
   const grouped = category === "all" && sort === "name";
+  const list = [category, query, show, sort].join("\n");
+  const pageCount = pages.list === list ? pages.count : 1;
+  // A linked entry is shown however far down the list it is.
+  const limit = Math.max(PAGE * pageCount, shown.findIndex((entry) => entry.id === markedId) + 1);
   const groups = grouped
     ? categories
-        .map((item) => ({ ...item, entries: shown.filter((entry) => entry.category === item.slug) }))
-        .filter((group) => group.entries.length > 0)
-    : [{ slug: category, label: category === "all" || category === "packs" ? "All collections" : labelOf(category), entries: shown }];
+        .map((item) => {
+          const all = shown.filter((entry) => entry.category === item.slug);
+          return { ...item, total: all.length, entries: all.slice(0, PER_GROUP) };
+        })
+        .filter((group) => group.total > 0)
+    : [
+        {
+          slug: category,
+          label: category === "all" || category === "packs" ? "All collections" : labelOf(category),
+          total: shown.length,
+          entries: shown.slice(0, limit),
+        },
+      ];
 
   const card = (entry: CatalogEntryDto) => (
     <EntryCard
@@ -229,7 +258,7 @@ export default function ExplorePage() {
         description="Reference collections you can keep on this server and read without a connection. Choose them one at a time; each shows its real size before anything is fetched. A few reference sheets are included with Outpost and need no download."
         actions={
           catalog.data ? (
-            <div className="flex flex-col gap-1.5 md:items-end">
+            <div className="flex flex-col items-start gap-1.5">
               <Button onClick={() => refresh.mutate()} loading={refresh.isPending}>
                 {refresh.isPending ? null : <RefreshCw />} Refresh catalogue
               </Button>
@@ -371,12 +400,36 @@ export default function ExplorePage() {
                 groups.map((group) => (
                   <section key={group.slug} className="mt-8 first-of-type:mt-6" aria-labelledby={`category-${group.slug}`}>
                     <div className="mb-3 flex items-baseline gap-3">
-                      <h2 id={`category-${group.slug}`} className="text-lead font-semibold text-ink">
+                      <h2
+                        id={`category-${group.slug}`}
+                        tabIndex={-1}
+                        className="scroll-mt-20 text-lead font-semibold text-ink focus:outline-none"
+                      >
                         {group.label}
                       </h2>
-                      <p className="tabular text-small text-ink-muted">{group.entries.length}</p>
+                      <p className="tabular text-small text-ink-muted">{group.total}</p>
                     </div>
                     <ul className={grid}>{group.entries.map(card)}</ul>
+                    {group.entries.length < group.total ? (
+                      grouped ? (
+                        <Button
+                          className="mt-4"
+                          onClick={() => {
+                            setCategory(group.slug as CategoryChoice);
+                            setJumpTo(group.slug);
+                          }}
+                        >
+                          Show all {group.total} in {group.label}
+                        </Button>
+                      ) : (
+                        <div className="mt-5 flex flex-wrap items-center gap-4">
+                          <Button onClick={() => setPages({ list, count: pageCount + 1 })}>Show more</Button>
+                          <p className="tabular text-small text-ink-muted">
+                            Showing {group.entries.length} of {group.total}
+                          </p>
+                        </div>
+                      )
+                    ) : null}
                   </section>
                 ))
               )}

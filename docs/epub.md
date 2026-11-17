@@ -44,8 +44,8 @@ it.
 
 ### Search
 
-The text of a book is read for search chapter by chapter, as before. A result now
-opens the chapter the passage is in. Search knows a passage of a book by the first
+The text of a book is read for search chapter by chapter. A result opens the chapter
+the passage is in. Search knows a passage of a book by the first
 heading of its chapter, so if two chapters open with the same heading the result opens
 the first of them. It opens the chapter, not the paragraph.
 
@@ -132,7 +132,7 @@ order is used.
 | --- | --- |
 | `apps/server/src/modules/documents/epub-package.ts` | The container, package file, reading order, table of contents and cover; whether the book is locked. Shared with text extraction (`extract-epub.ts`). |
 | `epub-view.ts` | One chapter's XHTML to the tree of plain values in `packages/shared/src/documents.ts` (`MarkdownBlock`, `MarkdownInline`, `EpubInline`). Chapters are parsed with the forgiving HTML parser (parse5, through `rehype-parse`), because books in the wild are often not well-formed XML. |
-| `epub-reader.ts` | The three routes (`GET /api/documents/:id/epub`, `…/epub/chapters/:position`, `…/epub/file?path=`), the limits and the refusals. Nothing is unpacked to disk: each request reads the one entry it needs into memory. |
+| `epub-reader.ts` | The three routes (`GET /api/documents/:id/epub`, `…/epub/chapters/:position`, `…/epub/file?path=`), the limits and the refusals. Nothing is unpacked to disk: each request reads the one entry it needs into memory. What the package file and table of contents say is kept in memory for the 16 books opened most recently, so turning a page does not read them again. |
 | `apps/web/src/features/library/epub-reader.tsx`, `epub-data.ts` | The front of the book, a chapter, the addresses, the reading place. |
 | `document-markdown.tsx`, `chapter-nav.tsx` | Drawing the tree, and finding your way round a book. Shared with Markdown documents and the bundled guides. |
 

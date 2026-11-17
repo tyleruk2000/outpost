@@ -311,6 +311,15 @@ describe("the reader, for a collection that lists documents", () => {
     expect(frame()).toHaveAttribute("src", `${BASE}Bowline`);
     expect(screen.getByRole("searchbox", { name: "Search in Field library" })).toBeInTheDocument();
     expect(screen.queryByText(/Documents in this collection/)).not.toBeInTheDocument();
+    // The screen is named by what it shows: here the collection, there being no list or results over it.
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Field library");
+  });
+
+  it("has one main heading whichever way the collection is shown", async () => {
+    fakeServer({ "GET /api/kiwix/books/c1": book, "GET /api/kiwix/books/c1/documents": answer() });
+    reader("/library/read/c1/");
+    expect(await screen.findByRole("heading", { level: 1, name: "Documents in this collection" })).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
 
   it("shows the collection's own page, and says why, when its list could not be read", async () => {
@@ -328,6 +337,22 @@ describe("the reader, for a collection that lists documents", () => {
       ),
     ).toBeInTheDocument();
     expect(frame()).not.toBeNull();
+  });
+
+  it("says why a collection cannot be read, and opens it when asked again once it can", async () => {
+    let ready = false;
+    fakeServer({
+      "GET /api/kiwix/books/c1": () =>
+        ready
+          ? book
+          : { book: { ...book.book, ready: false }, reason: "The Kiwix server is not answering. Check that its container is running." },
+      "GET /api/kiwix/books/c1/documents": answer(),
+    });
+    reader("/library/read/c1/");
+    expect(await screen.findByText("The Kiwix server is not answering. Check that its container is running.")).toBeInTheDocument();
+    ready = true;
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Documents in this collection" })).toBeInTheDocument();
   });
 
   it("falls back to the frame when it cannot learn what kind of collection this is", async () => {

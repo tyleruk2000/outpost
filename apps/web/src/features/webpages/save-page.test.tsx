@@ -194,6 +194,31 @@ describe("saving a web page", () => {
     expect(await screen.findByText("Outpost does not fetch from this address")).toBeInTheDocument();
   });
 
+  it("brings what was found, or why nothing was, into view: on a phone it lands below the fold", async () => {
+    const scrolled: Element[] = [];
+    const scrollIntoView = vi.fn(function (this: Element) {
+      scrolled.push(this);
+    });
+    const before = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = scrollIntoView;
+    try {
+      serve({ preview: { status: 403, code: "forbidden", message: "That address is on this computer or a private network." } });
+      const user = show();
+      await look(user, "http://192.168.1.1/article");
+      const refusal = await screen.findByRole("alert");
+      expect(refusal).toHaveTextContent("Outpost does not fetch from this address");
+      await waitFor(() => expect(scrolled.some((element) => element.contains(refusal))).toBe(true));
+
+      serve({});
+      scrolled.length = 0;
+      await user.click(screen.getByRole("button", { name: "Look at the page" }));
+      const found = await screen.findByTestId("web-page-found");
+      await waitFor(() => expect(scrolled.some((element) => element.contains(found))).toBe(true));
+    } finally {
+      Element.prototype.scrollIntoView = before;
+    }
+  });
+
   it("asks what to do with an earlier copy, and saves nothing until it is told", async () => {
     const earlier: SavedCopy = { documentId: "01OLD", title: "Collecting rainwater", savedAt: Date.UTC(2026, 10, 3, 12) };
     serve({ preview: page({ existing: [earlier], pictures: { count: 0, willFetch: 0, hosts: [] } }) });

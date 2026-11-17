@@ -25,6 +25,13 @@ from the screen that made it.**
 | Contacts → Emergency sheet | The marked contacts, as on the sheet, with the date and time it was made. **Asks first**; see below. See [contacts.md](contacts.md#using-them). | "Emergency sheet, 3 contacts, made 16 Nov 2026", tag `Emergency sheet` |
 | Preparedness → Nuclear preparedness, under the results | The scenarios shown, each under its letter, with a map of its rings (and of its fallout pattern) unless maps are switched off, and an overview map when there are several. With saved places ticked, **asks first**. See [nuclear-preparedness.md](nuclear-preparedness.md#on-paper). | "Nuclear effects scenario: *name*", tag `Nuclear effects scenario` |
 | Maps → Sun tab, or a place's Sun section | Sun times day by day for two weeks, a month or a year. See [maps.md](maps.md#sun-times-on-paper). | "Sun times, Helvellyn, November 2026", tag `Sun times` |
+| Radio → Frequencies | The frequencies chosen, as a sheet. | Tag `Frequencies` |
+| Tools → Power and batteries → a saved plan | The plan worked out: loads, battery, charging, how long it lasts. | Tag `Power plan` |
+| Tools → Water, "Making water safe to drink"; Tools → Cooking, "Safe cooking temperatures" | The official guidance as quoted on the screen, with the date it was read. | Tag `Guidance` |
+| Tools → QR codes | The code and what it holds. A code holding a Wi-Fi password or someone's contact details **asks first**. | Tag `QR code` |
+| Tools → Solar clock, Sundial and Nocturnal tabs | A template to cut out, for the place and date chosen. | Tags `Sundial template`, `Nocturnal template` |
+| Preparedness → Supplies, the shopping list | What is missing, as a list to take to the shop. | Tag `Shopping list` |
+| Preparedness → Emergency plans → a plan's cards | Wallet cards, a fridge sheet or a grab list. **Asks first**: it holds the household's names and numbers. | "Wallet cards, *plan*, 16 Nov 2026", tag `Wallet cards`, `Fridge sheet` or `Grab list` |
 
 Every one of them offers the same three things, in the same words:
 

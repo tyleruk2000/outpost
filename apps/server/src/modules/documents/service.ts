@@ -144,7 +144,7 @@ export interface DocumentsService {
   /** Queues reading the text again, unless that is already under way. */
   reextract(id: string): { document: DocumentDto; job: JobRow };
   /** Whether this installation can read text from scans (OCR), and with which languages. */
-  ocrStatus(): OcrStatus;
+  ocrStatus(): Promise<OcrStatus>;
   /**
    * Queues reading the text of scanned pages or of an image by OCR, or returns the job
    * already doing so. With `redo`, pages OCR has read before are read again.
@@ -710,6 +710,27 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
     )
     .run({ most: mostPages > 0 ? mostPages : Number.MAX_SAFE_INTEGER });
 
+  // Counted as the list shows them: a book's chapters are not separate documents here.
+  const loose = "NOT EXISTS (SELECT 1 FROM book_chapters bc WHERE bc.document_id = documents.id)";
+  const facetStatements = {
+    categories: sqlite.prepare(
+      `SELECT min(category) AS name, count(*) AS count FROM documents
+       WHERE category IS NOT NULL AND category != '' AND ${loose}
+       GROUP BY category COLLATE NOCASE ORDER BY count DESC, name COLLATE NOCASE`,
+    ),
+    tags: sqlite.prepare(
+      `SELECT t.name AS name, count(*) AS count FROM document_tags dt JOIN tags t ON t.id = dt.tag_id
+       GROUP BY t.id ORDER BY count DESC, t.name COLLATE NOCASE`,
+    ),
+    types: sqlite.prepare(`SELECT ext, count(*) AS count FROM documents WHERE ${loose} GROUP BY ext`),
+    totals: sqlite.prepare(`SELECT count(*) AS total, coalesce(sum(size_bytes), 0) AS totalBytes FROM documents WHERE ${loose}`),
+  };
+  const tagList = sqlite.prepare(
+    `SELECT t.id AS id, t.name AS name, count(dt.document_id) AS documentCount
+     FROM tags t LEFT JOIN document_tags dt ON dt.tag_id = t.id
+     GROUP BY t.id ORDER BY t.name COLLATE NOCASE`,
+  );
+
   // ── The service ──
 
   const sortColumn: Record<DocumentSort, SQL> = {
@@ -768,38 +789,15 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
     },
 
     facets() {
-      // Counted as the list shows them: a book's chapters are not separate documents here.
-      const loose = "NOT EXISTS (SELECT 1 FROM book_chapters bc WHERE bc.document_id = documents.id)";
-      const categories = sqlite
-        .prepare(
-          `SELECT min(category) AS name, count(*) AS count FROM documents
-           WHERE category IS NOT NULL AND category != '' AND ${loose}
-           GROUP BY category COLLATE NOCASE ORDER BY count DESC, name COLLATE NOCASE`,
-        )
-        .all() as Array<{ name: string; count: number }>;
-      const tagCounts = sqlite
-        .prepare(
-          `SELECT t.name AS name, count(*) AS count FROM document_tags dt JOIN tags t ON t.id = dt.tag_id
-           GROUP BY t.id ORDER BY count DESC, t.name COLLATE NOCASE`,
-        )
-        .all() as Array<{ name: string; count: number }>;
       const byType = new Map<DocumentType, number>();
-      for (const row of sqlite.prepare(`SELECT ext, count(*) AS count FROM documents WHERE ${loose} GROUP BY ext`).all() as Array<{
-        ext: string;
-        count: number;
-      }>) {
+      for (const row of facetStatements.types.all() as Array<{ ext: string; count: number }>) {
         const type = formatForExt(row.ext)?.type ?? "text";
         byType.set(type, (byType.get(type) ?? 0) + row.count);
       }
-      const totals = sqlite
-        .prepare(`SELECT count(*) AS total, coalesce(sum(size_bytes), 0) AS totalBytes FROM documents WHERE ${loose}`)
-        .get() as {
-        total: number;
-        totalBytes: number;
-      };
+      const totals = facetStatements.totals.get() as { total: number; totalBytes: number };
       return {
-        categories,
-        tags: tagCounts,
+        categories: facetStatements.categories.all() as Array<{ name: string; count: number }>,
+        tags: facetStatements.tags.all() as Array<{ name: string; count: number }>,
         types: [...byType].map(([type, count]) => ({ type, count })).sort((a, b) => b.count - a.count || a.type.localeCompare(b.type)),
         total: totals.total,
         totalBytes: totals.totalBytes,
@@ -923,15 +921,7 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
       };
     },
 
-    tags() {
-      return sqlite
-        .prepare(
-          `SELECT t.id AS id, t.name AS name, count(dt.document_id) AS documentCount
-           FROM tags t LEFT JOIN document_tags dt ON dt.tag_id = t.id
-           GROUP BY t.id ORDER BY t.name COLLATE NOCASE`,
-        )
-        .all() as TagDto[];
-    },
+    tags: () => tagList.all() as TagDto[],
   };
 
   return service;

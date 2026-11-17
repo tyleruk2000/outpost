@@ -117,7 +117,7 @@ describe("what this installation can read", () => {
 
     // Language data is only ever read from disk. English data under another name
     // stands in for a language file a person has put in the data directory.
-    const english = installedLanguages(path.join(app.dir, "data")).find((language) => language.code === "eng");
+    const english = (await installedLanguages(path.join(app.dir, "data"))).find((language) => language.code === "eng");
     const folder = path.join(app.dir, "data/ocr/tessdata");
     fs.mkdirSync(folder, { recursive: true });
     fs.copyFileSync(english?.path ?? "", path.join(folder, "deu.traineddata.gz"));

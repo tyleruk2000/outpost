@@ -73,11 +73,13 @@ function DownloadForm({
   replaces,
   onClose,
   onStarted,
+  onAdded,
 }: {
   entry: CatalogEntryDto;
   replaces: Replaces;
   onClose: () => void;
   onStarted?: (response: CatalogDownloadResponse) => void;
+  onAdded?: (response: CatalogAddResponse) => void;
 }) {
   const client = useQueryClient();
   const storage = useStorage();
@@ -94,10 +96,11 @@ function DownloadForm({
     onSuccess: (response) => {
       if (!("download" in response)) {
         // Copied from Outpost's own files: it is in the library already, with no download to follow.
-        toast.success(`“${entry.name}” is in your library`);
         void client.invalidateQueries({ queryKey: ["catalog"] });
         void client.invalidateQueries({ queryKey: ["collections"] });
         void client.invalidateQueries({ queryKey: ["documents"] });
+        if (onAdded) onAdded(response);
+        else toast.success(`“${entry.name}” is in your library`);
         onClose();
         return;
       }
@@ -250,6 +253,7 @@ export function DownloadDialog({
   open,
   onOpenChange,
   onStarted,
+  onAdded,
   replaces,
 }: {
   /** The entry being downloaded; kept by the caller while the dialog closes so the words do not vanish mid-animation. */
@@ -257,6 +261,8 @@ export function DownloadDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onStarted?: (response: CatalogDownloadResponse) => void;
+  /** Something included with Outpost was added there and then; without this, a toast says so. */
+  onAdded?: (response: CatalogAddResponse) => void;
   /** Defaults to "older" for an installed entry and "nothing" otherwise. */
   replaces?: Replaces;
 }) {
@@ -274,7 +280,14 @@ export function DownloadDialog({
       >
         {/* A fresh form each time, so an old error or choice never carries over. */}
         {open ? (
-          <DownloadForm key={entry.id} entry={entry} replaces={standsFor} onClose={() => onOpenChange(false)} onStarted={onStarted} />
+          <DownloadForm
+            key={entry.id}
+            entry={entry}
+            replaces={standsFor}
+            onClose={() => onOpenChange(false)}
+            onStarted={onStarted}
+            onAdded={onAdded}
+          />
         ) : null}
       </DialogContent>
     </Dialog>

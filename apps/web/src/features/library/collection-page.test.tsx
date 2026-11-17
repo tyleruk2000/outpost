@@ -1,8 +1,9 @@
+import type { CatalogEntryDto } from "@outpost/shared";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Route, Routes } from "react-router";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { collection, fakeServer, installBrowserStubs, location, renderScreen } from "../downloads/test-support";
+import { collection, entry, fakeServer, installBrowserStubs, location, renderScreen } from "../downloads/test-support";
 import CollectionPage from "./collection-page";
 import CollectionsPanel from "./collections-panel";
 
@@ -108,6 +109,52 @@ describe("one collection", () => {
     expect(await screen.findByText("/mnt/usb/collections/zim/vikidia.zim")).toBeInTheDocument();
     expect(screen.getByText("38858407a11076aa")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Read" })).toHaveAttribute("href", "/library/read/c1/");
+  });
+
+  it("shows a map's attribution as words, not as the markup the map draws it from", async () => {
+    serve(
+      collection({
+        kind: "map",
+        attribution: '<a href="https://protomaps.com">Protomaps</a> &copy; <a href="https://openstreetmap.org">OpenStreetMap</a>',
+      }),
+    );
+    page();
+    expect(await screen.findByText("Protomaps © OpenStreetMap")).toBeInTheDocument();
+    expect(screen.queryByText(/<a href/)).not.toBeInTheDocument();
+  });
+
+  it("goes to the new edition after updating something included with Outpost, not to a page saying it is gone", async () => {
+    const included = entry({
+      id: "outpost.radio-handbook",
+      name: "Radio handbook",
+      format: "other",
+      source: { type: "bundled", path: "radio.md", version: "2" },
+      sizeIsEstimate: false,
+      version: "2",
+      status: "installed",
+      installedVersion: "1",
+      updateAvailable: true,
+      availability: "available",
+    } as Partial<CatalogEntryDto>);
+    const server = serve(
+      collection({ kind: "file", catalogEntryId: included.id, title: "Radio handbook", version: "1", updateAvailable: true }),
+      {
+        "GET /api/catalog": { categories: [], entries: [included], packs: [], manifests: [], problems: [], lastRefreshedAt: null },
+        "POST /api/catalog/entries/outpost.radio-handbook/add": { collectionId: "c2", documentId: "d2", replacedCollectionId: "c1" },
+        "GET /api/collections/c2": { collection: collection({ id: "c2", kind: "file", title: "Radio handbook, second edition" }) },
+      },
+    );
+    renderScreen(
+      <Routes>
+        <Route path="/library/collections/:id" element={<CollectionPage />} />
+      </Routes>,
+      "/library/collections/c1",
+    );
+    await userEvent.click(await screen.findByRole("button", { name: "Update" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(await within(dialog).findByRole("button", { name: "Update" }));
+    await waitFor(() => expect(server.calls).toContain("POST /api/catalog/entries/outpost.radio-handbook/add"));
+    expect(await screen.findByRole("heading", { level: 1, name: "Radio handbook, second edition" })).toBeInTheDocument();
   });
 
   it("says so when the collection is not in the library", async () => {

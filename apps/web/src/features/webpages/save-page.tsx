@@ -371,6 +371,14 @@ export function SaveWebPage({ className, autoFocus }: { className?: string; auto
   const fieldError = lookError instanceof ApiError && lookError.code === "bad_request" ? lookError.message : undefined;
   const saveError = save.isError && !existingFrom(save.error) ? save.error : undefined;
 
+  // What was found, or why nothing was, appears under the field: on a phone that is below the
+  // fold and under the tab bar, so it is brought into view as it appears.
+  const results = useRef<HTMLDivElement>(null);
+  const showing = lookError && !fieldError ? "refused" : preview && !busy ? `found ${preview.previewId}` : busy ? `job ${finished}` : "";
+  useEffect(() => {
+    if (showing) results.current?.scrollIntoView({ block: "nearest" });
+  }, [showing]);
+
   return (
     <div className={className}>
       <form onSubmit={submit} className="grid gap-1.5">
@@ -428,36 +436,38 @@ export function SaveWebPage({ className, autoFocus }: { className?: string; auto
         </div>
       ) : null}
 
-      {lookError && !fieldError ? (
-        <Notice tone="danger" icon={<CircleAlert />} title={refusalTitle(lookError)} className="mt-4">
-          {errorMessage(lookError)}
-        </Notice>
-      ) : null}
+      <div ref={results} className="scroll-mt-20 scroll-mb-24">
+        {lookError && !fieldError ? (
+          <Notice tone="danger" icon={<CircleAlert />} title={refusalTitle(lookError)} className="mt-4">
+            {errorMessage(lookError)}
+          </Notice>
+        ) : null}
 
-      {preview && !busy ? (
-        <>
-          <Found preview={preview} withPictures={withPictures} onWithPictures={setWithPictures} choice={choice} onChoice={setChoice} />
-          {saveError ? (
-            <Notice tone="danger" icon={<CircleAlert />} title="This page was not saved" className="mt-4">
-              {errorMessage(saveError)}
-            </Notice>
-          ) : null}
-          <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
-            <Button
-              variant="primary"
-              disabled={undecided}
-              loading={save.isPending && !confirming}
-              onClick={() => (replacing ? setConfirming(true) : save.mutate())}
-            >
-              {replacing ? "Replace with this copy" : "Save page"}
-            </Button>
-            {undecided ? <p className="text-small text-ink-muted">Choose what happens to the earlier copy first.</p> : null}
-          </div>
-        </>
-      ) : null}
+        {preview && !busy ? (
+          <>
+            <Found preview={preview} withPictures={withPictures} onWithPictures={setWithPictures} choice={choice} onChoice={setChoice} />
+            {saveError ? (
+              <Notice tone="danger" icon={<CircleAlert />} title="This page was not saved" className="mt-4">
+                {errorMessage(saveError)}
+              </Notice>
+            ) : null}
+            <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
+              <Button
+                variant="primary"
+                disabled={undecided}
+                loading={save.isPending && !confirming}
+                onClick={() => (replacing ? setConfirming(true) : save.mutate())}
+              >
+                {replacing ? "Replace with this copy" : "Save page"}
+              </Button>
+              {undecided ? <p className="text-small text-ink-muted">Choose what happens to the earlier copy first.</p> : null}
+            </div>
+          </>
+        ) : null}
 
-      {busy && !finished ? <Saving job={job} onCancel={() => cancel.mutate()} cancelling={cancel.isPending} /> : null}
-      {busy && job && finished ? <Outcome job={job} onAgain={startOver} /> : null}
+        {busy && !finished ? <Saving job={job} onCancel={() => cancel.mutate()} cancelling={cancel.isPending} /> : null}
+        {busy && job && finished ? <Outcome job={job} onAgain={startOver} /> : null}
+      </div>
 
       <ConfirmDialog
         open={confirming && Boolean(replacing)}

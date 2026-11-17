@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
+import { useServerConnection } from "@/lib/events";
 import { cn, formatNumber, plural } from "@/lib/utils";
 
 /** How long the account of an "add all" that went well stays on the screen without being asked for. */
@@ -70,13 +71,14 @@ function writeDismissed(collectionId: string, jobId: string): void {
  */
 export function useAddAll(collectionId: string, asked: ArchiveAddResult["scope"], enabled = true) {
   const client = useQueryClient();
+  const connected = useServerConnection();
   const status = useQuery({
     // Under "jobs", so that the server's word that a job moved refreshes it.
     queryKey: ["jobs", ARCHIVE_ADD_JOB, collectionId],
     queryFn: () => api.get<ArchiveAddStatus>(`/api/kiwix/books/${collectionId}/files/add-all`),
     select: (data) => data.job,
-    // The timer covers a dropped event connection.
-    refetchInterval: (query) => (isActive(query.state.data?.job) ? 1500 : false),
+    // Only while that word cannot arrive, because the connection that carries it is down.
+    refetchInterval: (query) => (!connected && isActive(query.state.data?.job) ? 1500 : false),
     retry: false,
     enabled,
   });

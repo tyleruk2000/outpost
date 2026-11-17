@@ -55,7 +55,7 @@ export interface OcrHooks {
 }
 
 export interface DocumentOcr {
-  status(): OcrStatus;
+  status(): Promise<OcrStatus>;
   /** "pdf" or "image" for a file OCR can read; undefined for every other type. */
   kindOf(row: Pick<DocumentRow, "ext">): "pdf" | "image" | undefined;
   /** Queues reading the scanned pages, or returns the job already doing so. Throws `AppError` when it cannot. */
@@ -87,8 +87,8 @@ export function createDocumentOcr(ctx: AppContext, hooks: OcrHooks): DocumentOcr
   }
 
   /** The languages to read with, in the order the setting gives them, and what is wrong if there are none. */
-  function languages(): { use: OcrLanguageFile[]; status: OcrStatus } {
-    const installed = installedLanguages(ctx.config.dataDir);
+  async function languages(): Promise<{ use: OcrLanguageFile[]; status: OcrStatus }> {
+    const installed = await installedLanguages(ctx.config.dataDir);
     const chosen = parseLanguages(settings.get("ocr.languages"));
     const wanted = chosen.length > 0 ? chosen : ["eng"];
     const byCode = new Map(installed.map((language) => [language.code, language]));
@@ -274,7 +274,7 @@ export function createDocumentOcr(ctx: AppContext, hooks: OcrHooks): DocumentOcr
       }
       const kind = kindOf(row);
       if (!kind) throw new PermanentJobError("OCR reads scanned PDFs and PNG, JPEG, GIF and WebP images only.", "unsupported");
-      const { use, status } = languages();
+      const { use, status } = await languages();
       if (!status.available) throw new PermanentJobError(status.reason ?? "OCR is not available.", "unsupported");
 
       let file: string;
@@ -368,7 +368,7 @@ export function createDocumentOcr(ctx: AppContext, hooks: OcrHooks): DocumentOcr
   });
 
   const service: DocumentOcr = {
-    status: () => languages().status,
+    status: async () => (await languages()).status,
     kindOf,
 
     async start(row, options = {}) {
@@ -379,7 +379,7 @@ export function createDocumentOcr(ctx: AppContext, hooks: OcrHooks): DocumentOcr
           `OCR reads scanned PDFs and PNG, JPEG, GIF and WebP images. "${row.title}" is ${formatForExt(row.ext)?.label ?? "another kind of file"}.`,
         );
       }
-      const { status } = languages();
+      const { status } = await languages();
       if (!status.available) throw new AppError("unsupported", status.reason ?? "OCR is not available.");
 
       const [underWay] = jobsFor(row.id);

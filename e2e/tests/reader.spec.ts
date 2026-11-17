@@ -175,6 +175,20 @@ test.describe("a collection that is a list of documents", () => {
     expect(errors).toEqual([]);
   });
 
+  test("says plainly when a file the collection's list names is not in the collection", async ({ page }) => {
+    await archiveAs("?missing=north.pdf");
+    try {
+      await page.goto(`/library/read/${id}/home?file=files%2Fnorth.pdf`);
+      await expect(page.getByRole("heading", { name: "This collection does not have that file" })).toBeVisible({ timeout: 15_000 });
+      // It is not a document of the library, so nothing is said about a record or a storage location.
+      await expect(page.getByText(/storage location|has a record/)).toHaveCount(0);
+      await page.getByRole("button", { name: "Back to the list" }).click();
+      await expect(page.getByRole("heading", { name: "Documents in this collection", level: 1 })).toBeVisible();
+    } finally {
+      await archiveAs();
+    }
+  });
+
   test.describe("on a phone", () => {
     test.use({ viewport: { width: 390, height: 780 }, hasTouch: true, isMobile: true });
 
