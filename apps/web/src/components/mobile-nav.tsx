@@ -7,8 +7,10 @@ import { Lamp } from "./lamp";
 import { LogoMark } from "./logo";
 import { allNav, isOwnScreen, knowledgeNav } from "./nav";
 
+// The five names grow with the text up to 15 px and no further, as a phone's own tab bars do: at a 32 px root
+// "More" went past the edge of a 390 px screen. Everything in the More sheet grows with the text.
 const tab =
-  "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 pt-1.5 pb-1 text-[0.6875rem] font-medium text-ink-muted aria-[current=page]:text-primary";
+  "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 pt-1.5 pb-1 text-[min(0.6875rem,15px)] font-medium text-ink-muted aria-[current=page]:text-primary";
 
 /** Top bar and bottom tabs for phones. The spine does not fit, so its job is split in two. */
 export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
@@ -20,6 +22,8 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
   // their heading, so that Import files reads as part of Notes here as it does on a wide screen.
   const tabbed = new Set(tabs.map((item) => item.to));
   const more = allNav.filter((item) => !tabbed.has(item.to) || (item.children?.length ?? 0) > 0);
+  // The screen in view is in the More sheet (Settings, a radio tool, Import files): More is lit, as a tab would be.
+  const inMore = !tabs.some((item) => (item.to === "/" ? pathname === "/" : isOwnScreen(pathname, item)));
 
   return (
     <>
@@ -49,7 +53,7 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
           </NavLink>
         ))}
         <Sheet.Root open={moreOpen} onOpenChange={setMoreOpen}>
-          <Sheet.Trigger className={tab}>
+          <Sheet.Trigger className={cn(tab, inMore && "text-primary")} aria-current={inMore ? "true" : undefined}>
             <Ellipsis aria-hidden className="size-[22px]" strokeWidth={1.6} />
             More
           </Sheet.Trigger>
