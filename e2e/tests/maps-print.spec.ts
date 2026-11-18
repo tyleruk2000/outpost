@@ -78,6 +78,15 @@ test.describe("printing the map", () => {
     await expect(dialog.getByRole("checkbox", { name: /Hill shading/ })).toBeChecked();
     await expect(dialog.getByRole("checkbox", { name: /Saved places/ })).toBeChecked();
     await dialog.getByRole("checkbox", { name: /Contour lines/ }).check();
+    // Magnetic north is shown only when asked for: the page is as it always was until then.
+    const mn = dialog.locator("svg[role=img] text").filter({ hasText: /^MN$/ });
+    const magnetic = dialog.getByRole("checkbox", { name: /^Magnetic north/ });
+    await expect(magnetic).not.toBeChecked();
+    await expect(mn).toHaveCount(0);
+    await magnetic.check();
+    await expect(mn).toHaveCount(1);
+    await magnetic.uncheck();
+    await expect(mn).toHaveCount(0);
     // This page is measured, so nothing is drawn across the lake: routes and places left by other tests come off.
     for (const name of [/Routes and tracks/, /Saved places/]) {
       const box = dialog.getByRole("checkbox", { name });

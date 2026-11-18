@@ -24,6 +24,7 @@ import { PdfButtons, PdfStatus, useMadePdf } from "@/features/library/made/pdf-a
 import { api, errorMessage } from "@/lib/api";
 import { usePrinting } from "@/lib/printing";
 import { mapsKeys, useMapOverview, useMarkers, useTracks } from "../data";
+import { useStoredState } from "../hooks";
 import { imageryCredits } from "../imagery/use-satellite";
 import type { ReadoutFormat } from "../lib/coords";
 import { formatBboxSize } from "../lib/geo";
@@ -205,8 +206,15 @@ export function PrintDialog({
   const [selection, setSelection] = useState<PrintSelection>({ overlays: {}, parts: {} });
   // A page that shows one route is most likely a page about that route.
   const [title, setTitle] = useState<string | null>(null);
-  /** Lines across the map pointing to magnetic north, for setting a compass anywhere on the sheet. */
-  const [magneticLinesOn, setMagneticLinesOn] = useState(true);
+  /**
+   * Magnetic north on the sheet: the MN arrow, its figure, and lines across the map to set a compass against. Off unless
+   * chosen, so the page is as it always was; the choice is remembered in this browser.
+   */
+  const [magneticOn, setMagneticOn] = useStoredState<boolean>(
+    "outpost.maps.print.magnetic",
+    (value): value is boolean => typeof value === "boolean",
+    false,
+  );
   const suggested = here.length === 1 ? here[0]!.name : "";
   const shownTitle = title ?? suggested;
 
@@ -278,7 +286,7 @@ export function PrintDialog({
       }
       return { status: "idle" };
     });
-  }, [held, printed, frame, pixels, shownTitle, resolution, credits, magneticLinesOn]);
+  }, [held, printed, frame, pixels, shownTitle, resolution, credits, magneticOn]);
 
   const date = DATE.format(new Date());
   const sheetOf = (pictures: Array<{ id: string; x: number; y: number; width: number; height: number }>) =>
@@ -292,7 +300,7 @@ export function PrintDialog({
       notes: printed?.notes,
       graticule: ticks,
       pictures,
-      magnetic: magneticAt(bbox, magneticLinesOn),
+      magnetic: magneticOn ? magneticAt(bbox, true) : null,
     });
   const sheet = sheetOf(made.status === "ready" ? made.pictures : [{ id: "preview", x: 0, y: 0, ...pixels }]);
   const pictureUrls =
@@ -535,16 +543,16 @@ export function PrintDialog({
                   <div className="flex items-start gap-3">
                     <Checkbox
                       id={`${titleId}-magnetic`}
-                      checked={magneticLinesOn}
+                      checked={magneticOn}
                       aria-describedby={`${titleId}-magnetic-hint`}
-                      onCheckedChange={(checked) => setMagneticLinesOn(checked === true)}
+                      onCheckedChange={(checked) => setMagneticOn(checked === true)}
                       className="mt-0.5"
                     />
                     <label htmlFor={`${titleId}-magnetic`} className="min-w-0 text-small text-ink">
-                      Magnetic north lines
+                      Magnetic north
                       <span id={`${titleId}-magnetic-hint`} className="block text-ink-muted">
-                        Blue lines across the map every 30 mm, pointing to magnetic north, to set a compass against anywhere on the sheet.
-                        True and magnetic north are drawn beside the scale either way.
+                        A blue MN arrow beside true north with its angle for today, and blue lines across the map every 30 mm pointing to
+                        magnetic north, to set a compass against anywhere on the sheet.
                       </span>
                     </label>
                   </div>
