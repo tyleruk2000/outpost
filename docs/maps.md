@@ -70,9 +70,9 @@ On the map itself:
 - The readout at the bottom shows the centre of the map; choose decimal degrees,
   degrees-minutes-seconds, British National Grid or Maidenhead locator, and copy it.
   With a mouse over the map it gives the pointer's position instead, and says which.
-- **The height of the ground** is written after the coordinates once the pointer has
-  rested ("57.00000, -3.39897 · 100 m"), from the terrain installed; on a phone it is
-  in the readout's opened state only. Metres or feet under Settings, Appearance. See
+- **The height of the ground** is written after the coordinates
+  ("57.00000, -3.39897 · 100 m") and follows them, from the terrain installed; on a
+  phone it is in the readout's opened state only. Metres or feet under Settings, Appearance. See
   [The height of the ground](#the-height-of-the-ground).
 - **A cross always marks the centre of the map**: the point the readout gives while it
   says "Centre", the Sun tab works its times out for, and a route drawn from the
@@ -208,12 +208,14 @@ before they share a location. On a plain `http://` LAN address they say so and p
 The readout at the foot of the map gives the height of the ground beside the
 coordinates, in the same figures: "57.00000, -3.39897 · 100 m".
 
-- **With a mouse** it is the ground under the pointer, once the pointer has rested for
-  a quarter of a second. While the pointer moves the figure is not shown, so it never
-  belongs to the last place. Opening the readout (the arrow at its end) gives the
-  height at the centre of the map.
-- **On a touch screen** it is the ground at the centre of the map, once the map has
-  stopped moving. **On a phone** there is no room for it in the folded readout, so it
+- **With a mouse** it is the ground under the pointer, and follows the pointer as it
+  moves: there is no need to hold it still. While the mouse is somewhere else (over a
+  panel, or off the window) it is the ground at the centre of the map, as the
+  coordinates beside it are. Heights are asked for a few times a second at most, so
+  while the pointer moves the figure is for ground a moment behind it; a figure that
+  cannot be brought up to date within about half a second is taken away instead.
+- **On a touch screen** it is the ground at the centre of the map, and follows the map
+  as it moves. **On a phone** there is no room for it in the folded readout, so it
   is shown only when the readout is opened, with a line on what it is.
 - **Where no terrain covers the point** (none installed, or the point is outside what
   is), the folded readout shows no height at all, never a zero or a guess. Opened, it
@@ -253,18 +255,20 @@ tool's sentences and chart, and the words of a repeater's range card.
   in metres and says so. Distances are not heights: they are kilometres with miles
   beside them, as before.
 
-**What it costs.** Nothing is asked while the pointer is not over the map, while the
-page is hidden, while the height could not be shown (a phone with the readout folded),
-or where no terrain is installed at all. A request that a newer point has made
-pointless is cancelled, and the last 32 answers are kept in the page, so going back
-over the same ground asks nothing. The server keeps the last four terrain tiles it
-decoded, so a pointer resting here and there over the same ground is a lookup, not a
-decode. Measured on 17 November 2026 with the made-up terrain of the end-to-end tests
-(64-cell tiles) at 1280 x 800: `/maps` at rest made no requests, visible or hidden, on a
-wide screen and on a phone; a scripted ten-second sweep of the pointer (368 moves, four
-rests of 0.4 s) asked for three heights (the fourth rest was over a card, not the map);
-each answer took 2 to 7 ms. A real 512-cell tile takes tens of milliseconds to decode
-the first time it is read; that was not measured with a real download.
+**What it costs.** Nothing is asked while the page is hidden, while the height could
+not be shown (a phone with the readout folded), or where no terrain is installed at
+all. One request is out at a time and they start at least a tenth of a second apart,
+so a pointer swept across the map, or a map being dragged, asks ten times a second at
+the very most and never once per movement; the last 32 answers are kept in the page,
+so going back over the same ground asks nothing, and a map at rest asks once. The
+server keeps the last four terrain tiles it decoded, so heights over the same ground
+are lookups, not decodes. Until 18 November 2026 a height was asked for only once the
+pointer had rested a quarter of a second and the figure was hidden while it moved; on
+the first Raspberry Pi that read as a readout with no height in it, so it now follows
+the pointer. Measured on 17 November 2026 with the made-up terrain of the end-to-end
+tests (64-cell tiles), each answer took 2 to 7 ms. A real 512-cell tile takes tens of
+milliseconds to decode the first time it is read; that was not measured with a real
+download.
 
 `GET /api/maps/height?at=<lat>,<lon>` answers `{ at, heightMeters, cellMeters }`
 (`PointHeight` in `packages/shared/src/maps.ts`), both null where no installed terrain

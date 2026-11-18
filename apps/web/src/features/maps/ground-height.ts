@@ -2,15 +2,19 @@
  * The height of the ground under the pointer, or at the centre of the map, for the
  * readout at the foot of the map.
  *
- * It is asked for only once the point has rested for a quarter of a second: never once
- * per movement of the mouse. A request that a newer point has made pointless is
- * cancelled, and the last few answers are kept, so going back over the same ground asks
- * nothing. Positions are taken to four decimal places of a degree (about 11 m, finer than
- * the cells of any terrain), so the same ground is the same question.
+ * The figure follows the point as it moves: it is there whenever a height can be had, not
+ * only once the mouse is held still. One request is out at a time and they start at least
+ * a tenth of a second apart, so a pointer swept across the map asks a few times a second
+ * and never once per movement. While the next answer is on its way the last figure stays
+ * (it is for ground a moment behind the pointer); if no answer comes within a little over
+ * half a second it goes, so a figure never sits beside coordinates it does not belong to.
+ * The last few answers are kept, so going back over the same ground asks nothing.
+ * Positions are taken to four decimal places of a degree (about 11 m, finer than the
+ * cells of any terrain), so the same ground is the same question.
  *
  * Nothing is asked while it could not be shown: with the page hidden, with the readout
- * folded on a phone (where the height is shown only when the readout is opened), with a
- * mouse that is not over the map, or with no terrain installed at all.
+ * folded on a phone (where the height is shown only when the readout is opened), or with
+ * no terrain installed at all.
  */
 import type { PointHeight } from "@outpost/shared";
 import { useEffect, useRef, useState } from "react";
@@ -27,20 +31,32 @@ export type GroundHeight =
   | { state: "none" }
   | { state: "failed" };
 
-/** How long a point must stay put before its height is asked for. */
-export const REST_MS = 250;
+/** The least time between the start of one request and the next. */
+export const PACE_MS = 100;
+/** How long the last figure may stand, while a newer point's is read, before it is taken away. */
+export const STALE_MS = 600;
 /** Answers kept, so that going back over the same ground asks nothing. */
 export const KEPT_ANSWERS = 32;
 
 type Ask = (at: LatLon, signal: AbortSignal) => Promise<PointHeight>;
 
 const IDLE: GroundHeight = { state: "idle" };
+const READING: GroundHeight = { state: "reading" };
 const round = (value: number) => Math.round(value * 10_000) / 10_000;
+const keyOf = (point: LatLon) => `${point.lat},${point.lon}`;
 
-/** Asks for one point at a time, after a rest, cancelling what a newer point supersedes. Kept apart from React so it can be tested with fake timers. */
+/** Asks for one point at a time, at a steady pace, always the newest wanted. Kept apart from React so it can be tested with fake timers. */
 export class HeightReader {
-  private timer: ReturnType<typeof setTimeout> | undefined;
+  /** Waiting out the pace before the next request. */
+  private pace: ReturnType<typeof setTimeout> | undefined;
+  /** Running while the figure shown is for ground the point has left. */
+  private stale: ReturnType<typeof setTimeout> | undefined;
   private request: AbortController | undefined;
+  /** The newest point not yet asked for. */
+  private next: LatLon | null = null;
+  /** The point last wanted: the same one again is no news. */
+  private wanted: string | null = null;
+  private askedAt = Number.NEGATIVE_INFINITY;
   private readonly kept = new Map<string, GroundHeight>();
   private shown: GroundHeight = IDLE;
 
@@ -52,85 +68,110 @@ export class HeightReader {
     this.onChange = onChange;
   }
 
-  /** A point to read once it has rested, or null for nothing. */
+  /** The point whose height is wanted now, or null for nothing. */
   want(at: LatLon | null): void {
-    this.cancel();
-    this.show(IDLE);
-    if (!at) return;
+    if (!at) {
+      this.stop();
+      return;
+    }
     const point = { lat: round(at.lat), lon: round(at.lon) };
-    this.timer = setTimeout(() => {
-      this.timer = undefined;
-      void this.read(point);
-    }, REST_MS);
-  }
-
-  /** Stops whatever is waiting or under way, and shows this. */
-  stop(reading: GroundHeight = IDLE): void {
-    this.cancel();
-    this.show(reading);
-  }
-
-  private cancel() {
-    if (this.timer !== undefined) clearTimeout(this.timer);
-    this.timer = undefined;
-    this.request?.abort();
-    this.request = undefined;
-  }
-
-  private show(reading: GroundHeight) {
-    if (reading === this.shown) return;
-    this.shown = reading;
-    this.onChange(reading);
-  }
-
-  private async read(point: LatLon) {
-    const key = `${point.lat},${point.lon}`;
+    const key = keyOf(point);
+    if (key === this.wanted) return;
+    this.wanted = key;
     const kept = this.kept.get(key);
     if (kept) {
       // Least recently used last.
       this.kept.delete(key);
       this.kept.set(key, kept);
+      // Whatever is waiting or under way is for ground the point has left.
+      this.cancel();
       this.show(kept);
       return;
     }
+    this.next = point;
+    if (this.shown.state !== "known") this.show(READING);
+    else this.stale ??= setTimeout(() => this.show(READING), STALE_MS);
+    this.pump();
+  }
+
+  /** Stops whatever is waiting or under way, and shows this. */
+  stop(reading: GroundHeight = IDLE): void {
+    this.cancel();
+    this.wanted = null;
+    this.show(reading);
+  }
+
+  private cancel() {
+    if (this.pace !== undefined) clearTimeout(this.pace);
+    this.pace = undefined;
+    this.next = null;
+    this.request?.abort();
+    this.request = undefined;
+  }
+
+  private show(reading: GroundHeight) {
+    if (this.stale !== undefined) clearTimeout(this.stale);
+    this.stale = undefined;
+    if (reading === this.shown || (reading.state === "reading" && this.shown.state === "reading")) return;
+    this.shown = reading;
+    this.onChange(reading);
+  }
+
+  /** Starts the next request, if one is wanted, none is out and the pace allows. */
+  private pump() {
+    if (!this.next || this.request || this.pace !== undefined) return;
+    const wait = this.askedAt + PACE_MS - Date.now();
+    if (wait > 0) {
+      this.pace = setTimeout(() => {
+        this.pace = undefined;
+        this.pump();
+      }, wait);
+      return;
+    }
+    const point = this.next;
+    this.next = null;
+    void this.read(point);
+  }
+
+  private async read(point: LatLon) {
     const request = new AbortController();
     this.request = request;
-    this.show({ state: "reading" });
+    this.askedAt = Date.now();
     try {
       const answer = await this.ask(point, request.signal);
       if (request.signal.aborted) return;
       const reading: GroundHeight =
         answer.heightMeters === null ? { state: "none" } : { state: "known", meters: answer.heightMeters, cellMeters: answer.cellMeters };
-      this.kept.set(key, reading);
+      this.kept.set(keyOf(point), reading);
       for (const oldest of this.kept.keys()) {
         if (this.kept.size <= KEPT_ANSWERS) break;
         this.kept.delete(oldest);
       }
       this.request = undefined;
+      // Shown even when the point has moved on since: it is the nearest ground known, and the newest is asked next.
       this.show(reading);
+      if (this.next && reading.state === "known") this.stale = setTimeout(() => this.show(READING), STALE_MS);
     } catch {
       if (request.signal.aborted) return;
       this.request = undefined;
-      this.show({ state: "failed" });
+      // A failure for ground the point has left says nothing about where it is now.
+      if (!this.next) this.show({ state: "failed" });
     }
+    this.pump();
   }
 }
 
 const askServer: Ask = (at, signal) => api.get<PointHeight>("/api/maps/height", { at: `${at.lat},${at.lon}` }, signal);
 
-/** True on a device whose main pointer can hover: a mouse or a trackpad, where the readout follows the pointer. */
-const canHover = () =>
-  typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(hover: hover)").matches;
-
 /**
  * The height for the readout. `active` is whether it can be shown now (the page in sight,
- * and on a phone the readout opened); `terrain` whether any terrain is installed;
- * `opened` whether the readout is opened, which on a device with a mouse is the one time
- * the centre is read (the mouse is then over the readout, not the map).
+ * and on a phone the readout opened); `terrain` whether any terrain is installed. It is
+ * for the same point as the coordinates beside it: the pointer while a mouse is over the
+ * map, and otherwise the centre.
  */
 export function useGroundHeight(
   engine: MapEngine,
-  { active, terrain, opened, ask = askServer }: { active: boolean; terrain: boolean; opened: boolean; ask?: Ask },
+  { active, terrain, ask = askServer }: { active: boolean; terrain: boolean; ask?: Ask },
 ): GroundHeight {
   const [reading, setReading] = useState<GroundHeight>(IDLE);
   const reader = useRef<HeightReader | null>(null);
@@ -147,25 +188,22 @@ export function useGroundHeight(
       heights.stop({ state: "none" });
       return;
     }
-    // On a touch screen the readout gives the centre; with a mouse, the pointer, or the centre while the readout is opened.
-    const centre = opened || !canHover();
     let pointer: LatLon | null = null;
-    const follow = () => heights.want(pointer ?? (centre ? engine.getCenter() : null));
+    const follow = () => heights.want(pointer ?? engine.getCenter());
     follow();
     const offPointer = engine.on("pointer", (position) => {
       pointer = position;
       follow();
     });
-    // Each frame of a move puts the rest off again: the centre is read once the map has stopped.
     const offMove = engine.on("move", () => {
-      if (!pointer && centre) follow();
+      if (!pointer) follow();
     });
     return () => {
       offPointer();
       offMove();
       heights.stop();
     };
-  }, [engine, active, terrain, opened]);
+  }, [engine, active, terrain]);
 
   return reading;
 }

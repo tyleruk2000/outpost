@@ -68,7 +68,6 @@ function CoordinateReadout({
   const height = useGroundHeight(engine, {
     active: Boolean(heights) && visible && (desktop || opened),
     terrain: heights?.terrain ?? false,
-    opened,
   });
   const source = useRef<HTMLSpanElement>(null);
   const pointer = useRef<LatLon | null>(null);

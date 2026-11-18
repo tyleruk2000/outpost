@@ -67,41 +67,60 @@ afterEach(() => {
 });
 
 describe("the height in the readout", () => {
-  it("with a mouse, shows the ground under the pointer once it has rested, beside the coordinates", async () => {
+  it("with a mouse, shows the ground under the pointer, beside the coordinates", async () => {
     screenOf({ desktop: true, mouse: true });
     asked.mockImplementation(answer(312.4));
     const map = fakeEngine();
     footer(map);
-    // The pointer is not over the map: nothing is asked.
-    await new Promise((resolve) => setTimeout(resolve, 400));
-    expect(asked).not.toHaveBeenCalled();
-
-    act(() => map.pointer({ lat: 54.51094, lon: -3.50013 }));
+    act(() => map.pointer({ lat: 54.61094, lon: -3.50013 }));
+    await waitFor(() => expect(asked).toHaveBeenLastCalledWith("/api/maps/height", { at: "54.6109,-3.5001" }, expect.anything()));
     await waitFor(() => expect(figure()).toHaveTextContent("· 312 m"));
-    expect(asked).toHaveBeenCalledTimes(1);
-    expect(asked.mock.calls[0]![1]).toEqual({ at: "54.5109,-3.5001" });
     // In the same line as the coordinates, in the same figures.
     expect(figure()!.parentElement).toHaveClass("font-mono");
-    expect(figure()!.parentElement).toHaveTextContent("54.51094, -3.50013 · 312 m");
+    expect(figure()!.parentElement).toHaveTextContent("54.61094, -3.50013 · 312 m");
     expect(figure()).toHaveAttribute(
       "title",
       expect.stringMatching(/not a surveyed spot height\. Above mean sea level, as the terrain data gives it\./),
     );
   });
 
-  it("shows nothing while the pointer moves, and nothing for where the pointer left", async () => {
+  it("with a mouse that is not over the map, shows the ground at the centre, as the coordinates do", async () => {
     screenOf({ desktop: true, mouse: true });
-    asked.mockImplementation(answer(312));
+    asked.mockImplementation(answer(96));
+    const map = fakeEngine();
+    footer(map);
+    await waitFor(() => expect(figure()).toHaveTextContent("· 96 m"));
+    expect(asked.mock.calls[0]![1]).toEqual({ at: "54.5109,-3.5001" });
+    expect(screen.getByText("Centre")).toBeInTheDocument();
+    // The pointer comes and goes: the centre again, without asking again.
+    act(() => map.pointer({ lat: 54.7, lon: -3.5 }));
+    await waitFor(() => expect(asked).toHaveBeenCalledTimes(2));
+    act(() => map.pointer(null));
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    expect(figure()).toHaveTextContent("· 96 m");
+    expect(asked).toHaveBeenCalledTimes(2);
+  });
+
+  it("goes on showing a figure while the pointer moves, without holding it still", async () => {
+    screenOf({ desktop: true, mouse: true });
+    asked.mockImplementation((path, query) => {
+      const lat = Number(String(query?.at).split(",")[0]);
+      return answer(Math.round(lat * 10))(path, query);
+    });
     const map = fakeEngine();
     footer(map);
     act(() => map.pointer({ lat: 54.5, lon: -3.5 }));
-    await waitFor(() => expect(figure()).not.toBeNull());
-    act(() => map.pointer({ lat: 54.6, lon: -3.5 }));
-    expect(figure()).toBeNull();
-    act(() => map.pointer(null));
-    await new Promise((resolve) => setTimeout(resolve, 400));
-    expect(figure()).toBeNull();
-    expect(asked).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(figure()).toHaveTextContent("· 545 m"));
+    const before = asked.mock.calls.length;
+    for (let step = 1; step <= 30; step += 1) {
+      act(() => map.pointer({ lat: 54.5 + step * 0.01, lon: -3.5 }));
+      // Never blank between one figure and the next.
+      expect(figure()).not.toBeNull();
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    // 300 ms of movement asks a few times, not thirty.
+    expect(asked.mock.calls.length - before).toBeLessThanOrEqual(5);
+    await waitFor(() => expect(figure()).toHaveTextContent("· 548 m"));
   });
 
   it("in feet, when that is chosen", async () => {
@@ -121,7 +140,7 @@ describe("the height in the readout", () => {
     const map = fakeEngine();
     footer(map, { terrain: true, onGetTerrain });
     act(() => map.pointer({ lat: 54.5, lon: -3.5 }));
-    await waitFor(() => expect(asked).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(asked).toHaveBeenLastCalledWith("/api/maps/height", { at: "54.5,-3.5" }, expect.anything()));
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(figure()).toBeNull();
     expect(screen.queryByText(/0 m/)).toBeNull();
