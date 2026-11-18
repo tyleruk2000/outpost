@@ -162,6 +162,69 @@ export function reachAlong(input: ReachInput): Reach {
 }
 
 /**
+ * What is in sight along one bearing, all of it: the stretches of ground in sight from the aerial, the furthest of them,
+ * and how much of the ground out to there is hidden.
+ *
+ * `reachAlong` ends a bearing at the first stretch out of sight longer than a kilometre. From a mast in a valley that
+ * is the reach; from a summit it is the opposite of the truth: the slopes just below fall away out of sight within a
+ * hundred metres, while other hills and the sea are in sight for tens of kilometres. Measured from Scafell Pike with a
+ * handheld at both ends (18 November 2026): the first stretch ended at 0.1 to 3.3 km on every bearing, and ground was
+ * in sight again 55 to 100 km out on every one. So the map shades what is in sight and leaves the rest clear, and the
+ * outline is the furthest ground in sight.
+ */
+export interface SightRuns {
+  /** Stretches of ground in sight, [from, to] in metres from the aerial, each sample counting for half a step either side. */
+  runs: Array<[number, number]>;
+  /** The furthest ground in sight on this bearing; 0 when none is. */
+  furthestMeters: number;
+  /**
+   * What ends the outline here: the ground beyond is out of sight (`sight`), it is still in sight at the maximum distance
+   * (`max`), or terrain runs out while the ground is in sight, so more may be (`terrain`).
+   */
+  limit: Reach["limit"];
+  /** Of the ground out to `furthestMeters`, weighted by area: what is hidden, and all of it. */
+  hiddenWeight: number;
+  totalWeight: number;
+}
+
+export function sightRunsAlong(input: ReachInput): SightRuns {
+  const seen = sightAlong(input);
+  const { distances } = input;
+  const runs: Array<[number, number]> = [];
+  const edgeBefore = (index: number) => (index === 0 ? 0 : (distances[index - 1]! + distances[index]!) / 2);
+  const edgeAfter = (index: number) => (index + 1 < distances.length ? (distances[index]! + distances[index + 1]!) / 2 : distances[index]!);
+  let furthestIndex = -1;
+  let lastKnown = -1;
+  for (let index = 0; index < seen.length; index += 1) {
+    const here = seen[index];
+    if (here === null) break;
+    lastKnown = index;
+    if (!here) continue;
+    furthestIndex = index;
+    const last = runs.at(-1);
+    if (last && index > 0 && seen[index - 1] === true) last[1] = edgeAfter(index);
+    else runs.push([edgeBefore(index), edgeAfter(index)]);
+  }
+  const limit: Reach["limit"] =
+    furthestIndex === -1 || furthestIndex < lastKnown ? "sight" : lastKnown === seen.length - 1 ? "max" : "terrain";
+  let hiddenWeight = 0;
+  let totalWeight = 0;
+  for (let index = 0; index <= furthestIndex; index += 1) {
+    const d = distances[index]!;
+    const weight = d * ((distances[index + 1] ?? d) - (distances[index - 1] ?? 0));
+    totalWeight += weight;
+    if (seen[index] === false) hiddenWeight += weight;
+  }
+  return {
+    runs: runs.map(([from, to]) => [Math.round(from), Math.round(to)]),
+    furthestMeters: furthestIndex === -1 ? 0 : distances[furthestIndex]!,
+    limit,
+    hiddenWeight,
+    totalWeight,
+  };
+}
+
+/**
  * The radio horizon over a smooth Earth, for a repeater with no terrain to work from:
  * √(2·k·R·h1) + √(2·k·R·h2), which with k = 4/3 is about 4.12 × (√h1 + √h2) km for
  * heights in metres above the ground around them.
@@ -193,12 +256,22 @@ export interface SightRange {
   /** One per bearing, clockwise from north, `360 / bearings.length` degrees apart. */
   bearings: Array<{
     bearingDeg: number;
+    /** The first unbroken stretch in sight (shadows under 1 km bridged): kept for what reads it; the map draws `runs`. */
     reachMeters: number;
+    /** The furthest ground in sight on this bearing: where the outline is drawn. */
+    furthestMeters?: number;
+    /** The stretches of ground in sight, [from, to] in metres: what the map shades. */
+    runs?: Array<[number, number]>;
+    /** What ends the outline at `furthestMeters` (see `SightRuns.limit`). */
+    outlineLimit?: Reach["limit"];
     limit: Reach["limit"];
     furtherMeters: number | null;
     unknownFromMeters: number | null;
   }>;
-  /** Of the ground inside the outline, the share hidden from the aerial by nearer ground (0 to 1); null with no terrain. */
+  /**
+   * Of the ground inside the outline (out to the furthest ground in sight on each bearing), the share hidden from the
+   * aerial by nearer ground (0 to 1); null with no terrain.
+   */
   hiddenShare: number | null;
   /** How fine the terrain that was read is, as in `TerrainProfile.terrain`. */
   terrain: { finestCellMeters: number; coarsestCellMeters: number; installedMaxZoom: number } | null;

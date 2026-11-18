@@ -46,7 +46,7 @@ test("a repeater's estimated range on a phone: folded out of the way, drawn larg
     ).toBeVisible();
     await expect(card.getByText(/Handheld 1\.5 m: held at head height\. Out to 100 km/)).toBeVisible();
     await expect(card.getByRole("textbox", { name: "Repeater aerial" })).toHaveValue("10");
-    await expect(card.getByText(/^In sight to about .* on most bearings/)).toBeVisible();
+    await expect(card.getByText(/^Ground in sight as far as about .* on most bearings/)).toBeVisible();
     await expect(card.getByText("Terrain covers only part of the area within 100 km (62 mi).")).toBeVisible();
     await expect(card.getByRole("button", { name: "Get terrain in Offline maps" })).toBeVisible();
     // What it is not, behind one disclosure.

@@ -86,7 +86,7 @@ describe("an estimated radio range from any point", () => {
       { at: "54.45420,-3.21160", aerial: "1.5", station: "1.5" },
       expect.anything(),
     );
-    expect(await screen.findByText(/^In sight to about .* on most bearings, from .* to .*\.$/)).toBeInTheDocument();
+    expect(await screen.findByText(/^Ground in sight as far as about .* on most bearings, from .* to .*\.$/)).toBeInTheDocument();
     expect(screen.getByText(/From “Scafell Pike”, 54\.45420, -3\.21160, ground 978 m above sea level/)).toBeInTheDocument();
     // Short until asked: the heights and what the estimate is are a press away.
     expect(screen.queryByLabelText("Your aerial")).toBeNull();
@@ -103,7 +103,7 @@ describe("an estimated radio range from any point", () => {
     asked.mockImplementation(answer("terrain"));
     show();
     act(() => latest.start({ position: { lat: 54.4542, lon: -3.2116 } }));
-    await screen.findByText(/^In sight to about/);
+    await screen.findByText(/^Ground in sight as far as about/);
     fireEvent.click(screen.getByRole("button", { name: /^Heights and details/ }));
     fireEvent.change(screen.getByLabelText("Your aerial"), { target: { value: "10" } });
     fireEvent.click(screen.getByRole("radio", { name: "Roof aerial" }));
@@ -133,7 +133,7 @@ describe("an estimated radio range from any point", () => {
     asked.mockImplementation(answer("terrain"));
     show();
     act(() => latest.start({ position: { lat: 54.4542, lon: -3.2116 } }));
-    await screen.findByText(/^In sight to about/);
+    await screen.findByText(/^Ground in sight as far as about/);
     fireEvent.click(screen.getByRole("button", { name: "Stop showing this range" }));
     await waitFor(() => expect(latest.card).toBeNull());
     expect(latest.outline).toBeNull();

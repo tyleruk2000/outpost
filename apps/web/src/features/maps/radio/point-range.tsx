@@ -146,7 +146,7 @@ export function usePointRange({
               {reading.note ? (
                 <p className="text-ink-muted">
                   {reading.note}{" "}
-                  {onOpenOffline ? (
+                  {onOpenOffline && reading.needsTerrain ? (
                     <button
                       type="button"
                       onClick={onOpenOffline}
@@ -216,8 +216,9 @@ export function usePointRange({
                   over ridges: radio often reaches less than this, and sometimes more.
                 </p>
                 <p>
-                  Each bearing ends where your aerial has been out of sight for more than 1 km. A dashed edge is where terrain ran out:
-                  there the shape is not from the ground. With no terrain it is the smooth-Earth radio horizon, a plain circle, and says so.
+                  The shaded ground is in sight of your aerial; ground left clear inside the outline is hidden by nearer ground, as the
+                  slopes just below a summit usually are. The outline is the furthest ground in sight on each bearing. A dashed edge is
+                  where terrain ran out. With no terrain it is the smooth-Earth radio horizon, a plain circle, and says so.
                 </p>
                 {terrain ? <p>{terrain}</p> : null}
               </div>

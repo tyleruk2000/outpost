@@ -19,7 +19,7 @@ test("a radio range from any point: from the right-click menu, said in a card an
     await page.getByRole("menuitem", { name: "Estimated radio range from here" }).click();
 
     const card = page.locator(".outpost-map-card").filter({ has: page.getByRole("heading", { name: "Estimated radio range" }) });
-    await expect(card.getByText(/^In sight to about .* on most bearings/)).toBeVisible({ timeout: 20_000 });
+    await expect(card.getByText(/^Ground in sight as far as about .* on most bearings/)).toBeVisible({ timeout: 20_000 });
     await card.getByRole("button", { name: /^Heights and details/ }).click();
     await expect(card.getByText(/Line of sight only\. Your aerial 1\.5 m above the ground here/)).toBeVisible();
     await card.getByRole("button", { name: /^Heights and details/ }).click();

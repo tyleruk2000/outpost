@@ -23,7 +23,7 @@ test("a repeater's estimated range on a wide screen: fitted beside the card, whi
     // Opened out it stays short: the long account is behind a closed disclosure, and scrolls inside the card when open.
     await folded.getByRole("button", { name: "Show the details" }).click();
     const card = page.getByRole("region", { name: "Estimated range" });
-    await expect(card.getByText(/^In sight to about .* on most bearings/)).toBeVisible();
+    await expect(card.getByText(/^Ground in sight as far as about .* on most bearings/)).toBeVisible();
     const whole = card.locator("xpath=ancestor::*[contains(@class, 'outpost-map-card')][1]");
     const map = (await page.locator(".outpost-map").boundingBox())!;
     expect((await whole.boundingBox())!.height).toBeLessThan(map.height * 0.8);

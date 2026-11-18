@@ -2158,10 +2158,12 @@ It is the repeaters' estimate, the same sums and the same outline (see
   the hand; give a mast's height if it is on one), and the other station: a handheld
   (1.5 m), a car (2 m) or a roof aerial (8 m). Under **Heights and details**; remembered
   on this device.
-- **What it is.** The ground a radio there can see: on each of 72 bearings, how far out
-  the other station stays in sight of your aerial over the installed terrain, out to
-  100 km. It is not a circle: a hill blocks one side and not another. The card gives the
-  usual reach, the nearest and the furthest, and the height of the ground there.
+- **What it is.** The ground a radio there can see: on each of 72 bearings, where the
+  other station would be in sight of your aerial over the installed terrain, out to
+  100 km. The ground in sight is shaded and the ground hidden by nearer ground (from a
+  summit, most of the slopes just below it) is left clear; the outline is the furthest
+  ground in sight. The card gives how far that is on most bearings, the nearest and the
+  furthest, how much of the ground within it is hidden, and the height of the ground there.
 - **What it is not.** An estimate of line of sight, not a promise: power, the band,
   aerials, woods and buildings and signals bending over ridges are not counted. Radio
   often reaches less than the outline, and sometimes more.

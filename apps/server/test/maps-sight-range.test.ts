@@ -15,6 +15,7 @@ import {
   reachAlong,
   type SightRange,
   sightAlong,
+  sightRunsAlong,
   smoothRangeMeters,
 } from "@outpost/shared";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -121,6 +122,51 @@ describe("how far a station stays in sight", () => {
     // In sight all the way to the end of the walk: the maximum distance is what stops it.
     const high = reachAlong({ groundMeters: 2000, ...ground(30_000, 0), aerialMeters: 10, stationMeters: 1.5 });
     expect(high.limit).toBe("max");
+  });
+
+  it("from a summit: the slopes below are hidden at once, but the far valley and the hill beyond are in sight", () => {
+    // A 900 m summit falling away on a convex slope to a valley at 100 m from 5 km out, then a 600 m hill at 30 to 32 km.
+    const shape = (d: number) => (d < 5000 ? 900 - 800 * (d / 5000) ** 2 : d >= 30_000 && d <= 32_000 ? 600 : 100);
+    const input = { groundMeters: 900, ...ground(40_000, 0, shape), aerialMeters: 1.5, stationMeters: 1.5 };
+    const reach = reachAlong(input);
+    const sight = sightRunsAlong(input);
+    // The first unbroken stretch is the top of the slope: what the outline was drawn from, wrongly, from a hilltop.
+    expect(reach.reachMeters).toBeLessThan(1500);
+    // In sight: the summit's own top, nothing of the convex slope below it, and the hill far out; the outline is that hill.
+    expect(sight.runs[0]![0]).toBe(0);
+    expect(sight.runs.at(-1)![1]).toBeGreaterThanOrEqual(32_000);
+    expect(sight.furthestMeters).toBeGreaterThanOrEqual(32_000);
+    expect(sight.limit).toBe("sight");
+    // Each stretch in sight matches the one-sample test, sample by sample.
+    const seen = sightAlong(input);
+    for (const [from, to] of sight.runs) {
+      for (let index = 0; index < input.distances.length; index += 1) {
+        const d = input.distances[index]!;
+        if (d > from + 50 && d < to - 50) expect(seen[index], `${d} m`).toBe(true);
+      }
+    }
+    // Most of the ground out to the hill is hidden.
+    expect(sight.hiddenWeight / sight.totalWeight).toBeGreaterThan(0.3);
+  });
+
+  it("says where the outline ends: still in sight at the end of the walk, or where terrain runs out in sight", () => {
+    const flat = (meters: number, at: (d: number) => number | null = () => 0) => ({
+      groundMeters: 2000,
+      ...ground(meters, 0, at),
+      aerialMeters: 10,
+      stationMeters: 1.5,
+    });
+    expect(sightRunsAlong(flat(5000)).limit).toBe("max");
+    expect(sightRunsAlong(flat(5000, (d) => (d > 3000 ? null : 0))).limit).toBe("terrain");
+    // Hemmed in by a wall 100 m off: the wall is in sight and nothing beyond it.
+    const walled = sightRunsAlong({
+      ...flat(5000),
+      groundMeters: 0,
+      aerialMeters: 0,
+      stationMeters: 0,
+      heights: flat(5000).heights.map((_, i) => (i === 0 ? 50 : 0)),
+    });
+    expect(walled).toMatchObject({ runs: [[0, 150]], furthestMeters: 100, limit: "sight" });
   });
 
   it("walks every 100 m to 25 km and every 250 m from there to 100 km, and finds points along a bearing", () => {

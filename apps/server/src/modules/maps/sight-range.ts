@@ -28,6 +28,7 @@ import {
   rangeDistances,
   reachAlong,
   type SightRange,
+  sightRunsAlong,
   smoothRangeMeters,
 } from "@outpost/shared";
 import { z } from "zod";
@@ -95,14 +96,18 @@ export function createSightRanger(sampler: ElevationSampler, tiles: Pick<TileSer
         ...near.heights.slice(index * nearCount, (index + 1) * nearCount),
         ...far.heights.slice(index * farCount, (index + 1) * farCount),
       ];
-      const reach = reachAlong({ groundMeters: ground, distances, heights, aerialMeters, stationMeters });
-      // The share hidden is weighted by the area each bearing's wedge holds inside the outline.
-      const area = reach.reachMeters ** 2;
-      hidden += reach.hiddenShare * area;
-      inside += area;
+      const input = { groundMeters: ground, distances, heights, aerialMeters, stationMeters };
+      const reach = reachAlong(input);
+      // What is in sight, all of it: the outline is the furthest ground in sight, the shading the stretches in sight.
+      const sight = sightRunsAlong(input);
+      hidden += sight.hiddenWeight;
+      inside += sight.totalWeight;
       return {
         bearingDeg,
         reachMeters: Math.round(reach.reachMeters),
+        furthestMeters: Math.round(sight.furthestMeters),
+        runs: sight.runs,
+        outlineLimit: sight.limit,
         limit: reach.limit,
         furtherMeters: reach.furtherMeters,
         unknownFromMeters: reach.unknownFromMeters,

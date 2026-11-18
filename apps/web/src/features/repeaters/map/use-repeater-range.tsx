@@ -401,7 +401,7 @@ function RangeControl({
                 {reading.note ? (
                   <p className="text-ink-muted">
                     {reading.note}{" "}
-                    {onOpenOffline ? (
+                    {onOpenOffline && reading.needsTerrain ? (
                       <button
                         type="button"
                         onClick={onOpenOffline}
@@ -435,8 +435,9 @@ function RangeControl({
                 ridges. A repeater may be heard beyond the outline and not heard inside it.
               </p>
               <p>
-                Each bearing ends where the aerial has been out of sight for more than 1 km, so a small hollow does not end it. A dashed
-                edge is where terrain ran out, or where none is held: there the shape is not from the ground.
+                The shaded ground is in sight of the aerial; ground left clear inside the outline is hidden by nearer ground. The outline is
+                the furthest ground in sight on each bearing. A dashed edge is where terrain ran out, or where none is held: there the shape
+                is not from the ground.
               </p>
               <p>
                 With no terrain the circle is the smooth-Earth radio horizon, about 4.12 × (√h1 + √h2) km for heights in metres above the

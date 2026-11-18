@@ -12,6 +12,7 @@ import {
   migrateRangePrefs,
   RANGE_KEY,
   RANGE_MOST,
+  rangeBounds,
   rangeData,
   rangeLayers,
   readRange,
@@ -66,14 +67,14 @@ describe("the estimate in words and on the map", () => {
     expect(RANGE_DEFAULT_AERIAL_METERS).toBe(10);
   });
 
-  it("says a ridge, the share hidden and high ground beyond", () => {
+  it("says a ridge and the share hidden", () => {
     const ridged = range("terrain", (bearing) =>
       bearing === 90 ? { reachMeters: 4000 } : bearing === 180 ? { furtherMeters: 41_000 } : {},
     );
     const reading = readRange(ridged);
-    expect(reading.title).toBe("In sight to about 18 km (11 mi) on most bearings, from 4 km (2.5 mi) to 18 km (11 mi).");
-    expect(reading.sentences).toContain("About 10% of the ground inside the outline is hidden from the aerial by nearer ground.");
-    expect(reading.sentences).toContain("Higher ground beyond the outline is in sight again on 1 bearing, up to 41 km (25 mi) away.");
+    expect(reading.title).toBe("Ground in sight as far as about 18 km (11 mi) on most bearings, from 4 km (2.5 mi) to 18 km (11 mi).");
+    // Said beside the answer: only the shaded ground is in sight.
+    expect(reading.note).toBe("About 10% of the ground within it is hidden by nearer ground: only the shaded ground is in sight.");
     expect(reading.needsTerrain).toBe(false);
     // The few words for the folded card say the nearest as well, when none goes further than most.
     expect(reading.short).toBe("Mostly about 18 km, down to 4 km");
@@ -82,7 +83,7 @@ describe("the estimate in words and on the map", () => {
   it("says a spike in the few words too, rather than only where most bearings end", () => {
     const spiked = readRange(range("terrain", (bearing) => (bearing === 45 ? { reachMeters: 8000 } : { reachMeters: 1000 })));
     expect(spiked.short).toBe("Mostly about 1 km, up to 8 km");
-    expect(spiked.title).toBe("In sight to about 1 km (0.5 mi) on most bearings, from 1 km (0.5 mi) to 8 km (5 mi).");
+    expect(spiked.title).toBe("Ground in sight as far as about 1 km (0.5 mi) on most bearings, from 1 km (0.5 mi) to 8 km (5 mi).");
     expect(readRange(range("terrain")).short).toBe("In sight to about 18 km");
     expect(readRange(range("partial", (bearing) => (bearing === 90 ? { reachMeters: 41_000 } : {}))).short).toBe(
       "Mostly 18 km, up to 41 km, terrain partial",
@@ -110,7 +111,9 @@ describe("the estimate in words and on the map", () => {
   it("draws an outline with a dashed edge where terrain ran out, and a dashed circle with none", () => {
     const cut = rangeData(range("partial", (bearing) => (bearing >= 100 && bearing <= 120 ? { limit: "terrain", reachMeters: 9000 } : {})));
     const area = cut.features.find((feature) => feature.properties.kind === "area")!;
-    expect((area.geometry.coordinates as number[][][])[0]).toHaveLength(RANGE_BEARINGS + 1);
+    // Shaded: a wedge for each stretch in sight on each bearing (here one each, from the aerial out).
+    expect(area.geometry.type).toBe("MultiPolygon");
+    expect(area.geometry.coordinates as unknown[]).toHaveLength(RANGE_BEARINGS);
     const edges = cut.features.filter((feature) => feature.properties.kind === "edge");
     // Solid, then dashed round the bearings that ran out, then solid again.
     expect(edges.map((edge) => edge.properties.dashed)).toEqual([false, true, false]);
@@ -281,7 +284,7 @@ describe("the estimated range switch", () => {
     answer(await json(range("terrain")));
     // Drawn, the card folds to one line and the outline is brought into view.
     await unfold();
-    expect(screen.getByText("In sight to about 18 km (11 mi) on most bearings.")).toBeInTheDocument();
+    expect(screen.getByText("Ground in sight as far as about 18 km (11 mi) on most bearings.")).toBeInTheDocument();
     expect(labelled()).toEqual(["QZ3RNG"]);
     await waitFor(() => expect(engine.fitBounds).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole("button", { name: "Get terrain in Offline maps" })).toBeNull();
@@ -321,7 +324,7 @@ describe("the estimated range switch", () => {
     show();
     await userEvent.click(screen.getByRole("switch", { name: "Estimated range" }));
     await unfold();
-    expect(screen.getByText("Terrain covers only part of the area within 100 km (62 mi).")).toBeInTheDocument();
+    expect(screen.getByText(/Terrain covers only part of the area within 100 km \(62 mi\)\.$/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Get terrain in Offline maps" })).toBeInTheDocument();
     // The fuller account is behind the disclosure.
     await userEvent.click(screen.getByText("What this is, and is not"));
@@ -340,7 +343,7 @@ describe("the estimated range switch", () => {
     answerRange = (at) => json(range("terrain", () => ({}), at));
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     await unfold();
-    expect(screen.getByText("In sight to about 18 km (11 mi) on most bearings.")).toBeInTheDocument();
+    expect(screen.getByText("Ground in sight as far as about 18 km (11 mi) on most bearings.")).toBeInTheDocument();
   });
 
   it("folds the card to one line once the outline is drawn, on a phone as on a wide screen, and unfolds it again", async () => {
@@ -461,5 +464,35 @@ describe("ranges chosen repeater by repeater", () => {
     show(15, vi.fn(), false, { open: null, visible: false });
     expect(fetched).not.toHaveBeenCalled();
     expect(drawn()).toEqual([]);
+  });
+});
+
+describe("what is in sight from a summit", () => {
+  // As from Scafell Pike: the slopes just below are out of sight at once, other hills far off are in sight.
+  const summit = (bearing: number) => ({
+    reachMeters: 100,
+    furthestMeters: 60_000,
+    runs: [
+      [0, 150],
+      [25_000, 32_000],
+      [55_000, 60_000],
+    ] as Array<[number, number]>,
+    outlineLimit: "sight" as const,
+    bearingDeg: bearing,
+  });
+
+  it("draws the outline at the furthest ground in sight, shades only the stretches in sight, and says most is hidden", () => {
+    const answer = { ...range("terrain", summit), hiddenShare: 0.82 };
+    const reading = readRange(answer, "here");
+    expect(reading.title).toBe("Ground in sight as far as about 60 km (37 mi) on most bearings.");
+    expect(reading.note).toBe("About 80% of the ground within it is hidden by nearer ground: only the shaded ground is in sight.");
+    expect(reading.needsTerrain).toBe(false);
+    const data = rangeData(answer, "Scafell Pike");
+    const area = data.features.find((feature) => feature.properties.kind === "area")!;
+    expect(area.geometry.coordinates as unknown[]).toHaveLength(RANGE_BEARINGS * 3);
+    // The outline is out at 60 km, not at the 100 m where the first slope falls away.
+    const [west, south, east, north] = rangeBounds(answer);
+    expect(north - south).toBeGreaterThan(1);
+    expect(east - west).toBeGreaterThan(1.5);
   });
 });

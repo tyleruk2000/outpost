@@ -350,10 +350,16 @@ map's tools have only the one button for repeaters, which hides the outlines wit
 dots and leaves the choice as it was.
 
 **What it is.** An estimate of line of sight only: on each of 72 bearings, 5° apart,
-how far out a station at a stated height above the ground still has line of sight to
-the repeater's aerial, over the terrain installed on this device, out to 100 km. The
-reach on each bearing is joined into one outline, drawn as a thin ink line with a light
-wash inside, labelled with the repeater's callsign along its edge, so that where
+where a station at a stated height above the ground would have line of sight to the
+repeater's aerial, over the terrain installed on this device, out to 100 km. The ground
+in sight is shaded with a light wash, and ground hidden by nearer ground is left clear;
+the outline, a thin ink line, is the furthest ground in sight on each bearing. The card
+says how far that is on most bearings and, beside it, how much of the ground within it is
+hidden. Until 18 November 2026 the outline was the first unbroken stretch in sight (a
+shadow under 1 km bridged), which from a hilltop is nearly nothing: from Scafell Pike, with
+a handheld at both ends, it ended 0.1 to 3.3 km out on every bearing, where the slopes just
+below fall out of sight, while ground was in sight again 55 to 100 km away on every one.
+The outline is labelled with the repeater's callsign along its edge, so that where
 several are on each can be told from the others. Where outlines cross, the washes add
 up and the labels give way to each other rather than overprint. Where there is terrain the
 outline is an irregular shape, not a circle. It has no colour of its own, so that it is

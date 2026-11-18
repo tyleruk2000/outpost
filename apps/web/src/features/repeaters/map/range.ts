@@ -140,15 +140,15 @@ export function readRange(range: SightRange, where: "repeater" | "here" = "repea
       needsTerrain: true,
     };
   }
-  const reaches = range.bearings.map((bearing) => bearing.reachMeters);
+  const reaches = range.bearings.map(furthestOf);
   const typical = median(reaches);
   const least = Math.min(...reaches);
   const most = Math.max(...reaches);
   const sentences: string[] = [];
   const spread = formatReach(least) === formatReach(most) ? "" : `, from ${formatReach(least)} to ${formatReach(most)}`;
-  const title = `In sight to about ${formatReach(typical)} on most bearings${spread}.`;
+  const title = `Ground in sight as far as about ${formatReach(typical)} on most bearings${spread}.`;
 
-  const cut = range.bearings.filter((bearing) => bearing.limit === "terrain").length;
+  const cut = range.bearings.filter((bearing) => limitOf(bearing) === "terrain").length;
   if (range.coverage === "partial") {
     sentences.push(
       cut > 0
@@ -156,22 +156,17 @@ export function readRange(range: SightRange, where: "repeater" | "here" = "repea
         : `Terrain is held for only part of the area within ${max}. The outline itself is complete, but where none is held, high ground further out could be in sight.`,
     );
   }
-  const capped = range.bearings.filter((bearing) => bearing.limit === "max").length;
+  const capped = range.bearings.filter((bearing) => limitOf(bearing) === "max").length;
   if (capped > 0)
     sentences.push(
       `On ${capped} ${capped === 1 ? "bearing" : "bearings"} it is still in sight at ${max}, where the estimate stops looking.`,
     );
+  // Said beside the answer, not behind the disclosure: from a hilltop much of the ground within the outline is hidden.
   const share = range.hiddenShare ?? 0;
-  if (share >= 0.05) {
-    sentences.push(`About ${Math.round(share * 20) * 5}% of the ground inside the outline is hidden from the aerial by nearer ground.`);
-  }
-  const further = range.bearings.filter((bearing) => bearing.furtherMeters !== null);
-  if (further.length > 0) {
-    const furthest = Math.max(...further.map((bearing) => bearing.furtherMeters!));
-    sentences.push(
-      `Higher ground beyond the outline is in sight again on ${further.length} ${further.length === 1 ? "bearing" : "bearings"}, up to ${formatReach(furthest)} away.`,
-    );
-  }
+  const hiddenNote =
+    share >= 0.05
+      ? `About ${Math.round(share * 20) * 5}% of the ground within it is hidden by nearer ground: only the shaded ground is in sight.`
+      : null;
   const partial = range.coverage === "partial";
   // A few words that do not hide a spike: where most bearings end, and the furthest (or the nearest, when none goes further).
   const [km, far, near] = [formatKm(typical), formatKm(most), formatKm(least)];
@@ -184,7 +179,7 @@ export function readRange(range: SightRange, where: "repeater" | "here" = "repea
       : tail
         ? `Mostly about ${km}${tail}`
         : `In sight to about ${km}`,
-    note: partial ? `Terrain covers only part of the area within ${max}.` : null,
+    note: [hiddenNote, partial ? `Terrain covers only part of the area within ${max}.` : null].filter(Boolean).join(" ") || null,
     sentences,
     needsTerrain: partial,
   };
@@ -217,11 +212,40 @@ function outlineOf(range: SightRange): { ring: Ring; dashed: boolean[] } {
     return { ring, dashed: Array.from({ length: steps }, () => true) };
   }
   const { bearings } = range;
-  const ring = [...bearings, bearings[0]!].map((bearing) => point(bearing.bearingDeg, bearing.reachMeters));
+  const ring = [...bearings, bearings[0]!].map((bearing) => point(bearing.bearingDeg, furthestOf(bearing)));
   const dashed = bearings.map(
-    (bearing, index) => bearing.limit === "terrain" || bearings[(index + 1) % bearings.length]!.limit === "terrain",
+    (bearing, index) => limitOf(bearing) === "terrain" || limitOf(bearings[(index + 1) % bearings.length]!) === "terrain",
   );
   return { ring, dashed };
+}
+
+type Bearing = SightRange["bearings"][number];
+/** The furthest ground in sight on a bearing: where the outline is. An answer from before it was given has only the reach. */
+const furthestOf = (bearing: Bearing) => bearing.furthestMeters ?? bearing.reachMeters;
+const limitOf = (bearing: Bearing) => bearing.outlineLimit ?? bearing.limit;
+
+/**
+ * The ground in sight as shapes to shade: on each bearing, a wedge as wide as the bearing for each stretch in sight.
+ * Ground hidden by nearer ground is left clear, which from a hilltop is most of what lies just below it.
+ */
+function seenShapes(range: SightRange): Array<Array<[number, number]>> {
+  const step = 360 / Math.max(1, range.bearings.length);
+  const point = (bearing: number, meters: number): [number, number] => {
+    const at = destinationPoint(range.at, bearing, meters);
+    return [Number(at.lon.toFixed(6)), Number(at.lat.toFixed(6))];
+  };
+  const shapes: Array<Array<[number, number]>> = [];
+  for (const bearing of range.bearings) {
+    const runs = bearing.runs ?? (bearing.reachMeters > 0 ? [[0, bearing.reachMeters] as [number, number]] : []);
+    const [left, right] = [bearing.bearingDeg - step / 2, bearing.bearingDeg + step / 2];
+    for (const [from, to] of runs) {
+      if (to <= from) continue;
+      const outer = [point(left, to), point(bearing.bearingDeg, to), point(right, to)];
+      // From the aerial itself the wedge is a slice of pie; further out, a piece of a ring.
+      shapes.push(from <= 0 ? [point(0, 0), ...outer, point(0, 0)] : [point(left, from), ...outer, point(right, from), point(left, from)]);
+    }
+  }
+  return shapes;
 }
 
 /**
@@ -236,9 +260,17 @@ export function rangesData(ranges: Array<{ range: SightRange; name: string }>): 
 export function rangeData(range: SightRange | undefined, name = ""): FeatureCollection {
   if (!range) return { type: "FeatureCollection", features: [] };
   const { ring, dashed } = outlineOf(range);
-  const features: FeatureCollection["features"] = [
-    { type: "Feature", properties: { kind: "area", name }, geometry: { type: "Polygon", coordinates: [ring] } },
-  ];
+  // The wash: with terrain, only the ground in sight; without, the plain circle it is.
+  const features: FeatureCollection["features"] =
+    range.coverage === "none"
+      ? [{ type: "Feature", properties: { kind: "area", name }, geometry: { type: "Polygon", coordinates: [ring] } }]
+      : [
+          {
+            type: "Feature",
+            properties: { kind: "area", name },
+            geometry: { type: "MultiPolygon", coordinates: seenShapes(range).map((shape) => [shape]) },
+          },
+        ];
   // Runs of sides that are drawn the same way, so the edge is a few lines rather than one per side.
   let start = 0;
   for (let index = 1; index <= dashed.length; index += 1) {

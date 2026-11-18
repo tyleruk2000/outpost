@@ -528,6 +528,11 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 
 #### Maps
 
+- **The estimated range shades what is in sight**, for repeaters and points alike: ground
+  in sight is shaded, ground hidden by nearer ground is left clear, and the outline is the
+  furthest ground in sight. It was the first unbroken stretch in sight, which from a
+  hilltop is nearly nothing: from Scafell Pike it said 0.1 to 3.3 km where ground was in
+  sight 55 to 100 km away.
 - **Estimated radio range from any point**: press and hold the map (or right-click) and
   choose **Estimated radio range from here** for the repeaters' line-of-sight estimate
   from a hilltop or any place: an outline shaped by the terrain, the answer in words, your
