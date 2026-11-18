@@ -19,7 +19,8 @@ export const ERASE_CONFIRMATION = "erase everything";
  * What an installed thing is, as a person would sort them. A "sheet" is a catalogue
  * sheet or book: one item in Explore that is also one or more documents in the library.
  */
-export type ManagedKind = "zim" | "map" | "terrain" | "places" | "sheet" | "file" | "model" | "dataset" | "document";
+/** "layer" is a dataset drawn on the map (reference layers: Natural Earth, airports, OpenStreetMap extracts); "dataset" is the rest. */
+export type ManagedKind = "zim" | "map" | "terrain" | "places" | "layer" | "sheet" | "file" | "model" | "dataset" | "document";
 
 /**
  * Where it came from. "downloaded" came from the catalogue or a download and can be
@@ -245,6 +246,7 @@ export type UsageId =
   | "map"
   | "terrain"
   | "places"
+  | "layer"
   | "sheet"
   | "file"
   | "model"

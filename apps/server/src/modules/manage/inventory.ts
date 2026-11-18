@@ -136,7 +136,14 @@ export function createInventory(ctx: AppContext, missingDocuments: () => Readonl
             .filter((document): document is DocumentRef => document !== undefined && !claimed.has(document.id));
       for (const document of linked) claimed.add(document.id);
 
-      const kind: ManagedKind = row.kind === "file" && linked.length > 0 ? "sheet" : row.kind;
+      // A dataset read onto the map (a reference layer) is told apart from the radio data, so that the map's own files
+      // can be found and moved together: maps, terrain, place names and these.
+      const kind: ManagedKind =
+        row.kind === "file" && linked.length > 0
+          ? "sheet"
+          : row.kind === "dataset" && (row.meta as Record<string, unknown> | null)?.reference
+            ? "layer"
+            : row.kind;
       // Maps, terrain and place names only ever arrive by download, unless a person
       // pointed Outpost at an archive of their own. Anything else needs a catalogue
       // entry or a download record to count as something that can be fetched again.

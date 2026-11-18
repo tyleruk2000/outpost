@@ -28,6 +28,7 @@ export const kindNames: Record<ManagedKind, { one: string; many: string }> = {
   map: { one: "Map region", many: "Maps" },
   terrain: { one: "Terrain", many: "Terrain" },
   places: { one: "Place names", many: "Place names" },
+  layer: { one: "Map layer", many: "Map layers" },
   sheet: { one: "Catalogue sheet or book", many: "Catalogue sheets and books" },
   file: { one: "Catalogue file", many: "Other catalogue files" },
   model: { one: "Search model", many: "Search models" },
@@ -36,7 +37,7 @@ export const kindNames: Record<ManagedKind, { one: string; many: string }> = {
 };
 
 /** The order kinds are offered in filters and listed in summaries. */
-export const kindOrder: ManagedKind[] = ["zim", "map", "terrain", "places", "sheet", "file", "model", "dataset", "document"];
+export const kindOrder: ManagedKind[] = ["zim", "map", "terrain", "places", "layer", "sheet", "file", "model", "dataset", "document"];
 
 // ── What is taking the space ──
 
@@ -50,7 +51,7 @@ export const usageGroups: UsageGroup[] = [
   {
     title: "Downloaded",
     description: "From the catalogue or the map. All of it can be fetched again.",
-    ids: ["zim", "map", "terrain", "places", "sheet", "file", "model", "dataset"],
+    ids: ["zim", "map", "terrain", "places", "layer", "sheet", "file", "model", "dataset"],
   },
   {
     title: "Yours",
@@ -74,6 +75,7 @@ export const usageNames: Record<UsageId, string> = {
   map: kindNames.map.many,
   terrain: kindNames.terrain.many,
   places: kindNames.places.many,
+  layer: kindNames.layer.many,
   sheet: kindNames.sheet.many,
   file: kindNames.file.many,
   model: kindNames.model.many,

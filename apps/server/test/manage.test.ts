@@ -234,6 +234,40 @@ describe("everything installed", () => {
   });
 });
 
+describe("the map's own files", () => {
+  it("lists a reference layer as a map layer, apart from the radio data", async () => {
+    const w = await world();
+    const { collections, storage } = w.app.ctx.services;
+    const internal = storage.list().find((location) => location.isDefault)!;
+    const write = (relPath: string) => {
+      const file = path.join(w.internal, relPath);
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, testBytes(4_000, 9));
+    };
+    write("collections/reference/natural-earth/countries.geojson");
+    write("collections/propagation/solar-cycle.json");
+    const layer = await collections.create({
+      kind: "dataset",
+      title: "Country boundaries (Natural Earth 1:50m)",
+      locationId: internal.id,
+      relPath: "collections/reference/natural-earth/countries.geojson",
+      meta: { reference: { provider: "natural-earth" } } as never,
+    });
+    const radio = await collections.create({
+      kind: "dataset",
+      title: "Solar cycle prediction",
+      locationId: internal.id,
+      relPath: "collections/propagation/solar-cycle.json",
+      meta: { dataset: "solar-cycle" } as never,
+    });
+    const listed = await items(w.app);
+    expect(listed.find((item) => item.id === layer.id)?.kind).toBe("layer");
+    expect(listed.find((item) => item.id === radio.id)?.kind).toBe("dataset");
+    const usage = await measured(w.app);
+    expect(usage.rows.find((row) => row.id === "layer")).toMatchObject({ count: 1, bytes: 4_000 });
+  });
+});
+
 describe("a book", () => {
   it("is one item with its chapters inside it, and moves and goes as one", async () => {
     const w = await world();
