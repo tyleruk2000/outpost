@@ -277,14 +277,17 @@ export function integrityVerdict(
   integrity: DownloadDetail["integrity"],
   state: DownloadDto["state"],
 ): { tone: Tone; title: string; text: string } {
-  const { sha256Expected: expected, sha256Actual: actual } = integrity;
+  // What the source published and what the file has by the same measure: a SHA-256, or the MD5 some sources give instead.
+  const byMd5 = !integrity.sha256Expected && Boolean(integrity.md5Expected);
+  const expected = byMd5 ? integrity.md5Expected : integrity.sha256Expected;
+  const actual = byMd5 ? integrity.md5Actual : integrity.sha256Actual;
   if (expected && actual) {
     return expected === actual
       ? { tone: "success", title: "Verified", text: "The file received matches the checksum published by the source." }
       : {
           tone: "danger",
           title: "Mismatch",
-          text: "The file received does not match the checksum published by the source, so it was not installed. It may have been damaged on the way or changed at the source.",
+          text: "The file received does not match the checksum published by the source, so it was deleted and nothing was installed. It may have been damaged on the way or as it was written to storage, or changed at the source. Retry fetches it again.",
         };
   }
   if (expected) {

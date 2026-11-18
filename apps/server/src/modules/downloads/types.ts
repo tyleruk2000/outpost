@@ -30,6 +30,8 @@ export interface StartDownload {
   /** Expected size, used for the free-space check and progress before the server answers. */
   sizeBytes?: number;
   sha256?: string;
+  /** An MD5 the publisher gives beside the file, where that is the checksum there is (Geofabrik). Checked as a SHA-256 is. */
+  md5?: string;
   catalogEntryId?: string;
   /** Name of a registered fetcher. Defaults to "http". */
   fetcher?: string;

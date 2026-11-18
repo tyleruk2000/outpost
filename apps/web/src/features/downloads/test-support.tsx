@@ -263,7 +263,7 @@ export function detail(over: Partial<DownloadDetail> = {}): DownloadDetail {
       etag: null,
       lastModified: null,
     },
-    integrity: { sha256Expected: "a".repeat(64), sha256Actual: null, verified: null },
+    integrity: { sha256Expected: "a".repeat(64), sha256Actual: null, md5Expected: null, md5Actual: null, verified: null },
     destination: {
       locationId: "loc1",
       locationName: "Internal storage",

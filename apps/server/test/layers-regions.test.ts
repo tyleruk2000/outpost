@@ -8,6 +8,7 @@ import fs from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import type {
+  DownloadDetail,
   NearestResponse,
   ReferenceEstimate,
   ReferenceOverlayResponse,
@@ -260,7 +261,15 @@ describe("a region on a real test server", () => {
     const { downloads } = await fetchRegions(["us/kentucky"]);
     const row = app.ctx.services.downloads.get(downloads[0]!.id)!;
     expect(row.state).toBe("failed");
-    expect(row.error).toMatch(/does not match the MD5 Geofabrik published/);
+    // The downloader holds it to the MD5 read with the estimate, shows that, and deletes what fails it.
+    expect(row.errorKind).toBe("checksum_mismatch");
+    expect(row.error).toMatch(/does not match its published checksum/);
+    const { integrity } = (await app.api("GET", `/api/downloads/${row.id}`)).body as DownloadDetail;
+    expect(integrity.md5Expected).toMatch(/^[0-9a-f]{32}$/);
+    expect(integrity.md5Actual).toMatch(/^[0-9a-f]{32}$/);
+    expect(integrity.verified).toBe(false);
+    const folder = app.ctx.services.storage.resolve(row.locationId, "collections/reference/osm-extract");
+    expect(fs.readdirSync(folder)).toEqual([]);
     expect(await packs()).toEqual([]);
   });
 

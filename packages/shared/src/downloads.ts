@@ -108,7 +108,11 @@ export interface DownloadDetail {
     sha256Expected: string | null;
     /** Checksum of what was received, once it has been checked. */
     sha256Actual: string | null;
-    /** True when both exist and match; null while unknown. */
+    /** An MD5 published by the source, where that is the checksum it gives (Geofabrik). */
+    md5Expected: string | null;
+    /** MD5 of what was received, once it has been checked against a published one. */
+    md5Actual: string | null;
+    /** True when what the source published and what was received both exist and match; null while unknown. */
     verified: boolean | null;
   };
   destination: {

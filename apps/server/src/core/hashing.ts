@@ -1,21 +1,30 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 
+type HashOptions = { signal?: AbortSignal; onProgress?: (bytes: number) => void };
+
 /**
- * SHA-256 of a file, read as a stream so that multi-gigabyte archives never sit in
- * memory. `onProgress` receives the number of bytes hashed so far.
+ * Checksums of a file by several algorithms in one reading of it, as a stream so that
+ * multi-gigabyte archives never sit in memory. `onProgress` receives the number of bytes
+ * hashed so far.
  */
-export async function sha256File(
+export async function hashFile<Algorithm extends string>(
   file: string,
-  options: { signal?: AbortSignal; onProgress?: (bytes: number) => void } = {},
-): Promise<string> {
-  const hash = createHash("sha256");
+  algorithms: readonly Algorithm[],
+  options: HashOptions = {},
+): Promise<Record<Algorithm, string>> {
+  const hashes = algorithms.map((algorithm) => createHash(algorithm));
   let seen = 0;
   const stream = fs.createReadStream(file, { highWaterMark: 1024 * 1024, signal: options.signal });
   for await (const chunk of stream) {
-    hash.update(chunk as Buffer);
+    for (const hash of hashes) hash.update(chunk as Buffer);
     seen += (chunk as Buffer).length;
     options.onProgress?.(seen);
   }
-  return hash.digest("hex");
+  return Object.fromEntries(algorithms.map((algorithm, index) => [algorithm, hashes[index]!.digest("hex")])) as Record<Algorithm, string>;
+}
+
+/** SHA-256 of a file. */
+export async function sha256File(file: string, options: HashOptions = {}): Promise<string> {
+  return (await hashFile(file, ["sha256"], options)).sha256;
 }

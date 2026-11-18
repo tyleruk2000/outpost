@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
+import type { DownloadDetail } from "@outpost/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OFFLINE_MESSAGE } from "../src/modules/downloads/service.ts";
 import type { DownloadKind, DownloadRow, Installer, StartDownload } from "../src/modules/downloads/types.ts";
@@ -407,12 +408,58 @@ describe("failures", () => {
 
     expect(row.state).toBe("failed");
     expect(row.errorKind).toBe("checksum_mismatch");
-    expect(row.error).toMatch(/corrupt or had been tampered with/);
+    expect(row.error).toMatch(/damaged on the way or as it was written to storage, or had been tampered with/);
     expect(row.error).toMatch(/nothing was installed/);
     expect(row.attempts).toBe(1);
     expect(fs.existsSync(finalPath(app, row))).toBe(false);
     expect(fs.existsSync(`${finalPath(app, row)}.part`)).toBe(false);
     expect(app.ctx.services.collections.list()).toHaveLength(0);
+  });
+
+  it("holds a file to the MD5 its publisher gives where that is the checksum there is, and shows it", async () => {
+    app = await createTestApp();
+    const server = await fileServer();
+    const body = testBytes(120_000, 12);
+    server.routes.set("/md5", { body });
+    const md5 = createHash("md5").update(body).digest("hex");
+
+    const started = await downloads(app).start(request(server, "/md5", "md5.bin", { md5: md5.toUpperCase() }));
+    const row = await settled(app, started.id);
+    expect(row.state).toBe("completed");
+    const { integrity } = (await app.api("GET", `/api/downloads/${started.id}`)).body as DownloadDetail;
+    expect(integrity).toEqual({ sha256Expected: null, sha256Actual: sha256(body), md5Expected: md5, md5Actual: md5, verified: true });
+  });
+
+  it("deletes a file that does not match its publisher's MD5, so that trying again fetches it again", async () => {
+    app = await createTestApp();
+    const server = await fileServer();
+    const body = testBytes(120_000, 13);
+    // What a share that loses a block leaves: the right size, a stretch of zeros.
+    const damaged = Buffer.from(body);
+    damaged.fill(0, 65_536, 69_632);
+    server.routes.set("/extract", { body: damaged });
+    const md5 = createHash("md5").update(body).digest("hex");
+
+    const started = await downloads(app).start(request(server, "/extract", "extract.bin", { md5 }));
+    const row = await settled(app, started.id);
+    expect(row.state).toBe("failed");
+    expect(row.errorKind).toBe("checksum_mismatch");
+    expect(row.error).toMatch(/does not match its published checksum/);
+    expect(row.error).toMatch(/as it was written to storage/);
+    expect(fs.existsSync(`${finalPath(app, row)}.part`)).toBe(false);
+    expect(app.ctx.services.collections.list()).toHaveLength(0);
+    const failed = ((await app.api("GET", `/api/downloads/${started.id}`)).body as DownloadDetail).integrity;
+    expect(failed).toMatchObject({ md5Expected: md5, md5Actual: createHash("md5").update(damaged).digest("hex"), verified: false });
+
+    // The same download, tried again once the file arrives whole: fetched afresh, not the damaged copy checked again.
+    server.routes.set("/extract", { body });
+    const before = server.requests.length;
+    await downloads(app).retry(started.id);
+    const again = await settled(app, started.id);
+    expect(again.state).toBe("completed");
+    expect(server.requests.length).toBeGreaterThan(before);
+    expect(fs.readFileSync(finalPath(app, again)).equals(body)).toBe(true);
+    expect(((await app.api("GET", `/api/downloads/${started.id}`)).body as DownloadDetail).integrity.verified).toBe(true);
   });
 
   it("treats 404 as permanent", async () => {

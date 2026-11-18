@@ -275,22 +275,51 @@ describe("one download", () => {
 
   it("gives a verdict on integrity in every case", () => {
     const sha = "a".repeat(64);
-    expect(integrityVerdict({ sha256Expected: sha, sha256Actual: sha, verified: true }, "completed")).toMatchObject({
+    expect(
+      integrityVerdict({ sha256Expected: sha, sha256Actual: sha, md5Expected: null, md5Actual: null, verified: true }, "completed"),
+    ).toMatchObject({
       title: "Verified",
       tone: "success",
     });
-    expect(integrityVerdict({ sha256Expected: sha, sha256Actual: "b".repeat(64), verified: false }, "failed")).toMatchObject({
+    expect(
+      integrityVerdict(
+        { sha256Expected: sha, sha256Actual: "b".repeat(64), md5Expected: null, md5Actual: null, verified: false },
+        "failed",
+      ),
+    ).toMatchObject({
       title: "Mismatch",
       tone: "danger",
     });
-    expect(integrityVerdict({ sha256Expected: sha, sha256Actual: null, verified: null }, "running").title).toBe("Will be checked");
-    expect(integrityVerdict({ sha256Expected: sha, sha256Actual: null, verified: null }, "cancelled").title).toBe("Not checked");
-    const none = integrityVerdict({ sha256Expected: null, sha256Actual: null, verified: null }, "running");
+    expect(
+      integrityVerdict({ sha256Expected: sha, sha256Actual: null, md5Expected: null, md5Actual: null, verified: null }, "running").title,
+    ).toBe("Will be checked");
+    expect(
+      integrityVerdict({ sha256Expected: sha, sha256Actual: null, md5Expected: null, md5Actual: null, verified: null }, "cancelled").title,
+    ).toBe("Not checked");
+    const none = integrityVerdict(
+      { sha256Expected: null, sha256Actual: null, md5Expected: null, md5Actual: null, verified: null },
+      "running",
+    );
     expect(none.title).toBe("No checksum published");
     expect(none.text).toContain("recorded once it arrives");
-    expect(integrityVerdict({ sha256Expected: null, sha256Actual: sha, verified: null }, "completed").text).toContain(
-      "was recorded when it arrived",
-    );
+    expect(
+      integrityVerdict({ sha256Expected: null, sha256Actual: sha, md5Expected: null, md5Actual: null, verified: null }, "completed").text,
+    ).toContain("was recorded when it arrived");
+  });
+
+  it("gives the same verdicts where the source publishes an MD5 and no SHA-256", () => {
+    const sha = "a".repeat(64);
+    const md5 = "c".repeat(32);
+    const published = { sha256Expected: null, sha256Actual: null, md5Expected: md5, md5Actual: null, verified: null };
+    expect(integrityVerdict(published, "running").title).toBe("Will be checked");
+    expect(integrityVerdict(published, "cancelled").title).toBe("Not checked");
+    expect(integrityVerdict({ ...published, sha256Actual: sha, md5Actual: md5, verified: true }, "completed")).toMatchObject({
+      title: "Verified",
+      tone: "success",
+    });
+    const damaged = integrityVerdict({ ...published, sha256Actual: sha, md5Actual: "d".repeat(32), verified: false }, "failed");
+    expect(damaged).toMatchObject({ title: "Mismatch", tone: "danger" });
+    expect(damaged.text).toContain("as it was written to storage");
   });
 
   it("explains how the file is fetched", () => {

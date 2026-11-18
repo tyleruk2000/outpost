@@ -20,7 +20,7 @@ import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, classifyNetworkError, conflict, messageOf, notFound } from "../../core/errors.ts";
 import { pathExists } from "../../core/fs-safe.ts";
-import { sha256File } from "../../core/hashing.ts";
+import { hashFile, sha256File } from "../../core/hashing.ts";
 import { createHttpClient } from "../../core/http.ts";
 import { newId } from "../../core/ids.ts";
 import { type JobRow, type JobRun, PermanentJobError } from "../../core/jobs.ts";
@@ -41,6 +41,28 @@ import type {
 
 export const DOWNLOAD_JOB = "download.run";
 export const PART_SUFFIX = ".part";
+const text = (value: unknown): string | undefined => (typeof value === "string" && value ? value : undefined);
+
+/** What a download is held to and what it turned out to be. A publisher's MD5, where that is what there is, is kept with the row's other details. */
+function integrityOf(row: DownloadRow): DownloadDetail["integrity"] {
+  const md5Expected = text(row.meta.md5Expected) ?? null;
+  const md5Actual = text(row.meta.md5Actual) ?? null;
+  const published = [
+    [row.sha256Expected, row.sha256Actual],
+    [md5Expected, md5Actual],
+  ].filter(([expected]) => expected);
+  return {
+    sha256Expected: row.sha256Expected,
+    sha256Actual: row.sha256Actual,
+    md5Expected,
+    md5Actual,
+    verified:
+      published.length === 0 || published.some(([, actual]) => !actual)
+        ? null
+        : published.every(([expected, actual]) => expected === actual),
+  };
+}
+
 export const OFFLINE_MESSAGE = "No connection. This download will resume when the network is back.";
 export const OFFLINE_GAVE_UP_MESSAGE =
   "No connection. Outpost has stopped trying for now. Choose Retry when the network is back; the part already downloaded is kept.";
@@ -100,6 +122,10 @@ const startSchema = z.object({
   sha256: z
     .string()
     .regex(/^[0-9a-fA-F]{64}$/, "A SHA-256 checksum is 64 hexadecimal characters.")
+    .optional(),
+  md5: z
+    .string()
+    .regex(/^[0-9a-fA-F]{32}$/, "An MD5 checksum is 32 hexadecimal characters.")
     .optional(),
   catalogEntryId: z.string().min(1).optional(),
   fetcher: z.string().min(1).optional(),
@@ -515,7 +541,7 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
         // was cancelled; there is nothing to fetch again in that case.
         const fetched = row.sha256Actual !== null && partSize !== undefined && partSize === row.totalBytes;
         if (!fetched) {
-          if (row.sha256Actual !== null) row = write(id, { sha256Actual: null });
+          if (row.sha256Actual !== null) row = write(id, { sha256Actual: null, meta: { ...requireRow(id).meta, md5Actual: undefined } });
           await fetcher({
             download: row,
             partPath,
@@ -537,20 +563,24 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
         state.receivedBytes = sizeBytes;
         state.totalBytes = sizeBytes;
         row = enter("verifying", "Checking the file");
-        const sha256 = await sha256File(partPath, {
+        // Some publishers give an MD5 and nothing else: it is held to that as it would be to a SHA-256, in the same reading.
+        const md5Expected = text(row.meta.md5Expected);
+        const { sha256, md5 } = await hashFile(partPath, md5Expected ? (["sha256", "md5"] as const) : (["sha256"] as const), {
           signal,
           onProgress: (bytes) => run.progress({ current: bytes, total: sizeBytes, message: "Checking the file" }),
         });
-        if (row.sha256Expected && sha256 !== row.sha256Expected) {
+        const checked = md5Expected ? { meta: { ...requireRow(id).meta, md5Actual: md5 } } : {};
+        if ((row.sha256Expected && sha256 !== row.sha256Expected) || (md5Expected && md5 !== md5Expected)) {
+          // Deleted, so that trying again fetches it again and does not check the same bytes twice.
           await fs.promises.rm(partPath, { force: true });
           state.receivedBytes = 0;
-          write(id, { sha256Actual: sha256, receivedBytes: 0 });
+          write(id, { sha256Actual: sha256, receivedBytes: 0, ...checked });
           throw new PermanentJobError(
-            "The downloaded file does not match its published checksum, so it was corrupt or had been tampered with. It has been deleted and nothing was installed. Try the download again.",
+            "The downloaded file does not match its published checksum: it was damaged on the way or as it was written to storage, or had been tampered with. It has been deleted and nothing was installed. Try the download again.",
             "checksum_mismatch",
           );
         }
-        row = write(id, { sha256Actual: sha256 });
+        row = write(id, { sha256Actual: sha256, ...checked });
         signal.throwIfAborted();
         if (await pathExists(finalPath)) {
           throw new AppError(
@@ -681,8 +711,6 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
     return points;
   }
 
-  const text = (value: unknown): string | undefined => (typeof value === "string" && value ? value : undefined);
-
   async function detail(id: string): Promise<DownloadDetail> {
     const row = requireRow(id);
     const meta = row.meta as Record<string, unknown>;
@@ -707,11 +735,7 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
         etag: row.etag,
         lastModified: row.lastModified,
       },
-      integrity: {
-        sha256Expected: row.sha256Expected,
-        sha256Actual: row.sha256Actual,
-        verified: row.sha256Expected && row.sha256Actual ? row.sha256Expected === row.sha256Actual : null,
-      },
+      integrity: integrityOf(row),
       destination: {
         locationId: row.locationId,
         locationName: location?.name ?? "Unknown location",
@@ -977,7 +1001,11 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
           state: "queued",
           totalBytes: input.sizeBytes ?? null,
           sha256Expected: input.sha256?.toLowerCase() ?? null,
-          meta: { ...(input.meta ?? {}), events: [{ at: Date.now(), state: "queued" }] },
+          meta: {
+            ...(input.meta ?? {}),
+            ...(input.md5 ? { md5Expected: input.md5.toLowerCase() } : {}),
+            events: [{ at: Date.now(), state: "queued" }],
+          },
           createdAt: now,
           updatedAt: now,
         })

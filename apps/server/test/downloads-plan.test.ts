@@ -172,7 +172,7 @@ describe("download details and the plan", () => {
     expect(status).toBe(200);
     expect(detail.download).toMatchObject({ id: row.id, state: "completed", title: "Field manual" });
     expect(detail.source).toMatchObject({ requestedHost: "127.0.0.1", servedBy: "localhost", fetcher: "http" });
-    expect(detail.integrity).toEqual({ sha256Expected: sha, sha256Actual: sha, verified: true });
+    expect(detail.integrity).toEqual({ sha256Expected: sha, sha256Actual: sha, md5Expected: null, md5Actual: null, verified: true });
     expect(detail.destination).toMatchObject({ locationName: "Internal storage", locationAvailable: true, relPath: "files/manual.pdf" });
     expect(detail.destination.freeBytes).toBeGreaterThan(0);
     expect(detail.about).toMatchObject({ publisher: "Example Press", license: "CC BY 4.0", version: "2026-01" });

@@ -382,13 +382,33 @@ export default function DownloadPage() {
           </span>
         </p>
         <Facts className="mt-5">
-          <Fact term="Published SHA-256">
-            {integrity.sha256Expected ? (
-              <Checksum value={integrity.sha256Expected} name="the published checksum" />
-            ) : (
-              <span className="text-ink-muted">None published by the source</span>
-            )}
-          </Fact>
+          {integrity.md5Expected && !integrity.sha256Expected ? (
+            // A source that publishes an MD5 and nothing else: that is what the file is held to.
+            <>
+              <Fact term="Published MD5">
+                <Checksum value={integrity.md5Expected} name="the published checksum" />
+              </Fact>
+              <Fact term="MD5 of the file">
+                {integrity.md5Actual ? (
+                  <Checksum value={integrity.md5Actual} name="the MD5 of the file" />
+                ) : (
+                  <span className="text-ink-muted">
+                    {download.state === "failed" || download.state === "cancelled"
+                      ? "Not worked out: the download did not finish"
+                      : "Worked out when the download finishes"}
+                  </span>
+                )}
+              </Fact>
+            </>
+          ) : (
+            <Fact term="Published SHA-256">
+              {integrity.sha256Expected ? (
+                <Checksum value={integrity.sha256Expected} name="the published checksum" />
+              ) : (
+                <span className="text-ink-muted">None published by the source</span>
+              )}
+            </Fact>
+          )}
           <Fact term="SHA-256 of the file">
             {integrity.sha256Actual ? (
               <Checksum value={integrity.sha256Actual} name="the checksum of the file" />

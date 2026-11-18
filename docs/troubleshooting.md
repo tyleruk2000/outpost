@@ -233,10 +233,16 @@ your browser's: in Docker, the container must be able to reach the internet.
 
 ### "The downloaded file does not match its published checksum…"
 
-The file was corrupted on the way or altered. Outpost deleted it and installed
-nothing. Press **Retry** to download it again. If it fails the same way, press
-**Refresh** on Explore so that Outpost has the source's current details, then start
-the download afresh.
+The file was damaged on the way, damaged as it was written to storage, or altered.
+Outpost deleted it and installed nothing. Press **Retry** to download it again. If it
+fails the same way, press **Refresh** on Explore so that Outpost has the source's
+current details, then start the download afresh.
+
+If it keeps happening to large files on a network share (a NAS folder) and not to
+files on the device's own disk, the share is losing data as it is written: the
+download's page shows both checksums, and the file is the right size with a short run
+of zeros in it. Download to the device's own storage instead, and see
+[Storage](storage.md) for what to check on the share.
 
 ### "… is not a download source listed in any catalogue manifest."
 

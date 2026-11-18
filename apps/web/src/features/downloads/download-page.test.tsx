@@ -210,7 +210,10 @@ describe("Download details", () => {
     const done = download({ state: "completed", receivedBytes: 1_900_000_000, collectionId: "c1", finishedAt: 9 });
     const sha = "a".repeat(64);
     serve({
-      "GET /api/downloads/d1": detail({ download: done, integrity: { sha256Expected: sha, sha256Actual: sha, verified: true } }),
+      "GET /api/downloads/d1": detail({
+        download: done,
+        integrity: { sha256Expected: sha, sha256Actual: sha, md5Expected: null, md5Actual: null, verified: true },
+      }),
       "GET /api/downloads": { downloads: [done] },
     });
     const writeText = vi.fn(async () => {});
@@ -226,12 +229,42 @@ describe("Download details", () => {
   });
 
   it("says when the source publishes no checksum", async () => {
-    serve({ "GET /api/downloads/d1": detail({ integrity: { sha256Expected: null, sha256Actual: null, verified: null } }) });
+    serve({
+      "GET /api/downloads/d1": detail({
+        integrity: { sha256Expected: null, sha256Actual: null, md5Expected: null, md5Actual: null, verified: null },
+      }),
+    });
     show();
     const integrity = within(await part("Integrity"));
     expect(integrity.getByText("No checksum published.")).toBeInTheDocument();
     expect(integrity.getByText(/The file's own checksum is recorded once it arrives\./)).toBeInTheDocument();
     expect(integrity.getByText("None published by the source")).toBeInTheDocument();
+  });
+
+  it("holds the file to an MD5 where that is what the source publishes, and says when it failed it", async () => {
+    const md5 = "c".repeat(32);
+    const wrong = "d".repeat(32);
+    const failed = download({
+      state: "failed",
+      error: "The downloaded file does not match its published checksum.",
+      errorKind: "checksum_mismatch",
+    });
+    serve({
+      "GET /api/downloads/d1": detail({
+        download: failed,
+        integrity: { sha256Expected: null, sha256Actual: "a".repeat(64), md5Expected: md5, md5Actual: wrong, verified: false },
+      }),
+      "GET /api/downloads": { downloads: [failed] },
+    });
+    show();
+    const integrity = within(await part("Integrity"));
+    expect(integrity.getByText("Mismatch.")).toBeInTheDocument();
+    expect(integrity.queryByText("No checksum published.")).toBeNull();
+    expect(integrity.queryByText("None published by the source")).toBeNull();
+    expect(integrity.getByText("Published MD5")).toBeInTheDocument();
+    expect(integrity.getByText(md5)).toBeInTheDocument();
+    expect(integrity.getByText("MD5 of the file")).toBeInTheDocument();
+    expect(integrity.getByText(wrong)).toBeInTheDocument();
   });
 
   it("says where a finished download went and links to it in the library and in Explore", async () => {

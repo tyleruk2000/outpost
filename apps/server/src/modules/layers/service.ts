@@ -525,6 +525,8 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
               ...(locationId ? { locationId } : {}),
               ...(spec.sizeBytes ? { sizeBytes: spec.sizeBytes } : {}),
               ...(spec.sha256 ? { sha256: spec.sha256 } : {}),
+              // The downloader holds the file to the publisher's MD5, shows it, and deletes a file that fails it.
+              ...(reference.md5 ? { md5: reference.md5 } : {}),
               ...(spec.fetcher ? { fetcher: spec.fetcher } : {}),
               allowedHosts: spec.allowedHosts,
               meta: { reference, ...(query ? { query } : {}) },
