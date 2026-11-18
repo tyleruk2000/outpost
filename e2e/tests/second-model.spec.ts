@@ -20,8 +20,10 @@ test.describe("A second model (ITU P.533)", () => {
     await expect(section.getByRole("button", { name: "Compare with a second model (ITU P.533)" })).toHaveCount(0);
 
     await section.getByRole("button", { name: /Download the P\.533 maps/ }).click();
-    // Once they are in, only the engine is missing: it is built on the computer, never shipped.
-    await expect(section.getByText(/build the P\.533 engine on this computer/)).toBeVisible({ timeout: 20_000 });
+    // Once they are in, only the engine is missing: it is built on the computer, never shipped, and Outpost
+    // offers to build it itself. (Not pressed here: it fetches the ITU's source and a compiler.)
+    await expect(section.getByText(/build the P\.533 engine \(press Build the P\.533 engine/)).toBeVisible({ timeout: 20_000 });
+    await expect(section.getByRole("button", { name: /^Build the P\.533 engine \(\d+ MB\)$/ })).toBeVisible();
     await expect(section.getByText(/download the ITU's P\.533 maps/)).toHaveCount(0);
 
     await page.goto("/storage/manage");

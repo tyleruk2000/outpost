@@ -31,6 +31,23 @@ export interface SecondModelStatus {
     commit: string;
     /** How to build it, in one sentence. */
     howToBuild: string;
+    /** Outpost building it itself, when "Build the P.533 engine" is pressed. */
+    build: {
+      /** Whether Outpost can build it on this computer. */
+      possible: boolean;
+      /** When it cannot: why, in a sentence. */
+      reason: string | null;
+      /** What a build downloads (the ITU's source and the compiler), bytes. */
+      downloadBytes: number;
+      /** Room it needs where Outpost keeps its data while it runs, bytes. */
+      neededBytes: number;
+      /** A build is queued or under way. */
+      running: boolean;
+      /** What it is doing, while it runs. */
+      progress: { current: number | null; total: number | null; message: string | null } | null;
+      /** Why the last build failed, while the engine is still missing. */
+      failed: string | null;
+    };
   };
   maps: {
     installed: boolean;

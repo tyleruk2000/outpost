@@ -228,6 +228,13 @@ copyDir(path.join(root, "engines/voacap/engine"), path.join(enginesOut, "voacap/
 copyDir(path.join(root, "engines/voacap/data"), path.join(enginesOut, "voacap/data"));
 fs.copyFileSync(path.join(root, "engines/voacap/NOTICE.txt"), path.join(enginesOut, "voacap/NOTICE.txt"));
 fs.copyFileSync(path.join(root, "engines/voacap/coefficients.json"), path.join(enginesOut, "voacap/coefficients.json"));
+// The second model (ITU P.533): only Outpost's own files, the recipe and the glue that
+// "Build the P.533 engine" compiles with. Nothing of the ITU's is copied: not its source
+// (engines/p533/.upstream), not a built engine (engines/p533/engine), not its maps.
+copyDir(path.join(root, "engines/p533/glue"), path.join(enginesOut, "p533/glue"));
+fs.mkdirSync(path.join(enginesOut, "p533/build"), { recursive: true });
+fs.copyFileSync(path.join(root, "engines/p533/build/compile.sh"), path.join(enginesOut, "p533/build/compile.sh"));
+fs.copyFileSync(path.join(root, "engines/p533/NOTICE.txt"), path.join(enginesOut, "p533/NOTICE.txt"));
 fs.mkdirSync(path.join(out, "scripts"), { recursive: true });
 fs.copyFileSync(path.join(root, "scripts/fetch-voacap-data.mjs"), path.join(out, "scripts/fetch-voacap-data.mjs"));
 {

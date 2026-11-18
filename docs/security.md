@@ -762,7 +762,27 @@ rules as VOACAP, with nothing shared between the two:
   when a person presses the button. Each file's size is known in advance and a file of
   another size stops the download; the whole is checked against its SHA-256, and each
   file again before it is recorded and each time it is read.
-- **Nothing of the ITU's is in the repository or the packaged app.**
+- **Built by Outpost itself, when a person presses for it** (`modules/propagation/p533/build.ts`):
+  for a computer with no shell to hand, **Build the P.533 engine** does what the script
+  does, as a job and without git or Docker. It fetches the 39 source files from
+  `raw.githubusercontent.com` at the pinned commit, each held to its own SHA-256
+  (together they are the script's tree checksum), and the compiler, wasi-sdk at the
+  pinned version, from its project's releases on `github.com`, where every hop of the
+  download is held to that host and `release-assets.githubusercontent.com`. **This is
+  the one place where Outpost runs a program it has downloaded.** The compiler is not
+  run, or unpacked, unless its SHA-256 is the one recorded for this kind of computer
+  (Linux and macOS, 64-bit ARM and x86; elsewhere the button is not offered). It is
+  run as the server's own user, started with `execFile` and a list of arguments, with
+  an environment of seven names, on the same recipe the container runs
+  (`engines/p533/build/compile.sh`), in a folder of its own under the data directory
+  that is deleted afterwards, whether the build worked or not. The result is installed
+  only if it is, byte for byte, the recorded engine; it was, on 18 November 2026, on
+  macOS (arm64). Not held to no network while
+  it compiles, as the container is: what stands in for that is the pinned checksum of
+  the compiler and of every file it reads.
+- **Nothing of the ITU's is in the repository or the packaged app**, and nothing of the
+  compiler's: the packaged app carries only Outpost's own recipe and glue
+  (`engines/p533/build/compile.sh`, `engines/p533/glue`).
 
 ### Coverage maps, plans and the contact log
 
@@ -1840,6 +1860,7 @@ to the cross-site rules above, except the few `GET`s named there.
 | **Update now** on Weather and hazards (or opening it with the option ticked); climate averages | `api.open-meteo.com`, `www.metoffice.gov.uk`, `environment.data.gov.uk`; `power.larc.nasa.gov`, `re.jrc.ec.europa.eu` | `weather/sources.ts` |
 | A newer solar cycle table | `services.swpc.noaa.gov` (`OUTPOST_SOLAR_TABLE_URL`) | `propagation/datasets.ts` |
 | The second HF model's maps | `raw.githubusercontent.com` | `propagation/p533/maps.ts` |
+| **Build the P.533 engine** | `raw.githubusercontent.com` (the ITU's source); `github.com` and `release-assets.githubusercontent.com` (the compiler) | `propagation/p533/build.ts` |
 | **Fetch the registry from the IEEE** under Devices on this network | `standards-oui.ieee.org` (`OUTPOST_IEEE_OUI_URL`) | `network/service.ts` |
 | Making a portable drive for a new kind of computer | `nodejs.org`, `download.kiwix.org` | `portable/runtimes.ts` |
 | Answers, Chat, **Test**, **Look for Ollama**, the model lists in Settings and Chat | The `answers.endpoint` setting; `127.0.0.1:11434`, then `host.docker.internal:11434`, for the look | `answers/provider.ts`, `chat/models.ts` |

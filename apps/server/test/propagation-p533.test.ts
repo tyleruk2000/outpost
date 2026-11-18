@@ -380,7 +380,7 @@ describe("on a real server, without the engine or the maps", () => {
     expect(body.offered).toBe(false);
     expect(body.maps).toMatchObject({ installed: false, downloading: false, files: 3 });
     expect(body.line).toContain("download the ITU's P.533 maps");
-    if (!body.engine.built) expect(body.line).toContain("node scripts/build-p533-engine.mjs");
+    if (!body.engine.built) expect(body.line).toMatch(/press Build the P\.533 engine|node scripts\/build-p533-engine\.mjs/);
     expect(body.engine.sha256).toBe(P533_MANIFEST.wasm.sha256);
     expect(body.terms).toContain("not an open-source licence");
   });

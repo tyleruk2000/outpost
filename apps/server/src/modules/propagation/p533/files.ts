@@ -41,9 +41,30 @@ export interface MapsManifest {
 export interface P533Manifest {
   id: string;
   name: string;
-  source: { repository: string; commit: string; committedAt: string; treeSha256: string; files: number };
+  source: {
+    repository: string;
+    commit: string;
+    committedAt: string;
+    treeSha256: string;
+    files: number;
+    /** Where each compiled file is fetched from when Outpost builds the engine itself (`build.ts`). */
+    baseUrl: string;
+    bytes: number;
+    /** The files that are compiled, each with its checksum: together, `treeSha256`. */
+    compiled: Array<{ path: string; bytes: number; sha256: string }>;
+  };
   model: { p533: string; p372: string; program: string };
-  build: { wasiSdk: string; baseImage: string; clang: string; dockerfile: string; glue: string; editsToItuSource: number };
+  build: {
+    wasiSdk: string;
+    baseImage: string;
+    clang: string;
+    dockerfile: string;
+    glue: string;
+    editsToItuSource: number;
+    /** The compiler for each kind of computer Outpost can build on, by `process.platform` and `process.arch`. */
+    toolchains: Record<string, { url: string; folder: string; bytes: number; sha256: string }>;
+    unpackedBytes: number;
+  };
   wasm: { file: string; bytes: number; sha256: string };
   references: Array<{ name: string; input: { bytes: number; sha256: string }; output: { bytes: number; sha256: string } }>;
   maps: MapsManifest;
@@ -79,7 +100,7 @@ export function enginePaths(dataDir: string): string[] {
 
 /** How to get the engine, in one sentence. */
 export const BUILD_HINT =
-  "Build it on this computer with node scripts/build-p533-engine.mjs (it needs Docker and the internet once, and fetches the ITU's source from its own repository).";
+  "Press Build the P.533 engine where Outpost offers it, or build it on this computer with node scripts/build-p533-engine.mjs (it needs Docker and the internet once, and fetches the ITU's source from its own repository).";
 
 export interface FoundEngine {
   file: string;

@@ -49,6 +49,7 @@ const envSchema = z.object({
   OUTPOST_ALLOW_PRIVATE_DOWNLOADS: bool(false),
   OUTPOST_SOLAR_TABLE_URL: z.string().url().default("https://services.swpc.noaa.gov/json/solar-cycle/predicted-solar-cycle.json"),
   OUTPOST_P533_MAPS_MANIFEST: z.string().optional(),
+  OUTPOST_P533_BUILD_MANIFEST: z.string().optional(),
   OUTPOST_VOACAP_DATA_MANIFEST: z.string().optional(),
   OUTPOST_ALLOW_REMOTE_ERASE: bool(false),
   OUTPOST_OWN_ADDRESS_IS_LOCAL: bool(true),
@@ -120,6 +121,8 @@ export interface Config {
   solarTableUrl: string;
   /** For testing only: a list of P.533 map files to use in place of the ITU's (docs/hf-propagation.md). */
   p533MapsManifest: string | null;
+  /** For testing only: what "Build the P.533 engine" fetches and must give, in place of the built-in list. */
+  p533BuildManifest: string | null;
   /** For testing: a list of VOACAP data files to use in place of engines/voacap/coefficients.json. */
   voacapDataManifest: string | null;
   extraDownloadHosts: string[];
@@ -255,6 +258,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     allowPrivateDownloads: parsed.OUTPOST_ALLOW_PRIVATE_DOWNLOADS,
     solarTableUrl: parsed.OUTPOST_SOLAR_TABLE_URL,
     p533MapsManifest: parsed.OUTPOST_P533_MAPS_MANIFEST ? path.resolve(parsed.OUTPOST_P533_MAPS_MANIFEST) : null,
+    p533BuildManifest: parsed.OUTPOST_P533_BUILD_MANIFEST ? path.resolve(parsed.OUTPOST_P533_BUILD_MANIFEST) : null,
     voacapDataManifest: parsed.OUTPOST_VOACAP_DATA_MANIFEST ? path.resolve(parsed.OUTPOST_VOACAP_DATA_MANIFEST) : null,
     extraDownloadHosts: parsed.OUTPOST_DOWNLOAD_HOSTS.map((host) => host.toLowerCase()),
     allowRemoteErase: parsed.OUTPOST_ALLOW_REMOTE_ERASE,

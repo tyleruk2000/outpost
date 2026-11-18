@@ -6,7 +6,206 @@
     "commit": "82017594a1c6cacfaa7e86954c4ae7b3a5825a3d",
     "committedAt": "2025-05-15T16:39:37.000Z",
     "treeSha256": "3bf5bcd24146a73842d3d85d3d80714aa511681a2f72b851e19ad8116c5618ba",
-    "files": 39
+    "files": 39,
+    "baseUrl": "https://raw.githubusercontent.com/ITU-R-Study-Group-3/ITU-R-HF/82017594a1c6cacfaa7e86954c4ae7b3a5825a3d/",
+    "bytes": 506387,
+    "compiled": [
+      {
+        "path": "P533/Src/P533/Between7000kmand9000km.c",
+        "bytes": 1736,
+        "sha256": "8b6dff26ae7fb92bc4294716c22aea8775fe1c437032f08ca81f8cbe82195c2e"
+      },
+      {
+        "path": "P533/Src/P533/CalculateCPParameters.c",
+        "bytes": 21256,
+        "sha256": "6673ebdc370f684b15c3f4cf239fe3ce7655d283b74e19b6afd8340ce0fb941c"
+      },
+      {
+        "path": "P533/Src/P533/CircuitReliability.c",
+        "bytes": 33895,
+        "sha256": "011b532d6a2ef9a54990f24d67f749e7e10cdbeefaff66aae25c366627c919b3"
+      },
+      {
+        "path": "P533/Src/P533/Common.h",
+        "bytes": 1527,
+        "sha256": "556f5ef59dd15f8f942590808a1cb506bbdb0f837fd453d6de6f0f2ba56375ba"
+      },
+      {
+        "path": "P533/Src/P533/ELayerScreeningFrequency.c",
+        "bytes": 5830,
+        "sha256": "2f7a9a2da591ad7f04c4e551208d0542041b305cf079b515e0cbd33e692d914e"
+      },
+      {
+        "path": "P533/Src/P533/Geometry.c",
+        "bytes": 3832,
+        "sha256": "6b96165f68ded2e3bb29630dbcdbe3d5ae61ce81b36361b4d31d79ccf050897d"
+      },
+      {
+        "path": "P533/Src/P533/InitializePath.c",
+        "bytes": 9152,
+        "sha256": "97ad09003ede6d70dc637cbc8705cefb20b3c4d474df26f6fb737b7afe9d6f5b"
+      },
+      {
+        "path": "P533/Src/P533/InputDump.c",
+        "bytes": 11652,
+        "sha256": "96d9776434e97b66d76286cdaaec043b643759c6222862422726e6eca5cfc30f"
+      },
+      {
+        "path": "P533/Src/P533/MUFBasic.c",
+        "bytes": 14733,
+        "sha256": "dd2a7232f9e9584e8750d1c2adf161c4343adbe9eb18c00515a4f4fdb364cba6"
+      },
+      {
+        "path": "P533/Src/P533/MUFOperational.c",
+        "bytes": 4475,
+        "sha256": "d11ec1c54096e5a99955f076b4ff7a5458ef5731e1472762b04c96e2f92d917c"
+      },
+      {
+        "path": "P533/Src/P533/MUFVariability.c",
+        "bytes": 7749,
+        "sha256": "d378a01051f805bc56aaeb55a61d8e69595c10692ae890ce6ed53abe08f25a06"
+      },
+      {
+        "path": "P533/Src/P533/Magfit.c",
+        "bytes": 5839,
+        "sha256": "742cb71bef7f12a9df67630f0cddcb9a6f23243c19ee65e99ef7c572176121fb"
+      },
+      {
+        "path": "P533/Src/P533/MedianAvailableReceiverPower.c",
+        "bytes": 6237,
+        "sha256": "9a0ecb4e5ef5cbc36baab316a5baec672203a2f57afed5753c76cd4f33d4e59a"
+      },
+      {
+        "path": "P533/Src/P533/MedianSkywaveFieldStrengthLong.c",
+        "bytes": 30551,
+        "sha256": "d34dd02e02115afaa08bd4931a414326e03750a0a7976f15fafba4007983484f"
+      },
+      {
+        "path": "P533/Src/P533/MedianSkywaveFieldStrengthShort.c",
+        "bytes": 46750,
+        "sha256": "b3f2abd2964432ea90c7faca354dfbe582a04fbbfb88b0046469126d5a75e322"
+      },
+      {
+        "path": "P533/Src/P533/Noise.h",
+        "bytes": 8031,
+        "sha256": "3f9e939ad366f8f7ecc6f7a79b3a7e8f11420c6040f774cd87141af31829c8e7"
+      },
+      {
+        "path": "P533/Src/P533/P533.c",
+        "bytes": 15510,
+        "sha256": "4f1c56ac302ebfe308d36194ce6672e7b6bf1210587b0de6518350d7d2590571"
+      },
+      {
+        "path": "P533/Src/P533/P533.h",
+        "bytes": 23720,
+        "sha256": "8dc3cd242e53bd342fc4b6ef80da40e9ccd8d494cadf2a271d046b00d71d5603"
+      },
+      {
+        "path": "P533/Src/P533/PathMemory.c",
+        "bytes": 7586,
+        "sha256": "3873c476f2a9a916acaf3c0acf5de4c6d2ab2b0a14b0a0073568b143ae7d1dbd"
+      },
+      {
+        "path": "P533/Src/P533/ReadIonParameters.c",
+        "bytes": 11744,
+        "sha256": "65aff903a97bc0bae7e053537fc3e9d9471af44262a03e74ca7075924ae21bcd"
+      },
+      {
+        "path": "P533/Src/P533/ReadP1239.c",
+        "bytes": 3202,
+        "sha256": "c3b94b7ba482203bf82bb1650ab5cc03d244ba9d39a7b51268263a96c25c14b5"
+      },
+      {
+        "path": "P533/Src/P533/ReadType13.c",
+        "bytes": 14331,
+        "sha256": "6ff4c60f884452aee8de7f0e0d3f03f0727be52592c8b4499f35a29efca337fb"
+      },
+      {
+        "path": "P533/Src/P533/ValidatePath.c",
+        "bytes": 3009,
+        "sha256": "5bc798ff7871dc3ce2f720d23b5f7863533f69592ab8863684f6201e82484026"
+      },
+      {
+        "path": "P372/Src/P372/Common.h",
+        "bytes": 1527,
+        "sha256": "556f5ef59dd15f8f942590808a1cb506bbdb0f837fd453d6de6f0f2ba56375ba"
+      },
+      {
+        "path": "P372/Src/P372/InitializeNoise.c",
+        "bytes": 514,
+        "sha256": "592beffbaba5252fa7d86ed65b1adbb83245d1d8cd85cac0010fb135157da29c"
+      },
+      {
+        "path": "P372/Src/P372/MakeNoise.c",
+        "bytes": 6571,
+        "sha256": "a4dd22736cb0e824d540f9d274ec4d4e445bdc51d8735f3165438b6d828b2c28"
+      },
+      {
+        "path": "P372/Src/P372/Noise.c",
+        "bytes": 33331,
+        "sha256": "e41452975befc1c83def94ce8e0ca08b81d35efbe4864de4679b48dbd871e6d5"
+      },
+      {
+        "path": "P372/Src/P372/Noise.h",
+        "bytes": 8031,
+        "sha256": "3f9e939ad366f8f7ecc6f7a79b3a7e8f11420c6040f774cd87141af31829c8e7"
+      },
+      {
+        "path": "P372/Src/P372/NoiseDriver.c",
+        "bytes": 3945,
+        "sha256": "cdac8550126da7be772f5b72576b746cab7fd67bfb9d9dc7d1d6a765b7cec32e"
+      },
+      {
+        "path": "P372/Src/P372/NoiseMemory.c",
+        "bytes": 2967,
+        "sha256": "a79001d71fbf377e044b91ad0d48328c38511774183abcfa733452733e67c5ba"
+      },
+      {
+        "path": "ITURHFProp/Src/ITURHFProp/Common.h",
+        "bytes": 1527,
+        "sha256": "556f5ef59dd15f8f942590808a1cb506bbdb0f837fd453d6de6f0f2ba56375ba"
+      },
+      {
+        "path": "ITURHFProp/Src/ITURHFProp/DumpPathData.c",
+        "bytes": 22303,
+        "sha256": "767562fac47c2613c09140a52cb63a186559793db7ac2c80da76dc2c38ef007d"
+      },
+      {
+        "path": "ITURHFProp/Src/ITURHFProp/ITURHFProp.c",
+        "bytes": 20482,
+        "sha256": "3b54ae2f4fa872ee6851c07cc8227fad9e8e7b5a7396c250447788eb9423c087"
+      },
+      {
+        "path": "ITURHFProp/Src/ITURHFProp/ITURHFProp.h",
+        "bytes": 14127,
+        "sha256": "4abac31d0dd6d619ed538e8c1be9f0f45526fdc1b09ddff3444a469734c56476"
+      },
+      {
+        "path": "ITURHFProp/Src/ITURHFProp/Noise.h",
+        "bytes": 8031,
+        "sha256": "3f9e939ad366f8f7ecc6f7a79b3a7e8f11420c6040f774cd87141af31829c8e7"
+      },
+      {
+        "path": "ITURHFProp/Src/ITURHFProp/P533.h",
+        "bytes": 23720,
+        "sha256": "8dc3cd242e53bd342fc4b6ef80da40e9ccd8d494cadf2a271d046b00d71d5603"
+      },
+      {
+        "path": "ITURHFProp/Src/ITURHFProp/ReadInputConfiguration.c",
+        "bytes": 22475,
+        "sha256": "21e4ec8750c0d9f2bbfd790fecc7b2bf82be731c7ae5a0a28a6f0f13a6266dbb"
+      },
+      {
+        "path": "ITURHFProp/Src/ITURHFProp/Report.c",
+        "bytes": 41823,
+        "sha256": "f86eaa86e4fc85eeb9aa114fed9735aa82b96c0a22cfe6c72878a0044f9b616d"
+      },
+      {
+        "path": "ITURHFProp/Src/ITURHFProp/ValidateITURHFP.c",
+        "bytes": 2666,
+        "sha256": "9ba94ac1ec9d421f69863a1de6bb87edebcf9246ca745b80f680c7f7ba7f39d5"
+      }
+    ]
   },
   "model": {
     "p533": "14.2",
@@ -19,7 +218,34 @@
     "clang": "clang version 23.1.0-wasi-sdk (https://github.com/llvm/llvm-project 895aa2c896ada719451be2e3673c83da8ddf1141)",
     "dockerfile": "engines/p533/build/Dockerfile",
     "glue": "engines/p533/glue",
-    "editsToItuSource": 0
+    "editsToItuSource": 0,
+    "toolchains": {
+      "linux-arm64": {
+        "url": "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-34/wasi-sdk-34.0-arm64-linux.tar.gz",
+        "folder": "wasi-sdk-34.0-arm64-linux",
+        "bytes": 192255247,
+        "sha256": "f7e243dff54d60bcc576e94d6166b69f410f2500ae4a9ceef34315be10e77971"
+      },
+      "linux-x64": {
+        "url": "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-34/wasi-sdk-34.0-x86_64-linux.tar.gz",
+        "folder": "wasi-sdk-34.0-x86_64-linux",
+        "bytes": 192383077,
+        "sha256": "b761e3a0721dbae9c09a0059e5fdb2bf917d1b4a8a7b430fb3b5aafb0984b2c4"
+      },
+      "darwin-arm64": {
+        "url": "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-34/wasi-sdk-34.0-arm64-macos.tar.gz",
+        "folder": "wasi-sdk-34.0-arm64-macos",
+        "bytes": 180322002,
+        "sha256": "9c59398106b417f8f14913380fdf0097a8cc0ff4af9eb3ce0065a859e88d49e9"
+      },
+      "darwin-x64": {
+        "url": "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-34/wasi-sdk-34.0-x86_64-macos.tar.gz",
+        "folder": "wasi-sdk-34.0-x86_64-macos",
+        "bytes": 182668326,
+        "sha256": "87d27fa8adc68dee59bfbf2e22a6d34ef717c34d6bf1d8af2a56fc929d9ce0eb"
+      }
+    },
+    "unpackedBytes": 650000000
   },
   "wasm": {
     "file": "iturhfprop.wasm",

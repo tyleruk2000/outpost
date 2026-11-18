@@ -646,8 +646,19 @@ own repository and downloads the maps through the download manager.
 Under the prediction, **Compare with a second model (ITU P.533)** says in one line what
 is missing and how big it is. Two things are needed:
 
-1. **The engine**, built once on the computer that runs Outpost. It needs Docker and the
-   internet, once:
+1. **The engine**, built once on the computer that runs Outpost. Press **Build the P.533
+   engine (193 MB)**: Outpost fetches the ITU's source (39 files of
+   github.com/ITU-R-Study-Group-3/ITU-R-HF at commit `82017594a1c6`) and the compiler
+   (wasi-sdk 34.0 for this kind of computer, about 190 MB), holds each to its recorded
+   checksum, compiles with the same recipe as the script below, and keeps the result
+   only if it is, byte for byte, the recorded file. It runs as a job: the page says what
+   it is doing, and it carries on if you leave. It needs about 860 MB free where Outpost
+   keeps its data while it runs; the compiler is deleted afterwards. On a Raspberry Pi 5
+   it takes a few minutes, most of it the download. Offered on Linux and macOS (64-bit
+   ARM and x86), which includes Outpost in Docker; it needs `sh` and `tar`, which those
+   have. This is what to use where there is no shell to hand, such as a Pi in a cupboard.
+
+   Or with the script, on the computer itself. It needs Docker and the internet, once:
 
    ```bash
    node scripts/build-p533-engine.mjs                       # into engines/p533/engine/

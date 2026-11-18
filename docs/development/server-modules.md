@@ -69,7 +69,8 @@ files), `import`, `manage` (bulk removal and clean-ups, one at a time), `backup`
 at a time), `reference-files` (copying the documents of a reference collection into
 the library, one collection at a time), `database` (checking the database and reclaiming
 unused space in it, one at a time; reclaiming holds every other queue with
-`ctx.jobs.holdFor` while it runs). Handlers
+`ctx.jobs.holdFor` while it runs), `engine-build` (building the P.533 engine, one at a
+time). Handlers
 receive an `AbortSignal`
 and must stop promptly when it fires (pause, cancel, shutdown). Report progress with
 `run.progress({ current, total, message })`. Throw `PermanentJobError` for failures

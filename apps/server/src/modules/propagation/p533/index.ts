@@ -18,12 +18,14 @@ import { ANTENNA_PRESETS, noiseSetting, type PredictionRequest, type SecondModel
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../../core/context.ts";
-import { AppError, badRequest } from "../../../core/errors.ts";
+import { AppError, badRequest, conflict } from "../../../core/errors.ts";
+import { toJobDto } from "../../../core/jobs.ts";
 import type { DownloadRow, Installer } from "../../downloads/types.ts";
 import { EngineUnavailable } from "../engine.ts";
 import { EngineRefused } from "../host.ts";
 import type { PropagationService } from "../service.ts";
 import { checked } from "../shapes.ts";
+import { registerEngineBuild } from "./build.ts";
 import { buildComparison, comparedFrequencies, comparisonKeyBody } from "./compare.ts";
 import type { P533EngineOptions } from "./engine.ts";
 import { BUILD_HINT, findEngine, mapsManifest, P533_MANIFEST, sha256 } from "./files.ts";
@@ -63,6 +65,7 @@ export function registerSecondModel(app: FastifyInstance, ctx: AppContext, servi
   ctx.onClose.push(() => host.close());
   ctx.services.downloads.registerFetcher(MAPS_FETCHER, createMapsFetcher(ctx, maps));
   const installer = createMapsInstaller(ctx, maps);
+  const engineBuild = registerEngineBuild(ctx);
   ctx.services.collections.onRemoved((row) => {
     if ((row.meta as Record<string, unknown> | null)?.dataset === P533_MAPS) ctx.events.publish({ type: "propagation.changed" });
   });
@@ -103,12 +106,20 @@ export function registerSecondModel(app: FastifyInstance, ctx: AppContext, servi
     const downloading = ctx.services.downloads
       .list()
       .some((row) => isMapsDownload(row) && ["queued", "downloading", "verifying", "installing", "paused"].includes(row.state));
+    const offer = engineBuild.offer();
+    const lastBuild = engineBuild.latest();
+    const building = lastBuild?.state === "queued" || lastBuild?.state === "running";
+    const built = engine.file !== null && engine.problem === null;
     const missing: string[] = [];
     if (engine.problem)
       missing.push(
         engine.file
           ? engine.problem
-          : "build the P.533 engine on this computer (node scripts/build-p533-engine.mjs, which needs Docker and the internet once)",
+          : building
+            ? "wait for the P.533 engine, which is being built"
+            : offer.possible
+              ? `build the P.533 engine (press Build the P.533 engine: a download of ${megabytes(offer.downloadBytes)}, once)`
+              : "build the P.533 engine on this computer (node scripts/build-p533-engine.mjs, which needs Docker and the internet once)",
       );
     if (!installed) missing.push(`download the ITU's P.533 maps (${megabytes(manifest.bytes)})`);
     const line =
@@ -121,13 +132,22 @@ export function registerSecondModel(app: FastifyInstance, ctx: AppContext, servi
       offered: missing.length === 0,
       line,
       engine: {
-        built: engine.file !== null && engine.problem === null,
+        built,
         file: engine.file,
         problem: engine.problem,
         sha256: P533_MANIFEST.wasm.sha256,
         repository: P533_MANIFEST.source.repository,
         commit: P533_MANIFEST.source.commit,
         howToBuild: BUILD_HINT,
+        build: {
+          ...offer,
+          running: !built && building,
+          progress:
+            !built && building && lastBuild
+              ? { current: lastBuild.progressCurrent, total: lastBuild.progressTotal, message: lastBuild.progressMessage }
+              : null,
+          failed: !built && lastBuild?.state === "failed" ? lastBuild.error : null,
+        },
       },
       maps: {
         installed: installed !== null,
@@ -198,6 +218,14 @@ export function registerSecondModel(app: FastifyInstance, ctx: AppContext, servi
     const download = await startMapsDownload(ctx, maps(), body.locationId);
     ctx.events.publish({ type: "propagation.changed" });
     return { download: ctx.services.downloads.toDto(download) };
+  });
+
+  // Outpost builds the engine itself: the ITU's source and a pinned compiler, fetched on this press and no other.
+  app.post("/api/radio/propagation/second-model/engine/build", async () => {
+    const state = status();
+    if (state.engine.built) throw conflict("The P.533 engine is already built here.");
+    if (!state.engine.build.possible) throw new AppError("unsupported", state.engine.build.reason ?? "The engine cannot be built here.");
+    return { job: toJobDto(engineBuild.start()) };
   });
 
   app.post("/api/radio/propagation/second-model/compare", async (request) => compare(checked(request.body)));

@@ -21,7 +21,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Notice, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
-import { Select, Skeleton } from "@/components/ui/misc";
+import { Progress, Select, Skeleton } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { useStorage } from "@/lib/queries";
@@ -32,13 +32,68 @@ export const useSecondModel = () =>
   useQuery({
     queryKey: statusKey,
     queryFn: () => api.get<SecondModelStatus>("/api/radio/propagation/second-model"),
-    // While the maps are downloading, look again now and then; the end of it also says so.
-    refetchInterval: (query) => (query.state.data?.maps.downloading ? 5_000 : false),
+    // While the maps are downloading or the engine is being built, look again now and then; the end of it also says so.
+    refetchInterval: (query) => (query.state.data?.engine.build.running ? 1_500 : query.state.data?.maps.downloading ? 5_000 : false),
   });
 
 const one = (value: number) => `${value < 0 ? "−" : ""}${Math.abs(value).toFixed(1)}`;
 const signed = (value: number) => `${value > 0 ? "+" : value < 0 ? "−" : ""}${Math.abs(value).toFixed(1)}`;
 const openWord = (open: boolean) => (open ? "Open" : "Shut");
+
+/**
+ * The engine, where it is not built yet: a button that has Outpost build it, what that
+ * is doing while it runs, why the last one failed, and where Outpost cannot, the script.
+ */
+function EngineSetup({ status }: { status: SecondModelStatus }) {
+  const client = useQueryClient();
+  const { build } = status.engine;
+  const start = useMutation({
+    mutationFn: () => api.post("/api/radio/propagation/second-model/engine/build", {}),
+    onSuccess: () => client.invalidateQueries({ queryKey: statusKey }),
+    onError: (error) => notify.error(errorMessage(error)),
+  });
+  if (build.running) {
+    const { current, total, message } = build.progress ?? { current: null, total: null, message: null };
+    return (
+      <div className="mt-3 max-w-md" data-engine-build="running">
+        <p className="text-small text-ink" aria-live="polite">
+          Building the P.533 engine{message ? `: ${message.charAt(0).toLowerCase()}${message.slice(1)}` : ""}.
+        </p>
+        <Progress className="mt-1.5" value={total ? Math.min(1, (current ?? 0) / total) : null} label="Building the P.533 engine" />
+        <p className="mt-1.5 text-small text-ink-muted">
+          You can leave this page: it carries on, and the comparison is offered when it is done.
+        </p>
+      </div>
+    );
+  }
+  if (!build.possible) {
+    return (
+      <p className="mt-1 text-small text-ink-muted">
+        The ITU's software is not shipped with Outpost. It is built here from the ITU's own source:{" "}
+        <code className="font-mono text-[0.8125rem]">node scripts/build-p533-engine.mjs</code>
+        {build.reason ? <span className="mt-1 block">{build.reason}</span> : null}
+      </p>
+    );
+  }
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2" data-engine-build="offered">
+      {build.failed ? (
+        <Notice tone="danger" className="w-full">
+          The last build did not finish. {build.failed}
+        </Notice>
+      ) : null}
+      <Button loading={start.isPending} onClick={() => start.mutate()}>
+        Build the P.533 engine ({formatBytes(build.downloadBytes)})
+      </Button>
+      <p className="w-full text-small text-ink-muted">
+        The ITU's software is not shipped with Outpost, so it is built here, once: Outpost fetches the ITU's own source and a compiler
+        (wasi-sdk) when you press this and at no other time, checks both against recorded checksums, compiles, and keeps the result only if
+        it is byte for byte the file it expects. It needs about {formatBytes(build.neededBytes)} free while it runs; the compiler is deleted
+        afterwards. A few minutes on a small computer.
+      </p>
+    </div>
+  );
+}
 
 function Setup({ status }: { status: SecondModelStatus }) {
   const client = useQueryClient();
@@ -57,12 +112,7 @@ function Setup({ status }: { status: SecondModelStatus }) {
   return (
     <div className="max-w-[75ch]">
       <p className="text-body text-ink">{status.line}</p>
-      {!status.engine.built ? (
-        <p className="mt-1 text-small text-ink-muted">
-          The ITU's software is not shipped with Outpost. It is built here from the ITU's own source:{" "}
-          <code className="font-mono text-[0.8125rem]">node scripts/build-p533-engine.mjs</code>
-        </p>
-      ) : null}
+      {!status.engine.built ? <EngineSetup status={status} /> : null}
       {!status.maps.installed ? (
         status.maps.downloading ? (
           <p className="mt-2 text-small text-ink-muted">The maps are downloading. Progress is under Downloads.</p>

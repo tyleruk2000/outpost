@@ -10,6 +10,27 @@ import { SecondModel } from "./second-model";
 
 afterEach(() => vi.unstubAllGlobals());
 
+const noBuild: SecondModelStatus["engine"]["build"] = {
+  possible: true,
+  reason: null,
+  downloadBytes: 192_761_634,
+  neededBytes: 862_255_247,
+  running: false,
+  progress: null,
+  failed: null,
+};
+
+/** The maps are there and the engine is not: what the page is given before, during and after a build. */
+const unbuilt = (build: Partial<SecondModelStatus["engine"]["build"]> = {}): SecondModelStatus => {
+  const base = status(true);
+  return {
+    ...base,
+    offered: false,
+    line: "The second model (ITU P.533) is not set up here. To use it, build the P.533 engine (press Build the P.533 engine: a download of 193 MB, once).",
+    engine: { ...base.engine, built: false, file: null, build: { ...noBuild, ...build } },
+  };
+};
+
 const status = (offered: boolean, change: Partial<SecondModelStatus["maps"]> = {}): SecondModelStatus => ({
   offered,
   line: offered ? null : "The second model (ITU P.533) is not set up here. To use it, download the ITU's P.533 maps (137 MB).",
@@ -21,6 +42,7 @@ const status = (offered: boolean, change: Partial<SecondModelStatus["maps"]> = {
     repository: "https://github.com/ITU-R-Study-Group-3/ITU-R-HF",
     commit: "8".repeat(40),
     howToBuild: "",
+    build: noBuild,
   },
   maps: {
     installed: offered,
@@ -122,6 +144,49 @@ describe("comparing with a second model", () => {
     show(status(false, { downloading: true }), () => new Response("{}"));
     expect(await screen.findByText(/The maps are downloading/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Download the P.533 maps/ })).toBeNull();
+  });
+
+  it("offers to build the engine where it is missing, says what that fetches, and starts only when pressed", async () => {
+    const posted = show(unbuilt(), () => new Response("{}"));
+    const button = await screen.findByRole("button", { name: "Build the P.533 engine (193 MB)" });
+    expect(
+      screen.getByText(/fetches the ITU's own source and a compiler \(wasi-sdk\) when you press this and at no other time/),
+    ).toBeTruthy();
+    expect(screen.getByText(/about 862 MB free while it runs; the compiler is deleted afterwards/)).toBeTruthy();
+    // Nothing to type into a shell.
+    expect(screen.queryByText(/node scripts\/build-p533-engine\.mjs/)).toBeNull();
+    expect(posted).toEqual([]);
+    fireEvent.click(button);
+    await waitFor(() => expect(posted).toEqual(["/api/radio/propagation/second-model/engine/build"]));
+  });
+
+  it("says what a build is doing while it runs, in place of the button", async () => {
+    show(
+      unbuilt({ running: true, progress: { current: 96_000_000, total: 192_000_000, message: "Fetching the compiler" } }),
+      () => new Response("{}"),
+    );
+    expect(await screen.findByText("Building the P.533 engine: fetching the compiler.")).toBeTruthy();
+    expect(screen.getByRole("progressbar", { name: "Building the P.533 engine" }).getAttribute("aria-valuenow")).toBe("50");
+    expect(screen.queryByRole("button", { name: /Build the P.533 engine/ })).toBeNull();
+  });
+
+  it("says why the last build failed, and offers it again", async () => {
+    show(
+      unbuilt({ failed: "raw.githubusercontent.com did not send P533.c (HTTP 503). Outpost will try again." }),
+      () => new Response("{}"),
+    );
+    expect(await screen.findByText(/The last build did not finish\. raw\.githubusercontent\.com did not send P533\.c/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Build the P.533 engine/ })).toBeTruthy();
+  });
+
+  it("gives the script, and the reason, where Outpost cannot build it itself", async () => {
+    show(
+      unbuilt({ possible: false, reason: "Outpost cannot build the engine on this kind of computer (win32-x64)." }),
+      () => new Response("{}"),
+    );
+    expect(await screen.findByText("node scripts/build-p533-engine.mjs")).toBeTruthy();
+    expect(screen.getByText(/cannot build the engine on this kind of computer \(win32-x64\)/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Build the P.533 engine/ })).toBeNull();
   });
 
   it("runs only when asked, and shows that it is running", async () => {

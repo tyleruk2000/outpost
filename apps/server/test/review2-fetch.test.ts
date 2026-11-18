@@ -23,7 +23,6 @@ const LINKS_ONLY = new Set([
   "creativecommons.org",
   "discovery.nationalarchives.gov.uk",
   "fas.org",
-  "github.com",
   "hub.worldpop.org",
   "joint-research-centre.ec.europa.eu",
   "map.geo.admin.ch",
