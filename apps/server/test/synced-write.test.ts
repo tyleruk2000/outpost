@@ -27,8 +27,8 @@ describe("a write stream that hands what it wrote to the disk as it goes", () =>
     fs.writeFileSync(file, "head ");
     await pipeline(Readable.from([Buffer.from("tail")]), syncedWriteStream(file, { flags: "a" }));
     expect(fs.readFileSync(file, "utf8")).toBe("head tail");
-    await expect(pipeline(Readable.from([Buffer.from("x")]), syncedWriteStream(path.join(dir, "no", "such", "folder.bin")))).rejects.toThrow(
-      /ENOENT/,
-    );
+    await expect(
+      pipeline(Readable.from([Buffer.from("x")]), syncedWriteStream(path.join(dir, "no", "such", "folder.bin"))),
+    ).rejects.toThrow(/ENOENT/);
   });
 });
