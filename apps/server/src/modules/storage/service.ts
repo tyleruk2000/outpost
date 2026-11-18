@@ -61,6 +61,41 @@ export function isInsideRoots(roots: readonly string[], target: string): boolean
   return roots.some((root) => isInside(realPathOf(root), real));
 }
 
+/** `realPathOf` without holding up the server: on a share that has stopped answering, the sync one did, for seconds. */
+async function realPathOfAsync(target: string): Promise<string> {
+  let existing = path.resolve(target);
+  const tail: string[] = [];
+  while (
+    !(await fs.promises.stat(existing).then(
+      () => true,
+      () => false,
+    ))
+  ) {
+    const parent = path.dirname(existing);
+    if (parent === existing) break;
+    tail.unshift(path.basename(existing));
+    existing = parent;
+  }
+  try {
+    return path.join(await fs.promises.realpath(existing), ...tail);
+  } catch {
+    return path.resolve(target);
+  }
+}
+
+/** `isInsideRoots`, for what is done often (the regular check of every location) and may meet a share that is out of reach. */
+export async function isInsideRootsAsync(roots: readonly string[], target: string): Promise<boolean> {
+  const resolved = path.resolve(target);
+  if (!roots.some((root) => isInside(root, resolved))) return false;
+  const real = await realPathOfAsync(resolved);
+  for (const root of roots) if (isInside(await realPathOfAsync(root), real)) return true;
+  return false;
+}
+
+/** Said of a location that did not answer its check in time: a share switched off or out of reach does that, not one unplugged. */
+export const NOT_ANSWERING =
+  "The location is not answering. A network share whose server is switched off or out of reach does this. Outpost keeps looking, and picks it up again as soon as it answers.";
+
 export interface BrowseEntry {
   name: string;
   path: string;
@@ -237,7 +272,7 @@ export function createStorageService(ctx: AppContext): StorageService {
     // The storage roots are the boundary set by whoever started the server, and they can
     // change between starts. A folder outside them is not used, even if it is still
     // there with the right marker in it.
-    const allowed = insideRoots(row.path);
+    const allowed = await isInsideRootsAsync(roots, row.path);
     let marker = allowed ? await readMarker(currentPath) : undefined;
     let detail: string | null = null;
 
@@ -289,17 +324,72 @@ export function createStorageService(ctx: AppContext): StorageService {
     // a different disk. Only that is announced (as `storage.changed`, which every open
     // screen acts on). Free space is recorded when it has moved noticeably, for the next
     // screen that reads the list, but never announced.
+    // Held against the location as it is now, not as it was when the check began: a check of a share that stopped
+    // answering ends long after, when the location has been marked not answering meanwhile (`probe`).
+    const now = db.select().from(storageLocations).where(eq(storageLocations.id, row.id)).get() ?? row;
     const changed =
-      patch.status !== row.status ||
-      patch.path !== row.path ||
-      patch.statusDetail !== row.statusDetail ||
-      patch.totalBytes !== row.totalBytes;
-    const spaceMoved = freeSpaceMoved(row.freeBytes, patch.freeBytes);
+      patch.status !== now.status ||
+      patch.path !== now.path ||
+      patch.statusDetail !== now.statusDetail ||
+      patch.totalBytes !== now.totalBytes;
+    const spaceMoved = freeSpaceMoved(now.freeBytes, patch.freeBytes);
     // When it was last seen is held here and written when it goes away (or hourly, for a restart).
     if (marker) seenAt.set(row.id, patch.lastSeenAt ?? Date.now());
-    const stale = marker !== undefined && Date.now() - (row.lastSeenAt ?? 0) >= 3_600_000;
+    const stale = marker !== undefined && Date.now() - (now.lastSeenAt ?? 0) >= 3_600_000;
     if (changed || spaceMoved || stale) db.update(storageLocations).set(patch).where(eq(storageLocations.id, row.id)).run();
     return changed;
+  }
+
+  /**
+   * The check of each location that is under way. A share that has stopped answering holds its check (on one of the
+   * file threads, not the server's own) until the network gives up, ten seconds and more; another is not started
+   * on top of it, and the location is said to be not answering meanwhile.
+   */
+  const probing = new Map<string, Promise<boolean>>();
+
+  /** Marks a location away because it did not answer: what `check` would write, without asking the location anything. */
+  function markAway(id: string, detail: string): boolean {
+    const row = get(id);
+    if (row.status === "unavailable" && row.statusDetail === detail) return false;
+    db.update(storageLocations)
+      .set({
+        status: "unavailable",
+        statusDetail: detail,
+        lastSeenAt: Math.max(row.lastSeenAt ?? 0, seenAt.get(row.id) ?? 0) || row.lastSeenAt,
+      })
+      .where(eq(storageLocations.id, row.id))
+      .run();
+    ctx.log.warn({ location: row.id, name: row.name }, "storage location did not answer its check in time");
+    return true;
+  }
+
+  /** `check`, held to a time limit, and never two at once for the same location. */
+  async function probe(row: LocationRow, search: boolean): Promise<boolean> {
+    if (probing.has(row.id)) return markAway(row.id, NOT_ANSWERING);
+    let late = false;
+    const run = check(row, search).finally(() => {
+      if (probing.get(row.id) === run) probing.delete(row.id);
+    });
+    probing.set(row.id, run);
+    // A check that ends after it was given up on still says what it found: a share that has come back is announced then.
+    run.then(
+      (changed) => {
+        if (late && changed) ctx.events.publish({ type: "storage.changed" });
+      },
+      (error) => {
+        if (late) ctx.log.warn({ err: error, location: row.id }, "a late storage check failed");
+      },
+    );
+    let timer: NodeJS.Timeout | undefined;
+    const outcome = await Promise.race([
+      run,
+      new Promise<"late">((resolve) => {
+        timer = setTimeout(() => resolve("late"), config.storageProbeTimeoutMs);
+      }),
+    ]).finally(() => clearTimeout(timer));
+    if (outcome !== "late") return outcome;
+    late = true;
+    return markAway(row.id, NOT_ANSWERING);
   }
 
   const service: StorageService = {
@@ -401,7 +491,9 @@ export function createStorageService(ctx: AppContext): StorageService {
 
     async refresh(options) {
       let changed = false;
-      for (const row of list()) changed = (await check(row, options?.search ?? true)) || changed;
+      // All at once: one location out of reach does not hold up the check of the others.
+      const results = await Promise.all(list().map((row) => probe(row, options?.search ?? true)));
+      changed = results.some(Boolean);
       if (changed) ctx.events.publish({ type: "storage.changed" });
       return list();
     },
@@ -486,17 +578,19 @@ export function createStorageService(ctx: AppContext): StorageService {
         entry.totalBytes += bytes;
         byLocation.set(locationId, entry);
       };
+      // A dataset read onto the map (a reference layer) is a map layer, not radio data, as on Manage and clean up.
+      const kind = sql<string>`case when ${collections.kind} = 'dataset' and json_extract(${collections.meta}, '$.reference') is not null then 'layer' else ${collections.kind} end`;
       for (const row of db
         .select({
           locationId: collections.locationId,
-          kind: collections.kind,
+          kind,
           bytes: sql<number>`coalesce(sum(${collections.sizeBytes}), 0)`,
           count: sql<number>`count(*)`,
         })
         .from(collections)
         // A file that became a document (a reference sheet) is counted with the documents.
         .where(sql`json_extract(${collections.meta}, '$.documentId') is null`)
-        .groupBy(collections.locationId, collections.kind)
+        .groupBy(collections.locationId, kind)
         .all()) {
         add(row.locationId, row.kind, row.bytes, row.count);
       }

@@ -1,4 +1,5 @@
-// First, before any other module is loaded: see the file for why.
+// First, before any other module is loaded: see each file for why.
+import "./core/threadpool.ts";
 import "./core/v8-flags.ts";
 import { buildApp } from "./app.ts";
 import { loadConfig } from "./config.ts";

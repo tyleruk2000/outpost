@@ -36,6 +36,7 @@ const envSchema = z.object({
   OUTPOST_HTTPS_PORT: z.coerce.number().int().min(0).max(65535).default(8443),
   OUTPOST_DATA_DIR: z.string().default("./data"),
   OUTPOST_STORAGE_ROOTS: list,
+  OUTPOST_STORAGE_PROBE_TIMEOUT_MS: z.coerce.number().int().min(100).max(120_000).default(5_000),
   OUTPOST_LAN_ACCESS: bool(false),
   OUTPOST_IN_CONTAINER: bool(false),
   OUTPOST_PUBLISHED_ADDRESS: z.string().optional(),
@@ -103,6 +104,8 @@ export interface Config {
    * only be created inside one of these. The browser never sees anything outside them.
    */
   storageRoots: string[];
+  /** How long a storage location has to answer its check before it is taken to be not connected. */
+  storageProbeTimeoutMs: number;
   lanAccess: boolean;
   allowedHosts: string[];
   kiwix: {
@@ -243,6 +246,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     httpsPort: parsed.OUTPOST_HTTPS_PORT,
     dataDir,
     storageRoots,
+    storageProbeTimeoutMs: parsed.OUTPOST_STORAGE_PROBE_TIMEOUT_MS,
     lanAccess: parsed.OUTPOST_LAN_ACCESS,
     allowedHosts: parsed.OUTPOST_ALLOWED_HOSTS.map((host) => host.toLowerCase()),
     kiwix: {
