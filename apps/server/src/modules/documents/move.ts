@@ -16,6 +16,7 @@ import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, conflict } from "../../core/errors.ts";
 import { type JobRow, toJobDto } from "../../core/jobs.ts";
+import { syncedWriteStream } from "../../core/synced-write.ts";
 import { documents } from "../../db/schema.ts";
 
 interface MovePayload extends Record<string, unknown> {
@@ -92,7 +93,7 @@ export function registerDocumentMoves(app: FastifyInstance, ctx: AppContext): vo
                 yield chunk;
               }
             },
-            fs.createWriteStream(partial),
+            syncedWriteStream(partial),
             { signal },
           );
           if (hash.digest("hex") !== row.sha256) {

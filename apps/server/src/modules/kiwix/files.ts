@@ -24,6 +24,7 @@ import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest } from "../../core/errors.ts";
 import { safeFileName } from "../../core/fs-safe.ts";
 import { newId } from "../../core/ids.ts";
+import { syncedWriteStream } from "../../core/synced-write.ts";
 import { documents as documentsTable } from "../../db/schema.ts";
 import type { CollectionRow } from "../collections/service.ts";
 import { extensionOf, formatForExt } from "../documents/file-types.ts";
@@ -282,7 +283,7 @@ export function registerArchiveFiles(app: FastifyInstance, ctx: AppContext, opti
             yield chunk;
           }
         },
-        fs.createWriteStream(temp),
+        syncedWriteStream(temp),
         { signal },
       );
       clearTimeout(timer);

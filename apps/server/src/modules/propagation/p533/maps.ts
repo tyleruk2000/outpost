@@ -22,6 +22,7 @@ import type { AppContext } from "../../../core/context.ts";
 import { AppError, conflict } from "../../../core/errors.ts";
 import { createHttpClient } from "../../../core/http.ts";
 import { PermanentJobError } from "../../../core/jobs.ts";
+import { syncedWriteStream } from "../../../core/synced-write.ts";
 import type { CollectionRow } from "../../collections/service.ts";
 import type { DownloadRow, Fetcher, Installer } from "../../downloads/types.ts";
 import { MapsBundle, type MapsManifest, P533_MANIFEST } from "./files.ts";
@@ -112,7 +113,7 @@ export function createMapsFetcher(
             }
           }
         },
-        fs.createWriteStream(partPath, { flags: "a" }),
+        syncedWriteStream(partPath, { flags: "a" }),
         { signal },
       );
       if (have < end)

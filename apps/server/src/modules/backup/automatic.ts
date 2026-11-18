@@ -42,6 +42,7 @@ import type { AppContext } from "../../core/context.ts";
 import { AppError, conflict, messageOf, notFound } from "../../core/errors.ts";
 import { resolveInside, sizeOnDisk } from "../../core/fs-safe.ts";
 import { type JobRow, type JobRun, PermanentJobError, toJobDto } from "../../core/jobs.ts";
+import { syncedWriteStream } from "../../core/synced-write.ts";
 import { settings as settingsTable } from "../../db/schema.ts";
 import type { LocationRow } from "../storage/service.ts";
 import { DATA_FOLDERS, startBackup, verifyBackupFile } from "./archive.ts";
@@ -358,7 +359,7 @@ export function registerAutomaticBackups(
     try {
       run.progress({ message: `Writing the backup to ${location.name}` });
       // Under a temporary name until it is whole, and flushed to the disk before it is renamed.
-      await pipeline(backup.output, fs.createWriteStream(part, { flags: "wx" }), { signal: run.signal });
+      await pipeline(backup.output, syncedWriteStream(part, { flags: "wx" }), { signal: run.signal });
       await flushToDisk(part);
       // The same folder must still be the location: a share can go away part-way through.
       const still = await connectedLocation(location.id).catch(() => undefined);

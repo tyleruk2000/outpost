@@ -20,6 +20,7 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { HttpClient } from "../../core/http.ts";
 import { PermanentJobError } from "../../core/jobs.ts";
+import { syncedWriteStream } from "../../core/synced-write.ts";
 import type { FetchContext, Fetcher } from "./types.ts";
 
 /** How often a stale partial file may be thrown away before giving up on this attempt. */
@@ -167,7 +168,7 @@ async function attempt(client: HttpClient, context: FetchContext, stated: number
           }
         }
       },
-      fs.createWriteStream(partPath, { flags: append ? "a" : "w" }),
+      syncedWriteStream(partPath, { flags: append ? "a" : "w" }),
       { signal },
     );
   } else if (!append) {

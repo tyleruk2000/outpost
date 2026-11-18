@@ -12,6 +12,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import { sha256File } from "../../core/hashing.ts";
+import { syncedWriteStream } from "../../core/synced-write.ts";
 
 export interface TreeDigest {
   sha256: string;
@@ -113,7 +114,7 @@ async function copyFileHashed(
       }
     },
     // `flush` asks the drive to really store the bytes before the copy is trusted.
-    fs.createWriteStream(target, { flags: "w", flush: true }),
+    syncedWriteStream(target, { flags: "w", flush: true }),
     { signal },
   );
   return hash.digest("hex");
