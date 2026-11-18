@@ -50,6 +50,22 @@ bd close <id>         # Complete work
 - If push fails, resolve and retry until it succeeds
 <!-- END BEADS INTEGRATION -->
 
+### Beads on a fresh clone or a cloud session
+
+`bd` may not be installed, and the Dolt database is not in git (only the export is).
+Before using it:
+
+```bash
+npm install -g @beads/bd        # if `bd` is not found
+bd metrics off                  # bd sends anonymous usage metrics unless told not to
+bd bootstrap --yes              # builds the database from .beads/issues.jsonl
+git config beads.role maintainer
+```
+
+After changing issues, write the export and commit it with the work:
+`bd export -o .beads/issues.jsonl`.
+
+
 
 ## Build & Test
 
