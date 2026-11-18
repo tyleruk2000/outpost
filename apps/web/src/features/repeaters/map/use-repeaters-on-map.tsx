@@ -12,6 +12,7 @@ import {
   haversineMeters,
   REPEATER_STATUS_NAMES,
   type RepeaterDetailResponse,
+  type SightRange,
   toMaidenhead,
 } from "@outpost/shared";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
@@ -136,7 +137,10 @@ export function useRepeatersOnMap({
   here,
   onSight,
   onOpenOffline,
+  extraRange,
 }: {
+  /** A point's estimated range, drawn with the repeaters' outlines by the same layers. */
+  extraRange?: { range: SightRange; name: string } | null;
   engine: MapEngine | null;
   /** No tool is in hand, so a press on the map can open a repeater. */
   browsing: boolean;
@@ -180,6 +184,7 @@ export function useRepeatersOnMap({
     repeater: browsing && on && selectedId && selected ? selected : null,
     onOpenOffline,
     onClose: () => setSelectedId(null),
+    extra: extraRange,
   });
   useEffect(() => {
     if (!engine) return;

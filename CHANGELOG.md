@@ -528,6 +528,10 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 
 #### Maps
 
+- **Estimated radio range from any point**: press and hold the map (or right-click) and
+  choose **Estimated radio range from here** for the repeaters' line-of-sight estimate
+  from a hilltop or any place: an outline shaped by the terrain, the answer in words, your
+  aerial's height and the other station's, remembered on the device.
 - **A printed map can show magnetic north** (tick **Magnetic north**; off unless chosen,
   remembered in the browser): a blue MN arrow beside true north, the declination for the
   middle of the sheet on the day with its yearly change and whether to add or subtract

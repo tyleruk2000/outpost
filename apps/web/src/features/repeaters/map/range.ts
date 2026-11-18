@@ -124,7 +124,8 @@ export interface RangeReading {
   needsTerrain: boolean;
 }
 
-export function readRange(range: SightRange): RangeReading {
+/** `where` says where the aerial is, for the one sentence that names it: a repeater, or a point chosen on the map ("here"). */
+export function readRange(range: SightRange, where: "repeater" | "here" = "repeater"): RangeReading {
   const max = formatReach(range.maxMeters);
   if (range.coverage === "none") {
     const horizon = Math.min(range.horizonMeters, range.maxMeters);
@@ -134,7 +135,7 @@ export function readRange(range: SightRange): RangeReading {
       short: `No terrain: about ${formatKm(horizon)}`,
       note: "No terrain is held here, so it is a plain circle.",
       sentences: [
-        "No terrain is held under this repeater, so the circle is drawn as if the ground were flat all round. Hills will cut it short in places and stretch it in others.",
+        `No terrain is held ${where === "here" ? "here" : "under this repeater"}, so the circle is drawn as if the ground were flat all round. Hills will cut it short in places and stretch it in others.`,
       ],
       needsTerrain: true,
     };

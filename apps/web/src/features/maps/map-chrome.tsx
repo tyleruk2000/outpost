@@ -715,6 +715,7 @@ export function ContextMenu({
   onMeasure,
   onDraw,
   onSun,
+  onRange,
   onClose,
 }: {
   point: { x: number; y: number };
@@ -730,6 +731,8 @@ export function ContextMenu({
   onDraw: () => void;
   /** Drops a pin there with its sunrise and sunset times open. */
   onSun: () => void;
+  /** Shows how far a radio there could reach over the terrain (maps/radio/point-range.tsx). */
+  onRange?: () => void;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -755,7 +758,7 @@ export function ContextMenu({
   }, [onClose]);
 
   const width = 232;
-  const height = (place ? 254 : 218) + (locator ? 18 : 0);
+  const height = (place ? 254 : 218) + (locator ? 18 : 0) + (onRange ? 36 : 0);
   const left = Math.max(8, Math.min(point.x, bounds.width - width - 8));
   const top = Math.max(8, Math.min(point.y, bounds.height - height - 8));
   const item =
@@ -782,6 +785,11 @@ export function ContextMenu({
       <button type="button" role="menuitem" className={item} onClick={onSun}>
         Sun times here
       </button>
+      {onRange ? (
+        <button type="button" role="menuitem" className={item} onClick={onRange}>
+          Estimated radio range from here
+        </button>
+      ) : null}
       <button
         type="button"
         role="menuitem"

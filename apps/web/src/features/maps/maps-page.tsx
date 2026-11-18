@@ -104,6 +104,7 @@ import { ImportGpxDialog, RouteDetail, RoutesList } from "./panels/routes";
 import { SunGlance } from "./panels/sun-glance";
 import { SunPanel } from "./panels/sun-panel";
 import { locatorOf } from "./radio/locator";
+import { usePointRange } from "./radio/point-range";
 import { SightCard } from "./radio/sight-card";
 import { SightPanel } from "./radio/sight-panel";
 import { useLocatorGrid } from "./radio/use-locator-grid";
@@ -960,7 +961,14 @@ export default function MapsPage() {
   };
 
   // Repeaters held on this device: drawn when switched on, opened by a press, handed to the line-of-sight check.
+  // "Estimated radio range from here", from the menu a long press or a right-click opens: drawn with the repeaters' ranges.
+  const pointRange = usePointRange({
+    engine,
+    where: (position) => formatPosition(position.lat, position.lon, format, engine?.getZoom()).text,
+    onOpenOffline: () => openOffline({ type: "add" }),
+  });
   const repeaters = useRepeatersOnMap({
+    extraRange: pointRange.outline,
     engine,
     browsing: tool === "browse" && !moving && !draft,
     here: locate.fix,
@@ -1346,6 +1354,8 @@ export default function MapsPage() {
         }}
         onClose={() => closeDrawing()}
       />
+    ) : pointRange.card ? (
+      pointRange.card
     ) : pin ? (
       <PinCard
         // A pin dropped for its sun times opens them, even when the pin before it had them folded.
@@ -1610,6 +1620,14 @@ export default function MapsPage() {
               setDraft(null);
               setMoving(null);
               setPin({ title: formatDecimal(lat, lon, 5), detail: "A point chosen on the map", position: { lat, lon }, sun: true });
+              setDetent("peek");
+            }}
+            onRange={() => {
+              setContextMenu(null);
+              setDraft(null);
+              setMoving(null);
+              setPin(null);
+              pointRange.start({ position: contextMenu.position, name: contextPlace?.name });
               setDetent("peek");
             }}
             onClose={() => setContextMenu(null)}

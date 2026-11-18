@@ -127,7 +127,10 @@ export function useRepeaterRange({
   repeater,
   onOpenOffline,
   onClose,
+  extra,
 }: {
+  /** One more outline drawn with the repeaters', whether or not they are switched on: a point's range (maps/radio/point-range.tsx). */
+  extra?: { range: SightRange; name: string } | null;
   engine: MapEngine | null;
   /** The map's repeaters are switched on: the chosen ranges are drawn only then, as the dots are. */
   visible: boolean;
@@ -157,8 +160,9 @@ export function useRepeaterRange({
   const names = placedChosen.map((one) => one.callsign).join("\n");
   const drawn = useMemo(() => {
     const callsigns = names.split("\n");
-    return outlines.flatMap((range, index) => (range ? [{ range, name: callsigns[index] ?? "" }] : []));
-  }, [outlines, names]);
+    const repeaters = outlines.flatMap((range, index) => (range ? [{ range, name: callsigns[index] ?? "" }] : []));
+    return extra ? [...repeaters, extra] : repeaters;
+  }, [outlines, names, extra]);
   useEffect(() => {
     engine?.setOverlay(RANGE_SOURCE, drawn.length > 0 ? rangesData(drawn) : EMPTY);
   }, [engine, drawn]);

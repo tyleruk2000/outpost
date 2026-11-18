@@ -2144,6 +2144,32 @@ from the first point) and `terrain` (the width of the cells that were read). The
 the curve, the Fresnel zone and the verdict are worked out from that by `analyseSight`
 in the same file; the web app runs it in the browser.
 
+## Estimated radio range from a point
+
+Press and hold the map (or right-click it with a mouse) and choose **Estimated radio
+range from here**: how far a radio at that point could reach over the terrain, drawn as
+an outline with the answer in a card. For a hilltop where someone would set up, a planned
+base, or a saved place (the name is used when the point is one).
+
+It is the repeaters' estimate, the same sums and the same outline (see
+[docs/radio.md](radio.md#the-estimated-range)), from a point instead of a repeater:
+
+- **The heights.** Your aerial, 1.5 m above the ground unless changed (a radio held in
+  the hand; give a mast's height if it is on one), and the other station: a handheld
+  (1.5 m), a car (2 m) or a roof aerial (8 m). Under **Heights and details**; remembered
+  on this device.
+- **What it is.** The ground a radio there can see: on each of 72 bearings, how far out
+  the other station stays in sight of your aerial over the installed terrain, out to
+  100 km. It is not a circle: a hill blocks one side and not another. The card gives the
+  usual reach, the nearest and the furthest, and the height of the ground there.
+- **What it is not.** An estimate of line of sight, not a promise: power, the band,
+  aerials, woods and buildings and signals bending over ridges are not counted. Radio
+  often reaches less than the outline, and sometimes more.
+- **No terrain there.** It says so, and the shape is the plain smooth-Earth radio
+  horizon, with **Get terrain in Offline maps**. A dashed edge is where terrain ran out.
+- One point at a time, drawn with any repeaters' ranges that are on. **Stop showing this
+  range** (the card's ×) takes it away. It works anywhere terrain is installed.
+
 ## Repeaters on the map
 
 The repeaters you hold ([radio.md](radio.md#repeaters)) can be drawn over the map.
