@@ -28,5 +28,25 @@ export function serveWeatherStandIn(request: IncomingMessage, response: ServerRe
     return;
   }
   response.writeHead(200, { "content-type": file.endsWith(".xml") ? "application/rss+xml" : "application/json" });
-  response.end(fs.readFileSync(path.join(import.meta.dirname, file)));
+  const body = fs.readFileSync(path.join(import.meta.dirname, file));
+  response.end(file === "open-meteo-forecast.json" ? forecastFromToday(body.toString("utf8")) : body);
+}
+
+/**
+ * The recorded forecast, with its days moved so that the first is today (UTC, as the
+ * recording is). A forecast is fetched for the days ahead: served with the dates it was
+ * recorded on (16 and 17 November 2026) it has run out, and Outpost rightly says so.
+ */
+export function forecastFromToday(recorded: string, now = Date.now()): string {
+  const answer = JSON.parse(recorded) as { hourly: { time: string[] }; daily: { time: string[] } };
+  const DAY = 86_400_000;
+  const days = Math.floor(now / DAY) - Math.floor(Date.parse(`${answer.daily.time[0]}T00:00Z`) / DAY);
+  const moved = (time: string) => {
+    const [date, hour] = time.split("T");
+    const day = new Date(Date.parse(`${date}T00:00Z`) + days * DAY).toISOString().slice(0, 10);
+    return hour === undefined ? day : `${day}T${hour}`;
+  };
+  answer.hourly.time = answer.hourly.time.map(moved);
+  answer.daily.time = answer.daily.time.map(moved);
+  return JSON.stringify(answer);
 }
