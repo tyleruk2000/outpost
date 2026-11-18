@@ -488,3 +488,47 @@ describe("files inside a reference collection", () => {
     expect(fs.existsSync(saved) ? fs.readdirSync(saved) : []).toEqual([]);
   });
 });
+
+describe("a reference collection whose storage location is away", () => {
+  let away: TestApp | undefined;
+  afterEach(async () => {
+    await away?.close();
+    away = undefined;
+  });
+
+  it("answers its pages with where it is and that nothing is lost, not the reader's 'Page not found'", async () => {
+    away = await createTestApp();
+    const { storage, collections } = away.ctx.services;
+    const share = path.join(away.dir, "storage", "nas");
+    const location = await storage.add({ name: "docs on the NAS", path: share, kind: "network" });
+    const file = path.join(share, "collections", "zim", "survival_en_all_2026-01.zim");
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, "stand-in, not an archive");
+    await collections.create({
+      kind: "zim",
+      title: "Survival guides",
+      locationId: location.id,
+      relPath: "collections/zim/survival_en_all_2026-01.zim",
+      meta: { zim: { uuid: "0f6c5b3e-0000-4000-8000-000000000001", bookName: "survival_en_all_2026-01" } } as never,
+    });
+    // The share's server is switched off.
+    fs.rmSync(share, { recursive: true, force: true });
+    await storage.refresh({ search: false });
+
+    for (const page of [
+      "content/survival_en_all_2026-01/",
+      "content/survival_en_all_2026-01/A/Water",
+      "raw/survival_en_all_2026-01/meta/Illustration_48x48@1",
+    ]) {
+      const response = await away.app.inject({ method: "GET", url: `/kiwix/open/${page}`, headers: { host: "localhost" } });
+      expect(response.statusCode, page).toBe(503);
+      expect(response.headers["content-type"]).toMatch(/text\/html/);
+      const html = response.body;
+      expect(html).toContain("“docs on the NAS” is not connected");
+      expect(html).toContain("Survival guides is kept on “docs on the NAS”");
+      expect(html).toContain("Nothing has been lost");
+      // Nothing from anywhere else: it is shown inside the reader's frame.
+      expect(html).not.toMatch(/https?:\/\//);
+    }
+  });
+});

@@ -143,6 +143,7 @@ export default function HomePage() {
         { documents: counts.documents ?? 0, pages: counts.pages ?? 0, collections: counts.collections ?? 0 },
         free,
         connected.length,
+        locations.filter((location) => location.status !== "available" && location.usage.totalBytes > 0).map((location) => location.name),
       );
 
   return (

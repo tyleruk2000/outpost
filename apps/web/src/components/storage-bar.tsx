@@ -8,6 +8,7 @@ export const usageKinds: Array<{ kind: string; label: string; color: string }> =
   { kind: "terrain", label: "Terrain", color: "oklch(0.7 0.08 120)" },
   { kind: "document", label: "Documents", color: "var(--lamp)" },
   { kind: "places", label: "Place names", color: "oklch(0.62 0.1 285)" },
+  { kind: "layer", label: "Map layers", color: "oklch(0.66 0.09 190)" },
   { kind: "file", label: "Books and other files", color: "oklch(0.6 0.09 30)" },
   { kind: "model", label: "Search models", color: "oklch(0.58 0.07 250)" },
   { kind: "dataset", label: "Radio data", color: "var(--chart-other)" },

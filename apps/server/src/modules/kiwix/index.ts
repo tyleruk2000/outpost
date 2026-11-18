@@ -145,6 +145,14 @@ const MAX_HTML_BYTES = 32 * 1024 * 1024;
  */
 const CONTENT_TOKEN = "open";
 /** Only a book's pages and its icon are reachable; search and the rest of kiwix-serve are not. */
+const escapeHtml = (text: string) =>
+  text.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+
+/** What a page of a reference collection says while the collection's storage location is not connected. Self-contained. */
+export function awayPage(title: string, where: string): string {
+  return `<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(title)}: not connected</title><style>body{font:16px/1.5 system-ui,sans-serif;margin:0;padding:2rem 1rem;color:#1d2a2e;background:#f7f9f9}main{max-width:36rem;margin:0 auto}h1{font-size:1.25rem;margin:0 0 .75rem}p{margin:0 0 .75rem}@media (prefers-color-scheme:dark){body{color:#e4ecec;background:#141c1e}}</style></head><body><main><h1>“${escapeHtml(where)}” is not connected</h1><p>${escapeHtml(title)} is kept on “${escapeHtml(where)}”, which Outpost cannot reach just now. Nothing has been lost: the page opens again here as soon as the drive or share is back.</p><p>If it is a network share, check that its server is switched on and on the same network. Storage in Outpost says which locations are connected.</p></main></body></html>`;
+}
+
 const isAllowedPath = (rest: string) => rest.startsWith("content/") || /^raw\/[^/]+\/meta\/Illustration_48x48@1$/.test(rest);
 const passThroughHeaders = ["content-type", "etag", "last-modified", "content-range", "accept-ranges"];
 
@@ -250,6 +258,8 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
       .catch((error) => log.error({ err: error }, "kiwix library sync failed"));
     return syncing;
   }
+  // A rewrite begun just before the server stops (a location going away) is let finish, not left to write afterwards.
+  ctx.onClose.push(() => syncing);
 
   async function upstream(pathAndQuery: string, init: RequestInit = {}): Promise<Response> {
     const base = connection.baseUrl();
@@ -673,6 +683,27 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
       const rest = request.params["*"];
       if (rest.includes("..") || !isAllowedPath(rest)) {
         return reply.status(404).type("text/plain").send("Not found.");
+      }
+      // A book whose storage location is away is not in the reader's library, and the reader would say only "Page not
+      // found". Said here instead, with where it is and that nothing is lost: a search result or a bookmark leads here.
+      const book = /^(?:content|raw)\/([^/]+)/.exec(rest)?.[1];
+      const away = book
+        ? zimCollections().find((row) => zimOf(row)?.bookName === decodeURIComponent(book) && !storage.isAvailable(row.locationId))
+        : undefined;
+      if (away) {
+        const where = (() => {
+          try {
+            return storage.get(away.locationId).name;
+          } catch {
+            return "its storage location";
+          }
+        })();
+        return reply
+          .status(503)
+          .header("Cache-Control", "no-store")
+          .header("Retry-After", "60")
+          .type("text/html; charset=utf-8")
+          .send(awayPage(away.title, where));
       }
       const query = request.url.includes("?") ? request.url.slice(request.url.indexOf("?")) : "";
       const headers: Record<string, string> = { "accept-encoding": "identity" };
