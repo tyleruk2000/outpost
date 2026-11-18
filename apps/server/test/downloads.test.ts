@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
+import { Writable } from "node:stream";
 import type { DownloadDetail } from "@outpost/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OFFLINE_MESSAGE } from "../src/modules/downloads/service.ts";
@@ -408,7 +409,10 @@ describe("failures", () => {
 
     expect(row.state).toBe("failed");
     expect(row.errorKind).toBe("checksum_mismatch");
-    expect(row.error).toMatch(/damaged on the way or as it was written to storage, or had been tampered with/);
+    // What was written read back as it arrived, so the storage is not blamed for it.
+    expect(row.error).toMatch(
+      /it is the file as it arrived: it was damaged on the way or changed at its source, or had been tampered with/,
+    );
     expect(row.error).toMatch(/nothing was installed/);
     expect(row.attempts).toBe(1);
     expect(fs.existsSync(finalPath(app, row))).toBe(false);
@@ -434,7 +438,7 @@ describe("failures", () => {
     app = await createTestApp();
     const server = await fileServer();
     const body = testBytes(120_000, 13);
-    // What a share that loses a block leaves: the right size, a stretch of zeros.
+    // Sent damaged: the right size, a stretch of zeros. (Lost by the storage instead, it is put right: see below.)
     const damaged = Buffer.from(body);
     damaged.fill(0, 65_536, 69_632);
     server.routes.set("/extract", { body: damaged });
@@ -445,7 +449,7 @@ describe("failures", () => {
     expect(row.state).toBe("failed");
     expect(row.errorKind).toBe("checksum_mismatch");
     expect(row.error).toMatch(/does not match its published checksum/);
-    expect(row.error).toMatch(/as it was written to storage/);
+    expect(row.error).toMatch(/it is the file as it arrived/);
     expect(fs.existsSync(`${finalPath(app, row)}.part`)).toBe(false);
     expect(app.ctx.services.collections.list()).toHaveLength(0);
     const failed = ((await app.api("GET", `/api/downloads/${started.id}`)).body as DownloadDetail).integrity;
@@ -821,5 +825,146 @@ describe("private addresses", () => {
 
     expect(internal.requests).toHaveLength(0);
     expect(fs.existsSync(finalPath(app, redirectedRow))).toBe(false);
+  });
+});
+
+/**
+ * Storage that does not keep what is written to it: the first Raspberry Pi's NAS share gave back a 2.3 GB
+ * download the right size with one 4 KiB block of zeros in it (18 November 2026). Here the stream the
+ * downloader writes through is stood in for by one that zeroes a block on its way to the disk.
+ */
+describe("storage that loses part of what is written to it", () => {
+  const MEGABYTE = 1024 * 1024;
+  const LOST = { from: 2 * MEGABYTE + 405_504, bytes: 4096 };
+
+  /** Makes every stream the downloader opens zero the lost block as it passes, for the first `times` streams. */
+  function lossyStorage(times: number) {
+    const open = fs.createWriteStream;
+    let streams = 0;
+    return vi.spyOn(fs, "createWriteStream").mockImplementation(((file: fs.PathLike, options?: { flags?: string }) => {
+      const real = open(file, options as never);
+      if (!String(file).endsWith(".part")) return real;
+      streams += 1;
+      const lossy = streams <= times;
+      let position = options?.flags === "a" && fs.existsSync(file) ? fs.statSync(file).size : 0;
+      return new Writable({
+        write(chunk: Buffer, _encoding, done) {
+          const [start, end] = [position, position + chunk.length];
+          position = end;
+          if (lossy && start < LOST.from + LOST.bytes && end > LOST.from) {
+            chunk = Buffer.from(chunk);
+            chunk.fill(0, Math.max(0, LOST.from - start), Math.min(chunk.length, LOST.from + LOST.bytes - start));
+          }
+          real.write(chunk, done);
+        },
+        final(done) {
+          real.end(done);
+        },
+      }) as never;
+    }) as never);
+  }
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it("is caught when the file is checked, and only the part from the damage on is fetched again", async () => {
+    app = await createTestApp();
+    const server = await fileServer();
+    const body = testBytes(3 * MEGABYTE + 500_000, 31);
+    // No published checksum: nothing but Outpost's own record of what it wrote could tell.
+    server.routes.set("/atlas", { body });
+    lossyStorage(1);
+
+    const started = await downloads(app).start(request(server, "/atlas", "atlas.bin"));
+    const row = await settled(app, started.id);
+    expect(row.error).toBeNull();
+    expect(row.state).toBe("completed");
+    expect(fs.readFileSync(finalPath(app, row)).equals(body)).toBe(true);
+    expect(row.sha256Actual).toBe(sha256(body));
+    // The whole file once, then from the megabyte the lost block is in: not the whole file again.
+    const asked = server.requests.filter((seen) => seen.method === "GET").map((seen) => seen.range ?? "all of it");
+    expect(asked).toEqual(["all of it", `bytes=${2 * MEGABYTE}-`]);
+    const { events } = (await app.api("GET", `/api/downloads/${started.id}`)).body as DownloadDetail;
+    expect(events.map((event) => event.state)).toEqual(["queued", "running", "verifying", "running", "verifying", "completed"]);
+    expect(events[3]!.detail).toMatch(
+      /^What was written to .+ did not read back the same from 2\.10 MB on \(of 3\.65 MB\), so that part is fetched again\.$/,
+    );
+    expect(app.ctx.services.collections.list()).toHaveLength(1);
+  });
+
+  it("is caught before a published checksum would have had the whole file thrown away", async () => {
+    app = await createTestApp();
+    const server = await fileServer();
+    const body = testBytes(3 * MEGABYTE, 32);
+    server.routes.set("/zim", { body });
+    lossyStorage(1);
+
+    const started = await downloads(app).start(request(server, "/zim", "book.bin", { sha256: sha256(body) }));
+    const row = await settled(app, started.id);
+    expect(row.state).toBe("completed");
+    expect(row.attempts).toBe(1);
+    expect(fs.readFileSync(finalPath(app, row)).equals(body)).toBe(true);
+    expect(server.requests.filter((seen) => seen.method === "GET")).toHaveLength(2);
+  });
+
+  it("has a file that is filled in by position fetched again whole, as there is no cutting that back", async () => {
+    app = await createTestApp();
+    const body = testBytes(400_000, 34);
+    const found: Array<number | null> = [];
+    // As a map region is written: pieces placed where they belong, the head last. The first time, the disk gets a hole.
+    downloads(app).registerFetcher("placing", async (context) => {
+      found.push(fs.existsSync(context.partPath) ? fs.statSync(context.partPath).size : null);
+      const onDisk = Buffer.from(body);
+      if (found.length === 1) onDisk.fill(0, 250_000, 254_096);
+      fs.writeFileSync(context.partPath, onDisk);
+      const tiles = context.written.run();
+      tiles.place(100_000, body.subarray(100_000, 300_000));
+      tiles.place(300_000, body.subarray(300_000));
+      tiles.close();
+      const head = context.written.run();
+      head.place(0, body.subarray(0, 100_000));
+      head.close();
+      context.progress(body.length, body.length);
+    });
+
+    const started = await downloads(app).start({
+      kind: "file",
+      title: "A region",
+      url: "placing://region",
+      relPath: "region.bin",
+      fetcher: "placing",
+      allowedHosts: ["region"],
+    });
+    const row = await settled(app, started.id);
+    expect(row.error).toBeNull();
+    expect(row.state).toBe("completed");
+    expect(fs.readFileSync(finalPath(app, row)).equals(body)).toBe(true);
+    // The second time it found nothing there: the damaged file had been taken away.
+    expect(found).toEqual([null, null]);
+    const { events } = (await app.api("GET", `/api/downloads/${started.id}`)).body as DownloadDetail;
+    expect(events.find((event) => event.state === "running" && event.detail)?.detail).toMatch(
+      /did not read back the same, so the file is fetched again\.$/,
+    );
+  });
+
+  it("is named as the fault when it loses the same file three times, and nothing is installed", async () => {
+    app = await createTestApp();
+    const server = await fileServer();
+    const body = testBytes(3 * MEGABYTE, 33);
+    server.routes.set("/atlas", { body });
+    lossyStorage(Number.POSITIVE_INFINITY);
+
+    const started = await downloads(app).start(request(server, "/atlas", "atlas.bin"));
+    const row = await settled(app, started.id);
+    expect(row.state).toBe("failed");
+    expect(row.errorKind).toBe("storage_damaged");
+    expect(row.error).toMatch(
+      /is not keeping what is written to it: 3 times part of this file read back differently from what was written/,
+    );
+    expect(row.error).toMatch(/Nothing was installed and the file was deleted/);
+    expect(row.attempts).toBe(1);
+    expect(server.requests.filter((seen) => seen.method === "GET")).toHaveLength(3);
+    expect(fs.existsSync(finalPath(app, row))).toBe(false);
+    expect(fs.existsSync(`${finalPath(app, row)}.part`)).toBe(false);
+    expect(app.ctx.services.collections.list()).toHaveLength(0);
   });
 });

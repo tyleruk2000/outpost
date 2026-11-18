@@ -273,6 +273,28 @@ describe("one download", () => {
     ]);
   });
 
+  it("tells a file put right after the storage lost part of it as its own line", () => {
+    const why =
+      "What was written to docs on the NAS did not read back the same from 1.88 GB on (of 2.29 GB), so that part is fetched again.";
+    const lines = describeEvents([
+      { at: 1, state: "queued" },
+      { at: 2, state: "running" },
+      { at: 3, state: "verifying" },
+      { at: 4, state: "running", detail: why },
+      { at: 5, state: "verifying" },
+      { at: 6, state: "completed" },
+    ]);
+    expect(lines.map((line) => line.title)).toEqual([
+      "Added to the queue",
+      "Started",
+      "Checking the file",
+      "Storage lost part of the file — fetching it again",
+      "Checking the file",
+      "Installed",
+    ]);
+    expect(lines[3]).toMatchObject({ detail: why, tone: "warning" });
+  });
+
   it("gives a verdict on integrity in every case", () => {
     const sha = "a".repeat(64);
     expect(

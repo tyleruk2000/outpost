@@ -12,11 +12,15 @@
  *  - an *installer* runs once the file is complete and verified, and turns it into
  *    something usable (a collection row, a place index, an entry in Kiwix's library).
  */
+
 import type { DownloadDto } from "@outpost/shared";
+import type { WrittenRecord } from "../../core/written.ts";
 import type { CollectionMeta, downloads } from "../../db/schema.ts";
 
 export type DownloadRow = typeof downloads.$inferSelect;
 export type DownloadKind = DownloadRow["kind"];
+
+export type { WrittenRecord };
 
 export interface StartDownload {
   kind: DownloadKind;
@@ -75,6 +79,14 @@ export interface FetchContext {
   progress(receivedBytes: number, totalBytes?: number | null, message?: string): void;
   /** Persist fields the fetcher needs to resume later (etag, last-modified, extra meta). */
   remember(patch: { etag?: string | null; lastModified?: string | null; meta?: Record<string, unknown> }): void;
+  /**
+   * Where a fetcher says what it wrote, as it writes it (`core/written.ts`). When the file is checked, the
+   * download manager holds what the storage gives back against this, and has the part that differs fetched
+   * again: `append` for a file written start to end, which is then cut back to before the damage and carried
+   * on from there by this fetcher's own resuming; `place` for one filled in by position, which is started
+   * again. A fetcher that says nothing here is checked only against a published checksum, as before.
+   */
+  written: WrittenRecord;
 }
 
 /**

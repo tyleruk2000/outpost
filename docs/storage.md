@@ -32,6 +32,45 @@ network shares do not provide reliably. A database on NFS or SMB can be corrupte
 Keep the data directory on a disk that is physically part of the machine and always
 attached. Content has no such restriction.
 
+### What is written is read back
+
+A drive or a share can lose part of what is written to it without saying so. On the
+first Raspberry Pi (18 November 2026) a 2.3 GB download written to a NAS folder over
+SMB came back the right size with one 4 KiB block of zeros in it; three more files of
+the same size written the same way straight afterwards came back whole, as did 12 GB of
+other downloads, so it is rare, and its cause (the Linux SMB client on that kernel, or
+the NAS) was not found.
+
+So Outpost does not take the storage's word for it. As a download arrives, it keeps a
+checksum of each megabyte it hands to the storage (CRC-32, in memory; about 4 kB for
+each gigabyte). When the file is checked at the end, in the same reading that works
+out its SHA-256, what the storage gives back is held against that. If a stretch
+differs, the file is cut back to just before it and the download carries on from
+there, so only the part from the damage on is fetched again; the download's history
+says so, and names the storage location. A map region, which is filled in by position
+rather than start to end, is fetched again whole. After the third time in one
+download it stops, deletes the file and says the storage is not keeping what is
+written to it.
+
+What this covers and what it does not:
+
+- **Covered:** everything fetched by the download manager over HTTP (reference
+  collections, documents, datasets, models) and map regions, with or without a
+  published checksum, on any storage location.
+- **Not covered:** what was written before the server was last restarted (a download
+  resumed after a restart is held to its record only from where it resumed; a
+  published checksum still covers the whole file); satellite and aerial pictures,
+  which Outpost builds itself rather than downloads; files copied in by hand or
+  imported; and damage that happens later, to a file already installed, which
+  **Check files** on a collection's page finds against the checksum recorded when it
+  arrived.
+- It is a check against accidents, not tampering: a published SHA-256 is what holds a
+  file to its publisher.
+- The reading back goes through the operating system's cache, as any reading does. On
+  the Raspberry Pi the damage showed in the very first reading, which is the case this
+  catches; a system that kept the right bytes in its cache and the wrong ones on the
+  disk would pass here and be found by a later check.
+
 ## Storage roots and storage locations
 
 A **storage root** is a folder the person running the server has made available for

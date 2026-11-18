@@ -74,6 +74,8 @@ export function createExtractFetcher(deps: ExtractFetcherDeps): Fetcher {
             signal,
             concurrency: deps.concurrency,
             throttle: (bytes) => context.throttle(bytes),
+            // What is written is recorded as it is, for the download manager to hold the finished file against.
+            written: context.written,
             plan: () => deps.planner.planFor(archive, request, signal),
             onProgress: ({ writtenBytes, totalBytes, message }) => {
               // Why the download began again matters more than "reading the index".

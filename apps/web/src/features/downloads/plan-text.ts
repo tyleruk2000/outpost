@@ -243,7 +243,11 @@ export function describeEvents(events: DownloadEvent[]): EventLine[] {
           index += 1;
           continue;
         }
-        title = started ? "Carried on" : "Started";
+        // Back to fetching straight from the check, with a reason: the storage lost part of what was written to it.
+        if (before === "verifying" && detail) {
+          title = "Storage lost part of the file — fetching it again";
+          tone = "warning";
+        } else title = started ? "Carried on" : "Started";
         started = true;
         break;
       }

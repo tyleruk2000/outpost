@@ -61,6 +61,11 @@ export interface ExtractProgress {
 export interface ExtractOptions {
   /** Waits for permission to transfer this many bytes; how the shared speed limit is applied. */
   throttle?: (bytes: number) => Promise<void>;
+  /**
+   * Told what is written to the output and where, as it is written (`core/written.ts`), so that whoever asked
+   * can hold the finished file against it; and cleared when the output is started again from nothing.
+   */
+  written?: { run(): { place(position: number, chunk: Uint8Array): void; close(): void }; clear(): void };
   archive: RemoteArchive;
   request: ExtractRequest;
   /** The partial output file. Sidecar files are created next to it. */
@@ -207,6 +212,7 @@ export async function extractArchive(options: ExtractOptions): Promise<ExtractRe
   if (!work) {
     await removeExtractSidecars(partPath);
     await fs.promises.rm(partPath, { force: true });
+    options.written?.clear();
     if (discardedBecause) report(0, 0, discardedBecause);
     else report(0, 0, "Reading the map index");
     const plan = await (options.plan ?? (() => planExtract(archive.read, options.request, { ...options.planOptions, signal })))();
@@ -261,14 +267,18 @@ export async function extractArchive(options: ExtractOptions): Promise<ExtractRe
     }
     requestsMade += 1;
     let payload = 0;
+    const recorded = options.written?.run();
     for (let i = request.copyFrom; i < request.copyTo; i += 1) {
       const copy = copies[i]!;
       const from = Math.max(request.offset, copy.src);
       const to = Math.min(request.offset + request.length, copy.src + copy.length);
       if (to <= from) continue;
-      await handle.write(bytes, from - request.offset, to - from, saved.tileDataOffset + copy.dst + (from - copy.src));
+      const position = saved.tileDataOffset + copy.dst + (from - copy.src);
+      await handle.write(bytes, from - request.offset, to - from, position);
+      recorded?.place(position, bytes.subarray(from - request.offset, to - request.offset));
       payload += to - from;
     }
+    recorded?.close();
     done[index] = 1;
     written += payload;
     report(written, saved.outputSize);
@@ -310,6 +320,9 @@ export async function extractArchive(options: ExtractOptions): Promise<ExtractRe
     await handle.datasync();
     const head = await fs.promises.readFile(headPathOf(partPath));
     await handle.write(head, 0, head.length, 0);
+    const recorded = options.written?.run();
+    recorded?.place(0, head);
+    recorded?.close();
     const size = (await handle.stat()).size;
     if (size < saved.outputSize) throw new Error("The extracted map is shorter than planned. The disk may be full.");
     if (size > saved.outputSize) await handle.truncate(saved.outputSize);

@@ -51,6 +51,7 @@ before it. Use `ctx.onClose.push(fn)` for cleanup.
 | Hashing large files | `sha256File` from `core/hashing.ts` |
 | Long-running work | `ctx.jobs.register(type, { queue, run })` and `ctx.jobs.enqueue(type, payload, { title })` |
 | Finding your own jobs | `ctx.jobs.list({ states, types: [MY_JOB] })`. Always with `types`: the list is the newest jobs first up to a limit, and without it a few hundred newer jobs of another kind hide yours |
+| A fetcher of your own for the download manager (`downloads.registerFetcher`) | Say what you write as you write it, through `context.written` (`core/written.ts`): `append(position, bytes)` for a file written start to end, after `cutTo(length)` where you carry on from; `run().place(position, bytes)` for one filled in by position. The download manager holds what the storage gives back against it and has the damaged part fetched again; a fetcher that says nothing is checked only against a published checksum |
 | Looking up from long work on the server's thread | `await yieldToEventLoop()` from `core/event-loop.ts`, between batches |
 | Taking an uploaded file | `await registerMultipart(app)` from `core/multipart.ts`, and `limits: { fileSize, … }` of your own on every `request.parts(...)`. The parser's own limit is a megabyte whoever registers it first |
 | Telling the browser something changed | `ctx.events.publish({ type: "documents.changed", id })` |

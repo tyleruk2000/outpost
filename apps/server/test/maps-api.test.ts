@@ -5,6 +5,7 @@ import path from "node:path";
 import type { MapRegionsResponse, MapSources } from "@outpost/shared";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createHttpClient } from "../src/core/http.ts";
+import { WrittenRecord } from "../src/core/written.ts";
 import type { DownloadRow, FetchContext } from "../src/modules/downloads/types.ts";
 import { createExtractFetcher } from "../src/modules/maps/extract-download.ts";
 import { createPlanner } from "../src/modules/maps/planner.ts";
@@ -564,6 +565,7 @@ describe("the extract fetcher on its own", () => {
       progress: (_received, _total, message) => message && messages.push(message),
       throttle: async () => {},
       remember: (patch) => remembered.push(patch as Record<string, unknown>),
+      written: new WrittenRecord(),
     };
     await fetcher(context);
 

@@ -233,16 +233,22 @@ your browser's: in Docker, the container must be able to reach the internet.
 
 ### "The downloaded file does not match its published checksum…"
 
-The file was damaged on the way, damaged as it was written to storage, or altered.
-Outpost deleted it and installed nothing. Press **Retry** to download it again. If it
-fails the same way, press **Refresh** on Explore so that Outpost has the source's
-current details, then start the download afresh.
+The file was damaged on the way or altered at its source. Outpost deleted it and
+installed nothing. Press **Retry** to download it again. If it fails the same way,
+press **Refresh** on Explore so that Outpost has the source's current details, then
+start the download afresh. Where the message says "it is the file as it arrived",
+what was written to the storage read back the same, so the storage is not at fault.
 
-If it keeps happening to large files on a network share (a NAS folder) and not to
-files on the device's own disk, the share is losing data as it is written: the
-download's page shows both checksums, and the file is the right size with a short run
-of zeros in it. Download to the device's own storage instead, and see
-[Storage](storage.md) for what to check on the share.
+### "… is not keeping what is written to it"
+
+Part of a download read back from the storage location differently from what Outpost
+wrote to it, three times running. Outpost checks this for every download as the file
+is checked, published checksum or not, and when it happens once it puts the file right
+by itself: the download's history says "Storage lost part of the file — fetching it
+again", and only the part from the damage on is fetched. Three times in one download
+is a drive or a share that cannot be relied on: nothing was installed and the file was
+deleted. Download to the device's own storage instead, and see
+[Storage](storage.md#what-is-written-is-read-back) for what to check.
 
 ### "… is not a download source listed in any catalogue manifest."
 

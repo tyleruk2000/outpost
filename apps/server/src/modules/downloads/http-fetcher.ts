@@ -138,6 +138,8 @@ async function attempt(client: HttpClient, context: FetchContext, stated: number
   });
 
   let received = append ? have : 0;
+  // What is written from here on is recorded as it arrives, to be held against what the storage gives back.
+  context.written.cutTo(received);
   // What the server says is exact. What the download stated (a catalogue's size) may be a little out, so it is given room.
   const limit = total ?? (stated === null ? null : Math.ceil(stated * 1.1) + 1024 * 1024);
   context.progress(received, total);
@@ -158,6 +160,7 @@ async function attempt(client: HttpClient, context: FetchContext, stated: number
             }
             // Holding the slice here slows the socket itself: backpressure reaches the server.
             await context.throttle(slice.length);
+            context.written.append(received, slice);
             received += slice.length;
             context.progress(received, total);
             yield slice;

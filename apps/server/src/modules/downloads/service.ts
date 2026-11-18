@@ -14,7 +14,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import type { DownloadDetail, DownloadDto, DownloadPlan, DownloadPlanItem, JobDto } from "@outpost/shared";
+import { type DownloadDetail, type DownloadDto, type DownloadPlan, type DownloadPlanItem, formatBytes, type JobDto } from "@outpost/shared";
 import { and, count, desc, eq, inArray, ne, notInArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
@@ -25,6 +25,7 @@ import { createHttpClient } from "../../core/http.ts";
 import { newId } from "../../core/ids.ts";
 import { type JobRow, type JobRun, PermanentJobError } from "../../core/jobs.ts";
 import { RateLimiter } from "../../core/throttle.ts";
+import { WrittenRecord } from "../../core/written.ts";
 import { downloads } from "../../db/schema.ts";
 import { createHttpFetcher } from "./http-fetcher.ts";
 import { forecastQueue } from "./plan.ts";
@@ -62,6 +63,9 @@ function integrityOf(row: DownloadRow): DownloadDetail["integrity"] {
         : published.every(([expected, actual]) => expected === actual),
   };
 }
+
+/** How often in one run a file may be put right after the storage lost part of it, before the storage is called at fault. */
+const MAX_STORAGE_REPAIRS = 2;
 
 export const OFFLINE_MESSAGE = "No connection. This download will resume when the network is back.";
 export const OFFLINE_GAVE_UP_MESSAGE =
@@ -186,6 +190,19 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
   const completedListeners: Array<(download: DownloadRow) => void | Promise<void>> = [];
   const live = new Map<string, Live>();
   const running = new Map<string, ActiveRun>();
+  /**
+   * What each download wrote, as it arrived, for as long as it is unfinished and the server runs: held against
+   * what the storage gives back when the file is checked (`core/written.ts`).
+   */
+  const written = new Map<string, WrittenRecord>();
+  const writtenFor = (id: string): WrittenRecord => {
+    let record = written.get(id);
+    if (!record) {
+      record = new WrittenRecord();
+      written.set(id, record);
+    }
+    return record;
+  };
   /** What was asked for while a paused transfer was still winding down. */
   const afterUnwind = new Map<string, "resume" | "cancel">();
   let closed = false;
@@ -264,13 +281,13 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
     ctx.events.publish({ type: "download.updated", id: row.id, data: toDto(row) });
   }
 
-  function write(id: string, patch: Partial<typeof downloads.$inferInsert>): DownloadRow {
+  function write(id: string, patch: Partial<typeof downloads.$inferInsert>, why?: string): DownloadRow {
     // Every change of state is kept as a line of history on the row itself.
     const before = patch.state ? get(id) : undefined;
     if (before && patch.state !== before.state) {
       const meta = (patch.meta ?? before.meta) as Record<string, unknown>;
       const events = [...((meta.events as DownloadEvent[] | undefined) ?? [])];
-      const detail = typeof patch.error === "string" ? patch.error : undefined;
+      const detail = typeof patch.error === "string" ? patch.error : why;
       events.push({ at: Date.now(), state: patch.state!, ...(detail ? { detail } : {}) });
       patch = { ...patch, meta: { ...meta, events: events.slice(-EVENT_LIMIT) } };
     }
@@ -540,45 +557,100 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
         // A complete, already verified partial file is left when installing failed or
         // was cancelled; there is nothing to fetch again in that case.
         const fetched = row.sha256Actual !== null && partSize !== undefined && partSize === row.totalBytes;
-        if (!fetched) {
-          if (row.sha256Actual !== null) row = write(id, { sha256Actual: null, meta: { ...requireRow(id).meta, md5Actual: undefined } });
-          await fetcher({
-            download: row,
-            partPath,
-            allowedHosts: run.payload.allowedHosts,
-            signal,
-            progress,
-            throttle: (bytes) => limiter.take(bytes, signal),
-            remember(patch) {
-              const set: Partial<typeof downloads.$inferInsert> = {};
-              if (patch.etag !== undefined) set.etag = patch.etag;
-              if (patch.lastModified !== undefined) set.lastModified = patch.lastModified;
-              if (patch.meta) set.meta = { ...requireRow(id).meta, ...patch.meta };
-              if (Object.keys(set).length > 0) row = write(id, set);
-            },
-          });
-        }
+        const record = writtenFor(id);
+        let sizeBytes = 0;
+        let sha256 = "";
+        let checked: { meta?: Record<string, unknown> } = {};
+        for (let repairs = 0; ; repairs += 1) {
+          if (!fetched || repairs > 0) {
+            if (row.sha256Actual !== null) row = write(id, { sha256Actual: null, meta: { ...requireRow(id).meta, md5Actual: undefined } });
+            await fetcher({
+              download: row,
+              partPath,
+              allowedHosts: run.payload.allowedHosts,
+              signal,
+              progress,
+              throttle: (bytes) => limiter.take(bytes, signal),
+              remember(patch) {
+                const set: Partial<typeof downloads.$inferInsert> = {};
+                if (patch.etag !== undefined) set.etag = patch.etag;
+                if (patch.lastModified !== undefined) set.lastModified = patch.lastModified;
+                if (patch.meta) set.meta = { ...requireRow(id).meta, ...patch.meta };
+                if (Object.keys(set).length > 0) row = write(id, set);
+              },
+              written: record,
+            });
+          }
 
-        const sizeBytes = (await fs.promises.stat(partPath)).size;
-        state.receivedBytes = sizeBytes;
-        state.totalBytes = sizeBytes;
-        row = enter("verifying", "Checking the file");
-        // Some publishers give an MD5 and nothing else: it is held to that as it would be to a SHA-256, in the same reading.
-        const md5Expected = text(row.meta.md5Expected);
-        const { sha256, md5 } = await hashFile(partPath, md5Expected ? (["sha256", "md5"] as const) : (["sha256"] as const), {
-          signal,
-          onProgress: (bytes) => run.progress({ current: bytes, total: sizeBytes, message: "Checking the file" }),
-        });
-        const checked = md5Expected ? { meta: { ...requireRow(id).meta, md5Actual: md5 } } : {};
-        if ((row.sha256Expected && sha256 !== row.sha256Expected) || (md5Expected && md5 !== md5Expected)) {
-          // Deleted, so that trying again fetches it again and does not check the same bytes twice.
-          await fs.promises.rm(partPath, { force: true });
-          state.receivedBytes = 0;
-          write(id, { sha256Actual: sha256, receivedBytes: 0, ...checked });
-          throw new PermanentJobError(
-            "The downloaded file does not match its published checksum: it was damaged on the way or as it was written to storage, or had been tampered with. It has been deleted and nothing was installed. Try the download again.",
-            "checksum_mismatch",
-          );
+          sizeBytes = (await fs.promises.stat(partPath)).size;
+          state.receivedBytes = sizeBytes;
+          state.totalBytes = sizeBytes;
+          row = enter("verifying", "Checking the file");
+          // Some publishers give an MD5 and nothing else: it is held to that as it would be to a SHA-256, in the same reading.
+          const md5Expected = text(row.meta.md5Expected);
+          // In the same reading, what the storage gives back is held against what was written to it as it arrived.
+          const readBack = record.check();
+          const sums = await hashFile(partPath, md5Expected ? (["sha256", "md5"] as const) : (["sha256"] as const), {
+            signal,
+            onProgress: (bytes) => run.progress({ current: bytes, total: sizeBytes, message: "Checking the file" }),
+            onChunk: (chunk) => readBack.update(chunk),
+          });
+          sha256 = sums.sha256;
+          const damagedAt = readBack.damagedAt();
+          if (damagedAt !== null) {
+            // The storage did not keep what was written to it. Not the publisher's doing, nor the connection's.
+            const where = storage.list().find((location) => location.id === row.locationId)?.name ?? "the storage location";
+            run.log.warn({ download: id, damagedAt, sizeBytes, repairs }, "a download did not read back from storage as it was written");
+            if (repairs >= MAX_STORAGE_REPAIRS) {
+              await fs.promises.rm(partPath, { force: true });
+              record.clear();
+              state.receivedBytes = 0;
+              write(id, { receivedBytes: 0 });
+              throw new PermanentJobError(
+                `${where} is not keeping what is written to it: ${repairs + 1} times part of this file read back differently from what was written. Nothing was installed and the file was deleted. Check the drive or the share, or download to another storage location.`,
+                "storage_damaged",
+              );
+            }
+            const placed = record.placed;
+            if (placed) {
+              // Filled in by position: there is no cutting it back, so it is fetched again from the start.
+              await fs.promises.rm(partPath, { force: true });
+              record.clear();
+              state.receivedBytes = 0;
+            } else {
+              // Everything before the damage read back as written: the file is cut back to there and carried on.
+              await fs.promises.truncate(partPath, damagedAt);
+              record.cutTo(damagedAt);
+              state.receivedBytes = damagedAt;
+            }
+            signal.throwIfAborted();
+            state.message = null;
+            row = write(
+              id,
+              { state: "running", receivedBytes: state.receivedBytes },
+              placed || damagedAt === 0
+                ? `What was written to ${where} did not read back the same, so the file is fetched again.`
+                : `What was written to ${where} did not read back the same from ${formatBytes(damagedAt)} on (of ${formatBytes(sizeBytes)}), so that part is fetched again.`,
+            );
+            continue;
+          }
+          checked = md5Expected ? { meta: { ...requireRow(id).meta, md5Actual: sums.md5 } } : {};
+          if ((row.sha256Expected && sha256 !== row.sha256Expected) || (md5Expected && sums.md5 !== md5Expected)) {
+            // What was written here read back as it arrived: where that covers the whole file, the storage is not to blame.
+            const arrivedSo = record.bytes >= sizeBytes && sizeBytes > 0;
+            // Deleted, so that trying again fetches it again and does not check the same bytes twice.
+            await fs.promises.rm(partPath, { force: true });
+            record.clear();
+            state.receivedBytes = 0;
+            write(id, { sha256Actual: sha256, receivedBytes: 0, ...checked });
+            throw new PermanentJobError(
+              arrivedSo
+                ? "The downloaded file does not match its published checksum, and it is the file as it arrived: it was damaged on the way or changed at its source, or had been tampered with. It has been deleted and nothing was installed. Try the download again."
+                : "The downloaded file does not match its published checksum: it was damaged on the way or as it was written to storage, or had been tampered with. It has been deleted and nothing was installed. Try the download again.",
+              "checksum_mismatch",
+            );
+          }
+          break;
         }
         row = write(id, { sha256Actual: sha256, ...checked });
         signal.throwIfAborted();
@@ -619,6 +691,7 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
         throw error;
       }
 
+      written.delete(id);
       row = write(id, {
         state: "completed",
         // Read afresh: the record's history has grown since this run began.
@@ -1084,6 +1157,7 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
         await fs.promises.rm(`${storage.resolve(row.locationId, row.relPath)}${PART_SUFFIX}`, { force: true });
       }
       db.delete(downloads).where(eq(downloads.id, id)).run();
+      written.delete(id);
       ctx.events.publish({ type: "download.removed", id });
     },
 
