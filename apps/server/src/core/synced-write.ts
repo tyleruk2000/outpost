@@ -29,7 +29,7 @@ export function syncedWriteStream(file: fs.PathLike, options?: Options, every = 
     if (typeof fd !== "number") return done();
     fs.fdatasync(fd, (error) => done(error));
   };
-  return new Writable({
+  const stream = new Writable({
     write(chunk: Buffer, _encoding, done) {
       out.write(chunk, (error) => {
         if (error) return done(error);
@@ -46,4 +46,7 @@ export function syncedWriteStream(file: fs.PathLike, options?: Options, every = 
       done(error);
     },
   });
+  // A failure of the file (a full disk, a drive pulled out) is this stream's failure, never an uncaught one.
+  out.on("error", (error) => stream.destroy(error));
+  return stream;
 }
