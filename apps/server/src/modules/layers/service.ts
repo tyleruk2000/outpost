@@ -170,6 +170,16 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
   const estimates = new Map<string, { request: ReferenceEstimateRequest; items: EstimatedItem[]; at: number }>();
 
   const changed = () => ctx.events.publish({ type: "layers.changed" });
+  /**
+   * What each layer holds, as `layers()` gives it: five counts over every place held, about 5 s on a Raspberry Pi's
+   * SD card with 190,000 places (18 November 2026), during which the server answered nothing else. It changes only
+   * when places are added or taken away, which is always followed by "layers.changed": kept until then.
+   */
+  let summary: ReturnType<typeof store.summary> | undefined;
+  const unsubscribe = ctx.events.subscribe((event) => {
+    if (event.type === "layers.changed") summary = undefined;
+  });
+  ctx.onClose.push(() => unsubscribe());
 
   function toPack(row: CollectionRow, meta: PackMeta): ReferencePackDto {
     const counts = store.countsOf(row.id);
@@ -661,7 +671,8 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
           });
         }
       }
-      return { layers: store.summary(providerNames), population: await population.sets(), credits: [...credits.values()] };
+      summary ??= store.summary(providerNames);
+      return { layers: summary, population: await population.sets(), credits: [...credits.values()] };
     },
 
     regions(point) {
