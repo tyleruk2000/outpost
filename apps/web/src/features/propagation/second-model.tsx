@@ -89,7 +89,7 @@ function EngineSetup({ status }: { status: SecondModelStatus }) {
         The ITU's software is not shipped with Outpost, so it is built here, once: Outpost fetches the ITU's own source and a compiler
         (wasi-sdk) when you press this and at no other time, checks both against recorded checksums, compiles, and keeps the result only if
         it is byte for byte the file it expects. It needs about {formatBytes(build.neededBytes)} free while it runs; the compiler is deleted
-        afterwards. A few minutes on a small computer.
+        afterwards. Most of the time it takes is the download.
       </p>
     </div>
   );

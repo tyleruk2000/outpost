@@ -777,7 +777,7 @@ rules as VOACAP, with nothing shared between the two:
   (`engines/p533/build/compile.sh`), in a folder of its own under the data directory
   that is deleted afterwards, whether the build worked or not. The result is installed
   only if it is, byte for byte, the recorded engine; it was, on 18 November 2026, on
-  macOS (arm64). Not held to no network while
+  macOS (arm64) and in the Docker image on a Raspberry Pi 5 (Linux, arm64). Not held to no network while
   it compiles, as the container is: what stands in for that is the pinned checksum of
   the compiler and of every file it reads.
 - **Nothing of the ITU's is in the repository or the packaged app**, and nothing of the

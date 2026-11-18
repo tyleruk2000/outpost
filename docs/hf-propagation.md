@@ -654,7 +654,9 @@ is missing and how big it is. Two things are needed:
    only if it is, byte for byte, the recorded file. It runs as a job: the page says what
    it is doing, and it carries on if you leave. It needs about 860 MB free where Outpost
    keeps its data while it runs; the compiler is deleted afterwards. On a Raspberry Pi 5
-   it takes a few minutes, most of it the download. Offered on Linux and macOS (64-bit
+   in Docker it took 25 seconds on 18 November 2026 (the source 8 s, the compiler's
+   download 8 s on a fast line, unpacking and compiling 9 s); on a slow line the
+   download is most of it. Offered on Linux and macOS (64-bit
    ARM and x86), which includes Outpost in Docker; it needs `sh` and `tar`, which those
    have. This is what to use where there is no shell to hand, such as a Pi in a cupboard.
 
