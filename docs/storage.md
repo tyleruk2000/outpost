@@ -213,6 +213,47 @@ switch over.
 Unplug a drive only when nothing is being written to it. Eject it in the operating
 system first.
 
+### A network share whose server is switched off
+
+A NAS that is switched off or drops off the network is not like an unplugged drive: its
+folder is still there, and every file call on it waits for the server to answer, about
+ten seconds at a time on a Raspberry Pi over SMB. Outpost is built so that this holds up
+only what is on the share:
+
+- Each location is checked every 30 seconds (**Settings → Storage**, "check interval").
+  A location that does not answer its check within 5 seconds
+  (`OUTPOST_STORAGE_PROBE_TIMEOUT_MS`) is marked not connected, with "The location is
+  not answering", and a check that is still waiting is not joined by another.
+- From then on, everything on it fails at once with the messages above: a document says
+  its file is on a location that is not connected and that nothing has been lost; a
+  reference collection's page says the same instead of the reader's "Page not found";
+  Home names the location. A request already waiting on the share when it went away
+  waits until the network gives up (30 seconds was seen).
+- Everything else carries on, the map above all: keep maps, terrain, place names and
+  map layers on the device's own storage (below), and the map works with the NAS off.
+  Map layers' places are in the database, on the device, whichever location their
+  source file is on.
+- File work uses 16 threads, not Node's 4 (`UV_THREADPOOL_SIZE`), so calls stuck on
+  the share leave room for the rest.
+- When the share answers again it is picked up by itself within a check or two (24
+  and 40 seconds when tried).
+
+Until 18 November 2026 the check asked the share in a way that held up the whole
+server while it waited: with the NAS switched off, the map, on the device's own disk,
+stopped answering for 10 to 25 seconds at a time. Measured on the first Raspberry Pi
+with the NAS cut off by its firewall, after the change: over 90 seconds, health
+answered within 21 ms and map tiles within 70 ms throughout.
+
+### Keeping the map on the device and the library on a NAS
+
+**Storage → Manage and clean up → Installed.** Choose the kind **Maps** and tick
+**Select everything shown**, then the same for **Terrain**, **Place names** and **Map
+layers** (the selection is kept as the filter changes). **Move** them to the device's
+own location. Each is copied, the copy checked, and only then the original removed.
+Leave the reference collections, documents and radio data where they are. New map
+regions go where **Offline maps → Add a region** is told; choose the device's own
+location there too.
+
 ## Connecting a network share
 
 **Storage → Network shares → Connect a network share.** What that button can do
@@ -713,7 +754,8 @@ disconnected. Nothing on it can be measured or deleted until it is back.
 ### Installed
 
 Every collection and document in one list, with its kind, location, size and the date
-it was added. Filter by name, kind, location, or whether it was downloaded or is your
+it was added. The kinds include **Map layers** (Natural Earth, airports, OpenStreetMap
+extracts), which until 18 November 2026 were listed with the radio data. Filter by name, kind, location, or whether it was downloaded or is your
 own; sort by size, date, name, kind or location.
 
 A catalogue sheet or book is listed once. It is one file with two records, an entry in

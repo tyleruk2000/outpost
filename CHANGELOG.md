@@ -1957,6 +1957,16 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   2,000 lists for an archive, each of at most 64 kB.
 - A download stops as soon as more arrives than its server's stated length, or, with no
   length, than the size it was offered at plus a tenth and 1 MB.
+- **A NAS that is switched off no longer stops the map.** The regular check of each
+  storage location asked a share in a way that held up the whole server while the share
+  did not answer: 10 to 25 seconds at a time, map included. The check now waits
+  elsewhere, gives a location 5 seconds before calling it not connected, and never
+  piles up. File work has 16 threads, not 4. Measured on the Pi with the NAS cut off:
+  health within 21 ms and map tiles within 70 ms throughout. A reference page on a
+  location that is away says so, and Home names the location.
+- Map layers are their own kind on Manage and clean up and Storage, not "Radio data", so
+  the map's own files can be moved together. The layers' summary is kept until they
+  change (it took about 5 s on the Pi on every opening of the map).
 - **What is written to storage is read back.** As a download arrives, Outpost keeps a
   checksum of each megabyte it hands to the storage, and when the file is checked holds
   what the storage gives back against it, for every download, published checksum or
