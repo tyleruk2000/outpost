@@ -180,29 +180,71 @@ export function creditsFor(attributions: MapAttribution[], options: { hasTiles: 
   return credits;
 }
 
-function Attribution({ credits }: { credits: Credit[] }) {
+function CreditParts({ credit }: { credit: Credit }) {
   return (
-    <p className="pointer-events-auto max-w-full rounded-[4px] bg-page/85 px-1.5 py-0.5 text-right text-micro leading-snug text-ink-muted">
-      {credits.map((credit, index) => (
+    <>
+      {credit.parts.map((part) =>
+        part.href ? (
+          <a
+            key={`${part.href ?? ""}|${part.text}`}
+            href={part.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-ink underline decoration-border-strong underline-offset-2 hover:decoration-ink"
+          >
+            {part.text}
+          </a>
+        ) : (
+          <Fragment key={`${part.href ?? ""}|${part.text}`}>{part.text}</Fragment>
+        ),
+      )}
+    </>
+  );
+}
+
+/** The credit that is never folded away: the map's own (OpenStreetMap's, where its data is drawn), or failing that the first. */
+export function leadingCredit(credits: Credit[]): Credit | undefined {
+  return credits.find((credit) => credit.parts.some((part) => part.text.includes("OpenStreetMap"))) ?? credits[0];
+}
+
+/**
+ * The credits for what is drawn. On a wide screen, all of them, always. On a phone they
+ * took three lines of a small map, so they are folded to one: the map's own credit stays
+ * in sight, as its licence asks, and "N more" opens the rest in place. The licences that
+ * need a credit wherever the data is shown (ODbL, CC BY, OGL) allow one a tap away where
+ * there is not the room; none allows it to be taken off.
+ */
+function Attribution({ credits, fold }: { credits: Credit[]; fold: boolean }) {
+  const [opened, setOpened] = useState(false);
+  const lead = leadingCredit(credits);
+  const folded = fold && !opened && credits.length > 1;
+  const shown = folded && lead ? [lead] : credits;
+  return (
+    <p
+      data-credits={fold && credits.length > 1 ? (opened ? "opened" : "folded") : "all"}
+      className="pointer-events-auto max-w-full rounded-[4px] bg-page/85 px-1.5 py-0.5 text-right text-micro leading-snug text-ink-muted"
+    >
+      {shown.map((credit, index) => (
         <Fragment key={credit.key}>
           {index > 0 ? <span aria-hidden> · </span> : null}
-          {credit.parts.map((part) =>
-            part.href ? (
-              <a
-                key={`${part.href ?? ""}|${part.text}`}
-                href={part.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-ink underline decoration-border-strong underline-offset-2 hover:decoration-ink"
-              >
-                {part.text}
-              </a>
-            ) : (
-              <Fragment key={`${part.href ?? ""}|${part.text}`}>{part.text}</Fragment>
-            ),
-          )}
+          <CreditParts credit={credit} />
         </Fragment>
       ))}
+      {fold && credits.length > 1 ? (
+        <>
+          <span aria-hidden> · </span>
+          <button
+            type="button"
+            aria-expanded={opened}
+            aria-label={opened ? "Show fewer map credits" : `Show all ${credits.length} map credits`}
+            onClick={() => setOpened((now) => !now)}
+            // Small to look at, a line of text; 44 px to touch, by a reach above and below it.
+            className="relative inline-block min-w-11 rounded-[3px] text-center font-medium text-ink underline decoration-border-strong underline-offset-2 after:absolute after:inset-x-0 after:-inset-y-3.5 after:content-[''] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            {opened ? "Fewer" : `${credits.length - 1} more`}
+          </button>
+        </>
+      ) : null}
     </p>
   );
 }
@@ -226,6 +268,7 @@ export function MapFooter({
   heights?: ReadoutHeights;
   className?: string;
 }) {
+  const desktop = useIsDesktop();
   return (
     <div className={cn("pointer-events-none flex flex-wrap items-end justify-between gap-x-4 gap-y-1.5", className)}>
       <div className="outpost-readout-row flex min-w-0 items-end gap-3">
@@ -239,7 +282,7 @@ export function MapFooter({
         ) : null}
       </div>
       <div className="outpost-credits ml-auto flex min-w-0 justify-end">
-        <Attribution credits={credits} />
+        <Attribution credits={credits} fold={!desktop} />
       </div>
     </div>
   );

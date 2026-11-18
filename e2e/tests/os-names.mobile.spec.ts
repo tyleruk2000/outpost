@@ -53,8 +53,14 @@ test.describe("place names for Great Britain from a phone", () => {
     await expect(postcode).toContainText("Postcode · Aberystwyth, Ceredigion, Wales");
     expect(await overflow(), "sideways overflow with the search list open").toBeLessThanOrEqual(1);
 
-    // The map credits Ordnance Survey while the names are installed.
-    await expect(page.locator(".outpost-credits").first()).toContainText(/Contains OS data/, { timeout: 10_000 });
+    // The map credits Ordnance Survey while the names are installed. On a phone the credits are one line with the
+    // rest a press away; here no map region is installed, so Ordnance Survey's is the one in sight.
+    const credits = page.locator(".outpost-credits").first();
+    await expect(credits).toContainText(/Contains OS data .* · 1 more/, { timeout: 10_000 });
+    await credits.getByRole("button", { name: "Show all 2 map credits" }).tap();
+    await expect(credits).toContainText(/Contains OS data .* · Natural Earth · Fewer/);
+    await credits.getByRole("button", { name: "Show fewer map credits" }).tap();
+    await expect(credits).toContainText(/· 1 more/);
     expect(errors).toEqual([]);
   });
 });

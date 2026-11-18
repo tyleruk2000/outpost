@@ -117,7 +117,11 @@ nothing lies over anything else:
   does not have to move when a card comes up (see
   [The centre of the map](#the-centre-of-the-map)).
 - **The readout and the credits are just above the sheet.** The credits are always
-  there. Where there is not room for everything (larger text, a small screen, the sheet
+  there, folded to one line: the map's own ("Protomaps © OpenStreetMap") stays in
+  sight, and **4 more** (however many there are) opens the rest in place, where **Fewer**
+  folds them again. Until 18 November 2026 they were written out in full, three lines of
+  a phone's map. On a wide screen they are all written out, as before. Where there is
+  not room for everything (larger text, a small screen, the sheet
   raised), the coordinates of the centre and the scale bar step aside first, and then
   the line of sun times under them; the coordinates and the sun times are still in the
   Sun tab, and the coordinates of any point under a long press. Where neither fits,
@@ -688,7 +692,13 @@ wherever the data is shown.
 
 - Outpost supplies the credits with the map sources (`GET /api/maps/sources`,
   fields `attribution` and `attributions`) for the map's attribution control. Do not
-  hide or remove them.
+  hide or remove them. On a phone Outpost folds them to one line, which is as far as
+  the licences go: OpenStreetMap's credit stays on the map, and the others (terrain,
+  place names, Ordnance Survey, Natural Earth) are one press away, under **N more**.
+  OpenStreetMap's [attribution guidelines](https://osmfoundation.org/wiki/Licence/Attribution_Guidelines)
+  ask for its credit on the map itself; CC BY 4.0 and the Open Government Licence ask
+  for a credit in a manner reasonable to the medium, which a line that opens on a
+  press is taken to be here. They cannot be taken off altogether.
 - A page made with **Print or save as PDF** carries the credits itself, with the
   address for each written out (see [Printing a map](#printing-a-map)). Do not crop
   them off.
