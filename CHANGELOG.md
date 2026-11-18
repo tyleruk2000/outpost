@@ -528,6 +528,11 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 
 #### Maps
 
+- **Print or save as PDF** on a phone lays the page out in the sheet, raised to half,
+  as line of sight does: paper, which way up, the scale and both buttons, with the box on
+  the map above it. As a card over the map its settings could not be seen on a phone in
+  a browser, whose bars leave a card about 160 px of the 286 it needs. The coordinates
+  step aside while the page is laid out, so the box has the clear map to itself.
 - On a phone the credits under the map are one line: the map's own ("Protomaps ©
   OpenStreetMap") stays in sight and **4 more** opens the rest in place. They took
   three lines of a small map written out in full. All of them are still written out on
@@ -1952,6 +1957,13 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   2,000 lists for an archive, each of at most 64 kB.
 - A download stops as soon as more arrives than its server's stated length, or, with no
   length, than the size it was offered at plus a tenth and 1 MB.
+- **What is written to storage is read back.** As a download arrives, Outpost keeps a
+  checksum of each megabyte it hands to the storage, and when the file is checked holds
+  what the storage gives back against it, for every download, published checksum or
+  not. A part that differs is fetched again from there on, by itself, and the
+  download's history says the storage lost it; three times in one download and the
+  storage is named as the fault. Added after a NAS share lost a 4 KiB block of a
+  2.3 GB file without a word. See [docs/storage.md](docs/storage.md#what-is-written-is-read-back).
 - A Geofabrik extract is read only when its MD5 was published with it, and Ordnance
   Survey's answers about its downloads are read up to 1 MB. The downloader itself
   holds the file to that MD5, in the same reading as its SHA-256: the download's page
