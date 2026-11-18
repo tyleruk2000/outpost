@@ -8,7 +8,7 @@
  * a browser will not let a page start a download by itself long after the press that
  * asked for it, so saving is a second, deliberate press.
  */
-import { type Bbox, formatBytes, type TrackWithGeometryDto } from "@outpost/shared";
+import { type Bbox, formatBytes, magneticModelInfo, northsAt, type TrackWithGeometryDto } from "@outpost/shared";
 import { type UseQueryResult, useQueries } from "@tanstack/react-query";
 import { CircleAlert, Printer } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
@@ -51,11 +51,25 @@ import { overlayOn, PRINT_OVERLAYS, type PrintContext, type PrintSelection, part
 import { type PageGeometry, paperName } from "./paper";
 import { planNote, type RasterPlan, type Resolution } from "./pieces";
 import { formatScale, frameOfBox } from "./scale";
-import { layoutSheet } from "./sheet";
+import { layoutSheet, type MagneticNorth } from "./sheet";
 import { SheetView } from "./sheet-view";
 
 const isStringArray = (value: unknown): value is string[] => Array.isArray(value) && value.every((item) => typeof item === "string");
 const overlaps = (a: Bbox, b: Bbox) => a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1];
+
+/** Magnetic north at the middle of the box today, and how far it moves in a year; null outside the model's years. */
+function magneticAt(bbox: Bbox, lines: boolean, now = new Date()): MagneticNorth | null {
+  const lat = (bbox[1] + bbox[3]) / 2;
+  const lon = (bbox[0] + bbox[2]) / 2;
+  try {
+    const declination = northsAt(lat, lon, now).declination;
+    const later = northsAt(lat, lon, new Date(now.getTime() + 365.25 * 86_400_000)).declination;
+    if (!Number.isFinite(declination) || !Number.isFinite(later)) return null;
+    return { declination, annualChange: later - declination, model: magneticModelInfo().name, lines };
+  } catch {
+    return null;
+  }
+}
 
 const DATE = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
@@ -191,6 +205,8 @@ export function PrintDialog({
   const [selection, setSelection] = useState<PrintSelection>({ overlays: {}, parts: {} });
   // A page that shows one route is most likely a page about that route.
   const [title, setTitle] = useState<string | null>(null);
+  /** Lines across the map pointing to magnetic north, for setting a compass anywhere on the sheet. */
+  const [magneticLinesOn, setMagneticLinesOn] = useState(true);
   const suggested = here.length === 1 ? here[0]!.name : "";
   const shownTitle = title ?? suggested;
 
@@ -262,11 +278,22 @@ export function PrintDialog({
       }
       return { status: "idle" };
     });
-  }, [held, printed, frame, pixels, shownTitle, resolution, credits]);
+  }, [held, printed, frame, pixels, shownTitle, resolution, credits, magneticLinesOn]);
 
   const date = DATE.format(new Date());
   const sheetOf = (pictures: Array<{ id: string; x: number; y: number; width: number; height: number }>) =>
-    layoutSheet({ geometry, bbox, scale, title: shownTitle, date, credits, notes: printed?.notes, graticule: ticks, pictures });
+    layoutSheet({
+      geometry,
+      bbox,
+      scale,
+      title: shownTitle,
+      date,
+      credits,
+      notes: printed?.notes,
+      graticule: ticks,
+      pictures,
+      magnetic: magneticAt(bbox, magneticLinesOn),
+    });
   const sheet = sheetOf(made.status === "ready" ? made.pictures : [{ id: "preview", x: 0, y: 0, ...pixels }]);
   const pictureUrls =
     made.status === "ready"
@@ -504,6 +531,24 @@ export function PrintDialog({
                     </li>
                   );
                 })}
+                <li className="py-2.5">
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      id={`${titleId}-magnetic`}
+                      checked={magneticLinesOn}
+                      aria-describedby={`${titleId}-magnetic-hint`}
+                      onCheckedChange={(checked) => setMagneticLinesOn(checked === true)}
+                      className="mt-0.5"
+                    />
+                    <label htmlFor={`${titleId}-magnetic`} className="min-w-0 text-small text-ink">
+                      Magnetic north lines
+                      <span id={`${titleId}-magnetic-hint`} className="block text-ink-muted">
+                        Blue lines across the map every 30 mm, pointing to magnetic north, to set a compass against anywhere on the sheet.
+                        True and magnetic north are drawn beside the scale either way.
+                      </span>
+                    </label>
+                  </div>
+                </li>
               </ul>
             </fieldset>
 

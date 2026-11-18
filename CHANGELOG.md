@@ -528,6 +528,12 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 
 #### Maps
 
+- **A printed map shows magnetic north**: a blue MN arrow beside true north, the
+  declination for the middle of the sheet on the day with its yearly change and whether
+  to add or subtract it, and (unless unticked) blue magnetic north lines across the map
+  every 30 mm, to set a compass against anywhere on the sheet.
+- **Print or save as PDF** on a phone: raising the sheet to its full height no longer
+  leaves it empty.
 - **Print or save as PDF** on a phone lays the page out in the sheet, raised to half,
   as line of sight does: paper, which way up, the scale and both buttons, with the box on
   the map above it. As a card over the map its settings could not be seen on a phone in

@@ -456,6 +456,15 @@ until you save or share it.
    bars leave a page of about 390 by 664, the card had 160 px of the 286 it needs and
    the settings could not be seen.) On a phone shorter than that the sheet scrolls, or
    can be raised all the way.
+   **North.** True north is straight up everywhere on the sheet. Beside its arrow, a blue
+   arrow marked MN shows magnetic north at its angle, and the sheet says the figure for the
+   middle of the sheet on the day it is made, from the World Magnetic Model (the same as
+   the Compass), how far it moves in a year, and whether to add or subtract it to turn a
+   bearing taken off the map into one for the compass. **Magnetic north lines** (on unless
+   unticked under "On the map") draws thin blue lines across the map every 30 mm pointing
+   to magnetic north, as orienteering maps do, so a compass can be set against the map
+   anywhere on it. Outside the model's years (2025 to 2030 for WMM2025) the sheet says
+   that magnetic north is not shown.
 3. **Preview the page** shows the sheet as it will be made. Give it a title, and tick
    what goes on the map:
 

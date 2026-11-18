@@ -84,6 +84,92 @@ export interface SheetInput {
   graticule: Graticule;
   /** The pictures the map is made of, placed in the map's own pixels from its top-left corner. */
   pictures: Array<{ id: string; x: number; y: number; width: number; height: number }>;
+  /** Magnetic north at the middle of the sheet on the day, from the World Magnetic Model. */
+  magnetic?: MagneticNorth | null;
+}
+
+export interface MagneticNorth {
+  /** Degrees east of true north (west is negative). */
+  declination: number;
+  /** How much it moves in a year, in degrees (east positive). */
+  annualChange: number;
+  /** The model it is worked out from: "WMM2025". */
+  model: string;
+  /** Lines across the map that point to magnetic north, to set a compass against anywhere on the sheet. */
+  lines: boolean;
+}
+
+/** Magnetic north lines: a blue that is neither a road nor water on the map, and prints on a mono printer as a grey. */
+const MAGNETIC: Rgb = [0.16, 0.32, 0.78];
+/** How far apart the magnetic north lines are, as on orienteering maps. */
+const MAGNETIC_SPACING_MM = 30;
+
+/** Where the line through `point` along `direction` crosses into and out of the rectangle, if it does (Liang–Barsky). */
+function clipToRect(
+  point: readonly [number, number],
+  direction: readonly [number, number],
+  rect: { x: number; y: number; width: number; height: number },
+): [[number, number], [number, number]] | null {
+  let low = Number.NEGATIVE_INFINITY;
+  let high = Number.POSITIVE_INFINITY;
+  const sides: Array<[number, number, number]> = [
+    [direction[0], point[0], rect.x],
+    [-direction[0], -point[0], -(rect.x + rect.width)],
+    [direction[1], point[1], rect.y],
+    [-direction[1], -point[1], -(rect.y + rect.height)],
+  ];
+  for (const [d, p, edge] of sides) {
+    if (Math.abs(d) < 1e-12) {
+      if (p < edge) return null;
+      continue;
+    }
+    const t = (edge - p) / d;
+    if (d > 0) low = Math.max(low, t);
+    else high = Math.min(high, t);
+  }
+  if (low >= high) return null;
+  return [
+    [point[0] + low * direction[0], point[1] + low * direction[1]],
+    [point[0] + high * direction[0], point[1] + high * direction[1]],
+  ];
+}
+
+/** The magnetic north lines across the map: one through the middle of the map, then one each spacing either side. */
+export function magneticLines(
+  map: { x: number; y: number; width: number; height: number },
+  declination: number,
+  spacing = MAGNETIC_SPACING_MM * PT_PER_MM,
+): Array<[[number, number], [number, number]]> {
+  const angle = (declination * Math.PI) / 180;
+  // Up the page is true north; the page's y runs downwards.
+  const along: [number, number] = [Math.sin(angle), -Math.cos(angle)];
+  const across: [number, number] = [Math.cos(angle), Math.sin(angle)];
+  const centre: [number, number] = [map.x + map.width / 2, map.y + map.height / 2];
+  const reach = Math.hypot(map.width, map.height) / 2;
+  const lines: Array<[[number, number], [number, number]]> = [];
+  for (let k = -Math.ceil(reach / spacing); k <= Math.ceil(reach / spacing); k += 1) {
+    const through: [number, number] = [centre[0] + k * spacing * across[0], centre[1] + k * spacing * across[1]];
+    const segment = clipToRect(through, along, map);
+    if (segment) lines.push(segment);
+  }
+  return lines;
+}
+
+const degrees = (value: number) => `${Number(Math.abs(value).toFixed(1)).toFixed(1)}°`;
+
+/** What the sheet says about magnetic north, in one sentence or two. */
+export function magneticNote(magnetic: MagneticNorth, date: string): string {
+  const side = magnetic.declination >= 0 ? "east" : "west";
+  const moving =
+    Math.abs(magnetic.annualChange) < 0.05
+      ? "barely moving"
+      : `moving ${degrees(magnetic.annualChange)} ${magnetic.annualChange >= 0 ? "east" : "west"} a year`;
+  const rule =
+    Math.abs(magnetic.declination) < 0.05
+      ? "A bearing from the map is the same on the compass."
+      : `For a compass bearing from one taken off the map, ${magnetic.declination >= 0 ? "subtract" : "add"} ${degrees(magnetic.declination)}.`;
+  const lines = magnetic.lines ? " The blue lines across the map point to magnetic north." : "";
+  return `Magnetic north (MN) is ${degrees(magnetic.declination)} ${side} of true north at the middle of the sheet on ${date} (${magnetic.model}), ${moving}.${lines} ${rule}`;
 }
 
 const SMALL = 6.5;
@@ -119,7 +205,7 @@ export function bar(items: SheetItem[], metric: ScaleBar, miles: ScaleBar, left:
 const millimetres = (points: number) => `${formatNumber(Number((points / PT_PER_MM).toFixed(1)))} mm`;
 
 /** What the page says about its own scale and north. Kept apart so the dialog can say the same thing in the same words. */
-export function sheetNotes(bbox: Bbox, scale: number, metric: ScaleBar): string[] {
+export function sheetNotes(bbox: Bbox, scale: number, metric: ScaleBar, magnetic?: MagneticNorth | null, date = ""): string[] {
   const variation = scaleVariation(bbox, scale);
   const exact = (value: number) => `1:${formatNumber(Math.round(value))}`;
   const latitude = `${Math.abs(variation.latitude).toFixed(2)}°${variation.latitude < 0 ? "S" : "N"}`;
@@ -130,7 +216,10 @@ export function sheetNotes(bbox: Bbox, scale: number, metric: ScaleBar): string[
   const length = metric.meters >= 1000 ? `${formatNumber(metric.meters / 1000)} km` : `${formatNumber(metric.meters)} m`;
   return [
     `Web Mercator projection. Scale ${formatScale(scale)} along the middle of the sheet (${latitude}). ${changes}`,
-    `Printed at 100% ("actual size"), the ${length} bar is ${millimetres(metric.length)} long. True north is straight up everywhere on the sheet; magnetic north is not shown.`,
+    magnetic
+      ? `Printed at 100% ("actual size"), the ${length} bar is ${millimetres(metric.length)} long. True north is straight up everywhere on the sheet.`
+      : `Printed at 100% ("actual size"), the ${length} bar is ${millimetres(metric.length)} long. True north is straight up everywhere on the sheet; magnetic north is not shown.`,
+    ...(magnetic ? [magneticNote(magnetic, date)] : []),
   ];
 }
 
@@ -149,6 +238,11 @@ export function layoutSheet(input: SheetInput): Sheet {
       width: picture.width * PT_PER_MAP_PX,
       height: picture.height * PT_PER_MAP_PX,
     });
+  }
+  if (input.magnetic?.lines) {
+    for (const [[x1, y1], [x2, y2]] of magneticLines(map, input.magnetic.declination)) {
+      items.push({ kind: "line", x1, y1, x2, y2, color: MAGNETIC, width: 0.45 });
+    }
   }
   items.push({ kind: "rect", x: map.x, y: map.y, width: map.width, height: map.height, stroke: INK, lineWidth: 0.6 });
 
@@ -177,8 +271,8 @@ export function layoutSheet(input: SheetInput): Sheet {
   // ── The strip: north on the right, the scale beside it, the title in the room that is left ──
   const stripRight = strip.x + strip.width;
 
-  // North: an arrowhead on a stem, with its letter.
-  const arrow = stripRight - 5;
+  // North: an arrowhead on a stem, with its letter; beside it, magnetic north at its own angle, with "MN" to its right.
+  const arrow = stripRight - (input.magnetic ? 22 : 5);
   items.push({
     kind: "polygon",
     points: [
@@ -191,6 +285,22 @@ export function layoutSheet(input: SheetInput): Sheet {
   });
   items.push({ kind: "line", x1: arrow, y1: strip.y + 9, x2: arrow, y2: strip.y + 27, color: INK, width: 0.9 });
   items.push({ kind: "text", x: arrow - 8, y: strip.y + 10, text: "N", size: 9, bold: true, color: INK, anchor: "end" });
+  if (input.magnetic) {
+    // Drawn at its true angle up to 35°, past which the stem would leave the strip; the note gives the figure.
+    const shown = (Math.max(-35, Math.min(35, input.magnetic.declination)) * Math.PI) / 180;
+    const base: [number, number] = [arrow, strip.y + 27];
+    const tip: [number, number] = [base[0] + 21 * Math.sin(shown), base[1] - 21 * Math.cos(shown)];
+    items.push({ kind: "line", x1: base[0], y1: base[1], x2: tip[0], y2: tip[1], color: MAGNETIC, width: 0.9 });
+    // A half arrowhead, on the side away from true north, as on Ordnance Survey's diagrams.
+    const back: [number, number] = [-Math.sin(shown), Math.cos(shown)];
+    const side = input.magnetic.declination >= 0 ? 1 : -1;
+    const barb: [number, number] = [
+      tip[0] + 5 * back[0] + side * 2.6 * Math.cos(shown),
+      tip[1] + 5 * back[1] + side * 2.6 * Math.sin(shown),
+    ];
+    items.push({ kind: "polygon", points: [tip, barb, [tip[0] + 4 * back[0], tip[1] + 4 * back[1]]], fill: MAGNETIC });
+    items.push({ kind: "text", x: arrow + 7, y: strip.y + 20, text: "MN", size: 6.5, bold: true, color: MAGNETIC });
+  }
 
   // Scale: the ratio, and a bar each for kilometres and miles.
   const barRoom = Math.min(190, strip.width * 0.3);
@@ -216,7 +326,7 @@ export function layoutSheet(input: SheetInput): Sheet {
 
   // What the scale means here, then the credits. The credits are a licence condition: never cut, never dropped.
   let baseline = strip.y + 38;
-  for (const note of [...sheetNotes(input.bbox, input.scale, metric), ...(input.notes ?? [])]) {
+  for (const note of [...sheetNotes(input.bbox, input.scale, metric, input.magnetic, input.date), ...(input.notes ?? [])]) {
     for (const line of wrapText(note, SMALL, strip.width)) {
       items.push({ kind: "text", x: strip.x, y: baseline, text: line, size: SMALL, color: MUTED });
       baseline += LEADING;
