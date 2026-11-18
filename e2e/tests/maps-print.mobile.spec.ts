@@ -56,6 +56,15 @@ test.describe("printing the map from a phone", () => {
           return nw.y > 60 && se.y + se.height < within.y && se.x - nw.x >= 80 && se.y - nw.y >= 80;
         })
         .toBe(true);
+      // Raised all the way, the step is still there (it was an empty sheet: the cards it was drawn from are put away
+      // while the sheet covers the map), and lowered again it is unchanged.
+      const handle = page.getByRole("button", { name: /^Panel height/ });
+      for (let press = 0; press < 3 && !/full/.test((await handle.getAttribute("aria-label")) ?? ""); press += 1) await handle.tap();
+      await expect(handle).toHaveAttribute("aria-label", /full/);
+      await expect(step.getByRole("combobox", { name: "Scale" })).toBeVisible();
+      await expect(step.getByRole("button", { name: "Preview the page" })).toBeVisible();
+      for (let press = 0; press < 3 && !/half/.test((await handle.getAttribute("aria-label")) ?? ""); press += 1) await handle.tap();
+      await expect(step.getByRole("combobox", { name: "Paper" })).toBeVisible();
       // Lowered, the sheet shows the step's title and what puts it down; put down, the tabs are back.
       await step.getByRole("button", { name: "Stop: put the page away" }).tap();
       await expect(sheet.getByRole("tab", { name: /Places/ })).toBeVisible();

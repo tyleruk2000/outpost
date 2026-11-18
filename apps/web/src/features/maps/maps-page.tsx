@@ -1319,15 +1319,9 @@ export default function MapsPage() {
           onDone={leaveTool}
         />
       ) : null
-    ) : tool === "print" && engine ? (
+    ) : tool === "print" && engine && isDesktop ? (
       <Suspense fallback={null}>
-        <PrintTool
-          engine={engine}
-          style={styleInput}
-          format={format}
-          onClose={leaveTool}
-          {...(isDesktop ? {} : { sheet: printSheet, onInSheet: setPrintInSheet })}
-        />
+        <PrintTool engine={engine} style={styleInput} format={format} onClose={leaveTool} />
       </Suspense>
     ) : moving && movingMarker ? (
       <MoveCard
@@ -1628,6 +1622,21 @@ export default function MapsPage() {
               <FileUp aria-hidden className="size-5 text-primary" /> Drop GPX files to import them
             </p>
           </div>
+        ) : null}
+
+        {/* On a phone the page to print is laid out in the sheet, not in a card over the map. It is held here, not with the
+            cards: those are taken away while the sheet covers the map, and the raised sheet was left empty. */}
+        {!isDesktop && tool === "print" && engine ? (
+          <Suspense fallback={null}>
+            <PrintTool
+              engine={engine}
+              style={styleInput}
+              format={format}
+              onClose={leaveTool}
+              sheet={printSheet}
+              onInSheet={setPrintInSheet}
+            />
+          </Suspense>
         ) : null}
 
         {!isDesktop ? (
