@@ -1585,8 +1585,12 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 
 #### Maps: heights
 
-- The map's readout gives the height of the ground under a resting pointer, or at the
-  centre when opened on a phone, from installed terrain. `GET /api/maps/height`.
+- The map's readout gives the height of the ground under the pointer, following it as
+  it moves, or at the centre of the map while the mouse is elsewhere and when opened
+  on a phone, from installed terrain. `GET /api/maps/height`. It first showed only
+  once the pointer had been held still for a quarter of a second, which on the first
+  real device read as no height at all; heights are now asked for at a steady pace (at
+  most ten a second, one at a time) and the last figure stays until the next arrives.
 - **Settings → Appearance → Heights**: metres or feet for every height on the map
   screens, kept in the browser.
 
@@ -1940,7 +1944,13 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - A download stops as soon as more arrives than its server's stated length, or, with no
   length, than the size it was offered at plus a tenth and 1 MB.
 - A Geofabrik extract is read only when its MD5 was published with it, and Ordnance
-  Survey's answers about its downloads are read up to 1 MB.
+  Survey's answers about its downloads are read up to 1 MB. The downloader itself
+  holds the file to that MD5, in the same reading as its SHA-256: the download's page
+  shows the published MD5 and the file's (it said "No checksum published" and then
+  failed on one), and a file that fails is deleted, so that **Retry** fetches it again
+  (it checked the same damaged file again). Found on the first Raspberry Pi, where a
+  2.3 GB extract written to a NAS share arrived the right size with one 4 KiB block of
+  zeros in it.
 - The MCP endpoint compares the whole origin of a request, scheme and port included.
 - A test fails when the server asks a host that [docs/security.md](docs/security.md) and
   [docs/offline.md](docs/offline.md) do not both name.
