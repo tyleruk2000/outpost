@@ -528,6 +528,10 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 
 #### Maps
 
+- On a phone the credits under the map are one line: the map's own ("Protomaps ©
+  OpenStreetMap") stays in sight and **4 more** opens the rest in place. They took
+  three lines of a small map written out in full. All of them are still written out on
+  a wide screen, and none can be taken off: the licences ask for them.
 - Regional map extracts cut from a remote PMTiles archive, with an exact size before
   downloading, ready-made regions and custom boxes, and optional terrain.
 - Installed regions served as one continuous vector map, with bundled styles, fonts and
@@ -825,8 +829,13 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   band and hour, whether each model has the path open, the MUF, signal and
   signal-to-noise ratio from each, and the difference, with both run on isotropic
   antennas. Optional: the engine is built on your own computer from the ITU's source
-  (`scripts/build-p533-engine.mjs`, Docker) and its 137 MB of maps are downloaded when
-  you ask. Nothing of the ITU's ships with Outpost. The build reproduces the ITU's nine
+  and its 137 MB of maps are downloaded when you ask. **Build the P.533 engine** has
+  Outpost do the build itself, as a job, with no shell and no Docker: it fetches the
+  ITU's source and a pinned compiler (wasi-sdk, about 190 MB, deleted afterwards),
+  holds each to its checksum, and keeps the result only if it is byte for byte the
+  recorded file; added for the first Raspberry Pi, where Outpost runs in a container
+  and the script (`scripts/build-p533-engine.mjs`, Docker) could not be run without
+  logging in to it. Nothing of the ITU's ships with Outpost. The build reproduces the ITU's nine
   reference outputs line for line. See [docs/hf-propagation.md](docs/hf-propagation.md#a-second-model-itu-p533).
 - **VOACAP's ionospheric and noise coefficients are no longer shipped.** The 13
   coefficient files (CCIR Reports 322 and 340, with NTIA/ITS tables in the same files)
