@@ -1,5 +1,5 @@
 import type { Bbox } from "@outpost/shared";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Tooltip } from "radix-ui";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -139,6 +139,39 @@ describe("laying out a page on the map", () => {
     expect(centred.center.lat).toBeCloseTo(53.1, 9);
     expect(centred.center.lon).toBeCloseTo(-4, 9);
     expect(scaleOfBox(lastBox(fake.setBox), portrait)).toBeCloseTo(scaleOfBox(grown, portrait), 3);
+  });
+
+  it("on a phone is drawn in the sheet, not as a card: every setting, both buttons, and what puts it down", async () => {
+    const fake = fakeEngine();
+    const sheet = document.createElement("div");
+    document.body.append(sheet);
+    const onInSheet = vi.fn();
+    const onClose = vi.fn();
+    const { container, unmount } = render(
+      <PrintTool engine={fake.engine} style={style} format="decimal" onClose={onClose} sheet={sheet} onInSheet={onInSheet} />,
+    );
+    // Nothing over the map: the card's place is empty.
+    expect(container.querySelector(".outpost-map-card")).toBeNull();
+    const step = within(sheet).getByRole("region", { name: "Print or save as PDF" });
+    // Its first line is what the lowered sheet shows.
+    expect(step.querySelector("[data-sheet-peek]")).toHaveTextContent("Print or save as PDF");
+    for (const name of ["Paper", "Scale"]) expect(within(step).getByRole("combobox", { name })).toBeInTheDocument();
+    expect(within(step).getByRole("radio", { name: "Landscape" })).toBeInTheDocument();
+    expect(within(step).getByRole("button", { name: "Preview the page" })).toBeInTheDocument();
+    expect(within(step).getByRole("button", { name: "Centre the box here" })).toBeInTheDocument();
+    expect(onInSheet).toHaveBeenLastCalledWith(true);
+    await userEvent.click(within(step).getByRole("button", { name: "Stop: put the page away" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    unmount();
+    expect(onInSheet).toHaveBeenLastCalledWith(false);
+    sheet.remove();
+  });
+
+  it("waits for the sheet to make its place, and draws no card meanwhile", () => {
+    const fake = fakeEngine();
+    const { container } = render(<PrintTool engine={fake.engine} style={style} format="decimal" onClose={() => {}} sheet={null} />);
+    expect(container.querySelector(".outpost-map-card")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Preview the page" })).toBeNull();
   });
 
   it("takes its box off the map when it is put away", () => {

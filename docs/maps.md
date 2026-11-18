@@ -448,6 +448,14 @@ until you save or share it.
 2. Choose the paper (A4, A3 or US Letter), which way up, and the scale: **Fit the box**
    takes whatever scale your box comes to, rounded to three figures, or pick 1:10,000,
    1:25,000, 1:50,000, 1:100,000 or 1:250,000 and the box takes that size.
+
+   **On a phone** these are in the sheet, which rises to half for them, with the box on
+   the map above; lower the sheet for more map to move the box on, and raise it again
+   for the settings. The coordinates at the foot of the map step aside meanwhile. (They
+   were a card over the map until 18 November 2026: on a phone in a browser, whose own
+   bars leave a page of about 390 by 664, the card had 160 px of the 286 it needs and
+   the settings could not be seen.) On a phone shorter than that the sheet scrolls, or
+   can be raised all the way.
 3. **Preview the page** shows the sheet as it will be made. Give it a title, and tick
    what goes on the map:
 

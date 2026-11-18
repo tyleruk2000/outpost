@@ -8,10 +8,20 @@
  * decide that shape and size. Then the page itself (print-dialog.tsx): a preview, what
  * to put on it, and the file.
  *
+ * On a wide screen the first step is a card at the foot of the map. On a phone a card
+ * has, at most, the lower three fifths of what the sheet and the readout leave clear, and
+ * on a phone in a browser, with its bars, that was about 180 px for a card that needs
+ * 286: the title, a sliver of the paper and the two buttons showed, and the settings
+ * could not be seen. So on a phone the step is in the sheet, as line of sight is: raised
+ * to half, where all of it fits, with the box on the map above it; lowered, its title and
+ * the map.
+ *
  * Loaded when the tool is first taken up, so the rest of the maps screen does not carry it.
  */
 import type { Bbox } from "@outpost/shared";
+import { X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Segmented, Select } from "@/components/ui/misc";
 import { notify } from "@/lib/notify";
@@ -85,12 +95,21 @@ export default function PrintTool({
   style,
   format,
   onClose,
+  sheet,
+  onInSheet,
 }: {
   engine: MapEngine;
   /** The style of the map on screen: what is installed and how the map is set. */
   style: Omit<StyleInput, "overlays">;
   format: ReadoutFormat;
   onClose: () => void;
+  /**
+   * On a phone: the place in the sheet where this step is drawn, once the sheet has made it. Left out on a wide
+   * screen, where the step is a card over the map.
+   */
+  sheet?: HTMLElement | null;
+  /** Told when the step is in the sheet and when it has left, so that the sheet can measure its new first line. */
+  onInSheet?: (there: boolean) => void;
 }) {
   const [prefs, setPrefs] = useStoredState<Prefs>(PREFS_KEY, isPrefs, { paper: "a4", orientation: "portrait", resolution: 300 });
   const geometry = useMemo(() => pageGeometry(prefs.paper, prefs.orientation), [prefs.paper, prefs.orientation]);
@@ -160,60 +179,113 @@ export default function PrintTool({
     place(boxAtScale(frameOfBox(box, pixels).center, next, pixels));
   };
 
+  const inSheet = sheet !== undefined;
+  const latestBox = useRef(box);
+  latestBox.current = box;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: when the place in the sheet comes and goes
+  useEffect(() => {
+    if (!sheet) return;
+    onInSheet?.(true);
+    // The sheet takes 200 ms to rise and the map then has less room: the box is fitted again into what is left.
+    const settled = window.setTimeout(() => engine.fitBounds(latestBox.current, { maxZoom: 17, clearBottom: clearOfCard() }), 350);
+    return () => {
+      window.clearTimeout(settled);
+      onInSheet?.(false);
+    };
+  }, [sheet]);
+
+  const settings = (
+    <div className="grid gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <Select
+          aria-label="Paper"
+          value={prefs.paper}
+          onChange={(paper) => repaper({ paper })}
+          options={PAPER_IDS.map((id) => ({ value: id, label: PAPERS[id].label, description: PAPERS[id].millimetres }))}
+          className="w-auto min-w-[7.5rem] flex-1"
+        />
+        <Segmented
+          label="Which way up"
+          value={prefs.orientation}
+          onChange={(orientation) => repaper({ orientation })}
+          options={[
+            { value: "portrait", label: "Portrait" },
+            { value: "landscape", label: "Landscape" },
+          ]}
+        />
+      </div>
+      <Select
+        aria-label="Scale"
+        value={held === null ? "fit" : String(held)}
+        onChange={rescale}
+        options={[
+          {
+            value: "fit",
+            label: held === null ? `Fit the box: ${formatScale(scale)}` : "Fit the box",
+            description: "Whatever scale the box you draw comes to",
+          },
+          ...ROUND_SCALES.map((value) => ({ value: String(value), label: formatScale(value), description: SCALE_USES[value] })),
+        ]}
+      />
+    </div>
+  );
+  const whatIsOnThePage = `${formatBboxSize(box)} on ${paperName(prefs.paper, prefs.orientation)} at ${formatScale(scale)}`;
+  const buttons = (
+    <>
+      <Button variant="primary" onClick={() => setStep("page")}>
+        Preview the page
+      </Button>
+      <Button onClick={() => place(boxAtScale(engine.getCenter(), scale, pixels))}>Centre the box here</Button>
+    </>
+  );
+
   return (
     <>
-      <div ref={card} className="pointer-events-none flex w-full justify-center max-md:min-h-[52px] max-md:shrink">
-        <MapCard title="Print or save as PDF" onClose={onClose} closeLabel="Stop: put the page away">
-          {/* Left out on a phone, where this card shares a small screen with the box it is about. */}
-          <p className="mt-1 text-small text-ink-muted max-md:hidden">
-            The box is the page. Drag its corners and edges, or move the map and choose “Centre the box here”.
-          </p>
-          <div className="mt-3 grid gap-2 max-md:mt-1.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <Select
-                aria-label="Paper"
-                value={prefs.paper}
-                onChange={(paper) => repaper({ paper })}
-                options={PAPER_IDS.map((id) => ({ value: id, label: PAPERS[id].label, description: PAPERS[id].millimetres }))}
-                className="w-auto min-w-[7.5rem] flex-1"
-              />
-              <Segmented
-                label="Which way up"
-                value={prefs.orientation}
-                onChange={(orientation) => repaper({ orientation })}
-                options={[
-                  { value: "portrait", label: "Portrait" },
-                  { value: "landscape", label: "Landscape" },
-                ]}
-              />
-            </div>
-            <Select
-              aria-label="Scale"
-              value={held === null ? "fit" : String(held)}
-              onChange={rescale}
-              options={[
-                {
-                  value: "fit",
-                  label: held === null ? `Fit the box: ${formatScale(scale)}` : "Fit the box",
-                  description: "Whatever scale the box you draw comes to",
-                },
-                ...ROUND_SCALES.map((value) => ({ value: String(value), label: formatScale(value), description: SCALE_USES[value] })),
-              ]}
-            />
-          </div>
-          <div className={cn(mapCardFoot, "mt-2 max-md:mt-1")}>
-            {/* In the foot, which stays in view on a phone: in the part that scrolls, the scale was cut off under it. */}
-            <p className="tabular mb-1 basis-full text-small text-ink" aria-live="polite">
-              <span className="md:hidden">The box is the page: </span>
-              {formatBboxSize(box)} on {paperName(prefs.paper, prefs.orientation)} at {formatScale(scale)}
+      {inSheet ? (
+        sheet ? (
+          createPortal(
+            <section aria-label="Print or save as PDF" className="flex min-h-0 flex-1 flex-col">
+              {/* With the sheet lowered this line is all of the tool that shows in it: its one title, and what puts it down. */}
+              <div
+                data-sheet-peek
+                className="sticky top-0 z-[1] flex min-h-[3.25rem] shrink-0 items-center justify-between gap-2 border-b border-border bg-page pr-2 pl-4"
+              >
+                <h2 className="text-body font-semibold text-ink">Print or save as PDF</h2>
+                <Button variant="ghost" size="icon-sm" aria-label="Stop: put the page away" onClick={onClose}>
+                  <X />
+                </Button>
+              </div>
+              {/* What is chosen and pressed first, what explains it last: on a short phone the last is what scrolls. */}
+              <div className="scroll-quiet grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] content-start gap-2.5 overflow-y-auto px-4 py-2.5">
+                {settings}
+                <div className="flex flex-wrap gap-2">{buttons}</div>
+                <p className="tabular text-small text-ink" aria-live="polite">
+                  {whatIsOnThePage}
+                </p>
+                <p className="text-small text-ink-muted">
+                  The box on the map is the page. Drag its corners and edges, or move the map and choose “Centre the box here”.
+                </p>
+              </div>
+            </section>,
+            sheet,
+          )
+        ) : null
+      ) : (
+        <div ref={card} className="pointer-events-none flex w-full justify-center">
+          <MapCard title="Print or save as PDF" onClose={onClose} closeLabel="Stop: put the page away">
+            <p className="mt-1 text-small text-ink-muted">
+              The box is the page. Drag its corners and edges, or move the map and choose “Centre the box here”.
             </p>
-            <Button variant="primary" onClick={() => setStep("page")}>
-              Preview the page
-            </Button>
-            <Button onClick={() => place(boxAtScale(engine.getCenter(), scale, pixels))}>Centre the box here</Button>
-          </div>
-        </MapCard>
-      </div>
+            <div className="mt-3">{settings}</div>
+            <div className={cn(mapCardFoot, "mt-2")}>
+              <p className="tabular mb-1 basis-full text-small text-ink" aria-live="polite">
+                {whatIsOnThePage}
+              </p>
+              {buttons}
+            </div>
+          </MapCard>
+        </div>
+      )}
 
       {step === "page" ? (
         <PrintDialog

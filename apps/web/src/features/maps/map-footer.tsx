@@ -238,8 +238,9 @@ function Attribution({ credits, fold }: { credits: Credit[]; fold: boolean }) {
             aria-expanded={opened}
             aria-label={opened ? "Show fewer map credits" : `Show all ${credits.length} map credits`}
             onClick={() => setOpened((now) => !now)}
-            // Small to look at, a line of text; 44 px to touch, by a reach above and below it.
-            className="relative inline-block min-w-11 rounded-[3px] text-center font-medium text-ink underline decoration-border-strong underline-offset-2 after:absolute after:inset-x-0 after:-inset-y-3.5 after:content-[''] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            // Small to look at, a line of text, so that the credits are one line and not 44 px of the map; 44 px to
+            // touch, by a reach above and below it (maps.css leaves it out of the phone's rule for the same reason).
+            className="outpost-credits-more relative inline-block min-w-11 rounded-[3px] text-center font-medium text-ink underline decoration-border-strong underline-offset-2 after:absolute after:inset-x-0 after:-inset-y-3.5 after:content-[''] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             {opened ? "Fewer" : `${credits.length - 1} more`}
           </button>

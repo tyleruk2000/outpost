@@ -757,20 +757,24 @@ export default function MapsPage() {
     const height = area.current?.clientHeight ?? 0;
     // On a phone: the sheet (at most half the height, as "full" hides the map anyway) and, above it, the readout
     // with whatever is written under it (while the sheet is lowered, today's sunrise and sunset) and the credits.
-    const under = isDesktop ? 0 : detentHeight(detent === "peek" ? "peek" : "half", height, peekHeight) + clear.held;
+    // A page being laid out on a phone has the sheet, not a card: no room is kept for a card to come up into, nor for
+    // the coordinates that have stepped aside for it. The box then has all of the clear map, and the centre its middle.
+    const cardless = !isDesktop && tool === "print";
+    const foot = cardless ? clear.bottom : clear.held;
+    const under = isDesktop ? 0 : detentHeight(detent === "peek" ? "peek" : "half", height, peekHeight) + foot;
     // The centre is kept two fifths of the way down the clear part of the map, not half way: a card that comes up
     // from the foot of it (which may take three fifths, less a margin; see maps.css) then never covers the centre,
     // and the map does not have to move when a card appears or grows.
-    const fifth = isDesktop ? 0 : Math.max(0, height - top - under) * 0.2;
+    const fifth = isDesktop || cardless ? 0 : Math.max(0, height - top - under) * 0.2;
     const sheet = under + fifth;
     // Room kept at the foot that nothing lies over: the fifth for a card, and what is held while something is in hand.
-    const spare = fifth + (clear.held - clear.bottom);
+    const spare = fifth + (foot - clear.bottom);
     // A short screen (a phone on its side) keeps some map clear whatever lies over it.
     const bottom = Math.max(0, Math.min(sheet, height - top - 96));
     // A phone's sheet covers the lower part of the map, so there the camera keeps the space all the time and the
     // centre of the map is in the part that shows. On a wide screen nothing lies over the middle of the map.
     engine.setPadding({ top, right: isDesktop ? 56 : 0, bottom, left: 0 }, !isDesktop, spare);
-  }, [engine, isDesktop, detent, peekHeight, clear]);
+  }, [engine, isDesktop, detent, peekHeight, clear, tool]);
 
   // A place being saved is slid into the clear map if it is where the sheet, the readout or a card would hide it.
   useEffect(() => {
@@ -905,8 +909,9 @@ export default function MapsPage() {
     setTool(next);
     // The page's box and the box of a region being downloaded are the same box on the map: one at a time.
     if (next === "print" && panel.tab === "offline") setPanel((current) => ({ ...current, tab: "places" }));
-    // On a phone the sheet would cover the map being clicked on.
-    setDetent("peek");
+    // On a phone the sheet would cover the map being clicked on. The page to print is laid out in the sheet itself,
+    // which is raised for it: its settings do not fit in a card over a phone's map.
+    setDetent(next === "print" ? "half" : "peek");
     if (next === "add-place") toast(`${pressWord()} the map where the place is.`, { id: ADD_PLACE_HINT });
   };
   const changeTool = (next: Tool) => {
@@ -1249,6 +1254,15 @@ export default function MapsPage() {
   );
 
   const panelVisible = isDesktop ? panel.open : detent !== "peek";
+  /** On a phone, where in the sheet the print tool draws its first step, and whether it has. */
+  const [printSheet, setPrintSheet] = useState<HTMLElement | null>(null);
+  const [printInSheet, setPrintInSheet] = useState(false);
+  // Put away, the page to print gives the sheet back lowered, as it was when the tool was taken up.
+  const wasPrinting = useRef(false);
+  useEffect(() => {
+    if (wasPrinting.current && tool !== "print" && !isDesktop) setDetent("peek");
+    wasPrinting.current = tool === "print";
+  }, [tool, isDesktop]);
   // On a phone the sheet would cover the map a point is about to be chosen on, and says the same as the card does.
   const pickingSight = tool === "sight" && Boolean(sight.picking);
   useEffect(() => {
@@ -1267,6 +1281,9 @@ export default function MapsPage() {
           openOffline({ type: "add" });
         }}
       />
+    ) : tool === "print" && !isDesktop ? (
+      // The print tool draws its first step here (print-tool.tsx): on a phone it has the sheet, not a card.
+      <div ref={setPrintSheet} className="flex min-h-0 flex-1 flex-col" />
     ) : (
       tabs
     );
@@ -1304,7 +1321,13 @@ export default function MapsPage() {
       ) : null
     ) : tool === "print" && engine ? (
       <Suspense fallback={null}>
-        <PrintTool engine={engine} style={styleInput} format={format} onClose={leaveTool} />
+        <PrintTool
+          engine={engine}
+          style={styleInput}
+          format={format}
+          onClose={leaveTool}
+          {...(isDesktop ? {} : { sheet: printSheet, onInSheet: setPrintInSheet })}
+        />
       </Suspense>
     ) : moving && movingMarker ? (
       <MoveCard
@@ -1560,9 +1583,11 @@ export default function MapsPage() {
               // what the readout has room for is worked out from their height, which must not depend on the answer.
               // While a repeater's estimated range is drawn on a phone, the coordinates of the centre step aside (they are
               // in the Sun tab and under a long press) so that the outline has the room: at large text it was 70 px across.
+              // The same while a page to print is laid out, when the sheet is raised and the box has what map is left:
+              // with the coordinates there, the box on a phone in a browser was 55 px across, too small to take hold of.
               className={cn(
                 "w-full max-md:flex-col max-md:flex-nowrap max-md:items-stretch",
-                repeaters.ranging && "max-md:[&_.outpost-readout-row]:hidden",
+                (repeaters.ranging || tool === "print") && "max-md:[&_.outpost-readout-row]:hidden",
               )}
             />
           }
@@ -1606,7 +1631,12 @@ export default function MapsPage() {
         ) : null}
 
         {!isDesktop ? (
-          <MobileSheet detent={detent} onDetentChange={setDetent} onPeekHeight={setPeekHeight} first={tool === "sight" ? "sight" : "tabs"}>
+          <MobileSheet
+            detent={detent}
+            onDetentChange={setDetent}
+            onPeekHeight={setPeekHeight}
+            first={tool === "sight" ? "sight" : tool === "print" && printInSheet ? "print" : "tabs"}
+          >
             {panelBody}
           </MobileSheet>
         ) : null}

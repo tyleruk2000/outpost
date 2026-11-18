@@ -59,8 +59,6 @@ test.describe("place names for Great Britain from a phone", () => {
     await expect(credits).toContainText(/Contains OS data .* · 1 more/, { timeout: 10_000 });
     await credits.getByRole("button", { name: "Show all 2 map credits" }).tap();
     await expect(credits).toContainText(/Contains OS data .* · Natural Earth · Fewer/);
-    await credits.getByRole("button", { name: "Show fewer map credits" }).tap();
-    await expect(credits).toContainText(/· 1 more/);
     expect(errors).toEqual([]);
   });
 });

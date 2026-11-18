@@ -170,7 +170,8 @@
       input,
       .outpost-radio,
       .outpost-pin,
-      .outpost-box-handle
+      .outpost-box-handle,
+      .outpost-credits-more
     ) {
     min-width: 44px;
     min-height: 44px;
