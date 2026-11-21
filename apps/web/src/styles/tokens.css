@@ -189,6 +189,23 @@
   --game-night: oklch(0.52 0.11 265);
   --game-moon: oklch(0.97 0.03 95);
 
+  /* The Steading: the valley drawn as an estate plan, ink on paper. */
+  --game-plan-paper: oklch(0.965 0.018 95);
+  --game-plan-meadow: oklch(0.92 0.045 120);
+  --game-plan-woods: oklch(0.66 0.09 145);
+  --game-plan-woods-deep: oklch(0.48 0.08 150);
+  --game-plan-rock: oklch(0.76 0.012 250);
+  --game-plan-clay: oklch(0.74 0.085 52);
+  --game-plan-river: oklch(0.78 0.06 230);
+  --game-plan-river-line: oklch(0.55 0.08 235);
+  --game-plan-fell: oklch(0.86 0.035 95);
+  --game-plan-coal: oklch(0.32 0.01 250);
+  --game-plan-ink: oklch(0.32 0.03 60);
+  --game-plan-roof: oklch(0.99 0.008 90);
+  --game-plan-waiting: oklch(0.9 0.02 90);
+  --game-plan-route: oklch(0.45 0.1 40);
+  --game-plan-route-idle: oklch(0.62 0.03 60);
+
   --focus: oklch(0.55 0.12 200);
   --shadow-float: 0 1px 2px oklch(0.2 0.02 220 / 0.06), 0 8px 24px -6px oklch(0.2 0.02 220 / 0.16);
   --shadow-dialog: 0 2px 4px oklch(0.2 0.02 220 / 0.08), 0 24px 56px -12px oklch(0.2 0.02 220 / 0.28);
@@ -372,6 +389,22 @@
   --game-dusk: oklch(0.88 0.065 40);
   --game-night: oklch(0.63 0.1 265);
   --game-moon: oklch(0.93 0.03 95);
+
+  --game-plan-paper: oklch(0.25 0.012 95);
+  --game-plan-meadow: oklch(0.31 0.035 135);
+  --game-plan-woods: oklch(0.45 0.07 150);
+  --game-plan-woods-deep: oklch(0.6 0.08 145);
+  --game-plan-rock: oklch(0.46 0.012 250);
+  --game-plan-clay: oklch(0.47 0.07 48);
+  --game-plan-river: oklch(0.38 0.06 235);
+  --game-plan-river-line: oklch(0.62 0.07 228);
+  --game-plan-fell: oklch(0.36 0.025 95);
+  --game-plan-coal: oklch(0.17 0.01 250);
+  --game-plan-ink: oklch(0.9 0.02 90);
+  --game-plan-roof: oklch(0.3 0.015 70);
+  --game-plan-waiting: oklch(0.26 0.01 80);
+  --game-plan-route: oklch(0.8 0.1 65);
+  --game-plan-route-idle: oklch(0.55 0.02 70);
 
   --focus: oklch(0.8 0.1 195);
   --shadow-float: 0 1px 2px oklch(0 0 0 / 0.3), 0 8px 24px -6px oklch(0 0 0 / 0.5);
