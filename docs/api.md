@@ -88,7 +88,8 @@ depends on the error. The codes, from `apps/server/src/core/errors.ts`:
 | Code | HTTP status | Meaning |
 | --- | --- | --- |
 | `bad_request` | 400 | The request is not valid. For validation failures, `details.issues` lists them. |
-| `forbidden` | 403 | Refused: an address the server does not answer to, a missing header, a request from another site, a blocked download address. |
+| `forbidden` | 403 | Refused: an address the server does not answer to, a missing header, a request from another site, a blocked download address, a wrong household PIN (`details.wrongPin`). |
+| `locked` | 403 | A change from a device not unlocked with the household PIN. Every request under `/api/` but `GET`, `HEAD` and `OPTIONS` can answer this while a PIN is set, except those in `READ_BY_POST` (`modules/access`). |
 | `not_found` | 404 | No such thing. |
 | `conflict` | 409 | The request clashes with the current state: already exists, already running, edited elsewhere. |
 | `too_large` | 413 | A file or region is over a limit. |
@@ -148,6 +149,19 @@ Job types in use: `download.run`, `document.extract`, `documents.move`,
 
 A job that was cancelled part of the way through work that cannot be undone keeps a
 `result` saying what it had done by then; the three `manage.*` jobs do this.
+
+## The household PIN
+
+Types: `packages/shared/src/access.ts`. A device is unlocked by the `outpost_device` cookie these set (`HttpOnly`, `SameSite=Strict`). A script that changes things while a PIN is set unlocks once and sends the cookie back. Wrong PINs: five from an address (an IPv6 /64), then one a minute; `429` `too_many` with `Retry-After` beyond that.
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/access` | `{ access }` (`AccessState`): `mode` (`open` or `pin`), `canChange` for this device, `pinSetAt`, `unlockedDevices`, `unlockedAt`. |
+| `POST /api/access/unlock` | Body `{ pin }`. Unlocks this device. `403` `forbidden` for a wrong PIN. |
+| `POST /api/access/lock` | Locks this device. Open to a locked device. |
+| `POST /api/access/pin` | Body `{ pin, current? }`: 4 to 12 digits. Sets a PIN where there is none; with one set, changes it (`current` the PIN in use, from an unlocked device). Locks every other device; this one is unlocked. |
+| `POST /api/access/remove` | Body `{ current }`. Back to no PIN, from an unlocked device. |
+| `POST /api/access/lock-others` | Locks every unlocked device but this one. `{ access, locked }`. |
 
 ## System
 
@@ -540,7 +554,7 @@ Types: `packages/shared/src/notes.ts`. See
 | `GET /api/notes/trash` | Pages in the trash (`NoteTrashResponse`). |
 | `GET /api/notes/templates` | Built-in templates and your own (`NoteTemplatesResponse`). |
 | `GET /api/notes/lookup` | Pages whose title contains `q`, for the link menu. Query: `q`, `limit`. |
-| `POST /api/notes` | Creates a page. Body (`CreateNoteBody`): `parentId`, `title`, `icon`, `content`, `templateId`, `afterId`. `{ note }`. |
+| `POST /api/notes` | Creates a page. Body (`CreateNoteBody`): `parentId`, `title`, `icon`, `content`, `templateId`, `afterId`, `clientId`. `{ note }`. `clientId` (8 to 64 letters, digits, `-`, `_`) becomes the page's id: sent again, the answer is the page made the first time, as it is now, and no second page is made. |
 | `GET /api/notes/:id` | `{ note }` (`NoteDetail`): content, tags, breadcrumbs, backlinks, children. Query `view=1` records that the page was opened. |
 | `PATCH /api/notes/:id` | Saves changes. Body (`UpdateNoteBody`): `title`, `icon`, `content`, `tags`, `isFavorite`, `coverAttachmentId`, `isTemplate`, `baseUpdatedAt`, `removeEncryption`, `origin` (up to 64 characters naming the tab that saves; it comes back in the `notes.changed` event, so that tab need not fetch the page again). If the stored page is newer than `baseUpdatedAt` the answer is `409 conflict` with `details.current`, and nothing is overwritten. For an encrypted page see below. |
 | `POST /api/notes/:id/move` | Body (`MoveNoteBody`): `parentId`, `afterId`. |

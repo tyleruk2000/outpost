@@ -307,16 +307,17 @@ was.
   nothing while it is in the background or the phone is locked.
 - The navigation holds only what works: **On this phone**, **Maps**, **Write**, and the
   kept pages.
-- A kept page opens as it is at home, with writing switched off. A page that was not
+- A kept page opens as it is at home, for reading; **Edit** changes its title and text
+  (see [Writing while out of reach](#writing-while-out-of-reach)). A page that was not
   kept says "This page is not kept on this phone". A screen that lives on the server
   (Library, Search, Settings and the rest) says it needs the server. Nothing spins and
   nothing shows an error for being out of reach.
-- **Nothing kept can be changed**, except ticking the steps of a kept emergency plan (see
-  [An emergency plan](#an-emergency-plan)). New check-ins and new pages can be written
-  (see [Writing while out of reach](#writing-while-out-of-reach)); kept pages cannot be
-  edited. A kept copy is only ever replaced by the server's version; it is never sent
-  back, so a stale copy cannot overwrite a page. Documents and reference collections
-  cannot be kept.
+- **What can be changed:** the title and text of a kept page, and the ticks of a kept
+  emergency plan (see [An emergency plan](#an-emergency-plan)). New check-ins and new
+  pages can be written too (see [Writing while out of reach](#writing-while-out-of-reach)).
+  Nothing else kept can be changed. A kept copy is only ever replaced by the server's
+  version; changes made on the phone go as changes to that copy, so a stale copy cannot
+  overwrite a newer page. Documents and reference collections cannot be kept.
 - The steps of the [offline drill](readiness.md#offline-drill) open and can be answered.
 
 How the app notices: the live connection to the server drops, and a plain question to
@@ -332,20 +333,34 @@ next screen you open.
 
 ### Writing while out of reach
 
-**Write**, in the navigation while the server is out of reach, holds two things:
+**Write**, in the navigation while the server is out of reach, holds two things, and a
+kept page can be changed from its own screen:
 
 - **Check in**: your name, where you are, a few words, and **I'm safe**, **I need help** or
   **Just my words**.
 - **A new page**: a title and plain text. Formatting and pictures can be added once it is
   in Notes.
+- **Changes to a kept page**: open the page, press **Edit**, and change its title or
+  text; **Done** goes back to reading. The changes are kept on the phone as you type, and
+  the page shows them, and when they were made, each time it is opened. Pictures cannot
+  be added while out of reach, and an encrypted page cannot be changed here.
 
-Both are kept on the phone and listed under **Written here, waiting to be sent**, on
+All three are kept on the phone and listed under **Written here, waiting to be sent**, on
 Write and on **On this phone**. When the phone next reaches Outpost they are sent by
 themselves, oldest first, and a message says what went:
 
 - A check-in goes on the board with the time it was written, up to a week back, and
   the board says when it arrived. Sending one twice keeps it once.
 - A page becomes a new page in Notes. It never changes a page that is already there.
+  Sending it twice, because an answer was lost on the way, makes it once.
+- Changes to a kept page are saved over the copy they were made on. If the page was
+  saved on Outpost after the phone kept its copy, nothing is overwritten: the changes
+  stay on the phone, marked **Changed on Outpost too**, and opening the page with the
+  server in reach shows them, unsaved, under **This page was changed somewhere else**.
+  **Keep my version** saves the phone's; **Load the other version** keeps Outpost's and
+  takes the phone's changes off it.
+- With a household PIN set, a phone that is not unlocked with it sends nothing: it all
+  waits until the PIN is entered (see [security.md](security.md#the-household-pin)).
 
 If Outpost refuses one (a name left empty, say), it stays on the phone with Outpost's
 words beside it and **Try again**. Taking something off the phone before it is sent asks
