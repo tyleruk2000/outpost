@@ -70,6 +70,8 @@ GROUPS.prepare.push("medical_sheets", "comms_plans", "household_binder");
 GROUPS.radio.push("morse_progress", "morse_sessions");
 // Learning progress in reference archives (modules/learning), on a line of its own so that other additions merge cleanly.
 GROUPS.library.push("learning_pages", "learning_days", "learning_topics");
+// Heard on the radio (modules/heard), on a line of its own so that other additions merge cleanly.
+GROUPS.radio.push("heard_receivers", "heard_stations", "heard_reports", "heard_range_tests");
 export const GROUP_ORDER: DatabaseGroupId[] = ["search", "meaning", "library", "notes", "maps", "radio", "prepare", "other"];
 
 /** What each count is, as the services that own the tables count it. */

@@ -172,6 +172,19 @@ export function createMeshtasticLink(ctx: AppContext, store: MeshStore, secrets:
         },
       };
       store.saveHeard(heard);
+      // Kept for the range view too (modules/heard), only for a radio switched on for the map.
+      if (known?.onMap)
+        ctx.services.heard?.recordMesh({
+          id,
+          name: known.longName ?? known.shortName ?? id,
+          lat: uplink.lat,
+          lon: uplink.lon,
+          altitude: uplink.altitude,
+          at,
+          hops: uplink.hops,
+          snr: uplink.snr,
+          rssi: uplink.rssi,
+        });
       changed();
       return;
     }

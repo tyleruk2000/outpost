@@ -148,6 +148,8 @@ export interface CleanupPlan {
     board?: BoardKept;
     /** Learning progress in reference archives: learners and the pages recorded for them. Absent from a plan made before it was counted. */
     learning?: LearningKept;
+    /** Stations, aircraft and ships heard on the radio, with their trails (Heard on the radio). Absent from a plan made before they were counted. */
+    heard?: number;
     /** PGP keys kept for contacts, any private key of the person's own among them. Absent from a plan made before they were counted. */
     pgpKeys?: number;
     /** Records of merges from portable drives, which hold earlier versions of pages. Absent from a plan made before they were counted. */
@@ -231,6 +233,7 @@ export interface CleanupResult extends Record<string, unknown> {
     games?: GamesKept;
     board?: BoardKept;
     learning?: LearningKept;
+    heard?: number;
     pgpKeys?: number;
     driveMerges?: number;
     settings: number;
