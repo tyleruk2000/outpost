@@ -188,6 +188,14 @@
   --game-dusk: oklch(0.88 0.07 40);
   --game-night: oklch(0.52 0.11 265);
   --game-moon: oklch(0.97 0.03 95);
+  /* Skerry's terminal: a dark screen in both themes, dimmer in the dark one */
+  --game-term: oklch(0.26 0.03 200);
+  --game-term-edge: oklch(0.4 0.035 200);
+  --game-term-ink: oklch(0.94 0.012 190);
+  --game-term-muted: oklch(0.8 0.025 190);
+  --game-term-prompt: oklch(0.84 0.09 175);
+  --game-term-error: oklch(0.84 0.09 45);
+  --game-term-done: oklch(0.86 0.1 145);
 
   /* The Steading: the valley drawn as an estate plan, ink on paper. */
   --game-plan-paper: oklch(0.965 0.018 95);
@@ -389,6 +397,13 @@
   --game-dusk: oklch(0.88 0.065 40);
   --game-night: oklch(0.63 0.1 265);
   --game-moon: oklch(0.93 0.03 95);
+  --game-term: oklch(0.16 0.02 205);
+  --game-term-edge: oklch(0.32 0.025 205);
+  --game-term-ink: oklch(0.92 0.01 190);
+  --game-term-muted: oklch(0.78 0.02 190);
+  --game-term-prompt: oklch(0.82 0.09 175);
+  --game-term-error: oklch(0.82 0.09 45);
+  --game-term-done: oklch(0.84 0.1 145);
 
   --game-plan-paper: oklch(0.25 0.012 95);
   --game-plan-meadow: oklch(0.31 0.035 135);

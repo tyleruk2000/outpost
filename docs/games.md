@@ -11,8 +11,9 @@ Preparedness), in the phone's More sheet and in the quick search:
 | Sudoku | `/games/sudoku` | Puzzles made on the device, each with one answer. |
 | Draughts | `/games/draughts` | English draughts, against the computer or two at one device. |
 | Pairs | `/games/pairs` | A memory game for children. |
+| Skerry | `/games/skerry` | Puzzles solved at a pretend command line. |
 
-They are traditional games, or (the allotment) a design of Outpost's own. Everything is
+They are traditional games, or (the allotment and Skerry) designs of Outpost's own. Everything is
 drawn in code (SVG and HTML, the colours from `--game-*` tokens in
 `apps/web/src/styles/tokens.css`, for light and dark): there are no image, font or sound
 files and no sound. Each game is a lazy chunk of its own. None asks the network for
@@ -33,6 +34,7 @@ under reduced motion.
 | The allotment's plot | On the server, the `allotment` row of `game_saves` | One plot for the household: every device sees the same. |
 | Each game's tally: played, won, best time, fewest moves (and for Peg solitaire, fewest pegs left), for each way of playing | On the server, a row of `game_saves` per game | Shared by the household. |
 | An unfinished game of Solitaire, Peg solitaire, Sudoku, Draughts or Pairs | In the browser it is being played in (`localStorage`, `outpost.games.<game>`) | Two people playing at once on two devices must not overwrite each other's board. |
+| Skerry's progress: the levels solved, the level being played, the commands typed | In the browser it is played in (`localStorage`, `outpost.games.skerry`) | Nothing about it needs the server. |
 
 `game_saves` (migration `0027_games`) has one row per game: a JSON state (at most 64 KB),
 a version that goes up with each write, and timestamps. It is the household's own data:
@@ -391,6 +393,40 @@ or at the next tap. Small is 6 pairs (3×4), medium 8 (4×4), large 12 (4×6 on 
 The pictures are icons the app already has, things a small child can name (a cat, a
 tortoise, an apple, a bus, a snowflake …). No clock is shown while playing; the end is
 one line with the turns and the time.
+
+## Skerry
+
+You are the relief keeper at the weather station on Tarrow Skerry, a small made-up island
+far out to sea. The keeper before you, Ines, left her handover notes in the station
+computer's files, and the computer is worked by typing commands. Each of the twelve levels
+asks one thing (which hook the paint store key hangs on, how many days of October had fog,
+where the birthday cake is hidden), and the files hold the answer.
+
+- Type a command and press Enter. `help` lists the commands, `man` and a command's name
+  says more about one, `goal` repeats what the level asks, and `answer` gives your answer
+  (`answer 5`). Some levels are solved by reading the right file.
+- `hint` gives a hint, as many as you like, for nothing. The last hint all but says what
+  to type.
+- The commands are the everyday ones of a real command line, and behave like them: `pwd`,
+  `ls` (`-a` for hidden names), `cd` (with `..`, `~` and paths from `/`), `cat`, `head`,
+  `tail`, `grep` (`-i`, `-n`, `-c`, `-v`, `-r`), `wc`, `sort` (`-n`, `-r`), `uniq` (`-c`),
+  `find` (`-name`, `-type`), `echo`, `rev`, `history` and `clear`, joined with `|`. One is
+  the game's own: `decode 3 note.txt` undoes a Caesar shift of three, as the Encryption
+  screen does by hand.
+- Tab finishes a command's or a file's name, and lists the choices when there are several;
+  the up and down arrows bring back what you typed. On a phone, the buttons under the
+  terminal do the same, and type the `|` that phone keyboards hide.
+- The levels start with looking and reading and end with putting several commands
+  together. Any level can be played from the list, in any order, and played again.
+
+The command line is pretend. It is part of the page: its commands only read the level's
+own made-up files, nothing can be changed, deleted or written, and it runs nothing on the
+device or on Outpost and reaches no network. Commands that would change things, or
+connect to somewhere, say that they are not here. Nothing in it is about getting into
+anyone else's computer.
+
+Skerry adds 62 KB of script (16 KB compressed), text only, loaded when the screen is
+opened.
 
 ## Not tested
 

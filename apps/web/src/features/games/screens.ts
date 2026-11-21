@@ -3,7 +3,7 @@
  * and the Games page are both drawn from this list: to add a game, add an entry here and
  * a route in app.tsx.
  */
-import { CircleDot, Crown, Hash, Shapes, Spade, Sprout } from "lucide-react";
+import { CircleDot, Crown, Hash, Shapes, Spade, Sprout, SquareTerminal } from "lucide-react";
 import type { SectionScreen } from "@/components/section";
 
 export const gameScreens: SectionScreen[] = [
@@ -50,5 +50,13 @@ export const gameScreens: SectionScreen[] = [
     label: "Pairs",
     icon: Shapes,
     about: "Turn over two cards at a time to find the matching pictures. Three sizes, for small hands and bigger ones.",
+  },
+  {
+    to: "/games/skerry",
+    keywords: "terminal command line shell puzzles",
+    label: "Skerry",
+    icon: SquareTerminal,
+    about:
+      "Puzzles solved by typing commands at a pretend terminal, as the new keeper of an island weather station. Twelve levels, with free hints.",
   },
 ];

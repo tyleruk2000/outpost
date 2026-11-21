@@ -58,6 +58,12 @@ function validatorOf(etag: string | null, lastModified: string | null): string |
   return lastModified ?? undefined;
 }
 
+/**
+ * The most a download may be when neither it nor the server states a size. Every
+ * catalogue entry and every file Outpost offers states one; this is only a backstop.
+ */
+export const UNSTATED_MAX_BYTES = 8 * 1024 ** 3;
+
 /** How much is let through per request to the speed limiter. */
 const THROTTLE_SLICE_BYTES = 16 * 1024;
 
@@ -65,7 +71,7 @@ function sameHost(a: string, b: string): boolean {
   return new URL(a).host.toLowerCase() === new URL(b).host.toLowerCase();
 }
 
-async function attempt(client: HttpClient, context: FetchContext, stated: number | null): Promise<Outcome> {
+async function attempt(client: HttpClient, context: FetchContext, stated: number | null, unstatedMax: number): Promise<Outcome> {
   const { download, partPath, signal } = context;
   const have = await sizeOf(partPath);
   context.progress(have, download.totalBytes);
@@ -85,7 +91,12 @@ async function attempt(client: HttpClient, context: FetchContext, stated: number
     if (validator) headers["if-range"] = validator;
   }
 
-  const { response, url } = await client.fetch(download.url, { headers, signal, allowedHosts: context.allowedHosts });
+  const { response, url } = await client.fetch(download.url, {
+    headers,
+    signal,
+    allowedHosts: context.allowedHosts,
+    everyHop: context.everyHop === true,
+  });
   const status = response.status;
 
   if (status === 416) {
@@ -142,7 +153,8 @@ async function attempt(client: HttpClient, context: FetchContext, stated: number
   // What is written from here on is recorded as it arrives, to be held against what the storage gives back.
   context.written.cutTo(received);
   // What the server says is exact. What the download stated (a catalogue's size) may be a little out, so it is given room.
-  const limit = total ?? (stated === null ? null : Math.ceil(stated * 1.1) + 1024 * 1024);
+  // With neither, there is still a ceiling, so a server that never stops cannot fill the storage.
+  const limit = total ?? (stated === null ? unstatedMax : Math.ceil(stated * 1.1) + 1024 * 1024);
   context.progress(received, total);
   if (response.body) {
     // pipeline() applies backpressure: the socket is only read as fast as the disk writes.
@@ -157,6 +169,12 @@ async function attempt(client: HttpClient, context: FetchContext, stated: number
             const slice = chunk.subarray(offset, offset + THROTTLE_SLICE_BYTES);
             // Stopped as soon as more arrives than the server said, or, when it said nothing, than the download stated.
             if (limit !== null && received + slice.length > limit) {
+              if (total === null && stated === null) {
+                throw new PermanentJobError(
+                  `This download states no size and has gone past ${Math.round(unstatedMax / 1024 ** 3)} GB, the most Outpost takes from a file of unknown size. It was stopped.`,
+                  "upstream",
+                );
+              }
               throw new Error("More data arrived than the server said the file contains. Outpost will start this download again.");
             }
             // Holding the slice here slows the socket itself: backpressure reaches the server.
@@ -187,7 +205,8 @@ async function attempt(client: HttpClient, context: FetchContext, stated: number
   return "done";
 }
 
-export function createHttpFetcher(client: HttpClient): Fetcher {
+export function createHttpFetcher(client: HttpClient, options: { unstatedMaxBytes?: number } = {}): Fetcher {
+  const unstatedMax = options.unstatedMaxBytes ?? UNSTATED_MAX_BYTES;
   return async function httpFetcher(context) {
     if (!context.allowedHosts?.length) {
       throw new PermanentJobError("This download does not say which hosts it may use, so it was not started.", "forbidden");
@@ -195,7 +214,7 @@ export function createHttpFetcher(client: HttpClient): Fetcher {
     // The size the download stated before any server answered; later answers replace it in the row.
     const stated = context.download.totalBytes;
     for (let restarts = 0; ; restarts += 1) {
-      if ((await attempt(client, context, stated)) === "done") return;
+      if ((await attempt(client, context, stated, unstatedMax)) === "done") return;
       if (restarts >= MAX_RESTARTS) {
         throw new Error("The server kept rejecting the request to continue this download. Outpost will try again.");
       }

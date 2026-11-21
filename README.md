@@ -315,6 +315,7 @@ Small games for when the internet is out, drawn in code, with no sound and nothi
 | Sudoku | Puzzles made on the device at three levels, each with exactly one answer; notes, undo and a check. | [Games](docs/games.md#sudoku) |
 | Draughts | English draughts against the computer or two at one device. | [Games](docs/games.md#draughts) |
 | Pairs | A memory game for children, in three sizes. | [Games](docs/games.md#pairs) |
+| Skerry | Twelve puzzles solved by typing commands at a pretend terminal, as the new keeper of an island weather station; it teaches finding your way round files, searching, counting and pipes. Nothing typed touches anything real. | [Games](docs/games.md#skerry) |
 
 ![The allotment by day: four beds sown, one waiting for its months, and the stall](docs/screenshots/allotment.webp)
 
@@ -777,7 +778,7 @@ Every page below is also inside Outpost, under **Help**.
 | [Supplies](docs/supplies.md) | Stock, the household, food energy, barcodes, CSV |
 | [Weather and hazards](docs/weather.md) | What is fetched, from whom, and how old it is; river and sea levels; the barometer |
 | [Nuclear preparedness](docs/nuclear-preparedness.md) | The workspace, the effects simulator, its rules and its sources |
-| [Games](docs/games.md) | The six games, their rules, the allotment's real months, and what is kept where |
+| [Games](docs/games.md) | The games, their rules, the allotment's real months, and what is kept where |
 | [Sources](docs/sources.md) | Every content source considered, and its terms |
 | [Security](docs/security.md) | Threat model and controls |
 | [API](docs/api.md) | HTTP API reference |

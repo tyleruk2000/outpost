@@ -50,6 +50,13 @@
   --color-chart-axis: var(--chart-axis);
   /* The games' own colours (tokens.css). */
   --color-game-felt: var(--game-felt);
+  --color-game-term: var(--game-term);
+  --color-game-term-edge: var(--game-term-edge);
+  --color-game-term-ink: var(--game-term-ink);
+  --color-game-term-muted: var(--game-term-muted);
+  --color-game-term-prompt: var(--game-term-prompt);
+  --color-game-term-error: var(--game-term-error);
+  --color-game-term-done: var(--game-term-done);
   --color-game-felt-line: var(--game-felt-line);
   --color-game-felt-ink: var(--game-felt-ink);
   --color-game-card: var(--game-card);

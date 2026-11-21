@@ -35,12 +35,16 @@ const checkOnly = process.argv.includes("--check");
 
 /**
  * The model runs on ONNX Runtime compiled to WebAssembly (the onnxruntime-web package).
- * That package ships no licence file, so the texts are taken from the project's
- * repository at the commit of the release in use. Change these together with the
+ * That package ships no licence file, so the texts of the release in use (from the
+ * project's repository at the commit below) are kept in this repository under
+ * third-party/, and copied from there: a build never depends on that repository being
+ * reachable (it answered 404 on 18 November 2026). Change these together with the
  * version of onnxruntime-web in apps/server/package.json.
  */
 const RUNTIME = {
   version: "1.31.1",
+  /** Where the texts are kept, relative to the repository root. */
+  kept: "third-party/onnxruntime-1.31.1",
   /** The commit tagged v1.31.1. */
   commit: "6af1a932e2286d5c58166085d24c68783033edee",
   files: [
@@ -109,8 +113,14 @@ async function main() {
     );
   }
   for (const file of RUNTIME.files) {
-    const url = `https://raw.githubusercontent.com/microsoft/onnxruntime/${RUNTIME.commit}/${file.from}`;
-    if (await ensure(path.join(modelsDir, "onnxruntime", file.to), url, file, `onnxruntime/${file.to}`)) fetched += 1;
+    const target = path.join(modelsDir, "onnxruntime", file.to);
+    if (!force && isCorrect(target, file)) continue;
+    const kept = path.join(root, RUNTIME.kept, file.to);
+    if (!isCorrect(kept, file)) throw new Error(`${RUNTIME.kept}/${file.to} is missing or does not match its checksum.`);
+    if (checkOnly) throw new Error(`onnxruntime/${file.to} is missing or does not match its checksum.`);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.copyFileSync(kept, target);
+    fetched += 1;
   }
 
   if (!checkOnly) {
