@@ -659,13 +659,15 @@ These are marked in the sheets, or left out and named under "Not covered".
 
 - **The US Coast Guard Navigation Center** refused the automated check, so its marine
   frequency tables and channel lists were not used. Marine frequencies come from Ofcom
-  and 47 CFR Part 80, which give channel numbers only for channels 16, 70 and 9. On
-  2026-11-16 the MCA's guidance note MGN 324 (M+F) Amendment 2 was read: it names
-  channels 13, 6, 8, 72 and 77 and what each is for, without frequencies, and the
-  emergency frequencies sheet now quotes it.
+  and 47 CFR Part 80. On 2026-11-16 the MCA's guidance note MGN 324 (M+F) Amendment 2
+  was read: it names channels 13, 6, 8, 72 and 77 and what each is for, without
+  frequencies. On 2026-11-21 their frequencies, and the channel numbers of 156.300 and
+  156.650 MHz (6 and 13), were added from the US table in 47 CFR 80.373(f).
 - **CHU (Canada)**: the National Research Council's site refused the check, and refused
-  it again on 2026-11-16 (HTTP 403 for the station's page, though its `robots.txt`
-  admits ordinary clients). The row is marked "not verified".
+  it again on 2026-11-16 (HTTP 403 for the station's page). On 2026-11-21 its
+  `robots.txt` was found to bar AI agents by name, so it was not read again. The row is
+  marked "not verified"; secondary reports give the end of its shortwave broadcasts as
+  22 June 2026.
 - **BBC Radio 4 long wave (198 kHz)**: reported closed on 27 June 2026, but only a
   secondary source could be read. The sheet says so and tells the reader not to plan on
   it. The end of the dedicated long wave Shipping Forecast on 31 March 2024 is confirmed
@@ -677,16 +679,19 @@ These are marked in the sheets, or left out and named under "Not covered".
 - **The ITU Radio Regulations** were not read directly. International allocations are
   from the IARU's January 2020 summary, so any change made at the 2023 World
   Radiocommunication Conference is not reflected.
-- **Repeater access tones and national repeater plans** for the UK and the United
-  States are not in any document read, and the national societies' band plans are not
-  reproduced, so the repeater tables give the regional pattern only. HF emergency nets
-  run by RAYNET, ARES and similar groups were not checked with those groups and are
-  left out.
+- **Repeater access tones and national repeater plans.** The UK's CTCSS tone letters
+  (A to J) were added on 2026-11-21 from the RSGB repeater committee's access page; which
+  area has which letter is given there only as a map and is not in the sheet. US tones
+  (set by local co-ordinators) and the national societies' band plans are not
+  reproduced, so the repeater tables give the regional pattern only.
+- **HF emergency nets.** The Hurricane Watch Net's frequencies were added on 2026-11-21
+  from its own page. Nets run by RAYNET, ARES and similar groups were not checked with
+  those groups and are left out.
 - **A slip in a source.** The IARU Region 3 band plan prints the 15 metre WSPR
   frequency as "21.0946 kHz"; the sheet gives 21094.6 kHz and says so.
-- **A 70 cm calling frequency for Region 1**, the frequencies of marine VHF channels
-  other than 16, 70 and 9, the channel numbers of 156.300 and 156.650 MHz, and which of
-  marine channels 62, 63 and 64 has which frequency.
+- **A 70 cm calling frequency for Region 1**, the international marine VHF channel
+  plan (ITU Radio Regulations Appendix 18, not read), and which of marine channels 62,
+  63 and 64 has which frequency.
 - **Commonly repeated preparedness conventions with no traceable source** (a CB
   "truckers' channel", particular PMR446 channels in the UK, lists of "prepper" HF
   frequencies) are left out.

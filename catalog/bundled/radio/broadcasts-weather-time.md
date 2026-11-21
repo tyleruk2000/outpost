@@ -31,7 +31,7 @@ Receivers often label these WX1 to WX7. The National Weather Service says such c
 | WWVB | NIST (United States) | Near Fort Collins, Colorado | 60 kHz | Time code for radio-controlled clocks; no voice |
 | MSF | NPL (United Kingdom) | Anthorn, Cumbria | 60 kHz | Time and date code giving UK civil time, 24 hours a day; no voice |
 | DCF77 | PTB (Germany) | Mainflingen | 77.5 kHz | Time code for radio-controlled clocks; no voice |
-| CHU | NRC (Canada) | Not verified | Not verified | The National Research Council's website refused the check on 15 November 2026. The station is usually listed on 3330, 7850 and 14670 kHz; treat those as not verified |
+| CHU | NRC (Canada) | Not verified | Not verified | The National Research Council's website refused the check on 15 November 2026, and on 21 November 2026 its robots.txt was found to bar AI agents, so it was not read. Secondary reports say its shortwave broadcasts ended on 22 June 2026. The station is usually listed on 3330, 7850 and 14670 kHz; treat those as not verified |
 
 MSF carries UK civil time and DCF77 carries German legal time; the pages read for WWV and WWVH did not say in so many words which time scale is announced, so that is not stated here. On the day of checking NIST noted that WWVH's 5 MHz transmitter was running at reduced power after an equipment failure, and NPL was asking users of MSF for evidence about how the service is used, to inform decisions about its future.
 
