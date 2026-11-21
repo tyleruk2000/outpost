@@ -222,3 +222,28 @@ describe("a symbolic link inside a root that leads outside it", () => {
     expect(added.status).toBe(200);
   });
 });
+
+describe("a symbolic link inside a storage location", () => {
+  it("is followed to another location or under the roots, and refused when it leads anywhere else", async () => {
+    const server = await start("media");
+    const usb = path.join(dir, "media", "usb");
+    const nas = path.join(dir, "media", "nas");
+    const elsewhere = path.join(dir, "home-folder");
+    for (const folder of [usb, nas, elsewhere]) fs.mkdirSync(folder, { recursive: true });
+    fs.writeFileSync(path.join(elsewhere, "secret.txt"), "private");
+    fs.writeFileSync(path.join(nas, "map.pmtiles"), "tiles");
+    const created = await server.api("POST", "/api/storage/locations", { name: "USB", path: usb, kind: "external" });
+    expect(created.status).toBe(200);
+    const id = created.body.location.id as string;
+    fs.symlinkSync(elsewhere, path.join(usb, "escape"));
+    fs.symlinkSync(nas, path.join(usb, "on-the-nas"));
+
+    const storage = server.ctx.services.storage;
+    await expect(storage.resolveFollowingLinks(id, "escape/secret.txt")).rejects.toThrow(/symbolic link to a folder outside every storage/);
+    expect(await storage.resolveFollowingLinks(id, "on-the-nas/map.pmtiles")).toBe(path.join(usb, "on-the-nas", "map.pmtiles"));
+    expect(await storage.resolveFollowingLinks(id, "plain/new-file.zim")).toBe(path.join(usb, "plain", "new-file.zim"));
+    // And through the route a person uses: importing an archive from storage.
+    const zim = await server.api("POST", "/api/kiwix/import", { locationId: id, relPath: "escape/secret.txt" });
+    expect(zim.status).toBe(403);
+  });
+});

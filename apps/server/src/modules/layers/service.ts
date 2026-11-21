@@ -572,7 +572,7 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
     },
 
     async importFile(input, signal, progress) {
-      const filePath = storage.resolve(input.locationId, input.relPath);
+      const filePath = await storage.resolveFollowingLinks(input.locationId, input.relPath);
       const stat = await fs.promises.stat(filePath).catch(() => undefined);
       if (!stat?.isFile()) throw badRequest("There is no file at that place in the storage location.");
       const extension = path.extname(input.relPath).toLowerCase();

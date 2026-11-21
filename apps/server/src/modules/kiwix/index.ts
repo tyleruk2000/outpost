@@ -632,7 +632,7 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
     const body = z
       .object({ locationId: z.string(), relPath: z.string().min(1).max(500), title: z.string().trim().max(200).optional() })
       .parse(request.body);
-    const file = storage.resolve(body.locationId, body.relPath);
+    const file = await storage.resolveFollowingLinks(body.locationId, body.relPath);
     const uuid = await readZimUuid(file);
     if (!uuid) throw badRequest("That file is not a ZIM archive.");
     if (zimCollections().some((row) => zimOf(row)?.uuid === uuid))

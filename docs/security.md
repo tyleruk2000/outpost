@@ -1079,13 +1079,13 @@ decides the folders the storage screen lists, a new storage location, the check 
 each location at start-up, where a portable drive is made and which drive is read
 back home. Tested in `apps/server/test/storage-roots.test.ts`.
 
-What this does not cover: **a link inside a storage location**. Once a location
-exists, a path within it is checked by spelling (`resolveInside`), so a symbolic link
-placed on a USB stick or a network share that is a location can lead a request that
-names a file on it (importing a ZIM archive, a map or reference data from storage)
-to read a file elsewhere on the computer. Following links there too would refuse
-links people use on purpose and touches every caller; it is not done. Make a removable
-drive or share a storage location only if you trust what is on it.
+**A link inside a storage location.** A file a request names to be read from a
+location (importing a ZIM archive, a map or reference data from storage) is checked
+again with every symbolic link followed. A link may lead to another storage location or
+elsewhere under the storage roots, as people set up on purpose; a link that leads
+anywhere else on the computer is refused. Other paths within a location are checked by
+spelling (`resolveInside`): they are written by Outpost itself, or are files it already
+holds. Tested in `apps/server/test/storage-roots.test.ts`.
 
 ### Archives
 

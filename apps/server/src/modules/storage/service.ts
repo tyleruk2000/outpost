@@ -135,6 +135,12 @@ export interface StorageService {
   browse(target?: string): Promise<BrowseResult>;
   /** Absolute path for a file in a location. Throws if the location is not connected. */
   resolve(locationId: string, relPath: string): string;
+  /**
+   * `resolve`, and also checked with symbolic links followed: for a file a request names
+   * to be read from a location (an import from storage). A link may lead to another
+   * location or under the storage roots, never to the rest of the computer.
+   */
+  resolveFollowingLinks(locationId: string, relPath: string): Promise<string>;
   isAvailable(locationId: string): boolean;
   /** Throws `insufficient_space` unless the location has room for `bytes` plus a reserve. */
   assertSpace(locationId: string, bytes: number): Promise<void>;
@@ -543,6 +549,24 @@ export function createStorageService(ctx: AppContext): StorageService {
         });
       }
       return resolveInside(row.path, relPath);
+    },
+
+    async resolveFollowingLinks(locationId, relPath) {
+      const resolved = service.resolve(locationId, relPath);
+      const row = get(locationId);
+      // Checked again with symbolic links followed: a link on a stick or share may lead to
+      // another storage location or elsewhere under the storage roots, as people set up
+      // on purpose, but not to the rest of the computer.
+      const real = await realPathOfAsync(resolved);
+      if (real === resolved || isInside(await realPathOfAsync(row.path), real)) return resolved;
+      for (const other of db.select({ path: storageLocations.path }).from(storageLocations).all()) {
+        if (isInside(await realPathOfAsync(other.path), real)) return resolved;
+      }
+      for (const root of roots) if (isInside(await realPathOfAsync(root), real)) return resolved;
+      throw new AppError(
+        "forbidden",
+        `"${relPath}" on "${row.name}" leads through a symbolic link to a folder outside every storage location, so Outpost does not follow it.`,
+      );
     },
 
     isAvailable(locationId) {

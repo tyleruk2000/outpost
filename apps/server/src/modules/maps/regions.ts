@@ -257,7 +257,7 @@ export function createRegionsService(ctx: AppContext, deps: { planner: Planner; 
 
     async importArchive(input) {
       if (!/\.pmtiles$/i.test(input.relPath)) throw badRequest("Choose a file that ends in .pmtiles.");
-      const filePath = storage.resolve(input.locationId, input.relPath);
+      const filePath = await storage.resolveFollowingLinks(input.locationId, input.relPath);
       const stat = await fs.promises.stat(filePath).catch(() => undefined);
       if (!stat?.isFile()) throw badRequest("There is no file at that place in the storage location.");
 
