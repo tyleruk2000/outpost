@@ -501,6 +501,12 @@ export const GUIDES: Guide[] = [
     group: "developers",
     about: "How the calculators, compass, solar clock, QR encoder and network scan are built.",
   },
+  {
+    slug: "answers-and-search-internals",
+    file: "development/answers-and-search.md",
+    group: "developers",
+    about: "How answers, Chat's tools, MCP, search by meaning and OCR work inside, and how to run the model evaluations.",
+  },
 ];
 
 /** Pages of docs/ that are deliberately not guides, each with the reason. Keep it short. */
