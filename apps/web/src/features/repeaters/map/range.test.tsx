@@ -302,7 +302,7 @@ describe("the estimated range switch", () => {
     ).toBeVisible();
     expect(
       screen.getByText(
-        /Ground read along 720 bearings, 0.5° apart: every 50 m out to 25 km, every 100 m to 50 km and every 250 m to 100 km/,
+        /Ground read along 720 bearings, 0.5° apart: every 10 m out to 2 km, every 50 m to 25 km, every 100 m to 50 km and every 250 m to 100 km/,
       ),
     ).toBeVisible();
 

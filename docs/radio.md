@@ -376,9 +376,10 @@ dots and leaves the choice as it was.
 **What it is.** An estimate of line of sight only: the ground from which a station at a
 stated height above it would have line of sight to the repeater's aerial, over the
 terrain installed on this device, out to 100 km. The ground is looked at along 720
-bearings, half a degree apart, every 50 m out to 25 km, every 100 m to 50 km and every
-250 m to 100 km; bearings next to one another are about 220 m apart 25 km out, so a
-glen a few hundred metres wide is neither missed nor widened into a wedge.
+bearings, half a degree apart, every 10 m out to 2 km, every 50 m to 25 km, every 100 m
+to 50 km and every 250 m to 100 km; bearings next to one another are about 220 m apart
+25 km out, so a glen a few hundred metres wide is neither missed nor widened into a
+wedge.
 
 **On the map.** The ground in sight is shaded green (in both themes, on the plain map
 and on satellite imagery), as one smooth layer; ground hidden by nearer ground is left
@@ -459,6 +460,51 @@ signals bending over ridges or carried by the weather. A repeater may be heard f
 ground left clear and not heard from shaded ground. The terrain's cells are tens to
 hundreds of metres wide, so a narrow ridge or a cutting can be missed.
 
+**How accurate it is.** Three things decide how far to trust the shaded ground, largest
+first.
+
+1. *What stands on the ground.* Trees, buildings and walls are not in it. In England and
+   Wales, and in the parts of Scotland its lidar covers, the terrain is a bare-earth
+   model, so in a town or a wood the real view is far smaller than the shading. Elsewhere
+   (most of the Scottish Highlands and the rest of the world) it is Copernicus GLO-30, a
+   surface model that includes forest canopy and buildings in a 30 m cell. This is
+   usually the largest error, and it can be most of the answer in a built-up area.
+2. *The terrain's own error.* Over Great Britain the terrain Outpost downloads
+   (Mapterhorn, kept to cells of about 10 to 12 m) is made from 1 m lidar where the
+   government publishes it, with a stated vertical accuracy of ±15 cm; elsewhere from
+   GLO-30, "< 4m (90% linear error)" in absolute height and under 2 m to 4 m between
+   neighbouring points depending on the slope. A few metres on a ridge decides whether
+   the slope behind it is in sight from a handheld, so the edge of the shading can move
+   by a sample or two either way.
+3. *The sums.* Checked on real terrain (below), the share of ground in sight is within
+   about 1.5 percentage points of a careful reading of the same terrain, and errs on the
+   generous side: it never showed less ground in sight than the careful reading did. The
+   furthest ground in sight on each bearing agreed to the sample (median 0 m, nine
+   bearings in ten within 50 m).
+
+In short: treat the shading as the most a radio could see over bare ground. Expect less
+in practice, often much less among trees and buildings, and expect its edges to be good
+to a sample or two.
+
+*How it was checked* (21 November 2026). The same terrain tiles were read at four places:
+a hillside near the A9 (56.8866, −4.1454, 750 m), Ben Nevis summit (56.7969, −5.0036,
+1,340 m), Beachy Head cliff top (50.7380, 0.2420, 110 m, with the sea in view) and
+south-west London (51.4330, −0.2110, 20 m, flat), each with a 1.5 m aerial and a 10 m
+mast, a 1.5 m station, out to 100 km. Outpost's answer was compared with GDAL 3.13's
+`gdal_viewshed` (the method of Wang, Robinson and White, 2000) on the same terrain warped
+to a grid centred on the aerial, with curvature coefficient 0.75 (k = 4/3), and with a
+separate line-of-sight walk every 5 m along each of the 720 bearings over the finest
+tiles (a walk every 2 m gave the same answer). With the same tiles, Outpost and GDAL
+agreed to within 1 percentage point of the ground in sight at every distance. The check
+found one real error, now fixed: the ground was read every 50 m from the aerial, which
+skipped a summit's crown, and on Ben Nevis gave 15.9% of the ground within 2 km in sight
+where the 5 m walk gives 8.8%. The first 2 km are now read every 10 m from the finest
+terrain, which gives 8.9%. The largest remaining difference is far out from a high
+summit: from Ben Nevis with a 10 m mast, 10.6% of the ground within 100 km against 9.2%,
+because beyond 50 km the ground is read every 250 m from cells of about 170 m. Over the
+sea the terrain holds 0 m, so a station there is taken as at sea level; tides are not
+counted.
+
 **Where and when it runs.** On the server, as one request (see [api.md](api.md)), worked
 out once for each place, pair of heights and installed terrain and kept (the last 32
 answers); moving or zooming the map asks nothing. On a Raspberry Pi 5 with the United
@@ -466,7 +512,7 @@ Kingdom's terrain, one range takes about two seconds the first time; the server 
 other requests meanwhile. With several on, each is asked once, at the same time, and each
 is drawn as its answer comes. Where each chosen repeater is comes from its own record,
 not from the dots in view, so one off the screen is still drawn. The shading is painted
-in the browser from the answer, which is about 170 kB.
+in the browser from the answer, which is about 190 kB.
 
 ### Taking a set out
 

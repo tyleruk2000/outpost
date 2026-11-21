@@ -30,13 +30,19 @@ export const RANGE_MAX_METERS = 100_000;
 /**
  * How often the ground is read on each bearing: finest near the aerial, where the shape of the ground matters most
  * and the bearings are closest together, coarser further out. Each band runs from the end of the one before it.
+ *
+ * The first 2 km are read every 10 m, from the finest terrain there is. Read every 50 m (as they once were) a
+ * summit's crown or the lip of a plateau, which hides the slopes below it from an aerial held in the hand, fell
+ * between samples: on Ben Nevis that called twice the ground in sight within 2 km that a reading every 5 m does
+ * (docs/radio.md, "How accurate it is").
  */
 export const RANGE_BANDS: ReadonlyArray<{ toMeters: number; stepMeters: number }> = [
+  { toMeters: 2_000, stepMeters: 10 },
   { toMeters: 25_000, stepMeters: 50 },
   { toMeters: 50_000, stepMeters: 100 },
   { toMeters: 100_000, stepMeters: 250 },
 ];
-/** The first band: within this distance the ground is read every `RANGE_NEAR_STEP_METERS`. */
+/** The band beyond the first: out to this distance the ground is read every `RANGE_NEAR_STEP_METERS`. */
 export const RANGE_NEAR_METERS = 25_000;
 export const RANGE_NEAR_STEP_METERS = 50;
 /** The last band's step. */
