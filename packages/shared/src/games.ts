@@ -2,30 +2,34 @@
  * Games (the Games section): what the server keeps for them. Outpost has no accounts,
  * so what is kept is the household's: one row of `game_saves` per game. The allotment
  * keeps its whole plot there (its engine is pure and lives in `./games/allotment/`);
- * Solitaire, Peg solitaire, Sudoku, Draughts and Pairs keep only a tally of games played and won. An
- * unfinished game of those five stays on the device it is being played on, so that two
+ * Solitaire, Peg solitaire, Sudoku, Draughts, Chess, Pairs and Snake keep only a tally of games played and won. An
+ * unfinished game of those stays on the device it is being played on, so that two
  * people playing at once on two devices never overwrite each other's board.
  */
 
 /** Every game, in the order the Games section lists them. */
-export const GAME_IDS = ["allotment", "solitaire", "peg-solitaire", "sudoku", "draughts", "pairs"] as const;
+export const GAME_IDS = ["allotment", "solitaire", "peg-solitaire", "sudoku", "draughts", "chess", "pairs", "snake"] as const;
 export type GameId = (typeof GAME_IDS)[number];
 
 /** The games that keep a tally on the server (the allotment keeps its plot instead). */
-export const TALLY_GAME_IDS = ["solitaire", "peg-solitaire", "sudoku", "draughts", "pairs"] as const;
+export const TALLY_GAME_IDS = ["solitaire", "peg-solitaire", "sudoku", "draughts", "chess", "pairs", "snake"] as const;
 export type TallyGameId = (typeof TALLY_GAME_IDS)[number];
 
 /**
  * The ways each game is played, each with a tally of its own: draw one or draw three,
  * the three levels of Sudoku, against the computer or two at one device, the three
- * sizes of Pairs. Peg solitaire has one board, the English cross of 33 holes.
+ * sizes of Pairs. Peg solitaire has one board, the English cross of 33 holes. Chess is
+ * counted for each of the computer's levels and for two players; Snake for each speed,
+ * with walls or with edges that wrap round.
  */
 export const GAME_VARIANTS = {
   solitaire: ["draw-1", "draw-3"],
   "peg-solitaire": ["english"],
   sudoku: ["gentle", "steady", "testing"],
   draughts: ["computer", "two-player"],
+  chess: ["learner", "easy", "medium", "hard", "two-player"],
   pairs: ["small", "medium", "large"],
+  snake: ["slow-walls", "slow-wrap", "steady-walls", "steady-wrap", "quick-walls", "quick-wrap", "fast-walls", "fast-wrap"],
 } as const satisfies Record<TallyGameId, readonly string[]>;
 export type GameVariant<G extends TallyGameId = TallyGameId> = (typeof GAME_VARIANTS)[G][number];
 
@@ -39,6 +43,8 @@ export interface GameTallyEntry {
   fewestMoves: number | null;
   /** Fewest left at the end of a game, won or not (Peg solitaire's pegs), or null before a game that counted them. Absent from a tally kept before it was counted. */
   fewestLeft?: number | null;
+  /** Highest score of any game, won or not (Snake's food eaten), or null before a game that scored. Absent from a tally kept before it was counted. */
+  bestScore?: number | null;
   /** When a game of this kind last finished, milliseconds. */
   lastAt: number | null;
 }
@@ -54,6 +60,8 @@ export interface GameResultInput {
   moves?: number;
   /** What was left at the end: Peg solitaire's pegs. */
   left?: number;
+  /** The score at the end: Snake's food eaten. */
+  score?: number;
 }
 
 /** GET /api/games: every game's tally, and whether the allotment has been started. */

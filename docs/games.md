@@ -10,7 +10,9 @@ Preparedness), in the phone's More sheet and in the quick search:
 | Peg solitaire | `/games/peg-solitaire` | The traditional board of 33 holes. |
 | Sudoku | `/games/sudoku` | Puzzles made on the device, each with one answer. |
 | Draughts | `/games/draughts` | English draughts, against the computer or two at one device. |
+| Chess | `/games/chess` | Chess, against the computer at four strengths or two at one device. |
 | Pairs | `/games/pairs` | A memory game for children. |
+| Snake | `/games/snake` | Steer a growing snake, at four speeds. |
 
 They are traditional games, or (the allotment) a design of Outpost's own. Everything is
 drawn in code (SVG and HTML, the colours from `--game-*` tokens in
@@ -31,8 +33,9 @@ under reduced motion.
 | What | Where | Why |
 | --- | --- | --- |
 | The allotment's plot | On the server, the `allotment` row of `game_saves` | One plot for the household: every device sees the same. |
-| Each game's tally: played, won, best time, fewest moves (and for Peg solitaire, fewest pegs left), for each way of playing | On the server, a row of `game_saves` per game | Shared by the household. |
-| An unfinished game of Solitaire, Peg solitaire, Sudoku, Draughts or Pairs | In the browser it is being played in (`localStorage`, `outpost.games.<game>`) | Two people playing at once on two devices must not overwrite each other's board. |
+| Each game's tally: played, won, best time, fewest moves (for Peg solitaire, fewest pegs left; for Snake, the highest score), for each way of playing | On the server, a row of `game_saves` per game | Shared by the household. |
+| An unfinished game of Solitaire, Peg solitaire, Sudoku, Draughts, Chess or Pairs | In the browser it is being played in (`localStorage`, `outpost.games.<game>`) | Two people playing at once on two devices must not overwrite each other's board. |
+| Snake's best scores and settings | In the browser (`outpost.games.snake`) | A game of Snake lasts minutes and is not kept part-played. |
 
 `game_saves` (migration `0027_games`) has one row per game: a JSON state (at most 64 KB),
 a version that goes up with each write, and timestamps. It is the household's own data:
@@ -384,6 +387,56 @@ followed. Undo takes back a whole turn. The time runs from the first move, only 
 board is in view. In two-player mode the board does not turn, and
 the line above it says whose turn it is.
 
+## Chess
+
+Chess by the FIDE Laws of Chess (those in force from 1 January 2023), against the
+computer or with two people at one device. The rules are shown under the board.
+
+- Every rule is played: castling on either side (not once the king or that rook has
+  moved, not out of check, not through or onto an attacked square, not with a piece
+  between), en passant on the next move only, and promotion to a queen, rook, bishop or
+  knight, chosen in a small window. A move that would leave your own king in check
+  cannot be made.
+- The game ends in checkmate or stalemate, and is drawn when the same position comes up
+  three times, after 50 moves each with no capture and no pawn moved, when neither side
+  has the pieces to checkmate (king against king, a king and one bishop or knight against
+  a king, or only bishops all on squares of one colour), or with two players by
+  agreement. Repetition and the 50 moves end the game at once; under FIDE's rules they
+  wait for a player to claim them. Other dead positions, such as locked pawn chains, are
+  not spotted.
+- Tap a piece and its legal squares are marked; tap one, or drag the piece there. The
+  arrow keys move between squares, Enter picks and puts down, Escape puts back. The last
+  move is shaded and a king in check is ringed, both also said in the square's name.
+- The pieces are drawn for Outpost, each kind with its own outline; white's are drawn
+  open and black's solid with light inner lines, so the sides differ in more than colour
+  in both themes.
+- Moves are listed beside the board in standard notation. Undo takes back a whole turn.
+  **Turn the board** shows it from the other side, for the second player.
+- **Copy the game** gives the game as PGN and the position as FEN, with a copy button
+  for each (on a page where the browser will not copy, the text is there to select).
+  **Paste a game** reads PGN (comments, variations and annotations are passed over) or
+  FEN, and play carries on from there; a pasted game that is already over is shown and
+  not counted.
+
+The computer is Outpost's own small search, as for Draughts: alpha-beta to a fixed
+depth, captures tried first, then a look at captures alone until the position is quiet,
+valuing material and where each piece stands. There is no opening book and no endgame
+table, and no chess engine is bundled or fetched. Its four strengths:
+
+| Level | Looks ahead | Plays like |
+| --- | --- | --- |
+| Learner | 1 ply, no follow-up of exchanges | Blunders often: a child who knows the moves can beat it. |
+| Easy | 2 plies, exchanges followed | Takes what is left hanging, misses most plans. |
+| Medium | 3 plies | A steady opponent for a casual player. |
+| Hard | 4 plies | A fair game for a casual player; any club player or chess program will beat it. |
+
+None of the levels has been rated against people. The computer thinks in a Web Worker,
+started for each reply and ended as soon as it answers; it does not think while the page
+is hidden. At its hardest level its slowest reply seen on a Mac was about a quarter of
+a second; on a Raspberry Pi or an old phone it is slower.
+
+The tally keeps each level and two-player games apart.
+
 ## Pairs
 
 Turn over two cards at a time; a match stays face up, a miss turns back after a second
@@ -391,6 +444,27 @@ or at the next tap. Small is 6 pairs (3×4), medium 8 (4×4), large 12 (4×6 on 
 The pictures are icons the app already has, things a small child can name (a cat, a
 tortoise, an apple, a bus, a snowflake …). No clock is shown while playing; the end is
 one line with the turns and the time.
+
+## Snake
+
+Steer a snake to the apples on a field of 16 by 16. Each apple makes it a cell longer and
+scores one. The game ends when the head runs into the snake's own body, or with walls into
+the edge of the field; with **Wrap round** it leaves one edge and comes back at the
+opposite one. Filling the field wins.
+
+- Steer with the arrow keys or W, A, S and D, a swipe on the field, or the four arrow
+  buttons under it (56 px each). The snake never turns back on itself; two quick turns
+  are both taken.
+- Four speeds: slow (three steps a second, for small children), steady, quick and fast
+  (about fourteen). Speed and edges take effect from the next game.
+- Space or P pauses. The game pauses itself when the page is hidden, and waits for you to
+  carry on rather than starting by itself.
+- There is no sound and nothing shakes or flashes. With reduced motion asked for, the
+  page says that the snake still moves, since that is the game.
+
+The best score for each speed and kind of edge, and the speed and edges chosen, are kept
+in this browser. Each game's score also goes to the household's tally, which keeps the
+highest score; a game in progress is not kept.
 
 ## Not tested
 
@@ -400,3 +474,6 @@ one line with the turns and the time.
 - The allotment's rain, drying and season changes were checked in the engine's tests and
   in pictures of plots made for given dates (a demonstration server with its clock moved);
   not by leaving a real plot for days or across a real change of month.
+- Chess: how long the computer takes on a Raspberry Pi or an old phone, and how strong
+  each level is against real players. Swipes and the arrow buttons of Snake on a real
+  phone.

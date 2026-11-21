@@ -21,13 +21,18 @@ export function gameTime(seconds: number): string {
   return plural(rest, "second");
 }
 
-/** "Played 12, won 5. Best time 4 minutes 12 seconds." */
+/** "Played 12, won 5. Best time 4 minutes 12 seconds." For a game with no winning, "Played 12. Best score 30." */
 export function tallyWords(
   entry: GameTallyEntry | undefined,
-  { moves = "moves", left = "left" }: { moves?: string; left?: string } = {},
+  { moves = "moves", left = "left", wins = true }: { moves?: string; left?: string; wins?: boolean } = {},
 ): string {
   if (!entry || entry.played === 0) return "Not played yet.";
-  const parts = [`Played ${entry.played.toLocaleString("en-GB")}, won ${entry.won.toLocaleString("en-GB")}.`];
+  const parts = [
+    wins
+      ? `Played ${entry.played.toLocaleString("en-GB")}, won ${entry.won.toLocaleString("en-GB")}.`
+      : `Played ${entry.played.toLocaleString("en-GB")}.`,
+  ];
+  if (entry.bestScore != null) parts.push(`Best score ${entry.bestScore.toLocaleString("en-GB")}.`);
   if (entry.bestSeconds !== null) parts.push(`Best time ${gameTime(entry.bestSeconds)}.`);
   if (entry.fewestMoves !== null) parts.push(`Fewest ${moves} ${entry.fewestMoves.toLocaleString("en-GB")}.`);
   if (entry.fewestLeft != null) parts.push(`Fewest ${left} ${entry.fewestLeft.toLocaleString("en-GB")}.`);
@@ -40,6 +45,7 @@ export function GameTallyLine({
   variantLabel,
   moves,
   left,
+  wins,
 }: {
   game: TallyGameId;
   variant: string;
@@ -48,6 +54,8 @@ export function GameTallyLine({
   moves?: string;
   /** What `fewestLeft` counts, as the sentence says it: "pegs left". */
   left?: string;
+  /** False for a game that is played for a score rather than won (Snake). */
+  wins?: boolean;
 }) {
   const games = useGames();
   const clear = useClearGame(game);
@@ -61,7 +69,7 @@ export function GameTallyLine({
   return (
     <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-small text-ink-muted">
       <p className="tabular">
-        {variantLabel}: {tallyWords(tally[variant], { moves, left })}
+        {variantLabel}: {tallyWords(tally[variant], { moves, left, wins })}
       </p>
       {any ? (
         <>
@@ -72,7 +80,7 @@ export function GameTallyLine({
             open={asking}
             onOpenChange={setAsking}
             title="Clear the tally?"
-            description={`This forgets ${plural(total, "game")} played, won and the best results, for everyone in the household. A game in progress is not affected.`}
+            description={`This forgets ${plural(total, "game")} played${wins === false ? "" : ", won"} and the best results, for everyone in the household. A game in progress is not affected.`}
             confirmLabel="Clear the tally"
             loading={clear.isPending}
             onConfirm={() => clear.mutate(undefined, { onSuccess: () => setAsking(false) })}

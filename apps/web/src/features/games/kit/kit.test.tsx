@@ -188,7 +188,10 @@ describe("a game's tally", () => {
           tally = {};
           return json({ removed: true });
         }
-        return json({ tallies: { solitaire: tally, "peg-solitaire": {}, sudoku: {}, draughts: {}, pairs: {} }, allotmentStarted: false });
+        return json({
+          tallies: { solitaire: tally, "peg-solitaire": {}, sudoku: {}, draughts: {}, chess: {}, pairs: {}, snake: {} },
+          allotmentStarted: false,
+        });
       }),
     );
     show(<GameTallyLine game="solitaire" variant="draw-1" variantLabel="Draw one" />);
@@ -211,12 +214,21 @@ describe("a game's tally", () => {
 });
 
 describe("the Games page", () => {
-  it("lists the six games in order, each linking to its screen", () => {
+  it("lists the eight games in order, each linking to its screen", () => {
     show(<GamesPage />);
     expect(screen.getByRole("heading", { level: 1, name: "Games" })).toBeInTheDocument();
     const links = screen.getAllByRole("link");
     expect(links.map((link) => link.getAttribute("href"))).toEqual(gameScreens.map((game) => game.to));
-    expect(gameScreens.map((game) => game.label)).toEqual(["Allotment", "Solitaire", "Peg solitaire", "Sudoku", "Draughts", "Pairs"]);
+    expect(gameScreens.map((game) => game.label)).toEqual([
+      "Allotment",
+      "Solitaire",
+      "Peg solitaire",
+      "Sudoku",
+      "Draughts",
+      "Chess",
+      "Pairs",
+      "Snake",
+    ]);
     expect(screen.getByText(/stays on the device it is being played on/)).toBeInTheDocument();
   });
 });

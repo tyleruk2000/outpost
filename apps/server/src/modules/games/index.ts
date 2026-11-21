@@ -5,7 +5,7 @@
  * - The allotment's row holds the household's one plot. Every change to it is an action
  *   the server applies with its own clock (`./allotment.ts`), so devices with wrong
  *   clocks agree.
- * - Solitaire, Peg solitaire, Sudoku, Draughts and Pairs keep a tally there: games played and won, and
+ * - Solitaire, Peg solitaire, Sudoku, Draughts, Chess, Pairs and Snake keep a tally there: games played and won, and
  *   the best time or fewest moves, for each way of playing. An unfinished game of them
  *   stays in the browser it is being played in.
  *
@@ -86,6 +86,7 @@ function readTally(state: Record<string, unknown> | undefined): GameTally {
       bestSeconds: number(entry.bestSeconds),
       fewestMoves: number(entry.fewestMoves),
       fewestLeft: number(entry.fewestLeft),
+      bestScore: number(entry.bestScore),
       lastAt: number(entry.lastAt),
     };
   }
@@ -101,6 +102,7 @@ const resultInput = (game: TallyGameId) =>
       seconds: z.number().int().min(0).max(86_400).optional(),
       moves: z.number().int().min(0).max(100_000).optional(),
       left: z.number().int().min(0).max(100).optional(),
+      score: z.number().int().min(0).max(100_000).optional(),
     })
     .strict();
 
@@ -165,7 +167,15 @@ export async function registerGames(app: FastifyInstance, ctx: AppContext): Prom
     recordResult(game, input) {
       return saves.update(game, (row) => {
         const tally = readTally(row?.state);
-        const had = tally[input.variant] ?? { played: 0, won: 0, bestSeconds: null, fewestMoves: null, fewestLeft: null, lastAt: null };
+        const had = tally[input.variant] ?? {
+          played: 0,
+          won: 0,
+          bestSeconds: null,
+          fewestMoves: null,
+          fewestLeft: null,
+          bestScore: null,
+          lastAt: null,
+        };
         const better = (next: number | undefined, best: number | null) =>
           input.won && next !== undefined ? (best === null ? cap(next) : Math.min(best, cap(next))) : best;
         const entry: GameTallyEntry = {
@@ -180,6 +190,8 @@ export async function registerGames(app: FastifyInstance, ctx: AppContext): Prom
               : had.fewestLeft == null
                 ? cap(input.left)
                 : Math.min(had.fewestLeft, cap(input.left)),
+          // The score counts whether the game was won or not: more is better.
+          bestScore: input.score === undefined ? (had.bestScore ?? null) : Math.max(had.bestScore ?? 0, cap(input.score)),
           lastAt: Date.now(),
         };
         const next = { ...tally, [input.variant]: entry };
