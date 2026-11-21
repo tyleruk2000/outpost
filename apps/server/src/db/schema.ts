@@ -1409,6 +1409,39 @@ export const emergencyPlans = sqliteTable("emergency_plans", {
   updatedAt: updatedAt(),
 });
 
+/**
+ * A person's medical sheet (Preparedness → Medical sheets): what they typed for whoever
+ * has to be told. Either `record` (the `MedicalRecord`) or `armor` (one armoured OpenPGP
+ * message, encrypted in the browser) is set, never both; the name is plain either way.
+ */
+export const medicalSheets = sqliteTable("medical_sheets", {
+  id: id(),
+  /** The household member (supply_members) it is for, or null. Not a foreign key: a member taken out leaves the sheet. */
+  memberId: text("member_id"),
+  name: text("name").notNull(),
+  record: json<Record<string, unknown>>("record"),
+  armor: text("armor"),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+/** The household's communication plan (Preparedness → Keeping in touch): one row, id "household". */
+export const commsPlans = sqliteTable("comms_plans", {
+  id: id(),
+  body: json<Record<string, unknown>>("body").notNull(),
+  updatedAt: updatedAt(),
+});
+
+/** The household binder last made (Preparedness → Household binder): one row, id "household". */
+export const householdBinder = sqliteTable("household_binder", {
+  id: id(),
+  parts: json<string[]>("parts").notNull(),
+  /** When the newest thing in it had last changed. */
+  contentAt: integer("content_at").notNull(),
+  madeAt: integer("made_at").notNull(),
+  pages: integer("pages").notNull(),
+});
+
 export const nowMs = sql`(unixepoch('subsec') * 1000)`;
 
 /**

@@ -307,6 +307,14 @@ export const GUIDES: Guide[] = [
     opens: { to: "/prepare/plans", label: "Open Emergency plans" },
   },
   {
+    slug: "household-papers",
+    file: "household-papers.md",
+    group: "using",
+    about: "Medical sheets, the communication plan, grab cards and the household binder: the household's papers, kept current and printed.",
+    keywords: "medical medicines allergies pace communication plan grab card wallet card binder",
+    opens: { to: "/prepare/medical", label: "Open Medical sheets" },
+  },
+  {
     slug: "weather",
     file: "weather.md",
     group: "using",

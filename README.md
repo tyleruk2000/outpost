@@ -271,6 +271,7 @@ real network's devices are shown.*
 | Feature | What it does | Docs |
 | --- | --- | --- |
 | Emergency plans | A household's plans for a power cut, flooding, no phone or internet, severe weather, sheltering at home or leaving at short notice, started from templates drawn from official guidance, each step saying whose words it is. **Use now** shows the steps in large type with ticks; wallet cards, a fridge sheet and a grab list print as PDF. Over HTTPS a plan can be kept on a phone and used, ticks and all, with the server out of reach. A warning held for your home place is shown as one line, with its age. | [Emergency plans](docs/emergency-plans.md) |
+| Medical sheets, keeping in touch, grab cards, binder | A medical sheet for each person (medicines counted down, allergies, conditions, GP, next of kin), out of search and the model's tools unless switched on, and optionally encrypted in the browser; the household's communication plan in primary, alternate, contingency and emergency order; a grab card each, wallet or A6; and one PDF binder of the chosen printables, which Home says is out of date when its contents change. Records only, no medical advice. | [Household papers](docs/household-papers.md) |
 | Supplies | Food, water and kit kept at home: how many days they last for your household, what to use first, and what to buy. Typing a food's name offers its energy per 100 g from USDA FoodData Central, which ships with Outpost; the days of food say whose daily figure they use and which foods are not counted. Find items by barcode (typed, from a photo, or with the live camera on an `https` page). | [Supplies](docs/supplies.md) |
 | Weather and hazards | Forecasts, UK severe-weather and flood warnings and climate averages for places you choose, fetched when you press and kept with their age; a log of your own barometer readings. | [Weather](docs/weather.md) |
 | River and sea levels | The Environment Agency's measuring stations near a place, on a press: each one's latest level, when it was measured, what it is measured from, where it sits in the Agency's typical range, and whether it is rising, steady or falling; a station's last three days as a chart and a table. England only. | [Weather](docs/weather.md#river-and-sea-levels) |
@@ -778,6 +779,7 @@ Every page below is also inside Outpost, under **Help**.
 | [QR codes and devices on this network](docs/tools-qr-and-network.md) | The two network tools |
 | [Solar clock](docs/tools-solar-clock.md) | Time from the sun and stars, its formulas, sources, diagrams and measured accuracy |
 | [Emergency plans](docs/emergency-plans.md) | Plans, templates and their sources, cards |
+| [Household papers](docs/household-papers.md) | Medical sheets, keeping in touch, grab cards and the binder |
 | [Supplies](docs/supplies.md) | Stock, the household, food energy, barcodes, CSV |
 | [Weather and hazards](docs/weather.md) | What is fetched, from whom, and how old it is; river and sea levels; the barometer |
 | [Nuclear preparedness](docs/nuclear-preparedness.md) | The workspace, the effects simulator, its rules and its sources |

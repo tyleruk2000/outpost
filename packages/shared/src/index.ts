@@ -26,6 +26,8 @@ export * from "./emergency-templates.ts";
 export * from "./encryption.ts";
 export * from "./games.ts";
 export * from "./home-place.ts";
+// The household's papers (medical sheets, keeping in touch, grab cards, the binder), on a line of their own.
+export * from "./household-papers.ts";
 export * from "./https.ts";
 export * from "./imagery.ts";
 export * from "./imports.ts";

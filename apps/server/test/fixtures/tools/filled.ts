@@ -170,7 +170,7 @@ export async function filledServer(): Promise<Filled> {
   await new Promise<void>((resolve) => standIn.listen(0, "127.0.0.1", resolve));
   const base = `http://127.0.0.1:${(standIn.address() as AddressInfo).port}/weather`;
   const app = await createTestApp({ OUTPOST_WEATHER_STAND_IN: base }, undefined, { voacapData: false });
-  await ok(app, "PATCH", "/api/settings", { "tools.board": true });
+  await ok(app, "PATCH", "/api/settings", { "tools.board": true, "tools.medical": true });
 
   // Saved places.
   const home = (await ok(app, "POST", "/api/maps/markers", { name: "Home", lat: 52.2405, lon: -0.8936, icon: "home" })).marker;
@@ -329,6 +329,17 @@ export async function filledServer(): Promise<Filled> {
   for (let index = 1; index <= 11; index += 1)
     await ok(app, "POST", "/api/board/messages", { author: "Sam", body: `Message ${index}` }, `192.168.1.${30 + index}`);
   await ok(app, "POST", "/api/board/check-ins", { author: "Alex", status: "safe", place: "Mum's" }, "192.168.1.60");
+
+  // A plain medical sheet (the medical area is switched on above).
+  await ok(app, "POST", "/api/medical-sheets", {
+    memberId: null,
+    name: "Sam",
+    record: {
+      bloodGroup: "O+",
+      allergies: [{ id: "a1", what: "Penicillin", reaction: "Rash" }],
+      medicines: [{ id: "m1", name: "Salbutamol inhaler", dose: "Two puffs", when: "When needed", keptWhere: "Coat pocket" }],
+    },
+  });
 
   await app.ctx.jobs.whenIdle();
   return {

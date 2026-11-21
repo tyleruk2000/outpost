@@ -44,6 +44,12 @@ const KeptPage = lazy(() => import("./features/kept/kept-page"));
 const RadioPage = lazy(() => import("./features/radio/radio-page"));
 const ToolsPage = lazy(() => import("./features/tools/tools-page"));
 const PreparePage = lazy(() => import("./features/prepare/prepare-page"));
+// The household's papers (Preparedness), on lines of their own so that other additions merge cleanly.
+const MedicalPage = lazy(() => import("./features/household-papers/medical-page"));
+const MedicalSheetPage = lazy(() => import("./features/household-papers/medical-sheet-page"));
+const CommsPage = lazy(() => import("./features/household-papers/comms-page"));
+const GrabCardsPage = lazy(() => import("./features/household-papers/grab-cards-page"));
+const BinderPage = lazy(() => import("./features/household-papers/binder-page"));
 const GamesPage = lazy(() => import("./features/games/games-page"));
 const AllotmentPage = lazy(() => import("./features/games/allotment/allotment-page"));
 const SolitairePage = lazy(() => import("./features/games/solitaire/solitaire-page"));
@@ -186,6 +192,11 @@ export function App() {
           <Route path="prepare/plans/:id" element={<EmergencyPlanPage />} />
           <Route path="prepare/plans/:id/use" element={<UseEmergencyPlanPage />} />
           <Route path="prepare/plans/:id/cards" element={<EmergencyCardsPage />} />
+          <Route path="prepare/medical" element={<MedicalPage />} />
+          <Route path="prepare/medical/:id" element={<MedicalSheetPage />} />
+          <Route path="prepare/keeping-in-touch" element={<CommsPage />} />
+          <Route path="prepare/grab-cards" element={<GrabCardsPage />} />
+          <Route path="prepare/binder" element={<BinderPage />} />
           <Route path="radio/propagation" element={<PropagationPage />} />
           <Route path="radio/coverage" element={<CoveragePage />} />
           <Route path="radio/log" element={<LogPage />} />

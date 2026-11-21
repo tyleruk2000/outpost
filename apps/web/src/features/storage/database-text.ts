@@ -26,6 +26,7 @@ const COUNT_WORDS: Record<DatabaseCountId, [string, string]> = {
   networkDevices: ["device found on the network", "devices found on the network"],
   pressureReadings: ["barometer reading", "barometer readings"],
   emergencyPlans: ["emergency plan", "emergency plans"],
+  medicalSheets: ["medical sheet", "medical sheets"],
   morseSessions: ["Morse practice session", "Morse practice sessions"],
   gameSaves: ["game kept for the household", "games kept for the household"],
   boardMessages: ["message on the board", "messages on the board"],

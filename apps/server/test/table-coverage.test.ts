@@ -127,6 +127,10 @@ const TABLES: Record<string, Decision> = {
   weather_cache: { group: "prepare", drive: true },
   weather_readings: { group: "prepare", drive: true },
   emergency_plans: { group: "prepare", drive: true },
+  // The household's papers (modules/household-papers).
+  medical_sheets: { group: "prepare", drive: true },
+  comms_plans: { group: "prepare", drive: true },
+  household_binder: { group: "prepare", drive: true },
   nuclear_scenarios: { group: "maps", drive: true },
   nuclear_scenario_sets: { group: "maps", drive: true },
   reference_features: { group: "maps", drive: true },

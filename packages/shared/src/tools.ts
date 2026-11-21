@@ -10,7 +10,7 @@
  */
 
 /** The areas of the household's data a tool can read. Each is one switch. */
-export type ToolArea = "library" | "places" | "supplies" | "plans" | "weather" | "radio" | "catalogue" | "board";
+export type ToolArea = "library" | "places" | "supplies" | "plans" | "weather" | "radio" | "catalogue" | "board" | "medical";
 
 export interface ToolAreaInfo {
   area: ToolArea;
@@ -72,6 +72,13 @@ export const TOOL_AREAS: readonly ToolAreaInfo[] = [
     area: "board",
     label: "Messages on the board",
     about: "The household's messages and check-ins (“I’m safe, gone to Mum’s”), with who wrote them and when.",
+    defaultOn: false,
+  },
+  {
+    area: "medical",
+    label: "Medical sheets",
+    about:
+      "Each person's medicines, allergies, conditions, blood group and next of kin, from the medical sheets that are not encrypted. Encrypted sheets are never read.",
     defaultOn: false,
   },
 ];

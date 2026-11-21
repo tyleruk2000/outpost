@@ -140,6 +140,10 @@ export const settingsSchema = z.object({
   "tools.catalogue": z.boolean().default(true),
   /** Messages on the household board: off until a person turns it on. */
   "tools.board": z.boolean().default(false),
+  /** Plain medical sheets (Preparedness): off until a person turns it on, as the sheets are the most private thing held. */
+  "tools.medical": z.boolean().default(false),
+  /** Plain medical sheets in search: off until a person turns it on from the Medical sheets screen. */
+  "medical.inSearch": z.boolean().default(false),
   /** Models that say they can call tools and do it badly: Chat offers them none. */
   "tools.offForModels": z.array(z.string().trim().min(1).max(200)).max(50).default([]),
   /** Seconds between checks that storage locations are still connected. */

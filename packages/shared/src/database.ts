@@ -30,6 +30,7 @@ export type DatabaseCountId =
   | "scenarios"
   | "pressureReadings"
   | "emergencyPlans"
+  | "medicalSheets"
   | "morseSessions"
   | "gameSaves"
   | "boardMessages"
