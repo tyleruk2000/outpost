@@ -509,7 +509,7 @@ export function MarkdownDocument({
     </section>
   ));
   return (
-    <article ref={article} className="prose prose-doc">
+    <article ref={article} className="prose prose-doc" data-highlight-root="">
       <MissingBooks entries={missingRefs(blocks)} />
       <DocumentContext value={documentId}>{body}</DocumentContext>
     </article>

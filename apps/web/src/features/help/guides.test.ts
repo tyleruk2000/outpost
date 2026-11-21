@@ -111,7 +111,8 @@ describe("finding a guide in the quick search", () => {
     expect(where("https")).toContain("/help/deployment#h-https-on-your-network");
     expect(where("restore a backup").some((to) => to.startsWith("/help/"))).toBe(true);
     expect(where("troubleshooting")[0]).toBe("/help/troubleshooting");
-    expect(where("licence").some((to) => to.startsWith("/help/sources"))).toBe(true);
+    expect(where("licence")).toContain("/help/radio-licences");
+    expect(where("catalogue treats licences").some((to) => to.startsWith("/help/sources"))).toBe(true);
     expect(findGuides("raspberry pi", GUIDE_INDEX).length).toBeLessThanOrEqual(6);
   });
 

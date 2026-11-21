@@ -10,7 +10,7 @@ import type { MeshPosition, MeshPositionsResponse } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useId, useMemo, useState } from "react";
 import { Switch } from "@/components/ui/misc";
-import { HEARD_SOURCE, type HeardSource, heardFeature } from "@/features/heard/heard";
+import { HEARD_SOURCES, type HeardSource, heardFeature, rememberHeard } from "@/features/heard/heard";
 import { useStoredState } from "@/features/maps/hooks";
 import type { MapEngine } from "@/features/maps/map/engine";
 import { EMPTY, type FeatureCollection } from "@/features/maps/map/overlays";
@@ -89,7 +89,7 @@ function RadioList({ radios }: { radios: MeshPosition[] }) {
   );
 }
 
-export function useMeshOnMap({ engine }: { engine: MapEngine | null }): { source: HeardSource | null } {
+export function useMeshOnMap({ engine }: { engine: MapEngine | null }): { source: HeardSource | null; radios: MeshPosition[] } {
   const [on, setOn] = useStoredState(KEY, isBoolean, false);
   const positions = useMeshPositions();
   const data = positions.data;
@@ -106,12 +106,15 @@ export function useMeshOnMap({ engine }: { engine: MapEngine | null }): { source
   useEffect(() => {
     if (!engine) return;
     void tick;
-    engine.setOverlay(HEARD_SOURCE, on ? meshFeatures(shown) : EMPTY);
+    const marks = on ? meshFeatures(shown) : EMPTY;
+    engine.setOverlay(HEARD_SOURCES.mesh, marks);
+    rememberHeard(HEARD_SOURCES.mesh, marks);
   }, [engine, on, shown, tick]);
 
   // A household with no radio that has reported a place is not shown an empty group.
-  if (!positions.isError && radios.length === 0 && !on) return { source: null };
+  if (!positions.isError && radios.length === 0 && !on) return { source: null, radios };
   return {
+    radios: on ? shown : [],
     source: {
       id: "mesh",
       label: "Mesh radios",

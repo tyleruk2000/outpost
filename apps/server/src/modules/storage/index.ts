@@ -1,3 +1,4 @@
+import { CONTENT_KINDS, type ContentKind, type ContentKindDefaults, type StorageLocation } from "@outpost/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
@@ -8,13 +9,14 @@ const SEARCH_EVERY_MS = 10 * 60 * 1000;
 
 const kind = z.enum(["internal", "external", "network", "volume"]);
 
-function toDto(row: LocationRow) {
+function toDto(row: LocationRow, defaults: ContentKindDefaults): StorageLocation {
   return {
     id: row.id,
     name: row.name,
     path: row.path,
     kind: row.kind,
     isDefault: row.isDefault,
+    defaultFor: CONTENT_KINDS.map((entry) => entry.kind).filter((kind) => defaults[kind] === row.id),
     status: row.status,
     statusDetail: row.statusDetail,
     totalBytes: row.totalBytes,
@@ -63,14 +65,14 @@ export async function registerStorage(app: FastifyInstance, ctx: AppContext): Pr
     return {
       roots: ctx.config.storageRoots,
       locations: storage.list().map((row) => ({
-        ...toDto(row),
+        ...toDto(row, storage.kindDefaults()),
         usage: usage.get(row.id) ?? { locationId: row.id, byKind: {}, totalBytes: 0 },
       })),
     };
   });
 
   app.post("/api/storage/refresh", async () => {
-    return { locations: (await storage.refresh()).map(toDto) };
+    return { locations: (await storage.refresh()).map((row) => toDto(row, storage.kindDefaults())) };
   });
 
   app.get<{ Querystring: { path?: string } }>("/api/storage/browse", async (request) => {
@@ -103,14 +105,35 @@ export async function registerStorage(app: FastifyInstance, ctx: AppContext): Pr
         makeDefault: z.boolean().optional(),
       })
       .parse(request.body);
-    return { location: toDto(await storage.add(body)) };
+    return { location: toDto(await storage.add(body), storage.kindDefaults()) };
   });
 
   app.patch<{ Params: { id: string } }>("/api/storage/locations/:id", async (request) => {
     const body = z
       .object({ name: z.string().trim().min(1).max(80).optional(), kind: kind.optional(), isDefault: z.literal(true).optional() })
       .parse(request.body);
-    return { location: toDto(storage.update(request.params.id, body)) };
+    return { location: toDto(storage.update(request.params.id, body), storage.kindDefaults()) };
+  });
+
+  /**
+   * Where new downloads of one kind of content go: a location of its own, or null for
+   * the default. Only where new things go changes; nothing already kept is moved.
+   */
+  app.put("/api/storage/kind-defaults", async (request): Promise<{ kindDefaults: ContentKindDefaults }> => {
+    const body = z
+      .object({
+        kind: z.enum(CONTENT_KINDS.map((entry) => entry.kind) as [ContentKind, ...ContentKind[]]),
+        locationId: z.string().min(1).max(100).nullable(),
+      })
+      .strict()
+      .parse(request.body);
+    if (body.locationId !== null) storage.get(body.locationId);
+    const next: ContentKindDefaults = { ...storage.kindDefaults() };
+    if (body.locationId === null) delete next[body.kind];
+    else next[body.kind] = body.locationId;
+    settings.update({ "storage.kindDefaults": next });
+    ctx.events.publish({ type: "storage.changed" });
+    return { kindDefaults: next };
   });
 
   app.delete<{ Params: { id: string } }>("/api/storage/locations/:id", async (request) => {

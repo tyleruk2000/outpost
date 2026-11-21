@@ -49,12 +49,16 @@ export function prepareDriveDatabase(file: string, contents: DriveContents): { c
       db.exec(`
         DELETE FROM search_entities WHERE kind = 'document' AND entity_id NOT IN (SELECT id FROM keep_documents);
         DELETE FROM search_entities WHERE kind = 'collection' AND entity_id NOT IN (SELECT id FROM keep_collections);
+        DELETE FROM search_entities WHERE kind = 'highlight'
+          AND entity_id NOT IN (SELECT id FROM document_highlights WHERE document_id IN (SELECT id FROM keep_documents));
         DELETE FROM documents WHERE id NOT IN (SELECT id FROM keep_documents);
         DELETE FROM places WHERE collection_id NOT IN (SELECT id FROM keep_collections);
         DELETE FROM collections WHERE id NOT IN (SELECT id FROM keep_collections);
         DELETE FROM downloads;
         DELETE FROM jobs;
         DELETE FROM imports;
+        DELETE FROM calibre_imports;
+        DELETE FROM note_versions;
         DELETE FROM network_shares;
         DELETE FROM drive_merges;
         DELETE FROM settings WHERE key = 'backup.schedule';
@@ -66,6 +70,11 @@ export function prepareDriveDatabase(file: string, contents: DriveContents): { c
         DELETE FROM board_files;
         DELETE FROM roll_calls;
         DELETE FROM settings WHERE key IN ('mesh.config', 'mesh.heard');
+        DELETE FROM heard_receivers;
+        DELETE FROM heard_reports;
+        DELETE FROM heard_stations;
+        DELETE FROM heard_range_tests;
+        DELETE FROM settings WHERE key IN ('access.pin', 'access.devices');
       `);
 
       if (contents.contacts === false) {

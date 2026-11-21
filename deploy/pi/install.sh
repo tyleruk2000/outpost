@@ -45,9 +45,22 @@
 #   --clock-from-network  Let any device on the network set the clock (sets
 #                     OUTPOST_ALLOW_REMOTE_CLOCK=true). Without it only a browser on the Pi
 #                     itself may, which in Docker is the only one Outpost recognises.
+#   --no-updates      Do not add the service that installs Outpost updates from the app
+#                     (Settings → Updates). A container cannot replace itself; the
+#                     service loads a release Outpost has checked, checks its signature
+#                     again with minisign (installed from apt if missing), starts it, and
+#                     starts the version before again if the new one is not healthy
+#                     within three minutes. It does nothing else (see update.sh).
 #   --metrics         Give Outpost's figures to Prometheus at /metrics, to this computer
 #                     and the local network only (sets OUTPOST_METRICS=true). See
 #                     deploy/pi/monitoring.md.
+#   --decoders        Install the radio decoders, switched off, for a radio or SDR plugged
+#                     into this Pi: Dire Wolf (APRS) and readsb (aircraft), and a service
+#                     that lets Outpost switch each on and off and nothing else (see
+#                     decoders.sh). AIS-catcher (ships) is used if you install it yourself.
+#                     Outpost reads them at host.docker.internal. Not yet tried on a Pi.
+#   --aprs-frequency=F  The frequency Dire Wolf tunes an SDR to, such as 144.80M (Europe,
+#                     the default) or 144.39M (North America). Only with --decoders.
 #   --dry-run         Print the commands instead of running them.
 #
 # It never deletes anything, and it does not touch an existing .env except the lines
@@ -64,6 +77,9 @@ NAME=outpost
 CLOCK=true
 CLOCK_FROM_NETWORK=false
 METRICS=false
+UPDATES=true
+DECODERS=false
+APRS_FREQUENCY=144.80M
 for arg in "$@"; do
   case "$arg" in
     --install-docker) INSTALL_DOCKER=true ;;
@@ -77,8 +93,11 @@ for arg in "$@"; do
     --no-clock) CLOCK=false ;;
     --clock-from-network) CLOCK_FROM_NETWORK=true ;;
     --metrics) METRICS=true ;;
+    --no-updates) UPDATES=false ;;
+    --decoders) DECODERS=true ;;
+    --aprs-frequency=*) APRS_FREQUENCY="${arg#--aprs-frequency=}" ;;
     -h | --help)
-      sed -n '2,54p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,66p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *)
@@ -296,7 +315,15 @@ fi
 
 # ── Build and start ──────────────────────────────────────────────────────────
 say "Building and starting Outpost. The first build downloads map fonts and the search model and can take a long time on a Pi."
-run "${DOCKER[@]}" compose up -d --build
+release_image="$(grep '^OUTPOST_IMAGE=' .env 2>/dev/null | head -1 | cut -d= -f2- || true)"
+if [ -n "$release_image" ]; then
+  # Set by the update service: Outpost runs a release installed from the app. Building
+  # now would put this checkout's code under the release's name.
+  say "Outpost runs $release_image, installed from the app, so it is started as it is and not built from this checkout. To build from the checkout again, remove the OUTPOST_IMAGE line from .env."
+  run "${DOCKER[@]}" compose up -d --no-build
+else
+  run "${DOCKER[@]}" compose up -d --build
+fi
 
 port="$(grep '^OUTPOST_PORT=' .env 2>/dev/null | head -1 | cut -d= -f2- || true)"
 port="${port:-8080}"
@@ -365,6 +392,159 @@ ExecStart=/usr/local/lib/outpost/set-clock.sh ${clock_dir}"
     run sudo systemctl daemon-reload
     run sudo systemctl enable --now outpost-clock.path
     $CLOCK_FROM_NETWORK || say "Note: only a browser on this Pi may set the clock. To allow phones and laptops on your network, run this again with --clock-from-network."
+  fi
+fi
+
+# ── Installing updates ───────────────────────────────────────────────────────
+# The same pattern as the clock: a path unit watches one folder in Outpost's data volume,
+# and update.sh, root's, in /usr/local/lib, installs the release Outpost left there. It
+# checks the signature with its own copy of the release key, so a release the container
+# was given cannot be installed unless it is signed. Outpost reads "helper" to know the
+# service is there.
+if $UPDATES; then
+  say "Adding the service that installs Outpost updates from the app (and nothing else)."
+  volume="outpost_outpost-data"
+  data=""
+  if ! $DRY_RUN; then
+    data="$("${DOCKER[@]}" volume inspect "$volume" --format '{{ .Mountpoint }}' 2>/dev/null || true)"
+  fi
+  if [ -z "$data" ] && ! $DRY_RUN; then
+    say "Outpost's data volume ($volume) was not found, so the update service was not added. Run this again once Outpost is running."
+  elif [ ! -s "$REPO/deploy/release-key.pub" ]; then
+    say "This checkout has no release key (deploy/release-key.pub is empty), so the update service was not added: there is nothing to check a release with yet."
+  else
+    update_dir="${data:-/var/lib/docker/volumes/$volume/_data}/update"
+    command -v minisign >/dev/null 2>&1 || run sudo apt-get install -y minisign
+    run sudo install -d -m 0755 /usr/local/lib/outpost
+    run sudo install -m 0755 "$HERE/update.sh" /usr/local/lib/outpost/update.sh
+    run sudo install -m 0644 "$REPO/deploy/release-key.pub" /usr/local/lib/outpost/release-key.pub
+    run sudo install -d -m 0755 -o 1000 -g 1000 "$update_dir"
+    if $DRY_RUN; then
+      printf '  would write %s/helper\n' "$update_dir"
+    else
+      printf 'Written by deploy/pi/install.sh: outpost-update.path installs releases handed over here.\n' | sudo tee "$update_dir/helper" >/dev/null
+      sudo chown 1000:1000 "$update_dir/helper"
+    fi
+    docker_bin="$(command -v docker || echo /usr/bin/docker)"
+    path_unit="[Unit]
+Description=Outpost: watch for an update to install
+
+[Path]
+PathExists=${update_dir}/request
+
+[Install]
+WantedBy=multi-user.target"
+    service_unit="[Unit]
+Description=Outpost: install the update handed over
+After=docker.service
+
+[Service]
+Type=oneshot
+Environment=OUTPOST_DOCKER=${docker_bin}
+TimeoutStartSec=30min
+ExecStart=/usr/local/lib/outpost/update.sh ${update_dir} ${REPO}"
+    if $DRY_RUN; then
+      printf '  would write /etc/systemd/system/outpost-update.path:\n%s\n' "$path_unit" | sed 's/^/    /'
+      printf '  would write /etc/systemd/system/outpost-update.service:\n%s\n' "$service_unit" | sed 's/^/    /'
+    else
+      printf '%s\n' "$path_unit" | sudo tee /etc/systemd/system/outpost-update.path >/dev/null
+      printf '%s\n' "$service_unit" | sudo tee /etc/systemd/system/outpost-update.service >/dev/null
+    fi
+    run sudo systemctl daemon-reload
+    run sudo systemctl enable --now outpost-update.path
+  fi
+fi
+
+# ── Radio decoders ───────────────────────────────────────────────────────────
+# For a radio on a sound interface, or an SDR, plugged into this Pi (Heard on the radio).
+# Each decoder is installed switched off and runs as a service of its own; decoders.sh,
+# run by a path unit as the clock's helper is, starts and stops them when Outpost leaves a
+# request in the "decoders" folder of its data volume, and does nothing else. Every one
+# only listens: Dire Wolf is given no PTT, no beacon and a null audio output.
+# NOT TESTED ON A RASPBERRY PI.
+if $DECODERS; then
+  say "Installing the radio decoders, switched off: Dire Wolf for APRS and readsb for aircraft."
+  run sudo apt-get install -y direwolf rtl-sdr alsa-utils usbutils
+  if ! command -v readsb >/dev/null 2>&1; then
+    # readsb's own install script, as its README recommends; it starts readsb's own service, which is then switched off
+    # so that Outpost's button is the only switch.
+    say "Installing readsb with its own install script (github.com/wiedehopf/adsb-scripts)."
+    if $DRY_RUN; then
+      printf '  would run: %s\n' 'sudo bash -c "$(wget -O - https://github.com/wiedehopf/adsb-scripts/raw/master/readsb-install.sh)"'
+    else
+      sudo bash -c "$(wget -O - https://github.com/wiedehopf/adsb-scripts/raw/master/readsb-install.sh)" || say "readsb could not be installed now; run this again later."
+    fi
+    run sudo systemctl disable --now readsb || true
+  fi
+  command -v AIS-catcher >/dev/null 2>&1 || say "AIS-catcher (ships) is not installed: install it with its own script from its installation page, then run this again."
+  volume="outpost_outpost-data"
+  data=""
+  if ! $DRY_RUN; then
+    data="$("${DOCKER[@]}" volume inspect "$volume" --format '{{ .Mountpoint }}' 2>/dev/null || true)"
+  fi
+  if [ -z "$data" ] && ! $DRY_RUN; then
+    say "Outpost's data volume ($volume) was not found, so the decoders' switch was not added. Run this again once Outpost is running."
+  else
+    decoders_dir="${data:-/var/lib/docker/volumes/$volume/_data}/decoders"
+    run sudo install -d -m 0755 /usr/local/lib/outpost /etc/outpost/decoders
+    run sudo install -m 0755 "$HERE/decoders.sh" /usr/local/lib/outpost/decoders.sh
+    if $DRY_RUN; then
+      printf '  would write /etc/outpost/decoders/aprs-frequency: %s\n' "$APRS_FREQUENCY"
+    else
+      printf '%s\n' "$APRS_FREQUENCY" | sudo tee /etc/outpost/decoders/aprs-frequency >/dev/null
+    fi
+    # The decoders run as a user of their own, allowed the sound devices and USB, and nothing of Outpost's.
+    if ! id outpost-decoder >/dev/null 2>&1; then
+      run sudo useradd --system --no-create-home --shell /usr/sbin/nologin --groups audio,plugdev outpost-decoder
+    fi
+    run sudo install -d -m 0755 -o 1000 -g 1000 "$decoders_dir"
+    if $DRY_RUN; then
+      printf '  would write %s/helper\n' "$decoders_dir"
+    else
+      printf 'Written by deploy/pi/install.sh: outpost-decoders.path starts and stops the decoders from requests here.\n' | sudo tee "$decoders_dir/helper" >/dev/null
+      sudo chown 1000:1000 "$decoders_dir/helper"
+    fi
+    for decoder in direwolf readsb ais-catcher; do
+      unit="[Unit]
+Description=Outpost: the ${decoder} decoder, listening only
+After=network.target
+
+[Service]
+User=outpost-decoder
+ExecStart=/etc/outpost/decoders/${decoder}.run
+Restart=on-failure
+RestartSec=10"
+      if $DRY_RUN; then
+        printf '  would write /etc/systemd/system/outpost-%s.service\n' "$decoder"
+      else
+        printf '%s\n' "$unit" | sudo tee "/etc/systemd/system/outpost-${decoder}.service" >/dev/null
+      fi
+    done
+    path_unit="[Unit]
+Description=Outpost: watch for a request to switch a decoder on or off
+
+[Path]
+PathExists=${decoders_dir}/request
+
+[Install]
+WantedBy=multi-user.target"
+    service_unit="[Unit]
+Description=Outpost: switch a decoder on or off as asked
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/outpost/decoders.sh ${decoders_dir}"
+    if $DRY_RUN; then
+      printf '  would write /etc/systemd/system/outpost-decoders.path and outpost-decoders.service\n'
+    else
+      printf '%s\n' "$path_unit" | sudo tee /etc/systemd/system/outpost-decoders.path >/dev/null
+      printf '%s\n' "$service_unit" | sudo tee /etc/systemd/system/outpost-decoders.service >/dev/null
+    fi
+    run sudo systemctl daemon-reload
+    run sudo systemctl enable --now outpost-decoders.path
+    # A first look at what is plugged in, so that Settings has a list before anything is pressed.
+    run sudo /usr/local/lib/outpost/decoders.sh "$decoders_dir"
+    say "The decoders are installed and switched off. Switch one on in Outpost: Settings, Receivers. Then add a receiver with the address host.docker.internal."
   fi
 fi
 

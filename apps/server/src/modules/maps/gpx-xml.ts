@@ -157,8 +157,12 @@ export class XmlTokenizer {
   private textKind = TEXT;
   private referenceEnd = 0;
 
-  constructor(source: string) {
+  /** Characters allowed in one unbroken piece of text; `XML_LIMITS.run` unless the reader asks for more. */
+  private readonly run: number;
+
+  constructor(source: string, options: { run?: number } = {}) {
     this.source = source;
+    this.run = options.run ?? XML_LIMITS.run;
     // A byte-order mark is not part of the document.
     this.start = source.charCodeAt(0) === 0xfeff ? 1 : 0;
     this.position = this.start;
@@ -180,7 +184,7 @@ export class XmlTokenizer {
       if (source.charCodeAt(at) !== 0x3c) {
         let end = source.indexOf("<", at);
         if (end < 0) end = source.length;
-        if (end - at > XML_LIMITS.run) throw new XmlLimitError("run");
+        if (end - at > this.run) throw new XmlLimitError("run");
         this.position = end;
         if (this.depth === 0) {
           for (let i = at; i < end; i += 1) if (!isSpace(source.charCodeAt(i))) throw this.wrong("text outside the root element", i);
@@ -475,7 +479,7 @@ export class XmlTokenizer {
       valueStart += 1;
       const valueEnd = source.indexOf(quote === 0x22 ? '"' : "'", valueStart);
       if (valueEnd < 0) throw this.wrong("an attribute value that never ends", valueStart);
-      if (valueEnd - valueStart > XML_LIMITS.run) throw new XmlLimitError("run");
+      if (valueEnd - valueStart > this.run) throw new XmlLimitError("run");
       if (count >= XML_LIMITS.attributes) throw new XmlLimitError("attributes");
       this.characters(valueStart, valueEnd, VALUE, false);
       for (let k = 0; k < count * 4; k += 4) {
@@ -587,7 +591,7 @@ export class XmlTokenizer {
     const end = source.indexOf("--", at + 4);
     if (end < 0) throw this.wrong("a comment that never ends", at);
     if (source.charCodeAt(end + 2) !== 0x3e) throw this.wrong("-- inside a comment", end);
-    if (end - at > XML_LIMITS.run) throw new XmlLimitError("run");
+    if (end - at > this.run) throw new XmlLimitError("run");
     this.characters(at + 4, end, RAW, false);
     this.position = end + 3;
   }
@@ -597,7 +601,7 @@ export class XmlTokenizer {
     const start = at + 9;
     const end = this.source.indexOf("]]>", start);
     if (end < 0) throw this.wrong("a CDATA section that never ends", at);
-    if (end - start > XML_LIMITS.run) throw new XmlLimitError("run");
+    if (end - start > this.run) throw new XmlLimitError("run");
     this.characters(start, end, RAW, false);
     this.textStart = start;
     this.textEnd = end;
@@ -622,7 +626,7 @@ export class XmlTokenizer {
     const end = source.indexOf("?>", targetEnd);
     if (end < 0) throw this.wrong("a processing instruction that never ends", at);
     if (end !== targetEnd && !isSpace(source.charCodeAt(targetEnd))) throw this.wrong("a processing instruction without a proper name", at);
-    if (end - at > XML_LIMITS.run) throw new XmlLimitError("run");
+    if (end - at > this.run) throw new XmlLimitError("run");
     this.characters(targetEnd, end, RAW, false);
     this.position = end + 2;
   }

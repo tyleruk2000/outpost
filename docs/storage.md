@@ -109,6 +109,19 @@ One location is the default. New uploads and downloads go there unless you choos
 another when you start them. Change it with **Make default** in the location's menu on
 the Storage screen.
 
+### Where new things go
+
+With more than one location, **Storage → Where new things go** sets a location for each
+kind of download: maps, terrain, place names, map layers, collections and documents. A
+kind left on **The default** goes to the default location. The download's own picker
+starts on the kind's location and can still send one download elsewhere.
+
+Setting a kind changes only where new downloads go; nothing already kept is moved (move
+it under Manage and clean up). If the location set for a kind is not connected, the
+picker says so and offers another; a download started without a picker is refused with
+a message naming the location, rather than sent somewhere else.
+Removing a location puts its kinds back on the default.
+
 ### Renaming and removing
 
 Renaming changes only the name shown. Removing a location makes Outpost forget the
@@ -250,9 +263,9 @@ answered within 21 ms and map tiles within 70 ms throughout.
 **Select everything shown**, then the same for **Terrain**, **Place names** and **Map
 layers** (the selection is kept as the filter changes). **Move** them to the device's
 own location. Each is copied, the copy checked, and only then the original removed.
-Leave the reference collections, documents and radio data where they are. New map
-regions go where **Offline maps → Add a region** is told; choose the device's own
-location there too.
+Leave the reference collections, documents and radio data where they are. Then, under
+**Where new things go**, set maps, terrain, place names and map layers to the device's
+own location and the rest to the NAS, so that new downloads follow.
 
 ## Connecting a network share
 
@@ -655,6 +668,14 @@ reclaimed. Every page of the file belongs to one table or index or is unused, so
 groups and the unused space add up to the size of the file exactly. A build of SQLite
 without `dbstat` shows the counts only and says so; nothing is estimated.
 
+### Earlier versions of pages
+
+Under the database, **Earlier versions of pages** says how many versions of how many
+pages Outpost keeps and how much room they take. **Clear earlier versions** erases them
+all, overwriting the space they used; the pages stay as they are. The file does not
+shrink until unused space is reclaimed (below). How versions are kept is in
+[notes-and-imports.md](notes-and-imports.md#earlier-versions).
+
 ### Checking the database
 
 **Check the database** runs SQLite's `quick_check`, which reads every page and checks
@@ -860,8 +881,9 @@ cannot be downloaded again.
 - Keeps: storage locations and their marker files; network shares and any password
   remembered in the Keychain; catalogue manifests of your own; programs fetched for
   portable drives and search model files (clear those from Leftovers); the catalogue's
-  last answers, so Explore still reads offline; and the kiwix-serve program, which is
-  not Outpost's.
+  last answers, so Explore still reads offline; the satellites' orbital elements and
+  transmitters, which are public data; and the kiwix-serve program, which is not
+  Outpost's.
 - Leaves alone, and says where they are: any file outside the folders Outpost made (an
   archive of your own that you pointed Outpost at), and everything on a location that
   is not connected. Outpost forgets them; delete them by hand if you want them gone.
@@ -1129,8 +1151,20 @@ storage location. It is off until you choose a location.
   that made it, and whether it verified. From there you can download one, restore one
   (**Restore this one** checks it again and stages it, exactly as an uploaded backup
   is), or delete one after confirming.
+- **Test a restore.** In a stored backup's menu. The backup is opened into a scratch
+  folder in the data directory, every file checked against its checksum and the
+  database through SQLite's integrity check, and then counted: pages, saved places,
+  tracks and routes, documents and contacts in the backup against how many are here
+  now. A backup made by a newer version of Outpost fails the test, as it could not be
+  restored here. The scratch folder is removed afterwards; nothing here is changed and
+  no restore is staged. A protected backup asks for its passphrase, which is held in
+  memory for that one test only. The result is shown under the list and on **Settings →
+  Server status**.
+- **On the status screen.** **Settings → Server status** shows the last backup's age,
+  how many are kept, whether the location was away when one was due, and the last
+  restore test (see [device.md](device.md)).
 - **Who may do what.** Any device that can reach Outpost can choose a location, change
-  the schedule, start a backup and download one. Restoring, deleting a stored backup
+  the schedule, start a backup, test a restore and download one. Restoring, deleting a stored backup
   and lowering the number to keep (which deletes older ones at the next backup) can
   only be done on the computer Outpost runs on, unless Outpost was started with
   `OUTPOST_ALLOW_REMOTE_ERASE=true`.
@@ -1159,5 +1193,44 @@ ordinary folders.
 
 The `before-restore-<time>` folders can be deleted from **Storage → Manage and clean up
 → Leftovers** once you are sure a restore was right.
+
+## Taking everything out
+
+A backup can only be read by Outpost. **Settings → Take everything out** makes one
+`.zip` of your own things in formats other programs open, for leaving Outpost or
+reading them anywhere else:
+
+| Folder | What is in it | Format |
+| --- | --- | --- |
+| `notes/` | Every page, nested as in Notes, with attachments in `_attachments/` | Markdown |
+| `contacts/` | Every contact | vCard 4.0 |
+| `places/` | Map markers, routes and tracks | GPX and GeoJSON |
+| `supplies/` | The supplies list | CSV |
+| `barometer/` | The barometer log | CSV |
+| `radio-log/` | The contact log: contacts and stations heard as ADIF, every entry as CSV | ADIF 3.1.8 and CSV |
+| `plans/` | Each emergency plan | JSON |
+| `papers/` | Medical sheets and the keeping-in-touch plan; a locked sheet stays locked | JSON, OpenPGP |
+| `board/` | The household board, one text file per channel, with the files sent | Plain text |
+| `documents/` | Every document as the file that was added, a folder per category, and a list | The original files |
+
+`README.md` at the top says the same, when it was made, and what was left out. The
+CSV files are the ones Supplies and Weather read back in.
+
+Before anything is made, the section shows how much there is of each and roughly how
+large the zip will be. Documents on a location that is not connected cannot be
+included and are listed as left out: connect the location and export again. Pages in
+the bin, removed board messages, collections, maps and other downloads, and settings
+are not in it.
+
+Choose where it goes:
+
+- **Download to this device**: the zip is made on the server, then **Download** saves
+  it. Only the newest is kept on the server; making another, or **Remove from the
+  server**, deletes it.
+- **A storage location**: written to a folder named `outpost-exports` on it. Outpost
+  never deletes anything there.
+
+The zip is not encrypted. It holds your notes, contacts and documents as they are:
+keep it on storage you trust.
 
 See also [security.md](security.md) and [troubleshooting.md](troubleshooting.md).

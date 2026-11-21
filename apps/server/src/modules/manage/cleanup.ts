@@ -33,6 +33,7 @@ import { AppError, conflict, messageOf } from "../../core/errors.ts";
 import { type JobRow, type JobRun, StoppedWithResult } from "../../core/jobs.ts";
 import {
   attachments as attachmentsTable,
+  calibreImports,
   documents as documentsTable,
   downloads as downloadsTable,
   driveMerges as driveMergesTable,
@@ -61,6 +62,8 @@ const PREVIOUS_DATA = /^before-restore-[0-9A-Za-z-]+$/;
 const STALE_SNAPSHOT = /^backup-snapshot-\d+\.db(-journal|-wal|-shm)?$/;
 /** Folders of the data directory that hold only what records refer to. */
 const DERIVED_FOLDERS = ["attachments", "extracted", "staging", "restore-pending"];
+// The covers of books brought in from Calibre (modules/calibre).
+DERIVED_FOLDERS.push("covers");
 
 interface RemovePayload extends Record<string, unknown> {
   scope: "items" | "downloaded";
@@ -270,8 +273,10 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
         readiness: ctx.services.readiness.kept.count(),
         morse: ctx.services.morse.kept.count(),
         games: ctx.services.games.kept.count(),
+        garden: ctx.services.garden.kept.count(),
         board: ctx.services.board.kept.count(),
         learning: ctx.services.learning.kept.count(),
+        heard: ctx.services.heard.kept.count(),
         pgpKeys: count("SELECT count(*) AS n FROM pgp_keys"),
         driveMerges: count("SELECT count(*) AS n FROM drive_merges"),
         settings: count("SELECT count(*) AS n FROM settings"),
@@ -539,8 +544,10 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
       readiness: 0,
       morse: { sessions: 0, progress: 0 },
       games: { saves: 0 },
+      garden: { sowings: 0, settings: 0 },
       board: { messages: 0, files: 0, fileBytes: 0 },
       learning: { learners: 0, pages: 0 },
+      heard: 0,
       pgpKeys: 0,
       driveMerges: 0,
       settings: 0,
@@ -604,10 +611,14 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
     personal.morse = ctx.services.morse.kept.eraseAll();
     // The games: the allotment and each game's tally.
     personal.games = ctx.services.games.kept.eraseAll();
+    // The garden: the record of sowings and the last-frost date.
+    personal.garden = ctx.services.garden.kept.eraseAll();
     // The household board: messages, check-ins (with any positions) and the files sent on it.
     personal.board = await ctx.services.board.kept.eraseAll();
     // Learning progress: where each learner got to in the reference archives.
     personal.learning = ctx.services.learning.kept.eraseAll();
+    // Heard on the radio: the receivers, and the stations, aircraft and ships they heard, with their trails.
+    personal.heard = ctx.services.heard.kept.eraseAll();
 
     // Whatever is left belongs to records that no longer exist: attachments no page
     // used, import reports, history, vectors, and the settings.
@@ -617,6 +628,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
     sqlite.transaction(() => {
       if (!pagesLeft) db.delete(attachmentsTable).run();
       db.delete(importsTable).run();
+      db.delete(calibreImports).run();
       // Records of drive merges hold earlier versions of pages: they are the person's own words too.
       personal.driveMerges = db.delete(driveMergesTable).run().changes;
       db.delete(downloadsTable).run();
@@ -660,7 +672,8 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
   async function eraseDataFolders(result: CleanupResult): Promise<void> {
     for (const name of DERIVED_FOLDERS) {
       // Kept while something that could not be removed still uses it.
-      if ((name === "attachments" && remaining("notes") > 0) || (name === "extracted" && remaining("documents") > 0)) continue;
+      if ((name === "attachments" && remaining("notes") > 0) || ((name === "extracted" || name === "covers") && remaining("documents") > 0))
+        continue;
       await fs.promises.rm(path.join(config.dataDir, name), { recursive: true, force: true }).catch((error) => {
         noteFailed(result, `The ${name} folder`, messageOf(error));
       });
@@ -689,7 +702,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
         // From here on nothing can be stopped half-way in a state worth keeping.
         run.progress({
           message:
-            "Erasing notes, places, routes, contacts, conversations, repeaters, radio plans and logs, power plans and devices, supplies, emergency plans, Morse practice, the games, the board, and settings",
+            "Erasing notes, places, routes, contacts, conversations, repeaters, radio plans and logs, power plans and devices, supplies, emergency plans, Morse practice, the games, the garden, the board, and settings",
         });
         await erasePersonal(result);
         await eraseDataFolders(result);

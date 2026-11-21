@@ -1822,7 +1822,7 @@ In the API: `GET /api/maps/route-sources`, `POST /api/maps/route-search`,
 
 ## GPX tracks
 
-- **Import.** Upload one `.gpx` file at a time, up to 20 MB. Tracks and routes become
+- **Import.** Upload `.gpx` files, up to 20 MB each. Tracks and routes become
   a track on the map. Waypoints in the file either stay with the track or, if you ask,
   become markers; never both.
 - **What is read.** GPX 1.0 and 1.1. From a track or a route: its name, its description
@@ -1978,6 +1978,44 @@ found-route exports described under [Finding a known route](#finding-a-known-rou
 - **What is not in the schema.** That a program shows a symbol name it knows as an icon,
   keeps the credit, or draws a route across the date line as one line and not as a
   stroke round the world.
+
+## KML, KMZ and GeoJSON files
+
+Other apps, and many councils and agencies, publish places and paths as KML (Google
+Earth, Google My Maps), KMZ (KML in a zip) or GeoJSON. In the Routes tab press
+**Import a map file**, or drop the files on the map. GPX files go the same way.
+
+- **Before anything is saved**, each file is read and the dialog says what it would
+  make: "A new route of 2 lines and 1 outline, 140 points · 12 new places", or why
+  the file cannot be read. Import makes a new route and new places beside what you
+  have; nothing already saved is changed or replaced. Importing the same file twice
+  makes two of each.
+- **What becomes what.** Points become saved places, with their name and description.
+  Lines become one route for the file, each line keeping its name. Polygons (an area
+  of access land, a park boundary) are kept as outlines: their edges, drawn as closed
+  lines on the route. An outline counts for the route's extent and points, not for its
+  distance, climb or height profile, and reshaping the route's line leaves outlines as
+  they are. Filled areas are not drawn.
+- **Names.** The route is named after the file's own name (the KML document's name,
+  or a GeoJSON file's `name`), then its first line, then the file name. A description
+  written as HTML, as Google Earth's often are, is kept as plain text.
+- **KML.** KML 2.0, 2.1 and 2.2, with Google's extensions: a recorded `gx:Track` is
+  read as a line. Placemarks inside folders and multi-geometries are all read. Links to
+  other files (network links, overlay pictures) are not followed; only what is in the
+  file is read.
+- **KMZ.** Its `doc.kml` is read, or the first `.kml` file in the archive where there
+  is no `doc.kml`. Pictures in the archive are not read.
+- **GeoJSON.** A feature collection, a single feature or a bare geometry, in longitude
+  and latitude as the standard (RFC 7946) has it. A file that names another
+  coordinate system (an older file in British National Grid, say) is refused with a
+  message saying which; export it again in WGS 84 (EPSG:4326).
+- **Limits.** The same as for GPX files: 20 MB a file, and once unpacked for a KMZ;
+  1,000,000 points in lines and outlines; 20,000 points as places; 10,000 lines and
+  outline rings. A GeoJSON file may open at most 1,500,000 arrays and objects (each
+  position is one), nested at most 64 deep. A file over any of these is refused whole,
+  with a message that says which. Files with a DOCTYPE, and files saved as UTF-16, are
+  refused as GPX files are.
+- **Export.** Routes and places go out as GPX, outlines as closed tracks.
 
 ## Coordinate formats
 

@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import { ErrorState, Notice, Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
+import { DEVICE } from "@/features/kept/device";
+import { type OutboxEdit, removeFromOutbox, usePendingEdit } from "@/features/kept/outbox";
 import { ApiError, api, errorMessage } from "@/lib/api";
 import { useServerEvent } from "@/lib/events";
 import { notify } from "@/lib/notify";
@@ -85,7 +87,9 @@ export function NoteScreen({ id }: { id: string }) {
     void client.invalidateQueries({ queryKey: noteKeys.detail(id) }, { cancelRefetch: false });
   });
 
-  if (note.isPending) return <NoteSkeleton />;
+  // Changes made to this page on this phone while out of reach, which met a newer version when sent.
+  const phoneEdit = usePendingEdit(id);
+  if (note.isPending || phoneEdit === undefined) return <NoteSkeleton />;
   if (note.isError) {
     if (note.error instanceof ApiError && note.error.status === 404) {
       return (
@@ -121,16 +125,34 @@ export function NoteScreen({ id }: { id: string }) {
     );
   }
   // The editor is made for one page in one mode; a restored page gets a fresh, editable one.
-  return <LoadedNote key={`${id}:${note.data.note.trashedAt === null}`} note={note.data.note} reload={reload} />;
+  return (
+    <LoadedNote
+      key={`${id}:${note.data.note.trashedAt === null}`}
+      note={note.data.note}
+      reload={reload}
+      phoneEdit={note.data.note.trashedAt === null ? (phoneEdit ?? undefined) : undefined}
+    />
+  );
 }
 
-function LoadedNote({ note, reload }: { note: NoteDetail; reload(): Promise<NoteDetail | undefined> }) {
+function LoadedNote({
+  note,
+  reload,
+  phoneEdit,
+}: {
+  note: NoteDetail;
+  reload(): Promise<NoteDetail | undefined>;
+  /** Held as a conflict from the start, for the person to choose; taken off the phone once they have. */
+  phoneEdit?: OutboxEdit;
+}) {
   const client = useQueryClient();
   const actions = useNoteActions();
   const tree = useNoteTree();
   const editable = note.trashedAt === null;
 
-  const [title, setTitle] = useState(note.title);
+  // Read once: the page's working copy starts from the phone's version, and the record is removed only when settled.
+  const [held] = useState(phoneEdit);
+  const [title, setTitle] = useState(held?.title ?? note.title);
   const [icon, setIcon] = useState(note.icon);
   const [tags, setTags] = useState(note.tags);
   const [cover, setCover] = useState<{ id: string; url: string } | null>(
@@ -141,7 +163,7 @@ function LoadedNote({ note, reload }: { note: NoteDetail; reload(): Promise<Note
   const [encrypting, setEncrypting] = useState(false);
   const [choosing, setChoosing] = useState(false);
   const [draft, setDraft] = useState<PageDraft | null>(() => {
-    if (!editable) return null;
+    if (!editable || held) return null;
     const stored = readDraft(note.id);
     if (!stored) return null;
     const saved: PageFields = {
@@ -161,7 +183,7 @@ function LoadedNote({ note, reload }: { note: NoteDetail; reload(): Promise<Note
   const iconButton = useRef<HTMLButtonElement>(null);
   const coverInput = useRef<HTMLInputElement>(null);
   /** What the editor last held, for the moment it is read after it has gone. */
-  const lastContent = useRef<NoteDoc>(note.content);
+  const lastContent = useRef<NoteDoc>(held?.content ?? note.content);
 
   const fields = useRef({ title, icon, tags, coverAttachmentId: cover?.id ?? null });
   fields.current = { title, icon, tags, coverAttachmentId: cover?.id ?? null };
@@ -186,6 +208,22 @@ function LoadedNote({ note, reload }: { note: NoteDetail; reload(): Promise<Note
   });
 
   const touch = useCallback((key: keyof PageFields) => saver.current?.touch(key), [saver]);
+
+  // The phone's changes are held as a conflict at once, and leave the phone once the person has chosen.
+  const settling = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once, when the page opens
+  useEffect(() => {
+    const conflict = held?.conflict;
+    if (conflict) saver.current?.holdInConflict(["title", "content"], conflict);
+  }, []);
+  useEffect(() => {
+    if (!held) return;
+    if (status.kind === "conflict") settling.current = true;
+    else if (status.kind === "saved" && settling.current) {
+      settling.current = false;
+      void removeFromOutbox(held.id);
+    }
+  }, [held, status.kind]);
   const flush = useCallback(() => saver.current?.flush(), [saver]);
 
   /** Replaces the working copy with a version from the server. */
@@ -381,8 +419,9 @@ function LoadedNote({ note, reload }: { note: NoteDetail; reload(): Promise<Note
           {status.kind === "conflict" ? (
             <Notice tone="warning" icon={<TriangleAlert />} title="This page was changed somewhere else">
               <p>
-                Another tab or device saved a newer version at {formatDateTime(status.current.updatedAt)}. Your version is still here,
-                unsaved, and nothing has been overwritten. Choose which one to keep.
+                {held
+                  ? `It was saved on Outpost at ${formatDateTime(status.current.updatedAt)}, after this ${DEVICE} kept its copy. The changes made on this ${DEVICE} while Outpost was out of reach are shown here, unsaved, and nothing has been overwritten. Choose which version to keep.`
+                  : `Another tab or device saved a newer version at ${formatDateTime(status.current.updatedAt)}. Your version is still here, unsaved, and nothing has been overwritten. Choose which one to keep.`}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button size="sm" variant="primary" disabled={choosing} onClick={() => saver.current?.keepMine(PAGE_FIELDS)}>
@@ -476,7 +515,7 @@ function LoadedNote({ note, reload }: { note: NoteDetail; reload(): Promise<Note
         <div className="mt-7">
           <NoteEditor
             noteId={note.id}
-            content={note.content}
+            content={held?.content ?? note.content}
             editable={editable}
             onChange={onContentChange}
             onBlur={flush}
@@ -502,3 +541,5 @@ function LoadedNote({ note, reload }: { note: NoteDetail; reload(): Promise<Note
     </article>
   );
 }
+
+export { NoteVersionsScreen } from "./note-versions";

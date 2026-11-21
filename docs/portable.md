@@ -39,7 +39,8 @@ What travels:
   collections and maps you tick.
 - **Never:** the mesh radio link's set-up and the names of radios heard, and the MCP
   switch. Both are set only at the computer Outpost runs on, so a drive starts with
-  the mesh link not set up and the MCP endpoint off.
+  the mesh link not set up and the MCP endpoint off. Nor the receivers of Heard on the
+  radio, what they heard (where people were among it) or the range tests.
 - **Contacts travel unless you turn them off.** They are on by default, as notes are,
   because a list of who to reach is the thing to have on a drive. They are also other
   people's names, numbers and addresses, and a drive is not encrypted: turn **Contacts**
@@ -53,8 +54,9 @@ What travels:
   drive) what should not be passed on.
 - The database on the drive is a copy narrowed to match: it lists only the documents
   and collections that were copied, and one storage location, "This drive", which is
-  the drive's `library` folder. Download history, background jobs, the records of
-  past imports and of past merges, the addresses of network shares, conversations
+  the drive's `library` folder. Download history, background jobs, earlier versions
+  of pages, the records of
+  past imports (of notes and of Calibre libraries) and of past merges, the addresses of network shares, conversations
   from [Chat](ai.md#chat), and the household board ([Messages](messages.md)) are not
   copied.
 - The database also carries a record of what every page, document, saved place and

@@ -29,6 +29,7 @@ import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Segmented } from "@/components/ui/misc";
+import { useRadioLicence } from "@/features/radio/licence";
 import { cn } from "@/lib/utils";
 import { getSidetone, type PlayHandle } from "../audio/sidetone";
 import { SoundNotice } from "../audio/sound-notice";
@@ -94,8 +95,11 @@ function DidTheRbnHearYou() {
 
 export default function OnTheAirTab() {
   const prefs = useMorsePrefs();
+  const licence = useRadioLicence();
   const callId = useId();
-  const callsign = prefs.callsign.trim().toUpperCase();
+  // The trainer's own callsign, or else the one under Settings → Radio licence.
+  const ownCall = prefs.callsign || (licence.licensed ? licence.callsign : "");
+  const callsign = ownCall.trim().toUpperCase();
   const callOk = isPlausibleCallsign(callsign);
 
   const [kind, setKind] = useState<RbnMessageKind>("cq");
@@ -178,6 +182,9 @@ export default function OnTheAirTab() {
         The Reverse Beacon Network is a worldwide set of receivers that decode Morse. Call CQ on the air and, if one hears you, it publishes
         a spot within a minute or two: a free check of how far your signal gets. Practise the call here first. This page does not key your
         radio.
+        {licence.licensed
+          ? ""
+          : " Calling on the air needs an amateur licence: until then this is practice, with a made-up callsign such as Q7XYZ."}
       </p>
 
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-10">
@@ -189,11 +196,11 @@ export default function OnTheAirTab() {
             <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
               <div className="grid gap-1.5">
                 <label htmlFor={callId} className="text-small font-medium text-ink">
-                  Your callsign
+                  {licence.licensed ? "Your callsign" : "A callsign to practise with"}
                 </label>
                 <Input
                   id={callId}
-                  value={prefs.callsign}
+                  value={ownCall}
                   onChange={(event) => applyMorsePrefs({ callsign: event.target.value.toUpperCase().replace(/\s+/g, "") })}
                   autoComplete="off"
                   autoCapitalize="characters"
@@ -329,7 +336,7 @@ export default function OnTheAirTab() {
 
         <section aria-labelledby="rbn-before-heading" className="grid gap-3 max-lg:border-t max-lg:border-border max-lg:pt-6">
           <h2 id="rbn-before-heading" className="text-lead font-semibold text-ink">
-            Before you call on the air
+            {licence.licensed ? "Before you call on the air" : "Before calling on the air, once licensed"}
           </h2>
           <p className="text-small text-ink-muted">
             Your radio and keyer send the call. The trainer never keys a radio: it only trains you here.

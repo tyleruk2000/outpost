@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Skeleton, Switch } from "@/components/ui/misc";
+import { FirstUseGuide } from "@/features/help/first-use";
 import { KeepPlacesRow } from "@/features/kept/keep-controls";
 import { ShareCodeButton } from "@/features/qr/share-code";
 import { copyText } from "@/lib/clipboard";
@@ -329,33 +330,45 @@ export function PlacesList({
     );
   }
 
+  const quickStart = (
+    <FirstUseGuide
+      slug="map-quick-start"
+      words="New to the map? Short steps for finding a place, reading the height and grid reference, printing, and line of sight."
+      className="mx-4 mt-3"
+    />
+  );
+
   if (all.length === 0) {
     return (
-      <div className="px-4 py-5">
-        <h3 className="font-title text-lead text-ink">No saved places yet</h3>
-        <p className="mt-1.5 text-small text-ink-muted">
-          Keep the places that matter to a trip: a car park, a bothy, a summit, a spring. Right-click the map (or press and hold on a touch
-          screen) and choose “Save a place here”, or save a search result.
-        </p>
-        {canAddOnMap ? (
-          <Button variant="primary" className="mt-4" onClick={onAdd}>
-            Save a place
-          </Button>
-        ) : null}
-        {onShowSun ? (
-          <p className="mt-5 border-t border-border pt-4 text-small text-ink-muted">
-            Sunrise and sunset do not need a saved place. The Sun tab gives them for the centre of the map.{" "}
-            <Button variant="link" size="sm" onClick={onShowSun}>
-              Show sun times
-            </Button>
+      <div className="pb-5">
+        {quickStart}
+        <div className="px-4 pt-5">
+          <h3 className="font-title text-lead text-ink">No saved places yet</h3>
+          <p className="mt-1.5 text-small text-ink-muted">
+            Keep the places that matter to a trip: a car park, a bothy, a summit, a spring. Right-click the map (or press and hold on a
+            touch screen) and choose “Save a place here”, or save a search result.
           </p>
-        ) : null}
+          {canAddOnMap ? (
+            <Button variant="primary" className="mt-4" onClick={onAdd}>
+              Save a place
+            </Button>
+          ) : null}
+          {onShowSun ? (
+            <p className="mt-5 border-t border-border pt-4 text-small text-ink-muted">
+              Sunrise and sunset do not need a saved place. The Sun tab gives them for the centre of the map.{" "}
+              <Button variant="link" size="sm" onClick={onShowSun}>
+                Show sun times
+              </Button>
+            </p>
+          ) : null}
+        </div>
       </div>
     );
   }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {quickStart}
       <div className="flex items-center gap-2 px-4 pt-3 pb-2">
         <div className="relative min-w-0 flex-1">
           <Search aria-hidden className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-ink-muted" />

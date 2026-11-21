@@ -157,7 +157,9 @@ export class JobQueue {
     if (this.timer) clearTimeout(this.timer.handle);
     this.timer = undefined;
     for (const { controller } of this.running.values()) controller.abort("shutdown" satisfies StopReason);
-    await this.whenIdle(5_000);
+    // Every handler is asked to stop above and answers within moments; the wait is long so
+    // that on a loaded machine none is still writing when the database is closed after this.
+    await this.whenIdle(15_000);
   }
 
   enqueue<P extends Record<string, unknown>>(type: string, payload: P, options: EnqueueOptions): JobRow {

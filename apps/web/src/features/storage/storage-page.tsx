@@ -26,7 +26,9 @@ import { plural, timeAgo } from "@/lib/utils";
 import { manageLink } from "../manage/manage-data";
 import { AddLocationDialog } from "./add-location-dialog";
 import { DatabaseSection } from "./database-section";
+import { KindDefaultsSection } from "./kind-defaults";
 import { NetworkSharesSection, useShares } from "./network-shares";
+import { PageVersionsSection } from "./page-versions-section";
 import { PortableDriveSection } from "./portable-drive";
 
 export const kindLabels: Record<StorageKind, { label: string; icon: typeof HardDrive }> = {
@@ -374,6 +376,8 @@ export default function StoragePage() {
             ))}
           </ul>
 
+          {locations.length > 1 ? <KindDefaultsSection locations={locations} /> : null}
+
           <NetworkSharesSection />
 
           <Section
@@ -421,6 +425,8 @@ export default function StoragePage() {
           </Section>
 
           <DatabaseSection />
+
+          <PageVersionsSection />
 
           <PortableDriveSection />
 

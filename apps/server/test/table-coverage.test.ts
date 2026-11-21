@@ -71,9 +71,15 @@ const TABLES: Record<string, Decision> = {
   tags: { group: "library", drive: true },
   document_tags: { group: "library", drive: true },
   book_chapters: { group: "library", drive: true },
+  // Passages marked in documents (modules/highlights); they go with their documents.
+  document_highlights: { group: "library", drive: true },
+  // Books from a Calibre library (modules/calibre). The covers are in the data folder, which a drive does not carry.
+  book_details: { group: "library", drive: true },
+  calibre_imports: { group: "library", drive: "The records of past imports are not copied (docs/portable.md)." },
   notes: { group: "notes", drive: true },
   note_tags: { group: "notes", drive: true },
   note_links: { group: "notes", drive: true },
+  note_versions: { group: "notes", drive: "Earlier versions of pages are not copied (docs/portable.md)." },
   attachments: { group: "notes", drive: true },
   imports: { group: "notes", drive: "The records of past imports are not copied (docs/portable.md)." },
   search_entities: { group: "search", drive: true },
@@ -116,6 +122,28 @@ const TABLES: Record<string, Decision> = {
   radio_observations: { group: "radio", drive: true },
   morse_progress: { group: "radio", drive: true },
   morse_sessions: { group: "radio", drive: true },
+  satellite_elements: {
+    group: "radio",
+    keptByErase:
+      "Public orbital elements and transmitters fetched from CelesTrak and SatNOGS DB, like the catalogue's last answers: nothing of the household's.",
+    drive: true,
+  },
+  satellite_transmitters: {
+    group: "radio",
+    keptByErase:
+      "Public orbital elements and transmitters fetched from CelesTrak and SatNOGS DB, like the catalogue's last answers: nothing of the household's.",
+    drive: true,
+  },
+  satellite_fetches: {
+    group: "radio",
+    keptByErase:
+      "Public orbital elements and transmitters fetched from CelesTrak and SatNOGS DB, like the catalogue's last answers: nothing of the household's.",
+    drive: true,
+  },
+  heard_receivers: { group: "radio", drive: "Receivers are set up at the computer Outpost runs on (docs/portable.md)." },
+  heard_stations: { group: "radio", drive: "What the receivers heard, where people were among it, stays at home (docs/portable.md)." },
+  heard_reports: { group: "radio", drive: "What the receivers heard, where people were among it, stays at home (docs/portable.md)." },
+  heard_range_tests: { group: "radio", drive: "Range tests are of what the receivers heard, which stays at home (docs/portable.md)." },
   power_plans: { group: "other", drive: true },
   power_devices: { group: "other", drive: true },
   supply_items: { group: "prepare", drive: true },
@@ -136,6 +164,9 @@ const TABLES: Record<string, Decision> = {
   routine_checks: { group: "prepare", drive: true },
   offline_drills: { group: "prepare", drive: true },
   roll_calls: { group: "other", drive: "Part of the household board, which stays with the household's Outpost (docs/portable.md)." },
+  // The garden (modules/garden): the record of sowings and the last-frost date.
+  garden_sowings: { group: "prepare", drive: true },
+  garden_settings: { group: "prepare", drive: true },
   nuclear_scenarios: { group: "maps", drive: true },
   nuclear_scenario_sets: { group: "maps", drive: true },
   reference_features: { group: "maps", drive: true },

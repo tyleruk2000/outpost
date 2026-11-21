@@ -9,8 +9,42 @@ readers, it is in backups, and it travels on a portable drive. The routes are in
 [security.md](security.md#files-people-upload), where files are kept in
 [storage.md](storage.md), and how search reads them in [search.md](search.md).
 
-This page is about two things: **audiobooks**, and **a PDF that Outpost makes**, which can
-be added to the library from the screen that made it.
+This page is about four things: **highlights and margin notes**, **audiobooks**, **books
+from a Calibre library**, and **a PDF that Outpost makes**, which can be added to the
+library from the screen that made it.
+
+## Highlights and margin notes
+
+In a PDF, a Markdown document or a chapter of an EPUB book, select some words and press
+**Highlight**. Add a line about the passage if you like, and **Save highlight**. The
+passage is marked on the page from then on.
+
+Highlights are kept in Outpost's database. The document's file is never changed, so the
+original stays exactly as it was added, and a copy of it elsewhere carries no marks.
+
+- **Finding them.** **Details** (the panel button at the top right of a document) lists
+  its highlights in order, each with its note and its page or chapter. Press a passage to
+  go to it; it is underlined while it is the one you went to. With more than three, a
+  field finds among them by their words or their notes. The search box finds highlights
+  too, by the words marked or the note, listed as **Highlight**.
+- **Changing them.** **Edit note** (or **Add a note**) changes the line about a passage.
+  **Delete highlight** (the bin) deletes it after asking; the document is not touched.
+- **Copying to Notes.** **Copy all to a page in Notes** (with the number of highlights in it) makes a new page called
+  "Highlights from" and the document's title: each passage as a quote, its note under
+  it, and a link back to the passage. The page is an ordinary page. Copying again makes another page; the first is left as
+  it is.
+
+A passage is found again by its words and the few words either side, within its page of
+a PDF or its chapter of a book. If those words are no longer there (a Markdown file
+replaced by an edited one), the highlight stays in the list but is not marked on the
+page. A highlight can be up to 4,000 characters long, and a note up to 2,000.
+
+Not in this version: highlights on pages of reference archives (Wikipedia and the
+like), on plain text, HTML and images, or on the front page of an EPUB. Deleting a
+document deletes its highlights. Marking a passage on the page needs a browser with
+the CSS Custom Highlight API (current Chrome, Edge, Safari and Firefox); in one without
+it, highlights are still kept, listed and found, and the list says the page cannot show
+them.
 
 ## Audiobooks
 
@@ -152,6 +186,50 @@ server's cost at rest with books held: 0%.
 | The player, its place on the device, the lists, the add window | `apps/web/src/features/audiobooks/` |
 
 
+
+## Books from Calibre
+
+**Library → Import from Calibre** brings in the e-books you keep in Calibre, with their
+authors, series, tags, description and cover. The Calibre folder is only read: nothing
+in it is written, renamed, moved or deleted.
+
+1. Make sure the drive or folder that holds the Calibre library is a storage location
+   (Storage → Add location).
+2. Open the library's folder, the one with `metadata.db` in it, and press **Read this
+   library**. A folder of one author works too.
+3. Outpost reads each book's `metadata.opf` and says how many books there are, how much
+   space they take, how many have a cover, and which will be left out and why. Nothing has
+   been added yet. **Discard** leaves everything as it was.
+4. Choose how to bring them in, then press **Add**:
+   - **Copy them into Outpost**: each book's file is copied to the storage location you
+     choose. The copies and the Calibre folder are then separate.
+   - **Use them where they are**: each book is recorded in its place in the Calibre
+     folder and read from there. It takes no space, but the books cannot be opened while
+     that drive is disconnected.
+
+What comes in:
+
+- One file per book: the EPUB if there is one, otherwise the PDF, otherwise a text,
+  Markdown or HTML file. Other formats (MOBI, AZW3, DOCX and so on) stay in Calibre; a
+  book that has only those is left out, and the plan says so. Convert it to EPUB in
+  Calibre to bring it in.
+- The title, the authors (joined with "&" in the library's author field), tags, the
+  description, the language and the series with the book's number in it. The cover and
+  series show under **From Calibre** in the book's details.
+- The cover is copied into Outpost's own data folder, never written into the book.
+
+A book whose file is already in the library, found by its contents, is left as it is;
+reading and importing the same library again adds only what is new. An import that is
+stopped, or that could not add some books, can be tried again from its report without
+adding anything twice. One import takes at most 20,000 books; bring a larger library in
+a folder of authors at a time.
+
+A book brought in **where it is** is removed from Outpost only: its details offer
+**Remove from Outpost only**, and the file stays in the Calibre folder. A copy is deleted
+with its file, like any other document.
+
+This has been tried with library folders laid out and written as Calibre writes them, not
+yet with a library made by Calibre itself.
 
 ## Where Outpost makes a PDF
 

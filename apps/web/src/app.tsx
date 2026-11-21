@@ -16,6 +16,7 @@ const HomePage = lazy(() => import("./features/home/home-page"));
 const LibraryPage = lazy(() => import("./features/library/library-page"));
 const DocumentPage = lazy(() => import("./features/library/document-page"));
 const CollectionPage = lazy(() => import("./features/library/collection-page"));
+const CalibrePage = lazy(() => import("./features/library/calibre/calibre-page"));
 const ReaderPage = lazy(() => import("./features/reader/reader-page"));
 const NotesPage = lazy(() => import("./features/notes/notes-page"));
 const ChatPage = lazy(() => import("./features/chat/chat-page"));
@@ -32,6 +33,8 @@ const RepeatersPage = lazy(() => import("./features/repeaters/repeaters-page"));
 const RepeaterPage = lazy(() => import("./features/repeaters/repeater-page"));
 const MorsePage = lazy(() => import("./features/morse/morse-page"));
 const FrequenciesPage = lazy(() => import("./features/frequencies/frequencies-page"));
+const SatellitesPage = lazy(() => import("./features/satellites/satellites-page"));
+const LicencesPage = lazy(() => import("./features/radio/licences-page"));
 const SearchPage = lazy(() => import("./features/search/search-page"));
 const StoragePage = lazy(() => import("./features/storage/storage-page"));
 const ManagePage = lazy(() => import("./features/manage/manage-page"));
@@ -43,6 +46,7 @@ const HelpPage = lazy(() => import("./features/help/help-page"));
 const GuidePage = lazy(() => import("./features/help/guide-page"));
 const KeptPage = lazy(() => import("./features/kept/kept-page"));
 const RadioPage = lazy(() => import("./features/radio/radio-page"));
+const HeardPage = lazy(() => import("./features/heard/heard-page"));
 const ToolsPage = lazy(() => import("./features/tools/tools-page"));
 const PreparePage = lazy(() => import("./features/prepare/prepare-page"));
 // The household's papers (Preparedness), on lines of their own so that other additions merge cleanly.
@@ -85,6 +89,10 @@ const QrPage = lazy(() => import("./features/qr/qr-page"));
 const NetworkPage = lazy(() => import("./features/network/network-page"));
 const SolarClockPage = lazy(() => import("./features/solar-clock/solar-clock-page"));
 const CompassPage = lazy(() => import("./features/compass/compass-page"));
+const TidesPage = lazy(() => import("./features/tides/tides-page"));
+const GardenPage = lazy(() => import("./features/garden/garden-page"));
+const NightSkyPage = lazy(() => import("./features/night-sky/night-sky-page"));
+const CelestialNavigationPage = lazy(() => import("./features/celestial-navigation/celnav-page"));
 const PropagationPage = lazy(() => import("./features/propagation/propagation-page"));
 const PlansPage = lazy(() => import("./features/propagation/plans/plans-page"));
 const PlanPage = lazy(() => import("./features/propagation/plans/plan-page"));
@@ -148,6 +156,7 @@ export function App() {
           <Route path="search" element={<SearchPage />} />
           <Route path="explore" element={<ExplorePage />} />
           <Route path="library" element={<LibraryPage />} />
+          <Route path="library/calibre" element={<CalibrePage />} />
           <Route path="library/documents/:id" element={<DocumentPage />} />
           <Route path="library/collections/:id" element={<CollectionPage />} />
           <Route path="library/read/:collectionId/*" element={<ReaderPage />} />
@@ -156,8 +165,12 @@ export function App() {
           <Route path="radio/repeaters/:id" element={<RepeaterPage />} />
           <Route path="radio/morse" element={<MorsePage />} />
           <Route path="radio/frequencies" element={<FrequenciesPage />} />
+          <Route path="radio/satellites" element={<SatellitesPage />} />
+          <Route path="radio/licences" element={<LicencesPage />} />
+          <Route path="radio/heard" element={<HeardPage />} />
           <Route path="notes" element={<NotesPage />} />
           <Route path="notes/:id" element={<NotesPage />} />
+          <Route path="notes/:id/versions" element={<NotesPage versions />} />
           <Route path="chat" element={<ChatPage />} />
           <Route path="chat/:id" element={<ChatPage />} />
           <Route path="contacts/*" element={<ContactsPage />} />
@@ -193,6 +206,10 @@ export function App() {
           <Route path="tools/network" element={<NetworkPage />} />
           <Route path="tools/solar-clock" element={<SolarClockPage />} />
           <Route path="tools/compass" element={<CompassPage />} />
+          <Route path="tools/tides" element={<TidesPage />} />
+          <Route path="tools/garden" element={<GardenPage />} />
+          <Route path="tools/night-sky" element={<NightSkyPage />} />
+          <Route path="tools/celestial-navigation" element={<CelestialNavigationPage />} />
           <Route path="prepare/weather" element={<WeatherPage />} />
           <Route path="prepare/plans" element={<EmergencyPlansPage />} />
           <Route path="prepare/plans/:id" element={<EmergencyPlanPage />} />

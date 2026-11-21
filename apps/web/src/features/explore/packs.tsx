@@ -78,7 +78,7 @@ function PackDialog({ pack, entries, onClose }: { pack: CatalogPack; entries: Ca
     const location = locations.find((item) => item.id === id);
     return location && locationProblem(location, requiredBytes) === null ? location : undefined;
   };
-  const location = usable(chosenLocation) ?? usable(preferredLocation(locations, requiredBytes));
+  const location = usable(chosenLocation) ?? usable(preferredLocation(locations, requiredBytes, "collections"));
 
   const install = useMutation({
     mutationFn: () =>
@@ -214,6 +214,7 @@ function PackDialog({ pack, entries, onClose }: { pack: CatalogPack; entries: Ca
                   value={location?.id}
                   onChange={setChosenLocation}
                   requiredBytes={requiredBytes}
+                  kind="collections"
                   approximate={size.approximate}
                 />
                 {!location ? (

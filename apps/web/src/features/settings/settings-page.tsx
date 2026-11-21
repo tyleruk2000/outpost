@@ -5,9 +5,13 @@ import { useLocation } from "react-router";
 import { settingsSections } from "@/components/nav";
 import { ErrorState, JumpLinks, Page, PageHeader } from "@/components/page";
 import { Segmented, Skeleton, Switch } from "@/components/ui/misc";
+import { AccessPinSetting } from "@/features/access/access-section";
+import { useAccess } from "@/features/access/data";
 import { BoardSettingsSection } from "@/features/board/settings-section";
+import { ReceiversSettingsSection } from "@/features/heard/receivers-section";
 import { GuidesLine } from "@/features/help/guides-line";
 import { MeshSettingsSection } from "@/features/mesh/mesh-settings-section";
+import { RadioLicenceSettingsSection } from "@/features/radio/licence-settings-section";
 import { useClockStyle } from "@/lib/clock";
 import { useSettings, useSystem, useUpdateSettings } from "@/lib/queries";
 import { useTheme } from "@/lib/theme";
@@ -15,12 +19,14 @@ import { plural } from "@/lib/utils";
 import { AnswersSection } from "./answers-section";
 import { BackupSection } from "./backup-section";
 import { ClockSetting } from "./clock-setting";
+import { ExportSection } from "./export-section";
 import { HeightSetting } from "./height-setting";
 import { HttpsSection } from "./https-section";
 import { NumberSetting, SettingRow, SettingsSection, TextSetting } from "./parts";
 import { SemanticSection } from "./semantic-section";
 import { TextSizeSetting } from "./text-size-setting";
 import { ToolsSection } from "./tools-section";
+import { UpdateSection } from "./update-section";
 
 function Fact({ label, value }: { label: string; value: ReactNode }) {
   return (
@@ -65,6 +71,7 @@ const SECTIONS = settingsSections.filter((section) => section.inContents);
 export default function SettingsPage() {
   const settings = useSettings();
   const system = useSystem();
+  const access = useAccess();
   const update = useUpdateSettings();
   const { theme, setTheme, reading, setReading } = useTheme();
   // Read here so that the whole screen, the backups and their times included, is drawn again when the clock is changed.
@@ -320,10 +327,15 @@ export default function SettingsPage() {
 
           <BoardSettingsSection settings={s} disabled={disabled} save={save} />
           <MeshSettingsSection />
+          <RadioLicenceSettingsSection settings={s} disabled={disabled} save={save} />
+          <ReceiversSettingsSection />
 
           <BackupSection />
+          <ExportSection />
 
           <HttpsSection settings={s} disabled={disabled} save={save} />
+
+          <UpdateSection />
         </>
       )}
 
@@ -334,11 +346,15 @@ export default function SettingsPage() {
       >
         <dl>
           <Fact label="Reachable from" value={info?.lanAccess ? "Every device on your local network" : "This device only"} />
-          <Fact label="Accounts" value="None. Anyone who can reach Outpost can read, add, change and delete." />
+          <Fact label="Accounts" value="None" />
+          <Fact
+            label="Changing and deleting"
+            value={access.data ? (access.data.mode === "pin" ? "Needs the household PIN" : "Every device, no PIN") : "…"}
+          />
         </dl>
         <p className="text-small text-ink-muted">
           {info?.lanAccess
-            ? "Outpost is shared with your network and has no sign-in, so use it only on a network where you trust everyone, such as your home. Do not forward its port to the internet."
+            ? "Outpost is shared with your network and has no sign-in, so use it only on a network where you trust everyone, such as your home. Do not forward its port to the internet. A household PIN keeps changing and deleting to the people who know it."
             : "To let phones and other computers on your network use this library, set "}
           {info?.lanAccess ? null : (
             <>
@@ -348,6 +364,7 @@ export default function SettingsPage() {
             </>
           )}
         </p>
+        <AccessPinSetting />
       </SettingsSection>
 
       <SettingsSection id="about" title="This installation" description="What Outpost is using on this device right now.">

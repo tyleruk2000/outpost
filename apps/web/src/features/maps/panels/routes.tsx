@@ -1,23 +1,10 @@
 /**
- * The Routes tab: routes drawn on the map and tracks imported from GPX files, their
+ * The Routes tab: routes drawn on the map and tracks imported from map files, their
  * visibility on the map, and one of them in detail with its elevation profile.
  */
-import { type Bbox, formatBytes, type MarkerDto, type TrackDto, type TrackImportResponse } from "@outpost/shared";
+import type { Bbox, TrackDto } from "@outpost/shared";
 import type { UseQueryResult } from "@tanstack/react-query";
-import {
-  ArrowLeft,
-  CircleAlert,
-  CircleCheck,
-  Download,
-  Ellipsis,
-  FileUp,
-  Mountain,
-  PenLine,
-  Scan,
-  Search,
-  Spline,
-  Trash2,
-} from "lucide-react";
+import { ArrowLeft, CircleAlert, Download, Ellipsis, FileUp, Mountain, PenLine, Scan, Search, Spline, Trash2 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ErrorState, Notice } from "@/components/page";
@@ -25,15 +12,16 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/menu";
-import { Checkbox, Skeleton, Spinner } from "@/components/ui/misc";
+import { Checkbox, Skeleton } from "@/components/ui/misc";
 import { KeepTrackButton } from "@/features/kept/keep-controls";
 import { ShareCodeButton } from "@/features/qr/share-code";
 import { errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { formatDate, formatNumber, plural } from "@/lib/utils";
-import { importGpx, useDeleteTrack, useSaveRoute, useTrack, useUpdateTrack } from "../data";
+import { useDeleteTrack, useSaveRoute, useTrack, useUpdateTrack } from "../data";
 import { FoundRouteFacts, FoundRouteHeights, FoundRouteNote, foundRouteSource } from "../find-route/source-credit";
 import type { LatLon } from "../lib/geo";
+import { MAP_FILE_ACCEPT } from "../lib/map-files";
 import { MARKER_HEX } from "../lib/palette";
 import { buildProfile, routeOrigin } from "../lib/profile";
 import { EDITABLE_POINTS, editablePoints } from "../lib/route-edit";
@@ -412,7 +400,7 @@ export function RoutesList({
     <input
       ref={input}
       type="file"
-      accept=".gpx,application/gpx+xml"
+      accept={MAP_FILE_ACCEPT}
       multiple
       className="sr-only"
       tabIndex={-1}
@@ -447,9 +435,9 @@ export function RoutesList({
         {chooser}
         <h3 className="font-title text-lead text-ink">No routes yet</h3>
         <p className="mt-1.5 text-small text-ink-muted">
-          Draw a route on the map point by point, find a known one by name (a waymarked walk, a cycle route), or import a GPX file from a
-          GPS, a phone app or a route-planning site. Whichever way, it is shown on the map with its distance, and can be exported as GPX.
-          You can also drop a file onto the map.
+          Draw a route on the map point by point, find a known one by name (a waymarked walk, a cycle route), or import a file (GPX, KML,
+          KMZ or GeoJSON) from a GPS, a phone app, a route-planning site or a council's open data. Whichever way, it is shown on the map
+          with its distance, and can be exported as GPX. You can also drop a file onto the map.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <Button variant="primary" onClick={onDraw} disabled={!canDraw}>
@@ -459,7 +447,7 @@ export function RoutesList({
             <Search /> Find a route
           </Button>
           <Button onClick={() => input.current?.click()}>
-            <FileUp /> Import GPX
+            <FileUp /> Import a map file
           </Button>
           {markerCount > 0 ? (
             <Button asChild>
@@ -481,7 +469,7 @@ export function RoutesList({
           <PenLine /> Draw a route
         </Button>
         <Button onClick={() => input.current?.click()}>
-          <FileUp /> Import GPX
+          <FileUp /> Import a map file
         </Button>
         <Menu>
           <MenuTrigger asChild>
@@ -632,156 +620,6 @@ function ExportDialog({
                 <Download /> Export
               </a>
             </Button>
-          )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-type ImportOutcome =
-  | { file: File; state: "waiting" | "working" }
-  | { file: File; state: "done"; result: TrackImportResponse }
-  | { file: File; state: "failed"; message: string };
-
-/**
- * Importing GPX files, whether chosen with the file picker or dropped on the map. The
- * one question is asked before anything is sent; afterwards the dialog says exactly
- * what came out of each file.
- */
-export function ImportGpxDialog({
-  files,
-  onClose,
-  onShow,
-}: {
-  files: File[] | null;
-  onClose: () => void;
-  onShow: (track: TrackDto | null, markers: MarkerDto[]) => void;
-}) {
-  const waypointsId = useId();
-  const [waypoints, setWaypoints] = useState(false);
-  const [outcomes, setOutcomes] = useState<ImportOutcome[] | null>(null);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: a new set of files starts a new import
-  useEffect(() => {
-    setOutcomes(null);
-    setWaypoints(false);
-  }, [files]);
-
-  const run = async () => {
-    if (!files) return;
-    let current: ImportOutcome[] = files.map((file) => ({ file, state: "waiting" }));
-    const set = (index: number, outcome: ImportOutcome) => {
-      current = current.map((item, position) => (position === index ? outcome : item));
-      setOutcomes(current);
-    };
-    setOutcomes(current);
-    for (const [index, file] of files.entries()) {
-      set(index, { file, state: "working" });
-      try {
-        set(index, { file, state: "done", result: await importGpx(file, waypoints) });
-      } catch (error) {
-        set(index, { file, state: "failed", message: errorMessage(error) });
-      }
-    }
-  };
-
-  const working = outcomes?.some((outcome) => outcome.state === "waiting" || outcome.state === "working") ?? false;
-  const finished = outcomes !== null && !working;
-  const firstDone = outcomes?.find((outcome): outcome is Extract<ImportOutcome, { state: "done" }> => outcome.state === "done");
-
-  return (
-    <Dialog open={files !== null} onOpenChange={(open) => !open && !working && onClose()}>
-      <DialogContent title={files && files.length > 1 ? `Import ${files.length} GPX files` : "Import a GPX file"} size="md">
-        <DialogBody className="grid gap-4">
-          {outcomes === null ? (
-            <>
-              <ul className="divide-y divide-border border-y border-border">
-                {files?.map((file) => (
-                  <li key={`${file.name}-${file.size}`} className="flex items-baseline justify-between gap-4 py-2 text-small">
-                    <span className="min-w-0 font-mono text-[0.8125rem] break-all text-ink">{file.name}</span>
-                    <span className="tabular shrink-0 text-ink-muted">{formatBytes(file.size)}</span>
-                  </li>
-                ))}
-              </ul>
-              <div className="flex items-start gap-3">
-                <Checkbox
-                  id={waypointsId}
-                  checked={waypoints}
-                  onCheckedChange={(checked) => setWaypoints(checked === true)}
-                  className="mt-0.5"
-                />
-                <label htmlFor={waypointsId} className="text-small text-ink">
-                  Also save its waypoints as places
-                  <span className="block text-ink-muted">
-                    Named points in the file (a summit, a car park) become saved places you can search for and edit.
-                  </span>
-                </label>
-              </div>
-            </>
-          ) : (
-            <ul className="grid gap-3">
-              {outcomes.map((outcome) => (
-                <li key={`${outcome.file.name}-${outcome.file.size}`}>
-                  {outcome.state === "done" ? (
-                    <Notice
-                      tone="success"
-                      icon={<CircleCheck />}
-                      title={outcome.result.track ? outcome.result.track.name : outcome.file.name}
-                    >
-                      {outcome.result.track ? (
-                        <dl className="mt-1">
-                          {trackFacts(outcome.result.track).map((fact) => (
-                            <Fact key={fact.label} label={fact.label}>
-                              {fact.value}
-                            </Fact>
-                          ))}
-                          {outcome.result.markers.length > 0 ? (
-                            <Fact label="Places saved">{plural(outcome.result.markers.length, "place")}</Fact>
-                          ) : null}
-                        </dl>
-                      ) : (
-                        <p>
-                          This file holds no track or route. {plural(outcome.result.markers.length, "waypoint")} from it{" "}
-                          {outcome.result.markers.length === 1 ? "was" : "were"} saved as places.
-                        </p>
-                      )}
-                    </Notice>
-                  ) : outcome.state === "failed" ? (
-                    <Notice tone="danger" icon={<CircleAlert />} title={`${outcome.file.name} was not imported`}>
-                      {outcome.message}
-                    </Notice>
-                  ) : (
-                    <p className="flex items-center gap-2.5 text-small text-ink-muted">
-                      {outcome.state === "working" ? <Spinner label="Importing" /> : <span className="size-4" />}
-                      <span className="font-mono text-[0.8125rem] break-all">{outcome.file.name}</span>
-                      {outcome.state === "working" ? "Reading the file" : "Waiting"}
-                    </p>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </DialogBody>
-        <DialogFooter>
-          {outcomes === null ? (
-            <>
-              <Button onClick={onClose}>Cancel</Button>
-              <Button variant="primary" onClick={run}>
-                Import
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button onClick={onClose} disabled={working}>
-                {finished && firstDone ? "Close" : "Done"}
-              </Button>
-              {finished && firstDone ? (
-                <Button variant="primary" onClick={() => onShow(firstDone.result.track, firstDone.result.markers)}>
-                  Show on the map
-                </Button>
-              ) : null}
-            </>
           )}
         </DialogFooter>
       </DialogContent>

@@ -88,7 +88,8 @@ depends on the error. The codes, from `apps/server/src/core/errors.ts`:
 | Code | HTTP status | Meaning |
 | --- | --- | --- |
 | `bad_request` | 400 | The request is not valid. For validation failures, `details.issues` lists them. |
-| `forbidden` | 403 | Refused: an address the server does not answer to, a missing header, a request from another site, a blocked download address. |
+| `forbidden` | 403 | Refused: an address the server does not answer to, a missing header, a request from another site, a blocked download address, a wrong household PIN (`details.wrongPin`). |
+| `locked` | 403 | A change from a device not unlocked with the household PIN. Every request under `/api/` but `GET`, `HEAD` and `OPTIONS` can answer this while a PIN is set, except those in `READ_BY_POST` (`modules/access`). |
 | `not_found` | 404 | No such thing. |
 | `conflict` | 409 | The request clashes with the current state: already exists, already running, edited elsewhere. |
 | `too_large` | 413 | A file or region is over a limit. |
@@ -148,6 +149,19 @@ Job types in use: `download.run`, `document.extract`, `documents.move`,
 
 A job that was cancelled part of the way through work that cannot be undone keeps a
 `result` saying what it had done by then; the three `manage.*` jobs do this.
+
+## The household PIN
+
+Types: `packages/shared/src/access.ts`. A device is unlocked by the `outpost_device` cookie these set (`HttpOnly`, `SameSite=Strict`). A script that changes things while a PIN is set unlocks once and sends the cookie back. Wrong PINs: five from an address (an IPv6 /64), then one a minute; `429` `too_many` with `Retry-After` beyond that.
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/access` | `{ access }` (`AccessState`): `mode` (`open` or `pin`), `canChange` for this device, `pinSetAt`, `unlockedDevices`, `unlockedAt`. |
+| `POST /api/access/unlock` | Body `{ pin }`. Unlocks this device. `403` `forbidden` for a wrong PIN. |
+| `POST /api/access/lock` | Locks this device. Open to a locked device. |
+| `POST /api/access/pin` | Body `{ pin, current? }`: 4 to 12 digits. Sets a PIN where there is none; with one set, changes it (`current` the PIN in use, from an unlocked device). Locks every other device; this one is unlocked. |
+| `POST /api/access/remove` | Body `{ current }`. Back to no PIN, from an unlocked device. |
+| `POST /api/access/lock-others` | Locks every unlocked device but this one. `{ access, locked }`. |
 
 ## System
 
@@ -499,6 +513,12 @@ Types: `packages/shared/src/documents.ts`.
 | `GET /api/ocr` | Whether this installation can run OCR and with what (`OcrStatus`): `available`, `reason` when not, `engine`, the installed `languages` (each `builtIn` or added, and whether `selected`), `missingLanguages`, `languageFolder`, `auto`, and `limits`. |
 | `GET /api/documents/:id/text` | The extracted text in sections (`DocumentTextResponse`). Query: `page`. Each section has `ocr: true` when it was read from a picture by OCR. |
 | `GET /api/documents/:id/markdown` | A Markdown document with its formatting, as a tree of plain values (`DocumentMarkdownResponse`): headings (each with an `id` made from its words), paragraphs, lists, quotes, code (with the `lang` written after the fence, such as `mermaid` or `viz`), tables, and bold, italic, code and links inside them. Never HTML. A link is one of three things: `link`, for an `http`, `https` or `mailto` address; `jump`, to a heading of the same document; or `ref`, for `outpost:entry/<entry id>/<chapter key>`, which carries the entry's id and name and, when it is in the library, the `collectionId` and `documentId` the server found. Pictures become their description and caption; embedded HTML becomes its words. `415` for a document that is not Markdown, `413` for a file over 2 MB (the web app then shows the text from `/text`), `404` when the file is missing. |
+| `GET /api/documents/:id/highlights` | The document's highlights in order (`HighlightsResponse`). |
+| `POST /api/documents/:id/highlights` | Marks a passage of a PDF, EPUB or Markdown document. Body (`CreateHighlightBody`): `exact`, `prefix`, `suffix`, `page` (PDF), `chapter` (EPUB), `note`. `{ highlight }`. The file is not written to. |
+| `POST /api/documents/:id/highlights/to-notes` | Makes a page in Notes of the highlights (all, or `highlightIds`), each with a link back. `{ note }`. |
+| `GET /api/highlights` | Highlights of every document whose words, note or document title contain `q` (`HighlightSearchResponse`). Query: `q`, `limit`. |
+| `PATCH /api/highlights/:id` | Body: `note`. `{ highlight }`. |
+| `DELETE /api/highlights/:id` | Deletes a highlight. |
 | `GET /api/documents/:id/pictures/:number` | One picture that a Markdown document carries (a saved web page keeps its pictures inside its file). `number` is 1 to 9999. Sent only if its bytes are a PNG, JPEG, GIF or WebP image, with that type, an `ETag`, and a sandbox policy. `404` when the document has no such picture or is not Markdown. |
 | `GET /api/documents/:id/epub` | What an EPUB book says about itself (`DocumentEpubResponse`): `title`, `author` and `language` from its package file, `cover` (the cover picture's path inside the archive, or `null`), `chapters` in reading order (each with its `position` from 1, a `title`, and the `heading` search knows it by), `contents` (the table of contents from the navigation document or the NCX: `title`, `chapter`, an `anchor` inside it, `depth`; empty when the book has none) and `notes` (sentences, such as that the book is fixed-layout). At most 2,000 chapters. `415` for a document that is not an EPUB, and for a book that cannot be read: `error.details.reason` is `protected` for a copy-protected (DRM) book, which is never opened, and `damaged` for one that is malformed. `404` when the file is missing, `503` while its storage is disconnected. See [epub.md](epub.md). |
 | `GET /api/documents/:id/epub/chapters/:position` | One chapter, by its place in the reading order from 1, as the same tree of plain values as `/markdown` (`DocumentEpubChapterResponse`: `position`, `total`, `title`, `blocks`, `notes`). Never the book's HTML, styles or scripts. Beyond what a Markdown file produces, a run may be `sup` or `sub`, an `anchor` (a place a link can land on), a `picture` (`src` is its path inside the archive), or a `chapter` link (to another chapter by number, 0 being the contents, with an optional `anchor`); a block may be a `figure` (a picture with a caption), a `quote` of `kind: "note"` (a footnote or sidebar), or a `table` marked `plain` (no header row). `notes` says what was left out: scripts, audio and video, mathematics, drawings, forms. `404` for a position the book does not have, `413` for a chapter over 2 MB or 120,000 tags (`details.reason` is `too_large`), `415` for one nested too deeply to read, and the refusals of the route above. |
@@ -527,6 +547,22 @@ played from `GET /api/documents/:id/file`. See [library.md](library.md#audiobook
 | `POST /api/audiobooks` | Multipart: one `.zip`, or one or more audio files; optional fields `title`, `librivoxId` and `locationId` (as fields or in the query). Each file is checked from its first bytes. `202` with `{ job }`: job `audiobook.add` unpacks a zip inside the location's incoming folder (names that climb out of it, absolute names and encrypted entries refuse the zip; links and other files are left out and listed in the result), orders the audio files by track number or name, files them under `collections/audiobooks/<title>/` and records the book. Its result is `AudiobookAddResult`: `collectionId`, `title`, `chapters`, `leftOut`. `400` for a zip together with other files, two zips, or a file that is neither a zip nor audio. |
 | `GET /api/audiobooks/librivox` | `LibrivoxShelfResponse`: the LibriVox shelf from `catalog/audiobooks.json`, each book with `approxBytes` and `inLibrary`. Makes no request to LibriVox or the Internet Archive. |
 
+### Calibre libraries
+
+Types: `packages/shared/src/calibre.ts`. Reading a library only ever reads its folder; see
+[library.md](library.md#books-from-calibre).
+
+| Route | What it does |
+| --- | --- |
+| `POST /api/calibre` | Body `{ locationId, relPath }`: the library's folder on a storage location. The path is checked with symbolic links followed (`403` for one that leads outside every storage location, `400` for a path out of the location or not a folder). Starts job `calibre.read` and answers `CalibreImportResponse` in state `reading`. The plan (`CalibrePlan`) has `bookCount`, `totalBytes` (book files and covers), `coverCount`, `hasCalibreDatabase`, the first 300 `books`, `leftOut` with a reason each, and `beyondLimit` (books past 20,000). A folder with no books ends `failed` with a message. |
+| `GET /api/calibre` | `CalibreImportListResponse`: the latest imports, newest first. Query `limit` (20 by default, at most 100). |
+| `GET /api/calibre/:id` | One import with its plan, its options, its job's progress while one runs, and its `report` (`added`, `alreadyThere`, `failed`, `stopped`) when it has run. |
+| `POST /api/calibre/:id/commit` | Body `{ mode: "copy" \| "in-place", locationId? }`. `copy` checks the destination has room for `totalBytes` first (`507`); `in-place` records each file where it is. Starts job `calibre.import`. `409` unless the import is `ready` or `failed` with a plan. Committing a `failed` import again adds only what is missing. |
+| `POST /api/calibre/:id/cancel` | Stops reading or importing. Books already added stay. |
+| `DELETE /api/calibre/:id` | Sets aside a plan that was not carried out (`discarded`). `409` while importing and once completed. |
+| `GET /api/documents/:id/book` | `BookDetailsResponse`: `details` with `authors`, `series`, `seriesIndex`, `coverUrl` and `inCalibreFolder` (the file is read where it lies; the web app then removes only the record), or `null` for a document that did not come from Calibre. |
+| `GET /api/documents/:id/cover` | The kept cover picture (JPEG, PNG, WebP or GIF, with its type). `404` when there is none. |
+
 ## Notes
 
 Types: `packages/shared/src/notes.ts`. See
@@ -540,7 +576,7 @@ Types: `packages/shared/src/notes.ts`. See
 | `GET /api/notes/trash` | Pages in the trash (`NoteTrashResponse`). |
 | `GET /api/notes/templates` | Built-in templates and your own (`NoteTemplatesResponse`). |
 | `GET /api/notes/lookup` | Pages whose title contains `q`, for the link menu. Query: `q`, `limit`. |
-| `POST /api/notes` | Creates a page. Body (`CreateNoteBody`): `parentId`, `title`, `icon`, `content`, `templateId`, `afterId`. `{ note }`. |
+| `POST /api/notes` | Creates a page. Body (`CreateNoteBody`): `parentId`, `title`, `icon`, `content`, `templateId`, `afterId`, `clientId`. `{ note }`. `clientId` (8 to 64 letters, digits, `-`, `_`) becomes the page's id: sent again, the answer is the page made the first time, as it is now, and no second page is made. |
 | `GET /api/notes/:id` | `{ note }` (`NoteDetail`): content, tags, breadcrumbs, backlinks, children. Query `view=1` records that the page was opened. |
 | `PATCH /api/notes/:id` | Saves changes. Body (`UpdateNoteBody`): `title`, `icon`, `content`, `tags`, `isFavorite`, `coverAttachmentId`, `isTemplate`, `baseUpdatedAt`, `removeEncryption`, `origin` (up to 64 characters naming the tab that saves; it comes back in the `notes.changed` event, so that tab need not fetch the page again). If the stored page is newer than `baseUpdatedAt` the answer is `409 conflict` with `details.current`, and nothing is overwritten. For an encrypted page see below. |
 | `POST /api/notes/:id/move` | Body (`MoveNoteBody`): `parentId`, `afterId`. |
@@ -548,6 +584,11 @@ Types: `packages/shared/src/notes.ts`. See
 | `DELETE /api/notes/:id` | Moves the page and its sub-pages to the trash. `{ trashed: [ids] }`. |
 | `DELETE /api/notes/:id?permanent=1` | Deletes a page that is in the trash for good, with attachments nothing else uses. |
 | `POST /api/notes/:id/restore` | Brings a page back from the trash. |
+| `GET /api/notes/:id/versions` | Earlier versions of the page, newest first (`NoteVersionsResponse`). |
+| `GET /api/notes/:id/versions/:versionId` | `{ version }` (`NoteVersionDetail`), with its content. |
+| `POST /api/notes/:id/versions/:versionId/restore` | Body (`RestoreNoteVersionBody`): `baseUpdatedAt`. Saves the version as the page's newest, keeping the current one as a version. `409` if the page is newer than `baseUpdatedAt`. |
+| `GET /api/notes/versions/space` | `NoteVersionsSpace`: how many versions of how many pages, and their bytes. |
+| `DELETE /api/notes/versions` | Erases every earlier version of every page. `{ cleared }`. |
 | `GET /api/notes/:id/export.md` | The page as a Markdown file. |
 | `GET /api/notes/export.zip` | The whole workspace as a zip of Markdown files and attachments. |
 | `POST /api/attachments` | Uploads one file as `multipart/form-data` (at most 50 MB). Optional `noteId` field or query parameter. `{ attachment }` (`AttachmentDto`). |
@@ -826,6 +867,8 @@ The live event `layers.changed` is published when a pack is installed, updated o
 | `POST /api/maps/tracks` | Saves a route drawn on the map: straight lines between the points sent. Body: `name`, `points` (at least two of `{ lat, lon }`), `description?`, `color?`. Answers `{ track, elevation }` (`RouteSaveResponse`). |
 | `PUT /api/maps/tracks/:id/points` | Replaces a track's lines with one drawn through `points`. Its waypoints are kept. Answers `{ track, elevation }`. |
 | `POST /api/maps/tracks/import` | One GPX file as `multipart/form-data` (at most 20 MB). Optional fields: `name`, `color`, `importWaypointsAsMarkers`. Answers `{ track, markers }`. A waypoint saved as a marker takes the icon its `<sym>` stands for, when it is a known one. |
+| `POST /api/maps/files/preview` | One GPX, KML, KMZ or GeoJSON file as `multipart/form-data` (at most 20 MB). Reads it and saves nothing. Answers `{ format, name, points, lines, outlines, linePoints }`. |
+| `POST /api/maps/files/import` | The same file. Its lines become one new track (polygons' rings as closed lines marked `_outline`), its points new markers; a GPX file's waypoints only with `importWaypointsAsMarkers`. Optional fields as for the GPX import. Answers `{ track, markers, outlines }`. |
 | `PUT /api/maps/recordings/:id` | Saves a track recorded on the map. `:id` is 26 characters chosen by the device (digits and lower-case letters, without `i`, `l`, `o`, `u`), and becomes the track's id. Body: `multipart/form-data` with `name`, `color?` and one GPX file (at most 20 MB) holding tracks only, with a time at every point and at most 150,000 points. Answers `{ track, alreadySaved }`; sent again with the same id, it answers with the track already there and writes nothing. See [maps.md](maps.md#recording-a-track). |
 | `GET /api/maps/tracks/:id` | One track with its geometry as GeoJSON. |
 | `PATCH /api/maps/tracks/:id` | Body: `name?`, `description?`, `color?`. |
@@ -1169,11 +1212,47 @@ says why in `error.details.reason`: `passphrase_required`, `wrong_passphrase`,
 | `GET /api/backup/stored/:name/download` | The file. Refuses a request that another site caused the browser to make. |
 | `POST /api/backup/stored/:name/restore` | Local only. Body: `{}`, or `{ passphrase }` for a protected backup (never from another device over plain http). Checks that backup and stages it, exactly as an upload is. `{ staged, createdAt, appVersion, supervised }`. |
 | `DELETE /api/backup/stored/:name` | Local only. Deletes that backup and the record of its check. |
+| `POST /api/backup/stored/:name/test` | Test a restore. Body: `{}`, or `{ passphrase }` for a protected backup (held in memory for that job only). Opens the backup into a scratch folder, checks it and counts what it holds, then removes the folder; nothing live changes. `{ job }`. The result is `restoreTest` in `GET /api/backup/schedule`. |
 
 `:name` must be a file name Outpost gives its backups (`….zip`, or `….zip.enc` for a
 protected one); anything else is `404`. The
 server publishes `backup.changed` on the event stream when the schedule, a backup or
 the list changes.
+
+## Storage: where new things go
+
+| Route | What it does |
+| --- | --- |
+| `PUT /api/storage/kind-defaults` | Body `{ kind, locationId }`, `kind` one of `maps`, `terrain`, `places`, `layers`, `collections`, `documents`; `locationId: null` puts the kind back on the default. `{ kindDefaults }`. Each location in `GET /api/storage/locations` lists its kinds as `defaultFor`. |
+
+## Updates
+
+| Route | What it does |
+| --- | --- |
+| `GET /api/update/status` | `UpdateStatus`: `current`, `install` (`docker-helper`, `docker`, `portable`, `source`), `keyed`, `latest`, `staged`, `lastResult`, `waiting`, `active`, `right`. |
+| `POST /api/update/check` | Fetches `latest.json` and its signature from `OUTPOST_UPDATE_URL` and checks them. The status, with `latest`. |
+| `POST /api/update/download` | Local only. Fetches the newer release file and checks and keeps it, as a job. `{ job }`. |
+| `POST /api/update/upload` | Local only. The release file as the body, `Content-Type: application/vnd.outpost.update`; checked and kept as a job. `{ job }`. |
+| `GET /api/update/files` | `{ files }`: release files at the top of connected storage locations and in their `outpost-updates` folders. |
+| `POST /api/update/from-storage` | Local only. Body `{ locationId, relPath }`. Checks and keeps that file, as a job; the file is left where it is. `{ job }`. |
+| `POST /api/update/apply` | Local only, and only with the update service. Backs up, then hands the kept release to the service. `{ job }`. |
+| `DELETE /api/update/staged` | Removes the kept release. |
+| `POST /api/update/restore-before` | Local only. Body `{}` or `{ passphrase }`. Stages the backup made before the last update, as a restore. |
+
+"Local only" is the rule restoring a backup follows. The server publishes `update.changed`
+when a release is kept or removed and when the update service's answer is read.
+
+## Taking everything out
+
+| Route | What it does |
+| --- | --- |
+| `GET /api/export-all/estimate` | `ExportEstimate`: for each part (`notes`, `contacts`, `places`, `supplies`, `barometer`, `radio-log`, `plans`, `papers`, `board`, `documents`) its label, format, count, rough size before compression and what is left out; and `totalBytes`. |
+| `GET /api/export-all` | `{ latest }`: the newest `export-all.run` job. Its `result` (`ExportResult`) has the file `name`, `sizeBytes`, `destination`, `locationName` and `folder` or `downloadable`, the count of each part and what was left out. |
+| `POST /api/export-all` | Body: `{ destination, include? }`, where `destination` is `{ kind: "download" }` or `{ kind: "location", locationId }`. Starts an `export-all.run` job on the `export` queue; `409` while one is under way. |
+| `GET /api/export-all/:id/download` | The zip of an export made for downloading. Refuses a request that another site caused the browser to make. |
+| `DELETE /api/export-all/:id/download` | Deletes that file from the server. A file written to a storage location is not touched. |
+
+The server publishes `export-all.changed` when an export starts or ends, or its file is removed.
 
 ## Managing and cleaning up
 
@@ -1386,6 +1465,43 @@ publish `readiness.changed`.
 | `GET /api/offline-drill` | `OfflineDrillResponse`: `lines` (`DrillLine`: `held`, `missing`, `stale` or `untried`, with the screen that fixes it) read from what the modules hold, and `lastRun`. |
 | `POST /api/offline-drill/runs` | `{ by, startedAt, answers, notes? }`: the result of a drill, `answers` from step id (`DRILL_STEPS`) to `"worked"` or `"failed"`; unknown steps are dropped. |
 
+## Garden
+
+Types: `packages/shared/src/garden.ts`; see [garden.md](garden.md). Changes publish
+`garden.changed`. The calendar is not served: the screen works it out with `gardenMonth`.
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/garden` | `GardenResponse`: `settings` (`lastFrost` as "MM-DD" or null) and every sowing, newest first. |
+| `PUT /api/garden/settings` | Body `{ lastFrost }`: a day of an ordinary year as "MM-DD", or null to clear it. `400` for anything else, 29 February included. |
+| `POST /api/garden/sowings` | Record a sowing (`GardenSowingInput`): `cropId` (one of `GARDEN_CROP_IDS`, or null with a `name`), `sownOn`, and optional `place`, `amount`, `plantedOutOn`, `harvestedOn`, `notes`. A calendar crop with no name is called by the crop's name. At most 5,000. |
+| `PUT /api/garden/sowings/:id` | Replace it. `404` if it has gone. |
+| `DELETE /api/garden/sowings/:id` | Remove it. |
+
+## Tide times
+
+Types: `packages/shared/src/tides.ts`; see [tides.md](tides.md). Nothing is kept: each answer is worked out
+when asked from the bundled constants.
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/tides/stations?lat=&lon=&limit=` | `TideStationsResponse`: the `limit` (1 to 50, default 8) nearest stations with `distanceKm` and `datum` ("MLLW" or "MSL"), and the `source`. |
+| `GET /api/tides/stations/:id/predictions?from=&days=&lat=&lon=` | `TidePredictionResponse`: high and low waters (`turns`) and the height every 10 minutes (`curve`), in metres above the datum, from `from` (ms) for `days` (1 to 31, default 7). `lat` and `lon`, if given, set `distanceKm`. `404` for an unknown station. |
+
+## Satellites
+
+Types: `packages/shared/src/satellites.ts`; see [satellites.md](satellites.md). Positions and
+passes are worked out in the browser (`apps/web/src/features/satellites/engine.ts`); the
+server keeps elements and transmitters only. Changes publish `satellites.changed`.
+
+| Route | What it does |
+| --- | --- |
+| `GET /api/satellites` | `SatellitesResponse`: `satellites` (`noradId`, `name`, `designator`, `epoch` in ms, `elements` as CelesTrak's OMM fields, `groups`), `transmitters` (Hz; `uplinkLowHz`, `downlinkLowHz` …, `alive`, `mode`, `type`, `invert`), `sources` (`celestrak`, `satnogs`: `fetchedAt`, `count`, `error`, `triedAt`), `fetching`, `now`. Asks no one. |
+| `POST /api/satellites/fetch` | The one route that contacts CelesTrak and SatNOGS DB. CelesTrak is not asked within 2 hours of the last good fetch, SatNOGS DB not within a day. `SatellitesFetchResponse`: `sources`, `said` (what was done, in words). `502` when CelesTrak fails; the elements kept before stay. Two presses at once share one fetch. |
+
+The licence setting is two ordinary settings, `radio.licensed` and `radio.callsign`
+(`PATCH /api/settings`).
+
 ## Mesh radio
 
 Types: `packages/shared/src/mesh.ts`; see [mesh-radio.md](mesh-radio.md). Radio channels
@@ -1407,6 +1523,16 @@ refused with `400`. A message's `meta` carries `MeshMeta` (`node`, `snr`, `hops`
 | `GET /api/mesh/positions` | `MeshPositionsResponse`: `radios` `[{ id, transport, shortName, longName, onMap, at, position }]`, newest first; `position` is null unless the radio is switched on for the map. |
 | `PUT /api/mesh/radios/:id/map` | Body `{ onMap }`. Switches one radio on or off for the map, for every device. `404` for a radio not heard. Answers `MeshPositionsResponse`. |
 | `POST /api/mesh/test` | Body `{ channel, author }`: posts "Test message from Outpost" on a carried radio channel, as `POST /api/board/messages` would. `{ message }`. |
+| `GET /api/heard/receivers` | `HeardReceiversResponse`: `receivers` (each with `status`: `state`, `lastPacketAt`, `packets`, `positions`, `malformed`, `refused`, `lastError`, `retryAt`), `right`, `space`, `aircraftHours`, `pi` (null unless the installer set up the decoders). |
+| `POST /api/heard/receivers`, `PUT /api/heard/receivers/:id`, `DELETE /api/heard/receivers/:id` | Body `HeardReceiverInput` `{ kind, name, host, port, transport, enabled }`. Held to the computer Outpost runs on (`403` otherwise). UDP only for ships, from an address given as numbers. Answers as `GET`. |
+| `GET /api/heard/stations?source=` | `HeardStationsResponse`: every station of a source, or of every source but the mesh radios, last heard first (at most 5,000). |
+| `GET /api/heard/stations/:id` | `HeardStationResponse` `{ station, trail }` (the last 500 positions). |
+| `PUT /api/heard/stations/:id/pin` | Body `{ pinned, name? }`. `{ station }`. |
+| `DELETE /api/heard/stations/:id` | Removes one station and its trail. `{ stations, reports }`. |
+| `POST /api/heard/clear` | Body `{ source?, before? }`: all of it, one source, what was last heard before a time. `{ stations, reports }`. |
+| `GET /api/heard/reports?receiverId=&stationId=&from=&to=` | APRS and mesh positions for the range view, at most 20,000 (`limited`). |
+| `GET /api/heard/range-tests`, `POST /api/heard/range-tests`, `DELETE /api/heard/range-tests/:id` | Range tests kept by name `{ name, receiverId, stationId, from, to }`. |
+| `POST /api/heard/pi` | Body `{ decoder, action: start \| stop \| refresh, device? }`: leaves a request for the Pi's decoder helper. Held to the computer Outpost runs on. |
 
 ## Everything else
 

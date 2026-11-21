@@ -68,7 +68,7 @@ const TOO_MANY = {
 const round = (value: number, digits: number) => Math.round(value * 10 ** digits) / 10 ** digits;
 
 /** A position worth storing, or undefined for one that is nowhere on Earth. */
-function cleanPosition(lon: number, lat: number, ele: number): Position | undefined {
+export function cleanPosition(lon: number, lat: number, ele: number): Position | undefined {
   if (!Number.isFinite(lon) || !Number.isFinite(lat)) return undefined;
   if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return undefined;
   // Six decimals is about ten centimetres: finer than any receiver, and much smaller to store.

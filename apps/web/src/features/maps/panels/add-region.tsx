@@ -237,9 +237,14 @@ export function AddRegion({
     return () => window.removeEventListener("keydown", onKey, true);
   }, [drawing]);
 
-  // The map and its terrain go to the same place, so the room needed is for both together.
+  // The map and its terrain go to the same place unless new terrain is set to go somewhere
+  // of its own (Storage); the room needed is for both together either way, which is the safe side.
   const requiredBytes = estimate.data?.totalBytes ?? null;
-  const destination = useDestination(requiredBytes);
+  const destination = useDestination(requiredBytes, "maps");
+  const terrainOwn = destination.locations.find(
+    (location) => location.defaultFor?.includes("terrain") && location.status === "available" && location.id !== destination.locationId,
+  );
+  const terrainElsewhere = includeTerrain && !destination.picked ? terrainOwn : undefined;
 
   // The choices before a download fill more than half a phone's screen.
   useEffect(() => {
@@ -262,6 +267,7 @@ export function AddRegion({
         maxZoom,
         includeTerrain,
         locationId: destination.locationId,
+        ...(terrainElsewhere ? { terrainLocationId: terrainElsewhere.id } : {}),
       },
       {
         onSuccess: () => {
@@ -531,7 +537,13 @@ export function AddRegion({
         <div ref={whereRef} className="grid scroll-mt-4 gap-2">
           <h4 className="text-small font-semibold text-ink">Where to keep it</h4>
           <DestinationPicker destination={destination} />
-          {includeTerrain ? <p className="text-small text-ink-muted">The terrain is kept in the same place as the map.</p> : null}
+          {includeTerrain ? (
+            <p className="text-small text-ink-muted">
+              {terrainElsewhere
+                ? `The terrain goes to ${terrainElsewhere.name}, where new terrain is set to go.`
+                : "The terrain is kept in the same place as the map."}
+            </p>
+          ) : null}
         </div>
 
         {start.isError ? (

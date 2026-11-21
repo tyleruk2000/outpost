@@ -1,6 +1,8 @@
 import { ChevronRight } from "lucide-react";
 import { Link } from "react-router";
 import { Page, PageHeader, Rows } from "@/components/page";
+import { FirstUseGuide } from "@/features/help/first-use";
+import { LicenceLine } from "@/features/radio/licence";
 
 /** The radio tools Outpost has, in one place. Each row is a tool; a new one is one more row. */
 const TOOLS = [
@@ -47,6 +49,24 @@ const TOOLS = [
       "Where to tune to hear the time, news, warnings, weather and other people when the internet is out: time signals, emergency and news broadcasters, weather, distress, amateur and licence-free channels, by country.",
   },
   {
+    to: "/radio/satellites",
+    name: "Satellites",
+    about:
+      "When the amateur, weather and crewed satellites pass over Home, where they are now, the sky track of a pass and what to tune to through it for Doppler.",
+  },
+  {
+    to: "/radio/licences",
+    name: "Licences and band plans",
+    about:
+      "What each class of amateur licence may use and at what power, and the licence-free radio anyone may use, from each country's regulator.",
+  },
+  {
+    to: "/radio/heard",
+    name: "Heard on the radio",
+    about:
+      "APRS stations, aircraft and ships your own receivers hear, on the map and in a list with distance and bearing from home, and how far a receiver hears. Listening only.",
+  },
+  {
     to: "/maps",
     name: "Line of sight, on the map",
     about: "Whether two points can see each other over the terrain installed, for VHF and above. Geometry, not a prediction of signal.",
@@ -67,6 +87,12 @@ export default function RadioPage() {
   return (
     <Page width="reading">
       <PageHeader title="Radio" description="Tools for planning radio contacts. Everything here works with no connection." />
+      <LicenceLine use="listen-and-transmit" className="mb-6" />
+      <FirstUseGuide
+        slug="radio-quick-start"
+        words="New to radio here? Four short steps: something to listen to, the frequency sheets, repeaters, and a mesh message."
+        className="mb-6"
+      />
       <Rows className="border-y border-border">
         {TOOLS.map((tool) => (
           <li key={tool.name}>
@@ -84,8 +110,11 @@ export default function RadioPage() {
         ))}
       </Rows>
       <p className="mt-6 text-small text-ink-muted">
-        Nothing here says which frequencies you may transmit on. That is set by your licence; the band sheets in the library give the
-        limits.
+        What each class of licence may transmit on, country by country, is under{" "}
+        <Link to="/radio/licences" className="text-primary underline underline-offset-2">
+          Licences and band plans
+        </Link>
+        .
       </p>
     </Page>
   );

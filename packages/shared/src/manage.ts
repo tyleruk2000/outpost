@@ -5,6 +5,7 @@
 import type { BoardKept } from "./board.ts";
 import type { JobDto, LocalBy } from "./common.ts";
 import type { GamesKept } from "./games.ts";
+import type { GardenKept } from "./garden.ts";
 import type { LearningKept } from "./learning.ts";
 import type { MorseKept } from "./morse.ts";
 import type { StorageKind } from "./storage.ts";
@@ -146,10 +147,14 @@ export interface CleanupPlan {
     morse?: MorseKept;
     /** The games: the allotment's plot and each game's tally, one row each. Absent from a plan made before they were counted. */
     games?: GamesKept;
+    /** The garden: sowings recorded and the last-frost date. Absent from a plan made before they were counted. */
+    garden?: GardenKept;
     /** Messages, check-ins and sent files on the household board. Absent from a plan made before they were counted. */
     board?: BoardKept;
     /** Learning progress in reference archives: learners and the pages recorded for them. Absent from a plan made before it was counted. */
     learning?: LearningKept;
+    /** Stations, aircraft and ships heard on the radio, with their trails (Heard on the radio). Absent from a plan made before they were counted. */
+    heard?: number;
     /** PGP keys kept for contacts, any private key of the person's own among them. Absent from a plan made before they were counted. */
     pgpKeys?: number;
     /** Records of merges from portable drives, which hold earlier versions of pages. Absent from a plan made before they were counted. */
@@ -233,8 +238,10 @@ export interface CleanupResult extends Record<string, unknown> {
     readiness?: number;
     morse?: MorseKept;
     games?: GamesKept;
+    garden?: GardenKept;
     board?: BoardKept;
     learning?: LearningKept;
+    heard?: number;
     pgpKeys?: number;
     driveMerges?: number;
     settings: number;

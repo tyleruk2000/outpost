@@ -107,6 +107,14 @@ export const GUIDES: Guide[] = [
     opens: { to: "/settings/status", label: "Open Server status" },
   },
   {
+    slug: "updating",
+    file: "updating.md",
+    group: "looking-after",
+    about: "Updating Outpost from the app or from a release file on a USB stick, and what each kind of installation allows.",
+    keywords: "update upgrade new version release usb stick offline install roll back",
+    opens: { to: "/settings#updates", label: "Open Settings, Updates" },
+  },
+  {
     slug: "troubleshooting",
     file: "troubleshooting.md",
     group: "looking-after",
@@ -178,6 +186,23 @@ export const GUIDES: Guide[] = [
     keywords: "pages write import notion markdown web page",
     opens: { to: "/notes", label: "Open Notes" },
   },
+  // The two quick starts, for the rest of the household; each is offered on its screens the first time they open.
+  {
+    slug: "map-quick-start",
+    file: "map-quick-start.md",
+    group: "using",
+    about: "Find a place, read the height and grid reference, print a map, and check line of sight and radio range, step by step.",
+    keywords: "map quick start beginner how do i grid reference height print line of sight range first time",
+    opens: { to: "/maps", label: "Open Maps" },
+  },
+  {
+    slug: "radio-quick-start",
+    file: "radio-quick-start.md",
+    group: "using",
+    about: "Find something to listen to, the frequency sheets, repeaters, and a message by mesh radio, step by step.",
+    keywords: "radio quick start beginner how do i frequencies listen repeaters mesh message first time",
+    opens: { to: "/radio", label: "Open Radio" },
+  },
   {
     slug: "maps",
     file: "maps.md",
@@ -219,6 +244,15 @@ export const GUIDES: Guide[] = [
     opens: { to: "/settings#mesh", label: "Open Mesh radio in Settings" },
   },
   {
+    slug: "heard-on-the-radio",
+    file: "heard-on-the-radio.md",
+    group: "using",
+    about:
+      "APRS stations, aircraft and ships your own receivers hear, on the map and in a list. Listening only. Not yet tried with a real radio.",
+    keywords: "aprs ads-b aircraft ships ais dire wolf receiver sdr range",
+    opens: { to: "/radio/heard", label: "Open Heard on the radio" },
+  },
+  {
     slug: "encryption",
     file: "encryption.md",
     group: "using",
@@ -241,6 +275,22 @@ export const GUIDES: Guide[] = [
     about: "Where to tune to hear the time, news, warnings and weather when the internet is out.",
     keywords: "listen shortwave broadcast scanner",
     opens: { to: "/radio/frequencies", label: "Open Frequencies to listen to" },
+  },
+  {
+    slug: "radio-licences",
+    file: "radio-licences.md",
+    group: "using",
+    about: "What you may listen to, what is licence-free, and what needs an amateur licence, from Ofcom and the FCC.",
+    keywords: "ham callsign scanner airband ads-b ais pmr446 legal listen transmit",
+    opens: { to: "/settings#radio-licence", label: "Open Radio licence in Settings" },
+  },
+  {
+    slug: "satellites",
+    file: "satellites.md",
+    group: "using",
+    about: "Passes of the amateur, weather and crewed satellites over Home, where they are now, and Doppler.",
+    keywords: "satellite iss pass orbit doppler sgp4 tle amsat noaa",
+    opens: { to: "/radio/satellites", label: "Open Satellites" },
   },
   {
     slug: "hf-propagation",
@@ -289,6 +339,38 @@ export const GUIDES: Guide[] = [
     about: "Telling the time from the sun and the stars.",
     keywords: "sundial time stars",
     opens: { to: "/tools/solar-clock", label: "Open Solar clock" },
+  },
+  {
+    slug: "tides",
+    file: "tides.md",
+    group: "using",
+    about: "High and low water at the tide stations near a place, worked out with no internet.",
+    keywords: "tide high water low water coast sea harbour",
+    opens: { to: "/tools/tides", label: "Open Tide times" },
+  },
+  {
+    slug: "night-sky",
+    file: "night-sky.md",
+    group: "using",
+    about: "The Moon tonight, a chart of the stars and planets, and finding north by the stars.",
+    keywords: "stars moon planets constellations polaris",
+    opens: { to: "/tools/night-sky", label: "Open Night sky" },
+  },
+  {
+    slug: "celestial-navigation",
+    file: "celestial-navigation.md",
+    group: "using",
+    about: "A position from sextant sights, with the almanac worked out on the device.",
+    keywords: "sextant sight fix latitude longitude almanac",
+    opens: { to: "/tools/celestial-navigation", label: "Open Celestial navigation" },
+  },
+  {
+    slug: "garden",
+    file: "garden.md",
+    group: "using",
+    about: "What to sow, plant and harvest this month, your last frost, and the record of sowings.",
+    keywords: "vegetables sow harvest frost",
+    opens: { to: "/tools/garden", label: "Open Garden" },
   },
   {
     slug: "qr-and-network",
@@ -376,6 +458,12 @@ export const GUIDES: Guide[] = [
   { slug: "api", file: "api.md", group: "developers", about: "Every route the server answers, with what it takes and gives." },
   { slug: "server-modules", file: "development/server-modules.md", group: "developers", about: "Writing a module of the server." },
   { slug: "web-screens", file: "development/web-screens.md", group: "developers", about: "Building a screen of the web app." },
+  {
+    slug: "releases",
+    file: "development/releases.md",
+    group: "developers",
+    about: "Making and signing a release, and how an update is installed.",
+  },
   { slug: "untested", file: "development/untested.md", group: "developers", about: "What has not been tried yet, by feature." },
 ];
 

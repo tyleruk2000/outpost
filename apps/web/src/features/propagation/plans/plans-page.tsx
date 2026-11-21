@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/misc";
+import { LicenceLine } from "@/features/radio/licence";
 import { errorMessage } from "@/lib/api";
 import { plural } from "@/lib/utils";
 import { useCreatePlan, usePlans } from "./data";
@@ -30,6 +31,7 @@ export default function PlansPage() {
         description="Several stations, and for each pair of them which band is predicted to serve at which hour. Worked out by VOACAP from monthly medians, and written out to print and carry."
         actions={plans.data && plans.data.length > 0 ? start : undefined}
       />
+      <LicenceLine use="listen-and-transmit" className="mb-6" />
       {plans.isPending ? (
         <div className="grid gap-3">
           <Skeleton className="h-14 w-full" />

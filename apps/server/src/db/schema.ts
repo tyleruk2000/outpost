@@ -293,6 +293,44 @@ export const bookChapters = sqliteTable(
   ],
 );
 
+/**
+ * What a book brought in from a Calibre library says about itself beyond what every
+ * document has: all its authors, its series and place in it, and whether Outpost kept a
+ * copy of its cover (under `<data>/covers/`). Deleting the document removes the row.
+ */
+export const bookDetails = sqliteTable("book_details", {
+  documentId: text("document_id")
+    .primaryKey()
+    .references(() => documents.id, { onDelete: "cascade" }),
+  authors: json<string[]>("authors").notNull(),
+  series: text("series"),
+  seriesIndex: real("series_index"),
+  /** Extension of the kept cover ("jpg", "png"), or null when there is none. */
+  coverExt: text("cover_ext"),
+  /** Calibre's own identifier for the book, so the same book brought in twice is recognised. */
+  calibreUuid: text("calibre_uuid"),
+  createdAt: createdAt(),
+});
+
+/**
+ * Bringing in a Calibre library from a folder on a storage location: read first (the
+ * plan), then carried out as the person chose. The Calibre folder is only ever read.
+ */
+export const calibreImports = sqliteTable("calibre_imports", {
+  id: id(),
+  state: text("state", { enum: ["reading", "ready", "importing", "completed", "failed", "discarded"] }).notNull(),
+  /** No reference to the location: forgetting a location must not be held up by an old import. */
+  locationId: text("location_id").notNull(),
+  /** The Calibre library's folder inside the location. */
+  relPath: text("rel_path").notNull(),
+  plan: json<Record<string, unknown>>("plan"),
+  options: json<Record<string, unknown>>("options"),
+  report: json<Record<string, unknown>>("report"),
+  error: text("error"),
+  createdAt: createdAt(),
+  completedAt: integer("completed_at"),
+});
+
 // ── Notes ───────────────────────────────────────────────────────────────────
 
 export const notes = sqliteTable(
@@ -352,6 +390,54 @@ export const noteLinks = sqliteTable(
     primaryKey({ columns: [table.sourceId, table.targetKind, table.targetId] }),
     index("note_links_target_idx").on(table.targetKind, table.targetId),
   ],
+);
+
+/**
+ * What a page said before a save changed it. Thinned with age (see notes/versions.ts).
+ * A page that is encrypted keeps only versions that are themselves ciphertext.
+ */
+export const noteVersions = sqliteTable(
+  "note_versions",
+  {
+    id: id(),
+    noteId: text("note_id")
+      .notNull()
+      .references(() => notes.id, { onDelete: "cascade" }),
+    title: text("title").notNull().default(""),
+    content: json<Record<string, unknown>>("content").notNull(),
+    encrypted: integer("encrypted", { mode: "boolean" }).notNull().default(false),
+    /** When the page was saved like this (the page's `updatedAt` at the time). */
+    savedAt: integer("saved_at").notNull(),
+    /** Bytes of the stored content, for the Storage screen. */
+    sizeBytes: integer("size_bytes").notNull().default(0),
+  },
+  (table) => [index("note_versions_note_idx").on(table.noteId, table.savedAt)],
+);
+
+/**
+ * A passage marked in a library document, with an optional line about it. Kept here
+ * only; the document's file is never written to.
+ */
+export const documentHighlights = sqliteTable(
+  "document_highlights",
+  {
+    id: id(),
+    documentId: text("document_id")
+      .notNull()
+      .references(() => documents.id, { onDelete: "cascade" }),
+    /** Page of a PDF, 1-based; null for other documents. */
+    page: integer("page"),
+    /** Chapter of an EPUB, 1-based as in its address; null for other documents. */
+    chapter: integer("chapter"),
+    /** The words marked, and a few words either side to find them again. */
+    exact: text("exact").notNull(),
+    prefix: text("prefix").notNull().default(""),
+    suffix: text("suffix").notNull().default(""),
+    note: text("note").notNull().default(""),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [index("document_highlights_document_idx").on(table.documentId, table.page, table.chapter)],
 );
 
 export const attachments = sqliteTable(
@@ -1742,4 +1828,163 @@ export const offlineDrills = sqliteTable("offline_drills", {
   /** Step id to "worked" or "failed". Steps not answered are left out. */
   answers: json<Record<string, "worked" | "failed">>("answers").notNull(),
   notes: text("notes").notNull().default(""),
+});
+
+/**
+ * The household's record of what it sowed (Tools → Garden): one row a sowing or planting.
+ * `crop_id` is a crop of the calendar (`GARDEN_CROP_IDS`) or null for something else.
+ */
+export const gardenSowings = sqliteTable(
+  "garden_sowings",
+  {
+    id: id(),
+    cropId: text("crop_id"),
+    name: text("name").notNull(),
+    /** "2026-04-12". */
+    sownOn: text("sown_on").notNull(),
+    place: text("place").notNull().default(""),
+    amount: text("amount").notNull().default(""),
+    plantedOutOn: text("planted_out_on"),
+    harvestedOn: text("harvested_on"),
+    notes: text("notes").notNull().default(""),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [index("garden_sowings_sown_on").on(table.sownOn)],
+);
+
+/** The garden's one setting (Tools → Garden): the household's usual last frost, "MM-DD". One row, id "household". */
+export const gardenSettings = sqliteTable("garden_settings", {
+  id: id(),
+  lastFrost: text("last_frost"),
+  updatedAt: updatedAt(),
+});
+
+/**
+ * Satellite tracking (modules/satellites): orbital elements from CelesTrak, one row per
+ * satellite, replaced whole by each fetch a person presses for. Passes are worked out in
+ * the browser from these; the server does no orbital work.
+ */
+export const satelliteElements = sqliteTable("satellite_elements", {
+  noradId: integer("norad_id").primaryKey(),
+  name: text("name").notNull(),
+  designator: text("designator"),
+  /** The element set's own epoch, milliseconds: how old it is decides whether passes can be trusted. */
+  epoch: integer("epoch").notNull(),
+  /** The mean elements as CelesTrak publishes them (CCSDS OMM fields, from its CSV). */
+  elements: json<Record<string, string | number>>("elements").notNull(),
+  groups: json<string[]>("groups").notNull(),
+});
+
+/** The transmitters SatNOGS DB lists for the satellites kept above. Frequencies in Hz. */
+export const satelliteTransmitters = sqliteTable(
+  "satellite_transmitters",
+  {
+    id: text("id").primaryKey(),
+    noradId: integer("norad_id").notNull(),
+    description: text("description").notNull(),
+    alive: integer("alive", { mode: "boolean" }).notNull(),
+    status: text("status").notNull(),
+    type: text("type"),
+    mode: text("mode"),
+    uplinkLowHz: integer("uplink_low_hz"),
+    uplinkHighHz: integer("uplink_high_hz"),
+    downlinkLowHz: integer("downlink_low_hz"),
+    downlinkHighHz: integer("downlink_high_hz"),
+    invert: integer("invert", { mode: "boolean" }).notNull().default(false),
+    baud: real("baud"),
+    updatedAt: text("updated_at"),
+  },
+  (table) => [index("satellite_transmitters_norad_idx").on(table.noradId)],
+);
+
+/** When each publisher was last fetched from, and how it went. */
+export const satelliteFetches = sqliteTable("satellite_fetches", {
+  source: text("source").primaryKey(),
+  fetchedAt: integer("fetched_at"),
+  count: integer("count").notNull().default(0),
+  error: text("error"),
+  triedAt: integer("tried_at"),
+});
+
+/** A decoder's network port Outpost reads from: APRS (KISS), aircraft (SBS) or ships (NMEA). Outpost never writes to it. */
+export const heardReceivers = sqliteTable("heard_receivers", {
+  id: id(),
+  /** "aprs", "adsb" or "ais". */
+  kind: text("kind").notNull(),
+  name: text("name").notNull(),
+  host: text("host").notNull(),
+  port: integer("port").notNull(),
+  /** "tcp": Outpost connects to the decoder; "udp": Outpost listens on the port, for datagrams from `host` only. */
+  transport: text("transport").notNull().default("tcp"),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+/** Each station, aircraft or ship heard, with what was last heard of it. Kept until a person clears it. */
+export const heardStations = sqliteTable(
+  "heard_stations",
+  {
+    id: id(),
+    /** "aprs", "adsb", "ais" or "mesh". */
+    source: text("source").notNull(),
+    /** The callsign, the aircraft's hex code, the ship's MMSI or the radio's id. */
+    key: text("key").notNull(),
+    name: text("name").notNull(),
+    kindWords: text("kind_words"),
+    symbol: text("symbol"),
+    receiverId: text("receiver_id"),
+    lat: real("lat"),
+    lon: real("lon"),
+    altitude: real("altitude"),
+    course: real("course"),
+    speed: real("speed"),
+    comment: text("comment"),
+    direct: integer("direct", { mode: "boolean" }).notNull().default(true),
+    via: text("via"),
+    details: json<Record<string, unknown>>("details").notNull(),
+    firstAt: integer("first_at").notNull(),
+    lastAt: integer("last_at").notNull(),
+    positionAt: integer("position_at"),
+    reports: integer("reports").notNull().default(0),
+    pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),
+    pinName: text("pin_name"),
+  },
+  (table) => [uniqueIndex("heard_stations_key_idx").on(table.source, table.key), index("heard_stations_last_idx").on(table.lastAt)],
+);
+
+/** Each position heard: a station's trail, and what the range view is drawn from. */
+export const heardReports = sqliteTable(
+  "heard_reports",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    stationId: text("station_id").notNull(),
+    receiverId: text("receiver_id"),
+    at: integer("at").notNull(),
+    lat: real("lat").notNull(),
+    lon: real("lon").notNull(),
+    altitude: real("altitude"),
+    direct: integer("direct", { mode: "boolean" }).notNull().default(true),
+    via: text("via"),
+    snr: real("snr"),
+    rssi: real("rssi"),
+    hops: integer("hops"),
+  },
+  (table) => [
+    index("heard_reports_station_idx").on(table.stationId, table.at),
+    index("heard_reports_receiver_idx").on(table.receiverId, table.at),
+    index("heard_reports_at_idx").on(table.at),
+  ],
+);
+
+/** A range test kept by name (the range view): one station, one receiver, a time span. */
+export const heardRangeTests = sqliteTable("heard_range_tests", {
+  id: id(),
+  name: text("name").notNull(),
+  receiverId: text("receiver_id"),
+  stationId: text("station_id"),
+  fromAt: integer("from_at").notNull(),
+  toAt: integer("to_at").notNull(),
+  createdAt: createdAt(),
 });

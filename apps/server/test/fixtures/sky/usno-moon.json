@@ -1,0 +1,138 @@
+{
+ "source": "US Naval Observatory, Complete Sun and Moon Data for One Day, https://aa.usno.navy.mil/api/rstt/oneday (times UT), read 21 November 2026.",
+ "rows": [
+  {
+   "date": "2026-11-21",
+   "lat": 51.48,
+   "lon": 0.0,
+   "moon": {
+    "Set": "03:18",
+    "Rise": "14:04",
+    "Upper Transit": "21:13"
+   },
+   "phase": "Waxing Gibbous",
+   "illuminated": "87%",
+   "closest": {
+    "day": 24,
+    "month": 11,
+    "phase": "Full Moon",
+    "time": "14:53",
+    "year": 2026
+   }
+  },
+  {
+   "date": "2026-12-05",
+   "lat": 51.48,
+   "lon": 0.0,
+   "moon": {
+    "Rise": "04:12",
+    "Upper Transit": "08:57",
+    "Set": "13:31"
+   },
+   "phase": "Waning Crescent",
+   "illuminated": "12%",
+   "closest": {
+    "day": 9,
+    "month": 12,
+    "phase": "New Moon",
+    "time": "00:52",
+    "year": 2026
+   }
+  },
+  {
+   "date": "2027-03-10",
+   "lat": -33.87,
+   "lon": 151.21,
+   "moon": {
+    "Upper Transit": "03:14",
+    "Set": "09:00",
+    "Rise": "22:23"
+   },
+   "phase": "Waxing Crescent",
+   "illuminated": "5%",
+   "closest": {
+    "day": 8,
+    "month": 3,
+    "phase": "New Moon",
+    "time": "09:29",
+    "year": 2027
+   }
+  },
+  {
+   "date": "2027-06-21",
+   "lat": 40.71,
+   "lon": -74.01,
+   "moon": {
+    "Rise": "02:05",
+    "Upper Transit": "06:46",
+    "Set": "11:32"
+   },
+   "phase": "Waning Gibbous",
+   "illuminated": "95%",
+   "closest": {
+    "day": 19,
+    "month": 6,
+    "phase": "Full Moon",
+    "time": "00:44",
+    "year": 2027
+   }
+  },
+  {
+   "date": "2026-11-28",
+   "lat": -41.29,
+   "lon": 174.78,
+   "moon": {
+    "Rise": "11:27",
+    "Upper Transit": "16:13",
+    "Set": "21:08"
+   },
+   "phase": "Waning Gibbous",
+   "illuminated": "79%",
+   "closest": {
+    "day": 1,
+    "month": 12,
+    "phase": "Last Quarter",
+    "time": "06:08",
+    "year": 2026
+   }
+  },
+  {
+   "date": "2027-01-15",
+   "lat": 57.15,
+   "lon": -2.09,
+   "moon": {
+    "Set": "00:17",
+    "Rise": "10:21",
+    "Upper Transit": "17:50"
+   },
+   "phase": "Waxing Crescent",
+   "illuminated": "46%",
+   "closest": {
+    "day": 15,
+    "month": 1,
+    "phase": "First Quarter",
+    "time": "20:34",
+    "year": 2027
+   }
+  },
+  {
+   "date": "2027-09-02",
+   "lat": -1.29,
+   "lon": 36.82,
+   "moon": {
+    "Rise": "04:41",
+    "Upper Transit": "10:54",
+    "Set": "17:06"
+   },
+   "phase": "Waxing Crescent",
+   "illuminated": "5%",
+   "closest": {
+    "day": 31,
+    "month": 8,
+    "phase": "New Moon",
+    "time": "17:41",
+    "year": 2027
+   }
+  }
+ ]
+}

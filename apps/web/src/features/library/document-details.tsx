@@ -10,6 +10,8 @@ import { api, errorMessage } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
 import { notify } from "@/lib/notify";
 import { cn, formatDateTime, formatNumber, plural } from "@/lib/utils";
+import { CalibreBookDetails } from "./calibre/book-details";
+import { useBookDetails } from "./calibre/calibre-data";
 import { SavedField } from "./document-field";
 import { documentKeys, isReading, kindOfDocument } from "./document-meta";
 import { OcrDetails, useDocumentOcr } from "./document-ocr";
@@ -110,8 +112,10 @@ function TextStatus({ document, onDocument }: { document: DocumentDto; onDocumen
 function DeleteDocument({ document, locationName, onDeleted }: { document: DocumentDto; locationName: string; onDeleted: () => void }) {
   const [confirming, setConfirming] = useState(false);
   const client = useQueryClient();
-  // With the drive away the file cannot be touched; only Outpost's record can go.
-  const forget = !document.locationAvailable;
+  // With the drive away the file cannot be touched; only Outpost's record can go. A book read
+  // where it lies in a Calibre folder is Calibre's file, so only the record goes there too.
+  const inCalibre = useBookDetails(document.id).data?.inCalibreFolder === true;
+  const forget = !document.locationAvailable || inCalibre;
   const remove = useMutation({
     mutationFn: () => api.delete(`/api/documents/${document.id}`, forget ? { forget: true } : undefined),
     onSuccess: () => {
@@ -133,7 +137,11 @@ function DeleteDocument({ document, locationName, onDeleted }: { document: Docum
 
   return (
     <Group title={forget ? "Remove" : "Delete"}>
-      {forget ? (
+      {inCalibre ? (
+        <p className="mb-3 text-small text-ink-muted">
+          This book is read from its Calibre folder, and Outpost does not change that folder. Removing it here leaves the file in Calibre.
+        </p>
+      ) : forget ? (
         <p className="mb-3 text-small text-ink-muted">
           “{locationName}” is not connected, so the original file cannot be deleted now. Reconnect it to delete the document and its file,
           or remove only Outpost's record and leave the file where it is.
@@ -192,6 +200,7 @@ export function DocumentDetails({
 
   return (
     <>
+      <CalibreBookDetails documentId={document.id} title={document.title} />
       <Group title="About this document">
         <div className="grid gap-4">
           <SavedField label="Title" value={document.title} onSave={(title) => save({ title })} maxLength={300} />

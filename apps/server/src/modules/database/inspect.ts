@@ -13,8 +13,19 @@ import Database from "better-sqlite3";
 const GROUPS: Record<Exclude<DatabaseGroupId, "other">, string[]> = {
   search: ["search_entities", "chunks", "chunks_fts", "chunks_fts_config", "chunks_fts_data", "chunks_fts_docsize", "chunks_fts_idx"],
   meaning: ["embeddings", "embedding_models"],
-  library: ["documents", "document_tags", "tags", "book_chapters", "collections", "downloads", "catalog_cache"],
-  notes: ["notes", "note_tags", "note_links", "attachments", "imports"],
+  library: [
+    "documents",
+    "document_tags",
+    "document_highlights",
+    "tags",
+    "book_chapters",
+    "collections",
+    "downloads",
+    "catalog_cache",
+    "book_details",
+    "calibre_imports",
+  ],
+  notes: ["notes", "note_tags", "note_links", "note_versions", "attachments", "imports"],
   maps: [
     "places",
     "places_fts",
@@ -68,10 +79,16 @@ GROUPS.prepare.push("emergency_plans");
 GROUPS.prepare.push("medical_sheets", "comms_plans", "household_binder");
 // Readiness (modules/readiness), on a line of its own so that other additions merge cleanly.
 GROUPS.prepare.push("event_log", "routine_checks", "offline_drills");
+// The garden (modules/garden), on a line of its own so that other additions merge cleanly.
+GROUPS.prepare.push("garden_sowings", "garden_settings");
 // The Morse trainer (modules/morse), on a line of its own so that other additions merge cleanly.
 GROUPS.radio.push("morse_progress", "morse_sessions");
+// Satellite tracking (modules/satellites), on a line of its own so that other additions merge cleanly.
+GROUPS.radio.push("satellite_elements", "satellite_transmitters", "satellite_fetches");
 // Learning progress in reference archives (modules/learning), on a line of its own so that other additions merge cleanly.
 GROUPS.library.push("learning_pages", "learning_days", "learning_topics");
+// Heard on the radio (modules/heard), on a line of its own so that other additions merge cleanly.
+GROUPS.radio.push("heard_receivers", "heard_stations", "heard_reports", "heard_range_tests");
 export const GROUP_ORDER: DatabaseGroupId[] = ["search", "meaning", "library", "notes", "maps", "radio", "prepare", "other"];
 
 /** What each count is, as the services that own the tables count it. */

@@ -82,6 +82,12 @@ export function readMapTheme(): { flavour: MapFlavour; theme: MapTheme } {
       },
       range: hex("--map-range", fallback.range),
       walk: hex("--map-walk", fallback.walk),
+      heard: {
+        mesh: hex("--chart-1", fallback.primary),
+        aprs: hex("--chart-2", fallback.lamp),
+        adsb: hex("--chart-3", fallback.primary),
+        ais: hex("--chart-4", fallback.primary),
+      },
     },
   };
 }

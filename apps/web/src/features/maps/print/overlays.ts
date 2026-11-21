@@ -25,7 +25,8 @@
  * the dialog, the preview and the PDF all work from this list.
  */
 import type { Bbox, ImageryStyleSource, InstalledRegion, MapSources, MarkerDto, TrackDto, TrackWithGeometryDto } from "@outpost/shared";
-import { plural } from "@/lib/utils";
+import { heardSnapshot } from "@/features/heard/heard";
+import { formatDateTime, plural } from "@/lib/utils";
 import { greyLineData } from "../grey-line/geometry";
 import { greyLineShown, momentText } from "../grey-line/grey-line";
 import { mapMoment } from "../grey-line/time";
@@ -292,6 +293,19 @@ export const PRINT_OVERLAYS: PrintOverlay[] = [
       draft.notes.push(
         `Day and night are drawn for ${momentText(at, "utc", "UTC", "24")}. The line is where the Sun rises or sets; the shading deepens at 6°, 12° and 18° below the horizon.`,
       );
+    },
+  },
+  {
+    // What the household's receivers heard (features/heard), as the map on screen shows it at this moment.
+    id: "heard",
+    label: "Heard on the radio",
+    unavailable: () => (heardSnapshot().count === 0 ? "Nothing heard on the radio is showing on the map." : undefined),
+    hint: () => `${plural(heardSnapshot().count, "mark")} as the map shows them now, with the time they were taken.`,
+    initially: () => heardSnapshot().count > 0,
+    apply: (draft) => {
+      const snapshot = heardSnapshot();
+      for (const [source, data] of snapshot.data) draft.data[source] = data;
+      draft.notes.push(`Heard on the radio as at ${formatDateTime(snapshot.at)}; each mark gives its age at that time.`);
     },
   },
 ];

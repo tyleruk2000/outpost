@@ -56,7 +56,8 @@ public internet and must not be exposed to it.
   passphrase backups are protected with (see
   [Backup and restore](#backup-and-restore)).
   There are no permissions, no per-person views and no audit log. Share it only with a
-  network where you trust everyone.
+  network where you trust everyone. A [household PIN](#the-household-pin) keeps
+  changing and deleting to the devices it has been entered on; reading stays open.
 - **Reading other people's details.** Contacts are information about other people, and
   they are no more private than anything else here: everyone who can open Outpost can
   read, change and export every contact, in a browser or, if that is turned on, in a
@@ -97,6 +98,49 @@ public internet and must not be exposed to it.
 | LAN access is a start-up decision | `OUTPOST_LAN_ACCESS` cannot be changed from the browser. Without it the server refuses to start on an address other devices can reach (and, in a container, unless told its port is published on `127.0.0.1` only). | `apps/server/src/config.ts` |
 | Host allow-list | Requests whose `Host` header is not a name this server answers to are refused. This defeats DNS rebinding, where a hostile site points its own name at your machine. Always answered: `localhost`, `127.0.0.1`, `::1` and the names in `OUTPOST_ALLOWED_HOSTS`. With LAN access on, also any IP address, any one-word name (`outpost`, as a router's DNS hands out) and names ending `.local`, `.lan`, `.home`, `.internal` or `.home.arpa`; a name with a dot in it and any other ending (every name a site on the internet can own) must be listed. A rebinding attack through a one-word name would need control of the home network's own DNS. | `isAllowedHost` in `apps/server/src/core/guard.ts` |
 | kiwix-serve is never exposed | The browser reaches it only through Outpost's proxy. In Compose it has no published port. | `apps/server/src/modules/kiwix/`, `compose.yaml` |
+
+### The household PIN
+
+Off unless someone sets one, under **Settings → Who can use this library**. With no PIN,
+every device that can reach Outpost reads, changes and deletes, as described above, and
+Settings says so.
+
+With a PIN:
+
+- **Every device still reads** everything, as before, including through `/mcp` (which
+  only reads) and CardDAV (which changes nothing).
+- **A device changes or deletes only once the PIN has been entered on it.** Until then
+  it is a guest: every screen carries a line saying it can read but not change anything,
+  and a change it tries is refused and the PIN asked for. Entering the PIN unlocks that
+  browser on that device, for a year of not being used, or until **Lock this device**.
+- **What counts as a change** is every request under `/api/` that is not a `GET`, `HEAD`
+  or `OPTIONS`, decided in one place for every route, so a new screen is covered without
+  anything of its own. A short list of requests that ask a question by `POST` and keep
+  nothing (an answer from your library, an estimate of a download's size, a radio
+  prediction, what a removal would do) is open to guests too.
+- **Setting, changing and removing.** Any device may set a PIN while there is none; that
+  device is unlocked. Changing or removing it needs an unlocked device and the PIN in
+  use. A new PIN locks every other device. **Lock every other device** does the same
+  without changing it.
+- **Wrong PINs** are counted by address: five, then one a minute. An IPv6 device is
+  counted by its /64, so a device that moves to another of its addresses is still
+  counted as itself. A PIN is 4 to 12 digits.
+- **What is stored.** The PIN is kept as a salted scrypt hash, never as itself; each
+  unlocked device as the SHA-256 of a random token held in an `HttpOnly`,
+  `SameSite=Strict` cookie (`Secure` over HTTPS). They are in the database, so in
+  backups. Restoring a backup keeps the PIN in use here; a portable drive carries none;
+  erasing everything removes it.
+- **Forgotten PIN.** Add `OUTPOST_FORGET_PIN=true` to Outpost's `.env` file and restart
+  Outpost: it starts with no PIN and says so in its log. Take the line out again, or
+  every restart forgets the PIN set since.
+
+**What it is not.** A PIN keeps changes to the people who know it: a child's tablet, a
+guest's phone. Four digits are guessed in about a week from one address, and over plain
+HTTP anyone who can watch the network can read the PIN as it is typed or copy an
+unlocked device's cookie. It does not hide anything, and it does not replace keeping
+Outpost to a network you trust. The rules held to every request (the Host check, the
+same-origin check) still apply to unlocked devices, and what only the computer itself
+may do still needs that computer.
 
 ### HTTPS on the home network
 
@@ -326,6 +370,7 @@ in the browser. The reasons and the behaviour are in
 | GPX is read without building a tree | A tree of an XML file costs hundreds of bytes for every element, whatever the element is: 900,000 empty elements in a 9 MB file came to 977 MB, and an ordinary recording of 150,000 points to 564 MB. Outpost's reader walks the file once and keeps only what is stored (positions, times, names, descriptions). Everything else, extensions above all, is checked for being well-formed and passed over at no cost in memory. What is kept is counted, and a file over a limit is refused with a message saying which: 1,000,000 track and route points, 20,000 waypoints, 10,000 tracks and routes, 100,000 track segments; elements 64 deep, 64 attributes on an element, 64 namespace declarations in force, 1,000,000 characters in one piece of text; names and descriptions cut at 2,000 characters. Measured on 16 November 2026 (Node 24.15), each in a worker held to 64 MB of heap: 900,000 empty elements, 20 MB of attributes, six million elements each inside the last, one text of 19 MB, 19 MB of extensions in one point, 900,000 waypoints and 250,000 two-point tracks are each refused or imported, and each would fit in 32 MB, most of which is the 20 MB of text itself; a 150,000-point recording with heights and times fits in 40 MB. The heaviest file the limits allow that could be constructed (about 780,000 points in 100,000 segments, 10,000 tracks and 20,000 waypoints, in 20 MB) fits in 144 MB. Two files are read at a time and six may wait; another is turned away, so uploads sent together cannot add their costs up. | `apps/server/src/modules/maps/gpx-reader.ts`, `gpx-xml.ts`; `apps/server/test/security.test.ts` |
 | GPX is read away from the server's thread | In a worker thread, so the server goes on answering while a large file is read, with a limit of 30 seconds and a heap of 384 MB. Neither is what stops a hostile file, and the heap limit is not relied on: on Node 24 a worker that reaches its heap limit has been seen to abort the whole process instead of ending alone (sixteen of the crash reports macOS kept from 15 and 16 November 2026 are a worker thread in `Heap::FatalProcessOutOfMemory`, in the middle of one large allocation), which is how the tree-building reader this one replaced could take the server down. The limit stays as a last line in case the reader is ever wrong. | `parseGpxSafely` in `apps/server/src/modules/maps/gpx.ts`, `gpx.worker.ts` |
 | A crash in the engine that is not about GPX, though it was seen there | Twice a test process died with "Check failed: end > addr" (SIGTRAP) while GPX files were being read. The four crash reports macOS kept for it (16 November 2026, Node 24.15, V8 13.6) all show one stack: a worker thread, as it starts, inside WebAssembly, in `Runtime_TierUpWasmToJSWrapper` → `WasmEngine::FreeDeadCode` → `WasmImportWrapperCache::Free` → `ThreadIsolation::UnregisterWasmAllocation` → `TryLookupJitPageLocked`, and in one a second worker thread is waiting for the same cache at that instant. It is a fault in V8's bookkeeping of compiled calls from WebAssembly into JavaScript, which every thread of a process shares; the worker's heap limit and the file being read have no part in it. The WebAssembly is Node's own: run from TypeScript source, each worker thread takes the types out of its files with a WebAssembly module as it starts, and two GPX files read together are two workers starting together. So: **the packaged app and the Docker image cannot fail this way through a GPX import**, because their GPX worker is plain JavaScript and runs no WebAssembly (checked: none is compiled or collected). A server **run from source, and the tests**, could; there the compiled calls are switched off (`core/v8-flags.ts`, and the same flag in `vitest.config.ts`), after which the code that failed is not reached. It was not reproduced: 1,450 fresh processes, each starting 2 to 8 such workers at once, with 32 and 64 MB heaps, with the engine's stress settings and with every core busy, all ended normally. A search of the web turned up no report of this stack against Node or V8. What is not covered: in the packaged app OCR, the built-in embedding model and the HF propagation engine are WebAssembly in worker threads of their own, and the same fault could in principle be reached if two of them compiled the same kind of call at the same moment; that has not been seen, and the setting is not applied there because what it costs those engines was not measured cleanly. | `apps/server/src/core/v8-flags.ts`, `apps/server/vitest.config.ts` |
+| KML, KMZ and GeoJSON are read as GPX is | KML goes through the same checks (no DOCTYPE, no UTF-16) and the same reader that builds no tree; only Placemarks' names, descriptions and coordinates are kept, and links to other files are never followed. A KMZ is opened in memory with the zip reader the library uses for books, held to 20 MB unpacked whatever the archive declares. A GeoJSON file is counted before it is parsed (at most 1,500,000 arrays and objects, 64 deep), so a file of nothing but brackets is refused before anything is built. Both are read in the GPX worker, in the same turns, and held to the same limits on points, places and lines. | `apps/server/src/modules/maps/map-files.ts`, `kml-reader.ts`, `geojson-reader.ts`; `apps/server/test/maps-map-files.test.ts` |
 | A recording made on the map is an upload like any other | `PUT /api/maps/recordings/:id` takes GPX the browser built from a recording. It is not trusted for that: it goes through the same checks, the same reader in the same worker, and the same limits as an imported file, and is then held to what a recording is (tracks only, a time at every point, at most 150,000 points). The id in the address is chosen by the device and becomes the track's id, so it is held to 26 characters of the alphabet the server's own ids use, and a track that exists under it is never changed: the request answers with what is there. Until it is saved, a recording is kept in the browser's own storage for Outpost's address (IndexedDB), where anyone using that browser profile can read where its owner walked; nothing of it is sent anywhere but to Outpost. | `saveRecording` in `apps/server/src/modules/maps/annotations.ts`; `apps/web/src/features/maps/recording/`; `apps/server/test/maps-recording.test.ts` |
 | What importing a GPX file still costs the server's thread | Storing the result. A 150,000-point recording holds it up for about 0.13 seconds and the largest file of points for about 0.25. Turning waypoints into markers costs about 0.2 ms each, a row and a search entry, and used to be done in one go: 4.4 seconds for the 20,000 a file may hold, with nothing else answered and 0.57 GB more memory in use, which is why one file was once held to 5,000. They are now written 100 at a time, each hundred a transaction of its own, with a pause between for requests to be answered. Measured on 16 November 2026 for 20,000 waypoints: the longest the thread was held was 0.09 seconds, which is what receiving a file of that many waypoints from the reader costs however they are kept, and memory rose by 0.1 GB. If a later batch or the track itself cannot be written, the markers already written are taken out again, so an import that fails leaves nothing; only the process being killed part of the way through can leave some markers without the rest. | `importTrack` in `apps/server/src/modules/maps/annotations.ts`; `apps/server/test/maps-annotations.test.ts` |
 

@@ -367,7 +367,7 @@ export function createImageryService(ctx: AppContext, deps: ImageryDeps): Imager
   }
 
   function locationFor(locationId: string | undefined) {
-    const location = locationId ? storage.get(locationId) : storage.getDefault();
+    const location = locationId ? storage.get(locationId) : storage.defaultFor("maps");
     if (!storage.isAvailable(location.id)) {
       throw new AppError("storage_unavailable", `"${location.name}" is not connected. Reconnect it, or choose another storage location.`, {
         locationId: location.id,

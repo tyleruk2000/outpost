@@ -36,6 +36,8 @@ const invalidations: Record<string, string[][]> = {
   "chat.changed": [["chat"]],
   "documents.changed": [["documents"], ["search"], ["storage"], ["manage"]],
   "notes.changed": [["notes"], ["search"]],
+  // A passage was marked in a document, or its note changed (features/library/highlights).
+  "highlights.changed": [["highlights"], ["search"]],
   "collections.changed": [["collections"], ["catalog"], ["storage"], ["kiwix"], ["maps"], ["manage"]],
   "catalog.changed": [["catalog"]],
   "maps.changed": [["maps"], ["collections"], ["household-papers", "binder"]],
@@ -47,7 +49,12 @@ const invalidations: Record<string, string[][]> = {
   "semantic.changed": [["semantic"]],
   "portable.changed": [["portable"]],
   "merge.changed": [["merge"]],
+  // A Calibre library was read or brought in (features/library/calibre).
+  "calibre.changed": [["calibre"]],
   "backup.changed": [["backup"], ["database"]],
+  "update.changed": [["update"]],
+  // An export of everything was started, finished, or its file removed (Settings, Take everything out).
+  "export-all.changed": [["export-all"]],
   // A check or a reclaim of the database finished, or its contents were worked out.
   "database.changed": [["database"]],
   "https.changed": [["https"]],
@@ -63,6 +70,8 @@ const invalidations: Record<string, string[][]> = {
   "household-papers.changed": [["household-papers"], ["search"], ["manage"]],
   // The log of events, a routine check or an offline drill changed, here or on another device.
   "readiness.changed": [["readiness"], ["manage"]],
+  // A sowing or the last-frost date changed in the garden, here or on another device.
+  "garden.changed": [["garden"], ["manage"]],
   // The Morse trainer kept a session or a change of progress, here or on another device.
   "morse.changed": [["morse"], ["manage"]],
   // The allotment or a game's tally changed, here or on another device.
@@ -73,6 +82,9 @@ const invalidations: Record<string, string[][]> = {
   "learning.changed": [["learning"], ["manage"]],
   // The mesh radio link's state changed: a radio connected or went away, or something was heard.
   "mesh.changed": [["mesh"]],
+  "satellites.changed": [["satellites"]],
+  // A receiver connected or went away, or something was heard, pinned or cleared (Heard on the radio).
+  "heard.changed": [["heard"]],
   // The background count of what is on disk has finished.
   "manage.changed": [["manage"]],
 };

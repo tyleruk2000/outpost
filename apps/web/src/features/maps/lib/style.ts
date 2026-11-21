@@ -49,6 +49,8 @@ export interface MapTheme {
   range: string;
   /** The ground a walk reaches in a set time (token `--map-walk`). */
   walk: string;
+  /** What the household's receivers heard, one hue per source (the chart tokens `--chart-1` to `--chart-4`); features/heard. */
+  heard?: { mesh: string; aprs: string; adsb: string; ais: string };
 }
 
 export interface EffectHues {

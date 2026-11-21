@@ -700,6 +700,18 @@ This is a reading of those texts, not legal advice.
 - **Conduct.** A plain client name on every request, nothing personal in any of them,
   no retries beyond those listed, and nothing fetched that was not looked at.
 
+### Map file formats
+
+What the KML, KMZ and GeoJSON import relies on, read on 21 Nov 2026. No data comes from
+either; they are the formats' own descriptions.
+
+- RFC 7946, The GeoJSON Format (https://www.rfc-editor.org/rfc/rfc7946): positions are
+  longitude then latitude, in WGS 84 decimal degrees (section 4), and the older `crs`
+  member is no longer used (appendix B).
+- Google's KMZ files page (https://developers.google.com/kml/documentation/kmzarchives):
+  the main KML file is `doc.kml` by default, and Google Earth opens the first `.kml`
+  file in the archive's list.
+
 ### Reference layers
 
 Added on 2026-11-16 with the map's reference layers ([reference-layers.md](reference-layers.md),
@@ -746,6 +758,7 @@ These are programs, not content, so none of them appears in the catalogue.
 | 35 | MapLibre | An open-source map renderer | Outpost's map is drawn with MapLibre GL JS. | [BSD 3-Clause](https://github.com/maplibre/maplibre-gl-js/blob/main/LICENSE.txt). |
 | 36 | Notion | A hosted note-taking service | Supplied as a point of reference. It is a commercial online service, with no content to list. | Proprietary. Its terms page is drawn by a script and could not be read by the catalogue check. |
 | 37 | hfcast-engine (github.com/jonathanmcsweet/hfcast-engine) | VOACAP translated to Rust, and the engine's data files in `embedded/` | The HF planner's engine is built from it at commit `bf34e8f9f375` (shipped, Apache-2.0). **Its coefficient files are not shipped**: 13 files holding the CCIR Report 322 and 340 maps, with NTIA/ITS tables, and two short-whip patterns, 559 kB, listed in `engines/voacap/coefficients.json` and fetched from `raw.githubusercontent.com` at that commit, one request per file, only when a person presses Download (or at set-up by `scripts/fetch-voacap-data.mjs`). Checked on 2026-11-16: each file there is byte for byte the one Outpost shipped before. See [hf-propagation.md](hf-propagation.md#data). | Code: Apache-2.0. The data files: no licence; its `NOTICE` says "Apache-2.0 covers the software in this repository. It does not cover these data files, which are the work of other bodies and keep their own status." The CCIR part is the ITU's (source R9). |
+| 38 | Calibre (github.com/kovidgoyal/calibre) | An e-book manager | Outpost reads the `metadata.opf` files Calibre writes beside each book. The names it reads (`dc:creator` with `opf:role="aut"`, `dc:subject`, `dc:description`, `calibre:series`, `calibre:series_index`, the `uuid` identifier and the guide's cover reference) were taken from `metadata_to_opf` in `src/calibre/ebooks/metadata/opf2.py`, read on 2026-11-21. No code was taken from it. | [GPL-3.0](https://github.com/kovidgoyal/calibre/blob/master/LICENSE). |
 
 ## How the catalogue treats licences
 
@@ -1551,6 +1564,78 @@ fetched by Outpost; they decided what could be built, and how.
 | MeshCore `src/helpers/esp32/SerialWifiInterface.cpp` | Could not be read: 404 on 17 November 2026. Not got another way. | The network port is assumed to use the USB frames, as the FAQ implies; said to be untested. |
 | MeshCore `docs/faq.md` | "Connect on TCP port 5000 (same as the WiFi companion radio)." Serial examples use `-b 115200`. | Port 5000 by default; 115200 for the USB serial. |
 
+## Satellites, licences and band plans (read 2026-11-21)
+
+**Satellite tracking** ([satellites.md](satellites.md)) was ported from LogBook73 (MIT), on
+`satellite.js` 6.0.2 (MIT). Its two data sources are fetched only on a press:
+
+| Page | What it says | What was concluded |
+| --- | --- | --- |
+| celestrak.org/usage-policy.php (updated 16 November 2026) | GP data updates "once every 2 hours"; "only download data once per update"; asking for GP data with FORMAT=tle can 404 for newly catalogued objects, and FORMAT=csv is recommended; stop on any answer that is not 200. No data licence and no redistribution terms are given. | Asked for as CSV; not again within 2 hours; a failed answer keeps what was there; nothing is republished. |
+| db.satnogs.org/about | "All data are public and freely distributed under the Creative Commons Atribution-Share Alike v4.0 license." | Credited on the screen and on each printed pass; kept for the satellites whose elements are kept. |
+| db.satnogs.org/api/transmitters/?format=json (one record read) | Fields `uuid`, `description`, `alive`, `type`, `uplink_low`, `uplink_high`, `downlink_low`, `downlink_high`, `mode`, `invert`, `baud`, `norad_cat_id`, `status`, `updated`. | Read by `apps/server/src/modules/satellites/satnogs.ts`. |
+
+**What needs a radio licence** ([radio-licences.md](radio-licences.md)) and **Licences and
+band plans** (Radio) rest on the regulators' own documents, each named with its date
+beside the statement or figure it supports, in `packages/shared/src/radio-licence-statements.ts`
+and `packages/shared/src/radio-licences/`. Read on 21 November 2026:
+
+- United Kingdom: Ofcom's Amateur Radio Licence Conditions Booklet (OFW611, 21 February
+  2024) and its amateur radio guidance (14 October 2025); IR 2030 (23 October 2026), IR 2027
+  and IR 2027.2; "Rules on using radio equipment" (10 July 2023); the Wireless Telegraphy Act
+  2006, sections 8 and 48; SI 1989/123; SI 2021/493.
+- Ireland: ComReg 09/45R6 (29 May 2023), ComReg 02/71 R16 (20 May 2024), S.I. 93/1998 and
+  436/1998. ComReg's own web page could not be read (a script challenge).
+- United States: 47 CFR Parts 97, 95 and 15 from the eCFR (up to date as of 19 November
+  2026) and govinfo (1 October 2025 edition); 47 U.S.C. 605 and 18 U.S.C. 2510 and 2511. The
+  FCC's consumer guide on interception was not public when checked, and fcc.gov refused the
+  fetch tool.
+- Canada: ISED RBR-4 (Issue 3, July 2022), RIC-3, RSS-210 (Issue 11), RSS-236 (Issue 2),
+  RIC-18.
+- Australia: the Radiocommunications (Amateur Stations) Class Licence 2023, the Citizen Band
+  Radio Stations Class Licence 2025 and the LIPD Class Licence 2025.
+- New Zealand: the Amateur GURL Notice 2025, the CB GURL Notice 2011 and the Short Range
+  Devices GURL Notice 2022.
+- Germany: the Amateurfunkverordnung as amended 27 May 2024, BNetzA Vfg 21/2021 (CB) and Vfg
+  91/2025 (short range devices, PMR446).
+- Netherlands: the two Regelingen gebruik van frequentieruimte (met meldingsplicht 2015, in
+  force from 20 June 2024; zonder vergunning en zonder meldingsplicht 2015, from 1 July 2025).
+- France: Arcep décisions 2012-1241 and 2019-1412. The arrêté of 21 September 2000 on the
+  certificate classes and the current short range devices decision could not be read, so
+  France has no licence-free services listed.
+
+Band plans of national societies (RSGB, ARRL, WIA) were used only to find the regulator's
+document, never as the source of a figure. The IARU regional band plans are cited for the
+APRS frequencies, which no regulator names.
+
+## Heard on the radio (read 2026-11-21)
+
+For [Heard on the radio](heard-on-the-radio.md). Each was read once on 21 November 2026.
+Nothing from these is bundled or fetched by Outpost; the decoders are programs the person
+runs.
+
+| Source | What it says (quoted) | What was concluded |
+| --- | --- | --- |
+| APRS Protocol Reference 1.2 draft c (APRS Working Group, github.com/wb2osz/aprsspec, `APRS12c.pdf`) | Chapters 8 to 12: plain and compressed positions, Mic-E, objects and items, weather; "The speed is expressed in knots" for a weather report's DIR/SPD; "s = sustained one-minute wind speed (in mph)". The 1.0.1 PDF of 2000 is marked "Obsolete" by the same project. | The APRS reader (`modules/heard/aprs.ts`). Checked against Dire Wolf 1.8.1 decoding the same packets. |
+| Dire Wolf User Guide, version 1.8, October 2025 (WB2OSZ) | KISS "with default port 8001"; `ADEVICE`, `ACHANNELS`, `MYCALL`; "Leave squelch open"; "set the audio input level so that most stations average somewhere around 50"; "frames from tcp port 8001 are transmitted on radio channel 1". | The guide's configuration: a null audio output, no PTT, beacon or digipeater, so nothing can be sent. Outpost writes nothing to the port. |
+| Dire Wolf, "Raspberry Pi SDR IGate" | `rtl_fm -f 144.39M - \| direwolf -c sdr.conf -r 24000 -D 1 -` | The SDR line of the guide, untried. 144.390 MHz is said to be the one that example uses: no North American band plan naming it could be read (aprs.org answered 403; the ARRL band plan page does not list APRS). |
+| IARU Region 1 VHF Handbook, version 10.03, February 2026 | "144.800 APRS" | Europe's APRS frequency. |
+| WIA Australian Band Plan, revision 2026-1 | "145.175 MHz – National AX.25 APRS" | Australia's. |
+| Ofcom, "Rules on using radio equipment" | "Generally, the use of radio receivers is exempt from requiring a licence unless it is also capable of transmission"; "receivers and scanners can only be used for 'general reception'". | The listening line; whether aircraft and ships count is not said, and the screen says Outpost does not know. |
+| Wireless Telegraphy Act 2006, s. 48 (legislation.gov.uk) | An offence to use apparatus "with intent to obtain information as to the contents, sender or addressee of a message" of which one is not an intended recipient. | Cited for the UK. |
+| 18 U.S.C. 2511(2)(g)(ii) (law.cornell.edu) | Not unlawful to intercept communication transmitted "by a station operating on an authorized frequency within the bands allocated to the amateur ... service" or "by any marine or aeronautical communications system". | Cited for the US. |
+| "SBS BaseStation Article 4.2: Socket Data and BST files" (woodair.net) | "listen to port 30003"; the 22 fields; flags "-1 for true, and a 0 for false". | The SBS reader (`sbs.ts`). Checked against readsb 3.16 (Homebrew), which wrote the lines in the tests from the worked examples of Junzi Sun's "The 1090MHz Riddle". |
+| "Mode-S Beast: Data Output Formats" (Jetvision wiki) | "<esc> "3" : 6 byte MLAT timestamp, 1 byte signal level, 14 byte Mode-S long frame". | Not used: Beast is raw frames, SBS the decoded result. |
+| dump1090-fa source (FlightAware) | "TCP BaseStation output listen ports (default: 30003)". | The usual port. readsb's own default is off; the guide gives `--net-sbs-port 30003`. |
+| readsb README and install wiki (wiedehopf) | "Run `brew install readsb`"; `sudo bash -c "$(wget -O - https://github.com/wiedehopf/adsb-scripts/raw/master/readsb-install.sh)"`. | The Mac line (tried) and the Pi line (untried). |
+| "AIVDM/AIVDO protocol decoding" (Eric S. Raymond, gpsd) | Payload armouring, the common navigation block, types 4, 5, 18, 19, 21, 24; "AIS Channel A is 161.975Mhz (87B); AIS Channel B is 162.025Mhz (88B)"; the navigation status and ship type tables. | The AIS reader (`ais.ts`). Checked against pyais 3.3.1. |
+| AIS-catcher, "Command Line" (jvde-github.github.io/AIS-catcher-docs) | "-S xxx - TCP server for NMEA lines at port xxx"; "-u xxx.xx.xx.xx yyy - UDP destination address and port"; "-d:x - select device based on index". | The guide's lines, untried. |
+| rtl-ais README | "[-P port (default: 10110)]" | 10110 as the ships port. |
+| CA2RXU LoRa_APRS_iGate (`tnc_utils.cpp`, `data/igate_conf.json`) | `#define TNC_PORT 8001`; `"enableServer": false`; `"callsign": "NOCALL-10"`; `"sendViaRF": false`, `"txActive": false`, `"rxFreq": 433775000`. | A KISS TCP receiver for LoRa APRS; the receive-only settings. Untried with a board. |
+| ESP32APRS_Audio (nakhonthai) | `config.bt_mode = 1; // 0-None,1-TNC2RAW,2-KISS`; no network KISS server in its source. | Not readable by Outpost without a bridge; none is built. |
+| LoRa APRS by OE5BPA (github.com/lora-aprs) | "This repository was archived by the owner on Sep 14, 2025". | Pointed to CA2RXU's. |
+| Raspberry Pi documentation, RTL-SDR Blog V4 datasheet, Heltec WiFi LoRa 32 V3 datasheet | Already in Power and batteries; Digirig's maker publishes no current. | The power cut guidance names them; no figure was measured by Outpost. |
+
 ## The Steading's household figures (read 2026-11-21)
 
 Games → Steading ([games.md](games.md#steading)) says what a household uses in a day
@@ -1584,3 +1669,80 @@ read from the system and how it is described.
 | prometheus.io/docs/instrumenting/exposition_formats/ | Text format `version=0.0.4`, lines ending in a line feed, `# HELP` and `# TYPE` once per name before its samples, label escaping, histogram buckets with `le` ending in `+Inf` equal to `_count`. | `/metrics` is written by hand to that format; no client library. |
 | nodejs.org/docs/latest-v24.x/api/perf_hooks.html, `monitorEventLoopDelay` | "By default, the histogram is updated by a timer using the configured resolution"; the per-iteration mode "does not keep the loop alive". | The per-iteration mode was ignored by Node 24.15 when tried, so the timer is used, and only while there is work. |
 | manpages.debian.org, avahi-daemon(8) and avahi-publish(1) (bookworm); avahi 0.8's `avahi-publish.c` | `--reload` rereads `/etc/avahi/services/`; `avahi-publish -a` registers "an address/host name mapping"; `-R --no-reverse` "Do not publish reverse entry with address"; `-f` waits for the daemon and reconnects. | `outpost-name.service` runs `avahi-publish -f -a -R NAME.local ADDRESS`. |
+
+## The garden calendar (read 2026-11-21)
+
+Tools → Garden ([garden.md](garden.md)) uses the RHS's month calendar for 22 vegetables,
+with sowing, planting and harvest kept apart (the Allotment game holds the first twelve with
+sowing and planting together; a server test holds the two to each other). Nothing is
+fetched by Outpost and no page or picture is bundled: the months are numbers in
+`packages/shared/src/garden.ts`, the frost notes are sentences written for Outpost, and the
+pages are plain links at the foot of the screen.
+
+| What | Where it comes from | How it was read |
+| --- | --- | --- |
+| Sow, Plant or Plant out, and Harvest months; which crops are tender and what the page says about frost | Royal Horticultural Society, "Grow your own" pages: `https://www.rhs.org.uk/vegetables/<crop>/grow-your-own` for radishes, salad-leaves, onions, peas, carrots, beetroot, kale, broad-beans, potatoes, leeks, garlic, squash, courgettes, cucumbers, french-beans, runner-beans, sweetcorn, tomatoes, lettuce, parsnips, cabbages and spinach | Each page fetched once on 21 November 2026 with curl (user agent "Mozilla/5.0"), about a third of a second apart; every one answered 200. The months were read from the calendar in the page's HTML (each month marked active or not in rows named by the page); the frost sentences were read from the page's text. `/vegetables/` is not disallowed by the site's robots.txt (as read on 17 November 2026, see the allotment's section above). The same terms apply as there: only facts are kept, in Outpost's words. |
+| When the last frost usually comes | Met Office, "Why frost can still occur in late spring" (2026), <https://www.metoffice.gov.uk/blog/2026/why-frost-can-still-occur-in-late-spring> | Read once on 21 November 2026. Used: air frost and ground frost defined; the average last air frost before the end of April in southern and coastal regions, well into May and in a few places June further north and on higher ground. It gives no date for a place, so the screen asks for the household's own. |
+
+The months as the calendars gave them on 21 November 2026 (Sow / Plant or Plant out /
+Harvest), for the ten crops not in the allotment's section: cabbages Feb–Jul / Mar–Oct (out)
+/ all year; courgettes Apr–Jun / May–Jun (out) / Jul–Oct; cucumbers Feb–Jun / May–Jun (out)
+/ Jul–Oct; French beans Apr–Jul / May–Jun (out) / Jul–Oct; lettuce Feb–Oct / Mar–Apr (out) /
+May–Nov; parsnips Mar–May / – / Sep–Mar; runner beans Apr–Jul / May–Jul (out) / Jul–Oct;
+spinach Mar–May, Aug–Sep / – / Mar–Nov; sweetcorn Apr–Jun / May–Jun (out) / Aug–Oct; tomatoes
+Feb–Apr / May–Jun / Jul–Oct. The twelve allotment crops' rows were the same as on 17
+November.
+
+Tender, from each page's own words: courgettes, cucumbers, squash, sweetcorn and tomatoes
+("tender"), French and runner beans (sown outside or planted out "once all risk of frost has
+passed"). The rule the screen applies (tender crops kept back until the day after the
+household's last frost, never brought forward) follows the pages' "plant out after the last
+frost"; it is not the RHS's own calculation.
+
+## Tidal constants
+
+Tools → Tide times ([tides.md](tides.md)) ships NOAA's harmonic constants and works out
+the tides from them. Read on 21 November 2026.
+
+| What | Where it comes from | How it was read |
+| --- | --- | --- |
+| Harmonic constituents (amplitude, Greenwich phase) and datums (MSL, MLLW) for every station NOAA lists with constituents, outside the Great Lakes | NOAA CO-OPS metadata API, <https://api.tidesandcurrents.noaa.gov/mdapi/prod/> (`stations.json?type=harcon`, then each station's `harcon.json` and `datums.json`, metric) | Fetched by `scripts/build-tide-stations.mjs`, four requests at a time: 1,374 listed, 1,370 kept; four (9415265, 9415423, 9415584, 9416131) answered 403 on every try and are left out. Written to `apps/server/src/modules/tides/data/noaa-harmonic.json`, 409 kB (about 165 kB compressed). |
+| The licence | NOAA Tides and Currents, Disclaimers, <https://tidesandcurrents.noaa.gov/disclaimers.html> | "The information on government servers are in the public domain, unless specifically annotated otherwise, and may be used freely by the public." "NOS requests that attribution be given whenever NOS material is reproduced and re-disseminated." The screen names NOAA CO-OPS. A few stations are outside the United States (Bermuda, Central America, others); NOAA publishes their constants with no other terms, and they are kept on the same footing. |
+| The method | P. Schureman, *Manual of Harmonic Analysis and Prediction of Tides*, US Coast and Geodetic Survey Special Publication 98 (1958), as NOAA publishes it: <https://tidesandcurrents.noaa.gov/publications/SpecialPubNo98.pdf> (a scan, 336 pages) | Read from the scan: table 1 (mean longitudes of moon, sun, perigees and node, epoch 31 December 1899 noon), table 2 and 2a (arguments V and u of each constituent), paragraph 24 (the triangle giving I, ν and ξ), formulas 73 to 80, 141 to 150, 195 to 207 (M1), 213 to 215 (L2), 216 to 227 (K1) and 228 to 235 (K2) for the node factors, paragraph 77 (node factors taken for the middle of the year), and table 6 (I, ν, ξ, ν′, 2ν″ by degree of N), which the tests hold the arithmetic to. |
+| Published predictions the tests are held to | NOAA CO-OPS data API, `product=predictions`, MLLW, GMT, metric | High and low waters for 15 to 21 January 2027 at The Battery (8518750), San Francisco (9414290), Honolulu (1612340) and Galveston Pier 21 (8771450), and hourly heights for January 2027 at the first two, fetched once and kept in `apps/server/test/fixtures/tides/`. Agreement found: every high and low within 1 minute and 1 mm (2 minutes at Galveston, where the turns are flat), every hourly height within 2 mm. |
+
+Not shipped:
+
+| Source | Terms as read | Why not |
+| --- | --- | --- |
+| Canadian Hydrographic Service (tides.gc.ca) | Licence agreement, <https://tides.gc.ca/en/licence-agreement>: the data "shall not be sold, licensed, leased, assigned or given to a third party"; non-profit derived products allowed with a notice; the licence can be "terminated unilaterally by CHS", after which copies must be destroyed. | Giving the data to every household that installs Outpost is giving it to third parties, and a licence that can be withdrawn does not suit data shipped in a release. Whether the Open Government Licence copy on open.canada.ca includes harmonic constants was not settled. |
+| UK Hydrographic Office (Admiralty), tidal harmonics, <https://admiralty.co.uk/UKHO/tidal-harmonics> | The page offers the format's schema and examples "freely available for download"; it states no terms for the constants themselves. | No open licence found; not used. |
+
+## The night sky and celestial navigation
+
+Tools → Night sky ([night-sky.md](night-sky.md)) and Tools → Celestial navigation
+([celestial-navigation.md](celestial-navigation.md)) work out the sky on the device. Read on
+21 November 2026 unless a date is given.
+
+| What | Where it comes from | How it is used |
+| --- | --- | --- |
+| The stars | D. Hoffleit and W. H. Warren Jr, *The Bright Star Catalogue*, 5th revised edition (Yale University Observatory; NASA Astronomical Data Center catalogue V/50, 1991), the plain-text catalogue from <http://tdc-www.harvard.edu/catalogs/bsc5.dat.gz>, with its byte-by-byte description (`ybsc5.readme`) | J2000 position, visual magnitude and proper motion of every star of magnitude 4.5 or brighter, 906 in all, written into `packages/shared/src/sky/stars.gen.ts` by `scripts/write-star-catalogue.mjs`. Where two entries share a Bayer letter (Gacrux and its faint companion), the brighter is taken. |
+| The catalogue's licence | data.gov, "Bright Star Catalog", <https://catalog.data.gov/dataset/bright-star-catalog>: publisher HEASARC, licence "https://www.usa.gov/government-works", access public | Shipped on that footing, with the authors and the ADC credited. **Not settled:** Debian's copyright file for its `yale` package (<https://metadata.ftp-master.debian.org/changelogs/non-free/y/yale/stable_copyright>, read 21 November 2026) quotes the ADC as saying "you are free to distribute the files with your program" and asking that the ADC and the authors be acknowledged, but adds, in the packager's words, that the files "must NOT be altered in any way (without permission of the original authors)", and Debian files the package as non-free. Outpost ships a subset of the figures (positions, magnitudes, proper motions), not the files; whether that needs the authors' permission is for the owner to decide. |
+| Constellation figures | Outpost's own: the usual stick figures of 27 constellations, written by the stars' Bayer letters in the script and checked against the catalogue | No source's drawing is copied. |
+| Navigational stars and their numbers | US Naval Observatory, Celestial Navigation Data for Assumed Position and Time, <https://aa.usno.navy.mil/data/celnav> (its `nav_star_number`) | The 57 stars and Polaris, by name and number. |
+| The Sun, Moon and planets | P. Schlyter, *How to compute planetary positions*, <https://stjarnhimlen.se/comp/ppcomp.html>: orbital elements (section 4), Kepler's equation (6), the Moon's perturbations (9), Jupiter's and Saturn's (10), the Moon's parallax (13), diameters, phase and brightness (15) | Positions, parallax, semi-diameter, the Moon's phase and the planets' magnitudes. He gives the method as good to one or two minutes of arc. |
+| Precession and nutation | G. H. Kaplan, *The IAU Resolutions on Astronomical Reference Systems, Time Scales, and Earth Rotation Models*, USNO Circular 179 (2005), <https://aa.usno.navy.mil/downloads/Circular_179.pdf>: equations 5.11 and 5.12 (the IAU 2006 precession angles and obliquity), 5.19 (the fundamental arguments) and terms 1 to 13 of the IAU 2000A nutation series | The stars carried from J2000 to the day; nutation added to the Sun, Moon and planets and to sidereal time. |
+| Sidereal time | US Naval Observatory, *Computing Approximate Sidereal Time*, <https://aa.usno.navy.mil/faq/GAST> (read 17 November 2026) | Greenwich mean sidereal time, with the equation of the equinoxes. |
+| TT − UT | US Naval Observatory, monthly ΔT, <https://maia.usno.navy.mil/ser7/deltat.data> | 69.2 s, the value for 1 October 2026. |
+| Moonrise and moonset | US Naval Observatory, *Rise, Set, and Twilight Definitions*, <https://aa.usno.navy.mil/faq/RST_defs> | The Moon's centre at a zenith distance of 90.5666° plus its radius less its parallax. |
+| Finding north and south | US Army, FM 21-76 *Survival*, chapter 18, "Using the stars", <https://www.sjsu.edu/people/michelle.hager/docs/fm_21-76_us_army_survival_manual_2006.pdf> | The Plough's pointers about five times their distance to Polaris; the Cross's long axis carried on to the south. |
+| Sight corrections and reduction | N. Bowditch, *The American Practical Navigator* (NGA Pub. 9, 2019), vol. 1, appendix B, articles 3 and 5 | Dip 1.76′ √h (metres); computed altitude and the time azimuth formula. Refraction is NOAA's model, as for Sun times (*Solar Calculation Details*, read 17 November 2026). |
+| What the tests are held to | US Naval Observatory API: `/api/celnav` at five moments from 2026 to 2035 and four places, and `/api/rstt/oneday` for seven days and places, fetched once and kept in `apps/server/test/fixtures/sky/` | Found: stars and Aries within 0.5′, the Sun within 0.5′, the Moon and planets within 2′; moonrise and moonset within 3 minutes, phases within 10 minutes; fixes from the Observatory's computed altitudes within 0.5 mile. |
+
+## Updating Outpost, read on 21 November 2026
+
+For Settings → Updates ([updating.md](updating.md)). Nothing from this is bundled.
+
+| Page | What it says | What was concluded |
+| --- | --- | --- |
+| jedisct1.github.io/minisign/, "Signature format" and "Public key format" | Public key: base64(`Ed` ‖ key id (8 bytes) ‖ Ed25519 public key). Signature: base64(algorithm ‖ key id ‖ signature), a trusted comment, then base64(global signature), where the global signature is `ed25519(<signature> ‖ <trusted_comment>)`. `Ed` signs the file, `ED` signs its BLAKE2b-512 hash; "New implementations must use the hashed signature format". | The server checks signatures with Node's Ed25519 and BLAKE2b-512 and nothing else; releases are signed with `minisign -S` (hashed). Checked both ways against minisign 0.11 from Debian bookworm (ISC licence, installed on the host by `install.sh`, not shipped). |

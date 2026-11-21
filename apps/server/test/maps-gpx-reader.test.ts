@@ -376,7 +376,7 @@ describe("reading a GPX file as the server does", () => {
     expect(settled.map((result) => result.status)).toEqual([...Array(line).fill("fulfilled"), "rejected"]);
     expect((settled.at(-1) as PromiseRejectedResult).reason).toMatchObject({
       code: "conflict",
-      message: expect.stringMatching(/already reading several GPX files/),
+      message: expect.stringMatching(/already reading several map files/),
     });
     expect(gpxReads()).toEqual({ reading: 0, waiting: 0 });
 

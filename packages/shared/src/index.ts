@@ -3,11 +3,15 @@
  * the API contract: the server builds responses to these shapes and the web app reads
  * them. Nothing here may import Node or browser APIs.
  */
+// The household PIN, on a line of its own so that other additions merge cleanly.
+export * from "./access.ts";
 export * from "./answers.ts";
 // Audiobooks, on a line of their own so that other additions merge cleanly.
 export * from "./audiobooks.ts";
 export * from "./backup.ts";
 export * from "./board.ts";
+// Bringing in a Calibre library, on a line of its own.
+export * from "./calibre.ts";
 export * from "./catalog.ts";
 // What Explore and the catalogue tool match entries by, on a line of its own.
 export * from "./catalog-match.ts";
@@ -26,7 +30,14 @@ export * from "./downloads.ts";
 export * from "./emergency-plans.ts";
 export * from "./emergency-templates.ts";
 export * from "./encryption.ts";
+// Taking everything out (Settings), on a line of its own so that other additions merge cleanly.
+export * from "./export-all.ts";
 export * from "./games.ts";
+// The garden calendar and the record of sowings, on a line of its own so that other additions merge cleanly.
+export * from "./garden.ts";
+export * from "./heard.ts";
+// Passages marked in library documents, on a line of its own.
+export * from "./highlights.ts";
 export * from "./home-place.ts";
 // The household's papers (medical sheets, keeping in touch, grab cards, the binder), on a line of their own.
 export * from "./household-papers.ts";
@@ -61,6 +72,12 @@ export * from "./propagation-p533.ts";
 export * from "./propagation-plans.ts";
 export * from "./radio.ts";
 export * from "./radio-frequencies.ts";
+// Radio licences, band plans by country and satellite tracking, on lines of their own.
+export * from "./radio-licence.ts";
+export * from "./radio-licence-doc.ts";
+export * from "./radio-licence-statements.ts";
+export * from "./radio-licences/index.ts";
+export * from "./radio-licences.ts";
 export * from "./radio-observations.ts";
 export * from "./radio-range.ts";
 // Readiness (the log of events, routine checks, the offline drill), on a line of its own.
@@ -70,6 +87,7 @@ export * from "./reference-layers.ts";
 export * from "./repeaters.ts";
 export * from "./retrieval.ts";
 export * from "./route-finder.ts";
+export * from "./satellites.ts";
 export * from "./search.ts";
 export * from "./semantic.ts";
 export * from "./setup-guide.ts";
@@ -80,8 +98,11 @@ export * from "./sun.ts";
 export * from "./supplies.ts";
 export * from "./supplies-energy.ts";
 export * from "./system.ts";
+// Tide predictions from harmonic constants, on a line of their own.
+export * from "./tides.ts";
 export * from "./tools.ts";
 // UTM, UPS and MGRS, on a line of their own.
+export * from "./update.ts";
 export * from "./utm.ts";
 export * from "./walk-reach.ts";
 export * from "./weather.ts";

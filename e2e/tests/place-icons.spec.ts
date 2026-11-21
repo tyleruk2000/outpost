@@ -174,7 +174,7 @@ test.describe("icons for saved places", () => {
     await page.getByRole("tab", { name: /Routes/ }).click();
     const chooser = page.waitForEvent("filechooser");
     await page
-      .getByRole("button", { name: /Import GPX/ })
+      .getByRole("button", { name: /Import a map file/ })
       .first()
       .click();
     await (await chooser).setFiles([{ name: "places.gpx", mimeType: "application/gpx+xml", buffer: Buffer.from(gpx) }]);
@@ -202,7 +202,7 @@ test.describe("icons for saved places", () => {
     await page.getByRole("tab", { name: /Routes/ }).click();
     const chooser = page.waitForEvent("filechooser");
     await page
-      .getByRole("button", { name: /Import GPX/ })
+      .getByRole("button", { name: /Import a map file/ })
       .first()
       .click();
     await (await chooser).setFiles([{ name: "trip.gpx", mimeType: "application/gpx+xml", buffer: Buffer.from(gpx) }]);

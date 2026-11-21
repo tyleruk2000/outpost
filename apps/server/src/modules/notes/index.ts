@@ -11,7 +11,7 @@ import { badRequest, notFound } from "../../core/errors.ts";
 import { pathExists } from "../../core/fs-safe.ts";
 import { registerMultipart } from "../../core/multipart.ts";
 import { type AttachmentRow, contentDisposition, createAttachmentStore, MAX_ATTACHMENT_BYTES } from "./attachments.ts";
-import { createNotesExporter } from "./export.ts";
+import { createNotesExporter, type NotesExporter } from "./export.ts";
 import { createNotesService } from "./service.ts";
 
 export type { NotesService } from "./service.ts";
@@ -33,6 +33,11 @@ const createBody = z.object({
   content: z.unknown().optional(),
   templateId: z.string().min(1).max(80).optional(),
   afterId: id.optional(),
+  /** The page's id as the device that wrote it made it: sent twice, it makes one page (see CreateNoteInput). */
+  clientId: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{8,64}$/, "That is not an id a phone gives.")
+    .optional(),
 });
 
 const updateBody = z.object({
@@ -53,11 +58,19 @@ const duplicateBody = z.object({ withChildren: z.boolean().optional() });
 const flag = z.enum(["1", "true", "0", "false"]).optional();
 const isOn = (value: string | undefined) => value === "1" || value === "true";
 
+declare module "../../core/context.ts" {
+  interface Services {
+    /** Pages as Markdown, for "Take everything out" (modules/export-all). */
+    notesExport: NotesExporter;
+  }
+}
+
 export async function registerNotes(app: FastifyInstance, ctx: AppContext): Promise<void> {
   const attachments = createAttachmentStore(ctx);
   const notes = createNotesService(ctx, attachments);
   const exporter = createNotesExporter(ctx, notes, attachments);
   ctx.services.notes = notes;
+  ctx.services.notesExport = exporter;
 
   // The limits are the routes' own, given with each request (see core/multipart.ts).
   await registerMultipart(app);
@@ -131,6 +144,33 @@ export async function registerNotes(app: FastifyInstance, ctx: AppContext): Prom
   app.post("/api/notes/:id/restore", async (request) => {
     const params = idParams.parse(request.params);
     return { note: notes.restore(params.id) };
+  });
+
+  // ── Earlier versions ──
+
+  app.get("/api/notes/versions/space", async () => {
+    return notes.versions.space();
+  });
+
+  app.delete("/api/notes/versions", async () => {
+    return { cleared: notes.clearVersions() };
+  });
+
+  app.get("/api/notes/:id/versions", async (request) => {
+    const params = idParams.parse(request.params);
+    notes.getRow(params.id);
+    return { versions: notes.versions.list(params.id) };
+  });
+
+  app.get("/api/notes/:id/versions/:versionId", async (request) => {
+    const params = z.object({ id, versionId: id }).parse(request.params);
+    return { version: notes.versions.get(params.id, params.versionId) };
+  });
+
+  app.post("/api/notes/:id/versions/:versionId/restore", async (request) => {
+    const params = z.object({ id, versionId: id }).parse(request.params);
+    const body = z.object({ baseUpdatedAt: z.number(), origin: z.string().max(64).optional() }).parse(request.body);
+    return { note: notes.restoreVersion(params.id, params.versionId, body) };
   });
 
   // ── Export ──

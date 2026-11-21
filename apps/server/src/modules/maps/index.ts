@@ -329,16 +329,18 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
   // The limits are the routes' own, given with each request (see core/multipart.ts).
   await registerMultipart(app);
 
-  /** Reads one GPX file and the optional form fields that may come with it. */
-  async function receiveGpx(
+  /** Reads one uploaded map file and the optional form fields that may come with it. */
+  async function receiveUpload(
     request: FastifyRequest,
-  ): Promise<{ source: string; filename: string | undefined; fields: Record<string, string> }> {
-    if (!request.isMultipart()) throw badRequest("Send the GPX file as a multipart/form-data upload.");
+    kind: "GPX" | "map",
+  ): Promise<{ bytes: Buffer; filename: string | undefined; fields: Record<string, string> }> {
+    const what = kind === "GPX" ? "GPX file" : "file";
+    if (!request.isMultipart()) throw badRequest(`Send the ${what} as a multipart/form-data upload.`);
     const fields: Record<string, string> = {};
     for (const [name, value] of Object.entries(request.query as Record<string, unknown>)) {
       if (typeof value === "string") fields[name] = value;
     }
-    let source: string | undefined;
+    let bytes: Buffer | undefined;
     let filename: string | undefined;
     try {
       for await (const part of request.parts({ limits: { fileSize: MAX_GPX_BYTES, files: 1, fields: 10, fieldSize: 2000 } })) {
@@ -347,18 +349,27 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
           continue;
         }
         // Bounded by the size limit above, so reading it whole is safe.
-        source = (await part.toBuffer()).toString("utf8");
+        bytes = await part.toBuffer();
         filename = part.filename || undefined;
       }
     } catch (error) {
       const code = (error as { code?: string } | null)?.code;
       if (code === "FST_REQ_FILE_TOO_LARGE")
-        throw new AppError("too_large", "That GPX file is larger than 20 MB. Split it into smaller files.");
-      if (code === "FST_FILES_LIMIT") throw badRequest("Upload one GPX file at a time.");
+        throw new AppError("too_large", `That ${what} is larger than 20 MB. Split it into smaller files.`);
+      if (code === "FST_FILES_LIMIT") throw badRequest(`Upload one ${what} at a time.`);
       throw error;
     }
-    if (source === undefined) throw badRequest("No file was sent. Choose a GPX file to import.");
-    return { source, filename, fields };
+    if (bytes === undefined)
+      throw badRequest(`No file was sent. Choose a ${kind === "GPX" ? "GPX" : "GPX, KML, KMZ or GeoJSON"} file to import.`);
+    return { bytes, filename, fields };
+  }
+
+  /** Reads one GPX file and the optional form fields that may come with it. */
+  async function receiveGpx(
+    request: FastifyRequest,
+  ): Promise<{ source: string; filename: string | undefined; fields: Record<string, string> }> {
+    const { bytes, filename, fields } = await receiveUpload(request, "GPX");
+    return { source: bytes.toString("utf8"), filename, fields };
   }
 
   app.post("/api/maps/tracks/import", async (request) => {
@@ -371,6 +382,26 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
         importWaypointsAsMarkers: fields.importWaypointsAsMarkers,
       });
     return annotations.importTrack({ source, filename, ...options });
+  });
+
+  // Any map file: GPX, KML, KMZ or GeoJSON. Its lines become one new route, its points
+  // new places (a GPX file's waypoints only when asked). Nothing saved is changed.
+  app.post("/api/maps/files/import", async (request) => {
+    const { bytes, filename, fields } = await receiveUpload(request, "map");
+    const options = z
+      .object({ name: z.string().trim().max(200).optional(), color: z.enum(MARKER_COLORS).optional(), importWaypointsAsMarkers: flag })
+      .parse({
+        name: fields.name,
+        color: fields.color as MarkerColor | undefined,
+        importWaypointsAsMarkers: fields.importWaypointsAsMarkers,
+      });
+    return annotations.importMapFile({ bytes, filename, ...options });
+  });
+
+  // What importing a map file would make, read without saving anything.
+  app.post("/api/maps/files/preview", async (request) => {
+    const { bytes, filename } = await receiveUpload(request, "map");
+    return annotations.previewMapFile({ bytes, filename });
   });
 
   // A track recorded on the map as its maker walked. The device builds the GPX and names

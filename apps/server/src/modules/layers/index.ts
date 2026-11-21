@@ -245,7 +245,7 @@ export async function registerLayers(app: FastifyInstance, ctx: AppContext): Pro
           }
           // Fields sent before the file (as Outpost's own form sends them) are checked before anything is written.
           if (fields.format !== undefined || fields.title !== undefined) readFields(fields);
-          const location = ctx.services.storage.getDefault();
+          const location = ctx.services.storage.defaultFor("layers");
           const name = safeFileName(part.filename || "import.csv") || "import.csv";
           const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
           const folder = "collections/reference/imports";

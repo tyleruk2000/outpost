@@ -33,6 +33,7 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { Notice, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Select, Skeleton } from "@/components/ui/misc";
+import { useRadioLicence } from "@/features/radio/licence";
 import { errorMessage } from "@/lib/api";
 import { formatTimeOfDay, useClockStyle } from "@/lib/clock";
 import { APPROXIMATE_SIGN, ChartFrame, HourGrid, HourLines, NOT_MODELLED, percent, ShareBars } from "./charts";
@@ -342,6 +343,7 @@ export function Results({
   /** What keeps the answer (Save as PDF, Add to library), put under it rather than above it. */
   extra?: ReactNode;
 }) {
+  const licence = useRadioLicence();
   const at = result.hours[hour - 1]!;
   const cell = at.asked;
   const { mode } = result;
@@ -585,7 +587,7 @@ export function Results({
         description={
           required === null
             ? undefined
-            : `${mode.label} on one frequency near the middle of each amateur band. Your licence decides which you may use.`
+            : `${mode.label} on one frequency near the middle of each amateur band. ${licence.licensed ? "Your licence decides which you may use." : "Listening on any of them needs no licence; transmitting needs an amateur licence."}`
         }
       >
         {mixesModels(request) && required !== null ? (

@@ -95,7 +95,7 @@ in full, including what it does not do.
 | Terrain and contours | An optional terrain download gives hill shading, contour lines traced on your device, and the heights of routes. | [Maps](docs/maps.md#contour-lines) |
 | Height of the ground | The readout gives the height under a resting pointer, or at the centre of the map on a touch screen, from the installed terrain; nothing is shown where there is none. Metres or feet for every height on the map screens. | [Maps](docs/maps.md#the-height-of-the-ground) |
 | Places | Saved places with a note, a colour and one of sixteen icons. | [Maps](docs/maps.md#markers) |
-| Routes | Draw a route point by point, edit its shape, see its distance, ascent and elevation profile; import and export GPX. | [Maps](docs/maps.md#drawing-a-route) |
+| Routes | Draw a route point by point, edit its shape, see its distance, ascent and elevation profile; import GPX, KML, KMZ and GeoJSON; export GPX. | [Maps](docs/maps.md#drawing-a-route) |
 | Find a known route | Search OpenStreetMap for a named route and add it, through the route server named beside the search, only when you search. | [Maps](docs/maps.md#finding-a-known-route) |
 | Recording a track | Records where you walk while the screen is on. Needs an `https` address. | [Maps](docs/maps.md#recording-a-track) |
 | Coordinates and place search | Coordinates, British grid references and Maidenhead locators; offline place names from GeoNames; and for Great Britain, Ordnance Survey's OS Open Names: settlements, hills, roads and every postcode, found however a postcode is typed. | [Maps](docs/maps.md#coordinate-formats), [Great Britain](docs/maps.md#place-names-for-great-britain) |
@@ -199,6 +199,7 @@ first.*
 | Contact log | What actually happened on the air, typed in or read from ADIF, set beside what the engine predicted. | [HF propagation](docs/hf-propagation.md#the-contact-log) |
 | Repeaters | A database of repeaters you bring in as a file, enter by hand, or fetch from the two publishers whose terms allow it; found, measured from a place (home, to start with), drawn on the map and written out for a radio. | [Radio](docs/radio.md#repeaters) |
 | Estimated range | For a repeater on the map, where its aerial is in line of sight for a handheld, a car or a roof aerial, over the installed terrain, out to 100 km; with no terrain, the smooth-Earth radio horizon, dashed. Line of sight only, and it says what it leaves out. Switched on repeater by repeater in each one's card; up to eight outlines stay on the map, each labelled with its callsign. | [Radio](docs/radio.md#the-estimated-range) |
+| Heard on the radio | APRS stations, aircraft and ships that your own receivers hear, read from a decoder's port (Dire Wolf's KISS, readsb's SBS, AIS-catcher's NMEA) and put on the map beside the mesh radios, in a list with distance and bearing from home, and as a range test. Listening only, no internet. **Not yet tried with a real radio**: built against recorded packets and stand-in decoders. | [Heard on the radio](docs/heard-on-the-radio.md) |
 | Morse trainer | Learn Morse by ear with the Koch method and drills, send it on the screen (multi-touch paddles on a phone), on a keyboard or on a real key, work a practice contact, and get a call ready for the air. Progress over time and weak characters, kept for the household. Not tried on a real iPhone or with a real paddle. | [Morse trainer](docs/morse-trainer.md) |
 | Frequencies to listen to | Where to tune when the internet is out: time signals (with how to set a clock by ear), emergency and news broadcasters, weather, distress and calling, amateur emergency nets and licence-free channels, by country, each with its source and the day it was checked. Filters by the kind of set you have; prints as a PDF. | [Frequencies to listen to](docs/radio-frequencies.md) |
 
@@ -234,6 +235,10 @@ first.*
 | QR codes | Makes a code from text, a web address, a Wi-Fi network, a contact or a saved place, on the device; nothing typed is sent anywhere. | [QR codes](docs/tools-qr-and-network.md#qr-codes-toolsqr) |
 | Compass | Where magnetic north and the map's grid north lie from true north at a place (NOAA's World Magnetic Model 2025, and the National Grid), and so what to add or subtract between map and compass, with the three norths drawn; a bearing converted between them; and on a phone at an `https` address, a live compass corrected to true or grid north. The live compass has not been tried on a real phone. | [Compass](docs/tools-compass.md) |
 | Solar clock | Where the sun is now at a place; after a power cut, the time to set your clocks by from a stick's shadow (noon, the shadow's length or bearing, sunrise on the sea), with an honest range and a diagram of each method; a horizontal sundial and a nocturnal to print, drawn for the place. Worked out on the device, no internet. Tested by arithmetic, not yet against a real shadow. | [Solar clock](docs/tools-solar-clock.md) |
+| Night sky | The Moon's phase, rise and set tonight; a chart of the stars to magnitude 4.5, the planets and 27 constellations for a place now or at another time; and finding north by the Plough or south by the Southern Cross, drawn for that night. Worked out on the device from the Yale Bright Star Catalogue; held to the US Naval Observatory's almanac. | [Night sky](docs/night-sky.md) |
+| Celestial navigation | A position from sextant sights of the Sun, Moon, planets and navigational stars, with the almanac worked out on the device (within half a minute of arc of the US Naval Observatory's for stars and the Sun), corrections shown step by step, lines of position and the fix on a plotting sheet and the map, noon and Polaris latitude, and a printable sight form. For learning and as a fallback, not for navigating a vessel. | [Celestial navigation](docs/celestial-navigation.md) |
+| Tide times | High and low water at the nearest tide stations, a day to a month ahead, worked out on the computer from NOAA's published constants: the US coasts and a few ports elsewhere. Matches NOAA's own tables to a minute or two; ignores storm surges and is not for navigation. | [Tide times](docs/tides.md) |
+| Garden | What to sow, plant out and harvest this month in the UK, from the RHS calendar for 22 vegetables, with tender crops kept back until after your last frost; and a record of what the household sowed. Other countries are not covered yet. | [Garden](docs/garden.md) |
 | Devices on this network | Lists what answers on the network the computer running Outpost is on: a NAS, a printer, a Raspberry Pi whose address you have forgotten. Never put in search. A start-up option limits starting a scan to the computer itself. | [Network](docs/tools-qr-and-network.md#devices-on-this-network-toolsnetwork) |
 
 Every calculator shows its answer as you type and says, under **How this is worked
@@ -506,7 +511,10 @@ set-up line, and each states its size first.
 From [docs/security.md](docs/security.md), which has the whole threat model:
 
 - **No accounts.** Whoever can reach Outpost can read, add, change and delete
-  everything in it, contacts and chat conversations included. By default only the
+  everything in it, contacts and chat conversations included, unless a household PIN
+  is set: then every device reads, and only devices unlocked with the PIN change or
+  delete. A PIN keeps changes to those who know it; it is not a password against
+  someone determined. By default only the
   computer it runs on can reach it. With LAN access on, everyone on that network can;
   turn it on only for a network where you trust everyone, never forward the port to the
   internet, and put it behind a public reverse proxy only if the proxy asks people to
@@ -687,6 +695,7 @@ is in [docs/sources.md](docs/sources.md). In short:
 | Food Standards Agency | Registered food shops in the UK, on the food and supplies layer | OGL |
 | USDA FoodData Central (SR Legacy, April 2018) | Food energy in Supplies, shipped with Outpost | CC0 |
 | NOAA NCEI and the British Geological Survey, World Magnetic Model 2025 | Magnetic north on the Compass, the map and the solar clock, shipped | Public domain |
+| NOAA CO-OPS, harmonic constants for 1,370 tide stations | Tide times, shipped | Public domain |
 | Stations, broadcasters, regulators and coastguards, each page named on its entry | Frequencies to listen to, shipped | Facts, checked against each page and dated; no compiled list copied |
 | Royal Horticultural Society, "Grow your own" pages | The allotment's growing months and the facts on its crop cards | Facts only, each page read once; nothing copied |
 | UK Government (Be Ready, GOV.UK), Met Office, Ofcom and others | Emergency plan templates | OGL v3 and others, quoted only where their terms allow |
@@ -781,6 +790,9 @@ Every page below is also inside Outpost, under **Help**.
 | [Compass](docs/tools-compass.md) | Magnetic, grid and true north, the model, and the live compass |
 | [QR codes and devices on this network](docs/tools-qr-and-network.md) | The two network tools |
 | [Solar clock](docs/tools-solar-clock.md) | Time from the sun and stars, its formulas, sources, diagrams and measured accuracy |
+| [Night sky](docs/night-sky.md) | The Moon, the star chart, finding north, and how accurate it is |
+| [Celestial navigation](docs/celestial-navigation.md) | Sights, corrections, the fix, noon and Polaris, the sight form, and the almanac's accuracy |
+| [Garden](docs/garden.md) | The month's sowing, planting and harvest, the last frost, and the record of sowings |
 | [Emergency plans](docs/emergency-plans.md) | Plans, templates and their sources, cards |
 | [Household papers](docs/household-papers.md) | Medical sheets, keeping in touch, grab cards and the binder |
 | [Check-ins, the log, routine checks and the offline drill](docs/readiness.md) | Roll call, the log of events, routine checks, the offline drill |

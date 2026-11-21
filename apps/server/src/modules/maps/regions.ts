@@ -80,6 +80,8 @@ export const startRegionSchema = z
     maxZoom: zoom,
     locationId: z.string().min(1).optional(),
     includeTerrain: z.boolean().optional(),
+    /** Where the terrain goes when not with the map: where new terrain is set to go (Storage). */
+    terrainLocationId: z.string().min(1).optional(),
   })
   .refine((value) => (value.minZoom ?? 0) <= value.maxZoom, {
     message: "The minimum zoom cannot be greater than the maximum zoom.",
@@ -192,24 +194,33 @@ export function createRegionsService(ctx: AppContext, deps: { planner: Planner; 
     },
 
     async start(input, signal) {
-      const location = input.locationId ? storage.get(input.locationId) : storage.getDefault();
-      if (!storage.isAvailable(location.id)) {
-        throw new AppError(
-          "storage_unavailable",
-          `"${location.name}" is not connected. Reconnect it, or choose another storage location.`,
-          { locationId: location.id },
-        );
-      }
+      // Chosen in the download's own picker, or where each kind is set to go (Storage).
+      const locationOf = (tileType: MapTileType) => {
+        const chosen = tileType === "terrain" ? (input.terrainLocationId ?? input.locationId) : input.locationId;
+        return chosen ? storage.get(chosen) : storage.defaultFor(tileType === "terrain" ? "terrain" : "maps");
+      };
       const kinds: MapTileType[] = input.includeTerrain ? ["vector", "terrain"] : ["vector"];
+      for (const tileType of kinds) {
+        const location = locationOf(tileType);
+        if (!storage.isAvailable(location.id)) {
+          throw new AppError(
+            "storage_unavailable",
+            `"${location.name}" is not connected. Reconnect it, or choose another storage location.`,
+            { locationId: location.id },
+          );
+        }
+      }
       const planned = [];
       for (const tileType of kinds)
         planned.push({ tileType, request: requestOf(input, tileType), ...(await plan(tileType, requestOf(input, tileType), signal)) });
 
       // Both parts must fit before either starts, so a region is never left half there.
-      await storage.assertSpace(
-        location.id,
-        planned.reduce((sum, part) => sum + part.summary.sizeBytes, 0),
-      );
+      const needed = new Map<string, number>();
+      for (const part of planned) {
+        const id = locationOf(part.tileType).id;
+        needed.set(id, (needed.get(id) ?? 0) + part.summary.sizeBytes);
+      }
+      for (const [id, bytes] of needed) await storage.assertSpace(id, bytes);
 
       const slug = slugify(input.name);
       const started: DownloadRow[] = [];
@@ -234,7 +245,7 @@ export function createRegionsService(ctx: AppContext, deps: { planner: Planner; 
               kind: terrain ? "terrain" : "map",
               title: terrain ? `Terrain: ${input.name}` : `Map: ${input.name}`,
               url: part.source.url,
-              locationId: location.id,
+              locationId: locationOf(part.tileType).id,
               relPath: `collections/${terrain ? "terrain" : "maps"}/${slug}-${build}.pmtiles`,
               sizeBytes: part.summary.sizeBytes,
               fetcher: EXTRACT_FETCHER,

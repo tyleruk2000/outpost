@@ -1,4 +1,4 @@
-/** The notes routes: `/notes` (home, trash, templates) and `/notes/:id` (a page). */
+/** The notes routes: `/notes` (home, trash, templates), `/notes/:id` (a page) and `/notes/:id/versions`. */
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { ErrorState, Page } from "@/components/page";
@@ -80,12 +80,14 @@ function NewPage() {
   return <OpeningSkeleton />;
 }
 
-export default function NotesPage() {
+/** `versions`: the route of a page's earlier versions, `/notes/:id/versions`. */
+export default function NotesPage({ versions = false }: { versions?: boolean }) {
   const { id } = useParams();
   const [search] = useSearchParams();
   const screen = useNoteScreen(Boolean(id));
 
   if (id) {
+    if (screen.module && versions) return <screen.module.NoteVersionsScreen key={id} id={id} />;
     if (screen.module) return <screen.module.NoteScreen key={id} id={id} />;
     if (screen.error) {
       return (

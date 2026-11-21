@@ -28,10 +28,15 @@ import { pipeline } from "node:stream/promises";
 import {
   BACKUP_KEEP_DEFAULT,
   BACKUP_KEEP_MAX,
+  type BackupAway,
   type BackupSchedule,
   type BackupScheduleSettings,
+  type BackupStagedResponse,
+  type BackupsKept,
   nextBackupSlot,
   previousBackupSlot,
+  type RestoreTestResult,
+  type StoredBackup,
   type StoredBackupKind,
   type StoredBackupsResponse,
 } from "@outpost/shared";
@@ -48,6 +53,7 @@ import type { LocationRow } from "../storage/service.ts";
 import { DATA_FOLDERS, startBackup, verifyBackupFile } from "./archive.ts";
 import { assertPassphraseRight, PROTECTED_TYPE, type ProtectionService, passphraseField, readProtection } from "./protection.ts";
 import type { RestoreStager } from "./restore.ts";
+import { registerRestoreTest } from "./restore-test.ts";
 import { assertBackupRight, backupRight } from "./right.ts";
 import {
   applyRetention,
@@ -121,11 +127,36 @@ interface State {
    * `attempts` counts the scheduled runs that have failed in a row since the last backup that was made.
    */
   failure: { at: number; message: string; dueAt: number | null; attempts?: number } | null;
+  /** The last scheduled time the location was away, and when the backup owed for it was made. */
+  away: BackupAway | null;
+  /** The backups on the location, as last listed. */
+  kept: BackupsKept | null;
 }
 
 interface RunPayload extends Record<string, unknown> {
   kind: StoredBackupKind;
   dueAt?: number;
+}
+
+export interface BackupOverview {
+  frequency: BackupScheduleSettings["frequency"] | null;
+  locationName: string | null;
+  /** A scheduled backup owed and not made because the location is not connected (or was removed). */
+  missing: { dueAt: number } | null;
+  away: BackupAway | null;
+  kept: BackupsKept | null;
+  restoreTest: RestoreTestResult | null;
+}
+
+/** How many verified backups there are, and how old the newest and the oldest are. */
+export function summariseKept(backups: StoredBackup[], at: number): BackupsKept {
+  const verified = backups.filter((backup) => backup.check === "verified").map((backup) => backup.createdAt);
+  return {
+    at,
+    verified: verified.length,
+    newestAt: verified.length > 0 ? Math.max(...verified) : null,
+    oldestAt: verified.length > 0 ? Math.min(...verified) : null,
+  };
 }
 
 export interface BackupsService {
@@ -138,6 +169,14 @@ export interface BackupsService {
   nextWake(): number | null;
   /** The newest backup that passed its check, how it was started, and whether backups are scheduled. For the Storage screen. */
   last(): { lastAt: number | null; kind: StoredBackupKind | null; scheduled: boolean };
+  /** For the status screen: how often, where, a backup owed while the location is away, what is kept, the last restore test. */
+  overview(): BackupOverview;
+  /**
+   * Checks a backup file Outpost wrote itself (the one made before an update) and stages
+   * it for the next start, as "Restore this one" does. The caller holds the request to
+   * the rule for restoring; a passphrase is held to its own here.
+   */
+  stage(file: string, passphrase: string | undefined, request: FastifyRequest): Promise<BackupStagedResponse>;
   /** Tests move time: everything the schedule decides is decided by this clock. */
   setClock(now: () => number): void;
   /** Tests damage a backup between its being written and its being read back. */
@@ -191,9 +230,11 @@ export function registerAutomaticBackups(
         lastBackupAt: parsed?.lastBackupAt ?? null,
         lastScheduledAt: parsed?.lastScheduledAt ?? null,
         failure: parsed?.failure ?? null,
+        away: parsed?.away ?? null,
+        kept: parsed?.kept ?? null,
       };
     } catch {
-      return { lastBackupAt: null, lastScheduledAt: null, failure: null };
+      return { lastBackupAt: null, lastScheduledAt: null, failure: null, away: null, kept: null };
     }
   }
 
@@ -266,6 +307,9 @@ export function registerAutomaticBackups(
       const key = `${due}|${location?.id ?? "removed"}`;
       if (announced !== key) {
         announced = key;
+        // Remembered, so that the status screen can say the backup for this time was late and why.
+        if (location && state.away?.dueAt !== due)
+          writeState({ ...state, away: { dueAt: due, locationName: location.name, madeAt: null } });
         ctx.log.warn({ location: settings.locationId, dueAt: due }, "scheduled backup not made: its storage location is not connected");
         changed();
       }
@@ -422,6 +466,12 @@ export function registerAutomaticBackups(
     return { name, sizeBytes: bytes, entries: check.entries, removed, locationId: location.id };
   }
 
+  /** A count of the verified backups on the location, for the status screen, which does not read the share itself. */
+  async function keptNow(): Promise<BackupsKept> {
+    const backups = await listStored(backupFolder(), readProtection(ctx)?.key.publicKey);
+    return summariseKept(backups, Date.now());
+  }
+
   ctx.jobs.register<RunPayload>(BACKUP_JOB, {
     queue: QUEUE,
     async run(run) {
@@ -430,7 +480,18 @@ export function registerAutomaticBackups(
       try {
         const result = await writeBackup(kind, run, now);
         const state = readState();
-        writeState({ lastBackupAt: now, lastScheduledAt: kind === "scheduled" ? now : state.lastScheduledAt, failure: null });
+        const away =
+          state.away && state.away.madeAt === null && kind === "scheduled" && (dueAt ?? 0) >= state.away.dueAt
+            ? { ...state.away, madeAt: now }
+            : state.away;
+        writeState({
+          ...state,
+          lastBackupAt: now,
+          lastScheduledAt: kind === "scheduled" ? now : state.lastScheduledAt,
+          failure: null,
+          away,
+          kept: await keptNow().catch(() => state.kept),
+        });
         changed();
         return result;
       } catch (error) {
@@ -479,6 +540,26 @@ export function registerAutomaticBackups(
         kind: state.lastBackupAt === null ? null : state.lastScheduledAt === state.lastBackupAt ? "scheduled" : "manual",
         scheduled: readSettings().locationId !== null,
       };
+    },
+    overview() {
+      const settings = readSettings();
+      const state = readState();
+      const location = settings.locationId ? findLocation(settings.locationId) : undefined;
+      const due = dueSlot(settings, state, clock());
+      return {
+        frequency: settings.locationId ? settings.frequency : null,
+        locationName: location?.name ?? null,
+        missing: due !== null && !activeJob() && location?.status !== "available" ? { dueAt: due } : null,
+        away: state.away,
+        kept: state.kept,
+        restoreTest: tests.last(),
+      };
+    },
+    async stage(file, passphrase, request) {
+      if (passphrase !== undefined) assertPassphraseRight(request, ctx, "Restoring a backup");
+      const staged = await stager.stage(async () => file, passphrase);
+      changed();
+      return staged;
     },
     nextWake: () => wakeAt,
     setClock(now) {
@@ -529,6 +610,10 @@ export function registerAutomaticBackups(
       lastFailure: state.failure ? { at: state.failure.at, message: state.failure.message } : null,
       active: active ? toJobDto(active) : null,
       right: backupRight(request, ctx),
+      away: state.away,
+      kept: state.kept,
+      restoreTest: tests.last(),
+      restoreTestActive: tests.active() ? toJobDto(tests.active()!) : null,
     };
   }
 
@@ -595,6 +680,8 @@ export function registerAutomaticBackups(
     return { folder, file, stat };
   }
 
+  const tests = registerRestoreTest(app, ctx, storedFile, changed);
+
   app.get("/api/backup/stored", async (): Promise<StoredBackupsResponse> => {
     let folder: string;
     try {
@@ -604,7 +691,9 @@ export function registerAutomaticBackups(
       throw error;
     }
     try {
-      return { available: true, reason: null, backups: await listStored(folder, readProtection(ctx)?.key.publicKey) };
+      const backups = await listStored(folder, readProtection(ctx)?.key.publicKey);
+      writeState({ ...readState(), kept: summariseKept(backups, Date.now()) });
+      return { available: true, reason: null, backups };
     } catch (error) {
       return { available: false, reason: `The backup folder could not be read: ${messageOf(error)}`, backups: [] };
     }

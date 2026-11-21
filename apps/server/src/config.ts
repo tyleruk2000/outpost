@@ -54,10 +54,16 @@ const envSchema = z.object({
   OUTPOST_VOACAP_DATA_MANIFEST: z.string().optional(),
   OUTPOST_ALLOW_REMOTE_ERASE: bool(false),
   OUTPOST_ALLOW_REMOTE_SETTINGS: bool(false),
+  // Forgets the household PIN as Outpost starts, for a household that has forgotten it (docs/security.md).
+  OUTPOST_FORGET_PIN: bool(false),
   OUTPOST_OWN_ADDRESS_IS_LOCAL: bool(true),
   // The device: Outpost's figures for Prometheus at /metrics, and setting the server's clock from another device (docs/device.md).
   OUTPOST_METRICS: bool(false),
   OUTPOST_ALLOW_REMOTE_CLOCK: bool(false),
+  /** Where "Check for a newer version" looks for latest.json and its signature. */
+  OUTPOST_UPDATE_URL: z.string().url().default("https://github.com/tyleruk2000/outpost/releases/latest/download"),
+  /** A minisign public key to check releases with, in place of the one built in (see modules/update/release-key.ts). */
+  OUTPOST_RELEASE_KEY: z.string().optional(),
   OUTPOST_ALLOW_REMOTE_MODEL_SERVER: bool(false),
   OUTPOST_OLLAMA_ADDRESSES: list,
   OUTPOST_DOWNLOAD_HOSTS: list,
@@ -84,6 +90,8 @@ const envSchema = z.object({
   OUTPOST_LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).optional(),
   // For tests: one local server that stands in for every weather publisher (modules/weather/sources.ts).
   OUTPOST_WEATHER_STAND_IN: z.string().url().optional(),
+  // For tests: one local server in place of CelesTrak and SatNOGS DB (modules/satellites), at /celestrak/... and /satnogs/...
+  OUTPOST_SATELLITES_STAND_IN: z.string().url().optional(),
   // For tests: a local server in place of the Environment Agency's flood zones service (modules/layers/adapters/flood-zones.ts).
   OUTPOST_FLOOD_ZONES_URL: z.string().url().optional(),
   OUTPOST_FSA_URL: z.string().url().optional(),
@@ -143,6 +151,8 @@ export interface Config {
    * programs' tools) be changed from any device that can reach Outpost (core/setting-right.ts).
    */
   allowRemoteSettings: boolean;
+  /** Forget the household PIN as Outpost starts (modules/access): for a household that has forgotten it. */
+  forgetPin: boolean;
   /**
    * Whether a connection from one of this computer's own network addresses counts as
    * this computer (core/local.ts). On by default; turned off where something on this
@@ -153,6 +163,10 @@ export interface Config {
   metrics: boolean;
   /** Let any device that can reach Outpost set the server's clock, not only this computer (modules/device). */
   allowRemoteClock: boolean;
+  /** Where the release page is: latest.json and latest.json.minisig are fetched from here. */
+  updateUrl: string;
+  /** A release key given at start-up, or null for the one built in. */
+  releaseKey: string | null;
   /** Let answers be written by a model server on the internet, not only one on this computer or the local network. */
   allowRemoteModelServer: boolean;
   /**
@@ -183,6 +197,8 @@ export interface Config {
   };
   /** For tests: a local server answering for every weather publisher, at /<source id>/<path>; unset in use. */
   weatherStandIn?: string;
+  /** For tests: a local server answering for CelesTrak and SatNOGS DB, at /celestrak/<path> and /satnogs/<path>; unset in use. */
+  satellitesStandIn?: string;
   /** For tests: the flood zones collection's address in place of the Environment Agency's; unset in use. */
   floodZonesUrl?: string;
   /** The Food Standards Agency's API, or a stand-in for it (tests). */
@@ -280,9 +296,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     extraDownloadHosts: parsed.OUTPOST_DOWNLOAD_HOSTS.map((host) => host.toLowerCase()),
     allowRemoteErase: parsed.OUTPOST_ALLOW_REMOTE_ERASE,
     allowRemoteSettings: parsed.OUTPOST_ALLOW_REMOTE_SETTINGS,
+    forgetPin: parsed.OUTPOST_FORGET_PIN,
     ownAddressIsLocal: parsed.OUTPOST_OWN_ADDRESS_IS_LOCAL,
     metrics: parsed.OUTPOST_METRICS,
     allowRemoteClock: parsed.OUTPOST_ALLOW_REMOTE_CLOCK,
+    updateUrl: parsed.OUTPOST_UPDATE_URL.replace(/\/+$/, ""),
+    releaseKey: parsed.OUTPOST_RELEASE_KEY ?? null,
     allowRemoteModelServer: parsed.OUTPOST_ALLOW_REMOTE_MODEL_SERVER,
     ollamaAddresses: parsed.OUTPOST_OLLAMA_ADDRESSES,
     // A portable drive runs in a window a person is looking at: keep it quiet.
@@ -299,6 +318,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     },
     imagery: imageryStandIns(parsed),
     weatherStandIn: parsed.OUTPOST_WEATHER_STAND_IN,
+    satellitesStandIn: parsed.OUTPOST_SATELLITES_STAND_IN,
     floodZonesUrl: parsed.OUTPOST_FLOOD_ZONES_URL,
     fsaUrl: parsed.OUTPOST_FSA_URL,
     geofabrikUrl: parsed.OUTPOST_GEOFABRIK_URL,

@@ -286,6 +286,11 @@ export interface CreateNoteBody {
   templateId?: string;
   /** Place the page right after this sibling instead of last. */
   afterId?: string;
+  /**
+   * The page's id, made by the device that wrote it (8 to 64 letters, digits, `-` or `_`).
+   * Sent again, the page made the first time is the answer and no second one is made.
+   */
+  clientId?: string;
 }
 
 export interface UpdateNoteBody {
@@ -378,4 +383,42 @@ export interface NoteDeletedResponse {
 }
 export interface AttachmentResponse {
   attachment: AttachmentDto;
+}
+
+// ── Earlier versions ────────────────────────────────────────────────────────
+
+/**
+ * What a page said before a save changed it. Every save is kept for an hour, then the
+ * last of each hour for a day, then the last of each day.
+ */
+export interface NoteVersionItem {
+  id: string;
+  title: string;
+  /** When the page was saved like this. */
+  savedAt: number;
+  /** The content is an armoured OpenPGP message, as the page was then. */
+  encrypted: boolean;
+  sizeBytes: number;
+}
+
+export interface NoteVersionDetail extends NoteVersionItem {
+  content: NoteDoc;
+}
+
+export interface NoteVersionsResponse {
+  versions: NoteVersionItem[];
+}
+
+/** `POST /api/notes/:id/versions/:versionId/restore`: the version becomes the page's newest. */
+export interface RestoreNoteVersionBody {
+  /** The `updatedAt` of the page as the person saw it, so a newer save is not replaced unseen. */
+  baseUpdatedAt: number;
+  origin?: string;
+}
+
+/** The room the earlier versions of every page take, for the Storage screen. */
+export interface NoteVersionsSpace {
+  versions: number;
+  pages: number;
+  bytes: number;
 }

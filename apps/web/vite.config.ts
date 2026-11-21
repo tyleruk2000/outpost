@@ -122,5 +122,8 @@ export default defineConfig({
     setupFiles: ["./src/test-setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
     css: false,
+    // Screens are driven through user-event: on a loaded machine one test can take
+    // several seconds, so the default 5 s made the suite fail for reasons of speed alone.
+    testTimeout: 20_000,
   },
 });

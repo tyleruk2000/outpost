@@ -5,6 +5,7 @@
  */
 import { ClipboardCheck, FileText, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router";
 import { toast } from "sonner";
 import { Joined, Rows } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -20,15 +21,25 @@ export function sentWords(sent: SentFromPhone): string | null {
   const parts = [
     sent.checkIns > 0 ? plural(sent.checkIns, "check-in") : null,
     sent.pages.length > 0 ? plural(sent.pages.length, "page") : null,
+    sent.edits > 0 ? `changes to ${plural(sent.edits, "page")}` : null,
   ].filter(Boolean);
-  if (parts.length === 0) return null;
-  return `Sent ${parts.join(" and ")} written on this ${DEVICE} while Outpost was out of reach.`;
+  const words: string[] = [];
+  if (parts.length > 0) words.push(`Sent ${parts.join(" and ")} written on this ${DEVICE} while Outpost was out of reach.`);
+  if (sent.conflicts.length > 0) {
+    words.push(
+      `${plural(sent.conflicts.length, "page")} changed on Outpost too: open ${sent.conflicts.length === 1 ? "it" : "each"} to choose which version to keep.`,
+    );
+  }
+  if (sent.locked) words.push(`Nothing more was sent: this ${DEVICE} needs the household PIN to change things.`);
+  return words.length > 0 ? words.join(" ") : null;
 }
 
 const itemWords = (item: OutboxItem) =>
   item.kind === "checkin"
     ? `${item.author}: ${STATUS_WORDS[item.status]}${item.body ? `: ${item.body.split("\n")[0]}` : ""}${item.place ? ` · ${item.place}` : ""}`
     : item.title.trim() || "A page with no title";
+
+const KIND_WORDS: Record<OutboxItem["kind"], string> = { checkin: "Check-in", page: "New page", edit: "Changes to a page" };
 
 export function OutboxList({ canSend = false }: { canSend?: boolean }) {
   const items = useOutbox();
@@ -62,8 +73,20 @@ export function OutboxList({ canSend = false }: { canSend?: boolean }) {
             <div className="min-w-0 flex-1">
               <p className="break-words text-ink">{itemWords(item)}</p>
               <p className="text-small text-ink-muted">
-                <Joined parts={[item.kind === "checkin" ? "Check-in" : "New page", `written ${formatDateTime(item.writtenAt)}`]} />
+                <Joined parts={[KIND_WORDS[item.kind], `written ${formatDateTime(item.writtenAt)}`]} />
               </p>
+              {item.kind === "edit" && item.conflict ? (
+                <p className="text-small text-warning">
+                  Changed on Outpost too, at {formatDateTime(item.conflict.updatedAt)}. Nothing was overwritten.{" "}
+                  {canSend ? (
+                    <Link to={`/notes/${item.noteId}`} className="font-medium text-ink underline underline-offset-2">
+                      Open the page to choose which version to keep
+                    </Link>
+                  ) : (
+                    "When Outpost is in reach, open the page to choose which version to keep."
+                  )}
+                </p>
+              ) : null}
               {item.refused ? (
                 <p className="text-small text-danger">
                   Outpost refused it: {item.refused}{" "}

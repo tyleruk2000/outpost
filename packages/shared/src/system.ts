@@ -57,8 +57,16 @@ export interface Settings {
   "maps.terrainSource": string;
   "maps.defaultMaxZoom": number;
   "storage.checkIntervalSeconds": number;
+  /** A storage location for new downloads of each kind of content, where one is set. */
+  "storage.kindDefaults": Partial<Record<"maps" | "terrain" | "places" | "layers" | "collections" | "documents", string>>;
+  /** Someone in the household holds an amateur radio licence: only the reminders that transmitting needs one are left out. */
+  "radio.licensed": boolean;
+  /** Upper case, or "". Never sent anywhere. */
+  "radio.callsign": string;
   /** Days a file sent on the household board is kept; 0 keeps it until removed. */
   "board.fileDays": number;
+  /** Hours of aircraft heard on the radio kept; 0 keeps them until cleared. */
+  "heard.aircraftHours": number;
   /** Let the model look things up in Outpost (Chat). Off by default. */
   "tools.enabled": boolean;
   "tools.library": boolean;

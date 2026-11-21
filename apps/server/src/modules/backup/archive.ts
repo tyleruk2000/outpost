@@ -27,6 +27,8 @@ export const FORMAT = "outpost-backup";
 export const DATA_FOLDERS = ["attachments", "extracted", "catalog"];
 // Files sent on the household board (modules/board), so that a restored board's files are there.
 DATA_FOLDERS.push("board");
+// The covers of books brought in from Calibre (modules/calibre).
+DATA_FOLDERS.push("covers");
 /** The manifest is a few lines of JSON; anything much larger is not one. */
 const MAX_MANIFEST_BYTES = 64 * 1024;
 const MANIFEST_WITHIN = 8;
@@ -233,8 +235,17 @@ export interface BackupCheck {
  * A protected backup is opened with `access`: the key of the file, which the run that
  * wrote it still holds, or a passphrase. Every chunk of it must open, and the manifest
  * its header shows must be the one inside.
+ *
+ * `inspect` is given the path of the copy of the database once it has passed, before
+ * the copy is removed: "Test a restore" counts what is in it there.
  */
-export async function verifyBackupFile(file: string, workDir: string, signal?: AbortSignal, access?: SealedAccess): Promise<BackupCheck> {
+export async function verifyBackupFile(
+  file: string,
+  workDir: string,
+  signal?: AbortSignal,
+  access?: SealedAccess,
+  inspect?: (database: string) => void,
+): Promise<BackupCheck> {
   // The same name as the snapshot a backup is made from, so that a copy left behind by
   // a crash is recognised and offered for removal like one of those.
   const database = path.join(workDir, `backup-snapshot-${Date.now()}${String(Math.floor(Math.random() * 1000)).padStart(3, "0")}.db`);
@@ -295,6 +306,7 @@ export async function verifyBackupFile(file: string, workDir: string, signal?: A
       sound = false;
     }
     if (!sound) throw new BackupDamaged("The database inside it is damaged or is not an Outpost database.");
+    inspect?.(database);
     return { manifest, entries };
   } finally {
     await removeDatabase(database);

@@ -8,7 +8,10 @@
  * top (`ScreensUnder`). `nav.test.ts` fails if a route in app.tsx is missing from here.
  */
 import {
+  Antenna,
   AudioWaveform,
+  BadgeCheck,
+  BookCopy,
   BookMarked,
   BookOpen,
   ClipboardList,
@@ -33,6 +36,7 @@ import {
   Radio,
   RadioReceiver,
   RadioTower,
+  SatelliteDish,
   Search,
   Settings,
   ShieldCheck,
@@ -90,6 +94,9 @@ export const knowledgeNav: NavItem[] = [
     icon: BookOpen,
     key: "l",
     keywords: "documents books ebooks pdf files reading audiobooks learning school course lessons progress khan upload",
+    children: [
+      { to: "/library/calibre", label: "Import from Calibre", icon: BookCopy, keywords: "calibre ebook library epub authors series" },
+    ],
   },
   {
     to: "/maps",
@@ -151,6 +158,24 @@ export const knowledgeNav: NavItem[] = [
         label: "Frequencies to listen to",
         icon: Radio,
         keywords: "frequency scanner shortwave broadcast channels listen pmr cb",
+      },
+      {
+        to: "/radio/satellites",
+        label: "Satellites",
+        icon: SatelliteDish,
+        keywords: "satellite iss pass orbit amsat weather noaa doppler",
+      },
+      {
+        to: "/radio/licences",
+        label: "Licences and band plans",
+        icon: BadgeCheck,
+        keywords: "licence license band plan privileges power pmr446 frs gmrs cb uhf country",
+      },
+      {
+        to: "/radio/heard",
+        label: "Heard on the radio",
+        icon: Antenna,
+        keywords: "aprs ads-b adsb aircraft planes ships ais vessels receiver sdr dire wolf direwolf kiss tracker range",
       },
     ],
   },
@@ -246,16 +271,25 @@ export const settingsSections: SettingsSection[] = [
   { id: "maps", label: "Maps", inContents: true, keywords: "map source terrain tiles" },
   { id: "board", label: "Message board", inContents: true, keywords: "messages files keep" },
   { id: "mesh", label: "Mesh radio", inContents: true, keywords: "meshtastic meshcore lora mqtt radio link mesh off grid messages" },
+  { id: "radio-licence", label: "Radio licence", inContents: true, keywords: "amateur licence license ham callsign licensed listen only" },
+  { id: "receivers", label: "Receivers", inContents: true, keywords: "aprs aircraft ships ais ads-b kiss sbs nmea decoder dire wolf port" },
   { id: "backup", label: "Backup", inContents: true, keywords: "back up restore copy save everything password passphrase protect" },
   { id: "automatic-backups", label: "Automatic backups", inContents: true, keywords: "backup schedule every night nas" },
+  {
+    id: "export",
+    label: "Take everything out",
+    inContents: true,
+    keywords: "export take out everything leave my data open formats markdown vcard gpx geojson zip",
+  },
   { id: "https", label: "HTTPS", inContents: true, keywords: "secure certificate padlock not secure warning" },
   {
     id: "access",
     label: "Who can use it",
     inContents: true,
-    keywords: "wifi wi-fi network lan phones share sharing household password sign in accounts",
+    keywords: "wifi wi-fi network lan phones share sharing household password sign in accounts pin lock unlock guest read only",
   },
-  { id: "about", label: "This installation", inContents: true, keywords: "version update memory processor about" },
+  { id: "updates", label: "Updates", inContents: true, keywords: "update upgrade newer release usb stick install" },
+  { id: "about", label: "This installation", inContents: true, keywords: "version memory processor about" },
 ];
 
 /**

@@ -34,11 +34,23 @@ export interface NoteEditorProps {
    * server as a file of its own, in the clear, so one added here would not be protected.
    */
   pictures?: boolean;
+  /** What is said when a picture is added while `pictures` is false, when the reason is not encryption. */
+  noPicturesWhy?: string;
 }
 
 const NO_PICTURES = "An encrypted page holds text only. A picture would be stored on Outpost as a separate file, not encrypted.";
 
-export function NoteEditor({ noteId, content, editable, onChange, onBlur, onEditor, createSubPage, pictures = true }: NoteEditorProps) {
+export function NoteEditor({
+  noteId,
+  content,
+  editable,
+  onChange,
+  onBlur,
+  onEditor,
+  createSubPage,
+  pictures = true,
+  noPicturesWhy,
+}: NoteEditorProps) {
   const navigate = useNavigate();
   const touch = useIsTouch();
   const fileInput = useRef<HTMLInputElement>(null);
@@ -51,7 +63,7 @@ export function NoteEditor({ noteId, content, editable, onChange, onBlur, onEdit
     navigate,
     pickImage(pos) {
       if (!pictures) {
-        toast(NO_PICTURES);
+        toast(noPicturesRef.current);
         return;
       }
       imagePos.current = pos;
@@ -64,6 +76,9 @@ export function NoteEditor({ noteId, content, editable, onChange, onBlur, onEdit
   callbacks.current = { onChange, onBlur };
   const picturesRef = useRef(pictures);
   picturesRef.current = pictures;
+  const noPictures = noPicturesWhy ?? NO_PICTURES;
+  const noPicturesRef = useRef(noPictures);
+  noPicturesRef.current = noPictures;
 
   // Everything the editor is built from is fixed for its lifetime, so it is never re-created.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the first values are the ones the editor is made with
@@ -87,7 +102,7 @@ export function NoteEditor({ noteId, content, editable, onChange, onBlur, onEdit
           if (!current || files.length === 0 || event.clipboardData?.types.includes("text/html")) return false;
           event.preventDefault();
           if (!picturesRef.current) {
-            toast(NO_PICTURES);
+            toast(noPicturesRef.current);
             return true;
           }
           uploadImages(current, host, files, current.state.selection.from);
@@ -104,7 +119,7 @@ export function NoteEditor({ noteId, content, editable, onChange, onBlur, onEdit
           if (!current || moved || files.length === 0) return false;
           event.preventDefault();
           if (!picturesRef.current) {
-            toast(NO_PICTURES);
+            toast(noPicturesRef.current);
             return true;
           }
           const at = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos ?? current.state.selection.from;

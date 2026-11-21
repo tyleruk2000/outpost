@@ -158,9 +158,27 @@ be reached at all. The pages inside it come too. A kept page cannot be edited th
 and the copy is never sent back, so it cannot overwrite the page: see
 [offline.md](offline.md#a-phone-out-of-reach-of-the-server).
 
-Pages do not keep a history of their versions. The one place an earlier version is
-kept is the record of a merge from a portable drive, for the pages that merge updated;
-see [Notes written on a portable drive](#notes-written-on-a-portable-drive).
+### Earlier versions
+
+Each save that changes a page's title or words keeps what the page said before it.
+**Earlier versions** in a page's menu lists them by time. Choose one to see it beside
+the page as it is now (on a phone, switch between **This version** and **Now**).
+**Restore this version** makes it the page's newest version; what the page said a
+moment before is kept as a version too, so restoring loses nothing. If the page was
+changed somewhere else since you opened the list, the restore is refused and says so.
+
+Versions are thinned as the page is saved again: every save is kept for an hour, then
+the last save of each hour for a day, then the last save of each day. Tags, icon,
+cover and favourites are not versioned.
+
+An encrypted page keeps encrypted versions only. Encrypting a page erases every
+earlier version that is plain text, and the versions kept after that are ciphertext,
+which Outpost cannot show; restore one to read it on the page with its passphrase.
+
+Storage shows how much room the versions of all pages take, and **Clear earlier
+versions** erases them all (the pages stay as they are). Versions go with a page when
+it is deleted for good. A merge from a portable drive keeps its own record of the
+pages it updated; see [Notes written on a portable drive](#notes-written-on-a-portable-drive).
 
 ### Encrypted pages
 

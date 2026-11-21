@@ -35,7 +35,9 @@ import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "
 import { Field, Input } from "@/components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Badge, Checkbox, Select, Skeleton } from "@/components/ui/misc";
+import { FirstUseGuide } from "@/features/help/first-use";
 import { formatBearing, formatDistance } from "@/features/maps/lib/geo";
+import { LicenceLine } from "@/features/radio/licence";
 import { useDebounced } from "@/lib/use-debounced";
 import { formatDate, formatNumber, plural } from "@/lib/utils";
 import {
@@ -486,6 +488,12 @@ export default function RepeatersPage() {
         title="Repeaters"
         description="Amateur radio repeaters kept in Outpost: found, measured from a place and written out for a radio with no connection."
         actions={held > 0 ? actions : undefined}
+      />
+      <LicenceLine use="listen-and-transmit" className="mb-6" />
+      <FirstUseGuide
+        slug="radio-quick-start"
+        words="New to radio here? Four short steps: something to listen to, the frequency sheets, repeaters, and a mesh message."
+        className="mb-6"
       />
 
       {overview.isPending ? (

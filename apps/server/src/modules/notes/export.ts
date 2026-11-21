@@ -99,7 +99,7 @@ export function planPaths(rows: PlanRow[]): Map<string, string> {
 }
 
 /** Adds one entry and waits until it has been written out, so only one page is in memory at a time. */
-function addEntry(archive: ZipArchive, source: string | Readable, name: string, date: Date): Promise<void> {
+export function addEntry(archive: ZipArchive, source: string | Readable, name: string, date: Date): Promise<void> {
   return new Promise((resolve, reject) => {
     const done = (error?: Error) => {
       archive.off("entry", onEntry);
@@ -123,10 +123,16 @@ export interface NotesExporter {
   page(id: string): { filename: string; markdown: string };
   /** The whole workspace as a zip, produced as it is read. */
   workspace(): { filename: string; stream: Readable };
+  /**
+   * Writes the same tree into an archive someone else is making, under `folder/`, and
+   * leaves the archive open. Answers how many pages and attachments went in.
+   */
+  into(archive: ZipArchive, folder: string): Promise<{ pages: number; attachments: number }>;
 }
 
 export function createNotesExporter(ctx: AppContext, notes: NotesService, attachments: AttachmentStore): NotesExporter {
-  async function writeWorkspace(archive: ZipArchive): Promise<void> {
+  async function writeWorkspace(archive: ZipArchive, folder = ""): Promise<{ pages: number; attachments: number }> {
+    let attachmentCount = 0;
     const rows = ctx.sqlite
       .prepare(
         `SELECT id, parent_id AS parentId, title, is_template AS isTemplate FROM notes WHERE trashed_at IS NULL ORDER BY position, id`,
@@ -159,7 +165,7 @@ export function createNotesExporter(ctx: AppContext, notes: NotesService, attach
           return to ? relativeLink(file, to) : undefined;
         },
       });
-      await addEntry(archive, markdown, file, new Date(row.updatedAt));
+      await addEntry(archive, markdown, folder + file, new Date(row.updatedAt));
     }
 
     for (const [id, file] of attachmentPaths) {
@@ -170,9 +176,10 @@ export function createNotesExporter(ctx: AppContext, notes: NotesService, attach
         ctx.log.warn({ attachment: id }, "attachment file is missing; left out of the notes export");
         continue;
       }
-      await addEntry(archive, fs.createReadStream(source), file, new Date(row.createdAt));
+      await addEntry(archive, fs.createReadStream(source), folder + file, new Date(row.createdAt));
+      attachmentCount += 1;
     }
-    await archive.finalize();
+    return { pages: paths.size, attachments: attachmentCount };
   }
 
   return {
@@ -183,13 +190,17 @@ export function createNotesExporter(ctx: AppContext, notes: NotesService, attach
 
     workspace() {
       const archive = new ZipArchive({ zlib: { level: 6 } });
-      writeWorkspace(archive).catch((error: Error) => {
-        // Already destroyed means the person closed the download; that is not a failure.
-        if (archive.destroyed) return;
-        ctx.log.error({ err: error }, "notes export failed");
-        archive.destroy(error);
-      });
+      writeWorkspace(archive)
+        .then(() => archive.finalize())
+        .catch((error: Error) => {
+          // Already destroyed means the person closed the download; that is not a failure.
+          if (archive.destroyed) return;
+          ctx.log.error({ err: error }, "notes export failed");
+          archive.destroy(error);
+        });
       return { filename: `outpost-notes-${new Date().toISOString().slice(0, 10)}.zip`, stream: archive };
     },
+
+    into: (archive, folder) => writeWorkspace(archive, folder.endsWith("/") ? folder : `${folder}/`),
   };
 }

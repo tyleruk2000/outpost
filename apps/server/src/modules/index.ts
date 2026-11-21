@@ -10,6 +10,7 @@ import { registerAudiobooks } from "./audiobooks/index.ts";
 import { registerBackup } from "./backup/index.ts";
 import { registerBoard } from "./board/index.ts";
 import { registerBooks } from "./books/index.ts";
+import { registerCalibre } from "./calibre/index.ts";
 import { registerCatalog } from "./catalog/index.ts";
 import { registerChat } from "./chat/index.ts";
 import { registerCollections } from "./collections/index.ts";
@@ -20,7 +21,11 @@ import { registerDocuments } from "./documents/index.ts";
 import { registerDownloads } from "./downloads/index.ts";
 import { registerEmergencyPlans } from "./emergency-plans/index.ts";
 import { registerEncryption } from "./encryption/index.ts";
+import { registerExportAll } from "./export-all/index.ts";
 import { registerGames } from "./games/index.ts";
+import { registerGarden } from "./garden/index.ts";
+import { registerHeard } from "./heard/index.ts";
+import { registerHighlights } from "./highlights/index.ts";
 import { registerHouseholdPapers } from "./household-papers/index.ts";
 import { registerHttps } from "./https/index.ts";
 import { registerImports } from "./imports/index.ts";
@@ -42,10 +47,13 @@ import { registerPropagation } from "./propagation/index.ts";
 import { registerReadiness } from "./readiness/index.ts";
 import { registerRepeaters } from "./repeaters/index.ts";
 import { registerRetrieval } from "./retrieval/index.ts";
+import { registerSatellites } from "./satellites/index.ts";
 import { registerSearch } from "./search/index.ts";
 import { registerSemantic } from "./semantic/index.ts";
 import { registerSupplies } from "./supplies/index.ts";
+import { registerTides } from "./tides/index.ts";
 import { registerTools } from "./tools/index.ts";
+import { registerUpdate } from "./update/index.ts";
 import { registerWeather } from "./weather/index.ts";
 import { registerWebPages } from "./webpages/index.ts";
 
@@ -60,6 +68,7 @@ export const modules: ModuleRegister[] = [
   registerAnswers,
   registerDocuments,
   registerNotes,
+  registerHighlights,
   registerChat,
   registerImports,
   registerCollections,
@@ -103,6 +112,20 @@ export const modules: ModuleRegister[] = [
   registerHouseholdPapers,
   // Readiness (the log of events, routine checks, the offline drill), after the papers, on a line of its own.
   registerReadiness,
+  // Garden (Tools): the record of sowings and the last-frost date, on a line of its own.
+  registerGarden,
+  // Tide times (Tools): predictions from bundled harmonic constants, nothing kept, on a line of its own.
+  registerTides,
+  // Bringing in a Calibre library (Library), after documents, on a line of its own.
+  registerCalibre,
+  // Updating Outpost itself (Settings, Updates), after backups it makes first, on a line of its own.
+  registerUpdate,
+  // Taking everything out (Settings), after every module whose things it gathers, on a line of its own.
+  registerExportAll,
+  // Satellite tracking (Radio), on a line of its own so that other additions merge cleanly.
+  registerSatellites,
+  // Heard on the radio (APRS, aircraft, ships), after the mesh link whose positions it keeps for the range view, on a line of its own.
+  registerHeard,
   // Tools a language model may call (Chat, and /mcp), last: they read from every module above.
   registerTools,
 ];

@@ -120,7 +120,8 @@ export default function WriteScreen() {
     <Page width="reading">
       <h1 className="font-title text-title text-ink">Write while out of reach</h1>
       <p className="mt-2 max-w-[60ch] text-ink-muted">
-        A check-in or a new page is kept on this {DEVICE} and sent when Outpost is next in reach. Pages already in Notes are read-only here.
+        A check-in or a new page is kept on this {DEVICE} and sent when Outpost is next in reach. A page kept on this {DEVICE} can be
+        changed from its own screen, with Edit.
       </p>
       <Section title="Check in" className="mt-8">
         <CheckInForm />
