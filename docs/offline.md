@@ -208,7 +208,7 @@ cannot reach it. Two things make the phone still useful there:
 | A route or recorded track | Its panel on the map, **Keep on this phone** | Its line, heights and waypoints. |
 | Saved places | Under the list of places, **Keep on this phone** | All of them, as a set. |
 | An emergency plan | At the foot of its **Use now** (`/prepare/plans/:id/use`), **Keep on this phone** | The plan as "Use now" shows it: the steps, the emergency number, who to call with their numbers, the places to meet, and the plan's ticks. Not the cards to print. See [below](#an-emergency-plan). |
-| An area of the map | Maps, **Offline maps**, "Map areas on this phone" | Every tile of the part of the map in view, from the coarsest zoom to the one you choose, the lettering those tiles use, the map's icons, and terrain if you tick it. |
+| An area of the map | Maps, **Offline maps**, "Map areas on this phone" | Every tile of the part of the map in view, or of a whole installed region, from the coarsest zoom to the one you choose, the lettering those tiles use, the map's icons, and terrain if you tick it. With terrain, heights and the estimated radio range work out of reach. |
 
 The words follow the device: on a tablet the button reads "Keep on this tablet", on a
 laptop "Keep on this computer".
@@ -264,26 +264,41 @@ area copies the tiles for a box from the server to the phone: nothing is downloa
 from the internet, and an area can only be as detailed as the region installed on the
 server.
 
-1. Move the map so the area is in view. Open **Offline maps** and find "Map areas on
-   this phone".
+1. Move the map so the area is in view, or choose **All of** a region installed on the
+   server under "What to keep". Open **Offline maps** and find "Map areas on this phone".
 2. Choose the detail, and whether terrain comes too. Press **Measure the area in
    view**. The server adds up the tiles from its archives' own indexes and answers
    with the exact number of tiles and bytes. Tiles are stored on the phone still
    compressed, as the archive holds them, so the size shown is the size stored, plus up
    to about 2 MB of lettering and icons.
 3. Press **Keep this area**. The phone fetches the tiles six at a time. Keep Outpost
-   open until it says the area is kept. If it is interrupted, "On this phone" shows
+   open until it says the area is kept. The first time, Outpost also asks the browser to
+   keep what is stored when the phone is short of room, and says the answer; Chrome
+   decides by itself, Firefox asks you, Safari grants it to a Home Screen app. If it is interrupted, "On this phone" shows
    the area as not finished and offers **Carry on**, which fetches only what is missing.
 
 One area holds at most 12,000 map tiles and 12,000 terrain tiles, and at most 400 MB.
 Past that the box is refused with a message; zoom in, or choose less detail. An area is
 also refused if the browser reports less room than it needs.
 
+A whole region is held to the same limits, so a country can usually be kept only with
+less detail; a box cut from it (the part in view) can be kept in more.
+
 Outside a kept area the map still draws, from the coarse tiles that came along (every
 zoom from 0 up covers the box, and the low zooms cover a great deal around it) and from
 the outline of the world that is part of the app. Contour lines and hill shading work
 in a kept area if terrain was kept: they are drawn on the phone from the terrain tiles,
 as they are at home. The phone's own position works, because it comes from the phone.
+
+**Heights and the estimated radio range, out of reach.** Where terrain was kept, the
+height under the readout and **Estimated radio range from the centre** (the radio mast
+button on the map) work with the server off: the phone works them out from the kept
+terrain tiles with the server's own sums. Within reach the server always answers
+instead. The range reaches 100 km from the aerial; the phone holds only the ground of
+the areas it kept (detailed inside them, coarser around them), so past that the card
+says the ground is not known, and the outline stops there. Working out a range takes the
+phone a few seconds. Line of sight between two points, the walk reach, the relay
+planner and route heights still need the server.
 
 If the regions installed on the server change after an area was kept, "On this phone"
 says so and offers **Fetch again**. Areas are not fetched again by themselves: they are
@@ -472,6 +487,11 @@ Kept emergency plans are tested in the web suite (`features/kept/plan-copy.test.
 `kept-screens.test.tsx`) with a stand-in for the browser's storage, and the rule for
 ticks on a real test server (`apps/server/test/emergency-plans.test.ts`); not end to
 end with the server stopped.
+
+Heights and the estimated range from kept terrain are tested in the web suite
+(`sw/kept-terrain.test.ts`) against a real terrain tile in a stand-in for the browser's
+storage, and keeping a whole region by its measured box (`kept/keep-region.test.tsx`);
+not end to end with the server stopped, and not on a phone.
 
 Not tested: a real iPhone or Android phone; adding to the Home Screen on any device;
 Safari and Firefox at all; what any browser does with the storage over days; a phone

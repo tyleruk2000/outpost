@@ -15,6 +15,10 @@
  *   cache, with one exception: things a person chose to keep on this phone. For those
  *   (pictures in a kept page, tiles and lettering of a kept map area) the server is
  *   still asked first, and the kept copy is used only when it does not answer.
+ * - The height of a point and an aerial's estimated range (`/api/maps/height`,
+ *   `/api/maps/sight-range`) are asked of the server first too. When it does not
+ *   answer, the worker works them out from the terrain of kept map areas
+ *   (`kept-terrain.ts`), with the server's own sums. Nothing is stored for them.
  * - Everything else is left to the browser, as if there were no worker.
  */
 
@@ -39,6 +43,8 @@ export type Handling =
   | "shell"
   /** Something that may have been kept on purpose: the server first, the kept copy if it does not answer. */
   | "kept"
+  /** A height or a range: the server first, worked out from kept terrain if it does not answer. */
+  | "worked"
   /** Not the worker's business. */
   | "none";
 
@@ -55,6 +61,9 @@ export interface RequestFacts {
 const KEPT_PATHS = ["/api/attachments/", "/api/maps/tiles/", "/api/maps/terrain/", "/map-assets/"];
 
 /** True for a map tile address: where nothing is kept, the worker answers "no tile here" rather than failing. */
+/** Questions the worker can answer from kept terrain when the server cannot. */
+export const WORKED_PATHS = ["/api/maps/height", "/api/maps/sight-range"];
+
 export function isTilePath(pathname: string): boolean {
   return pathname.startsWith("/api/maps/tiles/") || pathname.startsWith("/api/maps/terrain/");
 }
@@ -77,6 +86,7 @@ export function handlingOf(request: RequestFacts, origin: string, precached: Rea
     // The request that fetches a tile in order to keep it must reach the server itself.
     return url.searchParams.get("raw") === "1" ? "none" : "kept";
   }
+  if (WORKED_PATHS.includes(path)) return request.mode === "navigate" ? "none" : "worked";
   if (path.startsWith("/api/") || path.startsWith("/kiwix/")) return "none";
   if (precached.has(path) || path.startsWith("/assets/")) return "shell";
   // The same test the server uses to decide that an address is a page of the app.

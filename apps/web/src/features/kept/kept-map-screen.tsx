@@ -3,26 +3,33 @@
  * drawn by the same map code from the copies on this phone. It is for finding your
  * way, not for changing anything: there is no drawing, saving or downloading here.
  *
- * The phone's own position still works, because that comes from the phone.
+ * The phone's own position still works, because that comes from the phone. Where terrain
+ * was kept, so do the height under the readout and the estimated radio range from the
+ * centre: the service worker works both out from the kept terrain (`sw/kept-terrain.ts`)
+ * with the server's own sums, and says how far the kept ground reaches.
  */
 import type { Bbox, InstalledRegion, MapSources, MarkerDto, TrackWithGeometryDto } from "@outpost/shared";
-import { CircleAlert, LocateFixed, Minus, Plus } from "lucide-react";
+import { CircleAlert, LocateFixed, Minus, Plus, RadioTower } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router";
 import "@/features/maps/maps.css";
 import { Notice } from "@/components/page";
 import { Skeleton } from "@/components/ui/misc";
-import { useGeolocation, useIsDesktop, useMapTheme, useStoredState } from "@/features/maps/hooks";
+import { useGeolocation, useIsDesktop, useMapTheme, useShadeColour, useStoredState } from "@/features/maps/hooks";
 import { formatPosition, isReadoutFormat, type ReadoutFormat } from "@/features/maps/lib/coords";
 import { bboxUnion, formatDistance } from "@/features/maps/lib/geo";
 import { iconOf } from "@/features/maps/lib/place-icons";
 import type { StyleInput } from "@/features/maps/lib/style";
 import { DEFAULT_VIEW, readStored, STORAGE_KEYS } from "@/features/maps/lib/view";
 import type { MapEngine } from "@/features/maps/map/engine";
-import { coverageData, locationData, markersData, tracksData } from "@/features/maps/map/overlays";
+import { coverageData, EMPTY, locationData, markersData, tracksData } from "@/features/maps/map/overlays";
+import { canShade } from "@/features/maps/map/shades";
+import { useShades } from "@/features/maps/map/use-shades";
 import { creditsFor, MapFooter } from "@/features/maps/map-footer";
+import { usePointRange } from "@/features/maps/radio/point-range";
 import { type Detent, MobileSheet } from "@/features/maps/side-panel";
 import { ColorDot, ControlButton, ControlGroup, PanelHeading, PlaceMark } from "@/features/maps/ui";
+import { RANGE_SHADE_OPACITY, RANGE_SOURCE, rangeShade, rangesData } from "@/features/repeaters/map/range";
 import { errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { plural } from "@/lib/utils";
@@ -193,6 +200,19 @@ export default function KeptMapScreen() {
     engine?.setOverlay("o-location", locationData(locate.fix));
   }, [engine, locate.fix]);
 
+  // The estimated radio range from the centre, worked out on this device from the kept terrain.
+  const pointRange = usePointRange({ engine, where: (position) => formatPosition(position.lat, position.lon, format).text });
+  const outline = pointRange.outline;
+  useEffect(() => {
+    engine?.setOverlay(RANGE_SOURCE, outline ? rangesData([outline]) : EMPTY);
+  }, [engine, outline]);
+  const shadeColour = useShadeColour("range");
+  const pictures = useMemo(
+    () => (engine && outline && canShade() ? [rangeShade(outline.range, shadeColour)].flatMap((picture) => picture ?? []) : []),
+    [engine, outline, shadeColour],
+  );
+  useShades(engine, "range", pictures, RANGE_SHADE_OPACITY);
+
   const credits = useMemo(
     () => creditsFor(sources?.attributions ?? [], { hasTiles: Boolean(sources?.hasTiles), terrain: terrainKept }),
     [sources, terrainKept],
@@ -323,6 +343,16 @@ export default function KeptMapScreen() {
             <ControlButton label="Zoom out" disabled={!engine} onClick={() => engine?.zoomOut()}>
               <Minus />
             </ControlButton>
+            {terrainKept ? (
+              <ControlButton
+                label="Estimated radio range from the centre"
+                pressed={Boolean(pointRange.card)}
+                disabled={!engine}
+                onClick={() => (pointRange.card ? pointRange.stop() : engine && pointRange.start({ position: engine.getCenter() }))}
+              >
+                <RadioTower />
+              </ControlButton>
+            ) : null}
             {locate.supported ? (
               <ControlButton
                 label={locate.state === "off" ? "Show where this device is" : "Stop showing where this device is"}
@@ -337,7 +367,15 @@ export default function KeptMapScreen() {
         </div>
 
         <div className="pointer-events-none absolute inset-x-3 bottom-[calc(var(--sheet-height,0px)+0.625rem)] z-10">
-          <MapFooter engine={engine} format={format} onFormatChange={setFormat} credits={engine ? credits : []} className="w-full" />
+          {pointRange.card ? <div className="pointer-events-auto mb-2 max-w-md">{pointRange.card}</div> : null}
+          <MapFooter
+            engine={engine}
+            format={format}
+            onFormatChange={setFormat}
+            credits={engine ? credits : []}
+            heights={terrainKept ? { terrain: true } : undefined}
+            className="w-full"
+          />
         </div>
 
         {!isDesktop ? (
