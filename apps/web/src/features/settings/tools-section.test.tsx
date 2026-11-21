@@ -42,6 +42,7 @@ const status = (mcp: Partial<ToolsStatus["mcp"]> = {}): ToolsStatus => ({
   mcp: {
     enabled: false,
     canChange: false,
+    right: { allowed: false, reason: "remote", option: "OUTPOST_ALLOW_REMOTE_SETTINGS", inContainer: true },
     addresses: ["http://127.0.0.1:8080/mcp", "http://192.168.1.20:8080/mcp"],
     versions: ["2026-07-28"],
     ...mcp,
@@ -153,18 +154,33 @@ describe("Looking things up in Outpost, in Settings", () => {
     show(settings());
     const toggle = await mcpSwitch();
     expect(toggle).toBeDisabled();
-    expect(screen.getByText("This can only be changed at the computer Outpost runs on.")).toBeVisible();
+    expect(screen.getByText("Can't be changed from this device")).toBeVisible();
+    expect(screen.getByText("OUTPOST_ALLOW_REMOTE_SETTINGS=true")).toBeVisible();
+    expect(screen.getByText("sudo docker compose up -d")).toBeVisible();
+    expect(screen.getByText(/Outpost runs in a container/)).toBeVisible();
     expect(screen.getByText(WARNING)).toBeVisible();
     await userEvent.click(toggle);
     expect(calls.filter((call) => call.startsWith("PUT"))).toEqual([]);
   });
 
   it("lets the computer Outpost runs on turn it on, with the warning at the switch and the addresses to give", async () => {
-    const { calls, bodies } = serve(status({ canChange: true }));
+    const { calls, bodies } = serve(
+      status({
+        canChange: true,
+        right: {
+          allowed: true,
+          reason: "local",
+          option: "OUTPOST_ALLOW_REMOTE_SETTINGS",
+          inContainer: false,
+          localBy: { rule: "loopback", address: "127.0.0.1" },
+        },
+      }),
+    );
     show(settings());
     const toggle = await mcpSwitch();
     expect(toggle).toBeEnabled();
-    expect(screen.queryByText("This can only be changed at the computer Outpost runs on.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Can't be changed from this device")).not.toBeInTheDocument();
+    expect(screen.getByText(/Offered here because this is the computer Outpost runs on/)).toBeVisible();
     expect(screen.getByText(WARNING)).toBeVisible();
     await userEvent.click(toggle);
     await waitFor(() => expect(calls).toContain("PUT /api/tools/mcp"));

@@ -8,6 +8,7 @@
  * the computer Outpost runs on, from other programs over the Model Context Protocol at
  * `/mcp` (docs/mcp.md).
  */
+import type { SettingRight } from "./common.ts";
 
 /** The areas of the household's data a tool can read. Each is one switch. */
 export type ToolArea = "library" | "places" | "supplies" | "plans" | "weather" | "radio" | "catalogue" | "board" | "medical";
@@ -110,8 +111,10 @@ export interface ToolLookup {
 export interface McpStatus {
   /** "Let other programs on the home network use these tools". Off until a person at this computer turns it on. */
   enabled: boolean;
-  /** Whether this request may change it: only from the computer Outpost runs on. */
+  /** Whether this request may change it: from the computer Outpost runs on, or anywhere with the start-up option. Same as `right.allowed`. */
   canChange: boolean;
+  /** Why it may or may not be changed here, and the start-up option that allows it from every device. */
+  right: SettingRight;
   /** The addresses to give a client, ending in `/mcp`. */
   addresses: string[];
   /** The protocol revisions `/mcp` answers. */

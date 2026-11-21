@@ -20,7 +20,7 @@
  * is stored with `source` "meshtastic" or "meshcore". Nothing is relayed between the
  * household's board and a radio channel by itself.
  */
-import type { LocalBy } from "./common.ts";
+import type { SettingRight } from "./common.ts";
 
 export type MeshTransportName = "meshtastic" | "meshcore";
 
@@ -110,7 +110,16 @@ export interface MeshtasticConfig {
   /** Outpost as the broker: the port it listens on, and the user name and password the radio signs in with. */
   broker: { port: number; userName: string; passwordSet: boolean };
   /** A broker the household already runs. `rootTopic` is the radio's root topic ("msh/EU_868"). */
-  client: { host: string; port: number; userName: string; passwordSet: boolean; rootTopic: string };
+  client: {
+    host: string;
+    port: number;
+    userName: string;
+    passwordSet: boolean;
+    rootTopic: string;
+    /** TLS to the broker, its certificate checked against `ca` (the household's CA, PEM) or the authorities this computer trusts. */
+    tls: boolean;
+    ca: string | null;
+  };
   channels: MeshtasticChannelChoice[];
 }
 
@@ -169,6 +178,14 @@ export interface MeshtasticStatus {
   otherChannels: string[];
   /** True once a JSON message has been seen; false while only encoded (protocol buffer) messages arrive, which means JSON is off on the radio. */
   json: boolean | null;
+  /** Outpost's broker could not listen because something else has the port: which, and a port near it that is free now. */
+  portInUse: { port: number; freePort: number | null } | null;
+  /** The radios that have published, by the id in their topics, newest first. */
+  radios: Array<{ id: string; lastAt: number; messages: number }>;
+  /** Messages heard in the last minute. */
+  perMinute: number;
+  /** Messages from the household's broker not read because more came than Outpost takes (20 a second), since the link started. */
+  dropped: number;
 }
 
 export interface MeshCoreStatus {
@@ -195,11 +212,8 @@ export interface MeshChannel {
   linkUp: boolean;
 }
 
-/** Whether this request may change the mesh radio set-up: only from the computer Outpost runs on. */
-export interface MeshRight {
-  allowed: boolean;
-  localBy?: LocalBy;
-}
+/** Whether this request may change the mesh radio set-up: from the computer Outpost runs on, or anywhere with the start-up option. */
+export type MeshRight = SettingRight;
 
 export interface MeshResponse {
   meshtastic: { config: MeshtasticConfig; status: MeshtasticStatus };
@@ -229,7 +243,7 @@ export interface MeshDevicesResponse {
 export interface MeshtasticInput {
   mode: MeshtasticMode;
   broker?: { port: number; userName: string; password?: string };
-  client?: { host: string; port: number; userName: string; password?: string; rootTopic: string };
+  client?: { host: string; port: number; userName: string; password?: string; rootTopic: string; tls?: boolean; ca?: string | null };
   channels?: MeshtasticChannelChoice[];
 }
 
@@ -263,4 +277,99 @@ export interface MeshMeta {
    *  - "failed": it did not go; `detail` says why.
    */
   delivery?: { state: "handed" | "broker" | "acknowledged" | "failed"; at: number; detail?: string };
+}
+
+// ── Where the radios are: each one's last reported position ──
+
+/**
+ * A radio that has reported where it is. Off the map until a person switches it on, since
+ * it shows where someone is; `position` is null while it is off, so the place is never sent.
+ */
+export interface MeshPosition {
+  /** "!a1b2c3d4". */
+  id: string;
+  transport: MeshTransportName;
+  shortName: string | null;
+  longName: string | null;
+  onMap: boolean;
+  /** When the radio took the fix, or when Outpost heard it if the radio did not say. */
+  at: number;
+  position: { lat: number; lon: number; altitude: number | null } | null;
+}
+
+export interface MeshPositionsResponse {
+  radios: MeshPosition[];
+}
+
+/** Body of `PUT /api/mesh/radios/:id/map`. */
+export interface MeshOnMapInput {
+  onMap: boolean;
+}
+
+// ── The household's own broker, looked after from Settings ──
+
+/** One place "Find" looked for a broker, and what answered. */
+export interface MeshBrokerFound {
+  host: string;
+  port: number;
+  tls: boolean;
+  /** This computer; the computer a container runs on (its gateway); or an address the person typed. */
+  where: "this-computer" | "container-host" | "named";
+  /**
+   *  - open-to-anyone: a broker that lets anyone in without a password.
+   *  - needs-login: a broker that asks for a user name and password.
+   *  - outpost: Outpost's own broker.
+   *  - nothing, no-answer, not-mqtt: no broker there.
+   */
+  answer: "open-to-anyone" | "needs-login" | "outpost" | "nothing" | "no-answer" | "not-mqtt";
+  words: string;
+  /** Over TLS: whether its certificate would be trusted as things stand, and why not. */
+  certificate?: { trusted: boolean; problem: string | null } | null;
+}
+
+/** Body of `POST /api/mesh/broker/find`: an address to look at as well, if the person named one. */
+export interface MeshFindInput {
+  host?: string;
+  port?: number;
+}
+
+export interface MeshFindResponse {
+  found: MeshBrokerFound[];
+  inContainer: boolean;
+  /** In a container: the address the computer it runs on has from inside it, which a broker published there answers on. */
+  containerHost: string | null;
+}
+
+/** Body of `POST /api/mesh/broker/test`: the form as it stands. A password left out is the one saved. */
+export interface MeshBrokerTestInput {
+  host: string;
+  port: number;
+  userName: string;
+  password?: string;
+  rootTopic: string;
+  tls: boolean;
+  ca?: string | null;
+}
+
+export interface MeshBrokerTestResult {
+  /** No step failed (listening may have heard nothing, which is not a failure). */
+  ok: boolean;
+  /** In order: signing in, subscribing, the check message, listening. A step not reached is not listed. */
+  steps: Array<{ step: "connect" | "subscribe" | "check" | "listen"; ok: boolean | null; words: string }>;
+  /** The radios heard while listening, by the id in their topics. */
+  heard: Array<{ radio: string; messages: number }>;
+}
+
+/** Mosquitto's dynamic security plugin, as the saved household broker set-up finds it. */
+export interface MeshDynsecResult {
+  state: "on" | "not-allowed" | "off" | "failed";
+  words: string;
+  /** The broker's accounts, when it said (`listClients`). */
+  clients: string[];
+}
+
+/** Body of `POST /api/mesh/broker/radio-account`: an account for one radio, limited to the root topic's topics. */
+export interface MeshRadioAccountInput {
+  userName: string;
+  password: string;
 }

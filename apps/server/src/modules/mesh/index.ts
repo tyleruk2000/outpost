@@ -6,13 +6,16 @@
  * accepted only from that computer (`core/local.ts`), because each opens a port or a
  * device on it; the passwords set with them then never cross the network either. Every
  * device may see the status and send a test message, as it may post on any channel.
- * Whoever starts Outpost may allow it from every device with OUTPOST_ALLOW_REMOTE_ERASE,
- * as for HTTPS's authority; in a container, where no request looks local, that is the way.
+ * Whoever starts Outpost may allow it from every device with OUTPOST_ALLOW_REMOTE_SETTINGS
+ * (`core/setting-right.ts`; the older OUTPOST_ALLOW_REMOTE_ERASE still does too); in a
+ * container, where no request looks local, that is the way.
  */
 import {
   BOARD_LIMITS,
   CHANNEL_PATTERN,
+  MESH_DEFAULT_PORTS,
   type MeshDevicesResponse,
+  type MeshPositionsResponse,
   type MeshResponse,
   type MeshRight,
   meshTransportOf,
@@ -20,10 +23,11 @@ import {
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
-import { AppError, badRequest } from "../../core/errors.ts";
-import { localBy } from "../../core/local.ts";
+import { badRequest, notFound } from "../../core/errors.ts";
+import { settingRefusal, settingRight } from "../../core/setting-right.ts";
 import { listDevices, platformOf } from "./serial.ts";
 import { createMeshService } from "./service.ts";
+import { MOST_CA_CHARS } from "./store.ts";
 
 export type { MeshService } from "./service.ts";
 
@@ -39,7 +43,15 @@ const meshtasticBody = z
       .strict()
       .optional(),
     client: z
-      .object({ host: z.string().max(253), port, userName: z.string().max(64), password, rootTopic: z.string().max(100) })
+      .object({
+        host: z.string().max(253),
+        port,
+        userName: z.string().max(64),
+        password,
+        rootTopic: z.string().max(100),
+        tls: z.boolean().optional(),
+        ca: z.string().max(MOST_CA_CHARS).nullable().optional(),
+      })
       .strict()
       .optional(),
     channels: z.array(channelChoice).max(8).optional(),
@@ -58,22 +70,28 @@ const meshcoreBody = z
 
 const testBody = z.object({ channel: z.string().regex(CHANNEL_PATTERN), author: z.string().max(BOARD_LIMITS.name * 4) }).strict();
 
+const findBody = z.object({ host: z.string().trim().max(253).optional(), port: port.optional() }).strict();
+const brokerTestBody = z
+  .object({
+    host: z.string().max(253),
+    port,
+    userName: z.string().max(64),
+    password,
+    rootTopic: z.string().max(100),
+    tls: z.boolean(),
+    ca: z.string().max(MOST_CA_CHARS).nullable().optional(),
+  })
+  .strict();
+const radioAccountBody = z.object({ userName: z.string().trim().min(1).max(64), password: z.string().max(128) }).strict();
+
 export async function registerMesh(app: FastifyInstance, ctx: AppContext): Promise<void> {
   const service = createMeshService(ctx);
   ctx.services.mesh = service;
 
-  const right = (request: FastifyRequest): MeshRight => {
-    const by = localBy(request.raw, ctx.config);
-    if (by) return { allowed: true, localBy: by };
-    // In a container no request looks local; whoever starts Outpost can allow it from other devices, as for its other dangerous settings.
-    return { allowed: ctx.config.allowRemoteErase };
-  };
+  const right = (request: FastifyRequest): MeshRight => settingRight(request.raw, ctx.config, { legacy: true });
   const mustBeLocal = (request: FastifyRequest) => {
-    if (!right(request).allowed)
-      throw new AppError(
-        "forbidden",
-        "Turning the radio link on or off, choosing a device and opening the broker's port can only be done on the computer Outpost runs on, because they open a port or a device on it.",
-      );
+    const answer = right(request);
+    if (!answer.allowed) throw settingRefusal("The mesh radio set-up", "it opens a port or a device on that computer", answer.inContainer);
   };
   const answer = (request: FastifyRequest): MeshResponse => ({ ...service.response(), right: right(request) });
 
@@ -92,6 +110,43 @@ export async function registerMesh(app: FastifyInstance, ctx: AppContext): Promi
     mustBeLocal(request);
     await service.setMeshCore(meshcoreBody.parse(request.body));
     return answer(request);
+  });
+
+  // The household's own broker (household.ts). Each connects out only when a person presses its button,
+  // and only for whoever may change the set-up: they sign in with its passwords, or try addresses from here.
+  app.post("/api/mesh/broker/find", async (request) => {
+    mustBeLocal(request);
+    const input = findBody.parse(request.body ?? {});
+    return service.findBrokers(input.host ? { host: input.host, port: input.port ?? MESH_DEFAULT_PORTS.mqtt } : undefined);
+  });
+
+  app.post("/api/mesh/broker/test", async (request) => {
+    mustBeLocal(request);
+    return service.testBroker(brokerTestBody.parse(request.body));
+  });
+
+  app.post("/api/mesh/broker/dynsec", async (request) => {
+    mustBeLocal(request);
+    return service.dynsec();
+  });
+
+  app.post("/api/mesh/broker/radio-account", async (request) => {
+    mustBeLocal(request);
+    return service.addRadioAccount(radioAccountBody.parse(request.body));
+  });
+
+  // Where the radios are (outpost-xeu3). Every device may see and switch them, as every device may read the board
+  // the radios write on; a radio's place is sent only once it is switched on.
+  app.get("/api/mesh/positions", async (): Promise<MeshPositionsResponse> => ({ radios: service.meshtastic.positions() }));
+
+  app.put<{ Params: { id: string } }>("/api/mesh/radios/:id/map", async (request): Promise<MeshPositionsResponse> => {
+    const id = z
+      .string()
+      .regex(/^![0-9a-f]{1,8}$/)
+      .parse(request.params.id);
+    const { onMap } = z.object({ onMap: z.boolean() }).strict().parse(request.body);
+    if (!service.meshtastic.setOnMap(id, onMap)) throw notFound("A radio with that id");
+    return { radios: service.meshtastic.positions() };
   });
 
   /** A short test message on a radio channel: posted on the board like any other, so it is seen, refused or sent the same way. */

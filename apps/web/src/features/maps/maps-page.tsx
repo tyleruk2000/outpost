@@ -26,7 +26,9 @@ import { ConfirmDialog } from "@/components/ui/dialog";
 import { Skeleton, Tooltip } from "@/components/ui/misc";
 import { CentreLines } from "@/features/compass/magnetic-glance";
 import { useDownloads } from "@/features/downloads/use-downloads";
+import { HeardGroup } from "@/features/heard/heard";
 import { useReferenceLayers } from "@/features/layers/use-reference-layers";
+import { useMeshOnMap } from "@/features/mesh/map";
 import { type SightStart, useRepeatersOnMap } from "@/features/repeaters/map/use-repeaters-on-map";
 import { errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
@@ -998,6 +1000,8 @@ export default function MapsPage() {
   });
 
   // Reference layers (features/layers): published data drawn when switched on in the Layers tab, opened by a press.
+  // What the household's receivers heard, in its own group above the reference layers (features/heard).
+  const heardMesh = useMeshOnMap({ engine });
   const reference = useReferenceLayers({
     engine,
     browsing: tool === "browse" && !moving && !draft,
@@ -1270,7 +1274,12 @@ export default function MapsPage() {
             canDraw={Boolean(engine)}
           />
         ),
-        layers: reference.panel,
+        layers: (
+          <>
+            <HeardGroup sources={heardMesh.source ? [heardMesh.source] : []} />
+            {reference.panel}
+          </>
+        ),
         offline: (
           <Suspense fallback={<PanelLoading />}>
             <OfflinePanel

@@ -4,7 +4,8 @@
  * cannot turn a way in on from another device and `GET /api/settings` does not list them:
  *
  *  - `mesh.config`: the ways in as a person set them up (no password: see `secrets.ts`).
- *  - `mesh.heard`: what was learnt from the radios: names of radios heard (at most 200),
+ *  - `mesh.heard`: what was learnt from the radios: names of radios heard (at most 200), the
+ *    last position each reported and whether it is shown on the map,
  *    which radio connects to MQTT, its root topic, and each channel's index.
  *
  * Both are in the database, so in backups, and both go with erase-everything (which
@@ -19,6 +20,8 @@ import { settings as settingsTable } from "../../db/schema.ts";
 export const CONFIG_KEY = "mesh.config";
 export const HEARD_KEY = "mesh.heard";
 const MOST_NODES = 200;
+/** A CA certificate in PEM is under 3,000 characters; a short chain of them fits. */
+export const MOST_CA_CHARS = 16_384;
 
 const channelName = z
   .string()
@@ -43,6 +46,9 @@ export const storedConfig = z.object({
           port: z.number().int().min(1).max(65535).default(MESH_DEFAULT_PORTS.mqtt),
           userName: z.string().max(64).default(""),
           rootTopic: z.string().max(100).default("msh/EU_868"),
+          tls: z.boolean().default(false),
+          /** The household's certificate authority, PEM: public, so kept here, not with the passwords. */
+          ca: z.string().max(MOST_CA_CHARS).nullable().default(null),
         })
         .prefault({}),
       channels: z
@@ -63,7 +69,18 @@ export const storedConfig = z.object({
 });
 export type StoredConfig = z.infer<typeof storedConfig>;
 
-const node = z.object({ shortName: z.string().max(8).nullable(), longName: z.string().max(40).nullable(), heardAt: z.number() });
+const node = z.object({
+  shortName: z.string().max(8).nullable(),
+  longName: z.string().max(40).nullable(),
+  heardAt: z.number(),
+  /** The last position the radio reported, kept so that switching it on shows it at once. Shown nowhere while `onMap` is off. */
+  position: z
+    .object({ lat: z.number().min(-90).max(90), lon: z.number().min(-180).max(180), altitude: z.number().nullable(), at: z.number() })
+    .nullable()
+    .default(null),
+  /** Shown on the map: off until a person switches it on for this radio, since it shows where someone is. */
+  onMap: z.boolean().default(false),
+});
 export const storedHeard = z.object({
   nodes: z.record(z.string().max(16), node).prefault({}),
   meshtastic: z

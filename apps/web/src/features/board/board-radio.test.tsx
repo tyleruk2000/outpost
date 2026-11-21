@@ -24,7 +24,7 @@ const mesh = (channels: MeshChannel[]): MeshResponse => ({
     config: {
       mode: "broker",
       broker: { port: 1883, userName: "radio", passwordSet: true },
-      client: { host: "", port: 1883, userName: "", passwordSet: false, rootTopic: "msh/EU_868" },
+      client: { host: "", port: 1883, userName: "", passwordSet: false, rootTopic: "msh/EU_868", tls: false, ca: null },
       channels: [{ name: "LongFast", index: 0 }],
     },
     status: {
@@ -39,6 +39,10 @@ const mesh = (channels: MeshChannel[]): MeshResponse => ({
       gateway: null,
       otherChannels: [],
       json: true,
+      portInUse: null,
+      radios: [],
+      perMinute: 0,
+      dropped: 0,
     },
   },
   meshcore: {
@@ -46,7 +50,7 @@ const mesh = (channels: MeshChannel[]): MeshResponse => ({
     status: { state: "off", since: null, lastHeardAt: null, lastError: null, retryAt: null, radioName: null, radioChannels: [] },
   },
   channels,
-  right: { allowed: true },
+  right: { allowed: true, reason: "local", option: "OUTPOST_ALLOW_REMOTE_SETTINGS", inContainer: false },
   inContainer: false,
   lanAccess: true,
 });

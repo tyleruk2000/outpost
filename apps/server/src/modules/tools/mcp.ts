@@ -27,6 +27,7 @@
  */
 import net from "node:net";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { limitKey } from "../../core/address-key.ts";
 import type { AppContext } from "../../core/context.ts";
 import { AppError } from "../../core/errors.ts";
 import { VERSION } from "../../core/version.ts";
@@ -239,10 +240,10 @@ export async function registerMcp(app: FastifyInstance, ctx: AppContext, tools: 
         reply,
         403,
         INVALID_REQUEST,
-        "Outpost's tools are switched off for other programs. Turn on “Let other programs on the home network use these tools” in Settings, at the computer Outpost runs on.",
+        "Outpost's tools are switched off for other programs. Turn on “Let other programs on the home network use these tools” in Settings, at the computer Outpost runs on (or on any device, if Outpost was started with OUTPOST_ALLOW_REMOTE_SETTINGS=true).",
       );
     }
-    const wait = limit.take(address);
+    const wait = limit.take(limitKey(address));
     if (wait > 0) {
       reply.header("Retry-After", String(wait));
       return refuse(reply, 429, INVALID_REQUEST, `Too many requests from this address. Try again in ${wait} seconds.`);

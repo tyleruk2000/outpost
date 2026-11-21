@@ -9,8 +9,14 @@
 import {
   BOARD_CHANNEL,
   type BoardMessageResponse,
+  type MeshBrokerTestInput,
+  type MeshBrokerTestResult,
   type MeshCoreInput,
   type MeshDevicesResponse,
+  type MeshDynsecResult,
+  type MeshFindInput,
+  type MeshFindResponse,
+  type MeshRadioAccountInput,
   type MeshResponse,
   type MeshTestInput,
   type MeshtasticInput,
@@ -59,6 +65,19 @@ export function useMeshTest() {
     onSuccess: ({ message }) => void client.invalidateQueries({ queryKey: ["board", "messages", message.channel] }),
   });
 }
+
+// ── The household's own broker: each asks the server to connect out, so each is a press, never a query ──
+
+export const useFindBrokers = () =>
+  useMutation({ mutationFn: (input: MeshFindInput) => api.post<MeshFindResponse>("/api/mesh/broker/find", input) });
+
+export const useTestBroker = () =>
+  useMutation({ mutationFn: (input: MeshBrokerTestInput) => api.post<MeshBrokerTestResult>("/api/mesh/broker/test", input) });
+
+export const useDynsec = () => useMutation({ mutationFn: () => api.post<MeshDynsecResult>("/api/mesh/broker/dynsec", {}) });
+
+export const useAddRadioAccount = () =>
+  useMutation({ mutationFn: (input: MeshRadioAccountInput) => api.post<MeshDynsecResult>("/api/mesh/broker/radio-account", input) });
 
 /** A password for the broker, made in the browser: 20 letters and digits, with none that are easily mistaken for another. */
 export function suggestPassword(): string {

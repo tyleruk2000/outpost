@@ -74,6 +74,16 @@ export type Uplink =
       hops: number | null;
     }
   | { type: "nodeinfo"; from: string; id: string | null; longName: string | null; shortName: string | null }
+  | {
+      type: "position";
+      from: string;
+      lat: number;
+      lon: number;
+      /** Metres above sea level, when given. */
+      altitude: number | null;
+      /** When the radio took the fix (ms), when it said; otherwise null. */
+      time: number | null;
+    }
   | { type: "other" };
 
 const num = (value: unknown): number | null => (typeof value === "number" && Number.isFinite(value) ? value : null);
@@ -114,6 +124,27 @@ export function parseUplink(payload: Buffer): Uplink | null {
       sender: str(message.sender, 16),
       snr: num(message.snr),
       hops: num(message.hops_away),
+    };
+  }
+  if (type === "position") {
+    // latitude_i and longitude_i: "multiply by 1e-7 to get degrees" (Meshtastic's protobufs, mesh.proto, Position; read
+    // 21 November 2026), the names the MQTT page gives for sendposition. A radio with no fix sends none, or 0 and 0.
+    const body = message.payload && typeof message.payload === "object" ? (message.payload as Record<string, unknown>) : {};
+    const latI = num(body.latitude_i);
+    const lonI = num(body.longitude_i);
+    if (latI === null || lonI === null || (latI === 0 && lonI === 0)) return { type: "other" };
+    const lat = latI / 1e7;
+    const lon = lonI / 1e7;
+    if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return { type: "other" };
+    const time = num(body.time);
+    const altitude = num(body.altitude);
+    return {
+      type: "position",
+      from: nodeId(from),
+      lat,
+      lon,
+      altitude: altitude !== null && Math.abs(altitude) < 100_000 ? altitude : null,
+      time: time !== null && time > 0 ? time * 1000 : null,
     };
   }
   if (type === "nodeinfo") {

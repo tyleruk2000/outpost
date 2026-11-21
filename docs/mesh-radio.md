@@ -39,7 +39,7 @@ message goes where the person wrote it.
 | Way in | Radio | Firmware mode | Built | Tested against |
 | --- | --- | --- | --- | --- |
 | Meshtastic, **Outpost is the broker** | A Meshtastic radio on the home Wi-Fi (ESP32 only: "JSON is not supported on the nRF52 platform") | MQTT on, JSON output on, encryption off | Yes | A stand-in radio (an MQTT client) on the test machine |
-| Meshtastic, **the household's broker** | The same, connected to a broker the household already runs (Mosquitto, Home Assistant's) | The same | Yes | Outpost's own broker standing in for the household's |
+| Meshtastic, **the household's broker** | The same, connected to a broker the household already runs (Mosquitto, Home Assistant's) | The same | Yes | Mosquitto 2.1 (on a Mac, and eclipse-mosquitto:2 in Docker) with passwords, an access list, TLS and dynamic security, a stand-in radio publishing to it |
 | MeshCore, **by USB cable** | A MeshCore radio plugged into the computer | Companion radio, USB | Yes | Not tested: the device list and stty's arguments are; opening a device is not |
 | MeshCore, **by its network port** | A MeshCore radio on Wi-Fi or Ethernet | Companion radio, Wi-Fi or Ethernet build (port 5000) | Yes | A stand-in companion on a socket |
 | Meshtastic by USB cable or its own port 4403 | | | **No** | See "Licence position" |
@@ -48,9 +48,18 @@ Each is off until a person sets it up in **Settings → Mesh radio**, and while 
 there is no listener, no timer and no open device. Turning a way in on or off, choosing a
 device and opening the broker's port are accepted only from the computer Outpost runs
 on (the same test erase-everything uses, `core/local.ts`), because each opens a port or a
-device on it; from another device the screen says so and shows the status only. Whoever
-starts Outpost may allow it from every device with `OUTPOST_ALLOW_REMOTE_ERASE=true`, which
-is the way in a container, where no request looks local.
+device on it. From another device the controls are disabled, and the screen says why
+and gives the line that allows it. To change the set-up from every device, add this to
+Outpost's `.env` and restart it (in Docker: `sudo docker compose up -d` in the folder
+with `compose.yaml`):
+
+```sh
+OUTPOST_ALLOW_REMOTE_SETTINGS=true
+```
+
+In a container no request looks as if it comes from the computer itself, even in a
+browser on it, so this is the way there. The older `OUTPOST_ALLOW_REMOTE_ERASE=true`
+still allows it too.
 
 ### Meshtastic, with Outpost as the broker
 
@@ -81,13 +90,152 @@ reach it; the screen says so.
 
 ### Meshtastic, through the household's broker
 
-Choose **Use the household's broker**, give its address, port, the user name and
+**Which broker.** Outpost's own needs nothing else and carries the radios only. Use your
+own Mosquitto if you already run one, or want other things (Home Assistant, sensors) on
+it too. Only one program can have a port: while the household's broker is chosen,
+Outpost's own is off and leaves port 1883 alone. The screen says which is in use.
+
+Choose **Use the household's broker** and give its address, port, the user name and
 password Outpost signs in with, and the radio's root topic (`msh/EU_868` unless changed
-on the radio). Set the radio as above, with the household broker's address. Outpost
-subscribes to `<root>/2/json/#` and `<root>/2/e/#` and publishes to `<root>/2/json/mqtt/`.
-It sends its own keep-alive to the broker every two minutes, as MQTT requires of a
-client, and tries again with a growing wait (2 seconds to 5 minutes) while the broker is
-away.
+on the radio). Outpost subscribes to `<root>/2/json/#` and `<root>/2/e/#`, publishes to
+`<root>/2/json/mqtt/`, sends a keep-alive every two minutes, and tries again with a
+growing wait (2 seconds to 5 minutes) while the broker is away. It reads at most 20
+messages a second from the broker, as its own broker takes from one radio; the screen
+counts any it left.
+
+- **Find a broker** looks at ports 1883 and 8883 on this computer (in a container, also
+  on the computer the container runs on, through its gateway) and at the address typed,
+  and says what answers: a broker that asks for a password, one that lets anyone in, or
+  nothing. It signs in to nothing.
+- **Test** signs in as the form says (the saved password if none is typed), subscribes
+  to the radio's topics, sends one check message under the root topic and waits for it to
+  come back, then listens up to 8 seconds for a radio. Each step is said in words: a wrong
+  password, a broker that will not let the account read, a check message that did not come
+  back (Mosquitto's access-list file says yes to a subscription it then does not deliver,
+  so this is the step that tells), nothing heard yet.
+- **TLS**: tick it, use the broker's TLS port (usually 8883), and paste the household's
+  CA certificate if the broker's certificate was made with one. The certificate is always
+  checked, against the name or address typed.
+- **Status**: connected since when, the last message heard, which radios have published
+  and how many messages in the last minute. When the broker drops, the screen says what to
+  check.
+- **Switching** between Outpost's broker and the household's says, before you save, what
+  to change on the radio: its server address, user name and password.
+
+Outpost does not install, start, stop, upgrade or change the household's Mosquitto, its
+files or its container: other things may depend on it.
+
+#### Your own Mosquitto
+
+The same steps, with the values filled in, are in Settings under **A guide to running your
+own Mosquitto for the radio**. Tried with Mosquitto 2.1.4 in Docker (`eclipse-mosquitto:2`)
+and 2.1.2 on a Mac; the Raspberry Pi OS and Windows installs are untried.
+
+1. **Install.** Docker, a `compose.yaml` of its own:
+
+   ```yaml
+   services:
+     mosquitto:
+       image: eclipse-mosquitto:2
+       container_name: mosquitto
+       restart: unless-stopped
+       ports:
+         - "1883:1883"
+       volumes:
+         - ./config:/mosquitto/config
+         - ./data:/mosquitto/data
+   ```
+
+   A Mac: `brew install mosquitto`. Raspberry Pi OS: `sudo apt install mosquitto
+   mosquitto-clients` (untried). Windows: the installer from mosquitto.org (untried).
+2. **Passwords and an access list.** The image's own settings file lets anyone in (seen on
+   Mosquitto 2.1.4: `listener 1883`, `allow_anonymous true`). Replace `config/mosquitto.conf`:
+
+   ```
+   listener 1883
+   allow_anonymous false
+   password_file /mosquitto/config/passwd
+   acl_file /mosquitto/config/acl
+   persistence true
+   persistence_location /mosquitto/data/
+   ```
+
+   and write `config/acl`, Outpost on every radio topic and each radio on its own root:
+
+   ```
+   user outpost
+   topic readwrite msh/#
+
+   user radio-1
+   topic readwrite msh/EU_868/#
+   ```
+3. **Accounts**, one for Outpost and one per radio, then a restart:
+
+   ```sh
+   sudo docker compose up -d
+   sudo docker exec -it mosquitto sh -c 'touch /mosquitto/config/passwd && chmod 0700 /mosquitto/config/passwd /mosquitto/config/acl'
+   sudo docker exec -it mosquitto mosquitto_passwd /mosquitto/config/passwd outpost
+   sudo docker exec -it mosquitto mosquitto_passwd /mosquitto/config/passwd radio-1
+   sudo docker exec -it mosquitto chown mosquitto:mosquitto /mosquitto/config/passwd /mosquitto/config/acl
+   sudo docker restart mosquitto
+   ```
+4. **Check.** `mosquitto_sub -h 127.0.0.1 -t 'msh/#' -W 3` must say "not authorised";
+   `mosquitto_sub -h 127.0.0.1 -u outpost -P '…' -t 'msh/EU_868/#' -v` waits for messages.
+   Then type the values into Outpost and press **Test**.
+5. **The radio**: the broker's address on the home network (never `127.0.0.1`, which is
+   the radio itself), `radio-1` and its password, the root topic, JSON on, encryption off.
+6. **Outpost in Docker on the same computer**: inside Outpost's container `127.0.0.1` is
+   the container. Use the computer's address on the home network, or the container's
+   gateway (`172.19.0.1` on one Raspberry Pi; Find shows it).
+
+**TLS.** A certificate authority of your own and a certificate for the broker, made out
+to the address or name Outpost and the radio use:
+
+```sh
+openssl req -x509 -newkey rsa:2048 -nodes -keyout ca.key -out ca.crt -days 3650 -subj "/CN=Household CA"
+openssl req -newkey rsa:2048 -nodes -keyout server.key -out server.csr -subj "/CN=mosquitto"
+printf "subjectAltName=IP:192.168.1.5,DNS:raspberrypi.local\n" > san.ext
+openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt -days 825 -extfile san.ext
+```
+
+Then a second listener (`listener 8883`, `cafile`, `certfile`, `keyfile`), port 8883
+published, and in Outpost: port 8883, TLS on, `ca.crt` pasted. Tried: signing in with the
+CA, a refusal without it ("not signed by an authority Outpost trusts"), TLS to the plain
+port and plain to the TLS port, each said in words. On the radio, TLS is untried:
+Meshtastic's MQTT page says only that with TLS on the radio "attempt[s] to establish a
+secure connection using TLS" (meshtastic.org/docs/configuration/module/mqtt, read 21
+November 2026), not whether it checks the certificate.
+
+**Dynamic security** (mosquitto.org/documentation/dynamic-security). With the plugin on
+in place of `password_file` and `acl_file`:
+
+```
+plugin /usr/lib/mosquitto_dynamic_security.so
+plugin_opt_config_file /mosquitto/data/dynamic-security.json
+```
+
+Mosquitto 2.1 makes the file on its first start, with an `admin` account whose password
+is in `dynamic-security.json.pw` and a `democlient` allowed every topic (delete it). Give
+Outpost an account limited to the radio topics, and, to let it add radio accounts from
+the screen, the `dynsec-admin` role:
+
+```sh
+sudo docker exec mosquitto cat /mosquitto/data/dynamic-security.json.pw
+sudo docker exec -it mosquitto mosquitto_ctrl -u admin dynsec deleteClient democlient
+sudo docker exec -it mosquitto mosquitto_ctrl -u admin dynsec createRole outpost
+sudo docker exec -it mosquitto mosquitto_ctrl -u admin dynsec addRoleACL outpost publishClientSend 'msh/#' allow
+sudo docker exec -it mosquitto mosquitto_ctrl -u admin dynsec addRoleACL outpost subscribePattern 'msh/#' allow
+sudo docker exec -it mosquitto mosquitto_ctrl -u admin dynsec createClient outpost
+sudo docker exec -it mosquitto mosquitto_ctrl -u admin dynsec addClientRole outpost outpost
+sudo docker exec -it mosquitto mosquitto_ctrl -u admin dynsec addClientRole outpost dynsec-admin
+```
+
+**Check dynamic security** in Settings then says whether it is on and Outpost may manage
+it; **Add the account** makes an account for a radio with a role allowed only
+`<root>/#`. Without the plugin, or without the role, the screen says so and the file
+lines above are the way; Outpost cannot change them. `dynsec-admin` lets Outpost's account
+manage every account on the broker: leave it out to add radios yourself with
+`mosquitto_ctrl … createClient`.
 
 ### MeshCore
 
@@ -133,6 +281,25 @@ restarted), Outpost tries again with a growing wait while it is still set up.
 - A check-in sent by radio goes as text: "Sam: I'm safe (Mum's)". A position is not sent.
 - Radio messages do not raise the app's toast, and do not count in the "new on the board"
   line on Home.
+
+## Where the radios are, on the map
+
+A Meshtastic radio with a fix sends its position from time to time (by default every 15
+minutes, more often as it moves: Meshtastic's "Position" settings). Outpost keeps the
+last one each radio sent and shows it on the map, under **Layers → Heard on the radio →
+Mesh radios**, with the radio's name and how long ago it reported.
+
+Both switches start off. **Mesh radios** draws the marks on this device. Each radio has
+its own switch in the list under it, the same for every device on the network: until a
+radio is switched on, its place is not sent to any browser, since it shows where
+someone is. Marks fade in three stated steps (the last hour, 1 to 6 hours, longer), and
+the label always says the age in words.
+
+The positions are kept with the radios' names, and go with them when the board is
+emptied or everything is erased. MeshCore radios' positions are not shown yet. Not tried
+with a real radio: Meshtastic documents `latitude_i` and `longitude_i` (degrees times
+10 million) for the position it takes to send, and Outpost reads a position it hears the
+same way.
 
 ## What is kept, and where
 
@@ -208,6 +375,13 @@ Tested (server: `apps/server/test/mesh.test.ts`, `mesh-mqtt.test.ts`; web:
 - A stand-in Meshtastic radio publishing the documented JSON (node information and text)
   and taking the documented downlink, through Outpost's broker and through another
   broker; a message heard once, a posted one sent once, the radio's own echo not kept.
+- Against a real Mosquitto (2.1.2 on a Mac, 2.1.4 in Docker), with a stand-in radio
+  (mosquitto_pub and mosquitto_sub): the household broker link in and out, plain and over
+  TLS with a household CA; Find, Test (right and wrong password, an access list that
+  forbids the root topic), and dynamic security (status, adding a radio account, an
+  account without the right).
+  From inside Outpost's container on a Raspberry Pi, a Mosquitto published on the Pi
+  answered at the container's gateway.
 - A stand-in MeshCore companion over TCP: start-up, channel names, messages waiting,
   sending, the connection dropping and coming back. The frame reader against noise,
   frames split across reads, and an oversized frame.

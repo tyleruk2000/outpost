@@ -19,8 +19,8 @@ import { eq } from "drizzle-orm";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
-import { AppError, forbidden } from "../../core/errors.ts";
-import { isLocalRequest } from "../../core/local.ts";
+import { AppError } from "../../core/errors.ts";
+import { settingRefusal, settingRight } from "../../core/setting-right.ts";
 import { settings as settingsTable } from "../../db/schema.ts";
 import { MCP_VERSIONS, registerMcp } from "./mcp.ts";
 import { TOOLS } from "./registry.ts";
@@ -221,9 +221,11 @@ export function createToolsService(ctx: AppContext, tools: readonly ToolDefiniti
         `http://127.0.0.1:${port}/mcp`,
         ...(ctx.config.lanAccess ? lanAddresses().map((address) => `http://${address}:${port}/mcp`) : []),
       ];
+      const right = settingRight(request, ctx.config);
       const mcp: McpStatus = {
         enabled: mcpEnabled(),
-        canChange: isLocalRequest(request, ctx.config),
+        canChange: right.allowed,
+        right,
         addresses,
         versions: [...MCP_VERSIONS],
       };
@@ -248,15 +250,18 @@ export async function registerTools(app: FastifyInstance, ctx: AppContext): Prom
 
   /**
    * "Let other programs on the home network use these tools". Only from the computer
-   * Outpost runs on (`isLocalRequest`), because it changes who can read what.
+   * Outpost runs on, or from anywhere with OUTPOST_ALLOW_REMOTE_SETTINGS
+   * (`core/setting-right.ts`), because it changes who can read what.
    */
   app.put("/api/tools/mcp", async (request): Promise<ToolsStatus> => {
     const { enabled } = z.object({ enabled: z.boolean() }).strict().parse(request.body);
-    if (!isLocalRequest(request, ctx.config)) {
-      throw forbidden(
-        "This can only be changed at the computer Outpost runs on, because it lets other programs on the network read what the tools read.",
+    const right = settingRight(request, ctx.config);
+    if (!right.allowed)
+      throw settingRefusal(
+        "The switch for other programs",
+        "it lets other programs on the network read what the tools read",
+        right.inContainer,
       );
-    }
     const now = Date.now();
     ctx.db
       .insert(settingsTable)

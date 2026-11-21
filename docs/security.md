@@ -1036,9 +1036,12 @@ with a real radio.
 
 - **Who may set it up.** Turning a way in on or off, choosing a serial device and opening
   the broker's port are accepted only from the computer Outpost runs on
-  (`isLocalRequest`); from any other device `PUT /api/mesh/*` answers `403`, unless
-  whoever started Outpost set `OUTPOST_ALLOW_REMOTE_ERASE` (in a container, where no
-  request looks local, that is the way to set it up). A password set from another device
+  (`isLocalRequest`); from any other device `PUT /api/mesh/*` and `POST /api/mesh/broker/*`
+  answer `403`, unless whoever started Outpost set `OUTPOST_ALLOW_REMOTE_SETTINGS` (or the
+  older `OUTPOST_ALLOW_REMOTE_ERASE`; in a container, where no request looks local, that
+  is the way to set it up). The answer and the screen say why and name the option
+  (`core/setting-right.ts`). The switch for `/mcp` follows the same rule, with
+  `OUTPOST_ALLOW_REMOTE_SETTINGS` only. A password set from another device
   that way crosses the network as the page does: in the clear over plain http. The set-up is kept in settings rows
   that are not in the settings schema, so `PATCH /api/settings` cannot reach it. Every
   device may read the status and send a test message, as it may post on any channel.

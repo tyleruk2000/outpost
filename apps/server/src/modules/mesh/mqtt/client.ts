@@ -13,7 +13,7 @@
  * while connected, the wait before trying again, and one per QoS 1 publish waiting for its
  * PUBACK. A stopped client has none.
  */
-import net from "node:net";
+import type net from "node:net";
 import type { MqttLog } from "./broker.ts";
 import {
   CONNACK,
@@ -25,11 +25,14 @@ import {
   validFilter,
   validTopicName,
 } from "./packets.ts";
+import { describeSocketError, openSocket, type TlsChoice } from "./transport.ts";
 
 export interface ClientOptions {
   host: string;
   port: number;
   clientId: string;
+  /** TLS to the broker, checked (./transport.ts); null or left out: plain TCP. */
+  tls?: TlsChoice | null;
   userName?: string;
   password?: string;
   /** Default 120. */
@@ -138,7 +141,7 @@ export function createClient(options: ClientOptions): MqttClient {
     setState("connecting");
     const reader = new PacketReader(maxPacketBytes);
     let socketError: string | null = null;
-    const sock = net.connect({ host: options.host, port: options.port });
+    const { socket: sock, ready } = openSocket(options.host, options.port, options.tls ?? null);
     socket = sock;
     sock.setNoDelay(true);
     connectTimer = setTimeout(() => {
@@ -146,7 +149,7 @@ export function createClient(options: ClientOptions): MqttClient {
       lose(sock, "The broker did not answer in time.");
     }, connectTimeoutMs);
 
-    sock.on("connect", () => {
+    sock.on(ready, () => {
       const packet: Packet = { type: "connect", clientId: options.clientId, cleanSession: true, keepAliveSeconds };
       if (options.userName !== undefined) packet.userName = options.userName;
       if (options.password !== undefined) packet.password = Buffer.from(options.password, "utf8");
@@ -169,28 +172,11 @@ export function createClient(options: ClientOptions): MqttClient {
     });
     sock.on("error", (error: NodeJS.ErrnoException) => {
       log.debug?.({ ...where, err: error.message }, "MQTT client socket error");
-      socketError = describeSocketError(error);
+      socketError = describeSocketError(error, options.host, options.port, Boolean(options.tls));
     });
     sock.on("close", () => {
       if (socket === sock) lose(sock, socketError ?? "The connection to the broker was lost.");
     });
-  }
-
-  function describeSocketError(error: NodeJS.ErrnoException): string {
-    switch (error.code) {
-      case "ECONNREFUSED":
-        return `Nothing is accepting connections at ${options.host}:${options.port}.`;
-      case "ENOTFOUND":
-      case "EAI_AGAIN":
-        return `The broker's address, ${options.host}, could not be found.`;
-      case "EHOSTUNREACH":
-      case "ENETUNREACH":
-        return `${options.host} cannot be reached from this computer.`;
-      case "ETIMEDOUT":
-        return "The broker did not answer in time.";
-      default:
-        return `The connection to the broker failed: ${error.message}`;
-    }
   }
 
   function handle(sock: net.Socket, packet: Packet): void {

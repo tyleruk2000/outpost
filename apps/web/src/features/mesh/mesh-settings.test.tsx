@@ -27,7 +27,7 @@ function mesh(over: Over = {}): MeshResponse {
       config: {
         mode: "off",
         broker: { port: 1883, userName: "", passwordSet: false },
-        client: { host: "", port: 1883, userName: "", passwordSet: false, rootTopic: "msh/EU_868" },
+        client: { host: "", port: 1883, userName: "", passwordSet: false, rootTopic: "msh/EU_868", tls: false, ca: null },
         channels: [],
         ...meshtastic?.config,
       },
@@ -43,6 +43,10 @@ function mesh(over: Over = {}): MeshResponse {
         gateway: null,
         otherChannels: [],
         json: null,
+        portInUse: null,
+        radios: [],
+        perMinute: 0,
+        dropped: 0,
         ...meshtastic?.status,
       },
     },
@@ -60,7 +64,13 @@ function mesh(over: Over = {}): MeshResponse {
       },
     },
     channels: [],
-    right: { allowed: true },
+    right: {
+      allowed: true,
+      reason: "local",
+      option: "OUTPOST_ALLOW_REMOTE_SETTINGS",
+      inContainer: false,
+      localBy: { rule: "loopback", address: "127.0.0.1" },
+    },
     inContainer: false,
     lanAccess: true,
     ...rest,
@@ -208,9 +218,19 @@ describe("Settings, Mesh radio", () => {
 
   it("from another device, disables what opens a port or a device, and says why; a test message still works", async () => {
     setDeviceName("Sam");
-    serve({ "/api/mesh": broker({ state: "connected" }, { right: { allowed: false }, channels: [LONGFAST] }) });
+    serve({
+      "/api/mesh": broker(
+        { state: "connected" },
+        { right: { allowed: false, reason: "remote", option: "OUTPOST_ALLOW_REMOTE_SETTINGS", inContainer: true }, channels: [LONGFAST] },
+      ),
+    });
     show();
-    expect(await screen.findByText(REMOTE)).toBeInTheDocument();
+    // The owner's case (outpost-x9dm): Outpost in Docker, opened from another device. It says why, and the line to set.
+    expect(await screen.findByText("Can't be changed from this device")).toBeInTheDocument();
+    expect(screen.getByText(/Outpost runs in a container/)).toBeInTheDocument();
+    expect(screen.getByText("OUTPOST_ALLOW_REMOTE_SETTINGS=true")).toBeInTheDocument();
+    expect(screen.getByText("sudo docker compose up -d")).toBeInTheDocument();
+    expect(screen.getAllByText(REMOTE.short)).toHaveLength(2);
     for (const select of screen.getAllByRole("combobox")) expect(select).toBeDisabled();
     for (const save of screen.getAllByRole("button", { name: "Save" })) expect(save).toBeDisabled();
     expect(screen.getByLabelText("Port")).toBeDisabled();

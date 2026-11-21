@@ -515,8 +515,9 @@ From [docs/security.md](docs/security.md), which has the whole threat model:
   passphrase, replacing or deleting the HTTPS certificate authority or the certificate
   and key you gave Outpost, deleting several of a person's own files in one step, and
   setting up the mesh radio are accepted only from the computer Outpost runs on, unless
-  it was started with `OUTPOST_ALLOW_REMOTE_ERASE=true`. The switch for the MCP endpoint
-  can be changed only there, whatever the setting. This is not authentication: it asks
+  it was started with `OUTPOST_ALLOW_REMOTE_ERASE=true`. The mesh radio set-up and the
+  switch for the MCP endpoint have their own option, `OUTPOST_ALLOW_REMOTE_SETTINGS=true`
+  (in a container, where no request looks local, the only way to change them). This is not authentication: it asks
   "where from?", because there is no "who?".
 - **Every outbound request is the result of a press.** No telemetry, no CDN, no remote
   fonts. The app's own content policy forbids the browser from contacting other

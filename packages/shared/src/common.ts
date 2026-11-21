@@ -89,3 +89,28 @@ export function localByReason(by: LocalBy | undefined): string {
   if (by.rule === "own-address") return `this is the computer Outpost runs on: you are connected from its own address ${by.address}`;
   return "this is the computer Outpost runs on: Outpost is not open to the network, so nothing else can reach it";
 }
+
+/** The start-up option that lets the settings held to the computer Outpost runs on be changed from every device. */
+export const REMOTE_SETTINGS_OPTION = "OUTPOST_ALLOW_REMOTE_SETTINGS";
+
+/**
+ * Whether this request may change a setting held to the computer Outpost runs on, because
+ * it opens a port or a device there or lets other programs read what Outpost holds (the
+ * mesh radio set-up, the switch for other programs' tools), and why, so that a screen
+ * never shows a control disabled without saying why and what to do:
+ *
+ *  - "local": the request comes from that computer (`localBy` says by which rule).
+ *  - "option": Outpost was started with `option`=true (or, for the mesh radio, the older
+ *    OUTPOST_ALLOW_REMOTE_ERASE, named in `option` then).
+ *  - "remote": refused; `option` is the line to add to allow it from every device.
+ *
+ * `inContainer`: Outpost runs in a container, where no request looks as if it comes from
+ * the computer itself, so the option is the only way from a browser, even on that computer.
+ */
+export interface SettingRight {
+  allowed: boolean;
+  reason: "local" | "option" | "remote";
+  option: string;
+  localBy?: LocalBy;
+  inContainer: boolean;
+}
