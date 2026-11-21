@@ -495,6 +495,12 @@ export const GUIDES: Guide[] = [
     group: "developers",
     about: "The protected backup file format, storage and HTTPS internals, and the variables only the tests use.",
   },
+  {
+    slug: "tools-development",
+    file: "development/tools.md",
+    group: "developers",
+    about: "How the calculators, compass, solar clock, QR encoder and network scan are built.",
+  },
 ];
 
 /** Pages of docs/ that are deliberately not guides, each with the reason. Keep it short. */
