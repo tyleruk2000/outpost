@@ -78,6 +78,11 @@ export interface ExplainSemanticHit extends ExplainHit {
   similarity: number;
   /** The first numbers of this passage's vector, for drawing. */
   vector: number[];
+  /**
+   * Whether the passage holds any of the question's words, by the keyword index's own
+   * stemming; null when the question has no words to look for.
+   */
+  sharesWords: boolean | null;
 }
 
 export interface ExplainFusionRow {

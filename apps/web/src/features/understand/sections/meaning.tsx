@@ -1,4 +1,4 @@
-import type { ProjectionResponse } from "@outpost/shared";
+import type { ExplainSemanticHit, ProjectionResponse } from "@outpost/shared";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { ErrorState } from "@/components/page";
 import { kindMeta } from "@/components/search-hit";
@@ -154,6 +154,8 @@ export function MeaningSection({ projection }: { projection: UseQueryResult<Proj
         </FromTrace>
       </Figure>
 
+      <NoSharedWords hits={data?.semantic.hits} demonstration={demonstration} />
+
       <Prose>
         <h3>Checking every vector</h3>
         <p>
@@ -215,5 +217,48 @@ export function MeaningSection({ projection }: { projection: UseQueryResult<Proj
         </p>
       </Prose>
     </Stage>
+  );
+}
+
+/**
+ * The point of the second search, made with the person's own results where they make it:
+ * a passage found by meaning that holds none of the question's words. Otherwise a fixed
+ * example, marked as one, with no scores, since nothing on this page is presented as a
+ * result unless the real code produced it.
+ */
+function NoSharedWords({ hits, demonstration }: { hits: ExplainSemanticHit[] | undefined; demonstration: boolean }) {
+  const found = demonstration ? undefined : hits?.find((hit) => hit.sharesWords === false);
+  if (found) {
+    return (
+      <section aria-labelledby="no-shared-words" className="mb-10 max-w-[46rem] rounded-panel border border-border bg-surface p-4">
+        <h3 id="no-shared-words" className="text-body font-semibold text-ink">
+          Found by meaning, with none of your words
+        </h3>
+        <p className="mt-1 text-small text-ink-muted">
+          Number {found.rank} by meaning, “{found.title}”, contains none of your question’s words, even with their endings trimmed as the
+          keyword search trims them. Keyword search could not have found it.
+        </p>
+        <blockquote className="mt-3 border-l-2 border-border pl-3 text-small text-ink [overflow-wrap:anywhere]">
+          {found.segments.map((segment) => segment.text).join("")}
+        </blockquote>
+      </section>
+    );
+  }
+  return (
+    <section aria-labelledby="no-shared-words" className="mb-10 max-w-[46rem] rounded-panel border border-border bg-surface p-4">
+      <h3 id="no-shared-words" className="text-body font-semibold text-ink">
+        An illustration, not from your library
+      </h3>
+      <p className="mt-1 text-small text-ink-muted">
+        {hits && hits.length > 0 && !demonstration
+          ? "Every passage found by meaning for this question also holds at least one of its words, so here is an example instead."
+          : "With the demonstration vectors in use, search by meaning only finds passages that share words. A real model does more:"}
+      </p>
+      <p className="mt-3 text-small text-ink">
+        Asked “my dog ate chocolate”, a real embedding model can rank first a passage about theobromine poisoning in pets, which mentions
+        cocoa and canines but not one of the question’s words. In its training it learned to draw together dog and canine, chocolate and
+        cocoa, and ate and poisoning.
+      </p>
+    </section>
   );
 }

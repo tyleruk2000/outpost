@@ -155,6 +155,12 @@ describe("how search works", () => {
     expect(semantic[0].similarity).toBeGreaterThan(0);
     expect(semantic[0].similarity).toBeGreaterThanOrEqual(semantic.at(-1).similarity);
     expect(semantic.every((hit: { entityId: string }) => hit.entityId !== "d-knots")).toBe(true);
+    // Each says whether it holds any of the question's words, by the keyword index's stemming.
+    expect(semantic.every((hit: { sharesWords: unknown }) => typeof hit.sharesWords === "boolean")).toBe(true);
+    const keywordIds = new Set(keyword.map((hit: { chunkId: number }) => hit.chunkId));
+    for (const hit of semantic as Array<{ chunkId: number; sharesWords: boolean }>) {
+      if (keywordIds.has(hit.chunkId)) expect(hit.sharesWords).toBe(true);
+    }
 
     // Fusion: each row shows its place in both lists and what each contributed.
     const { k, rows } = body.fusion;

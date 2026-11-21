@@ -124,7 +124,12 @@ function explain(query: string): ExplainResponse {
       compared: 9,
       queryVector: vector([16]),
       queryTerms: ["boil", "water"],
-      hits: semanticHits.map((item, index) => ({ ...item, similarity: 0.5 - index * 0.1, vector: vector([16, 20 + index]) })),
+      hits: semanticHits.map((item, index) => ({
+        ...item,
+        similarity: 0.5 - index * 0.1,
+        vector: vector([16, 20 + index]),
+        sharesWords: item.chunkId !== 14,
+      })),
     },
     fusion: { k: 60, keywordWeight: 1, semanticWeight: 1, rows: [] },
     context: {
@@ -287,6 +292,9 @@ describe("How search works", () => {
     // Vectors: the words behind the demonstration vector, and a bar per passage.
     expect(screen.getByText(/Your question’s vector is built from 2 words: “boil”, “water”/)).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /Rank 1: Delta weather, Fog. Cosine similarity 0.50/ })).toBeInTheDocument();
+    // Demonstration vectors only find shared words, so the point is made by a marked illustration, with no scores.
+    expect(screen.getByRole("heading", { name: "An illustration, not from your library" })).toBeInTheDocument();
+    expect(screen.getByText(/my dog ate chocolate/)).toBeInTheDocument();
     // Fusion, in the server's order.
     expect(finalOrder()).toEqual(["Alpha stoves · Boiling", "Charlie water · Storing", "Delta weather · Fog", "Bravo knots"]);
     // Context: the safety rule, the numbered sources with their links, and what was left out.

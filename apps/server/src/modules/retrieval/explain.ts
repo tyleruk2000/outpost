@@ -338,6 +338,7 @@ export function registerExplain(app: FastifyInstance, ctx: AppContext): void {
       length: row.text.length,
       similarity,
       vector: preview(vector),
+      sharesWords: null,
     });
     if (source.stored) {
       const hits = semantic.index.query(source.provider.modelId, queryVector!, limit * 2, ["document", "note"]);
@@ -373,6 +374,18 @@ export function registerExplain(app: FastifyInstance, ctx: AppContext): void {
         .slice(0, limit * 2)
         .filter((item) => item.similarity > 0)
         .map((item, index) => toSemanticHit(item.row, item.similarity, item.vector, index + 1));
+    }
+    // Which passages found by meaning hold none of the question's words, by the keyword index's own stemming.
+    if (parsed.required.length > 0 && semanticHits.length > 0) {
+      const ids = semanticHits.map((hit) => hit.chunkId);
+      const sharing = new Set(
+        (
+          sqlite
+            .prepare(`SELECT rowid AS chunkId FROM chunks_fts WHERE chunks_fts MATCH ? AND rowid IN (${ids.map(() => "?").join(",")})`)
+            .all(toFtsQuery(parsed, "any"), ...ids) as Array<{ chunkId: number }>
+        ).map((row) => row.chunkId),
+      );
+      for (const hit of semanticHits) hit.sharesWords = sharing.has(hit.chunkId);
     }
     const semanticMs = performance.now() - semanticStarted;
 

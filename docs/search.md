@@ -60,6 +60,11 @@ when reading it:
 - While search by meaning is off, or its index is not built, the "meaning" steps use
   [demonstration vectors](#demonstration-vectors), and the page says so. They
   show the mechanics; they are word matching by another route, not understanding.
+- With a real model, the meaning step points out a passage it found that holds none
+  of your words, which keyword search could not have found. When there is none, it
+  gives an example, marked as one: asked "my dog ate chocolate", a model can rank first
+  a passage on theobromine poisoning in pets, having learned to draw together dog and
+  canine, chocolate and cocoa, ate and poisoning.
 - The ranking steps cover everything search covers, including catalogue listings and
   saved places. The context step keeps only passages from your documents and pages,
   because those are what a model should quote from.
