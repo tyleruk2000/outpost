@@ -24,6 +24,8 @@ export const REFERENCE_LAYERS = [
   "historical",
   "flood-zones",
   "food",
+  "routes",
+  "rights-of-way",
 ] as const;
 export type ReferenceLayerId = (typeof REFERENCE_LAYERS)[number];
 
@@ -163,7 +165,26 @@ export const REFERENCE_LAYER_INFO: Record<ReferenceLayerId, ReferenceLayerInfo> 
       "Shops, markets, food banks, drinking water, fuel and pharmacies as OpenStreetMap volunteers have mapped them, and in the UK the shops registered with the Food Standards Agency. A mark does not mean a place is open, stocked or still there.",
     areas: false,
   },
+  routes: {
+    id: "routes",
+    label: "Walking and cycling routes",
+    about:
+      "Waymarked walking, hiking, cycling and mountain-bike routes, from long-distance paths that cross countries to local walks, as OpenStreetMap contributors have mapped them. A line on the map is not a promise that the way is open or passable.",
+    areas: false,
+  },
+  "rights-of-way": {
+    id: "rights-of-way",
+    label: "Rights of way",
+    about:
+      "Paths with a legal right of way where OpenStreetMap contributors have tagged it: footpaths, bridleways and byways in England and Wales, core paths in Scotland. Only what is tagged: the council's definitive map is the legal record.",
+    areas: false,
+  },
 };
+
+/** Layers drawn as lines, not marks: shown only close enough in that the lines can be told apart. */
+export const LINE_LAYERS: ReadonlySet<ReferenceLayerId> = new Set(["routes", "rights-of-way"]);
+/** The zoom each line layer is drawn from. */
+export const LINE_LAYER_ZOOM: Partial<Record<ReferenceLayerId, number>> = { routes: 8, "rights-of-way": 12 };
 
 /**
  * The Environment Agency's own words for its flood zones, read on data.gov.uk on
@@ -456,6 +477,8 @@ export interface ReferenceOverlayResponse {
   shapes: ReferenceShape[];
   /** Flood zones are many detailed areas: drawn only close in, and not at all where a view holds too many. Why, when not drawn. */
   floodZones?: "zoom-in" | "too-many" | null;
+  /** Routes and rights of way, the same way: why they are not drawn, when they are not. */
+  lines?: "zoom-in" | "too-many" | null;
 }
 
 export interface ReferenceSourceInfo {

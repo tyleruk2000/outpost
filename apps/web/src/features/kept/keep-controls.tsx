@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MenuItem } from "@/components/ui/menu";
 import { Checkbox, Progress, Select } from "@/components/ui/misc";
-import { useMapSources } from "@/features/maps/data";
+import { useMapOverview, useMapSources } from "@/features/maps/data";
 import { formatBboxSize, isValidBbox } from "@/features/maps/lib/geo";
 import type { MapEngine } from "@/features/maps/map/engine";
 import { detailLabel } from "@/features/maps/panels/add-region";
@@ -171,11 +171,39 @@ export function KeepPlacesRow({ count }: { count: number }) {
 const ZOOM_CHOICES = [10, 12, 13, 14, 15];
 
 /**
- * In the maps panel: keep the part of the map that is in view. The size is measured by
- * the server from the installed maps before anything is fetched.
+ * Asks the browser to keep what is stored for Outpost when it is short of room, and says
+ * the answer. A browser that grants it without asking says yes at once; one that asks the
+ * person (Firefox) shows its own question. Asked once an area starts being kept.
+ */
+async function askToPersist(): Promise<void> {
+  try {
+    if (!navigator.storage?.persist) return;
+    if (await navigator.storage.persisted()) return;
+    const granted = await navigator.storage.persist();
+    if (granted) toast.success("This browser will keep what is stored for Outpost when it is short of room.");
+    else
+      toast(
+        `This browser did not agree to keep what is stored for Outpost when it is short of room: it may clear it. Adding Outpost to the Home Screen can change that.`,
+      );
+  } catch {
+    // Not answered: nothing to say.
+  }
+}
+
+/** The part of the map to keep: what is in view, or the whole of an installed region (`region:<id>`). */
+type AreaChoice = "view" | `region:${string}`;
+
+/**
+ * In the maps panel: keep the part of the map that is in view, or a whole installed
+ * region. The size is measured by the server from the installed maps before anything is
+ * fetched.
  */
 export function KeepAreaSection({ engine }: { engine: MapEngine | null }) {
   const sources = useMapSources();
+  const overview = useMapOverview();
+  const installed = (overview.data?.regions ?? []).filter((region) => region.tileType !== "terrain");
+  const [part, setPart] = useState<AreaChoice>("view");
+  const region = part.startsWith("region:") ? installed.find((entry) => `region:${entry.id}` === part) : undefined;
   const work = useAreaWork();
   const terrainId = useId();
   const basemap = sources.data?.sources.basemap;
@@ -212,6 +240,15 @@ export function KeepAreaSection({ engine }: { engine: MapEngine | null }) {
   };
 
   const check = () => {
+    if (region) {
+      const [west, south, east, north] = region.bounds;
+      const bbox: Bbox = [Math.max(-180, west), Math.max(-85, south), Math.min(180, east), Math.min(85, north)];
+      setBox(bbox);
+      setRefusal(undefined);
+      engine?.fitBounds(bbox, { maxZoom: 12 });
+      measure.mutate(bbox);
+      return;
+    }
     if (!engine) return;
     const view = engine.getBounds();
     const bbox: Bbox = [Math.max(-180, view[0]), Math.max(-85, view[1]), Math.min(180, view[2]), Math.min(85, view[3])];
@@ -230,8 +267,9 @@ export function KeepAreaSection({ engine }: { engine: MapEngine | null }) {
     <section aria-label={`Map areas on this ${DEVICE}`}>
       <PanelHeading>Map areas on this {DEVICE}</PanelHeading>
       <p className="mt-1 text-small text-ink-muted">
-        Keeps the part of the map in view in this browser, so it still draws when this {DEVICE} cannot reach the server. It is copied from
-        the maps installed above; nothing is downloaded from the internet.{" "}
+        Keeps the part of the map in view, or a whole region installed above, in this browser, so it still draws when this {DEVICE} cannot
+        reach the server, with heights and the estimated radio range where terrain comes too. It is copied from the maps installed above;
+        nothing is downloaded from the internet.{" "}
         <Link to={KEPT_PATH} className="text-primary underline decoration-1 underline-offset-2">
           What is kept
         </Link>
@@ -289,6 +327,20 @@ export function KeepAreaSection({ engine }: { engine: MapEngine | null }) {
         <p className="mt-3 text-small text-ink-muted">Download a map region first; an area is kept from what is installed.</p>
       ) : (
         <div className="mt-3 grid gap-3">
+          {installed.length > 0 ? (
+            <Select
+              aria-label="What to keep"
+              value={part}
+              onChange={(value) => {
+                setPart(value as AreaChoice);
+                forget();
+              }}
+              options={[
+                { value: "view", label: "The part of the map in view" },
+                ...installed.map((entry) => ({ value: `region:${entry.id}`, label: `All of ${entry.name}` })),
+              ]}
+            />
+          ) : null}
           <Select
             aria-label="Detail to keep"
             value={String(zoom)}
@@ -316,7 +368,7 @@ export function KeepAreaSection({ engine }: { engine: MapEngine | null }) {
 
           {measure.isPending ? (
             <p className="text-small text-ink-muted" aria-busy>
-              Measuring the area in view
+              Measuring {region ? region.name : "the area in view"}
             </p>
           ) : measure.isError ? (
             <Notice tone="danger">{errorMessage(measure.error)}</Notice>
@@ -365,11 +417,12 @@ export function KeepAreaSection({ engine }: { engine: MapEngine | null }) {
                   loading={start.isPending}
                   onClick={() =>
                     start.mutate(
-                      { title: title.trim() || `Map area, ${formatBboxSize(box)}`, bbox: box, size },
+                      { title: title.trim() || (region ? region.name : `Map area, ${formatBboxSize(box)}`), bbox: box, size },
                       {
                         onSuccess: () => {
                           setTitle("");
                           forget();
+                          void askToPersist();
                         },
                         onError: failed,
                       },
@@ -382,8 +435,8 @@ export function KeepAreaSection({ engine }: { engine: MapEngine | null }) {
               </div>
             </>
           ) : (
-            <Button className="justify-self-start" disabled={!engine} loading={measure.isPending} onClick={check}>
-              Measure the area in view
+            <Button className="justify-self-start" disabled={!engine && !region} loading={measure.isPending} onClick={check}>
+              {region ? `Measure all of ${region.name}` : "Measure the area in view"}
             </Button>
           )}
         </div>

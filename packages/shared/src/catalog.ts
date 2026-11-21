@@ -184,6 +184,8 @@ export interface CatalogPack {
   description: string;
   /** Entries in the pack, in the order its author gave. Every id is in the catalogue. */
   entryIds: string[];
+  /** The countries a pack is for, when it is for some only (ISO codes): offered first where Home is in one of them. */
+  countries?: string[];
 }
 
 /** What happened when a pack, or part of one, was asked for. */

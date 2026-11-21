@@ -1,8 +1,8 @@
 # Tools: calculators
 
-Five of the screens under **Tools** are small calculators: **Water**, **Outdoors**, **Radio
-calculators**, **Building** and **Cooking** (`/tools/water`, `/tools/outdoors`,
-`/tools/radio`, `/tools/building`, `/tools/cooking`). They are written for a phone held
+Six of the screens under **Tools** are small calculators: **Water**, **Rations**,
+**Outdoors**, **Radio calculators**, **Building** and **Cooking** (`/tools/water`,
+`/tools/rations`, `/tools/outdoors`, `/tools/radio`, `/tools/building`, `/tools/cooking`). They are written for a phone held
 in one hand, in a kitchen, a shed or on a hill: each input has its unit beside it, the
 answer appears as you type, in figures and in a sentence, and **How this is worked out**
 opens the formula, its source, the range it holds for and what it leaves out.
@@ -75,6 +75,48 @@ Ready.gov advises against tablets that are not plain bleach; the EPA and the CDC
 them by the maker's instructions. The DWI's page says "rolling ball", a misprint, quoted
 with [sic]. The CDC's ⅛ is written 1/8 so that the printed sheet can set it.
 
+## Rations
+
+How much energy a household needs a day, how long the food you have lasts, what to
+store, and how to share a stock. **A planning aid: it gives no medical or dietary
+advice.** Children, older people, women who are pregnant or breastfeeding, and anyone
+who is ill should not be put on a reduced ration by a calculator; the screen says so at
+its top and keeps their need in full in every figure.
+
+- **A day's energy.** List the household (age, sex, pregnant, breastfeeding, ill, and
+  a figure of their own for heavy work, a baby or a doctor's figure), or press **Use my
+  household from Supplies**. Choose whose figures: the UK's, the international ones, or
+  Sphere's single planning figure. With the last two, a mean daily temperature below
+  20 °C adds an allowance for cold. Each person's figure is shown with what it is made of.
+- **How long food lasts.** Give the food as a figure in kcal, as kilograms of staple
+  foods, or press **Use my supplies** to take what Supplies counts. The answer is the
+  days and the last day covered at the full need, and at three quarters and half for
+  those who may be reduced. With staples or supplies it also gives protein and fat
+  against Sphere's figures, and warns when more than four fifths of the energy is one
+  food.
+- **Food to store.** Days, and the share of the energy from each staple: the weight of
+  each to store, and the same check of protein, fat and one food.
+- **Sharing out a stock.** A stock and the days it must last: a daily amount for each
+  person by their need, not an equal split. Those kept on a full ration are given theirs
+  first; the others share what is left in proportion to their needs, and nobody is
+  given more than their need. Offered as a PDF to print.
+
+| Figure | From | Notes |
+| --- | --- | --- |
+| UK need by age and sex | [Public Health England, Government Dietary Recommendations (2016)](https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/618167/government_dietary_recommendations.pdf), tables 1 and 2 | The table Supplies uses. No figure under one year: give the baby's own. |
+| Pregnancy and breastfeeding (UK) | [SACN, Dietary Reference Values for Energy (2011)](https://assets.publishing.service.gov.uk/media/5a7edb37ed915d74e33f2d8f/SACN_Dietary_Reference_Values_for_Energy.pdf), S50 and S51 | +191 kcal a day in the last three months of pregnancy only; +330 kcal a day in the first six months of breastfeeding. |
+| International need by age and sex | [UNHCR, UNICEF, WFP and WHO, Food and Nutrition Needs in Emergencies (2002)](https://iris.who.int/server/api/core/bitstreams/c6f336b9-0c36-4431-80fd-840c05344817/content), annex 1 | At a light activity level, adults of 60 and 52 kg. Pregnancy +285, breastfeeding +500. |
+| Cold | The same, section 2: "adjust energy requirements upward by 100 kcal for every 5° below 20° C" | By whole 5° steps as its box gives them, 15 °C +100 to 0 °C +400. Colder is given +400 and said to be beyond the box. No UK figure was found, so none is added to the UK figures. |
+| 2,100 kcal for everyone | [The Sphere Handbook (2018)](https://emergency.unhcr.org/sites/default/files/2024-05/SphereFS%2BN.pdf), food security standard 6.1 and appendix 6 | "2,100 kCal per person per day with 10–12 per cent of total energy provided by protein and 17 per cent provided by fat"; 53 g protein and 40 g fat. For a population: it "should not be used as requirements for an individual". |
+| Heavy work | Neither body gives a figure | The 2002 guidance says only that "an increase in ration should be considered": give that person their own figure. |
+| Three quarters and half | No body publishes them as safe | Arithmetic only, to show how far food would stretch. The way of reducing is the bodies' own: Sphere lists "giving a full ration to vulnerable individuals and a reduced ration to the general population"; the 2002 guidance warns that reducing across the board "may mean that a significant proportion of the population receives insufficient food" and names "the elderly, the chronically ill, under-5-year-olds". |
+| Energy, protein and fat of foods | USDA FoodData Central, SR Legacy (April 2018), as Supplies ships it | Twelve staples, dry weight; Supplies' own figures for what it holds, with protein and fat where its energy came from the USDA table. |
+| Food to keep | [UK Government, Be ready](https://beready.campaign.gov.uk/be-ready-for-emergencies/): "Non-perishable food for 3 days" | Gives no energy figure. |
+
+All read on 21 November 2026. Leaves out: how much room food takes (no figure is
+held, so only the weight is given), water (the Water calculators), cooking fuel,
+vitamins and minerals, and anyone's own medical needs.
+
 ## Outdoors
 
 | Calculator | Formula | Source | Range and limits |
@@ -137,6 +179,8 @@ pages themselves.
   the authority, and the CDC says to follow it.
 - Power and electronics calculators, a power and battery planner, a QR code generator, a
   network scanner and food and water inventory belong to other screens.
+- The bulk of stored food (litres a kilogram takes): no figure is held for it, so Food to
+  store gives weights only.
 - Telling the time from the sun and stars (clock recovery, sundials, a nocturnal) is its
   own screen, the Solar clock: [tools-solar-clock.md](tools-solar-clock.md).
 - Magnetic declination, grid north and the rule between map and compass, with the phone's

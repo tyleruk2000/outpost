@@ -35,6 +35,8 @@ export const LAYER_TOKENS: Record<ReferenceLayerId, string> = {
   historical: "--ink",
   "flood-zones": "--chart-1",
   food: "--chart-1",
+  routes: "--chart-3",
+  "rights-of-way": "--chart-4",
 };
 
 const FALLBACK: Record<string, string> = {
@@ -117,6 +119,7 @@ export function referenceLayers(theme: MapTheme): LayerSpecification[] {
   const isShape: ExpressionSpecification = ["==", ["get", "kind"], "shape"];
   const ring: ExpressionSpecification = ["!=", ["get", "letter"], ""];
   const notFlood: ExpressionSpecification = ["!=", ["get", "layer"], "flood-zones"];
+  const notLine: ExpressionSpecification = ["!", ["in", ["get", "layer"], ["literal", ["routes", "rights-of-way"]]]];
   return [
     {
       id: "o-reference-area-fill",
@@ -132,10 +135,28 @@ export function referenceLayers(theme: MapTheme): LayerSpecification[] {
       paint: { "fill-color": ["get", "colour"], "fill-opacity": ["case", ["==", ["get", "layer"], "planning-zones"], 0.14, 0.08] },
     },
     {
+      // Walking and cycling routes: a solid line, wider than a path, under the marks.
+      id: "o-reference-route-line",
+      type: "line",
+      source: REFERENCE_SOURCE,
+      filter: ["all", isShape, ["==", ["get", "layer"], "routes"]],
+      layout: { "line-join": "round", "line-cap": "round" },
+      paint: { "line-color": ["get", "colour"], "line-width": ["interpolate", ["linear"], ["zoom"], 8, 1.6, 14, 3], "line-opacity": 0.85 },
+    },
+    {
+      // Rights of way: a broken line, so that a path is told from a route by its line as well as its colour.
+      id: "o-reference-row-line",
+      type: "line",
+      source: REFERENCE_SOURCE,
+      filter: ["all", isShape, ["==", ["get", "layer"], "rights-of-way"]],
+      layout: { "line-join": "round" },
+      paint: { "line-color": ["get", "colour"], "line-width": 1.6, "line-dasharray": [2, 1.5], "line-opacity": 0.95 },
+    },
+    {
       id: "o-reference-area-line",
       type: "line",
       source: REFERENCE_SOURCE,
-      filter: ["all", isShape, notFlood, ["==", ["get", "letter"], ""]],
+      filter: ["all", isShape, notFlood, notLine, ["==", ["get", "letter"], ""]],
       layout: { "line-join": "round" },
       paint: {
         "line-color": ["get", "colour"],
@@ -148,7 +169,7 @@ export function referenceLayers(theme: MapTheme): LayerSpecification[] {
       id: "o-reference-area-dashed",
       type: "line",
       source: REFERENCE_SOURCE,
-      filter: ["all", isShape, notFlood, ring],
+      filter: ["all", isShape, notFlood, notLine, ring],
       paint: { "line-color": ["get", "colour"], "line-width": 1.6, "line-dasharray": [3, 2] },
     },
     {
@@ -352,9 +373,51 @@ export function nearestReference(
   };
   for (const point of overlay?.points ?? []) consider({ kind: "point", id: point.id, lat: point.lat, lon: point.lon });
   for (const cell of overlay?.cells ?? []) consider({ kind: "cell", lat: cell.lat, lon: cell.lon });
+  // A route or a right of way is pressed on its line: the nearest place on it within reach, a little behind a mark.
+  for (const shape of overlay?.shapes ?? []) {
+    if (!LINE_LAYER_IDS.has(shape.layer)) continue;
+    const near = nearestOnLine(shape.geometry, press, project);
+    if (!near || near.distance > reach * 0.7) continue;
+    const weighted = near.distance + 6;
+    if (!best || weighted < best.distance) best = { kind: "point", id: shape.id, lat: near.lat, lon: near.lon, distance: weighted };
+  }
   if (!best) return null;
   const { distance: _distance, ...hit } = best as ReferenceHit & { distance: number };
   return hit;
+}
+
+const LINE_LAYER_IDS = new Set<ReferenceLayerId>(["routes", "rights-of-way"]);
+
+/** The point of a line nearest a press on the screen, and how far it is in pixels; null for anything not a line. */
+export function nearestOnLine(
+  geometry: { type: string; coordinates: unknown },
+  press: { x: number; y: number },
+  project: (position: { lat: number; lon: number }) => { x: number; y: number },
+): { lat: number; lon: number; distance: number } | null {
+  const lines =
+    geometry.type === "LineString"
+      ? [geometry.coordinates as number[][]]
+      : geometry.type === "MultiLineString"
+        ? (geometry.coordinates as number[][][])
+        : [];
+  let best: { lat: number; lon: number; distance: number } | null = null;
+  for (const line of lines) {
+    let last: { x: number; y: number; lon: number; lat: number } | null = null;
+    for (const [lon, lat] of line) {
+      const here = { ...project({ lat: lat!, lon: lon! }), lon: lon!, lat: lat! };
+      if (last) {
+        const dx = here.x - last.x;
+        const dy = here.y - last.y;
+        const length = dx * dx + dy * dy;
+        const t = length === 0 ? 0 : Math.max(0, Math.min(1, ((press.x - last.x) * dx + (press.y - last.y) * dy) / length));
+        const distance = Math.hypot(last.x + t * dx - press.x, last.y + t * dy - press.y);
+        if (!best || distance < best.distance)
+          best = { lon: last.lon + t * (here.lon - last.lon), lat: last.lat + t * (here.lat - last.lat), distance };
+      }
+      last = here;
+    }
+  }
+  return best;
 }
 
 export type { ReferenceOverlayResponse };

@@ -11,6 +11,8 @@
  * app's own files written into it. A new build is therefore a different script, which
  * is how a browser knows to install it.
  */
+
+import { answerFromKept } from "./kept-terrain";
 import {
   DOWN_FOR_MS,
   handlingOf,
@@ -170,11 +172,25 @@ async function keptThing(request: Request): Promise<Response> {
   }
 }
 
+/** A height or a range: the server's answer while it answers, otherwise one worked out from the kept terrain. */
+async function worked(request: Request): Promise<Response> {
+  if (!believedDown()) {
+    try {
+      return await fromServer(request, NETWORK_TIMEOUT_MS);
+    } catch (error) {
+      if (request.signal.aborted) throw error;
+    }
+  }
+  const answer = await answerFromKept(new URL(request.url), caches);
+  return answer ?? fetch(request);
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const handling = handlingOf(request, self.location.origin, precached);
   if (handling === "page") event.respondWith(page(request));
   else if (handling === "shell") event.respondWith(shellFile(request));
   else if (handling === "kept") event.respondWith(keptThing(request));
+  else if (handling === "worked") event.respondWith(worked(request));
   // Anything else, and every request under /api/ or /kiwix/ that is not listed in rules.ts, goes to the server untouched.
 });

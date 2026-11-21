@@ -421,6 +421,12 @@ export function GetDialog({
                               ? "Only when ticked: “none ticked” means the other five."
                               : "Only when ticked, and only for the area on screen, up to about a county across."}
                           </span>
+                        ) : layer === "routes" || layer === "rights-of-way" ? (
+                          <span className="block text-micro text-ink-muted">
+                            {layer === "routes"
+                              ? "Only when ticked. Lines from the whole extract: a large country needs a good deal of memory to read; a region is quicker."
+                              : "Only when ticked, and only where the right of way is tagged. For England, read a county rather than the country."}
+                          </span>
                         ) : null}
                       </label>
                     </div>
@@ -712,6 +718,28 @@ function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (op
                     format === "osm-pbf" ? "Two letters, such as LI." : "Two letters, such as GB: the country the grid is for.",
                   )
                 : null}
+              {format === "osm-pbf" ? (
+                <fieldset className="grid gap-1">
+                  <legend className="text-small font-medium text-ink">Also read</legend>
+                  {(["routes", "rights-of-way"] as const).map((layer) => {
+                    const chosen = option("lines").split(",").filter(Boolean);
+                    return (
+                      <div key={layer} className="flex min-h-11 items-center gap-2 md:min-h-8">
+                        <Checkbox
+                          id={`import-line-${layer}`}
+                          checked={chosen.includes(layer)}
+                          onCheckedChange={(on) =>
+                            setOption("lines", (on ? [...chosen, layer] : chosen.filter((entry) => entry !== layer)).join(","))
+                          }
+                        />
+                        <label htmlFor={`import-line-${layer}`} className="text-small text-ink">
+                          {REFERENCE_LAYER_INFO[layer].label}
+                        </label>
+                      </div>
+                    );
+                  })}
+                </fieldset>
+              ) : null}
             </>
           )}
         </DialogBody>

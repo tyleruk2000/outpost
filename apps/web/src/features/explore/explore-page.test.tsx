@@ -77,7 +77,11 @@ describe("Explore", () => {
     serve();
     renderScreen(<ExplorePage />, "/explore");
     await screen.findByRole("heading", { name: "Knots by Wikipedia" });
-    const groups = screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent);
+    // The suggestions for where Home is come first (suggestions.test.ts); then the catalogue's own groups.
+    const groups = screen
+      .getAllByRole("heading", { level: 2 })
+      .map((heading) => heading.textContent)
+      .filter((text) => !text?.startsWith("Suggested"));
     expect(groups.slice(0, 2)).toEqual(["Wikipedia and encyclopedias", "Medicine and first aid"]);
     const nav = within(screen.getByRole("navigation", { name: "Categories" }))
       .getAllByRole("button")

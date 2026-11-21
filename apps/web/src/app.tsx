@@ -80,6 +80,7 @@ const EmergencyPlanPage = lazy(() => import("./features/emergency-plans/plan-pag
 const UseEmergencyPlanPage = lazy(() => import("./features/emergency-plans/use-page"));
 const EmergencyCardsPage = lazy(() => import("./features/emergency-plans/cards-page"));
 const WaterToolsPage = lazy(() => import("./features/tools/water/water-page"));
+const RationsToolsPage = lazy(() => import("./features/tools/rations/rations-page"));
 const OutdoorsToolsPage = lazy(() => import("./features/tools/outdoors/outdoors-page"));
 const RadioToolsPage = lazy(() => import("./features/tools/radio/radio-tools-page"));
 const BuildingToolsPage = lazy(() => import("./features/tools/building/building-page"));
@@ -192,6 +193,7 @@ export function App() {
           <Route path="radio" element={<RadioPage />} />
           <Route path="tools" element={<ToolsPage />} />
           <Route path="tools/water" element={<WaterToolsPage />} />
+          <Route path="tools/rations" element={<RationsToolsPage />} />
           <Route path="tools/outdoors" element={<OutdoorsToolsPage />} />
           <Route path="tools/radio" element={<RadioToolsPage />} />
           <Route path="tools/building" element={<BuildingToolsPage />} />

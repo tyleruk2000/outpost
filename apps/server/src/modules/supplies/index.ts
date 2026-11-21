@@ -32,7 +32,7 @@ import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { contentDisposition } from "../notes/attachments.ts";
 import { previewCsv, toCsv } from "./csv.ts";
-import { findFoods } from "./foods.ts";
+import { findFoods, foodsById } from "./foods.ts";
 import { createSuppliesService, type SuppliesService } from "./service.ts";
 
 declare module "../../core/context.ts" {
@@ -162,6 +162,19 @@ export async function registerSupplies(app: FastifyInstance, ctx: AppContext): P
   });
 
   /** Foods in USDA FoodData Central's table that match a name typed, best first, with energy per 100 g. Local; nothing is fetched. */
+  // Foods by id, for the ration calculator's protein and fat of what Supplies holds (the id is in an item's energy note).
+  app.get("/api/supplies/foods/by-id", async (request) => {
+    const { ids } = z
+      .object({
+        ids: z
+          .string()
+          .regex(/^\d{1,9}(,\d{1,9}){0,199}$/, "Give `ids` as up to 200 food numbers, separated by commas.")
+          .transform((text) => text.split(",").map(Number)),
+      })
+      .parse(request.query);
+    return foodsById(ids);
+  });
+
   app.get("/api/supplies/foods", async (request) => {
     const { q, limit } = z
       .object({ q: z.string().max(100), limit: z.coerce.number().int().min(1).max(20).default(8) })

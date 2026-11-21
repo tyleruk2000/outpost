@@ -549,6 +549,13 @@ export default function MapsPage() {
   useEffect(() => {
     const tab = new URLSearchParams(location.search).get("tab");
     if (tab && (PANEL_TABS as readonly string[]).includes(tab)) showPanel(tab as PanelTab);
+    // From Explore's suggestions: /maps?offline=region&preset=… opens Offline maps at that region, /maps?offline=places at place names.
+    const offline = new URLSearchParams(location.search).get("offline");
+    if (offline === "region" || offline === "places") {
+      const preset = new URLSearchParams(location.search).get("preset");
+      setOfflineIntent(offline === "places" ? { type: "places" } : { type: "add", ...(preset ? { presetId: preset } : {}) });
+      showPanel("offline");
+    }
   }, [location.key]);
 
   // Links from the app-wide search: /maps?marker=… and /maps?track=…, and plain camera links.

@@ -19,7 +19,10 @@ import type { ReferenceLayerId } from "@outpost/shared";
 import { cleanText as routeCleanText } from "../../maps/route-finder/overpass.ts";
 import { FOOD_KEPT_TAGS, foodOverpassFilters } from "./food-tags.ts";
 
-export type OsmLayer = Extract<ReferenceLayerId, "military" | "nuclear" | "hospitals" | "emergency" | "shelters" | "food">;
+export type OsmLayer = Extract<
+  ReferenceLayerId,
+  "military" | "nuclear" | "hospitals" | "emergency" | "shelters" | "food" | "routes" | "rights-of-way"
+>;
 /** The layers a request for "all" means, and the layers read from a Geofabrik extract. */
 export const OSM_LAYERS: OsmLayer[] = ["military", "nuclear", "hospitals", "emergency", "shelters"];
 /**
@@ -28,8 +31,54 @@ export const OSM_LAYERS: OsmLayer[] = ["military", "nuclear", "hospitals", "emer
  * shops is more than a public server should be asked for at once.
  */
 export const OVERPASS_LAYERS: OsmLayer[] = [...OSM_LAYERS, "food"];
-/** The layers a Geofabrik extract can be read for: the five, and food and supplies when it is chosen. */
-export const EXTRACT_LAYERS: OsmLayer[] = [...OSM_LAYERS, "food"];
+/**
+ * The layers a Geofabrik extract can be read for: the five, and food and supplies, walking
+ * and cycling routes and rights of way when each is chosen. Routes and rights of way are
+ * lines made of many ways, read from an extract only: an Overpass server would be asked
+ * for far too much.
+ */
+export const EXTRACT_LAYERS: OsmLayer[] = [...OSM_LAYERS, "food", "routes", "rights-of-way"];
+
+/**
+ * Waymarked routes are route relations (OpenStreetMap wiki, "Walking Routes" and "Cycle
+ * routes", read 21 November 2026): `type=route` with `route=hiking` or `foot`, `bicycle`
+ * or `mtb`, and a network of iwn, nwn, rwn or lwn (walking) or icn, ncn, rcn or lcn
+ * (cycling), international to local.
+ */
+export const ROUTE_VALUES = ["hiking", "foot", "bicycle", "mtb"] as const;
+/**
+ * Rights of way, as `designation` on a way (the wiki's page for each value, read
+ * 21 November 2026): England and Wales's four kinds, the value used when the kind is not
+ * known, and Scotland's core paths. Permissive paths are not rights of way and are left out.
+ */
+export const RIGHT_OF_WAY_VALUES = [
+  "public_footpath",
+  "public_bridleway",
+  "restricted_byway",
+  "byway_open_to_all_traffic",
+  "public_right_of_way",
+  "core_path",
+] as const;
+
+const NETWORK_WORDS: Record<string, string> = {
+  iwn: "international",
+  nwn: "national",
+  rwn: "regional",
+  lwn: "local",
+  icn: "international",
+  ncn: "national",
+  rcn: "regional",
+  lcn: "local",
+};
+
+/** "National walking route", "Local cycle route": a route's kind with its network, for its card. */
+export function routeWords(tags: Record<string, string>): string {
+  const route = tags.route;
+  const what = route === "bicycle" ? "cycle route" : route === "mtb" ? "mountain-bike route" : "walking route";
+  const level = NETWORK_WORDS[tags.network ?? ""];
+  const text = level ? `${level} ${what}` : what;
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
 
 export const MILITARY_VALUES = [
   "base",
@@ -72,6 +121,16 @@ const KIND_LABELS: Record<string, string> = {
   "bunker_type=air_raid_shelter": "Air-raid shelter",
   "bunker_type=nuclear": "Fallout shelter",
   "emergency=assembly_point": "Emergency assembly point",
+  "route=hiking": "Walking route",
+  "route=foot": "Walking route",
+  "route=bicycle": "Cycle route",
+  "route=mtb": "Mountain-bike route",
+  "designation=public_footpath": "Public footpath",
+  "designation=public_bridleway": "Public bridleway",
+  "designation=restricted_byway": "Restricted byway",
+  "designation=byway_open_to_all_traffic": "Byway open to all traffic",
+  "designation=public_right_of_way": "Public right of way (kind not mapped)",
+  "designation=core_path": "Core path (Scotland)",
 };
 
 export function osmKindLabel(kind: string): string {
@@ -93,6 +152,11 @@ export function classifyOsm(tags: Record<string, string>): { layer: OsmLayer; ki
   if (bunker && (SHELTER_BUNKER_TYPES as readonly string[]).includes(bunker)) return { layer: "shelters", kind: `bunker_type=${bunker}` };
   if (tags.amenity === "shelter" && tags.shelter_type === "bomb_shelter") return { layer: "shelters", kind: "shelter_type=bomb_shelter" };
   if (tags.emergency === "assembly_point") return { layer: "shelters", kind: "emergency=assembly_point" };
+  if (tags.type === "route" && (ROUTE_VALUES as readonly string[]).includes(tags.route ?? ""))
+    return { layer: "routes", kind: `route=${tags.route}` };
+  // A right of way is a way (a path, a track); the same tag on an area or a relation is something else.
+  if (tags.type === undefined && tags.designation && (RIGHT_OF_WAY_VALUES as readonly string[]).includes(tags.designation))
+    return { layer: "rights-of-way", kind: `designation=${tags.designation}` };
   return null;
 }
 
@@ -115,6 +179,10 @@ export function overpassFilters(layer: OsmLayer): string[] {
       ];
     case "food":
       return foodOverpassFilters();
+    case "routes":
+    case "rights-of-way":
+      // Read from extracts only (EXTRACT_LAYERS), never asked of an Overpass server.
+      return [];
   }
 }
 
@@ -160,6 +228,17 @@ export const KEPT_OSM_TAGS = new Set([
   "description",
   "note",
   "source",
+  "route",
+  "network",
+  "designation",
+  "distance",
+  "from",
+  "to",
+  "symbol",
+  "osmc:symbol",
+  "prow_ref",
+  "highway",
+  "surface",
   ...FOOD_KEPT_TAGS,
 ]);
 

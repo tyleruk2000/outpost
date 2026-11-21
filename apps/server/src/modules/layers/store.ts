@@ -32,7 +32,7 @@ import type {
   ReferenceShape,
   ReferenceSourceInfo,
 } from "@outpost/shared";
-import { FOOD_KINDS, haversineMeters, initialBearingDeg, ownValue } from "@outpost/shared";
+import { FOOD_KINDS, haversineMeters, initialBearingDeg, LINE_LAYER_ZOOM, LINE_LAYERS, ownValue } from "@outpost/shared";
 import type { Statement } from "better-sqlite3";
 import type { AppContext } from "../../core/context.ts";
 import { yieldToEventLoop } from "../../core/event-loop.ts";
@@ -58,6 +58,8 @@ const FLOOD_ZOOM = 11;
 const FLOOD_SHAPE_LIMIT = 3_000;
 /** Other layers' areas are drawn from this zoom in. */
 const SHAPE_ZOOM = 9;
+/** Routes and rights of way in one view, at most; past it they are not drawn and the panel says why. */
+const LINE_SHAPE_LIMIT = 2_500;
 /** The nearest list looks this far and no further. */
 export const NEAREST_WITHIN_METRES = 100_000;
 /** How far apart two records of one thing from different sources may be placed. */
@@ -694,7 +696,10 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
 
     overlay({ bbox, zoom, ...filter }) {
       const boxes = boxesOf(bbox);
-      const pointLayers = filter.layers.filter((layer) => !AREA_LAYERS.has(layer) || layer === "planning-zones");
+      // Routes and rights of way are lines, drawn as lines only: a mark at the middle of a long-distance path says nothing.
+      const pointLayers = filter.layers.filter(
+        (layer) => !LINE_LAYERS.has(layer) && (!AREA_LAYERS.has(layer) || layer === "planning-zones"),
+      );
       const pointWhere = filterSql({ ...filter, layers: pointLayers });
       // Only whether there are more than can be sent is counted here; when there are, the patches' counts give the total.
       let total = boxes.reduce(
@@ -743,7 +748,7 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
       // Areas: those of the area layers at any zoom, the rest from close in, and never more than the limit.
       // A shop's building outline adds nothing to its mark: food and supplies are drawn as marks only.
       const shapeLayers = filter.layers.filter(
-        (layer) => layer !== "flood-zones" && layer !== "food" && (AREA_LAYERS.has(layer) || zoom >= SHAPE_ZOOM),
+        (layer) => layer !== "flood-zones" && layer !== "food" && !LINE_LAYERS.has(layer) && (AREA_LAYERS.has(layer) || zoom >= SHAPE_ZOOM),
       );
       const tolerance = (360 / (256 * 2 ** Math.max(0, zoom))) * 0.75;
       const shapesOf = (layers: ReferenceLayerId[], limit: number): ReferenceShape[] | null => {
@@ -781,7 +786,18 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
           else floodZones = "too-many";
         }
       }
-      return { total, points, cells, shapes, floodZones };
+      let lines: "zoom-in" | "too-many" | null = null;
+      const lineLayers = filter.layers.filter((layer) => LINE_LAYERS.has(layer));
+      if (lineLayers.length > 0) {
+        const near = lineLayers.filter((layer) => zoom >= (LINE_LAYER_ZOOM[layer] ?? SHAPE_ZOOM));
+        if (near.length < lineLayers.length) lines = "zoom-in";
+        if (near.length > 0) {
+          const drawn = shapesOf(near, LINE_SHAPE_LIMIT);
+          if (drawn) shapes = [...shapes, ...drawn];
+          else lines = "too-many";
+        }
+      }
+      return { total, points, cells, shapes, floodZones, lines };
     },
 
     at({ lat, lon, ...filter }) {

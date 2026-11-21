@@ -7,7 +7,7 @@
  * about 0.7 MB of JSON, a few MB once read. In the packaged app it is a chunk of its own,
  * so a server that is never asked does not hold it.
  */
-import { type FoodIndex, type FoodSearchResponse, type FoodTable, indexFoods, searchFoods } from "@outpost/shared";
+import { type FoodIndex, type FoodSearchResponse, type FoodTable, indexFoods, matchOf, searchFoods } from "@outpost/shared";
 
 let loading: Promise<FoodIndex> | null = null;
 
@@ -26,4 +26,15 @@ export async function findFoods(query: string, limit: number): Promise<FoodSearc
   const index = await foodIndex();
   const { table } = index;
   return { source: `${table.source}, ${table.dataset} (${table.releaseWords})`, matches: searchFoods(index, query, limit) };
+}
+
+/** Foods by their FoodData Central ids, in the order asked; ids not in the table are left out. */
+export async function foodsById(ids: number[]): Promise<FoodSearchResponse> {
+  const { table } = await foodIndex();
+  const byId = new Map(table.foods.map((row) => [row[0], row]));
+  const matches = ids.flatMap((id) => {
+    const row = byId.get(id);
+    return row ? [matchOf(table, row)] : [];
+  });
+  return { source: `${table.source}, ${table.dataset} (${table.releaseWords})`, matches };
 }

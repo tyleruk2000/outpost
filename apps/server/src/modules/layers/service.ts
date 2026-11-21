@@ -648,7 +648,15 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
         input.format === "historical-csv"
           ? ["historical"]
           : input.format === "osm-pbf"
-            ? ["military", "nuclear", "hospitals", "emergency", "shelters"]
+            ? [
+                "military",
+                "nuclear",
+                "hospitals",
+                "emergency",
+                "shelters",
+                // Routes and rights of way are read too when asked: `options.lines` of "routes", "rights-of-way" or both, by commas.
+                ...(["routes", "rights-of-way"] as const).filter((layer) => (input.options.lines ?? "").split(",").includes(layer)),
+              ]
             : input.options.layer
               ? [input.options.layer as ReferenceLayerId]
               : [];

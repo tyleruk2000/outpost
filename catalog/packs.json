@@ -237,7 +237,8 @@
         "metoffice.factsheet-4-climate-of-the-british-isles",
         "metoffice.factsheet-14-microclimates",
         "metoffice.factsheet-15-weather-radar"
-      ]
+      ],
+      "countries": ["GB"]
     },
     {
       "id": "coast-and-sea",
@@ -308,7 +309,8 @@
         "mca.maritime-safety-information-leaflet",
         "noaa.space-weather-scales",
         "kiwix.ham.stackexchange.com-en-all"
-      ]
+      ],
+      "countries": ["GB"]
     },
     {
       "id": "radio-us",
@@ -337,7 +339,8 @@
         "iaru.ethics-and-operating-procedures",
         "iaru.emergency-telecommunications-guide",
         "kiwix.ham.stackexchange.com-en-all"
-      ]
+      ],
+      "countries": ["US"]
     },
     {
       "id": "radio-learning",

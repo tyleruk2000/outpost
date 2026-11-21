@@ -3,7 +3,8 @@
 Layers of published data for the map: country and regional boundaries, populated
 places, airports, publicly mapped military sites and nuclear facilities, hospitals and
 emergency services, shelters and emergency meeting points, emergency planning zones,
-population density, historical records, and food and supplies (shops, markets, food
+population density, historical records, walking and cycling routes with rights of way
+where they are tagged ([below](#walking-and-cycling-routes-and-rights-of-way)), and food and supplies (shops, markets, food
 banks, drinking water, fuel and pharmacies; see [Food and supplies](#food-and-supplies)). They are the data side of the nuclear
 preparedness module (sections 2, 3, 5, 6, 8 and 10 of its specification); the effects
 simulator and the module's workspace are built separately and mount these pieces.
@@ -85,7 +86,7 @@ with the rest of Outpost's sources.
 | Natural Earth | Countries (1:50m), first-level regions and populated places (1:10m) | [Terms of use](https://www.naturalearthdata.com/about/terms-of-use/): "All versions of Natural Earth raster + vector map data found on this website are in the public domain." "No permission is needed to use Natural Earth." "Crediting the authors is unnecessary." Nothing is said about automated downloads; downloads are "generously hosted by Amazon Web Services". | **Fetched on a press**, as GeoJSON from the project's repository pinned at release v5.1.2 (`raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/`). No checksum is published; the 1:50m countries file is pinned by a SHA-256 Outpost worked out from the file on the day (`3e458fc0…7fdeb`). |
 | OurAirports | Airports, airfields, heliports, seaplane bases, with their own `type`; their radio frequencies | ourairports.com could not be read: its certificate expired on 6 November 2026 (still so on 17 November). The data repository's [licence](https://github.com/davidmegginson/ourairports-data/blob/main/LICENSE): "This is free and unencumbered software released into the public domain." Its README: "Open-data downloads for OurAirports, updated daily." | **Fetched on a press**: `airports.csv` (12.8 MB) from `davidmegginson.github.io`, the chosen countries or box kept, and `airport-frequencies.csv` (1.3 MB) from the same folder in the same install (see [Airport frequencies](#airport-frequencies)). There is no field that says an airfield is military, and none is guessed from names. |
 | OpenStreetMap by Overpass | Military sites, nuclear facilities, hospitals, police, fire and ambulance stations, shelters | [Copyright](https://www.openstreetmap.org/copyright): "If you alter or build upon our data, you may distribute the result only under the same license." [Overpass manual](https://dev.overpass-api.de/overpass-doc/en/preface/commons.html): users "keep their download volume below about 1 GB per day"; problematic is "Setting up an app for more than just OSM mappers and relying on the public instances as backend". [Wiki list of servers](https://wiki.openstreetmap.org/wiki/Overpass_API#Public_Overpass_API_instances) for dresel.systems: "Free to use, no API key. Limit of 4 parallel queries per IP address", "Please send a User-Agent or Referer that identifies your app." Private.coffee's own terms exclude "projects related to warfare, military applications". | **Fetched on a press**, one layer of one country (or a box up to about 20° by 20°) per question, one question at a time to a host with two seconds between and a minute after it says it is busy, from the servers of `catalog/route-sources.json` that hold the area (dresel.systems, Europe and North America) or from one the person declares. **Private.coffee is not used** for reference layers, because of its terms; overpass-api.de is not listed at all (see sources.md, T4). Elsewhere: a Geofabrik extract. |
-| OpenStreetMap from Geofabrik | The same five layers, and food and supplies when ticked, from a country's or a region's `.osm.pbf` | [download.geofabrik.de](https://download.geofabrik.de/): "License: ODbL 1.0", "Data processed by Geofabrik GmbH and created by OpenStreetMap Contributors", "This open data download service is offered free of charge by Geofabrik GmbH." [Download responsibly!](https://blog.geofabrik.de/index.php/2025/09/10/download-responsibly/) (10 September 2025): "There's a limit to the outgoing network bandwidth"; "If you automate anything with regard to our download server, monitor what your script is doing"; "build in appropriate catches so that you don't end up downloading the same file 1000 times". Read again on 17 November 2026, with the [technical page](https://download.geofabrik.de/technical.html) on its index. | **Fetched on a press**, one file per country or region (see [Food and supplies for a state or region](#food-and-supplies-for-a-state-or-region)), at most three per estimate, with the MD5 Geofabrik publishes beside the dated file checked before reading; never retried in a loop beyond the download manager's own retries. Or imported from a file the person downloaded. |
+| OpenStreetMap from Geofabrik | The same five layers, and food and supplies, walking and cycling routes and rights of way when ticked, from a country's or a region's `.osm.pbf` | [download.geofabrik.de](https://download.geofabrik.de/): "License: ODbL 1.0", "Data processed by Geofabrik GmbH and created by OpenStreetMap Contributors", "This open data download service is offered free of charge by Geofabrik GmbH." [Download responsibly!](https://blog.geofabrik.de/index.php/2025/09/10/download-responsibly/) (10 September 2025): "There's a limit to the outgoing network bandwidth"; "If you automate anything with regard to our download server, monitor what your script is doing"; "build in appropriate catches so that you don't end up downloading the same file 1000 times". Read again on 17 November 2026, with the [technical page](https://download.geofabrik.de/technical.html) on its index. | **Fetched on a press**, one file per country or region (see [Food and supplies for a state or region](#food-and-supplies-for-a-state-or-region)), at most three per estimate, with the MD5 Geofabrik publishes beside the dated file checked before reading; never retried in a loop beyond the download manager's own retries. Or imported from a file the person downloaded. |
 | Wikidata | Nuclear power stations (Q134447) and research reactors (Q1438105) with a position | [Licensing](https://www.wikidata.org/wiki/Wikidata:Licensing): "All structured data … is released into the public domain" (CC0). [Query service](https://www.mediawiki.org/wiki/Wikidata_Query_Service/User_Manual#Query_limits): 60 seconds a query, five at once per address. [User-Agent policy](https://foundation.wikimedia.org/wiki/Policy:Wikimedia_Foundation_User-Agent_Policy): "Scripts should use an informative User-Agent string with contact information, or they may be blocked without notice." | **Fetched on a press**, once the person has ticked that the name may be sent: one count and one query, with Outpost's name and the project's web address, which the policy requires. See [The name a source is given](#the-name-a-source-is-given). |
 | WorldPop | Population counts, 2020, 30 arc-seconds (about 1 km), unconstrained, UN-adjusted (DOI 10.5258/SOTON/WP00671) | [Licence](https://hub.worldpop.org/data/licence.txt): "WorldPop datasets are licensed under the Creative Commons Attribution 4.0 International License". | **Fetched on a press**, one GeoTIFF per country (Luxembourg: 23.7 kB). No checksum is published. The citation WorldPop asks for is kept with the grid and shown. The newer R2025A product is constrained and published as an "alpha version … and may change"; the 2020 release was chosen as fixed. |
 | BABS (Switzerland) | Emergency meeting points (Notfalltreffpunkte) | [Federal geodata terms](https://www.geo.admin.ch/en/general-terms-of-use-fsdi): "Obtaining and using the data and services is free-of-charge, subject to the provisions on fair use"; "Automatic parsing of geoservices via bots with high query intensities is to be avoided." The dataset is listed under opendata.swiss's "terms_by" licence (open use, source to be given); the opendata.swiss terms page itself refused to be read. | **Fetched on a press**: one GeoJSON file, 1.5 MB, in the Swiss grid (LV95), converted. |
@@ -314,6 +315,8 @@ the others have none.
 | Hospitals | `amenity=hospital`, `healthcare=hospital` | |
 | Police, fire and ambulance | `amenity=police`, `amenity=fire_station`, `emergency=ambulance_station` | |
 | Shelters and assembly points | as above | `amenity=shelter` of other kinds (bus stops, picnic shelters) |
+| Walking and cycling routes | `type=route` with `route=hiking`, `foot`, `bicycle` or `mtb` (wiki pages "Walking Routes" and "Cycle routes", read 21 November 2026); the `network` (iwn, nwn, rwn, lwn; icn, ncn, rcn, lcn) is said on the card as international, national, regional or local | Every other `route=` (bus, road, ferry, horse riding); a route made only of other routes (its parts are read as routes of their own) |
+| Rights of way | `designation=public_footpath`, `public_bridleway`, `restricted_byway`, `byway_open_to_all_traffic`, `public_right_of_way` (kind not known), and Scotland's `core_path`, on a way (the wiki's page for each, read 21 November 2026) | `permissive_footpath` and `permissive_bridleway`, which are not rights of way; `designation` on land (national parks, commons) |
 | Food and supplies | `shop=supermarket`, `convenience` and `general` (small shop), `greengrocer`, `butcher`, `bakery`, `farm`; `amenity=marketplace`, `fuel`, `pharmacy`, `drinking_water`, `water_point`; `man_made=water_tap`; `social_facility=food_bank` | Restaurants, cafés, pubs, takeaways; taps and water points tagged `drinking_water=no`; `healthcare=pharmacy` on its own |
 
 The wiki's page on `military=*` warns: "In some territories … it is illegal to create
@@ -330,6 +333,35 @@ contributors, ODbL" in its credits while an OpenStreetMap layer is drawn. Outpos
 arises from it. The downloaded files (Overpass answers, `.osm.pbf` extracts) stay in the
 storage location; anyone who copies them on to others must offer them under the ODbL
 with the notice, as with any OpenStreetMap data.
+
+## Walking and cycling routes, and rights of way
+
+Waymarked routes are mapped worldwide, from long-distance paths that cross several
+countries to a village's circular walk, and national cycle networks. They are not in the
+map Outpost installs, so they are a reference layer read from a Geofabrik extract, for
+any country or region.
+
+- **Getting them.** Get reference data, OpenStreetMap from a Geofabrik extract, a
+  country or a region, and tick **Walking and cycling routes**, **Rights of way**, or
+  both. Neither is read unless it is ticked. A file you downloaded yourself can be
+  imported, with the same two ticks under **Also read**.
+- **On the map.** Routes are a solid line, from zoom 8 (about a county across); rights
+  of way a broken line, from zoom 12 (about a village across), since there are many.
+  Neither is drawn as a mark. Further out, the Layers tab says to zoom in; a view with
+  more than 2,500 lines says there are too many to draw. Press a line for its card:
+  the route's name, or its number when it has no name ("National cycle route 4"), its
+  network, and the tags mapped on it (distance, from and to, the waymark symbol).
+- **Rights of way where tagged.** Only paths whose `designation` is tagged. In England
+  and Wales the council's definitive map is the legal record, and a path missing from
+  OpenStreetMap may still be a right of way; a line on the map is not permission to
+  walk it, nor a promise that it is open or passable.
+- **Size.** A route is one record holding every point of every way it follows, so a
+  country's routes are read in three passes over the file and held in memory while it
+  is read. England's rights of way are hundreds of thousands of paths: read a county,
+  not the country, on a small computer.
+- **At the next update.** An extract read for a region, or for food and supplies, is
+  deleted once read unless you chose to keep it. To add routes to an area read before,
+  get the extract again with the ticks you want: the file is fetched again.
 
 ## Food and supplies
 
