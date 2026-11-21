@@ -7,6 +7,7 @@
  */
 import { randomBytes } from "node:crypto";
 import type { TLSSocket } from "node:tls";
+import { socketBytes } from "../../../core/socket-bytes.ts";
 import { CONNACK, encodePacket, MqttProtocolError, type Packet, PacketReader } from "./packets.ts";
 import { describeSocketError, openSocket, type TlsChoice } from "./transport.ts";
 
@@ -100,7 +101,7 @@ export function openSession(options: SessionOptions): Promise<Session> {
     socket.on("data", (chunk) => {
       let packets: Packet[];
       try {
-        packets = reader.push(chunk);
+        packets = reader.push(socketBytes(chunk));
       } catch (error) {
         const reason = error instanceof MqttProtocolError ? error.message : "unreadable";
         fail(new SessionError("not-mqtt", `${options.host}:${options.port} answered, but not as an MQTT 3.1.1 broker (${reason}).`));

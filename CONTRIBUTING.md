@@ -5,7 +5,8 @@ the same terms ([LICENSE](LICENSE)). See the [code of conduct](CODE_OF_CONDUCT.m
 
 ## Setting up
 
-You need **Node.js 24 or newer** and **pnpm 9**.
+You need **Node.js 26 or newer** and **pnpm 9**. Node 26 does not include Corepack;
+install pnpm with `npm install --global pnpm@9`.
 
 ```bash
 git clone https://github.com/<your-username>/outpost.git   # your fork

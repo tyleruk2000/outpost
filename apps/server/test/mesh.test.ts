@@ -15,6 +15,7 @@ import net from "node:net";
 import path from "node:path";
 import type { BoardMessage, BoardMessagesResponse, MeshMeta, MeshResponse } from "@outpost/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { socketBytes } from "../src/core/socket-bytes.ts";
 import { isHomeAddress } from "../src/modules/mesh/addresses.ts";
 import {
   encodeFrame,
@@ -391,7 +392,7 @@ function standInCompanion() {
     const reader = new FrameReader(TO_RADIO);
     const reply = (payload: Buffer) => socket.write(encodeFrame(payload, FROM_RADIO));
     socket.on("data", (chunk) => {
-      for (const frame of reader.push(chunk)) {
+      for (const frame of reader.push(socketBytes(chunk))) {
         const code = frame[0];
         if (code === 0x01) {
           const self = Buffer.alloc(58);

@@ -21,7 +21,9 @@
  * made (seen with `--log-code`: two for a pair of workers before, none after), so the
  * code that failed is never reached. The crash itself was not reproduced in 1,450
  * attempts: this is a way round a fault that was seen, not a cure that was watched
- * working. It can go when Node moves to a V8 whose wrapper cache is not 13.6's.
+ * working. It can go when Node moves to a V8 whose wrapper cache is not 13.6's. Node 26
+ * (V8 14.6) still has the flag, and it is kept there: whether 14.6 still has the fault
+ * has not been checked.
  */
 import v8 from "node:v8";
 import { isBundled } from "./paths.ts";

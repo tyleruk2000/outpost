@@ -559,7 +559,7 @@ by uid 1000. If the NAS cannot build images, build on another machine and load i
 
 ### From source
 
-Node.js 24 and pnpm 9. Nothing is compiled during installation.
+Node.js 26 and pnpm 9. Nothing is compiled during installation.
 
 ```bash
 git clone https://github.com/tyleruk2000/outpost.git
@@ -588,7 +588,7 @@ Open <http://localhost:8080>.
 
 ### The packaged app
 
-A folder that needs only a Node 24 binary; it is what the Docker image and portable
+A folder that needs only a Node 26 binary; it is what the Docker image and portable
 drives contain, with SQLite for macOS, Linux and Windows on x64 and arm64.
 
 ```bash

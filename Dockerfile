@@ -3,10 +3,12 @@
 # ── Build ────────────────────────────────────────────────────────────────────
 # Runs on the build machine's own architecture: the output is JavaScript plus
 # prebuilt SQLite binaries for every platform, so nothing here is cross-compiled.
-FROM --platform=$BUILDPLATFORM node:24-bookworm-slim AS build
+FROM --platform=$BUILDPLATFORM node:26-bookworm-slim AS build
 WORKDIR /src
-RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# Node 25 and later no longer include Corepack, so pnpm is installed at the version
+# package.json names in "packageManager".
+RUN npm install --global --no-fund --no-audit "$(node -p 'require("./package.json").packageManager')"
 COPY apps/server/package.json apps/server/
 COPY apps/web/package.json apps/web/
 COPY packages/shared/package.json packages/shared/
@@ -22,7 +24,7 @@ FROM build AS trim
 RUN find /out/app/server/node_modules/better-sqlite3/prebuilds -type f ! -name 'linux-*' -delete
 
 # ── Runtime ──────────────────────────────────────────────────────────────────
-FROM node:24-bookworm-slim
+FROM node:26-bookworm-slim
 LABEL org.opencontainers.image.title="Outpost" \
       org.opencontainers.image.description="Knowledge beyond the network: a self-hosted, offline-first knowledge platform." \
       org.opencontainers.image.licenses="MIT" \

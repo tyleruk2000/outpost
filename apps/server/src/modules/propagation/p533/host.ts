@@ -6,6 +6,7 @@
  */
 import { Worker } from "node:worker_threads";
 import type { EngineDescription } from "@outpost/shared";
+import { messageOf } from "../../../core/errors.ts";
 import { workerUrl } from "../../../core/paths.ts";
 import { type CircuitRequest, EngineUnavailable } from "../engine.ts";
 import { EngineRefused } from "../host.ts";
@@ -90,7 +91,7 @@ export function createP533Host(options: { idleMs?: number; stallMs?: number } = 
       restIfIdle();
     });
     started.on("error", (error) => {
-      if (worker === started) void stop(new EngineUnavailable(`The P.533 engine could not be run: ${error.message}`));
+      if (worker === started) void stop(new EngineUnavailable(`The P.533 engine could not be run: ${messageOf(error)}`));
     });
     started.on("exit", () => {
       if (worker === started) void stop(new EngineUnavailable("The P.533 engine stopped unexpectedly. Try again."));

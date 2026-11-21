@@ -16,7 +16,7 @@ apps/server/test/      Vitest suites; helpers.ts gives a full server on a temp d
 packages/shared/src/   API types shared with the web app, one file per module
 ```
 
-The server runs TypeScript directly on Node 24 (type stripping): import with the `.ts`
+The server runs TypeScript directly on Node 26 (type stripping): import with the `.ts`
 extension; erasable syntax only (no `enum`, `namespace` or parameter properties);
 `import type` for types (`verbatimModuleSyntax`).
 

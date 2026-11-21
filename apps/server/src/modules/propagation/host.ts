@@ -5,6 +5,7 @@
  */
 import { Worker } from "node:worker_threads";
 import type { EngineDescription, IonosphereHour } from "@outpost/shared";
+import { messageOf } from "../../core/errors.ts";
 import { workerUrl } from "../../core/paths.ts";
 import { type CircuitRequest, type CircuitResult, EngineUnavailable, type IonosphereRequest } from "./engine.ts";
 import { EngineDataMissing } from "./voacap/coefficients.ts";
@@ -118,7 +119,7 @@ export function createEngineHost(paths: VoacapPaths, options: EngineHostOptions 
       restIfIdle();
     });
     started.on("error", (error) => {
-      if (worker === started) void stop(new EngineUnavailable(`The propagation engine could not be run: ${error.message}`));
+      if (worker === started) void stop(new EngineUnavailable(`The propagation engine could not be run: ${messageOf(error)}`));
     });
     started.on("exit", () => {
       if (worker === started) void stop(new EngineUnavailable("The propagation engine stopped unexpectedly. Try again."));

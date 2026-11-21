@@ -10,6 +10,7 @@ import { readFileSync } from "node:fs";
 import net from "node:net";
 import type { HeardReceiversResponse, HeardStation, HeardStationResponse, HeardStationsResponse } from "@outpost/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { socketBytes } from "../src/core/socket-bytes.ts";
 import { encodeTnc2 } from "../src/modules/heard/ax25.ts";
 import { kissEncode } from "../src/modules/heard/kiss.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
@@ -33,7 +34,7 @@ function standIn(payload: () => Buffer) {
   const sockets = new Set<net.Socket>();
   const server = net.createServer((socket) => {
     sockets.add(socket);
-    socket.on("data", (chunk) => received.push(chunk));
+    socket.on("data", (chunk) => received.push(socketBytes(chunk)));
     socket.on("close", () => sockets.delete(socket));
     socket.on("error", () => undefined);
     socket.write(payload());
