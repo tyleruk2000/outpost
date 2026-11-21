@@ -243,6 +243,22 @@ export const GUIDES: Guide[] = [
     opens: { to: "/radio/frequencies", label: "Open Frequencies to listen to" },
   },
   {
+    slug: "radio-licences",
+    file: "radio-licences.md",
+    group: "using",
+    about: "What you may listen to, what is licence-free, and what needs an amateur licence, from Ofcom and the FCC.",
+    keywords: "ham callsign scanner airband ads-b ais pmr446 legal listen transmit",
+    opens: { to: "/settings#radio-licence", label: "Open Radio licence in Settings" },
+  },
+  {
+    slug: "satellites",
+    file: "satellites.md",
+    group: "using",
+    about: "Passes of the amateur, weather and crewed satellites over Home, where they are now, and Doppler.",
+    keywords: "satellite iss pass orbit doppler sgp4 tle amsat noaa",
+    opens: { to: "/radio/satellites", label: "Open Satellites" },
+  },
+  {
     slug: "hf-propagation",
     file: "hf-propagation.md",
     group: "using",

@@ -144,6 +144,8 @@ describe("the sidebar", () => {
       "Repeaters",
       "Morse trainer",
       "Frequencies to listen to",
+      "Satellites",
+      "Licences and band plans",
     ]);
     expect(within(under).getByRole("link", { name: "Communication plans" })).toHaveAttribute("aria-current", "page");
     expect(within(sidebar).getByRole("link", { name: "Radio" })).not.toHaveAttribute("aria-current");
@@ -177,6 +179,8 @@ describe("the sidebar", () => {
       "Repeaters",
       "Morse trainer",
       "Frequencies to listen to",
+      "Satellites",
+      "Licences and band plans",
     ]);
     await user.click(within(menu).getByRole("menuitem", { name: "Repeaters" }));
     expect(screen.getByRole("status", { name: "Address" })).toHaveTextContent("/radio/repeaters");
@@ -262,11 +266,13 @@ describe("the Games section", () => {
 describe("the Radio screen", () => {
   it("links to every screen the navigation puts under Radio", () => {
     render(
-      <MemoryRouter>
-        <Routes>
-          <Route path="*" element={<RadioPage />} />
-        </Routes>
-      </MemoryRouter>,
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <Routes>
+            <Route path="*" element={<RadioPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
     );
     const radio = allNav.find((item) => item.to === "/radio")!;
     const hrefs = screen.getAllByRole("link").map((link) => link.getAttribute("href"));

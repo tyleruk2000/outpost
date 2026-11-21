@@ -1361,6 +1361,20 @@ the `medical_sheets` tool only while `tools.medical` is on; encrypted ones never
 | `GET /api/household-binder` | `BinderStatus`: the binder last made (`made`: `parts`, `contentAt`, `madeAt`, `pages`, or null), when each part's content last changed (`changedAt`), and the parts changed since (`stale`). |
 | `POST /api/household-binder/made` | Body `{ parts, contentAt, pages }`: record the binder just made in the browser. Answers `BinderStatus`. |
 
+## Satellites
+
+Types: `packages/shared/src/satellites.ts`; see [satellites.md](satellites.md). Positions and
+passes are worked out in the browser (`apps/web/src/features/satellites/engine.ts`); the
+server keeps elements and transmitters only. Changes publish `satellites.changed`.
+
+| Route | What it does |
+| --- | --- |
+| `GET /api/satellites` | `SatellitesResponse`: `satellites` (`noradId`, `name`, `designator`, `epoch` in ms, `elements` as CelesTrak's OMM fields, `groups`), `transmitters` (Hz; `uplinkLowHz`, `downlinkLowHz` …, `alive`, `mode`, `type`, `invert`), `sources` (`celestrak`, `satnogs`: `fetchedAt`, `count`, `error`, `triedAt`), `fetching`, `now`. Asks no one. |
+| `POST /api/satellites/fetch` | The one route that contacts CelesTrak and SatNOGS DB. CelesTrak is not asked within 2 hours of the last good fetch, SatNOGS DB not within a day. `SatellitesFetchResponse`: `sources`, `said` (what was done, in words). `502` when CelesTrak fails; the elements kept before stay. Two presses at once share one fetch. |
+
+The licence setting is two ordinary settings, `radio.licensed` and `radio.callsign`
+(`PATCH /api/settings`).
+
 ## Mesh radio
 
 Types: `packages/shared/src/mesh.ts`; see [mesh-radio.md](mesh-radio.md). Radio channels

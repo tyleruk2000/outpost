@@ -13,6 +13,8 @@ const lands: Array<[string, string | null]> = [
   ["torch", null],
   ["battery", "Tools: Power and batteries"],
   ["frequency", "Radio: Frequencies to listen to"],
+  ["iss", "Radio: Satellites"],
+  ["band plan", "Radio: Licences and band plans"],
   ["first aid", null],
   ["dark mode", "Settings: Appearance"],
   ["print", "Maps"],

@@ -10,13 +10,14 @@ import { createTestApp, type TestApp } from "./helpers.ts";
 
 const HEADER =
   "OBJECT_NAME,OBJECT_ID,EPOCH,MEAN_MOTION,ECCENTRICITY,INCLINATION,RA_OF_ASC_NODE,ARG_OF_PERICENTER,MEAN_ANOMALY,EPHEMERIS_TYPE,CLASSIFICATION_TYPE,NORAD_CAT_ID,ELEMENT_SET_NO,REV_AT_EPOCH,BSTAR,MEAN_MOTION_DOT,MEAN_MOTION_DDOT";
-const ISS = "ISS (ZARYA),1998-067A,2026-11-21T04:54:08.875296,15.49527370,.0007384,51.6319,243.0636,49.3258,310.8372,0,U,25544,999,59609,.2073332E-3,.11207E-3,0";
+const ISS =
+  "ISS (ZARYA),1998-067A,2026-11-21T04:54:08.875296,15.49527370,.0007384,51.6319,243.0636,49.3258,310.8372,0,U,25544,999,59609,.2073332E-3,.11207E-3,0";
 
 /** n made-up satellites, numbered from `first`, on the ISS's orbit. */
 function rows(first: number, n: number, name: string): string {
-  return Array.from({ length: n }, (_, i) =>
-    ISS.replace("ISS (ZARYA)", `"${name} ${i}, test"`).replace(",25544,", `,${first + i},`),
-  ).join("\n");
+  return Array.from({ length: n }, (_, i) => ISS.replace("ISS (ZARYA)", `"${name} ${i}, test"`).replace(",25544,", `,${first + i},`)).join(
+    "\n",
+  );
 }
 
 let requests: string[] = [];
@@ -84,7 +85,12 @@ afterAll(async () => {
 describe("CelesTrak's CSV", () => {
   it("reads the fields by their names, quoted names included", () => {
     const [iss, quoted] = parseCelestrakCsv(`${HEADER}\n${ISS}\n${rows(90000, 1, "A")}`, "stations");
-    expect(iss).toMatchObject({ noradId: 25544, name: "ISS (ZARYA)", designator: "1998-067A", epoch: Date.parse("2026-11-21T04:54:08.875296Z") });
+    expect(iss).toMatchObject({
+      noradId: 25544,
+      name: "ISS (ZARYA)",
+      designator: "1998-067A",
+      epoch: Date.parse("2026-11-21T04:54:08.875296Z"),
+    });
     expect(iss?.elements.MEAN_MOTION).toBeCloseTo(15.4952737);
     expect(iss?.elements.BSTAR).toBeCloseTo(0.0002073332);
     expect(quoted?.name).toBe("A 0, test");
@@ -111,7 +117,9 @@ describe("satellites", () => {
     expect(list.satellites).toHaveLength(76);
     const iss = list.satellites.find((s: { noradId: number }) => s.noradId === 25544);
     expect(iss.groups.sort()).toEqual(["amateur", "stations"]);
-    expect(list.transmitters).toEqual([expect.objectContaining({ id: "a", uplinkLowHz: 145990000, downlinkLowHz: 437800000, type: "Transceiver" })]);
+    expect(list.transmitters).toEqual([
+      expect.objectContaining({ id: "a", uplinkLowHz: 145990000, downlinkLowHz: 437800000, type: "Transceiver" }),
+    ]);
   });
 
   it("does not ask CelesTrak again within its two-hour update", async () => {

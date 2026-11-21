@@ -15,7 +15,14 @@
  *   for at most once a day as LogBook73 did. If it fails, the elements are still kept and
  *   the transmitters from last time stay.
  */
-import type { SatelliteElements, SatelliteGroup, SatellitesFetchResponse, SatelliteSourceState, SatellitesResponse, SatelliteTransmitter } from "@outpost/shared";
+import type {
+  SatelliteElements,
+  SatelliteGroup,
+  SatelliteSourceState,
+  SatellitesFetchResponse,
+  SatellitesResponse,
+  SatelliteTransmitter,
+} from "@outpost/shared";
 import { parseCelestrakCsv, SATELLITE_SOURCES } from "@outpost/shared";
 import type { FastifyInstance } from "fastify";
 import type { AppContext } from "../../core/context.ts";
@@ -44,7 +51,10 @@ declare module "../../core/context.ts" {
 
 async function readText(http: HttpClient, url: string, accept: string): Promise<string> {
   const host = new URL(url).hostname;
-  const { response } = await http.fetch(url, { headers: { "User-Agent": USER_AGENT, Accept: accept }, signal: AbortSignal.timeout(90_000) });
+  const { response } = await http.fetch(url, {
+    headers: { "User-Agent": USER_AGENT, Accept: accept },
+    signal: AbortSignal.timeout(90_000),
+  });
   if (!response.ok) {
     await response.body?.cancel();
     throw new Error(`${host} answered ${response.status}.`);
@@ -115,7 +125,9 @@ export function createSatellitesService(ctx: AppContext, http: HttpClient): Sate
     for (const group of GROUPS) {
       const rows = parseCelestrakCsv(await readText(http, celestrakUrl(group), "text/csv"), group);
       if (rows.length < MINIMUM_ROWS[group]) {
-        throw new Error(`CelesTrak's ${group} list had only ${rows.length} satellites, fewer than the ${MINIMUM_ROWS[group]} expected, so it was not kept.`);
+        throw new Error(
+          `CelesTrak's ${group} list had only ${rows.length} satellites, fewer than the ${MINIMUM_ROWS[group]} expected, so it was not kept.`,
+        );
       }
       for (const satellite of rows) {
         const existing = merged.get(satellite.noradId);
@@ -125,7 +137,8 @@ export function createSatellitesService(ctx: AppContext, http: HttpClient): Sate
         }
         existing.groups = [...new Set([...existing.groups, ...satellite.groups])];
         // The same satellite in two groups: keep the newer element set.
-        if (satellite.epoch > existing.epoch) Object.assign(existing, { name: satellite.name, elements: satellite.elements, epoch: satellite.epoch });
+        if (satellite.epoch > existing.epoch)
+          Object.assign(existing, { name: satellite.name, elements: satellite.elements, epoch: satellite.epoch });
       }
     }
     return [...merged.values()];
@@ -140,7 +153,9 @@ export function createSatellitesService(ctx: AppContext, http: HttpClient): Sate
     const said: string[] = [];
     let wanted: Set<number>;
     if (current("celestrak", started, keptCount())) {
-      said.push("CelesTrak was asked less than 2 hours ago, and it updates every 2 hours: the elements kept are its latest, so it was not asked again.");
+      said.push(
+        "CelesTrak was asked less than 2 hours ago, and it updates every 2 hours: the elements kept are its latest, so it was not asked again.",
+      );
       wanted = new Set(
         ctx.db
           .select({ noradId: satelliteElements.noradId })
@@ -155,7 +170,10 @@ export function createSatellitesService(ctx: AppContext, http: HttpClient): Sate
       } catch (error) {
         record("celestrak", { error: message(error), triedAt: started });
         ctx.events.publish({ type: "satellites.changed" });
-        throw new AppError("upstream", `Could not get orbital elements from CelesTrak. ${message(error)} The elements kept before are unchanged.`);
+        throw new AppError(
+          "upstream",
+          `Could not get orbital elements from CelesTrak. ${message(error)} The elements kept before are unchanged.`,
+        );
       }
       ctx.sqlite.transaction(() => {
         ctx.db.delete(satelliteElements).run();

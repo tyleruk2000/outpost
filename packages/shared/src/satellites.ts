@@ -218,11 +218,13 @@ export function parseCelestrakCsv(text: string, group: SatelliteGroup): Satellit
     for (const field of TEXT_FIELDS) row[field] = value(field);
     for (const field of NUMBER_FIELDS) {
       const number = Number(value(field));
-      if (value(field) === "" || !Number.isFinite(number)) throw new Error(`CelesTrak's ${group} list, row ${index + 1}: ${field} is not a number.`);
+      if (value(field) === "" || !Number.isFinite(number))
+        throw new Error(`CelesTrak's ${group} list, row ${index + 1}: ${field} is not a number.`);
       row[field] = number;
     }
     const elements = row as unknown as OmmElements;
-    if (!Number.isInteger(elements.NORAD_CAT_ID) || elements.NORAD_CAT_ID <= 0) throw new Error(`CelesTrak's ${group} list, row ${index + 1}: no catalogue number.`);
+    if (!Number.isInteger(elements.NORAD_CAT_ID) || elements.NORAD_CAT_ID <= 0)
+      throw new Error(`CelesTrak's ${group} list, row ${index + 1}: no catalogue number.`);
     if (!(elements.MEAN_MOTION > 0) || elements.ECCENTRICITY < 0 || elements.ECCENTRICITY >= 1) {
       throw new Error(`CelesTrak's ${group} list, row ${index + 1}: the orbit's elements are out of range.`);
     }
@@ -264,7 +266,7 @@ export function elementsAgeWarning(epoch: number, now: number): string | null {
     case "old":
       return `These elements are ${days} days old. Pass times of a low satellite may already be minutes out.`;
     case "ahead":
-      return "These elements are dated ahead of this server's clock. Check the clock (Settings → On this device).";
+      return "These elements are dated ahead of this server's clock. Check the server's clock (Server status).";
     default:
       return null;
   }
