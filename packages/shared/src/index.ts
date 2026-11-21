@@ -30,8 +30,6 @@ export * from "./games.ts";
 export * from "./home-place.ts";
 // The household's papers (medical sheets, keeping in touch, grab cards, the binder), on a line of their own.
 export * from "./household-papers.ts";
-// Readiness (the log of events, routine checks, the offline drill), on a line of its own.
-export * from "./readiness.ts";
 export * from "./https.ts";
 export * from "./imagery.ts";
 export * from "./imports.ts";
@@ -65,6 +63,8 @@ export * from "./radio.ts";
 export * from "./radio-frequencies.ts";
 export * from "./radio-observations.ts";
 export * from "./radio-range.ts";
+// Readiness (the log of events, routine checks, the offline drill), on a line of its own.
+export * from "./readiness.ts";
 export * from "./recommended-models.ts";
 export * from "./reference-layers.ts";
 export * from "./repeaters.ts";

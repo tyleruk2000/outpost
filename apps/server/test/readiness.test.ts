@@ -110,8 +110,9 @@ describe("the log of events", () => {
     expect(empty.planInUse?.id).toBe(plan.plan.id);
 
     const at = Date.now() - 20 * 60_000;
-    entry = (await ok<{ line: EventLogLine }>("POST", "/api/event-log", { author: "Ana", text: "Power went off", at, planId: plan.plan.id }))
-      .line;
+    entry = (
+      await ok<{ line: EventLogLine }>("POST", "/api/event-log", { author: "Ana", text: "Power went off", at, planId: plan.plan.id })
+    ).line;
     expect(entry).toMatchObject({ kind: "entry", at, author: "Ana", text: "Power went off", planName: "Power cut" });
     await ok("POST", "/api/event-log", { author: "Ana", text: "Called the network operator\nno answer" });
 

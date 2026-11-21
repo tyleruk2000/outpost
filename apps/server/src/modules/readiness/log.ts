@@ -59,13 +59,17 @@ function heldTime(at: number | undefined, now: number): number {
   if (at === undefined) return now;
   if (at > now + 5 * 60_000) throw badRequest("That time has not come yet. Give the time it happened.");
   if (at < now - EVENT_LOG_LIMITS.backdateDays * DAY_MS)
-    throw badRequest(`An entry can be put up to ${EVENT_LOG_LIMITS.backdateDays} days back. For something older, write the date in the words.`);
+    throw badRequest(
+      `An entry can be put up to ${EVENT_LOG_LIMITS.backdateDays} days back. For something older, write the date in the words.`,
+    );
   return Math.min(at, now);
 }
 
 function cleanText(value: string): string {
   // One line: a log entry is a line, and line breaks inside it would make the printed log hard to read.
-  const text = cleanBody(value).replace(/\s*\n\s*/g, " ").trim();
+  const text = cleanBody(value)
+    .replace(/\s*\n\s*/g, " ")
+    .trim();
   if (!text) throw badRequest("Write what happened first.");
   if (text.length > EVENT_LOG_LIMITS.text) throw badRequest(`An entry is at most ${EVENT_LOG_LIMITS.text} characters.`);
   return text;

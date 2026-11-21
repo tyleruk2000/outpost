@@ -13,10 +13,13 @@
 import { WifiOff } from "lucide-react";
 import { createContext, lazy, type ReactNode, Suspense, useContext, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router";
+import { toast } from "sonner";
 import { useServerConnection, useServerEvent } from "@/lib/events";
 import { checkAreas } from "./area";
 import { DEVICE } from "./device";
 import { refreshKept } from "./keep";
+import { sendOutbox } from "./outbox";
+import { sentWords } from "./outbox-list";
 import { canOpenOutOfReach, tellWorkerReach } from "./register";
 import { keepingSupported, listKept } from "./store";
 
@@ -79,6 +82,13 @@ const ReachContext = createContext<{ lost: boolean }>({ lost: false });
 /** Brings kept copies up to date. Quiet: a failure here is the server going away again, which the app already shows. */
 async function freshen(): Promise<void> {
   if (!keepingSupported()) return;
+  // What was written here while out of reach goes first, so the board and Notes have it as soon as they can.
+  try {
+    const words = sentWords(await sendOutbox());
+    if (words) toast.success(words);
+  } catch {
+    // Left on the phone for the next time the server is in reach.
+  }
   try {
     const items = await listKept();
     if (items.length === 0) return;

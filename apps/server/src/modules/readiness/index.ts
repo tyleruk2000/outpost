@@ -7,7 +7,7 @@
  * and in every backup. Every change is announced as `readiness.changed`. See
  * docs/readiness.md.
  */
-import { CHECK_LINK_IDS, CHECK_LIMITS, EVENT_LOG_LIMITS } from "@outpost/shared";
+import { CHECK_LIMITS, CHECK_LINK_IDS, EVENT_LOG_LIMITS } from "@outpost/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
@@ -46,7 +46,15 @@ const logBody = z
   })
   .strict();
 const logEdit = z
-  .object({ by: name, text: z.string().max(EVENT_LOG_LIMITS.text * 2).optional(), at: time.optional(), baseUpdatedAt: z.number().int() })
+  .object({
+    by: name,
+    text: z
+      .string()
+      .max(EVENT_LOG_LIMITS.text * 2)
+      .optional(),
+    at: time.optional(),
+    baseUpdatedAt: z.number().int(),
+  })
   .strict();
 const toNotesBody = z.object({ from: time.optional(), others: z.boolean().default(false) }).strict();
 
@@ -54,7 +62,10 @@ const checkBody = z
   .object({
     name: z.string().max(CHECK_LIMITS.name * 2),
     everyDays: z.number().int(),
-    note: z.string().max(CHECK_LIMITS.note * 2).default(""),
+    note: z
+      .string()
+      .max(CHECK_LIMITS.note * 2)
+      .default(""),
     link: z.enum(CHECK_LINK_IDS).nullable().default(null),
   })
   .strict();

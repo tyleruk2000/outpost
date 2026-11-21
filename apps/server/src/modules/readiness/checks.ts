@@ -66,7 +66,11 @@ export function createRoutineChecksService(ctx: AppContext, changed: () => void)
     return row;
   };
   const total = () => db.select({ n: count() }).from(routineChecks).get()?.n ?? 0;
-  const nextPosition = () => (db.select({ n: max(routineChecks.position) }).from(routineChecks).get()?.n ?? -1) + 1;
+  const nextPosition = () =>
+    (db
+      .select({ n: max(routineChecks.position) })
+      .from(routineChecks)
+      .get()?.n ?? -1) + 1;
 
   function clean(input: RoutineCheckInput) {
     const name = cleanLine(input.name, CHECK_LIMITS.name);

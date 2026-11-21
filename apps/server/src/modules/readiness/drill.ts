@@ -7,7 +7,7 @@
  * Overlaps the status screen (modules/device), which is about the machine; this is about
  * the household's content. The backup line is the status screen's own rule.
  */
-import { type DrillLine, type DrillRun, type DrillRunInput, DRILL_STEPS, homePlaceOf, localDay, pastUseBy } from "@outpost/shared";
+import { DRILL_STEPS, type DrillLine, type DrillRun, type DrillRunInput, homePlaceOf, localDay, pastUseBy } from "@outpost/shared";
 import { count, desc } from "drizzle-orm";
 import type { FastifyRequest } from "fastify";
 import type { AppContext } from "../../core/context.ts";
@@ -76,7 +76,13 @@ export function createOfflineDrillService(ctx: AppContext, changed: () => void):
       lines.push(
         safely("home", "Home on the map", () =>
           home
-            ? { id: "home", title: "Home on the map", state: "held", summary: `${home.name} is the home place.`, link: { to: "/maps", label: "Maps" } }
+            ? {
+                id: "home",
+                title: "Home on the map",
+                state: "held",
+                summary: `${home.name} is the home place.`,
+                link: { to: "/maps", label: "Maps" },
+              }
             : {
                 id: "home",
                 title: "Home on the map",
@@ -165,7 +171,13 @@ export function createOfflineDrillService(ctx: AppContext, changed: () => void):
                 summary: `${plural(plans.length, "plan")}; ${due.map((plan) => plan.name).join(", ")} ${due.length === 1 ? "is" : "are"} due to be read through again.`,
                 link,
               }
-            : { id: "plan", title: "An emergency plan", state: "held", summary: `${plural(plans.length, "plan")}: ${plans.map((plan) => plan.name).join(", ")}.`, link };
+            : {
+                id: "plan",
+                title: "An emergency plan",
+                state: "held",
+                summary: `${plural(plans.length, "plan")}: ${plans.map((plan) => plan.name).join(", ")}.`,
+                link,
+              };
         }),
       );
 
@@ -174,7 +186,8 @@ export function createOfflineDrillService(ctx: AppContext, changed: () => void):
           const all = s.contacts.count();
           const emergency = s.contacts.emergency().length;
           const link = { to: "/contacts", label: "Contacts" };
-          if (all === 0) return { id: "contacts", title: "Contacts, with an emergency list", state: "missing", summary: "No contacts are kept.", link };
+          if (all === 0)
+            return { id: "contacts", title: "Contacts, with an emergency list", state: "missing", summary: "No contacts are kept.", link };
           return emergency > 0
             ? {
                 id: "contacts",
@@ -197,11 +210,18 @@ export function createOfflineDrillService(ctx: AppContext, changed: () => void):
         safely("supplies", "Supplies entered", () => {
           const items = s.supplies.items();
           const link = { to: "/prepare/supplies", label: "Supplies" };
-          if (items.length === 0) return { id: "supplies", title: "Supplies entered", state: "missing", summary: "Nothing is entered under Supplies.", link };
+          if (items.length === 0)
+            return { id: "supplies", title: "Supplies entered", state: "missing", summary: "Nothing is entered under Supplies.", link };
           const today = localDay();
           const past = items.filter((item) => item.quantity > 0 && pastUseBy(item, today)).length;
           return past > 0
-            ? { id: "supplies", title: "Supplies entered", state: "stale", summary: `${plural(items.length, "item")}; ${past} past ${past === 1 ? "its" : "their"} use-by date.`, link }
+            ? {
+                id: "supplies",
+                title: "Supplies entered",
+                state: "stale",
+                summary: `${plural(items.length, "item")}; ${past} past ${past === 1 ? "its" : "their"} use-by date.`,
+                link,
+              }
             : { id: "supplies", title: "Supplies entered", state: "held", summary: `${plural(items.length, "item")}.`, link };
         }),
       );
@@ -211,7 +231,8 @@ export function createOfflineDrillService(ctx: AppContext, changed: () => void):
         safely("backup", "A backup, and its age", () => {
           if (!database) throw new Error("no status");
           const check = backupCheck(database.backup, lastDownloadedBackup(ctx)?.at ?? null, now);
-          const state = check.state === "good" ? "held" : database.backup.lastAt === null && !lastDownloadedBackup(ctx) ? "missing" : "stale";
+          const state =
+            check.state === "good" ? "held" : database.backup.lastAt === null && !lastDownloadedBackup(ctx) ? "missing" : "stale";
           return { id: "backup", title: "A backup, and its age", state, summary: check.summary, link: check.link };
         }),
       );
@@ -221,7 +242,13 @@ export function createOfflineDrillService(ctx: AppContext, changed: () => void):
           const https = s.https.status();
           const link = { to: "/settings#https", label: "Settings, HTTPS on your network" };
           if (https.unavailable)
-            return { id: "https", title: "HTTPS, for phones to keep things", state: "missing", summary: "Not offered on a portable drive.", link: null };
+            return {
+              id: "https",
+              title: "HTTPS, for phones to keep things",
+              state: "missing",
+              summary: "Not offered on a portable drive.",
+              link: null,
+            };
           return https.listening
             ? {
                 id: "https",
