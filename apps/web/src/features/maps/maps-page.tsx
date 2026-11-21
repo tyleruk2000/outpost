@@ -98,7 +98,6 @@ import {
   DrawCard,
   MapCard,
   MapControls,
-  MapMenu,
   MapToolColumn,
   MeasureCard,
   MoveCard,
@@ -242,6 +241,8 @@ export default function MapsPage() {
   const [peekHeight, setPeekHeight] = useState(PEEK_HEIGHT);
   /** On a phone: how much of the map the search box and the readout take, as `MapFurniture` measured them. */
   const [clear, setClear] = useState<ClearSpace & { held: number }>({ top: 64, bottom: 98, held: 98 });
+  /** On a phone: from the foot of the map up to just below its centre, the room a card in the sheet's place may take. */
+  const [dockRoom, setDockRoom] = useState<number | undefined>(undefined);
   /** Something is in hand on the map (a tool, a found point, a place being moved): set further down, read when a measurement arrives. */
   const inHand = useRef(false);
   const onClear = useCallback(
@@ -802,6 +803,9 @@ export default function MapsPage() {
     // A phone's sheet covers the lower part of the map, so there the camera keeps the space all the time and the
     // centre of the map is in the part that shows. On a wide screen nothing lies over the middle of the map.
     engine.setPadding({ top, right: isDesktop ? 56 : 0, bottom, left: 0 }, !isDesktop, spare);
+    // The cross that marks the centre is 20 px across: a card at the foot stops 12 px short of it.
+    const centre = top + Math.max(0, height - top - bottom) / 2;
+    setDockRoom(isDesktop ? undefined : Math.max(0, Math.round(height - centre - 22)));
   }, [engine, isDesktop, detent, peekHeight, clear, tool]);
 
   // A place being saved is slid into the clear map if it is where the sheet, the readout or a card would hide it.
@@ -940,7 +944,8 @@ export default function MapsPage() {
     // On a phone the sheet would cover the map being clicked on. The page to print is laid out in the sheet itself,
     // which is raised for it: its settings do not fit in a card over a phone's map.
     setDetent(next === "print" ? "half" : "peek");
-    if (next === "add-place") toast(`${pressWord()} the map where the place is.`, { id: ADD_PLACE_HINT });
+    // On a phone the hint is a card in the sheet's place (below); a message there lay over the sheet's tabs.
+    if (next === "add-place" && isDesktop) toast(`${pressWord()} the map where the place is.`, { id: ADD_PLACE_HINT });
   };
   const changeTool = (next: Tool) => {
     setContextMenu(null);
@@ -1407,7 +1412,8 @@ export default function MapsPage() {
       tabs
     );
 
-  const card =
+  /** The card of what is in hand: a tool, a point found, a place being moved. On a phone it takes the sheet's place. */
+  const handCard =
     celnav.card ??
     heard.card ??
     rangeCard ??
@@ -1428,13 +1434,16 @@ export default function MapsPage() {
           setTool("sight");
         }}
       />
+    ) : tool === "add-place" && !isDesktop ? (
+      <MapCard title="Save a place" onClose={leaveTool} closeLabel="Stop saving a place">
+        <p className="mt-1 text-small text-ink-muted">{pressWord()} the map where the place is.</p>
+      </MapCard>
     ) : tool === "sight" ? (
       // The whole answer is in the panel; the card stands in for it while a point is chosen and while the panel is out of sight.
-      // On a phone the panel is the sheet, which says what the card would while it is raised, and gives the tool its title when lowered.
+      // On a phone the panel is the sheet, which says what the card would while it is raised; lowered, the card has its place.
       (isDesktop && sight.picking) || !panelVisible ? (
         <SightCard
           sight={sight}
-          untitled={!isDesktop}
           onUseCentre={engine ? () => sight.place({ position: engine.getCenter() }) : undefined}
           onShowDetails={() => {
             setPanel((current) => ({ ...current, open: true }));
@@ -1486,7 +1495,10 @@ export default function MapsPage() {
         onSave={() => startPlace(pin.position, /^[-\d.,\s]+$/.test(pin.title) ? "" : pin.title)}
         onClose={() => setPin(null)}
       />
-    ) : locate.fix && !hereDismissed ? (
+    ) : null);
+  /** A card that is there while nothing is in hand: where the device is, while it is followed; the first use. */
+  const restingCard =
+    locate.fix && !hereDismissed ? (
       // Where the device is, while it is being followed: its position to copy or save, and its sun times.
       <PinCard
         title="Where you are"
@@ -1514,7 +1526,16 @@ export default function MapsPage() {
           </Button>
         </div>
       </MapCard>
-    ) : null);
+    ) : null;
+  const card = handCard ?? restingCard;
+  /**
+   * On a phone, a card of what is in hand takes the place of the lowered sheet at the foot of the map: one thing at a
+   * time, with the room it needs. The sheet's tabs come back when the card is closed. Not for the page to print, which
+   * has the sheet itself, nor while the sheet has been raised (line of sight's whole answer, a route being named).
+   */
+  const docked = !isDesktop && Boolean(handCard) && detent === "peek" && tool !== "print";
+  // The map does not move for it: the room kept at the foot is what it was before the card came up.
+  if (docked) inHand.current = true;
 
   // Every place the map's tools are shown is drawn from this one list.
   const toolsInput = {
@@ -1582,7 +1603,7 @@ export default function MapsPage() {
   }, [cardUp, isDesktop]);
 
   return (
-    <div className="relative isolate flex h-dvh overflow-hidden max-md:h-[calc(100dvh-3.25rem)] max-md:pb-[calc(3.5rem+env(safe-area-inset-bottom))]">
+    <div className="outpost-fill relative isolate flex h-dvh overflow-hidden max-md:h-[calc(100dvh-3.25rem)] max-md:pb-[var(--mobile-nav-height,calc(3.5rem+env(safe-area-inset-bottom)))]">
       {isDesktop && panel.open ? (
         <DesktopPanel onCollapse={() => setPanel((current) => ({ ...current, open: false }))}>{panelBody}</DesktopPanel>
       ) : null}
@@ -1636,6 +1657,8 @@ export default function MapsPage() {
         <MapFurniture
           phone={!isDesktop}
           covered={!isDesktop && detent === "full"}
+          docked={docked}
+          dockRoom={dockRoom}
           onClear={onClear}
           search={
             <SearchBox
@@ -1660,7 +1683,6 @@ export default function MapsPage() {
                   </Tooltip>
                 ) : undefined
               }
-              trailing={isDesktop ? undefined : <MapMenu tools={tools} />}
             />
           }
           tools={
@@ -1796,6 +1818,7 @@ export default function MapsPage() {
             detent={detent}
             onDetentChange={setDetent}
             onPeekHeight={setPeekHeight}
+            hidden={docked}
             first={tool === "sight" ? "sight" : tool === "print" && printInSheet ? "print" : "tabs"}
           >
             {panelBody}

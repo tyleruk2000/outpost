@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Tooltip } from "radix-ui";
 import { describe, expect, it, vi } from "vitest";
-import { MapCard, MapMenu, MapToolColumn, type MapToolsInput, mapTools } from "./map-chrome";
+import { MapCard, MapMenu, MapToolColumn, type MapToolsInput, mapTools, shownInColumn } from "./map-chrome";
 import { MapFurniture } from "./map-furniture";
 
 function input(overrides: Partial<MapToolsInput> = {}): MapToolsInput {
@@ -67,7 +67,7 @@ describe("the menu of the map's tools on a phone", () => {
     const onToolChange = vi.fn();
     const onLocatorGridChange = vi.fn();
     render(<MapMenu tools={mapTools(input({ contours: true, onToolChange, onLocatorGridChange }))} />);
-    await userEvent.click(screen.getByRole("button", { name: "All map tools" }));
+    await userEvent.click(screen.getByRole("button", { name: "More map tools" }));
     const menu = screen.getByRole("menu");
     expect(
       within(menu)
@@ -118,7 +118,7 @@ describe("map styles, road numbers and magnetic north lines in the tools", () =>
     const onMapStyleChange = vi.fn();
     const onMagneticLinesChange = vi.fn();
     render(<MapMenu tools={mapTools(styled({ mapStyle: "walking", onMapStyleChange, onMagneticLinesChange }))} />);
-    await userEvent.click(screen.getByRole("button", { name: "All map tools" }));
+    await userEvent.click(screen.getByRole("button", { name: "More map tools" }));
     const menu = screen.getByRole("menu");
     const styles = within(menu).getAllByRole("menuitemradio");
     expect(styles.map((item) => item.textContent)).toEqual([
@@ -134,7 +134,7 @@ describe("map styles, road numbers and magnetic north lines in the tools", () =>
     expect(within(menu).getByRole("menuitemcheckbox", { name: "Road numbers" })).toHaveAttribute("aria-checked", "false");
     await userEvent.click(within(menu).getByRole("menuitemcheckbox", { name: "Magnetic north lines" }));
     expect(onMagneticLinesChange).toHaveBeenCalledWith(true);
-    await userEvent.click(screen.getByRole("button", { name: "All map tools" }));
+    await userEvent.click(screen.getByRole("button", { name: "More map tools" }));
     await userEvent.click(within(screen.getByRole("menu")).getByRole("menuitemradio", { name: "Night (red)" }));
     expect(onMapStyleChange).toHaveBeenCalledWith("night");
   });
@@ -160,9 +160,34 @@ describe("the column of tools on a phone", () => {
       </Tooltip.Provider>,
     );
     // Not laid out here, so there is room for all of them; in a browser it shows as many as fit (see the end-to-end tests).
-    expect(screen.getAllByRole("button")).toHaveLength(11);
+    expect(screen.getAllByRole("button")).toHaveLength(12);
     expect(screen.getByRole("button", { name: "Draw a route" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.queryByRole("button", { name: "Zoom in" })).not.toBeInTheDocument();
+  });
+
+  it("ends in a button that says More in words, which opens every tool by name", async () => {
+    render(
+      <Tooltip.Provider>
+        <MapToolColumn tools={mapTools(input())} />
+      </Tooltip.Provider>,
+    );
+    const more = screen.getByRole("button", { name: "More map tools" });
+    expect(more).toHaveTextContent(/^More/);
+    expect(screen.getAllByRole("button").at(-1)).toBe(more);
+    await userEvent.click(more);
+    expect(
+      within(screen.getByRole("menu")).getByRole("menuitemcheckbox", { name: "Line of sight between two points" }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the icon of a tool in hand or a layer that is on, in place of the last that is not", () => {
+    const tools = mapTools(input({ tool: "sight", contours: true, hillshade: false }));
+    const ids = (room: number) => shownInColumn(tools, room).map((tool) => tool.id);
+    expect(ids(20)).toHaveLength(tools.length);
+    expect(ids(3)).toEqual(["locate", "contours", "sight"]);
+    expect(ids(0)).toEqual([]);
+    // In the order of the list, so the column does not shuffle as things are switched on.
+    expect(ids(5)).toEqual(["locate", "measure", "draw", "contours", "sight"]);
   });
 });
 
@@ -209,6 +234,18 @@ describe("where things sit over the map", () => {
     expect(order).toEqual(["Search the map", "Part of the map could not be loaded.", "Tools", "A card", "Credits"]);
     // The cards are held to their share of the clear map by the place they are put in, not by each card.
     expect(screen.getByRole("region", { name: "A card" }).parentElement).toHaveClass("outpost-furniture-cards");
+  });
+
+  it("on a phone with something in hand puts its card at the foot, edge to edge, under the credits and no higher than it may go", () => {
+    const { container } = render(<MapFurniture phone covered={false} docked dockRoom={300} {...parts} />);
+    const column = container.querySelector(".outpost-furniture")!;
+    expect(column).toHaveAttribute("data-docked");
+    const dock = screen.getByRole("region", { name: "A card" }).parentElement!;
+    expect(dock).toHaveClass("outpost-furniture-dock");
+    expect(dock.parentElement).toHaveStyle({ maxHeight: "300px" });
+    expect(dock.parentElement).toHaveClass("-mx-[12px]");
+    // The credits are over the card, in the same block; the readout in the footer is hidden by maps.css.
+    expect(dock.previousElementSibling).toHaveTextContent("Credits");
   });
 
   it("leaves only the search box when the sheet covers the map", () => {

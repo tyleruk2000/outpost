@@ -57,7 +57,7 @@ test("the grey line on a phone: in reach, clear of the rest, and drawn", async (
   // of the search box always. Both go by the same name.
   const button = page.getByRole("button", { name: "Grey line (day and night)" });
   const inMenu = async <T>(act: (item: ReturnType<Page["getByRole"]>) => Promise<T>): Promise<T> => {
-    await page.getByRole("button", { name: "All map tools" }).tap();
+    await page.getByRole("button", { name: "More map tools" }).tap();
     const item = page.getByRole("menuitemcheckbox", { name: "Grey line (day and night)" });
     await expect(item).toBeVisible();
     // Measured once the menu has finished opening: it grows into place.

@@ -56,6 +56,19 @@ export function watchForErrors(page: Page): string[] {
   return errors;
 }
 
+/**
+ * For a test that sets the page's clock (`page.clock.setFixedTime`): the server is said to agree with it, so that the
+ * app's notice that the two clocks differ does not take the top of the screen. On a phone it takes its room from the
+ * map, which is what a layout test measures.
+ */
+export async function agreeClocks(page: Page, now: Date): Promise<void> {
+  await page.route("**/api/device/clock", async (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    const response = await route.fetch();
+    await route.fulfill({ response, json: { ...(await response.json()), now: now.getTime() } });
+  });
+}
+
 /** Calls the API the way the app does. */
 // biome-ignore lint/suspicious/noExplicitAny: tests read response bodies loosely and assert on them
 export async function api<T = any>(page: Page, method: string, url: string, body?: unknown): Promise<T> {

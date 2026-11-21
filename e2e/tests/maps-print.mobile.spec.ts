@@ -26,7 +26,7 @@ test.describe("printing the map from a phone", () => {
       const errors = watchForErrors(page);
       await page.goto(`/maps?lat=${CENTRE.lat}&lon=${CENTRE.lon}&z=12.5`);
       await page.locator('.outpost-map[data-map-idle="true"]').waitFor({ timeout: 20_000 });
-      await page.getByRole("button", { name: "All map tools" }).tap();
+      await page.getByRole("button", { name: "More map tools" }).tap();
       await page.getByRole("menuitemcheckbox", { name: "Print or save as PDF", exact: true }).tap();
       const sheet = page.locator('section[aria-label="Places, routes and offline maps"]');
       const step = sheet.getByRole("region", { name: "Print or save as PDF" });

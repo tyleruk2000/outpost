@@ -17,7 +17,7 @@
  * When you add a tool to the map, add its state here.
  */
 import type { Page } from "@playwright/test";
-import { api, expect, test, watchForErrors } from "./fixtures";
+import { agreeClocks, api, expect, test, watchForErrors } from "./fixtures";
 import { auditLayout, type Finding } from "./layout-audit";
 import { CENTRE, type InstalledTestMaps, installTestMaps, removeTestMaps } from "./map-fixture";
 
@@ -41,6 +41,8 @@ const TOOLS = [
 const SET_UPS = [
   { name: "a small phone, 320 by 568", width: 320, height: 568, root: 16 },
   { name: "a phone of today, 390 by 844", width: 390, height: 844, root: 16 },
+  // What Safari on an iPhone 13 to 15 leaves with its bars showing: where the column of tools was found cut short.
+  { name: "an iPhone in Safari, 390 by 664", width: 390, height: 664, root: 16 },
   { name: "larger text, 375 by 667 with the text at 125%", width: 375, height: 667, root: 20 },
 ];
 
@@ -67,12 +69,30 @@ const atRest = async (page: Page) => {
   await page.waitForTimeout(450);
 };
 
-/** Takes up a tool: from its icon in the column, or from the menu where the column has no room for it. */
+/** Takes up a tool: from its icon in the column, or from "More" where the column has no room for it. */
 async function takeUp(page: Page, name: string): Promise<void> {
   const icon = page.getByRole("button", { name, exact: true }).and(page.locator("[aria-pressed]"));
   if ((await icon.count()) > 0) return icon.tap();
-  await page.getByRole("button", { name: "All map tools" }).tap();
+  await page.getByRole("button", { name: "More map tools" }).tap();
   await page.getByRole("menuitemcheckbox", { name, exact: true }).tap();
+}
+
+/**
+ * A card of what is in hand on a phone has the sheet's place: it reaches both edges of the screen and the foot of the
+ * map, stops short of the cross at the centre, and the sheet's tabs and the readout are out of sight while it is up.
+ */
+async function expectInSheetsPlace(page: Page, centre: { x: number; y: number }): Promise<void> {
+  const card = page.locator(".outpost-furniture-dock > .outpost-map-card").last();
+  await expect(card).toBeVisible();
+  const box = (await card.boundingBox())!;
+  const width = page.viewportSize()!.width;
+  const bar = (await page.locator('nav[aria-label="Main"]').boundingBox())!;
+  expect(box.x, "the card's left edge").toBeLessThanOrEqual(0.5);
+  expect(box.x + box.width, "the card's right edge").toBeGreaterThanOrEqual(width - 0.5);
+  expect(Math.abs(box.y + box.height - bar.y), "the card's foot on the bar of screens").toBeLessThanOrEqual(1);
+  expect(box.y, "the card's top below the cross at the centre").toBeGreaterThan(centre.y + 10);
+  await expect(page.getByRole("tab", { name: /^Places/ })).toBeHidden();
+  await expect(page.getByRole("button", { name: "Copy these coordinates" })).toBeHidden();
 }
 
 /** The middle of the cross that marks the centre of the map: by the rule, a place nothing lies over. */
@@ -89,6 +109,7 @@ for (const setUp of SET_UPS) {
 
     test.beforeEach(async ({ page }) => {
       await page.clock.setFixedTime(new Date("2026-06-21T09:00:00Z"));
+      await agreeClocks(page, new Date("2026-06-21T09:00:00Z"));
       await page.addInitScript((size) => {
         const apply = () => document.documentElement.style.setProperty("font-size", `${size}px`, "important");
         if (document.documentElement) apply();
@@ -115,8 +136,12 @@ for (const setUp of SET_UPS) {
       // Browsing, the sheet lowered.
       expect(await wrong(page), "browsing").toEqual([]);
 
-      // Every tool is in the menu by name, whether or not the column has room for its icon.
-      await page.getByRole("button", { name: "All map tools" }).tap();
+      // Every tool is in the menu by name, whether or not the column has room for its icon; and the button that opens
+      // it says "More" in words, under the icons, wherever the column is cut short.
+      const more = page.getByRole("button", { name: "More map tools" });
+      await expect(more).toBeInViewport({ ratio: 1 });
+      await expect(more).toHaveText("More");
+      await more.tap();
       const menu = page.getByRole("menu");
       for (const name of TOOLS) await expect(menu.getByRole("menuitemcheckbox", { name, exact: true })).toBeVisible();
       await page.keyboard.press("Escape");
@@ -146,6 +171,8 @@ for (const setUp of SET_UPS) {
       await expect(page.getByText(/^2 legs, last leg heading/)).toBeVisible();
       await atRest(page);
       expect(await wrong(page), "measuring").toEqual([]);
+      // The card has the sheet's place: edge to edge at the foot, the sheet and the readout out of the way while it is up.
+      await expectInSheetsPlace(page, centre);
       await page.getByRole("button", { name: "Stop measuring" }).tap();
 
       // A found position, with its sun times open: more than the card may show, so it scrolls inside itself.
@@ -162,7 +189,10 @@ for (const setUp of SET_UPS) {
       const cardBox = (await pinCard.boundingBox())!;
       const pin = (await page.locator(".outpost-pin").boundingBox())!;
       expect(pin.y + pin.height, "the pin is above the card that is about it").toBeLessThanOrEqual(cardBox.y + 1);
-      expect(await pinCard.evaluate((card) => card.scrollHeight > card.clientHeight), "the card scrolls inside itself").toBe(true);
+      await expectInSheetsPlace(page, centre);
+      // What it has to do is in reach: below the fold of the card it is scrolled to, not lost.
+      await pinCard.getByRole("button", { name: "Save this place" }).scrollIntoViewIfNeeded();
+      await expect(pinCard.getByRole("button", { name: "Save this place" })).toBeInViewport({ ratio: 1 });
       await expect(pinCard.getByRole("button", { name: "Remove this pin" })).toBeInViewport();
       await pinCard.getByRole("button", { name: "Remove this pin" }).tap();
 
@@ -186,6 +216,7 @@ for (const setUp of SET_UPS) {
       );
       expect(titles, "titles that say Line of sight").toBe(1);
       expect(await wrong(page), "line of sight, choosing a point").toEqual([]);
+      await expectInSheetsPlace(page, centre);
       await page.getByRole("button", { name: "Stop checking line of sight" }).tap();
 
       // The sheet half raised, with the list of places in it.

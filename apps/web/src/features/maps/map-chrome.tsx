@@ -2,7 +2,7 @@
 import {
   Compass,
   Crosshair,
-  EllipsisVertical,
+  Ellipsis,
   Grid3x3,
   LocateFixed,
   Magnet,
@@ -422,37 +422,60 @@ export function MapControls({
 }
 
 /**
+ * Which tools have an icon in the phone's column when there is room for `room` of them: the first
+ * ones in the list, except that a tool in hand or a layer switched on keeps its icon, in place of
+ * the last that is not, so that what is on can be seen and put down where it was taken up.
+ */
+export function shownInColumn(tools: MapTool[], room: number): MapTool[] {
+  if (room >= tools.length) return tools;
+  const kept = tools.slice(0, Math.max(0, room));
+  for (const on of tools.slice(kept.length).filter((tool) => tool.pressed)) {
+    const index = kept.findLastIndex((tool) => !tool.pressed);
+    if (index < 0) break;
+    kept.splice(index, 1);
+    kept.push(on);
+  }
+  return tools.filter((tool) => kept.includes(tool));
+}
+
+/**
  * The same tools on a phone: one column under the end of the search box, holding as many
- * as there is room for and no more. It never runs into what is below it (a card, the
- * readout, the sheet): the tools that do not fit are in the menu, where all of them
- * always are. Touch screens zoom by pinching, so there are no zoom buttons here.
+ * as there is room for, and at its foot a button marked "More" that opens the menu of
+ * every tool by name. The column never runs into what is below it (a card, the readout,
+ * the sheet). Touch screens zoom by pinching, so there are no zoom buttons here.
  */
 export function MapToolColumn({ tools }: { tools: MapTool[] }) {
   const area = useRef<HTMLDivElement>(null);
+  const more = useRef<HTMLDivElement>(null);
   const [room, setRoom] = useState(tools.length);
   useLayoutEffect(() => {
     const element = area.current;
     // Not laid out (a test without a browser): show them all.
     if (!element || element.offsetParent === null || typeof ResizeObserver === "undefined") return;
     const measure = () => {
-      // A button is 44 px and a hairline; the group has a border of its own.
-      setRoom(Math.max(0, Math.floor((element.clientHeight - 1) / 45)));
+      // A button is 44 px and a hairline; the group has a border of its own. Under it, 8 px, then "More".
+      const reserved = (more.current?.offsetHeight ?? 56) + 8;
+      setRoom(Math.max(0, Math.floor((element.clientHeight - reserved - 1) / 45)));
     };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
+    if (more.current) observer.observe(more.current);
     return () => observer.disconnect();
   }, []);
-  const shown = tools.slice(0, room);
+  const shown = shownInColumn(tools, room);
   return (
-    <div ref={area} className="flex min-h-0 flex-1 items-start justify-end">
+    <div ref={area} className="flex min-h-[56px] flex-1 flex-col items-end gap-[8px] overflow-hidden">
       {shown.length > 0 ? (
-        <ControlGroup className="pointer-events-auto">
+        <ControlGroup className="pointer-events-auto shrink-0">
           {shown.map((tool) => (
             <ToolButton key={tool.id} tool={tool} />
           ))}
         </ControlGroup>
       ) : null}
+      <div ref={more} className="pointer-events-auto shrink-0">
+        <MapMenu tools={tools} />
+      </div>
     </div>
   );
 }
@@ -475,9 +498,9 @@ function ChoiceGroup({ tool }: { tool: MapTool }) {
 }
 
 /**
- * Every tool and layer of the map by name, behind one button at the end of the search
- * box on a phone. An icon in the column says nothing to a finger that cannot hover over
- * it; this says what each one is, and holds the ones the column has no room for.
+ * Every tool and layer of the map by name, behind the button marked "More" at the foot of
+ * the column on a phone. An icon in the column says nothing to a finger that cannot hover
+ * over it; this says what each one is, and holds the ones the column has no room for.
  */
 export function MapMenu({ tools }: { tools: MapTool[] }) {
   const entry = (tool: MapTool) => {
@@ -508,11 +531,24 @@ export function MapMenu({ tools }: { tools: MapTool[] }) {
   return (
     <Menu>
       <MenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="All map tools" className="shrink-0 rounded-l-none text-ink max-md:size-[44px]">
-          <EllipsisVertical />
-        </Button>
+        {/* Words as well as an icon: three dots alone at the end of the search box were found only by chance. 44 px
+            wide, in pixels like the icons above it; as tall as its two lines need, so larger text is not cut off. */}
+        {/* The name starts with the word that shows, so that a person who says "More" to a voice control is understood. */}
+        <button
+          type="button"
+          aria-label="More map tools"
+          className={cn(
+            mapSurface,
+            "flex min-h-[52px] min-w-[44px] flex-col items-center justify-center gap-0.5 px-1 py-1 text-micro font-semibold text-ink",
+            "hover:bg-surface-strong focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus data-[state=open]:bg-primary-soft",
+          )}
+        >
+          <Ellipsis aria-hidden className="size-5" />
+          <span aria-hidden>More</span>
+        </button>
       </MenuTrigger>
       <MenuContent
+        side="left"
         align="end"
         className="scroll-quiet max-h-(--radix-dropdown-menu-content-available-height) w-[min(19rem,calc(100vw-1.5rem))] overflow-y-auto"
       >

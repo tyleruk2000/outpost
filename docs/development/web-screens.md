@@ -352,12 +352,11 @@ place in it:
 
 | Place | What is there | Gives way? |
 | --- | --- | --- |
-| The top edge | The search box, with the menu of every tool at its end (`MapMenu`) | Never |
-| Under the end of the search box | The tools as icons (`MapToolColumn`) | Shows as many as fit; the rest are in the menu, where all of them always are |
+| The top edge | The search box | Never |
+| Under the end of the search box | The tools as icons (`MapToolColumn`), and under them a button that says "More" (`MapMenu`), the menu of every tool by name | The icons show as many as fit, a tool in hand or a layer that is on first; "More" never |
 | The clear map | Nothing. The centre of the map is two fifths of the way down it | |
-| Above the readout | The cards: one for the tool or thing in hand (`MapCard`), and the recording's | At most the lower three fifths of the clear map, less a margin |
 | Just above the sheet | The readout with the scale beside it, and the credits | The credits never; the rest in the order below |
-| The foot | The sheet | Lowered, it shows its handle and tab names, or the name of a tool that has taken it over |
+| The foot | The sheet; or, while something is in hand, its card (`MapCard`) in the sheet's place | Lowered, the sheet shows its handle and tab names, or the name of a tool that has taken it over |
 
 What follows from that:
 
@@ -365,19 +364,27 @@ What follows from that:
   wide screen, the column on a phone and the phone's menu are all drawn from it. Do not
   add a button to the map anywhere else.
 - **A card is a `MapCard`** (or uses the same shell, `mapCard` in `ui.tsx`). It does not
-  set its own height. On a phone the cards together get the lower three fifths of the
-  clear map, less a margin; a card with more to say scrolls inside itself, and its
-  title and close button stay put. Because the camera keeps the centre of the map two
-  fifths of the way down, a card never covers the centre or the cross that marks it,
-  and the map does not move when a card appears or grows.
-- **One title.** A tool that has taken over the sheet (line of sight) is named by the
-  sheet's first line, which also holds what puts the tool down. Its card over the map
-  then has no title of its own (`titleHidden`) and no close button.
-- **What yields when a tool is in hand.** The line of sun times goes while a tool is
-  in hand or a point has been found. The column of icons shortens to what fits above
-  the cards. A recording's open card folds to its one line when another card comes up.
-  The map itself does not move: while something is in hand the camera keeps the room
-  it had. With the sheet at full height only the search box is left.
+  set its own height. **On a phone a card of what is in hand takes the sheet's place**
+  (`docked` in `maps-page.tsx`): edge to edge at the foot, with the credits over it,
+  the readout and the sheet's tabs out of sight until it is closed. One thing at a
+  time: the tabs are what the card's close button brings back. It may reach up to
+  12 px below the cross at the centre and no further; with more to say it scrolls
+  inside itself, under a title and close button and over a row of buttons that stay
+  put. Because the camera keeps the centre of the map where it was, the map does not
+  move when a card comes up. A card that is there while nothing is in hand (where the
+  device is, the first use) floats over the map above the readout instead, in the
+  lower three fifths of the clear map. So does any card while the sheet is raised.
+- **One title.** A tool that has taken over the sheet (line of sight, the page to
+  print) is named by the sheet's first line, which also holds what puts the tool down.
+  A card shown with that sheet has no title of its own (`titleHidden`) and no close
+  button. Line of sight's card, in the sheet's place while a point is chosen, has both.
+- **What yields when a tool is in hand.** On a phone, the readout and the sheet's tabs,
+  to the card. The column of icons shortens to what fits above it. A recording's open
+  card folds to its one line when another card comes up. The map itself does not move:
+  while something is in hand the camera keeps the room it had. With the sheet at full
+  height only the search box is left.
+- **A hint is a card, not a message.** A message at the foot of a phone's screen lies
+  over the sheet's tabs; "Save a place" says "Tap the map" in its card instead.
 - **As the room gets shorter** (larger text, a small phone, the sheet raised) things
   step aside in this order: the icons, which show only what fits; then the coordinates
   of the centre, with the scale bar; then the line of sun times. `MapFurniture`

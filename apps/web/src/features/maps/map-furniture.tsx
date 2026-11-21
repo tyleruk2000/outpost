@@ -35,6 +35,7 @@
  * can keep the centre of the map in the part that is left.
  */
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 
 /**
  * How much of the readout there is room for: all of it; the line of sun times without the coordinates
@@ -61,10 +62,19 @@ export function MapFurniture({
   cards,
   footer,
   onClear,
+  docked = false,
+  dockRoom,
 }: {
   phone: boolean;
   /** The sheet is at its full height: only the search box is left showing. */
   covered: boolean;
+  /**
+   * On a phone: something is in hand and its card has taken the sheet's place at the foot of the map. The
+   * readout steps aside, and the card has the whole width and everything up to just below the centre.
+   */
+  docked?: boolean;
+  /** How tall the card at the foot, with the credits over it, may be: from the foot of the map to just below the centre. */
+  dockRoom?: number;
   search: ReactNode;
   /** The column of controls: beside the search box on a wide screen, under its end on a phone. */
   tools: ReactNode;
@@ -87,7 +97,8 @@ export function MapFurniture({
 
   useLayoutEffect(() => {
     // With the sheet at its full height the map is out of sight; what was measured before still stands for when it comes back.
-    if (!phone || covered || typeof ResizeObserver === "undefined") return;
+    // With a card at the foot the readout is out of sight, and the camera keeps the room it had before (maps-page.tsx).
+    if (!phone || covered || docked || typeof ResizeObserver === "undefined") return;
     const report = () => {
       const top = head.current?.getBoundingClientRect().height ?? 0;
       const bottom = foot.current?.getBoundingClientRect().height ?? 0;
@@ -114,7 +125,7 @@ export function MapFurniture({
     const observer = new ResizeObserver(report);
     for (const part of [column.current, head.current, foot.current]) if (part) observer.observe(part);
     return () => observer.disconnect();
-  }, [phone, covered]);
+  }, [phone, covered, docked]);
 
   if (!phone) {
     return (
@@ -137,17 +148,31 @@ export function MapFurniture({
     <div
       ref={column}
       data-room={room}
-      className="outpost-furniture pointer-events-none absolute inset-x-[12px] top-[12px] bottom-[calc(var(--sheet-height,0px)+10px)] z-10 flex flex-col gap-[8px]"
+      data-docked={docked && !covered ? "" : undefined}
+      className={cn(
+        "outpost-furniture pointer-events-none absolute inset-x-[12px] top-[12px] z-10 flex flex-col gap-[8px]",
+        docked && !covered ? "bottom-0" : "bottom-[calc(var(--sheet-height,0px)+10px)]",
+      )}
     >
       <div ref={head} className="grid shrink-0 grid-cols-[minmax(0,1fr)] gap-[8px]">
         {search}
         {covered ? null : notice}
       </div>
-      {covered ? null : (
+      {covered ? null : docked ? (
+        <>
+          <div className="flex min-h-0 flex-1 flex-col">{tools}</div>
+          {/* The foot of the map, edge to edge: the credits, then the card in the sheet's place. Never above the
+              centre: what does not fit scrolls inside the card, under its title and close button. */}
+          <div className="-mx-[12px] flex min-h-0 shrink-0 flex-col gap-[6px]" style={{ maxHeight: dockRoom }}>
+            <div className="shrink-0 px-[12px]">{footer}</div>
+            <div className="outpost-furniture-dock flex min-h-0 flex-col">{cards}</div>
+          </div>
+        </>
+      ) : (
         <>
           <div className="outpost-furniture-clear flex min-h-0 flex-1 flex-col gap-[8px]">
             {tools}
-            <div className="outpost-furniture-cards flex min-h-0 shrink-0 flex-col items-center justify-end gap-[8px] empty:hidden">
+            <div className="outpost-furniture-cards flex min-h-0 shrink flex-col items-center justify-end gap-[8px] empty:hidden">
               {cards}
             </div>
           </div>

@@ -33,7 +33,7 @@ async function wrong(page: Page): Promise<string[]> {
 async function takeUp(page: Page, name: string): Promise<void> {
   const icon = page.getByRole("button", { name, exact: true }).and(page.locator("[aria-pressed]"));
   if ((await icon.count()) > 0) return icon.tap();
-  await page.getByRole("button", { name: "All map tools" }).tap();
+  await page.getByRole("button", { name: "More map tools" }).tap();
   await page.getByRole("menuitemcheckbox", { name, exact: true }).tap();
 }
 

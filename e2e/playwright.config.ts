@@ -286,9 +286,12 @@ export default defineConfig({
     {
       name: "desktop",
       use: { ...devices["Desktop Chrome"], viewport: { width: 1360, height: 860 } },
-      testIgnore: /mobile\.spec\.ts|not-secure\.spec\.ts/,
+      testIgnore: /mobile\.spec\.ts|iphone\.spec\.ts|not-secure\.spec\.ts/,
     },
     { name: "phone", use: { ...devices["Pixel 7"] }, testMatch: /mobile\.spec\.ts/ },
+    // Safari on an iPhone: WebKit, at the room Safari leaves with its bars showing (390 by 664 on an iPhone 13
+    // to 15). Only the screens checked there by name. Needs WebKit once: `pnpm exec playwright install webkit`.
+    { name: "iphone", use: { ...devices["iPhone 13"] }, testMatch: /iphone\.spec\.ts/ },
     // The walk to every screen again, at an address browsers do not treat as secure, as the server is reached
     // from another device on a home network (http://192.168.1.232:8080). 127.0.0.1 and localhost count as
     // secure, which hid faults such as a call to crypto.randomUUID(), absent on such a page. A made-up name is

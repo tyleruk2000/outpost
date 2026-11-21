@@ -145,6 +145,7 @@ export function MobileSheet({
   onDetentChange,
   onPeekHeight,
   first = "tabs",
+  hidden = false,
   children,
 }: {
   detent: Detent;
@@ -153,6 +154,8 @@ export function MobileSheet({
   onPeekHeight?: (height: number) => void;
   /** What the sheet's first line is just now (the tabs, or a tool's name): when it changes, the lowered height is measured again. */
   first?: string;
+  /** Out of sight while a card of what is in hand has its place (map-furniture.tsx); its height and state are kept for its return. */
+  hidden?: boolean;
   children: ReactNode;
 }) {
   const sheet = useRef<HTMLElement>(null);
@@ -213,6 +216,7 @@ export function MobileSheet({
       ref={sheet}
       aria-label="Places, routes and offline maps"
       data-detent={detent}
+      hidden={hidden}
       className={cn(
         "outpost-sheet absolute inset-x-0 bottom-0 z-20 flex flex-col rounded-t-[14px] border-t border-border bg-page shadow-float",
         dragHeight === null && "transition-[height] duration-200 ease-out",
