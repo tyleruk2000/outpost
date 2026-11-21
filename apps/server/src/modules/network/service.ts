@@ -123,6 +123,11 @@ export function createNetworkService(ctx: AppContext) {
   const activeJob = (): JobRow | undefined => ctx.jobs.list({ states: ["queued", "running", "paused"], types: [SCAN_JOB], limit: 5 })[0];
   const activeMakersJob = (): JobRow | undefined =>
     ctx.jobs.list({ states: ["queued", "running", "paused"], types: [MAKERS_JOB], limit: 5 })[0];
+  /** The error of the last fetch of the registry, if it failed: the screen says so beside the button. */
+  const lastMakersFailure = (): string | null => {
+    const [last] = ctx.jobs.list({ states: ["succeeded", "failed"], types: [MAKERS_JOB], limit: 1 });
+    return last?.state === "failed" ? (last.error ?? "The registry could not be fetched.") : null;
+  };
 
   const countDevices = sqlite.prepare<[], { n: number }>("SELECT count(*) AS n FROM network_devices");
   const scans = () => db.select().from(networkScans).orderBy(desc(networkScans.finishedAt)).limit(2).all();
@@ -360,6 +365,7 @@ export function createNetworkService(ctx: AppContext) {
         devices: devices(),
         makers: { ...info, url: config.network.makersUrl },
         makersJob: makersJob ? toJobDto(makersJob) : null,
+        makersFailed: makersJob ? null : lastMakersFailure(),
       };
     },
     startScan() {

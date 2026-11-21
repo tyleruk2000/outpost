@@ -18,6 +18,8 @@ Everything already installed or written, including:
 - moving and checking collections, backup and restore;
 - writing a portable drive, once its programs are cached (below);
 - the frequency list, the Morse trainer, the Solar clock and the games;
+- tide times: constants for about 4,100 stations worldwide come with Outpost; where none
+  is within 100 km the screen says so;
 - the household board in Messages (on the home network only; it does not wake a locked
   phone);
 - Help. A link to another guide stays inside Outpost; a link marked with an arrow

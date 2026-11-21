@@ -141,7 +141,7 @@ formula, its source with the date read, and the range it holds for.
 | [Solar clock](docs/tools-solar-clock.md) | The sun's position, setting a clock from a shadow after a power cut, and a sundial and nocturnal to print. |
 | [Night sky](docs/night-sky.md) | The Moon's phase and times, a star chart for a place and time, and finding north by the stars. |
 | [Celestial navigation](docs/celestial-navigation.md) | A position from sextant sights with the almanac worked out on the device; for learning and as a fallback, not for navigating a vessel. |
-| [Tide times](docs/tides.md) | High and low water at nearby stations from NOAA's constants (the US and a few ports elsewhere); not for navigation. |
+| [Tide times](docs/tides.md) | High and low water at stations within 100 km, worldwide, from NOAA's and TICON-4's constants; not for navigation. |
 | [Garden](docs/garden.md) | What to sow, plant and harvest this month in the UK from the RHS calendar, and a record of sowings. |
 | [QR codes and devices on this network](docs/tools-qr-and-network.md) | Make QR codes on the device, and list what answers on the local network. |
 
@@ -313,6 +313,7 @@ Every source and its terms, in its publisher's words, are in [sources.md](docs/s
 | Open-Meteo; Met Office; NASA POWER; PVGIS | CC BY 4.0; Crown copyright; credit to NASA; credit to the JRC |
 | OurAirports; Wikidata; WorldPop; BABS | Public domain; CC0; CC BY 4.0; open use with source |
 | USDA FoodData Central; World Magnetic Model 2025; NOAA tide constants (shipped) | CC0; public domain; public domain |
+| TICON-4 tide constants, DGFI-TUM (shipped) | CC BY 4.0 |
 | Frequencies, the RHS's growing months | Facts, each page named and dated |
 | Emergency plan templates (UK Government and others) | OGL v3 and others, quoted where allowed |
 | Glasstone and Dolan, *The Effects of Nuclear Weapons* (1977) | A US Government work |

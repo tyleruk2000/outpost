@@ -153,6 +153,8 @@ export interface NetworkStatus {
   makers: NetworkMakers;
   /** The registry being fetched, if it is. */
   makersJob: JobDto | null;
+  /** Why the last fetch of the registry failed, when it did and none has worked since. */
+  makersFailed?: string | null;
   /** Whether the device asking may start a scan: "open" to every device (the default), or set to the computer Outpost runs on. */
   scanRight: NetworkScanRight;
 }

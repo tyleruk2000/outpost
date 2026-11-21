@@ -8,7 +8,7 @@
  */
 import { createHash } from "node:crypto";
 import type { MapEstimate } from "@outpost/shared";
-import { AppError } from "../../core/errors.ts";
+import { AppError, networkSentence } from "../../core/errors.ts";
 import type { HttpClient } from "../../core/http.ts";
 import { HEADER_BYTES } from "./pmtiles/header.ts";
 import { type ExtractPlan, type ExtractRequest, type PlanOptions, planExtract } from "./pmtiles/plan.ts";
@@ -152,6 +152,9 @@ export function createPlanner(client: HttpClient, options: { ttlMs?: number; pla
             "upstream",
             "The map source is no longer available at its address. If you set a custom map source in Settings, check it; otherwise try again in a few minutes.",
           );
+        }
+        if (!(error instanceof AppError) && networkSentence(error, "The map source")) {
+          throw new AppError("offline", "Outpost could not reach the map source. Downloading a map region needs an internet connection.");
         }
         throw error;
       }

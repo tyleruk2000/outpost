@@ -40,7 +40,7 @@ import {
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
-import { AppError, badRequest, conflict, messageOf } from "../../core/errors.ts";
+import { AppError, badRequest, conflict, messageOf, networkSentence } from "../../core/errors.ts";
 import { resolveInside } from "../../core/fs-safe.ts";
 import { createHttpClient } from "../../core/http.ts";
 import { newId } from "../../core/ids.ts";
@@ -231,6 +231,9 @@ export async function registerUpdate(app: FastifyInstance, ctx: AppContext): Pro
       const bytes = Buffer.from(await response.arrayBuffer());
       if (bytes.length > MAX_SMALL) throw new AppError("upstream", "The release page sent far more than a release manifest.");
       return bytes;
+    } catch (error) {
+      const sentence = networkSentence(error, "The release page");
+      throw sentence ? new AppError("offline", sentence) : error;
     } finally {
       await client.close();
     }

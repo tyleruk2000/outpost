@@ -900,8 +900,8 @@ after the last frost" and is not the RHS's own calculation.
 
 ## Tidal constants
 
-**Tools → Tide times** ([tides.md](tides.md)) ships NOAA's harmonic constants and works the
-tides out from them. Read on 21 November 2026.
+**Tools → Tide times** ([tides.md](tides.md)) ships NOAA's harmonic constants for the United States and TICON-4's for the
+rest of the world, and works the tides out from them. Read on 21 November 2026.
 
 | What | Where it comes from | Notes |
 | --- | --- | --- |
@@ -909,6 +909,9 @@ tides out from them. Read on 21 November 2026.
 | The licence | NOAA Tides and Currents, [Disclaimers](https://tidesandcurrents.noaa.gov/disclaimers.html) | "in the public domain, unless specifically annotated otherwise"; "NOS requests that attribution be given". The screen names NOAA CO-OPS. Stations outside the US (Bermuda, Central America) are kept on the same footing. |
 | The method | P. Schureman, *Manual of Harmonic Analysis and Prediction of Tides*, Special Publication 98 (1958), [NOAA's scan](https://tidesandcurrents.noaa.gov/publications/SpecialPubNo98.pdf) | Tables 1, 2, 2a and 6; paragraphs 24 and 77; the node-factor formulas (73–80, 141–150, 195–235). |
 | Predictions the tests are held to | NOAA CO-OPS data API, `product=predictions`, MLLW, GMT | High and low waters, 15 to 21 January 2027, at The Battery, San Francisco, Honolulu and Galveston; hourly heights for January 2027 at the first two. Every high and low within 1 minute and 1 mm (2 minutes at Galveston), every hourly height within 2 mm. |
+| TICON-4 constants for 4,838 tide gauges (2,728 kept: lakes dropped, gauges within 2 km of a NOAA station give way) | M. Hart-Davis, D. Dettmering and F. Seitz (2025), *TICON-4: TIdal CONstants based on GESLA-4 sea-level records*, SEANOE, <https://doi.org/10.17882/109129> | CC BY 4.0 (the SEANOE page's licence link, "Open access"); the screen names the dataset, its authors and the licence. Built by `scripts/build-ticon-stations.mjs`; 39 of 50 constituents used. |
+| The gauge records TICON comes from | GESLA-3/4 licence page: records under several licences, some for research use only | Not shipped. Whether those terms reach the derived constants is an open question (about 650 gauges); see the follow-up in the issue tracker. |
+| Predictions the TICON tests are held to | Kartverket, API for water level data, <https://vannstand.kartverket.no/tideapi_en.html>, CC BY 4.0 | Bergen within 14 minutes and 2.5 cm, Narvik 11 minutes and 3.3 cm, Oslo 15 minutes and 7 cm. |
 
 Not shipped: the **Canadian Hydrographic Service** (its [licence](https://tides.gc.ca/en/licence-agreement)
 forbids giving the data to a third party and can be withdrawn; whether the open.canada.ca copy

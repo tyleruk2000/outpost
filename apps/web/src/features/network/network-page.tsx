@@ -486,6 +486,11 @@ function Makers({ status, job }: { status: NetworkStatus; job: JobDto | null }) 
             </p>
           </div>
         )}
+        {!job && status.makersFailed ? (
+          <Notice tone="warning" title="The last fetch of the registry did not work">
+            {status.makersFailed}
+          </Notice>
+        ) : null}
       </div>
     </Section>
   );

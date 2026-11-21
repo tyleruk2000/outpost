@@ -57,7 +57,8 @@ export function openAiCompatibleProvider(
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ model, input: texts }),
-        signal: signal ?? AbortSignal.timeout(120_000),
+        // The caller's signal (a search request's) and a limit of our own: a server that never answers must not hold the search.
+        signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(120_000)]) : AbortSignal.timeout(120_000),
         // Passages go to the server that was named, and to no other.
         redirect: "error",
       });

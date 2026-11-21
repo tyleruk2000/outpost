@@ -3,16 +3,25 @@
  * worked out on this computer from harmonic constants that ship with Outpost. Nothing is
  * fetched and nothing is kept: every answer is computed when asked.
  *
- * The constants are NOAA CO-OPS's (`data/noaa-harmonic.json`, made by
- * scripts/build-tide-stations.mjs; public domain). The arithmetic is in @outpost/shared
- * (tides.ts). The table is read the first time someone asks, not at start.
+ * Two tables, both made by scripts in scripts/ and both open:
+ * - NOAA CO-OPS (`data/noaa-harmonic.json`, scripts/build-tide-stations.mjs; public
+ *   domain): the United States and its territories, with a chart datum.
+ * - TICON-4 (`data/ticon4-harmonic.json`, scripts/build-ticon-stations.mjs; CC BY 4.0):
+ *   tide gauges worldwide from GESLA-4, heights about mean sea level. A gauge within 2 km
+ *   of a NOAA station is left out of it, so the two do not repeat each other.
+ *
+ * Only stations within TIDE_REACH_KM are offered; the nearest of all is returned besides,
+ * so the screen can say how far the nearest coast with data is. The arithmetic is in
+ * @outpost/shared (tides.ts). The tables are read the first time someone asks, not at start.
  */
 import {
   type HarmonicStation,
   haversineMeters,
   TIDE_MAX_DAYS,
+  TIDE_REACH_KM,
   type TidePredictionResponse,
   type TideSource,
+  type TideSourceId,
   type TideStationDto,
   type TideStationsResponse,
   tideCurve,
@@ -23,19 +32,27 @@ import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError } from "../../core/errors.ts";
 
+/** id, name, state or country, lat, lon, MSL above MLLW (mm, or null), amplitudes (mm), Greenwich phases (tenths of a degree), river (1) or not. */
+type Row = [string, string, string, number, number, number | null, number[], number[], number?];
+
 interface TideTable {
   source: string;
   url: string;
   licence: string;
   read: string;
   constituents: string[];
-  /** id, name, state, lat, lon, MSL above MLLW (mm, or null), amplitudes (mm), Greenwich phases (tenths of a degree). */
-  stations: Array<[string, string, string, number, number, number | null, number[], number[]]>;
+  stations: Row[];
+}
+
+interface Entry {
+  row: Row;
+  table: TideTable;
+  source: TideSource;
 }
 
 interface Loaded {
-  table: TideTable;
-  source: TideSource;
+  rows: Entry[];
+  sources: TideSource[];
 }
 
 export interface TidesService {
@@ -51,12 +68,22 @@ declare module "../../core/context.ts" {
 
 let loading: Promise<Loaded> | null = null;
 function load(): Promise<Loaded> {
-  loading ??= import("./data/noaa-harmonic.json", { with: { type: "json" } }).then((module) => {
-    const table = module.default as unknown as TideTable;
-    return {
-      table,
-      source: { name: table.source, url: table.url, licence: table.licence, read: table.read, count: table.stations.length },
-    };
+  loading ??= Promise.all([
+    import("./data/noaa-harmonic.json", { with: { type: "json" } }),
+    import("./data/ticon4-harmonic.json", { with: { type: "json" } }),
+  ]).then(([noaa, ticon]) => {
+    const tables: Array<[TideSourceId, TideTable]> = [
+      ["noaa", noaa.default as unknown as TideTable],
+      ["ticon", ticon.default as unknown as TideTable],
+    ];
+    const rows: Entry[] = [];
+    const sources: TideSource[] = [];
+    for (const [id, table] of tables) {
+      const source = { id, name: table.source, url: table.url, licence: table.licence, read: table.read, count: table.stations.length };
+      sources.push(source);
+      for (const row of table.stations) rows.push({ row, table, source });
+    }
+    return { rows, sources };
   });
   loading.catch(() => {
     loading = null;
@@ -64,7 +91,7 @@ function load(): Promise<Loaded> {
   return loading;
 }
 
-function toDto(row: TideTable["stations"][number], lat: number, lon: number): TideStationDto {
+function toDto({ row, source }: Entry, lat: number, lon: number): TideStationDto {
   return {
     id: row[0],
     name: row[1],
@@ -73,10 +100,12 @@ function toDto(row: TideTable["stations"][number], lat: number, lon: number): Ti
     lon: row[4],
     distanceKm: haversineMeters(lat, lon, row[3], row[4]) / 1000,
     datum: row[5] === null ? "MSL" : "MLLW",
+    source: source.id,
+    river: row[8] === 1,
   };
 }
 
-function harmonic(table: TideTable, row: TideTable["stations"][number]): HarmonicStation {
+function harmonic({ row, table }: Entry): HarmonicStation {
   return {
     datumOffset: (row[5] ?? 0) / 1000,
     constituents: table.constituents.map((name, i) => ({ name, amplitude: (row[6][i] ?? 0) / 1000, phase: (row[7][i] ?? 0) / 10 })),
@@ -86,27 +115,25 @@ function harmonic(table: TideTable, row: TideTable["stations"][number]): Harmoni
 export function createTidesService(): TidesService {
   return {
     async nearest(lat, lon, limit) {
-      const { table, source } = await load();
-      const stations = table.stations
-        .map((row) => toDto(row, lat, lon))
-        .sort((a, b) => a.distanceKm - b.distanceKm)
-        .slice(0, limit);
-      return { stations, source };
+      const { rows, sources } = await load();
+      const all = rows.map((entry) => toDto(entry, lat, lon)).sort((a, b) => a.distanceKm - b.distanceKm);
+      const stations = all.filter((each) => each.distanceKm <= TIDE_REACH_KM).slice(0, limit);
+      return { stations, nearest: all[0] ?? null, reachKm: TIDE_REACH_KM, sources };
     },
     async predict(id, from, days, near) {
-      const { table, source } = await load();
-      const row = table.stations.find((each) => each[0] === id);
-      if (!row) throw new AppError("not_found", "No tide station has that number. Choose one from the list of stations near the place.");
+      const { rows } = await load();
+      const entry = rows.find((each) => each.row[0] === id);
+      if (!entry) throw new AppError("not_found", "No tide station has that number. Choose one from the list of stations near the place.");
       const to = from + days * 86_400_000;
-      const station = harmonic(table, row);
+      const station = harmonic(entry);
       return {
-        station: toDto(row, near?.lat ?? row[3], near?.lon ?? row[4]),
+        station: toDto(entry, near?.lat ?? entry.row[3], near?.lon ?? entry.row[4]),
         from,
         to,
         turns: tideTurns(station, from, to),
         curve: tideCurve(station, from, to).map((point) => ({ t: point.t, h: Math.round(point.h * 1000) / 1000 })),
         constituents: station.constituents.filter((c) => c.amplitude > 0).length,
-        source,
+        source: entry.source,
       };
     },
   };

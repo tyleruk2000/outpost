@@ -10,6 +10,7 @@ import type { RelayCandidate, RelayPlan } from "@outpost/shared";
 import { useQuery } from "@tanstack/react-query";
 import { CircleAlert } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Segmented, Spinner } from "@/components/ui/misc";
@@ -166,7 +167,12 @@ export function RelaySection({
             {errorMessage(plan.error)}
           </Notice>
         ) : shown?.coverage === "none" ? (
-          <p className="text-small text-ink-muted">No terrain is held under A or B, so there is no saying what either can see.</p>
+          <p className="text-small text-ink-muted">
+            No terrain is held under A or B, so there is no saying what either can see.{" "}
+            <Link to="/maps?offline=region" className="font-medium text-primary underline underline-offset-2">
+              Get terrain in Offline maps
+            </Link>
+          </p>
         ) : shown && listed.length === 0 ? (
           <p className="text-small text-ink">
             No ground within reach is in sight of both with these heights. A taller aerial at either end or at the relay may find some.

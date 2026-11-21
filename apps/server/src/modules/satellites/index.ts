@@ -26,7 +26,7 @@ import type {
 import { parseCelestrakCsv, SATELLITE_SOURCES } from "@outpost/shared";
 import type { FastifyInstance } from "fastify";
 import type { AppContext } from "../../core/context.ts";
-import { AppError } from "../../core/errors.ts";
+import { AppError, classifyNetworkError } from "../../core/errors.ts";
 import { createHttpClient, type HttpClient, USER_AGENT } from "../../core/http.ts";
 import { satelliteElements, satelliteFetches, satelliteTransmitters } from "../../db/schema.ts";
 import { parseSatnogsTransmitters } from "./satnogs.ts";
@@ -70,7 +70,11 @@ async function readText(http: HttpClient, url: string, accept: string): Promise<
 
 const message = (error: unknown) => {
   const text = error instanceof Error ? error.message : String(error);
-  return text === "fetch failed" ? "There is no connection to it." : text;
+  if (classifyNetworkError(error) === "offline" || text === "fetch failed") return "There is no connection to it.";
+  if ((error as { name?: unknown } | null)?.name === "TimeoutError" || classifyNetworkError(error) === "transient") {
+    return "It did not answer in time.";
+  }
+  return text;
 };
 
 export function createSatellitesService(ctx: AppContext, http: HttpClient): SatellitesService {
