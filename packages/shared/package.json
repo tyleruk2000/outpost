@@ -9,7 +9,8 @@
     "./games/allotment": "./src/games/allotment/index.ts",
     "./games/peg-solitaire": "./src/games/peg-solitaire/index.ts",
     "./games/steading": "./src/games/steading/index.ts",
-    "./radio-frequencies-data": "./src/radio-frequencies-data.ts"
+    "./radio-frequencies-data": "./src/radio-frequencies-data.ts",
+    "./sky": "./src/sky/index.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
