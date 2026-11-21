@@ -1666,3 +1666,11 @@ Tools → Night sky ([night-sky.md](night-sky.md)) and Tools → Celestial navig
 | Finding north and south | US Army, FM 21-76 *Survival*, chapter 18, "Using the stars", <https://www.sjsu.edu/people/michelle.hager/docs/fm_21-76_us_army_survival_manual_2006.pdf> | The Plough's pointers about five times their distance to Polaris; the Cross's long axis carried on to the south. |
 | Sight corrections and reduction | N. Bowditch, *The American Practical Navigator* (NGA Pub. 9, 2019), vol. 1, appendix B, articles 3 and 5 | Dip 1.76′ √h (metres); computed altitude and the time azimuth formula. Refraction is NOAA's model, as for Sun times (*Solar Calculation Details*, read 17 November 2026). |
 | What the tests are held to | US Naval Observatory API: `/api/celnav` at five moments from 2026 to 2035 and four places, and `/api/rstt/oneday` for seven days and places, fetched once and kept in `apps/server/test/fixtures/sky/` | Found: stars and Aries within 0.5′, the Sun within 0.5′, the Moon and planets within 2′; moonrise and moonset within 3 minutes, phases within 10 minutes; fixes from the Observatory's computed altitudes within 0.5 mile. |
+
+## Updating Outpost, read on 21 November 2026
+
+For Settings → Updates ([updating.md](updating.md)). Nothing from this is bundled.
+
+| Page | What it says | What was concluded |
+| --- | --- | --- |
+| jedisct1.github.io/minisign/, "Signature format" and "Public key format" | Public key: base64(`Ed` ‖ key id (8 bytes) ‖ Ed25519 public key). Signature: base64(algorithm ‖ key id ‖ signature), a trusted comment, then base64(global signature), where the global signature is `ed25519(<signature> ‖ <trusted_comment>)`. `Ed` signs the file, `ED` signs its BLAKE2b-512 hash; "New implementations must use the hashed signature format". | The server checks signatures with Node's Ed25519 and BLAKE2b-512 and nothing else; releases are signed with `minisign -S` (hashed). Checked both ways against minisign 0.11 from Debian bookworm (ISC licence, installed on the host by `install.sh`, not shipped). |

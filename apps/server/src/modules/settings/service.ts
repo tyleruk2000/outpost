@@ -148,6 +148,10 @@ export const settingsSchema = z.object({
   "tools.offForModels": z.array(z.string().trim().min(1).max(200)).max(50).default([]),
   /** Seconds between checks that storage locations are still connected. */
   "storage.checkIntervalSeconds": z.number().int().min(5).max(3600).default(30),
+  /** A storage location for new downloads of each kind of content (Storage, "Where new things go"). */
+  "storage.kindDefaults": z
+    .partialRecord(z.enum(["maps", "terrain", "places", "layers", "collections", "documents"]), z.string().min(1).max(100))
+    .default({}),
 });
 
 export type Settings = z.infer<typeof settingsSchema>;

@@ -45,6 +45,12 @@
 #   --clock-from-network  Let any device on the network set the clock (sets
 #                     OUTPOST_ALLOW_REMOTE_CLOCK=true). Without it only a browser on the Pi
 #                     itself may, which in Docker is the only one Outpost recognises.
+#   --no-updates      Do not add the service that installs Outpost updates from the app
+#                     (Settings → Updates). A container cannot replace itself; the
+#                     service loads a release Outpost has checked, checks its signature
+#                     again with minisign (installed from apt if missing), starts it, and
+#                     starts the version before again if the new one is not healthy
+#                     within three minutes. It does nothing else (see update.sh).
 #   --metrics         Give Outpost's figures to Prometheus at /metrics, to this computer
 #                     and the local network only (sets OUTPOST_METRICS=true). See
 #                     deploy/pi/monitoring.md.
@@ -64,6 +70,7 @@ NAME=outpost
 CLOCK=true
 CLOCK_FROM_NETWORK=false
 METRICS=false
+UPDATES=true
 for arg in "$@"; do
   case "$arg" in
     --install-docker) INSTALL_DOCKER=true ;;
@@ -77,8 +84,9 @@ for arg in "$@"; do
     --no-clock) CLOCK=false ;;
     --clock-from-network) CLOCK_FROM_NETWORK=true ;;
     --metrics) METRICS=true ;;
+    --no-updates) UPDATES=false ;;
     -h | --help)
-      sed -n '2,54p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,60p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *)
@@ -296,7 +304,15 @@ fi
 
 # ── Build and start ──────────────────────────────────────────────────────────
 say "Building and starting Outpost. The first build downloads map fonts and the search model and can take a long time on a Pi."
-run "${DOCKER[@]}" compose up -d --build
+release_image="$(grep '^OUTPOST_IMAGE=' .env 2>/dev/null | head -1 | cut -d= -f2- || true)"
+if [ -n "$release_image" ]; then
+  # Set by the update service: Outpost runs a release installed from the app. Building
+  # now would put this checkout's code under the release's name.
+  say "Outpost runs $release_image, installed from the app, so it is started as it is and not built from this checkout. To build from the checkout again, remove the OUTPOST_IMAGE line from .env."
+  run "${DOCKER[@]}" compose up -d --no-build
+else
+  run "${DOCKER[@]}" compose up -d --build
+fi
 
 port="$(grep '^OUTPOST_PORT=' .env 2>/dev/null | head -1 | cut -d= -f2- || true)"
 port="${port:-8080}"
@@ -365,6 +381,66 @@ ExecStart=/usr/local/lib/outpost/set-clock.sh ${clock_dir}"
     run sudo systemctl daemon-reload
     run sudo systemctl enable --now outpost-clock.path
     $CLOCK_FROM_NETWORK || say "Note: only a browser on this Pi may set the clock. To allow phones and laptops on your network, run this again with --clock-from-network."
+  fi
+fi
+
+# ── Installing updates ───────────────────────────────────────────────────────
+# The same pattern as the clock: a path unit watches one folder in Outpost's data volume,
+# and update.sh, root's, in /usr/local/lib, installs the release Outpost left there. It
+# checks the signature with its own copy of the release key, so a release the container
+# was given cannot be installed unless it is signed. Outpost reads "helper" to know the
+# service is there.
+if $UPDATES; then
+  say "Adding the service that installs Outpost updates from the app (and nothing else)."
+  volume="outpost_outpost-data"
+  data=""
+  if ! $DRY_RUN; then
+    data="$("${DOCKER[@]}" volume inspect "$volume" --format '{{ .Mountpoint }}' 2>/dev/null || true)"
+  fi
+  if [ -z "$data" ] && ! $DRY_RUN; then
+    say "Outpost's data volume ($volume) was not found, so the update service was not added. Run this again once Outpost is running."
+  elif [ ! -s "$REPO/deploy/release-key.pub" ]; then
+    say "This checkout has no release key (deploy/release-key.pub is empty), so the update service was not added: there is nothing to check a release with yet."
+  else
+    update_dir="${data:-/var/lib/docker/volumes/$volume/_data}/update"
+    command -v minisign >/dev/null 2>&1 || run sudo apt-get install -y minisign
+    run sudo install -d -m 0755 /usr/local/lib/outpost
+    run sudo install -m 0755 "$HERE/update.sh" /usr/local/lib/outpost/update.sh
+    run sudo install -m 0644 "$REPO/deploy/release-key.pub" /usr/local/lib/outpost/release-key.pub
+    run sudo install -d -m 0755 -o 1000 -g 1000 "$update_dir"
+    if $DRY_RUN; then
+      printf '  would write %s/helper\n' "$update_dir"
+    else
+      printf 'Written by deploy/pi/install.sh: outpost-update.path installs releases handed over here.\n' | sudo tee "$update_dir/helper" >/dev/null
+      sudo chown 1000:1000 "$update_dir/helper"
+    fi
+    docker_bin="$(command -v docker || echo /usr/bin/docker)"
+    path_unit="[Unit]
+Description=Outpost: watch for an update to install
+
+[Path]
+PathExists=${update_dir}/request
+
+[Install]
+WantedBy=multi-user.target"
+    service_unit="[Unit]
+Description=Outpost: install the update handed over
+After=docker.service
+
+[Service]
+Type=oneshot
+Environment=OUTPOST_DOCKER=${docker_bin}
+TimeoutStartSec=30min
+ExecStart=/usr/local/lib/outpost/update.sh ${update_dir} ${REPO}"
+    if $DRY_RUN; then
+      printf '  would write /etc/systemd/system/outpost-update.path:\n%s\n' "$path_unit" | sed 's/^/    /'
+      printf '  would write /etc/systemd/system/outpost-update.service:\n%s\n' "$service_unit" | sed 's/^/    /'
+    else
+      printf '%s\n' "$path_unit" | sudo tee /etc/systemd/system/outpost-update.path >/dev/null
+      printf '%s\n' "$service_unit" | sudo tee /etc/systemd/system/outpost-update.service >/dev/null
+    fi
+    run sudo systemctl daemon-reload
+    run sudo systemctl enable --now outpost-update.path
   fi
 fi
 

@@ -524,7 +524,7 @@ export function createCatalogService(ctx: AppContext, options: CatalogServiceOpt
     if (entryDownloads.some(isActive)) throw conflict(`"${entry.name}" is already being downloaded.`);
     adoptUnlinkedArchives();
     const installed = collections.list({ catalogEntryId: entryId })[0];
-    const location = request.locationId ? storage.get(request.locationId) : storage.getDefault();
+    const location = request.locationId ? storage.get(request.locationId) : storage.defaultFor("collections");
 
     const resolution = await resolveForDownload(entryId);
     let replacesCollectionId: string | null = null;
@@ -736,7 +736,7 @@ export function createCatalogService(ctx: AppContext, options: CatalogServiceOpt
       if (installed && !isNewer(installed.version, version) && installed.status !== "missing") {
         throw conflict(`"${entry.name}" is already in your library${installed.version ? ` (version ${installed.version})` : ""}.`);
       }
-      const location = request.locationId ? storage.get(request.locationId) : storage.getDefault();
+      const location = request.locationId ? storage.get(request.locationId) : storage.defaultFor("collections");
       await storage.assertSpace(location.id, (book ?? file)!.sizeBytes);
 
       const added: { collection: CollectionRow; documentId?: string; chapterCount?: number } = book

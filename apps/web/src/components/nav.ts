@@ -252,6 +252,12 @@ export const settingsSections: SettingsSection[] = [
   { id: "mesh", label: "Mesh radio", inContents: true, keywords: "meshtastic meshcore lora mqtt radio link mesh off grid messages" },
   { id: "backup", label: "Backup", inContents: true, keywords: "back up restore copy save everything password passphrase protect" },
   { id: "automatic-backups", label: "Automatic backups", inContents: true, keywords: "backup schedule every night nas" },
+  {
+    id: "export",
+    label: "Take everything out",
+    inContents: true,
+    keywords: "export take out everything leave my data open formats markdown vcard gpx geojson zip",
+  },
   { id: "https", label: "HTTPS", inContents: true, keywords: "secure certificate padlock not secure warning" },
   {
     id: "access",
@@ -259,7 +265,8 @@ export const settingsSections: SettingsSection[] = [
     inContents: true,
     keywords: "wifi wi-fi network lan phones share sharing household password sign in accounts",
   },
-  { id: "about", label: "This installation", inContents: true, keywords: "version update memory processor about" },
+  { id: "updates", label: "Updates", inContents: true, keywords: "update upgrade newer release usb stick install" },
+  { id: "about", label: "This installation", inContents: true, keywords: "version memory processor about" },
 ];
 
 /**

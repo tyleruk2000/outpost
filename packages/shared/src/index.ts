@@ -28,6 +28,8 @@ export * from "./downloads.ts";
 export * from "./emergency-plans.ts";
 export * from "./emergency-templates.ts";
 export * from "./encryption.ts";
+// Taking everything out (Settings), on a line of its own so that other additions merge cleanly.
+export * from "./export-all.ts";
 export * from "./games.ts";
 // The garden calendar and the record of sowings, on a line of its own so that other additions merge cleanly.
 export * from "./garden.ts";
@@ -90,6 +92,7 @@ export * from "./system.ts";
 export * from "./tides.ts";
 export * from "./tools.ts";
 // UTM, UPS and MGRS, on a line of their own.
+export * from "./update.ts";
 export * from "./utm.ts";
 export * from "./walk-reach.ts";
 export * from "./weather.ts";

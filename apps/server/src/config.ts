@@ -58,6 +58,10 @@ const envSchema = z.object({
   // The device: Outpost's figures for Prometheus at /metrics, and setting the server's clock from another device (docs/device.md).
   OUTPOST_METRICS: bool(false),
   OUTPOST_ALLOW_REMOTE_CLOCK: bool(false),
+  /** Where "Check for a newer version" looks for latest.json and its signature. */
+  OUTPOST_UPDATE_URL: z.string().url().default("https://github.com/tyleruk2000/outpost/releases/latest/download"),
+  /** A minisign public key to check releases with, in place of the one built in (see modules/update/release-key.ts). */
+  OUTPOST_RELEASE_KEY: z.string().optional(),
   OUTPOST_ALLOW_REMOTE_MODEL_SERVER: bool(false),
   OUTPOST_OLLAMA_ADDRESSES: list,
   OUTPOST_DOWNLOAD_HOSTS: list,
@@ -153,6 +157,10 @@ export interface Config {
   metrics: boolean;
   /** Let any device that can reach Outpost set the server's clock, not only this computer (modules/device). */
   allowRemoteClock: boolean;
+  /** Where the release page is: latest.json and latest.json.minisig are fetched from here. */
+  updateUrl: string;
+  /** A release key given at start-up, or null for the one built in. */
+  releaseKey: string | null;
   /** Let answers be written by a model server on the internet, not only one on this computer or the local network. */
   allowRemoteModelServer: boolean;
   /**
@@ -283,6 +291,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     ownAddressIsLocal: parsed.OUTPOST_OWN_ADDRESS_IS_LOCAL,
     metrics: parsed.OUTPOST_METRICS,
     allowRemoteClock: parsed.OUTPOST_ALLOW_REMOTE_CLOCK,
+    updateUrl: parsed.OUTPOST_UPDATE_URL.replace(/\/+$/, ""),
+    releaseKey: parsed.OUTPOST_RELEASE_KEY ?? null,
     allowRemoteModelServer: parsed.OUTPOST_ALLOW_REMOTE_MODEL_SERVER,
     ollamaAddresses: parsed.OUTPOST_OLLAMA_ADDRESSES,
     // A portable drive runs in a window a person is looking at: keep it quiet.

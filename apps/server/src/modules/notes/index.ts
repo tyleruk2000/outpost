@@ -11,7 +11,7 @@ import { badRequest, notFound } from "../../core/errors.ts";
 import { pathExists } from "../../core/fs-safe.ts";
 import { registerMultipart } from "../../core/multipart.ts";
 import { type AttachmentRow, contentDisposition, createAttachmentStore, MAX_ATTACHMENT_BYTES } from "./attachments.ts";
-import { createNotesExporter } from "./export.ts";
+import { createNotesExporter, type NotesExporter } from "./export.ts";
 import { createNotesService } from "./service.ts";
 
 export type { NotesService } from "./service.ts";
@@ -53,11 +53,19 @@ const duplicateBody = z.object({ withChildren: z.boolean().optional() });
 const flag = z.enum(["1", "true", "0", "false"]).optional();
 const isOn = (value: string | undefined) => value === "1" || value === "true";
 
+declare module "../../core/context.ts" {
+  interface Services {
+    /** Pages as Markdown, for "Take everything out" (modules/export-all). */
+    notesExport: NotesExporter;
+  }
+}
+
 export async function registerNotes(app: FastifyInstance, ctx: AppContext): Promise<void> {
   const attachments = createAttachmentStore(ctx);
   const notes = createNotesService(ctx, attachments);
   const exporter = createNotesExporter(ctx, notes, attachments);
   ctx.services.notes = notes;
+  ctx.services.notesExport = exporter;
 
   // The limits are the routes' own, given with each request (see core/multipart.ts).
   await registerMultipart(app);

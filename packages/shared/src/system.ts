@@ -57,6 +57,8 @@ export interface Settings {
   "maps.terrainSource": string;
   "maps.defaultMaxZoom": number;
   "storage.checkIntervalSeconds": number;
+  /** A storage location for new downloads of each kind of content, where one is set. */
+  "storage.kindDefaults": Partial<Record<"maps" | "terrain" | "places" | "layers" | "collections" | "documents", string>>;
   /** Days a file sent on the household board is kept; 0 keeps it until removed. */
   "board.fileDays": number;
   /** Let the model look things up in Outpost (Chat). Off by default. */

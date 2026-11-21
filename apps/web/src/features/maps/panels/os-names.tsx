@@ -71,7 +71,7 @@ export function OsNamesSection({ datasets, downloads }: { datasets: PlacesDatase
   const offer = check.data;
   const wanted = Boolean(offer && (!offer.installed || offer.updateAvailable || offer.installed.edition !== offer.edition));
   // Only the zip goes to the storage location; the names are read into the database.
-  const destination = useDestination(wanted && offer ? offer.sizeBytes : null);
+  const destination = useDestination(wanted && offer ? offer.sizeBytes : null, "places");
 
   return (
     <section aria-label={OS_NAMES_TITLE} className="mt-5 grid gap-3">

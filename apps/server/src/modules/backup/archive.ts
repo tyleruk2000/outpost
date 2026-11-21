@@ -235,8 +235,17 @@ export interface BackupCheck {
  * A protected backup is opened with `access`: the key of the file, which the run that
  * wrote it still holds, or a passphrase. Every chunk of it must open, and the manifest
  * its header shows must be the one inside.
+ *
+ * `inspect` is given the path of the copy of the database once it has passed, before
+ * the copy is removed: "Test a restore" counts what is in it there.
  */
-export async function verifyBackupFile(file: string, workDir: string, signal?: AbortSignal, access?: SealedAccess): Promise<BackupCheck> {
+export async function verifyBackupFile(
+  file: string,
+  workDir: string,
+  signal?: AbortSignal,
+  access?: SealedAccess,
+  inspect?: (database: string) => void,
+): Promise<BackupCheck> {
   // The same name as the snapshot a backup is made from, so that a copy left behind by
   // a crash is recognised and offered for removal like one of those.
   const database = path.join(workDir, `backup-snapshot-${Date.now()}${String(Math.floor(Math.random() * 1000)).padStart(3, "0")}.db`);
@@ -297,6 +306,7 @@ export async function verifyBackupFile(file: string, workDir: string, signal?: A
       sound = false;
     }
     if (!sound) throw new BackupDamaged("The database inside it is damaged or is not an Outpost database.");
+    inspect?.(database);
     return { manifest, entries };
   } finally {
     await removeDatabase(database);

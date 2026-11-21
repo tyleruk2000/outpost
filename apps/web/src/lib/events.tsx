@@ -52,6 +52,9 @@ const invalidations: Record<string, string[][]> = {
   // A Calibre library was read or brought in (features/library/calibre).
   "calibre.changed": [["calibre"]],
   "backup.changed": [["backup"], ["database"]],
+  "update.changed": [["update"]],
+  // An export of everything was started, finished, or its file removed (Settings, Take everything out).
+  "export-all.changed": [["export-all"]],
   // A check or a reclaim of the database finished, or its contents were worked out.
   "database.changed": [["database"]],
   "https.changed": [["https"]],

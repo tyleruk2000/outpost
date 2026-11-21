@@ -239,6 +239,8 @@ export interface StartRegionRequest extends EstimateRequest {
   name: string;
   regionId?: string;
   locationId?: string;
+  /** Where the terrain goes when not with the map. */
+  terrainLocationId?: string;
 }
 
 export function useStartRegion() {

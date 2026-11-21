@@ -4,7 +4,7 @@
  * default marked, one that is disconnected or too small shown with the reason and not
  * selectable. The location the last download went to is offered first next time.
  */
-import { formatBytes, type StorageLocation } from "@outpost/shared";
+import { type ContentKind, formatBytes, type StorageLocation } from "@outpost/shared";
 import { CircleAlert, HardDrive } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { ErrorState, Notice } from "@/components/page";
@@ -28,20 +28,24 @@ export interface Destination {
   /** A location that was asked for but cannot take this download. */
   displaced: Pick<StorageLocation, "id" | "name" | "status"> | undefined;
   requiredBytes: number | null;
+  /** The kind of content, when it is one that can have a location of its own. */
+  kind: ContentKind | undefined;
+  /** Whether the person chose the location in this visit. */
+  picked: boolean;
   choose: (id: string) => void;
   /** Call when a download starts, so the same location is offered next time. */
   remember: () => void;
 }
 
-/** The destination for a download of `requiredBytes` (null while its size is not known). */
-export function useDestination(requiredBytes: number | null): Destination {
+/** The destination for a download of `requiredBytes` (null while its size is not known) of one kind of content. */
+export function useDestination(requiredBytes: number | null, kind?: ContentKind): Destination {
   const storage = useStorage();
   const [remembered, setRemembered] = useStoredState<string | null>(STORAGE_KEYS.downloadLocation, isRemembered, null);
   const [picked, setPicked] = useState<string>();
   const locations = useMemo(() => storage.data?.locations ?? [], [storage.data]);
   const choice = useMemo(
-    () => chooseLocation(locations, requiredBytes, { picked, remembered }),
-    [locations, requiredBytes, picked, remembered],
+    () => chooseLocation(locations, requiredBytes, { picked, remembered, kind }),
+    [locations, requiredBytes, picked, remembered, kind],
   );
   const location = locations.find((candidate) => candidate.id === choice.locationId);
   const remember = useCallback(() => {
@@ -54,6 +58,8 @@ export function useDestination(requiredBytes: number | null): Destination {
     location,
     displaced: choice.displaced,
     requiredBytes,
+    kind,
+    picked: picked !== undefined,
     choose: setPicked,
     remember,
   };
@@ -84,6 +90,7 @@ export function DestinationPicker({
         onChange={destination.choose}
         requiredBytes={requiredBytes}
         approximate={approximate}
+        kind={destination.kind}
       />
       {!locationId ? (
         <Notice tone="warning" icon={<CircleAlert />}>

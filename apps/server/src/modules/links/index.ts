@@ -123,7 +123,7 @@ export async function registerLinks(app: FastifyInstance, ctx: AppContext): Prom
       kind: "document",
       title,
       url: link.url,
-      locationId: options.locationId ?? storage.getDefault().id,
+      locationId: options.locationId ?? storage.defaultFor("documents").id,
       // One folder for everything on its way in; the id keeps two files of the same name apart.
       relPath: `${SAVED_DIR}/${newId()}-${link.fileName}`,
       allowedHosts: [link.host],

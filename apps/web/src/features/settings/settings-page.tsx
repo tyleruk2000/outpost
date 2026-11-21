@@ -15,12 +15,14 @@ import { plural } from "@/lib/utils";
 import { AnswersSection } from "./answers-section";
 import { BackupSection } from "./backup-section";
 import { ClockSetting } from "./clock-setting";
+import { ExportSection } from "./export-section";
 import { HeightSetting } from "./height-setting";
 import { HttpsSection } from "./https-section";
 import { NumberSetting, SettingRow, SettingsSection, TextSetting } from "./parts";
 import { SemanticSection } from "./semantic-section";
 import { TextSizeSetting } from "./text-size-setting";
 import { ToolsSection } from "./tools-section";
+import { UpdateSection } from "./update-section";
 
 function Fact({ label, value }: { label: string; value: ReactNode }) {
   return (
@@ -322,8 +324,11 @@ export default function SettingsPage() {
           <MeshSettingsSection />
 
           <BackupSection />
+          <ExportSection />
 
           <HttpsSection settings={s} disabled={disabled} save={save} />
+
+          <UpdateSection />
         </>
       )}
 

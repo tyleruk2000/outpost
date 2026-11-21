@@ -13,7 +13,8 @@ what to do when something needs it:
 | --- | --- |
 | Each storage location | Connected or not (for a network share, whether the NAS is answering), and the free space. Outpost stops writing to a location when it has 268 MB left. |
 | Database | Its size, and what the last check found. Run a check from the Storage screen. |
-| Last backup | How long ago, and where it went. A week without one gets a word. |
+| Last backup | How long ago, where it went, and with automatic backups how many are kept and how old the oldest is. It needs attention when a backup due was not made because the location (the NAS, say) was not connected, and says so when the next one was made late for that reason. Old means more than two days with nightly backups, eight with weekly ones, a week with none. |
+| Restore tested | Shown once automatic backups are on: when a backup was last opened with **Test a restore** and what it held. Needs attention when none has been, or the last was over 90 days ago; a problem when the last test failed. |
 | SD card | SD cards never report their wear, so this says so. An eMMC card does, and its own estimate is shown. |
 | Memory | What Outpost uses, and what the computer has free. In Docker with a limit, what the container uses against it. |
 | Temperature | The processor's. A Raspberry Pi slows itself down between 80 and 85 °C. |

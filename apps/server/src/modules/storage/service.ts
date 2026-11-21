@@ -9,6 +9,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import type { ContentKind, ContentKindDefaults } from "@outpost/shared";
 import { eq, sql } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, conflict, notFound } from "../../core/errors.ts";
@@ -123,6 +124,15 @@ export interface StorageService {
   list(): LocationRow[];
   get(id: string): LocationRow;
   getDefault(): LocationRow;
+  /**
+   * Where a new download of this kind of content goes when the person has not chosen:
+   * the location set for the kind under Storage, or the default when none is set or the
+   * one set has been removed. A location that is set but not connected is still the
+   * answer, so that the caller says so rather than putting it somewhere else unasked.
+   */
+  defaultFor(kind: ContentKind): LocationRow;
+  /** The kinds of content set to go to each location. */
+  kindDefaults(): ContentKindDefaults;
   add(input: { name: string; path: string; kind: LocationKind; makeDefault?: boolean }): Promise<LocationRow>;
   update(id: string, patch: { name?: string; kind?: LocationKind; isDefault?: boolean }): LocationRow;
   remove(id: string): void;
@@ -398,15 +408,29 @@ export function createStorageService(ctx: AppContext): StorageService {
     return markAway(row.id, NOT_ANSWERING);
   }
 
+  function getDefault(): LocationRow {
+    const row = db.select().from(storageLocations).where(eq(storageLocations.isDefault, true)).get() ?? list()[0];
+    if (!row) throw new AppError("storage_unavailable", "No storage location has been set up yet.");
+    return row;
+  }
+
+  function kindDefaults(): ContentKindDefaults {
+    return ctx.services.settings.get("storage.kindDefaults");
+  }
+
   const service: StorageService = {
     list,
     get,
 
-    getDefault() {
-      const row = db.select().from(storageLocations).where(eq(storageLocations.isDefault, true)).get() ?? list()[0];
-      if (!row) throw new AppError("storage_unavailable", "No storage location has been set up yet.");
-      return row;
+    getDefault,
+
+    defaultFor(kind) {
+      const id = kindDefaults()[kind];
+      const row = id ? db.select().from(storageLocations).where(eq(storageLocations.id, id)).get() : undefined;
+      return row ?? getDefault();
     },
+
+    kindDefaults,
 
     async add(input) {
       const target = path.resolve(input.path);
@@ -487,6 +511,10 @@ export function createStorageService(ctx: AppContext): StorageService {
       }
       if (list().length === 1) throw conflict("Keep at least one storage location.");
       db.delete(storageLocations).where(eq(storageLocations.id, id)).run();
+      // A kind of content set to go here goes to the default from now on.
+      const defaults = kindDefaults();
+      const kept = Object.fromEntries(Object.entries(defaults).filter(([, locationId]) => locationId !== id));
+      if (Object.keys(kept).length !== Object.keys(defaults).length) ctx.services.settings.update({ "storage.kindDefaults": kept });
       if (row.isDefault) {
         const next = list()[0];
         if (next) setDefault(next.id);

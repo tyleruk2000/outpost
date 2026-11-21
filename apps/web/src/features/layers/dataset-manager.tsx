@@ -126,7 +126,7 @@ function EstimateResult({ estimate, onDone }: { estimate: ReferenceEstimate; onD
   const [chosen, setChosen] = useState<string[]>(() => estimate.items.map((item) => item.key));
   const items = estimate.items.filter((item) => chosen.includes(item.key));
   const bytes = items.reduce((sum, item) => sum + item.bytes, 0);
-  const destination = useDestination(bytes);
+  const destination = useDestination(bytes, "layers");
   const start = useStartDownloads();
   // A file that need not be kept once read (a Geofabrik extract): kept or not, as the person chooses.
   const optional = estimate.items.filter((item) => item.fileKeptByDefault !== undefined);

@@ -1,4 +1,4 @@
-import { formatBytes, type StorageLocation } from "@outpost/shared";
+import { CONTENT_KINDS, type ContentKind, formatBytes, type StorageLocation } from "@outpost/shared";
 import { ChoiceList } from "./choice-list";
 
 /**
@@ -16,12 +16,24 @@ export function locationProblem(location: Pick<StorageLocation, "status" | "free
   return null;
 }
 
-type PickerLocation = Pick<StorageLocation, "id" | "name" | "isDefault" | "status" | "freeBytes">;
+type PickerLocation = Pick<StorageLocation, "id" | "name" | "isDefault" | "status" | "freeBytes"> & {
+  defaultFor?: StorageLocation["defaultFor"];
+};
 
-/** The location to preselect: the default when it can take the file, otherwise the first that can. */
-export function preferredLocation(locations: PickerLocation[], requiredBytes: number | null): string | undefined {
+/**
+ * The location to preselect: the one this kind of content is set to go to (Storage,
+ * "Where new things go") when it can take the file, else the default, else the first that can.
+ */
+export function preferredLocation(locations: PickerLocation[], requiredBytes: number | null, kind?: ContentKind): string | undefined {
   const usable = locations.filter((location) => locationProblem(location, requiredBytes) === null);
-  return (usable.find((location) => location.isDefault) ?? usable[0])?.id;
+  const own = kind ? usable.find((location) => location.defaultFor?.includes(kind)) : undefined;
+  return (own ?? usable.find((location) => location.isDefault) ?? usable[0])?.id;
+}
+
+/** "Where new maps go", for the location a kind of content is set to go to. */
+export function kindDefaultText(kind: ContentKind): string {
+  const label = CONTENT_KINDS.find((entry) => entry.kind === kind)?.label ?? "downloads";
+  return `Where new ${label.toLowerCase()} go`;
 }
 
 /**
@@ -35,6 +47,7 @@ export function LocationPicker({
   onChange,
   requiredBytes,
   approximate,
+  kind,
 }: {
   label: string;
   locations: PickerLocation[];
@@ -44,6 +57,8 @@ export function LocationPicker({
   requiredBytes: number | null;
   /** The size is an estimate, so the wording says "about". */
   approximate?: boolean;
+  /** The kind of content, so that the location it is set to go to is marked. */
+  kind?: ContentKind;
 }) {
   return (
     <ChoiceList
@@ -60,9 +75,11 @@ export function LocationPicker({
               ? "Not connected"
               : problem === "too_small"
                 ? `Not enough room: this needs ${approximate ? "about " : ""}${formatBytes(requiredBytes)}`
-                : location.isDefault
-                  ? "Default for new downloads"
-                  : undefined,
+                : kind && location.defaultFor?.includes(kind)
+                  ? kindDefaultText(kind)
+                  : location.isDefault
+                    ? "Default for new downloads"
+                    : undefined,
           trailing: location.status === "available" && location.freeBytes !== null ? `${formatBytes(location.freeBytes)} free` : undefined,
           disabled: problem !== null,
         };

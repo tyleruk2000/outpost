@@ -21,6 +21,7 @@ import { registerDocuments } from "./documents/index.ts";
 import { registerDownloads } from "./downloads/index.ts";
 import { registerEmergencyPlans } from "./emergency-plans/index.ts";
 import { registerEncryption } from "./encryption/index.ts";
+import { registerExportAll } from "./export-all/index.ts";
 import { registerGames } from "./games/index.ts";
 import { registerGarden } from "./garden/index.ts";
 import { registerHighlights } from "./highlights/index.ts";
@@ -50,6 +51,7 @@ import { registerSemantic } from "./semantic/index.ts";
 import { registerSupplies } from "./supplies/index.ts";
 import { registerTides } from "./tides/index.ts";
 import { registerTools } from "./tools/index.ts";
+import { registerUpdate } from "./update/index.ts";
 import { registerWeather } from "./weather/index.ts";
 import { registerWebPages } from "./webpages/index.ts";
 
@@ -114,6 +116,10 @@ export const modules: ModuleRegister[] = [
   registerTides,
   // Bringing in a Calibre library (Library), after documents, on a line of its own.
   registerCalibre,
+  // Updating Outpost itself (Settings, Updates), after backups it makes first, on a line of its own.
+  registerUpdate,
+  // Taking everything out (Settings), after every module whose things it gathers, on a line of its own.
+  registerExportAll,
   // Tools a language model may call (Chat, and /mcp), last: they read from every module above.
   registerTools,
 ];

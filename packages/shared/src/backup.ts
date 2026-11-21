@@ -112,6 +112,53 @@ export interface BackupSchedule {
   /** A backup that is queued or being written now. */
   active: JobDto | null;
   right: BackupRight;
+  /**
+   * The last scheduled time the location was not connected, and when the backup owed
+   * for it was made after all (null while it has not been). Null when that has not happened.
+   */
+  away: BackupAway | null;
+  /** The backups kept on the location, as last listed. Null before any has been listed. */
+  kept: BackupsKept | null;
+  /** The last "Test a restore", and one that is queued or running now. */
+  restoreTest: RestoreTestResult | null;
+  restoreTestActive: JobDto | null;
+}
+
+export interface BackupAway {
+  /** The scheduled time the location was not there. */
+  dueAt: number;
+  locationName: string;
+  /** When the backup owed for that time was made, or null while it has not been. */
+  madeAt: number | null;
+}
+
+export interface BackupsKept {
+  /** When the folder was last listed. */
+  at: number;
+  /** Backups that passed their check. */
+  verified: number;
+  newestAt: number | null;
+  oldestAt: number | null;
+}
+
+/** What a restore of one stored backup would bring back, found by opening it into a scratch copy. */
+export interface RestoreTestResult {
+  /** When the test finished. */
+  at: number;
+  name: string;
+  backupCreatedAt: number;
+  /** True when the backup read back whole, its database passed SQLite's check, and this version can restore it. */
+  ok: boolean;
+  /** What was wrong, in words for a person, or null. */
+  problem: string | null;
+  appVersion: string | null;
+  /** Files in the backup, the database included. */
+  entries: number | null;
+  /** Database migrations the backup has had, against this version's. */
+  migrations: { backup: number; current: number } | null;
+  /** What the backup holds against what is here now. Empty when it could not be read. */
+  counts: Array<{ what: string; inBackup: number; now: number }>;
+  durationMs: number;
 }
 
 /** How a stored backup was started. Each kind is counted separately when old ones are removed. */
