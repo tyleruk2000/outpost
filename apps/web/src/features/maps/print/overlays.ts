@@ -26,6 +26,7 @@
  */
 import type { Bbox, ImageryStyleSource, InstalledRegion, MapSources, MarkerDto, TrackDto, TrackWithGeometryDto } from "@outpost/shared";
 import { heardSnapshot } from "@/features/heard/heard";
+import { rangesData, rangesShown } from "@/features/repeaters/map/range";
 import { formatDateTime, plural } from "@/lib/utils";
 import { greyLineData } from "../grey-line/geometry";
 import { greyLineShown, momentText } from "../grey-line/grey-line";
@@ -36,6 +37,7 @@ import type { MapStyleId } from "../lib/map-styles";
 import { buildStyle, MAP_FONTS, type MapTheme, SOURCE_IDS } from "../lib/style";
 import type { LayerSpecification, SourceSpecification, StyleSpecification } from "../lib/style-types";
 import { type FeatureCollection, markersData, type OverlaySource, overlayLayers, overlaySources, tracksData } from "../map/overlays";
+import { shadeStyle, shadesShowing } from "../map/shades";
 import { locatorGrid, locatorLengthAt } from "../radio/locator-grid";
 import { locatorGridShown } from "../radio/use-locator-grid";
 import { readable } from "./coverage";
@@ -292,6 +294,28 @@ export const PRINT_OVERLAYS: PrintOverlay[] = [
       draft.data["o-grey-line"] = greyLineData(at);
       draft.notes.push(
         `Day and night are drawn for ${momentText(at, "utc", "UTC", "24")}. The line is where the Sun rises or sets; the shading deepens at 6°, 12° and 18° below the horizon.`,
+      );
+    },
+  },
+  {
+    // The estimated radio ranges on the map on screen (repeaters and a point): the shading, its edge, the grey rings
+    // out to the first beyond the furthest ground in sight, and the typical-range circle, as drawn there.
+    id: "radio-range",
+    label: "Estimated radio range",
+    unavailable: () => (rangesShown().length === 0 ? "No estimated radio range is showing on the map." : undefined),
+    hint: () => {
+      const count = rangesShown().length;
+      return `${count === 1 ? "The range" : `${count} ranges`} as the map shows ${count === 1 ? "it" : "them"} now.`;
+    },
+    initially: () => rangesShown().length > 0,
+    usesTerrain: true,
+    apply: (draft) => {
+      draft.data["o-range"] = rangesData(rangesShown());
+      const shade = shadeStyle({ range: shadesShowing("range") });
+      Object.assign(draft.sources, shade.sources);
+      draft.layers.push(...shade.layers);
+      draft.notes.push(
+        "Estimated radio range: line of sight only, over the terrain held. Shaded ground is in sight; the dashed circle is the typical range, the middle of the furthest ground in sight over every direction; the grey rings give the distance.",
       );
     },
   },

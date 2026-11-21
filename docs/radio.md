@@ -117,10 +117,28 @@ line of sight** and **Estimated range**.
 
 **Estimated range** (a switch on a repeater's map card, a button on its screen) shades in
 green the ground from which a station at a chosen height would have line of sight to the
-repeater's aerial, over installed terrain, out to 100 km, with rings at 10, 25, 50 and
-100 km. The card gives the share in sight within 10 and 25 km and the furthest ground in
-sight; **Why this shape: look along one direction** shows the cross-section along any
-bearing. Up to eight ranges can be on; **Hide all ranges** clears them.
+repeater's aerial, over installed terrain, out to 100 km. The card gives the share in
+sight within 10 and 25 km, the typical range and the furthest ground in sight ("Typical
+range about 12 km; furthest 31 km to the north-east"); **Why this shape: look along one
+direction** shows the cross-section along any bearing. Up to eight ranges can be on;
+**Hide all ranges** clears them.
+
+On the map:
+
+- **Distance rings**, thin and grey, at 10, 25, 50 and 100 km, drawn only out to the first
+  ring beyond the furthest ground in sight. With the furthest ground 31 km away you get
+  10, 25 and 50 km.
+- **Typical range**, a dashed magenta circle labelled once ("Typical 12 km"). Ground is
+  looked at along 720 directions; on each, the furthest ground in sight is taken, and the
+  typical range is the middle of those 720 distances (the median): half the directions
+  reach further, half not as far. One long glen or a far summit does not pull it out. A
+  direction with no ground in sight counts as nothing, so a mast in a hollow gets a small
+  typical range even if one gap sees far. Where terrain runs out, the direction counts as
+  far as terrain is held, so with partial terrain the typical range may be larger. The
+  phone works it out the same way from terrain it kept.
+
+The same rings and circle appear in the disc of **Why this shape** (which reaches only as
+far as the last ring) and, with **Estimated radio range** ticked, on a printed map.
 
 The aerial height is as listed, or an assumed **10 m** (changeable; low so the estimate
 errs small). The other station is **Handheld 1.5 m**, **Car 2 m** or **Roof aerial 8 m**.
@@ -129,7 +147,8 @@ With no terrain you get the smooth-Earth radio horizon, about 4.12 × (√h1 + �
 trees, and can miss a narrow ridge.
 
 The ground in sight is a green wash with a solid green edge round each patch, and the map
-first fits nine tenths of it, so one far glen does not shrink the rest.
+first fits nine tenths of it, so one far glen does not shrink the rest. A small key under
+the answer names the wash, the typical range and the rings.
 
 **How accurate it is.** Treat the shading as the most a radio could see over bare ground.
 Over the terrain held, the share in sight is within about 1.5 percentage points of a

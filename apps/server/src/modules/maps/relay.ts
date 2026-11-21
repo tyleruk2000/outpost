@@ -18,6 +18,7 @@ import {
   type RelayPlan,
   rangeSampleIndex,
   type SightRange,
+  typicalRangeMeters,
 } from "@outpost/shared";
 import { z } from "zod";
 import { badRequest } from "../../core/errors.ts";
@@ -134,6 +135,7 @@ export function createRelayPlanner(ranger: SightRanger): RelayPlanner {
         ...fromA.range,
         seen: encodeBits(bits),
         bearings,
+        typicalMeters: typicalRangeMeters(bearings),
         shares: RANGE_SHARE_WITHIN_METERS.map((withinMeters) => ({ withinMeters, share: null })),
         hiddenShare: null,
       },

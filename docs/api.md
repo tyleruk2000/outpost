@@ -613,7 +613,7 @@ Types: `maps.ts` and the files named below. See [maps.md](maps.md).
 | `GET /api/maps/terrain/:z/:x/:y.webp` (or `.png`) | A terrain tile, likewise. |
 | `GET /api/maps/terrain-profile` | `from`, `to` (`lat,lon`, ≤1,000 km apart) → `TerrainProfile` (`radio.ts`): up to 4,096 heights, `null` and `gaps` where no terrain. |
 | `GET /api/maps/height` | `at` → `PointHeight`: `heightMeters`, `cellMeters`, or `null`s. |
-| `GET /api/maps/sight-range` | `at`, `aerial`, `station` (0 to 1,000 m) → `SightRange` (`radio-range.ts`): viewshed on 720 bearings to 100 km, `seen` bits base64, `bearings`, `shares`, `coverage` (`terrain`, `partial`, `none`, with `horizonMeters`). About 170 kB, cached. |
+| `GET /api/maps/sight-range` | `at`, `aerial`, `station` (0 to 1,000 m) → `SightRange` (`radio-range.ts`): viewshed on 720 bearings to 100 km, `seen` bits base64, `bearings`, `shares`, `typicalMeters` (median over the bearings of the furthest ground in sight, none in sight counting 0; null with no terrain), `coverage` (`terrain`, `partial`, `none`, with `horizonMeters`). About 170 kB, cached. |
 | `GET /api/maps/relay` | `a`, `b` (≤200 km), `aHeight`, `bHeight`, `relay` → `RelayPlan`: up to eight highest and eight nearest places in sight of both, and `both` as a range. |
 | `GET /api/maps/walk-reach` | `at`, `minutes` (30, 60, 90, 120, 180, 240), `pace` (`standard`, `slower`, `slowest`) → `WalkReach` (`walk-reach.ts`): Tobler's function over terrain, faster on paths, barred by water, cliffs and slopes over 45°; `minutesGrid` one byte a cell. |
 | `GET /api/maps/area-size` | `bbox`, `maxZoom`, `terrain=1` → `MapAreaSize`: tiles and bytes per layer from the archives' directories. `413` past 12,000 tiles a layer. |

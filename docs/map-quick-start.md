@@ -69,7 +69,9 @@ This is geometry over terrain, not a promise that a signal gets through.
 
 1. Press and hold the map at the spot (right-click with a mouse).
 2. Choose **Estimated radio range from here**.
-3. Ground in sight of an aerial there is shaded green, with rings at 10, 25, 50 and 100 km.
+3. Ground in sight of an aerial there is shaded green. The dashed magenta circle is the
+   typical range (half the directions reach further, half not as far); grey rings mark
+   10, 25, 50 and 100 km, only as far as the ground in sight reaches.
 
 The card under the map gives the answer in a few words; press **Show the details** (the
 upward arrow) for the rest. Set the heights under **Heights and details**. Woods, buildings and power are not counted:

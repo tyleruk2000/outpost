@@ -1,6 +1,7 @@
 /**
  * Why the estimated range has the shape it has: a disc seen from above, north up, with the ground in sight shaded
- * by bearing and distance out to 100 km (a radar's picture of the viewshed), and below it the ground's cross-section
+ * by bearing and distance out to the first distance ring beyond the furthest ground in sight (a radar's picture of the
+ * viewshed), with the typical range dashed over it, and below it the ground's cross-section
  * along one direction, chosen by pressing or dragging on the disc: the terrain with the Earth's curve, the line of
  * sight from the aerial to the place chosen, what is in the way and what is in sight beyond.
  *
@@ -19,7 +20,7 @@ import {
 } from "@outpost/shared";
 import { type KeyboardEvent, type PointerEvent, useMemo, useState } from "react";
 import { Spinner } from "@/components/ui/misc";
-import { formatReach, furthestOf, RANGE_RINGS, seenAt } from "@/features/repeaters/map/range";
+import { formatKm, formatReach, furthestOf, rangeExtent, ringsFor, seenAt, typicalOf } from "@/features/repeaters/map/range";
 import { errorMessage } from "@/lib/api";
 import { useDebounced } from "@/lib/use-debounced";
 import { formatNumber } from "@/lib/utils";
@@ -45,11 +46,18 @@ export interface Look {
 }
 
 /**
+ * How far out the disc reaches: to the last ring drawn, the first beyond the furthest ground in sight, as on the map;
+ * at most the distance the estimate looks to.
+ */
+export function discReach(range: SightRange): number {
+  return Math.min(range.maxMeters, ringsFor(rangeExtent(range)).at(-1) ?? range.maxMeters);
+}
+
+/**
  * The disc as two SVG paths: the ground in sight, and the ground not known (no terrain). One wedge per
  * `DISC_STEP_DEG` for each stretch, stretches closer than a pixel joined and those under half a pixel left out.
  */
-export function discPaths(range: SightRange, grid: RangeGrid): { seen: string; unknown: string } {
-  const max = range.maxMeters;
+export function discPaths(range: SightRange, grid: RangeGrid, max = discReach(range)): { seen: string; unknown: string } {
   const per = Math.max(1, Math.round((DISC_STEP_DEG * grid.bearingCount) / 360));
   const point = (bearingDeg: number, radius: number) => {
     const angle = bearingDeg * (Math.PI / 180);
@@ -81,7 +89,8 @@ export function discPaths(range: SightRange, grid: RangeGrid): { seen: string; u
     }
     if (start !== null) seen += wedge(left, right, start, end);
     const bearing = range.bearings[Math.round((middle * grid.bearingCount) / 360 + grid.bearingCount) % grid.bearingCount];
-    if (bearing?.unknownFromMeters != null) unknown += wedge(left, right, discRadius(bearing.unknownFromMeters, max), RADIUS);
+    if (bearing?.unknownFromMeters != null && bearing.unknownFromMeters < max)
+      unknown += wedge(left, right, discRadius(bearing.unknownFromMeters, max), RADIUS);
   }
   return { seen, unknown };
 }
@@ -94,12 +103,14 @@ export function describeLook(look: Look): string {
 /** `aerialName` is what the aerial is called in the words: "the aerial", "the repeater". */
 export function RangeWhy({ range, aerialName = "the aerial" }: { range: SightRange; aerialName?: string }) {
   const grid = useMemo(() => rangeGrid(range), [range]);
-  const paths = useMemo(() => discPaths(range, grid), [range, grid]);
+  const max = discReach(range);
+  const rings = ringsFor(rangeExtent(range));
+  const typical = typicalOf(range);
+  const paths = useMemo(() => discPaths(range, grid, discReach(range)), [range, grid]);
   const [look, setLook] = useState<Look>(() => {
     const far = furthestOf(range);
     return far ? { bearingDeg: far.bearingDeg, meters: far.meters } : { bearingDeg: 0, meters: 10_000 };
   });
-  const max = range.maxMeters;
   const chosen = useDebounced(look, 300);
   const end = useMemo(() => destinationPoint(range.at, chosen.bearingDeg, chosen.meters), [range.at, chosen]);
   const profile = useTerrainProfile(range.at, end);
@@ -201,9 +212,9 @@ export function RangeWhy({ range, aerialName = "the aerial" }: { range: SightRan
               strokeWidth={1.25}
               strokeLinejoin="round"
             />
-            {RANGE_RINGS.map((meters) => (
+            {rings.map((meters) => (
               <g key={meters}>
-                <circle cx={CENTRE} cy={CENTRE} r={discRadius(meters, max)} fill="none" stroke="var(--map-range)" strokeOpacity={0.7} />
+                <circle cx={CENTRE} cy={CENTRE} r={discRadius(meters, max)} fill="none" stroke="var(--ink-muted)" strokeOpacity={0.85} />
                 <text
                   x={CENTRE + 3}
                   y={CENTRE - discRadius(meters, max) + 11}
@@ -213,6 +224,17 @@ export function RangeWhy({ range, aerialName = "the aerial" }: { range: SightRan
                 </text>
               </g>
             ))}
+            {typical && typical > 0 ? (
+              <circle
+                cx={CENTRE}
+                cy={CENTRE}
+                r={discRadius(typical, max)}
+                fill="none"
+                stroke="var(--map-range-typical)"
+                strokeWidth={2}
+                strokeDasharray="5 2.5"
+              />
+            ) : null}
             <text x={CENTRE} y={8} textAnchor="middle" className="fill-ink text-[10px] font-medium">
               N
             </text>
@@ -229,6 +251,14 @@ export function RangeWhy({ range, aerialName = "the aerial" }: { range: SightRan
           <li className="flex items-center gap-1.5">
             <span aria-hidden className="inline-block size-3 rounded-sm bg-surface-strong" /> Hidden by nearer ground
           </li>
+          {typical && typical > 0 ? (
+            <li className="flex items-center gap-1.5">
+              <svg aria-hidden viewBox="0 0 12 6" className="h-1.5 w-3">
+                <line x1="0" x2="12" y1="3" y2="3" stroke="var(--map-range-typical)" strokeWidth="2" strokeDasharray="4 2" />
+              </svg>
+              Typical range, {formatKm(typical)}
+            </li>
+          ) : null}
           {paths.unknown ? (
             <li className="flex items-center gap-1.5">
               <span aria-hidden className="inline-block size-3 rounded-sm bg-[var(--chart-grid)]" /> No terrain

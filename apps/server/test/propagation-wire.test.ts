@@ -11,6 +11,7 @@
  * tolerances are stated with each.
  */
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { ANTENNA_PRESETS, type AntennaSpec, HF_BANDS, initialBearingDeg, type PredictionCell } from "@outpost/shared";
 import { afterAll, expect, it } from "vitest";
@@ -23,8 +24,12 @@ import { REFERENCE_CASES } from "./fixtures/propagation/cases.ts";
 import { tempDir } from "./temp.ts";
 import { describeWithVoacapData, seedVoacapData, voacapDataAbsent } from "./voacap-data.ts";
 
-const scratch = tempDir("outpost-hf-wire-");
-afterAll(() => fs.rmSync(scratch, { recursive: true, force: true }));
+// Made only when there is data to test with: with every test skipped, Vitest runs no afterAll, so a folder made
+// regardless was left behind and failed the run's check for leftovers.
+const scratch = voacapDataAbsent ? path.join(os.tmpdir(), "outpost-hf-wire-unused") : tempDir("outpost-hf-wire-");
+afterAll(() => {
+  if (!voacapDataAbsent) fs.rmSync(scratch, { recursive: true, force: true });
+});
 
 // The real engine and its data (voacap-data.ts): without the coefficients every test here is reported as skipped.
 seedVoacapData(path.join(scratch, "data"));

@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MapEngine } from "@/features/maps/map/engine";
-import { discPaths } from "@/features/maps/radio/range-why";
+import { discPaths, discReach } from "@/features/maps/radio/range-why";
 import {
   aerialOf,
   DEFAULT_RANGE_PREFS,
@@ -21,6 +21,7 @@ import {
   rangeLayers,
   rangeShade,
   readRange,
+  ringsFor,
 } from "./range";
 import { rangeFixture } from "./range-fixture";
 import { useRepeaterRange } from "./use-repeater-range";
@@ -50,16 +51,24 @@ describe("the estimate in words", () => {
   it("says the share in sight near and further out, and the furthest with its direction, not where most bearings end", () => {
     const reading = readRange(glen());
     expect(reading.title).toMatch(/^In sight: \d+% of the ground within 10 km, (under 1%|\d+%) within 25 km\.$/);
-    expect(reading.furthest).toBe("The furthest ground in sight is 31 km (19 mi) away to the north-east, through a gap about 2° wide.");
-    expect(reading.short).toMatch(/^\d+% in sight within 10 km, furthest 31 km north-east$/);
+    // Typical is the median over the bearings: 900 m on all but the few down the glen, which do not pull it out.
+    expect(reading.furthest).toBe("Typical range about 900 m; furthest 31 km to the north-east, through a gap about 2° wide.");
+    expect(reading.typicalMeans).toMatch(/^Typical is the middle of the furthest ground in sight/);
+    expect(reading.short).toMatch(/^\d+% in sight within 10 km, typical 900 m, furthest 31 km north-east$/);
     expect(reading.needsTerrain).toBe(false);
     expect(furthestOf(glen())).toMatchObject({ meters: 31_000, bearingDeg: 44.5, widthDeg: 1.5 });
 
     const open = readRange(range("terrain"));
     expect(open.title).toBe("In sight: all of the ground within 10 km, 52% within 25 km.");
-    expect(open.furthest).toBe("The furthest ground in sight is 18 km (11 mi) away to the north.");
-    expect(open.short).toBe("All in sight within 10 km, furthest 18 km north");
-    expect(readRange(range("partial")).short).toBe("All in sight within 10 km, furthest 18 km north, terrain partial");
+    expect(open.furthest).toBe("Typical range about 18 km; furthest 18 km to the north.");
+    expect(open.short).toBe("All in sight within 10 km, typical 18 km, furthest 18 km north");
+    expect(readRange(range("partial")).short).toBe("All in sight within 10 km, typical 18 km, furthest 18 km north, terrain partial");
+    // Nothing in sight on most bearings: typical is nothing, and it says so rather than "about 0 m".
+    const pit = readRange(range("terrain", { seen: (bearing, meters) => bearing < 90 && meters <= 5_000 }));
+    expect(pit.furthest).toBe("In most directions no ground is in sight; furthest 5 km to the north.");
+    expect(pit.typicalMeans).toBeNull();
+    // With no terrain there is no typical range to give.
+    expect(readRange(range("none")).typicalMeans).toBeNull();
   });
 
   it("keeps the station and assumed height from what an earlier version stored, and takes a range that was on as none chosen", () => {
@@ -112,11 +121,19 @@ describe("the estimate on the map", () => {
     expect(rings.every((ring) => ring.properties.name === "QZ3RNG" && ring.properties.dashed === false)).toBe(true);
     // No spiky outline joining the furthest ground on each bearing.
     expect(data.features.some((feature) => feature.properties.kind === "edge")).toBe(false);
-    const layers = rangeLayers({ ink: "#000", page: "#fff", range: "#13905a" } as never);
-    const edge = layers.find((layer) => layer.id === "o-range-edge") as { paint: Record<string, unknown> };
-    expect(edge.paint["line-color"]).toBe("#13905a");
-    const ring = layers.find((layer) => layer.id === "o-range-ring") as { paint: Record<string, unknown> };
-    expect(ring.paint["line-color"]).toBe("#13905a");
+    const layers = rangeLayers({ ink: "#000", inkMuted: "#4d595e", page: "#fff", range: "#13905a", rangeTypical: "#a3229a" } as never);
+    const paintOf = (id: string) => (layers.find((layer) => layer.id === id) as { paint: Record<string, unknown> }).paint;
+    expect(paintOf("o-range-edge")["line-color"]).toBe("#13905a");
+    // The rings are grey; the typical range is dashed in a hue of its own.
+    expect(paintOf("o-range-ring")["line-color"]).toBe("#4d595e");
+    expect(paintOf("o-range-typical")["line-color"]).toBe("#a3229a");
+    expect(paintOf("o-range-typical")["line-dasharray"]).toBeDefined();
+    // The typical range: one circle at the median of the furthest ground on each bearing, written once.
+    const typical = data.features.filter((feature) => feature.properties.kind === "typical");
+    expect(typical).toHaveLength(1);
+    expect(
+      data.features.filter((feature) => feature.properties.kind === "typical-label").map((feature) => feature.properties.label),
+    ).toEqual(["Typical 900 m"]);
     // With no terrain: a washed, dashed circle at the smooth-Earth horizon.
     const none = rangeData(range("none"));
     expect(none.features.map((feature) => feature.properties.kind)).toEqual(["area", "ring"]);
@@ -168,6 +185,22 @@ describe("the estimate on the map", () => {
     }
     // Nothing to edge with no terrain: the dashed circle is the line.
     expect(rangeData(range("none")).features.some((feature) => feature.properties.kind === "seen-edge")).toBe(false);
+  });
+
+  it("stops the rings at the first beyond the furthest ground in sight", () => {
+    expect(ringsFor(31_000)).toEqual([10_000, 25_000, 50_000]);
+    expect(ringsFor(25_000)).toEqual([10_000, 25_000]);
+    expect(ringsFor(4_000)).toEqual([10_000]);
+    expect(ringsFor(0)).toEqual([10_000]);
+    expect(ringsFor(60_000)).toEqual([10_000, 25_000, 50_000, 100_000]);
+    const kinds = (seenTo: number) =>
+      rangeData(range("terrain", { seen: (_bearing, meters) => meters <= seenTo }))
+        .features.filter((feature) => feature.properties.kind === "ring-label")
+        .map((feature) => feature.properties.label);
+    expect(kinds(12_000)).toEqual(["10 km", "25 km"]);
+    // The why view's disc reaches as far as the last ring, not always to 100 km.
+    expect(discReach(glen())).toBe(50_000);
+    expect(discReach(range("terrain", { seen: (_bearing, meters) => meters <= 3_000 }))).toBe(10_000);
   });
 
   it("draws the disc of the why view from the same answer, with the ground not known told apart", () => {
@@ -342,7 +375,7 @@ describe("the estimated range switch", () => {
     // Drawn, the card folds to one line and the outline is brought into view.
     await unfold();
     expect(screen.getByText(/^In sight: all of the ground within 10 km, 52% within 25 km\.$/)).toBeInTheDocument();
-    expect(screen.getByText("The furthest ground in sight is 18 km (11 mi) away to the north.")).toBeInTheDocument();
+    expect(screen.getByText("Typical range about 18 km; furthest 18 km to the north.")).toBeInTheDocument();
     expect(labelled()).toEqual(["QZ3RNG"]);
     await waitFor(() => expect(engine.fitBounds).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole("button", { name: "Get terrain in Offline maps" })).toBeNull();
@@ -406,14 +439,14 @@ describe("the estimated range switch", () => {
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     await unfold();
     expect(screen.getByText(/^In sight: all of the ground within 10 km, 52% within 25 km\.$/)).toBeInTheDocument();
-    expect(screen.getByText("The furthest ground in sight is 18 km (11 mi) away to the north.")).toBeInTheDocument();
+    expect(screen.getByText("Typical range about 18 km; furthest 18 km to the north.")).toBeInTheDocument();
   });
 
   it("folds the card to one line once the outline is drawn, on a phone as on a wide screen, and unfolds it again", async () => {
     show(15, vi.fn(), true);
     await userEvent.click(screen.getByRole("switch", { name: "Estimated range" }));
     const folded = await screen.findByRole("region", { name: "QZ3RNG: estimated range" });
-    expect(folded).toHaveTextContent(/QZ3RNG\s*All in sight within 10 km, furthest 18 km north$/);
+    expect(folded).toHaveTextContent(/QZ3RNG\s*All in sight within 10 km, typical 18 km, furthest 18 km north$/);
     expect(screen.queryByRole("radio", { name: "Handheld" })).toBeNull();
     await waitFor(() => expect(engine.fitBounds).toHaveBeenCalledTimes(1));
     await userEvent.click(screen.getByRole("button", { name: "Show the details" }));
