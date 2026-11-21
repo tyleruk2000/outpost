@@ -110,6 +110,7 @@ import { SightPanel } from "./radio/sight-panel";
 import { useLocatorGrid } from "./radio/use-locator-grid";
 import { useSight } from "./radio/use-sight";
 import { foldRecordingCard, TrackRecording, useRecordTool } from "./recording/record-ui";
+import { useResection } from "./resection/resection-card";
 import { SearchBox } from "./search-box";
 import { DesktopPanel, type Detent, detentHeight, MobileSheet, PANEL_TABS, type PanelTab, PanelTabs, PEEK_HEIGHT } from "./side-panel";
 import { PanelLoading } from "./ui";
@@ -827,8 +828,8 @@ export default function MapsPage() {
         now.startPlace(position);
         return;
       }
-      // The line-of-sight card hears presses on the map for itself.
-      if (now.tool === "sight") return;
+      // The line-of-sight and resection cards hear presses on the map for themselves.
+      if (now.tool === "sight" || now.tool === "resection") return;
       // While a page is being laid out the map is only moved about; a press opens nothing.
       if (now.tool === "print") return;
       // While drawing, a press on a saved place or another route is still a press on the map.
@@ -962,6 +963,15 @@ export default function MapsPage() {
 
   // Repeaters held on this device: drawn when switched on, opened by a press, handed to the line-of-sight check.
   // "Estimated radio range from here", from the menu a long press or a right-click opens: drawn with the repeaters' ranges.
+  // Where you are from compass bearings to landmarks: its card hears presses on the map for itself.
+  const resection = useResection({
+    engine,
+    active: tool === "resection",
+    markers: markers.data ?? [],
+    where: (position) => formatPosition(position.lat, position.lon, format).text,
+    onSave: (position) => startPlace(position, "Found from bearings"),
+    onDone: () => setTool("browse"),
+  });
   const pointRange = usePointRange({
     engine,
     where: (position) => formatPosition(position.lat, position.lon, format, engine?.getZoom()).text,
@@ -1299,7 +1309,9 @@ export default function MapsPage() {
   const card =
     repeaters.card ??
     reference.card ??
-    (tool === "measure" ? (
+    (tool === "resection" ? (
+      resection.card
+    ) : tool === "measure" ? (
       <MeasureCard
         points={measurePoints}
         onUndo={() => setMeasurePoints((points) => points.slice(0, -1))}

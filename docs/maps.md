@@ -57,6 +57,9 @@ On the map itself:
 - **Hill shading** appears as a button once terrain is installed.
 - **Contour lines** is the button below it (see [Contour lines](#contour-lines)). It
   is always there: pressed where there is nothing to draw them from, it says so.
+- **Find where you are from bearings** (the joined dots) works out your position from
+  compass bearings to landmarks (see
+  [Finding where you are from bearings](#finding-where-you-are-from-bearings)).
 - **Print or save as PDF** is the button below that (see
   [Printing a map](#printing-a-map)).
 - **Maidenhead locator grid**, **Grey line (day and night)**, **Satellite** (see
@@ -432,6 +435,39 @@ The height between lines follows the zoom, in metres:
 
 The tracing is done by [maplibre-contour](https://github.com/onthegomap/maplibre-contour)
 (BSD-3-Clause), built into Outpost and served from it like the rest of the app.
+
+## Finding where you are from bearings
+
+With no GPS, a position can be found as it is taught for map and compass (resection):
+take a bearing to two or three things you can see and find on the map, and you are
+where the lines back from them cross. It works on the installed map with no connection.
+
+1. Press **Find where you are from bearings**. The card asks for landmark A.
+2. Press the map where the landmark is, or press a saved place to put it exactly there.
+   **Use the centre of the map** places it under the cross. The card then asks for B.
+3. Type the bearing from you to each landmark, as read on the compass. On a phone opened
+   at an HTTPS address, **Phone's compass** shows the phone's own heading; point the
+   phone at the landmark and press **Take this bearing**.
+4. With two landmarks the card gives the point where their lines cross. **Add a third
+   landmark** for a check: the three lines make a small triangle, the triangle of error.
+   Its size shows how good the bearings were; your position is near it and may be
+   outside it.
+5. **Save this place** keeps the point as a saved place.
+
+Things to know:
+
+- **Bearings from** is **Magnetic north (a compass)** unless you choose **True north**.
+  Magnetic bearings are corrected by the declination at the point found, from the World
+  Magnetic Model, as on Tools → Compass; the card says how much.
+- Choose landmarks well apart in direction, ideally 60° to 120°. When two lines cross at
+  under 30° the card says how far each degree of error moves the point.
+- When two lines would only meet behind a landmark, or run side by side, the card says
+  so: one of the bearings, or a landmark's place on the map, is wrong.
+- A hand compass is read to a degree or two. At 5 km a degree is about 90 m, so expect a
+  point good to a few hundred metres, not to the metre. Iron, cars and power lines move a
+  needle, and a phone's compass more.
+- The phone's compass needs HTTPS and a phone with a compass; on a computer or a plain
+  http address the button is not shown and bearings are typed.
 
 ## Printing a map
 

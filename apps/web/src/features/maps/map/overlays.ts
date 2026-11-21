@@ -21,6 +21,7 @@ import { MAP_FONTS, type MapTheme } from "../lib/style";
 import type { LayerSpecification, SourceSpecification } from "../lib/style-types";
 import { gridLayers, sightLayers } from "../radio/layers";
 import { recordingLayers } from "../recording/overlay";
+import { resectionLayers } from "../resection/layers";
 
 export const OVERLAY_SOURCES = [
   "o-population",
@@ -37,6 +38,8 @@ export const OVERLAY_SOURCES = [
   "o-repeaters",
   "o-reference",
   "o-sight",
+  // Resection: back-bearings from landmarks (resection/).
+  "o-resection",
   "o-draw",
   "o-recording",
   "o-location",
@@ -227,6 +230,7 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
     ...referenceLayers(theme),
     // The path of a line-of-sight check.
     ...sightLayers(theme),
+    ...resectionLayers(theme),
     // A track being recorded; see recording/overlay.ts.
     ...recordingLayers(theme),
     // The person's own position.
