@@ -18,6 +18,8 @@ export * from "./compass.ts";
 export * from "./contacts.ts";
 // The country a point is in, from the Natural Earth boxes, on a line of its own.
 export * from "./country-at.ts";
+// The languages of each country, from GeoNames, for what Explore suggests: on a line of its own.
+export * from "./country-languages.ts";
 export * from "./database.ts";
 // The device Outpost runs on: its status and its clock, on a line of its own so that other additions merge cleanly.
 export * from "./device.ts";
@@ -63,6 +65,8 @@ export * from "./radio.ts";
 export * from "./radio-frequencies.ts";
 export * from "./radio-observations.ts";
 export * from "./radio-range.ts";
+// The ration calculator under Tools, on a line of its own.
+export * from "./rations.ts";
 // Readiness (the log of events, routine checks, the offline drill), on a line of its own.
 export * from "./readiness.ts";
 export * from "./recommended-models.ts";
@@ -79,8 +83,6 @@ export * from "./storage.ts";
 export * from "./sun.ts";
 export * from "./supplies.ts";
 export * from "./supplies-energy.ts";
-// The ration calculator under Tools, on a line of its own.
-export * from "./rations.ts";
 export * from "./system.ts";
 export * from "./tools.ts";
 // UTM, UPS and MGRS, on a line of their own.

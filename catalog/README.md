@@ -207,6 +207,10 @@ Packs live in `packs.json` beside this file (a person's own go in
   packs hold nothing larger than about 1.5 GB; the complete Wikipedia and the video
   collections stay as single entries for people who want them.
 - Say what the pack is for, not how large it is: the app works the size out.
+- `countries` (optional) lists the ISO codes of the countries a pack is for, when it is
+  for some only (Britain's weather, the rules of radio in the United States). Explore
+  lists such a pack first where Home is in one of them, and after the packs for
+  everyone elsewhere.
 
 ## Repeater sources
 

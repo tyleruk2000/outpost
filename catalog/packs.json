@@ -237,6 +237,9 @@
         "metoffice.factsheet-4-climate-of-the-british-isles",
         "metoffice.factsheet-14-microclimates",
         "metoffice.factsheet-15-weather-radar"
+      ],
+      "countries": [
+        "GB"
       ]
     },
     {
@@ -308,6 +311,9 @@
         "mca.maritime-safety-information-leaflet",
         "noaa.space-weather-scales",
         "kiwix.ham.stackexchange.com-en-all"
+      ],
+      "countries": [
+        "GB"
       ]
     },
     {
@@ -337,13 +343,20 @@
         "iaru.ethics-and-operating-procedures",
         "iaru.emergency-telecommunications-guide",
         "kiwix.ham.stackexchange.com-en-all"
+      ],
+      "countries": [
+        "US"
       ]
     },
     {
       "id": "radio-learning",
       "name": "Learning amateur radio",
       "description": "A beginner's course to read from the start: the Radio Engineering Handbook, with the operating reference and the worldwide band sheet beside it. All of it comes with Outpost, so adding it needs no connection.",
-      "entries": ["logbook73.handbook", "outpost.radio.operating-reference", "outpost.radio.world-amateur-bands"]
+      "entries": [
+        "logbook73.handbook",
+        "outpost.radio.operating-reference",
+        "outpost.radio.world-amateur-bands"
+      ]
     },
     {
       "id": "radio-guides",

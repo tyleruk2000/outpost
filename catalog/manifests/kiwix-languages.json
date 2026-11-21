@@ -1,0 +1,294 @@
+{
+  "$schema": "../schema/manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "kiwix-languages",
+  "name": "Wikipedia in other languages",
+  "description": "Wikipedia in widely spoken languages other than English, in the smallest edition the Kiwix library offers for each, so that Explore can suggest the encyclopedia in the language of the country Home is in. Every entry is fetched from Kiwix's own servers at the moment you ask for it; nothing is bundled with Outpost.",
+  "maintainers": [
+    "Outpost maintainers"
+  ],
+  "downloadHosts": [
+    "opds.library.kiwix.org",
+    "library.kiwix.org",
+    "download.kiwix.org",
+    "lb.download.kiwix.org"
+  ],
+  "entries": [
+    {
+      "id": "kiwix.wikipedia-fr-all-mini",
+      "name": "Wikipedia in French (introductions only, without images)",
+      "description": "All of the French Wikipedia, the free encyclopedia. This is the smallest edition: only the introduction of each article, without images.",
+      "category": "encyclopedias",
+      "publisher": "Wikipedia",
+      "language": "fr",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://fr.wikipedia.org",
+      "lastVerified": "2026-11-21",
+      "tags": [
+        "encyclopedia",
+        "french"
+      ],
+      "sizeBytes": 5669742592,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_fr_all",
+        "flavour": "mini"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-es-all-mini",
+      "name": "Wikipedia in Spanish (introductions only, without images)",
+      "description": "All of the Spanish Wikipedia, the free encyclopedia. This is the smallest edition: only the introduction of each article, without images.",
+      "category": "encyclopedias",
+      "publisher": "Wikipedia",
+      "language": "es",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://es.wikipedia.org",
+      "lastVerified": "2026-11-21",
+      "tags": [
+        "encyclopedia",
+        "spanish"
+      ],
+      "sizeBytes": 4114469888,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_es_all",
+        "flavour": "mini"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-de-all-mini",
+      "name": "Wikipedia in German (introductions only, without images)",
+      "description": "All of the German Wikipedia, the free encyclopedia. This is the smallest edition: only the introduction of each article, without images.",
+      "category": "encyclopedias",
+      "publisher": "Wikipedia",
+      "language": "de",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://de.wikipedia.org",
+      "lastVerified": "2026-11-21",
+      "tags": [
+        "encyclopedia",
+        "german"
+      ],
+      "sizeBytes": 4686161920,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_de_all",
+        "flavour": "mini"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-pt-all-mini",
+      "name": "Wikipedia in Portuguese (introductions only, without images)",
+      "description": "All of the Portuguese Wikipedia, the free encyclopedia. This is the smallest edition: only the introduction of each article, without images.",
+      "category": "encyclopedias",
+      "publisher": "Wikipedia",
+      "language": "pt",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://pt.wikipedia.org",
+      "lastVerified": "2026-11-21",
+      "tags": [
+        "encyclopedia",
+        "portuguese"
+      ],
+      "sizeBytes": 1703536640,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_pt_all",
+        "flavour": "mini"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-ar-all-mini",
+      "name": "Wikipedia in Arabic (introductions only, without images)",
+      "description": "All of the Arabic Wikipedia, the free encyclopedia. This is the smallest edition: only the introduction of each article, without images.",
+      "category": "encyclopedias",
+      "publisher": "Wikipedia",
+      "language": "ar",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://ar.wikipedia.org",
+      "lastVerified": "2026-11-21",
+      "tags": [
+        "encyclopedia",
+        "arabic"
+      ],
+      "sizeBytes": 3169766400,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_ar_all",
+        "flavour": "mini"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-ru-all-mini",
+      "name": "Wikipedia in Russian (introductions only, without images)",
+      "description": "All of the Russian Wikipedia, the free encyclopedia. This is the smallest edition: only the introduction of each article, without images.",
+      "category": "encyclopedias",
+      "publisher": "Wikipedia",
+      "language": "ru",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://ru.wikipedia.org",
+      "lastVerified": "2026-11-21",
+      "tags": [
+        "encyclopedia",
+        "russian"
+      ],
+      "sizeBytes": 5980164096,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_ru_all",
+        "flavour": "mini"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-zh-all-mini",
+      "name": "Wikipedia in Chinese (introductions only, without images)",
+      "description": "All of the Chinese Wikipedia, the free encyclopedia. This is the smallest edition: only the introduction of each article, without images.",
+      "category": "encyclopedias",
+      "publisher": "Wikipedia",
+      "language": "zh",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://zh.wikipedia.org",
+      "lastVerified": "2026-11-21",
+      "tags": [
+        "encyclopedia",
+        "chinese"
+      ],
+      "sizeBytes": 4828333056,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_zh_all",
+        "flavour": "mini"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-hi-all-mini",
+      "name": "Wikipedia in Hindi (introductions only, without images)",
+      "description": "All of the Hindi Wikipedia, the free encyclopedia. This is the smallest edition: only the introduction of each article, without images.",
+      "category": "encyclopedias",
+      "publisher": "Wikipedia",
+      "language": "hi",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://hi.wikipedia.org",
+      "lastVerified": "2026-11-21",
+      "tags": [
+        "encyclopedia",
+        "hindi"
+      ],
+      "sizeBytes": 438556672,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_hi_all",
+        "flavour": "mini"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-sw-all-nopic",
+      "name": "Wikipedia in Swahili (without images)",
+      "description": "All of the Swahili Wikipedia, the free encyclopedia, with the full text and without images.",
+      "category": "encyclopedias",
+      "publisher": "Wikipedia",
+      "language": "sw",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://sw.wikipedia.org",
+      "lastVerified": "2026-11-21",
+      "tags": [
+        "encyclopedia",
+        "swahili"
+      ],
+      "sizeBytes": 260231168,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_sw_all",
+        "flavour": "nopic"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-it-all-mini",
+      "name": "Wikipedia in Italian (introductions only, without images)",
+      "description": "All of the Italian Wikipedia, the free encyclopedia. This is the smallest edition: only the introduction of each article, without images.",
+      "category": "encyclopedias",
+      "publisher": "Wikipedia",
+      "language": "it",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://it.wikipedia.org",
+      "lastVerified": "2026-11-21",
+      "tags": [
+        "encyclopedia",
+        "italian"
+      ],
+      "sizeBytes": 3536007168,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_it_all",
+        "flavour": "mini"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-ja-all-mini",
+      "name": "Wikipedia in Japanese (introductions only, without images)",
+      "description": "All of the Japanese Wikipedia, the free encyclopedia. This is the smallest edition: only the introduction of each article, without images.",
+      "category": "encyclopedias",
+      "publisher": "Wikipedia",
+      "language": "ja",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://ja.wikipedia.org",
+      "lastVerified": "2026-11-21",
+      "tags": [
+        "encyclopedia",
+        "japanese"
+      ],
+      "sizeBytes": 3310633984,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_ja_all",
+        "flavour": "mini"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-id-all-mini",
+      "name": "Wikipedia in Indonesian (introductions only, without images)",
+      "description": "All of the Indonesian Wikipedia, the free encyclopedia. This is the smallest edition: only the introduction of each article, without images.",
+      "category": "encyclopedias",
+      "publisher": "Wikipedia",
+      "language": "id",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://id.wikipedia.org",
+      "lastVerified": "2026-11-21",
+      "tags": [
+        "encyclopedia",
+        "indonesian"
+      ],
+      "sizeBytes": 1876680704,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_id_all",
+        "flavour": "mini"
+      }
+    }
+  ]
+}

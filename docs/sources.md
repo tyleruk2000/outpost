@@ -1597,3 +1597,10 @@ are numbers in `packages/shared/src/rations.ts`, each with its source named on s
 | Need by age and sex (annex 1), +285 pregnant, +500 lactating, +100 kcal for every 5° below 20 °C, reducing a ration with a safety net for the vulnerable (table 12) | UNHCR, UNICEF, WFP and WHO, Food and Nutrition Needs in Emergencies (2002) | The PDF on WHO's IRIS, <https://iris.who.int/server/api/core/bitstreams/c6f336b9-0c36-4431-80fd-840c05344817/content>. Quoted. |
 | +191 kcal a day in the last trimester; +330 kcal a day in the first six months of breastfeeding | SACN, Dietary Reference Values for Energy (2011), paragraphs S50 and S51 | <https://assets.publishing.service.gov.uk/media/5a7edb37ed915d74e33f2d8f/SACN_Dietary_Reference_Values_for_Energy.pdf>, Open Government Licence. |
 | Twelve staple foods' energy, protein and fat | USDA FoodData Central, SR Legacy (April 2018) | Already held by Supplies (public domain, CC0); not read again. The server's tests hold each figure to the table. |
+
+## Languages of each country, for Explore
+
+| What | Where it comes from | How it was read |
+| --- | --- | --- |
+| The languages of each country, most used first | GeoNames, `countryInfo.txt`, <https://download.geonames.org/export/dump/countryInfo.txt> | Fetched once on 21 November 2026; the language column only, kept in `packages/shared/src/country-languages.ts`. Licence: Creative Commons Attribution 4.0, per GeoNames' `readme.txt`. |
+| Wikipedia in twelve more languages (French, Spanish, German, Portuguese, Arabic, Russian, Chinese, Hindi, Swahili, Italian, Japanese, Indonesian) | The Kiwix library feed, `opds.library.kiwix.org`, one query per language for `wikipedia_<code>_all` | Read on 21 November 2026 for the names, editions and sizes in `catalog/manifests/kiwix-languages.json`; the smallest edition of each (introductions only; Swahili's has no such edition, so the one without images). CC BY-SA 4.0, as Wikipedia. |

@@ -9,8 +9,38 @@ readers, it is in backups, and it travels on a portable drive. The routes are in
 [security.md](security.md#files-people-upload), where files are kept in
 [storage.md](storage.md), and how search reads them in [search.md](search.md).
 
-This page is about two things: **audiobooks**, and **a PDF that Outpost makes**, which can
-be added to the library from the screen that made it.
+This page is about three things: **what Explore suggests for where you live**,
+**audiobooks**, and **a PDF that Outpost makes**, which can be added to the library from
+the screen that made it.
+
+## Suggested for where you live
+
+At the top of **Explore**, Outpost suggests what to download for the country Home is in
+(Home is the saved place with the home icon; mark one on the Maps screen). The country
+is the one whose outline holds Home; near a border it may be the neighbour, and the
+screen says which it took.
+
+The same rows are offered in every country:
+
+- the map of the smallest ready-made region round Home, and terrain for it;
+- place names for the country, from GeoNames;
+- OpenStreetMap's reference layers for the country (hospitals, emergency services,
+  shelters, food and supplies, walking and cycling routes), from a Geofabrik extract;
+- Wikipedia in the country's languages, where the catalogue has it (the languages are
+  GeoNames' list for the country; English is the catalogue's own);
+- radio: frequencies, the band plan of the region and the country's repeater lists;
+- weather and hazards: a forecast from Open-Meteo, GDACS and the USGS worldwide,
+  MeteoAlarm's warnings in Europe and the National Weather Service's in the United States.
+
+In the United Kingdom four more follow, as additions: Ordnance Survey place names, the
+Food Standards Agency's food shops, the Environment Agency's flood zones and river
+levels, and Met Office warnings. Packs for one country (Britain's weather, radio in the
+UK or the United States) are listed first in that country and after the others elsewhere.
+
+Each row opens the screen that fetches it, which shows the size before anything starts;
+an encyclopedia downloads from Explore itself. A row says **Already here** when the map,
+terrain or place names for Home are installed. Nothing is fetched to make the
+suggestions.
 
 ## Audiobooks
 

@@ -27,6 +27,9 @@ import { type CategoryItem, CategoryNav } from "./category-nav";
 import { DownloadDialog } from "./download-dialog";
 import { EntryCard, EntryCardSkeleton } from "./entry-card";
 import { PackList } from "./packs";
+// What to download for where Home is (suggestions.ts).
+import { SuggestedForHome, useSuggestions } from "./suggested";
+import { packsFor } from "./suggestions";
 import { useCatalog } from "./use-catalog";
 
 const showOptions: Array<{ value: ShowFilter; label: string }> = [
@@ -41,6 +44,7 @@ const sortOptions: Array<{ value: SortOrder; label: string }> = [
   { value: "largest", label: "Largest first" },
 ];
 
+const NO_ENTRIES: CatalogEntryDto[] = [];
 const grid = "grid grid-cols-[repeat(auto-fill,minmax(min(100%,21rem),1fr))] gap-4";
 /** How many of a category the whole catalogue shows under its heading; the rest are a press away. */
 const PER_GROUP = 6;
@@ -190,7 +194,10 @@ export default function ExplorePage() {
   const markedEntry = markedId ? entries.find((entry) => entry.id === markedId) : undefined;
   const requested = params.get("category");
   // A link to one entry opens its category unless the address names another.
-  const packs = catalog.data?.packs ?? [];
+  const suggested = useSuggestions(catalog.data?.entries ?? NO_ENTRIES);
+  const homeCountry = suggested.suggestions?.state === "ready" ? suggested.suggestions.country.code : null;
+  // Packs for Home's country first: Britain's weather and radio are not the first thing to offer in Kenya.
+  const packs = packsFor(catalog.data?.packs ?? [], homeCountry);
   const shelfCount = useLibrivoxShelf().data?.books.length ?? 0;
   const category: CategoryChoice =
     requested === "packs" && packs.length > 0
@@ -327,6 +334,13 @@ export default function ExplorePage() {
             </div>
           ) : (
             <div className="min-w-0 max-lg:mt-3">
+              {category === "all" && !filtered ? (
+                <SuggestedForHome
+                  suggestions={suggested.suggestions}
+                  pending={suggested.pending}
+                  onDownload={(chosen) => setDownloading({ entry: chosen, open: true })}
+                />
+              ) : null}
               {packs.length > 0 && category === "all" && !filtered ? (
                 <p className="mb-4 text-small text-ink-muted">
                   Not sure where to start?{" "}

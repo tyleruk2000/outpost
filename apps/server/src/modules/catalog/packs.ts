@@ -23,6 +23,11 @@ const packSchema = z.strictObject({
   name: z.string().trim().min(1).max(80),
   description: z.string().trim().min(1).max(600),
   entries: z.array(z.string().min(1).max(120)).min(1).max(100),
+  /** Where a pack is for one country or a few (its weather, its radio rules): ISO codes. Explore offers it first there, and lists it among the rest elsewhere. */
+  countries: z
+    .array(z.string().regex(/^[A-Z]{2}$/, "Countries are two-letter ISO codes in capitals, such as GB."))
+    .max(20)
+    .optional(),
 });
 
 const fileSchema = z.strictObject({
@@ -81,7 +86,13 @@ export function loadPacks(files: string[], knownEntries: ReadonlySet<string>): L
       }
       if (entryIds.length === 0) continue;
       seen.add(pack.id);
-      packs.push({ id: pack.id, name: pack.name, description: pack.description, entryIds });
+      packs.push({
+        id: pack.id,
+        name: pack.name,
+        description: pack.description,
+        entryIds,
+        ...(pack.countries ? { countries: pack.countries } : {}),
+      });
     }
   }
   return { packs, problems };
