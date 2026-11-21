@@ -83,6 +83,8 @@ const SolarClockPage = lazy(() => import("./features/solar-clock/solar-clock-pag
 const CompassPage = lazy(() => import("./features/compass/compass-page"));
 const TidesPage = lazy(() => import("./features/tides/tides-page"));
 const GardenPage = lazy(() => import("./features/garden/garden-page"));
+const NightSkyPage = lazy(() => import("./features/night-sky/night-sky-page"));
+const CelestialNavigationPage = lazy(() => import("./features/celestial-navigation/celnav-page"));
 const PropagationPage = lazy(() => import("./features/propagation/propagation-page"));
 const PlansPage = lazy(() => import("./features/propagation/plans/plans-page"));
 const PlanPage = lazy(() => import("./features/propagation/plans/plan-page"));
@@ -193,6 +195,8 @@ export function App() {
           <Route path="tools/compass" element={<CompassPage />} />
           <Route path="tools/tides" element={<TidesPage />} />
           <Route path="tools/garden" element={<GardenPage />} />
+          <Route path="tools/night-sky" element={<NightSkyPage />} />
+          <Route path="tools/celestial-navigation" element={<CelestialNavigationPage />} />
           <Route path="prepare/weather" element={<WeatherPage />} />
           <Route path="prepare/plans" element={<EmergencyPlansPage />} />
           <Route path="prepare/plans/:id" element={<EmergencyPlanPage />} />

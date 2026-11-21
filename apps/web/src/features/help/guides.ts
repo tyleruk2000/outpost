@@ -299,6 +299,22 @@ export const GUIDES: Guide[] = [
     opens: { to: "/tools/tides", label: "Open Tide times" },
   },
   {
+    slug: "night-sky",
+    file: "night-sky.md",
+    group: "using",
+    about: "The Moon tonight, a chart of the stars and planets, and finding north by the stars.",
+    keywords: "stars moon planets constellations polaris",
+    opens: { to: "/tools/night-sky", label: "Open Night sky" },
+  },
+  {
+    slug: "celestial-navigation",
+    file: "celestial-navigation.md",
+    group: "using",
+    about: "A position from sextant sights, with the almanac worked out on the device.",
+    keywords: "sextant sight fix latitude longitude almanac",
+    opens: { to: "/tools/celestial-navigation", label: "Open Celestial navigation" },
+  },
+  {
     slug: "garden",
     file: "garden.md",
     group: "using",

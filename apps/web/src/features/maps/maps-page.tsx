@@ -24,6 +24,7 @@ import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Skeleton, Tooltip } from "@/components/ui/misc";
+import { useCelnavOnMap } from "@/features/celestial-navigation/on-map";
 import { CentreLines } from "@/features/compass/magnetic-glance";
 import { useDownloads } from "@/features/downloads/use-downloads";
 import { useReferenceLayers } from "@/features/layers/use-reference-layers";
@@ -980,6 +981,8 @@ export default function MapsPage() {
     onSave: (position) => startPlace(position, "Found from bearings"),
     onDone: () => setTool("browse"),
   });
+  // Lines of position from Celestial navigation, when the map is opened from it (?celnav=1).
+  const celnav = useCelnavOnMap({ engine });
   const pointRange = usePointRange({
     engine,
     where: (position) => formatPosition(position.lat, position.lon, format, engine?.getZoom()).text,
@@ -1324,6 +1327,7 @@ export default function MapsPage() {
     );
 
   const card =
+    celnav.card ??
     repeaters.card ??
     reference.card ??
     (tool === "resection" ? (

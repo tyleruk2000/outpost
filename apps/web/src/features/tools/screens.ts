@@ -7,9 +7,11 @@
 import {
   BatteryCharging,
   CookingPot,
+  DraftingCompass,
   Droplets,
   Hammer,
   MonitorSmartphone,
+  MoonStar,
   Mountain,
   Navigation,
   QrCode,
@@ -98,6 +100,21 @@ export const toolScreens: SectionScreen[] = [
     about:
       "Magnetic north and the map's grid north at a place, what to add or subtract between map and compass, and the phone's own compass corrected by them.",
     keywords: "bearing north direction declination magnetic variation grid magnetic angle",
+  },
+  {
+    to: "/tools/night-sky",
+    label: "Night sky",
+    icon: MoonStar,
+    keywords: "stars star chart moon phase moonrise moonset planets constellations polaris north star southern cross astronomy",
+    about: "The Moon tonight, a chart of the stars and planets for your place now or at another time, and finding north by the stars.",
+  },
+  {
+    to: "/tools/celestial-navigation",
+    label: "Celestial navigation",
+    icon: DraftingCompass,
+    keywords: "sextant sight sun sight star sight noon sight latitude longitude position fix almanac line of position navigation",
+    about:
+      "Where you are from sextant sights of the Sun, Moon, planets and stars, with the almanac worked out here. For learning and as a fallback.",
   },
   {
     to: "/tools/tides",
