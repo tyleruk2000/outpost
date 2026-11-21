@@ -87,9 +87,10 @@ function village(now = T0): SteadingState {
 describe("the valley", () => {
   it("is a grid of known ground, with the first buildings on meadow", () => {
     expect(VALLEY_ROWS.every((row) => row.length === VALLEY_WIDTH)).toBe(true);
-    for (let y = 0; y < VALLEY_HEIGHT; y++) for (let x = 0; x < VALLEY_WIDTH; x++) expect(terrainAt(x, y)).not.toBeNull();
-    for (const b of newSteading(T0).buildings) expect(terrainAt(b.x, b.y)).toBe("meadow");
-    expect(terrainAt(-1, 0)).toBeNull();
+    const { map } = newSteading(T0);
+    for (let y = 0; y < VALLEY_HEIGHT; y++) for (let x = 0; x < VALLEY_WIDTH; x++) expect(terrainAt(map, x, y)).not.toBeNull();
+    for (const b of newSteading(T0).buildings) expect(terrainAt(map, b.x, b.y)).toBe("meadow");
+    expect(terrainAt(map, -1, 0)).toBeNull();
   });
 
   it("holds the real figures for a household's day", () => {
@@ -345,7 +346,7 @@ describe("a stored settlement", () => {
   it("is refused when damaged", () => {
     const s = newSteading(T0);
     expect(readSteading(null)).toBeNull();
-    expect(readSteading({ ...s, v: 2 })).toBeNull();
+    expect(readSteading({ ...s, v: 3 })).toBeNull();
     expect(readSteading({ ...s, stock: { ...s.stock, logs: -1 } })).toBeNull();
     expect(readSteading({ ...s, buildings: [...s.buildings, { ...s.buildings[0], id: 99 }] })).toBeNull();
     expect(readSteading({ ...s, buildings: [{ ...s.buildings[0], kind: "castle" }] })).toBeNull();

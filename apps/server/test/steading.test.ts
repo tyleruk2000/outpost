@@ -82,6 +82,33 @@ describe("the settlement", () => {
     expect(back.body.settlement.stock.logs).toBe(ahead.body.settlement.stock.logs);
   });
 
+  it("founds a settlement on the land and seed chosen, only once there is none", async () => {
+    const refused = await act({ type: "found", land: "desert", seed: "tarn-oak-417" });
+    expect(refused.status).toBe(409);
+    expect(refused.body.error.message).toMatch(/Start again first/);
+    await app.api("DELETE", "/api/games/steading");
+    const bad = await act({ type: "found", land: "moon", seed: "x" });
+    expect(bad.status).toBe(400);
+    const founded = await act({ type: "found", land: "desert", seed: "tarn-oak-417" });
+    expect(founded.status).toBe(200);
+    expect(founded.body.settlement.map).toEqual({ land: "desert", seed: "tarn-oak-417" });
+    const read = await get();
+    expect(read.body.started).toBe(true);
+    expect(read.body.settlement.map.land).toBe("desert");
+    // Belts are checked at the route and by the engine.
+    const store = read.body.settlement.buildings[0];
+    const tooMany = await act({
+      type: "belts",
+      tier: "roller",
+      squares: Array.from({ length: 200 }, (_, i) => ({ x: i % 48, y: 0, dir: "e" })),
+    });
+    expect(tooMany.status).toBe(400);
+    const onHouse = await act({ type: "belts", tier: "roller", squares: [{ x: (store?.x ?? 0) - 1, y: (store?.y ?? 0) + 1, dir: "e" }] });
+    expect(onHouse.status).toBe(409);
+    expect(onHouse.body.error.message).toMatch(/building stands/);
+    await app.api("DELETE", "/api/games/steading");
+  });
+
   it("says plainly when the kept settlement cannot be read, and Start again forgets it", async () => {
     app.ctx.services.games.saves.update("steading", () => ({ state: { v: 99 }, result: null }));
     const read = await get();

@@ -5,23 +5,30 @@
  * the landing's trade, and the milestones. Lists with hairlines, in the app's own chrome.
  */
 import {
+  ARRAY_KWP,
+  BANKS,
   type Building,
   buildable,
   CONTRACT_IDS,
   CONTRACTS,
   type ContractId,
+  costOf,
   destinationsFor,
   distance,
   type Flows,
+  GENERATOR_KW,
   GOOD_IDS,
   GOODS,
   type GoodId,
   HOUSE_NEEDS,
-  HOUSE_TAKES,
+  heatNeed,
+  houseTakes,
+  isBank,
   isWorkplace,
   KINDS,
   type KindId,
   KWH_PER_BUNDLE,
+  LANDS,
   MILESTONE_IDS,
   MILESTONE_NAMES,
   MODE_IDS,
@@ -37,13 +44,12 @@ import {
   type SteadingAction,
   type SteadingState,
   storeCap,
-  TERRAIN_NAMES,
+  TANK_LITRES,
   terrainAt,
   UNLOCK_STEPS,
-  WELL_LITRES,
   WELL_REACH,
   WHEEL_KWH,
-  WHEEL_REACH,
+  wellLitres,
   YARD_CAP,
 } from "@outpost/shared/games/steading";
 import { X } from "lucide-react";
@@ -54,11 +60,13 @@ import { ConfirmDialog } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/misc";
 import { cn, formatDate, formatNumber } from "@/lib/utils";
+import { BeltDetail } from "./belts";
 import { KIND_ICONS } from "./valley";
 import {
   amount,
   amountsWords,
   capital,
+  groundName,
   held,
   houseShort,
   kindName,
@@ -84,8 +92,10 @@ const GROUND_WORDS: Record<string, string> = {
   rock: "A quarry on the meadow beside it cuts stone.",
   clay: "A clay pit on the meadow beside it digs clay.",
   river: "A landing, a water wheel or the waterworks stand on the meadow beside it.",
-  hill: "Open fell: nothing is built up here.",
-  coal: "A coal pit on the meadow beside it digs coal, once 12 people live here.",
+  hill: "Open fell: nothing is built up here but a wind turbine.",
+  coal: "A coal pit on the open ground beside it digs coal, once 12 people live here.",
+  ore: "An ore mine on the open ground beside it digs iron ore, once 12 people live here.",
+  water: "Still water: a landing stands beside it.",
 };
 
 /** The panel for the square in hand. */
@@ -97,6 +107,7 @@ export function SquarePanel({
   busy,
   act,
   onClose,
+  onStartBelt,
 }: {
   ref?: Ref<HTMLElement>;
   state: SteadingState;
@@ -105,10 +116,19 @@ export function SquarePanel({
   busy: boolean;
   act: Act;
   onClose: () => void;
+  /** Starts laying a belt from this square. */
+  onStartBelt: (square: { x: number; y: number }) => void;
 }) {
   const building = state.buildings.find((b) => b.x === square.x && b.y === square.y);
-  const ground = terrainAt(square.x, square.y) ?? "meadow";
-  const title = building ? kindName(building) : capital(TERRAIN_NAMES[ground]);
+  const belt = state.belts.find((b) => b.x === square.x && b.y === square.y);
+  const ground = terrainAt(state.map, square.x, square.y) ?? "meadow";
+  const title = building
+    ? kindName(building)
+    : belt
+      ? belt.dir === "x"
+        ? "Belt junction"
+        : "Belt"
+      : capital(groundName(state, square.x, square.y));
   return (
     <section ref={ref} aria-labelledby="steading-square" className="scroll-mt-4">
       <div className="flex items-start justify-between gap-3">
@@ -125,8 +145,23 @@ export function SquarePanel({
       <div className="mt-3">
         {building ? (
           <BuildingDetail state={state} flows={flows} building={building} busy={busy} act={act} />
-        ) : ground === "meadow" ? (
-          <BuildHere state={state} square={square} busy={busy} act={act} />
+        ) : belt ? (
+          <BeltDetail state={state} flows={flows} square={square} busy={busy} act={act} />
+        ) : ground === "meadow" || ground === "hill" ? (
+          <div className="grid gap-4">
+            {ground === "hill" ? <p className="text-small text-ink">{GROUND_WORDS.hill}</p> : null}
+            <BuildHere state={state} square={square} busy={busy} act={act} />
+            {ground === "meadow" ? (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border pt-3">
+                <Button size="sm" onClick={() => onStartBelt(square)}>
+                  Lay a belt from here
+                </Button>
+                <p className="min-w-0 flex-1 basis-48 text-small text-ink-muted">
+                  A belt carries what a building makes, square by square, into another building.
+                </p>
+              </div>
+            ) : null}
+          </div>
         ) : (
           <p className="text-small text-ink">{GROUND_WORDS[ground]}</p>
         )}
@@ -135,12 +170,23 @@ export function SquarePanel({
   );
 }
 
-function recipeWords(kind: KindId): string {
+function recipeWords(kind: KindId, state: SteadingState): string {
   const def = KINDS[kind];
-  const inputs = Object.keys(def.inputs).length ? `${amountsWords(def.inputs)} → ` : "";
-  const outputs = Object.keys(def.outputs).length ? amountsWords(def.outputs) : null;
-  if (kind === "well") return `${formatNumber(WELL_LITRES)} litres of water a day for houses within ${WELL_REACH} squares`;
-  if (kind === "wheel") return `${WHEEL_KWH} kWh a day for houses and workshops within ${WHEEL_REACH} squares`;
+  const recipe = recipeOf({ id: 0, kind, x: 0, y: 0, paused: false, yard: {} }, state);
+  const inputs = Object.keys(recipe.inputs).length ? `${amountsWords(recipe.inputs)} → ` : "";
+  const outputs = Object.keys(recipe.outputs).length ? amountsWords(recipe.outputs) : null;
+  const land = LANDS[state.map.land];
+  const month = new Date(state.clock).getUTCMonth();
+  if (kind === "well") return `${formatNumber(wellLitres(state))} litres of water a day for houses within ${WELL_REACH} squares`;
+  if (kind === "wheel") return `${WHEEL_KWH} kWh a day, day and night, on the settlement's line`;
+  if (kind === "solar")
+    return `${ARRAY_KWP} kW peak: ${amount(ARRAY_KWP * (land.solarKwhPerKwp[month] ?? 0))} kWh a day this month, by day only`;
+  if (kind === "turbine") return `${amount(land.turbineKwh[month] ?? 0)} kWh a day this month, day and night`;
+  if (kind === "generator") return `${GENERATOR_KW} kW on diesel, when the batteries are flat`;
+  if (isBank(kind)) {
+    const bank = BANKS[kind];
+    return `${formatNumber(bank.volts)} V, ${formatNumber(bank.ampHours)} Ah, ${amount(bank.kwh)} kWh (${amount(bank.kwh * bank.usable)} used)`;
+  }
   if (kind === "landing") return "trades with the barge";
   if (kind === "house" || kind === "storehouse" || kind === "waterworks") return def.about.replace(/\.$/, "").toLowerCase();
   return `${inputs}${outputs} a day`;
@@ -151,7 +197,7 @@ function BuildHere({ state, square, busy, act }: { state: SteadingState; square:
   const options = buildable(state, square.x, square.y);
   const open = options.filter(
     ({ kind }) =>
-      KINDS[kind].unlockAt <= people && !(KINDS[kind].beside && options.find((o) => o.kind === kind)?.problem?.includes("beside")),
+      KINDS[kind].unlockAt <= people && !/beside|stands on|Buildings stand/.test(options.find((o) => o.kind === kind)?.problem ?? ""),
   );
   const next = UNLOCK_STEPS.find((step) => step > people);
   const later = (Object.keys(KINDS) as KindId[]).filter((kind) => KINDS[kind].unlockAt === next);
@@ -170,9 +216,9 @@ function BuildHere({ state, square, busy, act }: { state: SteadingState; square:
                 <p className="text-small text-ink-muted">
                   <Joined
                     parts={[
-                      recipeWords(kind),
+                      recipeWords(kind, state),
                       def.workers ? `${def.workers} ${def.workers === 1 ? "worker" : "workers"}` : null,
-                      Object.keys(def.cost).length ? `costs ${amountsWords(def.cost)}` : "free",
+                      Object.keys(costOf(state, kind)).length ? `costs ${amountsWords(costOf(state, kind))}` : "free",
                     ]}
                   />
                 </p>
@@ -224,8 +270,9 @@ function BuildingDetail({
   const routesOut = state.routes.filter((r) => r.from === building.id);
   const routesIn = state.routes.filter((r) => r.to === building.id);
   const yard = Object.entries(building.yard).filter(([, n]) => (n ?? 0) >= 1) as [GoodId, number][];
-  const recipe = recipeOf(building);
-  const back = { ...def.cost };
+  const recipe = recipeOf(building, state);
+  const back = { ...costOf(state, building.kind) };
+  if (building.tank) back.diesel = (back.diesel ?? 0) + building.tank / 20;
   for (const [good, n] of yard) back[good] = (back[good] ?? 0) + Math.floor(n);
   const removable =
     !(building.kind === "house" && building.occupied) &&
@@ -251,7 +298,13 @@ function BuildingDetail({
                 ? ` (at full pace ${amountsWords(recipe.outputs)})`
                 : ""}
             </Fact>
-            {flow.power > 0 ? <Fact label="Power">{amount(flow.power)} kWh a day from the wheel</Fact> : null}
+            {def.powered ? (
+              <Fact label="Power">
+                {flow.power > 0
+                  ? `${amount(flow.power)} kWh a day from the line`
+                  : "None from the line just now: it works at its plain pace"}
+              </Fact>
+            ) : null}
             <Fact label="Yard">
               {yard.length ? `${amountsWords(Object.fromEntries(yard), held)} of ${YARD_CAP} each` : `Empty; holds ${YARD_CAP} of each`}
             </Fact>
@@ -259,16 +312,27 @@ function BuildingDetail({
         ) : null}
         {building.kind === "house" && building.occupied ? (
           <Fact label="A day">
-            {formatNumber(HOUSE_NEEDS.litres)} litres of water, {amount(HOUSE_TAKES.bread ?? 0)} loaves, {amount(HOUSE_TAKES.firewood ?? 0)}{" "}
-            bundles of firewood{flow?.power ? `, ${amount(flow.power)} kWh of electricity` : ""}
+            {formatNumber(HOUSE_NEEDS.litres)} litres of water, {amount(houseTakes(state).bread)} loaves,{" "}
+            {amount(houseTakes(state).firewood)} bundles of firewood{flow?.power ? `, ${amount(flow.power)} kWh of electricity` : ""}
           </Fact>
         ) : null}
+        {["solar", "turbine", "wheel", "generator"].includes(building.kind) ? (
+          <Fact label="Makes now">{flow?.power ? `${amount(flow.power)} kWh a day` : recipeWords(building.kind, state)}</Fact>
+        ) : null}
+        {building.kind === "generator" ? (
+          <Fact label="Tank">
+            {amount(building.tank ?? 0)} of {TANK_LITRES} litres
+          </Fact>
+        ) : null}
+        {isBank(building.kind) ? <Fact label="Rated">{recipeWords(building.kind, state)}</Fact> : null}
         {building.kind === "storehouse" ? (
           <Fact label="Holds">
             {formatNumber(storeCap(state))} of each good, for all the storehouses; serves houses within {STORE_REACH} squares
           </Fact>
         ) : null}
-        <Fact label="Cost">{Object.keys(def.cost).length ? amountsWords(def.cost) : "Nothing"}</Fact>
+        <Fact label="Cost">
+          {Object.keys(costOf(state, building.kind)).length ? amountsWords(costOf(state, building.kind)) : "Nothing"}
+        </Fact>
       </dl>
 
       {building.kind === "landing" ? <ContractPicker building={building} busy={busy} act={act} /> : null}
@@ -308,6 +372,15 @@ function BuildingDetail({
       ) : null}
 
       <div className="flex flex-wrap gap-2">
+        {building.kind === "generator" ? (
+          <Button
+            size="sm"
+            disabled={busy || state.stock.diesel < 1 || (building.tank ?? 0) > TANK_LITRES - 20}
+            onClick={() => act({ type: "fillTank", id: building.id })}
+          >
+            Fill the tank from the store
+          </Button>
+        ) : null}
         {work ? (
           <Button size="sm" disabled={busy} onClick={() => act({ type: "pause", id: building.id, paused: !building.paused })}>
             {building.paused ? "Back to work" : "Rest it"}
@@ -613,6 +686,8 @@ function NeedRow({ what, need, supply, unit, none }: { what: string; need: numbe
 /** The households: how many, what they wait for, and what a day takes, with the real figures and where they come from. */
 export function Households({ state, flows }: { state: SteadingState; flows: Flows }) {
   const h = flows.households;
+  const takes = houseTakes(state);
+  const heat = heatNeed(state);
   return (
     <section aria-labelledby="steading-households" className="grid gap-2">
       <Heading id="steading-households">Households</Heading>
@@ -634,9 +709,10 @@ export function Households({ state, flows }: { state: SteadingState; flows: Flow
       ) : null}
       <p className="text-small text-ink-muted">
         A household of four uses in a day {formatNumber(HOUSE_NEEDS.litres)} litres of water, {formatNumber(HOUSE_NEEDS.kcal)} kcal of food
-        ({amount(HOUSE_TAKES.bread ?? 0)} loaves), {amount(HOUSE_NEEDS.heatKwh)} kWh of heat ({amount((HOUSE_TAKES.firewood ?? 0) * 10)} kg
-        of dry logs) and {amount(HOUSE_NEEDS.electricityKwh)} kWh of electricity. Those are real figures; here a settlement day passes in an
-        hour.
+        ({amount(takes.bread)} loaves), {amount(heat)} kWh of heat ({amount(takes.firewood * 10)} kg of dry logs) and{" "}
+        {amount(HOUSE_NEEDS.electricityKwh)} kWh of electricity. Those are real figures
+        {state.map.legacy || state.map.land === "valley" ? "" : ", the heat scaled for this land's cold"}; here a settlement day passes in
+        an hour.
       </p>
       <div className="overflow-x-auto">
         <table className="tabular w-full text-small">
@@ -666,14 +742,14 @@ export function Households({ state, flows }: { state: SteadingState; flows: Flow
               need={h.electricity.need}
               supply={h.electricity.supply}
               unit="kWh"
-              none={state.buildings.some((b) => b.kind === "wheel") ? undefined : "no wheel yet"}
+              none={state.buildings.some((b) => ["wheel", "solar", "turbine", "generator"].includes(b.kind)) ? undefined : "no power yet"}
             />
           </tbody>
         </table>
       </div>
       <p className="text-small text-ink-muted">
         A household already here stays, whatever runs short; a shortage only keeps a new house waiting. Electricity is for light and is not
-        needed to move in: a water wheel lights the houses within {WHEEL_REACH} squares first, then runs the workshops.
+        needed to move in: the line lights the houses first, then runs the workshops' machines.
       </p>
       <Disclosure summary="Where the figures come from">
         <ul className="grid list-disc gap-1.5 pl-5 text-small text-ink">
@@ -685,6 +761,11 @@ export function Households({ state, flows }: { state: SteadingState; flows: Flow
           <li>
             A bundle of firewood is 10 kg, so {formatNumber(KWH_PER_BUNDLE)} kWh. The heat is what a typical household's gas gives, as if
             from wood; a stove and a boiler are not equally efficient, and the game does not count the difference.
+          </li>
+          <li>
+            On another land the heat follows the cold (the game's rule): two thirds of it goes up and down with the land's heating degree
+            days against the river valley's, the third for hot water and cooking stays the same. Here a household needs {amount(heat)} kWh a
+            day.
           </li>
           <li>Everything else is made up for the game: how fast things are made, what they cost, how far people walk, and the trade.</li>
         </ul>
@@ -710,15 +791,15 @@ export function Trade({ state, busy, act }: { state: SteadingState; busy: boolea
       <Heading id="steading-trade">Trade</Heading>
       {!landing ? (
         <p className="text-small text-ink-muted">
-          The valley has no ore. Once 12 people live here, a landing on the river lets the barge take a surplus and bring what the land
-          lacks.
+          Once 12 people live here, a landing on the river or the shore lets the barge take a surplus and bring what the land lacks: ore
+          where there is none, diesel, solar panels and battery cells.
         </p>
       ) : (
         <>
           <p className="text-body text-ink">The landing holds {formatNumber(Math.floor(state.credit))} credit for the settlement.</p>
           <p className="text-small text-ink-muted">
-            The barge buys anything at a fixed price and sells coal, ore, iron and tools. A trade chosen at the landing runs every day along
-            its routes; a sale here is from the store, once.
+            The barge buys anything at a fixed price and sells coal, ore, iron, tools, diesel, solar panels and battery cells. A trade
+            chosen at the landing runs every day along its routes; a sale here is from the store, once.
           </p>
           <form
             className="flex flex-wrap items-end gap-2"

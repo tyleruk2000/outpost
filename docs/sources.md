@@ -1673,6 +1673,31 @@ words with the source named.
 Made up for the game: every rate of work, cost, reach, the size of a loaf (800 g) and of a
 bundle of firewood (10 kg), the trade, and a settlement day passing in an hour.
 
+## The Steading's lands and power (read 2026-11-21)
+
+Games → Steading ([games.md](games.md#steading)) gives each kind of land the sun, wind and
+cold of a real place, and models solar arrays, a wind turbine, batteries and a diesel
+generator with published figures. Nothing is fetched by Outpost and no document is
+bundled: the figures are numbers in `packages/shared/src/games/steading/lands.ts` and
+`electric.ts`, said in Outpost's own words with the source named.
+
+| What | Where it comes from | How it was read |
+| --- | --- | --- |
+| Each land's monthly solar output per kWp (E_d), at the optimal fixed slope, crystalline silicon, 14% system loss | European Commission Joint Research Centre, PVGIS API v5.3, `PVcalc` (PVGIS-SARAH3, or PVGIS-ERA5 for Kiruna, with the horizon from the terrain), for Keswick (54.60, −3.13), Davos (46.80, 9.84), Kiruna (67.86, 20.23), Ouarzazate (30.93, −6.91), Belmullet (54.23, −9.99) and Freudenstadt (48.46, 8.41) | Each place asked once on 21 November 2026; the twelve monthly figures kept. |
+| Daylight hours, mean temperature and mean wind at 10 m for each month; heating degree days (base 15.5 °C) and growing degree days (base 5 °C) | PVGIS API v5.3, `tmy` (typical meteorological year; ERA5) for the same six places | Each place's hourly year fetched once on 21 November 2026 and summed by a short script; only the derived monthly figures are kept. |
+| PVGIS terms | PVGIS data download pages (joint-research-centre.ec.europa.eu): "The data in the sections below are free for public use if the source is acknowledged (PVGIS © European Communities, 2001-2026)" | Read 21 November 2026. The API page states no terms of its own; the download pages' condition is taken to carry over, and the credit line is given in the game and here. The Commission's general reuse notice could not be read (the site refused the request). |
+| A Bergey Excel 10's power curve (W against hub-height wind speed, 0.5 to 20.5 m/s, sea-level density), 8.9 kW rated at 11 m/s, 12.6 kW peak, 38.5 m² swept | ICC-SWCC, Summary Report SWCC-10-12 (2022), <https://smallwindcertification.org/wp-content/uploads/2022/04/SWCC-10-12-Summary-Report-20220406.pdf> | Text of the PDF read 21 November 2026. The curve is applied to each hour of the typical year with the hub at 10 m (where PVGIS gives the wind; a real tower is taller, so the game's figure is low); the standby draw below cut-in is counted as nothing. |
+| Excel 10 cut-in 2.5 m/s, no cut-out, furling 14–20 m/s, 7.0 m rotor | Bergey Excel 10 specification sheet, a copy hosted by a reseller (renewableenergyhub.co.uk) | Read 21 November 2026; used only to describe the turbine. |
+| Battery cell voltages, usable share and round trip (lead acid 2.0 V, 50%, 80%; LiFePO4 3.2 V, 80%, 92%); each way √η | Tools → Power's figures (Battery University BU-201, BU-216, BU-303; Victron Energy data sheets; HOMER Pro manual), listed in [tools-power.md](tools-power.md#sources) | Reused from `packages/shared/src/power.ts`; not read again. |
+| A generator's straight fuel line, from HOMER's worked example (50 kW: 1.655 L/h with no load, 15.3 L/h at full load), scaled to 10 kW | UL Solutions, HOMER Pro manual, as in Tools → Power | Reused; not read again. |
+| Household electricity and heat, food, water, firewood | As in [the Steading's household figures](#the-steadings-household-figures-read-2026-11-21) | Unchanged. |
+
+Made up for the game: the array's size (twelve 400 W panels), the cells in each battery,
+the 200-litre tank and the 20-litre can, the belts, the water wheel's 120 kWh a day,
+how heat and harvests follow the land (two thirds of the heat by heating degree days;
+harvest by growing degree days between a quarter and one and a half), the wells' water,
+the extra bricks, and every price.
+
 ## The server's own figures, read on 21 November 2026
 
 For the Server status screen, the clock, `outpost.local` and `/metrics`
