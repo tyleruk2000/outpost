@@ -1743,3 +1743,33 @@ export const offlineDrills = sqliteTable("offline_drills", {
   answers: json<Record<string, "worked" | "failed">>("answers").notNull(),
   notes: text("notes").notNull().default(""),
 });
+
+/**
+ * The household's record of what it sowed (Tools → Garden): one row a sowing or planting.
+ * `crop_id` is a crop of the calendar (`GARDEN_CROP_IDS`) or null for something else.
+ */
+export const gardenSowings = sqliteTable(
+  "garden_sowings",
+  {
+    id: id(),
+    cropId: text("crop_id"),
+    name: text("name").notNull(),
+    /** "2026-04-12". */
+    sownOn: text("sown_on").notNull(),
+    place: text("place").notNull().default(""),
+    amount: text("amount").notNull().default(""),
+    plantedOutOn: text("planted_out_on"),
+    harvestedOn: text("harvested_on"),
+    notes: text("notes").notNull().default(""),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [index("garden_sowings_sown_on").on(table.sownOn)],
+);
+
+/** The garden's one setting (Tools → Garden): the household's usual last frost, "MM-DD". One row, id "household". */
+export const gardenSettings = sqliteTable("garden_settings", {
+  id: id(),
+  lastFrost: text("last_frost"),
+  updatedAt: updatedAt(),
+});

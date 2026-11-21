@@ -5,6 +5,7 @@
  * MapLibre.
  */
 import { type Bbox, haversineMeters, type InstalledRegion, type MarkerDto, type TrackWithGeometryDto } from "@outpost/shared";
+import { celnavLayers } from "@/features/celestial-navigation/map-layers";
 import { heardLayers } from "@/features/heard/heard";
 import { floodZoneLayers, populationLayers, referenceLayers } from "@/features/layers/symbols";
 import { nuclearLayers } from "@/features/nuclear/layers";
@@ -46,6 +47,8 @@ export const OVERLAY_SOURCES = [
   "o-sight",
   // Resection: back-bearings from landmarks (resection/).
   "o-resection",
+  // Celestial navigation: lines of position and the fix (features/celestial-navigation).
+  "o-celnav",
   "o-draw",
   "o-recording",
   "o-location",
@@ -249,6 +252,7 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
     ...relayLayers(theme),
     ...sightLayers(theme),
     ...resectionLayers(theme),
+    ...celnavLayers(theme),
     // A track being recorded; see recording/overlay.ts.
     ...recordingLayers(theme),
     // The person's own position.

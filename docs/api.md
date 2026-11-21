@@ -1386,6 +1386,29 @@ publish `readiness.changed`.
 | `GET /api/offline-drill` | `OfflineDrillResponse`: `lines` (`DrillLine`: `held`, `missing`, `stale` or `untried`, with the screen that fixes it) read from what the modules hold, and `lastRun`. |
 | `POST /api/offline-drill/runs` | `{ by, startedAt, answers, notes? }`: the result of a drill, `answers` from step id (`DRILL_STEPS`) to `"worked"` or `"failed"`; unknown steps are dropped. |
 
+## Garden
+
+Types: `packages/shared/src/garden.ts`; see [garden.md](garden.md). Changes publish
+`garden.changed`. The calendar is not served: the screen works it out with `gardenMonth`.
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/garden` | `GardenResponse`: `settings` (`lastFrost` as "MM-DD" or null) and every sowing, newest first. |
+| `PUT /api/garden/settings` | Body `{ lastFrost }`: a day of an ordinary year as "MM-DD", or null to clear it. `400` for anything else, 29 February included. |
+| `POST /api/garden/sowings` | Record a sowing (`GardenSowingInput`): `cropId` (one of `GARDEN_CROP_IDS`, or null with a `name`), `sownOn`, and optional `place`, `amount`, `plantedOutOn`, `harvestedOn`, `notes`. A calendar crop with no name is called by the crop's name. At most 5,000. |
+| `PUT /api/garden/sowings/:id` | Replace it. `404` if it has gone. |
+| `DELETE /api/garden/sowings/:id` | Remove it. |
+
+## Tide times
+
+Types: `packages/shared/src/tides.ts`; see [tides.md](tides.md). Nothing is kept: each answer is worked out
+when asked from the bundled constants.
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/tides/stations?lat=&lon=&limit=` | `TideStationsResponse`: the `limit` (1 to 50, default 8) nearest stations with `distanceKm` and `datum` ("MLLW" or "MSL"), and the `source`. |
+| `GET /api/tides/stations/:id/predictions?from=&days=&lat=&lon=` | `TidePredictionResponse`: high and low waters (`turns`) and the height every 10 minutes (`curve`), in metres above the datum, from `from` (ms) for `days` (1 to 31, default 7). `lat` and `lon`, if given, set `distanceKm`. `404` for an unknown station. |
+
 ## Mesh radio
 
 Types: `packages/shared/src/mesh.ts`; see [mesh-radio.md](mesh-radio.md). Radio channels

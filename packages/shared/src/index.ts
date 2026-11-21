@@ -27,6 +27,8 @@ export * from "./emergency-plans.ts";
 export * from "./emergency-templates.ts";
 export * from "./encryption.ts";
 export * from "./games.ts";
+// The garden calendar and the record of sowings, on a line of its own so that other additions merge cleanly.
+export * from "./garden.ts";
 export * from "./home-place.ts";
 // The household's papers (medical sheets, keeping in touch, grab cards, the binder), on a line of their own.
 export * from "./household-papers.ts";
@@ -80,6 +82,8 @@ export * from "./sun.ts";
 export * from "./supplies.ts";
 export * from "./supplies-energy.ts";
 export * from "./system.ts";
+// Tide predictions from harmonic constants, on a line of their own.
+export * from "./tides.ts";
 export * from "./tools.ts";
 // UTM, UPS and MGRS, on a line of their own.
 export * from "./utm.ts";

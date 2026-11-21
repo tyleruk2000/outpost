@@ -68,6 +68,8 @@ GROUPS.prepare.push("emergency_plans");
 GROUPS.prepare.push("medical_sheets", "comms_plans", "household_binder");
 // Readiness (modules/readiness), on a line of its own so that other additions merge cleanly.
 GROUPS.prepare.push("event_log", "routine_checks", "offline_drills");
+// The garden (modules/garden), on a line of its own so that other additions merge cleanly.
+GROUPS.prepare.push("garden_sowings", "garden_settings");
 // The Morse trainer (modules/morse), on a line of its own so that other additions merge cleanly.
 GROUPS.radio.push("morse_progress", "morse_sessions");
 // Learning progress in reference archives (modules/learning), on a line of its own so that other additions merge cleanly.

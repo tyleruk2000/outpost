@@ -141,6 +141,11 @@ pages themselves.
   own screen, the Solar clock: [tools-solar-clock.md](tools-solar-clock.md).
 - Magnetic declination, grid north and the rule between map and compass, with the phone's
   own compass, are their own screen, the Compass: [tools-compass.md](tools-compass.md).
+- High and low water at the tide stations near a place are their own screen, Tide times:
+  [tides.md](tides.md).
+- The Moon, a star chart and finding north by the stars are their own screen, Night sky:
+  [night-sky.md](night-sky.md); a position from sextant sights is Celestial navigation:
+  [celestial-navigation.md](celestial-navigation.md).
 
 ## Not tested
 
