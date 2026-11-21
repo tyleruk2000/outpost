@@ -4,15 +4,8 @@
   "id": "kiwix-languages",
   "name": "Wikipedia in other languages",
   "description": "Wikipedia in widely spoken languages other than English, in the smallest edition the Kiwix library offers for each, so that Explore can suggest the encyclopedia in the language of the country Home is in. Every entry is fetched from Kiwix's own servers at the moment you ask for it; nothing is bundled with Outpost.",
-  "maintainers": [
-    "Outpost maintainers"
-  ],
-  "downloadHosts": [
-    "opds.library.kiwix.org",
-    "library.kiwix.org",
-    "download.kiwix.org",
-    "lb.download.kiwix.org"
-  ],
+  "maintainers": ["Outpost maintainers"],
+  "downloadHosts": ["opds.library.kiwix.org", "library.kiwix.org", "download.kiwix.org", "lb.download.kiwix.org"],
   "entries": [
     {
       "id": "kiwix.wikipedia-fr-all-mini",
@@ -26,10 +19,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://fr.wikipedia.org",
       "lastVerified": "2026-11-21",
-      "tags": [
-        "encyclopedia",
-        "french"
-      ],
+      "tags": ["encyclopedia", "french"],
       "sizeBytes": 5669742592,
       "source": {
         "type": "kiwix",
@@ -49,10 +39,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://es.wikipedia.org",
       "lastVerified": "2026-11-21",
-      "tags": [
-        "encyclopedia",
-        "spanish"
-      ],
+      "tags": ["encyclopedia", "spanish"],
       "sizeBytes": 4114469888,
       "source": {
         "type": "kiwix",
@@ -72,10 +59,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://de.wikipedia.org",
       "lastVerified": "2026-11-21",
-      "tags": [
-        "encyclopedia",
-        "german"
-      ],
+      "tags": ["encyclopedia", "german"],
       "sizeBytes": 4686161920,
       "source": {
         "type": "kiwix",
@@ -95,10 +79,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://pt.wikipedia.org",
       "lastVerified": "2026-11-21",
-      "tags": [
-        "encyclopedia",
-        "portuguese"
-      ],
+      "tags": ["encyclopedia", "portuguese"],
       "sizeBytes": 1703536640,
       "source": {
         "type": "kiwix",
@@ -118,10 +99,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://ar.wikipedia.org",
       "lastVerified": "2026-11-21",
-      "tags": [
-        "encyclopedia",
-        "arabic"
-      ],
+      "tags": ["encyclopedia", "arabic"],
       "sizeBytes": 3169766400,
       "source": {
         "type": "kiwix",
@@ -141,10 +119,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://ru.wikipedia.org",
       "lastVerified": "2026-11-21",
-      "tags": [
-        "encyclopedia",
-        "russian"
-      ],
+      "tags": ["encyclopedia", "russian"],
       "sizeBytes": 5980164096,
       "source": {
         "type": "kiwix",
@@ -164,10 +139,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://zh.wikipedia.org",
       "lastVerified": "2026-11-21",
-      "tags": [
-        "encyclopedia",
-        "chinese"
-      ],
+      "tags": ["encyclopedia", "chinese"],
       "sizeBytes": 4828333056,
       "source": {
         "type": "kiwix",
@@ -187,10 +159,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://hi.wikipedia.org",
       "lastVerified": "2026-11-21",
-      "tags": [
-        "encyclopedia",
-        "hindi"
-      ],
+      "tags": ["encyclopedia", "hindi"],
       "sizeBytes": 438556672,
       "source": {
         "type": "kiwix",
@@ -210,10 +179,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://sw.wikipedia.org",
       "lastVerified": "2026-11-21",
-      "tags": [
-        "encyclopedia",
-        "swahili"
-      ],
+      "tags": ["encyclopedia", "swahili"],
       "sizeBytes": 260231168,
       "source": {
         "type": "kiwix",
@@ -233,10 +199,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://it.wikipedia.org",
       "lastVerified": "2026-11-21",
-      "tags": [
-        "encyclopedia",
-        "italian"
-      ],
+      "tags": ["encyclopedia", "italian"],
       "sizeBytes": 3536007168,
       "source": {
         "type": "kiwix",
@@ -256,10 +219,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://ja.wikipedia.org",
       "lastVerified": "2026-11-21",
-      "tags": [
-        "encyclopedia",
-        "japanese"
-      ],
+      "tags": ["encyclopedia", "japanese"],
       "sizeBytes": 3310633984,
       "source": {
         "type": "kiwix",
@@ -279,10 +239,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://id.wikipedia.org",
       "lastVerified": "2026-11-21",
-      "tags": [
-        "encyclopedia",
-        "indonesian"
-      ],
+      "tags": ["encyclopedia", "indonesian"],
       "sizeBytes": 1876680704,
       "source": {
         "type": "kiwix",

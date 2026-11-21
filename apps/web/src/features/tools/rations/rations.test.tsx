@@ -57,7 +57,10 @@ describe("Rations", () => {
   });
 
   it("warns when the food to store is nearly all one food", async () => {
-    localStorage.setItem("outpost.tools.rations.store.shares", JSON.stringify({ rice: "100", lentils: "", oats: "", oil: "", "milk-powder": "", sugar: "" }));
+    localStorage.setItem(
+      "outpost.tools.rations.store.shares",
+      JSON.stringify({ rice: "100", lentils: "", oats: "", oil: "", "milk-powder": "", sugar: "" }),
+    );
     show();
     expect(within(section("Food to store")).getByText(/Nearly all the energy/)).toBeTruthy();
   });
@@ -69,8 +72,28 @@ describe("Rations", () => {
       household: {
         ...DEFAULT_HOUSEHOLD,
         members: [
-          { id: "1", kind: "person", name: "Ada", band: "19-64", sex: "female", kcalPerDay: null, drinkingLitres: null, allUsesLitres: null, note: "" },
-          { id: "2", kind: "pet", name: "Rex", band: null, sex: null, kcalPerDay: 800, drinkingLitres: null, allUsesLitres: null, note: "" },
+          {
+            id: "1",
+            kind: "person",
+            name: "Ada",
+            band: "19-64",
+            sex: "female",
+            kcalPerDay: null,
+            drinkingLitres: null,
+            allUsesLitres: null,
+            note: "",
+          },
+          {
+            id: "2",
+            kind: "pet",
+            name: "Rex",
+            band: null,
+            sex: null,
+            kcalPerDay: 800,
+            drinkingLitres: null,
+            allUsesLitres: null,
+            note: "",
+          },
         ],
       },
     };
