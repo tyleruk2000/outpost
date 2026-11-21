@@ -2,24 +2,33 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   analyseSight,
+  decodeBits,
   destinationPoint,
+  encodeBits,
   haversineMeters,
   initialBearingDeg,
   maxSightDistanceMeters,
+  RANGE_BANDS,
   RANGE_BEARINGS,
   RANGE_MAX_METERS,
   RANGE_NEAR_STEP_METERS,
   RANGE_SHADOW_TOLERANCE_METERS,
+  RELAY_MOST,
   type ReachInput,
+  type RelayPlan,
   rangeDistances,
+  rangeGrid,
+  rangeSampleIndex,
   reachAlong,
   type SightRange,
+  seenRunsOf,
   sightAlong,
   sightRunsAlong,
   smoothRangeMeters,
 } from "@outpost/shared";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Compression, TileType } from "../src/modules/maps/pmtiles/header.ts";
+import { viewshedOf } from "../src/modules/maps/sight-range.ts";
 import { buildArchive, type FixtureTile } from "./fixtures/maps/archive.ts";
 import { type Ground, groundTiles, positionOf } from "./fixtures/maps/terrain.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
@@ -109,7 +118,7 @@ describe("how far a station stays in sight", () => {
   it("says where terrain runs out, and whether that leaves the reach unknown", () => {
     // Terrain ends at 8 km, well inside the horizon: the reach could go on.
     const cut = reachAlong({ groundMeters: 0, ...ground(30_000, 0, (d) => (d > 8000 ? null : 0)), aerialMeters: 10, stationMeters: 1.5 });
-    expect(cut).toMatchObject({ reachMeters: 8000, limit: "terrain", unknownFromMeters: 8100 });
+    expect(cut).toMatchObject({ reachMeters: 8000, limit: "terrain", unknownFromMeters: 8050 });
     // Terrain ends at 25 km, past the horizon: the reach is known, what is past it is not.
     const late = reachAlong({
       groundMeters: 0,
@@ -118,7 +127,7 @@ describe("how far a station stays in sight", () => {
       stationMeters: 1.5,
     });
     expect(late.limit).toBe("sight");
-    expect(late.unknownFromMeters).toBe(25_100);
+    expect(late.unknownFromMeters).toBe(25_050);
     // In sight all the way to the end of the walk: the maximum distance is what stops it.
     const high = reachAlong({ groundMeters: 2000, ...ground(30_000, 0), aerialMeters: 10, stationMeters: 1.5 });
     expect(high.limit).toBe("max");
@@ -166,21 +175,66 @@ describe("how far a station stays in sight", () => {
       stationMeters: 0,
       heights: flat(5000).heights.map((_, i) => (i === 0 ? 50 : 0)),
     });
-    expect(walled).toMatchObject({ runs: [[0, 150]], furthestMeters: 100, limit: "sight" });
+    expect(walled).toMatchObject({ runs: [[0, 75]], furthestMeters: 50, limit: "sight" });
   });
 
-  it("walks every 100 m to 25 km and every 250 m from there to 100 km, and finds points along a bearing", () => {
+  it("walks every 50 m to 25 km, every 100 m to 50 km and every 250 m to 100 km, and finds points along a bearing", () => {
     const distances = rangeDistances();
-    expect(distances[0]).toBe(100);
+    expect(distances[0]).toBe(50);
     expect(distances.at(-1)).toBe(RANGE_MAX_METERS);
-    expect(distances.filter((d) => d <= 25_000)).toHaveLength(250);
-    expect(distances).toHaveLength(250 + 300);
+    expect(distances.filter((d) => d <= 25_000)).toHaveLength(500);
+    expect(distances.filter((d) => d > 25_000 && d <= 50_000)).toHaveLength(250);
+    expect(distances).toHaveLength(500 + 250 + 200);
+    // The index of a sample is worked out from the bands, without looking: at or just beyond the distance.
+    for (const meters of [1, 50, 51, 24_999, 25_000, 25_001, 49_950, 50_000, 50_100, 99_999, 100_000]) {
+      const index = rangeSampleIndex(meters, RANGE_BANDS);
+      expect(distances[index], `${meters} m`).toBeGreaterThanOrEqual(meters);
+      if (index > 0) expect(distances[index - 1], `${meters} m`).toBeLessThan(meters);
+    }
+    expect(rangeSampleIndex(0, RANGE_BANDS)).toBe(-1);
     const from = { lat: 53, lon: -4 };
     for (const bearing of [0, 45, 90, 200, 355]) {
       const to = destinationPoint(from, bearing, 40_000);
       expect(haversineMeters(from.lat, from.lon, to.lat, to.lon)).toBeCloseTo(40_000, 3);
       expect(initialBearingDeg(from, to)).toBeCloseTo(bearing, 6);
     }
+  });
+
+  it("works out every bearing at once with the same answers as one bearing at a time, and sends them as bits", () => {
+    const distances = rangeDistances(20_000);
+    const bearings = 8;
+    const heights = new Float32Array(bearings * distances.length);
+    const rolling = (b: number, d: number) => 120 + 60 * Math.sin(d / (900 + 200 * b)) + 35 * Math.sin(d / 430 + b);
+    for (let b = 0; b < bearings; b += 1)
+      for (let i = 0; i < distances.length; i += 1) heights[b * distances.length + i] = rolling(b, distances[i]!);
+    // Terrain runs out half way along one bearing.
+    for (let i = 200; i < distances.length; i += 1) heights[3 * distances.length + i] = Number.NaN;
+    const shed = viewshedOf({
+      groundMeters: 150,
+      aerialMeters: 20,
+      stationMeters: 1.5,
+      bearings,
+      distances: Float64Array.from(distances),
+      heights,
+    });
+    const bits = decodeBits(encodeBits(shed.bits));
+    expect(Array.from(bits)).toEqual(Array.from(shed.bits));
+    for (let b = 0; b < bearings; b += 1) {
+      const one = Array.from(heights.subarray(b * distances.length, (b + 1) * distances.length), (h) => (Number.isNaN(h) ? null : h));
+      const seen = sightAlong({ groundMeters: 150, distances, heights: one, aerialMeters: 20, stationMeters: 1.5 });
+      seen.forEach((value, i) => {
+        const bit = b * distances.length + i;
+        expect(((bits[bit >> 3]! >> (bit & 7)) & 1) === 1, `bearing ${b}, ${distances[i]} m`).toBe(value === true);
+      });
+      const runs = sightRunsAlong({ groundMeters: 150, distances, heights: one, aerialMeters: 20, stationMeters: 1.5 });
+      expect(shed.bearings[b]!.furthestMeters).toBe(runs.furthestMeters);
+      expect(shed.bearings[b]!.limit).toBe(runs.limit);
+    }
+    expect(shed.bearings[3]!.unknownFromMeters).toBe(distances[200]);
+    // Some of it in sight, not all of it.
+    const near = shed.shares.find((share) => share.withinMeters === 10_000)!.share!;
+    expect(near).toBeGreaterThan(0.02);
+    expect(near).toBeLessThan(0.98);
   });
 });
 
@@ -217,7 +271,7 @@ async function installTerrain(name: string, tiles: FixtureTile[], bounds: [numbe
 /** A plain at 100 m with one ridge along 4° W, 400 m high and about 1.3 km wide, as in maps-sight.test.ts. */
 const ridgeGround: Ground = (worldX, worldY) => 100 + 400 * Math.exp(-(((positionOf(worldX, worldY).lon + 4) / 0.02) ** 2));
 const AT = { lat: 53, lon: -4.06 };
-const reachTowards = (range: SightRange, bearing: number) => range.bearings.find((entry) => entry.bearingDeg === bearing)!;
+const towards = (range: SightRange, bearing: number) => range.bearings.find((entry) => entry.bearingDeg === bearing)!;
 
 describe("a repeater's estimated range", () => {
   it("with no terrain installed gives the smooth-Earth horizon and says it has nothing else", async () => {
@@ -227,14 +281,17 @@ describe("a repeater's estimated range", () => {
       coverage: "none",
       groundMeters: null,
       bearings: [],
+      bearingCount: 0,
+      seen: "",
       hiddenShare: null,
       terrain: null,
       maxMeters: 100_000,
     });
+    expect(body.shares.every((share) => share.share === null)).toBe(true);
     expect(body.horizonMeters).toBe(Math.round(maxSightDistanceMeters(10, 1.5)));
   });
 
-  it("over a ridge: the bearing across it is cut short, the others reach the horizon, and the terrain is said to be partial", async () => {
+  it("over a ridge: the plain behind it is hidden, the others are in sight to the horizon, and the terrain is said to be partial", async () => {
     // Terrain 22 km each side north to south, 24 km to the west: far less than 100 km, so partial.
     await installTerrain(
       "ridge",
@@ -246,28 +303,40 @@ describe("a repeater's estimated range", () => {
     expect(body.coverage).toBe("partial");
     expect(body.groundMeters).toBeCloseTo(100, 0);
     expect(body.bearings).toHaveLength(RANGE_BEARINGS);
+    expect(body.bearingCount).toBe(RANGE_BEARINGS);
     expect(body.terrain).not.toBeNull();
 
-    // East, across the ridge 4 km away: in sight up the near face to about the crest, then hidden.
-    const east = reachTowards(body, 90);
-    expect(east.reachMeters).toBeGreaterThan(3000);
-    expect(east.reachMeters).toBeLessThan(5000);
+    // East, across the ridge 4 km away: in sight up the near face to about the crest, and nothing beyond.
+    const east = towards(body, 90);
+    expect(east.furthestMeters).toBeGreaterThan(3000);
+    expect(east.furthestMeters).toBeLessThan(5000);
     expect(east.limit).toBe("sight");
     // West, north and south over the plain: the horizon for 10 m and 1.5 m over flat ground, 18.1 km.
     for (const bearing of [270, 0, 180]) {
-      const plain = reachTowards(body, bearing);
-      expect(Math.abs(plain.reachMeters - maxSightDistanceMeters(10, 1.5)), `bearing ${bearing}`).toBeLessThan(400);
+      const plain = towards(body, bearing);
+      expect(Math.abs(plain.furthestMeters - maxSightDistanceMeters(10, 1.5)), `bearing ${bearing}`).toBeLessThan(400);
       expect(plain.limit).toBe("sight");
       // Terrain runs out past it, which is why the whole is partial.
       expect(plain.unknownFromMeters).not.toBeNull();
     }
-    expect(body.hiddenShare).toBeGreaterThanOrEqual(0);
+
+    // The bits say the same: in sight up to the furthest ground on each bearing, and nothing past it.
+    const grid = rangeGrid(body);
+    for (const bearing of [0, 180, 360, 540]) {
+      const runs = seenRunsOf(grid, bearing);
+      expect(runs.at(-1)![1]).toBeGreaterThanOrEqual(body.bearings[bearing]!.furthestMeters);
+      expect(runs.at(-1)![1]).toBeLessThan(body.bearings[bearing]!.furthestMeters + 100);
+    }
+    // Within 10 km the plain is in sight all round but behind the ridge: most of it.
+    const near = body.shares.find((share) => share.withinMeters === 10_000)!.share!;
+    expect(near).toBeGreaterThan(0.6);
+    expect(near).toBeLessThan(1);
 
     // Asked again, the answer is the same.
     expect((await rangeOf(AT, 10, 1.5)).body).toEqual(body);
   });
 
-  it("where terrain ends inside the reach, says the bearing may go further", async () => {
+  it("where terrain ends while the ground is in sight, says more may be beyond", async () => {
     // A box only 6 km across round the repeater.
     await installTerrain(
       "small",
@@ -277,10 +346,10 @@ describe("a repeater's estimated range", () => {
     const { body } = await rangeOf(AT, 10, 1.5);
     expect(body.coverage).toBe("partial");
     expect(body.bearings.every((bearing) => bearing.limit === "terrain")).toBe(true);
-    expect(reachTowards(body, 0).reachMeters).toBeLessThan(5000);
+    expect(towards(body, 0).furthestMeters).toBeLessThan(5000);
   });
 
-  it("with terrain all round reaches the horizon on every bearing and calls it complete", async () => {
+  it("with terrain all round is in sight to the horizon on every bearing and calls it complete", async () => {
     // Flat ground at 100 m over a box wider than 100 km each way, coarse enough to be quick.
     const box: [number, number, number, number] = [-6, 51.9, -2, 54.1];
     await installTerrain(
@@ -292,10 +361,13 @@ describe("a repeater's estimated range", () => {
     expect(body.coverage).toBe("terrain");
     const horizon = maxSightDistanceMeters(15, 8);
     for (const bearing of body.bearings) {
-      expect(Math.abs(bearing.reachMeters - horizon)).toBeLessThan(400);
-      expect(bearing).toMatchObject({ limit: "sight", unknownFromMeters: null, furtherMeters: null });
+      expect(Math.abs(bearing.furthestMeters - horizon)).toBeLessThan(400);
+      expect(bearing).toMatchObject({ limit: "sight", unknownFromMeters: null });
     }
     expect(body.hiddenShare).toBe(0);
+    // All the ground within 10 km is in sight; little of it within 100 km, which is past the horizon.
+    expect(body.shares.find((share) => share.withinMeters === 10_000)!.share).toBe(1);
+    expect(body.shares.find((share) => share.withinMeters === 100_000)!.share).toBeLessThan(0.2);
   });
 
   it("refuses a place or a height that is not one", async () => {
@@ -311,5 +383,50 @@ describe("a repeater's estimated range", () => {
       expect(status, query).toBe(400);
       expect(body.error.message, query).toBeTruthy();
     }
+  });
+});
+
+describe("the relay planner", () => {
+  const relayOf = (a: { lat: number; lon: number }, b: { lat: number; lon: number }, query = "aHeight=1.5&bHeight=1.5&relay=1.5") =>
+    app.api<RelayPlan & Failure>("GET", `/api/maps/relay?a=${a.lat},${a.lon}&b=${b.lat},${b.lon}&${query}`);
+
+  it("finds the ridge between two places on either side of it, highest first, in sight of both", async () => {
+    await installTerrain(
+      "ridge",
+      groundTiles(ridgeGround, { minZoom: 11, maxZoom: 11, bbox: [-4.4, 52.8, -3.7, 53.2] }),
+      [-4.4, 52.8, -3.7, 53.2],
+    );
+    // Each 8 km from the crest, low on the plain: neither in sight of the other.
+    const a = { lat: 53, lon: -4.12 };
+    const b = { lat: 53.01, lon: -3.88 };
+    const { status, body } = await relayOf(a, b, "aHeight=1.5&bHeight=1.5&relay=2");
+    expect(status).toBe(200);
+    expect(body.distanceMeters).toBeGreaterThan(8000);
+    expect(body.candidates.length).toBeGreaterThan(0);
+    expect(body.candidates.length).toBeLessThanOrEqual(2 * RELAY_MOST);
+    // The highest is on the ridge's crest along 4° W, about 500 m up, and between the two.
+    const best = body.candidates[0]!;
+    expect(Math.abs(best.at.lon + 4)).toBeLessThan(0.01);
+    expect(best.groundMeters).toBeGreaterThan(450);
+    expect(best.fromAMeters).toBeLessThan(12_000);
+    expect(best.fromBMeters).toBeLessThan(12_000);
+    // Those named are in height order, then the nearest; each well apart from the others.
+    const highest = body.candidates.slice(0, RELAY_MOST);
+    for (let index = 1; index < highest.length; index += 1)
+      expect(Math.round(highest[index]!.groundMeters / 10)).toBeLessThanOrEqual(Math.round(highest[index - 1]!.groundMeters / 10));
+    // The ground in sight of both is shaded from A's bearings: the crest where the best place is, not the plain beyond.
+    const grid = rangeGrid(body.both!);
+    const towardsBest = Math.round((initialBearingDeg(a, best.at) * RANGE_BEARINGS) / 360) % RANGE_BEARINGS;
+    const runs = [towardsBest - 1, towardsBest, towardsBest + 1].flatMap((bearing) => seenRunsOf(grid, bearing));
+    expect(runs.some(([from, to]) => from <= best.fromAMeters + 100 && to >= best.fromAMeters - 100)).toBe(true);
+    expect(body.both!.bearings.every((bearing) => bearing.furthestMeters < 25_000)).toBe(true);
+  });
+
+  it("with no terrain says so, and refuses ends too far apart", async () => {
+    const { body } = await relayOf({ lat: 53, lon: -4.06 }, { lat: 53.1, lon: -3.9 });
+    expect(body).toMatchObject({ coverage: "none", both: null, candidates: [] });
+    const far = await relayOf({ lat: 53, lon: -4 }, { lat: 56, lon: -4 });
+    expect(far.status).toBe(400);
+    expect(far.body.error.message).toMatch(/200 km apart/);
   });
 });

@@ -82,6 +82,16 @@
   --map-effect-heat: #873d08;
   --map-effect-radiation: #7343a6;
   --map-effect-fallout: #b3628c;
+  /*
+   * The ground in sight of an aerial (the estimated range, its rings, the relay planner), and the ground a walk
+   * reaches in a set time: one hue each, washed over the map. Checked with the data-viz validator against the light
+   * map's land (worst colour-blind separation, normal vision in brackets): the two apart by 8.3 (23.0); the range
+   * 8.5 (9.0) from the nearest HF coverage shade and over 14 from the blast, heat and radiation hues. The range is
+   * 6.2 from the fallout pink and 6.4 from the fireball olive, the walk 1.0 from the olive: they are never drawn
+   * together, and are told apart by form (a wash against rings and a plume, each named in words).
+   */
+  --map-range: #13905a;
+  --map-walk: #c8620f;
 
   /*
    * The games (features/games): their own colours, for the things they draw. Cards are
@@ -278,6 +288,9 @@
   --map-effect-heat: #b1530f;
   --map-effect-radiation: #7260c4;
   --map-effect-fallout: #e25b95;
+  /* Against the dark map's land: the two apart by 10.0 (23.8); the range 10.3 from the HF shades, 7.2 from the fallout pink. */
+  --map-range: #3cc48f;
+  --map-walk: #f08a3c;
 
   /* The games (features/games): see the light theme above. */
   --game-felt: oklch(0.27 0.035 192);

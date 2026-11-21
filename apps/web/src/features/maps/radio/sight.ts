@@ -369,8 +369,8 @@ export function columnAt(columns: ChartColumn[], distanceMeters: number): ChartC
 }
 
 /** What the chart says about one sample: where it is, the ground, the ray, and what is clear between them. */
-export function describeSample(sample: SightSample): string {
-  const where = `${formatDistance(sample.distanceMeters)} from A`;
+export function describeSample(sample: SightSample, fromName = "A"): string {
+  const where = `${formatDistance(sample.distanceMeters)} from ${fromName}`;
   if (sample.groundMeters === null || sample.clearanceMeters === null) return `${where}: no terrain installed here`;
   const ground = `ground ${formatHeight(sample.groundMeters)}`;
   if (sample.clearanceMeters < 0) return `${where}: ${ground}, ${formatMeters(sample.clearanceMeters)} above the ray`;

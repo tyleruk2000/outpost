@@ -30,6 +30,7 @@ import { useStoredState } from "../hooks";
 import type { LatLon } from "../lib/geo";
 import type { MapEngine } from "../map/engine";
 import { MapCard } from "../map-chrome";
+import { RangeWhy } from "./range-why";
 import { NumberField } from "./sight-panel";
 
 /** A radio held in the hand: the height the other end is assumed at too, unless chosen otherwise. */
@@ -78,6 +79,7 @@ export function usePointRange({
   // The card is short unless asked: where it is from and the answer, so that the outline has the map. The heights
   // and what the estimate is are a press away.
   const [details, setDetails] = useState(false);
+  const [why, setWhy] = useState(false);
   const [prefs, setPrefs] = useStoredState<PointRangePrefs>(PREFS_KEY, isPrefs, {
     aerial: POINT_AERIAL_DEFAULT_METERS,
     station: "handheld",
@@ -143,6 +145,7 @@ export function usePointRange({
           ) : reading ? (
             <div className="grid gap-1 text-small">
               <p className="font-medium text-ink">{reading.title}</p>
+              {reading.furthest ? <p className="text-ink">{reading.furthest}</p> : null}
               {reading.note ? (
                 <p className="text-ink-muted">
                   {reading.note}{" "}
@@ -160,6 +163,21 @@ export function usePointRange({
             </div>
           ) : null}
         </div>
+
+        {range.data && range.data.coverage !== "none" ? (
+          <>
+            <button
+              type="button"
+              aria-expanded={why}
+              onClick={() => setWhy((open) => !open)}
+              className="flex min-h-11 items-center gap-2 text-left text-small font-medium text-ink hover:text-primary"
+            >
+              <ChevronRight aria-hidden className={cn("size-4 text-ink-muted transition-transform duration-150", why && "rotate-90")} />
+              Why this shape: look along one direction
+            </button>
+            {why ? <RangeWhy range={range.data} /> : null}
+          </>
+        ) : null}
 
         <button
           type="button"
@@ -207,8 +225,8 @@ export function usePointRange({
                   <p key={sentence}>{sentence}</p>
                 ))}
                 <p>
-                  The ground a radio here can see over the terrain: on each of {RANGE_BEARINGS} bearings, how far out the other station
-                  stays in sight of your aerial, on an Earth of 4/3 radius, as the line-of-sight check and the repeaters' range use. It is
+                  The ground a radio here can see over the terrain: along {RANGE_BEARINGS} bearings, which ground the other station would be
+                  in sight of your aerial from, on an Earth of 4/3 radius, as the line-of-sight check and the repeaters' range use. It is
                   not a circle, because a hill blocks one side and not another.
                 </p>
                 <p>
@@ -216,9 +234,9 @@ export function usePointRange({
                   over ridges: radio often reaches less than this, and sometimes more.
                 </p>
                 <p>
-                  The shaded ground is in sight of your aerial; ground left clear inside the outline is hidden by nearer ground, as the
-                  slopes just below a summit usually are. The outline is the furthest ground in sight on each bearing. A dashed edge is
-                  where terrain ran out. With no terrain it is the smooth-Earth radio horizon, a plain circle, and says so.
+                  The shaded ground is in sight of your aerial; ground left clear is hidden by nearer ground, as the slopes just below a
+                  summit usually are. The rings are 10, 25, 50 and 100 km from here. With no terrain it is the smooth-Earth radio horizon, a
+                  plain dashed circle, and says so.
                 </p>
                 {terrain ? <p>{terrain}</p> : null}
               </div>
@@ -233,6 +251,7 @@ export function usePointRange({
     start(next) {
       fitted.current = null;
       setDetails(false);
+      setWhy(false);
       setAt(next);
     },
     card: content,

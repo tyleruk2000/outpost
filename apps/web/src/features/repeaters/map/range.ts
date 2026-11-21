@@ -1,24 +1,29 @@
 /**
  * A repeater's estimated range on the map, apart from React: what this device
- * remembers about it, the heights the estimate is made with, the outline as map data
- * and layers, and the result said in a few short sentences.
+ * remembers about it, the heights the estimate is made with, the ground in sight as a
+ * shaded picture with rings round it, and the result said in a few short sentences.
  *
- * The outline itself is worked out on the server (`GET /api/maps/sight-range`) from
+ * The viewshed itself is worked out on the server (`GET /api/maps/sight-range`) from
  * installed terrain; see `radio-range.ts` in the shared package for the sums.
  */
 
 import type { Bbox } from "@outpost/shared";
 import {
+  compassWords,
   destinationPoint,
   RANGE_DEFAULT_AERIAL_METERS,
   RANGE_MAX_HEIGHT_METERS,
   RANGE_STATIONS,
+  type RangeGrid,
   type RangeStationId,
+  rangeGrid,
+  rangeSampleIndex,
   type SightRange,
 } from "@outpost/shared";
 import { MAP_FONTS, type MapTheme } from "@/features/maps/lib/style";
 import type { LayerSpecification } from "@/features/maps/lib/style-types";
 import type { FeatureCollection } from "@/features/maps/map/overlays";
+import { paintShade, rgbOf, type ShadePicture } from "@/features/maps/map/shades";
 import { formatHeight as formatFineHeight } from "@/lib/heights";
 import { formatNumber } from "@/lib/utils";
 
@@ -27,7 +32,6 @@ export const RANGE_KEY = "outpost.maps.repeaters.range";
 
 /** At most this many ranges are shown at once: each is asked of the server and drawn, and more would be hard to tell apart. */
 export const RANGE_MOST = 8;
-
 /**
  * What this device remembers: the repeaters whose range is shown, the other station,
  * and the aerial height assumed where a list gives none. The station and the assumed
@@ -105,20 +109,48 @@ export function formatHeight(meters: number): string {
   return formatFineHeight(meters, "fine");
 }
 
-const median = (values: number[]) => {
-  const sorted = [...values].sort((a, b) => a - b);
-  return sorted[Math.floor(sorted.length / 2)] ?? 0;
-};
+/** A share of the ground as a person says it: "none", "under 1%", "12%", "all". */
+export function formatShare(share: number): string {
+  if (share <= 0) return "none";
+  if (share < 0.01) return "under 1%";
+  if (share >= 0.995) return "all";
+  return `${Math.round(share * 100)}%`;
+}
+
+/** The share of the ground within a distance that is in sight, or null where none of it is known. */
+export function shareWithin(range: SightRange, meters: number): number | null {
+  return range.shares.find((share) => share.withinMeters === meters)?.share ?? null;
+}
+
+/** The furthest ground in sight: how far, in which direction, and how wide the opening it is seen through. */
+export function furthestOf(range: SightRange): { meters: number; bearingDeg: number; widthDeg: number } | null {
+  const { bearings } = range;
+  if (bearings.length === 0) return null;
+  let best = 0;
+  for (let index = 1; index < bearings.length; index += 1)
+    if (bearings[index]!.furthestMeters > bearings[best]!.furthestMeters) best = index;
+  const meters = bearings[best]!.furthestMeters;
+  if (meters <= 0) return null;
+  // The bearings either side that see at least half as far: the width of the opening.
+  const far = (index: number) => bearings[(index + bearings.length) % bearings.length]!.furthestMeters >= meters / 2;
+  let right = 0;
+  while (right + 1 < bearings.length && far(best + right + 1)) right += 1;
+  let left = 0;
+  while (left + right + 1 < bearings.length && far(best - left - 1)) left += 1;
+  return { meters, bearingDeg: bearings[best]!.bearingDeg, widthDeg: ((1 + left + right) * 360) / bearings.length };
+}
 
 export interface RangeReading {
   coverage: SightRange["coverage"];
-  /** The answer in a sentence. */
+  /** The answer in a sentence: how much of the ground near and further out is in sight. */
   title: string;
+  /** The furthest ground in sight and its direction, in a sentence; null when no ground is in sight or no terrain is held. */
+  furthest: string | null;
   /** The answer in a few words, for the card folded to one line. */
   short: string;
-  /** What the outline rests on, when that is less than the terrain all round: one short sentence, said beside the answer. */
+  /** What the shading rests on, when that is less than the terrain all round: one short sentence, said beside the answer. */
   note: string | null;
-  /** What else is worth knowing about this outline, shortest first: said behind the disclosure. */
+  /** What else is worth knowing, shortest first: said behind the disclosure. */
   sentences: string[];
   /** Where terrain could be got, when there is too little of it. */
   needsTerrain: boolean;
@@ -132,6 +164,7 @@ export function readRange(range: SightRange, where: "repeater" | "here" = "repea
     return {
       coverage: "none",
       title: `Without terrain: the smooth-Earth radio horizon, about ${formatReach(horizon)}.`,
+      furthest: null,
       short: `No terrain: about ${formatKm(horizon)}`,
       note: "No terrain is held here, so it is a plain circle.",
       sentences: [
@@ -140,46 +173,48 @@ export function readRange(range: SightRange, where: "repeater" | "here" = "repea
       needsTerrain: true,
     };
   }
-  const reaches = range.bearings.map(furthestOf);
-  const typical = median(reaches);
-  const least = Math.min(...reaches);
-  const most = Math.max(...reaches);
-  const sentences: string[] = [];
-  const spread = formatReach(least) === formatReach(most) ? "" : `, from ${formatReach(least)} to ${formatReach(most)}`;
-  const title = `Ground in sight as far as about ${formatReach(typical)} on most bearings${spread}.`;
+  const near = shareWithin(range, 10_000);
+  const mid = shareWithin(range, 25_000);
+  const said = (share: number | null) => (share === null ? "not known" : formatShare(share));
+  const title =
+    near === null && mid === null
+      ? "No terrain is held around here to say what is in sight."
+      : `In sight: ${said(near)} of the ground within 10 km, ${said(mid)} within 25 km.`;
+  const far = furthestOf(range);
+  const gap = far && far.widthDeg <= 6 ? `, through a gap about ${Math.max(1, Math.round(far.widthDeg))}° wide` : "";
+  const furthest = far
+    ? `The furthest ground in sight is ${formatReach(far.meters)} away to the ${compassWords(far.bearingDeg)}${gap}.`
+    : null;
 
-  const cut = range.bearings.filter((bearing) => limitOf(bearing) === "terrain").length;
+  const sentences: string[] = [];
+  const cut = range.bearings.filter((bearing) => bearing.limit === "terrain").length;
   if (range.coverage === "partial") {
     sentences.push(
       cut > 0
-        ? `Terrain is held for only part of the area within ${max}. On ${cut} of ${range.bearings.length} bearings it runs out while the aerial is still in sight, so the outline stops short there and is dashed.`
-        : `Terrain is held for only part of the area within ${max}. The outline itself is complete, but where none is held, high ground further out could be in sight.`,
+        ? `Terrain is held for only part of the area within ${max}. On ${cut} of ${range.bearings.length} bearings it runs out while the ground is still in sight, so more may be in sight beyond.`
+        : `Terrain is held for only part of the area within ${max}. Where none is held, high ground further out could be in sight.`,
     );
   }
-  const capped = range.bearings.filter((bearing) => limitOf(bearing) === "max").length;
+  const capped = range.bearings.filter((bearing) => bearing.limit === "max").length;
   if (capped > 0)
     sentences.push(
-      `On ${capped} ${capped === 1 ? "bearing" : "bearings"} it is still in sight at ${max}, where the estimate stops looking.`,
+      `On ${capped} ${capped === 1 ? "bearing" : "bearings"} ground is still in sight at ${max}, where the estimate stops looking.`,
     );
-  // Said beside the answer, not behind the disclosure: from a hilltop much of the ground within the outline is hidden.
-  const share = range.hiddenShare ?? 0;
-  const hiddenNote =
-    share >= 0.05
-      ? `About ${Math.round(share * 20) * 5}% of the ground within it is hidden by nearer ground: only the shaded ground is in sight.`
-      : null;
   const partial = range.coverage === "partial";
-  // A few words that do not hide a spike: where most bearings end, and the furthest (or the nearest, when none goes further).
-  const [km, far, near] = [formatKm(typical), formatKm(most), formatKm(least)];
-  const tail = far !== km ? `, up to ${far}` : near !== km ? `, down to ${near}` : "";
+  const nearWords = near === null ? null : `${formatShare(near)} in sight within 10 km`;
+  const farWords = far ? `furthest ${formatKm(far.meters)} ${compassWords(far.bearingDeg)}` : "nothing further in sight";
   return {
     coverage: range.coverage,
     title,
-    short: partial
-      ? `${tail ? `Mostly ${km}${tail}` : `About ${km}`}, terrain partial`
-      : tail
-        ? `Mostly about ${km}${tail}`
-        : `In sight to about ${km}`,
-    note: [hiddenNote, partial ? `Terrain covers only part of the area within ${max}.` : null].filter(Boolean).join(" ") || null,
+    furthest,
+    short: [
+      nearWords ? `${nearWords.charAt(0).toUpperCase()}${nearWords.slice(1)}` : null,
+      nearWords ? farWords : `In sight: ${farWords}`,
+      partial ? "terrain partial" : null,
+    ]
+      .filter(Boolean)
+      .join(", "),
+    note: partial ? `Terrain covers only part of the area within ${max}.` : null,
     sentences,
     needsTerrain: partial,
   };
@@ -191,163 +226,180 @@ export function describeRangeTerrain(range: SightRange): string | null {
   const cells = (meters: number) => `${formatNumber(Math.round(meters / 10) * 10)} m`;
   const { finestCellMeters: finest, coarsestCellMeters: coarsest } = range.terrain;
   const size = cells(finest) === cells(coarsest) ? `about ${cells(finest)}` : `from about ${cells(finest)} to ${cells(coarsest)}`;
-  return `Ground read every ${range.nearStepMeters} m out to ${formatNumber(range.nearMeters / 1000)} km and every ${range.farStepMeters} m beyond, from installed terrain whose cells are ${size} wide.`;
+  let from = 0;
+  const steps = range.bands.map((band) => {
+    const words = `every ${band.stepMeters} m ${from === 0 ? "out to" : "to"} ${formatNumber(band.toMeters / 1000)} km`;
+    from = band.toMeters;
+    return words;
+  });
+  const listed = steps.length > 1 ? `${steps.slice(0, -1).join(", ")} and ${steps.at(-1)}` : (steps[0] ?? "");
+  return `Ground read along ${formatNumber(range.bearingCount)} bearings, ${formatNumber(360 / Math.max(1, range.bearingCount))}° apart: ${listed}, from installed terrain whose cells are ${size} wide.`;
 }
 
 // ── On the map ──────────────────────────────────────────────────────────────
 
-type Ring = Array<[number, number]>;
+/** The rings drawn round a range, and in the disc of the why view. */
+export const RANGE_RINGS = [10_000, 25_000, 50_000, 100_000] as const;
+/** How solid the shading of the ground in sight is: the map's names, roads and coast still show through it. */
+export const RANGE_SHADE_OPACITY = 0.42;
 
-/** The outline's points, one per bearing, closed; and for each side, whether it is dashed (terrain ran out at either end). */
-function outlineOf(range: SightRange): { ring: Ring; dashed: boolean[] } {
-  const point = (bearing: number, meters: number): [number, number] => {
-    const at = destinationPoint(range.at, bearing, Math.max(meters, 50));
-    return [Number(at.lon.toFixed(6)), Number(at.lat.toFixed(6))];
-  };
-  if (range.coverage === "none") {
-    // The smooth-Earth horizon: a plain circle, dashed all round, because no terrain shaped it.
-    const radius = Math.min(range.horizonMeters, range.maxMeters);
-    const steps = 96;
-    const ring = Array.from({ length: steps + 1 }, (_, index) => point((index * 360) / steps, radius));
-    return { ring, dashed: Array.from({ length: steps }, () => true) };
-  }
-  const { bearings } = range;
-  const ring = [...bearings, bearings[0]!].map((bearing) => point(bearing.bearingDeg, furthestOf(bearing)));
-  const dashed = bearings.map(
-    (bearing, index) => limitOf(bearing) === "terrain" || limitOf(bearings[(index + 1) % bearings.length]!) === "terrain",
-  );
-  return { ring, dashed };
+const EARTH = 6_371_008.8;
+const DEG = Math.PI / 180;
+
+/** How far out the shading reaches: the furthest ground in sight, or the smooth-Earth horizon with no terrain. */
+export function rangeExtent(range: SightRange): number {
+  if (range.coverage === "none") return Math.min(range.horizonMeters, range.maxMeters);
+  return Math.max(0, ...range.bearings.map((bearing) => bearing.furthestMeters));
 }
 
-type Bearing = SightRange["bearings"][number];
-/** The furthest ground in sight on a bearing: where the outline is. An answer from before it was given has only the reach. */
-const furthestOf = (bearing: Bearing) => bearing.furthestMeters ?? bearing.reachMeters;
-const limitOf = (bearing: Bearing) => bearing.outlineLimit ?? bearing.limit;
-
-/**
- * The ground in sight as shapes to shade: on each bearing, a wedge as wide as the bearing for each stretch in sight.
- * Ground hidden by nearer ground is left clear, which from a hilltop is most of what lies just below it.
- */
-function seenShapes(range: SightRange): Array<Array<[number, number]>> {
-  const step = 360 / Math.max(1, range.bearings.length);
-  const point = (bearing: number, meters: number): [number, number] => {
-    const at = destinationPoint(range.at, bearing, meters);
-    return [Number(at.lon.toFixed(6)), Number(at.lat.toFixed(6))];
-  };
-  const shapes: Array<Array<[number, number]>> = [];
-  for (const bearing of range.bearings) {
-    const runs = bearing.runs ?? (bearing.reachMeters > 0 ? [[0, bearing.reachMeters] as [number, number]] : []);
-    const [left, right] = [bearing.bearingDeg - step / 2, bearing.bearingDeg + step / 2];
-    for (const [from, to] of runs) {
-      if (to <= from) continue;
-      const outer = [point(left, to), point(bearing.bearingDeg, to), point(right, to)];
-      // From the aerial itself the wedge is a slice of pie; further out, a piece of a ring.
-      shapes.push(from <= 0 ? [point(0, 0), ...outer, point(0, 0)] : [point(left, from), ...outer, point(right, from), point(left, from)]);
-    }
-  }
-  return shapes;
+/** The rings that are drawn: each one out to the first that reaches round all the ground in sight. */
+export function ringsFor(extentMeters: number): number[] {
+  const enclosing = RANGE_RINGS.findIndex((ring) => ring >= extentMeters);
+  return RANGE_RINGS.slice(0, enclosing === -1 ? RANGE_RINGS.length : enclosing + 1);
 }
 
-/**
- * Outlines as map data: for each, one shape for the wash, and its edge in runs of solid
- * and dashed line named with the repeater's callsign, which is written along it.
- */
-export function rangesData(ranges: Array<{ range: SightRange; name: string }>): FeatureCollection {
+const circle = (range: SightRange, meters: number, steps = 180): Array<[number, number]> =>
+  Array.from({ length: steps + 1 }, (_, index) => {
+    const at = destinationPoint(range.at, (index * 360) / steps, meters);
+    return [Number(at.lon.toFixed(6)), Number(at.lat.toFixed(6))];
+  });
+
+/** The rings, their distances, and (with no terrain) the plain circle of the smooth-Earth horizon, as map data. */
+/** `name` (a repeater's callsign) goes with each range's features, so that what is drawn can be told apart; it is not written on the map. */
+export function rangesData(ranges: Array<{ range: SightRange; name?: string }>): FeatureCollection {
   return { type: "FeatureCollection", features: ranges.flatMap(({ range, name }) => rangeData(range, name).features) };
 }
 
-/** One outline as map data. */
 export function rangeData(range: SightRange | undefined, name = ""): FeatureCollection {
   if (!range) return { type: "FeatureCollection", features: [] };
-  const { ring, dashed } = outlineOf(range);
-  // The wash: with terrain, only the ground in sight; without, the plain circle it is.
-  const features: FeatureCollection["features"] =
-    range.coverage === "none"
-      ? [{ type: "Feature", properties: { kind: "area", name }, geometry: { type: "Polygon", coordinates: [ring] } }]
-      : [
-          {
-            type: "Feature",
-            properties: { kind: "area", name },
-            geometry: { type: "MultiPolygon", coordinates: seenShapes(range).map((shape) => [shape]) },
-          },
-        ];
-  // Runs of sides that are drawn the same way, so the edge is a few lines rather than one per side.
-  let start = 0;
-  for (let index = 1; index <= dashed.length; index += 1) {
-    if (index < dashed.length && dashed[index] === dashed[start]) continue;
+  const features: FeatureCollection["features"] = [];
+  if (range.coverage === "none") {
+    const ring = circle(range, rangeExtent(range), 96);
+    features.push({ type: "Feature", properties: { kind: "area", name }, geometry: { type: "Polygon", coordinates: [ring] } });
     features.push({
       type: "Feature",
-      properties: { kind: "edge", dashed: dashed[start]!, name },
-      geometry: { type: "LineString", coordinates: ring.slice(start, index + 1) },
+      properties: { kind: "ring", dashed: true, name },
+      geometry: { type: "LineString", coordinates: ring },
     });
-    start = index;
+    return { type: "FeatureCollection", features };
+  }
+  if (rangeExtent(range) <= 0) return { type: "FeatureCollection", features };
+  for (const meters of ringsFor(rangeExtent(range))) {
+    features.push({
+      type: "Feature",
+      properties: { kind: "ring", dashed: false, name },
+      geometry: { type: "LineString", coordinates: circle(range, meters) },
+    });
+    const top = destinationPoint(range.at, 0, meters);
+    features.push({
+      type: "Feature",
+      properties: { kind: "ring-label", name, label: `${formatNumber(meters / 1000)} km` },
+      geometry: { type: "Point", coordinates: [top.lon, top.lat] },
+    });
   }
   return { type: "FeatureCollection", features };
 }
 
-/** The box the outline fills, to bring it into view. */
+/** The box the shading and its rings fill, to bring them into view. */
 export function rangeBounds(range: SightRange): Bbox {
-  const { ring } = outlineOf(range);
-  const lons = ring.map((point) => point[0]);
-  const lats = ring.map((point) => point[1]);
-  return [Math.min(...lons), Math.min(...lats), Math.max(...lons), Math.max(...lats)];
+  const extent = Math.max(500, rangeExtent(range));
+  const lat = extent / EARTH / DEG;
+  const lon = lat / Math.max(0.05, Math.cos(range.at.lat * DEG));
+  return [range.at.lon - lon, range.at.lat - lat, range.at.lon + lon, range.at.lat + lat];
 }
 
 /**
- * The outline as the map draws it: a light wash of the ink colour, and a thin ink edge
- * cased in the page colour like the map's other lines, so that it reads on the plain
- * map, on satellite imagery and in the dark theme alike. No colour of its own: the HF
- * coverage map is shaded cells in hues, the nuclear effects are rings in hues, and this
- * is neither. The repeater's callsign is written along the edge, so that where several
- * are shown each can be told from the others; where they cross, the labels give way to
- * each other rather than overprint, and each line is cased in the page colour.
+ * Whether ground a distance away along a bearing is in sight, from 0 to 1: between two bearings the two are blended,
+ * so that the shading's edge is smooth rather than stepped. Any bearing and distance; 0 beyond what was looked at.
+ */
+export function seenAt(range: SightRange, grid: RangeGrid, bearingDeg: number, meters: number): number {
+  if (meters > range.maxMeters) return 0;
+  const position = ((((bearingDeg % 360) + 360) % 360) * grid.bearingCount) / 360;
+  const first = Math.floor(position);
+  const blend = position - first;
+  const index = Math.max(0, rangeSampleIndex(meters, range.bands));
+  const a = grid.seen(first, index) ? 1 : 0;
+  const b = grid.seen(first + 1, index) ? 1 : 0;
+  return a * (1 - blend) + b * blend;
+}
+
+/**
+ * The ground in sight as a picture to lay over the map: in sight shaded in the range's colour, hidden ground clear.
+ * Null when nothing is in sight, or with no terrain (the plain circle is drawn as a shape).
+ */
+export function rangeShade(range: SightRange, colour: string, pixels = 1536): ShadePicture | null {
+  if (range.coverage === "none" || range.bearingCount === 0) return null;
+  const extent = rangeExtent(range);
+  if (extent <= 0) return null;
+  const grid = rangeGrid(range);
+  const [west, south, east, north] = rangeBounds(range);
+  const [r, g, b] = rgbOf(colour);
+  const { lat: lat0, lon: lon0 } = range.at;
+  const reach = extent + 300;
+  return paintShade({ west, south, east, north }, { pixels, finestMeters: 20 }, (lat, lon, out, offset) => {
+    const dy = (lat - lat0) * DEG * EARTH;
+    const dx = (lon - lon0) * DEG * EARTH * Math.cos(((lat + lat0) / 2) * DEG);
+    const meters = Math.hypot(dx, dy);
+    if (meters > reach) return;
+    const seen = seenAt(range, grid, Math.atan2(dx, dy) / DEG, meters);
+    if (seen <= 0) return;
+    out[offset] = r;
+    out[offset + 1] = g;
+    out[offset + 2] = b;
+    out[offset + 3] = Math.round(255 * seen);
+  });
+}
+
+/**
+ * What the map draws beside the shading: rings at 10, 25, 50 and 100 km in the range's colour, cased in the page
+ * colour so that they read on the plain map, on satellite imagery and in the dark theme; each written once with its
+ * distance. With no terrain, the plain circle of the smooth-Earth horizon, washed and dashed.
  */
 export function rangeLayers(theme: MapTheme): LayerSpecification[] {
-  const edge = ["==", ["get", "kind"], "edge"];
+  const ring = ["==", ["get", "kind"], "ring"];
   return [
     {
       id: "o-range-area",
       type: "fill",
       source: RANGE_SOURCE,
       filter: ["==", ["get", "kind"], "area"],
-      paint: { "fill-color": theme.ink, "fill-opacity": 0.07 },
+      paint: { "fill-color": theme.range, "fill-opacity": 0.18 },
     },
     {
       id: "o-range-casing",
       type: "line",
       source: RANGE_SOURCE,
-      filter: edge as never,
+      filter: ring as never,
       layout: { "line-join": "round", "line-cap": "round" },
-      paint: { "line-color": theme.page, "line-width": 4.5, "line-opacity": 0.75 },
+      paint: { "line-color": theme.page, "line-width": 3.5, "line-opacity": 0.6 },
     },
     {
-      id: "o-range-edge",
+      id: "o-range-ring",
       type: "line",
       source: RANGE_SOURCE,
-      filter: ["all", edge, ["!", ["get", "dashed"]]] as never,
+      filter: ["all", ring, ["!", ["get", "dashed"]]] as never,
       layout: { "line-join": "round", "line-cap": "round" },
-      paint: { "line-color": theme.ink, "line-width": 1.75, "line-opacity": 0.85 },
+      paint: { "line-color": theme.range, "line-width": 1.25, "line-opacity": 0.9 },
     },
     {
-      id: "o-range-edge-dashed",
+      id: "o-range-ring-dashed",
       type: "line",
       source: RANGE_SOURCE,
-      filter: ["all", edge, ["get", "dashed"]] as never,
+      filter: ["all", ring, ["get", "dashed"]] as never,
       layout: { "line-join": "round" },
-      paint: { "line-color": theme.ink, "line-width": 1.75, "line-opacity": 0.85, "line-dasharray": [3, 2] },
+      paint: { "line-color": theme.range, "line-width": 1.75, "line-opacity": 0.9, "line-dasharray": [3, 2] },
     },
     {
       id: "o-range-label",
       type: "symbol",
       source: RANGE_SOURCE,
-      filter: edge as never,
+      filter: ["==", ["get", "kind"], "ring-label"],
       layout: {
-        "symbol-placement": "line",
-        "symbol-spacing": 250,
         "text-font": [MAP_FONTS.medium] as string[],
-        "text-field": ["get", "name"],
+        "text-field": ["get", "label"],
         "text-size": 11.5,
-        "text-offset": [0, -0.8],
+        "text-anchor": "bottom",
+        "text-offset": [0, -0.2],
         "text-optional": true,
       },
       paint: { "text-color": theme.ink, "text-halo-color": theme.page, "text-halo-width": 1.6 },

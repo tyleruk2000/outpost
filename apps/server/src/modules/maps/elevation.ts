@@ -46,6 +46,20 @@ export interface ElevationSampler {
    * its heights are can.
    */
   sampleWithCells(positions: ReadonlyArray<readonly [lon: number, lat: number]>, spacingMeters: number): Promise<SampledHeights>;
+  /**
+   * The same for many positions given as two arrays, for work that reads hundreds of thousands of heights (a
+   * viewshed, the ground a walk can cover): heights are NaN where none is known, and the widths of the cells read
+   * are summed up as the finest and the coarsest. Positions next to one another in the arrays should be near one
+   * another on the ground, so that each tile is decoded once.
+   */
+  sampleGrid(lons: Float64Array, lats: Float64Array, spacingMeters: number): Promise<GridHeights>;
+}
+
+export interface GridHeights {
+  heights: Float32Array;
+  /** Width in metres of the finest and the coarsest cell read; null when nothing was. */
+  finestCellMeters: number | null;
+  coarsestCellMeters: number | null;
 }
 
 export interface SampledHeights {
@@ -129,81 +143,127 @@ export function createElevationSampler(ctx: AppContext, tiles: TileServer): Elev
     return tile;
   };
 
+  /**
+   * Heights at `count` positions, and the width of the cell each was read from (NaN where none is known). A tile
+   * already decoded for this call is used without waiting, so a long run of positions on few tiles reads quickly.
+   */
+  async function read(
+    count: number,
+    lonAt: (index: number) => number,
+    latAt: (index: number) => number,
+    spacingMeters: number,
+  ): Promise<{ heights: Float32Array; cells: Float32Array }> {
+    const heights = new Float32Array(count).fill(Number.NaN);
+    const cells = new Float32Array(count).fill(Number.NaN);
+    const terrain = tiles.sources().sources.terrain;
+    if (!terrain || count === 0) return { heights, cells };
+    const [west, south, east, north] = terrain.bounds;
+
+    // Tiles fine enough that a pixel is about half the spacing, and no finer than is installed.
+    const middle = latAt(count >> 1);
+    const wanted = Math.ceil(Math.log2(terrainCellMeters(0, middle) / Math.max(1, spacingMeters / 2)));
+    const startZoom = Math.min(terrain.maxzoom, Math.max(terrain.minzoom, wanted));
+    // Where the detailed tile is missing a coarser one is used, but only so far: a pixel
+    // a kilometre wide says nothing useful about the height of a point on a hillside.
+    const lowestZoom = Math.max(terrain.minzoom, Math.min(startZoom - 2, COARSEST_USEFUL_ZOOM));
+
+    /** Decoded tiles, least recently used first; null for a tile that is not there. */
+    const cache = new Map<string, HeightTile | null>();
+    let decoded = 0;
+    const load = async (key: string, z: number, x: number, y: number): Promise<HeightTile | null> => {
+      let tile: HeightTile | null = null;
+      try {
+        const served = await tiles.getTile("terrain", z, x, y);
+        if (served) tile = decodeKept(served, key);
+      } catch (error) {
+        // A tile that cannot be read is a gap in the heights, not a failed request.
+        ctx.log.warn({ err: error, tile: key }, "terrain tile could not be read for heights");
+      }
+      cache.set(key, tile);
+      if (tile) {
+        decoded += 1;
+        // Decoding a tile is tens of milliseconds of arithmetic. A long line reads many, so
+        // other requests get a turn between one tile and the next.
+        await yieldToEventLoop();
+      }
+      for (const [oldest, value] of cache) {
+        if (decoded <= MAX_DECODED_TILES) break;
+        if (!value || oldest === key) continue;
+        cache.delete(oldest);
+        decoded -= 1;
+      }
+      return tile;
+    };
+    // The tile read from last: a run of positions on one tile does not look it up again.
+    let lastKey = "";
+    let lastTile: HeightTile | null = null;
+
+    for (let index = 0; index < count; index += 1) {
+      const lon = lonAt(index);
+      const lat = latAt(index);
+      if (!(lon >= west && lon <= east && lat >= south && lat <= north && Math.abs(lat) < MAX_LATITUDE)) continue;
+      const worldX = (lon + 180) / 360;
+      const worldY = (1 - Math.log(Math.tan(lat * DEG) + 1 / Math.cos(lat * DEG)) / Math.PI) / 2;
+      // The detailed tile may not exist here (another region, downloaded with less detail).
+      for (let z = startZoom; z >= lowestZoom; z -= 1) {
+        const scale = 2 ** z;
+        const x = Math.min(scale - 1, Math.floor(worldX * scale));
+        const y = Math.min(scale - 1, Math.floor(worldY * scale));
+        const key = `${z}/${x}/${y}`;
+        let tile: HeightTile | null;
+        if (key === lastKey) tile = lastTile;
+        else {
+          const cached = cache.get(key);
+          if (cached !== undefined) {
+            cache.delete(key);
+            cache.set(key, cached);
+            tile = cached;
+          } else tile = await load(key, z, x, y);
+          lastKey = key;
+          lastTile = tile;
+        }
+        if (!tile) continue;
+        const height = interpolate(tile, worldX * scale - x, worldY * scale - y);
+        if (height === null) continue;
+        heights[index] = height;
+        cells[index] = terrainCellMeters(z, lat, tile.size);
+        break;
+      }
+    }
+    return { heights, cells };
+  }
+
   const sampler: ElevationSampler = {
     async sample(positions, spacingMeters) {
       return (await sampler.sampleWithCells(positions, spacingMeters)).heights;
     },
 
     async sampleWithCells(positions, spacingMeters) {
-      const terrain = tiles.sources().sources.terrain;
-      if (!terrain || positions.length === 0) return { heights: positions.map(() => null), cells: positions.map(() => null) };
-      const [west, south, east, north] = terrain.bounds;
+      const { heights, cells } = await read(
+        positions.length,
+        (index) => positions[index]![0],
+        (index) => positions[index]![1],
+        spacingMeters,
+      );
+      const known = (value: number) => (Number.isNaN(value) ? null : value);
+      return { heights: Array.from(heights, known), cells: Array.from(cells, known) };
+    },
 
-      // Tiles fine enough that a pixel is about half the spacing, and no finer than is installed.
-      const middle = positions[positions.length >> 1]![1];
-      const wanted = Math.ceil(Math.log2(terrainCellMeters(0, middle) / Math.max(1, spacingMeters / 2)));
-      const startZoom = Math.min(terrain.maxzoom, Math.max(terrain.minzoom, wanted));
-      // Where the detailed tile is missing a coarser one is used, but only so far: a pixel
-      // a kilometre wide says nothing useful about the height of a point on a hillside.
-      const lowestZoom = Math.max(terrain.minzoom, Math.min(startZoom - 2, COARSEST_USEFUL_ZOOM));
-
-      /** Decoded tiles, least recently used first; null for a tile that is not there. */
-      const cache = new Map<string, HeightTile | null>();
-      let decoded = 0;
-      const load = async (z: number, x: number, y: number): Promise<HeightTile | null> => {
-        const key = `${z}/${x}/${y}`;
-        const cached = cache.get(key);
-        if (cached !== undefined) {
-          cache.delete(key);
-          cache.set(key, cached);
-          return cached;
-        }
-        let tile: HeightTile | null = null;
-        try {
-          const served = await tiles.getTile("terrain", z, x, y);
-          if (served) tile = decodeKept(served, key);
-        } catch (error) {
-          // A tile that cannot be read is a gap in the heights, not a failed request.
-          ctx.log.warn({ err: error, tile: key }, "terrain tile could not be read for heights");
-        }
-        cache.set(key, tile);
-        if (tile) {
-          decoded += 1;
-          // Decoding a tile is tens of milliseconds of arithmetic. A long line reads many, so
-          // other requests get a turn between one tile and the next.
-          await yieldToEventLoop();
-        }
-        for (const [oldest, value] of cache) {
-          if (decoded <= MAX_DECODED_TILES) break;
-          if (!value || oldest === key) continue;
-          cache.delete(oldest);
-          decoded -= 1;
-        }
-        return tile;
-      };
-
-      const heights: Array<number | null> = [];
-      const cells: Array<number | null> = [];
-      for (const [lon, lat] of positions) {
-        let height: number | null = null;
-        let cell: number | null = null;
-        if (lon >= west && lon <= east && lat >= south && lat <= north && Math.abs(lat) < MAX_LATITUDE) {
-          const worldX = (lon + 180) / 360;
-          const worldY = (1 - Math.log(Math.tan(lat * DEG) + 1 / Math.cos(lat * DEG)) / Math.PI) / 2;
-          // The detailed tile may not exist here (another region, downloaded with less detail).
-          for (let z = startZoom; z >= lowestZoom && height === null; z -= 1) {
-            const scale = 2 ** z;
-            const x = Math.min(scale - 1, Math.floor(worldX * scale));
-            const y = Math.min(scale - 1, Math.floor(worldY * scale));
-            const tile = await load(z, x, y);
-            if (tile) height = interpolate(tile, worldX * scale - x, worldY * scale - y);
-            if (tile && height !== null) cell = terrainCellMeters(z, lat, tile.size);
-          }
-        }
-        heights.push(height);
-        cells.push(cell);
+    async sampleGrid(lons, lats, spacingMeters) {
+      const { heights, cells } = await read(
+        lons.length,
+        (index) => lons[index]!,
+        (index) => lats[index]!,
+        spacingMeters,
+      );
+      let finest = Number.POSITIVE_INFINITY;
+      let coarsest = 0;
+      for (const cell of cells) {
+        if (Number.isNaN(cell)) continue;
+        if (cell < finest) finest = cell;
+        if (cell > coarsest) coarsest = cell;
       }
-      return { heights, cells };
+      return { heights, finestCellMeters: coarsest > 0 ? finest : null, coarsestCellMeters: coarsest > 0 ? coarsest : null };
     },
   };
   return sampler;

@@ -2,11 +2,12 @@
  * "Estimated radio range from here": the repeaters' estimate for any point, from the long-press and right-click menu.
  * Every figure here is made up for the test.
  */
-import { RANGE_BEARINGS, type SightRange } from "@outpost/shared";
+import type { SightRange, TerrainProfile } from "@outpost/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { rangeFixture } from "@/features/repeaters/map/range-fixture";
 import { api } from "@/lib/api";
 import type { MapEngine } from "../map/engine";
 import { ContextMenu } from "../map-chrome";
@@ -15,33 +16,29 @@ import { type PointRange, usePointRange } from "./point-range";
 vi.mock("@/lib/api", () => ({ api: { get: vi.fn() }, errorMessage: (error: unknown) => String(error), ApiError: class extends Error {} }));
 const asked = vi.mocked(api.get);
 
+/** In sight to 18 km on the eastern half of the compass and to 6 km on the western; along any path, a valley. */
 function answer(coverage: SightRange["coverage"]) {
-  return (_path: string, query?: Record<string, unknown>) => {
+  return (path: string, query?: Record<string, unknown>) => {
+    if (path === "/api/maps/terrain-profile") {
+      // A valley between the two ends: the line of sight passes over it.
+      const heights = Array.from({ length: 101 }, (_, i) => 900 + (78 * Math.abs(i - 50)) / 50);
+      return Promise.resolve({
+        distanceMeters: 20_000,
+        stepMeters: 200,
+        heights,
+        coverage: "terrain",
+        gaps: [],
+      } as unknown as TerrainProfile) as never;
+    }
     const [lat, lon] = String(query?.at).split(",").map(Number) as [number, number];
-    const reach = (i: number) => (i < RANGE_BEARINGS / 2 ? 18_000 : 6_000);
-    return Promise.resolve({
-      at: { lat, lon },
-      aerialMeters: Number(query?.aerial),
-      stationMeters: Number(query?.station),
-      maxMeters: 100_000,
-      nearStepMeters: 100,
-      farStepMeters: 250,
-      nearMeters: 25_000,
-      coverage,
-      groundMeters: coverage === "none" ? null : 978,
-      horizonMeters: 10_100,
-      bearings:
-        coverage === "none"
-          ? []
-          : Array.from({ length: RANGE_BEARINGS }, (_, i) => ({
-              bearingDeg: (i * 360) / RANGE_BEARINGS,
-              reachMeters: reach(i),
-              limit: "sight",
-              furtherMeters: null,
-              unknownFromMeters: null,
-            })),
-      hiddenShare: 0,
-    } as unknown as SightRange) as never;
+    return Promise.resolve(
+      rangeFixture(
+        coverage,
+        { seen: (bearing, meters) => meters <= (bearing < 180 ? 18_000 : 6_000), groundMeters: 978 },
+        { lat, lon },
+        { aerialMeters: Number(query?.aerial), stationMeters: Number(query?.station) },
+      ),
+    ) as never;
   };
 }
 
@@ -86,7 +83,7 @@ describe("an estimated radio range from any point", () => {
       { at: "54.45420,-3.21160", aerial: "1.5", station: "1.5" },
       expect.anything(),
     );
-    expect(await screen.findByText(/^Ground in sight as far as about .* on most bearings, from .* to .*\.$/)).toBeInTheDocument();
+    expect(await screen.findByText(/^In sight: \d+% of the ground within 10 km, \d+% within 25 km\.$/)).toBeInTheDocument();
     expect(screen.getByText(/From “Scafell Pike”, 54\.45420, -3\.21160, ground 978 m above sea level/)).toBeInTheDocument();
     // Short until asked: the heights and what the estimate is are a press away.
     expect(screen.queryByLabelText("Your aerial")).toBeNull();
@@ -103,7 +100,7 @@ describe("an estimated radio range from any point", () => {
     asked.mockImplementation(answer("terrain"));
     show();
     act(() => latest.start({ position: { lat: 54.4542, lon: -3.2116 } }));
-    await screen.findByText(/^Ground in sight as far as about/);
+    await screen.findByText(/^In sight: /);
     fireEvent.click(screen.getByRole("button", { name: /^Heights and details/ }));
     fireEvent.change(screen.getByLabelText("Your aerial"), { target: { value: "10" } });
     fireEvent.click(screen.getByRole("radio", { name: "Roof aerial" }));
@@ -129,11 +126,29 @@ describe("an estimated radio range from any point", () => {
     expect(screen.getByText(/No terrain is held here, so the circle is drawn as if the ground were flat all round/)).toBeInTheDocument();
   });
 
+  it("says the furthest ground in sight and its direction, and shows why along a direction chosen on the disc", async () => {
+    asked.mockImplementation(answer("terrain"));
+    show();
+    act(() => latest.start({ position: { lat: 54.4542, lon: -3.2116 } }));
+    expect(await screen.findByText("The furthest ground in sight is 18 km (11 mi) away to the north.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Why this shape: look along one direction" }));
+    const disc = screen.getByRole("slider", { name: /^Direction to look along/ });
+    // It starts along the furthest ground in sight, and asks for the ground along it.
+    expect(disc).toHaveAttribute("aria-valuetext", "north (0°), 18 km (11 mi) out");
+    await waitFor(() => expect(asked).toHaveBeenCalledWith("/api/maps/terrain-profile", expect.anything(), expect.anything()));
+    expect(await screen.findByText("The ground north of the aerial, seen from the side")).toBeInTheDocument();
+    expect(screen.getByText(/In sight: nothing stands in the way\./)).toBeInTheDocument();
+    // Turned with the keys: a quarter of the way round is east.
+    for (let turn = 0; turn < 4; turn += 1) fireEvent.keyDown(disc, { key: "PageDown" });
+    expect(disc).toHaveAttribute("aria-valuetext", "east (90°), 18 km (11 mi) out");
+    expect(screen.getByText("Ground in sight from the aerial")).toBeInTheDocument();
+  });
+
   it("is put away by its close button", async () => {
     asked.mockImplementation(answer("terrain"));
     show();
     act(() => latest.start({ position: { lat: 54.4542, lon: -3.2116 } }));
-    await screen.findByText(/^Ground in sight as far as about/);
+    await screen.findByText(/^In sight: /);
     fireEvent.click(screen.getByRole("button", { name: "Stop showing this range" }));
     await waitFor(() => expect(latest.card).toBeNull());
     expect(latest.outline).toBeNull();

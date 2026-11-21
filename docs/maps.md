@@ -2147,28 +2147,31 @@ in the same file; the web app runs it in the browser.
 ## Estimated radio range from a point
 
 Press and hold the map (or right-click it with a mouse) and choose **Estimated radio
-range from here**: how far a radio at that point could reach over the terrain, drawn as
-an outline with the answer in a card. For a hilltop where someone would set up, a planned
+range from here**: the ground a radio at that point could see over the terrain, shaded on
+the map, with the answer in a card. For a hilltop where someone would set up, a planned
 base, or a saved place (the name is used when the point is one).
 
-It is the repeaters' estimate, the same sums and the same outline (see
+It is the repeaters' estimate, the same sums and the same picture (see
 [docs/radio.md](radio.md#the-estimated-range)), from a point instead of a repeater:
 
 - **The heights.** Your aerial, 1.5 m above the ground unless changed (a radio held in
   the hand; give a mast's height if it is on one), and the other station: a handheld
   (1.5 m), a car (2 m) or a roof aerial (8 m). Under **Heights and details**; remembered
   on this device.
-- **What it is.** The ground a radio there can see: on each of 72 bearings, where the
-  other station would be in sight of your aerial over the installed terrain, out to
-  100 km. The ground in sight is shaded and the ground hidden by nearer ground (from a
-  summit, most of the slopes just below it) is left clear; the outline is the furthest
-  ground in sight. The card gives how far that is on most bearings, the nearest and the
-  furthest, how much of the ground within it is hidden, and the height of the ground there.
+- **What it is.** The ground a radio there can see: along 720 bearings out to 100 km,
+  where the other station would be in sight of your aerial over the installed terrain.
+  The ground in sight is shaded green and the ground hidden by nearer ground (from a
+  summit, most of the slopes just below it) is left clear, with rings at 10, 25, 50 and
+  100 km. The card gives the share of the ground in sight within 10 km and 25 km, the
+  furthest ground in sight and its direction, and the height of the ground there.
+- **Why this shape.** **Why this shape: look along one direction** shows the range from
+  above, north up, as a disc; press or drag on it to see the ground's cross-section from
+  your aerial to that place, with the line of sight and what stands in the way.
 - **What it is not.** An estimate of line of sight, not a promise: power, the band,
   aerials, woods and buildings and signals bending over ridges are not counted. Radio
-  often reaches less than the outline, and sometimes more.
+  often reaches less than this, and sometimes more.
 - **No terrain there.** It says so, and the shape is the plain smooth-Earth radio
-  horizon, with **Get terrain in Offline maps**. A dashed edge is where terrain ran out.
+  horizon, a dashed circle, with **Get terrain in Offline maps**.
 - One point at a time, drawn with any repeaters' ranges that are on. **Stop showing this
   range** (the card's ×) takes it away. It works anywhere terrain is installed.
 
@@ -2205,14 +2208,13 @@ Outpost holds none until you import a list or enter some; it downloads none.
   listed aerial height is on the repeater's own screen, to type in as the height at B;
   it is not filled in for you.
 
-- **Estimated range** on the card draws an outline of where the repeater's aerial is in
-  line of sight over installed terrain, for a handheld, a car or a roof aerial: a thin
-  ink line with a light wash, labelled with the callsign along its edge, dashed where
-  terrain ran out (a plain dashed circle, the smooth-Earth radio horizon, where there is
-  none). The switch is that repeater's own: its outline stays after the card is closed,
-  until switched off in its card, and up to eight can be on at once, with **Hide all
-  ranges** in the card when more than one is. Off until switched on, remembered on the
-  device. See [radio.md](radio.md#the-estimated-range).
+- **Estimated range** on the card shades the ground from which a handheld, a car or a
+  roof aerial would be in line of sight of the repeater's aerial over installed terrain,
+  in green, with rings at 10, 25, 50 and 100 km (a plain dashed circle, the smooth-Earth
+  radio horizon, where there is no terrain). The switch is that repeater's own: its range
+  stays after the card is closed, until switched off in its card, and up to eight can be
+  on at once, with **Hide all ranges** in the card when more than one is. Off until
+  switched on, remembered on the device. See [radio.md](radio.md#the-estimated-range).
 
 Links of the form `/maps?repeater=<id>` open the map on a repeater, and with `&sight=1`
 (and optionally `&from=latitude,longitude`) go straight to the check, or with `&range=1`

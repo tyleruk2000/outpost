@@ -20,14 +20,29 @@ import { EARTH_RADIUS_METERS, maxSightDistanceMeters, RADIO_EARTH_FACTOR } from 
 
 const DEG = Math.PI / 180;
 
-/** Bearings the reach is worked out on: one every 5°, enough for an outline that reads as a shape. */
-export const RANGE_BEARINGS = 72;
+/**
+ * Bearings the ground is looked along: one every half degree. Neighbouring bearings are then about 220 m apart 25 km
+ * out and under 900 m apart at 100 km, so a glen a few hundred metres wide is not missed nor widened into a wedge.
+ */
+export const RANGE_BEARINGS = 720;
 /** The reach is never looked for further out than this. */
 export const RANGE_MAX_METERS = 100_000;
-/** Within this distance the ground is read every `RANGE_NEAR_STEP_METERS`, beyond it every `RANGE_FAR_STEP_METERS`. */
+/**
+ * How often the ground is read on each bearing: finest near the aerial, where the shape of the ground matters most
+ * and the bearings are closest together, coarser further out. Each band runs from the end of the one before it.
+ */
+export const RANGE_BANDS: ReadonlyArray<{ toMeters: number; stepMeters: number }> = [
+  { toMeters: 25_000, stepMeters: 50 },
+  { toMeters: 50_000, stepMeters: 100 },
+  { toMeters: 100_000, stepMeters: 250 },
+];
+/** The first band: within this distance the ground is read every `RANGE_NEAR_STEP_METERS`. */
 export const RANGE_NEAR_METERS = 25_000;
-export const RANGE_NEAR_STEP_METERS = 100;
+export const RANGE_NEAR_STEP_METERS = 50;
+/** The last band's step. */
 export const RANGE_FAR_STEP_METERS = 250;
+/** The distances the share of the ground in sight is given within. */
+export const RANGE_SHARE_WITHIN_METERS = [10_000, 25_000, 50_000, 100_000] as const;
 /**
  * A stretch out of sight shorter than this (a hollow, a cutting, a fold in a slope) does
  * not end the reach on a bearing; a longer one does. Without it one small dip a few
@@ -47,11 +62,132 @@ export const RANGE_STATIONS = [
 export type RangeStationId = (typeof RANGE_STATIONS)[number]["id"];
 
 /** The distances, in metres from the repeater, at which the ground is read on every bearing. */
-export function rangeDistances(maxMeters = RANGE_MAX_METERS): number[] {
+export function rangeDistances(maxMeters = RANGE_MAX_METERS, bands = RANGE_BANDS): number[] {
   const distances: number[] = [];
-  for (let d = RANGE_NEAR_STEP_METERS; d <= Math.min(RANGE_NEAR_METERS, maxMeters) + 1e-6; d += RANGE_NEAR_STEP_METERS) distances.push(d);
-  for (let d = RANGE_NEAR_METERS + RANGE_FAR_STEP_METERS; d <= maxMeters + 1e-6; d += RANGE_FAR_STEP_METERS) distances.push(d);
+  let from = 0;
+  for (const band of bands) {
+    for (let d = from + band.stepMeters; d <= Math.min(band.toMeters, maxMeters) + 1e-6; d += band.stepMeters)
+      distances.push(Math.round(d));
+    from = band.toMeters;
+    if (from >= maxMeters) break;
+  }
   return distances;
+}
+
+/**
+ * The index of the sample at or just beyond a distance along a bearing, worked out from the bands rather than looked
+ * for: what draws the shading asks it for every pixel. -1 before the first sample; past the last, the count.
+ */
+export function rangeSampleIndex(meters: number, bands: ReadonlyArray<{ toMeters: number; stepMeters: number }>): number {
+  let from = 0;
+  let before = 0;
+  for (const band of bands) {
+    const count = Math.round((band.toMeters - from) / band.stepMeters);
+    if (meters <= band.toMeters) return before + Math.ceil((meters - from) / band.stepMeters) - 1;
+    before += count;
+    from = band.toMeters;
+  }
+  return before;
+}
+
+// ── In sight or not, every sample of every bearing, as bits ────────────────
+
+const BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+/** Bits as base64, the first bit of each byte the lowest. Written out by hand so that it is the same in Node and the browser. */
+export function encodeBits(bytes: Uint8Array): string {
+  let out = "";
+  for (let index = 0; index < bytes.length; index += 3) {
+    const a = bytes[index]!;
+    const b = bytes[index + 1] ?? 0;
+    const c = bytes[index + 2] ?? 0;
+    const n = (a << 16) | (b << 8) | c;
+    out += BASE64[(n >> 18) & 63]! + BASE64[(n >> 12) & 63]!;
+    out += index + 1 < bytes.length ? BASE64[(n >> 6) & 63]! : "=";
+    out += index + 2 < bytes.length ? BASE64[n & 63]! : "=";
+  }
+  return out;
+}
+
+const BASE64_VALUE = (() => {
+  const table = new Int16Array(128).fill(-1);
+  for (let index = 0; index < BASE64.length; index += 1) table[BASE64.charCodeAt(index)] = index;
+  return table;
+})();
+
+export function decodeBits(text: string): Uint8Array {
+  const clean = text.replace(/=+$/, "");
+  const bytes = new Uint8Array(Math.floor((clean.length * 3) / 4));
+  let filled = 0;
+  for (let index = 0; index < clean.length; index += 4) {
+    const values = [0, 1, 2, 3].map((offset) => Math.max(0, BASE64_VALUE[clean.charCodeAt(index + offset)] ?? 0));
+    const n = (values[0]! << 18) | (values[1]! << 12) | (values[2]! << 6) | values[3]!;
+    if (filled < bytes.length) bytes[filled++] = (n >> 16) & 255;
+    if (filled < bytes.length) bytes[filled++] = (n >> 8) & 255;
+    if (filled < bytes.length) bytes[filled++] = n & 255;
+  }
+  return bytes;
+}
+
+/** A range's viewshed made ready to read: whether the sample `index` out along bearing `bearing` (by number) is in sight. */
+export interface RangeGrid {
+  bearingCount: number;
+  distances: number[];
+  seen(bearing: number, index: number): boolean;
+}
+
+export function rangeGrid(range: Pick<SightRange, "seen" | "bearingCount" | "bands" | "maxMeters">): RangeGrid {
+  const bits = decodeBits(range.seen);
+  const distances = rangeDistances(range.maxMeters, range.bands);
+  const count = distances.length;
+  return {
+    bearingCount: range.bearingCount,
+    distances,
+    seen(bearing, index) {
+      if (index < 0 || index >= count) return false;
+      const bit = (((bearing % range.bearingCount) + range.bearingCount) % range.bearingCount) * count + index;
+      return ((bits[bit >> 3]! >> (bit & 7)) & 1) === 1;
+    },
+  };
+}
+
+/** The stretches in sight along one bearing, [from, to] in metres, each sample counting for half a step either side. */
+export function seenRunsOf(grid: RangeGrid, bearing: number): Array<[number, number]> {
+  const { distances } = grid;
+  const runs: Array<[number, number]> = [];
+  for (let index = 0; index < distances.length; index += 1) {
+    if (!grid.seen(bearing, index)) continue;
+    const before = index === 0 ? 0 : (distances[index - 1]! + distances[index]!) / 2;
+    const after = index + 1 < distances.length ? (distances[index]! + distances[index + 1]!) / 2 : distances[index]!;
+    const last = runs.at(-1);
+    if (last && index > 0 && grid.seen(bearing, index - 1)) last[1] = after;
+    else runs.push([before, after]);
+  }
+  return runs;
+}
+
+const COMPASS = [
+  "north",
+  "north-north-east",
+  "north-east",
+  "east-north-east",
+  "east",
+  "east-south-east",
+  "south-east",
+  "south-south-east",
+  "south",
+  "south-south-west",
+  "south-west",
+  "west-south-west",
+  "west",
+  "west-north-west",
+  "north-west",
+  "north-north-west",
+] as const;
+
+/** A bearing as the 16 points of the compass, in words: "north-east" (`compassPoint` in compass.ts gives "NE"). */
+export function compassWords(bearingDeg: number): string {
+  return COMPASS[Math.round((((bearingDeg % 360) + 360) % 360) / 22.5) % 16]!;
 }
 
 /** The point a distance away along a bearing, on the sphere distances are measured on. */
@@ -233,15 +369,37 @@ export function smoothRangeMeters(aerialMeters: number, stationMeters: number): 
   return maxSightDistanceMeters(aerialMeters, stationMeters);
 }
 
+export interface SightRangeBearing {
+  bearingDeg: number;
+  /** The furthest ground in sight on this bearing; 0 when none is. */
+  furthestMeters: number;
+  /** What ends the view at `furthestMeters` (see `SightRuns.limit`). */
+  limit: Reach["limit"];
+  /** Where terrain first runs out on this bearing, or null when it is held all the way. */
+  unknownFromMeters: number | null;
+}
+
 /** `GET /api/maps/sight-range`: the estimated range of an aerial at a place, from installed terrain. */
 export interface SightRange {
   at: RoutePoint;
   aerialMeters: number;
   stationMeters: number;
   maxMeters: number;
-  nearStepMeters: number;
-  farStepMeters: number;
-  nearMeters: number;
+  /** How often the ground was read on each bearing (`RANGE_BANDS`): the distances of the samples follow from these. */
+  bands: Array<{ toMeters: number; stepMeters: number }>;
+  /** How many bearings the ground was looked along, clockwise from north and evenly spaced. 0 with no terrain. */
+  bearingCount: number;
+  /**
+   * The viewshed: for every sample of every bearing, whether ground there is in sight of the aerial (for a station at
+   * its height), as bits in base64 (`rangeGrid` reads them). Bearing `b`, sample `i` is bit `b × samples + i`, the
+   * lowest bit of each byte first. Ground not known (no terrain) is never in sight.
+   */
+  seen: string;
+  /**
+   * Of the ground within each distance (`RANGE_SHARE_WITHIN_METERS`), weighted by area, the share in sight (0 to 1);
+   * null where none of the ground within it is known.
+   */
+  shares: Array<{ withinMeters: number; share: number | null }>;
   /**
    * `terrain`: terrain is held under the repeater and on every bearing out to the
    * maximum distance. `partial`: under the repeater, but it runs out on some bearings.
@@ -253,26 +411,51 @@ export interface SightRange {
   groundMeters: number | null;
   /** The smooth-Earth radio horizon for these heights, in metres. */
   horizonMeters: number;
-  /** One per bearing, clockwise from north, `360 / bearings.length` degrees apart. */
-  bearings: Array<{
-    bearingDeg: number;
-    /** The first unbroken stretch in sight (shadows under 1 km bridged): kept for what reads it; the map draws `runs`. */
-    reachMeters: number;
-    /** The furthest ground in sight on this bearing: where the outline is drawn. */
-    furthestMeters?: number;
-    /** The stretches of ground in sight, [from, to] in metres: what the map shades. */
-    runs?: Array<[number, number]>;
-    /** What ends the outline at `furthestMeters` (see `SightRuns.limit`). */
-    outlineLimit?: Reach["limit"];
-    limit: Reach["limit"];
-    furtherMeters: number | null;
-    unknownFromMeters: number | null;
-  }>;
+  /** One per bearing, clockwise from north, `360 / bearingCount` degrees apart. */
+  bearings: SightRangeBearing[];
   /**
-   * Of the ground inside the outline (out to the furthest ground in sight on each bearing), the share hidden from the
-   * aerial by nearer ground (0 to 1); null with no terrain.
+   * Of the ground out to the furthest ground in sight on each bearing, the share hidden from the aerial by nearer
+   * ground (0 to 1); null with no terrain.
    */
   hiddenShare: number | null;
   /** How fine the terrain that was read is, as in `TerrainProfile.terrain`. */
   terrain: { finestCellMeters: number; coarsestCellMeters: number; installedMaxZoom: number } | null;
+}
+
+// ── The relay planner ───────────────────────────────────────────────────────
+
+/** The most places the relay planner names. */
+export const RELAY_MOST = 8;
+
+/** One place in sight of both ends: high ground a relay could stand on. */
+export interface RelayCandidate {
+  at: RoutePoint;
+  /** Height of the ground there above sea level. */
+  groundMeters: number;
+  /** Distance from each end, in metres. */
+  fromAMeters: number;
+  fromBMeters: number;
+}
+
+/**
+ * `GET /api/maps/relay`: high ground in sight of two places, for a relay between them, from the two places'
+ * viewsheds (each as the estimated range works it out, with the relay's aerial as the other station).
+ */
+export interface RelayPlan {
+  a: RoutePoint;
+  b: RoutePoint;
+  /** The aerials' heights above the ground at A, at B and at the relay. */
+  aMeters: number;
+  bMeters: number;
+  relayMeters: number;
+  distanceMeters: number;
+  /** `none` when either end has no terrain under it; `partial` when terrain runs out within reach of either. */
+  coverage: RouteElevation;
+  /**
+   * The ground in sight of both, laid out as A's range is (bearings from A), for the map to shade as it shades a
+   * range. Null with no terrain.
+   */
+  both: SightRange | null;
+  /** The best places: the highest, each well apart from the others, and then the nearest to both; at most `RELAY_MOST` of each. */
+  candidates: RelayCandidate[];
 }

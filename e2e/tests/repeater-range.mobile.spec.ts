@@ -31,7 +31,7 @@ test("a repeater's estimated range on a phone: folded out of the way, drawn larg
 
     // Once the outline is drawn the card folds to one line: the callsign, the answer in a few words, the switch.
     const folded = page.getByRole("region", { name: "QZ3RNG: estimated range" });
-    await expect(folded).toContainText(/QZ3RNG\s*(About|Mostly) .* km, terrain partial/);
+    await expect(folded).toContainText(/QZ3RNG\s*.* in sight within 10 km, furthest .* km .*, terrain partial/);
     await expect(folded.getByRole("switch", { name: "Estimated range" })).toBeChecked();
     await idle(page);
     expect(await overflow(page)).toBeLessThanOrEqual(0);
@@ -46,13 +46,13 @@ test("a repeater's estimated range on a phone: folded out of the way, drawn larg
     ).toBeVisible();
     await expect(card.getByText(/Handheld 1\.5 m: held at head height\. Out to 100 km/)).toBeVisible();
     await expect(card.getByRole("textbox", { name: "Repeater aerial" })).toHaveValue("10");
-    await expect(card.getByText(/^Ground in sight as far as about .* on most bearings/)).toBeVisible();
+    await expect(card.getByText(/^In sight: .* of the ground within 10 km, .* within 25 km\./)).toBeVisible();
     await expect(card.getByText("Terrain covers only part of the area within 100 km (62 mi).")).toBeVisible();
     await expect(card.getByRole("button", { name: "Get terrain in Offline maps" })).toBeVisible();
     // What it is not, behind one disclosure.
     await card.getByText("What this is, and is not").tap();
     await expect(card.getByText(/It takes no account of transmitter power, aerial gain or pattern, frequency/)).toBeVisible();
-    await expect(card.getByText(/A repeater may be heard beyond the outline and not heard inside it\./)).toBeVisible();
+    await expect(card.getByText(/A repeater may be heard from ground left clear and not heard from shaded ground\./)).toBeVisible();
     expect(await overflow(page)).toBeLessThanOrEqual(0);
 
     // Folded again, the outline is on the map, at least 120 px across, and none of it under the card.

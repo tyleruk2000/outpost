@@ -34,13 +34,27 @@ function LegendItem({ swatch, children }: { swatch: ReactNode; children: ReactNo
   );
 }
 
+const PATH_NAMES = { from: "A", to: "B", title: "The path from A to B" };
+
 export function SightChart({
   samples,
   mark,
   tone,
   midBulgeMeters,
   onScrub,
+  names = PATH_NAMES,
+  seen,
+  fresnel = true,
 }: {
+  /**
+   * What the two ends are called, and the chart: A and B for the check between two points; the aerial and a place
+   * for the cross-section of an estimated range.
+   */
+  names?: { from: string; to: string; title: string };
+  /** Stretches of ground in sight from the first end, [from, to] in metres: drawn along the ground in the range's colour. */
+  seen?: Array<[number, number]>;
+  /** Draw the first Fresnel zone, and say it: the check between two points does, the range's line-of-sight picture does not. */
+  fresnel?: boolean;
   samples: SightSample[];
   /** The place the answer turns on, with a few words for it. */
   mark: SightReading["mark"];
@@ -106,14 +120,29 @@ export function SightChart({
   // It sits on the ground at that place: the top of what is in the way, or of what comes closest.
   const markY = marked ? geometry.y(marked.rayMeters - (marked.clearanceMeters ?? 0)) : 0;
   const markLeft = markX > width / 2;
+  // The ground in sight: a line along the top of the ground for each stretch, through the columns that fall in it.
+  const seenLines = useMemo(() => {
+    if (!seen) return [];
+    return seen.flatMap(([from, to]) => {
+      const columns = geometry.columns.filter(
+        (column) => column.drawnGround !== null && column.distanceMeters >= from && column.distanceMeters <= to,
+      );
+      if (columns.length === 0) return [];
+      const points = columns.map(
+        (column) => `${geometry.x(column.distanceMeters).toFixed(1)},${geometry.y(column.drawnGround!).toFixed(1)}`,
+      );
+      // A stretch narrower than a column still shows, as a short dash.
+      return [`M${points.join("L")}${points.length === 1 ? "h2" : ""}`];
+    });
+  }, [seen, geometry]);
 
   return (
     <figure ref={wrapper} className="m-0">
       <figcaption>
-        <p className="text-small font-medium text-ink">The path from A to B, seen from the side</p>
+        <p className="text-small font-medium text-ink">{names.title}, seen from the side</p>
         <p className="tabular min-h-[2.25rem] text-micro text-ink-muted" aria-live="off">
           {sample
-            ? describeSample(sample)
+            ? describeSample(sample, names.from)
             : `The Earth's curve is drawn into the ground (${formatMeters(midBulgeMeters)} at the middle), so the ray is straight. It is the curve of an Earth of 4/3 radius, the usual allowance for radio.`}
         </p>
       </figcaption>
@@ -121,11 +150,11 @@ export function SightChart({
       <div
         role="slider"
         tabIndex={0}
-        aria-label="Position along the path from A to B. Arrow keys move along it."
+        aria-label={`Position along ${names.title.charAt(0).toLowerCase()}${names.title.slice(1)}. Arrow keys move along it.`}
         aria-valuemin={0}
         aria-valuemax={Math.round(total)}
         aria-valuenow={Math.round(sample?.distanceMeters ?? 0)}
-        aria-valuetext={sample ? describeSample(sample) : "Not on the path"}
+        aria-valuetext={sample ? describeSample(sample, names.from) : "Not on the path"}
         onPointerMove={fromPointer}
         onPointerDown={fromPointer}
         onPointerLeave={(event) => event.pointerType === "mouse" && move(null)}
@@ -154,12 +183,17 @@ export function SightChart({
             {geometry.seaLevel ? (
               <path d={geometry.seaLevel} fill="none" stroke="var(--chart-axis)" strokeWidth={1} strokeDasharray="1 3" />
             ) : null}
-            <path d={geometry.zone} fill="var(--chart-2)" fillOpacity={0.2} stroke="var(--chart-2)" strokeWidth={1} strokeOpacity={0.7} />
+            {fresnel ? (
+              <path d={geometry.zone} fill="var(--chart-2)" fillOpacity={0.2} stroke="var(--chart-2)" strokeWidth={1} strokeOpacity={0.7} />
+            ) : null}
             {geometry.ground.map((run) => (
               <g key={run.line.slice(0, 24)}>
                 <path d={run.area} fill="var(--chart-other)" fillOpacity={0.55} />
                 <path d={run.line} fill="none" stroke="var(--chart-axis)" strokeWidth={1.5} strokeLinejoin="round" />
               </g>
+            ))}
+            {seenLines.map((line) => (
+              <path key={line.slice(0, 24)} d={line} fill="none" stroke="var(--map-range)" strokeWidth={3.5} strokeLinejoin="round" />
             ))}
             <path d={geometry.ray} fill="none" stroke="var(--chart-1)" strokeWidth={2} strokeLinecap="round" />
           </g>
@@ -199,10 +233,10 @@ export function SightChart({
             {formatHeight(geometry.floor)}
           </text>
           <text x={PAD.left} y={HEIGHT - 5} className={TEXT}>
-            A
+            {names.from.charAt(0).toUpperCase() + names.from.slice(1)}
           </text>
           <text x={width - PAD.right} y={HEIGHT - 5} textAnchor="end" className={TEXT}>
-            B, {formatDistance(total)} from A
+            {names.to}, {formatDistance(total)} from {names.from}
           </text>
 
           {marked && mark ? (
@@ -254,23 +288,30 @@ export function SightChart({
         <LegendItem swatch={<line x1="1" x2="17" y1="5" y2="5" stroke="var(--chart-1)" strokeWidth="2" strokeLinecap="round" />}>
           Ray
         </LegendItem>
-        <LegendItem
-          swatch={
-            <rect
-              x="1"
-              y="1"
-              width="16"
-              height="8"
-              rx="4"
-              fill="var(--chart-2)"
-              fillOpacity="0.2"
-              stroke="var(--chart-2)"
-              strokeOpacity="0.7"
-            />
-          }
-        >
-          First Fresnel zone
-        </LegendItem>
+        {fresnel ? (
+          <LegendItem
+            swatch={
+              <rect
+                x="1"
+                y="1"
+                width="16"
+                height="8"
+                rx="4"
+                fill="var(--chart-2)"
+                fillOpacity="0.2"
+                stroke="var(--chart-2)"
+                strokeOpacity="0.7"
+              />
+            }
+          >
+            First Fresnel zone
+          </LegendItem>
+        ) : null}
+        {seen ? (
+          <LegendItem swatch={<line x1="1" x2="17" y1="5" y2="5" stroke="var(--map-range)" strokeWidth="3.5" />}>
+            Ground in sight from {names.from}
+          </LegendItem>
+        ) : null}
         <LegendItem
           swatch={
             <>
@@ -288,15 +329,15 @@ export function SightChart({
 
       {/* The same numbers for a screen reader: eleven places along the path. */}
       <table className="sr-only">
-        <caption>The path from A to B at eleven places along it</caption>
+        <caption>{names.title} at eleven places along it</caption>
         <thead>
           <tr>
-            <th scope="col">Distance from A</th>
+            <th scope="col">Distance from {names.from}</th>
             <th scope="col">Ground</th>
             <th scope="col">Lift from the Earth's curve</th>
             <th scope="col">Ray</th>
             <th scope="col">Clear between ray and ground</th>
-            <th scope="col">Radius of the first Fresnel zone</th>
+            {fresnel ? <th scope="col">Radius of the first Fresnel zone</th> : null}
           </tr>
         </thead>
         <tbody>
@@ -313,7 +354,7 @@ export function SightChart({
                     ? `Ground ${formatMeters(row.clearanceMeters)} above the ray`
                     : formatMeters(row.clearanceMeters)}
               </td>
-              <td>{formatMeters(row.fresnelRadiusMeters)}</td>
+              {fresnel ? <td>{formatMeters(row.fresnelRadiusMeters)}</td> : null}
             </tr>
           ))}
         </tbody>

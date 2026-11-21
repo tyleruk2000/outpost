@@ -44,6 +44,10 @@ export interface MapTheme {
   contour: string;
   /** The kinds of effect the nuclear effects simulator draws, one hue each (tokens `--map-effect-*`). */
   effects: EffectHues;
+  /** The ground in sight of an aerial: the estimated range, its rings and the relay planner (token `--map-range`). */
+  range: string;
+  /** The ground a walk reaches in a set time (token `--map-walk`). */
+  walk: string;
 }
 
 export interface EffectHues {
