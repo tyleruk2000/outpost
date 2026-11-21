@@ -130,7 +130,7 @@ describe("an estimated radio range from any point", () => {
     asked.mockImplementation(answer("terrain"));
     show();
     act(() => latest.start({ position: { lat: 54.4542, lon: -3.2116 } }));
-    expect(await screen.findByText("The furthest ground in sight is 18 km (11 mi) away to the north.")).toBeInTheDocument();
+    expect(await screen.findByText("Typical range about 12 km; furthest 18 km to the north.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Why this shape: look along one direction" }));
     const disc = screen.getByRole("slider", { name: /^Direction to look along/ });
     // It starts along the furthest ground in sight, and asks for the ground along it.

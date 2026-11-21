@@ -385,6 +385,22 @@ export interface SightRangeBearing {
   unknownFromMeters: number | null;
 }
 
+/**
+ * The typical range: the median, over every bearing, of the furthest ground in sight on it. A median rather than a
+ * mean, so that one long glen or a far summit seen on a few bearings does not pull it out. A bearing with no ground in
+ * sight counts as 0 m: nothing is in reach that way, and leaving it out would make a mast in a pit look as good as
+ * one on a hill. A bearing where terrain runs out counts at the furthest ground in sight where terrain is held, so
+ * with terrain partial it is the least the typical range could be. With an even number of bearings (720), the mean
+ * of the two middle ones; to the metre. Null with no bearings (no terrain).
+ */
+export function typicalRangeMeters(bearings: ReadonlyArray<Pick<SightRangeBearing, "furthestMeters">>): number | null {
+  if (bearings.length === 0) return null;
+  const sorted = bearings.map((bearing) => bearing.furthestMeters).sort((a, b) => a - b);
+  const middle = sorted.length >> 1;
+  const median = sorted.length % 2 === 1 ? sorted[middle]! : (sorted[middle - 1]! + sorted[middle]!) / 2;
+  return Math.round(median);
+}
+
 /** `GET /api/maps/sight-range`: the estimated range of an aerial at a place, from installed terrain. */
 export interface SightRange {
   at: RoutePoint;
@@ -419,6 +435,11 @@ export interface SightRange {
   horizonMeters: number;
   /** One per bearing, clockwise from north, `360 / bearingCount` degrees apart. */
   bearings: SightRangeBearing[];
+  /**
+   * The typical range (`typicalRangeMeters`): the median over the bearings of the furthest ground in sight on each,
+   * bearings with none in sight counting as 0. Null with no terrain. Left out by answers kept from before it was given.
+   */
+  typicalMeters?: number | null;
   /**
    * Of the ground out to the furthest ground in sight on each bearing, the share hidden from the aerial by nearer
    * ground (0 to 1); null with no terrain.

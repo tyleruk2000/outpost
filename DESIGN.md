@@ -75,6 +75,20 @@ Rules:
   edge is at least 3:1 and the wash 1.9:1 (it was 1.6:1 at 42% with no edge); on the
   dark map's land both are at least 3:1; edge and wash are 15 apart in the worst
   colour-blind simulation. The why view's disc edges its shape the same way.
+- Round a range, two kinds of line, each told from the wash and edge by form as well as
+  colour. The distance rings are thin solid lines in `ink-muted` grey, drawn only out to
+  the first ring beyond the furthest ground in sight. The typical range is
+  `map-range-typical` (magenta, `#a3229a` light, `#cc55c4` dark), 2.5 px, dashed,
+  cased in the page colour, written once ("Typical 12 km"). Checked with the data-viz
+  validator (21 November 2026; worst colour-blind separation, normal vision in brackets):
+  on the light map 14.5 (34.3) from the range edge, 24.9 (36.6) from the wash over the
+  land, 9.1 (21.8) from the grey rings, 5.6:1 on the land; on the dark map 15.1 (34.9)
+  from the edge, 13.7 (23.3) from the rings, 4.3:1 on the land; high contrast 12.5 from
+  its darker range green and 10.4 from its blue water; Low ink as the light map on white,
+  6.5:1; satellite 12.2 from the wash over dark ground and 12.9 from brown fields, the
+  casing carrying it on dark imagery. The night style keeps only lightness, so there the
+  circle is first made the lightest range line (`#f29be9`, red 2.4:1 on the land where
+  the magenta would be 1.6:1) and is told from the edge and rings by its dashes and label.
 
 ## Typography
 

@@ -1,5 +1,7 @@
 import type { Bbox, InstalledRegion, MapSources, MarkerDto, TrackDto, TrackWithGeometryDto } from "@outpost/shared";
 import { describe, expect, it } from "vitest";
+import { setRangesShown } from "@/features/repeaters/map/range";
+import { rangeFixture } from "@/features/repeaters/map/range-fixture";
 import { setMapMoment } from "../grey-line/time";
 import { FALLBACK_THEME } from "../lib/palette";
 import { BASE_LAYER_IDS, SOURCE_IDS } from "../lib/style";
@@ -303,6 +305,39 @@ describe("the Maidenhead grid on a printed page", () => {
     expect(layerIds(on.style)).toContain("o-grid-label");
     // It is drawn from arithmetic, not from terrain, so it adds no credit of its own.
     expect(on.usesTerrain).toBe(off.usesTerrain);
+  });
+});
+
+describe("an estimated radio range on a printed page", () => {
+  it("is offered only while one is on the map, and draws its grey rings only as far as the range reaches, and its typical range", () => {
+    const radio = overlay("radio-range");
+    setRangesShown([]);
+    expect(radio.unavailable!(context())).toBe("No estimated radio range is showing on the map.");
+    // In sight to 31 km on one bearing in four, to 6 km on the rest.
+    const range = rangeFixture(
+      "terrain",
+      { seen: (bearing, meters) => meters <= (bearing < 90 ? 31_000 : 6_000) },
+      { lat: 54.5, lon: -3.1 },
+    );
+    setRangesShown([{ range, name: "QZ3RNG" }]);
+    try {
+      expect(radio.unavailable!(context())).toBeUndefined();
+      expect(radio.initially(context())).toBe(true);
+      const { style, notes } = printStyle(context(), nothing, PRINT_OVERLAYS, base);
+      const features = data(style, "o-range");
+      expect(features.filter((feature) => feature.properties.kind === "ring-label").map((feature) => feature.properties.label)).toEqual([
+        "10 km",
+        "25 km",
+        "50 km",
+      ]);
+      expect(features.filter((feature) => feature.properties.kind === "typical-label").map((feature) => feature.properties.label)).toEqual([
+        "Typical 6 km",
+      ]);
+      expect(layerIds(style)).toContain("o-range-typical");
+      expect(notes.some((note) => note.startsWith("Estimated radio range:"))).toBe(true);
+    } finally {
+      setRangesShown([]);
+    }
   });
 });
 

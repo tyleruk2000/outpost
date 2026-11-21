@@ -34,6 +34,17 @@ export function keepShade(png: ArrayBuffer): string {
   return url;
 }
 
+const showing: Partial<Record<ShadeGroup, Shade[]>> = {};
+
+/** The shading the map on screen shows now, by group: for a printed page to draw the same (print/overlays.ts). */
+export function shadesShowing(group: ShadeGroup): Shade[] {
+  return showing[group] ?? [];
+}
+
+export function setShadesShowing(group: ShadeGroup, shades: Shade[]): void {
+  showing[group] = shades;
+}
+
 /** Lets a picture go once nothing shows it. */
 export function releaseShade(url: string): void {
   kept.delete(url);

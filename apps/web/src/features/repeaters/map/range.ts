@@ -19,6 +19,7 @@ import {
   rangeGrid,
   rangeSampleIndex,
   type SightRange,
+  typicalRangeMeters,
 } from "@outpost/shared";
 import { MAP_FONTS, type MapTheme } from "@/features/maps/lib/style";
 import type { LayerSpecification } from "@/features/maps/lib/style-types";
@@ -140,12 +141,30 @@ export function furthestOf(range: SightRange): { meters: number; bearingDeg: num
   return { meters, bearingDeg: bearings[best]!.bearingDeg, widthDeg: ((1 + left + right) * 360) / bearings.length };
 }
 
+/**
+ * The typical range: the median over the bearings of the furthest ground in sight on each (`typicalRangeMeters`).
+ * From the answer, or worked out here for an answer kept from before the server gave it. Null with no terrain.
+ */
+export function typicalOf(range: SightRange): number | null {
+  if (range.coverage === "none" || range.bearings.length === 0) return null;
+  return range.typicalMeters ?? typicalRangeMeters(range.bearings);
+}
+
+/** What "typical" means, in one line under the answer. */
+export const TYPICAL_MEANS =
+  "Typical is the middle of the furthest ground in sight over all 720 directions: half reach further, half not as far.";
+
 export interface RangeReading {
   coverage: SightRange["coverage"];
   /** The answer in a sentence: how much of the ground near and further out is in sight. */
   title: string;
-  /** The furthest ground in sight and its direction, in a sentence; null when no ground is in sight or no terrain is held. */
+  /**
+   * The typical range and the furthest ground in sight with its direction, in a sentence ("Typical range about 12 km;
+   * furthest 31 km to the north-east."); null when no ground is in sight or no terrain is held.
+   */
   furthest: string | null;
+  /** What typical means, in one line; null when `furthest` is. */
+  typicalMeans: string | null;
   /** The answer in a few words, for the card folded to one line. */
   short: string;
   /** What the shading rests on, when that is less than the terrain all round: one short sentence, said beside the answer. */
@@ -172,6 +191,7 @@ export function readRange(range: SightRange, where: "repeater" | "here" = "repea
       coverage: "none",
       title: `Without terrain: the smooth-Earth radio horizon, about ${formatReach(horizon)}.`,
       furthest: null,
+      typicalMeans: null,
       short: `No terrain: about ${formatKm(horizon)}`,
       note: "No terrain is held here, so it is a plain circle.",
       sentences: [
@@ -189,9 +209,13 @@ export function readRange(range: SightRange, where: "repeater" | "here" = "repea
       : `In sight: ${said(near)} of the ground within 10 km, ${said(mid)} within 25 km.`;
   const far = furthestOf(range);
   const gap = far && far.widthDeg <= 6 ? `, through a gap about ${Math.max(1, Math.round(far.widthDeg))}° wide` : "";
-  const furthest = far
-    ? `The furthest ground in sight is ${formatReach(far.meters)} away to the ${compassWords(far.bearingDeg)}${gap}.`
-    : null;
+  const typical = typicalOf(range) ?? 0;
+  const farWordsLong = far ? `furthest ${formatKm(far.meters)} to the ${compassWords(far.bearingDeg)}${gap}` : "";
+  const furthest = !far
+    ? null
+    : typical > 0
+      ? `Typical range about ${formatKm(typical)}; ${farWordsLong}.`
+      : `In most directions no ground is in sight; ${farWordsLong}.`;
 
   const sentences: string[] = [];
   const cut = range.bearings.filter((bearing) => bearing.limit === "terrain").length;
@@ -209,11 +233,14 @@ export function readRange(range: SightRange, where: "repeater" | "here" = "repea
     );
   const partial = range.coverage === "partial";
   const nearWords = near === null ? null : `${formatShare(near)} in sight within 10 km`;
-  const farWords = far ? `furthest ${formatKm(far.meters)} ${compassWords(far.bearingDeg)}` : "nothing further in sight";
+  const farWords = far
+    ? `${typical > 0 ? `typical ${formatKm(typical)}, ` : ""}furthest ${formatKm(far.meters)} ${compassWords(far.bearingDeg)}`
+    : "nothing further in sight";
   return {
     coverage: range.coverage,
     title,
     furthest,
+    typicalMeans: far && typical > 0 ? TYPICAL_MEANS : null,
     short: [
       nearWords ? `${nearWords.charAt(0).toUpperCase()}${nearWords.slice(1)}` : null,
       nearWords ? farWords : `In sight: ${farWords}`,
@@ -263,7 +290,10 @@ export function rangeExtent(range: SightRange): number {
   return Math.max(0, ...range.bearings.map((bearing) => bearing.furthestMeters));
 }
 
-/** The rings that are drawn: each one out to the first that reaches round all the ground in sight. */
+/**
+ * The rings that are drawn: each one out to the first that reaches round all the ground in sight, and none beyond it.
+ * With the furthest ground in sight 31 km out, 10, 25 and 50 km; never 100 km for a range that ends far short of it.
+ */
 export function ringsFor(extentMeters: number): number[] {
   const enclosing = RANGE_RINGS.findIndex((ring) => ring >= extentMeters);
   return RANGE_RINGS.slice(0, enclosing === -1 ? RANGE_RINGS.length : enclosing + 1);
@@ -275,7 +305,10 @@ const circle = (range: SightRange, meters: number, steps = 180): Array<[number, 
     return [Number(at.lon.toFixed(6)), Number(at.lat.toFixed(6))];
   });
 
-/** The rings, their distances, and (with no terrain) the plain circle of the smooth-Earth horizon, as map data. */
+/**
+ * The rings, their distances, the typical-range circle and its distance, and (with no terrain) the plain circle of
+ * the smooth-Earth horizon, as map data.
+ */
 /** `name` (a repeater's callsign) goes with each range's features, so that what is drawn can be told apart; it is not written on the map. */
 export function rangesData(ranges: Array<{ range: SightRange; name?: string }>): FeatureCollection {
   return { type: "FeatureCollection", features: ranges.flatMap(({ range, name }) => rangeData(range, name).features) };
@@ -311,7 +344,35 @@ export function rangeData(range: SightRange | undefined, name = ""): FeatureColl
       geometry: { type: "Point", coordinates: [top.lon, top.lat] },
     });
   }
+  const typical = typicalOf(range);
+  if (typical && typical > 0) {
+    features.push({
+      type: "Feature",
+      properties: { kind: "typical", name },
+      geometry: { type: "LineString", coordinates: circle(range, typical) },
+    });
+    // Written once, at the south, clear of the rings' distances at the north.
+    const bottom = destinationPoint(range.at, 180, typical);
+    features.push({
+      type: "Feature",
+      properties: { kind: "typical-label", name, label: `Typical ${formatKm(typical)}` },
+      geometry: { type: "Point", coordinates: [bottom.lon, bottom.lat] },
+    });
+  }
   return { type: "FeatureCollection", features };
+}
+
+// ── What is shown, for a printed page ──────────────────────────────────────
+
+let shown: Array<{ range: SightRange; name?: string }> = [];
+
+/** The ranges drawn on the map on screen now, kept for "Print or save as PDF" (print/overlays.ts). */
+export function setRangesShown(ranges: Array<{ range: SightRange; name?: string }>): void {
+  shown = ranges;
+}
+
+export function rangesShown(): Array<{ range: SightRange; name?: string }> {
+  return shown;
 }
 
 /** The box the shading and its rings fill, to bring them into view. */
@@ -502,9 +563,11 @@ export function rangeEdges(range: SightRange, cells = EDGE_CELLS): Array<[[numbe
 }
 
 /**
- * What the map draws beside the shading: rings at 10, 25, 50 and 100 km in the range's colour, cased in the page
- * colour so that they read on the plain map, on satellite imagery and in the dark theme; each written once with its
- * distance. With no terrain, the plain circle of the smooth-Earth horizon, washed and dashed.
+ * What the map draws beside the shading: grey rings at 10, 25, 50 and 100 km, out to the first beyond the furthest
+ * ground in sight, thin and cased in the page colour so that they read on the plain map, on satellite imagery and in
+ * the dark theme, each written once with its distance; over them the typical range, dashed and heavier in a hue of its
+ * own (`--map-range-typical`), cased the same way and written once at the south. With no terrain, the plain circle of
+ * the smooth-Earth horizon, washed and dashed in the range's colour.
  */
 export function rangeLayers(theme: MapTheme): LayerSpecification[] {
   const ring = ["==", ["get", "kind"], "ring"];
@@ -546,7 +609,7 @@ export function rangeLayers(theme: MapTheme): LayerSpecification[] {
       source: RANGE_SOURCE,
       filter: ["all", ring, ["!", ["get", "dashed"]]] as never,
       layout: { "line-join": "round", "line-cap": "round" },
-      paint: { "line-color": theme.range, "line-width": 1.25, "line-opacity": 0.9 },
+      paint: { "line-color": theme.inkMuted, "line-width": 1.25, "line-opacity": 0.85 },
     },
     {
       id: "o-range-ring-dashed",
@@ -555,6 +618,23 @@ export function rangeLayers(theme: MapTheme): LayerSpecification[] {
       filter: ["all", ring, ["get", "dashed"]] as never,
       layout: { "line-join": "round" },
       paint: { "line-color": theme.range, "line-width": 1.75, "line-opacity": 0.9, "line-dasharray": [3, 2] },
+    },
+    {
+      id: "o-range-typical-casing",
+      type: "line",
+      source: RANGE_SOURCE,
+      filter: ["==", ["get", "kind"], "typical"],
+      layout: { "line-join": "round" },
+      paint: { "line-color": theme.page, "line-width": 5, "line-opacity": 0.75 },
+    },
+    {
+      id: "o-range-typical",
+      type: "line",
+      source: RANGE_SOURCE,
+      filter: ["==", ["get", "kind"], "typical"],
+      layout: { "line-join": "round" },
+      // Dashed, and heavier than the rings: told from the solid edge and rings by form too, as in the night style, where every line is red.
+      paint: { "line-color": theme.rangeTypical, "line-width": 2.5, "line-dasharray": [4, 2] },
     },
     {
       id: "o-range-label",
@@ -570,6 +650,21 @@ export function rangeLayers(theme: MapTheme): LayerSpecification[] {
         "text-optional": true,
       },
       paint: { "text-color": theme.ink, "text-halo-color": theme.page, "text-halo-width": 1.6 },
+    },
+    {
+      id: "o-range-typical-label",
+      type: "symbol",
+      source: RANGE_SOURCE,
+      filter: ["==", ["get", "kind"], "typical-label"],
+      layout: {
+        "text-font": [MAP_FONTS.medium] as string[],
+        "text-field": ["get", "label"],
+        "text-size": 12,
+        "text-anchor": "top",
+        "text-offset": [0, 0.35],
+        "text-optional": true,
+      },
+      paint: { "text-color": theme.ink, "text-halo-color": theme.page, "text-halo-width": 1.8 },
     },
   ];
 }

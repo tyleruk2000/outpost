@@ -81,6 +81,7 @@ export function readMapTheme(): { flavour: MapFlavour; theme: MapTheme } {
         fallout: hex("--map-effect-fallout", fallback.effects.fallout),
       },
       range: hex("--map-range", fallback.range),
+      rangeTypical: hex("--map-range-typical", fallback.rangeTypical),
       walk: hex("--map-walk", fallback.walk),
       heard: {
         mesh: hex("--chart-1", fallback.primary),

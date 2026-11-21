@@ -31,6 +31,7 @@ import {
   readRange,
   stationOf,
 } from "@/features/repeaters/map/range";
+import { RangeKey } from "@/features/repeaters/map/range-key";
 import { useSightRange } from "@/features/repeaters/map/use-repeater-range";
 import { errorMessage } from "@/lib/api";
 import { useDebounced } from "@/lib/use-debounced";
@@ -157,6 +158,8 @@ export function usePointRange({
             <div className="grid gap-1 text-small">
               <p className="font-medium text-ink">{reading.title}</p>
               {reading.furthest ? <p className="text-ink">{reading.furthest}</p> : null}
+              {reading.typicalMeans ? <p className="text-ink-muted">{reading.typicalMeans}</p> : null}
+              {range.data && range.data.coverage !== "none" ? <RangeKey typical={Boolean(reading.typicalMeans)} /> : null}
               {reading.note ? (
                 <p className="text-ink-muted">
                   {reading.note}{" "}
@@ -257,8 +260,9 @@ export function usePointRange({
                 </p>
                 <p>
                   The shaded ground is in sight of your aerial; ground left clear is hidden by nearer ground, as the slopes just below a
-                  summit usually are. The rings are 10, 25, 50 and 100 km from here. With no terrain it is the smooth-Earth radio horizon, a
-                  plain dashed circle, and says so.
+                  summit usually are. The grey rings are 10, 25, 50 and 100 km from here, drawn out to the first beyond the furthest ground
+                  in sight. The dashed circle is the typical range: half the directions from here reach further, half not as far. With no
+                  terrain it is the smooth-Earth radio horizon, a plain dashed circle, and says so.
                 </p>
                 {terrain ? <p>{terrain}</p> : null}
                 {range.data && range.data.coverage !== "none" ? <p>{RANGE_ACCURACY}</p> : null}

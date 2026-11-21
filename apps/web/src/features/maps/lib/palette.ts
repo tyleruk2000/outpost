@@ -50,6 +50,7 @@ export const FALLBACK_THEME = {
     contour: "#74532b",
     effects: { fireball: "#888d18", blast: "#5373ef", heat: "#873d08", radiation: "#7343a6", fallout: "#b3628c" },
     range: "#13905a",
+    rangeTypical: "#a3229a",
     walk: "#c8620f",
   },
   dark: {
@@ -67,6 +68,7 @@ export const FALLBACK_THEME = {
     contour: "#d2b27e",
     effects: { fireball: "#9a9235", blast: "#3f9bcf", heat: "#b1530f", radiation: "#7260c4", fallout: "#e25b95" },
     range: "#3cc48f",
+    rangeTypical: "#cc55c4",
     walk: "#f08a3c",
   },
 } as const;
