@@ -89,6 +89,8 @@
    * 8.5 (9.0) from the nearest HF coverage shade and over 14 from the blast, heat and radiation hues. The range is
    * 6.2 from the fallout pink and 6.4 from the fireball olive, the walk 1.0 from the olive: they are never drawn
    * together, and are told apart by form (a wash against rings and a plume, each named in words).
+   * The range is drawn as a 55% wash with a full-strength edge (DESIGN.md): over the light map's land the edge is at
+   * least 3:1 and the wash 1.9:1; edge and wash are 15.1 apart in the worst colour-blind simulation (16.3).
    */
   --map-range: #13905a;
   --map-walk: #c8620f;
@@ -321,7 +323,8 @@
   --map-effect-heat: #b1530f;
   --map-effect-radiation: #7260c4;
   --map-effect-fallout: #e25b95;
-  /* Against the dark map's land: the two apart by 10.0 (23.8); the range 10.3 from the HF shades, 7.2 from the fallout pink. */
+  /* Against the dark map's land: the two apart by 10.0 (23.8); the range 10.3 from the HF shades, 7.2 from the fallout pink.
+     The range's 55% wash and its edge are each at least 3:1 on the dark land, and 21.1 apart in the worst colour-blind simulation. */
   --map-range: #3cc48f;
   --map-walk: #f08a3c;
 

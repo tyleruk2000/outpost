@@ -382,8 +382,12 @@ to 50 km and every 250 m to 100 km; bearings next to one another are about 220 m
 wedge.
 
 **On the map.** The ground in sight is shaded green (in both themes, on the plain map
-and on satellite imagery), as one smooth layer; ground hidden by nearer ground is left
-clear. From a hillside that is often a patch round the aerial and a few long fingers down
+and on satellite imagery), as one smooth layer with a solid green edge round every patch
+of it, so that its shape reads over hill shading, woods and imagery and a small patch is
+not lost; ground hidden by nearer ground is left clear. When a range is first shown the
+map is fitted round nine tenths of the ground in sight, so that the patch round the
+aerial is not shrunk to a few pixels by one far glen; the rings and the card say how far
+the rest goes. From a hillside that is often a patch round the aerial and a few long fingers down
 the valleys. Rings in the same green mark 10, 25, 50 and 100 km from the aerial, each
 written once with its distance, out to the first ring beyond the furthest ground in
 sight. Where several ranges are on, their shading overlaps; each repeater's dot is at the
@@ -504,6 +508,14 @@ summit: from Ben Nevis with a 10 m mast, 10.6% of the ground within 100 km again
 because beyond 50 km the ground is read every 250 m from cells of about 170 m. Over the
 sea the terrain holds 0 m, so a station there is taken as at sea level; tides are not
 counted.
+
+Sources, read 21 November 2026: which source covers where, from Mapterhorn's
+`attribution.json` (download.mapterhorn.com); GLO-30's accuracy and that it is a surface
+model "including buildings, infrastructure and vegetation", from the Copernicus DEM
+collection page (dataspace.copernicus.eu, COP-DEM); "All LIDAR data has a vertical
+accuracy of +/-15cm RMSE", from the Environment Agency's *LIDAR Composite DTM 2020 - 1m*
+record on data.gov.uk; the curvature coefficient as 1 − the refraction coefficient, from
+GDAL's `gdal_viewshed` page (gdal.org).
 
 **Where and when it runs.** On the server, as one request (see [api.md](api.md)), worked
 out once for each place, pair of heights and installed terrain and kept (the last 32

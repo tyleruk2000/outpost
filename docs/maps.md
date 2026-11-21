@@ -2371,9 +2371,9 @@ It is the repeaters' estimate, the same sums and the same picture (see
   on this device.
 - **What it is.** The ground a radio there can see: along 720 bearings out to 100 km,
   where the other station would be in sight of your aerial over the installed terrain.
-  The ground in sight is shaded green and the ground hidden by nearer ground (from a
-  summit, most of the slopes just below it) is left clear, with rings at 10, 25, 50 and
-  100 km. The card gives the share of the ground in sight within 10 km and 25 km, the
+  The ground in sight is shaded green with a solid green edge round each patch, and the
+  ground hidden by nearer ground (from a summit, most of the slopes just below it) is
+  left clear, with rings at 10, 25, 50 and 100 km. The card gives the share of the ground in sight within 10 km and 25 km, the
   furthest ground in sight and its direction, and the height of the ground there.
 - **Why this shape.** **Why this shape: look along one direction** shows the range from
   above, north up, as a disc; press or drag on it to see the ground's cross-section from
@@ -2381,6 +2381,12 @@ It is the repeaters' estimate, the same sums and the same picture (see
 - **What it is not.** An estimate of line of sight, not a promise: power, the band,
   aerials, woods and buildings and signals bending over ridges are not counted. Radio
   often reaches less than this, and sometimes more.
+- **How close it is.** Over the terrain held, the share of ground in sight is within
+  about 1.5 percentage points of a careful reading of the same terrain, erring generous,
+  and its edge is good to a sample or two; trees and buildings are not in the terrain, so
+  expect less, often much less in a town or a wood. The card says so under **What this
+  is, and is not**; the check behind it is in
+  [docs/radio.md](radio.md#the-estimated-range).
 - **No terrain there.** It says so, and the shape is the plain smooth-Earth radio
   horizon, a dashed circle, with **Get terrain in Offline maps**.
 - One point at a time, drawn with any repeaters' ranges that are on. **Stop showing this

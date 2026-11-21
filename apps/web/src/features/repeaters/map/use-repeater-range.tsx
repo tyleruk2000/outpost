@@ -45,12 +45,13 @@ import {
   formatReach,
   isRangePrefs,
   migrateRangePrefs,
+  RANGE_ACCURACY,
   RANGE_KEY,
   RANGE_MOST,
   RANGE_SHADE_OPACITY,
   RANGE_SOURCE,
   type RangePrefs,
-  rangeBounds,
+  rangeFitBounds,
   rangeShade,
   rangesData,
   readRange,
@@ -221,7 +222,7 @@ export function useRepeaterRange({
     pending.current = null;
     // Once the folded card and the readout under it have settled (the line of sun times gives way to the card, and
     // the camera's room follows in 200 ms), so that the outline is fitted into the room there is, not the room there was.
-    const bounds = rangeBounds(shown);
+    const bounds = rangeFitBounds(shown);
     window.clearTimeout(fitting.current);
     fitting.current = window.setTimeout(() => engine.fitBounds(bounds, cardClearance(card.current)), 260);
   }, [engine, shown, folded, id]);
@@ -456,6 +457,7 @@ function RangeControl({
                 the ground around them.
               </p>
               {terrain ? <p>{terrain}</p> : null}
+              {range.data && range.data.coverage !== "none" ? <p>{RANGE_ACCURACY}</p> : null}
             </div>
           </details>
           {range.data && range.data.coverage !== "none" ? (

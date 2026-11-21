@@ -192,7 +192,15 @@ export function RangeWhy({ range, aerialName = "the aerial" }: { range: SightRan
           <svg aria-hidden viewBox={`0 0 ${SIZE} ${SIZE}`} className="block h-auto w-full">
             <circle cx={CENTRE} cy={CENTRE} r={RADIUS} className="fill-surface-strong" />
             <path d={paths.unknown} fill="var(--chart-grid)" />
-            <path d={paths.seen} fill="var(--map-range)" fillOpacity={0.85} />
+            {/* Edged as on the map, so that a sliver in sight a fraction of a degree wide still shows. */}
+            <path
+              d={paths.seen}
+              fill="var(--map-range)"
+              fillOpacity={0.7}
+              stroke="var(--map-range)"
+              strokeWidth={1.25}
+              strokeLinejoin="round"
+            />
             {RANGE_RINGS.map((meters) => (
               <g key={meters}>
                 <circle cx={CENTRE} cy={CENTRE} r={discRadius(meters, max)} fill="none" stroke="var(--map-range)" strokeOpacity={0.7} />
@@ -215,7 +223,8 @@ export function RangeWhy({ range, aerialName = "the aerial" }: { range: SightRan
         </div>
         <ul className="grid gap-1 text-micro text-ink-muted" aria-label="What the disc shows">
           <li className="flex items-center gap-1.5">
-            <span aria-hidden className="inline-block size-3 rounded-sm bg-[var(--map-range)]" /> In sight
+            <span aria-hidden className="inline-block size-3 rounded-sm border-2 border-[var(--map-range)] bg-[var(--map-range)]/70" /> In
+            sight
           </li>
           <li className="flex items-center gap-1.5">
             <span aria-hidden className="inline-block size-3 rounded-sm bg-surface-strong" /> Hidden by nearer ground
