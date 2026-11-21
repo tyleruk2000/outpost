@@ -19,6 +19,9 @@ test("a radio range from any point: from the right-click menu, said in a card an
     await page.getByRole("menuitem", { name: "Estimated radio range from here" }).click();
 
     const card = page.locator(".outpost-map-card").filter({ has: page.getByRole("heading", { name: "Estimated radio range" }) });
+    // Folded to two lines once drawn, as a repeater's range is; the answer in full is a press away.
+    await expect(page.getByRole("region", { name: "Estimated radio range" })).toContainText(/in sight within 10 km/, { timeout: 20_000 });
+    await card.getByRole("button", { name: "Show the details" }).click();
     await expect(card.getByText(/^In sight: .* of the ground within 10 km, .* within 25 km\./)).toBeVisible({ timeout: 20_000 });
     await card.getByRole("button", { name: /^Heights and details/ }).click();
     await expect(card.getByText(/Line of sight only\. Your aerial 1\.5 m above the ground here/)).toBeVisible();

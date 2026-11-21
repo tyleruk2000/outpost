@@ -17,7 +17,7 @@ test("a repeater's estimated range on a wide screen: fitted beside the card, whi
     await page.goto(`/maps?repeater=${repeaterId}&range=1`);
     // Drawn, the card folds to one line at the top right of the map.
     const folded = page.getByRole("region", { name: "QZ3RNG: estimated range" });
-    await expect(folded).toContainText(/QZ3RNG\s*.* in sight within 10 km, furthest .* km .*, terrain partial/);
+    await expect(folded).toContainText(/QZ3RNG\s*.* in sight within 10 km, typical .* km, furthest .* km .*, terrain partial/);
     await idle(page);
 
     // Opened out it stays short: the long account is behind a closed disclosure, and scrolls inside the card when open.

@@ -42,8 +42,8 @@ export interface Box {
 export const overlaps = (a: Box, b: Box) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 
 /**
- * The box on screen that the outline takes, found as the pixels of the map that change
- * when it is switched off. Everything over the map (cards, the search box, the tools) is made
+ * The box on screen that the shading of the ground in sight takes, found as the green pixels of
+ * the map that change when it is switched off. Everything over the map (cards, the search box, the tools) is made
  * see-through first, though it still takes presses: so that any part of the outline under a
  * card is counted, and a card or a column of tools that changes when the switch does is not.
  */
@@ -78,6 +78,9 @@ export async function outlineBox(page: Page, switchOff: () => Promise<void>): Pr
             Math.abs(a.data[index + 1]! - b.data[index + 1]!) +
             Math.abs(a.data[index + 2]! - b.data[index + 2]!);
           if (change <= 9) continue;
+          // Only the green of the ground in sight and its edge: the grey rings and the typical range's dashed circle
+          // reach out past it on purpose, and are not what has to be clear of the card.
+          if (a.data[index + 1]! - Math.max(a.data[index]!, a.data[index + 2]!) <= 8) continue;
           left = Math.min(left, x);
           right = Math.max(right, x);
           top = Math.min(top, y);
