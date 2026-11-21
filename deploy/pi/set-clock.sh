@@ -10,9 +10,11 @@
 #
 # The folder is writable by the container, so nothing in it is trusted: the folder must be
 # a real folder (not a link), the request a regular file of at most a line, the id letters
-# and digits, the amount a whole number of at most a hundred years. The answer is written
-# to a new file and renamed into place, so a link left there by the container is replaced,
-# never followed.
+# and digits, the amount a whole number of at most a hundred years. Everything read from
+# or written to the folder is read or written as the folder's owner (setpriv), never as
+# root, so a link swapped in by the container reaches nothing the container could not
+# reach itself; the answer is written to a new file and renamed over "result" (mv -T), so
+# a link left there is replaced, never followed.
 set -eu
 
 DIR="${1:?usage: set-clock.sh FOLDER}"
@@ -27,18 +29,16 @@ if [ -L request ] || { [ -e request ] && [ ! -f request ]; }; then
   exit 0
 fi
 [ -f request ] || exit 0
-line="$(head -c 100 request | head -n 1)"
+owner_uid="$(stat -c %u .)"
+owner_gid="$(stat -c %g .)"
+as_owner() { setpriv --reuid="$owner_uid" --regid="$owner_gid" --clear-groups -- "$@"; }
+line="$(as_owner head -c 100 request | head -n 1)" || line=""
 rm -f request
 
 id="${line%% *}"
 offset="${line#* }"
 answer() {
-  tmp="$(mktemp result.XXXXXX)"
-  printf '%s %s\n' "$id" "$1" >"$tmp"
-  owner="$(stat -c '%u:%g' .)"
-  chown "$owner" "$tmp" 2>/dev/null || true
-  chmod 0644 "$tmp"
-  mv -f "$tmp" result
+  printf '%s %s\n' "$id" "$1" | as_owner sh -c 'umask 022; tmp="$(mktemp result.XXXXXX)" && cat >"$tmp" && chmod 0644 "$tmp" && mv -fT "$tmp" result'
 }
 
 case "$id" in '' | *[!A-Za-z0-9]*) exit 0 ;; esac

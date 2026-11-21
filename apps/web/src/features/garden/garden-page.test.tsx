@@ -155,6 +155,26 @@ describe("the record", () => {
     expect(api.bodiesOf("POST /api/garden/sowings")[0]).toMatchObject({ cropId: null, name: "Sunflowers", sownOn: "2026-05-15" });
   });
 
+  it("changes a sowing with only its fields, and the time it was read so a change made elsewhere is not overwritten", async () => {
+    const api = fakeApi({
+      "GET /api/garden": garden({ sowings: [sowing] }),
+      "GET /api/maps/markers": { markers: [] },
+      "GET /api/reference/catalogue": catalogue,
+      "PUT /api/garden/sowings/s1": { sowing },
+    });
+    renderScreen(<GardenPage />, "/tools/garden");
+    fireEvent.click(await screen.findByRole("button", { name: "Change" }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save changes" }));
+    await vi.waitFor(() => expect(api.bodiesOf("PUT /api/garden/sowings/s1")).toHaveLength(1));
+    const body = api.bodiesOf("PUT /api/garden/sowings/s1")[0] as Record<string, unknown>;
+    expect(body).toMatchObject({ cropId: "carrots", place: "Bed 3", baseUpdatedAt: 1 });
+    // The server refuses keys it does not know, so these must not be sent.
+    expect(Object.keys(body)).not.toEqual(expect.arrayContaining(["id"]));
+    expect(body).not.toHaveProperty("createdAt");
+    expect(body).not.toHaveProperty("updatedAt");
+  });
+
   it("says when the record cannot be loaded", async () => {
     fakeApi({
       "GET /api/garden": { status: 500, error: { code: "internal", message: "The database is busy." } },

@@ -32,8 +32,9 @@ const clean = (value: string | undefined) => value?.replace(/\s+/g, " ").trim() 
 /** Calibre's comments are HTML; what is kept is their words. */
 export function plainDescription(html: string): string | null {
   const text = html
-    .replace(/<(br|\/p|\/div|\/li|\/h[1-6])\b[^>]*>/gi, "\n")
-    .replace(/<[^>]*>/g, "")
+    // `[^<>]`, not `[^>]`: a "<" never closed must not send each search to the end of the text.
+    .replace(/<(br|\/p|\/div|\/li|\/h[1-6])\b[^<>]*>/gi, "\n")
+    .replace(/<[^<>]*>/g, "")
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")

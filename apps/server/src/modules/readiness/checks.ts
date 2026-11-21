@@ -17,7 +17,7 @@ import {
 } from "@outpost/shared";
 import { asc, count, eq, max } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
-import { badRequest, notFound } from "../../core/errors.ts";
+import { badRequest, conflict, notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
 import { routineChecks } from "../../db/schema.ts";
 import { cleanLine, cleanName } from "../board/service.ts";
@@ -116,9 +116,14 @@ export function createRoutineChecksService(ctx: AppContext, changed: () => void)
     },
 
     update(id, input) {
-      get(id);
+      const row = get(id);
+      if (input.baseUpdatedAt !== undefined && row.updatedAt > input.baseUpdatedAt)
+        throw conflict(
+          "This check was changed somewhere else after you opened it. Your changes were not saved over it; open it again to see the newer version.",
+          { current: { updatedAt: row.updatedAt, name: row.name } },
+        );
       db.update(routineChecks)
-        .set({ ...clean(input), updatedAt: Date.now() })
+        .set({ ...clean(input), updatedAt: Math.max(Date.now(), row.updatedAt + 1) })
         .where(eq(routineChecks.id, id))
         .run();
       changed();

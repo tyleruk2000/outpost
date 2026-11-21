@@ -18,7 +18,7 @@ import {
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
-import { badRequest, notFound } from "../../core/errors.ts";
+import { badRequest, conflict, notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
 
 const SEARCH_KIND = "highlight";
@@ -42,7 +42,7 @@ export interface HighlightsService {
   list(documentId: string): HighlightDto[];
   search(query: string, limit: number): HighlightListItem[];
   create(documentId: string, input: CreateInput): HighlightDto;
-  update(id: string, note: string): HighlightDto;
+  update(id: string, note: string, baseUpdatedAt?: number): HighlightDto;
   remove(id: string): void;
   /** Makes a page in Notes of the document's highlights (all, or those named). */
   toNotes(documentId: string, ids?: string[]): { id: string; title: string };
@@ -185,8 +185,13 @@ export async function registerHighlights(app: FastifyInstance, ctx: AppContext):
       return toDto(row);
     },
 
-    update(highlightId, note) {
+    update(highlightId, note, baseUpdatedAt) {
       const row = getRow(highlightId);
+      if (baseUpdatedAt !== undefined && row.updatedAt > baseUpdatedAt)
+        throw conflict(
+          "This highlight's note was changed somewhere else after you opened it. Your note was not saved over it; open it again to see the newer one.",
+          { current: { updatedAt: row.updatedAt, note: row.note } },
+        );
       const next = { ...row, note: note.trim(), updatedAt: Math.max(Date.now(), row.updatedAt + 1) };
       setNote.run(next.note, next.updatedAt, highlightId);
       index(next);
@@ -252,8 +257,10 @@ export async function registerHighlights(app: FastifyInstance, ctx: AppContext):
 
   app.patch("/api/highlights/:id", async (request) => {
     const params = z.object({ id }).parse(request.params);
-    const body = z.object({ note: z.string().max(MAX_HIGHLIGHT_NOTE_CHARS) }).parse(request.body);
-    return { highlight: service.update(params.id, body.note) };
+    const body = z
+      .object({ note: z.string().max(MAX_HIGHLIGHT_NOTE_CHARS), baseUpdatedAt: z.number().int().optional() })
+      .parse(request.body);
+    return { highlight: service.update(params.id, body.note, body.baseUpdatedAt) };
   });
 
   app.delete("/api/highlights/:id", async (request) => {

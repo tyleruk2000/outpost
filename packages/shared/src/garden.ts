@@ -478,7 +478,10 @@ export interface GardenSowing {
   updatedAt: number;
 }
 
-export type GardenSowingInput = Omit<GardenSowing, "id" | "createdAt" | "updatedAt">;
+export type GardenSowingInput = Omit<GardenSowing, "id" | "createdAt" | "updatedAt"> & {
+  /** For `PUT`: the `updatedAt` the change was based on. A newer stored sowing refuses it with 409. */
+  baseUpdatedAt?: number;
+};
 
 export interface GardenSettings {
   /** The household's usual last frost, "MM-DD", or null when none is given. */

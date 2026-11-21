@@ -164,11 +164,12 @@ export function createCommsService(ctx: AppContext, changed: () => void): CommsS
     },
     save(input) {
       const before = read();
+      // A base of null says the plan was read before it was ever saved: once one is kept,
+      // that is a plan changed elsewhere too.
       if (
         input.baseUpdatedAt !== undefined &&
-        input.baseUpdatedAt !== null &&
         before.updatedAt !== null &&
-        before.updatedAt > input.baseUpdatedAt
+        (input.baseUpdatedAt === null || before.updatedAt > input.baseUpdatedAt)
       )
         throw conflict(
           "The communication plan was changed somewhere else after you opened it. Your changes were not saved over it; reload to see the newer version.",

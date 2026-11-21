@@ -472,6 +472,7 @@ export async function registerUpdate(app: FastifyInstance, ctx: AppContext): Pro
 
   /** Removes the release kept for installing (Outpost's own files in its data directory, nothing else). */
   app.delete("/api/update/staged", async (request) => {
+    assertBackupRight(request, ctx, "Updating Outpost");
     if (waitingFor()) throw conflict("The update service is installing it now.");
     await fs.promises.rm(staged, { recursive: true, force: true });
     changed();

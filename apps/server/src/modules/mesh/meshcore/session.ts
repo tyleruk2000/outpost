@@ -48,7 +48,28 @@ export interface CompanionSessionOptions {
   answerMs?: number;
 }
 
+/**
+ * The answers each command can have. A frame of another kind that comes while a command
+ * waits is not its answer: it is the late answer to one that was given up on, and is
+ * ignored, so that one slow answer does not shift every answer after it onto the wrong
+ * command. ERR can answer any of them.
+ */
+const ANSWERS = {
+  appStart: [RESP.selfInfo],
+  deviceQuery: [RESP.deviceInfo],
+  getChannel: [RESP.channelInfo],
+  sendChannelText: [RESP.sent, RESP.ok],
+} as const;
+/** A message the radio holds can be of a kind Outpost does not read (a direct message), so anything but another command's answer. */
+const NOT_SYNC_ANSWERS: ReadonlySet<number> = new Set([RESP.selfInfo, RESP.deviceInfo, RESP.channelInfo, RESP.sent]);
+const answersTo =
+  (codes: readonly number[]) =>
+  (code: number): boolean =>
+    code === RESP.err || codes.includes(code);
+const syncAnswer = (code: number): boolean => !NOT_SYNC_ANSWERS.has(code);
+
 interface Pending {
+  accepts(code: number): boolean;
   resolve(frame: Buffer): void;
   reject(error: Error): void;
   timer: NodeJS.Timeout;
@@ -78,12 +99,12 @@ export class CompanionSession {
 
   /** Starts the app on the radio and reads what it is. Then takes any messages it holds. */
   async start(): Promise<CompanionInfo> {
-    const self = parseSelfInfo(await this.command(appStart()));
+    const self = parseSelfInfo(await this.command(appStart(), answersTo(ANSWERS.appStart)));
     // Asked as the documentation's start-up does; what it answers is not needed here.
-    await this.command(deviceQuery()).catch(() => undefined);
+    await this.command(deviceQuery(), answersTo(ANSWERS.deviceQuery)).catch(() => undefined);
     const channels: CompanionInfo["channels"] = [];
     for (let index = 0; index < MOST_SLOTS; index += 1) {
-      const answer = await this.command(getChannel(index));
+      const answer = await this.command(getChannel(index), answersTo(ANSWERS.getChannel));
       const info = parseChannelInfo(answer);
       if (!info) break;
       if (info.name) channels.push({ index: info.index, name: info.name });
@@ -94,7 +115,7 @@ export class CompanionSession {
 
   /** Sends text on a channel slot. Resolves when the radio says it has sent it. */
   async sendChannelText(index: number, text: string): Promise<{ flood: boolean }> {
-    const answer = await this.command(sendChannelText(index, text, Math.floor(Date.now() / 1000)));
+    const answer = await this.command(sendChannelText(index, text, Math.floor(Date.now() / 1000)), answersTo(ANSWERS.sendChannelText));
     if (answer[0] === RESP.err) throw new Error(`The radio refused the message (error ${answer[1] ?? "?"}).`);
     const sent = parseSent(answer);
     if (!sent) {
@@ -137,14 +158,14 @@ export class CompanionSession {
       return;
     }
     const pending = this.pending;
-    if (!pending) return; // An answer nobody asked for: ignored.
+    if (!pending?.accepts(code)) return; // An answer nobody is waiting for: ignored.
     this.pending = null;
     clearTimeout(pending.timer);
     pending.resolve(frame);
   }
 
   /** Sends one command and waits for its answer, after any command already waiting. */
-  private command(payload: Buffer): Promise<Buffer> {
+  private command(payload: Buffer, accepts: (code: number) => boolean): Promise<Buffer> {
     return new Promise<Buffer>((resolve, reject) => {
       const run = () => {
         if (this.closed) {
@@ -153,6 +174,7 @@ export class CompanionSession {
           return;
         }
         this.pending = {
+          accepts,
           resolve: (frame) => {
             resolve(frame);
             this.next();
@@ -194,7 +216,7 @@ export class CompanionSession {
       do {
         this.syncAgain = false;
         for (let taken = 0; taken < MOST_PER_SYNC && !this.closed; taken += 1) {
-          const answer = await this.command(syncNextMessage());
+          const answer = await this.command(syncNextMessage(), syncAnswer);
           if (answer[0] === RESP.noMoreMessages) break;
           const message = parseChannelMessage(answer);
           // A direct message to this radio, or anything else, is taken off the radio's queue and not kept: the board carries channels.

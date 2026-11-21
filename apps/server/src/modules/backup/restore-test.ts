@@ -69,6 +69,9 @@ export function registerRestoreTest(
   const { dataDir } = ctx.config;
   /** Passphrases for jobs not yet run, by a token in the job's payload. Never written anywhere. */
   const passphrases = new Map<string, string>();
+  // A test stopped half-way (Outpost stopped or crashed) leaves its scratch copy, decrypted
+  // for a protected backup. No test runs yet in this process, so it is removed now.
+  fs.rmSync(path.join(dataDir, SCRATCH), { recursive: true, force: true });
 
   function last(): RestoreTestResult | null {
     const row = ctx.sqlite.prepare("SELECT value FROM library_meta WHERE key = ?").get(RESULT_KEY) as { value: string } | undefined;

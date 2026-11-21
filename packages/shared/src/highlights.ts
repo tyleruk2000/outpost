@@ -49,6 +49,8 @@ export interface CreateHighlightBody {
 
 export interface UpdateHighlightBody {
   note: string;
+  /** The highlight's `updatedAt` as it was read. A newer stored highlight refuses it with 409. */
+  baseUpdatedAt?: number;
 }
 
 /** `POST /api/documents/:id/highlights/to-notes`: every highlight of the document, or these. */

@@ -67,6 +67,7 @@ const checkBody = z
       .max(CHECK_LIMITS.note * 2)
       .default(""),
     link: z.enum(CHECK_LINK_IDS).nullable().default(null),
+    baseUpdatedAt: z.number().int().optional(),
   })
   .strict();
 const doneBody = z.object({ by: name.default(""), at: time.nullable().optional() }).strict();

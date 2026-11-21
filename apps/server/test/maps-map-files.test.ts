@@ -219,6 +219,15 @@ describe("telling formats apart", () => {
   it("makes descriptions plain text", () => {
     expect(plainText("<b>Bold</b>&nbsp;and <i>more</i><br>next")).toBe("Bold and more\nnext");
   });
+
+  it("reads a name of unclosed angle brackets in a moment", () => {
+    // A GeoJSON name is not capped before it is made plain; each unclosed "<" once sent
+    // the search to the end of the text.
+    const started = performance.now();
+    plainText("<".repeat(200_000));
+    plainText("<br".repeat(100_000));
+    expect(performance.now() - started).toBeLessThan(2000);
+  });
 });
 
 describe("importing map files", () => {

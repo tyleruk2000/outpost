@@ -38,7 +38,7 @@ function HighlightRow({ highlight, documentId, onDelete }: { highlight: Highligh
           className="mt-2 grid gap-2"
           onSubmit={(event) => {
             event.preventDefault();
-            update.mutate({ id: highlight.id, note }, { onSuccess: () => setEditing(false) });
+            update.mutate({ id: highlight.id, note, baseUpdatedAt: highlight.updatedAt }, { onSuccess: () => setEditing(false) });
           }}
         >
           <Textarea
