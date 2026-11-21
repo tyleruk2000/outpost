@@ -7,11 +7,20 @@
  * The ordinary switches are settings (`PATCH /api/settings`, as the rest of Settings);
  * the `/mcp` switch is not, because it changes who can read what (`PUT /api/tools/mcp`).
  */
-import { type ChatModelsResponse, type Settings, STARTING_MODEL, TOOL_AREAS, type ToolArea } from "@outpost/shared";
+import {
+  type ChatModelsResponse,
+  type McpStatus,
+  REMOTE_SETTINGS_OPTION,
+  type Settings,
+  STARTING_MODEL,
+  TOOL_AREAS,
+  type ToolArea,
+} from "@outpost/shared";
 import { useQuery } from "@tanstack/react-query";
 import { CircleAlert, Plus, X } from "lucide-react";
 import { useState } from "react";
 import { Notice } from "@/components/page";
+import { NotFromThisDevice, REMOTE_SETTINGS_SCOPE, rightReason } from "@/components/setting-right";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton, Switch } from "@/components/ui/misc";
@@ -210,7 +219,7 @@ function OffForModels({
 }
 
 /** The `/mcp` switch, the addresses to give a program, and how two programs are set up, from their own pages. */
-function OtherPrograms({ mcp }: { mcp: { enabled: boolean; canChange: boolean; addresses: string[] } }) {
+function OtherPrograms({ mcp }: { mcp: McpStatus }) {
   const setMcp = useSetMcp();
   const example = mcp.addresses.find((address) => !address.includes("//127.")) ?? mcp.addresses[0] ?? "http://127.0.0.1:8080/mcp";
 
@@ -224,9 +233,7 @@ function OtherPrograms({ mcp }: { mcp: { enabled: boolean; canChange: boolean; a
             With this on, any program on your home network that speaks MCP (the Model Context Protocol) can ask Outpost these questions, and
             whatever that program is connected to receives the answers: a desktop assistant using a model in the cloud would send your
             household's supplies and plans there.
-            {mcp.canChange ? null : (
-              <span className="mt-1.5 block font-medium text-ink">This can only be changed at the computer Outpost runs on.</span>
-            )}
+            {mcp.canChange && mcp.right ? <span className="mt-1.5 block">{rightReason(mcp.right)}</span> : null}
           </>
         }
         control={
@@ -236,9 +243,19 @@ function OtherPrograms({ mcp }: { mcp: { enabled: boolean; canChange: boolean; a
             disabled={!mcp.canChange || setMcp.isPending}
             onCheckedChange={(value) => setMcp.mutate(value)}
             aria-label="Let other programs on the home network use these tools"
+            aria-describedby={mcp.canChange ? undefined : "tools-mcp-why"}
           />
         }
       />
+      {mcp.canChange ? null : (
+        <NotFromThisDevice
+          id="tools-mcp-why"
+          right={mcp.right ?? { allowed: false, reason: "remote", option: REMOTE_SETTINGS_OPTION, inContainer: false }}
+          what="This switch"
+          because="it lets other programs on the network read what the tools read"
+          scope={REMOTE_SETTINGS_SCOPE}
+        />
+      )}
       {setMcp.isError ? (
         <Notice tone="danger" icon={<CircleAlert aria-hidden />} title="The switch could not be changed">
           {errorMessage(setMcp.error)}

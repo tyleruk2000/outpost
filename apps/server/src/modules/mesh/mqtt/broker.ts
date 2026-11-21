@@ -14,6 +14,7 @@
  */
 import { randomBytes } from "node:crypto";
 import net from "node:net";
+import { limitKey } from "../../../core/address-key.ts";
 import {
   CONNACK,
   encodePacket,
@@ -40,6 +41,8 @@ export interface BrokerLimits {
   connectTimeoutMs: number;
   maxSubscriptionsPerClient: number;
   maxInflight: number;
+  /** The longest a signed-in client may say nothing, whatever keep-alive it asked for (0 included). */
+  mostIdleMs: number;
 }
 
 export const DEFAULT_BROKER_LIMITS: BrokerLimits = {
@@ -50,6 +53,7 @@ export const DEFAULT_BROKER_LIMITS: BrokerLimits = {
   connectTimeoutMs: 10_000,
   maxSubscriptionsPerClient: 32,
   maxInflight: 16,
+  mostIdleMs: 15 * 60_000,
 };
 
 export interface BrokerOptions {
@@ -88,6 +92,8 @@ type Settle = (acknowledged: boolean) => void;
 interface Connection {
   socket: net.Socket;
   address: string;
+  /** What the per-address limits count by: the address, or its /64 for IPv6 (core/address-key.ts). */
+  key: string;
   reader: PacketReader;
   /** Set once CONNECT has been accepted. */
   clientId: string | null;
@@ -197,8 +203,9 @@ export function createBroker(options: BrokerOptions): MqttBroker {
       return;
     }
     // One address may not hold every place by connecting and saying nothing: the radio would never get in.
+    const key = limitKey(address);
     let waitingHere = 0;
-    for (const other of connections) if (other.clientId === null && other.address === address) waitingHere += 1;
+    for (const other of connections) if (other.clientId === null && other.key === key) waitingHere += 1;
     if (waitingHere >= MAX_WAITING_PER_ADDRESS) {
       log.warn({ address, limit: MAX_WAITING_PER_ADDRESS }, "Refused an MQTT connection: too many from one address not signed in");
       socket.destroy();
@@ -208,6 +215,7 @@ export function createBroker(options: BrokerOptions): MqttBroker {
     const conn: Connection = {
       socket,
       address,
+      key,
       reader: new PacketReader(limits.maxPacketBytes),
       clientId: null,
       since: Date.now(),
@@ -337,7 +345,7 @@ export function createBroker(options: BrokerOptions): MqttBroker {
       return;
     }
     const now = Date.now();
-    const failed = (failedLogins.get(conn.address) ?? []).filter((at) => now - at < LOGIN_WINDOW_MS);
+    const failed = (failedLogins.get(conn.key) ?? []).filter((at) => now - at < LOGIN_WINDOW_MS);
     if (failed.length >= LOGIN_FAILURES) {
       refuse(CONNACK.badUserNameOrPassword, "too many wrong logins from this address; not checked");
       return;
@@ -350,13 +358,13 @@ export function createBroker(options: BrokerOptions): MqttBroker {
     }
     if (!ok) {
       failed.push(now);
-      failedLogins.delete(conn.address);
-      failedLogins.set(conn.address, failed);
+      failedLogins.delete(conn.key);
+      failedLogins.set(conn.key, failed);
       if (failedLogins.size > LOGIN_ADDRESSES) failedLogins.delete(failedLogins.keys().next().value!);
       refuse(CONNACK.badUserNameOrPassword, "wrong user name or password");
       return;
     }
-    failedLogins.delete(conn.address);
+    failedLogins.delete(conn.key);
 
     // The will message is read and thrown away: Outpost never publishes it, which a client
     // cannot tell from a broker that sends wills only on rare kinds of loss.
@@ -379,7 +387,10 @@ export function createBroker(options: BrokerOptions): MqttBroker {
     // The socket's own timeout restarts on every packet, so nothing ticks meanwhile. It also
     // restarts when the broker writes, so a client that has vanished while being sent messages
     // is noticed when TCP gives up on it rather than at exactly 1.5 periods.
-    if (packet.keepAliveSeconds > 0) conn.socket.setTimeout(packet.keepAliveSeconds * 1500);
+    // A keep-alive of 0 (or longer than the longest) would let a client that vanished hold its place for ever: the
+    // broker closes it after limits.mostIdleMs of silence all the same, as Mosquitto's max_keepalive does (outpost-4b6).
+    const keepAliveMs = packet.keepAliveSeconds > 0 ? packet.keepAliveSeconds * 1500 : limits.mostIdleMs;
+    conn.socket.setTimeout(Math.min(keepAliveMs, limits.mostIdleMs));
     log.info({ clientId, address: conn.address, keepAliveSeconds: packet.keepAliveSeconds }, "MQTT client connected");
     clientsChanged();
   }
@@ -471,7 +482,14 @@ export function createBroker(options: BrokerOptions): MqttBroker {
         const onError = (error: NodeJS.ErrnoException) => {
           const where = `${options.host}:${options.port}`;
           if (error.code === "EADDRINUSE")
-            reject(new Error(`Port ${options.port} is already in use by another program, so the MQTT broker cannot listen on ${where}.`));
+            reject(
+              Object.assign(
+                new Error(`Port ${options.port} is already in use by another program, so the MQTT broker cannot listen on ${where}.`),
+                {
+                  code: "EADDRINUSE",
+                },
+              ),
+            );
           else if (error.code === "EACCES")
             reject(
               new Error(

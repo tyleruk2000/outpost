@@ -9,10 +9,16 @@
  * Nothing is relayed between the household's board and a radio channel: a message goes
  * where the person wrote it. A message too long for the radio is refused, never cut.
  */
+import { X509Certificate } from "node:crypto";
 import {
   MESH_TEXT_BYTES,
+  type MeshBrokerTestInput,
+  type MeshBrokerTestResult,
   type MeshChannel,
   type MeshCoreInput,
+  type MeshDynsecResult,
+  type MeshFindResponse,
+  type MeshRadioAccountInput,
   type MeshResponse,
   type MeshtasticInput,
   meshChannelId,
@@ -24,16 +30,22 @@ import type { AppContext } from "../../core/context.ts";
 import { badRequest } from "../../core/errors.ts";
 import { containerReason } from "../../core/local.ts";
 import type { BoardTransport, OutgoingCheck } from "../board/transport.ts";
+import { addRadioAccount, dynsecStatus, findBrokers, testBroker } from "./household.ts";
 import { createMeshCoreLink, type MeshCoreLink, type Opener, openRadio } from "./meshcore/link.ts";
 import { createMeshtasticLink, type MeshtasticLink } from "./meshtastic/link.ts";
 import { createMeshSecrets, type MeshSecrets } from "./secrets.ts";
 import { isListedDevice } from "./serial.ts";
-import { CONFIG_KEY, createMeshStore, type MeshStore, storedConfig } from "./store.ts";
+import { CONFIG_KEY, createMeshStore, type MeshStore, MOST_CA_CHARS, storedConfig } from "./store.ts";
 
 export interface MeshService {
   response(): Omit<MeshResponse, "right">;
   setMeshtastic(input: MeshtasticInput): Promise<void>;
   setMeshCore(input: MeshCoreInput): Promise<void>;
+  /** Looks for a broker on this computer (and, in a container, the computer it runs on), and at an address named. */
+  findBrokers(named?: { host: string; port: number }): Promise<MeshFindResponse>;
+  testBroker(input: MeshBrokerTestInput): Promise<MeshBrokerTestResult>;
+  dynsec(): Promise<MeshDynsecResult>;
+  addRadioAccount(radio: MeshRadioAccountInput): Promise<MeshDynsecResult>;
   secrets: MeshSecrets;
   store: MeshStore;
   meshtastic: MeshtasticLink;
@@ -60,6 +72,34 @@ function checkHost(host: string, what: string): string {
 
 /** Root topics are a few levels of plain words: "msh/EU_868". */
 const ROOT = /^[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+){0,5}$/;
+
+/** The shortest password a radio may sign in to Outpost's broker with: anything on the home network can try it (outpost-4b6). */
+export const MIN_BROKER_PASSWORD = 12;
+
+/** The household broker's address, port, user name and root topic as typed, checked. */
+function checkedClient(input: { host: string; port: number; userName: string; rootTopic: string }, needHost: boolean) {
+  const root = input.rootTopic.trim().replace(/\/+$/, "");
+  if (!ROOT.test(root)) throw badRequest("A root topic is a few words joined by slashes, such as msh/EU_868.");
+  return {
+    host: needHost ? checkHost(input.host, "the household broker") : input.host.trim(),
+    port: input.port,
+    userName: input.userName.trim(),
+    rootTopic: root,
+  };
+}
+
+/** A pasted CA certificate: PEM that Node can read as a certificate, or nothing. */
+function checkCa(ca: string | null): string | null {
+  const text = ca?.trim() ?? "";
+  if (!text) return null;
+  if (text.length > MOST_CA_CHARS) throw badRequest("That is too long for a CA certificate.");
+  try {
+    new X509Certificate(text);
+  } catch {
+    throw badRequest("That is not a certificate. Paste the whole of the CA's .crt file, from -----BEGIN CERTIFICATE----- to the END line.");
+  }
+  return text;
+}
 
 export function createMeshService(ctx: AppContext, options: { open?: Opener } = {}): MeshService {
   const store = createMeshStore(ctx);
@@ -109,9 +149,15 @@ export function createMeshService(ctx: AppContext, options: { open?: Opener } = 
   });
 
   // Erase-everything empties the settings table, the set-up with it: the links stop and the passwords go.
+  // Only when the row was there and has gone: any other change to settings while nothing was ever saved
+  // here (a fresh install) leaves the passwords alone (outpost-dko).
+  const hasRow = () => ctx.sqlite.prepare("SELECT 1 FROM settings WHERE key = ?").get(CONFIG_KEY) !== undefined;
+  let saved = hasRow();
   ctx.services.settings.onChange(() => {
-    const row = ctx.sqlite.prepare("SELECT 1 FROM settings WHERE key = ?").get(CONFIG_KEY);
-    if (row) return;
+    const row = hasRow();
+    const was = saved;
+    saved = row;
+    if (row || !was) return;
     if (secrets.brokerPasswordSet() || secrets.clientPassword() !== null) secrets.erase();
     const next = store.config();
     meshtastic.forgetNodes();
@@ -128,6 +174,13 @@ export function createMeshService(ctx: AppContext, options: { open?: Opener } = 
   // What was set up before a restart starts again; nothing starts when nothing was.
   if (initial.meshtastic.mode !== "off") void meshtastic.apply(initial.meshtastic);
   if (initial.meshcore.mode !== "off") void meshcore.apply(initial.meshcore);
+
+  /** The household broker as saved: dynamic security is managed only with the set-up that was saved. */
+  function savedClient() {
+    const client = store.config().meshtastic.client;
+    if (!client.host) throw badRequest("Save the household broker's address, user name and password first.");
+    return client;
+  }
 
   function channels(): MeshChannel[] {
     const config = store.config();
@@ -186,20 +239,27 @@ export function createMeshService(ctx: AppContext, options: { open?: Opener } = 
       const current = store.config();
       const next = structuredClone(current);
       next.meshtastic.mode = input.mode;
+      // The passwords change only once everything else has been checked: a refused save changes nothing.
+      let brokerPassword: string | null | undefined;
+      let clientPassword: string | null | undefined;
       if (input.broker) {
         next.meshtastic.broker = { port: input.broker.port, userName: input.broker.userName.trim() };
-        if (input.broker.password !== undefined) secrets.setBrokerPassword(input.broker.password === "" ? null : input.broker.password);
+        if (input.broker.password !== undefined) {
+          brokerPassword = input.broker.password === "" ? null : input.broker.password;
+          if (brokerPassword !== null && brokerPassword.length < MIN_BROKER_PASSWORD)
+            throw badRequest(
+              `The radio's password must be at least ${MIN_BROKER_PASSWORD} characters: anything on the home network can try it. Press Suggest one.`,
+            );
+        }
       }
       if (input.client) {
-        const root = input.client.rootTopic.trim().replace(/\/+$/, "");
-        if (!ROOT.test(root)) throw badRequest("A root topic is a few words joined by slashes, such as msh/EU_868.");
+        const client = checkedClient(input.client, input.mode === "client");
         next.meshtastic.client = {
-          host: input.mode === "client" ? checkHost(input.client.host, "the household broker") : input.client.host.trim(),
-          port: input.client.port,
-          userName: input.client.userName.trim(),
-          rootTopic: root,
+          ...client,
+          tls: input.client.tls ?? current.meshtastic.client.tls,
+          ca: input.client.ca !== undefined ? checkCa(input.client.ca) : current.meshtastic.client.ca,
         };
-        if (input.client.password !== undefined) secrets.setClientPassword(input.client.password === "" ? null : input.client.password);
+        if (input.client.password !== undefined) clientPassword = input.client.password === "" ? null : input.client.password;
       }
       if (input.channels) {
         const names = new Set<string>();
@@ -212,14 +272,46 @@ export function createMeshService(ctx: AppContext, options: { open?: Opener } = 
       }
       if (next.meshtastic.mode === "broker") {
         if (!next.meshtastic.broker.userName) throw badRequest("Give the user name the radio signs in with.");
-        if (!secrets.brokerPasswordSet()) throw badRequest("Set the password the radio signs in with.");
+        const willHave = brokerPassword === undefined ? secrets.brokerPasswordSet() : brokerPassword !== null;
+        if (!willHave) throw badRequest("Set the password the radio signs in with.");
       }
       if (next.meshtastic.mode !== "off" && next.meshtastic.channels.length === 0)
         throw badRequest("Choose at least one channel to carry.");
       const parsed = storedConfig.parse(next);
+      if (brokerPassword !== undefined) secrets.setBrokerPassword(brokerPassword);
+      if (clientPassword !== undefined) secrets.setClientPassword(clientPassword);
       store.saveConfig(parsed);
+      saved = true;
       applied = JSON.stringify(parsed);
       await meshtastic.apply(parsed.meshtastic);
+    },
+
+    findBrokers(named) {
+      const config = store.config().meshtastic;
+      const status = meshtastic.status();
+      const ownBrokerPort = config.mode === "broker" && ["listening", "connected"].includes(status.state) ? config.broker.port : null;
+      return findBrokers(
+        { inContainer: containerReason() !== null, ownBrokerPort },
+        named ? { host: checkHost(named.host, "the broker"), port: named.port } : undefined,
+      );
+    },
+
+    testBroker(input) {
+      const client = checkedClient(input, true);
+      const ca = input.ca !== undefined ? checkCa(input.ca) : store.config().meshtastic.client.ca;
+      // A password left out is the one saved: never sent back to the browser, only used from here.
+      const password = input.password !== undefined ? input.password || null : secrets.clientPassword();
+      return testBroker({ ...client, tls: input.tls, ca }, password);
+    },
+
+    dynsec() {
+      const client = savedClient();
+      return dynsecStatus(client, secrets.clientPassword());
+    },
+
+    addRadioAccount(radio) {
+      const client = savedClient();
+      return addRadioAccount(client, secrets.clientPassword(), radio);
     },
 
     async setMeshCore(input) {
@@ -239,6 +331,7 @@ export function createMeshService(ctx: AppContext, options: { open?: Opener } = 
       if (next.meshcore.mode !== "off" && next.meshcore.channels.length === 0) throw badRequest("Choose at least one channel to carry.");
       const parsed = storedConfig.parse(next);
       store.saveConfig(parsed);
+      saved = true;
       applied = JSON.stringify(parsed);
       await meshcore.apply(parsed.meshcore);
     },

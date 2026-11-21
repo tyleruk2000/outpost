@@ -22,11 +22,12 @@ import {
   type MeshtasticInput,
   type MeshtasticMode,
 } from "@outpost/shared";
-import { CircleAlert, ExternalLink, MonitorSmartphone, Plus, RefreshCw, Send, X } from "lucide-react";
+import { CircleAlert, ExternalLink, Plus, RefreshCw, Send, X } from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
 import { Disclosure, Notice } from "@/components/page";
+import { NotFromThisDevice, REMOTE_SETTINGS_SCOPE, rightReason } from "@/components/setting-right";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { Select, Skeleton } from "@/components/ui/misc";
@@ -121,10 +122,10 @@ export function MeshSettingsSection() {
         </Notice>
       ) : (
         <>
-          {data.right.allowed ? null : (
-            <Notice tone="info" icon={<MonitorSmartphone aria-hidden />}>
-              {REMOTE}
-            </Notice>
+          {data.right.allowed ? (
+            <p className="text-small text-ink-muted">{rightReason(data.right)}</p>
+          ) : (
+            <NotFromThisDevice id={WHY_ID} right={data.right} what={REMOTE.what} because={REMOTE.because} scope={REMOTE_SETTINGS_SCOPE} />
           )}
           <MeshtasticPart key={JSON.stringify(data.meshtastic.config)} data={data} />
           <MeshCorePart key={JSON.stringify(data.meshcore.config)} data={data} />
@@ -163,14 +164,29 @@ function StateLine({ words, state, lastHeardAt }: { words: string; state: MeshLi
   );
 }
 
-function SaveRow({ problem, pending, onSave }: { problem: string | null; pending: boolean; onSave: () => void }) {
+/** The id of the notice that says why the set-up cannot be changed from this device; each disabled form points to it. */
+const WHY_ID = "mesh-not-from-this-device";
+
+function SaveRow({
+  problem,
+  pending,
+  onSave,
+  allowed,
+}: {
+  problem: string | null;
+  pending: boolean;
+  onSave: () => void;
+  allowed: boolean;
+}) {
   return (
     // In the flow of the page: at the left under the fields it saves, as every form's button is.
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-      <Button variant="primary" loading={pending} disabled={problem !== null} onClick={onSave}>
+      <Button variant="primary" loading={pending} disabled={!allowed || problem !== null} onClick={onSave}>
         Save
       </Button>
-      {problem ? (
+      {!allowed ? (
+        <p className="min-w-0 flex-1 text-small text-ink-muted">{REMOTE.short}</p>
+      ) : problem ? (
         <p role="alert" className="min-w-0 flex-1 text-small text-danger">
           {problem}
         </p>
@@ -402,7 +418,11 @@ function MeshtasticPart({ data }: { data: MeshResponse }) {
         </div>
       ) : null}
 
-      <fieldset disabled={!allowed} className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4">
+      <fieldset
+        disabled={!allowed}
+        aria-describedby={allowed ? undefined : WHY_ID}
+        className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4"
+      >
         <SettingRow
           htmlFor={modeId}
           label="How Outpost reaches the radio"
@@ -449,7 +469,7 @@ function MeshtasticPart({ data }: { data: MeshResponse }) {
 
         {mode !== "off" ? <ChannelsEditor channels={channels} onChange={setChannels} /> : null}
 
-        <SaveRow problem={allowed ? problem : null} pending={save.isPending} onSave={submit} />
+        <SaveRow allowed={allowed} problem={problem} pending={save.isPending} onSave={submit} />
       </fieldset>
 
       {mode !== "off" ? (
@@ -675,7 +695,11 @@ function MeshCorePart({ data }: { data: MeshResponse }) {
   return (
     <Part id={headingId} title="MeshCore">
       <StateLine words={meshcoreStateWords(status)} state={status.state} lastHeardAt={status.lastHeardAt} />
-      <fieldset disabled={!allowed} className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4">
+      <fieldset
+        disabled={!allowed}
+        aria-describedby={allowed ? undefined : WHY_ID}
+        className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4"
+      >
         <SettingRow
           htmlFor={modeId}
           label="How Outpost reaches the radio"
@@ -797,7 +821,7 @@ function MeshCorePart({ data }: { data: MeshResponse }) {
           </fieldset>
         ) : null}
 
-        <SaveRow problem={allowed ? problem : null} pending={save.isPending} onSave={submit} />
+        <SaveRow allowed={allowed} problem={problem} pending={save.isPending} onSave={submit} />
       </fieldset>
 
       {mode === "serial" ? (

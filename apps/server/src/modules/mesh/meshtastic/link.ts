@@ -31,7 +31,8 @@ import {
 import type { AppContext } from "../../../core/context.ts";
 import { messageOf } from "../../../core/errors.ts";
 import { isHomeAddress } from "../addresses.ts";
-import { createBroker, type MqttBroker } from "../mqtt/broker.ts";
+import { freePortNear } from "../household.ts";
+import { createBroker, DEFAULT_BROKER_LIMITS, type MqttBroker } from "../mqtt/broker.ts";
 import { createClient, type MqttClient } from "../mqtt/client.ts";
 import type { MeshSecrets } from "../secrets.ts";
 import type { MeshStore, StoredConfig } from "../store.ts";
@@ -39,6 +40,9 @@ import { downlink, downlinkTopic, nodeNum, parseTopic, parseUplink } from "./jso
 
 /** How long a message handed to the radio is remembered, to know it when the radio publishes it back. */
 const ECHO_MS = 10 * 60_000;
+/** What Outpost reads from the household's broker, as its own broker takes from one radio (mqtt/broker.ts). */
+const PUBLISHES_PER_SECOND = DEFAULT_BROKER_LIMITS.publishesPerSecond;
+const PUBLISH_BURST = DEFAULT_BROKER_LIMITS.publishBurst;
 
 export interface MeshtasticLink {
   /** Starts, stops or restarts to match the set-up. */
@@ -63,6 +67,35 @@ export function createMeshtasticLink(ctx: AppContext, store: MeshStore, secrets:
   const others = new Set<string>();
   const sent: Array<{ channel: string; text: string; at: number }> = [];
   let heard = store.heard();
+  /** What the status says of the traffic: when each of the last minute's messages came, and who published. */
+  const recent: number[] = [];
+  const radios = new Map<string, { lastAt: number; messages: number }>();
+  let dropped = 0;
+  let portInUse: { port: number; freePort: number | null } | null = null;
+  // The household's broker passes on whatever anything publishes under the root topic: Outpost reads
+  // at most this many a second, as its own broker allows a radio (outpost-4b6).
+  const bucket = { tokens: PUBLISH_BURST, at: Date.now() };
+  const take = () => {
+    const now = Date.now();
+    bucket.tokens = Math.min(PUBLISH_BURST, bucket.tokens + ((now - bucket.at) / 1000) * PUBLISHES_PER_SECOND);
+    bucket.at = now;
+    if (bucket.tokens < 1) return false;
+    bucket.tokens -= 1;
+    return true;
+  };
+  const counted = (gatewayId: string | null) => {
+    const now = Date.now();
+    recent.push(now);
+    while (recent.length > 0 && now - recent[0]! > 60_000) recent.shift();
+    if (recent.length > 2000) recent.shift();
+    if (!gatewayId) return;
+    const entry = radios.get(gatewayId) ?? { lastAt: now, messages: 0 };
+    entry.lastAt = now;
+    entry.messages += 1;
+    radios.delete(gatewayId);
+    radios.set(gatewayId, entry);
+    if (radios.size > 32) radios.delete(radios.keys().next().value!);
+  };
 
   const set = (next: MeshLinkState, error: string | null = null) => {
     if (next !== state) since = Date.now();
@@ -102,6 +135,7 @@ export function createMeshtasticLink(ctx: AppContext, store: MeshStore, secrets:
     // Longer than what is learnt can hold: kept, it would make the stored row unreadable, and all of it forgotten.
     if (!parts || parts.root.length > 100 || parts.channel.length > MESH_CHANNEL_NAME_MAX) return;
     lastHeardAt = Date.now();
+    counted(parts.gatewayId);
     learn({ root: parts.root, ...(parts.gatewayId ? { gateway: parts.gatewayId } : {}) });
     if (parts.format === "encoded") {
       if (json === null) json = false;
@@ -199,7 +233,17 @@ export function createMeshtasticLink(ctx: AppContext, store: MeshStore, secrets:
         set("listening");
       } catch (error) {
         broker = null;
-        set("failed", messageOf(error));
+        if ((error as NodeJS.ErrnoException).code === "EADDRINUSE") {
+          // Said with what to do: another port that is free now, or the broker that already has this one (outpost-x9dm).
+          const freePort = await freePortNear(ctx.config.lanAccess ? ctx.config.host : "127.0.0.1", config.broker.port);
+          portInUse = { port: config.broker.port, freePort };
+          set(
+            "failed",
+            `Port ${config.broker.port} is already in use by another program on this computer, so Outpost's broker cannot listen there.${
+              freePort ? ` Port ${freePort} is free: use it here and on the radio.` : ""
+            } If that program is an MQTT broker you already run (a Mosquitto, say), choose “Use the household's broker” instead.`,
+          );
+        } else set("failed", messageOf(error));
       }
       return;
     }
@@ -220,13 +264,17 @@ export function createMeshtasticLink(ctx: AppContext, store: MeshStore, secrets:
         }`,
         userName: config.client.userName || undefined,
         password: secrets.clientPassword() ?? undefined,
+        tls: config.client.tls ? { ca: config.client.ca } : null,
         subscriptions: [
           { filter: `${base}/2/json/#`, qos: 0 },
           { filter: `${base}/2/e/#`, qos: 0 },
         ],
         log: ctx.log,
       });
-      next.onMessage((topic, payload) => handle(topic, payload));
+      next.onMessage((topic, payload) => {
+        if (take()) handle(topic, payload);
+        else dropped += 1;
+      });
       next.onState(() => {
         const status = next.status();
         set(
@@ -252,6 +300,10 @@ export function createMeshtasticLink(ctx: AppContext, store: MeshStore, secrets:
       config = next;
       json = null;
       others.clear();
+      recent.length = 0;
+      radios.clear();
+      dropped = 0;
+      portInUse = null;
       // Read again: erase-everything may have emptied what was heard.
       heard = store.heard();
       if (next.mode === "off") {
@@ -289,6 +341,10 @@ export function createMeshtasticLink(ctx: AppContext, store: MeshStore, secrets:
           : null,
         otherChannels: [...others],
         json,
+        portInUse,
+        radios: [...radios].reverse().map(([id, entry]) => ({ id, ...entry })),
+        perMinute: recent.filter((at) => Date.now() - at <= 60_000).length,
+        dropped,
       };
     },
 

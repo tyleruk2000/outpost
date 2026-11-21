@@ -36,8 +36,12 @@ export const REGION_URL = "https://meshtastic.org/docs/configuration/radio/lora/
 export const CHANNEL_WARNING =
   "Anyone with a radio in range may read a public channel, and messages by radio can be lost or delayed: write nothing private, and this is not a way to call for help in an emergency.";
 
-export const REMOTE =
-  "Turning the radio link on or off, choosing a device and opening the broker's port can only be done on the computer Outpost runs on, because they open a port or a device on it.";
+/** Why the set-up cannot be changed from this device: the notice above the forms, and the line beside each disabled Save. */
+export const REMOTE = {
+  what: "The mesh radio set-up",
+  because: "turning a way in on, choosing a device and opening the broker's port open a port or a device on that computer",
+  short: "Disabled on this device: see “Can't be changed from this device” above for why, and the line that allows it.",
+} as const;
 
 export const TRADEMARK =
   "Meshtastic® is a registered trademark of Meshtastic LLC; Outpost is not affiliated with or endorsed by it. MeshCore is a separate open-source project; Outpost is not affiliated with it either.";

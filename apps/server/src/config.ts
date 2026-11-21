@@ -53,6 +53,7 @@ const envSchema = z.object({
   OUTPOST_P533_BUILD_MANIFEST: z.string().optional(),
   OUTPOST_VOACAP_DATA_MANIFEST: z.string().optional(),
   OUTPOST_ALLOW_REMOTE_ERASE: bool(false),
+  OUTPOST_ALLOW_REMOTE_SETTINGS: bool(false),
   OUTPOST_OWN_ADDRESS_IS_LOCAL: bool(true),
   OUTPOST_ALLOW_REMOTE_MODEL_SERVER: bool(false),
   OUTPOST_OLLAMA_ADDRESSES: list,
@@ -134,6 +135,11 @@ export interface Config {
    * it, only a request from this computer may erase the person's own things.
    */
   allowRemoteErase: boolean;
+  /**
+   * Lets the settings held to this computer (the mesh radio set-up, the switch for other
+   * programs' tools) be changed from any device that can reach Outpost (core/setting-right.ts).
+   */
+  allowRemoteSettings: boolean;
   /**
    * Whether a connection from one of this computer's own network addresses counts as
    * this computer (core/local.ts). On by default; turned off where something on this
@@ -266,6 +272,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     voacapDataManifest: parsed.OUTPOST_VOACAP_DATA_MANIFEST ? path.resolve(parsed.OUTPOST_VOACAP_DATA_MANIFEST) : null,
     extraDownloadHosts: parsed.OUTPOST_DOWNLOAD_HOSTS.map((host) => host.toLowerCase()),
     allowRemoteErase: parsed.OUTPOST_ALLOW_REMOTE_ERASE,
+    allowRemoteSettings: parsed.OUTPOST_ALLOW_REMOTE_SETTINGS,
     ownAddressIsLocal: parsed.OUTPOST_OWN_ADDRESS_IS_LOCAL,
     allowRemoteModelServer: parsed.OUTPOST_ALLOW_REMOTE_MODEL_SERVER,
     ollamaAddresses: parsed.OUTPOST_OLLAMA_ADDRESSES,

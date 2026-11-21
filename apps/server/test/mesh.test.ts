@@ -305,7 +305,7 @@ describe("who may set it up", () => {
       ] as const) {
         const refused = await app.api("PUT", url, body, phone);
         expect(refused.status).toBe(403);
-        expect(refused.body.error.message).toMatch(/only be done on the computer Outpost runs on/);
+        expect(refused.body.error.message).toMatch(/only be changed at the computer Outpost runs on.*OUTPOST_ALLOW_REMOTE_SETTINGS=true/);
       }
       expect(fs.existsSync(path.join(app.ctx.config.dataDir, "mesh", "secrets.json"))).toBe(false);
       expect((await app.api<MeshResponse>("GET", "/api/mesh")).body.right.allowed).toBe(true);

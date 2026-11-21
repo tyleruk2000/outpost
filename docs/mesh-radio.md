@@ -48,9 +48,18 @@ Each is off until a person sets it up in **Settings → Mesh radio**, and while 
 there is no listener, no timer and no open device. Turning a way in on or off, choosing a
 device and opening the broker's port are accepted only from the computer Outpost runs
 on (the same test erase-everything uses, `core/local.ts`), because each opens a port or a
-device on it; from another device the screen says so and shows the status only. Whoever
-starts Outpost may allow it from every device with `OUTPOST_ALLOW_REMOTE_ERASE=true`, which
-is the way in a container, where no request looks local.
+device on it. From another device the controls are disabled, and the screen says why
+and gives the line that allows it. To change the set-up from every device, add this to
+Outpost's `.env` and restart it (in Docker: `sudo docker compose up -d` in the folder
+with `compose.yaml`):
+
+```sh
+OUTPOST_ALLOW_REMOTE_SETTINGS=true
+```
+
+In a container no request looks as if it comes from the computer itself, even in a
+browser on it, so this is the way there. The older `OUTPOST_ALLOW_REMOTE_ERASE=true`
+still allows it too.
 
 ### Meshtastic, with Outpost as the broker
 

@@ -371,6 +371,15 @@ describe("who may call it", () => {
     expect((await send(rpc("ping"))).status).toBe(200);
   });
 
+  it("holds an IPv6 device to one allowance however many addresses of its /64 it moves through", async () => {
+    const statuses: number[] = [];
+    for (let n = 1; n <= 25; n++) statuses.push((await send(rpc("ping"), { remoteAddress: `fd00:7:7:7::${n.toString(16)}` })).status);
+    expect(statuses.slice(0, 20).every((status) => status === 200)).toBe(true);
+    expect(statuses.slice(20).every((status) => status === 429)).toBe(true);
+    // The next /64 is another network, and another allowance.
+    expect((await send(rpc("ping"), { remoteAddress: "fd00:7:7:8::1" })).status).toBe(200);
+  });
+
   it("refills the allowance with time and forgets the oldest addresses", () => {
     const limit = createRateLimit({ burst: 2, perMinute: 60, addresses: 3 });
     expect(limit.take("a", 0)).toBe(0);

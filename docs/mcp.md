@@ -27,9 +27,10 @@ It is off until it is turned on. In Settings, under "Looking things up in Outpos
 turn on **Let other programs on the home network use these tools**.
 
 That switch can only be changed **at the computer Outpost runs on** (from
-`http://localhost:8080`, or from that computer's own network address). Every other
-device sees it greyed out with "This can only be changed at the computer Outpost runs
-on." The reason is that it changes who can read what: the rest of Settings is open to
+`http://localhost:8080`, or from that computer's own network address), unless Outpost
+was started with `OUTPOST_ALLOW_REMOTE_SETTINGS=true`. Every other device sees it
+greyed out, with the reason and the line to add to `.env`. In a container no request
+looks as if it comes from the computer itself, so there the option is the only way. The reason is that it changes who can read what: the rest of Settings is open to
 every device on the network, and a switch that lets any program read the household's
 supplies and plans should not be turned on from a phone in passing. It is kept in its
 own row (`tools.mcp`), not in the ordinary settings; "Put everything back to its
@@ -128,7 +129,7 @@ of these is checked on every request, before its body is read:
 
 | Rule | Answer when broken |
 | --- | --- |
-| Switched on at the computer Outpost runs on | 403 |
+| Switched on (at the computer Outpost runs on, or anywhere with `OUTPOST_ALLOW_REMOTE_SETTINGS`) | 403 |
 | The connection comes from loopback (`127.0.0.0/8`, `::1`), a private IPv4 address (`10/8`, `172.16/12`, `192.168/16`), link-local (`169.254/16`, `fe80::/10`) or IPv6 unique-local (`fc00::/7`). Anything else, public addresses and the documentation and carrier-grade NAT ranges included, is refused | 403 |
 | No forwarding header (`Forwarded`, `X-Forwarded-For`, `X-Real-IP`, `X-Forwarded-Host`): through a proxy, where a request came from cannot be told | 403 |
 | The `Host` header names an address Outpost answers to (the request guard, `core/guard.ts`, for every route), which defeats DNS rebinding | 403 |
@@ -163,6 +164,8 @@ breaks and tabs removed.
 ### The allowance
 
 Each address may send a burst of 20 requests, then one more each second (60 a minute).
+An IPv6 address counts by its /64: a device can take a new address in its /64 whenever it
+likes, and would otherwise start a fresh allowance each time.
 Past that, `429 Too Many Requests` with `Retry-After` in seconds. It is worked out from
 timestamps when a request comes in: no timer runs, and at most 300 addresses are
 remembered (the one heard from least recently is forgotten first). No connection is

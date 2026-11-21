@@ -19,6 +19,8 @@ import { settings as settingsTable } from "../../db/schema.ts";
 export const CONFIG_KEY = "mesh.config";
 export const HEARD_KEY = "mesh.heard";
 const MOST_NODES = 200;
+/** A CA certificate in PEM is under 3,000 characters; a short chain of them fits. */
+export const MOST_CA_CHARS = 16_384;
 
 const channelName = z
   .string()
@@ -43,6 +45,9 @@ export const storedConfig = z.object({
           port: z.number().int().min(1).max(65535).default(MESH_DEFAULT_PORTS.mqtt),
           userName: z.string().max(64).default(""),
           rootTopic: z.string().max(100).default("msh/EU_868"),
+          tls: z.boolean().default(false),
+          /** The household's certificate authority, PEM: public, so kept here, not with the passwords. */
+          ca: z.string().max(MOST_CA_CHARS).nullable().default(null),
         })
         .prefault({}),
       channels: z

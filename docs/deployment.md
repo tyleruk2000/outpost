@@ -1011,9 +1011,16 @@ For the mesh radio link ([mesh-radio.md](mesh-radio.md)); not tried with a real 
   Outpost lists only devices it can see inside the container. Docker Desktop on a Mac
   cannot pass a USB device through; run Outpost without Docker there, or use the radio's
   network port.
-- **Setting it up.** In a container no request looks local, so Settings → Mesh radio can
-  be changed only if Outpost was started with `OUTPOST_ALLOW_REMOTE_ERASE=true`, for the
-  occasion.
+- **Setting it up.** In a container no request looks local, even from a browser on the
+  computer itself, so Settings → Mesh radio can be changed only with
+  `OUTPOST_ALLOW_REMOTE_SETTINGS=true` in `.env`, then `sudo docker compose up -d`. The
+  screen says so where the controls are disabled.
+- **A Mosquitto already on the same computer.** Inside the container, `127.0.0.1` is the
+  container itself. A Mosquitto published on the host (`1883:1883`) answers at the
+  host's address on the home network, or at the container's gateway (on Docker's default
+  bridge networks, `172.17.0.1` to `172.19.0.1` and so on); **Find a broker** in Settings
+  looks there. Do not also publish Outpost's own broker on 1883: Docker cannot give one
+  port to two containers.
 
 ### Backups, moving house, and starting again
 
@@ -1589,6 +1596,7 @@ value the image sets when it differs from the default.
 | `OUTPOST_P533_MAPS_MANIFEST` | | | For testing only: a JSON file listing map files to fetch and use for the second HF model in place of the ITU's (same shape as `maps` in `modules/propagation/p533/manifest.json`). The end-to-end suite uses it for small stand-ins. Leave unset. |
 | `OUTPOST_VOACAP_DATA_MANIFEST` | | | For testing only: a JSON file in the shape of `engines/voacap/coefficients.json` listing VOACAP's coefficient files to fetch, check and use in its place. The end-to-end suite uses it to fetch the real files from its own file server. Leave unset. |
 | `OUTPOST_ALLOW_REMOTE_ERASE` | `false` | | Let **Erase everything** (Storage → Manage and clean up) be started from any device that can reach Outpost, and likewise restoring a backup, deleting a stored backup, keeping fewer of them, setting or removing the passphrase backups are protected with, and replacing or deleting the HTTPS certificate authority. Without it, only the computer Outpost runs on may. A passphrase for backups is still never accepted from another device over plain http: open Outpost at its https address for that. See [security.md](security.md#erasing-everything). |
+| `OUTPOST_ALLOW_REMOTE_SETTINGS` | `false` | | Let the settings that open a port or a device on this computer, or let other programs read what Outpost holds, be changed from any device: Settings → Mesh radio, and the switch that lets other programs on the home network use Outpost's tools. Without it, only the computer Outpost runs on may; in a container that is no browser at all. See [security.md](security.md). |
 | `OUTPOST_NETWORK_SCAN_LOCAL_ONLY` | `false` | | Let only the computer Outpost runs on start a scan in **Tools → Devices on this network**. Off, any device that can reach Outpost may, as with every other action. `OUTPOST_ALLOW_REMOTE_ERASE` does not lift it. See [security.md](security.md#devices-on-this-network). |
 | `OUTPOST_ALLOW_REMOTE_MODEL_SERVER` | `false` | | Let **Answers from your library**, and a local embedding server for search by meaning, be on the public internet. Without it, such a server must be on this computer or a private network, so that nobody who can open Outpost can have passages from the library sent elsewhere. See [ai.md](ai.md). |
 | `OUTPOST_OLLAMA_ADDRESSES` | empty | | Where **Look for Ollama on this computer** looks after the address in Settings, as a comma-separated list of addresses. Empty means the two places Ollama listens by default (`http://127.0.0.1:11434/v1` and `http://host.docker.internal:11434/v1`). Set it when your Ollama listens on another port. The test suites set it so that they never ask a real Ollama on the machine they run on. |
