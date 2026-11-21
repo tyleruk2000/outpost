@@ -436,14 +436,16 @@ export function tracksData(
   const lines: FeatureCollection = { type: "FeatureCollection", features: [] };
   const ends: FeatureCollection = { type: "FeatureCollection", features: [] };
   for (const track of tracks) {
+    // Outlines are drawn with the lines; the ends are the ends of the lines alone.
+    const drawn = trackLines(track.geojson, true);
+    if (drawn.length === 0) continue;
     const parts = trackLines(track.geojson);
-    if (parts.length === 0) continue;
     const selected = track.id === selectedId;
     const color = colorOf(track.color);
     lines.features.push({
       type: "Feature",
       properties: { id: track.id, color, selected },
-      geometry: { type: "MultiLineString", coordinates: parts.map((line) => line.map(([lon, lat]) => [lon, lat])) },
+      geometry: { type: "MultiLineString", coordinates: drawn.map((line) => line.map(([lon, lat]) => [lon, lat])) },
     });
     const tips = trackEnds(parts);
     if (!tips) continue;

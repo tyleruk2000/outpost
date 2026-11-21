@@ -63,7 +63,7 @@ test.describe("maps", () => {
     await page.getByRole("tab", { name: /Routes/ }).click();
     await expect(page.getByText("No routes yet")).toBeVisible();
     const chooser = page.waitForEvent("filechooser");
-    await page.getByRole("button", { name: "Import GPX" }).click();
+    await page.getByRole("button", { name: "Import a map file" }).click();
     await (await chooser).setFiles([{ name: "morning-climb.gpx", mimeType: "application/gpx+xml", buffer: gpx() }]);
     const dialog = page.getByRole("dialog", { name: "Import a GPX file" });
     await expect(dialog.getByText("morning-climb.gpx")).toBeVisible();
@@ -91,16 +91,16 @@ test.describe("maps", () => {
     await page.getByRole("tab", { name: /Routes/ }).click();
     const chooser = page.waitForEvent("filechooser");
     await page
-      .getByRole("button", { name: /Import GPX/ })
+      .getByRole("button", { name: /Import a map file/ })
       .first()
       .click();
     await (await chooser).setFiles([{ name: "broken.gpx", mimeType: "application/gpx+xml", buffer: Buffer.from("this is not a route") }]);
     const dialog = page.getByRole("dialog", { name: "Import a GPX file" });
-    await dialog.getByRole("button", { name: "Import" }).click();
-    await expect(dialog.getByText("broken.gpx was not imported")).toBeVisible();
+    // Said as the file is read, before anything is saved; there is nothing to import.
     await expect(dialog.getByText("That file is not well-formed XML, so it cannot be read as GPX.")).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Import" })).toBeDisabled();
     // Nothing was added.
-    await dialog.getByRole("button", { name: "Done" }).click();
+    await dialog.getByRole("button", { name: "Cancel" }).click();
     await expect(page.getByText("1 route", { exact: true })).toBeVisible();
   });
 

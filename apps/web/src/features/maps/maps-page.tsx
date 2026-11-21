@@ -53,6 +53,7 @@ import { useSatellite } from "./imagery/use-satellite";
 import { type ContourReach, contourReach, contoursSupported } from "./lib/contours";
 import { formatPosition, isReadoutFormat, type ReadoutFormat } from "./lib/coords";
 import { formatDistance, type LatLon } from "./lib/geo";
+import { isMapFile } from "./lib/map-files";
 import { DEFAULT_MAP_STYLE, isMapStyleId, MAP_STYLE_KEY, MAP_STYLES, type MapStyleId, ROAD_NUMBERS_KEY } from "./lib/map-styles";
 import { MARKER_HEX } from "./lib/palette";
 import { iconOf, pinGlyphOf } from "./lib/place-icons";
@@ -101,10 +102,11 @@ import {
 } from "./map-chrome";
 import { creditsFor, MapFooter } from "./map-footer";
 import { type ClearSpace, MapFurniture } from "./map-furniture";
+import { ImportMapFilesDialog } from "./panels/import-map-files";
 import type { OfflineIntent } from "./panels/offline";
 import { draftOf, type PlaceDraft, PlaceEditor, PlacesList } from "./panels/places";
 import { hasUnsavedWork, type RouteDraft, RouteEditor } from "./panels/route-editor";
-import { ImportGpxDialog, RouteDetail, RoutesList } from "./panels/routes";
+import { RouteDetail, RoutesList } from "./panels/routes";
 import { SunGlance } from "./panels/sun-glance";
 import { SunPanel } from "./panels/sun-panel";
 import { locatorOf } from "./radio/locator";
@@ -1080,7 +1082,7 @@ export default function MapsPage() {
     );
   };
 
-  // ── Dropping GPX files on the map ──
+  // ── Dropping map files on the map ──
 
   const hasFiles = (event: DragEvent) => [...event.dataTransfer.types].includes("Files");
   const onDrop = (event: DragEvent) => {
@@ -1088,9 +1090,9 @@ export default function MapsPage() {
     event.preventDefault();
     setDropping(false);
     const files = [...event.dataTransfer.files];
-    const gpx = files.filter((file) => /\.gpx$/i.test(file.name));
-    if (gpx.length === 0) notify.error("Only GPX files can be dropped on the map.");
-    else setImportFiles(gpx);
+    const mapFiles = files.filter(isMapFile);
+    if (mapFiles.length === 0) notify.error("Only GPX, KML, KMZ and GeoJSON files can be dropped on the map.");
+    else setImportFiles(mapFiles);
   };
 
   // ── Layout ──
@@ -1701,7 +1703,7 @@ export default function MapsPage() {
         {dropping ? (
           <div className="pointer-events-none absolute inset-3 z-30 grid place-content-center rounded-panel border-2 border-dashed border-primary bg-page/80">
             <p className="flex items-center gap-2.5 text-lead font-semibold text-ink">
-              <FileUp aria-hidden className="size-5 text-primary" /> Drop GPX files to import them
+              <FileUp aria-hidden className="size-5 text-primary" /> Drop GPX, KML or GeoJSON files to import them
             </p>
           </div>
         ) : null}
@@ -1751,7 +1753,7 @@ export default function MapsPage() {
         }}
       />
 
-      <ImportGpxDialog
+      <ImportMapFilesDialog
         files={importFiles}
         onClose={() => setImportFiles(null)}
         onShow={(track, saved) => {

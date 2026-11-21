@@ -240,6 +240,28 @@ export interface TrackImportResponse {
   track: TrackDto | null;
   /** Markers created from the file's waypoints, when that was asked for. */
   markers: MarkerDto[];
+  /** Of the track's lines, how many are outlines (a polygon's rings, from a KML or GeoJSON file). */
+  outlines?: number;
+}
+
+/** The kinds of file a map import reads. */
+export type MapFileFormat = "gpx" | "kml" | "kmz" | "geojson";
+
+/**
+ * What a map file would make, read before anything is saved. Importing it adds a new
+ * route and new places beside those already saved; nothing is changed or replaced.
+ */
+export interface MapFilePreview {
+  format: MapFileFormat;
+  /** The file's own name for itself, or the name the route will be given from the file's name. */
+  name: string;
+  /** Points in the file. In a GPX file these are waypoints, saved as places only when asked. */
+  points: number;
+  lines: number;
+  /** Polygons' rings, kept as closed lines. */
+  outlines: number;
+  /** Points in all the lines and outlines. */
+  linePoints: number;
 }
 
 /**
