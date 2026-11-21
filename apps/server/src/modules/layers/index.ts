@@ -130,6 +130,10 @@ export async function registerLayers(app: FastifyInstance, ctx: AppContext): Pro
   const client = createHttpClient({ allowPrivate: ctx.config.allowPrivateDownloads });
   const service = createLayersService(ctx, client);
   ctx.services.layers = service;
+  // Once the server is answering: the map is answered from the count kept before the restart meanwhile.
+  app.addHook("onListen", async () => {
+    void service.countLayers();
+  });
 
   ctx.services.downloads.registerFetcher(QUERY_FETCHER, createQueryFetcher(client));
   ctx.services.downloads.registerInstaller("dataset", service.installer, isReferenceDownload);
