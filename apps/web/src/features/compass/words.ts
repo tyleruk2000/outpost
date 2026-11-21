@@ -3,7 +3,22 @@
  * which way, and what to do with a bearing. Kept apart from the screen so the words can be
  * tested on their own.
  */
-import { angleInWords, type CompassRule, magneticModelInfo } from "@outpost/shared";
+import { angleInWords, type CompassRule, type MapGrid, magneticModelInfo, type Norths } from "@outpost/shared";
+
+/** "With an Ordnance Survey map here", "With a UTM map here, zone 31U", "With a map drawn to true north here". */
+export function mapWords(norths: Norths): string {
+  if (norths.convergence === null) return "With a map drawn to true north here";
+  if (norths.grid === "utm") return `With a UTM map here, zone ${norths.zone}`;
+  if (norths.grid === "ups") return `With a UPS map here (${norths.zone === "UPS N" ? "north" : "south"} polar)`;
+  return "With an Ordnance Survey map here";
+}
+
+/** Why no grid north is given, when the grid asked for has none here; null when none was asked for. */
+export function noGridSentence(asked: MapGrid): string | null {
+  if (asked === "osgb") return "There is no Ordnance Survey grid here, so only true and magnetic north are given.";
+  if (asked === "utm") return "Grid north is not defined at the pole itself, so only true and magnetic north are given.";
+  return null;
+}
 
 export function monthYear(at: number): string {
   return new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" }).format(at);

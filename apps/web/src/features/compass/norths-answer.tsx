@@ -3,12 +3,31 @@
  * (add or subtract so many degrees, each way), then the three norths it comes from, each
  * in a sentence, and any warning about the model's years or a magnetic pole.
  */
-import { compassRule, type Norths } from "@outpost/shared";
+import { compassRule, type MapGrid, type Norths } from "@outpost/shared";
 import { Notice } from "@/components/page";
 import { KeepButtons } from "../tools/kit";
-import { convergenceSentence, declinationSentence, gridMagneticSentence, outOfDateSentence, ruleLines } from "./words";
+import {
+  convergenceSentence,
+  declinationSentence,
+  gridMagneticSentence,
+  mapWords,
+  noGridSentence,
+  outOfDateSentence,
+  ruleLines,
+} from "./words";
 
-export function NorthsAnswer({ norths, at, placeName }: { norths: Norths; at: number; placeName: string }) {
+export function NorthsAnswer({
+  norths,
+  at,
+  placeName,
+  grid = "osgb",
+}: {
+  norths: Norths;
+  at: number;
+  placeName: string;
+  /** The grid asked for, to say why there is none when there is none. */
+  grid?: MapGrid;
+}) {
   const { field, convergence, gridMagneticAngle } = norths;
   const onGrid = gridMagneticAngle !== null && convergence !== null;
   const rule = compassRule(onGrid ? gridMagneticAngle : norths.declination);
@@ -40,7 +59,7 @@ export function NorthsAnswer({ norths, at, placeName }: { norths: Norths; at: nu
       ) : null}
       <div className="rounded-panel bg-surface px-4 py-3">
         <div aria-live="polite" aria-atomic="true">
-          <p className="text-small text-ink-muted">{onGrid ? "With an Ordnance Survey map here" : "With a map drawn to true north here"}</p>
+          <p className="text-small text-ink-muted">{mapWords(norths)}</p>
           <ul className="mt-1 grid gap-0.5">
             {lines.map((line) => (
               <li
@@ -55,9 +74,7 @@ export function NorthsAnswer({ norths, at, placeName }: { norths: Norths; at: nu
             {sentences.map((sentence) => (
               <p key={sentence}>{sentence}</p>
             ))}
-            {onGrid ? null : (
-              <p className="text-ink-muted">There is no Ordnance Survey grid here, so only true and magnetic north are given.</p>
-            )}
+            {onGrid || !noGridSentence(grid) ? null : <p className="text-ink-muted">{noGridSentence(grid)}</p>}
             <p className="text-small text-ink-muted">
               Rounded to whole degrees, as a hand compass is read. The model alone is good to about ±{uncertainty.toFixed(1)}° here.
             </p>

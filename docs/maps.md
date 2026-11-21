@@ -46,8 +46,8 @@ On the map itself:
 
 - The **search box** takes a place name, or in Great Britain a postcode (once place
   names are downloaded, see [below](#offline-place-search)), coordinates in any of the formats under
-  [Coordinate formats](#coordinate-formats), a British grid reference, or a Maidenhead
-  locator.
+  [Coordinate formats](#coordinate-formats): a British grid reference, UTM coordinates,
+  an MGRS reference or a Maidenhead locator among them.
 - The **ruler** measures a path you click out, in kilometres and miles, and gives the
   locators of its two ends. **Save as a route** keeps the measured path as a route;
   **Check line of sight** hands its first and last points to the tool described under
@@ -68,7 +68,9 @@ On the map itself:
   dots at the end of the search box. The column of icons under it shows as many as
   there is room for (see [On a phone](#on-a-phone)).
 - The readout at the bottom shows the centre of the map; choose decimal degrees,
-  degrees-minutes-seconds, British National Grid or Maidenhead locator, and copy it.
+  degrees-minutes-seconds, British National Grid, UTM, MGRS or Maidenhead locator, and
+  copy it. The right-click (long-press) menu, a dropped pin and saved places use the same
+  format.
   With a mouse over the map it gives the pointer's position instead, and says which.
 - **The height of the ground** is written after the coordinates
   ("57.00000, -3.39897 · 100 m") and follows them, from the terrain installed; on a
@@ -476,6 +478,7 @@ until you save or share it.
    | Routes and tracks | any route showing on the map crosses the page | Each route that crosses the page can be ticked by itself. |
    | Saved places | any are on the page | Favourites are named; the others are named when the page is at zoom 9 or closer, as on screen. |
    | Lines of latitude and longitude | never | The figures round the edge are printed either way; this draws the lines across the map as well. |
+   | UTM grid lines | never | Lines of the UTM zone of the page's middle (UPS near the poles), every 100 m, 1 km or 10 km as the scale allows, each with its easting or northing in kilometres. A line under the map names the zone, and says when part of the page is in the next one. |
    | Maidenhead grid squares | the grid is switched on for the map on screen | Fields, squares, subsquares or extended squares as the scale allows, each with its locator, as on screen. |
 
 4. **Make the PDF**, then **Save as PDF**, **Add to library**, **Share** (where the
@@ -1866,6 +1869,9 @@ understood:
 | British National Grid reference | `NY 215 072` · `NY21540721` · `NY 21540 07210` |
 | National Grid easting and northing | `321540 507210` |
 | Maidenhead locator | `IO83` · `IO83QM` · `io83qm` · `IO83QM54` |
+| UTM | `30U 448251 5411932` · `30U 448251E 5411932N` · `UTM 30N 448251 5411932` · `zone 30 north 448251 5411932` |
+| UPS (near the poles) | `UPS N 2000000 2000000` |
+| MGRS and US National Grid | `18S UJ 23483 06479` · `18SUJ2348306479` · `4QFJ1234` · `ZAH 00000 00000` |
 
 Notes:
 
@@ -1875,10 +1881,40 @@ Notes:
 - National Grid positions are converted with the Ordnance Survey's standard seven-
   parameter transformation, which is accurate to about five metres. That is finer than
   a hand-typed reference, but it is not survey grade.
-- Grid references are only meaningful in Great Britain. There is no support for UTM,
-  MGRS or the Irish Grid.
+- British grid references are only meaningful in Great Britain. The Irish Grid is not
+  read.
+- See [UTM and MGRS](#utm-and-mgrs) for the letter after a UTM zone.
 - A Maidenhead locator of four, six or eight characters is read, in either case. It
   names a cell too; see [Maidenhead locators](#maidenhead-locators).
+
+## UTM and MGRS
+
+UTM is the grid on most topographic maps outside Britain, on GPS receivers, and in
+search and rescue. It covers the Earth from 80° S to 84° N in sixty zones 6° wide; UPS
+covers the two polar caps. MGRS (the same thing as the US National Grid) writes a UTM
+position as the zone and band, two letters for the 100 km square, then the easting and
+northing inside it: `18S UJ 23483 06479` is the Washington Monument.
+
+- **Where they appear.** The readout's format menu, the right-click (long-press) menu,
+  a dropped pin, saved places, the place search, the printed map (**UTM grid lines**,
+  and the MGRS reference of the middle in the file's words), and Tools → Compass, which
+  gives grid north on a UTM map and the MGRS reference of the place.
+- **Precision.** The readout gives as many figures as the view can tell apart: an MGRS
+  reference has 2 to 5 figures each way (1 km to 1 m), and UTM coordinates are rounded
+  to the same step. A saved place is shown in full. MGRS figures are cut, not rounded,
+  as the standard says: a reference names the square a point is in, and a typed one is
+  read as the middle of its square.
+- **The letter after the zone.** Outpost writes the band letter (`30U`). Typed, the
+  letter may be a band or `N` or `S` for the hemisphere. `S` is both band S (32° to 40°
+  N) and "south": where both fit the figures, both are listed, and the search line says
+  which is north and which south of the equator.
+- **Zones.** South-west Norway (32V) and Svalbard (31X to 37X) have their wider zones.
+  A zone number is written with two figures (`04W`), as NGA asks; one figure is read.
+- **The poles.** North of 84° N and south of 80° S positions are UPS (`UPS N 2000000
+  2000000`) and MGRS references start with A, B, Y or Z (`Z AH 00000 00000` is the
+  North Pole).
+- **Datum.** WGS 84, as GPS gives. MGRS references made on older maps with other datums
+  (some use other square letters) are not converted, and can be hundreds of metres off.
 
 ## Maidenhead locators
 

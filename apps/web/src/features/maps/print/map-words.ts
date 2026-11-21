@@ -14,7 +14,7 @@
  * typeface cannot write is left out and counted: the words never hold a "?" where a
  * name should be.
  */
-import { type Bbox, toMaidenhead } from "@outpost/shared";
+import { type Bbox, formatMgrs, toMaidenhead } from "@outpost/shared";
 import { formatBboxSize } from "../lib/geo";
 import { encodeWinAnsi, wrapText } from "./helvetica";
 import type { Rect } from "./paper";
@@ -65,10 +65,12 @@ export function mapWords(input: MapWordsInput): string[] {
   const [west, south, east, north] = input.bbox;
   const centre = { lat: (south + north) / 2, lon: (west + east) / 2 };
   const locator = toMaidenhead(centre.lat, centre.lon, 6);
+  const mgrs = formatMgrs(centre.lat, centre.lon, 4);
+  const references = [locator ? `Maidenhead locator ${locator}` : null, mgrs ? `MGRS ${mgrs}` : null].filter(Boolean).join(", ");
   const title = input.title.trim();
   const sentences = [
     `What this map shows: ${title && encodeWinAnsi(title) ? `${title}. ` : ""}An area of ${formatBboxSize(input.bbox)} centred on ${position(centre.lat, centre.lon)}${
-      locator ? ` (Maidenhead locator ${locator})` : ""
+      references ? ` (${references})` : ""
     }, from ${position(south, west)} at its south-west corner to ${position(north, east)} at its north-east. Scale ${formatScale(input.scale)} on ${input.paper}. Drawn by Outpost on ${input.date} from the maps installed then.`,
   ];
   const list = (lead: string, names: readonly string[], most: number) => {

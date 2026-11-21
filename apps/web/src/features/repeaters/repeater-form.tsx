@@ -46,12 +46,18 @@ interface Draft {
 }
 
 /** What a reading is called where the person chooses between two. */
-const READING_NAMES: Partial<Record<CoordinateFormat, string>> = { osgb: "British grid reference", maidenhead: "Maidenhead locator" };
+const READING_NAMES: Partial<Record<CoordinateFormat, string>> = {
+  osgb: "British grid reference",
+  maidenhead: "Maidenhead locator",
+  utm: "UTM coordinates",
+  mgrs: "MGRS reference",
+};
 
 /** The ways the position typed can be read. One, nearly always: "NO14" is a grid square in Fife and a locator in Siberia. */
 export function positionReadings(position: string): Array<{ id: string; name: string; where: string; reading: ParsedCoordinate }> {
-  return parseCoordinateReadings(position.trim()).map((reading) => ({
-    id: reading.format,
+  // UTM in zone letter S can be read two ways, both UTM: the second is told apart by its place in the list.
+  return parseCoordinateReadings(position.trim()).map((reading, index, all) => ({
+    id: all.findIndex((other) => other.format === reading.format) === index ? reading.format : `${reading.format}-${index}`,
     name: READING_NAMES[reading.format] ?? "Coordinates",
     where: formatDecimal(reading.lat, reading.lon, 2),
     reading,
