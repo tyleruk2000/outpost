@@ -453,6 +453,13 @@ export const GUIDES: Guide[] = [
     keywords: "licence license terms copyright attribution share catalogue",
     opens: { to: "/explore", label: "Open Explore" },
   },
+  {
+    slug: "testing-status",
+    file: "testing-status.md",
+    group: "how-it-works",
+    about: "What has not yet been tried with real hardware, real data or a real browser, by feature.",
+    keywords: "tested untested tried untried limits known gaps",
+  },
   // For developers
   { slug: "architecture", file: "architecture.md", group: "developers", about: "How the parts of Outpost fit together, and why." },
   { slug: "api", file: "api.md", group: "developers", about: "Every route the server answers, with what it takes and gives." },
