@@ -1,6 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import { Link } from "react-router";
 import { Page, PageHeader, Rows } from "@/components/page";
+import { FirstUseGuide } from "@/features/help/first-use";
 
 /** The radio tools Outpost has, in one place. Each row is a tool; a new one is one more row. */
 const TOOLS = [
@@ -67,6 +68,11 @@ export default function RadioPage() {
   return (
     <Page width="reading">
       <PageHeader title="Radio" description="Tools for planning radio contacts. Everything here works with no connection." />
+      <FirstUseGuide
+        slug="radio-quick-start"
+        words="New to radio here? Four short steps: something to listen to, the frequency sheets, repeaters, and a mesh message."
+        className="mb-6"
+      />
       <Rows className="border-y border-border">
         {TOOLS.map((tool) => (
           <li key={tool.name}>

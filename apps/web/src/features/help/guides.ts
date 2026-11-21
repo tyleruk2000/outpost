@@ -178,6 +178,23 @@ export const GUIDES: Guide[] = [
     keywords: "pages write import notion markdown web page",
     opens: { to: "/notes", label: "Open Notes" },
   },
+  // The two quick starts, for the rest of the household; each is offered on its screens the first time they open.
+  {
+    slug: "map-quick-start",
+    file: "map-quick-start.md",
+    group: "using",
+    about: "Find a place, read the height and grid reference, print a map, and check line of sight and radio range, step by step.",
+    keywords: "map quick start beginner how do i grid reference height print line of sight range first time",
+    opens: { to: "/maps", label: "Open Maps" },
+  },
+  {
+    slug: "radio-quick-start",
+    file: "radio-quick-start.md",
+    group: "using",
+    about: "Find something to listen to, the frequency sheets, repeaters, and a message by mesh radio, step by step.",
+    keywords: "radio quick start beginner how do i frequencies listen repeaters mesh message first time",
+    opens: { to: "/radio", label: "Open Radio" },
+  },
   {
     slug: "maps",
     file: "maps.md",

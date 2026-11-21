@@ -42,6 +42,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Badge, Select, Skeleton } from "@/components/ui/misc";
+import { FirstUseGuide } from "@/features/help/first-use";
 import { useCatalogue } from "@/features/layers/data";
 import { madePdf } from "@/features/library/made/made-pdf";
 import { PdfActions } from "@/features/library/made/pdf-actions";
@@ -385,6 +386,11 @@ export default function FrequenciesPage() {
       <PageHeader
         title="Frequencies to listen to"
         description="Where to tune to hear the time, news, warnings, weather and other people when the internet is out. The list comes with Outpost; nothing is fetched."
+      />
+      <FirstUseGuide
+        slug="radio-quick-start"
+        words="New to radio here? Four short steps: something to listen to, the frequency sheets, repeaters, and a mesh message."
+        className="mb-6"
       />
 
       {data.isPending ? (
