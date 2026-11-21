@@ -620,6 +620,25 @@ export interface ReadingsResponse {
   readings: PressureReading[];
 }
 
+/**
+ * Which readings `POST /api/weather/readings/clear` removes and `GET
+ * /api/weather/readings/export` writes out: all of them, those taken before a moment, or
+ * those from one moment up to (not including) another. The screen turns days into
+ * moments in the device's own time; the server compares times only.
+ */
+export type ReadingsRange = { range: "all" } | { range: "before"; before: number } | { range: "between"; from: number; to: number };
+
+/** Whether a reading is in a range. */
+export function inReadingsRange(takenAt: number, range: ReadingsRange): boolean {
+  if (range.range === "all") return true;
+  if (range.range === "before") return takenAt < range.before;
+  return takenAt >= range.from && takenAt < range.to;
+}
+
+export interface ReadingsClearResult {
+  removed: number;
+}
+
 /** The person's own things here, as "Manage and clean up" counts them; and the fetched copies, which can be fetched again. */
 export interface WeatherKept {
   places: number;

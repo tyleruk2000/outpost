@@ -368,7 +368,25 @@ not already kept: a reading at the same time is not added twice.
   as nought. Changing either after the file has been read clears what it would add
   until it is read again, so that Add never adds something other than what was shown.
 - Readings brought in from a file say "from a file" in the list; typed ones say
-  nothing. There is no export of readings.
+  nothing.
+
+### Clearing readings
+
+Each reading in the list has a **Remove** button. **Clear readings**, above the list,
+removes many at once:
+
+- **All**, **Before a day** (readings on that day are kept), or **Between two days**
+  (both days included). Days are the calendar days of the device you are using.
+- The dialog says how many readings will go before you press, and offers **Save them
+  as a CSV file first**. That file is the same readings, in a form **Bring in a CSV
+  file** reads back as they were.
+- If readings were added or removed elsewhere since the dialog counted them, nothing
+  is removed and the dialog says how many are in the range now.
+- Only readings are removed. Saved places and fetched forecasts are not touched.
+- The chart, the tendency and the forecast from your readings are worked out from what
+  is left, straight away.
+
+There is no undo, and readings are not kept anywhere else unless a backup has them.
 
 ### A weather station
 

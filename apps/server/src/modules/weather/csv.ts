@@ -12,6 +12,7 @@
  */
 import {
   HEIGHT_RANGE,
+  type PressureReading,
   type PressureUnit,
   type ReadingImportResult,
   type ReadingImportRow,
@@ -220,4 +221,36 @@ export function readReadingsCsv(text: string, options: ReadCsvOptions): ReadingI
     rows.push({ line, takenAt, value, unit, heightM, seaLevelHpa, duplicate: options.existing.has(takenAt), notes });
   }
   return { rows, problems, added: 0 };
+}
+
+/** One cell: quoted when it holds a comma, a quote or a line break, and never starting a formula in a spreadsheet. */
+function cell(value: string | number): string {
+  let text = String(value);
+  if (typeof value === "string" && /^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+
+/**
+ * Readings as a CSV file that `readReadingsCsv` reads back as they were: the time in UTC,
+ * the figure as the barometer showed it, its unit and height; then the sea-level figure,
+ * the note and where it came from, for a person's own use (they are not read back).
+ */
+export function writeReadingsCsv(readings: PressureReading[]): string {
+  const lines = [["time", "pressure", "unit", "height_m", "sea_level_hpa", "note", "origin"].join(",")];
+  for (const reading of readings) {
+    lines.push(
+      [
+        new Date(reading.takenAt).toISOString().replace(/\.000Z$/, "Z"),
+        reading.value,
+        reading.unit,
+        reading.heightM,
+        reading.seaLevelHpa.toFixed(1),
+        reading.note,
+        reading.origin,
+      ]
+        .map(cell)
+        .join(","),
+    );
+  }
+  return `${lines.join("\r\n")}\r\n`;
 }

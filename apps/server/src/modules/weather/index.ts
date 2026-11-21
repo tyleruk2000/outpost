@@ -16,8 +16,11 @@ import {
   DEFAULT_RIVER_KM,
   HEIGHT_RANGE,
   type HomeWarningsResponse,
+  inReadingsRange,
   MET_OFFICE_REGION_IDS,
   PRESSURE_UNITS,
+  type ReadingsClearResult,
+  type ReadingsRange,
   type ReadingsResponse,
   RIVER_DISTANCES_KM,
   type StationReadings,
@@ -30,7 +33,7 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { createHttpClient } from "../../core/http.ts";
-import { isTimeZone } from "./csv.ts";
+import { isTimeZone, writeReadingsCsv } from "./csv.ts";
 import { createWeatherService, type WeatherService } from "./service.ts";
 import { createSourceFetcher, WEATHER_SOURCES } from "./sources.ts";
 
@@ -97,6 +100,41 @@ const importSchema = z
     apply: z.boolean().default(false),
   })
   .strict();
+
+const moment = z
+  .number()
+  .int()
+  .min(0)
+  .max(Date.UTC(3000, 0, 1));
+const rangeSchema = z.discriminatedUnion("range", [
+  z.object({ range: z.literal("all") }).strict(),
+  z.object({ range: z.literal("before"), before: moment }).strict(),
+  z
+    .object({ range: z.literal("between"), from: moment, to: moment })
+    .strict()
+    .refine((input) => input.from < input.to, "The first day must be before the last."),
+]);
+const clearSchema = z
+  .object({
+    range: rangeSchema,
+    /** How many the person was told would go; nothing is removed if the range holds another number now. */
+    expected: z.number().int().min(0).optional(),
+  })
+  .strict();
+const queryMoment = z.coerce.number().pipe(moment);
+const rangeOfQuery = z
+  .object({ before: queryMoment.optional(), from: queryMoment.optional(), to: queryMoment.optional() })
+  .strict()
+  .transform((query, check): ReadingsRange => {
+    if (query.before !== undefined && query.from === undefined && query.to === undefined) return { range: "before", before: query.before };
+    if (query.before === undefined && query.from !== undefined && query.to !== undefined) {
+      if (query.from >= query.to) check.addIssue({ code: "custom", message: "The first day must be before the last." });
+      return { range: "between", from: query.from, to: query.to };
+    }
+    if (query.before === undefined && query.from === undefined && query.to === undefined) return { range: "all" };
+    check.addIssue({ code: "custom", message: "Give before, or from and to, or neither." });
+    return z.NEVER;
+  });
 
 export async function registerWeather(app: FastifyInstance, ctx: AppContext): Promise<void> {
   const http = createHttpClient({ allowPrivate: ctx.config.allowPrivateDownloads });
@@ -175,6 +213,27 @@ export async function registerWeather(app: FastifyInstance, ctx: AppContext): Pr
   app.delete("/api/weather/readings/:id", async (request) => {
     service.removeReading(idParams.parse(request.params).id);
     return { ok: true };
+  });
+  /** Removes many readings at once: all, those before a moment, or those between two. Nothing else is touched. */
+  app.post("/api/weather/readings/clear", async (request): Promise<ReadingsClearResult> => {
+    const input = clearSchema.parse(request.body);
+    return service.clearReadings(input.range, input.expected);
+  });
+  /** The readings in a range as a CSV file that "Bring in a CSV file" reads back. Changes nothing. */
+  app.get("/api/weather/readings/export", async (request, reply) => {
+    const range = rangeOfQuery.parse(request.query);
+    const chosen = service.readings().filter((reading) => inReadingsRange(reading.takenAt, range));
+    const day = (at: number) => new Date(at).toISOString().slice(0, 10);
+    const name =
+      chosen.length === 0
+        ? "barometer-readings.csv"
+        : `barometer-readings-${day(chosen[0]!.takenAt)}-to-${day(chosen.at(-1)!.takenAt)}.csv`;
+    return reply
+      .header("Content-Type", "text/csv; charset=utf-8")
+      .header("Content-Disposition", `attachment; filename="${name}"`)
+      .header("X-Content-Type-Options", "nosniff")
+      .header("Content-Security-Policy", "sandbox; default-src 'none'")
+      .send(writeReadingsCsv(chosen));
   });
   /** Reads a file of readings; with `apply`, keeps the ones not already kept. */
   app.post("/api/weather/readings/import", async (request) => {

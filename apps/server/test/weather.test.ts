@@ -553,6 +553,64 @@ describe("barometer readings", () => {
     expect(body.rows[1]).toMatchObject({ value: 1012, heightM: 10, notes: [] });
   });
 
+  it("clears readings all at once or by range, saves them as CSV first, and leaves places and copies alone", async () => {
+    await homePlace();
+    await app.api("POST", "/api/weather/update", { kinds: ["forecast"] });
+    const day = (d: number, h = 9) => Date.UTC(2026, 10, d, h);
+    for (const d of [10, 11, 12, 13, 14]) {
+      const note = d === 12 ? "=1+1, bad run" : "";
+      expect(
+        (await app.api("POST", "/api/weather/readings", { takenAt: day(d), value: 1010 + d, unit: "hPa", heightM: 0, note })).status,
+      ).toBe(200);
+    }
+    asked.length = 0;
+
+    // The CSV of a range reads back as the same readings, and no note can start a formula.
+    const csv = await app.api("GET", `/api/weather/readings/export?from=${day(11, 0)}&to=${day(13, 0)}`);
+    expect(csv.status).toBe(200);
+    expect(csv.headers["content-type"]).toMatch(/text\/csv/);
+    expect(csv.headers["content-disposition"]).toBe('attachment; filename="barometer-readings-2026-11-11-to-2026-11-12.csv"');
+    expect(String(csv.body).split("\r\n")).toEqual([
+      "time,pressure,unit,height_m,sea_level_hpa,note,origin",
+      "2026-11-11T09:00:00Z,1021,hPa,0,1021.0,,typed",
+      '2026-11-12T09:00:00Z,1022,hPa,0,1022.0,"\'=1+1, bad run",typed',
+      "",
+    ]);
+    const back = await app.api("POST", "/api/weather/readings/import", { text: csv.body, unit: "inHg", heightM: 300, zone: "Asia/Tokyo" });
+    expect(back.body.rows.map((row: { takenAt: number; duplicate: boolean }) => [row.takenAt, row.duplicate])).toEqual([
+      [day(11), true],
+      [day(12), true],
+    ]);
+    expect((await app.api("GET", "/api/weather/readings/export?before=5&from=1")).status).toBe(400);
+
+    // A count that is no longer true removes nothing.
+    const stale = await app.api("POST", "/api/weather/readings/clear", { range: { range: "before", before: day(12, 0) }, expected: 3 });
+    expect(stale.status).toBe(409);
+    expect(stale.body.error.message).toMatch(/2 readings are in that range now. Nothing was removed/);
+    expect((await app.api("GET", "/api/weather/readings")).body.readings).toHaveLength(5);
+
+    const before = await app.api("POST", "/api/weather/readings/clear", { range: { range: "before", before: day(12, 0) }, expected: 2 });
+    expect(before.body).toEqual({ removed: 2 });
+    const between = await app.api("POST", "/api/weather/readings/clear", { range: { range: "between", from: day(13, 0), to: day(14, 0) } });
+    expect(between.body).toEqual({ removed: 1 });
+    expect((await app.api("GET", "/api/weather/readings")).body.readings.map((r: { takenAt: number }) => r.takenAt)).toEqual([
+      day(12),
+      day(14),
+    ]);
+    expect(
+      (await app.api("POST", "/api/weather/readings/clear", { range: { range: "between", from: day(14, 0), to: day(13, 0) } })).status,
+    ).toBe(400);
+    expect((await app.api("POST", "/api/weather/readings/clear", { range: { range: "some" } })).status).toBe(400);
+
+    const all = await app.api("POST", "/api/weather/readings/clear", { range: { range: "all" }, expected: 2 });
+    expect(all.body).toEqual({ removed: 2 });
+    expect((await app.api("GET", "/api/weather/readings")).body.readings).toEqual([]);
+    const after = (await app.api("GET", "/api/weather")).body;
+    expect(after.places).toHaveLength(1);
+    expect(after.kept).toHaveLength(1);
+    expect(asked).toEqual([]);
+  });
+
   it("reads a time with no zone in the device's zone", async () => {
     const text = "date,time,hPa\n2026-07-01,12:00,1015\n";
     const { body } = await app.api("POST", "/api/weather/readings/import", { text, unit: "hPa", heightM: 0, zone: "Europe/London" });

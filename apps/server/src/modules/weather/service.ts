@@ -19,6 +19,8 @@ import {
   type PressureReading,
   type PressureUnit,
   type ReadingImportResult,
+  type ReadingsClearResult,
+  type ReadingsRange,
   type RiverLevelStation,
   type RiverReadingsData,
   type RiversData,
@@ -37,7 +39,7 @@ import {
   type WeatherSourceId,
   warningState,
 } from "@outpost/shared";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, gte, lt, sql } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, conflict } from "../../core/errors.ts";
 
@@ -95,6 +97,12 @@ export interface WeatherService {
   readings(): PressureReading[];
   addReading(input: ReadingInput): PressureReading;
   removeReading(id: string): void;
+  /**
+   * Removes the readings in a range, and nothing else: not places, not fetched copies.
+   * With `expected`, removes nothing unless that many are in the range, so that what the
+   * person was told is what goes.
+   */
+  clearReadings(range: ReadingsRange, expected?: number): ReadingsClearResult;
   importReadings(text: string, options: { unit: PressureUnit; heightM: number; zone: string; apply: boolean }): ReadingImportResult;
   count(): WeatherKept;
   /** Removes every fetched copy; places and readings stay. Returns what went. */
@@ -565,6 +573,27 @@ export function createWeatherService(ctx: AppContext, fetcher: SourceFetcher, op
     removeReading(id) {
       if (db.delete(weatherReadings).where(eq(weatherReadings.id, id)).run().changes === 0) throw gone("That reading has already gone.");
       changed();
+    },
+
+    clearReadings(range, expected) {
+      const where =
+        range.range === "all"
+          ? sql`1 = 1`
+          : range.range === "before"
+            ? lt(weatherReadings.takenAt, range.before)
+            : and(gte(weatherReadings.takenAt, range.from), lt(weatherReadings.takenAt, range.to));
+      const removed = sqlite.transaction(() => {
+        if (expected !== undefined) {
+          const found = db.select({ n: sql<number>`count(*)` }).from(weatherReadings).where(where).get()?.n ?? 0;
+          if (found !== expected)
+            throw conflict(
+              `The readings have changed since this was asked: ${found === 1 ? "1 reading is" : `${found} readings are`} in that range now. Nothing was removed; look again and choose.`,
+            );
+        }
+        return db.delete(weatherReadings).where(where).run().changes;
+      })();
+      if (removed > 0) changed();
+      return { removed };
     },
 
     importReadings(text, options) {

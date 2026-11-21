@@ -4,6 +4,8 @@ import type {
   PressureReading,
   PressureUnit,
   ReadingImportResult,
+  ReadingsClearResult,
+  ReadingsRange,
   ReadingsResponse,
   StationReadings,
   UpdateResponse,
@@ -75,6 +77,23 @@ export const useAddReading = () =>
     { quiet: true },
   );
 export const useRemoveReading = () => useChange((id: string) => api.delete(`/api/weather/readings/${encodeURIComponent(id)}`));
+/** Removes many readings at once; `expected` is the count the person was shown, so nothing else goes. */
+export const useClearReadings = () =>
+  useChange((input: { range: ReadingsRange; expected: number }) => api.post<ReadingsClearResult>("/api/weather/readings/clear", input), {
+    quiet: true,
+  });
+
+/** The address of the CSV file of the readings in a range, for a link to save it. */
+export function readingsExportUrl(range: ReadingsRange): string {
+  const query =
+    range.range === "before"
+      ? new URLSearchParams({ before: String(range.before) })
+      : range.range === "between"
+        ? new URLSearchParams({ from: String(range.from), to: String(range.to) })
+        : null;
+  return `/api/weather/readings/export${query ? `?${query}` : ""}`;
+}
+
 /** A preview changes nothing, so only an import that adds refreshes the screen. */
 export const useImportReadings = () => {
   const client = useQueryClient();
