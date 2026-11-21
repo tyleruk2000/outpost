@@ -38,7 +38,7 @@ import { createRelayPlanner, relayQuery } from "./relay.ts";
 import { registerRouteFinder } from "./route-finder/index.ts";
 import { createSightRanger, sightRangeQuery } from "./sight-range.ts";
 import { createSourceResolver } from "./source.ts";
-import { createTerrainProfiler, terrainProfileQuery } from "./terrain-profile.ts";
+import { createTerrainProfiler, type TerrainProfiler, terrainProfileQuery } from "./terrain-profile.ts";
 import { createTileServer, type TileServer } from "./tile-server.ts";
 import { createWalkReacher, walkReachQuery } from "./walk-reach.ts";
 
@@ -48,6 +48,8 @@ export interface MapsService {
   places: PlacesService;
   annotations: AnnotationsService;
   imagery: ImageryService;
+  /** The ground along the straight line between two points, from installed terrain (the household book reads journeys with it). */
+  terrainProfile: TerrainProfiler;
   overview(): MapOverview;
 }
 
@@ -113,6 +115,7 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
     places,
     annotations,
     imagery,
+    terrainProfile,
     overview() {
       return {
         regions: tiles.regions(),

@@ -417,7 +417,7 @@ export function parseEaReadings(text: string): LevelReading[] {
 
 // ── NASA POWER ──────────────────────────────────────────────────────────────
 
-export const NASA_POWER_PARAMETERS = ["T2M", "PRECTOTCORR", "WS10M", "ALLSKY_SFC_SW_DWN"] as const;
+export const NASA_POWER_PARAMETERS = ["T2M", "PRECTOTCORR", "WS10M", "WD10M", "ALLSKY_SFC_SW_DWN"] as const;
 const POWER_MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 
 export function parseNasaPower(text: string): Parsed<ClimateData> {
@@ -442,13 +442,19 @@ export function parseNasaPower(text: string): Parsed<ClimateData> {
       precipMmPerDay: perDay,
       precipMmMonth: perDay === null ? null : Math.round(perDay * daysInMonth(month) * 10) / 10,
       windMs: value("WS10M", month, 0, 100),
+      windFromDeg: value("WD10M", month, 0, 360),
       sunKwhLevel: value("ALLSKY_SFC_SW_DWN", month, 0, 15),
     };
   });
   if (months.every((month) => month.meanC === null && month.sunKwhLevel === null))
     throw new SourceFormatError("NASA POWER's answer holds no averages.");
   return {
-    data: { service: "NASA POWER", period: str(header.range, 200) || "the period NASA POWER averages over", months },
+    data: {
+      service: "NASA POWER",
+      period: str(header.range, 200) || "the period NASA POWER averages over",
+      months,
+      windFromDeg: isRecord(parameter.WD10M) && parameter.WD10M.ANN !== fill ? num(parameter.WD10M.ANN, 0, 360) : null,
+    },
     validFrom: null,
     validUntil: null,
   };

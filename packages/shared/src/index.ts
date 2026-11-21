@@ -43,6 +43,8 @@ export * from "./highlights.ts";
 export * from "./home-place.ts";
 // The household's papers (medical sheets, keeping in touch, grab cards, the binder), on a line of their own.
 export * from "./household-papers.ts";
+// The household book (Preparedness), on a line of its own so that other additions merge cleanly.
+export * from "./household-book.ts";
 export * from "./https.ts";
 export * from "./imagery.ts";
 export * from "./imports.ts";
