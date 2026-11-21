@@ -39,6 +39,8 @@ const TRAIL_EVERY_MS = 30_000;
 /** Aircraft older than the hours kept are taken off at most this often. */
 const PRUNE_EVERY_MS = 10 * 60_000;
 const MOST_PENDING = 5_000;
+/** Positions of one station held between flushes: far more than a radio sends, so a flood cannot fill memory. */
+const MOST_PENDING_REPORTS = 100;
 
 const OFF: ReceiverStatus = {
   state: "off",
@@ -124,8 +126,9 @@ export function createHeardService(ctx: AppContext) {
         (before.details as Record<string, unknown>)[key] =
           value && typeof value === "object" && old && typeof old === "object" && key !== "weather" ? { ...old, ...value } : value;
       }
-      before.reports.push(...entry.reports);
+      for (const report of entry.reports) if (before.reports.length < MOST_PENDING_REPORTS) before.reports.push(report);
     } else if (pending.size < MOST_PENDING) {
+      entry.reports = entry.reports.slice(0, MOST_PENDING_REPORTS);
       pending.set(id, entry);
     }
     sourcesChanged.add(entry.source);

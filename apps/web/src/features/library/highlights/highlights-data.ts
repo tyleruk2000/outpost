@@ -1,5 +1,12 @@
 /** Queries and changes for highlights. Keys start with "highlights", so `highlights.changed` refreshes them. */
-import type { CreateHighlightBody, DocumentType, HighlightDto, HighlightsResponse, HighlightsToNotesResponse } from "@outpost/shared";
+import type {
+  CreateHighlightBody,
+  DocumentType,
+  HighlightDto,
+  HighlightsResponse,
+  HighlightsToNotesResponse,
+  UpdateHighlightBody,
+} from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
@@ -29,7 +36,8 @@ export function useHighlightChanges(documentId: string) {
     onError: (error) => notify.error(errorMessage(error)),
   });
   const update = useMutation({
-    mutationFn: ({ id, note }: { id: string; note: string }) => api.patch<{ highlight: HighlightDto }>(`/api/highlights/${id}`, { note }),
+    mutationFn: ({ id, ...body }: { id: string } & UpdateHighlightBody) =>
+      api.patch<{ highlight: HighlightDto }>(`/api/highlights/${id}`, body),
     onSuccess: refresh,
     onError: (error) => notify.error(errorMessage(error)),
   });

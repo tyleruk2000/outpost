@@ -179,7 +179,13 @@ function SowingDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const save = useSaveSowing();
-  const [input, setInput] = useState<GardenSowingInput>(() => (sowing ? { ...sowing } : blankInput()));
+  // Only the sowing's fields, and the time it was read: the server refuses anything else,
+  // and a sowing changed elsewhere since is not saved over.
+  const [input, setInput] = useState<GardenSowingInput>(() => {
+    if (!sowing) return blankInput();
+    const { id: _id, createdAt: _createdAt, updatedAt, ...fields } = sowing;
+    return { ...fields, baseUpdatedAt: updatedAt };
+  });
   const set = <K extends keyof GardenSowingInput>(key: K, value: GardenSowingInput[K]) => setInput((was) => ({ ...was, [key]: value }));
   const cropOptions = [
     ...GARDEN_CROP_IDS.map((id) => ({ value: id as string, label: GARDEN_CROPS[id].name })),

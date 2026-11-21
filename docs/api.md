@@ -517,7 +517,7 @@ Types: `packages/shared/src/documents.ts`.
 | `POST /api/documents/:id/highlights` | Marks a passage of a PDF, EPUB or Markdown document. Body (`CreateHighlightBody`): `exact`, `prefix`, `suffix`, `page` (PDF), `chapter` (EPUB), `note`. `{ highlight }`. The file is not written to. |
 | `POST /api/documents/:id/highlights/to-notes` | Makes a page in Notes of the highlights (all, or `highlightIds`), each with a link back. `{ note }`. |
 | `GET /api/highlights` | Highlights of every document whose words, note or document title contain `q` (`HighlightSearchResponse`). Query: `q`, `limit`. |
-| `PATCH /api/highlights/:id` | Body: `note`. `{ highlight }`. |
+| `PATCH /api/highlights/:id` | Body: `note`, and optionally `baseUpdatedAt`, the highlight's `updatedAt` as it was read: `409 conflict` if it has been saved since. `{ highlight }`. |
 | `DELETE /api/highlights/:id` | Deletes a highlight. |
 | `GET /api/documents/:id/pictures/:number` | One picture that a Markdown document carries (a saved web page keeps its pictures inside its file). `number` is 1 to 9999. Sent only if its bytes are a PNG, JPEG, GIF or WebP image, with that type, an `ETag`, and a sandbox policy. `404` when the document has no such picture or is not Markdown. |
 | `GET /api/documents/:id/epub` | What an EPUB book says about itself (`DocumentEpubResponse`): `title`, `author` and `language` from its package file, `cover` (the cover picture's path inside the archive, or `null`), `chapters` in reading order (each with its `position` from 1, a `title`, and the `heading` search knows it by), `contents` (the table of contents from the navigation document or the NCX: `title`, `chapter`, an `anchor` inside it, `depth`; empty when the book has none) and `notes` (sentences, such as that the book is fixed-layout). At most 2,000 chapters. `415` for a document that is not an EPUB, and for a book that cannot be read: `error.details.reason` is `protected` for a copy-protected (DRM) book, which is never opened, and `damaged` for one that is malformed. `404` when the file is missing, `503` while its storage is disconnected. See [epub.md](epub.md). |
@@ -1440,7 +1440,7 @@ the `medical_sheets` tool only while `tools.medical` is on; encrypted ones never
 | `PUT /api/medical-sheets/:id` | Replace it. `baseUpdatedAt` older than the stored sheet: `409 conflict`. A `record` over an encrypted sheet needs `removeEncryption: true`, or `400`. |
 | `DELETE /api/medical-sheets/:id` | Delete it, and its place in search. |
 | `GET /api/keeping-in-touch` | `CommsResponse`: the communication plan (`CommsPlan`, `updatedAt` null until first saved) and `resolved`, what each linked contact, saved place, repeater and mesh channel is now, `null` for one gone. Channels from the list of frequencies (`frequency: { entryId, channel }`) are not resolved here. |
-| `PUT /api/keeping-in-touch` | Replace the plan (`CommsInput`). `baseUpdatedAt` older than the stored plan: `409 conflict`. |
+| `PUT /api/keeping-in-touch` | Replace the plan (`CommsInput`). `baseUpdatedAt` older than the stored plan, or `null` (read before it was first saved) once a plan is kept: `409 conflict`. |
 | `GET /api/household-binder` | `BinderStatus`: the binder last made (`made`: `parts`, `contentAt`, `madeAt`, `pages`, or null), when each part's content last changed (`changedAt`), and the parts changed since (`stale`). |
 | `POST /api/household-binder/made` | Body `{ parts, contentAt, pages }`: record the binder just made in the browser. Answers `BinderStatus`. |
 
@@ -1459,7 +1459,7 @@ publish `readiness.changed`.
 | `GET /api/routine-checks` | `{ checks, expiringSupplies }`: each `RoutineCheck` with `dueAt` (last done plus its interval) and `overdue`; supplies dated within 30 days. |
 | `POST /api/routine-checks` | `{ name, everyDays, note?, link? }`. `everyDays` 1–3,650; `link` one of `CHECK_LINKS`. At most 60. |
 | `POST /api/routine-checks/suggested` | Adds the checks of `ROUTINE_CHECK_TEMPLATE` not already in the list. Returns `{ added }`. |
-| `PUT /api/routine-checks/:id` | Replace its name, interval, note and link. |
+| `PUT /api/routine-checks/:id` | Replace its name, interval, note and link. `baseUpdatedAt` older than the stored check: `409 conflict`. |
 | `POST /api/routine-checks/:id/done` | `{ by, at? }`: done now, or at `at`; `at: null` clears it. |
 | `DELETE /api/routine-checks/:id` | Removes it. |
 | `GET /api/offline-drill` | `OfflineDrillResponse`: `lines` (`DrillLine`: `held`, `missing`, `stale` or `untried`, with the screen that fixes it) read from what the modules hold, and `lastRun`. |
@@ -1475,7 +1475,7 @@ Types: `packages/shared/src/garden.ts`; see [garden.md](garden.md). Changes publ
 | `GET /api/garden` | `GardenResponse`: `settings` (`lastFrost` as "MM-DD" or null) and every sowing, newest first. |
 | `PUT /api/garden/settings` | Body `{ lastFrost }`: a day of an ordinary year as "MM-DD", or null to clear it. `400` for anything else, 29 February included. |
 | `POST /api/garden/sowings` | Record a sowing (`GardenSowingInput`): `cropId` (one of `GARDEN_CROP_IDS`, or null with a `name`), `sownOn`, and optional `place`, `amount`, `plantedOutOn`, `harvestedOn`, `notes`. A calendar crop with no name is called by the crop's name. At most 5,000. |
-| `PUT /api/garden/sowings/:id` | Replace it. `404` if it has gone. |
+| `PUT /api/garden/sowings/:id` | Replace it. `baseUpdatedAt` older than the stored sowing: `409 conflict`. `404` if it has gone. |
 | `DELETE /api/garden/sowings/:id` | Remove it. |
 
 ## Tide times

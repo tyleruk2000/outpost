@@ -162,3 +162,53 @@ describe("the household PIN", () => {
     for (const url of READ_BY_POST) expect(app.app.hasRoute({ method: "POST", url }), url).toBe(true);
   });
 });
+
+/** Every route and its methods, from Fastify's printed tree of them. */
+function routesOf(tree: string): Array<{ url: string; methods: string[] }> {
+  const stack: string[] = [];
+  const routes: Array<{ url: string; methods: string[] }> = [];
+  for (const line of tree.split("\n")) {
+    const at = line.indexOf("── ");
+    if (at < 0) continue;
+    const depth = Math.round((at - 1) / 4);
+    const match = /^(\S+)(?: \(([^)]*)\))?/.exec(line.slice(at + 3));
+    if (!match) continue;
+    stack.length = depth;
+    stack.push(match[1] ?? "");
+    if (match[2]) routes.push({ url: stack.join(""), methods: match[2].split(", ") });
+  }
+  return routes;
+}
+
+describe("the household PIN on every route", () => {
+  it("refuses a locked device every change on every route but the few that only read", async () => {
+    app = await createTestApp();
+    expect((await app.api("POST", "/api/access/pin", { pin: "2468" })).status).toBe(200);
+    const routes = routesOf(app.app.printRoutes({ commonPrefix: false }));
+    const open: string[] = [];
+    let tried = 0;
+    for (const { url, methods } of routes) {
+      if (!url.startsWith("/api/")) continue;
+      for (const method of methods) {
+        if (["GET", "HEAD", "OPTIONS"].includes(method)) continue;
+        if (method === "POST" && READ_BY_POST.has(url)) continue;
+        tried += 1;
+        const response = await app.app.inject({
+          method: method as "POST",
+          url: url.replace(/:[^/]+/g, "x").replace(/\*/g, "x"),
+          headers: { host: "localhost", "x-outpost-request": "1", "content-type": "application/json" },
+          payload: "{}",
+        });
+        let code: string | undefined;
+        try {
+          code = response.json().error?.code;
+        } catch {
+          code = undefined;
+        }
+        if (response.statusCode !== 403 || code !== "locked") open.push(`${method} ${url} -> ${response.statusCode} ${code ?? ""}`);
+      }
+    }
+    expect(tried).toBeGreaterThan(100);
+    expect(open).toEqual([]);
+  });
+});

@@ -44,8 +44,9 @@ const ENTITIES: Record<string, string> = { nbsp: " ", amp: "&", lt: "<", gt: ">"
  */
 export function plainText(value: string): string {
   const text = value
-    .replace(/<\s*(br|\/p|\/div|\/li|\/tr)\b[^>]*>/gi, "\n")
-    .replace(/<[^>]*>/g, "")
+    // `[^<>]`, not `[^>]`: a "<" never closed must not send each search to the end of the text.
+    .replace(/<\s*(br|\/p|\/div|\/li|\/tr)\b[^<>]*>/gi, "\n")
+    .replace(/<[^<>]*>/g, "")
     .replace(/&(nbsp|amp|lt|gt|quot|apos|#39);/g, (_, name: string) => ENTITIES[name] ?? "")
     .replace(/[ \t\f\v]+/g, " ")
     .replace(/ *\n */g, "\n")

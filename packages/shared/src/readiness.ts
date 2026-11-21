@@ -151,6 +151,8 @@ export interface RoutineCheckInput {
   everyDays: number;
   note?: string;
   link?: CheckLink | null;
+  /** For `PUT`: the `updatedAt` the change was based on. A newer stored check refuses it with 409. */
+  baseUpdatedAt?: number;
 }
 
 export interface RoutineCheckDoneInput {

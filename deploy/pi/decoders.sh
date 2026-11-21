@@ -21,8 +21,9 @@
 #
 # The folder is writable by the container, so nothing in it is trusted: the folder must be
 # a real folder (not a link), the request a regular file of at most a line, each word one
-# of a fixed list or a device this script listed. Answers are written to a new file and
-# renamed into place, so a link left there is replaced, never followed.
+# of a fixed list or a device this script listed. The folder is read and written as its
+# owner, never as root, and answers are written to a new file and renamed over the old
+# (mv -T), so a link left there is replaced, never followed.
 set -eu
 
 DIR="${1:?usage: decoders.sh FOLDER}"
@@ -30,6 +31,11 @@ CONF=/etc/outpost/decoders
 
 [ -d "$DIR" ] && [ ! -L "$DIR" ] || exit 0
 cd "$DIR" || exit 0
+# Everything read from or written to the folder is read or written as its owner (setpriv),
+# never as root, so a link swapped in reaches nothing the container could not reach itself.
+owner_uid="$(stat -c %u .)"
+owner_gid="$(stat -c %g .)"
+as_owner() { setpriv --reuid="$owner_uid" --regid="$owner_gid" --clear-groups -- "$@"; }
 
 # ── What is plugged in ──
 
@@ -103,7 +109,7 @@ error=""
 if [ -L request ] || { [ -e request ] && [ ! -f request ]; }; then
   rm -rf request
 elif [ -f request ]; then
-  line="$(head -c 200 request | head -n 1)"
+  line="$(as_owner head -c 200 request | head -n 1)" || line=""
   rm -f request
   action="$(printf '%s' "$line" | cut -d' ' -f1)"
   decoder="$(printf '%s' "$line" | cut -d' ' -f2)"
@@ -134,7 +140,6 @@ fi
 
 # ── What Outpost is told ──
 
-tmp="$(mktemp status.XXXXXX)"
 {
   printf '{"at":%s,"error":%s,"decoders":[' "$(date +%s)" "$(if [ -n "$error" ]; then json_string "$error"; else echo null; fi)"
   first=true
@@ -166,8 +171,4 @@ tmp="$(mktemp status.XXXXXX)"
     printf '{"id":%s,"name":%s,"kind":"%s"}' "$(json_string "$id")" "$(json_string "$name")" "$kind"
   done
   printf ']}\n'
-} >"$tmp"
-owner="$(stat -c '%u:%g' .)"
-chown "$owner" "$tmp" 2>/dev/null || true
-chmod 0644 "$tmp"
-mv -f "$tmp" status.json
+} | as_owner sh -c 'umask 022; tmp="$(mktemp status.XXXXXX)" && cat >"$tmp" && chmod 0644 "$tmp" && mv -fT "$tmp" status.json'
