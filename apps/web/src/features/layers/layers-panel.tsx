@@ -5,6 +5,7 @@
  */
 import {
   type FeatureProvenance,
+  LINE_LAYER_ZOOM,
   PROVENANCE_INFO,
   REFERENCE_LAYER_INFO,
   type ReferenceLayerId,
@@ -23,7 +24,7 @@ import { useLayerSearch } from "./data";
 import { FloodZonesLegend } from "./flood-legend";
 import { FoodSection } from "./food-panel";
 import { FoodMark } from "./food-symbols";
-import { AreaMark, ProvenanceMark } from "./marks";
+import { AreaMark, LineMark, ProvenanceMark } from "./marks";
 import type { LayerChoice } from "./use-reference-layers";
 
 const ORDER = Object.keys(REFERENCE_LAYER_INFO) as ReferenceLayerId[];
@@ -70,6 +71,8 @@ function LayerRow({
       <div className="flex items-start gap-3">
         {info.areas && (layer === "boundaries" || layer === "regions" || layer === "planning-zones" || layer === "flood-zones") ? (
           <AreaMark colour={colour} />
+        ) : layer === "routes" || layer === "rights-of-way" ? (
+          <LineMark colour={colour} dashed={layer === "rights-of-way"} />
         ) : layer === "food" ? (
           <FoodMark kind="food:supermarket" colour={colour} className="-m-0.5 size-[22px] shrink-0" />
         ) : (
@@ -97,6 +100,7 @@ export function LayersPanel({
   onManage,
   onOpen,
   floodZones,
+  lines,
   centre = null,
 }: {
   summary: UseQueryResult<ReferenceLayersResponse>;
@@ -108,6 +112,8 @@ export function LayersPanel({
   onOpen: (id: number, layer: ReferenceLayerId, at: LatLon | null) => void;
   /** Why flood zones are not drawn in this view, when they are not. */
   floodZones?: "zoom-in" | "too-many" | null;
+  /** Why routes or rights of way are not all drawn in this view, when they are not. */
+  lines?: "zoom-in" | "too-many" | null;
   /** The middle of the map, for the nearest list. */
   centre?: LatLon | null;
 }) {
@@ -224,6 +230,8 @@ export function LayersPanel({
               below={
                 layer.id === "flood-zones" && choice.layers.includes("flood-zones") ? (
                   <FloodZonesLegend colour={colours["flood-zones"]} status={floodZones} />
+                ) : (layer.id === "routes" || layer.id === "rights-of-way") && choice.layers.includes(layer.id) ? (
+                  <LinesNote layer={layer.id} status={lines} />
                 ) : layer.id === "food" && choice.layers.includes("food") ? (
                   <FoodSection
                     summary={layer}
@@ -333,6 +341,27 @@ export function LayersPanel({
           {population.length > 0 ? `, ${population.length} population ${population.length === 1 ? "grid" : "grids"}` : ""}
         </span>
       </div>
+    </div>
+  );
+}
+
+/** Under Routes or Rights of way: from how close in they are drawn, and what a line does not say. */
+function LinesNote({ layer, status }: { layer: "routes" | "rights-of-way"; status: "zoom-in" | "too-many" | null | undefined }) {
+  const zoom = LINE_LAYER_ZOOM[layer] ?? 9;
+  return (
+    <div className="mt-1.5 grid gap-1 pl-[30px] text-small">
+      {status === "too-many" ? (
+        <p className="text-ink">There are too many lines in this view to draw. Zoom in.</p>
+      ) : status === "zoom-in" ? (
+        <p className="text-ink">
+          Drawn from zoom {zoom} in{layer === "rights-of-way" ? ", about a village across" : ", about a county across"}.
+        </p>
+      ) : null}
+      <p className="text-ink-muted">
+        {layer === "routes"
+          ? "A solid line. Press a line for the route's name, network and length where they are mapped."
+          : "A broken line. Only paths whose right of way is tagged in OpenStreetMap; the council's definitive map is the legal record."}
+      </p>
     </div>
   );
 }

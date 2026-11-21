@@ -277,6 +277,7 @@ export function useReferenceLayers({
       onManage={onManage}
       onOpen={open}
       floodZones={overlay.data?.floodZones ?? null}
+      lines={overlay.data?.lines ?? null}
       centre={centre}
     />
   );

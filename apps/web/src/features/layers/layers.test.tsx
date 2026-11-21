@@ -95,6 +95,43 @@ describe("the map marks", () => {
     expect(nearestReference(overlay, { x: 500, y: 500 }, project)).toBeNull();
   });
 
+  it("finds a route pressed on its line, at the place on it nearest the press, and not an area's edge", () => {
+    const route = {
+      id: 9,
+      layer: "routes" as const,
+      provenance: "public-infrastructure" as const,
+      name: "Pennine Way",
+      kind: "route=hiking",
+      geometry: {
+        type: "MultiLineString",
+        coordinates: [
+          [
+            [0, 0],
+            [0.001, 0],
+          ],
+        ],
+      },
+    };
+    const area = {
+      ...route,
+      id: 10,
+      layer: "military" as const,
+      geometry: {
+        type: "LineString",
+        coordinates: [
+          [0, 0.0001],
+          [0.001, 0.0001],
+        ],
+      },
+    };
+    const overlay = { total: 0, points: [], cells: [], shapes: [area, route] };
+    const project = ({ lat, lon }: { lat: number; lon: number }) => ({ x: lon * 100_000, y: -lat * 100_000 });
+    const hit = nearestReference(overlay, { x: 50, y: 3 }, project);
+    expect(hit).toMatchObject({ kind: "point", id: 9 });
+    expect(hit?.lon).toBeCloseTo(0.0005, 6);
+    expect(nearestReference(overlay, { x: 50, y: 40 }, project)).toBeNull();
+  });
+
   it("shades population by the server's classes in people per square kilometre", () => {
     const shades = ["a", "b", "c", "d", "e"];
     expect(shadeOf(0.5, [1, 10, 100, 500, 2000], shades)).toBe("a");

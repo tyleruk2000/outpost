@@ -31,3 +31,19 @@ export function AreaMark({ colour }: { colour: string }) {
     </svg>
   );
 }
+
+/** A swatch of a layer drawn as lines: solid for a route, broken for a right of way, as on the map. */
+export function LineMark({ colour, dashed = false }: { colour: string; dashed?: boolean }) {
+  return (
+    <svg viewBox="0 0 18 18" className="size-[18px] shrink-0" aria-hidden>
+      <path
+        d="M2 13c3-6 6 0 9-4s3-5 5-6"
+        fill="none"
+        stroke={colour}
+        strokeWidth={dashed ? 1.8 : 2.6}
+        strokeLinecap="round"
+        strokeDasharray={dashed ? "3 2.4" : undefined}
+      />
+    </svg>
+  );
+}

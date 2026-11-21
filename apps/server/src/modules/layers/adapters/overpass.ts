@@ -143,6 +143,8 @@ const LAYER_TITLES: Record<OsmLayer, string> = {
   emergency: "Police, fire and ambulance stations",
   shelters: "Shelters and assembly points",
   food: "Food and supplies",
+  routes: "Walking and cycling routes",
+  "rights-of-way": "Rights of way",
 };
 
 export function createOverpassAdapter({ ctx, client }: AdapterDeps): ReferenceAdapter {

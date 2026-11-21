@@ -2,7 +2,7 @@
 import type { Bbox } from "@outpost/shared";
 import type { FeatureSink, GeoJsonGeometry, NewFeature } from "../types.ts";
 import { classifyFood } from "./food-tags.ts";
-import { classifyOsm, keptTags, type OsmLayer, osmName } from "./osm-tags.ts";
+import { classifyOsm, cleanText, keptTags, type OsmLayer, osmName, routeWords } from "./osm-tags.ts";
 
 export interface OsmObject {
   type: "node" | "way" | "relation";
@@ -34,26 +34,36 @@ export function osmFeature(
     if (food) found = { layer: "food", kind: food.kind };
   }
   if (!found) return null;
-  const { name, altNames } = osmName(object.tags);
+  const { name: own, altNames } = osmName(object.tags);
+  const line = found.layer === "routes" || found.layer === "rights-of-way";
+  // A route or path with no name is known by its number on the signs, where it has one.
+  const ref = cleanText(object.tags.ref) || cleanText(object.tags.prow_ref);
+  const name = own || (line && ref ? (found.layer === "routes" ? `${routeWords(object.tags)} ${ref}` : ref) : own);
   let geometry: GeoJsonGeometry | null = null;
   let accuracy = "As mapped in OpenStreetMap: a point";
   let bbox: Bbox | null = object.bbox ?? null;
   if (object.type === "way" && object.points && object.points.length >= 2) {
     const closed =
       object.points.length >= 4 && object.points[0]![0] === object.points.at(-1)![0] && object.points[0]![1] === object.points.at(-1)![1];
-    geometry = closed ? { type: "Polygon", coordinates: [object.points] } : { type: "LineString", coordinates: object.points };
-    accuracy = closed
-      ? "As mapped in OpenStreetMap: the outline, with the mark at its centre"
-      : "As mapped in OpenStreetMap: a line, with the mark on it";
+    geometry = closed && !line ? { type: "Polygon", coordinates: [object.points] } : { type: "LineString", coordinates: object.points };
+    accuracy = line
+      ? "As mapped in OpenStreetMap: the line of the path"
+      : closed
+        ? "As mapped in OpenStreetMap: the outline, with the mark at its centre"
+        : "As mapped in OpenStreetMap: a line, with the mark on it";
     const xs = object.points.map((point) => point[0]);
     const ys = object.points.map((point) => point[1]);
     bbox = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
   } else if (object.type === "relation") {
     if (object.lines && object.lines.length > 0) {
       geometry = { type: "MultiLineString", coordinates: object.lines };
-      accuracy = "As mapped in OpenStreetMap: the outer edges of an area made of several parts, with the mark at its centre";
+      accuracy = line
+        ? "As mapped in OpenStreetMap: the route's line, made of the paths and roads it follows"
+        : "As mapped in OpenStreetMap: the outer edges of an area made of several parts, with the mark at its centre";
     } else {
-      accuracy = "As mapped in OpenStreetMap: the centre of an area made of several parts (its outline is not kept)";
+      accuracy = line
+        ? "As mapped in OpenStreetMap: a route whose parts are not in the extract"
+        : "As mapped in OpenStreetMap: the centre of an area made of several parts (its outline is not kept)";
     }
   }
   return {
