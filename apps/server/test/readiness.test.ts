@@ -185,7 +185,35 @@ describe("the offline drill", () => {
     expect(state("plan")).toBe("held");
     expect(state("backup")).toBe("missing");
     expect(state("radio-mains")).toBe("untried");
+    expect(drill.lines.find((line) => line.id === "radio-mains")?.summary).toMatch(/^No receiver is set up/);
     expect(drill.lastRun).toBeNull();
+  });
+
+  it("names the receivers set up and when one last heard anything", async () => {
+    const sqlite = app.ctx.sqlite;
+    sqlite
+      .prepare(
+        "INSERT INTO heard_receivers (id, kind, name, host, port, created_at, updated_at) VALUES ('r-drill', 'aprs', 'Shack', '127.0.0.1', 8001, ?, ?)",
+      )
+      .run(Date.now(), Date.now());
+    try {
+      let drill = await ok<OfflineDrillResponse>("GET", "/api/offline-drill");
+      expect(drill.lines.find((line) => line.id === "radio-mains")?.summary).toMatch(/^1 receiver set up, nothing heard yet\./);
+      sqlite
+        .prepare(
+          "INSERT INTO heard_stations (id, source, key, name, details, first_at, last_at) VALUES ('s-drill', 'aprs', 'M0ABC-9', 'M0ABC-9', '{}', ?, ?)",
+        )
+        .run(Date.now(), Date.now());
+      sqlite
+        .prepare("INSERT INTO heard_reports (station_id, receiver_id, at, lat, lon) VALUES ('s-drill', 'r-drill', ?, 56.8, -4.1)")
+        .run(Date.now() - 3 * 3600_000);
+      drill = await ok<OfflineDrillResponse>("GET", "/api/offline-drill");
+      expect(drill.lines.find((line) => line.id === "radio-mains")?.summary).toMatch(/^1 receiver set up, last heard 3 hours ago\./);
+    } finally {
+      sqlite.prepare("DELETE FROM heard_reports WHERE station_id = 's-drill'").run();
+      sqlite.prepare("DELETE FROM heard_stations WHERE id = 's-drill'").run();
+      sqlite.prepare("DELETE FROM heard_receivers WHERE id = 'r-drill'").run();
+    }
   });
 
   it("keeps the result of a drill followed on a phone", async () => {
