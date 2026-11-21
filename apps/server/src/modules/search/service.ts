@@ -13,6 +13,7 @@
  */
 import { and, eq, sql } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
+import { AppError } from "../../core/errors.ts";
 import { chunks, searchEntities } from "../../db/schema.ts";
 import { type ChunkOptions, chunkSections, type Section } from "./chunker.ts";
 import { reciprocalRankFusion } from "./fusion.ts";
@@ -759,7 +760,10 @@ export function createSearchService(ctx: AppContext): SearchService {
       const semanticReady = sources.some((source) => source.layer === "semantic" && source.isAvailable());
       let mode = params.mode ?? (semanticReady ? "hybrid" : "keyword");
       if (mode !== "keyword" && !semanticReady) {
-        warnings.push({ source: "semantic", message: "Semantic search is not set up, so this is a keyword search." });
+        warnings.push({
+          source: "semantic",
+          message: "Search by meaning is not set up, so this is a keyword search. It needs no internet once set up.",
+        });
         mode = "keyword";
       }
 
@@ -814,7 +818,14 @@ export function createSearchService(ctx: AppContext): SearchService {
           }
           if (source.layer === "local" && answer.value.length > 0) keyword.facets[source.kind ?? source.id] = answer.value.length;
         } else {
-          warnings.push({ source: source.id, message: answer.reason instanceof Error ? answer.reason.message : String(answer.reason) });
+          // A message written for a person is passed on; anything else (a raw library error) is put in words.
+          warnings.push({
+            source: source.id,
+            message:
+              answer.reason instanceof AppError
+                ? answer.reason.message
+                : "One part of the search did not answer, so its results are left out. The rest are shown.",
+          });
         }
       });
 

@@ -13,7 +13,7 @@ import { and, asc, eq, gt, inArray, lte, sql } from "drizzle-orm";
 import type { FastifyBaseLogger } from "fastify";
 import type { Db } from "../db/client.ts";
 import { jobs } from "../db/schema.ts";
-import { AppError, classifyNetworkError, messageOf } from "./errors.ts";
+import { AppError, classifyNetworkError, messageOf, networkSentence } from "./errors.ts";
 import type { EventBus } from "./events.ts";
 import { newId } from "./ids.ts";
 
@@ -422,19 +422,21 @@ export class JobQueue {
               : error instanceof AppError
                 ? error.code
                 : "error";
+        // A failed fetch is said in words a person can act on, not undici's "fetch failed".
+        const said = networkSentence(error, "The site this needs") ?? messageOf(error);
         if (!permanent && attempt < job.maxAttempts) {
           const delay = retryDelayMs(attempt);
           this.log.warn({ job: job.id, attempt, delay, err: messageOf(error) }, "job failed, will retry");
           this.update(job.id, {
             state: "queued",
             runAfter: Date.now() + delay,
-            error: messageOf(error),
+            error: said,
             errorKind: kind,
             progressMessage: network === "offline" ? "Waiting for a connection" : "Waiting to retry",
           });
         } else {
           this.log.error({ job: job.id, err: error }, "job failed");
-          this.update(job.id, { state: "failed", error: messageOf(error), errorKind: kind, finishedAt: Date.now() });
+          this.update(job.id, { state: "failed", error: said, errorKind: kind, finishedAt: Date.now() });
         }
       }
     } finally {

@@ -418,4 +418,21 @@ describe("the Devices screen's server", () => {
     status = (await app.api<NetworkStatus>("GET", "/api/network")).body;
     expect(status.makers.present).toBe(false);
   });
+
+  it("says why the registry could not be fetched, until a fetch works", async () => {
+    // Nothing listens here: the fetch is refused, as it is with no network.
+    const closed = http.createServer();
+    await new Promise<void>((resolve) => closed.listen(0, "127.0.0.1", resolve));
+    const port = (closed.address() as AddressInfo).port;
+    await new Promise<void>((resolve) => closed.close(() => resolve()));
+    app = await createTestApp({ OUTPOST_IEEE_OUI_URL: `http://127.0.0.1:${port}/oui/oui.csv` });
+    app.ctx.services.network.useSystem(standInSystem(standInWorld()), { limits: FAST });
+    expect((await app.api<NetworkStatus>("GET", "/api/network")).body.makersFailed).toBeNull();
+    await app.api("POST", "/api/network/makers");
+    await app.ctx.jobs.whenIdle();
+    const status = (await app.api<NetworkStatus>("GET", "/api/network")).body;
+    expect(status.makersJob).toBeNull();
+    expect(status.makersFailed).toMatch(/could not be reached: this computer has no internet connection/);
+    expect(status.makersFailed).not.toMatch(/fetch failed/);
+  });
 });

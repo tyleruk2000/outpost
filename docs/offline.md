@@ -42,6 +42,9 @@ Everything you have already installed or written:
   shadow, and the sundial and nocturnal templates are all worked out on the device (see
   [tools-solar-clock.md](tools-solar-clock.md)). Saved places come from the server; typed
   coordinates need nothing;
+- Tide times under Tools: the tidal constants for about 4,100 stations worldwide come with
+  Outpost, and nothing is downloaded (see [tides.md](tides.md)). Where no station is within
+  100 km of the place, the screen says so rather than offering a far one;
 - the games, all six of them (see [games.md](games.md));
 - the household board, Messages: messages, check-ins and files sent between devices go
   through Outpost on the home network and nothing else (see [messages.md](messages.md)).

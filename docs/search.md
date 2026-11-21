@@ -684,7 +684,7 @@ job that sends every passage without a vector to the model, in batches of 16
 - A build that fails says why in the same place, keeps what it had built, and offers
   **Try again**.
 - Until at least one vector exists, searches remain keyword searches, with the note
-  "Semantic search is not set up, so this is a keyword search."
+  "Search by meaning is not set up, so this is a keyword search", and a link to set it up.
 
 ### Changing the model
 

@@ -6,6 +6,7 @@ import type { Bbox, TrackDto } from "@outpost/shared";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { ArrowLeft, CircleAlert, Download, Ellipsis, FileUp, Mountain, PenLine, Scan, Search, Spline, Trash2 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { Link } from "react-router";
 import { toast } from "sonner";
 import { ErrorState, Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -105,11 +106,19 @@ export function RouteDetail({
               <ElevationProfile profile={profile} color={MARKER_HEX[track.color]} onScrub={onScrub} />
             ) : found && !origin?.drawn ? null : (
               <p className="text-small text-ink-muted">
-                {origin?.drawn
-                  ? "No terrain is installed where this route runs, so there are no heights to draw an elevation profile from. Nothing is downloaded to find them."
-                  : origin?.recorded
-                    ? "The device that recorded this gave no heights, so there is no elevation profile to draw."
-                    : "This file has no heights, so there is no elevation profile to draw."}
+                {origin?.drawn ? (
+                  <>
+                    No terrain is installed where this route runs, so there are no heights to draw an elevation profile from. Nothing is
+                    downloaded to find them.{" "}
+                    <Link to="/maps?offline=region" className="font-medium text-primary underline underline-offset-2">
+                      Get terrain in Offline maps
+                    </Link>
+                  </>
+                ) : origin?.recorded ? (
+                  "The device that recorded this gave no heights, so there is no elevation profile to draw."
+                ) : (
+                  "This file has no heights, so there is no elevation profile to draw."
+                )}
               </p>
             )}
             {found ? (
