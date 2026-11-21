@@ -31,6 +31,9 @@ import {
 import { meshItem, stationItem } from "./items";
 import { displayName, type Home, sourceName } from "./words";
 
+/** How much of the foot of the map a card covers, as the reference layers' records allow for. */
+const cardCover = () => (window.matchMedia("(min-width: 48rem)").matches ? 340 : 290);
+
 const isBoolean = (value: unknown): value is boolean => typeof value === "boolean";
 
 /** The marks of one source's stations, and of those pinned among them. */
@@ -151,15 +154,15 @@ export function useHeardOnMap({
   const stationId = selected && selected.source !== "mesh" ? selected.id : linked && handled.current !== location.key ? linked : null;
   const detail = useStation(stationId);
   useEffect(() => {
-    if (!linked || handled.current === location.key || !detail.data) return;
+    if (!linked || handled.current === location.key || !detail.data || !engine) return;
     handled.current = location.key;
     const station = detail.data.station;
     if (station.source === "aprs") setAprs(true);
     else if (station.source === "adsb") setAdsb(true);
     else if (station.source === "ais") setAis(true);
     setSelected({ source: station.source, id: station.id });
-    if (engine && station.lat !== null && station.lon !== null)
-      engine.flyTo({ lat: station.lat, lon: station.lon }, Math.max(engine.getZoom(), 12));
+    if (station.lat !== null && station.lon !== null)
+      engine.flyTo({ lat: station.lat, lon: station.lon }, Math.max(engine.getZoom(), 12), cardCover());
   }, [linked, location.key, detail.data, engine, setAprs, setAdsb, setAis]);
 
   // The trail of the one opened, under the marks.

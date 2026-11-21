@@ -23,6 +23,8 @@ import { PiDecoders } from "./pi-decoders";
 import { PowerCut } from "./power-cut";
 import { KIND_NAMES, lastPacketWords, stateWords, UNTRIED } from "./words";
 
+const ADD: Record<ReceiverKind, string> = { aprs: "Add an APRS receiver", adsb: "Add an aircraft receiver", ais: "Add a ship receiver" };
+
 const WHY_ID = "receivers-not-from-this-device";
 const SCOPE = "the receivers, the mesh radio set-up and the switch that lets other programs use Outpost's tools";
 
@@ -272,7 +274,7 @@ export function ReceiversSettingsSection() {
             <div className="flex flex-wrap gap-2">
               {RECEIVER_KINDS.map((kind) => (
                 <Button key={kind} disabled={disabled} onClick={() => setAdding(kind)}>
-                  <Plus aria-hidden /> {KIND_NAMES[kind]}
+                  <Plus aria-hidden /> {ADD[kind]}
                 </Button>
               ))}
             </div>

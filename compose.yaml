@@ -38,6 +38,9 @@ services:
       OUTPOST_METRICS: ${OUTPOST_METRICS:-false}
       OUTPOST_ALLOW_REMOTE_CLOCK: ${OUTPOST_ALLOW_REMOTE_CLOCK:-false}
       OUTPOST_KIWIX_URL: http://kiwix:8080
+    # The computer Docker runs on, by name, for a radio decoder running there (Heard on the radio: host.docker.internal).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       # 127.0.0.1 keeps the port private to this machine. Set OUTPOST_BIND=0.0.0.0
       # together with OUTPOST_LAN_ACCESS=true to share it with everyone on your network.

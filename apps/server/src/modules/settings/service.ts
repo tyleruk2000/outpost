@@ -126,7 +126,12 @@ export const settingsSchema = z.object({
   /** Days a file sent on the household board is kept before it is removed by itself; 0 keeps it until someone removes it. */
   "board.fileDays": z.number().int().min(0).max(BOARD_FILE_DAYS_MAX).default(BOARD_FILE_DAYS_DEFAULT),
   /** Aircraft heard on the radio are many: keep only the last so many hours of them; 0 keeps them until cleared. */
-  "heard.aircraftHours": z.number().int().min(0).max(24 * 90).default(0),
+  "heard.aircraftHours": z
+    .number()
+    .int()
+    .min(0)
+    .max(24 * 90)
+    .default(0),
   /**
    * Let the model look things up in Outpost: Chat offers the tools of modules/tools to a
    * model that says it can call them. Off by default, as answers are. Each area below is

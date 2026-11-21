@@ -1,244 +1,223 @@
 [
- {
-  "label": "gpsd type 1",
-  "sentences": [
-   "!AIVDM,1,1,,B,177KQJ5000G?tO`K>RA1wUbN0TKH,0*5C"
-  ],
-  "pyais": {
-   "msg_type": 1,
-   "repeat": 0,
-   "mmsi": 477553000,
-   "status": 5,
-   "turn": 0.0,
-   "speed": 0.0,
-   "accuracy": false,
-   "lon": -122.345833,
-   "lat": 47.582833,
-   "course": 51.0,
-   "heading": 181,
-   "second": 15,
-   "maneuver": 0,
-   "raim": false,
-   "radio": 149208
+  {
+    "label": "gpsd type 1",
+    "sentences": ["!AIVDM,1,1,,B,177KQJ5000G?tO`K>RA1wUbN0TKH,0*5C"],
+    "pyais": {
+      "msg_type": 1,
+      "repeat": 0,
+      "mmsi": 477553000,
+      "status": 5,
+      "turn": 0.0,
+      "speed": 0.0,
+      "accuracy": false,
+      "lon": -122.345833,
+      "lat": 47.582833,
+      "course": 51.0,
+      "heading": 181,
+      "second": 15,
+      "maneuver": 0,
+      "raim": false,
+      "radio": 149208
+    }
+  },
+  {
+    "label": "gpsd type 5",
+    "sentences": ["!AIVDM,2,1,3,B,55P5TL01VIaAL@7WKO@mBplU@<PDhh000000001S;AJ::4A80?4i@E53,0*3E", "!AIVDM,2,2,3,B,1@0000000000000,2*55"],
+    "pyais": {
+      "msg_type": 5,
+      "repeat": 0,
+      "mmsi": 369190000,
+      "ais_version": 0,
+      "imo": 6710932,
+      "callsign": "WDA9674",
+      "shipname": "MT.MITCHELL",
+      "ship_type": 99,
+      "to_bow": 90,
+      "to_stern": 90,
+      "to_port": 10,
+      "to_starboard": 10,
+      "epfd": 1,
+      "month": 1,
+      "day": 2,
+      "hour": 8,
+      "minute": 0,
+      "draught": 6.0,
+      "destination": "SEATTLE",
+      "dte": false
+    }
+  },
+  {
+    "label": "gpsd tag block type 1",
+    "sentences": ["!AIVDM,1,1,,B,15N4cJ`005Jrek0H@9n`DW5608EP,0*13"],
+    "pyais": {
+      "msg_type": 1,
+      "repeat": 0,
+      "mmsi": 367078250,
+      "status": 8,
+      "turn": 0.0,
+      "speed": 0.5,
+      "accuracy": false,
+      "lon": -71.059467,
+      "lat": 42.38415,
+      "course": 213.0,
+      "heading": 226,
+      "second": 35,
+      "maneuver": 0,
+      "raim": false,
+      "radio": 34144
+    }
+  },
+  {
+    "label": "type 18",
+    "sentences": ["!AIVDO,1,1,,A,B3P80v@0@7vUUB7@iFR4ea000000,0*72"],
+    "pyais": {
+      "msg_type": 18,
+      "repeat": 0,
+      "mmsi": 235012345,
+      "reserved_1": 0,
+      "speed": 6.4,
+      "accuracy": false,
+      "lon": -1.2345,
+      "lat": 50.7654,
+      "course": 212.3,
+      "heading": 210,
+      "second": 0,
+      "reserved_2": 0,
+      "cs": false,
+      "display": false,
+      "dsc": false,
+      "band": false,
+      "msg22": false,
+      "assigned": false,
+      "raim": false,
+      "radio": 0
+    }
+  },
+  {
+    "label": "type 19",
+    "sentences": ["!AIVDO,1,1,,A,C3P=GGh07osCe@7=3l0p@eP0V:30VPTB`:0000000000BPP21100,0*29"],
+    "pyais": {
+      "msg_type": 19,
+      "repeat": 0,
+      "mmsi": 235099999,
+      "reserved_1": 0,
+      "speed": 3.1,
+      "accuracy": false,
+      "lon": -4.1,
+      "lat": 50.36,
+      "course": 90.0,
+      "heading": 91,
+      "second": 0,
+      "reserved_2": 0,
+      "shipname": "SEA SPRITE",
+      "ship_type": 37,
+      "to_bow": 8,
+      "to_stern": 4,
+      "to_port": 2,
+      "to_starboard": 2,
+      "epfd": 0,
+      "raim": false,
+      "dte": false,
+      "assigned": false
+    }
+  },
+  {
+    "label": "type 21",
+    "sentences": ["!AIVDO,1,1,,A,E>jHD0aW0Q@:7cRa00000000000?ulmh>OhrP00000000000000000000000,4*5F"],
+    "pyais": {
+      "msg_type": 21,
+      "repeat": 0,
+      "mmsi": 992351234,
+      "aid_type": 19,
+      "name": "NAB TOWER",
+      "accuracy": false,
+      "lon": -0.95,
+      "lat": 50.6683,
+      "to_bow": 0,
+      "to_stern": 0,
+      "to_port": 0,
+      "to_starboard": 0,
+      "epfd": 0,
+      "second": 0,
+      "off_position": false,
+      "reserved_1": 0,
+      "raim": false,
+      "virtual_aid": false,
+      "assigned": false,
+      "name_ext": "",
+      "full_name": "NAB TOWER"
+    }
+  },
+  {
+    "label": "type 24 A",
+    "sentences": ["!AIVDO,1,1,,A,H3P:ahh8iDF0PE8tp00000000000,0*2E"],
+    "pyais": {
+      "msg_type": 24,
+      "repeat": 0,
+      "mmsi": 235055555,
+      "partno": 0,
+      "shipname": "BLUE HERON"
+    }
+  },
+  {
+    "label": "type 24 B",
+    "sentences": ["!AIVDO,1,1,,A,H3P:ahlT0000000=123i000h3120,0*08"],
+    "pyais": {
+      "msg_type": 24,
+      "repeat": 0,
+      "mmsi": 235055555,
+      "partno": 1,
+      "ship_type": 36,
+      "vendorid": "",
+      "model": 0,
+      "serial": 0,
+      "callsign": "MABC1",
+      "to_bow": 6,
+      "to_stern": 3,
+      "to_port": 1,
+      "to_starboard": 2
+    }
+  },
+  {
+    "label": "type 4",
+    "sentences": ["!AIVDO,1,1,,A,402=VPAvbrd00Orug0M4FP000000,0*1A"],
+    "pyais": {
+      "msg_type": 4,
+      "repeat": 0,
+      "mmsi": 2320001,
+      "year": 2026,
+      "month": 11,
+      "day": 21,
+      "hour": 12,
+      "minute": 0,
+      "second": 0,
+      "accuracy": false,
+      "lon": -1.1,
+      "lat": 50.8,
+      "epfd": 0,
+      "raim": false,
+      "radio": 0
+    }
+  },
+  {
+    "label": "type 1 not available",
+    "sentences": ["!AIVDO,1,1,,A,13P7@hEP?w<tSF0l4Q@>4?v1P000,0*02"],
+    "pyais": {
+      "msg_type": 1,
+      "repeat": 0,
+      "mmsi": 235000001,
+      "status": 5,
+      "turn": -128.0,
+      "speed": 102.3,
+      "accuracy": false,
+      "lon": 181.0,
+      "lat": 91.0,
+      "course": 360.0,
+      "heading": 511,
+      "second": 0,
+      "maneuver": 3,
+      "raim": false,
+      "radio": 0
+    }
   }
- },
- {
-  "label": "gpsd type 5",
-  "sentences": [
-   "!AIVDM,2,1,3,B,55P5TL01VIaAL@7WKO@mBplU@<PDhh000000001S;AJ::4A80?4i@E53,0*3E",
-   "!AIVDM,2,2,3,B,1@0000000000000,2*55"
-  ],
-  "pyais": {
-   "msg_type": 5,
-   "repeat": 0,
-   "mmsi": 369190000,
-   "ais_version": 0,
-   "imo": 6710932,
-   "callsign": "WDA9674",
-   "shipname": "MT.MITCHELL",
-   "ship_type": 99,
-   "to_bow": 90,
-   "to_stern": 90,
-   "to_port": 10,
-   "to_starboard": 10,
-   "epfd": 1,
-   "month": 1,
-   "day": 2,
-   "hour": 8,
-   "minute": 0,
-   "draught": 6.0,
-   "destination": "SEATTLE",
-   "dte": false
-  }
- },
- {
-  "label": "gpsd tag block type 1",
-  "sentences": [
-   "!AIVDM,1,1,,B,15N4cJ`005Jrek0H@9n`DW5608EP,0*13"
-  ],
-  "pyais": {
-   "msg_type": 1,
-   "repeat": 0,
-   "mmsi": 367078250,
-   "status": 8,
-   "turn": 0.0,
-   "speed": 0.5,
-   "accuracy": false,
-   "lon": -71.059467,
-   "lat": 42.38415,
-   "course": 213.0,
-   "heading": 226,
-   "second": 35,
-   "maneuver": 0,
-   "raim": false,
-   "radio": 34144
-  }
- },
- {
-  "label": "type 18",
-  "sentences": [
-   "!AIVDO,1,1,,A,B3P80v@0@7vUUB7@iFR4ea000000,0*72"
-  ],
-  "pyais": {
-   "msg_type": 18,
-   "repeat": 0,
-   "mmsi": 235012345,
-   "reserved_1": 0,
-   "speed": 6.4,
-   "accuracy": false,
-   "lon": -1.2345,
-   "lat": 50.7654,
-   "course": 212.3,
-   "heading": 210,
-   "second": 0,
-   "reserved_2": 0,
-   "cs": false,
-   "display": false,
-   "dsc": false,
-   "band": false,
-   "msg22": false,
-   "assigned": false,
-   "raim": false,
-   "radio": 0
-  }
- },
- {
-  "label": "type 19",
-  "sentences": [
-   "!AIVDO,1,1,,A,C3P=GGh07osCe@7=3l0p@eP0V:30VPTB`:0000000000BPP21100,0*29"
-  ],
-  "pyais": {
-   "msg_type": 19,
-   "repeat": 0,
-   "mmsi": 235099999,
-   "reserved_1": 0,
-   "speed": 3.1,
-   "accuracy": false,
-   "lon": -4.1,
-   "lat": 50.36,
-   "course": 90.0,
-   "heading": 91,
-   "second": 0,
-   "reserved_2": 0,
-   "shipname": "SEA SPRITE",
-   "ship_type": 37,
-   "to_bow": 8,
-   "to_stern": 4,
-   "to_port": 2,
-   "to_starboard": 2,
-   "epfd": 0,
-   "raim": false,
-   "dte": false,
-   "assigned": false
-  }
- },
- {
-  "label": "type 21",
-  "sentences": [
-   "!AIVDO,1,1,,A,E>jHD0aW0Q@:7cRa00000000000?ulmh>OhrP00000000000000000000000,4*5F"
-  ],
-  "pyais": {
-   "msg_type": 21,
-   "repeat": 0,
-   "mmsi": 992351234,
-   "aid_type": 19,
-   "name": "NAB TOWER",
-   "accuracy": false,
-   "lon": -0.95,
-   "lat": 50.6683,
-   "to_bow": 0,
-   "to_stern": 0,
-   "to_port": 0,
-   "to_starboard": 0,
-   "epfd": 0,
-   "second": 0,
-   "off_position": false,
-   "reserved_1": 0,
-   "raim": false,
-   "virtual_aid": false,
-   "assigned": false,
-   "name_ext": "",
-   "full_name": "NAB TOWER"
-  }
- },
- {
-  "label": "type 24 A",
-  "sentences": [
-   "!AIVDO,1,1,,A,H3P:ahh8iDF0PE8tp00000000000,0*2E"
-  ],
-  "pyais": {
-   "msg_type": 24,
-   "repeat": 0,
-   "mmsi": 235055555,
-   "partno": 0,
-   "shipname": "BLUE HERON"
-  }
- },
- {
-  "label": "type 24 B",
-  "sentences": [
-   "!AIVDO,1,1,,A,H3P:ahlT0000000=123i000h3120,0*08"
-  ],
-  "pyais": {
-   "msg_type": 24,
-   "repeat": 0,
-   "mmsi": 235055555,
-   "partno": 1,
-   "ship_type": 36,
-   "vendorid": "",
-   "model": 0,
-   "serial": 0,
-   "callsign": "MABC1",
-   "to_bow": 6,
-   "to_stern": 3,
-   "to_port": 1,
-   "to_starboard": 2
-  }
- },
- {
-  "label": "type 4",
-  "sentences": [
-   "!AIVDO,1,1,,A,402=VPAvbrd00Orug0M4FP000000,0*1A"
-  ],
-  "pyais": {
-   "msg_type": 4,
-   "repeat": 0,
-   "mmsi": 2320001,
-   "year": 2026,
-   "month": 11,
-   "day": 21,
-   "hour": 12,
-   "minute": 0,
-   "second": 0,
-   "accuracy": false,
-   "lon": -1.1,
-   "lat": 50.8,
-   "epfd": 0,
-   "raim": false,
-   "radio": 0
-  }
- },
- {
-  "label": "type 1 not available",
-  "sentences": [
-   "!AIVDO,1,1,,A,13P7@hEP?w<tSF0l4Q@>4?v1P000,0*02"
-  ],
-  "pyais": {
-   "msg_type": 1,
-   "repeat": 0,
-   "mmsi": 235000001,
-   "status": 5,
-   "turn": -128.0,
-   "speed": 102.3,
-   "accuracy": false,
-   "lon": 181.0,
-   "lat": 91.0,
-   "course": 360.0,
-   "heading": 511,
-   "second": 0,
-   "maneuver": 3,
-   "raim": false,
-   "radio": 0
-  }
- }
 ]
