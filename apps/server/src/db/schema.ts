@@ -1906,3 +1906,85 @@ export const satelliteFetches = sqliteTable("satellite_fetches", {
   error: text("error"),
   triedAt: integer("tried_at"),
 });
+
+/** A decoder's network port Outpost reads from: APRS (KISS), aircraft (SBS) or ships (NMEA). Outpost never writes to it. */
+export const heardReceivers = sqliteTable("heard_receivers", {
+  id: id(),
+  /** "aprs", "adsb" or "ais". */
+  kind: text("kind").notNull(),
+  name: text("name").notNull(),
+  host: text("host").notNull(),
+  port: integer("port").notNull(),
+  /** "tcp": Outpost connects to the decoder; "udp": Outpost listens on the port, for datagrams from `host` only. */
+  transport: text("transport").notNull().default("tcp"),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+/** Each station, aircraft or ship heard, with what was last heard of it. Kept until a person clears it. */
+export const heardStations = sqliteTable(
+  "heard_stations",
+  {
+    id: id(),
+    /** "aprs", "adsb", "ais" or "mesh". */
+    source: text("source").notNull(),
+    /** The callsign, the aircraft's hex code, the ship's MMSI or the radio's id. */
+    key: text("key").notNull(),
+    name: text("name").notNull(),
+    kindWords: text("kind_words"),
+    symbol: text("symbol"),
+    receiverId: text("receiver_id"),
+    lat: real("lat"),
+    lon: real("lon"),
+    altitude: real("altitude"),
+    course: real("course"),
+    speed: real("speed"),
+    comment: text("comment"),
+    direct: integer("direct", { mode: "boolean" }).notNull().default(true),
+    via: text("via"),
+    details: json<Record<string, unknown>>("details").notNull(),
+    firstAt: integer("first_at").notNull(),
+    lastAt: integer("last_at").notNull(),
+    positionAt: integer("position_at"),
+    reports: integer("reports").notNull().default(0),
+    pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),
+    pinName: text("pin_name"),
+  },
+  (table) => [uniqueIndex("heard_stations_key_idx").on(table.source, table.key), index("heard_stations_last_idx").on(table.lastAt)],
+);
+
+/** Each position heard: a station's trail, and what the range view is drawn from. */
+export const heardReports = sqliteTable(
+  "heard_reports",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    stationId: text("station_id").notNull(),
+    receiverId: text("receiver_id"),
+    at: integer("at").notNull(),
+    lat: real("lat").notNull(),
+    lon: real("lon").notNull(),
+    altitude: real("altitude"),
+    direct: integer("direct", { mode: "boolean" }).notNull().default(true),
+    via: text("via"),
+    snr: real("snr"),
+    rssi: real("rssi"),
+    hops: integer("hops"),
+  },
+  (table) => [
+    index("heard_reports_station_idx").on(table.stationId, table.at),
+    index("heard_reports_receiver_idx").on(table.receiverId, table.at),
+    index("heard_reports_at_idx").on(table.at),
+  ],
+);
+
+/** A range test kept by name (the range view): one station, one receiver, a time span. */
+export const heardRangeTests = sqliteTable("heard_range_tests", {
+  id: id(),
+  name: text("name").notNull(),
+  receiverId: text("receiver_id"),
+  stationId: text("station_id"),
+  fromAt: integer("from_at").notNull(),
+  toAt: integer("to_at").notNull(),
+  createdAt: createdAt(),
+});

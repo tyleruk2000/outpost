@@ -24,6 +24,7 @@ import { registerEncryption } from "./encryption/index.ts";
 import { registerExportAll } from "./export-all/index.ts";
 import { registerGames } from "./games/index.ts";
 import { registerGarden } from "./garden/index.ts";
+import { registerHeard } from "./heard/index.ts";
 import { registerHighlights } from "./highlights/index.ts";
 import { registerHouseholdPapers } from "./household-papers/index.ts";
 import { registerHttps } from "./https/index.ts";
@@ -123,6 +124,8 @@ export const modules: ModuleRegister[] = [
   registerExportAll,
   // Satellite tracking (Radio), on a line of its own so that other additions merge cleanly.
   registerSatellites,
+  // Heard on the radio (APRS, aircraft, ships), after the mesh link whose positions it keeps for the range view, on a line of its own.
+  registerHeard,
   // Tools a language model may call (Chat, and /mcp), last: they read from every module above.
   registerTools,
 ];

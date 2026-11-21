@@ -74,7 +74,7 @@ describe("mesh radios on the map", () => {
     expect(screen.getByText("Heard in the last hour")).toBeInTheDocument();
     await userEvent.click(layer);
     await waitFor(() =>
-      expect(engine.setOverlay).toHaveBeenLastCalledWith("o-heard", expect.objectContaining({ features: [expect.anything()] })),
+      expect(engine.setOverlay).toHaveBeenLastCalledWith("o-heard-mesh", expect.objectContaining({ features: [expect.anything()] })),
     );
     await userEvent.click(screen.getByRole("switch", { name: "Show VAN on the map" }));
     await waitFor(() => expect(sent).toEqual([{ path: "/api/mesh/radios/!0000beef/map", body: { onMap: true } }]));

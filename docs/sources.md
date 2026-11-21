@@ -1608,6 +1608,34 @@ Band plans of national societies (RSGB, ARRL, WIA) were used only to find the re
 document, never as the source of a figure. The IARU regional band plans are cited for the
 APRS frequencies, which no regulator names.
 
+## Heard on the radio (read 2026-11-21)
+
+For [Heard on the radio](heard-on-the-radio.md). Each was read once on 21 November 2026.
+Nothing from these is bundled or fetched by Outpost; the decoders are programs the person
+runs.
+
+| Source | What it says (quoted) | What was concluded |
+| --- | --- | --- |
+| APRS Protocol Reference 1.2 draft c (APRS Working Group, github.com/wb2osz/aprsspec, `APRS12c.pdf`) | Chapters 8 to 12: plain and compressed positions, Mic-E, objects and items, weather; "The speed is expressed in knots" for a weather report's DIR/SPD; "s = sustained one-minute wind speed (in mph)". The 1.0.1 PDF of 2000 is marked "Obsolete" by the same project. | The APRS reader (`modules/heard/aprs.ts`). Checked against Dire Wolf 1.8.1 decoding the same packets. |
+| Dire Wolf User Guide, version 1.8, October 2025 (WB2OSZ) | KISS "with default port 8001"; `ADEVICE`, `ACHANNELS`, `MYCALL`; "Leave squelch open"; "set the audio input level so that most stations average somewhere around 50"; "frames from tcp port 8001 are transmitted on radio channel 1". | The guide's configuration: a null audio output, no PTT, beacon or digipeater, so nothing can be sent. Outpost writes nothing to the port. |
+| Dire Wolf, "Raspberry Pi SDR IGate" | `rtl_fm -f 144.39M - \| direwolf -c sdr.conf -r 24000 -D 1 -` | The SDR line of the guide, untried. 144.390 MHz is said to be the one that example uses: no North American band plan naming it could be read (aprs.org answered 403; the ARRL band plan page does not list APRS). |
+| IARU Region 1 VHF Handbook, version 10.03, February 2026 | "144.800 APRS" | Europe's APRS frequency. |
+| WIA Australian Band Plan, revision 2026-1 | "145.175 MHz – National AX.25 APRS" | Australia's. |
+| Ofcom, "Rules on using radio equipment" | "Generally, the use of radio receivers is exempt from requiring a licence unless it is also capable of transmission"; "receivers and scanners can only be used for 'general reception'". | The listening line; whether aircraft and ships count is not said, and the screen says Outpost does not know. |
+| Wireless Telegraphy Act 2006, s. 48 (legislation.gov.uk) | An offence to use apparatus "with intent to obtain information as to the contents, sender or addressee of a message" of which one is not an intended recipient. | Cited for the UK. |
+| 18 U.S.C. 2511(2)(g)(ii) (law.cornell.edu) | Not unlawful to intercept communication transmitted "by a station operating on an authorized frequency within the bands allocated to the amateur ... service" or "by any marine or aeronautical communications system". | Cited for the US. |
+| "SBS BaseStation Article 4.2: Socket Data and BST files" (woodair.net) | "listen to port 30003"; the 22 fields; flags "-1 for true, and a 0 for false". | The SBS reader (`sbs.ts`). Checked against readsb 3.16 (Homebrew), which wrote the lines in the tests from the worked examples of Junzi Sun's "The 1090MHz Riddle". |
+| "Mode-S Beast: Data Output Formats" (Jetvision wiki) | "<esc> "3" : 6 byte MLAT timestamp, 1 byte signal level, 14 byte Mode-S long frame". | Not used: Beast is raw frames, SBS the decoded result. |
+| dump1090-fa source (FlightAware) | "TCP BaseStation output listen ports (default: 30003)". | The usual port. readsb's own default is off; the guide gives `--net-sbs-port 30003`. |
+| readsb README and install wiki (wiedehopf) | "Run `brew install readsb`"; `sudo bash -c "$(wget -O - https://github.com/wiedehopf/adsb-scripts/raw/master/readsb-install.sh)"`. | The Mac line (tried) and the Pi line (untried). |
+| "AIVDM/AIVDO protocol decoding" (Eric S. Raymond, gpsd) | Payload armouring, the common navigation block, types 4, 5, 18, 19, 21, 24; "AIS Channel A is 161.975Mhz (87B); AIS Channel B is 162.025Mhz (88B)"; the navigation status and ship type tables. | The AIS reader (`ais.ts`). Checked against pyais 3.3.1. |
+| AIS-catcher, "Command Line" (jvde-github.github.io/AIS-catcher-docs) | "-S xxx - TCP server for NMEA lines at port xxx"; "-u xxx.xx.xx.xx yyy - UDP destination address and port"; "-d:x - select device based on index". | The guide's lines, untried. |
+| rtl-ais README | "[-P port (default: 10110)]" | 10110 as the ships port. |
+| CA2RXU LoRa_APRS_iGate (`tnc_utils.cpp`, `data/igate_conf.json`) | `#define TNC_PORT 8001`; `"enableServer": false`; `"callsign": "NOCALL-10"`; `"sendViaRF": false`, `"txActive": false`, `"rxFreq": 433775000`. | A KISS TCP receiver for LoRa APRS; the receive-only settings. Untried with a board. |
+| ESP32APRS_Audio (nakhonthai) | `config.bt_mode = 1; // 0-None,1-TNC2RAW,2-KISS`; no network KISS server in its source. | Not readable by Outpost without a bridge; none is built. |
+| LoRa APRS by OE5BPA (github.com/lora-aprs) | "This repository was archived by the owner on Sep 14, 2025". | Pointed to CA2RXU's. |
+| Raspberry Pi documentation, RTL-SDR Blog V4 datasheet, Heltec WiFi LoRa 32 V3 datasheet | Already in Power and batteries; Digirig's maker publishes no current. | The power cut guidance names them; no figure was measured by Outpost. |
+
 ## The Steading's household figures (read 2026-11-21)
 
 Games → Steading ([games.md](games.md#steading)) says what a household uses in a day

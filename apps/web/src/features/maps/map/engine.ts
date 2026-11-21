@@ -681,6 +681,21 @@ export class MapEngine {
   }
 
   /** Where a position is on screen, relative to the map's top-left corner. */
+  /** What is drawn within `reach` pixels of a point on screen in the given layers: for a layer of a feature's own to open what was pressed. */
+  renderedAt(point: { x: number; y: number }, layers: string[], reach = 10): Array<{ layer: string; properties: Record<string, unknown> }> {
+    const present = layers.filter((id) => this.map.getLayer(id));
+    if (present.length === 0) return [];
+    return this.map
+      .queryRenderedFeatures(
+        [
+          [point.x - reach, point.y - reach],
+          [point.x + reach, point.y + reach],
+        ],
+        { layers: present },
+      )
+      .map((feature) => ({ layer: feature.layer.id, properties: (feature.properties ?? {}) as Record<string, unknown> }));
+  }
+
   project(position: LatLon): { x: number; y: number } {
     const point = this.map.project([position.lon, position.lat]);
     return { x: point.x, y: point.y };

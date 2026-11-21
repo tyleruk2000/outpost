@@ -33,6 +33,7 @@ export * from "./export-all.ts";
 export * from "./games.ts";
 // The garden calendar and the record of sowings, on a line of its own so that other additions merge cleanly.
 export * from "./garden.ts";
+export * from "./heard.ts";
 // Passages marked in library documents, on a line of its own.
 export * from "./highlights.ts";
 export * from "./home-place.ts";

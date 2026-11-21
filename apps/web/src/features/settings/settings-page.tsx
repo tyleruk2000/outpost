@@ -6,6 +6,7 @@ import { settingsSections } from "@/components/nav";
 import { ErrorState, JumpLinks, Page, PageHeader } from "@/components/page";
 import { Segmented, Skeleton, Switch } from "@/components/ui/misc";
 import { BoardSettingsSection } from "@/features/board/settings-section";
+import { ReceiversSettingsSection } from "@/features/heard/receivers-section";
 import { GuidesLine } from "@/features/help/guides-line";
 import { MeshSettingsSection } from "@/features/mesh/mesh-settings-section";
 import { RadioLicenceSettingsSection } from "@/features/radio/licence-settings-section";
@@ -324,6 +325,7 @@ export default function SettingsPage() {
           <BoardSettingsSection settings={s} disabled={disabled} save={save} />
           <MeshSettingsSection />
           <RadioLicenceSettingsSection settings={s} disabled={disabled} save={save} />
+          <ReceiversSettingsSection />
 
           <BackupSection />
           <ExportSection />

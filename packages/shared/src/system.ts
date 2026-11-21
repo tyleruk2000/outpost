@@ -65,6 +65,8 @@ export interface Settings {
   "radio.callsign": string;
   /** Days a file sent on the household board is kept; 0 keeps it until removed. */
   "board.fileDays": number;
+  /** Hours of aircraft heard on the radio kept; 0 keeps them until cleared. */
+  "heard.aircraftHours": number;
   /** Let the model look things up in Outpost (Chat). Off by default. */
   "tools.enabled": boolean;
   "tools.library": boolean;

@@ -8,6 +8,7 @@
  * top (`ScreensUnder`). `nav.test.ts` fails if a route in app.tsx is missing from here.
  */
 import {
+  Antenna,
   AudioWaveform,
   BadgeCheck,
   BookCopy,
@@ -170,6 +171,12 @@ export const knowledgeNav: NavItem[] = [
         icon: BadgeCheck,
         keywords: "licence license band plan privileges power pmr446 frs gmrs cb uhf country",
       },
+      {
+        to: "/radio/heard",
+        label: "Heard on the radio",
+        icon: Antenna,
+        keywords: "aprs ads-b adsb aircraft planes ships ais vessels receiver sdr dire wolf direwolf kiss tracker range",
+      },
     ],
   },
   // Two sections that are lists of screens, each drawn from its own registry (features/<section>/screens.ts).
@@ -265,6 +272,7 @@ export const settingsSections: SettingsSection[] = [
   { id: "board", label: "Message board", inContents: true, keywords: "messages files keep" },
   { id: "mesh", label: "Mesh radio", inContents: true, keywords: "meshtastic meshcore lora mqtt radio link mesh off grid messages" },
   { id: "radio-licence", label: "Radio licence", inContents: true, keywords: "amateur licence license ham callsign licensed listen only" },
+  { id: "receivers", label: "Receivers", inContents: true, keywords: "aprs aircraft ships ais ads-b kiss sbs nmea decoder dire wolf port" },
   { id: "backup", label: "Backup", inContents: true, keywords: "back up restore copy save everything password passphrase protect" },
   { id: "automatic-backups", label: "Automatic backups", inContents: true, keywords: "backup schedule every night nas" },
   {

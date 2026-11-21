@@ -7,6 +7,7 @@
  * says when it was fetched and what it covers, and says so in words when it is old or
  * has run out. Views are chosen by `?view=` so that each has an address.
  */
+
 import { type KeptCopy, LIVE_KINDS, type UpdateOutcome, type WeatherKind } from "@outpost/shared";
 import { RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -15,6 +16,7 @@ import { toast } from "sonner";
 import { EmptyState, ErrorState, Notice, Page, PageHeader } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Checkbox, Segmented, Select, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/misc";
+import { AprsWeather } from "@/features/heard/aprs-weather";
 import { errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { plural } from "@/lib/utils";
@@ -29,7 +31,7 @@ import { PlacesView } from "./places-view";
 import { RiversView } from "./rivers-view";
 import type { TempUnit, WindUnit } from "./words";
 
-const VIEWS = ["forecast", "warnings", "world", "flood", "rivers", "climate", "barometer", "places", "kept"] as const;
+const VIEWS = ["forecast", "warnings", "world", "flood", "rivers", "climate", "barometer", "heard", "places", "kept"] as const;
 type View = (typeof VIEWS)[number];
 const WIND_KEY = "outpost.weather.wind";
 const TEMP_KEY = "outpost.weather.temp";
@@ -253,6 +255,7 @@ export default function WeatherPage() {
               <TabsTrigger value="flood">Flood</TabsTrigger>
               <TabsTrigger value="rivers">River and sea levels</TabsTrigger>
               <TabsTrigger value="barometer">Barometer</TabsTrigger>
+              <TabsTrigger value="heard">Heard on the radio</TabsTrigger>
               <TabsTrigger value="climate">Climate</TabsTrigger>
               <TabsTrigger value="places">Places</TabsTrigger>
               <TabsTrigger value="kept">Kept and sources</TabsTrigger>
@@ -314,6 +317,9 @@ export default function WeatherPage() {
             </TabsContent>
             <TabsContent value="barometer">
               <BarometerView homeLat={places.find((candidate) => candidate.isHome)?.lat ?? null} />
+            </TabsContent>
+            <TabsContent value="heard">
+              <AprsWeather />
             </TabsContent>
             <TabsContent value="places">
               <PlacesView places={places} />

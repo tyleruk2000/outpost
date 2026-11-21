@@ -46,6 +46,7 @@ const HelpPage = lazy(() => import("./features/help/help-page"));
 const GuidePage = lazy(() => import("./features/help/guide-page"));
 const KeptPage = lazy(() => import("./features/kept/kept-page"));
 const RadioPage = lazy(() => import("./features/radio/radio-page"));
+const HeardPage = lazy(() => import("./features/heard/heard-page"));
 const ToolsPage = lazy(() => import("./features/tools/tools-page"));
 const PreparePage = lazy(() => import("./features/prepare/prepare-page"));
 // The household's papers (Preparedness), on lines of their own so that other additions merge cleanly.
@@ -166,6 +167,7 @@ export function App() {
           <Route path="radio/frequencies" element={<FrequenciesPage />} />
           <Route path="radio/satellites" element={<SatellitesPage />} />
           <Route path="radio/licences" element={<LicencesPage />} />
+          <Route path="radio/heard" element={<HeardPage />} />
           <Route path="notes" element={<NotesPage />} />
           <Route path="notes/:id" element={<NotesPage />} />
           <Route path="notes/:id/versions" element={<NotesPage versions />} />

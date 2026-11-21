@@ -1509,6 +1509,16 @@ refused with `400`. A message's `meta` carries `MeshMeta` (`node`, `snr`, `hops`
 | `GET /api/mesh/positions` | `MeshPositionsResponse`: `radios` `[{ id, transport, shortName, longName, onMap, at, position }]`, newest first; `position` is null unless the radio is switched on for the map. |
 | `PUT /api/mesh/radios/:id/map` | Body `{ onMap }`. Switches one radio on or off for the map, for every device. `404` for a radio not heard. Answers `MeshPositionsResponse`. |
 | `POST /api/mesh/test` | Body `{ channel, author }`: posts "Test message from Outpost" on a carried radio channel, as `POST /api/board/messages` would. `{ message }`. |
+| `GET /api/heard/receivers` | `HeardReceiversResponse`: `receivers` (each with `status`: `state`, `lastPacketAt`, `packets`, `positions`, `malformed`, `refused`, `lastError`, `retryAt`), `right`, `space`, `aircraftHours`, `pi` (null unless the installer set up the decoders). |
+| `POST /api/heard/receivers`, `PUT /api/heard/receivers/:id`, `DELETE /api/heard/receivers/:id` | Body `HeardReceiverInput` `{ kind, name, host, port, transport, enabled }`. Held to the computer Outpost runs on (`403` otherwise). UDP only for ships, from an address given as numbers. Answers as `GET`. |
+| `GET /api/heard/stations?source=` | `HeardStationsResponse`: every station of a source, or of every source but the mesh radios, last heard first (at most 5,000). |
+| `GET /api/heard/stations/:id` | `HeardStationResponse` `{ station, trail }` (the last 500 positions). |
+| `PUT /api/heard/stations/:id/pin` | Body `{ pinned, name? }`. `{ station }`. |
+| `DELETE /api/heard/stations/:id` | Removes one station and its trail. `{ stations, reports }`. |
+| `POST /api/heard/clear` | Body `{ source?, before? }`: all of it, one source, what was last heard before a time. `{ stations, reports }`. |
+| `GET /api/heard/reports?receiverId=&stationId=&from=&to=` | APRS and mesh positions for the range view, at most 20,000 (`limited`). |
+| `GET /api/heard/range-tests`, `POST /api/heard/range-tests`, `DELETE /api/heard/range-tests/:id` | Range tests kept by name `{ name, receiverId, stationId, from, to }`. |
+| `POST /api/heard/pi` | Body `{ decoder, action: start \| stop \| refresh, device? }`: leaves a request for the Pi's decoder helper. Held to the computer Outpost runs on. |
 
 ## Everything else
 

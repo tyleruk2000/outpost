@@ -83,6 +83,10 @@ export type Uplink =
       altitude: number | null;
       /** When the radio took the fix (ms), when it said; otherwise null. */
       time: number | null;
+      /** How the gateway radio heard it, where the JSON says (outpost-ywbh.8, the range view). */
+      snr: number | null;
+      rssi: number | null;
+      hops: number | null;
     }
   | { type: "other" };
 
@@ -145,6 +149,9 @@ export function parseUplink(payload: Buffer): Uplink | null {
       lon,
       altitude: altitude !== null && Math.abs(altitude) < 100_000 ? altitude : null,
       time: time !== null && time > 0 ? time * 1000 : null,
+      snr: num(message.snr),
+      rssi: num(message.rssi),
+      hops: num(message.hops_away),
     };
   }
   if (type === "nodeinfo") {

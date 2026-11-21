@@ -6,7 +6,7 @@
  */
 import { type Bbox, haversineMeters, type InstalledRegion, type MarkerDto, type TrackWithGeometryDto } from "@outpost/shared";
 import { celnavLayers } from "@/features/celestial-navigation/map-layers";
-import { heardLayers } from "@/features/heard/heard";
+import { HEARD_CLUSTER, HEARD_CLUSTERED, heardLayers } from "@/features/heard/heard";
 import { floodZoneLayers, populationLayers, referenceLayers } from "@/features/layers/symbols";
 import { nuclearLayers } from "@/features/nuclear/layers";
 import { propagationLayers } from "@/features/propagation/map/layers";
@@ -43,10 +43,18 @@ export const OVERLAY_SOURCES = [
   "o-range",
   "o-repeaters",
   "o-reference",
-  "o-heard",
   "o-relay",
   // Satellites now, and the chosen one's track (features/satellites/map.tsx).
   "o-satellites",
+  // What the household's receivers heard (features/heard): each source gathered into counts when zoomed out, the trail
+  // of the one opened, and the household's own stations, pinned, on top.
+  "o-heard-trail",
+  "o-heard-range",
+  "o-heard-mesh",
+  "o-heard-aprs",
+  "o-heard-adsb",
+  "o-heard-ais",
+  "o-heard-pinned",
   "o-sight",
   // Resection: back-bearings from landmarks (resection/).
   "o-resection",
@@ -88,7 +96,8 @@ const colorOf = (name: string) => MARKER_HEX[name as keyof typeof MARKER_HEX] ??
 
 export function overlaySources(data: Partial<Record<OverlaySource, FeatureCollection>>): Record<string, SourceSpecification> {
   const sources: Record<string, SourceSpecification> = {};
-  for (const id of OVERLAY_SOURCES) sources[id] = { type: "geojson", data: (data[id] ?? EMPTY) as never };
+  for (const id of OVERLAY_SOURCES)
+    sources[id] = { type: "geojson", data: (data[id] ?? EMPTY) as never, ...(HEARD_CLUSTERED.has(id) ? HEARD_CLUSTER : {}) };
   return sources;
 }
 
