@@ -163,6 +163,22 @@ describe("a conflict", () => {
     expect(drafts.at(-1)).toEqual({ content: "mine and more" });
   });
 
+  it("holds changes made elsewhere on this device as a conflict, sending nothing until the person chooses", async () => {
+    const { calls, drafts, page, saver, settle } = setup({ title: "Plan", content: "from the phone" });
+    saver.holdInConflict(["title", "content"], { updatedAt: 300, title: "Plan" });
+    expect(saver.status()).toEqual({ kind: "conflict", current: { updatedAt: 300, title: "Plan" } });
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(calls).toHaveLength(0);
+    expect(drafts.at(-1)).toEqual({ title: "Plan", content: "from the phone" });
+    page.content = "from the phone, kept";
+    saver.keepMine(["title", "content"]);
+    expect(calls[0]?.patch).toEqual({ title: "Plan", content: "from the phone, kept" });
+    expect(calls[0]?.base).toBeUndefined();
+    calls[0]?.resolve(400);
+    await settle();
+    expect(saver.status()).toEqual({ kind: "saved" });
+  });
+
   it("keep my version: sends every field again without a base", async () => {
     const { calls, saver, settle } = await conflicted();
     saver.keepMine(["title", "content"]);

@@ -261,7 +261,7 @@ describe("losing the server while the app is open", () => {
     // Moving on: the kept page opens from the copy, for reading only.
     await user.click(screen.getByRole("link", { name: "Open the plan" }));
     expect(await screen.findByText("Leave the car at Seathwaite.", {}, { timeout: 4000 })).toBeInTheDocument();
-    expect(screen.getByText(/Showing what is kept on this \w+, for reading only/)).toBeInTheDocument();
+    expect(screen.getByText(/Showing what is kept on this \w+\. What is written or changed here is sent/)).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Page content" })).toHaveAttribute("contenteditable", "false");
     expect(screen.queryByRole("heading", { name: "The page, from the server" })).not.toBeInTheDocument();
     expect(screen.getByText(/Kept copy from/)).toBeInTheDocument();

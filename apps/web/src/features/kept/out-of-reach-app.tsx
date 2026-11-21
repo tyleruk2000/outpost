@@ -162,7 +162,8 @@ function Shell({ checking, onCheck }: { checking: boolean; onCheck: () => void }
         >
           <WifiOff aria-hidden className="size-4 shrink-0 text-ink-muted" strokeWidth={1.6} />
           <p className="min-w-0 flex-1 basis-56">
-            <span className="font-medium">The server is out of reach.</span> Showing what is kept on this {DEVICE}, for reading only.
+            <span className="font-medium">The server is out of reach.</span> Showing what is kept on this {DEVICE}. What is written or
+            changed here is sent when it is back in reach.
             {ON_THE_SERVER_ITSELF
               ? " This is the computer Outpost runs on, so the server is stopped or still starting: give it a few seconds, or check that the Outpost service or container is running."
               : null}
