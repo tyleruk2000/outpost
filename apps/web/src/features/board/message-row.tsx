@@ -107,8 +107,9 @@ function FileLine({ message, onAddToLibrary }: { message: BoardMessage; onAddToL
       <p className="flex items-center gap-2 text-small text-ink-muted">
         <FileText aria-hidden className="size-4 shrink-0" />
         <span className="min-w-0 break-words">
-          {file.name}, {formatBytes(file.sizeBytes)}:{" "}
-          {file.gone.reason === "expired" ? "no longer kept, its days on the board were up" : "removed"}
+          {file.gone.reason === "expired"
+            ? `${file.name}, ${formatBytes(file.sizeBytes)}: no longer kept, its days on the board were up`
+            : "A file was sent here; it was removed with the message."}
         </span>
       </p>
     );

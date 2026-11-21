@@ -181,7 +181,9 @@ export function createBoardFileStore(ctx: AppContext): BoardFileStore {
     async discard(id, reason, at = Date.now()) {
       const row = find(id);
       if (!row || row.goneAt !== null) return false;
-      db.update(boardFiles).set({ goneAt: at, goneReason: reason }).where(eq(boardFiles.id, id)).run();
+      // A file removed with its message loses its name too, as the message loses its words; one whose days are up keeps it.
+      const name = reason === "removed" ? { filename: "", relPath: row.id } : {};
+      db.update(boardFiles).set({ goneAt: at, goneReason: reason, ...name }).where(eq(boardFiles.id, id)).run();
       const file = store.filePath(row);
       const folder = path.dirname(file);
       // The folder is named after the file's id and holds that one file, so it goes too.

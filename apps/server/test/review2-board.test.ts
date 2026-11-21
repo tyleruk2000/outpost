@@ -43,6 +43,18 @@ function sendFile(name: string, content: Buffer | string, headers: Record<string
 }
 
 describe("a sent file", () => {
+  it("loses its name when its message is removed, in the answer and in the database", async () => {
+    const sent = (await sendFile("divorce-papers-2026.pdf", "%PDF-1.4 nothing")).body.message;
+    const removed = await app.api<{ message: BoardMessage }>("POST", `/api/board/messages/${sent.id}/remove`, { by: "Sam" });
+    expect(removed.status).toBe(200);
+    expect(removed.body.message.file).toMatchObject({ name: "", gone: { reason: "removed" }, url: null });
+    app.ctx.sqlite.pragma("wal_checkpoint(TRUNCATE)");
+    const dir = app.ctx.config.dataDir;
+    for (const name of fs.readdirSync(dir).filter((file) => file.startsWith("outpost.db"))) {
+      expect(fs.readFileSync(path.join(dir, name)).includes(Buffer.from("divorce-papers-2026")), name).toBe(false);
+    }
+  });
+
   it("goes to the library only through the library's own checks, whatever its name claims", async () => {
     const html = "<html><script>fetch('/api/notes')</script></html>";
     for (const name of ["report.pdf", "book.epub", "photo.png", "song.mp3"]) {
