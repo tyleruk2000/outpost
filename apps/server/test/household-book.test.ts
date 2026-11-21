@@ -111,7 +111,8 @@ describe("what the book reads round home", () => {
   });
 
   it("finds the nearest help, the places to keep away from, the wind kept for home and the journey with its stops", async () => {
-    const home = (await ok<{ marker: { id: string } }>("POST", "/api/maps/markers", { name: "Home", lat: 51.5, lon: -1, icon: "home" })).marker;
+    const home = (await ok<{ marker: { id: string } }>("POST", "/api/maps/markers", { name: "Home", lat: 51.5, lon: -1, icon: "home" }))
+      .marker;
     const gran = (await ok<{ marker: { id: string } }>("POST", "/api/maps/markers", { name: "Gran's", lat: 51.5, lon: -1.6 })).marker;
 
     const location = app.ctx.services.storage.getDefault();
@@ -141,7 +142,17 @@ describe("what the book reads round home", () => {
     const placeId = "wp-home";
     app.ctx.db
       .insert(weatherPlaces)
-      .values({ id: placeId, markerId: home.id, name: "Home", lat: 51.5, lon: -1, region: null, position: 0, createdAt: Date.now(), updatedAt: Date.now() })
+      .values({
+        id: placeId,
+        markerId: home.id,
+        name: "Home",
+        lat: 51.5,
+        lon: -1,
+        region: null,
+        position: 0,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
       .run();
     const month = { meanC: 5, precipMmPerDay: 2, precipMmMonth: 60, windMs: 5, windFromDeg: 240, sunKwhLevel: 1 };
     app.ctx.db

@@ -102,7 +102,13 @@ const toPlace = (hit: NearestHit): BookPlace => ({
 export function createBookFacts(ctx: AppContext) {
   const store = () => ctx.services.layers.store;
 
-  const heldLayers = (): Set<string> => new Set(store().summary(new Map()).filter((layer) => layer.count > 0).map((layer) => layer.id));
+  const heldLayers = (): Set<string> =>
+    new Set(
+      store()
+        .summary(new Map())
+        .filter((layer) => layer.count > 0)
+        .map((layer) => layer.id),
+    );
 
   function group(spec: GroupSpec, at: { lat: number; lon: number }, held: Set<string>): BookPlaceGroup {
     const base = { id: spec.id, label: spec.label, layer: spec.layer, held: held.has(spec.layer), places: [] as BookPlace[] };
@@ -111,7 +117,13 @@ export function createBookFacts(ctx: AppContext) {
     const asks =
       spec.kinds.length > 0
         ? spec.kinds
-        : [...new Set(store().nearest({ lat: at.lat, lon: at.lon, layer: spec.layer, kind: null, limit: 1 }).hits.map((hit) => hit.kind))];
+        : [
+            ...new Set(
+              store()
+                .nearest({ lat: at.lat, lon: at.lon, layer: spec.layer, kind: null, limit: 1 })
+                .hits.map((hit) => hit.kind),
+            ),
+          ];
     for (const kind of asks) hits.push(...store().nearest({ lat: at.lat, lon: at.lon, layer: spec.layer, kind, limit: spec.each }).hits);
     const seen = new Set<number>();
     base.places = hits
@@ -150,14 +162,22 @@ export function createBookFacts(ctx: AppContext) {
         placeName: place.name,
         wind:
           typeof direction === "number"
-            ? { fromDegrees: direction, months: data.months.map((month) => month.windFromDeg ?? null), fetchedAt: copy.fetchedAt, period: data.period }
+            ? {
+                fromDegrees: direction,
+                months: data.months.map((month) => month.windFromDeg ?? null),
+                fetchedAt: copy.fetchedAt,
+                period: data.period,
+              }
             : null,
       };
     }
     return null;
   }
 
-  function nearestTown(at: { lat: number; lon: number }, held: Set<string>): { name: string; meters: number; lat: number; lon: number } | null {
+  function nearestTown(
+    at: { lat: number; lon: number },
+    held: Set<string>,
+  ): { name: string; meters: number; lat: number; lon: number } | null {
     if (!held.has("towns")) return null;
     const hits = store().nearest({ lat: at.lat, lon: at.lon, layer: "towns", kind: null, limit: 20 }).hits;
     const best = hits.sort((a, b) => a.distanceMeters - b.distanceMeters)[0];
@@ -257,9 +277,20 @@ export function createBookFacts(ctx: AppContext) {
   return async function facts(answers: BookAnswers): Promise<BookFacts> {
     const markers = ctx.services.maps.annotations.listMarkers();
     const homeMarker = homePlaceOf(markers);
-    const terrain = ctx.services.maps.tiles.sources().sources.terrain !== null && ctx.services.maps.tiles.sources().sources.terrain !== undefined;
+    const terrain =
+      ctx.services.maps.tiles.sources().sources.terrain !== null && ctx.services.maps.tiles.sources().sources.terrain !== undefined;
     if (!homeMarker)
-      return { home: null, help: [], keepAway: [], floodZones: null, planningZones: null, climate: null, terrain, journeys: [], notMeasured: [] };
+      return {
+        home: null,
+        help: [],
+        keepAway: [],
+        floodZones: null,
+        planningZones: null,
+        climate: null,
+        terrain,
+        journeys: [],
+        notMeasured: [],
+      };
     const home = { name: homeMarker.name || "Home", lat: homeMarker.lat, lon: homeMarker.lon, country: countryAt(homeMarker, COUNTRIES) };
     const held = heldLayers();
     const journeys: BookJourney[] = [];
@@ -279,7 +310,9 @@ export function createBookFacts(ctx: AppContext) {
         notMeasured.push({
           destinationId: destination.id,
           name: destination.name,
-          why: destination.markerId ? "Its saved place is no longer on the map." : "No saved place is linked to it, so where it is is not known.",
+          why: destination.markerId
+            ? "Its saved place is no longer on the map."
+            : "No saved place is linked to it, so where it is is not known.",
         });
         continue;
       }

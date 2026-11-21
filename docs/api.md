@@ -1444,6 +1444,20 @@ the `medical_sheets` tool only while `tools.medical` is on; encrypted ones never
 | `GET /api/household-binder` | `BinderStatus`: the binder last made (`made`: `parts`, `contentAt`, `madeAt`, `pages`, or null), when each part's content last changed (`changedAt`), and the parts changed since (`stale`). |
 | `POST /api/household-binder/made` | Body `{ parts, contentAt, pages }`: record the binder just made in the browser. Answers `BinderStatus`. |
 
+## Household book
+
+Types: `packages/shared/src/household-book.ts`; see [household-book.md](household-book.md).
+Changes publish `household-book.changed`. One record per household: the wizard's answers
+(`BookAnswers`) and the last book made (`BookMade`: `madeAt`, `pages`, `sections`, and a
+`summary` of a few lines a section that the next book compares itself with).
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/household-book` | The answers (the defaults until first saved), `answersAt`, and `made`. |
+| `PUT /api/household-book` | Save the answers (`BookInput`). With `baseAnswersAt` older than the answers kept, `409 conflict` and nothing is overwritten. |
+| `GET /api/household-book/facts` | What the book reads round home, for the answers as saved (`BookFacts`): the nearest help and places to keep away from in the reference layers (`held: false` for a layer with nothing in it), the flood and planning zones holding home, the climate kept for home with the wind's direction, and each journey's straight line with the ground along it and a stop for each day's walking. Reads only what is held. |
+| `POST /api/household-book/made` | Record a book made in the browser (`BookMadeInput`). |
+
 ## Readiness
 
 Types: `packages/shared/src/readiness.ts`; see [readiness.md](readiness.md). Changes

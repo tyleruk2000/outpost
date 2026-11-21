@@ -15,26 +15,59 @@
  * Nothing here fetches anything. What the book needs and Outpost does not hold (a
  * reference layer, the climate for home, terrain) is said in the book, with where to get it.
  */
+
+import { toblerKmh, WALK_PACES, type WalkPaceId } from "./walk-reach.ts";
 import type { ClimateMonth } from "./weather.ts";
-import { WALK_PACES, type WalkPaceId, toblerKmh } from "./walk-reach.ts";
 
 // ── The sections ────────────────────────────────────────────────────────────
 
 export const BOOK_SECTIONS = [
-  { id: "first-minutes", label: "The first few minutes", about: "What to do at once, on one page: the number to call, go in or get out, who to tell." },
+  {
+    id: "first-minutes",
+    label: "The first few minutes",
+    about: "What to do at once, on one page: the number to call, go in or get out, who to tell.",
+  },
   { id: "people", label: "Our household", about: "Each person and pet, their needs and medicines, and the medical sheets." },
-  { id: "keeping-in-touch", label: "Keeping in touch and meeting", about: "Who to contact, the communication plan and the places to meet." },
+  {
+    id: "keeping-in-touch",
+    label: "Keeping in touch and meeting",
+    about: "Who to contact, the communication plan and the places to meet.",
+  },
   { id: "first-aid", label: "First aid", about: "Quoted from the NHS website, unchanged, with what the book cannot hold." },
-  { id: "help-near-home", label: "Help near home", about: "Hospitals, pharmacies, emergency services, shelters and drinking water, with distance and direction." },
-  { id: "keep-away", label: "Places to keep away from", about: "Nuclear and military sites, airports and fuel near home, and what the wind at home means." },
-  { id: "situations", label: "What to do, by situation", about: "For each hazard chosen: before, during and after, from official guidance." },
+  {
+    id: "help-near-home",
+    label: "Help near home",
+    about: "Hospitals, pharmacies, emergency services, shelters and drinking water, with distance and direction.",
+  },
+  {
+    id: "keep-away",
+    label: "Places to keep away from",
+    about: "Nuclear and military sites, airports and fuel near home, and what the wind at home means.",
+  },
+  {
+    id: "situations",
+    label: "What to do, by situation",
+    about: "For each hazard chosen: before, during and after, from official guidance.",
+  },
   { id: "water", label: "Water", about: "How much to keep, how to make water safe, and drinking water near home." },
   { id: "food-hygiene", label: "Food, toilet and hygiene", about: "Food in a power cut or a flood, and keeping clean with little water." },
   { id: "warmth-radio", label: "Warmth, light and the radio", about: "Keeping warm and lit, and the stations your radios can hear." },
-  { id: "journeys", label: "Journeys", about: "To each place you would go: on foot, with a stop for each day, and by car, with a drawn route." },
-  { id: "checklists", label: "Checklists", about: "A shopping list worked out for your people and days, the grab bag, the first aid kit and the car." },
+  {
+    id: "journeys",
+    label: "Journeys",
+    about: "To each place you would go: on foot, with a stop for each day, and by car, with a drawn route.",
+  },
+  {
+    id: "checklists",
+    label: "Checklists",
+    about: "A shopping list worked out for your people and days, the grab bag, the first aid kit and the car.",
+  },
   { id: "local-risks", label: "Local risks", about: "Flood and planning zones at home where a layer is held, and the climate's extremes." },
-  { id: "children", label: "Cards for the children", about: "A card for each child to carry, with home, the number to call and who to find." },
+  {
+    id: "children",
+    label: "Cards for the children",
+    about: "A card for each child to carry, with home, the number to call and who to find.",
+  },
   { id: "notes", label: "Pages for notes", about: "Blank ruled pages at the back." },
 ] as const;
 export type BookSectionId = (typeof BOOK_SECTIONS)[number]["id"];
@@ -362,6 +395,6 @@ export function metresWords(meters: number): string {
 
 /** Whether a bearing from home lies within `spread` degrees of another: a site upwind of home. */
 export function withinDegrees(bearing: number, of: number, spread = 45): boolean {
-  const difference = Math.abs((((bearing - of) % 360) + 540) % 360 - 180);
+  const difference = Math.abs(((((bearing - of) % 360) + 540) % 360) - 180);
   return difference <= spread;
 }

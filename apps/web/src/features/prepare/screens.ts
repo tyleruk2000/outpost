@@ -6,6 +6,7 @@
  */
 import {
   BookCopy,
+  BookOpen,
   CalendarClock,
   ClipboardList,
   CloudSun,
@@ -84,6 +85,15 @@ export const prepareScreens: SectionScreen[] = [
     icon: BookCopy,
     keywords: "binder folder print everything pdf paper copy household binder",
     about: "Everything that matters on paper, as one PDF with a contents page. Home says when it is older than what is in it.",
+  },
+  // The household book (features/household-book), on its own lines.
+  {
+    to: "/prepare/book",
+    label: "Household book",
+    icon: BookOpen,
+    keywords: "household book emergency book wizard questions printable pack family plan walk home pdf",
+    about:
+      "A few questions about your household, and a printable book made from the answers and from what Outpost holds: first minutes, people, help near home, first aid, water, journeys on foot, checklists.",
   },
   // Readiness (features/readiness), one entry each.
   {

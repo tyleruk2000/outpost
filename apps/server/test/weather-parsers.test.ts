@@ -207,7 +207,16 @@ describe("NASA POWER's climatology", () => {
     const { data } = parseNasaPower(fixture("nasa-power-climatology.json"));
     expect(data.period).toBe("25-year Meteorological and Solar Monthly & Annual Climatologies (January 2001 - December 2025)");
     expect(data.months).toHaveLength(12);
-    expect(data.months[0]).toEqual({ meanC: 4.14, precipMmPerDay: 2.1, precipMmMonth: 65.1, windMs: 5.78, sunKwhLevel: 0.8366 });
+    expect(data.months[0]).toEqual({
+      meanC: 4.14,
+      precipMmPerDay: 2.1,
+      precipMmMonth: 65.1,
+      windMs: 5.78,
+      windFromDeg: 239.3,
+      sunKwhLevel: 0.8366,
+    });
+    // The wind's average direction, from WD10M (added to the trimmed answer from one read for a point near Reading on 21 Nov 2026).
+    expect(data.windFromDeg).toBe(245.8);
     // February: a day's mean times 28.
     expect(data.months[1]!.precipMmMonth).toBe(53.8);
   });

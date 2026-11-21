@@ -33,11 +33,7 @@ export const bookSchema = z
   .object({
     householdName: text(L.short),
     people: z
-      .array(
-        z
-          .object({ memberId: itemId, needs: text(L.text), carries: text(L.text), childCard: z.boolean().default(false) })
-          .strict(),
-      )
+      .array(z.object({ memberId: itemId, needs: text(L.text), carries: text(L.text), childCard: z.boolean().default(false) }).strict())
       .max(L.people)
       .default([]),
     emergencyNumber: z
@@ -86,7 +82,10 @@ export const bookSchema = z
     receivers: z.array(z.string().min(1).max(40)).max(20).default([]),
     walkHoursPerDay: z.number().min(1).max(14).default(DEFAULT_BOOK_ANSWERS.walkHoursPerDay),
     paper: z.enum(["a4", "letter"]).default("a4"),
-    sections: z.array(z.enum(BOOK_SECTION_IDS)).max(BOOK_SECTION_IDS.length).default([...BOOK_SECTION_IDS]),
+    sections: z
+      .array(z.enum(BOOK_SECTION_IDS))
+      .max(BOOK_SECTION_IDS.length)
+      .default([...BOOK_SECTION_IDS]),
     notesPages: z.number().int().min(0).max(L.notesPages).default(DEFAULT_BOOK_ANSWERS.notesPages),
     medicalInFull: z.boolean().default(false),
     baseAnswersAt: z.number().int().nonnegative().nullable().optional(),
