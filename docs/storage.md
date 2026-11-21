@@ -1160,4 +1160,43 @@ ordinary folders.
 The `before-restore-<time>` folders can be deleted from **Storage → Manage and clean up
 → Leftovers** once you are sure a restore was right.
 
+## Taking everything out
+
+A backup can only be read by Outpost. **Settings → Take everything out** makes one
+`.zip` of your own things in formats other programs open, for leaving Outpost or
+reading them anywhere else:
+
+| Folder | What is in it | Format |
+| --- | --- | --- |
+| `notes/` | Every page, nested as in Notes, with attachments in `_attachments/` | Markdown |
+| `contacts/` | Every contact | vCard 4.0 |
+| `places/` | Map markers, routes and tracks | GPX and GeoJSON |
+| `supplies/` | The supplies list | CSV |
+| `barometer/` | The barometer log | CSV |
+| `radio-log/` | The contact log: contacts and stations heard as ADIF, every entry as CSV | ADIF 3.1.8 and CSV |
+| `plans/` | Each emergency plan | JSON |
+| `papers/` | Medical sheets and the keeping-in-touch plan; a locked sheet stays locked | JSON, OpenPGP |
+| `board/` | The household board, one text file per channel, with the files sent | Plain text |
+| `documents/` | Every document as the file that was added, a folder per category, and a list | The original files |
+
+`README.md` at the top says the same, when it was made, and what was left out. The
+CSV files are the ones Supplies and Weather read back in.
+
+Before anything is made, the section shows how much there is of each and roughly how
+large the zip will be. Documents on a location that is not connected cannot be
+included and are listed as left out: connect the location and export again. Pages in
+the bin, removed board messages, collections, maps and other downloads, and settings
+are not in it.
+
+Choose where it goes:
+
+- **Download to this device**: the zip is made on the server, then **Download** saves
+  it. Only the newest is kept on the server; making another, or **Remove from the
+  server**, deletes it.
+- **A storage location**: written to a folder named `outpost-exports` on it. Outpost
+  never deletes anything there.
+
+The zip is not encrypted. It holds your notes, contacts and documents as they are:
+keep it on storage you trust.
+
 See also [security.md](security.md) and [troubleshooting.md](troubleshooting.md).

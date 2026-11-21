@@ -20,6 +20,7 @@ import { registerDocuments } from "./documents/index.ts";
 import { registerDownloads } from "./downloads/index.ts";
 import { registerEmergencyPlans } from "./emergency-plans/index.ts";
 import { registerEncryption } from "./encryption/index.ts";
+import { registerExportAll } from "./export-all/index.ts";
 import { registerGames } from "./games/index.ts";
 import { registerHouseholdPapers } from "./household-papers/index.ts";
 import { registerHttps } from "./https/index.ts";
@@ -100,6 +101,8 @@ export const modules: ModuleRegister[] = [
   registerMesh,
   // The household's papers (medical sheets, keeping in touch, the binder), after the mesh link, on a line of their own.
   registerHouseholdPapers,
+  // Taking everything out (Settings), after every module whose things it gathers, on a line of its own.
+  registerExportAll,
   // Tools a language model may call (Chat, and /mcp), last: they read from every module above.
   registerTools,
 ];

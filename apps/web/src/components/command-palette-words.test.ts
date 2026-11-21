@@ -25,6 +25,8 @@ const lands: Array<[string, string | null]> = [
   // Settings, section by section.
   ["backup", "Settings: Backup"],
   ["restore", "Settings: Backup"],
+  ["export", "Settings: Take everything out"],
+  ["take out", "Settings: Take everything out"],
   ["theme", "Settings: Appearance"],
   ["text size", "Settings: Text size"],
   ["font size", "Settings: Text size"],

@@ -48,6 +48,8 @@ const invalidations: Record<string, string[][]> = {
   "portable.changed": [["portable"]],
   "merge.changed": [["merge"]],
   "backup.changed": [["backup"], ["database"]],
+  // An export of everything was started, finished, or its file removed (Settings, Take everything out).
+  "export-all.changed": [["export-all"]],
   // A check or a reclaim of the database finished, or its contents were worked out.
   "database.changed": [["database"]],
   "https.changed": [["https"]],

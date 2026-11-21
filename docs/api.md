@@ -1171,6 +1171,18 @@ protected one); anything else is `404`. The
 server publishes `backup.changed` on the event stream when the schedule, a backup or
 the list changes.
 
+## Taking everything out
+
+| Route | What it does |
+| --- | --- |
+| `GET /api/export-all/estimate` | `ExportEstimate`: for each part (`notes`, `contacts`, `places`, `supplies`, `barometer`, `radio-log`, `plans`, `papers`, `board`, `documents`) its label, format, count, rough size before compression and what is left out; and `totalBytes`. |
+| `GET /api/export-all` | `{ latest }`: the newest `export-all.run` job. Its `result` (`ExportResult`) has the file `name`, `sizeBytes`, `destination`, `locationName` and `folder` or `downloadable`, the count of each part and what was left out. |
+| `POST /api/export-all` | Body: `{ destination, include? }`, where `destination` is `{ kind: "download" }` or `{ kind: "location", locationId }`. Starts an `export-all.run` job on the `export` queue; `409` while one is under way. |
+| `GET /api/export-all/:id/download` | The zip of an export made for downloading. Refuses a request that another site caused the browser to make. |
+| `DELETE /api/export-all/:id/download` | Deletes that file from the server. A file written to a storage location is not touched. |
+
+The server publishes `export-all.changed` when an export starts or ends, or its file is removed.
+
 ## Managing and cleaning up
 
 Types: `packages/shared/src/manage.ts`. See

@@ -15,6 +15,7 @@ import { plural } from "@/lib/utils";
 import { AnswersSection } from "./answers-section";
 import { BackupSection } from "./backup-section";
 import { ClockSetting } from "./clock-setting";
+import { ExportSection } from "./export-section";
 import { HeightSetting } from "./height-setting";
 import { HttpsSection } from "./https-section";
 import { NumberSetting, SettingRow, SettingsSection, TextSetting } from "./parts";
@@ -322,6 +323,7 @@ export default function SettingsPage() {
           <MeshSettingsSection />
 
           <BackupSection />
+          <ExportSection />
 
           <HttpsSection settings={s} disabled={disabled} save={save} />
         </>
