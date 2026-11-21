@@ -219,6 +219,14 @@ export const GUIDES: Guide[] = [
     opens: { to: "/settings#mesh", label: "Open Mesh radio in Settings" },
   },
   {
+    slug: "heard-on-the-radio",
+    file: "heard-on-the-radio.md",
+    group: "using",
+    about: "APRS stations, aircraft and ships your own receivers hear, on the map and in a list. Listening only. Not yet tried with a real radio.",
+    keywords: "aprs ads-b aircraft ships ais dire wolf receiver sdr range",
+    opens: { to: "/radio/heard", label: "Open Heard on the radio" },
+  },
+  {
     slug: "encryption",
     file: "encryption.md",
     group: "using",

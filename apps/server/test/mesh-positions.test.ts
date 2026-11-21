@@ -61,6 +61,9 @@ describe("each radio's last position", () => {
       lon: -0.1246,
       altitude: 12,
       time: 1_763_380_000_000,
+      snr: null,
+      rssi: null,
+      hops: null,
     });
     expect(parseUplink(position(0, 0))).toEqual({ type: "other" });
     expect(parseUplink(position(1_000_000_000, 0))).toEqual({ type: "other" });
