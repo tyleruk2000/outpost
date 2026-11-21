@@ -212,6 +212,30 @@ export const GUIDES: Guide[] = [
     opens: { to: "/maps", label: "Open Maps" },
   },
   {
+    slug: "map-routes",
+    file: "map-routes.md",
+    group: "using",
+    about: "Drawing, recording, finding and importing routes and tracks on the map, and GPX, KML and GeoJSON files.",
+    keywords: "route track gpx kml geojson record walk draw find route overpass",
+    opens: { to: "/maps", label: "Open Maps" },
+  },
+  {
+    slug: "map-printing",
+    file: "map-printing.md",
+    group: "using",
+    about: "Printing part of the map as a one-page PDF at a true scale.",
+    keywords: "print pdf paper map scale a4 a3",
+    opens: { to: "/maps", label: "Open Maps" },
+  },
+  {
+    slug: "map-imagery",
+    file: "map-imagery.md",
+    group: "using",
+    about: "Downloading satellite imagery and aerial photographs to see under the map.",
+    keywords: "satellite imagery aerial photograph sentinel nasa",
+    opens: { to: "/maps", label: "Open Maps" },
+  },
+  {
     slug: "reference-layers",
     file: "reference-layers.md",
     group: "using",
@@ -506,6 +530,12 @@ export const GUIDES: Guide[] = [
     file: "development/answers-and-search.md",
     group: "developers",
     about: "How answers, Chat's tools, MCP, search by meaning and OCR work inside, and how to run the model evaluations.",
+  },
+  {
+    slug: "development-maps",
+    file: "development/maps.md",
+    group: "developers",
+    about: "How the map's parts work, its own map and route sources, and its constants.",
   },
 ];
 
