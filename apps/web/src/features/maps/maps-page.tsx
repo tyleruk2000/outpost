@@ -12,13 +12,14 @@ import {
   ACTIVE_DOWNLOAD_STATES,
   formatDecimal,
   haversineMeters,
+  homePlaceOf,
   type MarkerDto,
   type TrackDto,
   type TrackWithGeometryDto,
 } from "@outpost/shared";
 import { CircleAlert, FileUp, PanelLeftOpen } from "lucide-react";
 import { type DragEvent, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation } from "react-router";
+import { Link, useLocation } from "react-router";
 import { toast } from "sonner";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,10 @@ import { ConfirmDialog } from "@/components/ui/dialog";
 import { Skeleton, Tooltip } from "@/components/ui/misc";
 import { CentreLines } from "@/features/compass/magnetic-glance";
 import { useDownloads } from "@/features/downloads/use-downloads";
+import type { HeardTools } from "@/features/heard/card";
 import { HeardGroup } from "@/features/heard/heard";
+import { useHeardOnMap } from "@/features/heard/use-heard-on-map";
+import { useRangeOnMap } from "@/features/heard/use-range-on-map";
 import { useReferenceLayers } from "@/features/layers/use-reference-layers";
 import { useMeshOnMap } from "@/features/mesh/map";
 import { type SightStart, useRepeatersOnMap } from "@/features/repeaters/map/use-repeaters-on-map";
@@ -1002,6 +1006,44 @@ export default function MapsPage() {
   // Reference layers (features/layers): published data drawn when switched on in the Layers tab, opened by a press.
   // What the household's receivers heard, in its own group above the reference layers (features/heard).
   const heardMesh = useMeshOnMap({ engine });
+  // APRS, aircraft and ships (features/heard), and the one card for anything heard, with the map's tools from there.
+  const homeMarker = useMemo(() => homePlaceOf(markers.data ?? []), [markers.data]);
+  const heardTools = useMemo<HeardTools>(
+    () => ({
+      measure: (position) => {
+        setTool("measure");
+        setMeasurePoints([position]);
+        setDetent("peek");
+      },
+      sight: (position) => {
+        setSightStart([null, { position }]);
+        setTool("sight");
+      },
+      range: (position, name) => {
+        setDraft(null);
+        setMoving(null);
+        setPin(null);
+        pointRange.start({ position, name });
+        setDetent("peek");
+      },
+      sun: (position, name) => {
+        setDraft(null);
+        setMoving(null);
+        setPin({ title: name, detail: "Heard on the radio", position, sun: true });
+        setDetent("peek");
+      },
+    }),
+    [pointRange.start],
+  );
+  const heard = useHeardOnMap({
+    engine,
+    browsing: tool === "browse" && !moving && !draft,
+    meshRadios: heardMesh.radios,
+    home: homeMarker ? { lat: homeMarker.lat, lon: homeMarker.lon, name: homeMarker.name } : null,
+    tools: heardTools,
+  });
+  const heardHome = homeMarker ? { lat: homeMarker.lat, lon: homeMarker.lon, name: homeMarker.name } : null;
+  const rangeCard = useRangeOnMap({ engine, home: heardHome, tools: heardTools });
   const reference = useReferenceLayers({
     engine,
     browsing: tool === "browse" && !moving && !draft,
@@ -1018,14 +1060,14 @@ export default function MapsPage() {
    * times of its own). A repeater's estimated range on a phone with large text was drawn about 70 px across for
    * want of it.
    */
-  const cardOpen = Boolean(repeaters.card ?? reference.card);
+  const cardOpen = Boolean(heard.card ?? rangeCard ?? repeaters.card ?? reference.card);
   // On a phone, while the sheet is lowered and nothing else is in hand. On a wide screen there is room for it
   // always, except while the Sun tab itself is open beside the map and says the same and more.
   const sunLine = isDesktop ? !(panel.open && panel.tab === "sun") : detent === "peek" && tool === "browse" && !pin && !moving && !cardOpen;
   inHand.current = tool !== "browse" || Boolean(pin) || Boolean(moving);
   // A record opened from the Layers tab (found by name) comes up as a card over the map: on a phone the sheet is
   // lowered for it, as for a found place, or the card had a strip of map and showed none of an airport's frequencies.
-  const recordOpen = Boolean(reference.card);
+  const recordOpen = Boolean(reference.card ?? heard.card);
   useEffect(() => {
     if (recordOpen && !isDesktop) setDetent("peek");
   }, [recordOpen, isDesktop]);
@@ -1276,7 +1318,16 @@ export default function MapsPage() {
         ),
         layers: (
           <>
-            <HeardGroup sources={heardMesh.source ? [heardMesh.source] : []} />
+            <HeardGroup
+              sources={[...(heardMesh.source ? [heardMesh.source] : []), ...heard.sources]}
+              footer={
+                <p className="mt-1 text-small">
+                  <Link to="/radio/heard" className="text-primary underline underline-offset-2">
+                    Receivers, and the list of what was heard
+                  </Link>
+                </p>
+              }
+            />
             {reference.panel}
           </>
         ),
@@ -1333,6 +1384,8 @@ export default function MapsPage() {
     );
 
   const card =
+    heard.card ??
+    rangeCard ??
     repeaters.card ??
     reference.card ??
     (tool === "resection" ? (

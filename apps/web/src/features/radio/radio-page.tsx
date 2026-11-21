@@ -47,6 +47,12 @@ const TOOLS = [
       "Where to tune to hear the time, news, warnings, weather and other people when the internet is out: time signals, emergency and news broadcasters, weather, distress, amateur and licence-free channels, by country.",
   },
   {
+    to: "/radio/heard",
+    name: "Heard on the radio",
+    about:
+      "APRS stations, aircraft and ships your own receivers hear, on the map and in a list with distance and bearing from home, and how far a receiver hears. Listening only.",
+  },
+  {
     to: "/maps",
     name: "Line of sight, on the map",
     about: "Whether two points can see each other over the terrain installed, for VHF and above. Geometry, not a prediction of signal.",

@@ -8,6 +8,7 @@
  * top (`ScreensUnder`). `nav.test.ts` fails if a route in app.tsx is missing from here.
  */
 import {
+  Antenna,
   AudioWaveform,
   BookMarked,
   BookOpen,
@@ -152,6 +153,12 @@ export const knowledgeNav: NavItem[] = [
         icon: Radio,
         keywords: "frequency scanner shortwave broadcast channels listen pmr cb",
       },
+      {
+        to: "/radio/heard",
+        label: "Heard on the radio",
+        icon: Antenna,
+        keywords: "aprs ads-b adsb aircraft planes ships ais vessels receiver sdr dire wolf direwolf kiss tracker range",
+      },
     ],
   },
   // Two sections that are lists of screens, each drawn from its own registry (features/<section>/screens.ts).
@@ -246,6 +253,7 @@ export const settingsSections: SettingsSection[] = [
   { id: "maps", label: "Maps", inContents: true, keywords: "map source terrain tiles" },
   { id: "board", label: "Message board", inContents: true, keywords: "messages files keep" },
   { id: "mesh", label: "Mesh radio", inContents: true, keywords: "meshtastic meshcore lora mqtt radio link mesh off grid messages" },
+  { id: "receivers", label: "Receivers", inContents: true, keywords: "aprs aircraft ships ais ads-b kiss sbs nmea decoder dire wolf port" },
   { id: "backup", label: "Backup", inContents: true, keywords: "back up restore copy save everything password passphrase protect" },
   { id: "automatic-backups", label: "Automatic backups", inContents: true, keywords: "backup schedule every night nas" },
   { id: "https", label: "HTTPS", inContents: true, keywords: "secure certificate padlock not secure warning" },

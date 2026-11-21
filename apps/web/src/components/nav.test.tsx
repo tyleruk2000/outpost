@@ -144,6 +144,7 @@ describe("the sidebar", () => {
       "Repeaters",
       "Morse trainer",
       "Frequencies to listen to",
+      "Heard on the radio",
     ]);
     expect(within(under).getByRole("link", { name: "Communication plans" })).toHaveAttribute("aria-current", "page");
     expect(within(sidebar).getByRole("link", { name: "Radio" })).not.toHaveAttribute("aria-current");
@@ -177,6 +178,7 @@ describe("the sidebar", () => {
       "Repeaters",
       "Morse trainer",
       "Frequencies to listen to",
+      "Heard on the radio",
     ]);
     await user.click(within(menu).getByRole("menuitem", { name: "Repeaters" }));
     expect(screen.getByRole("status", { name: "Address" })).toHaveTextContent("/radio/repeaters");

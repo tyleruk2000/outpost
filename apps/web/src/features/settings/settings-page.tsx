@@ -7,6 +7,7 @@ import { ErrorState, JumpLinks, Page, PageHeader } from "@/components/page";
 import { Segmented, Skeleton, Switch } from "@/components/ui/misc";
 import { BoardSettingsSection } from "@/features/board/settings-section";
 import { GuidesLine } from "@/features/help/guides-line";
+import { ReceiversSettingsSection } from "@/features/heard/receivers-section";
 import { MeshSettingsSection } from "@/features/mesh/mesh-settings-section";
 import { useClockStyle } from "@/lib/clock";
 import { useSettings, useSystem, useUpdateSettings } from "@/lib/queries";
@@ -320,6 +321,7 @@ export default function SettingsPage() {
 
           <BoardSettingsSection settings={s} disabled={disabled} save={save} />
           <MeshSettingsSection />
+          <ReceiversSettingsSection />
 
           <BackupSection />
 

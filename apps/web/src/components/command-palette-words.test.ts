@@ -60,6 +60,8 @@ const lands: Array<[string, string | null]> = [
   ["family", "Contacts"],
   ["secret message", "Encryption"],
   ["morse", "Radio: Morse trainer"],
+  ["aprs", "Radio: Heard on the radio"],
+  ["aircraft", "Radio: Heard on the radio"],
   ["repeater", "Radio: Repeaters"],
   ["logbook", "Radio: Contact log"],
   ["recipe", "Tools: Cooking"],

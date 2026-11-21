@@ -71,6 +71,8 @@ const invalidations: Record<string, string[][]> = {
   "learning.changed": [["learning"], ["manage"]],
   // The mesh radio link's state changed: a radio connected or went away, or something was heard.
   "mesh.changed": [["mesh"]],
+  // A receiver connected or went away, or something was heard, pinned or cleared (Heard on the radio).
+  "heard.changed": [["heard"]],
   // The background count of what is on disk has finished.
   "manage.changed": [["manage"]],
 };

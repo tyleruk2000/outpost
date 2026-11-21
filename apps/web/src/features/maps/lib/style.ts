@@ -45,6 +45,8 @@ export interface MapTheme {
   contour: string;
   /** The kinds of effect the nuclear effects simulator draws, one hue each (tokens `--map-effect-*`). */
   effects: EffectHues;
+  /** What the household's receivers heard, one hue per source (the chart tokens `--chart-1` to `--chart-4`); features/heard. */
+  heard?: { mesh: string; aprs: string; adsb: string; ais: string };
 }
 
 export interface EffectHues {
