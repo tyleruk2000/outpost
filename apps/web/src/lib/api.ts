@@ -2,7 +2,10 @@
  * The one place the web app talks to the server. Every request is same-origin; the
  * `X-Outpost-Request` header is what the server's cross-site request check looks for.
  */
-import type { ApiErrorBody } from "@outpost/shared";
+import { type ApiErrorBody, LOCKED_CODE } from "@outpost/shared";
+
+/** Sent on `window` when the server refused a change because this device is not unlocked with the household PIN. */
+export const LOCKED_EVENT = "outpost:locked";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -41,6 +44,7 @@ async function parse<T>(response: Response): Promise<T> {
   if (response.ok) return (isJson ? await response.json() : await response.text()) as T;
   if (isJson) {
     const body = (await response.json()) as ApiErrorBody;
+    if (body.error.code === LOCKED_CODE && typeof window !== "undefined") window.dispatchEvent(new Event(LOCKED_EVENT));
     throw new ApiError(response.status, body.error.code, body.error.message, body.error.details);
   }
   throw new ApiError(response.status, "http", `The server answered with an error (${response.status}).`);

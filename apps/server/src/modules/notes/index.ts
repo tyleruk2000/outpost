@@ -33,6 +33,11 @@ const createBody = z.object({
   content: z.unknown().optional(),
   templateId: z.string().min(1).max(80).optional(),
   afterId: id.optional(),
+  /** The page's id as the device that wrote it made it: sent twice, it makes one page (see CreateNoteInput). */
+  clientId: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{8,64}$/, "That is not an id a phone gives.")
+    .optional(),
 });
 
 const updateBody = z.object({

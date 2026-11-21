@@ -3,6 +3,8 @@
  * the API contract: the server builds responses to these shapes and the web app reads
  * them. Nothing here may import Node or browser APIs.
  */
+// The household PIN, on a line of its own so that other additions merge cleanly.
+export * from "./access.ts";
 export * from "./answers.ts";
 // Audiobooks, on a line of their own so that other additions merge cleanly.
 export * from "./audiobooks.ts";

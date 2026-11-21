@@ -52,6 +52,12 @@ export interface CreateNoteInput {
   tags?: string[];
   /** Where an imported page came from; see `findByImportKey`. */
   importKey?: string;
+  /**
+   * The id the page is to have, made by the device that wrote it (a phone sending what it
+   * held while out of reach). Sent again, it finds the page made the first time and makes
+   * no second one, whatever has happened to that page since.
+   */
+  clientId?: string;
 }
 
 export interface UpdateNoteInput {
@@ -456,11 +462,13 @@ export function createNotesService(ctx: AppContext, attachments: AttachmentStore
     tags: string[];
     coverAttachmentId?: string | null;
     importKey?: string | null;
+    /** The id to give it; a new one when absent. */
+    id?: string;
   }
 
   /** Inserts a page with everything derived from its content. Call inside a transaction. */
   function insert(page: NewPage): string {
-    const id = newId();
+    const id = page.id ?? newId();
     const now = Date.now();
     db.insert(notes)
       .values({
@@ -494,7 +502,11 @@ export function createNotesService(ctx: AppContext, attachments: AttachmentStore
     return row;
   }
 
-  const create = sqlite.transaction((input: CreateNoteInput = {}): string => {
+  const create = sqlite.transaction((input: CreateNoteInput = {}): { id: string; made: boolean } => {
+    if (input.clientId) {
+      const known = db.select({ id: notes.id }).from(notes).where(eq(notes.id, input.clientId)).get();
+      if (known) return { id: known.id, made: false };
+    }
     const template = input.templateId ? templateSource(input.templateId) : undefined;
     const after = input.afterId ? db.select().from(notes).where(eq(notes.id, input.afterId)).get() : undefined;
     if (input.afterId && !after) throw badRequest("The page to put this one after no longer exists. Refresh and try again.");
@@ -502,7 +514,7 @@ export function createNotesService(ctx: AppContext, attachments: AttachmentStore
     const parentId = input.parentId !== undefined ? input.parentId : (after?.parentId ?? null);
     if (parentId) assertParent(parentId);
 
-    return insert({
+    const id = insert({
       parentId,
       position: place(parentId, null, input.afterId),
       title: cleanTitle(input.title ?? template?.title ?? ""),
@@ -510,7 +522,9 @@ export function createNotesService(ctx: AppContext, attachments: AttachmentStore
       doc: sanitizeDoc(input.content ?? template?.content ?? emptyDoc()),
       tags: cleanTags(input.tags ?? []),
       importKey: input.importKey,
+      id: input.clientId,
     });
+    return { id, made: true };
   });
 
   const update = sqlite.transaction((id: string, patch: UpdateNoteInput): { row: NoteRow; dirty: boolean } => {
@@ -869,8 +883,8 @@ export function createNotesService(ctx: AppContext, attachments: AttachmentStore
     content,
 
     create(input) {
-      const id = create.immediate(input);
-      changed(id);
+      const { id, made } = create.immediate(input);
+      if (made) changed(id);
       return toDetail(getRow(id));
     },
 
