@@ -162,7 +162,7 @@ formula, its source with the date read, and the range it holds for.
 
 | Feature | What it does |
 | --- | --- |
-| [Allotment and Steading](docs/games.md) | A household plot that grows in real British months, and a settlement of workshops and supply chains; nothing is lost while you are away. |
+| [Allotment and Steading](docs/games.md) | A household plot that grows in real British months, and a settlement of workshops, belts and power on a land you choose; nothing is lost while you are away. |
 | [Cards and puzzles](docs/games.md) | Solitaire, peg solitaire, Sudoku, Pairs and Snake. |
 | [Draughts and chess](docs/games.md) | Against the computer or two at one device; chess reads and writes PGN and FEN. |
 | [Skerry](docs/games.md) | Twelve puzzles solved at a pretend terminal that teach files, searching and pipes. |

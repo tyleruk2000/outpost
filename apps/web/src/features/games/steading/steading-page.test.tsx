@@ -1,9 +1,10 @@
 /**
- * The Steading's screen with the server stubbed: a skeleton shaped like the valley, the
- * rule that leaving it is safe, the first visit's invitation, a square chosen by its
- * spoken name, a woodcutter built and its route laid from the panel, what holds a
- * building back said in words, the ledger and the households' real figures, a refusal in
- * the server's words, and a kept settlement that cannot be read.
+ * The Steading's screen with the server stubbed: a skeleton shaped like the land, the
+ * rule that leaving it is safe, choosing the land and seed to found a settlement, the
+ * first visit's invitation, a square chosen by its spoken name, a woodcutter built and its
+ * route laid from the panel, a belt laid square by square, what holds a building back
+ * said in words, the ledger, the households' real figures and the power, a refusal in the
+ * server's words, and a kept settlement that cannot be read.
  */
 import { applyAction, newSteading, type SteadingAction, type SteadingResponse, type SteadingState } from "@outpost/shared/games/steading";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -62,12 +63,29 @@ function show() {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("the Steading screen", () => {
-  it("shows a skeleton, says leaving it is safe, and invites the first building", async () => {
-    serve(newSteading(NOW), { started: false });
+  it("asks for the land and the seed, and founds the settlement there", async () => {
+    const user = userEvent.setup();
+    const { posted } = serve(newSteading(NOW), { started: false });
     show();
     expect(screen.getByRole("heading", { level: 1, name: "Steading" })).toBeInTheDocument();
     expect(screen.getByText(LEAVE_IT_WORDS)).toBeInTheDocument();
     expect(screen.getByRole("status", { name: "Loading the settlement" })).toBeInTheDocument();
+    await user.click(await screen.findByRole("radio", { name: /Desert/ }));
+    expect(screen.getByText("Ouarzazate, Morocco")).toBeInTheDocument();
+    expect(screen.getByText(/only within 2 squares of water/)).toBeInTheDocument();
+    const seed = screen.getByRole("textbox", { name: "Seed" });
+    await user.clear(seed);
+    await user.type(seed, "Tarn Oak 417");
+    await user.click(screen.getByRole("button", { name: "Found the settlement" }));
+    expect(posted).toEqual([{ type: "found", land: "desert", seed: "tarn-oak-417" }]);
+    expect(await screen.findByText(/build a woodcutter, then send its logs to the storehouse/)).toBeInTheDocument();
+    expect(screen.getByText("tarn-oak-417")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Zoom in" })).toBeInTheDocument();
+  });
+
+  it("shows Ashgill whole, with every square named", async () => {
+    serve(newSteading(NOW));
+    show();
     expect(await screen.findByText(/build a woodcutter, then send its logs to the storehouse/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Column 5, row 8, Storehouse" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Column 4, row 9, House, a household of four" })).toBeInTheDocument();
@@ -77,7 +95,7 @@ describe("the Steading screen", () => {
 
   it("builds a woodcutter beside the woods, lays its route, and says what holds it back", async () => {
     const user = userEvent.setup();
-    const { posted } = serve(newSteading(NOW), { started: false });
+    const { posted } = serve(newSteading(NOW));
     show();
     await user.click(await screen.findByRole("button", { name: "Column 2, row 9, meadow" }));
     const panel = screen.getByRole("region", { name: "Meadow" });
@@ -96,6 +114,60 @@ describe("the Steading screen", () => {
     const routed = screen.getByRole("region", { name: "Woodcutter" });
     expect(await within(routed).findByText(/carries 12 of 12 a day/)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Ledger" })).toBeInTheDocument();
+  });
+
+  it("lays a belt square by square, from a woodcutter into the storehouse", async () => {
+    const user = userEvent.setup();
+    const state = applyAction(newSteading(NOW), { type: "build", kind: "woodcutter", x: 1, y: 6 }, NOW);
+    const { posted } = serve(state);
+    show();
+    await user.click(await screen.findByRole("button", { name: "Column 3, row 7, meadow" }));
+    await user.click(within(screen.getByRole("region", { name: "Meadow" })).getByRole("button", { name: "Lay a belt from here" }));
+    const tool = screen.getByRole("region", { name: "Laying a belt" });
+    expect(within(tool).getByText(/1 square, the last heading east/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Column 5, row 7, meadow" }));
+    await user.click(screen.getByRole("button", { name: "Column 5, row 8, Storehouse" }));
+    expect(within(tool).getByText(/3 squares, the last heading south\. From the woodcutter into the storehouse\./)).toBeInTheDocument();
+    expect(within(tool).getByText("Costs 3 planks.")).toBeInTheDocument();
+    await user.click(within(tool).getByRole("button", { name: "Lay 3 squares" }));
+    expect(posted.at(-1)).toEqual({
+      type: "belts",
+      tier: "roller",
+      squares: [
+        { x: 2, y: 6, dir: "e" },
+        { x: 3, y: 6, dir: "e" },
+        { x: 4, y: 6, dir: "s" },
+      ],
+    });
+    expect(await screen.findByText("Laid 3 squares of roller belt.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Column 4, row 7, roller belt heading east, carrying 24 a day" })).toBeInTheDocument();
+  });
+
+  it("shows the power: what is made, the batteries in amp-hours and watt-hours, and the tank", async () => {
+    let state = newSteading(Date.UTC(2027, 5, 1));
+    state = { ...state, stock: Object.fromEntries(Object.keys(state.stock).map((g) => [g, 300])) as typeof state.stock };
+    for (const [x, y] of [
+      [6, 8],
+      [7, 8],
+      [6, 9],
+      [7, 9],
+    ] as const)
+      state = {
+        ...state,
+        nextId: state.nextId + 1,
+        buildings: [...state.buildings, { id: state.nextId, kind: "house", x, y, paused: false, yard: {}, occupied: true }],
+      };
+    state = applyAction(state, { type: "build", kind: "solar", x: 6, y: 6 }, state.clock);
+    state = applyAction(state, { type: "build", kind: "lithiumbank", x: 7, y: 6 }, state.clock);
+    state = applyAction(state, { type: "build", kind: "generator", x: 7, y: 7 }, state.clock);
+    serve(state);
+    show();
+    const section = (await screen.findByRole("heading", { name: "Power" })).closest("section") as HTMLElement;
+    expect(within(section).getByText(/^Daylight in Jun/)).toBeInTheDocument();
+    expect(within(section).getByText(/280 Ah in all, 14\.3 kWh, of which 11\.5 kWh is used/)).toBeInTheDocument();
+    expect(within(section).getByText(/16 cells of 3\.2 V in series, 51\.2 V and 280 Ah/)).toBeInTheDocument();
+    expect(within(section).getByText(/0 of 200 litres/)).toBeInTheDocument();
+    expect(within(section).getByText("Keswick, Cumbria, England", { exact: false })).toBeInTheDocument();
   });
 
   it("says a bakery with no flour is waiting for it", async () => {

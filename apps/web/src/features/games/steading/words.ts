@@ -4,12 +4,14 @@
  */
 import {
   type Amounts,
+  BELTS,
   type Building,
   type BuildingFlow,
   type Flows,
   GOODS,
   type GoodId,
   KINDS,
+  LANDS,
   type Limit,
   MODES,
   type SteadingAction,
@@ -52,7 +54,11 @@ export const placeName = (b: Building) => `${lowerName(b)} at ${b.x + 1}, ${b.y 
 export function limitWords(b: Building, flow: BuildingFlow | undefined, limit: Limit = flow?.limit ?? { kind: "full" }): string {
   switch (limit.kind) {
     case "full":
-      return flow && flow.pace > 1.01 ? "Working at full pace, twice as fast with power from the wheel." : "Working at full pace.";
+      return flow && flow.pace > 1.01
+        ? flow.pace > 1.99
+          ? "Working at full pace, twice as fast with power from the line."
+          : "Working at full pace, and faster with what power the line can give."
+        : "Working at full pace.";
     case "paused":
       return "Resting. It needs no one while it rests.";
     case "no-contract":
@@ -116,11 +122,31 @@ export function waitWords(wants: (keyof typeof WAIT_WORDS)[]): string {
 }
 
 /** The spoken name of a square: where it is, its ground, and what stands on it. */
+export function groundName(state: SteadingState, x: number, y: number): string {
+  const ground = terrainAt(state.map, x, y) ?? "meadow";
+  return ground === "meadow" ? LANDS[state.map.land].ground : TERRAIN_NAMES[ground];
+}
+
+const WAY = { n: "north", e: "east", s: "south", w: "west" } as const;
+
+/** "a roller belt heading east, carrying 24 a day" */
+export function beltWords(state: SteadingState, flows: Flows, x: number, y: number): string | null {
+  const belt = state.belts.find((b) => b.x === x && b.y === y);
+  if (!belt) return null;
+  const name = BELTS[belt.tier].name.toLowerCase();
+  const way = belt.dir === "x" ? `${name} junction` : `${name} heading ${WAY[belt.dir]}`;
+  const carries = flows.beltSquares[`${x},${y}`] ?? 0;
+  return carries > 0 ? `${way}, carrying ${amount(carries)} a day` : `${way}, carrying nothing`;
+}
+
 export function squareName(state: SteadingState, flows: Flows, x: number, y: number): string {
   const where = `Column ${x + 1}, row ${y + 1}`;
   const b = state.buildings.find((c) => c.x === x && c.y === y);
-  const ground = TERRAIN_NAMES[terrainAt(x, y) ?? "meadow"];
-  if (!b) return `${where}, ${ground}`;
+  const ground = groundName(state, x, y);
+  if (!b) {
+    const belt = beltWords(state, flows, x, y);
+    return belt ? `${where}, ${belt}` : `${where}, ${ground}`;
+  }
   const flow = flows.buildings[b.id];
   const state_ = b.kind === "house" ? houseShort(b, flows) : flow && KINDS[b.kind].stage < 9 ? limitShort(flow.limit) : null;
   return [where, kindName(b), state_].filter(Boolean).join(", ");
@@ -159,5 +185,13 @@ export function doneWords(action: SteadingAction, before: SteadingState, after: 
       return `Sold ${formatNumber(action.count)} ${GOODS[action.good].name} to the barge.`;
     case "buy":
       return `Bought ${formatNumber(action.count)} ${GOODS[action.good].name} from the barge.`;
+    case "found":
+      return `Founded a settlement: ${LANDS[action.land].name.toLowerCase()}, seed ${action.seed}.`;
+    case "belts":
+      return `Laid ${action.squares.length} ${action.squares.length === 1 ? "square" : "squares"} of ${BELTS[action.tier].name.toLowerCase()}.`;
+    case "removeBelts":
+      return "Took up the belt; what it cost is back in the store.";
+    case "fillTank":
+      return "Filled the generator's tank from the store.";
   }
 }
