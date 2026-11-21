@@ -301,7 +301,8 @@ export function useRepeaterRange({
         <p className="tabular text-small text-ink-muted">{short}</p>
       </section>
     ) : null;
-  const cardClass = placed && on ? "md:max-h-[min(40rem,80vh)] md:overflow-y-auto md:overscroll-contain" : undefined;
+  // At most three quarters of a wide screen: the outline is fitted into the map beside it, and needs the rest.
+  const cardClass = placed && on ? "md:max-h-[min(40rem,75vh)] md:overflow-y-auto md:overscroll-contain" : undefined;
   return { control, foldButton, folded: foldedCard, cardClass, show };
 }
 

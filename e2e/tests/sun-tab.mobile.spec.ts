@@ -8,7 +8,7 @@
  * Naval Observatory's for Greenwich (apps/web/src/features/maps/lib/sun.test.ts).
  */
 import type { Locator, Page } from "@playwright/test";
-import { api, expect, test, watchForErrors } from "./fixtures";
+import { agreeClocks, api, expect, test, watchForErrors } from "./fixtures";
 
 test.use({ timezoneId: "Europe/London" });
 
@@ -65,6 +65,7 @@ const time = (page: Page, label: string) =>
 test.describe("sun times on a phone, with no saved places", () => {
   test.beforeEach(async ({ page }) => {
     await page.clock.setFixedTime(new Date("2026-06-21T09:00:00Z"));
+    await agreeClocks(page, new Date("2026-06-21T09:00:00Z"));
     // The premise of every test here. Other tests leave no places behind; one that failed part-way may have.
     for (const marker of (await api(page, "GET", "/api/maps/markers")).markers) await api(page, "DELETE", `/api/maps/markers/${marker.id}`);
     expect((await api(page, "GET", "/api/maps/markers")).markers).toEqual([]);
@@ -162,6 +163,7 @@ test.describe("sun times on a phone, with no saved places", () => {
 
     // The clock is held still here, and the map tells one long press from the next by the time: move it on.
     await page.clock.setFixedTime(new Date("2026-06-21T09:00:05Z"));
+    await agreeClocks(page, new Date("2026-06-21T09:00:05Z"));
     await hold(page, at, 900);
     await expect(menu).toBeVisible();
     await menu.getByRole("menuitem", { name: "Sun times here" }).tap();
@@ -299,6 +301,7 @@ test.describe("sun times for a saved place, on a phone", () => {
   test("are on the screen as soon as the place is opened, and opening them keeps Save in reach", async ({ page }) => {
     const errors = watchForErrors(page);
     await page.clock.setFixedTime(new Date("2026-06-21T09:00:00Z"));
+    await agreeClocks(page, new Date("2026-06-21T09:00:00Z"));
     const { marker } = await api(page, "POST", "/api/maps/markers", { name: "Greenwich meridian", lat: 51.48, lon: 0 });
     id = marker.id;
 

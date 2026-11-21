@@ -233,7 +233,7 @@ describeWithVoacapData("the engine's files", () => {
     const manifest = coefficientsManifest();
     // An app folder from before: engines/voacap/data/itshfbc with the coefficients in it.
     const oldApp = path.join(scratch, "old-app/engines/voacap/data/itshfbc");
-    fs.cpSync(VOACAP_CACHE, oldApp, { recursive: true });
+    fs.cpSync(VOACAP_CACHE, oldApp, { recursive: true, dereference: true });
     const dataDir = path.join(scratch, "adopting");
     const adopted = adoptCoefficients(dataDir, manifest, [path.join(scratch, "nowhere"), oldApp]);
     expect(adopted).toMatchObject({ how: "adopted", from: oldApp, sha256: manifest.sha256 });
@@ -246,7 +246,7 @@ describeWithVoacapData("the engine's files", () => {
   it("takes over nothing that does not match", () => {
     const manifest = coefficientsManifest();
     const oldApp = path.join(scratch, "altered-app/itshfbc");
-    fs.cpSync(VOACAP_CACHE, oldApp, { recursive: true });
+    fs.cpSync(VOACAP_CACHE, oldApp, { recursive: true, dereference: true });
     fs.writeFileSync(path.join(oldApp, "coeffs/coeff03w.bin"), "altered");
     const dataDir = path.join(scratch, "not-adopting");
     expect(adoptCoefficients(dataDir, manifest, [oldApp])).toBeNull();

@@ -31,7 +31,7 @@ test("a radio range from a long press on a phone: the menu, the card in words, a
     await menu.getByRole("menuitem", { name: "Estimated radio range from here" }).tap();
 
     const card = page.locator(".outpost-map-card").filter({ has: page.getByRole("heading", { name: "Estimated radio range" }) });
-    await expect(card.getByText(/^Ground in sight as far as about .* on most bearings/)).toBeVisible({ timeout: 20_000 });
+    await expect(card.getByText(/^In sight: .* of the ground within 10 km/)).toBeVisible({ timeout: 20_000 });
     // Short until asked; what to change is then in reach, a finger's size.
     await card.getByRole("button", { name: /^Heights and details/ }).tap();
     for (const control of [card.getByLabel("Your aerial"), card.getByRole("radio", { name: "Car" })]) {

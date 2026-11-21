@@ -139,7 +139,8 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
       if (height > 0) root.style.setProperty("--mobile-nav-height", `${height}px`);
       else root.style.removeProperty("--mobile-nav-height");
     });
-    observer.observe(element);
+    // The border box: the inset for a home indicator is padding, which the content box does not see.
+    observer.observe(element, { box: "border-box" });
     return () => {
       observer.disconnect();
       root.style.removeProperty("--mobile-nav-height");

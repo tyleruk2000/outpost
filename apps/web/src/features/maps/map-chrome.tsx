@@ -465,7 +465,7 @@ export function MapToolColumn({ tools }: { tools: MapTool[] }) {
   }, []);
   const shown = shownInColumn(tools, room);
   return (
-    <div ref={area} className="flex min-h-[56px] flex-1 flex-col items-end gap-[8px] overflow-hidden">
+    <div ref={area} className="flex min-h-[56px] flex-1 flex-col items-end gap-[8px]">
       {shown.length > 0 ? (
         <ControlGroup className="pointer-events-auto shrink-0">
           {shown.map((tool) => (
@@ -473,7 +473,7 @@ export function MapToolColumn({ tools }: { tools: MapTool[] }) {
           ))}
         </ControlGroup>
       ) : null}
-      <div ref={more} className="pointer-events-auto shrink-0">
+      <div ref={more} className="shrink-0">
         <MapMenu tools={tools} />
       </div>
     </div>
@@ -539,7 +539,7 @@ export function MapMenu({ tools }: { tools: MapTool[] }) {
           aria-label="More map tools"
           className={cn(
             mapSurface,
-            "flex min-h-[52px] min-w-[44px] flex-col items-center justify-center gap-0.5 px-1 py-1 text-micro font-semibold text-ink",
+            "pointer-events-auto flex min-h-[52px] min-w-[44px] flex-col items-center justify-center gap-0.5 px-1 py-1 text-micro font-semibold text-ink",
             "hover:bg-surface-strong focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus data-[state=open]:bg-primary-soft",
           )}
         >

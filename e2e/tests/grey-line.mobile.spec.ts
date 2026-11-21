@@ -8,7 +8,7 @@
  * before the end of astronomical twilight; the device keeps London time.
  */
 import type { Locator, Page } from "@playwright/test";
-import { expect, test, watchForErrors } from "./fixtures";
+import { agreeClocks, expect, test, watchForErrors } from "./fixtures";
 import { centreOf, lightnessAt, mapReady, settled } from "./grey-line";
 
 test.use({ timezoneId: "Europe/London", viewport: { width: 390, height: 844 } });
@@ -37,6 +37,7 @@ const apart = (a: { x: number; y: number; width: number; height: number }, b: { 
 test("the grey line on a phone: in reach, clear of the rest, and drawn", async ({ page }) => {
   const errors = watchForErrors(page);
   await page.clock.setFixedTime(new Date("2026-12-21T17:00:00Z"));
+  await agreeClocks(page, new Date("2026-12-21T17:00:00Z"));
   await page.goto(BRITAIN);
   await mapReady(page);
   const dismiss = page.getByRole("button", { name: "Dismiss" });

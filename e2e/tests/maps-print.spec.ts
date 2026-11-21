@@ -249,7 +249,7 @@ test.describe("printing the map", () => {
       .join("\n")
       .replace(/\s+/g, " ");
     expect(text).toContain("What this map shows: Round the lake.");
-    expect(text).toMatch(/An area of 4\.7 × 6\.3 km centred on 53\.07\d\d°N 4\.07\d\d°W \(Maidenhead locator IO73XB\)/);
+    expect(text).toMatch(/An area of 4\.7 × 6\.3 km centred on 53\.07\d\d°N 4\.07\d\d°W \(Maidenhead locator IO73XB[,)]/);
     expect(text).toContain("Scale 1:25,000 on A4 portrait.");
     expect(text).toContain("Your saved places on it: Boathouse.");
     // The names are the ones drawn on this page: the hill, the road and the lake. The three villages of the test map lie off it.

@@ -160,10 +160,10 @@ export function MapFurniture({
       </div>
       {covered ? null : docked ? (
         <>
-          <div className="flex min-h-0 flex-1 flex-col">{tools}</div>
+          <div className="flex min-h-[56px] flex-1 flex-col">{tools}</div>
           {/* The foot of the map, edge to edge: the credits, then the card in the sheet's place. Never above the
               centre: what does not fit scrolls inside the card, under its title and close button. */}
-          <div className="-mx-[12px] flex min-h-0 shrink-0 flex-col gap-[6px]" style={{ maxHeight: dockRoom }}>
+          <div className="-mx-[12px] flex min-h-0 shrink flex-col gap-[6px]" style={{ maxHeight: dockRoom }}>
             <div className="shrink-0 px-[12px]">{footer}</div>
             <div className="outpost-furniture-dock flex min-h-0 flex-col">{cards}</div>
           </div>

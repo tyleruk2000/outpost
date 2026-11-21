@@ -13,7 +13,7 @@
  * not tried on.
  */
 import type { Locator, Page } from "@playwright/test";
-import { api, expect, test, watchForErrors } from "./fixtures";
+import { agreeClocks, api, expect, test, watchForErrors } from "./fixtures";
 
 test.use({ timezoneId: "Europe/London" });
 
@@ -100,6 +100,7 @@ const TABS = [/^Places/, /^Routes/, "Offline maps", "Sun"] as const;
 test.describe("sun times on a phone", () => {
   test.beforeEach(async ({ page }) => {
     await page.clock.setFixedTime(new Date("2026-06-21T09:00:00Z"));
+    await agreeClocks(page, new Date("2026-06-21T09:00:00Z"));
     for (const marker of (await api(page, "GET", "/api/maps/markers")).markers) await api(page, "DELETE", `/api/maps/markers/${marker.id}`);
   });
 

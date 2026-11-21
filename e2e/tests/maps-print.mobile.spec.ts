@@ -80,9 +80,17 @@ test.describe("printing the map from a phone", () => {
     await page.goto(`/maps?lat=${CENTRE.lat}&lon=${CENTRE.lon}&z=12.5`);
     await page.locator('.outpost-map[data-map-idle="true"]').waitFor({ timeout: 20_000 });
 
+    // Its icon where the column has room for it, otherwise under "More", by name.
     const control = page.getByRole("button", { name: "Print or save as PDF" });
-    expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-    await control.tap();
+    if ((await control.count()) > 0) {
+      expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+      await control.tap();
+    } else {
+      const more = page.getByRole("button", { name: "More map tools" });
+      expect((await more.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+      await more.tap();
+      await page.getByRole("menuitemcheckbox", { name: "Print or save as PDF" }).tap();
+    }
     await expect(page.getByRole("heading", { name: "Print or save as PDF" })).toBeVisible();
     await page.getByRole("combobox", { name: "Scale" }).tap();
     await page.getByRole("option", { name: /1:25,000/ }).tap();

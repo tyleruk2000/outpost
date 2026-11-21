@@ -490,6 +490,12 @@ export const GUIDES: Guide[] = [
   { slug: "server-modules", file: "development/server-modules.md", group: "developers", about: "Writing a module of the server." },
   { slug: "web-screens", file: "development/web-screens.md", group: "developers", about: "Building a screen of the web app." },
   {
+    slug: "maps-on-a-phone",
+    file: "development/maps-on-a-phone.md",
+    group: "developers",
+    about: "What a study of the Maps screen on an iPhone found, and what was done about it.",
+  },
+  {
     slug: "releases",
     file: "development/releases.md",
     group: "developers",
