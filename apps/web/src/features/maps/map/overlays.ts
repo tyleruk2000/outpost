@@ -5,6 +5,7 @@
  * MapLibre.
  */
 import { type Bbox, haversineMeters, type InstalledRegion, type MarkerDto, type TrackWithGeometryDto } from "@outpost/shared";
+import { heardLayers } from "@/features/heard/heard";
 import { floodZoneLayers, populationLayers, referenceLayers } from "@/features/layers/symbols";
 import { nuclearLayers } from "@/features/nuclear/layers";
 import { propagationLayers } from "@/features/propagation/map/layers";
@@ -36,6 +37,7 @@ export const OVERLAY_SOURCES = [
   "o-range",
   "o-repeaters",
   "o-reference",
+  "o-heard",
   "o-sight",
   "o-draw",
   "o-recording",
@@ -225,6 +227,8 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
     ...repeaterLayers(theme),
     // Reference layers (features/layers): publicly mapped places, boundaries and historical records, under saved places.
     ...referenceLayers(theme),
+    // What the household's receivers heard (features/heard): above the reference layers, under saved places.
+    ...heardLayers(theme),
     // The path of a line-of-sight check.
     ...sightLayers(theme),
     // A track being recorded; see recording/overlay.ts.

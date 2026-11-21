@@ -1343,6 +1343,8 @@ refused with `400`. A message's `meta` carries `MeshMeta` (`node`, `snr`, `hops`
 | `POST /api/mesh/broker/test` | Body `MeshBrokerTestInput` (`host, port, userName, password?, rootTopic, tls, ca?`; no password means the saved one). Signs in, subscribes, sends a check message under the root topic, listens up to 8 s. `MeshBrokerTestResult`: `ok`, `steps` `[{ step, ok, words }]`, `heard`. `403` as above. |
 | `POST /api/mesh/broker/dynsec` | Asks the saved household broker's dynamic security plugin `listClients`. `MeshDynsecResult` `{ state: on \| not-allowed \| off \| failed, words, clients }`. `403` as above. |
 | `POST /api/mesh/broker/radio-account` | Body `{ userName, password }` (12 characters or more). Creates the role `outpost-radio-<root>` (publish, receive and subscribe on `<root>/#`) and an account with it. `MeshDynsecResult`. `403` as above. |
+| `GET /api/mesh/positions` | `MeshPositionsResponse`: `radios` `[{ id, transport, shortName, longName, onMap, at, position }]`, newest first; `position` is null unless the radio is switched on for the map. |
+| `PUT /api/mesh/radios/:id/map` | Body `{ onMap }`. Switches one radio on or off for the map, for every device. `404` for a radio not heard. Answers `MeshPositionsResponse`. |
 | `POST /api/mesh/test` | Body `{ channel, author }`: posts "Test message from Outpost" on a carried radio channel, as `POST /api/board/messages` would. `{ message }`. |
 
 ## Everything else

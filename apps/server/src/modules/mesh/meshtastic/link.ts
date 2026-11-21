@@ -24,6 +24,7 @@ import {
   MESH_CHANNEL_NAME_MAX,
   type MeshLinkState,
   type MeshMeta,
+  type MeshPosition,
   type MeshtasticStatus,
   meshChannelId,
   radioText,
@@ -53,6 +54,10 @@ export interface MeshtasticLink {
   send(message: BoardMessage): Promise<void>;
   /** The board was emptied: the radios' names go too. */
   forgetNodes(): void;
+  /** Every radio that has reported a position, with it only where the radio is switched on for the map. */
+  positions(): MeshPosition[];
+  /** Switches one radio on or off for the map; false when no such radio has been heard. */
+  setOnMap(id: string, on: boolean): boolean;
 }
 
 export function createMeshtasticLink(ctx: AppContext, store: MeshStore, secrets: MeshSecrets, changed: () => void): MeshtasticLink {
@@ -148,6 +153,28 @@ export function createMeshtasticLink(ctx: AppContext, store: MeshStore, secrets:
       changed();
       return;
     }
+    if (uplink.type === "position") {
+      // Kept under the radio that sent it, as a name is; shown only once a person switches that radio on for the map.
+      const id = uplink.from;
+      const known = heard.nodes[id];
+      const at = Math.min(uplink.time ?? Date.now(), Date.now());
+      heard = {
+        ...heard,
+        nodes: {
+          ...heard.nodes,
+          [id]: {
+            shortName: known?.shortName ?? null,
+            longName: known?.longName ?? null,
+            onMap: known?.onMap ?? false,
+            heardAt: Date.now(),
+            position: { lat: uplink.lat, lon: uplink.lon, altitude: uplink.altitude, at },
+          },
+        },
+      };
+      store.saveHeard(heard);
+      changed();
+      return;
+    }
     if (uplink.type === "nodeinfo") {
       // Kept under the radio that sent it: a nodeinfo naming another radio's id would rename that radio.
       const id = uplink.from;
@@ -155,7 +182,10 @@ export function createMeshtasticLink(ctx: AppContext, store: MeshStore, secrets:
       if (!known || known.longName !== uplink.longName || known.shortName !== uplink.shortName) {
         heard = {
           ...heard,
-          nodes: { ...heard.nodes, [id]: { longName: uplink.longName, shortName: uplink.shortName, heardAt: Date.now() } },
+          nodes: {
+            ...heard.nodes,
+            [id]: { position: null, onMap: false, ...known, longName: uplink.longName, shortName: uplink.shortName, heardAt: Date.now() },
+          },
         };
         store.saveHeard(heard);
       }
@@ -386,6 +416,32 @@ export function createMeshtasticLink(ctx: AppContext, store: MeshStore, secrets:
       } catch (error) {
         fail(messageOf(error));
       }
+    },
+
+    positions() {
+      return Object.entries(heard.nodes)
+        .filter(([, node]) => node.position)
+        .map(([id, node]) => ({
+          id,
+          transport: "meshtastic" as const,
+          shortName: node.shortName,
+          longName: node.longName,
+          onMap: node.onMap,
+          at: node.position!.at,
+          // Where someone is: never sent while the radio is not switched on.
+          position: node.onMap ? { lat: node.position!.lat, lon: node.position!.lon, altitude: node.position!.altitude } : null,
+        }))
+        .sort((a, b) => b.at - a.at);
+    },
+
+    setOnMap(id, on) {
+      const node = heard.nodes[id];
+      if (!node) return false;
+      if (node.onMap === on) return true;
+      heard = { ...heard, nodes: { ...heard.nodes, [id]: { ...node, onMap: on } } };
+      store.saveHeard(heard);
+      changed();
+      return true;
     },
 
     forgetNodes() {

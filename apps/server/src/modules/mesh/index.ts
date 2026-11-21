@@ -15,6 +15,7 @@ import {
   CHANNEL_PATTERN,
   MESH_DEFAULT_PORTS,
   type MeshDevicesResponse,
+  type MeshPositionsResponse,
   type MeshResponse,
   type MeshRight,
   meshTransportOf,
@@ -22,7 +23,7 @@ import {
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
-import { badRequest } from "../../core/errors.ts";
+import { badRequest, notFound } from "../../core/errors.ts";
 import { settingRefusal, settingRight } from "../../core/setting-right.ts";
 import { listDevices, platformOf } from "./serial.ts";
 import { createMeshService } from "./service.ts";
@@ -132,6 +133,20 @@ export async function registerMesh(app: FastifyInstance, ctx: AppContext): Promi
   app.post("/api/mesh/broker/radio-account", async (request) => {
     mustBeLocal(request);
     return service.addRadioAccount(radioAccountBody.parse(request.body));
+  });
+
+  // Where the radios are (outpost-xeu3). Every device may see and switch them, as every device may read the board
+  // the radios write on; a radio's place is sent only once it is switched on.
+  app.get("/api/mesh/positions", async (): Promise<MeshPositionsResponse> => ({ radios: service.meshtastic.positions() }));
+
+  app.put<{ Params: { id: string } }>("/api/mesh/radios/:id/map", async (request): Promise<MeshPositionsResponse> => {
+    const id = z
+      .string()
+      .regex(/^![0-9a-f]{1,8}$/)
+      .parse(request.params.id);
+    const { onMap } = z.object({ onMap: z.boolean() }).strict().parse(request.body);
+    if (!service.meshtastic.setOnMap(id, onMap)) throw notFound("A radio with that id");
+    return { radios: service.meshtastic.positions() };
   });
 
   /** A short test message on a radio channel: posted on the board like any other, so it is seen, refused or sent the same way. */

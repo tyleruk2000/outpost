@@ -282,6 +282,25 @@ restarted), Outpost tries again with a growing wait while it is still set up.
 - Radio messages do not raise the app's toast, and do not count in the "new on the board"
   line on Home.
 
+## Where the radios are, on the map
+
+A Meshtastic radio with a fix sends its position from time to time (by default every 15
+minutes, more often as it moves: Meshtastic's "Position" settings). Outpost keeps the
+last one each radio sent and shows it on the map, under **Layers → Heard on the radio →
+Mesh radios**, with the radio's name and how long ago it reported.
+
+Both switches start off. **Mesh radios** draws the marks on this device. Each radio has
+its own switch in the list under it, the same for every device on the network: until a
+radio is switched on, its place is not sent to any browser, since it shows where
+someone is. Marks fade in three stated steps (the last hour, 1 to 6 hours, longer), and
+the label always says the age in words.
+
+The positions are kept with the radios' names, and go with them when the board is
+emptied or everything is erased. MeshCore radios' positions are not shown yet. Not tried
+with a real radio: Meshtastic documents `latitude_i` and `longitude_i` (degrees times
+10 million) for the position it takes to send, and Outpost reads a position it hears the
+same way.
+
 ## What is kept, and where
 
 No new table: radio messages are the board's (`board_messages`, with `source`

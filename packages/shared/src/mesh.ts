@@ -279,6 +279,33 @@ export interface MeshMeta {
   delivery?: { state: "handed" | "broker" | "acknowledged" | "failed"; at: number; detail?: string };
 }
 
+// ── Where the radios are: each one's last reported position ──
+
+/**
+ * A radio that has reported where it is. Off the map until a person switches it on, since
+ * it shows where someone is; `position` is null while it is off, so the place is never sent.
+ */
+export interface MeshPosition {
+  /** "!a1b2c3d4". */
+  id: string;
+  transport: MeshTransportName;
+  shortName: string | null;
+  longName: string | null;
+  onMap: boolean;
+  /** When the radio took the fix, or when Outpost heard it if the radio did not say. */
+  at: number;
+  position: { lat: number; lon: number; altitude: number | null } | null;
+}
+
+export interface MeshPositionsResponse {
+  radios: MeshPosition[];
+}
+
+/** Body of `PUT /api/mesh/radios/:id/map`. */
+export interface MeshOnMapInput {
+  onMap: boolean;
+}
+
 // ── The household's own broker, looked after from Settings ──
 
 /** One place "Find" looked for a broker, and what answered. */
