@@ -55,7 +55,7 @@ function RollCallRow({ line, now }: { line: RollCallLine; now: number }) {
       <div className="min-w-0 flex-1">
         <p className={cn("break-words", help ? "text-danger" : "text-ink")}>
           <span className="font-semibold">{line.name}</span>
-          {line.answered ? null : <span className="text-ink-muted"> · not checked in since</span>}
+          {line.answered ? null : <span className="text-ink-muted"> · no check-in since then</span>}
         </p>
         <p className={cn("break-words text-small", line.latest ? "text-ink-muted" : "text-ink-faint")}>{rollCallWords(line, now)}</p>
       </div>

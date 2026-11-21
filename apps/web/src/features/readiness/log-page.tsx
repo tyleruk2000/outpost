@@ -354,7 +354,7 @@ export default function LogPage() {
       </Section>
 
       {lines.length > 0 ? (
-        <Section title="Keep it" description="The log as it is shown above, newest last.">
+        <Section title="Keep it" description="What is shown above, oldest first.">
           <PdfActions pdf={pdfOf(printed)} lead="save" confirm={libraryQuestion(false)}>
             <Button onClick={writeToNotes} loading={toNotes.isPending}>
               <NotebookPen aria-hidden /> Write to a page of Notes

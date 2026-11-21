@@ -1370,7 +1370,7 @@ publish `readiness.changed`.
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/event-log` | `EventLogResponse`: `lines` oldest first (at most 500), `entries` (all lines kept), `planInUse`. Query `from` (milliseconds) and `others=1`, which adds the board's check-ins and the steps ticked in plans (`kind: "checkin"`, `"tick"`) from `from`, or from the first entry. |
+| `GET /api/event-log` | `EventLogResponse`: `lines` oldest first (at most 500), `entries` (all lines kept), `planInUse`. Query `from` (milliseconds) and `others=1`, which adds the board's check-ins and the steps ticked in plans (`kind: "checkin"`, `"tick"`) from `from`, or else from the first entry or a week back, whichever is earlier. |
 | `POST /api/event-log` | `{ author, text, at?, planId? }`: one line of up to 1,000 characters (line breaks become spaces). `at` up to 30 days back, never ahead. Returns `{ line }`. |
 | `PATCH /api/event-log/:id` | `{ by, text?, at?, baseUpdatedAt }`. Records who changed it. `409` when changed elsewhere meanwhile. |
 | `DELETE /api/event-log/:id` | Removes the line. |

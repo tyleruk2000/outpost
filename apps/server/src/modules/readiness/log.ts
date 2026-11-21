@@ -159,8 +159,8 @@ export function createEventLogService(ctx: AppContext, changed: () => void): Eve
     const rows = db.select().from(eventLog).orderBy(asc(eventLog.happenedAt), asc(eventLog.createdAt)).all();
     const shown = rows.filter((row) => query.from === undefined || row.happenedAt >= query.from).map(entryLine);
     if (query.others) {
-      // From the time asked for; with none, from the first entry, or the last week when the log is empty.
-      const from = query.from ?? rows[0]?.happenedAt ?? Date.now() - 7 * DAY_MS;
+      // From the time asked for; with none, from the first entry or a week back, whichever is earlier.
+      const from = query.from ?? Math.min(rows[0]?.happenedAt ?? Number.POSITIVE_INFINITY, Date.now() - 7 * DAY_MS);
       shown.push(...others(from));
       shown.sort((a, b) => a.at - b.at || a.createdAt - b.createdAt);
     }
