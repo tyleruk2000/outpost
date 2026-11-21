@@ -1,6 +1,7 @@
 import { Component, lazy, type ReactNode, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router";
 import { BoardToasts } from "@/features/board/toasts";
+import { ClockNotice } from "@/features/device/clock-notice";
 import { ReachNotice } from "@/features/kept/reach";
 import { RecordingIndicator } from "@/features/maps/recording/indicator";
 import { notify } from "@/lib/notify";
@@ -170,6 +171,7 @@ export function AppShell({ notesTree, onNewPage }: { notesTree?: ReactNode; onNe
       <MobileNav onOpenSearch={() => setPaletteOpen(true)} />
       <main id="content" ref={mainRef} tabIndex={-1} className="min-w-0 flex-1 focus:outline-none">
         <UpdateNotice />
+        <ClockNotice />
         <RecordingIndicator />
         <ReachNotice />
         <BoardToasts />
