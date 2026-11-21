@@ -26,6 +26,7 @@ import {
 } from "@outpost/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import tableJson from "../src/modules/tides/data/noaa-harmonic.json" with { type: "json" };
+import ticonJson from "../src/modules/tides/data/ticon4-harmonic.json" with { type: "json" };
 import { createTestApp, type TestApp } from "./helpers.ts";
 
 interface Fixture {
@@ -45,6 +46,18 @@ function station(id: string): HarmonicStation {
   return {
     datumOffset: (row[5] ?? 0) / 1000,
     constituents: table.constituents.map((name, i) => ({ name, amplitude: (row[6][i] ?? 0) / 1000, phase: (row[7][i] ?? 0) / 10 })),
+  };
+}
+
+const ticon = ticonJson as unknown as typeof table;
+/** The TICON-4 station nearest a point. */
+function ticonStation(lat: number, lon: number): HarmonicStation {
+  const near = (row: (typeof ticon.stations)[number]) => Math.hypot(row[3] - lat, (row[4] - lon) * Math.cos((lat * Math.PI) / 180));
+  const row = [...ticon.stations].sort((a, b) => near(a) - near(b))[0];
+  if (!row || near(row) > 0.05) throw new Error(`no TICON station at ${lat}, ${lon}`);
+  return {
+    datumOffset: 0,
+    constituents: ticon.constituents.map((name, i) => ({ name, amplitude: (row[6][i] ?? 0) / 1000, phase: (row[7][i] ?? 0) / 10 })),
   };
 }
 
@@ -112,6 +125,44 @@ describe("predictions against NOAA's published tables", () => {
   });
 });
 
+/**
+ * TICON-4's constants for Norwegian ports against the Norwegian Mapping Authority's own
+ * published predictions (test/fixtures/tides/kartverket-predictions-2027-01.json: high and
+ * low waters for 15 to 21 January 2027 above mean sea level, times in UTC, from
+ * Kartverket's water level API, CC BY 4.0, read 21 November 2026).
+ *
+ * Agreement found when this was written: Bergen within 14 minutes and 2.5 cm, Narvik within
+ * 11 minutes and 3.3 cm, Oslo within 15 minutes and 7 cm, the heights taken about a constant
+ * difference between the two mean sea levels (at most 2.5 cm). Stavanger, where the tide is
+ * about 30 cm and its turns are flat, was out by up to 65 minutes, and is not held here.
+ * Bounds are a little looser than found.
+ */
+describe("TICON-4 predictions against Kartverket's published tables", () => {
+  const kartverket = JSON.parse(
+    fs.readFileSync(path.join(import.meta.dirname, "fixtures/tides/kartverket-predictions-2027-01.json"), "utf8"),
+  ) as { stations: Record<string, { lat: number; lon: number; hilo: Array<[string, "H" | "L", number]> }> };
+  const limits: Array<[string, number, number]> = [
+    ["Bergen", 15, 0.03],
+    ["Narvik", 15, 0.04],
+    ["Oslo", 20, 0.08],
+  ];
+  it.each(limits)("high and low water at %s: same count, within %s min and %s m", (name, minutes, metres) => {
+    const published = kartverket.stations[name];
+    if (!published) throw new Error(`no fixture for ${name}`);
+    const turns = tideTurns(ticonStation(published.lat, published.lon), Date.UTC(2027, 0, 15), Date.UTC(2027, 0, 22));
+    expect(turns).toHaveLength(published.hilo.length);
+    const offsets = published.hilo.map(([, , height], i) => (turns[i]?.h ?? 0) - height);
+    const offset = offsets.reduce((sum, each) => sum + each, 0) / offsets.length;
+    expect(Math.abs(offset)).toBeLessThan(0.05);
+    published.hilo.forEach(([time, type], i) => {
+      const turn = turns[i];
+      expect(turn?.kind).toBe(type === "H" ? "high" : "low");
+      expect(Math.abs((turn?.t ?? 0) - utc(time)) / 60_000).toBeLessThanOrEqual(minutes);
+      expect(Math.abs((offsets[i] ?? 0) - offset)).toBeLessThanOrEqual(metres);
+    });
+  });
+});
+
 describe("tide routes", () => {
   let app: TestApp;
   beforeAll(async () => {
@@ -129,8 +180,28 @@ describe("tide routes", () => {
     expect(body.stations[0]?.id).toBe("8518750");
     expect(body.stations[0]?.distanceKm).toBeLessThan(5);
     expect(body.stations[0]?.datum).toBe("MLLW");
-    expect(body.source.licence).toMatch(/public domain/i);
-    expect(body.source.count).toBeGreaterThan(1000);
+    expect(body.stations[0]?.source).toBe("noaa");
+    expect(body.sources.map((each) => each.id)).toEqual(["noaa", "ticon"]);
+    expect(body.sources[0]?.licence).toMatch(/public domain/i);
+    expect(body.sources[1]?.licence).toMatch(/CC BY 4\.0/);
+    expect(body.sources[1]?.count).toBeGreaterThan(2000);
+  });
+
+  it("offers gauges on British coasts for a home in London, none more than 100 km away", async () => {
+    const { body } = await app.api<TideStationsResponse>("GET", "/api/tides/stations?lat=51.5074&lon=-0.1278&limit=8");
+    expect(body.stations.length).toBeGreaterThan(0);
+    expect(body.stations.every((each) => each.distanceKm <= body.reachKm)).toBe(true);
+    expect(body.stations[0]?.source).toBe("ticon");
+    expect(body.stations[0]?.state).toBe("United Kingdom");
+    expect(body.stations[0]?.datum).toBe("MSL");
+  });
+
+  it("offers nothing far away: no stations, and the nearest of all named with its distance", async () => {
+    // The middle of the Sahara.
+    const { body } = await app.api<TideStationsResponse>("GET", "/api/tides/stations?lat=23&lon=12");
+    expect(body.stations).toEqual([]);
+    expect(body.reachKm).toBe(100);
+    expect(body.nearest?.distanceKm).toBeGreaterThan(500);
   });
 
   it("predicts a week at a station", async () => {

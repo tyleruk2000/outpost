@@ -4,7 +4,7 @@
  * ahead, with no connection. The place and the clock are chosen as on the Solar clock
  * (and remembered with it); the station, the start day and the span here.
  */
-import { isIsoDate, TIDE_MAX_DAYS, type TidePredictionResponse, type TideStationDto } from "@outpost/shared";
+import { isIsoDate, TIDE_MAX_DAYS, type TidePredictionResponse, type TideSource, type TideStationDto } from "@outpost/shared";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { ErrorState, Notice, Page, PageHeader, Rows, Section } from "@/components/page";
@@ -57,14 +57,20 @@ function Tides({ place, zone }: { place: { lat: number; lon: number; name: strin
     );
   }
   if (stations.isError) return <ErrorState error={stations.error} onRetry={() => stations.refetch()} />;
+  const { sources, nearest, reachKm } = stations.data;
+  const credit = <Credit sources={sources} />;
   if (!station) {
-    return <Notice title="No tide stations are held">This copy of Outpost has no tidal constants, so it cannot work out tides.</Notice>;
+    return (
+      <>
+        <NoStationNear place={place} nearest={nearest} reachKm={reachKm} held={sources.reduce((sum, each) => sum + each.count, 0)} />
+        {credit}
+      </>
+    );
   }
-  const source = stations.data.source;
   return (
     <>
       <Section title="Station" description="Tides are worked out for a station: a place where the tide was measured for years.">
-        <Field label="Tide station" hint={`The ${list.length} nearest to ${place.name}, nearest first.`}>
+        <Field label="Tide station" hint={`Stations within ${formatKm(reachKm)} of ${place.name}, nearest first.`}>
           {(ids) => (
             <Select
               id={ids.id}
@@ -77,29 +83,79 @@ function Tides({ place, zone }: { place: { lat: number; lon: number; name: strin
         </Field>
         {station.distanceKm > FAR_KM ? (
           <Notice tone="warning" className="mt-3" title={`The station is ${formatKm(station.distanceKm)} from ${place.name}`}>
-            The tide where you are may come earlier or later, and rise higher or lower, than at the station. Outpost holds NOAA's stations:
-            the coasts of the United States and its territories, and a few ports elsewhere.
+            The tide where you are may come earlier or later, and rise higher or lower, than at the station.
+          </Notice>
+        ) : null}
+        {station.river ? (
+          <Notice tone="warning" className="mt-3" title="A river gauge">
+            The river's own flow bends the tide here: after heavy rain or a dry spell it can be well off these figures.
           </Notice>
         ) : null}
       </Section>
       <Predictions station={station} place={place} zone={zone} />
-      <p className="mt-10 text-small text-ink-muted">
-        Tidal constants for {source.count.toLocaleString("en-GB")} stations from{" "}
-        <a href={source.url} className="text-primary underline underline-offset-2">
-          {source.name}
-        </a>{" "}
-        ({source.licence.replace(/;.*/, "")}), read on {formatShortDate(source.read)} {source.read.slice(0, 4)}. How they are used:{" "}
-        <Link to="/help/tides" className="text-primary underline underline-offset-2">
-          Tide times
-        </Link>
-        .
-      </p>
+      {credit}
     </>
   );
 }
 
+/** Said plainly when no station is within reach: why, how far the nearest is, and what can be done. Nothing to download. */
+function NoStationNear({
+  place,
+  nearest,
+  reachKm,
+  held,
+}: {
+  place: { name: string };
+  nearest: TideStationDto | null;
+  reachKm: number;
+  held: number;
+}) {
+  return (
+    <Notice title={`No tide data for the coast near ${place.name}`}>
+      <p>
+        {nearest
+          ? `The nearest tide station Outpost holds is ${stationName(nearest)}, ${formatKm(nearest.distanceKm)} away. That is too far for its tides to be yours, so it is not offered.`
+          : "This copy of Outpost holds no tidal constants."}{" "}
+        Outpost offers stations within {formatKm(reachKm)}.
+      </p>
+      <p className="mt-2">
+        If {place.name} is inland, there is no tide to show. If it is on a coast, save a place on the shore nearer a port on the Maps screen
+        and choose it above, or use the tide tables of the country's hydrographic office.
+      </p>
+      <p className="mt-2">
+        There is nothing to download: all {held.toLocaleString("en-GB")} stations Outpost knows about are already on this computer and work
+        with no internet.
+      </p>
+    </Notice>
+  );
+}
+
+function Credit({ sources }: { sources: TideSource[] }) {
+  return (
+    <p className="mt-10 text-small text-ink-muted">
+      Tidal constants from{" "}
+      {sources.map((source, i) => (
+        <span key={source.id}>
+          {i > 0 ? (i === sources.length - 1 ? " and " : ", ") : null}
+          <a href={source.url} className="text-primary underline underline-offset-2">
+            {source.name}
+          </a>{" "}
+          ({source.count.toLocaleString("en-GB")} stations; {source.licence.replace(/;.*/, "")}; read on {formatShortDate(source.read)}{" "}
+          {source.read.slice(0, 4)})
+        </span>
+      ))}
+      . How they are used:{" "}
+      <Link to="/help/tides" className="text-primary underline underline-offset-2">
+        Tide times
+      </Link>
+      .
+    </p>
+  );
+}
+
 function stationName(station: TideStationDto): string {
-  return station.state && !station.name.includes(station.state) ? `${station.name}, ${station.state}` : station.name;
+  const name = station.state && !station.name.includes(station.state) ? `${station.name}, ${station.state}` : station.name;
+  return station.river ? `${name} (river)` : name;
 }
 
 function Predictions({ station, place, zone }: { station: TideStationDto; place: { lat: number; lon: number }; zone: ZoneChoice }) {
@@ -157,7 +213,9 @@ function Answer({ data, zone }: { data: TidePredictionResponse; zone: ZoneChoice
   const datum =
     data.station.datum === "MLLW"
       ? "Heights are above mean lower low water, the level US charts measure depths from."
-      : "Heights are above mean sea level: NOAA gives no chart datum for this station.";
+      : data.station.source === "ticon"
+        ? "Heights are above mean sea level at the gauge, not a chart datum: a depth on a chart is measured from a lower level."
+        : "Heights are above mean sea level: NOAA gives no chart datum for this station.";
   const byDay = useMemo(() => {
     const days = new Map<string, TidePredictionResponse["turns"]>();
     for (const turn of data.turns) {

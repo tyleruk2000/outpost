@@ -151,7 +151,12 @@ interface Constituent {
   node: NodeFactor;
 }
 
-/** NOAA's 37 constituents, by NOAA's names, with Schureman's arguments. */
+/**
+ * NOAA's 37 constituents, by NOAA's names, with Schureman's arguments; then the further
+ * ones TICON-4 gives (its user manual, table 1), whose arguments are those of their
+ * Doodson numbers turned into Schureman's terms (T = τ − h + s), and whose node factors
+ * are their parts' (a compound tide's argument is the sum of its parts').
+ */
 export const TIDE_CONSTITUENTS: Record<string, Constituent> = {
   M2: { v: [2, -2, 2, 0, 0, 0], node: fM2 },
   S2: { v: [2, 0, 0, 0, 0, 0], node: unity },
@@ -190,6 +195,14 @@ export const TIDE_CONSTITUENTS: Record<string, Constituent> = {
   K2: { v: [2, 0, 2, 0, 0, 0], node: fK2 },
   M8: { v: [8, -8, 8, 0, 0, 0], node: product([fM2, 4]) },
   MS4: { v: [4, -2, 2, 0, 0, 0], node: fM2 },
+  // TICON-4's further constituents.
+  N4: { v: [4, -6, 4, 2, 0, 0], node: product([fM2, 2]) }, // 435 755: N2 + N2
+  "2MS6": { v: [6, -4, 4, 0, 0, 0], node: product([fM2, 2]) }, // 673 555: 2M2 + S2
+  "2MK5": { v: [5, -4, 5, 0, 0, -90], node: product([fM2, 2], [fK1, 1]) }, // 565 555: 2M2 + K1
+  "2MO5": { v: [5, -6, 5, 0, 0, 90], node: product([fM2, 2], [fO1, 1]) }, // 545 555: 2M2 + O1
+  EPS2: { v: [2, -5, 4, 1, 0, 0], node: product([fM2, 2]) }, // 227 655: M2 + N2 − S2
+  MA2: { v: [2, -2, 1, 0, 0, 0], node: fM2 }, // 254 555: M2 less the year
+  MB2: { v: [2, -2, 3, 0, 0, 0], node: fM2 }, // 256 555: M2 and the year
 };
 
 /** Equilibrium argument V of a constituent at an instant, degrees, 0 to 360. */
@@ -348,7 +361,7 @@ export function tideHeight(station: HarmonicStation, ms: number): number {
 export interface TideStationDto {
   id: string;
   name: string;
-  /** US state or territory, as NOAA writes it; may be empty. */
+  /** A US state or territory as NOAA writes it, or the country of a TICON-4 gauge; may be empty. */
   state: string;
   lat: number;
   lon: number;
@@ -356,15 +369,33 @@ export interface TideStationDto {
   distanceKm: number;
   /** "MLLW" when heights are above mean lower low water, "MSL" when the station has no such datum. */
   datum: "MLLW" | "MSL";
+  source: TideSourceId;
+  /** A gauge up a river: the tide there is bent by the river's flow more than at the coast. */
+  river: boolean;
 }
 
+/** Where a station's constants come from: NOAA CO-OPS, or TICON-4 (worldwide, from GESLA-4 tide gauges). */
+export type TideSourceId = "noaa" | "ticon";
+
+/**
+ * Stations further than this from the place are not offered: 100 km along a coast the
+ * tide can come hours earlier or later and be twice the size or half. Outpost's choice,
+ * not a published rule.
+ */
+export const TIDE_REACH_KM = 100;
+
 export interface TideStationsResponse {
+  /** The stations within TIDE_REACH_KM, nearest first; empty when none is. */
   stations: TideStationDto[];
+  /** The nearest station of all, however far, so the screen can say how far it is. */
+  nearest: TideStationDto | null;
+  reachKm: number;
   /** Where the constants come from, said once for the screen. */
-  source: TideSource;
+  sources: TideSource[];
 }
 
 export interface TideSource {
+  id: TideSourceId;
   name: string;
   url: string;
   licence: string;

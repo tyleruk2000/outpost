@@ -22,12 +22,15 @@ const home = {
 };
 
 const source = {
+  id: "noaa" as const,
   name: "NOAA CO-OPS",
   url: "https://example.test/noaa",
   licence: "Public domain (US Government work); please credit",
   read: "2026-11-21",
   count: 1370,
 };
+const ticon = { ...source, id: "ticon" as const, name: "TICON-4", licence: "CC BY 4.0", count: 2728 };
+const sources = [source, ticon];
 const station = (over: Partial<TideStationsResponse["stations"][number]> = {}) => ({
   id: "8518750",
   name: "The Battery",
@@ -36,6 +39,8 @@ const station = (over: Partial<TideStationsResponse["stations"][number]> = {}) =
   lon: -74.01,
   distanceKm: 1.2,
   datum: "MLLW" as const,
+  source: "noaa" as const,
+  river: false,
   ...over,
 });
 
@@ -81,7 +86,12 @@ describe("tide times", () => {
   it("shows the nearest station, the highs and lows, the chart and the source", async () => {
     fakeApi({
       "GET /api/maps/markers": { markers: [home] },
-      "GET /api/tides/stations": { stations: [station(), station({ id: "8519483", name: "Bergen Point", distanceKm: 9 })], source },
+      "GET /api/tides/stations": {
+        stations: [station(), station({ id: "8519483", name: "Bergen Point", distanceKm: 9 })],
+        nearest: station(),
+        reachKm: 100,
+        sources,
+      },
       "GET /api/tides/stations/8518750/predictions": prediction(),
     });
     renderScreen(<TidesPage />, "/tools/tides");
@@ -93,18 +103,39 @@ describe("tide times", () => {
     expect(screen.getByRole("region", { name: /Height of the tide at The Battery/ })).toBeInTheDocument();
     expect(screen.getByText(/above mean lower low water/)).toBeInTheDocument();
     expect(screen.getByText(/1,370 stations/)).toBeInTheDocument();
+    expect(screen.getByText(/2,728 stations/)).toBeInTheDocument();
     expect(screen.queryByText(/The tide where you are may come earlier/)).not.toBeInTheDocument();
   });
 
-  it("warns when the nearest station is far away", async () => {
+  it("warns when the station is some way off, and when it is up a river", async () => {
+    const far = station({ id: "Tabc12345", name: "Sheerness", state: "United Kingdom", distanceKm: 62, source: "ticon", river: true });
     fakeApi({
       "GET /api/maps/markers": { markers: [{ ...home, lat: 51.5, lon: -0.1 }] },
-      "GET /api/tides/stations": { stations: [station({ name: "Bermuda", state: "", distanceKm: 5600 })], source },
-      "GET /api/tides/stations/8518750/predictions": prediction(),
+      "GET /api/tides/stations": { stations: [far], nearest: far, reachKm: 100, sources },
+      "GET /api/tides/stations/Tabc12345/predictions": prediction({ station: { ...far, datum: "MSL" }, source: ticon }),
     });
     renderScreen(<TidesPage />, "/tools/tides");
-    expect(await screen.findByText(/The station is 5,600 km from Harbour cottage/)).toBeInTheDocument();
-    expect(screen.getByText(/Outpost holds NOAA's stations/)).toBeInTheDocument();
+    expect(await screen.findByText(/The station is 62 km from Harbour cottage/)).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Tide station" })).toHaveTextContent("Sheerness, United Kingdom (river), 62 km away");
+    expect(screen.getByText("A river gauge")).toBeInTheDocument();
+    expect(await screen.findByText(/above mean sea level at the gauge/)).toBeInTheDocument();
+  });
+
+  it("offers no station far away: says there is no data near, how far the nearest is, and that nothing needs downloading", async () => {
+    fakeApi({
+      "GET /api/maps/markers": { markers: [{ ...home, lat: 47, lon: 2 }] },
+      "GET /api/tides/stations": {
+        stations: [],
+        nearest: station({ name: "Pettegrove Point", state: "ME", distanceKm: 4828 }),
+        reachKm: 100,
+        sources,
+      },
+    });
+    renderScreen(<TidesPage />, "/tools/tides");
+    expect(await screen.findByText("No tide data for the coast near Harbour cottage")).toBeInTheDocument();
+    expect(screen.getByText(/Pettegrove Point, ME, 4,828 km away/)).toBeInTheDocument();
+    expect(screen.getByText(/There is nothing to download: all 4,098 stations/)).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Tide station" })).not.toBeInTheDocument();
   });
 
   it("says when the stations cannot be read, and offers to try again", async () => {
