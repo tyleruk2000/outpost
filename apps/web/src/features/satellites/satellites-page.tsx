@@ -52,7 +52,6 @@ import {
   type Orbit,
   passSkyPath,
   predictPasses,
-  type SatellitePass,
   type SatelliteState,
   type ScheduledPass,
   satelliteState,
