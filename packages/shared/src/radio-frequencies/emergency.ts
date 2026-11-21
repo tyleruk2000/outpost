@@ -6,7 +6,7 @@
  * to tune to in an emergency. Most name a broadcaster, not a frequency, because FM and
  * medium-wave frequencies differ from one transmitter to the next: those entries give the
  * band the advice points to and say how to find the local frequency. Where the official
- * source itself lists a short national set of frequencies (the Netherlands, New Zealand),
+ * source itself lists a short national set of frequencies (the Netherlands),
  * the entry lists them.
  */
 import type { FrequencyEntry, FrequencyGuide, FrequencySource } from "../radio-frequencies.ts";
@@ -681,6 +681,77 @@ export const EMERGENCY: FrequencyEntry[] = [
       ),
     ],
     aliases: ["NHK", "NHK AM", "ラジオ第1", "Radio 1", "防災"],
+  },
+
+  // ── Australia ────────────────────────────────────────────────────────────
+  {
+    id: "em-au-abc-local-radio",
+    kind: "emergency",
+    name: "ABC Local Radio and local stations (Australia)",
+    operator: "ABC and commercial stations; advice from the Queensland Government",
+    what: "The Queensland Government's advice is to tune a battery-powered radio to your local radio station for weather and warning updates. Under radio it names ABC Local Radio, links to the ABC's frequency finder, and names Commercial Radio Australia's station finder.",
+    frequencies: [
+      { ...MW_BAND, note: "ABC Local Radio and commercial AM stations: frequencies differ by area" },
+      { ...FM_BAND, note: "ABC Local Radio and commercial FM stations: frequencies differ by area" },
+    ],
+    modes: ["AM", "FM"],
+    bands: ["mw", "fm"],
+    where: ["AU"],
+    expect:
+      "Warnings and updates from emergency services read on air; the page also says to listen out for the warning signal on radio, television or the phone.",
+    reception: LOCAL_FM,
+    status: "on-air",
+    notes: [
+      "Read on the Queensland Government's page (last updated 24 April 2020). The page gives no frequencies. The ABC's own pages and frequency finder refuse AI agents, and the federal and Victorian pages could not be read, so this entry rests on one state's advice.",
+    ],
+    sources: [
+      {
+        publisher: "Queensland Government",
+        title: "Tune into warnings! (last updated 24 April 2020)",
+        url: "https://www.qld.gov.au/emergency/dealing-disasters/prepare-for-disasters/tune-into-warnings",
+        checked: "2026-11-21",
+      },
+    ],
+    aliases: ["ABC", "ABC Local Radio", "emergency broadcaster", "battery radio"],
+  },
+
+  // ── New Zealand ──────────────────────────────────────────────────────────
+  {
+    id: "em-nz-rnz-and-commercial-radio",
+    kind: "emergency",
+    name: "RNZ National, RNZ Concert and commercial radio (New Zealand)",
+    operator: "RNZ and the Radio Broadcasters Association; advice from NEMA (Civil Defence)",
+    what: "New Zealand's National Emergency Management Agency tells people, if the power goes out, to use a solar or battery radio or the car radio and tune to Radio New Zealand, The Hits, Newstalk ZB or More FM, and to ask their Civil Defence group which local stations to listen to.",
+    frequencies: [
+      { ...FM_BAND, note: "RNZ National, RNZ Concert and the commercial networks: frequencies differ by area" },
+      { ...MW_BAND, note: "RNZ National on AM: frequencies differ by area" },
+    ],
+    modes: ["FM", "AM"],
+    bands: ["fm", "mw"],
+    where: ["NZ"],
+    expect: "Official warnings and emergency information read on air, for example ahead of a tsunami.",
+    reception: LOCAL_FM,
+    status: "on-air",
+    notes: [
+      "Under NEMA's broadcast memorandum of 14 May 2025, RNZ carries emergency broadcasts on RNZ National and RNZ Concert (FM and AM). RNZ broadcasts nationally only, but may carry announcements about a regional event. Commercial stations of the Radio Broadcasters Association, the community access stations and the iwi radio stations have also agreed to carry them.",
+      "The same memorandum names Radio New Zealand International on shortwave for the Pacific.",
+      "RNZ's own frequency pages and the Get Ready website refuse AI agents, so no frequencies are given here.",
+    ],
+    sources: [
+      {
+        publisher: "National Emergency Management Agency (NEMA)",
+        title: "Broadcast Media Memorandum with NEMA 2025 (14 May 2025)",
+        url: "https://www.civildefence.govt.nz/assets/Uploads/documents/mou/moc/Broadcast-Media-Memoranda-of-Understanding-May-2025.pdf",
+        checked: "2026-11-21",
+      },
+      {
+        publisher: "National Emergency Management Agency (Get Ready)",
+        title: "Stay informed (large print, English)",
+        url: "https://getready.govt.nz/assets/Uploads/documents/alternate-formats/large-print/pdf/35-stay-informed-lp-en-jan25.pdf",
+        checked: "2026-11-21",
+      },
+    ],
+    aliases: ["RNZ", "Radio New Zealand", "Civil Defence", "NEMA", "Get Ready", "tsunami"],
   },
 ];
 

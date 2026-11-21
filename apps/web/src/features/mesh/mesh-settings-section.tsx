@@ -34,6 +34,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Checkbox, Select, Skeleton } from "@/components/ui/misc";
 import { allMessages, useBoardMessages, useDeviceName } from "@/features/board/data";
+import { LicenceLine } from "@/features/radio/licence";
 import { SettingRow, SettingsSection } from "@/features/settings/parts";
 import { errorMessage } from "@/lib/api";
 import { useClockStyle } from "@/lib/clock";
@@ -98,6 +99,8 @@ export function MeshSettingsSection() {
         <p>{INTRO}</p>
         <p className="font-medium text-ink">{UNTRIED}</p>
       </div>
+
+      <LicenceLine use="licence-free" />
 
       <ul aria-label="Before you use it" className="grid list-disc gap-1.5 pl-5 text-small text-ink marker:text-ink-muted">
         <li>{WARNINGS.public}</li>

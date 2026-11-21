@@ -12,16 +12,17 @@ person may open in their own browser when they have the internet.
 
 ## What is covered
 
-As shipped (all checked on 17 November 2026): 277 entries and 12 guides, naming 90
-countries and the regions below. 238 are on the air as their sources say, 22 only some of
+As shipped (checked on 17 November 2026, with additions on 21 November 2026): 278 entries
+and 12 guides, naming 90 countries and the regions below. 239 are on the air as their
+sources say, 22 only some of
 the time or when activated, 13 closed (kept with the date), and 4 could not be checked
 against a primary source and are hidden unless asked for.
 
 | Kind | Entries | Where |
 | --- | --- | --- |
 | Time signals | 25 | US, Canada, Mexico, UK, Ireland, Germany, France, Switzerland, Italy, Poland, Finland, Russia, Belarus, Kyrgyzstan, China, Japan, Korea, Australia, Argentina, Brazil, and the ITU regions |
-| Emergency broadcasting | 21 | UK, Ireland, US, Canada, Germany, Austria, Switzerland, Sweden, Norway, Denmark, Finland, Estonia, Lithuania, Czechia, Netherlands, Belgium, France, Spain, Italy, Japan |
-| News broadcasters | 33 | National long and medium wave and FM/DAB for the UK, Ireland, France, Luxembourg, the Isle of Man, Poland, Romania, Hungary, the US, Japan, Brazil and Argentina; international shortwave from Taiwan, the US, Czechia, Vietnam and others, with their target areas |
+| Emergency broadcasting | 23 | UK, Ireland, US, Canada, Germany, Austria, Switzerland, Sweden, Norway, Denmark, Finland, Estonia, Lithuania, Czechia, Netherlands, Belgium, France, Spain, Italy, Japan, Australia (Queensland's advice), New Zealand |
+| News broadcasters | 34 | National long and medium wave and FM/DAB for the UK, Ireland, France, Luxembourg, the Isle of Man, Poland, Romania, Hungary, the US, Japan, India, Brazil and Argentina; international shortwave from Taiwan, the US, Czechia, Vietnam and others, with their target areas |
 | Weather | 63 | NOAA Weather Radio, Canada, the UK's shipping and coastguard broadcasts, NAVTEX stations in 39 countries and territories, radiofax, VOLMET, US Coast Guard voice, German, French, Norwegian and Monaco broadcasts |
 | Distress and calling | 22 | Worldwide marine, aviation and beacon frequencies, with national detail for the UK, US, Canada, Ireland and Australia |
 | Amateur radio | 31 | IARU Regions 1, 2 and 3, and national emergency frequencies for the UK, Germany, Austria, Switzerland, France, Ireland, the Netherlands, South Africa, Japan, Australia, New Zealand and the US |
@@ -173,23 +174,33 @@ Looked for and not put in, by kind. Most are pages that refuse AI agents, or tha
 not be reached on the day; a person can fill them in by hand from the page named.
 
 - **Time signals.** CHU (Canada) is marked closed on 22 June 2026 from secondary
-  sources only: the NRC's pages refused to be read. YVTO (Venezuela), ATA (India), BSF
+  sources only: the NRC's pages refused to be read, and on 21 November 2026 its
+  `robots.txt` barred AI agents by name. YVTO (Venezuela), ATA (India), BSF
   (Taiwan), EBC (Spain), ZUO (South Africa) and OMA (Czechia, said to have closed): no
   current primary source. The Russian stations rest on the BIPM's table alone (VNIIFTRI's
   site could not be reached). Brazil's PPE is "not verified". The pips on RNZ and ABC
   radio, and NHK's time signal: their sites refuse AI agents or nothing was found.
-- **Emergency broadcasting.** Australia (ABC) and New Zealand (RNZ; getready.govt.nz
-  refused): their sites refuse AI agents. Israel (Home Front Command refused), India,
+- **Emergency broadcasting.** Australia rests on Queensland's advice alone: abc.net.au
+  bars AI agents in its `robots.txt`, and the Northern Territory's and Victoria's
+  emergency sites refused. New Zealand rests on NEMA's PDFs (the 2025 broadcast media
+  memorandum and its "Stay informed" leaflet); rnz.co.nz bars AI agents and the Get Ready
+  and Civil Defence web pages refused, so no RNZ frequencies are given. Israel (Home Front Command refused), India,
   the Philippines, Indonesia, South Africa, Kenya, the Caribbean, the Pacific islands,
   Latvia and Poland: no official page naming a station was read. The US list of FEMA's
   Primary Entry Point stations was not read. Spain and Italy name no station.
 - **News broadcasters.** BBC World Service and the BBC's own frequency pages, NHK World,
   RFI, Deutsche Welle, KBS World, Vatican Radio, RNZ Pacific, Radio Australia's closure
-  (2017), CBC, ABC, NRK, DR and Yle: their sites refuse AI agents. China Radio
+  (2017), CBC, ABC, NRK, DR and Yle: their sites refuse AI agents (tried again on 21
+  November 2026 for the BBC, NHK, DW, RFI and RNZ: the first four cannot be fetched, and
+  rnz.co.nz bars AI agents in its `robots.txt`). BBC Radio 4 long wave's closing date
+  still rests on the RSGB; Ofcom (14 September 2026) confirms the BBC announced the
+  closure but gives no date. All India Radio's medium wave comes from Prasar Bharati's
+  list of 18 September 2025 (main cities only). China Radio
   International, Voice of Turkey, Radio Habana Cuba, Voice of Korea, Radio Thailand,
   Radio Kuwait, Radio Algérienne, RAI, RNE, TRT, Mayak, Europe 1 (183 kHz), and the
-  medium wave services of Australia, Canada, New Zealand, South Korea, India and South
-  Africa: no primary page was read. Voice of America, Voice of Nigeria and All India
+  medium wave services of Australia (ACMA's site timed out), Canada (cbc.ca refused;
+  ISED's database file is too large for the fetch tool), New Zealand, South Korea and
+  South Africa (no current list found): no primary page was read. Voice of America, Voice of Nigeria and All India
   Radio's external service are "not verified".
 - **Weather.** New York and Gander VOLMET (the FAA's AIP refused), and the Pacific and
   Asian VOLMETs (no AIP read); RAF VOLMET; the Bureau of Meteorology's HF voice

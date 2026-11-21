@@ -71,8 +71,8 @@ Choose a satellite (or show only one group of them). The screen gives:
   straight up in the middle. **What to tune to through the pass** gives the bearing,
   elevation and corrected frequency for each minute from rise to set.
 
-**This pass as a PDF** writes the pass on paper (where to point minute by minute, and what
-to tune to at rise, peak and set) to save, print or add to the library. **Show on the
+**This pass as a PDF** writes the pass on paper (the sky track drawn as on screen, where
+to point minute by minute, and what to tune to at rise, peak and set) to save, print or add to the library. **Show on the
 map** draws the satellite's track on the offline map.
 
 **Paste elements** takes one element set you have from elsewhere: a two-line TLE, or one
