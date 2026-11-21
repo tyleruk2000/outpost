@@ -1,5 +1,6 @@
 /**
- * The one place the maps screen holds literal colours.
+ * The one place the maps screen holds literal colours, with the fixed palettes of the
+ * map styles other than the standard one (map-styles.ts).
  *
  * Markers and tracks are drawn by MapLibre on top of a map that may be light or dark,
  * so their colours have to hold against both and cannot follow the theme. Each is a
@@ -18,6 +19,9 @@ export const MARKER_HEX: Record<MarkerColor, string> = {
   violet: "#8d62cc",
   slate: "#6d7c88",
 };
+
+/** Magnetic north lines on the map on screen: the blue of the printed sheet's lines, at map-safe lightness. */
+export const MAGNETIC_HEX = "#3a66d1";
 
 export const MARKER_COLOR_NAMES: Record<MarkerColor, string> = {
   teal: "Teal",

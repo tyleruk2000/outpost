@@ -31,6 +31,7 @@ import { greyLineShown, momentText } from "../grey-line/grey-line";
 import { mapMoment } from "../grey-line/time";
 import { imageryOnPage, SATELLITE_OVERLAY } from "../imagery/print";
 import { CONTOUR_MIN_ZOOM, contourInterval, contourReach } from "../lib/contours";
+import type { MapStyleId } from "../lib/map-styles";
 import { buildStyle, MAP_FONTS, type MapTheme, SOURCE_IDS } from "../lib/style";
 import type { LayerSpecification, SourceSpecification, StyleSpecification } from "../lib/style-types";
 import { type FeatureCollection, markersData, type OverlaySource, overlayLayers, overlaySources, tracksData } from "../map/overlays";
@@ -58,7 +59,7 @@ export interface PrintContext {
   /** The graticule's ticks, as the page's edge prints them. */
   graticule: Graticule;
   /** How the map on screen is set: where the page starts from. */
-  live: { hillshade: boolean; contours: boolean; hiddenTracks: readonly string[]; satellite?: boolean };
+  live: { hillshade: boolean; contours: boolean; hiddenTracks: readonly string[]; satellite?: boolean; roadNumbers?: boolean };
 }
 
 /** The style of the off-screen map before it is built: overlays add to it. */
@@ -69,6 +70,8 @@ export interface PrintDraft {
   satellite?: boolean;
   /** Names of places, roads and water on the basemap. */
   names: boolean;
+  /** Road numbers from the tiles (lib/map-styles.ts). */
+  roadNumbers?: boolean;
   /** Data for the map's own overlay sources: saved places, routes. */
   data: Partial<Record<OverlaySource, FeatureCollection>>;
   /** Sources and layers of an overlay's own, drawn above everything else in the order added. */
@@ -161,6 +164,16 @@ export const PRINT_OVERLAYS: PrintOverlay[] = [
     },
   },
   SATELLITE_OVERLAY,
+  {
+    id: "road-numbers",
+    label: "Road numbers",
+    hint: () => "Motorways, trunk, primary and secondary roads, as the map data numbers them (M6, A591, B5289).",
+    unavailable: (context) => (context.sources?.hasTiles ? undefined : "No detailed map is downloaded, so there are no roads to number."),
+    initially: (context) => context.live.roadNumbers ?? false,
+    apply: (draft) => {
+      draft.roadNumbers = true;
+    },
+  },
   {
     id: "routes",
     label: "Routes and tracks",
@@ -336,7 +349,7 @@ export function printStyle(
   context: PrintContext,
   selection: PrintSelection,
   overlays: PrintOverlay[],
-  base: { origin: string; cacheKey: string },
+  base: { origin: string; cacheKey: string; mapStyle?: MapStyleId },
 ): PrintStyle {
   const draft: PrintDraft = { hillshade: false, contours: false, names: false, data: {}, sources: {}, layers: [], notes: [] };
   let usesTerrain = false;
@@ -352,6 +365,8 @@ export function printStyle(
     hillshade: draft.hillshade,
     contours: draft.contours,
     satellite: draft.satellite,
+    mapStyle: base.mapStyle,
+    roadNumbers: draft.roadNumbers,
     origin: base.origin,
     cacheKey: base.cacheKey,
     overlays: {
@@ -362,7 +377,10 @@ export function printStyle(
   });
   if (!draft.names) {
     const named: string[] = [SOURCE_IDS.basemap, SOURCE_IDS.countryLabels];
-    style.layers = style.layers.filter((layer) => !(layer.type === "symbol" && named.includes(layer.source)));
+    // Road numbers are a tick box of their own, and stay when names are left out.
+    style.layers = style.layers.filter(
+      (layer) => !(layer.type === "symbol" && named.includes(layer.source) && !layer.id.startsWith("road-numbers")),
+    );
   }
   // Last, so above everything: MapLibre places names from the top layer down.
   const edge = edgeGuard(context.bbox, context.zoom);

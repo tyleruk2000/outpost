@@ -20,6 +20,7 @@ import {
   CONTOUR_SOURCE_LAYER,
   contourTemplate,
 } from "./contours";
+import { type MapStyleId, roadNumberLayers, styleVariant } from "./map-styles";
 import type { LayerSpecification, SourceSpecification, StyleSpecification } from "./style-types";
 import { tileTemplate } from "./tiles";
 
@@ -64,6 +65,10 @@ export interface StyleInput {
   contours?: boolean;
   /** Draw installed satellite imagery beneath the roads and names (see imagery/style.ts). */
   satellite?: boolean;
+  /** The style chosen (map-styles.ts). Left out, or "standard", the map is drawn as it always was. */
+  mapStyle?: MapStyleId;
+  /** Draw road numbers from the tiles' `ref` (map-styles.ts `roadNumberLayers`). */
+  roadNumbers?: boolean;
   /** `location.origin`: MapLibre wants absolute addresses for glyphs, sprites and data files. */
   origin: string;
   /** Changes when the installed regions change; see `tileTemplate`. */
@@ -153,7 +158,10 @@ export function tunedFlavor(flavour: MapFlavour, theme: MapTheme): Flavor {
 }
 
 export function buildStyle(input: StyleInput): StyleSpecification {
-  const { sources: installed, flavour, theme, origin } = input;
+  const { sources: installed, origin } = input;
+  // Every style but the standard one changes the flavour, the colours or the layers; the standard one changes nothing.
+  const variant = styleVariant(input.mapStyle ?? "standard", input.flavour, input.theme, tunedFlavor);
+  const { flavour, theme } = variant;
   const basemap = installed?.hasTiles ? installed.sources.basemap : undefined;
   const installedTerrain = installed?.hasTerrain ? installed.sources.terrain : undefined;
   const terrain = input.hillshade ? installedTerrain : undefined;
@@ -205,9 +213,17 @@ export function buildStyle(input: StyleInput): StyleSpecification {
     };
     // Protomaps begins with an opaque background, which would hide the outline map
     // wherever no tile is installed. Ours is already underneath.
-    const detailed = (protomapsLayers(SOURCE_IDS.basemap, tunedFlavor(flavour, theme), { lang: "en" }) as LayerSpecification[]).filter(
-      (layer) => layer.type !== "background",
+    let detailed = variant.basemap(
+      (protomapsLayers(SOURCE_IDS.basemap, variant.flavor, { lang: "en" }) as LayerSpecification[]).filter(
+        (layer) => layer.type !== "background",
+      ),
     );
+    if (input.roadNumbers) {
+      // In place of Protomaps' own shields, which read fields these tiles do not have (see map-styles.ts).
+      const shields = detailed.findIndex((layer) => layer.id === "roads_shields");
+      const numbers = roadNumberLayers(theme, variant.shields);
+      detailed = shields === -1 ? [...detailed, ...numbers] : [...detailed.slice(0, shields), ...numbers, ...detailed.slice(shields + 1)];
+    }
     if (terrain) {
       sources[SOURCE_IDS.terrain] = {
         type: "raster-dem",
@@ -276,9 +292,12 @@ export function buildStyle(input: StyleInput): StyleSpecification {
     layers.push(...input.overlays.layers.filter((layer) => !isUnderLabels(layer)));
   }
 
+  // Last, over the overlays too: the night style makes every colour drawn red.
+  layers.splice(0, layers.length, ...variant.finish(layers));
+
   return {
     version: 8,
-    name: `Outpost ${flavour}`,
+    name: input.mapStyle && input.mapStyle !== "standard" ? `Outpost ${input.mapStyle}` : `Outpost ${flavour}`,
     glyphs: absolute(origin, installed?.glyphs ?? FALLBACK_GLYPHS),
     sprite: absolute(origin, installed?.sprites[flavour] ?? `/map-assets/sprites/v4/${flavour}`),
     sources,

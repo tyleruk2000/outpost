@@ -13,7 +13,7 @@ import { rangeLayers } from "@/features/repeaters/map/range";
 import { greyLineLineLayers, greyLineShadeLayers } from "../grey-line/layers";
 import { bboxRing, circleRing, formatDistance, type LatLon, metersPerPixel } from "../lib/geo";
 import { measure } from "../lib/measure";
-import { MARKER_HEX } from "../lib/palette";
+import { MAGNETIC_HEX, MARKER_HEX } from "../lib/palette";
 import { BADGE, iconOf, isDrawn, PLACE_IMAGE_PREFIX, pageKey } from "../lib/place-icons";
 import { trackEnds, trackLines } from "../lib/profile";
 import { midpoints } from "../lib/route-edit";
@@ -28,6 +28,7 @@ export const OVERLAY_SOURCES = [
   "o-propagation",
   "o-nuclear",
   "o-grid",
+  "o-magnetic",
   "o-coverage",
   "o-box",
   "o-tracks",
@@ -120,6 +121,14 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
     ...greyLineLineLayers(theme),
     // The Maidenhead locator grid, when it is switched on.
     ...gridLayers(theme),
+    // Magnetic north lines, when they are switched on (magnetic/): thin and blue, as on the printed sheet, cased so they hold on any ground.
+    {
+      id: "o-magnetic-casing",
+      type: "line",
+      source: "o-magnetic",
+      paint: { "line-color": theme.page, "line-width": 3, "line-opacity": 0.5 },
+    },
+    { id: "o-magnetic-line", type: "line", source: "o-magnetic", paint: { "line-color": MAGNETIC_HEX, "line-width": 1.2 } },
     // Installed coverage, shown while the downloads panel is open.
     {
       id: "o-coverage-line",

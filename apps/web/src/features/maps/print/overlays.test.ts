@@ -221,6 +221,24 @@ describe("what can be put on a printed map", () => {
     expect(plain.usesTerrain).toBe(false);
   });
 
+  it("draws the page in the chosen style, the standard map when none is chosen", () => {
+    expect(printStyle(context(), nothing, PRINT_OVERLAYS, { ...base, mapStyle: "standard" }).style).toEqual(
+      printStyle(context(), nothing, PRINT_OVERLAYS, base).style,
+    );
+    const lowInk = printStyle(context(), nothing, PRINT_OVERLAYS, { ...base, mapStyle: "low-ink" }).style;
+    expect(lowInk.name).toBe("Outpost low-ink");
+    expect(layerIds(lowInk)).toContain("low-ink-coast");
+  });
+
+  it("draws road numbers when ticked, as the map on screen has them, even with names left out", () => {
+    expect(overlayOn(overlay("road-numbers"), context(), nothing)).toBe(false);
+    const live = context({ live: { hillshade: true, contours: false, hiddenTracks: [], roadNumbers: true } });
+    expect(overlayOn(overlay("road-numbers"), live, nothing)).toBe(true);
+    const { style } = printStyle(live, { overlays: { names: false }, parts: {} }, PRINT_OVERLAYS, base);
+    expect(layerIds(style)).toEqual(expect.arrayContaining(["road-numbers", "road-numbers-shield"]));
+    expect(layerIds(style)).not.toContain("places_locality");
+  });
+
   it("lines the edge of the page so that no name is cut by it, above every other layer", () => {
     const { style } = printStyle(context(), nothing, PRINT_OVERLAYS, base);
     const last = style.layers[style.layers.length - 1]!;

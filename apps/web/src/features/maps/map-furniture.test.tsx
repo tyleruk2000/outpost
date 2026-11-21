@@ -93,6 +93,63 @@ describe("the menu of the map's tools on a phone", () => {
   });
 });
 
+describe("map styles, road numbers and magnetic north lines in the tools", () => {
+  const styled = (overrides: Partial<MapToolsInput> = {}) =>
+    input({
+      mapStyle: "standard",
+      onMapStyleChange: () => {},
+      roadNumbers: false,
+      onRoadNumbersChange: () => {},
+      magneticLines: false,
+      onMagneticLinesChange: () => {},
+      ...overrides,
+    });
+
+  it("puts the style picker before printing, and the two new layers last, to give way first on a phone", () => {
+    const ids = mapTools(styled()).map((tool) => tool.id);
+    expect(ids.indexOf("map-style")).toBe(ids.indexOf("print") - 1);
+    expect(ids.slice(-2)).toEqual(["road-numbers", "magnetic-lines"]);
+    expect(mapTools(styled()).find((tool) => tool.id === "map-style")!.label).toBe("Map style: Standard");
+  });
+
+  it("lists the styles in the phone's menu, the chosen one ticked, and switches the layers", async () => {
+    const onMapStyleChange = vi.fn();
+    const onMagneticLinesChange = vi.fn();
+    render(<MapMenu tools={mapTools(styled({ mapStyle: "walking", onMapStyleChange, onMagneticLinesChange }))} />);
+    await userEvent.click(screen.getByRole("button", { name: "All map tools" }));
+    const menu = screen.getByRole("menu");
+    const styles = within(menu).getAllByRole("menuitemradio");
+    expect(styles.map((item) => item.textContent)).toEqual([
+      "Standard",
+      "Road map",
+      "Road map, UK atlas colours",
+      "Walking",
+      "High contrast",
+      "Night (red)",
+      "Low ink",
+    ]);
+    expect(within(menu).getByRole("menuitemradio", { name: "Walking" })).toHaveAttribute("aria-checked", "true");
+    expect(within(menu).getByRole("menuitemcheckbox", { name: "Road numbers" })).toHaveAttribute("aria-checked", "false");
+    await userEvent.click(within(menu).getByRole("menuitemcheckbox", { name: "Magnetic north lines" }));
+    expect(onMagneticLinesChange).toHaveBeenCalledWith(true);
+    await userEvent.click(screen.getByRole("button", { name: "All map tools" }));
+    await userEvent.click(within(screen.getByRole("menu")).getByRole("menuitemradio", { name: "Night (red)" }));
+    expect(onMapStyleChange).toHaveBeenCalledWith("night");
+  });
+
+  it("opens the list of styles from the button in the column", async () => {
+    const onMapStyleChange = vi.fn();
+    render(
+      <Tooltip.Provider>
+        <MapToolColumn tools={mapTools(styled({ onMapStyleChange }))} />
+      </Tooltip.Provider>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Map style: Standard" }));
+    await userEvent.click(within(screen.getByRole("menu")).getByRole("menuitemradio", { name: "Low ink" }));
+    expect(onMapStyleChange).toHaveBeenCalledWith("low-ink");
+  });
+});
+
 describe("the column of tools on a phone", () => {
   it("shows the tools as the same named buttons as a wide screen has", () => {
     render(

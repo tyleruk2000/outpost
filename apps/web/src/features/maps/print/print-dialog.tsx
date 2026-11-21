@@ -18,7 +18,7 @@ import { PrintNotice } from "@/components/print-notice";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
-import { Checkbox, Progress, Segmented, Skeleton } from "@/components/ui/misc";
+import { Checkbox, Progress, Segmented, Select, Skeleton } from "@/components/ui/misc";
 import type { MadePdf } from "@/features/library/made/made-pdf";
 import { PdfButtons, PdfStatus, useMadePdf } from "@/features/library/made/pdf-actions";
 import { api, errorMessage } from "@/lib/api";
@@ -28,6 +28,7 @@ import { useStoredState } from "../hooks";
 import { imageryCredits } from "../imagery/use-satellite";
 import type { ReadoutFormat } from "../lib/coords";
 import { formatBboxSize } from "../lib/geo";
+import { DEFAULT_MAP_STYLE, MAP_STYLE_IDS, MAP_STYLES, type MapStyleId } from "../lib/map-styles";
 import { FALLBACK_THEME } from "../lib/palette";
 import type { StyleInput } from "../lib/style";
 import { readStored, STORAGE_KEYS } from "../lib/view";
@@ -199,7 +200,13 @@ export function PrintDialog({
       tracks: tracks.data,
       geometries: lines.geometries,
       graticule: ticks,
-      live: { hillshade: style.hillshade, contours: style.contours ?? false, hiddenTracks, satellite: style.satellite ?? false },
+      live: {
+        hillshade: style.hillshade,
+        contours: style.contours ?? false,
+        hiddenTracks,
+        satellite: style.satellite ?? false,
+        roadNumbers: style.roadNumbers ?? false,
+      },
     };
   }, [overview.data, markers.data, tracks.data, lines, bbox, frame.zoom, style, ticks, hiddenTracks]);
 
@@ -218,9 +225,13 @@ export function PrintDialog({
   const suggested = here.length === 1 ? here[0]!.name : "";
   const shownTitle = title ?? suggested;
 
+  /** The page starts in the style of the map on screen, if that one prints; the night style does not. */
+  const [mapStyle, setMapStyle] = useState<MapStyleId>(() =>
+    style.mapStyle && MAP_STYLES[style.mapStyle].printable ? style.mapStyle : DEFAULT_MAP_STYLE,
+  );
   const printed = useMemo(
-    () => (context ? printStyle(context, selection, PRINT_OVERLAYS, { origin: style.origin, cacheKey: style.cacheKey }) : null),
-    [context, selection, style.origin, style.cacheKey],
+    () => (context ? printStyle(context, selection, PRINT_OVERLAYS, { origin: style.origin, cacheKey: style.cacheKey, mapStyle }) : null),
+    [context, selection, style.origin, style.cacheKey, mapStyle],
   );
   const hasTiles = style.sources?.hasTiles ?? false;
   const credits = useMemo(() => {
@@ -475,6 +486,19 @@ export function PrintDialog({
                   maxLength={80}
                   placeholder="Helvellyn from Glenridding"
                   disabled={busy}
+                />
+              )}
+            </Field>
+
+            <Field label="Map style" hint={MAP_STYLES[mapStyle].hint}>
+              {(ids) => (
+                <Select<MapStyleId>
+                  id={ids.id}
+                  aria-describedby={ids["aria-describedby"]}
+                  value={mapStyle}
+                  onChange={setMapStyle}
+                  disabled={busy}
+                  options={MAP_STYLE_IDS.filter((id) => MAP_STYLES[id].printable).map((id) => ({ value: id, label: MAP_STYLES[id].label }))}
                 />
               )}
             </Field>

@@ -5,8 +5,10 @@ import {
   EllipsisVertical,
   Grid3x3,
   LocateFixed,
+  Magnet,
   Minus,
   Mountain,
+  Palette,
   PenLine,
   Plus,
   Printer,
@@ -15,6 +17,7 @@ import {
   Redo2,
   Ruler,
   Satellite,
+  Signpost,
   SunMoon,
   Undo2,
   X,
@@ -22,14 +25,26 @@ import {
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Menu, MenuCheckItem, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
-import { Spinner } from "@/components/ui/misc";
+import {
+  Menu,
+  MenuCheckItem,
+  MenuContent,
+  MenuGroup,
+  MenuItem,
+  MenuLabel,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuSeparator,
+  MenuTrigger,
+} from "@/components/ui/menu";
+import { Spinner, Tooltip } from "@/components/ui/misc";
 import { copyText } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
 import type { LocateState } from "./hooks";
 import type { ContourReach } from "./lib/contours";
 import { formatPosition, type ReadoutFormat } from "./lib/coords";
 import { formatBearing, formatDistance, formatDistanceWithMiles, type LatLon } from "./lib/geo";
+import { MAP_STYLE_IDS, MAP_STYLES, type MapStyleId } from "./lib/map-styles";
 import { measure } from "./lib/measure";
 import { pressWord, touchScreen } from "./lib/press";
 import { canRedo, canUndo, isFull, type RouteEdit } from "./lib/route-edit";
@@ -98,6 +113,10 @@ export interface MapTool {
   group: "view" | "record" | "tools" | "radio";
   /** A layer drawn over the map rather than a tool: listed under "Shown on the map" in the menu. */
   layer?: boolean;
+  /** One of several to choose from (the map's style): pressing the button lists them; the menu shows them in a group of their own. */
+  choices?: ReadonlyArray<{ value: string; label: string }>;
+  value?: string;
+  onChoose?: (value: string) => void;
 }
 
 export interface MapToolsInput {
@@ -130,6 +149,15 @@ export interface MapToolsInput {
   /** What the button is called: it says when there is no imagery to draw, as contour lines' does. */
   satelliteLabel?: string;
   onSatelliteChange?: (on: boolean) => void;
+  /** The map's style (lib/map-styles.ts). Left out, there is no button. */
+  mapStyle?: MapStyleId;
+  onMapStyleChange?: (style: MapStyleId) => void;
+  /** Whether road numbers (M6, A591) are drawn. Left out, there is no button. */
+  roadNumbers?: boolean;
+  onRoadNumbersChange?: (on: boolean) => void;
+  /** Whether lines pointing to magnetic north are drawn across the map; see magnetic/. Left out, there is no button. */
+  magneticLines?: boolean;
+  onMagneticLinesChange?: (on: boolean) => void;
   /** Recording a track as it is walked; see recording/record-ui.tsx. Null where the browser cannot record at all. */
   record?: MapTool | null;
   /** The map could not be drawn; the controls that act on it have nothing to act on. */
@@ -162,6 +190,12 @@ export function mapTools({
   satellite,
   satelliteLabel,
   onSatelliteChange,
+  mapStyle,
+  onMapStyleChange,
+  roadNumbers,
+  onRoadNumbersChange,
+  magneticLines,
+  onMagneticLinesChange,
   record,
   disabled,
 }: MapToolsInput): MapTool[] {
@@ -216,6 +250,23 @@ export function mapTools({
     onPress: () => onContoursChange(!contours),
     disabled,
   });
+  // How the map itself is drawn: the standard map, or another style built from the same tiles (lib/map-styles.ts).
+  if (onMapStyleChange) {
+    const current = mapStyle ?? "standard";
+    tools.push({
+      id: "map-style",
+      label: `Map style: ${MAP_STYLES[current].label}`,
+      icon: <Palette />,
+      group: "tools",
+      layer: true,
+      choices: MAP_STYLE_IDS.map((id) => ({ value: id, label: MAP_STYLES[id].label })),
+      value: current,
+      onChoose: (value) => onMapStyleChange(value as MapStyleId),
+      // Pressing the button opens the list; this is for a caller that has nowhere to list them.
+      onPress: () => {},
+      disabled,
+    });
+  }
   // A paper map of part of this one; the tool itself is in print/.
   tools.push(take("print", "Print or save as PDF", <Printer />, "tools"));
   // Radio: the locator grid, the repeaters, and whether two points can see each other.
@@ -268,10 +319,57 @@ export function mapTools({
     });
   }
   tools.push(take("sight", "Line of sight between two points", <RadioTower />, "radio"));
+  // Last, so that on a phone they are the first to give way to the menu.
+  if (onRoadNumbersChange) {
+    tools.push({
+      id: "road-numbers",
+      label: "Road numbers",
+      icon: <Signpost />,
+      group: "tools",
+      layer: true,
+      pressed: roadNumbers ?? false,
+      onPress: () => onRoadNumbersChange(!roadNumbers),
+      disabled,
+    });
+  }
+  if (onMagneticLinesChange) {
+    tools.push({
+      id: "magnetic-lines",
+      label: "Magnetic north lines",
+      icon: <Magnet />,
+      group: "tools",
+      layer: true,
+      pressed: magneticLines ?? false,
+      onPress: () => onMagneticLinesChange(!magneticLines),
+      disabled,
+    });
+  }
   return tools;
 }
 
 function ToolButton({ tool }: { tool: MapTool }) {
+  if (tool.choices) {
+    return (
+      <Menu>
+        <Tooltip label={tool.label} side="left">
+          <MenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={tool.label}
+              disabled={tool.disabled}
+              className="rounded-none text-ink focus-visible:-outline-offset-2 max-md:size-[44px]"
+            >
+              {tool.icon}
+            </Button>
+          </MenuTrigger>
+        </Tooltip>
+        <MenuContent side="left" align="start">
+          <ChoiceGroup tool={tool} />
+        </MenuContent>
+      </Menu>
+    );
+  }
   return (
     <ControlButton label={tool.label} pressed={tool.pressed} onClick={tool.onPress} disabled={tool.disabled}>
       {tool.icon}
@@ -356,6 +454,23 @@ export function MapToolColumn({ tools }: { tools: MapTool[] }) {
   );
 }
 
+/** The choices of a tool that has them, as a group in a menu with the tool's name over it. */
+function ChoiceGroup({ tool }: { tool: MapTool }) {
+  const heading = tool.label.split(":")[0];
+  return (
+    <>
+      <MenuLabel className="text-ink-muted">{heading}</MenuLabel>
+      <MenuRadioGroup value={tool.value} onValueChange={(value) => tool.onChoose?.(value)} aria-label={heading}>
+        {tool.choices?.map((choice) => (
+          <MenuRadioItem key={choice.value} value={choice.value} disabled={tool.disabled} className="max-md:min-h-11">
+            {choice.label}
+          </MenuRadioItem>
+        ))}
+      </MenuRadioGroup>
+    </>
+  );
+}
+
 /**
  * Every tool and layer of the map by name, behind one button at the end of the search
  * box on a phone. An icon in the column says nothing to a finger that cannot hover over
@@ -385,7 +500,8 @@ export function MapMenu({ tools }: { tools: MapTool[] }) {
       </MenuCheckItem>
     );
   };
-  const layers = tools.filter((tool) => tool.layer);
+  const layers = tools.filter((tool) => tool.layer && !tool.choices);
+  const choosers = tools.filter((tool) => tool.choices);
   return (
     <Menu>
       <MenuTrigger asChild>
@@ -398,7 +514,7 @@ export function MapMenu({ tools }: { tools: MapTool[] }) {
         className="scroll-quiet max-h-(--radix-dropdown-menu-content-available-height) w-[min(19rem,calc(100vw-1.5rem))] overflow-y-auto"
       >
         <MenuLabel className="text-ink-muted">Tools</MenuLabel>
-        {tools.filter((tool) => !tool.layer).map(entry)}
+        {tools.filter((tool) => !tool.layer && !tool.choices).map(entry)}
         {layers.length > 0 ? (
           <>
             <MenuSeparator />
@@ -406,6 +522,12 @@ export function MapMenu({ tools }: { tools: MapTool[] }) {
             {layers.map(entry)}
           </>
         ) : null}
+        {choosers.map((tool) => (
+          <MenuGroup key={tool.id}>
+            <MenuSeparator />
+            <ChoiceGroup tool={tool} />
+          </MenuGroup>
+        ))}
       </MenuContent>
     </Menu>
   );

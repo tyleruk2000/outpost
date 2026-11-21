@@ -51,6 +51,7 @@ import { useSatellite } from "./imagery/use-satellite";
 import { type ContourReach, contourReach, contoursSupported } from "./lib/contours";
 import { formatPosition, isReadoutFormat, type ReadoutFormat } from "./lib/coords";
 import { formatDistance, type LatLon } from "./lib/geo";
+import { DEFAULT_MAP_STYLE, isMapStyleId, MAP_STYLE_KEY, MAP_STYLES, type MapStyleId, ROAD_NUMBERS_KEY } from "./lib/map-styles";
 import { MARKER_HEX } from "./lib/palette";
 import { iconOf, pinGlyphOf } from "./lib/place-icons";
 import { pressWord } from "./lib/press";
@@ -79,6 +80,7 @@ import {
   withView,
   writeStored,
 } from "./lib/view";
+import { useMagneticLines } from "./magnetic/use-magnetic-lines";
 import type { MapEngine, MapHit } from "./map/engine";
 import { coverageData, EMPTY, locationData, markersData, measureData, pointData, tracksData } from "./map/overlays";
 import {
@@ -218,6 +220,9 @@ export default function MapsPage() {
   const [format, setFormat] = useStoredState<ReadoutFormat>(STORAGE_KEYS.coordinateFormat, isReadoutFormat, "decimal");
   const [hillshade, setHillshade] = useStoredState(STORAGE_KEYS.hillshade, isBoolean, true);
   const [contours, setContours] = useStoredState(STORAGE_KEYS.contours, isBoolean, false);
+  /** The map's style and road numbers (lib/map-styles.ts): the standard map without numbers unless chosen. */
+  const [mapStyle, setMapStyle] = useStoredState<MapStyleId>(MAP_STYLE_KEY, isMapStyleId, DEFAULT_MAP_STYLE);
+  const [roadNumbers, setRoadNumbers] = useStoredState(ROAD_NUMBERS_KEY, isBoolean, false);
   const [hiddenTracks, setHiddenTracks] = useStoredState(STORAGE_KEYS.hiddenTracks, isStringArray, []);
   const [panel, setPanel] = useStoredState<PanelState>(STORAGE_KEYS.panel, isPanelState, { open: true, tab: "places" });
   const [detent, setDetent] = useState<Detent>("peek");
@@ -280,6 +285,7 @@ export default function MapsPage() {
   const container = useRef<HTMLDivElement>(null);
   const [engine, setEngine] = useState<MapEngine | null>(null);
   const [locatorGrid, setLocatorGrid] = useLocatorGrid(engine);
+  const [magneticLines, setMagneticLines] = useMagneticLines(engine);
   const greyLine = useGreyLine(engine, isDesktop ? "over" : "flow");
   const satellite = useSatellite({ engine, imagery: sources.data?.imagery, onGetImagery: () => openOffline({ type: "imagery" }) });
   const sight = useSight({ engine, active: tool === "sight", markers: markers.data ?? [], start: sightStart });
@@ -297,10 +303,12 @@ export default function MapsPage() {
       hillshade,
       contours,
       satellite: satellite.on,
+      mapStyle,
+      roadNumbers,
       origin: window.location.origin,
       cacheKey,
     }),
-    [sources.data, flavour, theme, hillshade, contours, satellite.on, cacheKey],
+    [sources.data, flavour, theme, hillshade, contours, satellite.on, mapStyle, roadNumbers, cacheKey],
   );
   const latestStyle = useRef(styleInput);
   latestStyle.current = styleInput;
@@ -1107,6 +1115,15 @@ export default function MapsPage() {
     return engine.on("moveend", update);
   }, [engine, terrainBoxes]);
 
+  /** A style may switch on what it is made to show (the walking map its hill shading and contours); each can be switched off again. */
+  const changeMapStyle = (next: MapStyleId) => {
+    setMapStyle(next);
+    const turnsOn = MAP_STYLES[next].turnsOn;
+    if (turnsOn?.hillshade) setHillshade(true);
+    if (turnsOn?.contours && sources.data?.hasTerrain && contoursSupported()) setContours(true);
+    if (turnsOn?.roadNumbers) setRoadNumbers(true);
+  };
+
   const changeContours = (on: boolean) => {
     if (!on) return setContours(false);
     if (!contoursSupported()) {
@@ -1420,6 +1437,12 @@ export default function MapsPage() {
     onSatelliteChange: satellite.setOn,
     repeaters: repeaters.on,
     onRepeatersChange: repeaters.setOn,
+    mapStyle,
+    onMapStyleChange: changeMapStyle,
+    roadNumbers,
+    onRoadNumbersChange: setRoadNumbers,
+    magneticLines,
+    onMagneticLinesChange: setMagneticLines,
     record: recordTool,
     disabled: !engine,
   };
