@@ -543,6 +543,12 @@ export const GUIDES: Guide[] = [
     group: "developers",
     about: "Repeater sources, the radio sheets and frequency data, the LogBook73 importer, and the mesh radio broker.",
   },
+  {
+    slug: "preparedness-internals",
+    file: "development/preparedness.md",
+    group: "developers",
+    about: "How the reference layers, the nuclear effects model and the preparedness screens work inside.",
+  },
 ];
 
 /** Pages of docs/ that are deliberately not guides, each with the reason. Keep it short. */
