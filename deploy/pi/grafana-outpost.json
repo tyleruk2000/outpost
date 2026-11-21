@@ -2,9 +2,7 @@
   "title": "Outpost",
   "uid": "outpost",
   "description": "Outpost's own figures from /metrics (OUTPOST_METRICS=true). See deploy/pi/monitoring.md.",
-  "tags": [
-    "outpost"
-  ],
+  "tags": ["outpost"],
   "timezone": "browser",
   "schemaVersion": 39,
   "version": 1,
@@ -131,9 +129,7 @@
         "graphMode": "none",
         "textMode": "value_and_name",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
+          "calcs": ["lastNotNull"]
         }
       }
     },
@@ -189,9 +185,7 @@
         "colorMode": "value",
         "graphMode": "none",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
+          "calcs": ["lastNotNull"]
         }
       }
     },
@@ -250,9 +244,7 @@
         "colorMode": "value",
         "graphMode": "area",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
+          "calcs": ["lastNotNull"]
         }
       }
     },
@@ -294,9 +286,7 @@
         "colorMode": "none",
         "graphMode": "area",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
+          "calcs": ["lastNotNull"]
         }
       }
     },
@@ -699,9 +689,7 @@
         "orientation": "horizontal",
         "showUnfilled": true,
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
+          "calcs": ["lastNotNull"]
         }
       }
     }
