@@ -376,6 +376,7 @@ export const GUIDES: Guide[] = [
   { slug: "api", file: "api.md", group: "developers", about: "Every route the server answers, with what it takes and gives." },
   { slug: "server-modules", file: "development/server-modules.md", group: "developers", about: "Writing a module of the server." },
   { slug: "web-screens", file: "development/web-screens.md", group: "developers", about: "Building a screen of the web app." },
+  { slug: "untested", file: "development/untested.md", group: "developers", about: "What has not been tried yet, by feature." },
 ];
 
 /** Pages of docs/ that are deliberately not guides, each with the reason. Keep it short. */

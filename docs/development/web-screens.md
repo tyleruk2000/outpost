@@ -335,6 +335,12 @@ not given these buttons. [library.md](../library.md) has the whole of it.
   each.
 - Body text contrast is at least 4.5:1. `text-ink-faint` is for placeholders and
   disabled text only.
+- **axe-core checks every screen.** The walks in `e2e/tests/every-screen.spec.ts` and
+  `every-screen.mobile.spec.ts` run it on each screen in the light and the dark theme
+  (`e2e/tests/a11y.ts`), and a serious or critical finding fails them. Fix the screen;
+  waive a finding only when it is wrong or cannot be fixed, in `e2e/tests/a11y-waivers.ts`
+  with the reason. What is not checked, among it a pass with a screen reader, is in
+  [untested.md](untested.md).
 
 ## Things over a map
 

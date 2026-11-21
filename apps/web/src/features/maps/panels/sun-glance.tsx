@@ -8,7 +8,7 @@
  * opening anything.
  */
 import { ChevronRight } from "lucide-react";
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { useClockStyle } from "@/lib/clock";
 import { cn } from "@/lib/utils";
 import { useToday } from "../grey-line/time";
@@ -50,7 +50,7 @@ export function SunGlance({
       data-sun-glance
       onClick={onOpen}
       // Not "Sun …": that is the name of the Sun line of a place, which can be on screen at the same time.
-      aria-label={`Today at the centre of the map: ${pieces.join(", ")}. Show all of the day’s sun times`}
+      aria-label={`${where ?? "Today at the centre of the map"}: ${pieces.join(", ")}${where ? ", today" : ""}. Show all of the day’s sun times`}
       className={cn(
         "outpost-sun-line flex min-h-[44px] w-full items-center gap-2 px-2.5 py-1 text-left hover:bg-surface-strong",
         className,
@@ -59,10 +59,12 @@ export function SunGlance({
       {/* Each piece stays whole; where both do not fit on one line, the sunset goes under the sunrise. */}
       <span className="tabular flex min-w-0 flex-1 flex-wrap gap-x-3 text-small font-medium text-ink">
         {where ? <span className="font-normal whitespace-nowrap text-ink-muted">{where}</span> : null}
+        {/* A space between the pieces, which the flex layout does not draw, keeps their words apart for whatever reads them. */}
         {pieces.map((piece) => (
-          <span key={piece} className="whitespace-nowrap">
-            {piece}
-          </span>
+          <Fragment key={piece}>
+            {" "}
+            <span className="whitespace-nowrap">{piece}</span>
+          </Fragment>
         ))}
       </span>
       <ChevronRight aria-hidden className="size-4 shrink-0 text-ink-muted" />

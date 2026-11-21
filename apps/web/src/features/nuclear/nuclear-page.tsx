@@ -789,12 +789,12 @@ function OnTheMap({
                 type="button"
                 onClick={() => onSelect(slot.key)}
                 aria-pressed={selected}
-                aria-label={`${slot.letter}: ${name}${selected ? ", being edited" : ""}`}
+                aria-label={`${slot.letter}: ${name}, ${what}, ${where}${slot.hidden ? ", hidden" : ""}${selected ? ", being edited" : ""}`}
                 className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 px-1.5 py-1.5 text-left"
               >
-                <LetterBadge letter={slot.letter} selected={selected} />
+                <LetterBadge letter={slot.letter} selected={selected} />{" "}
                 <span className="min-w-0">
-                  <span className={cn("block truncate text-small text-ink", selected && "font-semibold")}>{name}</span>
+                  <span className={cn("block truncate text-small text-ink", selected && "font-semibold")}>{name}</span>{" "}
                   <span className="block truncate text-micro text-ink-muted">
                     {what}, {where}
                     {slot.hidden ? ", hidden" : ""}

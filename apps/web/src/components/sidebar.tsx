@@ -330,7 +330,9 @@ export function Sidebar({
         <button
           type="button"
           onClick={onOpenSearch}
-          aria-label="Quick search"
+          // Named by its words where they show, so that what is read out (and what voice control is told) is what is seen.
+          aria-label={collapsed ? "Quick search" : undefined}
+          aria-keyshortcuts="Control+K Meta+K"
           className={cn(
             "flex h-9 w-full items-center gap-2.5 rounded-control border border-spine-border bg-spine-raised/60 px-2.5 text-[0.9375rem] text-spine-ink-muted transition-colors hover:border-spine-ink-muted/40 hover:text-spine-ink focus-visible:outline-spine-ink",
             collapsed && "justify-center border-transparent bg-transparent px-0",
@@ -340,7 +342,9 @@ export function Sidebar({
           {!collapsed ? (
             <>
               <span className="flex-1 text-left">Quick search</span>
-              <kbd className="font-mono text-micro text-spine-ink-muted/80">{modKey} K</kbd>
+              <kbd aria-hidden className="font-mono text-micro text-spine-ink-muted/80">
+                {modKey} K
+              </kbd>
             </>
           ) : null}
         </button>

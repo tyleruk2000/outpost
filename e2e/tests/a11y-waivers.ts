@@ -1,0 +1,37 @@
+/**
+ * Findings of the accessibility check (a11y.ts) that are let through, each with the reason.
+ * A waiver names the axe rule, and may narrow it to screens (`where`, matched against the
+ * address) and to elements (`target`, matched against axe's selector for the element
+ * followed by the start of its HTML).
+ * Keep this list short: a finding is fixed in the app unless it is wrong or cannot be.
+ */
+export interface Waiver {
+  rule: string;
+  where?: RegExp;
+  target?: RegExp;
+  reason: string;
+}
+
+export const WAIVERS: Waiver[] = [
+  {
+    rule: "label-content-name-mismatch",
+    where: /^\/games\/(chess|draughts)$/,
+    target: /data-square/,
+    reason:
+      "The squares on the board's edges show the rank's digit and the file's letter as separate marks in two corners, and the square is named by its coordinate in full (\"a2, your pawn\"). The board is played from the keyboard as a grid, not by speaking the mark in a corner.",
+  },
+  {
+    rule: "label-content-name-mismatch",
+    where: /^\/games\/(solitaire|pairs)$/,
+    target: /data-card/,
+    reason:
+      'A card shows its printed index ("J" and the suit\'s sign in the corner) and is named in words ("Jack of spades, face up"). The index is the card\'s face, not a label to be spoken; the table is played from the keyboard.',
+  },
+  {
+    rule: "label-content-name-mismatch",
+    where: /^\/search\/how-it-works$/,
+    target: /understand-node/,
+    reason:
+      "Each stage of the drawing is a link whose visible words are its title and one or two lines cut to fit the box. Its name is the title followed by the whole statement in words, and the table beside the drawing holds the same.",
+  },
+];

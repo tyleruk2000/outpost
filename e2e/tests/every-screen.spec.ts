@@ -1,3 +1,4 @@
+import { accessibilityInBothThemes } from "./a11y";
 import { AT_LEAST, expectArrived, failing } from "./every-screen";
 import { expect, test, watchForErrors } from "./fixtures";
 
@@ -11,7 +12,7 @@ test.describe("every screen, on a wide screen", () => {
   test("is reached from Home by pressing only what the sidebar shows, and each parent screen links to those under it", async ({
     page,
   }, testInfo) => {
-    test.setTimeout(120_000);
+    test.setTimeout(600_000);
     const errors = watchForErrors(page);
     await page.goto("/");
     let heading = await expectArrived(page, "/", testInfo);
@@ -41,6 +42,10 @@ test.describe("every screen, on a wide screen", () => {
       // The sidebar names each screen by its own title, so that a person knows they are where they pressed.
       if (!TITLED_OTHERWISE.has(entry.path)) expect(heading, `the title of ${entry.path}`).toBe(entry.name);
       expect(failing(errors), `no error on ${entry.path}`).toEqual([]);
+      // Checked in both themes; the walk at an address that is not secure shows the same screens.
+      if (!testInfo.project.name.startsWith("not-secure")) {
+        expect.soft(await accessibilityInBothThemes(page, entry.path), `no serious accessibility finding on ${entry.path}`).toEqual([]);
+      }
     }
 
     // Each parent screen says where the screens under it are, in its own content, not only in the sidebar.
