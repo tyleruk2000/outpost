@@ -91,7 +91,7 @@ describe("the Morse trainer's tabs", () => {
     renderAt("/radio/morse?tab=progress");
     const receive = screen.getByRole("tab", { name: /^Receive/ });
     await waitFor(() => expect(receive).toHaveTextContent("L7"));
-    expect(receive).toHaveAccessibleName("Receive, Koch lesson 7");
+    expect(receive).toHaveAccessibleName("Receive L7, Koch lesson 7");
     expect(getMorsePrefs().kochLesson).toBe(7);
   });
 

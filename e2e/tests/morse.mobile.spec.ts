@@ -23,7 +23,7 @@ test.describe("Morse trainer on a phone", () => {
     await page.getByRole("dialog", { name: "More" }).getByRole("button", { name: "Show the screens under Radio" }).tap();
     await page.getByRole("dialog", { name: "More" }).locator('a[href="/radio/morse"]').first().tap();
     await expect(page.getByRole("heading", { level: 1, name: "Morse trainer" })).toBeVisible();
-    await expect(page.getByRole("tab", { name: "Receive, Koch lesson 1" })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tab", { name: "Receive L1, Koch lesson 1" })).toHaveAttribute("aria-selected", "true");
     expect(await overflow()).toBeLessThanOrEqual(0);
 
     // A drill picked from the drop-down, kept short.

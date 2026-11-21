@@ -330,6 +330,7 @@ package with its licence text, written by `scripts/build-app.mjs`.
 | `@peculiar/x509`, `selfsigned`, `node-forge` | MIT; MIT; BSD-3-Clause or GPL-2.0 | Not used. The HTTPS module lays out certificates itself (`modules/https/der.ts`, `certificates.ts`, ~400 lines) and leaves keys and signing to Node; `@peculiar/x509` pulls in `tslib` (0BSD). PKCS#12 is read by `pkcs12.ts` (~290 lines), since Node does not return the key. No `openssl` in the image. |
 | `vcf`, `vcard4`, `ical.js` | MIT; ISC; MPL-2.0 | Not used. vCard is read by `modules/contacts/vcard.ts` (~400 lines): none of these reads vCard 2.1 properly, which Android and Outlook export. |
 | `tsdav` | MIT | **Tests only**, driving the CardDAV server. Its `xml-js` depends on `sax`, held at 1.2.4 (ISC) by `pnpm.overrides`. The server is `modules/contacts/dav.ts`. |
+| `axe-core`, `@axe-core/playwright` | MPL-2.0 | **Tests only**: the end-to-end suite runs it on every screen (`e2e/tests/a11y.ts`). Used unmodified as a package. |
 | Atkinson Hyperlegible, Literata, Noto Sans | OFL-1.1 | Bundled fonts. |
 | Protomaps basemap styles | BSD-3-Clause (design CC0) | Bundled. |
 | Helvetica character widths (`features/maps/print/helvetica.ts`) | Adobe's Core 14 AFM notice: free to use and distribute with the notice | 448 numbers for laying out printed maps; the typeface is not bundled. |

@@ -220,7 +220,7 @@ describe("Explore", () => {
     await screen.findByRole("heading", { name: "Amateur radio bands in the United Kingdom" });
     expect(screen.getByText("Included with Outpost")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Add Amateur radio bands in the United Kingdom to the library" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add to library: Amateur radio bands in the United Kingdom" }));
     expect(await screen.findByRole("link", { name: "Open Amateur radio bands in the United Kingdom" })).toHaveAttribute(
       "href",
       "/library/documents/d7",

@@ -108,14 +108,14 @@ describe("a catalogue entry", () => {
     expect(screen.getByText(/No download needed/)).toBeInTheDocument();
     expect(screen.getByText(/Outpost.*English.*Text document/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Download/ })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Add Amateur radio bands in the United Kingdom to the library" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add to library: Amateur radio bands in the United Kingdom" }));
     expect(onDownload.onAdd).toHaveBeenCalledWith(expect.objectContaining({ id: "outpost.radio.uk-amateur-bands" }));
     expect(onDownload).not.toHaveBeenCalled();
   });
 
   it("shows the add as busy while the sheet is being copied", () => {
     show(sheet, { adding: true });
-    expect(screen.getByRole("button", { name: "Add Amateur radio bands in the United Kingdom to the library" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Add to library: Amateur radio bands in the United Kingdom" })).toBeDisabled();
   });
 
   it("opens an added sheet as the document it became", () => {

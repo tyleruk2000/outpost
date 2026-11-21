@@ -321,7 +321,8 @@ export function ModelSection() {
           </Link>{" "}
           describes the rest.
         </p>
-        <pre>
+        {/* biome-ignore lint/a11y/noNoninteractiveTabindex: a block that scrolls sideways must take focus to be scrolled from the keyboard */}
+        <pre tabIndex={0}>
           <code>{contextCommand(data?.query ?? "your question")}</code>
         </pre>
         <p>However an answer is produced, it is the model’s work, not your library’s. Read it with the sources open.</p>

@@ -20,7 +20,7 @@ test.describe("radio guides", () => {
     await expect(card.getByText(/Book, 11 chapters/)).toBeVisible();
     await card.getByText("Who wrote it and how it was reviewed").click();
     await expect(card.getByText(/LogBook73 reviewed it on 17 August 2026/)).toBeVisible();
-    await card.getByRole("button", { name: `Add ${GUIDE} to the library` }).click();
+    await card.getByRole("button", { name: `Add to library: ${GUIDE}` }).click();
     await expect(card.getByText("In your library")).toBeVisible({ timeout: 20_000 });
 
     // ── The book's page is its contents ──

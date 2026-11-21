@@ -29,7 +29,7 @@ export function MagneticGlance({ engine, className }: { engine: MapEngine; class
     <Link
       to={`/tools/compass?lat=${view.lat.toFixed(5)}&lon=${view.lon.toFixed(5)}`}
       data-magnetic-glance
-      aria-label={`${words.replace(" E", " east").replace(" W", " west")} of true north at the centre of the map. Open the compass for this point`}
+      aria-label={`${words}: ${words.replace("Magnetic", "magnetic north is").replace(" E", " east").replace(" W", " west")} of true north at the centre of the map. Open the compass for this point`}
       className={cn(
         "tabular flex min-h-[44px] items-center px-2.5 py-1 text-small whitespace-nowrap text-ink-muted hover:bg-surface-strong hover:text-ink md:min-h-9",
         className,

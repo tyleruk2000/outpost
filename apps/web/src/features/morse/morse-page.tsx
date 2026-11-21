@@ -55,8 +55,8 @@ export default function MorsePage() {
       <LicenceLine use="listen-and-transmit" className="mb-6" />
       <Tabs value={active} onValueChange={setTab}>
         <TabsList className="mb-6" aria-label="Morse trainer">
-          <TabsTrigger value="receive" aria-label={`Receive, Koch lesson ${lesson}`}>
-            Receive
+          <TabsTrigger value="receive" aria-label={`Receive L${lesson}, Koch lesson ${lesson}`}>
+            Receive{" "}
             <span className="tabular rounded-control bg-surface-strong px-1.5 text-micro font-normal text-ink-muted" aria-hidden>
               L{lesson}
             </span>

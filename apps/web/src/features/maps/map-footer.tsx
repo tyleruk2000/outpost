@@ -108,12 +108,13 @@ function CoordinateReadout({
         <button
           type="button"
           onClick={copy}
-          aria-label="Copy these coordinates"
           title="Copy"
           className="group flex min-h-9 min-w-0 flex-1 items-center gap-2 px-2.5 text-left focus-visible:-outline-offset-2 max-md:min-h-[44px]"
         >
+          {/* Named by what it shows, after what pressing it does: what is read out (and what voice control is told) is what is seen. */}
+          <span className="sr-only">Copy these coordinates: </span>
           <span className="grid">
-            <span ref={source} className="text-micro leading-tight text-ink-muted" />
+            <span ref={source} className="text-micro leading-tight text-ink-muted" />{" "}
             <span className="tabular font-mono text-[0.8125rem] leading-tight text-ink">
               <span ref={text} />
               {heights && desktop ? <HeightFigure reading={height} /> : null}

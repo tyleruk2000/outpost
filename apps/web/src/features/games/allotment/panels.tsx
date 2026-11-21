@@ -271,7 +271,7 @@ export function Stall({ plot, busy, act }: { plot: AllotmentState; busy: boolean
                   <Button
                     size="sm"
                     disabled={busy || plot.coins < thing.price}
-                    aria-label={`Buy the ${thing.name.toLowerCase()} for ${plural(thing.price, "coin")}`}
+                    aria-label={`Buy for ${plural(thing.price, "coin")}: the ${thing.name.toLowerCase()}`}
                     onClick={() => act({ type: "buy", thing: id })}
                   >
                     Buy for {plural(thing.price, "coin")}

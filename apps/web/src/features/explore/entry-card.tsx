@@ -133,7 +133,7 @@ function Standing({
           <span className="block text-body font-semibold text-ink">Included with Outpost</span>
           No download needed{edition ? <span>. {edition}</span> : null}
         </p>
-        <Button size="sm" loading={adding} onClick={() => onAdd(entry)} aria-label={`Add ${entry.name} to the library`}>
+        <Button size="sm" loading={adding} onClick={() => onAdd(entry)} aria-label={`Add to library: ${entry.name}`}>
           {adding ? null : <Plus />} Add to library
         </Button>
       </div>

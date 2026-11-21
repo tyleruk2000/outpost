@@ -209,6 +209,6 @@ describe("a book in Explore", () => {
     expect(screen.getByText("Licence: MIT.")).toBeInTheDocument();
     expect(screen.getByText("Who wrote it and how it was reviewed")).toBeInTheDocument();
     expect(screen.getByText(/LogBook73 reviewed it on 28 August 2026/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add Xiegu G90 companion guide to the library" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add to library: Xiegu G90 companion guide" })).toBeInTheDocument();
   });
 });

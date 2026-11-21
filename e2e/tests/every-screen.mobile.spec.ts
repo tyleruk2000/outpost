@@ -1,9 +1,10 @@
+import { accessibilityInBothThemes } from "./a11y";
 import { AT_LEAST, expectArrived, failing } from "./every-screen";
 import { expect, test, watchForErrors } from "./fixtures";
 
 test.describe("every screen, on a phone", () => {
   test("is reached from Home by pressing only the bottom bar and the More sheet, and none scrolls sideways", async ({ page }, testInfo) => {
-    test.setTimeout(120_000);
+    test.setTimeout(600_000);
     const errors = watchForErrors(page);
     await page.goto("/");
     let heading = await expectArrived(page, "/", testInfo);
@@ -48,6 +49,10 @@ test.describe("every screen, on a phone", () => {
       const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(sideways, `${path} scrolls sideways`).toBeLessThanOrEqual(1);
       expect(failing(errors), `no error on ${path}`).toEqual([]);
+      // Checked in both themes; the walk at an address that is not secure shows the same screens.
+      if (!testInfo.project.name.startsWith("not-secure")) {
+        expect.soft(await accessibilityInBothThemes(page, path), `no serious accessibility finding on ${path}`).toEqual([]);
+      }
     }
   });
 });
