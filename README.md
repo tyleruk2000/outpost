@@ -234,6 +234,8 @@ first.*
 | QR codes | Makes a code from text, a web address, a Wi-Fi network, a contact or a saved place, on the device; nothing typed is sent anywhere. | [QR codes](docs/tools-qr-and-network.md#qr-codes-toolsqr) |
 | Compass | Where magnetic north and the map's grid north lie from true north at a place (NOAA's World Magnetic Model 2025, and the National Grid), and so what to add or subtract between map and compass, with the three norths drawn; a bearing converted between them; and on a phone at an `https` address, a live compass corrected to true or grid north. The live compass has not been tried on a real phone. | [Compass](docs/tools-compass.md) |
 | Solar clock | Where the sun is now at a place; after a power cut, the time to set your clocks by from a stick's shadow (noon, the shadow's length or bearing, sunrise on the sea), with an honest range and a diagram of each method; a horizontal sundial and a nocturnal to print, drawn for the place. Worked out on the device, no internet. Tested by arithmetic, not yet against a real shadow. | [Solar clock](docs/tools-solar-clock.md) |
+| Tide times | High and low water at the nearest tide stations, a day to a month ahead, worked out on the computer from NOAA's published constants: the US coasts and a few ports elsewhere. Matches NOAA's own tables to a minute or two; ignores storm surges and is not for navigation. | [Tide times](docs/tides.md) |
+| Garden | What to sow, plant out and harvest this month in the UK, from the RHS calendar for 22 vegetables, with tender crops kept back until after your last frost; and a record of what the household sowed. Other countries are not covered yet. | [Garden](docs/garden.md) |
 | Devices on this network | Lists what answers on the network the computer running Outpost is on: a NAS, a printer, a Raspberry Pi whose address you have forgotten. Never put in search. A start-up option limits starting a scan to the computer itself. | [Network](docs/tools-qr-and-network.md#devices-on-this-network-toolsnetwork) |
 
 Every calculator shows its answer as you type and says, under **How this is worked
@@ -685,6 +687,7 @@ is in [docs/sources.md](docs/sources.md). In short:
 | Food Standards Agency | Registered food shops in the UK, on the food and supplies layer | OGL |
 | USDA FoodData Central (SR Legacy, April 2018) | Food energy in Supplies, shipped with Outpost | CC0 |
 | NOAA NCEI and the British Geological Survey, World Magnetic Model 2025 | Magnetic north on the Compass, the map and the solar clock, shipped | Public domain |
+| NOAA CO-OPS, harmonic constants for 1,370 tide stations | Tide times, shipped | Public domain |
 | Stations, broadcasters, regulators and coastguards, each page named on its entry | Frequencies to listen to, shipped | Facts, checked against each page and dated; no compiled list copied |
 | Royal Horticultural Society, "Grow your own" pages | The allotment's growing months and the facts on its crop cards | Facts only, each page read once; nothing copied |
 | UK Government (Be Ready, GOV.UK), Met Office, Ofcom and others | Emergency plan templates | OGL v3 and others, quoted only where their terms allow |
@@ -779,6 +782,7 @@ Every page below is also inside Outpost, under **Help**.
 | [Compass](docs/tools-compass.md) | Magnetic, grid and true north, the model, and the live compass |
 | [QR codes and devices on this network](docs/tools-qr-and-network.md) | The two network tools |
 | [Solar clock](docs/tools-solar-clock.md) | Time from the sun and stars, its formulas, sources, diagrams and measured accuracy |
+| [Garden](docs/garden.md) | The month's sowing, planting and harvest, the last frost, and the record of sowings |
 | [Emergency plans](docs/emergency-plans.md) | Plans, templates and their sources, cards |
 | [Household papers](docs/household-papers.md) | Medical sheets, keeping in touch, grab cards and the binder |
 | [Supplies](docs/supplies.md) | Stock, the household, food energy, barcodes, CSV |

@@ -14,7 +14,9 @@ import {
   Navigation,
   QrCode,
   RadioTower,
+  Sprout,
   SunMedium,
+  Waves,
 } from "lucide-react";
 import type { SectionScreen } from "@/components/section";
 
@@ -96,5 +98,20 @@ export const toolScreens: SectionScreen[] = [
     about:
       "Magnetic north and the map's grid north at a place, what to add or subtract between map and compass, and the phone's own compass corrected by them.",
     keywords: "bearing north direction declination magnetic variation grid magnetic angle",
+  },
+  {
+    to: "/tools/tides",
+    label: "Tide times",
+    icon: Waves,
+    keywords: "tide tides high water low water sea coast harbour beach fishing",
+    about: "High and low water at the tide stations near a place, days or weeks ahead, worked out with no internet. US coasts for now.",
+  },
+  {
+    to: "/tools/garden",
+    label: "Garden",
+    icon: Sprout,
+    keywords: "vegetables veg grow your own sow sowing seeds plant out harvest frost rhs calendar",
+    about:
+      "What to sow, plant out and harvest this month in the UK, from the RHS calendar, kept back for your last frost, and a record of what you sowed.",
   },
 ];

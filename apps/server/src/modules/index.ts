@@ -21,6 +21,7 @@ import { registerDownloads } from "./downloads/index.ts";
 import { registerEmergencyPlans } from "./emergency-plans/index.ts";
 import { registerEncryption } from "./encryption/index.ts";
 import { registerGames } from "./games/index.ts";
+import { registerGarden } from "./garden/index.ts";
 import { registerHouseholdPapers } from "./household-papers/index.ts";
 import { registerHttps } from "./https/index.ts";
 import { registerImports } from "./imports/index.ts";
@@ -44,6 +45,7 @@ import { registerRetrieval } from "./retrieval/index.ts";
 import { registerSearch } from "./search/index.ts";
 import { registerSemantic } from "./semantic/index.ts";
 import { registerSupplies } from "./supplies/index.ts";
+import { registerTides } from "./tides/index.ts";
 import { registerTools } from "./tools/index.ts";
 import { registerWeather } from "./weather/index.ts";
 import { registerWebPages } from "./webpages/index.ts";
@@ -100,6 +102,10 @@ export const modules: ModuleRegister[] = [
   registerMesh,
   // The household's papers (medical sheets, keeping in touch, the binder), after the mesh link, on a line of their own.
   registerHouseholdPapers,
+  // Garden (Tools): the record of sowings and the last-frost date, on a line of its own.
+  registerGarden,
+  // Tide times (Tools): predictions from bundled harmonic constants, nothing kept, on a line of its own.
+  registerTides,
   // Tools a language model may call (Chat, and /mcp), last: they read from every module above.
   registerTools,
 ];

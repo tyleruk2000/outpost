@@ -1582,3 +1582,51 @@ read from the system and how it is described.
 | prometheus.io/docs/instrumenting/exposition_formats/ | Text format `version=0.0.4`, lines ending in a line feed, `# HELP` and `# TYPE` once per name before its samples, label escaping, histogram buckets with `le` ending in `+Inf` equal to `_count`. | `/metrics` is written by hand to that format; no client library. |
 | nodejs.org/docs/latest-v24.x/api/perf_hooks.html, `monitorEventLoopDelay` | "By default, the histogram is updated by a timer using the configured resolution"; the per-iteration mode "does not keep the loop alive". | The per-iteration mode was ignored by Node 24.15 when tried, so the timer is used, and only while there is work. |
 | manpages.debian.org, avahi-daemon(8) and avahi-publish(1) (bookworm); avahi 0.8's `avahi-publish.c` | `--reload` rereads `/etc/avahi/services/`; `avahi-publish -a` registers "an address/host name mapping"; `-R --no-reverse` "Do not publish reverse entry with address"; `-f` waits for the daemon and reconnects. | `outpost-name.service` runs `avahi-publish -f -a -R NAME.local ADDRESS`. |
+
+## The garden calendar (read 2026-11-21)
+
+Tools → Garden ([garden.md](garden.md)) uses the RHS's month calendar for 22 vegetables,
+with sowing, planting and harvest kept apart (the Allotment game holds the first twelve with
+sowing and planting together; a server test holds the two to each other). Nothing is
+fetched by Outpost and no page or picture is bundled: the months are numbers in
+`packages/shared/src/garden.ts`, the frost notes are sentences written for Outpost, and the
+pages are plain links at the foot of the screen.
+
+| What | Where it comes from | How it was read |
+| --- | --- | --- |
+| Sow, Plant or Plant out, and Harvest months; which crops are tender and what the page says about frost | Royal Horticultural Society, "Grow your own" pages: `https://www.rhs.org.uk/vegetables/<crop>/grow-your-own` for radishes, salad-leaves, onions, peas, carrots, beetroot, kale, broad-beans, potatoes, leeks, garlic, squash, courgettes, cucumbers, french-beans, runner-beans, sweetcorn, tomatoes, lettuce, parsnips, cabbages and spinach | Each page fetched once on 21 November 2026 with curl (user agent "Mozilla/5.0"), about a third of a second apart; every one answered 200. The months were read from the calendar in the page's HTML (each month marked active or not in rows named by the page); the frost sentences were read from the page's text. `/vegetables/` is not disallowed by the site's robots.txt (as read on 17 November 2026, see the allotment's section above). The same terms apply as there: only facts are kept, in Outpost's words. |
+| When the last frost usually comes | Met Office, "Why frost can still occur in late spring" (2026), <https://www.metoffice.gov.uk/blog/2026/why-frost-can-still-occur-in-late-spring> | Read once on 21 November 2026. Used: air frost and ground frost defined; the average last air frost before the end of April in southern and coastal regions, well into May and in a few places June further north and on higher ground. It gives no date for a place, so the screen asks for the household's own. |
+
+The months as the calendars gave them on 21 November 2026 (Sow / Plant or Plant out /
+Harvest), for the ten crops not in the allotment's section: cabbages Feb–Jul / Mar–Oct (out)
+/ all year; courgettes Apr–Jun / May–Jun (out) / Jul–Oct; cucumbers Feb–Jun / May–Jun (out)
+/ Jul–Oct; French beans Apr–Jul / May–Jun (out) / Jul–Oct; lettuce Feb–Oct / Mar–Apr (out) /
+May–Nov; parsnips Mar–May / – / Sep–Mar; runner beans Apr–Jul / May–Jul (out) / Jul–Oct;
+spinach Mar–May, Aug–Sep / – / Mar–Nov; sweetcorn Apr–Jun / May–Jun (out) / Aug–Oct; tomatoes
+Feb–Apr / May–Jun / Jul–Oct. The twelve allotment crops' rows were the same as on 17
+November.
+
+Tender, from each page's own words: courgettes, cucumbers, squash, sweetcorn and tomatoes
+("tender"), French and runner beans (sown outside or planted out "once all risk of frost has
+passed"). The rule the screen applies (tender crops kept back until the day after the
+household's last frost, never brought forward) follows the pages' "plant out after the last
+frost"; it is not the RHS's own calculation.
+
+## Tidal constants
+
+Tools → Tide times ([tides.md](tides.md)) ships NOAA's harmonic constants and works out
+the tides from them. Read on 21 November 2026.
+
+| What | Where it comes from | How it was read |
+| --- | --- | --- |
+| Harmonic constituents (amplitude, Greenwich phase) and datums (MSL, MLLW) for every station NOAA lists with constituents, outside the Great Lakes | NOAA CO-OPS metadata API, <https://api.tidesandcurrents.noaa.gov/mdapi/prod/> (`stations.json?type=harcon`, then each station's `harcon.json` and `datums.json`, metric) | Fetched by `scripts/build-tide-stations.mjs`, four requests at a time: 1,374 listed, 1,370 kept; four (9415265, 9415423, 9415584, 9416131) answered 403 on every try and are left out. Written to `apps/server/src/modules/tides/data/noaa-harmonic.json`, 409 kB (about 165 kB compressed). |
+| The licence | NOAA Tides and Currents, Disclaimers, <https://tidesandcurrents.noaa.gov/disclaimers.html> | "The information on government servers are in the public domain, unless specifically annotated otherwise, and may be used freely by the public." "NOS requests that attribution be given whenever NOS material is reproduced and re-disseminated." The screen names NOAA CO-OPS. A few stations are outside the United States (Bermuda, Central America, others); NOAA publishes their constants with no other terms, and they are kept on the same footing. |
+| The method | P. Schureman, *Manual of Harmonic Analysis and Prediction of Tides*, US Coast and Geodetic Survey Special Publication 98 (1958), as NOAA publishes it: <https://tidesandcurrents.noaa.gov/publications/SpecialPubNo98.pdf> (a scan, 336 pages) | Read from the scan: table 1 (mean longitudes of moon, sun, perigees and node, epoch 31 December 1899 noon), table 2 and 2a (arguments V and u of each constituent), paragraph 24 (the triangle giving I, ν and ξ), formulas 73 to 80, 141 to 150, 195 to 207 (M1), 213 to 215 (L2), 216 to 227 (K1) and 228 to 235 (K2) for the node factors, paragraph 77 (node factors taken for the middle of the year), and table 6 (I, ν, ξ, ν′, 2ν″ by degree of N), which the tests hold the arithmetic to. |
+| Published predictions the tests are held to | NOAA CO-OPS data API, `product=predictions`, MLLW, GMT, metric | High and low waters for 15 to 21 January 2027 at The Battery (8518750), San Francisco (9414290), Honolulu (1612340) and Galveston Pier 21 (8771450), and hourly heights for January 2027 at the first two, fetched once and kept in `apps/server/test/fixtures/tides/`. Agreement found: every high and low within 1 minute and 1 mm (2 minutes at Galveston, where the turns are flat), every hourly height within 2 mm. |
+
+Not shipped:
+
+| Source | Terms as read | Why not |
+| --- | --- | --- |
+| Canadian Hydrographic Service (tides.gc.ca) | Licence agreement, <https://tides.gc.ca/en/licence-agreement>: the data "shall not be sold, licensed, leased, assigned or given to a third party"; non-profit derived products allowed with a notice; the licence can be "terminated unilaterally by CHS", after which copies must be destroyed. | Giving the data to every household that installs Outpost is giving it to third parties, and a licence that can be withdrawn does not suit data shipped in a release. Whether the Open Government Licence copy on open.canada.ca includes harmonic constants was not settled. |
+| UK Hydrographic Office (Admiralty), tidal harmonics, <https://admiralty.co.uk/UKHO/tidal-harmonics> | The page offers the format's schema and examples "freely available for download"; it states no terms for the constants themselves. | No open licence found; not used. |

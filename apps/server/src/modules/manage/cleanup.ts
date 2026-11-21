@@ -269,6 +269,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
         householdPapers: ctx.services.householdPapers.kept.count(),
         morse: ctx.services.morse.kept.count(),
         games: ctx.services.games.kept.count(),
+        garden: ctx.services.garden.kept.count(),
         board: ctx.services.board.kept.count(),
         learning: ctx.services.learning.kept.count(),
         pgpKeys: count("SELECT count(*) AS n FROM pgp_keys"),
@@ -537,6 +538,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
       householdPapers: 0,
       morse: { sessions: 0, progress: 0 },
       games: { saves: 0 },
+      garden: { sowings: 0, settings: 0 },
       board: { messages: 0, files: 0, fileBytes: 0 },
       learning: { learners: 0, pages: 0 },
       pgpKeys: 0,
@@ -600,6 +602,8 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
     personal.morse = ctx.services.morse.kept.eraseAll();
     // The games: the allotment and each game's tally.
     personal.games = ctx.services.games.kept.eraseAll();
+    // The garden: the record of sowings and the last-frost date.
+    personal.garden = ctx.services.garden.kept.eraseAll();
     // The household board: messages, check-ins (with any positions) and the files sent on it.
     personal.board = await ctx.services.board.kept.eraseAll();
     // Learning progress: where each learner got to in the reference archives.
@@ -685,7 +689,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
         // From here on nothing can be stopped half-way in a state worth keeping.
         run.progress({
           message:
-            "Erasing notes, places, routes, contacts, conversations, repeaters, radio plans and logs, power plans and devices, supplies, emergency plans, Morse practice, the games, the board, and settings",
+            "Erasing notes, places, routes, contacts, conversations, repeaters, radio plans and logs, power plans and devices, supplies, emergency plans, Morse practice, the games, the garden, the board, and settings",
         });
         await erasePersonal(result);
         await eraseDataFolders(result);

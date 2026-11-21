@@ -13,6 +13,8 @@
       "!catalog/schema",
       "!engines/solar/predicted-solar-cycle.json",
       "!apps/server/src/modules/supplies/foods/fdc-sr-legacy.json",
+      "!apps/server/src/modules/tides/data/noaa-harmonic.json",
+      "!apps/server/test/fixtures/tides",
       "!**/*.md"
     ]
   },

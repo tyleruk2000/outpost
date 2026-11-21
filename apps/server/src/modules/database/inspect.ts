@@ -66,6 +66,8 @@ const GROUPS: Record<Exclude<DatabaseGroupId, "other">, string[]> = {
 GROUPS.prepare.push("emergency_plans");
 // The household's papers (modules/household-papers), on a line of their own so that other additions merge cleanly.
 GROUPS.prepare.push("medical_sheets", "comms_plans", "household_binder");
+// The garden (modules/garden), on a line of its own so that other additions merge cleanly.
+GROUPS.prepare.push("garden_sowings", "garden_settings");
 // The Morse trainer (modules/morse), on a line of its own so that other additions merge cleanly.
 GROUPS.radio.push("morse_progress", "morse_sessions");
 // Learning progress in reference archives (modules/learning), on a line of its own so that other additions merge cleanly.

@@ -131,6 +131,9 @@ const TABLES: Record<string, Decision> = {
   medical_sheets: { group: "prepare", drive: true },
   comms_plans: { group: "prepare", drive: true },
   household_binder: { group: "prepare", drive: true },
+  // The garden (modules/garden): the record of sowings and the last-frost date.
+  garden_sowings: { group: "prepare", drive: true },
+  garden_settings: { group: "prepare", drive: true },
   nuclear_scenarios: { group: "maps", drive: true },
   nuclear_scenario_sets: { group: "maps", drive: true },
   reference_features: { group: "maps", drive: true },

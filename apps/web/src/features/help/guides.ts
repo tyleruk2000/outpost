@@ -291,6 +291,22 @@ export const GUIDES: Guide[] = [
     opens: { to: "/tools/solar-clock", label: "Open Solar clock" },
   },
   {
+    slug: "tides",
+    file: "tides.md",
+    group: "using",
+    about: "High and low water at the tide stations near a place, worked out with no internet.",
+    keywords: "tide high water low water coast sea harbour",
+    opens: { to: "/tools/tides", label: "Open Tide times" },
+  },
+  {
+    slug: "garden",
+    file: "garden.md",
+    group: "using",
+    about: "What to sow, plant and harvest this month, your last frost, and the record of sowings.",
+    keywords: "vegetables sow harvest frost",
+    opens: { to: "/tools/garden", label: "Open Garden" },
+  },
+  {
     slug: "qr-and-network",
     file: "tools-qr-and-network.md",
     group: "using",

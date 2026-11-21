@@ -8,6 +8,7 @@ import {
   type CleanupResult,
   formatBytes,
   type GamesKept,
+  type GardenKept,
   type LearningKept,
   type LeftoverKind,
   type ManagedItem,
@@ -291,6 +292,13 @@ export function gamesWords(games: GamesKept | undefined): string | null {
   return plural(games.saves, "game kept for the household", "games kept for the household");
 }
 
+/** "4 sowings in the garden record", or the last-frost date when that is all there is, or null when there is nothing. */
+export function gardenWords(garden: GardenKept | undefined): string | null {
+  if (!garden) return null;
+  if (garden.sowings > 0) return plural(garden.sowings, "sowing in the garden record", "sowings in the garden record");
+  return garden.settings > 0 ? "the garden's last-frost date" : null;
+}
+
 /** "12 messages on the board with 2 sent files (3.10 MB)", or null when there is nothing. */
 export function boardWords(board: BoardKept | undefined): string | null {
   if (!board || (board.messages === 0 && board.files === 0)) return null;
@@ -345,6 +353,8 @@ export function personalWords(personal: NonNullable<CleanupPlan["personal"]>): s
   if (morse) parts.push(morse);
   const games = gamesWords(personal.games);
   if (games) parts.push(games);
+  const garden = gardenWords(personal.garden);
+  if (garden) parts.push(garden);
   const board = boardWords(personal.board);
   if (board) parts.push(board);
   const learning = learningWords(personal.learning);
@@ -406,6 +416,7 @@ export function resultSentences(result: CleanupResult): string[] {
       (result.personal.householdPapers ?? 0) > 0 ? plural(result.personal.householdPapers ?? 0, "household paper") : null,
       morseWords(result.personal.morse),
       gamesWords(result.personal.games),
+      gardenWords(result.personal.garden),
       boardWords(result.personal.board),
       learningWords(result.personal.learning),
       (result.personal.pgpKeys ?? 0) > 0 ? plural(result.personal.pgpKeys ?? 0, "PGP key") : null,
