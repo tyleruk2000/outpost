@@ -31,7 +31,17 @@ test("a radio range from a long press on a phone: the menu, the card in words, a
     await menu.getByRole("menuitem", { name: "Estimated radio range from here" }).tap();
 
     const card = page.locator(".outpost-map-card").filter({ has: page.getByRole("heading", { name: "Estimated radio range" }) });
-    await expect(card.getByText(/^In sight: .* of the ground within 10 km/)).toBeVisible({ timeout: 20_000 });
+    // Folded to two lines once drawn, in the sheet's place, so the shading has the map; opened with one press.
+    const folded = page.getByRole("region", { name: "Estimated radio range" });
+    await expect(folded).toContainText(/in sight within 10 km/, { timeout: 20_000 });
+    expect((await folded.boundingBox())!.height, "the folded card").toBeLessThan(map.height * 0.25);
+    await expect(page.getByRole("button", { name: "Copy these coordinates" })).toBeHidden();
+    await folded.getByRole("button", { name: "Show the details" }).tap();
+    await expect(card.getByText(/^In sight: .* of the ground within 10 km/)).toBeVisible();
+    // The drawing of why the shape is so is brought into view when it is opened.
+    await card.getByRole("button", { name: "Why this shape: look along one direction" }).tap();
+    await expect(card.getByRole("slider", { name: /^Direction to look along/ })).toBeInViewport({ timeout: 5_000 });
+    await card.getByRole("button", { name: "Why this shape: look along one direction" }).tap();
     // Short until asked; what to change is then in reach, a finger's size.
     await card.getByRole("button", { name: /^Heights and details/ }).tap();
     for (const control of [card.getByLabel("Your aerial"), card.getByRole("radio", { name: "Car" })]) {

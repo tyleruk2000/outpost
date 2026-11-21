@@ -16,7 +16,7 @@ import {
   type RangeStationId,
   type SightRange,
 } from "@outpost/shared";
-import { ChevronRight, CircleAlert } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, CircleAlert, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,7 @@ import { useStoredState } from "../hooks";
 import type { LatLon } from "../lib/geo";
 import type { MapEngine } from "../map/engine";
 import { MapCard } from "../map-chrome";
+import { mapCard } from "../ui";
 import { RangeWhy } from "./range-why";
 import { NumberField } from "./sight-panel";
 
@@ -91,6 +92,14 @@ export function usePointRange({
   // and what the estimate is are a press away.
   const [details, setDetails] = useState(false);
   const [why, setWhy] = useState(false);
+  // Folded to two short lines once taken up, as a repeater's range is: the shading is what was asked for, and on a
+  // phone the whole card took three fifths of the screen. The answer in full is a press away.
+  const [folded, setFolded] = useState(true);
+  // Opened, the drawing of why the shape is as it is is brought into view: it was below the fold of the card.
+  const whyDrawing = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (why) whyDrawing.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+  }, [why]);
   const [prefs, setPrefs] = useStoredState<PointRangePrefs>(PREFS_KEY, isPrefs, {
     aerial: POINT_AERIAL_DEFAULT_METERS,
     station: "handheld",
@@ -119,14 +128,36 @@ export function usePointRange({
   const terrain = range.data ? describeRangeTerrain(range.data) : null;
   const ground = range.data?.groundMeters;
 
-  const content = at ? (
+  const close = () => {
+    setAt(null);
+    fitted.current = null;
+  };
+  const short = range.isPending ? "Working out the range" : range.isError ? "The range could not be worked out" : (reading?.short ?? "");
+  const content = !at ? null : folded ? (
+    <section aria-label="Estimated radio range" className={cn(mapCard, "py-1.5")}>
+      <div ref={card} className="flex items-center gap-2">
+        <h2 className="min-w-0 flex-1 text-body font-semibold text-ink">Estimated radio range</h2>
+        <Button variant="ghost" size="icon-sm" aria-label="Show the details" aria-expanded={false} onClick={() => setFolded(false)}>
+          <ChevronUp />
+        </Button>
+        <Button variant="ghost" size="icon-sm" aria-label="Stop showing this range" onClick={close} className="-mr-1.5">
+          <X />
+        </Button>
+      </div>
+      <p className="tabular text-small text-ink-muted" aria-live="polite">
+        {short}
+      </p>
+    </section>
+  ) : (
     <MapCard
       title="Estimated radio range"
-      onClose={() => {
-        setAt(null);
-        fitted.current = null;
-      }}
+      onClose={close}
       closeLabel="Stop showing this range"
+      action={
+        <Button variant="ghost" size="icon-sm" aria-label="Show less" aria-expanded onClick={() => setFolded(true)} className="-mt-1">
+          <ChevronDown />
+        </Button>
+      }
     >
       <div ref={card} className="mt-1 grid grid-cols-[minmax(0,1fr)] gap-2.5">
         <p className="tabular text-small text-ink-muted">
@@ -186,7 +217,11 @@ export function usePointRange({
               <ChevronRight aria-hidden className={cn("size-4 text-ink-muted transition-transform duration-150", why && "rotate-90")} />
               Why this shape: look along one direction
             </button>
-            {why ? <RangeWhy range={range.data} /> : null}
+            {why ? (
+              <div ref={whyDrawing} className="scroll-mb-3">
+                <RangeWhy range={range.data} />
+              </div>
+            ) : null}
           </>
         ) : null}
         <div>
@@ -268,13 +303,14 @@ export function usePointRange({
         ) : null}
       </div>
     </MapCard>
-  ) : null;
+  );
 
   return {
     start(next) {
       fitted.current = null;
       setDetails(false);
       setWhy(false);
+      setFolded(true);
       setAt(next);
     },
     stop() {

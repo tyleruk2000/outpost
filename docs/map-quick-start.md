@@ -71,7 +71,8 @@ This is geometry over terrain, not a promise that a signal gets through.
 2. Choose **Estimated radio range from here**.
 3. Ground in sight of an aerial there is shaded green, with rings at 10, 25, 50 and 100 km.
 
-Set the heights under **Heights and details**. Woods, buildings and power are not counted:
+The card under the map gives the answer in a few words; press **Show the details** (the
+upward arrow) for the rest. Set the heights under **Heights and details**. Woods, buildings and power are not counted:
 radio often reaches less than this.
 
 ## More

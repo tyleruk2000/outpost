@@ -17,9 +17,10 @@ of the [Coordinate formats](#coordinate-formats)), the **ruler** (measures a pat
 a route** or **Check line of sight**), **Record a track**, **Hill shading**, **Contour
 lines**, **Map style**, **Find where you are from bearings**, **Print or save as PDF**,
 **Road numbers**, **Magnetic north lines**, **Maidenhead locator grid**, **Grey line (day and
-night)**, **Satellite** and **Line of sight between two points**. On a phone the three-dot
-button at the end of the search box, **All map tools**, lists them all by name; the icons
-below show as many as fit. Pinch to zoom.
+night)**, **Satellite** and **Line of sight between two points**. On a phone the icons
+under the search box show as many as fit, and **More** under them lists every tool by name.
+A tool taken up on a phone has its card at the foot of the screen in place of the tabs;
+close the card to have the tabs back. Pinch to zoom.
 
 Right-click the map (press and hold on a touch screen) for **Save a place here**, **Measure
 from here**, **Draw a route from here**, **Sun times here**, **Estimated radio range from
@@ -300,7 +301,8 @@ Fresnel zone should be clear. The ray runs from aerial top to aerial top.
 
 Press and hold the map and choose **Estimated radio range from here**: the ground in line of
 sight of a radio there, shaded green with a green edge round each patch, rings at 10, 25,
-50 and 100 km, and the furthest ground in sight. Set your aerial's height and the other station's (handheld, car, roof)
+50 and 100 km, and the furthest ground in sight. The card is two lines, the answer in a few words, so
+the map stays clear; **Show the details** opens it out. Set your aerial's height and the other station's (handheld, car, roof)
 under **Heights and details**. **Why this shape: look along one direction** shows the
 ground along any bearing. It counts only line of sight: power, aerials, woods and buildings
 are not counted, and radio often reaches less. It works the same way as a repeater's

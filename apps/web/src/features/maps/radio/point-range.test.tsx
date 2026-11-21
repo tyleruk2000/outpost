@@ -50,6 +50,8 @@ function Harness({ onReady }: { onReady?: () => void }) {
   useEffect(() => onReady?.(), [onReady]);
   return <div>{latest.card}</div>;
 }
+/** The card starts folded to two lines; this opens it out. */
+const unfold = () => fireEvent.click(screen.getByRole("button", { name: "Show the details" }));
 const show = () =>
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
@@ -78,6 +80,9 @@ describe("an estimated radio range from any point", () => {
     show();
     act(() => latest.start({ position: { lat: 54.4542, lon: -3.2116 }, name: "Scafell Pike" }));
     expect(screen.getByRole("heading", { name: "Estimated radio range" })).toBeInTheDocument();
+    // Folded to the answer in a few words, so that the shading has the map; opened out with one press.
+    expect(await screen.findByText(/^\d+% in sight within 10 km/)).toBeInTheDocument();
+    unfold();
     expect(asked).toHaveBeenCalledWith(
       "/api/maps/sight-range",
       { at: "54.45420,-3.21160", aerial: "1.5", station: "1.5" },
@@ -100,6 +105,7 @@ describe("an estimated radio range from any point", () => {
     asked.mockImplementation(answer("terrain"));
     show();
     act(() => latest.start({ position: { lat: 54.4542, lon: -3.2116 } }));
+    unfold();
     await screen.findByText(/^In sight: /);
     fireEvent.click(screen.getByRole("button", { name: /^Heights and details/ }));
     fireEvent.change(screen.getByLabelText("Your aerial"), { target: { value: "10" } });
@@ -120,6 +126,7 @@ describe("an estimated radio range from any point", () => {
     asked.mockImplementation(answer("none"));
     show();
     act(() => latest.start({ position: { lat: -33.9, lon: 18.4 } }));
+    unfold();
     expect(await screen.findByText(/^Without terrain: the smooth-Earth radio horizon, about/)).toBeInTheDocument();
     expect(screen.getByText("No terrain is held here, so it is a plain circle.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /^Heights and details/ }));
@@ -130,6 +137,7 @@ describe("an estimated radio range from any point", () => {
     asked.mockImplementation(answer("terrain"));
     show();
     act(() => latest.start({ position: { lat: 54.4542, lon: -3.2116 } }));
+    unfold();
     expect(await screen.findByText("The furthest ground in sight is 18 km (11 mi) away to the north.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Why this shape: look along one direction" }));
     const disc = screen.getByRole("slider", { name: /^Direction to look along/ });
@@ -148,7 +156,8 @@ describe("an estimated radio range from any point", () => {
     asked.mockImplementation(answer("terrain"));
     show();
     act(() => latest.start({ position: { lat: 54.4542, lon: -3.2116 } }));
-    await screen.findByText(/^In sight: /);
+    // From the folded card as well as the open one.
+    await screen.findByText(/in sight within 10 km/);
     fireEvent.click(screen.getByRole("button", { name: "Stop showing this range" }));
     await waitFor(() => expect(latest.card).toBeNull());
     expect(latest.outline).toBeNull();
