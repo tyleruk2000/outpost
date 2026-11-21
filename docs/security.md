@@ -560,8 +560,10 @@ A file cannot be larger than stated: the download stops as soon as more arrives 
 server's `Content-Length`, or, when the server sends none, than the size the download
 stated plus a tenth and 1 MB, so a mirror that goes on sending cannot fill the disk
 before the checksum is checked (`apps/server/test/review2-download-size.test.ts`). A
-download that states no size and is served with no length is bounded only by the room
-on the drive.
+download that states no size and is served with no length stops for good at 8 GB.
+There is no limit on how long a whole download takes, on purpose: a large archive on a
+slow line can take days and resumes where it stopped. A connection that sends nothing
+for 60 seconds is dropped and tried again, and a download can be paused or cancelled.
 Code: `apps/server/src/modules/downloads/service.ts`, `http-fetcher.ts`.
 
 **Saving a link.** When a reference page links to a file that is not in its archive,
@@ -1851,7 +1853,7 @@ to the cross-site rules above, except the few `GET`s named there.
 | --- | --- | --- |
 | Catalogue **Refresh**; adding or downloading an entry; installing a pack | `opds.library.kiwix.org`; the manifests' `downloadHosts` and public mirrors they redirect to | `catalog/kiwix.ts`, `catalog/resolve.ts`, `downloads/http-fetcher.ts` |
 | Map region estimate and download; place names | `build-metadata.protomaps.dev`, `build.protomaps.com` or the `maps.tileSource` / `maps.terrainSource` archives (the terrain archive is `download.mapterhorn.com` unless changed); `download.geonames.org` | `maps/source.ts`, `maps/pmtiles/remote.ts`, `maps/places.ts` |
-| Place names for Great Britain: **Check the size**, **Download** | `api.os.uk` (the check is held to it on every hop); the download starts there and follows its redirect to OS's file store, `omseprd1stdstordownload.blob.core.windows.net`; the file is checked against the MD5 `api.os.uk` gives | `maps/os-names/source.ts`, `maps/os-names/index.ts` |
+| Place names for Great Britain: **Check the size**, **Download** | `api.os.uk` (the check is held to it on every hop); the download starts there and follows its redirect to OS's file store, `omseprd1stdstordownload.blob.core.windows.net`, and to no other host at any hop; the file is checked against the MD5 `api.os.uk` gives | `maps/os-names/source.ts`, `maps/os-names/index.ts` |
 | Satellite imagery and aerial photographs: **Find pictures**, **Continue**, **Fetch**, **Download** | The fixed hosts in [Satellite imagery](#downloads-the-ssrf-guard) above | `maps/imagery/` |
 | **Search** in "Find a route", and adding a result | The declared route sources | `maps/route-finder/overpass.ts` |
 | Reference data for the map: **Show the size**, **Download** | The sources named in [Reference layers](#reference-layers) | `layers/query-fetcher.ts`, `layers/adapters/` |

@@ -41,6 +41,8 @@ export interface StartDownload {
   fetcher?: string;
   /** Hosts the first request may go to. Required for the "http" fetcher. */
   allowedHosts?: string[];
+  /** Hold every redirect hop to `allowedHosts`, not only the first: for a publisher whose file store is known, so no redirect goes anywhere else. */
+  everyHop?: boolean;
   /** Free-form data kept on the row and handed to the fetcher and installer. */
   meta?: Record<string, unknown>;
 }
@@ -69,6 +71,8 @@ export interface FetchContext {
   partPath: string;
   /** The hosts given to `start`, for fetchers that make their own requests. */
   allowedHosts?: string[];
+  /** Every redirect hop held to `allowedHosts`, as `start` was asked. */
+  everyHop?: boolean;
   signal: AbortSignal;
   /**
    * Wait for permission to transfer this many bytes. Every fetcher calls this for each

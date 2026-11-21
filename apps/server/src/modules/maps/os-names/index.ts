@@ -297,6 +297,8 @@ export function createOsNamesService(ctx: AppContext, options: { client: HttpCli
           relPath: `collections/places/os-open-names-${offer.edition}${input.roads ? "" : "-no-roads"}.zip`,
           sizeBytes: offer.sizeBytes,
           allowedHosts: offer.hosts,
+          // OS's API and its file store, and no other host, even through a redirect.
+          everyHop: true,
           meta: { dataset: OS_NAMES_DATASET, edition: offer.edition, md5: offer.md5, roads: input.roads },
         });
         ctx.events.publish({ type: "maps.changed" });

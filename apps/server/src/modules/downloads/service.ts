@@ -86,6 +86,7 @@ interface JobPayload extends Record<string, unknown> {
   downloadId: string;
   fetcher: string;
   allowedHosts?: string[];
+  everyHop?: boolean;
 }
 
 /** In-memory view of a transfer in flight; the row is only written every so often. */
@@ -134,6 +135,7 @@ const startSchema = z.object({
   catalogEntryId: z.string().min(1).optional(),
   fetcher: z.string().min(1).optional(),
   allowedHosts: z.array(z.string().min(1)).optional(),
+  everyHop: z.boolean().optional(),
   meta: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -568,6 +570,7 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
               download: row,
               partPath,
               allowedHosts: run.payload.allowedHosts,
+              everyHop: run.payload.everyHop === true,
               signal,
               progress,
               throttle: (bytes) => limiter.take(bytes, signal),
@@ -1083,7 +1086,12 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
           updatedAt: now,
         })
         .run();
-      const job = enqueue(requireRow(id), { downloadId: id, fetcher: fetcherName, allowedHosts: input.allowedHosts });
+      const job = enqueue(requireRow(id), {
+        downloadId: id,
+        fetcher: fetcherName,
+        allowedHosts: input.allowedHosts,
+        ...(input.everyHop ? { everyHop: true } : {}),
+      });
       return write(id, { jobId: job.id });
     },
 
