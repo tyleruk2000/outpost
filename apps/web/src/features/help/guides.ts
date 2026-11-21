@@ -511,7 +511,7 @@ export const GUIDES: Guide[] = [
     slug: "library-and-games",
     file: "development/library-and-games.md",
     group: "developers",
-    about: "How the library, notes, audiobooks, PDFs made in Outpost, the EPUB reader, learning progress and the games are built and stored.",
+    about: "How the library, notes, audiobooks, PDFs, the EPUB reader, learning progress and games are built.",
   },
   {
     slug: "storage-and-https",
