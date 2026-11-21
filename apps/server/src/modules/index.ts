@@ -21,6 +21,7 @@ import { registerDownloads } from "./downloads/index.ts";
 import { registerEmergencyPlans } from "./emergency-plans/index.ts";
 import { registerEncryption } from "./encryption/index.ts";
 import { registerGames } from "./games/index.ts";
+import { registerHighlights } from "./highlights/index.ts";
 import { registerHouseholdPapers } from "./household-papers/index.ts";
 import { registerHttps } from "./https/index.ts";
 import { registerImports } from "./imports/index.ts";
@@ -59,6 +60,7 @@ export const modules: ModuleRegister[] = [
   registerAnswers,
   registerDocuments,
   registerNotes,
+  registerHighlights,
   registerChat,
   registerImports,
   registerCollections,

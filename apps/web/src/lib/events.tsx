@@ -36,6 +36,8 @@ const invalidations: Record<string, string[][]> = {
   "chat.changed": [["chat"]],
   "documents.changed": [["documents"], ["search"], ["storage"], ["manage"]],
   "notes.changed": [["notes"], ["search"]],
+  // A passage was marked in a document, or its note changed (features/library/highlights).
+  "highlights.changed": [["highlights"], ["search"]],
   "collections.changed": [["collections"], ["catalog"], ["storage"], ["kiwix"], ["maps"], ["manage"]],
   "catalog.changed": [["catalog"]],
   "maps.changed": [["maps"], ["collections"], ["household-papers", "binder"]],

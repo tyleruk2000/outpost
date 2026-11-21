@@ -27,6 +27,8 @@ export * from "./emergency-plans.ts";
 export * from "./emergency-templates.ts";
 export * from "./encryption.ts";
 export * from "./games.ts";
+// Passages marked in library documents, on a line of its own.
+export * from "./highlights.ts";
 export * from "./home-place.ts";
 // The household's papers (medical sheets, keeping in touch, grab cards, the binder), on a line of their own.
 export * from "./household-papers.ts";

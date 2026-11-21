@@ -3,7 +3,15 @@
  * page as it is now, and put back as the newest version. Restoring keeps what the page
  * says now as a version of its own, so nothing is lost by it.
  */
-import { formatBytes, type NoteDoc, type NoteResponse, type NoteSaveResponse, type NoteVersionDetail, type NoteVersionItem, type NoteVersionsResponse } from "@outpost/shared";
+import {
+  formatBytes,
+  type NoteDoc,
+  type NoteResponse,
+  type NoteSaveResponse,
+  type NoteVersionDetail,
+  type NoteVersionItem,
+  type NoteVersionsResponse,
+} from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LockKeyhole } from "lucide-react";
 import { useState } from "react";
@@ -218,8 +226,7 @@ export function NoteVersionsScreen({ id }: { id: string }) {
             ))}
           </ul>
           <p className="mt-3 text-small text-ink-muted">
-            {plural(versions.length, "version")},{" "}
-            {formatBytes(versions.reduce((sum, entry) => sum + entry.sizeBytes, 0))}
+            {plural(versions.length, "version")}, {formatBytes(versions.reduce((sum, entry) => sum + entry.sizeBytes, 0))}
           </p>
         </nav>
         <div className="min-w-0">

@@ -20,6 +20,9 @@ import type { ViewerControls, ViewerState } from "./document-viewer";
 import { ViewerMessage } from "./document-viewer-message";
 import { chapterInAddress, useEpubBook } from "./epub-data";
 import { EpubReader } from "./epub-reader";
+import { HighlightLayer } from "./highlights/highlight-layer";
+import { canHighlight } from "./highlights/highlights-data";
+import { HighlightsPanel } from "./highlights/highlights-panel";
 
 // pdf.js is large and only PDFs need it.
 const PdfViewer = lazy(() => import("./pdf-viewer"));
@@ -240,6 +243,7 @@ export default function DocumentPage() {
   const [viewer, setViewer] = useState<ViewerState | null>(null);
   const controlsRef = useRef<ViewerControls>(null);
   const detailsRef = useRef<HTMLElement>(null);
+  const readingRef = useRef<HTMLDivElement>(null);
   const cameFromLibrary = Boolean((location.state as { fromLibrary?: boolean } | null)?.fromLibrary);
 
   const query = useQuery({ queryKey: documentKeys.detail(id), queryFn: () => api.get<DocumentResponse>(`/api/documents/${id}`) });
@@ -348,6 +352,8 @@ export default function DocumentPage() {
     goToPage: (page) => controlsRef.current?.goToPage?.(page),
   };
   const covered = detailsOpen && !desktop;
+  // Passages are marked in a PDF, a Markdown document, and a chapter of an EPUB (not its front page).
+  const markable = canHighlight(document.type) && (document.type !== "epub" || epubChapter !== null);
 
   return (
     <Frame>
@@ -397,8 +403,9 @@ export default function DocumentPage() {
       </header>
 
       <div className="relative flex min-h-0 flex-1">
-        <div className="flex min-w-0 flex-1 flex-col" inert={covered}>
+        <div ref={readingRef} className="flex min-w-0 flex-1 flex-col" inert={covered}>
           <Viewer document={document} locationName={locationName} initialPage={urlPage} onState={setViewer} controls={controlsRef} />
+          {markable ? <HighlightLayer documentId={document.id} area={readingRef} chapter={epubChapter} /> : null}
           {!desktop && viewer ? (
             <div className="scroll-quiet flex h-12 shrink-0 items-center overflow-x-auto border-t border-border bg-page px-1.5">
               <ViewerToolbar state={viewer} controls={controls} spread />
@@ -433,6 +440,7 @@ export default function DocumentPage() {
                 locationName={locationName}
                 onDeleted={() => (cameFromLibrary ? navigate(-1) : navigate("/library", { replace: true }))}
               />
+              {canHighlight(document.type) ? <HighlightsPanel document={document} /> : null}
             </div>
           </aside>
         ) : null}

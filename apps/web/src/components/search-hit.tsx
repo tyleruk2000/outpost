@@ -5,6 +5,7 @@ import {
   Compass,
   Contact,
   FileText,
+  Highlighter,
   type LucideIcon,
   MapPin,
   NotebookText,
@@ -22,6 +23,7 @@ export const kindMeta: Record<string, { label: string; plural: string; icon: Luc
   track: { label: "Route", plural: "Routes", icon: Route },
   contact: { label: "Contact", plural: "Contacts", icon: Contact },
   repeater: { label: "Repeater", plural: "Repeaters", icon: RadioReceiver },
+  highlight: { label: "Highlight", plural: "Highlights", icon: Highlighter },
 };
 
 export function kindOf(kind: SearchKind) {
