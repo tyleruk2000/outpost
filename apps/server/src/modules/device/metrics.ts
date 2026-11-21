@@ -31,14 +31,14 @@ export class MetricsText {
 
   /** One gauge or counter with its samples. A name given twice is an error in the format, so it is refused here. */
   add(name: string, type: "gauge" | "counter", help: string, samples: Array<{ labels?: Labels; value: number }>): this {
-    this.declare(name, type, help);
+    this.heading(name, type, help);
     for (const sample of samples) this.lines.push(`${name}${labelText(sample.labels)} ${number(sample.value)}`);
     return this;
   }
 
   /** Request times by route, as a histogram. */
   requestTimes(name: string, help: string, routes: RouteTimes[]): this {
-    this.declare(name, "histogram", help);
+    this.heading(name, "histogram", help);
     for (const route of routes) {
       const labels = { method: route.method, route: route.route };
       for (const [index, bound] of REQUEST_BUCKETS.entries())
@@ -54,7 +54,7 @@ export class MetricsText {
     return `${this.lines.join("\n")}\n`;
   }
 
-  private declare(name: string, type: string, help: string) {
+  private heading(name: string, type: string, help: string) {
     if (this.named.has(name)) throw new Error(`${name} is already in the metrics`);
     this.named.add(name);
     this.lines.push(`# HELP ${name} ${escapeHelp(help)}`, `# TYPE ${name} ${type}`);
