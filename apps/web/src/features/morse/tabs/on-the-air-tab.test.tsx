@@ -60,7 +60,7 @@ describe("On the air", () => {
 
   it("builds the call from the trainer's callsign and explains each part", () => {
     renderTab();
-    expect(screen.getByLabelText("Your callsign")).toHaveValue("Q4ABC");
+    expect(screen.getByLabelText("A callsign to practise with")).toHaveValue("Q4ABC");
     expect(screen.getByText("CQ CQ DE Q4ABC Q4ABC K")).toBeInTheDocument();
     const parts = screen.getByRole("list", { name: "Why each part is there" });
     expect(within(parts).getAllByRole("listitem")).toHaveLength(6);
@@ -81,10 +81,10 @@ describe("On the air", () => {
 
   it("keeps the callsign typed here with the trainer's settings", () => {
     renderTab();
-    fireEvent.change(screen.getByLabelText("Your callsign"), { target: { value: "q7xyz" } });
+    fireEvent.change(screen.getByLabelText("A callsign to practise with"), { target: { value: "q7xyz" } });
     expect(getMorsePrefs().callsign).toBe("Q7XYZ");
     expect(screen.getByText("CQ CQ DE Q7XYZ Q7XYZ K")).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Your callsign"), { target: { value: "Q7" } });
+    fireEvent.change(screen.getByLabelText("A callsign to practise with"), { target: { value: "Q7" } });
     expect(screen.getByText(/does not look like a callsign yet/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Hear it/ })).toBeDisabled();
   });
@@ -133,7 +133,7 @@ describe("On the air", () => {
 
   it("lists what to do before calling on the air", () => {
     renderTab();
-    const section = screen.getByRole("region", { name: "Before you call on the air" });
+    const section = screen.getByRole("region", { name: "Before calling on the air, once licensed" });
     expect(within(section).getByText("Listen first")).toBeInTheDocument();
     expect(within(section).getByText("Always identify")).toBeInTheDocument();
   });

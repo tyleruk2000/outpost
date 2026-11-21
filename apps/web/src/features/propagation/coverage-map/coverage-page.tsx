@@ -39,6 +39,7 @@ import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "
 import { Field, Input } from "@/components/ui/input";
 import { Progress, Segmented, Select, Skeleton } from "@/components/ui/misc";
 import { CoverageGreyLine, coverageMoment, useCoverageGreyLine } from "@/features/maps/grey-line/coverage";
+import { LicenceLine } from "@/features/radio/licence";
 import { errorMessage } from "@/lib/api";
 import { formatDateTime, formatNumber } from "@/lib/utils";
 import { AntennaPicker, antennaChoices } from "../antenna-picker";
@@ -398,6 +399,7 @@ export default function CoveragePage() {
           </Button>
         }
       />
+      <LicenceLine use="listen-and-transmit" className="mb-6" />
       <EngineNotReady engine={engine} title="The propagation engine cannot run, so no coverage can be worked out" className="mb-6">
         Outpost does not estimate coverage any other way.
       </EngineNotReady>

@@ -12,6 +12,7 @@ import { lazy, type ReactNode, Suspense } from "react";
 import { useSearchParams } from "react-router";
 import { Page, PageHeader } from "@/components/page";
 import { Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/misc";
+import { LicenceLine } from "@/features/radio/licence";
 import { useKochLesson, useSyncedMorse } from "./data";
 import { CodeChartTab } from "./tabs/code-chart-tab";
 import { ProgressTab } from "./tabs/progress-tab";
@@ -51,6 +52,7 @@ export default function MorsePage() {
         title="Morse trainer"
         description="Learn to read Morse by ear and to send it by hand. New to it? Start on Receive with lesson 1, then key it back on Send. Everything here works with no connection."
       />
+      <LicenceLine use="listen-and-transmit" className="mb-6" />
       <Tabs value={active} onValueChange={setTab}>
         <TabsList className="mb-6" aria-label="Morse trainer">
           <TabsTrigger value="receive" aria-label={`Receive, Koch lesson ${lesson}`}>

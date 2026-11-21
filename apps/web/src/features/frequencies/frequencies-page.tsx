@@ -46,6 +46,7 @@ import { useCatalogue } from "@/features/layers/data";
 import { madePdf } from "@/features/library/made/made-pdf";
 import { PdfActions } from "@/features/library/made/pdf-actions";
 import { useMarkers } from "@/features/maps/data";
+import { LicenceLine } from "@/features/radio/licence";
 import { cn, plural } from "@/lib/utils";
 import { frequenciesPdf, frequenciesTitle, frequencyLine, scheduleWords, statusWords } from "./document";
 import { homeCountry } from "./home-country";
@@ -386,6 +387,7 @@ export default function FrequenciesPage() {
         title="Frequencies to listen to"
         description="Where to tune to hear the time, news, warnings, weather and other people when the internet is out. The list comes with Outpost; nothing is fetched."
       />
+      <LicenceLine use="listen" className="mb-6" />
 
       {data.isPending ? (
         <ListSkeleton />
@@ -397,8 +399,7 @@ export default function FrequenciesPage() {
             Each entry was checked against the page it names, on the day it gives
             {checked.from && checked.from !== checked.to ? ` (the oldest on ${checkedOn(checked.from)})` : ""}. Stations close and schedules
             change, and shortwave schedules change twice a year, at the end of March and the end of October: a frequency here is somewhere
-            to try. Times are UTC unless an entry says otherwise. Listening is lawful in most places; transmitting needs a licence or the
-            rules of where you are.
+            to try. Times are UTC unless an entry says otherwise.
           </Notice>
 
           <section aria-label="Find and filter" className="grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-6">
