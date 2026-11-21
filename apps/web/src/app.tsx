@@ -51,6 +51,7 @@ const PegSolitairePage = lazy(() => import("./features/games/peg-solitaire/peg-s
 const SudokuPage = lazy(() => import("./features/games/sudoku/sudoku-page"));
 const DraughtsPage = lazy(() => import("./features/games/draughts/draughts-page"));
 const PairsPage = lazy(() => import("./features/games/pairs/pairs-page"));
+const SkerryPage = lazy(() => import("./features/games/skerry/skerry-page"));
 const PowerPage = lazy(() => import("./features/power/power-page"));
 const PowerPlanPage = lazy(() => import("./features/power/plan-page"));
 const SuppliesPage = lazy(() => import("./features/supplies/supplies-page"));
@@ -194,6 +195,7 @@ export function App() {
           <Route path="games/sudoku" element={<SudokuPage />} />
           <Route path="games/draughts" element={<DraughtsPage />} />
           <Route path="games/pairs" element={<PairsPage />} />
+          <Route path="games/skerry" element={<SkerryPage />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

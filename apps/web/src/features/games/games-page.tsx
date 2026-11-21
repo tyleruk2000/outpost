@@ -10,7 +10,7 @@ export default function GamesPage() {
     >
       The allotment and each game's tally of wins are kept on this Outpost for the whole household, so every device sees the same. A game of
       Solitaire, Peg solitaire, Sudoku, Draughts or Pairs still being played stays on the device it is being played on, so two people can
-      play at once.
+      play at once. Skerry's progress is kept on the device too.
     </SectionPage>
   );
 }
