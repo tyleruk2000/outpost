@@ -31,6 +31,7 @@ import type { RasterLimits } from "@/features/maps/print/pieces";
 import type { Frame, PixelSize } from "@/features/maps/print/scale";
 import type { Block } from "@/features/propagation/plans/document";
 import { errorMessage } from "@/lib/api";
+import { appLocale } from "@/lib/region";
 import { type ScenarioFigures, scenarioPdf, type Written } from "./document";
 import { ALL_VISIBLE, NUCLEAR_SOURCE, nuclearData, nuclearLayers } from "./layers";
 import { diagramBlock, GET_A_MAP, type MapFigure, mapCaptions, mapFigureBlock } from "./print-figures";
@@ -118,7 +119,7 @@ export function printMapStyle(input: {
   });
 }
 
-const longDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+const longDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
 /** The days the installed map's data was built on, for the regions that reach a box: "3 March 2026". Null where none says. */
 export function mapDataDate(bbox: Bbox, regions: InstalledRegion[]): string | null {

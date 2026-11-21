@@ -7,6 +7,7 @@
 import { utcLabel } from "@outpost/shared";
 import { useId } from "react";
 import { Checkbox } from "@/components/ui/misc";
+import { appLocale } from "@/lib/region";
 import { useStoredState } from "../hooks";
 
 const KEY = "outpost.radio.coverage.greyLine";
@@ -14,7 +15,7 @@ const isBoolean = (value: unknown): value is boolean => typeof value === "boolea
 
 export const useCoverageGreyLine = () => useStoredState(KEY, isBoolean, false);
 
-const monthFormat = new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", month: "long", year: "numeric" });
+const monthFormat = new Intl.DateTimeFormat(appLocale(), { timeZone: "UTC", month: "long", year: "numeric" });
 
 /**
  * The moment the line is drawn for: the hour shown (1 to 24, as the engine counts them,

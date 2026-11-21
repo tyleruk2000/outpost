@@ -24,6 +24,7 @@ import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "
 import { Field, Input } from "@/components/ui/input";
 import { Checkbox, Select, Skeleton } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
+import { appLocale } from "@/lib/region";
 import { AntennaPicker, antennaChoices } from "./antenna-picker";
 import {
   AS_SAVED,
@@ -53,7 +54,7 @@ import { bestHour, Results } from "./results";
 import { SecondModel } from "./second-model";
 import { TodayConditions } from "./today";
 
-const longDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+const longDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
 /** The saved prediction on screen: asked again as it was saved, or the reason it was not asked. */
 type Opened = { name: string; date: string; antennas: string[] } | { name: string; problem: string };

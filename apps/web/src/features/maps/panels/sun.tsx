@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Segmented } from "@/components/ui/misc";
 import { useClockStyle } from "@/lib/clock";
+import { appLocale } from "@/lib/region";
 import { cn } from "@/lib/utils";
 import { useMapMoment, useSunClock, useToday } from "../grey-line/time";
 import type { LatLon } from "../lib/geo";
@@ -111,7 +112,7 @@ function useSun(position: LatLon, zone: string | undefined, shared = false) {
   };
 }
 
-const dayParts = new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric" });
+const dayParts = new Intl.DateTimeFormat(appLocale(), { timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
 /** "Today, Sunday 21 June", or "Friday 20 March 2026" for any other day. Put together from its parts: browsers differ over the commas. */
 export function dayCaption(date: IsoDate, today: IsoDate): string {

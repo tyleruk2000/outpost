@@ -188,7 +188,7 @@ export function grabPerson(person: PaperPerson, opened: ReturnType<typeof useOpe
       Boolean,
     ),
     medicines: record.medicines.map((line) => [line.name, line.dose, line.when].filter(Boolean).join(" ")),
-    contacts: [...kin, ...(gp.phone ? [{ label: gp.name ? `GP: ${gp.name}` : "GP", phone: gp.phone }] : [])],
+    contacts: [...kin, ...(gp.phone ? [{ label: gp.name ? `Doctor: ${gp.name}` : "Doctor", phone: gp.phone }] : [])],
     sheetLocked: false,
   };
 }

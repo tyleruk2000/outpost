@@ -18,6 +18,7 @@
  * rest by modules/manage, counted in the database's figures, and in every backup.
  */
 import {
+  DEFAULT_EMERGENCY_NUMBER,
   type EmergencyPlan,
   type EmergencyPlanInput,
   type EmergencyPlanResponse,
@@ -167,7 +168,12 @@ const planSchema = z
     kind: z.enum(PLAN_KIND_IDS),
     kindText: text(L.kindText),
     templateId: z.string().max(64).nullable().default(null),
-    emergencyNumber: z.string().trim().min(1, "Give the number for the emergency services where you are.").max(20).default("999"),
+    emergencyNumber: z
+      .string()
+      .trim()
+      .min(1, "Give the number for the emergency services where you are.")
+      .max(20)
+      .default(DEFAULT_EMERGENCY_NUMBER),
     reviewEveryDays: z.number().int().min(7, "Ask for a review no more often than once a week.").max(3650).nullable().default(180),
     body: bodySchema,
   })

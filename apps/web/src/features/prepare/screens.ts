@@ -60,7 +60,7 @@ export const prepareScreens: SectionScreen[] = [
     icon: HeartPulse,
     keywords: "medical medicines medication allergies allergy conditions blood group gp doctor next of kin paramedic prescription",
     about:
-      "For each person: medicines with dose and where they are kept, allergies, conditions, blood group, GP, pharmacy and next of kin. Can be kept encrypted. Records only, no medical advice.",
+      "For each person: medicines with dose and where they are kept, allergies, conditions, blood group, doctor, pharmacy and next of kin. Can be kept encrypted. Records only, no medical advice.",
   },
   {
     to: "/prepare/keeping-in-touch",

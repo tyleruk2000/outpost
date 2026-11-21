@@ -39,7 +39,7 @@ const MADE = new Date(2026, 10, 16, 14, 5);
 function plan(over: Partial<EmergencyPlan> = {}): EmergencyPlan {
   const template = PLAN_TEMPLATES.find((each) => each.id === "power-cut")!;
   let n = 0;
-  const input = planFromTemplate(template, () => `s${++n}`);
+  const input = planFromTemplate(template, () => `s${++n}`, "999");
   return {
     ...input,
     id: "p1",
@@ -119,12 +119,12 @@ describe("a plan as it is read", () => {
     expect(read.supplies.find((supply) => supply.name === "Bottled water")?.amount).toBe("18 litre");
   });
 
-  it("offers the number for the device's country first, and the UK's otherwise", () => {
+  it("offers the number for the device's country first, and 112 otherwise", () => {
     expect(guessEmergencyNumber("en-GB")).toBe("999");
     expect(guessEmergencyNumber("en-US")).toBe("911");
     expect(guessEmergencyNumber("de-DE")).toBe("112");
     expect(guessEmergencyNumber("en-NZ")).toBe("111");
-    expect(guessEmergencyNumber("en")).toBe("999");
+    expect(guessEmergencyNumber("en")).toBe("112");
   });
 });
 

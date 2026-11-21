@@ -317,7 +317,7 @@ export function createOfflineDrillService(ctx: AppContext, changed: () => void):
       // anything. Whether it keeps going with the mains off is for the drill to find out; Outpost cannot tell.
       {
         const link = { to: "/radio/heard", label: "Heard on the radio" };
-        const title = "The radio receiver is heard with the mains off";
+        const title = "The radio receiver is heard with the power off";
         const set = db.select({ n: count() }).from(heardReceivers).where(eq(heardReceivers.enabled, true)).get()?.n ?? 0;
         const last =
           db
@@ -340,7 +340,7 @@ export function createOfflineDrillService(ctx: AppContext, changed: () => void):
                 state: "untried",
                 summary: `${plural(set, "receiver")} set up${
                   last === null ? ", nothing heard yet" : `, last heard ${agoWords(Date.now() - last)}`
-                }. In the drill, switch the mains off and see whether reports still arrive: the Pi, the receiver and the Wi-Fi the phones use all need power.`,
+                }. In the drill, switch the power off at the main switch and see whether reports still arrive: the Pi, the receiver and the Wi-Fi the phones use all need power.`,
                 link,
               },
         );

@@ -15,7 +15,7 @@
  * docs/emergency-plans.md lists every source with what it says.
  */
 import type { EmergencyPlanInput, PlanKind, PlanPhase, PlanStep } from "./emergency-plans.ts";
-import { DEFAULT_REVIEW_DAYS, emptyPlanBody } from "./emergency-plans.ts";
+import { DEFAULT_EMERGENCY_NUMBER, DEFAULT_REVIEW_DAYS, emptyPlanBody } from "./emergency-plans.ts";
 import { EMERGENCY_NUMBERS_DATA, PLAN_SOURCES_DATA, PLAN_TEMPLATES_DATA, SOURCE_TERMS_DATA } from "./emergency-templates-data.ts";
 import { RADIATION_SOURCE_TERMS, RADIATION_SOURCES, RADIATION_TEMPLATE } from "./emergency-templates-radiation.ts";
 import type { SupplyCategory } from "./supplies.ts";
@@ -216,7 +216,11 @@ export function attributionsFor(origins: Array<string | null>): string[] {
 }
 
 /** A new plan from a template: its steps, supplies and "where things are" lines, each keeping its origin. */
-export function planFromTemplate(template: PlanTemplate, makeId: () => string, emergencyNumber = "999"): EmergencyPlanInput {
+export function planFromTemplate(
+  template: PlanTemplate,
+  makeId: () => string,
+  emergencyNumber = DEFAULT_EMERGENCY_NUMBER,
+): EmergencyPlanInput {
   const body = emptyPlanBody();
   body.steps = template.steps.map((step) => ({ id: makeId(), phase: step.phase, text: step.text, origin: step.id }));
   body.supplies = template.supplies.map((supply) => ({

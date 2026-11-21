@@ -25,6 +25,7 @@ import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Segmented, Select } from "@/components/ui/misc";
 import { notify } from "@/lib/notify";
+import { deviceRegion, likelyPaperFor } from "@/lib/region";
 import { cn } from "@/lib/utils";
 import { useStoredState } from "../hooks";
 import type { ReadoutFormat } from "../lib/coords";
@@ -111,7 +112,11 @@ export default function PrintTool({
   /** Told when the step is in the sheet and when it has left, so that the sheet can measure its new first line. */
   onInSheet?: (there: boolean) => void;
 }) {
-  const [prefs, setPrefs] = useStoredState<Prefs>(PREFS_KEY, isPrefs, { paper: "a4", orientation: "portrait", resolution: 300 });
+  const [prefs, setPrefs] = useStoredState<Prefs>(PREFS_KEY, isPrefs, {
+    paper: likelyPaperFor(deviceRegion()),
+    orientation: "portrait",
+    resolution: 300,
+  });
   const geometry = useMemo(() => pageGeometry(prefs.paper, prefs.orientation), [prefs.paper, prefs.orientation]);
   const pixels = geometry.mapPixels;
   const [box, setBox] = useState<Bbox>(() => boxInView(engine, pixels));

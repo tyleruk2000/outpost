@@ -19,6 +19,7 @@ import { PAPERS } from "@/features/maps/print/paper";
 import type { Sheet } from "@/features/maps/print/sheet";
 import { SheetView } from "@/features/maps/print/sheet-view";
 import { errorMessage } from "@/lib/api";
+import { appLocale } from "@/lib/region";
 import { plural } from "@/lib/utils";
 import { type CardPaper, fridgeSheets, grabSheets, walletSheets } from "./cards";
 import { usePlan } from "./data";
@@ -30,7 +31,7 @@ const KINDS: Array<{ value: Kind; label: string; what: string }> = [
   { value: "fridge", label: "Fridge sheet", what: "Fridge sheet" },
   { value: "grab", label: "Grab list", what: "Grab list" },
 ];
-const shortDate = (date: Date) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(date);
+const shortDate = (date: Date) => new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "short", year: "numeric" }).format(date);
 
 /** "Fridge sheet, Power cut, 16 Nov 2026": dated by when the plan was last changed, so the same plan makes the same file. */
 export const cardTitle = (kind: Kind, plan: Pick<EmergencyPlan, "name" | "updatedAt">) =>

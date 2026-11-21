@@ -36,6 +36,7 @@ import { useMesh } from "@/features/mesh/data";
 import { prepareScreens } from "@/features/prepare/screens";
 import { toSheets } from "@/features/propagation/plans/document";
 import { api, errorMessage } from "@/lib/api";
+import { appLocale } from "@/lib/region";
 import { useDebounced } from "@/lib/use-debounced";
 import { localId } from "@/lib/utils";
 import { CHECK_IN_PATH, channelKey, commsBlocks, contactLines, stepText, TRANSMIT_KINDS } from "./comms-words";
@@ -44,7 +45,7 @@ import { libraryQuestion, PaperPreview } from "./paper-pdf";
 import { pdfOf, usePaperPdf } from "./use-paper-pdf";
 
 const NONE = "none";
-const shortDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
+const shortDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "short", year: "numeric" });
 const ENTRIES: readonly FrequencyEntry[] = RADIO_FREQUENCIES.filter((entry) => TRANSMIT_KINDS.has(entry.kind) && entry.status !== "closed");
 
 /** Whether this version of Outpost has the household check-in screen to link to. */

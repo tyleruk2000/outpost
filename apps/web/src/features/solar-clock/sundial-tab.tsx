@@ -11,6 +11,7 @@ import { madePdf } from "@/features/library/made/made-pdf";
 import { PdfActions } from "@/features/library/made/pdf-actions";
 import { dateIn, deviceZone } from "@/features/maps/lib/sun-text";
 import { useClockStyle } from "@/lib/clock";
+import { appLocale } from "@/lib/region";
 import { Calculator, Formula, HowWorkedOut } from "../tools/kit";
 import { type ChosenPlace, NoPlaceYet } from "./place";
 import { ShadowPlan } from "./shadow-plates";
@@ -163,7 +164,7 @@ export function SundialTab({ place, zone }: { place: ChosenPlace | null; zone: Z
             {tableDates(year).map((date) => (
               <tr key={date}>
                 <th scope="row" className="py-1.5 pr-3 text-left font-normal text-ink">
-                  {new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long", timeZone: "UTC" })}
+                  {new Date(`${date}T00:00:00Z`).toLocaleDateString(appLocale(), { day: "numeric", month: "long", timeZone: "UTC" })}
                 </th>
                 <td className="py-1.5 text-ink">{signedMinutes(sundialToClock(date, place.lon, standard))}</td>
               </tr>

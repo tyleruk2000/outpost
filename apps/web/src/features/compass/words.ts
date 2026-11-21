@@ -4,6 +4,7 @@
  * tested on their own.
  */
 import { angleInWords, type CompassRule, type MapGrid, magneticModelInfo, type Norths } from "@outpost/shared";
+import { appLocale } from "@/lib/region";
 
 /** "With an Ordnance Survey map here", "With a UTM map here, zone 31U", "With a map drawn to true north here". */
 export function mapWords(norths: Norths): string {
@@ -21,7 +22,7 @@ export function noGridSentence(asked: MapGrid): string | null {
 }
 
 export function monthYear(at: number): string {
-  return new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" }).format(at);
+  return new Intl.DateTimeFormat(appLocale(), { month: "long", year: "numeric" }).format(at);
 }
 
 /** "Magnetic north is 0.6° west of true north here, in November 2026, moving about 0.2° east a year." */

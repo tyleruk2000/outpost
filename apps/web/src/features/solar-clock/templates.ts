@@ -11,6 +11,7 @@ import { wrapText } from "@/features/maps/print/helvetica";
 import { PAPERS, PT_PER_MM } from "@/features/maps/print/paper";
 import { writePdfPages } from "@/features/maps/print/pdf";
 import { INK, MUTED, type Rgb, type Sheet, type SheetItem } from "@/features/maps/print/sheet";
+import { appLocale } from "@/lib/region";
 import { plainForPdf } from "../tools/kit/sheet";
 import { dateRingAngle, kochabTooth } from "./nocturnal";
 import { dialDrawing, dialFit, signedMinutes, sundialToClock, tableDates } from "./sundial";
@@ -232,7 +233,7 @@ export function sundialSheets(input: SundialInput): Sheet[] {
   dates.forEach((date, index) => {
     const column = Math.floor(index / 6);
     const row = index % 6;
-    const day = new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+    const day = new Date(`${date}T00:00:00Z`).toLocaleDateString(appLocale(), { day: "numeric", month: "short", timeZone: "UTC" });
     const cx = LEFT + column * columnWidth;
     const cy = y + mm(5) + row * mm(5);
     text(two, cx, cy, day, 8.5);

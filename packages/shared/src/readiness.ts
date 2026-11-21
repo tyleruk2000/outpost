@@ -213,7 +213,7 @@ export const DRILL_STEPS: Array<{ id: string; text: string; hint?: string }> = [
   { id: "checkin", text: "Check in on the board from the phone: Messages, I'm safe." },
   { id: "search", text: "Search the library for something you would need, such as treating a burn." },
   { id: "frequencies", text: "Open Radio, Frequencies to listen to, and find a station for news." },
-  { id: "radio", text: "With the mains switched off, listen on the battery or wind-up radio and hear a station." },
+  { id: "radio", text: "With the power off at the main switch, listen on the battery or wind-up radio and hear a station." },
   {
     id: "away",
     text: "Switch the whole router off. On the phone, open Outpost again: what you kept on the phone should still open.",

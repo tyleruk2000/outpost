@@ -16,6 +16,7 @@
 import { toMaidenhead } from "@outpost/shared";
 import { type Block, toSheets } from "@/features/propagation/plans/document";
 import type { ClockStyle } from "@/lib/clock";
+import { appLocale } from "@/lib/region";
 import type { Sheet } from "../print/sheet";
 import { addDays, dateToUtc, type IsoDate, type SunDay, sunDay } from "./sun";
 import { type ClockWriting, clockParts, formatDayLength, formatOffset, hoursFromZone, zoneOffsetMinutes } from "./sun-text";
@@ -47,10 +48,10 @@ export interface SunSheetInput {
   made: IsoDate;
 }
 
-const longDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
-const shortDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
-const monthYear = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
-const rowDate = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+const longDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+const shortDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+const monthYear = new Intl.DateTimeFormat(appLocale(), { month: "long", year: "numeric", timeZone: "UTC" });
+const rowDate = new Intl.DateTimeFormat(appLocale(), { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
 const at = (date: IsoDate) => new Date(dateToUtc(date));
 
 /** The days of a span: two weeks from the day, or the calendar month or year it is in. */

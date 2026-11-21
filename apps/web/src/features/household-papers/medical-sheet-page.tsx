@@ -21,6 +21,7 @@ import { getEngine } from "@/features/encryption/engine";
 import { PdfActions } from "@/features/library/made/pdf-actions";
 import { toSheets } from "@/features/propagation/plans/document";
 import { errorMessage } from "@/lib/api";
+import { appLocale } from "@/lib/region";
 import { localId } from "@/lib/utils";
 import { useContactsById, useMedicalSheets, useRemoveSheet, useSaveSheet } from "./data";
 import { holdOpened, lockSheet, type OpenedSheet, sealSheet, touchOpened, useOpenedSheets } from "./medical-crypto";
@@ -29,7 +30,7 @@ import { type ContactsNow, contactIdsOf, medicalBlocks, medicineLeftWords, reach
 import { libraryQuestion, PaperPreview } from "./paper-pdf";
 import { pdfOf, usePaperPdf } from "./use-paper-pdf";
 
-const shortDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
+const shortDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "short", year: "numeric" });
 
 const numberOrNull = (text: string): number | null => {
   const value = Number(text.replace(",", "."));
@@ -434,7 +435,7 @@ function Editor({ sheet, record: start, opened }: { sheet: MedicalSheet; record:
 
       <Section title="Who to tell" description="From Contacts, so that a changed number is changed here too, or typed.">
         <div className="grid gap-5 sm:grid-cols-2">
-          <CareField label="GP surgery" value={record.gp} contacts={contacts} onChange={(gp) => change({ gp })} />
+          <CareField label="Doctor or GP surgery" value={record.gp} contacts={contacts} onChange={(gp) => change({ gp })} />
           <CareField label="Pharmacy" value={record.pharmacy} contacts={contacts} onChange={(pharmacy) => change({ pharmacy })} />
         </div>
         <h3 className="mt-6 text-small font-medium text-ink">Next of kin</h3>
@@ -498,7 +499,7 @@ function Editor({ sheet, record: start, opened }: { sheet: MedicalSheet; record:
               rows={4}
               value={record.notes}
               maxLength={4000}
-              placeholder="Wears a hearing aid. NHS number in the blue folder."
+              placeholder="Wears a hearing aid. Health card in the blue folder."
               onChange={(event) => change({ notes: event.target.value })}
             />
           )}

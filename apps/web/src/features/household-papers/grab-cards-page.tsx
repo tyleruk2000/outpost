@@ -17,6 +17,7 @@ import { AID_PAPER_KEY, isAidPaper, likelyPaper } from "@/features/encryption/pa
 import { PdfActions } from "@/features/library/made/pdf-actions";
 import { readStored, writeStored } from "@/features/maps/lib/view";
 import { PAPERS } from "@/features/maps/print/paper";
+import { appLocale } from "@/lib/region";
 import { type GrabCardSize, grabSheets } from "./grab-cards";
 import { grabHousehold, grabPerson, useHouseholdSources } from "./household-data";
 import { libraryQuestion, PaperPreview } from "./paper-pdf";
@@ -27,7 +28,7 @@ const SIZE_KEY = "outpost.grabCards.size";
 const isFormats = (value: unknown): value is GridFormat[] =>
   Array.isArray(value) && value.every((item) => GRID_FORMATS.some((format) => format.id === item));
 const isSize = (value: unknown): value is GrabCardSize => value === "wallet" || value === "a6";
-const shortDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
+const shortDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "short", year: "numeric" });
 
 export default function GrabCardsPage() {
   const sources = useHouseholdSources();
