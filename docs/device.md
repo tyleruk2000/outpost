@@ -1,102 +1,62 @@
 # The server: its status, its clock and its name
 
-Outpost runs on one computer, often a Raspberry Pi on a shelf. This page covers looking
-after that computer from a browser: the **Server status** screen, putting its clock right
-when it is wrong, reaching it as `outpost.local`, and sending its figures to Prometheus.
-
 ## Server status
 
-Open **Settings → Server status**. Each line says how one thing stands, in words, and
-what to do when something needs it:
+**Settings → Server status** says how each thing stands, and what to do when it needs
+something. Each line is **Fine**, **Needs attention**, **Problem**, or **Not reported**
+where the system does not say (not a fault). **Check again** reads everything afresh;
+nothing here changes anything.
 
 | Line | What it tells you |
 | --- | --- |
-| Each storage location | Connected or not (for a network share, whether the NAS is answering), and the free space. Outpost stops writing to a location when it has 268 MB left. |
-| Database | Its size, and what the last check found. Run a check from the Storage screen. |
-| Last backup | How long ago, where it went, and with automatic backups how many are kept and how old the oldest is. It needs attention when a backup due was not made because the location (the NAS, say) was not connected, and says so when the next one was made late for that reason. Old means more than two days with nightly backups, eight with weekly ones, a week with none. |
-| Restore tested | Shown once automatic backups are on: when a backup was last opened with **Test a restore** and what it held. Needs attention when none has been, or the last was over 90 days ago; a problem when the last test failed. |
-| SD card | SD cards never report their wear, so this says so. An eMMC card does, and its own estimate is shown. |
-| Memory | What Outpost uses, and what the computer has free. In Docker with a limit, what the container uses against it. |
-| Temperature | The processor's. A Raspberry Pi slows itself down between 80 and 85 °C. |
-| Power supply | Raspberry Pi only: whether the power has dipped too low now or since it started. |
-| Clock | Whether the server's clock agrees with the device you are using (see below). |
-| Background work | Jobs running, waiting and paused, and any that failed in the last day. |
-| Anything slow lately | Whether the server was held up in the last hour, and for how long. Open **The hold-ups, minute by minute** for each minute. |
-
-**Check again** reads everything afresh. Nothing on the screen changes anything.
-
-Each state is a word: **Fine**, **Needs attention**, **Problem**, or **Not reported**
-where the system does not say (a Mac has no temperature reading Outpost can use, for
-example). Not reported is not a fault.
-
-The hold-ups are measured only while Outpost has work: from a request until two minutes
-after the last one, and while a job runs. With nobody using it, nothing is measured and
-the line says so. A hold-up of a second or more usually means a large file is being
-written to an SD card; it passes when the work ends.
+| Each storage location | Connected or not (a NAS: answering or not), and free space. Outpost stops writing at 268 MB left. |
+| Database | Its size and the last check's result. Checks run from Storage. |
+| Last backup | Its age and place; with automatic backups, how many are kept and whether one was missed because the location was away. Old means over two days with nightly backups, eight with weekly, a week with none. |
+| Restore tested | When a backup was last opened with **Test a restore**. Needs attention if never or over 90 days ago; a problem if it failed. |
+| SD card | SD cards do not report wear, so it says so; eMMC does. |
+| Memory | What Outpost uses and the computer has free; in Docker with a limit, against it. |
+| Temperature | The processor's. A Raspberry Pi slows itself between 80 and 85 °C. |
+| Power supply | Raspberry Pi only: whether the power has dipped too low. |
+| Clock | Whether the server agrees with your device (below). |
+| Background work | Jobs running, waiting, paused, and failed in the last day. |
+| Anything slow lately | Hold-ups in the last hour; **The hold-ups, minute by minute** for detail. Measured only while there is work. A hold-up of a second or more usually means a large write to an SD card. |
 
 ## The server's clock
 
-A Raspberry Pi has no clock that keeps time while it is switched off, unless a Pi 5 is
-given its battery. With no internet it starts at the wrong time, and then check-ins, the
-barometer log, backups' ages, sun times and the grey line are all wrong with it.
+A Raspberry Pi keeps no time while off (unless a Pi 5 has its battery), so with no
+internet it starts at the wrong time, and check-ins, the barometer, backup ages, sun
+times and the grey line go wrong with it.
 
-Each time you open Outpost, it compares the server's clock with your device's. When they
-differ by more than a minute, a line across the top says by how much, with **Set the
-server's clock from this phone** (or tablet, or computer). Pressing it moves the
-server's clock to your device's time. Set your own device's clock first if you doubt it:
-Outpost refuses a time before 2024.
+When the server and your device differ by more than a minute, a line across the top
+says by how much, with **Set the server's clock from this phone** (or tablet, or
+computer). Set your own device right first; times before 2024 are refused. A browser on
+the server's computer may always press it; other devices only when Outpost was started
+with `OUTPOST_ALLOW_REMOTE_CLOCK=true` (in `.env` for Docker, then `docker compose up
+-d`). Otherwise the line says why.
 
-Who may press it:
+- **Docker on a Raspberry Pi**: `deploy/pi/install.sh` adds a small service
+  (`outpost-clock.path`) that sets the clock when Outpost asks. `--clock-from-network`
+  lets phones set it; `--no-clock` leaves it out.
+- **Docker elsewhere, macOS, Windows**: set the clock on the computer itself.
+- **Linux without Docker**: Outpost sets it if run as root or with `CAP_SYS_TIME`.
 
-- A browser on the computer Outpost runs on, always.
-- Any device, if Outpost was started with `OUTPOST_ALLOW_REMOTE_CLOCK=true` (in the
-  `.env` file for Docker, then `docker compose up -d`). Moving the clock changes the time
-  for everyone, so it is off by default.
-
-When it may not be pressed from where you are, the line says why and what to set, in
-place of the button.
-
-How the clock is set depends on where Outpost runs:
-
-- **Docker on a Raspberry Pi.** A container cannot set the clock of the computer it runs
-  on. `deploy/pi/install.sh` adds a small service on the Pi (`outpost-clock.path`) that
-  sets the clock when Outpost asks and does nothing else. Add `--clock-from-network` to
-  let phones set it. `--no-clock` leaves the service out.
-- **Docker anywhere else.** It cannot be set from Outpost. Set the clock on the computer
-  itself; the line says so.
-- **Linux without Docker.** Outpost sets it itself when it runs with the right to
-  (as root, or given `CAP_SYS_TIME`). Otherwise the line says so.
-- **macOS and Windows.** Set it in the system's own settings.
-
-Outpost does not give the time to other devices. A USB GPS receiver as a source of time
-is not supported yet.
+Outpost does not give the time to other devices. A USB GPS receiver as a time source is
+not supported.
 
 ## Reaching it as outpost.local
 
-`deploy/pi/install.sh --lan` announces the Pi on your network as `outpost.local`, so
-phones and laptops reach it at `http://outpost.local:8080` whatever your router calls
-it. It installs `avahi-utils` if it is missing, adds a service that keeps the name
-announced for the Pi's current address (`outpost-name.service`), tells apps that look
-for web servers that Outpost is there, and adds `outpost.local` to
-`OUTPOST_ALLOWED_HOSTS` so that Outpost answers to the name and HTTPS certificates carry
-it. With HTTPS on, Outpost makes its certificate again with the name by itself.
-
-- `--name=kitchen-pi` announces `kitchen-pi.local` instead.
-- `--no-name` leaves it out.
-
-A device that does not find `.local` names reaches Outpost at the address the install
-script prints, as before.
-
-The name and clock services have not yet been run on a Pi: see
-[What has been tried](deployment.md#what-has-been-tried-and-what-has-not).
+`deploy/pi/install.sh --lan` announces the Pi as `outpost.local`, so devices reach it at
+`http://outpost.local:8080` whatever the router calls it. It installs `avahi-utils` if
+needed, adds `outpost-name.service` to keep the name on the Pi's current address,
+advertises the web server, and adds the name to `OUTPOST_ALLOWED_HOSTS` so Outpost and
+its HTTPS certificate carry it. `--name=kitchen-pi` announces `kitchen-pi.local`;
+`--no-name` leaves it out. Devices that cannot find `.local` names use the address the
+script prints.
 
 ## Prometheus and Grafana
 
 Start Outpost with `OUTPOST_METRICS=true` (or `install.sh --metrics`) and it answers
-Prometheus at `/metrics`: request times by route, the hold-ups above, jobs by state,
-download speed, each storage location up or down with its free space, the database's
-size, the last backup's age, memory and temperature. Only this computer and private
-networks are answered; anything else is refused. It is off by default.
-
-`deploy/pi/monitoring.md` has the lines to add to Prometheus, and
-`deploy/pi/grafana-outpost.json` is a dashboard for Grafana.
+Prometheus at `/metrics`, to this computer and private networks only: request times by
+route, hold-ups, jobs by state, download speed, each location's state and free space,
+database size, last backup's age, memory and temperature. `deploy/pi/monitoring.md` has
+the Prometheus lines and `deploy/pi/grafana-outpost.json` a Grafana dashboard.

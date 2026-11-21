@@ -489,6 +489,12 @@ export const GUIDES: Guide[] = [
     group: "developers",
     about: "How the library, notes, audiobooks, PDFs made in Outpost, the EPUB reader, learning progress and the games are built and stored.",
   },
+  {
+    slug: "storage-and-https",
+    file: "development/storage-and-https.md",
+    group: "developers",
+    about: "The protected backup file format, storage and HTTPS internals, and the variables only the tests use.",
+  },
 ];
 
 /** Pages of docs/ that are deliberately not guides, each with the reason. Keep it short. */

@@ -14,7 +14,7 @@
  *  - The wrapped private key is written into the header of every backup, so the file
  *    and the passphrase are enough to open it on a computer that has never seen it.
  *
- * The layout is written out in `docs/storage.md` ("The protected backup file"); the
+ * The layout is written out in `docs/development/storage-and-https.md` ("The protected backup file"); the
  * numbers here and there must agree. Only `node:crypto` is used.
  *
  * This file knows nothing about zips or about Outpost's settings: `archive.ts` reads a
@@ -47,7 +47,7 @@ const KEY_BYTES = 32;
 const SALT_BYTES = 32;
 const NONCE_BYTES = 12;
 const WRAPPED_BYTES = KEY_BYTES + TAG_BYTES;
-/** Everything in the header before the manifest: see the table in docs/storage.md. */
+/** Everything in the header before the manifest: see the table in docs/development/storage-and-https.md. */
 const FIXED_BYTES = 178;
 const CHECKSUM_BYTES = 32;
 const MAX_MANIFEST_BYTES = 16 * 1024;
