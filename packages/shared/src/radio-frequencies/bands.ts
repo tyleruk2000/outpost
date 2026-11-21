@@ -116,6 +116,12 @@ const ECC_15_05: FrequencySource = {
   url: "https://docdb.cept.org/download/1491",
   checked,
 };
+const ECFR_97_303: FrequencySource = {
+  publisher: "Electronic Code of Federal Regulations (eCFR), Office of the Federal Register",
+  title: "47 CFR 97.303, Frequency sharing requirements, paragraph (h): the 60 m band",
+  url: "https://www.ecfr.gov/current/title-47/section-97.303",
+  checked: "2026-11-21",
+};
 const ECFR_DEFS: FrequencySource = {
   publisher: "US Government Publishing Office (govinfo)",
   title: "47 CFR 2.1, Terms and definitions (Radio Regulations definitions marked RR), Code of Federal Regulations, 1 October 2025 edition",
@@ -829,8 +835,9 @@ export const BANDS: FrequencyEntry[] = [
   amateurBand("bd-ham-60m", "ham-60m", "Amateur 60 m band", [{ khz: 5351.5, toKhz: 5366.5 }], ["world"], {
     notes: [
       "Secondary allocation since 2017, generally limited to 15 W e.i.r.p. (footnote 5.133B). Some countries allow more channels or power nationally.",
+      "In the United States (47 CFR 97.303(h)) amateurs may use the 5351.5 to 5366.5 kHz segment and four channels centred on 5332, 5348, 5373 and 5405 kHz, no wider than 2.8 kHz; on the channels, voice and data carriers sit 1.5 kHz below the centre (5330.5, 5346.5, 5371.5 and 5403.5 kHz) and Morse on the centre.",
     ],
-    sources: [IARU, FOOTNOTES],
+    sources: [IARU, FOOTNOTES, ECFR_97_303],
   }),
   amateurBand(
     "bd-ham-40m-regions-1-3",

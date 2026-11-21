@@ -31,7 +31,9 @@ message goes where the person wrote it.
 - **These radios are licence-free only on the bands and powers each country allows.**
   Choose your region on the radio as Meshtastic's page on
   [regional settings](https://meshtastic.org/docs/configuration/radio/lora/#region)
-  says ("Check your national band plan before transmitting"). Outpost does not set the
+  says ("Check your national band plan before transmitting"). Settings → Mesh radio
+  carries the same one-line licence note as the other radio screens, linking to Help →
+  What needs a radio licence. Outpost does not set the
   radio's region, frequency or power.
 
 ## Three ways in
