@@ -146,6 +146,19 @@ export const settingsSchema = z.object({
   "medical.inSearch": z.boolean().default(false),
   /** Models that say they can call tools and do it badly: Chat offers them none. */
   "tools.offForModels": z.array(z.string().trim().min(1).max(200)).max(50).default([]),
+  /**
+   * Someone in the household holds an amateur radio licence (Settings → Radio licence). It
+   * only leaves out the reminders that transmitting needs a licence; Outpost transmits
+   * nothing on any amateur frequency either way, and the callsign is never sent anywhere.
+   */
+  "radio.licensed": z.boolean().default(false),
+  "radio.callsign": z
+    .string()
+    .trim()
+    .max(20)
+    .transform((value) => value.toUpperCase().replace(/\s+/g, ""))
+    .refine((value) => value === "" || /^[A-Z0-9/]+$/.test(value), "A callsign is letters, digits and strokes (/).")
+    .default(""),
   /** Seconds between checks that storage locations are still connected. */
   "storage.checkIntervalSeconds": z.number().int().min(5).max(3600).default(30),
 });

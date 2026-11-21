@@ -57,6 +57,10 @@ export interface Settings {
   "maps.terrainSource": string;
   "maps.defaultMaxZoom": number;
   "storage.checkIntervalSeconds": number;
+  /** Someone in the household holds an amateur radio licence: only the reminders that transmitting needs one are left out. */
+  "radio.licensed": boolean;
+  /** Upper case, or "". Never sent anywhere. */
+  "radio.callsign": string;
   /** Days a file sent on the household board is kept; 0 keeps it until removed. */
   "board.fileDays": number;
   /** Let the model look things up in Outpost (Chat). Off by default. */

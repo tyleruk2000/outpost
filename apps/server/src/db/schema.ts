@@ -1681,3 +1681,50 @@ export const learningTopics = sqliteTable(
   },
   (table) => [primaryKey({ columns: [table.archive, table.path] })],
 );
+
+/**
+ * Satellite tracking (modules/satellites): orbital elements from CelesTrak, one row per
+ * satellite, replaced whole by each fetch a person presses for. Passes are worked out in
+ * the browser from these; the server does no orbital work.
+ */
+export const satelliteElements = sqliteTable("satellite_elements", {
+  noradId: integer("norad_id").primaryKey(),
+  name: text("name").notNull(),
+  designator: text("designator"),
+  /** The element set's own epoch, milliseconds: how old it is decides whether passes can be trusted. */
+  epoch: integer("epoch").notNull(),
+  /** The mean elements as CelesTrak publishes them (CCSDS OMM fields, from its CSV). */
+  elements: json<Record<string, string | number>>("elements").notNull(),
+  groups: json<string[]>("groups").notNull(),
+});
+
+/** The transmitters SatNOGS DB lists for the satellites kept above. Frequencies in Hz. */
+export const satelliteTransmitters = sqliteTable(
+  "satellite_transmitters",
+  {
+    id: text("id").primaryKey(),
+    noradId: integer("norad_id").notNull(),
+    description: text("description").notNull(),
+    alive: integer("alive", { mode: "boolean" }).notNull(),
+    status: text("status").notNull(),
+    type: text("type"),
+    mode: text("mode"),
+    uplinkLowHz: integer("uplink_low_hz"),
+    uplinkHighHz: integer("uplink_high_hz"),
+    downlinkLowHz: integer("downlink_low_hz"),
+    downlinkHighHz: integer("downlink_high_hz"),
+    invert: integer("invert", { mode: "boolean" }).notNull().default(false),
+    baud: real("baud"),
+    updatedAt: text("updated_at"),
+  },
+  (table) => [index("satellite_transmitters_norad_idx").on(table.noradId)],
+);
+
+/** When each publisher was last fetched from, and how it went. */
+export const satelliteFetches = sqliteTable("satellite_fetches", {
+  source: text("source").primaryKey(),
+  fetchedAt: integer("fetched_at"),
+  count: integer("count").notNull().default(0),
+  error: text("error"),
+  triedAt: integer("tried_at"),
+});
