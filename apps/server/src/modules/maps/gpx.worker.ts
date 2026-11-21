@@ -1,5 +1,5 @@
 /**
- * Parses one GPX file away from the server's own thread.
+ * Parses one map file (GPX, KML or GeoJSON) away from the server's own thread.
  *
  * Reading a large file takes a moment, and the server should go on answering while it
  * happens. The reader keeps its own count of what a file holds and refuses one that
@@ -10,18 +10,20 @@ import v8 from "node:v8";
 import { parentPort, workerData } from "node:worker_threads";
 import { AppError } from "../../core/errors.ts";
 import { parseGpx } from "./gpx.ts";
+import { parseMapText } from "./map-files.ts";
 
 const started = performance.now();
 const usage = () => ({ heapBytes: v8.getHeapStatistics().total_heap_size, milliseconds: Math.round(performance.now() - started) });
 
 try {
-  const parsed = parseGpx((workerData as { source: string }).source);
+  const { source, format } = workerData as { source: string; format?: "gpx" | "kml" | "geojson" };
+  const parsed = format === "kml" || format === "geojson" ? parseMapText(source, format) : parseGpx(source);
   parentPort?.postMessage({ ok: true, parsed, usage: usage() });
 } catch (error) {
   parentPort?.postMessage({
     ok: false,
     code: error instanceof AppError ? error.code : "bad_request",
-    message: error instanceof AppError ? error.message : "That file could not be read as GPX.",
+    message: error instanceof AppError ? error.message : "That file could not be read.",
     usage: usage(),
   });
 }

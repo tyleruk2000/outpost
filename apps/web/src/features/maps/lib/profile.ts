@@ -25,11 +25,17 @@ function isPosition(value: unknown): value is Position {
   return Array.isArray(value) && typeof value[0] === "number" && typeof value[1] === "number";
 }
 
-/** Every line of a track, in order: track segments and routes alike. Waypoints are left out. */
-export function trackLines(geojson: TrackWithGeometryDto["geojson"]): Position[][] {
+/**
+ * Every line of a track, in order: track segments and routes alike. Waypoints are left
+ * out, and so are outlines (a polygon's rings from a KML or GeoJSON file), which are
+ * drawn on the map (`outlines` true) but are not a way to walk.
+ */
+export function trackLines(geojson: TrackWithGeometryDto["geojson"], outlines = false): Position[][] {
   const lines: Position[][] = [];
   for (const feature of geojson.features) {
-    const geometry = (feature as { geometry?: { type?: string; coordinates?: unknown } } | null)?.geometry;
+    const item = feature as { geometry?: { type?: string; coordinates?: unknown }; properties?: { _outline?: unknown } | null } | null;
+    if (item?.properties?._outline && !outlines) continue;
+    const geometry = item?.geometry;
     if (!geometry) continue;
     const parts =
       geometry.type === "LineString"

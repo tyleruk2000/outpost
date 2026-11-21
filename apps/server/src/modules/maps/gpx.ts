@@ -15,6 +15,7 @@ import type { Feature, FeatureCollection, LineString, MultiLineString, Point, Po
 import { AppError, badRequest, conflict } from "../../core/errors.ts";
 import { workerUrl } from "../../core/paths.ts";
 import { readGpx } from "./gpx-reader.ts";
+import type { ParsedMapFile } from "./map-file-limits.ts";
 
 export const MAX_GPX_BYTES = 20 * 1024 * 1024;
 
@@ -35,6 +36,11 @@ export interface TrackProperties {
   sym?: string;
   /** Per-point timestamps: one array per line, or one per segment for multi-segment tracks. */
   coordinateProperties?: { times?: Array<string | null> | Array<Array<string | null>> };
+  /**
+   * Set on a closed line that was a polygon's ring in a KML or GeoJSON file. It is drawn
+   * like any line, and left out of the route's distance and climb.
+   */
+  _outline?: true;
   /** Set on a line that was drawn on the map rather than imported. See `drawn-route.ts`. */
   _drawn?: true;
   /** Set on a line that was recorded on the map as its maker walked it, rather than imported from a file. */
@@ -96,10 +102,11 @@ export function parseGpx(source: string): ParsedGpx {
   return readGpx(source);
 }
 
-/** Every line of a collection as plain arrays of positions, one per segment. */
-function segmentsOf(collection: TrackCollection): Position[][] {
+/** Every line of a collection as plain arrays of positions, one per segment; outlines only when asked for. */
+function segmentsOf(collection: TrackCollection, outlines = false): Position[][] {
   const segments: Position[][] = [];
   for (const feature of collection.features) {
+    if (feature.properties?._outline && !outlines) continue;
     if (feature.geometry.type === "LineString") segments.push(feature.geometry.coordinates);
     else if (feature.geometry.type === "MultiLineString") for (const segment of feature.geometry.coordinates) segments.push(segment);
   }
@@ -117,7 +124,6 @@ export function trackStats(collection: TrackCollection): TrackStats {
   let hasElevation = false;
   let pointCount = 0;
   for (const segment of segmentsOf(collection)) {
-    pointCount += segment.length;
     let reference: number | undefined;
     for (let i = 0; i < segment.length; i += 1) {
       const [lon, lat, ele] = segment[i] as [number, number, number | undefined];
@@ -143,7 +149,11 @@ export function trackStats(collection: TrackCollection): TrackStats {
   for (const feature of collection.features) {
     if (feature.geometry.type === "Point") extend(feature.geometry.coordinates);
   }
-  for (const segment of segmentsOf(collection)) for (const position of segment) extend(position);
+  // Outlines count for the points and the extent, though not for the distance.
+  for (const segment of segmentsOf(collection, true)) {
+    pointCount += segment.length;
+    for (const position of segment) extend(position);
+  }
   return { distanceMeters: round(distance, 1), ascentMeters: hasElevation ? round(ascent, 1) : null, pointCount, bounds };
 }
 
@@ -337,7 +347,7 @@ const TOO_COMPLEX = "That GPX file is too complex to read. If it holds many rout
  */
 export const GPX_READS_AT_ONCE = 2;
 export const GPX_READS_WAITING = 6;
-const BUSY = "Outpost is already reading several GPX files. Wait for those to finish, then import this one again.";
+const BUSY = "Outpost is already reading several map files. Wait for those to finish, then import this one again.";
 
 let reading = 0;
 const waiting: Array<() => void> = [];
@@ -376,7 +386,7 @@ export interface GpxWorkerOptions {
   onUsage?: (usage: GpxWorkerUsage) => void;
 }
 
-type GpxWorkerMessage = ({ ok: true; parsed: ParsedGpx } | { ok: false; code: string; message: string }) & { usage: GpxWorkerUsage };
+type GpxWorkerMessage = ({ ok: true; parsed: unknown } | { ok: false; code: string; message: string }) & { usage: GpxWorkerUsage };
 
 /**
  * `parseGpx` in a worker thread with limits of its own. Use this for anything that
@@ -385,13 +395,23 @@ type GpxWorkerMessage = ({ ok: true; parsed: ParsedGpx } | { ok: false; code: st
  * Only `GPX_READS_AT_ONCE` files are read at a time; the rest wait their turn.
  */
 export function parseGpxSafely(source: string, options: GpxWorkerOptions = {}): Promise<ParsedGpx> {
-  return inTurn(() => readInWorker(source, options));
+  return inTurn(() => readInWorker<ParsedGpx>(source, "gpx", options));
 }
 
-function readInWorker(source: string, options: GpxWorkerOptions): Promise<ParsedGpx> {
+/**
+ * The same for KML (a KMZ already opened into its KML) and GeoJSON, read by their own
+ * readers in the same worker, in the same turns as GPX files.
+ */
+export function parseMapFileSafely(source: string, format: "kml" | "geojson", options: GpxWorkerOptions = {}): Promise<ParsedMapFile> {
+  return inTurn(() => readInWorker<ParsedMapFile>(source, format, options));
+}
+
+function readInWorker<T>(source: string, format: "gpx" | "kml" | "geojson", options: GpxWorkerOptions): Promise<T> {
+  const tooComplex =
+    format === "gpx" ? TOO_COMPLEX : "That file is too complex to read. Split it into smaller files and import them one at a time.";
   return new Promise((resolve, reject) => {
     const worker = new Worker(workerUrl(new URL("./gpx.worker.ts", import.meta.url), "gpx"), {
-      workerData: { source },
+      workerData: { source, format },
       resourceLimits: { maxOldGenerationSizeMb: options.heapMb ?? GPX_WORKER_HEAP_MB },
     });
     let settled = false;
@@ -402,15 +422,15 @@ function readInWorker(source: string, options: GpxWorkerOptions): Promise<Parsed
       void worker.terminate();
       finish();
     };
-    const timer = setTimeout(() => settle(() => reject(badRequest(TOO_COMPLEX))), options.timeoutMs ?? GPX_WORKER_TIMEOUT_MS);
+    const timer = setTimeout(() => settle(() => reject(badRequest(tooComplex))), options.timeoutMs ?? GPX_WORKER_TIMEOUT_MS);
     worker.once("message", (message: GpxWorkerMessage) => {
       options.onUsage?.(message.usage);
-      settle(() => (message.ok ? resolve(message.parsed) : reject(new AppError(message.code as never, message.message))));
+      settle(() => (message.ok ? resolve(message.parsed as T) : reject(new AppError(message.code as never, message.message))));
     });
     // Running out of its memory allowance ends the worker with an error or a non-zero exit.
-    worker.once("error", () => settle(() => reject(badRequest(TOO_COMPLEX))));
+    worker.once("error", () => settle(() => reject(badRequest(tooComplex))));
     worker.once("exit", (code) => {
-      if (code !== 0) settle(() => reject(badRequest(TOO_COMPLEX)));
+      if (code !== 0) settle(() => reject(badRequest(tooComplex)));
     });
   });
 }

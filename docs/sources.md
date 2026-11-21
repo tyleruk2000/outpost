@@ -700,6 +700,18 @@ This is a reading of those texts, not legal advice.
 - **Conduct.** A plain client name on every request, nothing personal in any of them,
   no retries beyond those listed, and nothing fetched that was not looked at.
 
+### Map file formats
+
+What the KML, KMZ and GeoJSON import relies on, read on 21 Nov 2026. No data comes from
+either; they are the formats' own descriptions.
+
+- RFC 7946, The GeoJSON Format (https://www.rfc-editor.org/rfc/rfc7946): positions are
+  longitude then latitude, in WGS 84 decimal degrees (section 4), and the older `crs`
+  member is no longer used (appendix B).
+- Google's KMZ files page (https://developers.google.com/kml/documentation/kmzarchives):
+  the main KML file is `doc.kml` by default, and Google Earth opens the first `.kml`
+  file in the archive's list.
+
 ### Reference layers
 
 Added on 2026-11-16 with the map's reference layers ([reference-layers.md](reference-layers.md),

@@ -16,6 +16,8 @@ export const MAX_ZIP_TOTAL_BYTES = 512 * 1024 * 1024;
 
 export interface ZipReader {
   has(name: string): boolean;
+  /** The names of the files in the archive, in the order it lists them; folders and unsafe names left out. */
+  names(): string[];
   /** Uncompressed size the archive declares for an entry. */
   sizeOf(name: string): number | undefined;
   /** Reads one entry. Throws when it is larger than `maxBytes` or the budget is spent. */
@@ -28,6 +30,15 @@ function open(file: string): Promise<yauzl.ZipFile> {
     // decodeStrings is off because yauzl otherwise rejects the whole archive for one
     // suspicious name; names are decoded and filtered below instead.
     yauzl.open(file, { lazyEntries: true, autoClose: false, decodeStrings: false, validateEntrySizes: true }, (error, zip) => {
+      if (error || !zip) reject(new ExtractionError("This file is not a readable zip archive; it may be damaged."));
+      else resolve(zip);
+    });
+  });
+}
+
+function openBuffer(bytes: Buffer): Promise<yauzl.ZipFile> {
+  return new Promise((resolve, reject) => {
+    yauzl.fromBuffer(bytes, { lazyEntries: true, decodeStrings: false, validateEntrySizes: true }, (error, zip) => {
       if (error || !zip) reject(new ExtractionError("This file is not a readable zip archive; it may be damaged."));
       else resolve(zip);
     });
@@ -65,7 +76,15 @@ function listEntries(zip: yauzl.ZipFile): Promise<Map<string, yauzl.Entry>> {
 }
 
 export async function openZip(file: string, totalBudget = MAX_ZIP_TOTAL_BYTES): Promise<ZipReader> {
-  const zip = await open(file);
+  return readerOf(await open(file), totalBudget);
+}
+
+/** The same, for an archive already in memory (a KMZ upload, which is size-limited before it gets here). */
+export async function openZipBuffer(bytes: Buffer, totalBudget = MAX_ZIP_TOTAL_BYTES): Promise<ZipReader> {
+  return readerOf(await openBuffer(bytes), totalBudget);
+}
+
+async function readerOf(zip: yauzl.ZipFile, totalBudget: number): Promise<ZipReader> {
   let entries: Map<string, yauzl.Entry>;
   try {
     entries = await listEntries(zip);
@@ -113,6 +132,7 @@ export async function openZip(file: string, totalBudget = MAX_ZIP_TOTAL_BYTES): 
 
   return {
     has: (name) => entries.has(name),
+    names: () => [...entries.keys()],
     sizeOf: (name) => entries.get(name)?.uncompressedSize,
     read,
     close: () => zip.close(),
