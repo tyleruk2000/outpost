@@ -23,7 +23,9 @@ is relayed between Home and a radio channel by itself.
 - **These radios are licence-free only on the bands and powers each country allows.** Set
   your region on the radio ("Check your national band plan before transmitting",
   Meshtastic's [regional settings](https://meshtastic.org/docs/configuration/radio/lora/#region)).
-  Outpost does not set the radio's region, frequency or power.
+  Outpost does not set the radio's region, frequency or power. Settings → Mesh radio carries
+  the same licence note as the other radio screens, linking to
+  [What needs a radio licence](radio-licences.md).
 
 ## Three ways in
 

@@ -7,15 +7,16 @@ it was checked against, for your own browser when you are online.
 
 ## What is covered
 
-277 entries across 90 countries, checked on 17 November 2026: 238 on the air, 22 only some
+278 entries across 90 countries, checked on 17 November 2026 with additions on 21 November:
+239 on the air, 22 only some
 of the time, 13 closed (kept with the date so nobody hunts for them) and 4 not verified
 (hidden unless asked for).
 
 | Kind | Entries | What it holds |
 | --- | --- | --- |
 | Time signals | 25 | Time stations, with how each signal is laid out so a clock can be set by ear (guide: "Set a clock from a time signal"), and broadcast pips, which arrive late on digital radio |
-| Emergency broadcasting | 21 | What each country tells its public to tune to |
-| News broadcasters | 33 | Long and medium wave, FM and DAB, international shortwave with its season |
+| Emergency broadcasting | 23 | What each country tells its public to tune to |
+| News broadcasters | 34 | Long and medium wave, FM and DAB, international shortwave with its season |
 | Weather | 63 | Weather radio, marine forecasts, NAVTEX, radiofax, VOLMET |
 | Distress and calling | 22 | Marine, aviation and beacon frequencies, to listen on |
 | Amateur radio | 31 | Emergency activity, nets, calling and beacon frequencies |
@@ -63,14 +64,21 @@ before relying on an entry.
 Looked for and not put in, mostly because the site refused automated readers or had no
 primary page. You can add them by hand from the station's own page.
 
-- **Time signals**: CHU (marked closed on 22 June 2026 from secondary sources), YVTO, ATA,
+- **Time signals**: CHU (marked closed on 22 June 2026 from secondary sources; the NRC's
+  pages refused and its `robots.txt` bars AI agents), YVTO, ATA,
   BSF, EBC, ZUO, OMA; RNZ, ABC and NHK pips. Russian stations rest on the BIPM's table
   alone; Brazil's PPE is not verified.
-- **Emergency broadcasting**: Australia, New Zealand, Israel, India, the Philippines,
+- **Emergency broadcasting**: Australia rests on Queensland's advice alone (ABC bars AI
+  agents; the Northern Territory's and Victoria's sites refused). New Zealand rests on
+  NEMA's PDFs, with no RNZ frequencies (rnz.co.nz bars AI agents). Not found: Israel, India, the Philippines,
   Indonesia, South Africa, Kenya, the Caribbean, the Pacific islands, Latvia, Poland;
   FEMA's Primary Entry Point list. Spain and Italy name no station.
 - **News**: BBC World Service, NHK World, RFI, Deutsche Welle, KBS World, Vatican Radio,
-  RNZ Pacific, CBC, ABC, NRK, DR, Yle, CRI, RAI, RNE, TRT and others. Voice of America,
+  RNZ Pacific, CBC, ABC, NRK, DR, Yle, CRI, RAI, RNE, TRT and others; the medium wave of
+  Australia, Canada, New Zealand, South Korea and South Africa. BBC Radio 4 long wave's
+  closing date rests on the RSGB: Ofcom (14 September 2026) confirms the closure but gives
+  no date. All India Radio's medium wave is from Prasar Bharati's list of 18 September
+  2025 (main cities only). Voice of America,
   Voice of Nigeria and All India Radio's external service are not verified.
 - **Weather**: most VOLMETs outside Shanwick's area, Australia's HF voice, US Coast Guard
   NAVCEN, several European VHF forecasts, New Zealand maritime weather.

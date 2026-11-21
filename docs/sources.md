@@ -710,7 +710,11 @@ themselves, weather and maritime services (NWS, the MCA, the Met Office, the IMO
 regions and national amateur societies, and the CFR from govinfo (not the eCFR, whose
 `robots.txt` disallows its API). Secondary sources (the RSGB and WorldDAB on Radio 4 long
 wave ending on 27 June 2026, Radio World, the SWLing Post on CHU's closure on 22 June 2026,
-and a few others) are each used for one fact and said so in the entry.
+and a few others) are each used for one fact and said so in the entry. Added on 2026-11-21:
+Queensland Government's "Tune into warnings", NEMA's Broadcast Media Memorandum (May 2025)
+and "Stay informed" leaflet, Prasar Bharati's list of AIR transmitters (18 September 2025),
+Ofcom's Licensing Priorities for Broadcast Radio (14 September 2026), ISED RSS-236 Issue 2,
+ComReg 02/71 R16 and 47 CFR 97.303 (eCFR).
 
 Pages were read with a fetch that names itself as an AI agent. Where a site refused it, or
 its `robots.txt` or terms forbid AI agents, that was its answer: the page was not read
@@ -808,7 +812,20 @@ RSS-236, RIC-18); Australia's amateur, CB and LIPD class licences; New Zealand's
 notices; Germany's Amateurfunkverordnung and BNetzA Vfg 21/2021 and 91/2025; the two Dutch
 Regelingen gebruik van frequentieruimte; Arcep décisions 2012-1241 and 2019-1412. France's
 certificate arrêté and current short range devices decision could not be read, so no
-French licence-free services are listed.
+French licence-free services are listed. Belgium: the BIPT Council decision of 24 May 2019
+(Annex 2), BIPT's English extract of its band table, the BIPT decision of 29 August 2023 on
+40.66–40.69 MHz (read in the UBA's copy; BIPT's own address answered not found), and BIPT's
+pages on CB and PMR446. Switzerland: the VNF (SR 784.102.1, 1 January 2024), the VVNF
+(SR 784.102.11, 1 January 2026, Anhang 4), OFCOM's Merkblatt Amateurfunk (30 September 2026),
+RIR0507-35 (PMR446) and RIR1102-02 (CB); Anhang 1 (short range devices) is on a fedlex page
+that needs a script and was not read. Spain: Orden IET/1311/2013 (consolidated, amended by
+IET/614/2015) and the CNAF, Orden TDF/732/2026 (from 18 July 2026), notes UN-3, UN-100,
+UN-108, UN-110, UN-122 and UN-132. Italy: Allegato 26 to the Codice delle comunicazioni
+elettroniche (as replaced in 2021) and its articles 134–145 (in force on 28 April 2025), the
+PNRF (decree of 31 August 2022), and the decree of 26 January 2026 on classe N. Corrected on
+2026-11-21: Canadian CB FM (RSS-236 Issue 2, 4.8), US 60 m channels (47 CFR 97.303(h)),
+Irish PMR446 (ComReg 02/71 R16; a revision R17 may exist but ComReg's pages answered only
+with redirects).
 
 National societies' band plans (RSGB, ARRL, WIA) were used only to find the regulator's
 document. The IARU regional band plans are cited for APRS frequencies, which no regulator

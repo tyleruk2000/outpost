@@ -37,7 +37,16 @@ function CheckDialog({ check, onClose }: { check: RoutineCheck | "new"; onClose:
     event.preventDefault();
     if (!valid) return;
     save.mutate(
-      { id: editing?.id ?? null, input: { name: name.trim(), everyDays: days, note: note.trim(), link: link === "none" ? null : link } },
+      {
+        id: editing?.id ?? null,
+        input: {
+          name: name.trim(),
+          everyDays: days,
+          note: note.trim(),
+          link: link === "none" ? null : link,
+          ...(editing ? { baseUpdatedAt: editing.updatedAt } : {}),
+        },
+      },
       { onSuccess: onClose, onError: (error) => notify.error(errorMessage(error)) },
     );
   };

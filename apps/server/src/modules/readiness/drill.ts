@@ -8,12 +8,12 @@
  * the household's content. The backup line is the status screen's own rule.
  */
 import { DRILL_STEPS, type DrillLine, type DrillRun, type DrillRunInput, homePlaceOf, localDay, pastUseBy } from "@outpost/shared";
-import { count, desc } from "drizzle-orm";
+import { count, desc, eq, max } from "drizzle-orm";
 import type { FastifyRequest } from "fastify";
 import type { AppContext } from "../../core/context.ts";
 import { badRequest } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
-import { offlineDrills } from "../../db/schema.ts";
+import { heardReceivers, heardReports, offlineDrills } from "../../db/schema.ts";
 import { lastDownloadedBackup } from "../backup/index.ts";
 import { cleanBody, cleanName } from "../board/service.ts";
 import { backupCheck } from "../device/status.ts";
@@ -313,14 +313,38 @@ export function createOfflineDrillService(ctx: AppContext, changed: () => void):
         }),
       );
 
-      // A placeholder the radio receiver's work fills in (outpost-ywbh.9): Outpost cannot yet tell whether a receiver is heard.
-      lines.push({
-        id: "radio-mains",
-        title: "The radio receiver is heard with the mains off",
-        state: "untried",
-        summary: "Outpost does not check this yet. Try it in the drill: switch the mains off and listen on a battery or wind-up radio.",
-        link: { to: "/radio/frequencies", label: "Frequencies to listen to" },
-      });
+      // The household's own receivers (Heard on the radio): whether one is set up and when it last heard
+      // anything. Whether it keeps going with the mains off is for the drill to find out; Outpost cannot tell.
+      {
+        const link = { to: "/radio/heard", label: "Heard on the radio" };
+        const title = "The radio receiver is heard with the mains off";
+        const set = db.select({ n: count() }).from(heardReceivers).where(eq(heardReceivers.enabled, true)).get()?.n ?? 0;
+        const last =
+          db
+            .select({ at: max(heardReports.at) })
+            .from(heardReports)
+            .get()?.at ?? null;
+        lines.push(
+          set === 0
+            ? {
+                id: "radio-mains",
+                title,
+                state: "untried",
+                summary:
+                  "No receiver is set up. Without one, listen on a battery or wind-up radio in the drill. A receiver for APRS, aircraft or ships can be added under Heard on the radio.",
+                link,
+              }
+            : {
+                id: "radio-mains",
+                title,
+                state: "untried",
+                summary: `${plural(set, "receiver")} set up${
+                  last === null ? ", nothing heard yet" : `, last heard ${agoWords(Date.now() - last)}`
+                }. In the drill, switch the mains off and see whether reports still arrive: the Pi, the receiver and the Wi-Fi the phones use all need power.`,
+                link,
+              },
+        );
+      }
 
       return lines;
     },
@@ -359,4 +383,14 @@ export function createOfflineDrillService(ctx: AppContext, changed: () => void):
       return n;
     },
   };
+}
+
+/** How long ago, in words: "12 minutes ago", "5 hours ago", "3 days ago". The server's clock zone does not matter. */
+function agoWords(ms: number): string {
+  const minutes = Math.max(0, Math.round(ms / 60_000));
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${plural(minutes, "minute")} ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `${plural(hours, "hour")} ago`;
+  return `${plural(Math.round(hours / 24), "day")} ago`;
 }

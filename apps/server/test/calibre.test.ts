@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { readOpf } from "../src/modules/calibre/opf.ts";
+import { plainDescription, readOpf } from "../src/modules/calibre/opf.ts";
 import { buildEpub, tinyPng } from "./fixtures/documents/builders.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
@@ -114,6 +114,17 @@ describe("bringing in a Calibre library", () => {
       uuid: "u-1",
       coverHref: "cover.jpg",
     });
+  });
+
+  it("reads a description full of unclosed angle brackets without holding the server up", () => {
+    // Read on the server's thread: a metadata.opf of its largest size, every character an
+    // escaped "<" with no ">" after it, once took minutes to turn into plain words.
+    const xml = `<?xml version="1.0"?><package><metadata><dc:title>T</dc:title><dc:description>${"&lt;".repeat(250_000)}</dc:description></metadata></package>`;
+    const started = performance.now();
+    const book = readOpf(xml);
+    expect(performance.now() - started).toBeLessThan(3000);
+    expect(book.title).toBe("T");
+    expect(plainDescription("<p>A <b>bold</b> claim<br/>that 1 < 2</p>")).toBe("A bold claim\nthat 1 < 2");
   });
 
   it("says how many books and how much space before anything is added", async () => {

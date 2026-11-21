@@ -64,6 +64,10 @@ const STALE_SNAPSHOT = /^backup-snapshot-\d+\.db(-journal|-wal|-shm)?$/;
 const DERIVED_FOLDERS = ["attachments", "extracted", "staging", "restore-pending"];
 // The covers of books brought in from Calibre (modules/calibre).
 DERIVED_FOLDERS.push("covers");
+// An export kept for downloading (modules/export-all) holds every note, contact and medical sheet in one zip.
+DERIVED_FOLDERS.push("exports");
+// The scratch copy of a backup a test restore (modules/backup/restore-test.ts) left when Outpost stopped half-way.
+DERIVED_FOLDERS.push("restore-test");
 
 interface RemovePayload extends Record<string, unknown> {
   scope: "items" | "downloaded";

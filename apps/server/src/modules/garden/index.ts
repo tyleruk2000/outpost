@@ -21,7 +21,7 @@ import { asc, desc, eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
-import { badRequest, notFound } from "../../core/errors.ts";
+import { badRequest, conflict, notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
 import { gardenSettings, gardenSowings } from "../../db/schema.ts";
 
@@ -63,6 +63,7 @@ const sowingSchema = z
     plantedOutOn: optionalDay("Give the day it was planted out as a date, or leave it empty."),
     harvestedOn: optionalDay("Give the day the first was picked as a date, or leave it empty."),
     notes: text(L.text),
+    baseUpdatedAt: z.number().int().optional(),
   })
   .strict()
   .refine((input) => input.cropId !== null || input.name.length > 0, {
@@ -151,6 +152,11 @@ export async function registerGarden(app: FastifyInstance, ctx: AppContext): Pro
     },
     update(id, input) {
       const row = rowOf(id);
+      if (input.baseUpdatedAt !== undefined && row.updatedAt > input.baseUpdatedAt)
+        throw conflict(
+          "This sowing was changed somewhere else after you opened it. Your changes were not saved over it; open it again to see the newer version.",
+          { current: { updatedAt: row.updatedAt, name: row.name } },
+        );
       db.update(gardenSowings)
         .set({ ...columns(input), updatedAt: Math.max(Date.now(), row.updatedAt + 1) })
         .where(eq(gardenSowings.id, id))

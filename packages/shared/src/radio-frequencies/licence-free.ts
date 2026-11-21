@@ -86,6 +86,18 @@ const ISED_RIC18: FrequencySource = {
   url: "https://ised-isde.canada.ca/site/spectrum-management-telecommunications/en/licences-and-certificates/radiocom-information-circulars-ric/ric-18-general-radio-service-grs",
   checked: CHECKED,
 };
+const ISED_RSS236: FrequencySource = {
+  publisher: "Innovation, Science and Economic Development Canada",
+  title: "RSS-236, General Radio Service Equipment Operating in the Band 26.960 to 27.410 MHz (Citizens Band), Issue 2, September 2022",
+  url: "https://ised-isde.canada.ca/site/spectrum-management-telecommunications/sites/default/files/attachments/2022/RSS-236-i2-2022-09EN.pdf",
+  checked: "2026-11-21",
+};
+const COMREG_SRD: FrequencySource = {
+  publisher: "Commission for Communications Regulation (ComReg)",
+  title: "Permitted Short Range Devices in Ireland, ComReg 02/71 R16, 20 May 2024",
+  url: "https://comreg.ie/media/2024/05/02_71-R16.pdf",
+  checked: "2026-11-21",
+};
 const ACMA_CB_2025: FrequencySource = {
   publisher: "Australian Communications and Media Authority (Federal Register of Legislation)",
   title: "Radiocommunications (Citizen Band Radio Stations) Class Licence 2025, F2025L01088",
@@ -213,9 +225,10 @@ export const LICENCE_FREE: FrequencyEntry[] = [
       "Channel numbers are the usual numbering in order of frequency, worked out from the lowest carrier (446.00625 MHz) and the 12.5 kHz spacing the decision gives.",
       'Ofcom: analogue PMR446 "is harmonised throughout Europe", so a compliant analogue radio from the UK may be used licence-exempt in other European countries.',
       'Ofcom: American FRS equipment "cannot be used within the UK on a licence-exempt basis" and is "likely to cause harmful interference to frequencies used by the Home Office".',
+      "Ireland: ComReg's table (02/71 R16, 20 May 2024) still gives analogue PMR446 as 446.0 to 446.1 MHz, the eight channels of S.I. 93 of 1998, at 500 mW e.r.p., and digital PMR446 as 446.1 to 446.2 MHz at 50 mW e.r.p.",
     ],
     links: [{ to: "/radio/plans", label: "Communication plans" }],
-    sources: [ECC_15_05, OFCOM_IR2030, OFCOM_PMR446],
+    sources: [ECC_15_05, OFCOM_IR2030, OFCOM_PMR446, COMREG_SRD],
     aliases: ["PMR 446", "walkie talkie", "two-way radio", "licence free radio"],
   },
   {
@@ -453,20 +466,21 @@ export const LICENCE_FREE: FrequencyEntry[] = [
       19: "Used in many areas as a road information channel (RIC-18)",
       23: "Land search and rescue (RIC-18)",
     }),
-    modes: ["AM", "USB", "LSB"],
+    modes: ["AM", "NFM", "USB", "LSB"],
     bands: ["cb"],
     where: ["CA"],
-    expect: "Local users on AM and SSB; search and rescue traffic at times on channels 13 and 23.",
+    expect: "Local users on AM, FM and SSB; search and rescue traffic at times on channels 13 and 23.",
     reception: "Mostly local; further by sky wave when the band is open.",
     listening:
-      "Exempt from licensing for certified equipment (RIC-18). Power: 4 W carrier, 12 W PEP for SSB. RIC-18: operators may use a GRS station anywhere in Canada and the United States, subject to applicable laws.",
+      "Exempt from licensing for certified equipment (RIC-18). RSS-236 Issue 2 section 4.6: 4 W for AM (double sideband) or FM, 12 W PEP for SSB. RIC-18: operators may use a GRS station anywhere in Canada and the United States, subject to applicable laws.",
     status: "on-air",
     notes: [
       'RIC-18: "Federal, provincial, and municipal emergency communications have priority over all other communications on channel 13 (marine operations) and channel 23 (land operations)."',
       "RIC-18 Section 7: channel 9 is for real or imminent threats to life, safety or property, for example road accidents, downed power lines, medical emergencies and fires.",
+      "RSS-236 Issue 2 (September 2022) added FM (emission F3E, 8 kHz authorised bandwidth) to the permitted emissions A3E, H3E, J3E and R3E.",
     ],
     links: [{ to: "/radio/propagation", label: "Is 27 MHz open now" }],
-    sources: [ISED_RIC18],
+    sources: [ISED_RIC18, ISED_RSS236],
     aliases: ["GRS", "General Radio Service", "citizens band", "channel 9", "channel 19"],
   },
   {

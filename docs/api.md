@@ -410,7 +410,7 @@ Types: `documents.ts`, `calibre.ts`.
 | `GET /api/documents/:id/highlights`, `POST` | Highlights; `POST` takes `exact`, `prefix`, `suffix`, `page` or `chapter`, `note`. The file is not written to. |
 | `POST /api/documents/:id/highlights/to-notes` | A page of the highlights (all or `highlightIds`). `{ note }`. |
 | `GET /api/highlights` | Highlights matching `q`. |
-| `PATCH /api/highlights/:id`, `DELETE` | Change the note, or delete. |
+| `PATCH /api/highlights/:id`, `DELETE` | Change the note (with optional `baseUpdatedAt`: `409` if saved since), or delete. |
 | `POST /api/documents/move` | `{ locationId, ids? }`: moves documents there, as a job. |
 | `GET /api/tags` | `{ tags }` with counts. |
 | `GET /api/documents/:id/book` | Calibre details (`authors`, `series`, `seriesIndex`, `coverUrl`, `inCalibreFolder`), or `null`. |
@@ -1097,7 +1097,7 @@ are searchable only while `medical.inSearch` is on and readable by tools only wh
 | --- | --- |
 | `GET /api/medical-sheets`, `POST` | `{ sheets, inSearch, inTools }`; make one (≤60). |
 | `GET`, `PUT`, `DELETE /api/medical-sheets/:id` | `PUT` with `baseUpdatedAt`; a `record` over an encrypted sheet needs `removeEncryption: true`. |
-| `GET /api/keeping-in-touch`, `PUT` | The communication plan and `resolved` links. |
+| `GET /api/keeping-in-touch`, `PUT` | The communication plan and `resolved` links. `PUT` with `baseUpdatedAt`: `409` if older than the stored plan, or `null` once a plan is kept. |
 | `GET /api/household-binder` | `BinderStatus`: last made, changes since. |
 | `POST /api/household-binder/made` | Records a binder made in the browser. |
 
@@ -1111,7 +1111,7 @@ Types: `readiness.ts`; see [readiness.md](readiness.md).
 | `POST /api/event-log` | `{ author, text (≤1,000), at? (≤30 days back), planId? }`. |
 | `PATCH /api/event-log/:id`, `DELETE` | `{ by, text?, at?, baseUpdatedAt }`. |
 | `POST /api/event-log/to-notes` | Writes the lines to a new page. |
-| `GET /api/routine-checks`, `POST`, `PUT`, `DELETE …/:id` | Checks with `dueAt`, `overdue`; `{ name, everyDays (1 to 3,650), note?, link? }`, ≤60. |
+| `GET /api/routine-checks`, `POST`, `PUT`, `DELETE …/:id` | Checks with `dueAt`, `overdue`; `{ name, everyDays (1 to 3,650), note?, link? }`, ≤60. `PUT` with `baseUpdatedAt`: `409` if saved since. |
 | `POST /api/routine-checks/suggested` | Adds the template's checks. |
 | `POST /api/routine-checks/:id/done` | `{ by, at? }`. |
 | `GET /api/offline-drill` | `DrillLine`s (`held`, `missing`, `stale`, `untried`) and the last run. |
@@ -1125,7 +1125,7 @@ Types: `garden.ts`; see [garden.md](garden.md). The calendar is worked out in th
 | --- | --- |
 | `GET /api/garden` | Settings and every sowing. |
 | `PUT /api/garden/settings` | `{ lastFrost: "MM-DD" \| null }` (not 29 February). |
-| `POST /api/garden/sowings`, `PUT`, `DELETE …/:id` | `cropId` or `name`, `sownOn`, optional place, amount, dates, notes. ≤5,000. |
+| `POST /api/garden/sowings`, `PUT`, `DELETE …/:id` | `cropId` or `name`, `sownOn`, optional place, amount, dates, notes. ≤5,000. `PUT` with `baseUpdatedAt`: `409` if saved since. |
 
 ## Tide times
 

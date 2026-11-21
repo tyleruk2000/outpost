@@ -5,11 +5,15 @@
  */
 import type { CountryRadioRules, RadioRulesNotRead } from "../radio-licences.ts";
 import { RULES_AU } from "./au.ts";
+import { RULES_BE } from "./be.ts";
 import { RULES_CA } from "./ca.ts";
+import { RULES_CH } from "./ch.ts";
 import { RULES_DE } from "./de.ts";
+import { RULES_ES } from "./es.ts";
 import { RULES_FR } from "./fr.ts";
 import { RULES_GB } from "./gb.ts";
 import { RULES_IE } from "./ie.ts";
+import { RULES_IT } from "./it.ts";
 import { RULES_NL } from "./nl.ts";
 import { RULES_NZ } from "./nz.ts";
 import { RULES_US } from "./us.ts";
@@ -24,19 +28,14 @@ export const RADIO_RULES: readonly CountryRadioRules[] = [
   RULES_DE,
   RULES_NL,
   RULES_FR,
+  RULES_BE,
+  RULES_CH,
+  RULES_ES,
+  RULES_IT,
 ];
 
 /** Not read yet: the regulator's own pages are where to look. */
 export const RADIO_RULES_NOT_READ: readonly RadioRulesNotRead[] = [
-  {
-    country: "ES",
-    regulator: "Ministerio para la Transformación Digital (SETID)",
-    url: "https://avancedigital.mineco.gob.es/",
-    reason: "Not read yet.",
-  },
-  { country: "IT", regulator: "Ministero delle Imprese e del Made in Italy", url: "https://www.mimit.gov.it/", reason: "Not read yet." },
-  { country: "BE", regulator: "BIPT", url: "https://www.bipt.be/", reason: "Not read yet." },
-  { country: "CH", regulator: "OFCOM (Switzerland)", url: "https://www.bakom.admin.ch/", reason: "Not read yet." },
   { country: "AT", regulator: "Fernmeldebehörde (BMF)", url: "https://www.bmf.gv.at/", reason: "Not read yet." },
   { country: "SE", regulator: "Post- och telestyrelsen (PTS)", url: "https://www.pts.se/", reason: "Not read yet." },
   { country: "NO", regulator: "Nasjonal kommunikasjonsmyndighet (Nkom)", url: "https://www.nkom.no/", reason: "Not read yet." },

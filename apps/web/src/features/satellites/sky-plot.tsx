@@ -15,9 +15,14 @@ const R = 100;
 
 /** Where an azimuth and elevation fall on the plot: the centre is 90°, the ring is the horizon. */
 export function skyXY(azimuthDeg: number, elevationDeg: number): [number, number] {
-  const r = ((90 - Math.max(0, elevationDeg)) / 90) * R;
+  return skyPoint(azimuthDeg, elevationDeg, C, C, R);
+}
+
+/** The same for a plot of any size: centre (cx, cy), the horizon `radius` from it. Used by the PDF too. */
+export function skyPoint(azimuthDeg: number, elevationDeg: number, cx: number, cy: number, radius: number): [number, number] {
+  const r = ((90 - Math.max(0, elevationDeg)) / 90) * radius;
   const angle = (azimuthDeg * Math.PI) / 180;
-  return [C + Math.sin(angle) * r, C - Math.cos(angle) * r];
+  return [cx + Math.sin(angle) * r, cy - Math.cos(angle) * r];
 }
 
 export function SkyPlot({ pass, path, now }: { pass: SatellitePass; path: SatelliteState[]; now?: Date }) {

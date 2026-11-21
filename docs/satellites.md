@@ -50,7 +50,7 @@ peaks and sets in. A pass under 10° is marked "low pass"; under 2° is left out
   head to the north, horizon as the outer ring) and **What to tune to through the pass**: bearing,
   elevation and frequency for each minute.
 
-**This pass as a PDF** writes where to point and what to tune to, to save, print or add to the
+**This pass as a PDF** writes the sky track as on screen, where to point and what to tune to, to save, print or add to the
 library. **Show on the map** draws its track. **Paste elements** takes one element set from
 elsewhere (a two-line TLE, or one OMM object as JSON or KEY = VALUE lines), checked strictly, used
 in this tab only and never kept.

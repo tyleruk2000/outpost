@@ -6,7 +6,7 @@ Where amateurs put repeaters, APRS, FT8 and other data modes, and the frequencie
 
 All of these frequencies are inside amateur bands, so transmitting on them needs an amateur licence that covers the band in the country you are in. A band plan is a voluntary agreement among amateurs, not a rule from the regulator: it tells you what to expect on a frequency, not what you are allowed to do. Listening to amateur transmissions is lawful in the UK and the United States. This sheet is a reference, not legal advice.
 
-National band plans add detail and sometimes differ from the regional plan. In the UK that is the plan published by the Radio Society of Great Britain, and in the United States the plan published by the ARRL together with local repeater co-ordination. Neither is reproduced here. For a particular repeater, use a current repeater listing: this sheet gives the regional pattern only, and does not give access tones.
+National band plans add detail and sometimes differ from the regional plan. In the UK that is the plan published by the Radio Society of Great Britain, and in the United States the plan published by the ARRL together with local repeater co-ordination. Neither is reproduced here. For a particular repeater, use a current repeater listing: this sheet gives the regional pattern only, and for access tones only the UK's list of tone letters, below.
 
 ## 2 metres in Region 1 (UK, Europe, Africa, Middle East)
 
@@ -29,6 +29,24 @@ From the IARU Region 1 VHF band plan. The band is 144 to 146 MHz.
 | 145.806 to 146.000 MHz | Satellites only |
 
 The repeater outputs are 600 kHz above the inputs: to use a 2 metre repeater in Region 1 you listen on its output and transmit 600 kHz lower. The plan allows FM and digital voice a bandwidth of 12 kHz in these segments.
+
+## UK repeater access tones (CTCSS)
+
+From the access page of the RSGB's repeater committee (ETCC) at ukrepeater.net. Since 2004 every new UK repeater has had to be accessible by a CTCSS tone, and a 1750 Hz tone burst is still allowed as well. The page shows them on a tone zone map, each known by a letter:
+
+| Letter | Tone |
+| --- | --- |
+| A | 67 Hz |
+| B | 71.9 Hz |
+| C | 77 Hz |
+| D | 82.5 Hz |
+| E | 88.5 Hz |
+| F | 94.8 Hz |
+| G | 103.5 Hz |
+| H | 110.9 Hz |
+| J | 118.8 Hz |
+
+The page also lists 123.0, 136.5 and 141.3 Hz without a letter. Which area has which letter is on the page only as a map, which was not read, and there are exceptions: take the tone for a particular repeater from its own listing.
 
 ## 2 metres in Region 2 (the Americas)
 
@@ -119,7 +137,7 @@ Anyone may listen. ARISS notes that the higher-power radio on the station can be
 
 ## Checked
 
-15 November 2026. Every frequency was compared a second time with a separate reading of the band plan or page it came from.
+15 November 2026. Every frequency was compared a second time with a separate reading of the band plan or page it came from. The UK access tones were added on 21 November 2026 from the ETCC's page, read that day.
 
 ## Sources
 
@@ -128,12 +146,13 @@ Anyone may listen. ARISS notes that the higher-power radio on the station can be
 - IARU Region 2, band plan, September 2020: the Region 2 2 metre table, 144.390 MHz and the satellite segments. https://www.iaru.org/wp-content/uploads/2020/10/IARU-Region-2-Band-plan.pdf
 - IARU Region 3, band plan (document R3-004, revision 2, November 2024): FT8 and WSPR frequencies, and the Region 3 APRS frequencies. https://www.iaru-r3.org/wp-content/uploads/2025/01/R3-004-Band-Plans-IARU-Region-3.pdf
 - ARISS, Contact the ISS: the space station frequencies and the note on reception. https://www.ariss.org/contact-the-iss.html
+- RSGB Emerging Technology Co-ordination Committee (ETCC), Repeater access, ukrepeater.net (undated), read 21 November 2026: the UK CTCSS tone letters and the 1750 Hz tone burst. https://www.ukrepeater.net/access.htm
 
 ## Not covered
 
-- Repeater access tones (CTCSS), individual repeaters, and the national repeater plans of the UK and the United States. None of the documents read gives them.
+- Individual repeaters, which area of the UK has which tone letter (the ETCC gives it as a map), US repeater access tones (set by local co-ordinators; no national list was read), and the national repeater plans of the UK and the United States.
 - Repeaters and calling frequencies on 70 cm and other bands, and the 6 metre and 4 metre repeater channels.
 - JS8, PSK, RTTY and other data modes: the plans read give no single frequency for them.
 - Amateur satellites other than the space station. See AMSAT for those.
-- HF emergency nets and their schedules. Only the emergency centres of activity agreed by the IARU are given, in the emergency frequencies sheet; nets run by RAYNET, ARES and similar groups were not checked with those groups and are left out.
+- HF emergency nets and their schedules. The emergency frequencies sheet gives the IARU emergency centres of activity and the Hurricane Watch Net; nets run by RAYNET, ARES and similar groups were not checked with those groups and are left out.
 - Winlink, packet bulletin boards, DMR, D-STAR and other networked systems.

@@ -155,6 +155,19 @@ const DABPLUS_DE: FrequencySource = {
   checked: CHECKED,
 };
 
+const OFCOM_LICENSING_2026: FrequencySource = {
+  publisher: "Ofcom",
+  title: "Licensing Priorities for Broadcast Radio: Statement (published 14 September 2026)",
+  url: "https://www.ofcom.org.uk/siteassets/resources/documents/consultations/category-2-6-weeks/ofcom-proposed-strategic-approach-to-broadcast-radio-licensing/statement-docs/statement-licensing-priorities-for-broadcast-radio.pdf?v=425320",
+  checked: "2026-11-21",
+};
+const PRASAR_BHARATI_STATIONS: FrequencySource = {
+  publisher: "Prasar Bharati (Akashvani)",
+  title: "Existing AIR stations: state and UT-wise list of stations and transmitters (18 September 2025)",
+  url: "https://prasarbharati.gov.in/wp-content/uploads/2025/10/19-LIST-OF-EXISTING-STATIONS-AND-TRANSMITTERS-18092025.pdf",
+  checked: "2026-11-21",
+};
+
 const PROPAGATION_LINK = { to: "/radio/propagation", label: "HF propagation: is the band open now" };
 
 // ── Entries ─────────────────────────────────────────────────────────────────
@@ -324,9 +337,10 @@ export const NATIONAL_BROADCASTERS: FrequencyEntry[] = [
     closed: "2026-06-27",
     notes: [
       "The closure date (27 June 2026 at 01:00 BST) comes from the Radio Society of Great Britain, a secondary source; the BBC's own pages could not be used (see the sources note).",
+      "Ofcom's licensing statement of 14 September 2026 confirms that the BBC announced the closure and speaks of the long wave transmitters that were used to carry Radio 4; it gives no date, and Ofcom does not plan to license 198 kHz to anyone else in the short to medium term.",
       "198 kHz is not in Ofcom's transmitter lists of 16 November 2026.",
     ],
-    sources: [RSGB_LW, OFCOM_PAGE],
+    sources: [RSGB_LW, OFCOM_LICENSING_2026, OFCOM_PAGE],
     aliases: ["Radio 4 LW", "Droitwich", "Shipping Forecast long wave"],
   },
   {
@@ -631,6 +645,42 @@ export const NATIONAL_BROADCASTERS: FrequencyEntry[] = [
     status: "on-air",
     sources: [MIC_AM],
     aliases: ["NHK", "ワイドFM", "wide FM", "AM休止"],
+  },
+
+  // India.
+  {
+    id: "bc-nat-in-akashvani-mw",
+    kind: "broadcasters",
+    name: "Akashvani (All India Radio) on medium wave",
+    operator: "Prasar Bharati",
+    what: "India's public radio has 122 medium wave transmitters (Prasar Bharati's list of 18 September 2025), from low-power local stations to 1000 kW sites. Listed here are those of the four largest cities and the most powerful.",
+    frequencies: [
+      { khz: 819, power: "200 kW", note: "Delhi, channel A" },
+      { khz: 1368, power: "20 kW", note: "Delhi, Vividh Bharati (channel C)" },
+      { khz: 1044, power: "100 kW", note: "Mumbai, channel A" },
+      { khz: 558, power: "100 kW", note: "Mumbai, channel B" },
+      { khz: 657, power: "200 kW", note: "Kolkata, channel A" },
+      { khz: 1008, power: "100 kW", note: "Kolkata, channel B" },
+      { khz: 594, power: "1000 kW", note: "Chinsurah, listed under Kolkata" },
+      { khz: 720, power: "200 kW", note: "Chennai, channel A" },
+      { khz: 783, power: "20 kW", note: "Chennai" },
+      { khz: 1071, power: "1000 kW", note: "Rajkot" },
+      { khz: 810, power: "300 kW", note: "Rajkot" },
+    ],
+    modes: ["AM", "DRM"],
+    bands: ["mw"],
+    where: ["IN"],
+    expect: "Akashvani's regional services: news, talks and music in the region's languages. Vividh Bharati: music and entertainment.",
+    reception:
+      "The regional stations cover their city and surrounding districts by day; after dark the high-power sites reach much further.",
+    notes: [
+      'Most of these transmitters are marked "MW DRM" in the list, which means they can also send DRM digital radio; the list does not say which mode each is using at a given time, so an ordinary set may hear nothing on some of them.',
+      "The list gives every station and transmitter by state, with power and frequency: worth printing the page for your state.",
+    ],
+    links: [PROPAGATION_LINK],
+    status: "on-air",
+    sources: [PRASAR_BHARATI_STATIONS],
+    aliases: ["AIR", "All India Radio", "Akashvani", "Vividh Bharati", "आकाशवाणी"],
   },
 
   // Brazil.

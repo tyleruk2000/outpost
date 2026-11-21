@@ -197,5 +197,6 @@ export const RULES_IE: CountryRadioRules = {
     "ComReg's own amateur radio web page could not be read (it asks the browser to run a script first), so it was not confirmed that 09/45R6 (May 2023) is still the current edition; no later revision was found.",
     "No CB power limit appears in S.I. 436 of 1998 or in ComReg 02/71 R16, and the European CB decision ECC/DEC/(11)03 was not read for this page, so the CB power is left out.",
     "Amendments to S.I. 436 of 1998 (the CB order) were not read.",
+    "On 21 November 2026 ComReg's PMR446 rows were read again in 02/71 R16 (20 May 2024) and are as given here. A search result suggested ComReg's list of licence exemptions now points to a revision R17; ComReg's pages answered only with redirects, so R17 was not read and the PMR446 rows may have changed.",
   ],
 };

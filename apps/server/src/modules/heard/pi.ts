@@ -39,13 +39,20 @@ export function createPiDecoders(ctx: AppContext) {
     let parsed: Record<string, unknown> = {};
     try {
       const file = path.join(dir, "status.json");
-      if ((await stat(file)).size <= MOST_STATUS_BYTES) parsed = JSON.parse(await readFile(file, "utf8")) as Record<string, unknown>;
+      if ((await stat(file)).size <= MOST_STATUS_BYTES) {
+        const read: unknown = JSON.parse(await readFile(file, "utf8"));
+        if (read && typeof read === "object" && !Array.isArray(read)) parsed = read as Record<string, unknown>;
+      }
     } catch {
       // Not written yet, or half written: said as nothing known.
     }
     const text = (value: unknown, max = 200) => (typeof value === "string" ? value.slice(0, max) : null);
-    const decoders = Array.isArray(parsed.decoders) ? (parsed.decoders as Array<Record<string, unknown>>) : [];
-    const devices = Array.isArray(parsed.devices) ? (parsed.devices as Array<Record<string, unknown>>) : [];
+    const objects = (value: unknown) =>
+      Array.isArray(value)
+        ? (value.filter((item) => item && typeof item === "object" && !Array.isArray(item)) as Array<Record<string, unknown>>)
+        : [];
+    const decoders = objects(parsed.decoders);
+    const devices = objects(parsed.devices);
     return {
       at: typeof parsed.at === "number" ? parsed.at * 1000 : null,
       pending,

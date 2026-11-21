@@ -233,6 +233,18 @@ describe("updating from a release file", () => {
     expect(fs.existsSync(path.join(w.update, "incoming"))).toBe(false);
   });
 
+  it("keeps a release ready to install when another device asks to remove it", async () => {
+    const w = await world({ OUTPOST_LAN_ACCESS: "true", OUTPOST_HOST: "0.0.0.0" });
+    expect((await w.upload(await bundle(NEXT))).status).toBe(200);
+    await w.app.ctx.jobs.whenIdle();
+    expect((await w.status()).staged?.release).toBe(NEXT);
+    const refused = await w.app.api("DELETE", "/api/update/staged", undefined, { remoteAddress: "192.168.1.20" });
+    expect(refused.status).toBe(403);
+    expect((await w.status()).staged?.release).toBe(NEXT);
+    expect((await w.app.api("DELETE", "/api/update/staged")).status).toBe(200);
+    expect((await w.status()).staged).toBeNull();
+  });
+
   it("finds a release file on a storage location (a USB stick) and installs from there", async () => {
     const w = await world();
     const stick = await w.app.ctx.services.storage.add({

@@ -31,7 +31,7 @@ Receivers often label these WX1 to WX7. The National Weather Service says such c
 | WWVB | NIST (United States) | Near Fort Collins, Colorado | 60 kHz | Time code for radio-controlled clocks; no voice |
 | MSF | NPL (United Kingdom) | Anthorn, Cumbria | 60 kHz | Time and date code giving UK civil time, 24 hours a day; no voice |
 | DCF77 | PTB (Germany) | Mainflingen | 77.5 kHz | Time code for radio-controlled clocks; no voice |
-| CHU | NRC (Canada) | Not verified | Not verified | The National Research Council's website refused the check on 15 November 2026. The station is usually listed on 3330, 7850 and 14670 kHz; treat those as not verified |
+| CHU | NRC (Canada) | Not verified | Not verified | The National Research Council's website refused the check on 15 November 2026, and on 21 November 2026 its robots.txt was found to bar AI agents, so it was not read. Secondary reports say its shortwave broadcasts ended on 22 June 2026. The station is usually listed on 3330, 7850 and 14670 kHz; treat those as not verified |
 
 MSF carries UK civil time and DCF77 carries German legal time; the pages read for WWV and WWVH did not say in so many words which time scale is announced, so that is not stated here. On the day of checking NIST noted that WWVH's 5 MHz transmitter was running at reduced power after an equipment failure, and NPL was asking users of MSF for evidence about how the service is used, to inform decisions about its future.
 
@@ -51,7 +51,7 @@ The Shipping Forecast is broadcast on BBC Radio 4 FM at these times (local time)
 | Every day | 05:34 | Gale warnings, Shipping Forecast, reports from coastal stations and the Inshore Waters Forecast |
 | Saturday and Sunday | 17:54 | Gale warnings and Shipping Forecast |
 
-Long wave: the MCA states that the BBC's dedicated long wave broadcast of the Shipping Forecast "ceased on 31 March 2024". BBC Radio 4 long wave on 198 kHz is reported to have closed altogether on 27 June 2026. That closure is not verified here: the BBC's website does not admit automated checks, and the report comes from the Radio Society of Great Britain. Do not plan on receiving anything on 198 kHz.
+Long wave: the MCA states that the BBC's dedicated long wave broadcast of the Shipping Forecast "ceased on 31 March 2024". BBC Radio 4 long wave on 198 kHz is reported to have closed altogether on 27 June 2026. That date is not verified here: the BBC's website does not admit automated checks, and the date comes from the Radio Society of Great Britain. Ofcom's statement on licensing priorities for broadcast radio (14 September 2026), read on 21 November 2026, confirms that the BBC announced the end of Radio 4 on long wave and speaks of the transmitters as no longer used, but gives no date. Do not plan on receiving anything on 198 kHz.
 
 ### HM Coastguard on marine VHF
 
@@ -106,6 +106,7 @@ NAVTEX sends warnings and forecasts as text to a dedicated receiver. Coverage is
 - Maritime and Coastguard Agency, Maritime Safety Information Leaflet (Advice Note 1033), January 2026: the BBC Radio 4 schedule, the end of the long wave Shipping Forecast, Coastguard VHF and MF broadcasts, and NAVTEX. https://assets.publishing.service.gov.uk/media/697c7ec82ff8d10a830d5dab/MSI_Leaflet.pdf
 - Ofcom, Frequencies for distress and safety, search and rescue and emergencies in the UK, 19 August 2022: the MCA's Maritime Safety Information frequencies. https://www.ofcom.org.uk/siteassets/resources/documents/spectrum/spectrum-information/frequency-allocation-table/fat-frequencies-distress-safety.pdf
 - Radio Society of Great Britain, BBC Long Wave Shutdown (a secondary source, used only for the reported closure date): https://rsgb.org/main/radio-sport/rsgb-contest-club/bbc-long-wave-shutdown/
+- Ofcom, Licensing Priorities for Broadcast Radio: Statement, 14 September 2026, read 21 November 2026: the BBC's announcement of the end of Radio 4 long wave. https://www.ofcom.org.uk/siteassets/resources/documents/consultations/category-2-6-weeks/ofcom-proposed-strategic-approach-to-broadcast-radio-licensing/statement-docs/statement-licensing-priorities-for-broadcast-radio.pdf
 
 ## Not covered
 

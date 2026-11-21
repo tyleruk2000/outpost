@@ -38,7 +38,13 @@ if [ -L request ] || { [ -e request ] && [ ! -f request ]; }; then
   exit 0
 fi
 [ -f request ] || exit 0
-line="$(head -c 200 request | head -n 1)"
+# The folder is the container's: everything read from or written to it is read or written
+# as its owner (setpriv), never as root, so a link swapped in at the last moment reaches
+# nothing the container could not reach itself.
+owner_uid="$(stat -c %u .)"
+owner_gid="$(stat -c %g .)"
+as_owner() { setpriv --reuid="$owner_uid" --regid="$owner_gid" --clear-groups -- "$@"; }
+line="$(as_owner head -c 200 request | head -n 1)" || line=""
 rm -f request
 
 id="${line%% *}"
@@ -48,12 +54,9 @@ case "$id" in '' | *[!A-Za-z0-9]*) exit 0 ;; esac
 answer() { # answer OUTCOME WORDS…
   outcome="$1"
   shift
-  tmp="$(mktemp "$DIR/result.XXXXXX")"
-  printf '%s %s %s %s\n' "$id" "$outcome" "${release:--}" "$*" >"$tmp"
-  owner="$(stat -c '%u:%g' "$DIR" 2>/dev/null || stat -f '%u:%g' "$DIR")"
-  chown "$owner" "$tmp" 2>/dev/null || true
-  chmod 0644 "$tmp"
-  mv -f "$tmp" "$DIR/result"
+  # Renamed over "result" (mv -T), so a link left there is replaced, never followed.
+  printf '%s %s %s %s\n' "$id" "$outcome" "${release:--}" "$*" |
+    as_owner sh -c 'cd "$1" && umask 022 && tmp="$(mktemp result.XXXXXX)" && cat >"$tmp" && chmod 0644 "$tmp" && mv -fT "$tmp" result' sh "$DIR" || true
   logger -t outpost-update "$outcome $release $*" 2>/dev/null || true
 }
 
@@ -71,12 +74,12 @@ rm -rf "$work"
 mkdir -p "$work"
 chmod 0700 "$WORK_ROOT" "$work"
 for name in release.json release.json.minisig image.tar.gz; do
-  source="$DIR/staged/$name"
-  if [ -L "$source" ] || [ ! -f "$source" ]; then
+  source="staged/$name"
+  if [ -L "$source" ] || [ ! -f "$source" ] || ! as_owner cat "$source" >"$work/$name"; then
     answer failed "staged/$name is missing or is not an ordinary file"
+    rm -rf "$work"
     exit 0
   fi
-  cp "$source" "$work/$name"
 done
 
 # ── 2. The signature, and the image against the signed manifest ──

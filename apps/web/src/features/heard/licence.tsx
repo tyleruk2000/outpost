@@ -2,7 +2,8 @@
  * The one line on every screen of Heard on the radio that says what a listener may do
  * and what needs a licence (rule 4 of the epic). Kept in this one place so that the
  * setting for licensed and listen-only operators (outpost-ywbh.1) can put its own
- * component here; until then everyone sees the listen-only wording.
+ * component here. With "I hold an amateur radio licence" on (Settings → Radio licence), the
+ * reminder that sending APRS needs a licence is left out, as on every radio screen.
  *
  * Sources, read 21 November 2026:
  * - Ofcom, "Rules on using radio equipment" (ofcom.org.uk/spectrum/radio-equipment/radio-spectrum-and-the-law):
@@ -16,6 +17,7 @@
  */
 import type { HeardSourceId } from "@outpost/shared";
 import { ExternalLink, Headphones } from "lucide-react";
+import { useRadioLicence } from "@/features/radio/licence";
 
 const OFCOM = "https://www.ofcom.org.uk/spectrum/radio-equipment/radio-spectrum-and-the-law";
 const US_LAW = "https://www.law.cornell.edu/uscode/text/18/2511";
@@ -26,6 +28,11 @@ const WHAT: Record<HeardSourceId | "all", string> = {
   adsb: "Aircraft are heard, never answered: nothing here transmits.",
   ais: "Ships are heard, never answered: nothing here transmits.",
   mesh: "Meshtastic radios use a licence-exempt band.",
+};
+
+/** What is said instead when the household has said it holds an amateur licence: no reminder, the fact stays. */
+const WHAT_LICENSED: Partial<Record<HeardSourceId | "all", string>> = {
+  aprs: "Outpost only listens: it never sends APRS, and has no setting that would.",
 };
 
 const KNOWN: Record<HeardSourceId | "all", string> = {
@@ -40,11 +47,13 @@ const link = "text-primary underline underline-offset-2";
 
 /** "Listening: no licence needed" with what it rests on. */
 export function ListenOnly({ source = "all" }: { source?: HeardSourceId | "all" }) {
+  const { licensed } = useRadioLicence();
+  const what = (licensed ? WHAT_LICENSED[source] : undefined) ?? WHAT[source];
   return (
     <div className="flex items-start gap-2.5 text-small text-ink">
       <Headphones aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
       <p className="min-w-0">
-        <span className="font-semibold">Listening only.</span> {WHAT[source]} {KNOWN[source]}{" "}
+        <span className="font-semibold">Listening only.</span> {what} {KNOWN[source]}{" "}
         <span className="text-ink-muted">
           Sources:{" "}
           <a href={OFCOM} target="_blank" rel="noopener noreferrer" className={link}>

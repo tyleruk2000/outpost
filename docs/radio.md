@@ -15,8 +15,8 @@ say so under **Settings → Radio licence**, and the reminders are left out.
 with its bands, power and conditions, and the licence-free radio anyone may use there
 (PMR446, CB, FRS and GMRS, UHF CB, the 868 and 915 MHz bands Meshtastic uses). Choose
 another country from the list. Every figure names its document and the day it was read.
-Covered: the UK, Ireland, the US, Canada, Australia, New Zealand, Germany, the Netherlands
-and France (without its licence-free services). Rules change; this is not legal advice.
+Covered: the UK, Ireland, the US, Canada, Australia, New Zealand, Germany, the Netherlands,
+France (without its licence-free services), Belgium, Switzerland, Spain and Italy. Rules change; this is not legal advice.
 
 ## Radio tools on the map
 
