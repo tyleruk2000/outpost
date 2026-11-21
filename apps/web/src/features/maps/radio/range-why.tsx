@@ -159,7 +159,9 @@ export function RangeWhy({ range, aerialName = "the aerial" }: { range: SightRan
     : result.verdict === "no-terrain" || result.verdict === "end-unknown"
       ? "No terrain is held there, so there is no saying."
       : blocked
-        ? `Hidden: ground ${formatReach(blocked.distanceMeters)} out stands ${formatMeters(blocked.depthMeters)} above the line of sight.`
+        ? blocked.depthMeters < 2
+          ? "On the edge of sight: the line of sight just grazes the ground on the way."
+          : `Hidden: ground ${formatReach(blocked.distanceMeters)} out stands ${formatMeters(blocked.depthMeters)} above the line of sight.`
         : result.verdict === "incomplete"
           ? "Nothing is in the way where terrain is held, but part of the way has none."
           : "In sight: nothing stands in the way.";
@@ -241,8 +243,8 @@ export function RangeWhy({ range, aerialName = "the aerial" }: { range: SightRan
           names={{ from: aerialName, to: "There", title: `The ground ${compassWords(chosen.bearingDeg)} of ${aerialName}` }}
           seen={seen}
           fresnel={false}
-          mark={blocked ? { distanceMeters: blocked.distanceMeters, label: "In the way" } : null}
-          tone={blocked ? "danger" : "success"}
+          mark={blocked && blocked.depthMeters >= 2 ? { distanceMeters: blocked.distanceMeters, label: "In the way" } : null}
+          tone={blocked && blocked.depthMeters >= 2 ? "danger" : "success"}
           midBulgeMeters={result.midBulgeMeters}
           onScrub={noScrub}
         />

@@ -75,6 +75,7 @@ export * from "./supplies.ts";
 export * from "./supplies-energy.ts";
 export * from "./system.ts";
 export * from "./tools.ts";
+export * from "./walk-reach.ts";
 export * from "./weather.ts";
 export * from "./weather-rivers.ts";
 export * from "./webpages.ts";

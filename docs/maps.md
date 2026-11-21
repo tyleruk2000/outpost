@@ -2186,6 +2186,34 @@ It is the repeaters' estimate, the same sums and the same picture (see
 - One point at a time, drawn with any repeaters' ranges that are on. **Stop showing this
   range** (the card's ×) takes it away. It works anywhere terrain is installed.
 
+## How far on foot from a point
+
+Press and hold the map (or right-click it) and choose **How far on foot from here**: the
+ground you could reach on foot in a set time, shaded orange on the map, palest in the last
+hour, with a ring and its time at each half hour (for a walk of an hour or less) or each
+hour. For planning a way home or a place to meet.
+
+- **The time.** 30 minutes, 1, 1½, 2, 3 or 4 hours, chosen in the card and remembered on
+  this device.
+- **The pace.** Tobler's hiking function: about 5 km/h on a flat path, fastest (6 km/h)
+  on a gentle descent, slower uphill and down steep slopes; off paths and roads three
+  fifths of that. It assumes a fit adult with no load. Under **Pace and what this is**
+  you can choose **Slower** (three quarters of it: a heavy pack, children, an easy day) or
+  **Much slower** (half: someone hurt, tired or unused to hills). Those two are
+  Outpost's own allowances, not from Tobler.
+- **The ground.** Heights from installed terrain; paths and roads from the installed map.
+  Water, rivers, canals and cliffs on the map are barred except where a bridge crosses
+  them, as is ground steeper than 45° and ground with no terrain. Streams are stepped over.
+  With no map installed, every step is off-path, and the card says so. With no terrain at
+  the point it says so, with **Get terrain in Offline maps**.
+- **What it does not know.** Fences, walls, private land, bog, deep heather, woods, snow,
+  darkness and weather, which can each halve a pace or stop it; and rests. The ground is
+  read in squares 25 m across for a walk of up to 1½ hours, up to 60 m for 4 hours, so a
+  narrow gully or a footbridge can be missed.
+- It is worked out on this server in a few seconds (about 3 s for four hours on a
+  Raspberry Pi 5) and asks nothing of the internet. One point at a time; the card's ×
+  takes it away.
+
 ## Repeaters on the map
 
 The repeaters you hold ([radio.md](radio.md#repeaters)) can be drawn over the map.

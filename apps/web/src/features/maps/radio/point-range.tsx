@@ -57,6 +57,8 @@ export interface PointRangeAt {
 }
 
 export interface PointRange {
+  /** Takes the range away. */
+  stop(): void;
   /** Shows the range from this point (one at a time). */
   start(at: PointRangeAt): void;
   /** The card while a range is shown, or null. */
@@ -253,6 +255,10 @@ export function usePointRange({
       setDetails(false);
       setWhy(false);
       setAt(next);
+    },
+    stop() {
+      setAt(null);
+      fitted.current = null;
     },
     card: content,
     outline,

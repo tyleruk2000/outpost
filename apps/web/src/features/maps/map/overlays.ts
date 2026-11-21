@@ -20,8 +20,8 @@ import { midpoints } from "../lib/route-edit";
 import { MAP_FONTS, type MapTheme } from "../lib/style";
 import type { LayerSpecification, SourceSpecification } from "../lib/style-types";
 import { gridLayers, relayLayers, sightLayers } from "../radio/layers";
-
 import { recordingLayers } from "../recording/overlay";
+import { walkLayers } from "../walk/walk-map";
 
 export const OVERLAY_SOURCES = [
   "o-population",
@@ -34,6 +34,7 @@ export const OVERLAY_SOURCES = [
   "o-tracks",
   "o-track-ends",
   "o-measure",
+  "o-walk",
   "o-range",
   "o-repeaters",
   "o-reference",
@@ -222,6 +223,7 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
       paint: halo,
     },
     // The estimated range of the repeater that is open, beneath the repeaters; see features/repeaters/map/range.ts.
+    ...walkLayers(theme),
     ...rangeLayers(theme),
     // Repeaters, when they are switched on; see features/repeaters/map.
     ...repeaterLayers(theme),

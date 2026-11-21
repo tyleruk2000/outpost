@@ -716,6 +716,7 @@ export function ContextMenu({
   onDraw,
   onSun,
   onRange,
+  onWalk,
   onClose,
 }: {
   point: { x: number; y: number };
@@ -733,6 +734,8 @@ export function ContextMenu({
   onSun: () => void;
   /** Shows how far a radio there could reach over the terrain (maps/radio/point-range.tsx). */
   onRange?: () => void;
+  /** Shows the ground reachable on foot from there in a set time (maps/walk/walk-reach.tsx). */
+  onWalk?: () => void;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -758,7 +761,7 @@ export function ContextMenu({
   }, [onClose]);
 
   const width = 232;
-  const height = (place ? 254 : 218) + (locator ? 18 : 0) + (onRange ? 36 : 0);
+  const height = (place ? 254 : 218) + (locator ? 18 : 0) + (onRange ? 36 : 0) + (onWalk ? 36 : 0);
   const left = Math.max(8, Math.min(point.x, bounds.width - width - 8));
   const top = Math.max(8, Math.min(point.y, bounds.height - height - 8));
   const item =
@@ -788,6 +791,11 @@ export function ContextMenu({
       {onRange ? (
         <button type="button" role="menuitem" className={item} onClick={onRange}>
           Estimated radio range from here
+        </button>
+      ) : null}
+      {onWalk ? (
+        <button type="button" role="menuitem" className={item} onClick={onWalk}>
+          How far on foot from here
         </button>
       ) : null}
       <button
