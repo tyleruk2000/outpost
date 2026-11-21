@@ -13,7 +13,7 @@ import type { LayerSpecification, SourceSpecification } from "../lib/style-types
 export const SHADE_PROTOCOL = "outpost-shade";
 
 /** The kinds of shading, each replaced as a whole. */
-export type ShadeGroup = "range" | "walk";
+export type ShadeGroup = "range" | "relay" | "walk";
 
 export interface Shade {
   /** `outpost-shade://…`, from `keepShade`. */

@@ -14,7 +14,9 @@ import { errorMessage } from "@/lib/api";
 import { formatPosition, type ReadoutFormat } from "../lib/coords";
 import { formatBearing, formatDistanceWithMiles, initialBearing } from "../lib/geo";
 import { pressWord } from "../lib/press";
+import type { MapEngine } from "../map/engine";
 import { locatorOf } from "./locator";
+import { RelaySection } from "./relay";
 import { BANDS, type BandId, describeTerrain, formatFrequency, MAX_ANTENNA_METERS, MAX_MHZ, MIN_MHZ } from "./sight";
 import { SIGHT_ICONS } from "./sight-card";
 import { SightChart } from "./sight-chart";
@@ -83,6 +85,7 @@ export function SightPanel({
   mapReady,
   onDone,
   onOpenOffline,
+  engine,
 }: {
   sight: Sight;
   format: ReadoutFormat;
@@ -91,6 +94,8 @@ export function SightPanel({
   onDone: () => void;
   /** Opens the part of the panel where terrain is downloaded. */
   onOpenOffline: () => void;
+  /** The map, for the relay planner to draw on. */
+  engine?: MapEngine | null;
 }) {
   const { from, to, picking, settings, setSettings, profile, result, samples, reading } = sight;
   // The locator is given beside the position, so the position is never a second locator.
@@ -268,6 +273,15 @@ export function SightPanel({
                 worked.
               </p>
             </div>
+            {engine && from && to && result.verdict !== "no-terrain" ? (
+              <RelaySection
+                engine={engine}
+                from={from.position}
+                to={to.position}
+                heightA={settings.antennaFrom}
+                heightB={settings.antennaTo}
+              />
+            ) : null}
           </>
         ) : null}
       </div>

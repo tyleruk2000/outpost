@@ -16,7 +16,6 @@ import {
   RELAY_MOST,
   type RelayCandidate,
   type RelayPlan,
-  type RoutePoint,
   rangeSampleIndex,
   type SightRange,
 } from "@outpost/shared";

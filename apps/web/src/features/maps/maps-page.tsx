@@ -1283,6 +1283,7 @@ export default function MapsPage() {
         sight={sight}
         format={format}
         mapReady={Boolean(engine)}
+        engine={engine}
         onDone={leaveTool}
         onOpenOffline={() => {
           leaveTool();

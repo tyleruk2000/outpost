@@ -19,7 +19,8 @@ import { trackEnds, trackLines } from "../lib/profile";
 import { midpoints } from "../lib/route-edit";
 import { MAP_FONTS, type MapTheme } from "../lib/style";
 import type { LayerSpecification, SourceSpecification } from "../lib/style-types";
-import { gridLayers, sightLayers } from "../radio/layers";
+import { gridLayers, relayLayers, sightLayers } from "../radio/layers";
+
 import { recordingLayers } from "../recording/overlay";
 
 export const OVERLAY_SOURCES = [
@@ -36,6 +37,7 @@ export const OVERLAY_SOURCES = [
   "o-range",
   "o-repeaters",
   "o-reference",
+  "o-relay",
   "o-sight",
   "o-draw",
   "o-recording",
@@ -226,6 +228,7 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
     // Reference layers (features/layers): publicly mapped places, boundaries and historical records, under saved places.
     ...referenceLayers(theme),
     // The path of a line-of-sight check.
+    ...relayLayers(theme),
     ...sightLayers(theme),
     // A track being recorded; see recording/overlay.ts.
     ...recordingLayers(theme),

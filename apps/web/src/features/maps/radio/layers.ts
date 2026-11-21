@@ -1,6 +1,6 @@
 /**
- * What the radio tools draw on the map: the Maidenhead grid, and the path of a
- * line-of-sight check with its two ends. Described here and handed to the map with the
+ * What the radio tools draw on the map: the Maidenhead grid, the path of a
+ * line-of-sight check with its two ends, and the relay planner's places. Described here and handed to the map with the
  * other overlays.
  */
 import { greatCirclePoint } from "@outpost/shared";
@@ -150,4 +150,50 @@ export function sightData({ from, to, mark, scrub }: SightOverlay): FeatureColle
   if (from) point(from, { kind: "end", label: "A" });
   if (to) point(to, { kind: "end", label: "B" });
   return { type: "FeatureCollection", features };
+}
+/** The places in the range's colour, numbered in the page colour; the lines of sight dashed, cased in the page colour. */
+export function relayLayers(theme: MapTheme): LayerSpecification[] {
+  return [
+    {
+      id: "o-relay-leg-casing",
+      type: "line",
+      source: "o-relay",
+      filter: ["==", ["get", "kind"], "leg"],
+      layout: { "line-cap": "round" },
+      paint: { "line-color": theme.page, "line-width": 5.5, "line-opacity": 0.9 },
+    },
+    {
+      id: "o-relay-leg",
+      type: "line",
+      source: "o-relay",
+      filter: ["==", ["get", "kind"], "leg"],
+      paint: { "line-color": theme.range, "line-width": 2.5, "line-dasharray": [2, 1.5] },
+    },
+    {
+      id: "o-relay-point",
+      type: "circle",
+      source: "o-relay",
+      filter: ["==", ["get", "kind"], "relay"],
+      paint: {
+        "circle-radius": ["case", ["get", "chosen"], 12, 9],
+        "circle-color": theme.range,
+        "circle-stroke-color": ["case", ["get", "chosen"], theme.ink, theme.page],
+        "circle-stroke-width": ["case", ["get", "chosen"], 2.5, 2],
+      },
+    },
+    {
+      id: "o-relay-label",
+      type: "symbol",
+      source: "o-relay",
+      filter: ["==", ["get", "kind"], "relay"],
+      layout: {
+        "text-font": [MAP_FONTS.medium] as string[],
+        "text-size": 11.5,
+        "text-field": ["get", "label"],
+        "text-allow-overlap": true,
+        "text-ignore-placement": true,
+      },
+      paint: { "text-color": theme.page },
+    },
+  ];
 }

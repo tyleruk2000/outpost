@@ -2072,6 +2072,17 @@ Escape puts the tool down.
   Fresnel radius at that place; the place is shown on the map.
 - On the map, the path as the great circle it is, with A, B and the place the answer
   turns on.
+- **A relay between A and B**, under the answer: for when the two are not in sight of
+  each other. Give the relay's aerial height (1.5 m, a radio held up, unless changed;
+  remembered on this device) and press **Find high ground in sight of both**. It takes a
+  few seconds. The ground in sight of both is shaded green on the map, and up to eight
+  of the highest places in it are listed and numbered, each well apart from the others,
+  with up to eight of the nearest to both; **Highest first** or **Nearest first** orders
+  them. Each gives the height of the ground and its distance from A and from B; choose
+  one to draw its lines of sight to A and B. It is worked out from the ground each end
+  can see, as the [estimated range](#estimated-radio-range-from-a-point) is, with the
+  heights at A and B given above. It looks out to 100 km from each end, for ends up to
+  200 km apart. Line of sight only: check a place with this tool before relying on it.
 
 ### The sums
 
