@@ -860,8 +860,9 @@ cannot be downloaded again.
 - Keeps: storage locations and their marker files; network shares and any password
   remembered in the Keychain; catalogue manifests of your own; programs fetched for
   portable drives and search model files (clear those from Leftovers); the catalogue's
-  last answers, so Explore still reads offline; and the kiwix-serve program, which is
-  not Outpost's.
+  last answers, so Explore still reads offline; the satellites' orbital elements and
+  transmitters, which are public data; and the kiwix-serve program, which is not
+  Outpost's.
 - Leaves alone, and says where they are: any file outside the folders Outpost made (an
   archive of your own that you pointed Outpost at), and everything on a location that
   is not connected. Outpost forgets them; delete them by hand if you want them gone.
