@@ -32,6 +32,21 @@ describe("notes API", () => {
     (await app.api("GET", `/api/search?kinds=note&q=${encodeURIComponent(q)}`)).body.results.map((result: Json) => result.entityId);
 
   describe("creating and reading", () => {
+    it("makes one page for a phone's id however often it is sent", async () => {
+      const clientId = "o-mf3k2-0a1b2c3d4e5f60718293a4b5";
+      const first = await create({ title: "Written in the hills", content: doc(p(text("Cold"))), clientId });
+      expect(first.id).toBe(clientId);
+      // The reply was lost and the phone sends it again, after someone has already changed the page.
+      await app.api("PATCH", `/api/notes/${clientId}`, { title: "Renamed at home" });
+      const again = await create({ title: "Written in the hills", content: doc(p(text("Cold"))), clientId });
+      expect(again.id).toBe(clientId);
+      expect(again.title).toBe("Renamed at home");
+      expect((await tree()).filter((note) => note.id === clientId)).toHaveLength(1);
+      expect(await searchIds("cold")).toEqual([clientId]);
+      expect((await app.api("POST", "/api/notes", { clientId: "short" })).status).toBe(400);
+      expect((await app.api("POST", "/api/notes", { clientId: "has/a/slash/in/it" })).status).toBe(400);
+    });
+
     it("creates an empty page with sensible defaults", async () => {
       const note = await create();
       expect(note).toMatchObject({

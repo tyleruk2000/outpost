@@ -1118,6 +1118,9 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   one question per press. The servers are declared in `catalog/route-sources.json`. A
   found route keeps its credit: in its panel, in the map's credits and in its GPX
   export. Gaps in a route are left open, never drawn across.
+- A kept page can be changed on a phone out of reach of the server, and the changes are
+  sent when it is back; a page changed on Outpost meanwhile asks which version to keep.
+  A new page sent from a phone is made once however often it is sent.
 
 #### Encryption
 
@@ -1321,6 +1324,14 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   `docs/deployment.md`. On a Mac the downloads were added to and removed from a
   keychain made for the purpose; nothing was tried on a real iPhone, Android phone,
   Windows or Linux computer.
+
+#### The household PIN (Security)
+
+- An optional PIN for changing and deleting, under Settings → Who can use this library.
+  Every device still reads; a device changes things only once the PIN has been entered
+  on it, and until then every screen says it can read but not change anything. One
+  check for every route, by method. Wrong PINs are limited per address, IPv6 by /64.
+  `OUTPOST_FORGET_PIN` starts Outpost with no PIN.
 
 #### Tools: Solar clock
 
@@ -1602,6 +1613,13 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   `ornith:9b`, each with its download, memory, licence, results and times. None was
   timed on a Raspberry Pi. Written from one data file
   (`packages/shared/src/model-trials.ts`); see [docs/which-model.md](docs/which-model.md).
+
+#### Help: map and radio quick starts
+
+- Two short step-by-step guides for whoever did not set Outpost up: finding a place,
+  reading the height and grid reference, printing a map, line of sight and range; and
+  something to listen to, the frequency sheets, repeaters and a mesh message. Offered on
+  the Maps, Radio, Frequencies and Repeaters screens until read or put away.
 
 #### Chat: tools a model can use, and MCP
 

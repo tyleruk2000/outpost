@@ -17,6 +17,7 @@ import { registerRequestGuard } from "./core/guard.ts";
 import { JobQueue } from "./core/jobs.ts";
 import { isBundled } from "./core/paths.ts";
 import { openDatabase } from "./db/client.ts";
+import { registerAccess } from "./modules/access/index.ts";
 import { applyPendingRestore } from "./modules/backup/index.ts";
 import { modules } from "./modules/index.ts";
 import { createSettingsService } from "./modules/settings/service.ts";
@@ -137,6 +138,8 @@ export async function buildApp(config: Config): Promise<BuiltApp> {
   ctx.services.settings = createSettingsService(ctx);
   registerJsonCompression(app);
   await registerRequestGuard(app, ctx);
+  // The household PIN, if one is set: its check follows the guard's, for every route.
+  await registerAccess(app, ctx);
   await registerStorage(app, ctx);
   await registerSystem(app, ctx);
   for (const register of modules) await register(app, ctx);

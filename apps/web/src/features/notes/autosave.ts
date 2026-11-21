@@ -53,6 +53,12 @@ export interface Autosaver<P extends object> {
   retry(): void;
   /** After a conflict: send every listed field, overwriting the other version. */
   keepMine(keys: Iterable<keyof P>): void;
+  /**
+   * Changes made to these fields elsewhere on this device (on a phone while Outpost was out
+   * of reach) were refused because the page was saved since: hold them, unsaved, as a
+   * conflict for the person to settle with `keepMine` or by loading the other version.
+   */
+  holdInConflict(keys: Iterable<keyof P>, current: { updatedAt: number; title: string }): void;
   /** The page was loaded afresh (the other version, or a remote change): forget local changes. */
   reset(baseUpdatedAt: number): void;
   /** Something else saved the page on this tab's behalf; later saves build on that. */
@@ -199,6 +205,16 @@ export function createAutosaver<P extends object>(options: AutosaveOptions<P>): 
       options.onStatus?.(status);
       clearTimer();
       attempt();
+    },
+
+    holdInConflict(keys, current) {
+      if (closed) return;
+      clearTimer();
+      for (const key of keys) dirty.add(key);
+      lastTouch = Date.now();
+      setStatus({ kind: "conflict", current });
+      // After the pause the held values are read and kept as the draft; nothing is sent while the conflict stands.
+      schedule(debounceMs);
     },
 
     reset(baseUpdatedAt) {

@@ -54,6 +54,8 @@ const envSchema = z.object({
   OUTPOST_VOACAP_DATA_MANIFEST: z.string().optional(),
   OUTPOST_ALLOW_REMOTE_ERASE: bool(false),
   OUTPOST_ALLOW_REMOTE_SETTINGS: bool(false),
+  // Forgets the household PIN as Outpost starts, for a household that has forgotten it (docs/security.md).
+  OUTPOST_FORGET_PIN: bool(false),
   OUTPOST_OWN_ADDRESS_IS_LOCAL: bool(true),
   // The device: Outpost's figures for Prometheus at /metrics, and setting the server's clock from another device (docs/device.md).
   OUTPOST_METRICS: bool(false),
@@ -149,6 +151,8 @@ export interface Config {
    * programs' tools) be changed from any device that can reach Outpost (core/setting-right.ts).
    */
   allowRemoteSettings: boolean;
+  /** Forget the household PIN as Outpost starts (modules/access): for a household that has forgotten it. */
+  forgetPin: boolean;
   /**
    * Whether a connection from one of this computer's own network addresses counts as
    * this computer (core/local.ts). On by default; turned off where something on this
@@ -292,6 +296,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     extraDownloadHosts: parsed.OUTPOST_DOWNLOAD_HOSTS.map((host) => host.toLowerCase()),
     allowRemoteErase: parsed.OUTPOST_ALLOW_REMOTE_ERASE,
     allowRemoteSettings: parsed.OUTPOST_ALLOW_REMOTE_SETTINGS,
+    forgetPin: parsed.OUTPOST_FORGET_PIN,
     ownAddressIsLocal: parsed.OUTPOST_OWN_ADDRESS_IS_LOCAL,
     metrics: parsed.OUTPOST_METRICS,
     allowRemoteClock: parsed.OUTPOST_ALLOW_REMOTE_CLOCK,

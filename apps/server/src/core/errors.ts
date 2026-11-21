@@ -5,6 +5,8 @@
 export type ErrorCode =
   | "bad_request"
   | "forbidden"
+  /** A change from a device not unlocked with the household PIN (modules/access). */
+  | "locked"
   | "not_found"
   | "conflict"
   | "too_large"
@@ -20,6 +22,7 @@ export type ErrorCode =
 const statusByCode: Record<ErrorCode, number> = {
   bad_request: 400,
   forbidden: 403,
+  locked: 403,
   not_found: 404,
   conflict: 409,
   too_large: 413,

@@ -35,6 +35,7 @@ import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "
 import { Field, Input } from "@/components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Badge, Checkbox, Select, Skeleton } from "@/components/ui/misc";
+import { FirstUseGuide } from "@/features/help/first-use";
 import { formatBearing, formatDistance } from "@/features/maps/lib/geo";
 import { LicenceLine } from "@/features/radio/licence";
 import { useDebounced } from "@/lib/use-debounced";
@@ -489,6 +490,11 @@ export default function RepeatersPage() {
         actions={held > 0 ? actions : undefined}
       />
       <LicenceLine use="listen-and-transmit" className="mb-6" />
+      <FirstUseGuide
+        slug="radio-quick-start"
+        words="New to radio here? Four short steps: something to listen to, the frequency sheets, repeaters, and a mesh message."
+        className="mb-6"
+      />
 
       {overview.isPending ? (
         <ListSkeleton />

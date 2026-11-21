@@ -286,6 +286,11 @@ export interface CreateNoteBody {
   templateId?: string;
   /** Place the page right after this sibling instead of last. */
   afterId?: string;
+  /**
+   * The page's id, made by the device that wrote it (8 to 64 letters, digits, `-` or `_`).
+   * Sent again, the page made the first time is the answer and no second one is made.
+   */
+  clientId?: string;
 }
 
 export interface UpdateNoteBody {

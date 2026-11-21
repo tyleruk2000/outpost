@@ -286,7 +286,7 @@ export const settingsSections: SettingsSection[] = [
     id: "access",
     label: "Who can use it",
     inContents: true,
-    keywords: "wifi wi-fi network lan phones share sharing household password sign in accounts",
+    keywords: "wifi wi-fi network lan phones share sharing household password sign in accounts pin lock unlock guest read only",
   },
   { id: "updates", label: "Updates", inContents: true, keywords: "update upgrade newer release usb stick install" },
   { id: "about", label: "This installation", inContents: true, keywords: "version memory processor about" },

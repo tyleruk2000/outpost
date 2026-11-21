@@ -56,7 +56,8 @@ public internet and must not be exposed to it.
   passphrase backups are protected with (see
   [Backup and restore](#backup-and-restore)).
   There are no permissions, no per-person views and no audit log. Share it only with a
-  network where you trust everyone.
+  network where you trust everyone. A [household PIN](#the-household-pin) keeps
+  changing and deleting to the devices it has been entered on; reading stays open.
 - **Reading other people's details.** Contacts are information about other people, and
   they are no more private than anything else here: everyone who can open Outpost can
   read, change and export every contact, in a browser or, if that is turned on, in a
@@ -97,6 +98,49 @@ public internet and must not be exposed to it.
 | LAN access is a start-up decision | `OUTPOST_LAN_ACCESS` cannot be changed from the browser. Without it the server refuses to start on an address other devices can reach (and, in a container, unless told its port is published on `127.0.0.1` only). | `apps/server/src/config.ts` |
 | Host allow-list | Requests whose `Host` header is not a name this server answers to are refused. This defeats DNS rebinding, where a hostile site points its own name at your machine. Always answered: `localhost`, `127.0.0.1`, `::1` and the names in `OUTPOST_ALLOWED_HOSTS`. With LAN access on, also any IP address, any one-word name (`outpost`, as a router's DNS hands out) and names ending `.local`, `.lan`, `.home`, `.internal` or `.home.arpa`; a name with a dot in it and any other ending (every name a site on the internet can own) must be listed. A rebinding attack through a one-word name would need control of the home network's own DNS. | `isAllowedHost` in `apps/server/src/core/guard.ts` |
 | kiwix-serve is never exposed | The browser reaches it only through Outpost's proxy. In Compose it has no published port. | `apps/server/src/modules/kiwix/`, `compose.yaml` |
+
+### The household PIN
+
+Off unless someone sets one, under **Settings → Who can use this library**. With no PIN,
+every device that can reach Outpost reads, changes and deletes, as described above, and
+Settings says so.
+
+With a PIN:
+
+- **Every device still reads** everything, as before, including through `/mcp` (which
+  only reads) and CardDAV (which changes nothing).
+- **A device changes or deletes only once the PIN has been entered on it.** Until then
+  it is a guest: every screen carries a line saying it can read but not change anything,
+  and a change it tries is refused and the PIN asked for. Entering the PIN unlocks that
+  browser on that device, for a year of not being used, or until **Lock this device**.
+- **What counts as a change** is every request under `/api/` that is not a `GET`, `HEAD`
+  or `OPTIONS`, decided in one place for every route, so a new screen is covered without
+  anything of its own. A short list of requests that ask a question by `POST` and keep
+  nothing (an answer from your library, an estimate of a download's size, a radio
+  prediction, what a removal would do) is open to guests too.
+- **Setting, changing and removing.** Any device may set a PIN while there is none; that
+  device is unlocked. Changing or removing it needs an unlocked device and the PIN in
+  use. A new PIN locks every other device. **Lock every other device** does the same
+  without changing it.
+- **Wrong PINs** are counted by address: five, then one a minute. An IPv6 device is
+  counted by its /64, so a device that moves to another of its addresses is still
+  counted as itself. A PIN is 4 to 12 digits.
+- **What is stored.** The PIN is kept as a salted scrypt hash, never as itself; each
+  unlocked device as the SHA-256 of a random token held in an `HttpOnly`,
+  `SameSite=Strict` cookie (`Secure` over HTTPS). They are in the database, so in
+  backups. Restoring a backup keeps the PIN in use here; a portable drive carries none;
+  erasing everything removes it.
+- **Forgotten PIN.** Add `OUTPOST_FORGET_PIN=true` to Outpost's `.env` file and restart
+  Outpost: it starts with no PIN and says so in its log. Take the line out again, or
+  every restart forgets the PIN set since.
+
+**What it is not.** A PIN keeps changes to the people who know it: a child's tablet, a
+guest's phone. Four digits are guessed in about a week from one address, and over plain
+HTTP anyone who can watch the network can read the PIN as it is typed or copy an
+unlocked device's cookie. It does not hide anything, and it does not replace keeping
+Outpost to a network you trust. The rules held to every request (the Host check, the
+same-origin check) still apply to unlocked devices, and what only the computer itself
+may do still needs that computer.
 
 ### HTTPS on the home network
 

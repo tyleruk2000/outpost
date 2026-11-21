@@ -511,7 +511,10 @@ set-up line, and each states its size first.
 From [docs/security.md](docs/security.md), which has the whole threat model:
 
 - **No accounts.** Whoever can reach Outpost can read, add, change and delete
-  everything in it, contacts and chat conversations included. By default only the
+  everything in it, contacts and chat conversations included, unless a household PIN
+  is set: then every device reads, and only devices unlocked with the PIN change or
+  delete. A PIN keeps changes to those who know it; it is not a password against
+  someone determined. By default only the
   computer it runs on can reach it. With LAN access on, everyone on that network can;
   turn it on only for a network where you trust everyone, never forward the port to the
   internet, and put it behind a public reverse proxy only if the proxy asks people to

@@ -196,6 +196,14 @@ export function createRestoreStager(ctx: AppContext): RestoreStager {
               .prepare("INSERT INTO settings (key, value, updated_at) VALUES ('mesh.config', ?, ?)")
               .run(meshHere.value, meshHere.updated_at);
           }
+          // Nor does the household PIN of then, or the devices unlocked with it: the one in use here
+          // stays (modules/access), so a restore neither brings back an old PIN nor takes away this one.
+          const accessHere = ctx.sqlite
+            .prepare("SELECT key, value, updated_at FROM settings WHERE key IN ('access.pin', 'access.devices')")
+            .all() as Array<{ key: string; value: string; updated_at: number }>;
+          clean.exec("DELETE FROM settings WHERE key IN ('access.pin', 'access.devices')");
+          const putAccess = clean.prepare("INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)");
+          for (const row of accessHere) putAccess.run(row.key, row.value, row.updated_at);
           // Nor does the passphrase backups were protected with then take over from the one in use here now.
           settleStagedProtection(clean, readProtection(ctx), sealedTo);
         } finally {

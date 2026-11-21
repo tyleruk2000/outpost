@@ -26,6 +26,7 @@ vi.mock("./sidebar", () => ({ Sidebar: () => <nav aria-label="Sidebar">sidebar</
 vi.mock("./mobile-nav", () => ({ MobileNav: () => null }));
 vi.mock("./update-notice", () => ({ UpdateNotice: () => null }));
 vi.mock("@/features/device/clock-notice", () => ({ ClockNotice: () => null }));
+vi.mock("@/features/access/access-notice", () => ({ AccessNotice: () => null }));
 vi.mock("@/features/kept/reach", () => ({ ReachNotice: () => null }));
 vi.mock("@/features/maps/recording/indicator", () => ({ RecordingIndicator: () => null }));
 
