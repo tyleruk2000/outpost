@@ -6,6 +6,7 @@
 import type { RollCallLine, RoutineCheck } from "@outpost/shared";
 import { STATUS_WORDS, whenCheckedIn } from "@/features/board/words";
 import { formatTimeOfDay } from "@/lib/clock";
+import { appLocale } from "@/lib/region";
 import { formatDate } from "@/lib/utils";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -90,7 +91,7 @@ export function logDay(at: number, now = Date.now()): string {
   const days = Math.round((startOfDay(now) - startOfDay(at)) / DAY_MS);
   if (days <= 0) return "Today";
   if (days === 1) return "Yesterday";
-  return `${new Intl.DateTimeFormat("en-GB", { weekday: "long" }).format(at)} ${formatDate(at)}`;
+  return `${new Intl.DateTimeFormat(appLocale(), { weekday: "long" }).format(at)} ${formatDate(at)}`;
 }
 
 /** A time for a `datetime-local` field, in the device's own zone: "2026-11-21T14:10". */

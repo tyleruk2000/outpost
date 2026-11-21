@@ -7,11 +7,12 @@ import { chemistryById, MONTHS, type PowerPlanInput, sunSourceText } from "@outp
 import { writePdfPages } from "@/features/maps/print/pdf";
 import { INK, MUTED, type SheetItem } from "@/features/maps/print/sheet";
 import { type Block, toSheets } from "@/features/propagation/plans/document";
+import { appLocale } from "@/lib/region";
 import { assumptions, loadDailyWh, type PlanAnswers, radioDuty, simulate } from "./calc/plan";
 import { MAKER_SENTENCE, originSentence } from "./device-text";
 import { figure } from "./inputs";
 
-const longDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric" });
+const longDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "long", year: "numeric" });
 const CHART_RGB: [number, number, number] = [0.13, 0.42, 0.45];
 
 export const ESTIMATE =

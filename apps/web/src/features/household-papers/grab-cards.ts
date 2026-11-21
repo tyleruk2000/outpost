@@ -17,6 +17,7 @@ import { formatDecimal, formatDms, formatOsGridRef, type GridFormat, toMaidenhea
 import { CARD_HEIGHT, CARD_WIDTH, type CardPaper, Column, cropMarks, dashed, shift } from "@/features/emergency-plans/cards";
 import { PAPERS, PT_PER_MM } from "@/features/maps/print/paper";
 import { INK, MUTED, type Sheet, type SheetItem } from "@/features/maps/print/sheet";
+import { appLocale } from "@/lib/region";
 
 export type GrabCardSize = "wallet" | "a6";
 export const A6_WIDTH = 105 * PT_PER_MM;
@@ -68,7 +69,7 @@ export interface GrabCard {
   overflow: boolean;
 }
 
-const shortDate = (date: Date) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(date);
+const shortDate = (date: Date) => new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "short", year: "numeric" }).format(date);
 
 function write(
   front: Column,

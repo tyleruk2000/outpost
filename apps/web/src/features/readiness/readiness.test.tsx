@@ -206,7 +206,7 @@ describe("the screens", () => {
       },
       {
         id: "radio-mains",
-        title: "The radio receiver is heard with the mains off",
+        title: "The radio receiver is heard with the power off",
         state: "untried",
         summary: "Outpost does not check this yet.",
         link: null,

@@ -19,6 +19,7 @@ import { Checkbox, Segmented, Select, Skeleton, Tabs, TabsContent, TabsList, Tab
 import { AprsWeather } from "@/features/heard/aprs-weather";
 import { errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
+import { likelyTemperatureUnit, likelyWindUnit } from "@/lib/region";
 import { plural } from "@/lib/utils";
 import { AlertsView } from "./alerts-view";
 import { BarometerView } from "./barometer-view";
@@ -85,8 +86,8 @@ export default function WeatherPage() {
   const setOnOpen = useSetUpdateOnOpen();
   const [failures, setFailures] = useState<UpdateOutcome[]>([]);
   const [chosenPlace, setChosenPlace] = useState<string | null>(null);
-  const [wind, setWindState] = useState<WindUnit>(() => preference<WindUnit>(WIND_KEY, ["kmh", "mph"], "kmh")[0]);
-  const [temp, setTempState] = useState<TempUnit>(() => preference<TempUnit>(TEMP_KEY, ["c", "f"], "c")[0]);
+  const [wind, setWindState] = useState<WindUnit>(() => preference<WindUnit>(WIND_KEY, ["kmh", "mph"], likelyWindUnit())[0]);
+  const [temp, setTempState] = useState<TempUnit>(() => preference<TempUnit>(TEMP_KEY, ["c", "f"], likelyTemperatureUnit())[0]);
   const openedOnce = useRef(false);
 
   const setView = (next: string) =>
@@ -223,7 +224,7 @@ export default function WeatherPage() {
               value={wind}
               onChange={(next) => {
                 setWindState(next);
-                preference<WindUnit>(WIND_KEY, ["kmh", "mph"], "kmh")[1](next);
+                preference<WindUnit>(WIND_KEY, ["kmh", "mph"], likelyWindUnit())[1](next);
               }}
               options={[
                 { value: "kmh", label: "km/h" },
@@ -235,7 +236,7 @@ export default function WeatherPage() {
               value={temp}
               onChange={(next) => {
                 setTempState(next);
-                preference<TempUnit>(TEMP_KEY, ["c", "f"], "c")[1](next);
+                preference<TempUnit>(TEMP_KEY, ["c", "f"], likelyTemperatureUnit())[1](next);
               }}
               options={[
                 { value: "c", label: "°C" },

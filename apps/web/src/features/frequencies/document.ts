@@ -18,8 +18,9 @@ import {
 } from "@outpost/shared";
 import { writePdfPages } from "@/features/maps/print/pdf";
 import { type Block, toSheets } from "@/features/propagation/plans/document";
+import { appLocale } from "@/lib/region";
 
-const longDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric" });
+const longDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "long", year: "numeric" });
 
 /** One frequency as it is written on paper: value, channel and anything particular to it. */
 export function frequencyLine(frequency: FrequencyEntry["frequencies"][number]): string {

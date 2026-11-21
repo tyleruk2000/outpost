@@ -15,6 +15,7 @@
  * name should be.
  */
 import { type Bbox, formatMgrs, toMaidenhead } from "@outpost/shared";
+import { appLocale } from "@/lib/region";
 import { formatBboxSize } from "../lib/geo";
 import { encodeWinAnsi, wrapText } from "./helvetica";
 import type { Rect } from "./paper";
@@ -120,7 +121,7 @@ export function withMapWords(sheet: Sheet, map: Rect, sentences: readonly string
   return { ...sheet, items: [...sheet.items, ...items] };
 }
 
-const shortDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
+const shortDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "short", year: "numeric" });
 
 /** What the library calls the map: "Map, Helvellyn from Glenridding, 1:25,000, 16 Nov 2026", or by its centre when it has no title. */
 export function mapLibraryTitle(title: string, bbox: Bbox, scale: number, made: Date): string {

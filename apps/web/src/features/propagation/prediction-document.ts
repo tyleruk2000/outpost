@@ -40,13 +40,14 @@ import {
 } from "@outpost/shared";
 import { writePdfPages } from "@/features/maps/print/pdf";
 import type { Sheet } from "@/features/maps/print/sheet";
+import { appLocale } from "@/lib/region";
 import { type Block, toMarkdown, toSheets, unwritable } from "./plans/document";
 
 export type PredictionPaper = "a4" | "letter";
 
-const longDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
-const shortDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
-const monthYear = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
+const longDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+const shortDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+const monthYear = new Intl.DateTimeFormat(appLocale(), { month: "long", year: "numeric", timeZone: "UTC" });
 const dateOf = (iso: string) => new Date(`${iso}T00:00:00Z`);
 
 /** What is printed where there is no figure. */

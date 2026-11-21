@@ -92,7 +92,7 @@ export default function MedicalPage() {
     <Page width="reading">
       <PageHeader
         title="Medical sheets"
-        description="What a relative or a paramedic needs to be told about each person: medicines, allergies, conditions, blood group, the GP and pharmacy, and next of kin. One sheet each, to print and for the grab card."
+        description="What a relative or a paramedic needs to be told about each person: medicines, allergies, conditions, blood group, the doctor and pharmacy, and next of kin. One sheet each, to print and for the grab card."
       />
       <Notice tone="warning" icon={<ShieldAlert />} title="The most private thing Outpost holds">
         Outpost has no accounts. Anyone who can reach it on your network can open a sheet that is not encrypted. Encrypt a sheet to need a

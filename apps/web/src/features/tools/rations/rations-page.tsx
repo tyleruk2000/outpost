@@ -43,6 +43,7 @@ import { madePdf } from "@/features/library/made/made-pdf";
 import { PdfActions } from "@/features/library/made/pdf-actions";
 import { api, errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
+import { deviceRegion, isUkRegion } from "@/lib/region";
 import { formatDate, plural } from "@/lib/utils";
 import {
   Calculator,
@@ -183,7 +184,12 @@ export default function RationsPage() {
     },
     { value: "sphere", label: "Sphere planning figure for everyone", description: "2,100 kcal a person a day, with an allowance for cold" },
   ] as const;
-  const [basis, setBasis] = useChoice<RationBasis>("rations.basis", bases, "uk");
+  const [basis, setBasis] = useChoice<RationBasis>(
+    "rations.basis",
+    bases,
+    // The UK's figures first in the UK only; everywhere else the international ones (UNHCR, UNICEF, WFP, WHO).
+    isUkRegion(deviceRegion()) ? "uk" : "international",
+  );
   const cold = useNumber(coldSpec);
   const needs = useMemo(() => people.map((person) => personNeed(person, basis, cold.value)), [people, basis, cold.value]);
   const perDay = needs.reduce((sum, need) => sum + (need.kcal ?? 0), 0);

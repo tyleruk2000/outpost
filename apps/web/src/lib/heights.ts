@@ -2,7 +2,8 @@
  * How a height is written, everywhere on the map screens: in metres or in feet. The
  * height of the ground, a climb, a clearance over a hill: all of them go through
  * `formatHeight`, so one screen never shows both. The choice is kept in this browser
- * only, like the theme and the clock, and is metres until someone chooses.
+ * only, like the theme and the clock, and is metres until someone chooses
+ * (feet on a device set to the United States, where maps give heights in feet).
  *
  * How finely a height is written follows from how well it is known:
  *
@@ -19,6 +20,7 @@
  * says so.
  */
 import { useSyncExternalStore } from "react";
+import { likelyHeightUnit } from "./region";
 import { formatNumber } from "./utils";
 
 export type HeightUnit = "m" | "ft";
@@ -45,10 +47,11 @@ export function heightText(meters: number, unit: HeightUnit, precision: HeightPr
 
 function readUnit(): HeightUnit {
   try {
-    return localStorage.getItem(KEY) === "ft" ? "ft" : "m";
+    const stored = localStorage.getItem(KEY);
+    return stored === "ft" || stored === "m" ? stored : likelyHeightUnit();
   } catch {
-    // No storage here (a private window): metres.
-    return "m";
+    // No storage here (a private window): the device's usual unit.
+    return likelyHeightUnit();
   }
 }
 
@@ -63,8 +66,7 @@ export const heightUnit = (): HeightUnit => unit;
 export function setHeightUnit(next: HeightUnit): void {
   unit = next;
   try {
-    if (next === "m") localStorage.removeItem(KEY);
-    else localStorage.setItem(KEY, next);
+    localStorage.setItem(KEY, next);
   } catch {
     // Storage refused: the choice then lasts for this visit only.
   }

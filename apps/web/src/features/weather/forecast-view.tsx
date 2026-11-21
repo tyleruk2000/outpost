@@ -2,6 +2,7 @@
 import { type ForecastData, freshness, type KeptCopy, type WeatherSourceInfo, weatherWords } from "@outpost/shared";
 import { ChartFrame } from "@/features/propagation/charts";
 import { formatTimeOfDay } from "@/lib/clock";
+import { appLocale } from "@/lib/region";
 import { AgeLine, Credit } from "./age-line";
 import { TimeLine } from "./time-chart";
 import { dayName, daySentence, daysAhead, hoursAhead, type TempUnit, tempText, tempValue, type WindUnit, windText } from "./words";
@@ -81,7 +82,7 @@ export function ForecastView({
                   {hours.map((hour) => (
                     <tr key={hour.t}>
                       <th scope="row" className="py-1.5 pr-3 text-left font-normal whitespace-nowrap text-ink">
-                        {new Intl.DateTimeFormat("en-GB", { weekday: "short" }).format(hour.t)} {formatTimeOfDay(hour.t)}
+                        {new Intl.DateTimeFormat(appLocale(), { weekday: "short" }).format(hour.t)} {formatTimeOfDay(hour.t)}
                       </th>
                       <td className="py-1.5 pr-3 text-ink">{weatherWords(hour.code)}</td>
                       <td className="py-1.5 pr-3 whitespace-nowrap text-ink">{tempText(hour.tempC, temp)}</td>

@@ -204,7 +204,7 @@ const KINDS = [
 const SUPPLIES = [
   { value: "dc", label: "From the battery (12 V or the like)" },
   { value: "usb", label: "Over USB, through a converter" },
-  { value: "ac", label: "From a mains socket, through an inverter" },
+  { value: "ac", label: "From a wall socket (mains), through an inverter" },
 ] as const;
 
 export function OwnDeviceDialog({

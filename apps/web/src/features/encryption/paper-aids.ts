@@ -15,6 +15,7 @@ import { textWidth, wrapText } from "@/features/maps/print/helvetica";
 import { PAPERS, PT_PER_MM } from "@/features/maps/print/paper";
 import { writePdfPages } from "@/features/maps/print/pdf";
 import type { Rgb, Sheet, SheetItem } from "@/features/maps/print/sheet";
+import { likelyPaperFor, regionOfLanguage } from "@/lib/region";
 import { ALPHABET, inGroups, randomLetters, vigenereSquare } from "./ciphers";
 
 export interface Pad {
@@ -55,7 +56,7 @@ export const AID_PAPER_KEY = "outpost.encryption.paper";
 
 /** US Letter where the device is set to a country that uses it; A4 everywhere else. */
 export function likelyPaper(language: string | undefined): AidPaper {
-  return /[-_](US|CA|MX|PH|CL|CO|VE|GT|PA|DO|PR)\b/i.test(language ?? "") ? "letter" : "a4";
+  return likelyPaperFor(regionOfLanguage(language));
 }
 
 const BLACK: Rgb = [0, 0, 0];

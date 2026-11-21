@@ -28,6 +28,7 @@ import { Select, Skeleton } from "@/components/ui/misc";
 import { conflictOf, inputOf, planKeys, useCreatePlan, usePlans } from "@/features/emergency-plans/data";
 import { DaysHeld } from "@/features/emergency-plans/supplies-section";
 import { guessEmergencyNumber } from "@/features/emergency-plans/words";
+import { useHomeCountry } from "@/features/frequencies/home-country";
 import { api, errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { localId } from "@/lib/utils";
@@ -90,9 +91,10 @@ export function PlanningPanel({
   const chosen = scenarios.find((item) => item.id === (scenarioId ?? openId)) ?? scenarios[0] ?? null;
   const ours = (plans.data ?? []).filter(isRadiationPlan);
   const template = templateById(RADIATION_TEMPLATE_ID)!;
+  const home = useHomeCountry();
 
   const make = () =>
-    create.mutate(planFromTemplate(template, localId, guessEmergencyNumber()), {
+    create.mutate(planFromTemplate(template, localId, guessEmergencyNumber(undefined, home?.code)), {
       onSuccess: (response) => navigate(`/prepare/plans/${response.plan.id}`),
       onError: (error) => notify.error(errorMessage(error)),
     });

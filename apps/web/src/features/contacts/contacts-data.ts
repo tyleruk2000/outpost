@@ -12,6 +12,7 @@ import type {
 } from "@outpost/shared";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { appLocale } from "@/lib/region";
 
 /** How many contacts the list asks for at a time. */
 export const LIST_STEP = 300;
@@ -97,9 +98,12 @@ export function birthdayWords(value: string): string {
   if (!parts) return value;
   const date = new Date(Date.UTC(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])));
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", ...(full ? { year: "numeric" } : {}), timeZone: "UTC" }).format(
-    date,
-  );
+  return new Intl.DateTimeFormat(appLocale(), {
+    day: "numeric",
+    month: "long",
+    ...(full ? { year: "numeric" } : {}),
+    timeZone: "UTC",
+  }).format(date);
 }
 
 /** Only web addresses become links. Anything else a card called a link is shown as the text it is. */

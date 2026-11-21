@@ -16,11 +16,12 @@
  */
 import type { AirportFrequenciesDto, AirportFrequencyDto } from "@outpost/shared";
 import { Link } from "react-router";
+import { appLocale } from "@/lib/region";
 
 /** The VHF air band's entry on Radio → Frequencies to listen to. */
 export const AIR_BAND_LINK = "/radio/frequencies?kind=bands&place=any&band=air-vhf";
 
-const dayFormat = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+const dayFormat = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
 /** "2026-11-17" as "17 November 2026"; anything else as given. */
 function day(asOf: string | null): string | null {

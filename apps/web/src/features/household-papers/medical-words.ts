@@ -15,6 +15,7 @@ import {
   type ResolvedContact,
 } from "@outpost/shared";
 import type { Block } from "@/features/propagation/plans/document";
+import { appLocale } from "@/lib/region";
 import type { OpenedSheet } from "./medical-crypto";
 
 export type ContactsNow = Record<string, ResolvedContact | null | undefined>;
@@ -60,7 +61,7 @@ export const medicineText = (line: MedicineLine) =>
 export function medicineLeftWords(line: MedicineLine, today: string): string | null {
   const left = medicineLeft(line, today);
   if (!left) return null;
-  const day = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(
+  const day = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(
     new Date(`${left.runsOut}T00:00:00Z`),
   );
   if (left.days <= 0) return "none left by the count";
@@ -99,7 +100,7 @@ export function medicalBlocks(name: string, record: MedicalRecord, contacts: Con
       : { kind: "para", text: "None recorded." },
   );
   const care = [
-    ["GP", reachLine(record.gp, contacts)],
+    ["Doctor", reachLine(record.gp, contacts)],
     ["Pharmacy", reachLine(record.pharmacy, contacts)],
   ].filter(([, text]) => text);
   const kin = kinLines(record.nextOfKin, contacts);

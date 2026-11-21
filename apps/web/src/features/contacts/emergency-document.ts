@@ -21,6 +21,7 @@ import { UNWRITABLE_MARK, writable } from "@/features/maps/print/lettering";
 import { PAPERS } from "@/features/maps/print/paper";
 import { INK, MUTED, type Rgb, type Sheet, type SheetItem } from "@/features/maps/print/sheet";
 import { type ClockStyle, clockText } from "@/lib/clock";
+import { appLocale } from "@/lib/region";
 import { plural } from "@/lib/utils";
 import { labelOr } from "./contacts-data";
 
@@ -120,8 +121,8 @@ export function wrapLine(text: string, size: number, width: number, bold = false
   return lines;
 }
 
-const longDate = (date: Date) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric" }).format(date);
-const shortDate = (date: Date) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(date);
+const longDate = (date: Date) => new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "long", year: "numeric" }).format(date);
+const shortDate = (date: Date) => new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "short", year: "numeric" }).format(date);
 
 /** "16 November 2026 at 14:05": when the sheet was made, on this device's clock. */
 export const madeWords = (made: Date, style: ClockStyle) => `${longDate(made)} at ${clockText(made.getHours(), made.getMinutes(), style)}`;

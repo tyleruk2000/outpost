@@ -508,7 +508,7 @@ describe("where Outpost runs", () => {
   });
 
   // The same signs the local-only rule uses (core/local.ts containerReason), so that the
-  // two never disagree about where Outpost runs. Made-up files: see the note in docs/storage.md.
+  // two never disagree about where Outpost runs. Made-up files: see docs/development/storage-and-https.md.
   const none = { exists: () => false, read: () => null };
   const only = (contents: Record<string, string>) => ({
     exists: (file: string) => file in contents,

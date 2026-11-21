@@ -1,452 +1,192 @@
 # Storage
 
-This page explains where Outpost keeps things, how to use external drives and network
-shares, what happens when a drive is unplugged, and how collections are moved and
-checked.
-
 ## Two kinds of place
 
-**The data directory** holds what Outpost itself owns. It is one folder
-(`OUTPOST_DATA_DIR`; `/data` in Docker, the `outpost-data` volume).
+**The data directory** holds what Outpost owns: the database `outpost.db` (notes,
+library records, settings, places, the search index, vectors, history), note
+attachments, text extracted from documents, your own catalogue manifests, programs
+cached for portable drives, and `secret.key`. It is `OUTPOST_DATA_DIR`; in Docker,
+`/data` on the `outpost-data` volume. **Keep it on a disk that is part of the machine
+and always attached**: SQLite's locking is not reliable on network shares, and a
+database on NFS or SMB can be corrupted.
 
-**Storage locations** hold content: the files you add and download. A location is a
-folder you choose. You can have several, on different drives.
-
-| Lives in the data directory | Lives in a storage location |
-| --- | --- |
-| The database `outpost.db`: notes, tags, library records, settings, markers and tracks, the search index, place names, vectors, job and download history | Original documents: `documents/<id>/<file name>` |
-| Note attachments: `attachments/` | Reference collections (ZIM archives): `collections/zim/` |
-| Text extracted from documents: `extracted/` | Other catalogue files: `collections/files/` |
-| Your own catalogue manifests: `catalog/` | Map regions: `collections/maps/`, terrain: `collections/terrain/` |
-| `models/`: not used any more (the built-in embedding model is part of the app); files put there for earlier builds can be cleared from Leftovers | Downloaded place-name files: `collections/places/` |
-| Cached programs for portable drives: `runtimes/` | Files still arriving: `*.part`, and `documents/.incoming/` |
-| The copy of a portable drive's database, while its changes are being brought back: `merges/` | |
-| `secret.key`, used to sign links to reference content | The marker file `.outpost-location.json` |
-
-Outpost never writes anything but content and the marker file to a storage location.
-
-### Why the database stays on a local disk
-
-The database uses SQLite in write-ahead-log mode, which depends on file locking that
-network shares do not provide reliably. A database on NFS or SMB can be corrupted.
-Keep the data directory on a disk that is physically part of the machine and always
-attached. Content has no such restriction.
-
-### What is written is read back
-
-A drive or a share can lose part of what is written to it without saying so. On the
-first Raspberry Pi (18 November 2026) a 2.3 GB download written to a NAS folder over
-SMB came back the right size with one 4 KiB block of zeros in it; three more files of
-the same size written the same way straight afterwards came back whole, as did 12 GB of
-other downloads, so it is rare, and its cause (the Linux SMB client on that kernel, or
-the NAS) was not found.
-
-So Outpost does not take the storage's word for it. As a download arrives, it keeps a
-checksum of each megabyte it hands to the storage (CRC-32, in memory; about 4 kB for
-each gigabyte). When the file is checked at the end, in the same reading that works
-out its SHA-256, what the storage gives back is held against that. If a stretch
-differs, the file is cut back to just before it and the download carries on from
-there, so only the part from the damage on is fetched again; the download's history
-says so, and names the storage location. A map region, which is filled in by position
-rather than start to end, is fetched again whole. After the third time in one
-download it stops, deletes the file and says the storage is not keeping what is
-written to it.
-
-What this covers and what it does not:
-
-- **Covered:** everything fetched by the download manager over HTTP (reference
-  collections, documents, datasets, models) and map regions, with or without a
-  published checksum, on any storage location.
-- **Not covered:** what was written before the server was last restarted (a download
-  resumed after a restart is held to its record only from where it resumed; a
-  published checksum still covers the whole file); satellite and aerial pictures,
-  which Outpost builds itself rather than downloads; files copied in by hand or
-  imported; and damage that happens later, to a file already installed, which
-  **Check files** on a collection's page finds against the checksum recorded when it
-  arrived.
-- It is a check against accidents, not tampering: a published SHA-256 is what holds a
-  file to its publisher.
-- The reading back goes through the operating system's cache, as any reading does. On
-  the Raspberry Pi the damage showed in the very first reading, which is the case this
-  catches; a system that kept the right bytes in its cache and the wrong ones on the
-  disk would pass here and be found by a later check.
+**Storage locations** hold content: documents (`documents/`), reference collections
+(`collections/zim/`), maps and terrain (`collections/maps/`, `collections/terrain/`),
+place names and other catalogue files, and downloads still arriving (`*.part`). A
+location is a folder you choose, on any drive or share. Outpost writes nothing to a
+location but content and its marker file, `.outpost-location.json`.
 
 ## Storage roots and storage locations
 
-A **storage root** is a folder the person running the server has made available for
-content. Roots are set when the server starts (`OUTPOST_STORAGE_ROOTS`, comma
-separated) and cannot be changed from the browser. In Docker the single root is
-`/storage`; everything you mount under `/storage` is available.
-
-A **storage location** is a folder inside a root that you have added in Outpost. The
-server refuses any folder outside the roots, whoever asks.
-
-On first start Outpost creates one location, "Internal storage", so there is somewhere
-for uploads and downloads to go. In Docker it is `/storage/internal` (the
-`outpost-library` volume).
+A **storage root** is a folder the person running the server has made available
+(`OUTPOST_STORAGE_ROOTS`, set at start, never from the browser). In Docker the root is
+`/storage`, and anything mounted under it can be used. A **storage location** is a
+folder inside a root that you add in Outpost; folders outside the roots are refused.
+Outpost starts with one, "Internal storage" (`/storage/internal` in Docker). The
+Storage screen lists the roots under "Where Outpost can look".
 
 ## Adding a location
 
 1. Make the drive or share visible inside a storage root. On a Mac a plugged-in drive
-   is already there, and a NAS share can be connected from the Storage screen (see
-   [Connecting a network share](#connecting-a-network-share)). Elsewhere, see the
-   examples below.
-2. Open **Storage** and choose **Add location**.
-3. Pick the folder in the folder browser. You can make a new folder there.
-4. Give it a name and a kind: external drive, network share, internal or Docker volume.
-   The kind is used for labels only.
-5. Optionally turn on **Use for new downloads** to make it the default.
+   already is, and a NAS can be [connected from Storage](#connecting-a-network-share).
+2. **Storage → Add location**, and pick or make the folder.
+3. Name it and choose its kind (external drive, network share, internal, Docker volume;
+   the kind is a label only). **Use for new downloads** makes it the default.
 
-Outpost checks that it can write to the folder, then writes the marker file. A folder
-cannot be added if it overlaps a location you already have.
+Outpost checks it can write there and writes the marker file. A folder that overlaps
+another location cannot be added.
 
-The Storage screen lists the roots of your installation at the bottom, under "Where
-Outpost can look".
-
-### The default location
-
-One location is the default. New uploads and downloads go there unless you choose
-another when you start them. Change it with **Make default** in the location's menu on
-the Storage screen.
-
-### Where new things go
-
-With more than one location, **Storage → Where new things go** sets a location for each
-kind of download: maps, terrain, place names, map layers, collections and documents. A
-kind left on **The default** goes to the default location. The download's own picker
-starts on the kind's location and can still send one download elsewhere.
-
-Setting a kind changes only where new downloads go; nothing already kept is moved (move
-it under Manage and clean up). If the location set for a kind is not connected, the
-picker says so and offers another; a download started without a picker is refused with
-a message naming the location, rather than sent somewhere else.
-Removing a location puts its kinds back on the default.
-
-### Renaming and removing
-
-Renaming changes only the name shown. Removing a location makes Outpost forget the
-folder: nothing in it is deleted, and the marker file stays. Outpost refuses to remove
-a location that still holds documents or collections, and refuses to remove the last
-one; for a location that still holds part of the library, **Remove from Outpost** says
-so and points to Manage and clean up before anything is pressed. The location chosen
-for automatic backups says so on the Storage screen, and removing it says that
-automatic backups stop until another location is chosen in Settings (the backups
-already written stay in the folder).
+- **The default location** receives uploads and downloads unless you choose another.
+  Change it with **Make default**.
+- **Where new things go** sets a location per kind (maps, terrain, place names, map
+  layers, collections, documents). It changes only new downloads. If that location is
+  not connected, the download is refused with its name rather than sent elsewhere.
+- **Renaming** changes the name shown. **Removing** makes Outpost forget the folder;
+  nothing in it is deleted. A location that still holds documents or collections, or
+  the last one, cannot be removed. Removing the automatic backups' location stops them
+  until another is chosen.
 
 ## The marker file and reconnecting
 
-Every location has a small file at its root, `.outpost-location.json`, holding the
-location's id. Outpost records content as *(location id, path inside the location)*,
-never as an absolute path. This has these consequences:
+Outpost records content by location and path inside it, never by absolute path, and
+finds a location by its marker file:
 
-- **A drive that comes back somewhere else is found.** If the marker is not where it
-  was, Outpost looks for it inside every storage root, up to three folders deep, and
-  carries on from the new path.
-- **A different drive at the old path is not used.** If the folder exists but its
-  marker is missing or has another id, the location is shown as disconnected with the
-  note "The folder is there but is not this Outpost location."
-- **A location can be adopted.** If you add a folder that already has a marker from
-  another Outpost, or from before a database restore, it keeps its id, so records that
-  refer to it line up again.
+- **A drive that comes back elsewhere is found**, by searching every storage root up to
+  three folders deep.
+- **A different drive at the old path is not used**: "The folder is there but is not
+  this Outpost location."
+- **A folder with another Outpost's marker** (or from before a restore) is adopted with
+  its id, so records line up again.
+- **A folder now outside the roots** is searched for like a moved drive; if not found,
+  the location is disconnected, its records kept.
+- **Two folders with the same marker** inside the roots: the location is shown
+  disconnected with both named. Remove the copy, or its marker, and press **Check
+  drives**.
 
-- **A folder outside the storage roots is not used.** The roots can change between
-  starts. A location whose recorded folder is no longer inside any of them is treated
-  like a drive that has moved: Outpost looks for its marker inside the roots and
-  carries on from there. If it is not there, the location is shown as disconnected with
-  the note that its folder is outside the folders Outpost is allowed to use
-  (`OUTPOST_STORAGE_ROOTS`). Its records are kept, and nothing is moved or deleted.
-- **Two folders with the same marker are never chosen between.** If the search finds a
-  location's marker in two places (a copy and its original, both inside the roots),
-  the location is shown as disconnected and both folders are named. Remove the copy you
-  do not want, or the marker file inside it, and choose **Check drives**. While a
-  location is where it was recorded, inside the roots, a stray copy elsewhere changes
-  nothing: the recorded folder is used and no search is made.
-
-Do not delete or edit the marker file, except to settle which of two copies is the
-real one.
-
-Locations are checked every 30 seconds (the `storage.checkIntervalSeconds` setting,
-5 to 3600), when Outpost starts, and whenever someone chooses **Check drives** on the
-Storage screen. The regular check looks at each location where it was recorded; for one
-that is already disconnected, the search of every storage root for its marker is made at
-most every ten minutes, so an unplugged drive does not mean a walk of the roots twice a
-minute. **Check drives** and a start always search.
-
-Thirty seconds is how long a screen may go on saying a drive is there after it has been
-unplugged, and it costs next to nothing: on a demonstration instance with two locations,
-a check every 5 seconds for two minutes used 30 ms more of the server's processor time
-than no check at all (60 ms against 90 ms, twice over), about 1.3 ms a check, and a
-check made by hand answered in 1 ms (median of 20). At the default that is under 3 ms a
-minute, so the default stays at 30 seconds. A value you have set is kept.
-
-Only what you would call a change is announced to open screens: a location being
-disconnected or coming back, moving, or holding a different disk. Free space is
-recorded once it has moved by 256 MiB and shown the next time the list is read, but it is not announced, because on a
-disk in use it moves all the time.
+Do not edit or delete the marker file except to settle two copies. Locations are checked
+every 30 seconds (**Settings → Storage**, 5 to 3600), at start and on **Check drives**; a
+disconnected one is searched for at most every ten minutes. Free space is updated once
+it moves by 256 MiB.
 
 ### Moving a library to another disk or folder
 
-To move a whole storage location, as opposed to one collection or the documents (for
-those, see further down):
-
 1. Stop Outpost.
-2. Copy the location's folder to the new place, **with its marker file**
-   `.outpost-location.json` (it is a hidden file; copy the folder itself, not just what
-   you can see in it).
-3. Make sure the new place is inside a storage root. If it is not, set
-   `OUTPOST_STORAGE_ROOTS` to include it. If the old place should no longer be used,
-   leave it out of the roots, or delete or rename the old folder once you have checked
-   the copy.
-4. Start Outpost. It finds the marker at the new place and carries on from there; the
-   Storage screen shows the new path.
-
-If both the old and the new folder are inside the roots, Outpost goes on using the old
-one for as long as it is there. Take the old one out of the roots, or remove it, to
-switch over.
+2. Copy the location's folder **with its hidden marker file** (copy the folder itself).
+3. Make sure the new place is inside a storage root, and take the old one out of the
+   roots or remove it once the copy is checked. While both are inside, the old one is
+   used.
+4. Start Outpost. It finds the marker at the new place.
 
 ## What happens when a drive is unplugged
 
-- The location shows as **disconnected**, and the status line at the foot of the
-  sidebar says so.
-- Nothing is removed. Documents and collections on the drive stay in the library,
-  marked as unavailable.
-- Search still finds documents on the drive, because their extracted text is in the
-  data directory. Opening the original file gives: `"<name>" is not connected.
-  Reconnect it and try again.`
-- Reference collections on the drive disappear from kiwix-serve's library until the
-  drive returns.
-- A download writing to the drive stops with the message that the drive was
-  disconnected. The partial file stays on the drive, and the download continues by
-  itself when the drive is connected again.
-- Deleting a file on a disconnected drive is refused. You can remove only Outpost's
-  record of it and leave the file where it is.
-- Collections are not marked "missing" while their drive is away. A collection is
-  "missing" only when its location is connected and the file is not on it.
+- The location shows as **disconnected**, as does the status line in the sidebar.
+- Nothing is removed. Its documents and collections stay listed as unavailable.
+- Search still finds its documents (their text is in the data directory); opening one
+  says `"<name>" is not connected. Reconnect it and try again.`
+- Its reference collections leave the reader until it returns.
+- A download writing to it stops, keeps its partial file, and resumes when it is back.
+- Files on it cannot be deleted; you can only remove Outpost's record.
+- A collection is "missing" only if its location is connected and the file is not there.
 
-Unplug a drive only when nothing is being written to it. Eject it in the operating
-system first.
+Eject a drive in the operating system first, and only when nothing is being written.
 
 ### A network share whose server is switched off
 
-A NAS that is switched off or drops off the network is not like an unplugged drive: its
-folder is still there, and every file call on it waits for the server to answer, about
-ten seconds at a time on a Raspberry Pi over SMB. Outpost is built so that this holds up
-only what is on the share:
-
-- Each location is checked every 30 seconds (**Settings → Storage**, "check interval").
-  A location that does not answer its check within 5 seconds
-  (`OUTPOST_STORAGE_PROBE_TIMEOUT_MS`) is marked not connected, with "The location is
-  not answering", and a check that is still waiting is not joined by another.
-- From then on, everything on it fails at once with the messages above: a document says
-  its file is on a location that is not connected and that nothing has been lost; a
-  reference collection's page says the same instead of the reader's "Page not found";
-  Home names the location. A request already waiting on the share when it went away
-  waits until the network gives up (30 seconds was seen).
-- Everything else carries on, the map above all: keep maps, terrain, place names and
-  map layers on the device's own storage (below), and the map works with the NAS off.
-  Map layers' places are in the database, on the device, whichever location their
-  source file is on.
-- File work uses 16 threads, not Node's 4 (`UV_THREADPOOL_SIZE`), so calls stuck on
-  the share leave room for the rest.
-- When the share answers again it is picked up by itself within a check or two (24
-  and 40 seconds when tried).
-
-Until 18 November 2026 the check asked the share in a way that held up the whole
-server while it waited: with the NAS switched off, the map, on the device's own disk,
-stopped answering for 10 to 25 seconds at a time. Measured on the first Raspberry Pi
-with the NAS cut off by its firewall, after the change: over 90 seconds, health
-answered within 21 ms and map tiles within 70 ms throughout.
+A NAS that is off still has a folder, and calls on it wait for the network. A location
+that does not answer its check within 5 seconds (`OUTPOST_STORAGE_PROBE_TIMEOUT_MS`) is
+marked "The location is not answering", and from then on everything on it fails at once
+with a plain message while the rest of Outpost carries on. A request already waiting
+may take up to 30 seconds. When the share answers again it is picked up within a check
+or two.
 
 ### Keeping the map on the device and the library on a NAS
 
-**Storage → Manage and clean up → Installed.** Choose the kind **Maps** and tick
-**Select everything shown**, then the same for **Terrain**, **Place names** and **Map
-layers** (the selection is kept as the filter changes). **Move** them to the device's
-own location. Each is copied, the copy checked, and only then the original removed.
-Leave the reference collections, documents and radio data where they are. Then, under
-**Where new things go**, set maps, terrain, place names and map layers to the device's
-own location and the rest to the NAS, so that new downloads follow.
+So that the map works with the NAS off: **Storage → Manage and clean up → Installed**,
+choose **Maps**, tick **Select everything shown**, likewise **Terrain**, **Place names**
+and **Map layers**, and **Move** them to the device's own location. Then under **Where
+new things go**, set those four to the device and the rest to the NAS.
 
 ## Connecting a network share
 
-**Storage → Network shares → Connect a network share.** What that button can do
-depends on where Outpost runs, and the screen says which applies.
+**Storage → Network shares → Connect a network share** does what it can where Outpost
+runs, and says which:
 
 | Where Outpost runs | What happens |
 | --- | --- |
-| Directly on a Mac | Outpost connects the share itself and keeps it connected. |
-| In Docker | Outpost cannot: a container only sees what Docker gives it. The same form writes out the Compose lines to add. |
-| Directly on Linux | Outpost cannot: mounting needs root. The same form writes out the `/etc/fstab` line and the credentials-file steps. |
-| Windows, or from a portable drive | Nothing is offered. Mount the share with the operating system, inside a storage root. |
-
-"In Docker" means in any container. Outpost takes itself to be in one by the same signs
-the local-only rule uses (`containerReason` in `apps/server/src/core/local.ts`, listed in
-[security.md](security.md)): `OUTPOST_IN_CONTAINER`, Docker's `/.dockerenv`, Podman's
-`/run/.containerenv`, the `container` variable that Podman, LXC and systemd-nspawn set,
-Kubernetes's `KUBERNETES_SERVICE_HOST`, or a container's control group or root file
-system. What was tested where: each sign (Docker, Podman, LXC, Kubernetes) is tested
-against made-up files and variables (`test/storage-shares.test.ts`,
-`test/local.test.ts`); none was tried in a real container when this was written. An image built
-from this repository's Dockerfile always has the first sign, since it sets
-`OUTPOST_IN_CONTAINER`. Away from Linux only the variables count.
+| Directly on a Mac | Outpost connects the share and keeps it connected. |
+| In Docker or any container | It writes out the Compose lines to add. |
+| Directly on Linux | It writes out the `/etc/fstab` line and credentials-file steps (mounting needs root). |
+| Windows, or a portable drive | Nothing; mount the share yourself inside a storage root. |
 
 ### On a Mac
 
-Nothing has to be typed but a user name and a password. The dialog walks through four
-steps:
+1. **Server.** Pick a file server from the list, or type its name or address. Volumes
+   already connected in the Finder are listed first and skip to step 4.
+2. **Sign in**, or **Try without a password (guest)**.
+3. **Shared folder.** Choose from the shares that account can see (shares ending `$`
+   are behind **Show hidden shares**; **Not in the list? Type its name** for others).
+   macOS connects it under `/Volumes`.
+4. **Folder to use.** A folder `Outpost` is suggested; **Add as storage location**.
 
-1. **Server.** Pick the NAS or computer. File servers that announce themselves on the
-   network (Bonjour) are listed, and its name (`nas.local`) or address can be typed
-   instead. Network volumes that are **already connected on this Mac**, from the Finder
-   for instance, are listed first: choosing one skips straight to step 4, with no
-   password and nothing mounted again.
-2. **Sign in.** Enter the user name and password for the server, or choose **Try
-   without a password (guest)** for a server that allows guests.
-3. **Shared folder.** Outpost asks the server which shared folders that account can
-   see and lists them. Choose one and Outpost asks macOS to connect it, the way the
-   Finder does. It appears under `/Volumes`, which is a storage root.
-4. **Folder to use.** The folder browser opens on the share. A folder of its own,
-   `Outpost`, is suggested (made if it is not there, opened if it is); choose another,
-   or the top of the share, if you prefer. **Add as storage location** finishes.
-
-About the list in step 3:
-
-- Only shares that can hold files are shown. Printers, and the shares a server keeps
-  for its own running (`IPC$`, `print$`, `ADMIN$`, `C$` and the like), are left out.
-- Shares whose names end in `$` are hidden by convention. They are kept behind **Show
-  hidden shares**.
-- A share's name can always be typed instead (**Not in the list? Type its name**):
-  some servers keep shares out of the list altogether.
-- Outpost reads the list itself, over one connection to the server's checked address,
-  using SMB 2 or 3 with an NTLM sign-in. A server that insists on encryption for every
-  connection, or accepts only Kerberos, cannot be listed; the dialog says so and goes
-  on to typing the name, and connecting such a share still works, because macOS does
-  the connecting.
-- Looking at the list with a typed password is a try at that password. Wrong tries
-  are counted per server and user, across looking and connecting together: after five,
-  further tries are refused for a minute, then two, doubling up to an hour, and the
-  dialog shows the wait.
-
-- **SMB only.** That is the file sharing every NAS offers. NFS and AFP shares are not
-  connected from here; mount those yourself and add the folder with **Add location**.
-- **Only servers on your own network.** The server must have a private or link-local
-  address (see [security.md](security.md#network-shares)).
-- **A guest's share** has no user name or password. Outpost reconnects it by itself
-  like a share with a remembered password.
-- **The password is never kept by Outpost.** With **Remember the password** on, it is
-  stored in the macOS Keychain of the account that runs Outpost (an item named
-  "Outpost network share") and read back from there. With it off, nothing is kept and
-  you are asked again next time. The database holds the server, the share and the user
-  name only.
-- **Reconnecting.** Shares with a remembered password are connected again when Outpost
-  starts, and every five minutes after that while their server cannot be found (a NAS
-  that starts more slowly than the Mac). **Reconnect** does it at once. Outpost stops
-  trying after the server refuses the password, so that a changed password does not
-  lock the account on the NAS; enter the new one to carry on.
-- **Disconnect** unmounts the share and leaves it disconnected until you ask. If
-  something is being written there (a download, a move), Outpost names it and asks
-  before going ahead, and macOS itself refuses while a program has files open on the
-  share. Outpost never forces it.
-- **Forget this share** disconnects it, deletes the Keychain item and removes the
-  share from the list. Files on the share are not touched, and a storage location on
-  it stays in Outpost, shown as disconnected, until you remove that too.
-
-States shown: connected, not connected, wrong password, server not found, share not
-found, password needed.
-
-If the share is already connected on the Mac (from the Finder, say), Outpost uses that
-connection rather than making a second one, and tells you that the password you typed
-was not checked or saved. A share used this way has no remembered password, so after
-it is next disconnected Outpost asks for the password to connect it again.
-
-Keychain access needs someone to be logged in at the Mac. If Outpost is started before
-anyone logs in, remembered shares stay disconnected until **Reconnect** is used with
-the password.
+- **SMB only**, and only servers with a private or link-local address. Mount NFS and AFP
+  yourself and use **Add location**. A server that requires encryption or Kerberos
+  cannot be listed, but its share can still be typed and connected.
+- **The password is never kept by Outpost.** With **Remember the password**, it is in
+  the macOS Keychain ("Outpost network share"); otherwise you are asked each time.
+- After five wrong passwords for a server and user, tries are refused for a minute,
+  doubling up to an hour.
+- **Reconnecting.** Shares with a remembered password reconnect at start and every five
+  minutes while their server is away; **Reconnect** does it now. Outpost stops after the
+  server refuses the password, so a changed password does not lock the NAS account.
+- **Disconnect** names anything being written there and asks first; it never forces.
+  **Forget this share** also deletes the Keychain item; files and the location stay.
+- A share already connected in the Finder is used as it is; its password is not checked
+  or saved.
+- The Keychain needs someone logged in at the Mac. Started before anyone logs in,
+  remembered shares wait for **Reconnect**.
 
 ### In Docker and on Linux
 
-The form asks for the server, the share and the user name (or, for NFS, the exported
-folder), **not** the password, and writes out the text to use, each block with a copy
-button. The share's name is typed here: listing a server's shares needs a sign-in, and
-this form never asks for the password. They are instructions: nothing changes until you make the changes yourself.
-What it writes has the same shape as the examples in the next section. For Docker: the
-`.env` lines, the Compose volume, and the lines for the `outpost` and `kiwix` services.
-For Linux: the credentials file, the `/etc/fstab` line and the commands to run.
-
-What has been tried and what has not:
-
-- The Docker SMB volume and service lines were tried with Docker Desktop against a test
-  Samba server, with stand-in containers in place of the real services.
-- An SMB share mounted by the host and handed to both containers, as
-  `deploy/pi/nas-share.sh` sets it up (below), was tried once on a Raspberry Pi 5
-  against a Synology NAS on 17 November 2026: mounted, written to from the container,
-  added as a location, and found again after being unmounted and after a restart of the
-  containers. No collection was read from it and the NAS was not switched off.
-- The share mounted by Docker itself and both NFS variants have **not** been tried
-  against a real NAS.
+The form asks for the server, share and user name (or the NFS export), **not** the
+password, and writes out the lines to copy, shaped like the examples below. Nothing
+changes until you make the changes.
 
 ## NAS set-up examples
 
-Outside a Mac, Outpost does not connect shares itself and has no place to enter a share
-password. The operating system or Docker mounts the share; Outpost sees a folder.
-**Credentials stay with the operating system or Docker and are never stored by
-Outpost.** (On a Mac, see [Connecting a network share](#connecting-a-network-share).)
-
-Whatever you mount for the `outpost` service must also be mounted, at the same path
-and read-only, for the `kiwix` service. kiwix-serve opens archives by the path Outpost
-wrote into its library file.
-
-Keep the database off the share (see above). Mount shares for content only.
+Outside a Mac, the operating system or Docker mounts the share and keeps the
+credentials; Outpost sees a folder. Whatever is mounted for `outpost` must be mounted at
+the same path, read-only, for `kiwix`. Never put the database on the share.
 
 ### A share mounted by the host, then bind-mounted
 
-On a Raspberry Pi or another Debian-based system, `deploy/pi/nas-share.sh` does all of
-this for an SMB share, and asks for the password at the keyboard instead of having you
-write it into a file (`--help` says what it changes and how to undo it):
+On a Raspberry Pi or other Debian system, `deploy/pi/nas-share.sh` does this for SMB and
+asks for the password at the keyboard (`--help` says what it changes and how to undo it):
 
 ```bash
 ./deploy/pi/nas-share.sh --server 192.168.1.20 --share docs --folder Outpost --user me
 ```
 
-It differs from the lines below in three ways worth copying if you write them yourself:
+Worth copying if you write the lines yourself: it mounts **one folder** of the share;
+its `/etc/fstab` line ends `nofail,_netdev,x-systemd.automount`, so the Pi starts with
+the NAS off and mounts when next used; and it gives the containers the folder **above**
+the mount point (`/mnt/outpost-nas` as `/storage/nas`, `bind: propagation: rslave`) so
+the share appears inside a container that started before it was mounted. It needs the
+system's Docker, not a rootless one.
 
-- It mounts **one folder of the share** (`//192.168.1.20/docs/Outpost`), not the share,
-  so that nothing else in the share can be reached through Outpost's storage screens.
-- The `/etc/fstab` line ends `nofail,_netdev,x-systemd.automount`, so the system mounts
-  the folder when it is first used, starts even when the NAS is off, and mounts it again
-  when something next looks.
-- The containers are given the **folder the share is mounted in** (`/mnt/outpost-nas`
-  as `/storage/nas`), with `bind: propagation: rslave`, in a `compose.nas.yaml` named by
-  `COMPOSE_FILE` in `.env`. Given the mount point itself, a container started while the
-  share was not mounted keeps seeing the empty folder underneath it for as long as it
-  runs; given the folder above with `rslave`, the share appears inside the container
-  whenever it is mounted. The location's folder is then `/storage/nas/<name>`.
-
-It needs Outpost in the system's Docker, not a rootless one: a rootless container's
-user is not uid 1000 outside it, so it could not write to the share.
-
-By hand: mount the share on the host first.
-
-NFS, in `/etc/fstab`:
+By hand, NFS in `/etc/fstab`:
 
 ```
 192.168.1.20:/volume1/outpost  /mnt/nas/outpost  nfs  rw,nfsvers=4.1,soft,timeo=150,nofail  0  0
 ```
 
-SMB, in `/etc/fstab`, with the password in a file only root can read:
+SMB, with the password in `/root/.outpost-smb` (mode `600`, lines `username=…` and
+`password=…`):
 
 ```
 //192.168.1.20/outpost  /mnt/nas/outpost  cifs  credentials=/root/.outpost-smb,uid=1000,gid=1000,file_mode=0664,dir_mode=0775,vers=3.0,nofail  0  0
 ```
 
-`/root/.outpost-smb` (mode `600`):
-
-```
-username=your-nas-user
-password=your-nas-password
-```
-
-Then, in `compose.yaml`:
+Then in `compose.yaml`:
 
 ```yaml
 services:
@@ -458,779 +198,250 @@ services:
       - /mnt/nas/outpost:/storage/nas:ro
 ```
 
-The folder must be writable by uid 1000, the user the server runs as. For SMB the
-`uid=1000,gid=1000` mount options do this. For NFS, set ownership or permissions on
+The folder must be writable by uid 1000: the SMB options above do it; for NFS, set it on
 the NAS.
 
 ### A share mounted by Docker
 
-`compose.yaml` carries these as commented examples. Docker mounts the share when the
-container starts.
-
-NFS:
-
-```yaml
-volumes:
-  nas-library:
-    driver: local
-    driver_opts:
-      type: nfs
-      o: "addr=192.168.1.20,rw,nfsvers=4.1,soft,timeo=150"
-      device: ":/volume1/outpost"
-```
-
-SMB / CIFS:
+`compose.yaml` has these commented out. Docker mounts the share when the container
+starts; `NAS_USER` and `NAS_PASSWORD` come from `.env` (keep it private) and are not
+passed to Outpost.
 
 ```yaml
 volumes:
   nas-library:
     driver: local
     driver_opts:
-      type: cifs
+      type: cifs   # for NFS: type: nfs, o: "addr=192.168.1.20,rw,nfsvers=4.1,soft,timeo=150", device: ":/volume1/outpost"
       o: "addr=192.168.1.20,username=${NAS_USER},password=${NAS_PASSWORD},uid=1000,gid=1000,file_mode=0664,dir_mode=0775,vers=3.0"
       device: "//192.168.1.20/outpost"
 ```
 
-`NAS_USER` and `NAS_PASSWORD` come from `.env` (keep that file readable only by you).
-They are used by Docker to mount the volume and are not passed to Outpost.
-
-Use the volume in both services:
-
-```yaml
-services:
-  outpost:
-    volumes:
-      - nas-library:/storage/nas
-  kiwix:
-    volumes:
-      - nas-library:/storage/nas:ro
-```
-
-After `docker compose up -d`, add `/storage/nas` on the Storage screen and choose
-"Network share" as its kind.
+Use `nas-library:/storage/nas` in `outpost` and `nas-library:/storage/nas:ro` in `kiwix`,
+run `docker compose up -d`, and add `/storage/nas` as a **Network share**.
 
 ## External USB drives
 
-The pattern is always the same: make the drive appear under a storage root, add it on
-the Storage screen, and mount it into the `kiwix` service too if you use Docker.
+Make the drive appear under a storage root, add it on the Storage screen, and in Docker
+mount it into `kiwix` too.
 
-| System | Where the drive appears | In `compose.yaml` |
+| System | Where it appears | In `compose.yaml` |
 | --- | --- | --- |
-| Linux | Wherever you mount it, for example `/mnt/usb-ssd` | `- /mnt/usb-ssd:/storage/usb-ssd` |
+| Linux, Raspberry Pi | Where you mount it, e.g. `/mnt/usb-ssd` | `- /mnt/usb-ssd:/storage/usb-ssd` |
 | macOS | `/Volumes/<name>` | `- /Volumes/FieldSSD:/storage/field-ssd` |
-| Windows, from WSL 2 | `/mnt/<letter>/...` | `- /mnt/d/outpost:/storage/drive-d` |
-| Raspberry Pi | As Linux | As Linux |
+| Windows, WSL 2 | `/mnt/<letter>/...` | `- /mnt/d/outpost:/storage/drive-d` |
 
-Notes:
+- On Linux the folder must be writable by uid 1000; exFAT, FAT32 and NTFS need
+  `uid=1000,gid=1000`.
+- Without Docker and without `OUTPOST_STORAGE_ROOTS`, `/Volumes`, `/media/<user>`,
+  `/run/media/<user>` and `/mnt` are already roots. If you set the roots yourself on a
+  Mac, include `/Volumes`.
+- In Docker, a drive plugged in after the containers started may not be seen; run
+  `docker compose restart`.
+- [deployment.md](deployment.md#platform-notes) has more for each platform.
 
-- On Linux and Raspberry Pi the folder must be writable by uid 1000. For exFAT, FAT32
-  and NTFS drives use the mount options `uid=1000,gid=1000`.
-- Running without Docker and without `OUTPOST_STORAGE_ROOTS`, Outpost already treats
-  `/Volumes` (macOS) and `/media/<user>`, `/run/media/<user>` and `/mnt` (Linux) as
-  roots, so a plugged-in drive can be added directly. If you set `OUTPOST_STORAGE_ROOTS`
-  yourself on a Mac, include `/Volumes`, or shares connected from the Storage screen
-  cannot be added as locations.
-- With Docker, a drive that was not mounted when the containers started may not be
-  visible inside them. If a location stays disconnected after you plug its drive back
-  in, restart the stack with `docker compose restart`.
-- [deployment.md](deployment.md#platform-notes) has the Windows path forms and more on
-  each platform.
+## Moving collections and documents
 
-## Moving a collection to another location
+**Move** on a collection in **Library**, or **Move documents here** in a location's menu
+(which moves every document not already there), runs as a job under **Downloads**. Before
+starting, Outpost checks the target is connected and has room plus a 256 MB reserve, and
+never overwrites. Each file is copied to `<name>.part` and checked against the checksum
+recorded when it arrived (a collection's copy is also read back from the target); only
+then is the record switched and the original deleted. Anything stopped part-way leaves
+the original as it was, readable throughout. A document that cannot be moved is listed
+with the reason. Folders with symbolic links or special files are not moved.
 
-Open the collection in **Library** and choose **Move**, or call
-`POST /api/collections/:id/move`. Collections are the installed archives: reference
-collections, map regions, terrain, and other catalogue files. The move runs as a
-background job you can follow under **Downloads**.
+## Checking files
 
-What the move guarantees:
+**Check files** on a collection's page reads it whole and compares it with the SHA-256
+recorded at install: `ok`; `recorded` (none was known, one is recorded now); `damaged`
+(download it again or restore it); `missing` (the location is connected, the file is
+not). Catalogue downloads are checked against the publisher's checksum before they are
+installed.
 
-1. Before starting, Outpost checks that the target is connected, has room for the
-   collection plus a 256 MB reserve, and has no file at the same path. It never
-   overwrites.
-2. The original is copied to `<name>.part` on the target. The original is only read.
-3. If a checksum was recorded at install time, the bytes read from the original must
-   match it; otherwise the move stops and the collection is not moved.
-4. The copy is read back from the target and compared with what was read from the
-   original. A mismatch discards the copy and leaves the original untouched.
-5. Only then is the copy renamed into place and Outpost's record switched to the new
-   location.
-6. Only after that is the original deleted. If it cannot be deleted, the move still
-   succeeds and the job says the original is still at its old place.
+### What is written is read back
 
-Stopping at any point before step 5 (an error, pause, cancel, shutdown or unplugged
-drive) removes the partial copy and leaves everything as it was. The collection stays
-readable from its original place throughout.
-
-Folders that contain symbolic links or special files are not moved.
-
-## Moving documents to another location
-
-Documents are moved together, not one by one. **Move documents here** in a location's
-menu on the Storage screen (`POST /api/documents/move`) moves **every document that is
-not already there**. It runs as a
-background job ("Move documents to …").
-
-For each document:
-
-1. The original is copied to `<name>.part` on the target while its SHA-256 is computed.
-2. That checksum must equal the one recorded when the document was added. If it does
-   not, the copy is discarded and the document stays where it is.
-3. The copy is renamed into place and Outpost's record is pointed at it. The document
-   keeps its id, so links, tags and search results are unaffected.
-4. Only then is the original deleted, along with its folder if that is now empty.
-
-A document that cannot be moved (its drive is disconnected, the file is missing, the
-target fills up) is left exactly where it was and listed in the job's result with the
-reason. Before starting, Outpost checks that the target has room for all of them plus
-the 256 MB reserve. Unlike a collection move, the copy is not read back from the
-target a second time.
-
-New documents go to the default location, or to the one you pick when uploading.
-
-## Checking a collection (verify)
-
-**Check files** on a collection's page, or `POST /api/collections/:id/verify`, reads the whole file
-and compares its SHA-256 with the one recorded when it was installed. For a collection
-that is a folder, the digest covers every file and its path.
-
-| Outcome | Meaning |
-| --- | --- |
-| `ok` | The file matches its recorded checksum. |
-| `recorded` | No checksum was known, so there was nothing to compare with. One is recorded now for future checks. |
-| `damaged` | The file no longer matches. Download it again or restore it from a backup. |
-| `missing` | The location is connected but the file is not on it. |
-
-Downloads from the catalogue are checked against the checksum published by the source
-before they are installed, so a freshly installed collection has already been verified
-once.
-
-## What is taking the space
-
-The Storage screen shows, for each location, its capacity and free space, and how much
-each kind of content uses: documents, reference collections, maps, terrain, place
-names and other files. The same numbers are in `GET /api/storage/locations` under
-`usage`.
-
-Outpost always leaves 256 MB free on a location. A download, upload or move that would
-go past that is refused before it starts, with the space needed and the space free.
-
-For everything else that takes space (the database, extracted text, caches, part files
-and files nobody recorded), and for removing things, see the next section.
+A drive or share can silently lose part of what is written. As a download arrives,
+Outpost keeps a checksum of each megabyte it wrote, and compares what the storage gives
+back when the file is checked at the end. A damaged stretch is fetched again from that
+point (a map region, whole); after three times in one download it stops, deletes the
+file and says the storage is not keeping what is written. This covers downloads and map
+regions written since the server last started. It does not cover files you copied in,
+pictures Outpost builds itself, or damage that happens later (**Check files** finds
+that). It guards against accidents, not tampering.
 
 ## The database
 
-The Storage screen has a **Database** section for the one SQLite file
-(`outpost.db` in the data directory) that holds everything Outpost keeps that is not a
-file: notes, library records, the search index, vectors for search by meaning, saved
-places and routes, contacts, chat, repeaters, the radio log, settings and the history
-of work. It shows:
+**Storage → Database** shows the database's path and the free space there (warning below
+256 MB), its size and the write-ahead log beside it, counts of what it holds, the space
+taken by each part (search index, search by meaning, library records, notes, maps,
+radio, preparedness, everything else, unused), how many migrations are applied, and the
+last backup. Counting reads every page in the background, the first time anyone looks
+after a start, and again on **Work out again**.
 
-- **Where:** the file's path, as the screen shows the folders of storage locations, and
-  the free space on the drive it is on. Below 256 MB free (the reserve Outpost keeps
-  on every location) it says the drive is nearly full.
-- **Size:** the file, and the recent changes kept beside it (SQLite's write-ahead log)
-  that are not yet folded into the file.
-- **What is in it:** counts named as the rest of the app names them (documents,
-  passages in the search index, passages read for search by meaning, pages of notes,
-  attachments, saved places, routes, place names, records in the map's reference
-  layers, contacts, PGP keys, chat conversations, repeaters and lists of repeaters,
-  communication plans, logged contacts, profiles, saved predictions, power plans and
-  devices, items of supplies, weather places and barometer readings, emergency plans,
-  saved nuclear effects scenarios, devices found on the network, Morse practice
-  sessions, games kept), and where the bytes go in eight groups: search index, search
-  by meaning, library records, notes, maps (with the reference layers and nuclear
-  effects scenarios), radio (with Morse practice), preparedness (plans, supplies,
-  weather), everything else (contacts and keys, chat, power, network devices, games,
-  settings, the history of work), plus the unused pages.
-- **State:** how many of the layout changes (migrations) this version of Outpost knows
-  have been made, and the last backup written to a storage location, scheduled or with
-  **Back up now**. A backup downloaded from Settings is recorded under Settings, Backup
-  (the last one made, with its name and size), not here.
-- **Technical details**, behind a disclosure: the SQLite version and journal mode, how
-  the contents were measured (`dbstat`, or counting rows), the migrations applied, the
-  free pages, and the names of the checks (`quick_check`, `integrity_check`) and of
-  reclaiming (`VACUUM`). Everything above it is said in a household's words.
-
-### How the figures are measured, and what it costs to look
-
-Opening the screen reads the file's size, a few numbers from its header (page count,
-unused pages, journal mode) and two small tables. On a 306 MB test database with
-80,000 passages and vectors, `GET /api/database` answered in 5 to 13 ms.
-
-The counts and the sizes need every page read. That is done by SQLite's `dbstat`
-table, on a separate read-only connection in a worker thread, so the server goes on
-answering; it took 0.1 to 0.5 seconds on that database with the file in the system's
-cache, and will take longer from a cold disk or an SD card. It is worked out the first
-time anyone looks after the server starts, kept with the time it was worked out, and
-worked out again only when someone presses **Work out again** or space has been
-reclaimed. Every page of the file belongs to one table or index or is unused, so the
-groups and the unused space add up to the size of the file exactly. A build of SQLite
-without `dbstat` shows the counts only and says so; nothing is estimated.
-
-### Earlier versions of pages
-
-Under the database, **Earlier versions of pages** says how many versions of how many
-pages Outpost keeps and how much room they take. **Clear earlier versions** erases them
-all, overwriting the space they used; the pages stay as they are. The file does not
-shrink until unused space is reclaimed (below). How versions are kept is in
-[notes-and-imports.md](notes-and-imports.md#earlier-versions).
-
-### Checking the database
-
-**Check the database** runs SQLite's `quick_check`, which reads every page and checks
-that each is well formed. **Run the full check** runs `integrity_check`, which also
-checks that every index holds exactly the rows of its table. Both are jobs on a queue
-of their own (`database`), run in a worker on a read-only connection; Outpost carries
-on as usual meanwhile. On the test database the quick check took 0.4 seconds and the
-full one 0.4 to 1.8 seconds (the higher figures with other work on the machine). A
-check that finds problems shows SQLite's own first ten lines, and points to restoring
-the newest backup that passed its check. Anyone who can open Outpost may start a
-check: it only reads.
-
-Neither check looks inside the full-text index's own structures (FTS5 has a separate
-`integrity-check` command, which needs a writable connection); that is not checked.
-
-### Reclaiming unused space
-
-When things are removed, SQLite keeps their pages in the file for reuse rather than
-giving them back to the drive. **Reclaim unused space** runs `VACUUM`, which rewrites
-the whole file without them. It is offered when at least 1 MB is unused, and its costs
-are stated beside it:
-
-- **Room.** SQLite builds the rewritten database in its temporary folder, then copies
-  it back through the write-ahead log, so the drive needs room for two copies of what
-  is in use, plus the 256 MB reserve (one copy on each drive when the temporary folder
-  is on another). On the test database (306 MB, 266 MB in use) the files peaked at
-  533 MB beside the temporary copy. Without the room it is refused, and the screen
-  says how much is needed.
-- **Nothing can be saved while it runs.** It holds the database's write lock from
-  start to finish. Reading goes on: on the test database, pages kept answering in 1 to
-  11 ms throughout. Every request that would change something is refused with a
-  message saying why, and work that would write waits: no job starts on any other
-  queue (a scheduled backup that falls due meanwhile is made within a minute of the end), and a backup cannot
-  take its copy of the database. It took 1.4 seconds on an idle machine and 3.9
-  seconds under load for the 306 MB file; expect a few times as long as the full check.
-- **It is refused while any job is running** (a backup, an import, an index build, a
-  download, a move), naming what is running; pause it or wait for it to finish.
-- **It lets changes already under way finish first.** A request that may write, on
-  any path (an upload still arriving, a form being saved, a write to the phones' address
-  book under `/dav/`), and a reply the model is writing are counted from when they
-  start until they have finished. Once a reclaim begins, new changes are refused with
-  the reason, and the reclaim waits up to 30 seconds for those under way; if one is
-  still going then, the reclaim stops without changing anything and says what it was
-  waiting for. While it waits and while it runs, work that is not a request holds
-  back: the backup timer, jobs on other queues (downloads, a kept area's refresh), the
-  storage check and the semantic index's own catching up wait for it to finish.
-- **A write that meets the lock anyway** (one that reads with `GET`, or another
-  program holding the database) is answered `409` with the reason, never as a fault.
-- **It cannot be stopped part way,** because stopping would undo it. If the server
-  stops while it runs, the rewrite is rolled back when the database is next opened:
-  nothing is lost but the time.
-
-Reclaiming is accepted only from the computer Outpost runs on, or from anywhere when
-Outpost was started with `OUTPOST_ALLOW_REMOTE_ERASE=true`, the rule that restarting
-Outpost follows. It changes nothing a person keeps, but while it runs nobody on the
-network can save anything, and with no accounts any device could otherwise do that
-as often as it liked.
-
-Code: `apps/server/src/modules/database/`, `apps/web/src/features/storage/database-section.tsx`.
+- **Earlier versions of pages** shows how many are kept and their size; **Clear earlier
+  versions** erases them, leaving the pages ([notes-and-imports.md](notes-and-imports.md#earlier-versions)).
+- **Check the database** runs SQLite's quick check; **Run the full check** also checks
+  every index. Both only read and anyone may start them. If problems are found, restore
+  the newest backup that passed its check. The full-text index's own structures are not
+  checked.
+- **Reclaim unused space** rewrites the file without unused pages (offered from 1 MB).
+  It needs room for two copies of what is in use plus 256 MB; it is refused while any
+  job runs; it waits up to 30 seconds for saves under way; while it runs nothing can be
+  saved (reading carries on); and it cannot be stopped part way (a server stop rolls it
+  back, losing nothing). It is allowed only at the computer Outpost runs on, or with
+  `OUTPOST_ALLOW_REMOTE_ERASE=true`.
 
 ## Managing and cleaning up
 
-**Storage → Manage and clean up** (`/storage/manage`) is one place to see everything
-Outpost is storing, remove what is not wanted, and clean up. It is also linked from
-Downloads and Explore (**Manage what is downloaded**), from Settings, from the command
-palette, and from the warnings shown when a drive is too full (**Free up space**). It
-has four views.
+**Storage → Manage and clean up** shows everything Outpost stores and removes what you
+choose. Nothing here happens by itself: every removal is shown first as counts and sizes
+and must be confirmed.
 
-Nothing on this screen happens by itself. Every removal is something you choose, is
-shown to you first as counts and sizes, and has to be confirmed. That is the one
-exception Outpost makes to "never delete a person's files": you asked, in so many
-words.
+**Space** shows what takes room, by kind and location. Figures from records are
+immediate; folders are measured in the background (**Count again**), and search passages
+and vectors inside the database are estimates. A disconnected location shows what was
+last known.
 
-### Space
+**Installed** lists every collection and document with kind, location, size and date,
+to filter, sort and tick. A catalogue sheet or book is one item (a collection and its
+document go together).
 
-What is taking the space, by kind and by location, with free space.
+- **Remove** shows the total, which items are your own and cannot be fetched again, and
+  what will be left alone and why. Choose whether files are deleted or only records
+  removed. Files on a disconnected location are left unless you tick **Forget it
+  anyway** (record removed, file left). Items being moved or checked are refused.
+- **Move** starts the same checked moves as the Library, after checking room for the
+  whole selection.
 
-| Figure | Where it comes from |
-| --- | --- |
-| Reference archives, maps, terrain, place names, catalogue sheets and books, your documents | Outpost's records of what was installed. Available at once, and for a location that is not connected. |
-| Pictures and files in notes, text read from documents, programs for portable drives, search model files, data set aside by a restore, unfinished downloads, files no record refers to, the database file | Measured from the files. "Unfinished downloads" are those that stopped (paused, failed or cancelled), the same ones Leftovers lists: a download still arriving is not left over. |
-| Search passages and semantic vectors | Estimates. Both live inside the database file, so their share can only be worked out: vectors are counted and multiplied by their size; passage text is summed and half as much again is added for the word index. They are shown as part of the database, not added to the total twice. |
-
-Measuring means walking folders, which on a network share with thousands of documents
-takes a while. So it runs in the background, never more than one at a time, and the
-screen says when the figures were taken and when a new count is under way. A row that
-has never been counted says "Counting" rather than showing a guess. **Count again**
-starts a count now. Otherwise a new count starts when you look after something has
-changed in Outpost (a download, an upload, a removal, a location coming or going), or
-when the last count is more than an hour old, for files changed by hand. Opening the
-screen again does not by itself walk the folders again.
-
-A location that is not connected shows what Outpost last knew (how much of its own was
-there, the free space when it was last seen, and when that was) and says it is
-disconnected. Nothing on it can be measured or deleted until it is back.
-
-### Installed
-
-Every collection and document in one list, with its kind, location, size and the date
-it was added. The kinds include **Map layers** (Natural Earth, airports, OpenStreetMap
-extracts), which until 18 November 2026 were listed with the radio data. Filter by name, kind, location, or whether it was downloaded or is your
-own; sort by size, date, name, kind or location.
-
-A catalogue sheet or book is listed once. It is one file with two records, an entry in
-your collections and a document in your library, and the two are removed and moved
-together.
-
-Tick one or many, then:
-
-- **Remove.** The dialog shows what the selection adds up to, by kind and by location,
-  how many of the items are your own and cannot be downloaded again, and anything that
-  will be left alone and why. You choose whether the files are deleted or only
-  Outpost's records are removed. The rules are the ones the Library already has:
-  - a catalogue item and its document go together;
-  - a file on a location that is not connected cannot be deleted. It is left alone, in
-    your library, unless you tick **Forget it anyway**, which removes Outpost's record
-    and leaves the file on the drive;
-  - anything being moved or checked is refused, and named.
-- **Move** to another location. This starts the same checked moves as the Library: one
-  job per collection, and one for all the documents chosen. The copy is verified before
-  the original is removed. Room is checked for the whole selection before anything
-  starts, and whatever cannot be moved is named with the reason.
-
-Removing runs as a job with progress and a **Stop** button. When it finishes, or is
-stopped, the screen says what was deleted, what was only forgotten, what was left as it
-was, and what could not be removed and why, with the path of every file that was not
-deleted.
-
-### Leftovers
-
-What is on disk or in the records that no longer serves anything. Each group says what
-its things are and what clearing them does. Nothing is cleared that you did not tick.
-
-| Leftover | What clearing it does |
-| --- | --- |
-| Downloads that did not finish | Deletes the partial file (`<name>.part`, and for a map region the plan and progress files beside it) and takes the download off the Downloads screen. |
-| Records whose file has gone | The file is no longer on its location, which is connected. Removes the record and its text in search. There is no file to delete. A catalogue item can be downloaded again from Explore. |
-| Files no record refers to | A file inside `collections/` or `documents/` in a storage location that no collection, document, download or move lays claim to, and that has not changed for ten minutes. Deletes that file. |
-| Uploads that did not finish | Parts of uploads more than a day old in `documents/.incoming/`. Deletes them. |
-| Things that can be fetched or worked out again | Programs fetched for portable drives (fetched again, 50 to 100 MB per kind of computer, when a drive is next written); search model files left in `models/` by earlier builds (not used any more: the built-in model is part of the app); text kept for documents that are no longer in the library; database copies left by a backup that was cut off. |
-| Data set aside by a restore | The `before-restore-<time>` folders. Deleting one means that restore can no longer be undone by hand. |
-| History | The lists of finished work and finished downloads. A failed download keeps its entry so that it can still be retried. |
-
-Outpost only ever looks inside the two folders it makes in a storage location,
-`collections/` and `documents/`. Anything else you keep on the same drive is never
-listed, measured or deleted, and symbolic links are never followed. Before a file is
-deleted it is checked again: still inside one of those folders, still a plain file,
-still not used by anything.
+**Leftovers** lists what serves nothing any more, to tick and clear: unfinished
+downloads and uploads, records whose file has gone, files in `collections/` or
+`documents/` that nothing claims and that have not changed for ten minutes, things that
+can be fetched or worked out again (portable-drive programs, old model files, orphaned
+text, copies from a cut-off backup), the `before-restore-<time>` folders (a restore can
+then no longer be undone by hand), and finished history. Outpost only ever looks inside
+`collections/` and `documents/`, never follows links, and checks each file again before
+deleting it.
 
 ### Clean up
 
-Three clean-ups, in order of how much they take.
+1. **Remove all downloaded content**: archives, maps, terrain, place names, catalogue
+   sheets and books, and unfinished downloads. Keeps your own documents, notes, contacts,
+   chat, radio records, places, your own archives and maps, settings and locations.
+2. **Clear and rebuild search data**, ticking which: clear semantic vectors (rebuild
+   from Settings), read every document's text again (OCR text kept), compact the
+   database (about a second per 100 MB, needs free space equal to its size). Nothing you
+   keep is lost.
+3. **Erase everything and start again**: everything Outpost holds that is yours, files
+   of documents you added included, PGP keys, settings, search data and history, and on
+   a portable drive its link to the library it came from. The summary counts each kind
+   first. It **keeps** storage locations, network shares, your own catalogue manifests,
+   cached programs, the catalogue's last answers, satellites' public data and
+   kiwix-serve; **leaves** files outside Outpost's folders and on disconnected
+   locations; and **does not delete** automatic backups (delete those from **Settings →
+   Automatic backups** first if you want them gone). Type "erase everything" to confirm.
+   It offers a backup first, which does not hold your documents' files. Only at the
+   computer Outpost runs on, or with `OUTPOST_ALLOW_REMOTE_ERASE=true`
+   ([security.md](security.md#erasing-everything)).
 
-**1. Remove all downloaded content.** Everything that came from the catalogue or a
-download and can be fetched again.
+Each runs as a job that can be stopped; what it already removed stays removed.
 
-- Removes: reference archives, maps, terrain, place names, catalogue sheets and books
-  (with the documents they are in your library), and downloads still under way or left
-  unfinished, with their partial files.
-- Keeps: documents you added, notes, contacts, chat conversations, repeaters, radio
-  plans and logged contacts, saved places and routes, archives and maps of your own
-  that you pointed Outpost at, settings, storage locations and network shares.
-- Content on a location that is not connected is left behind and stays in your
-  library. The summary lists it; tick **Forget them as well** to remove Outpost's
-  records and leave the files on the drive.
-
-**2. Clear and rebuild search data.** What Outpost works out from your library. You
-tick which:
-
-- *Clear semantic vectors.* Search by meaning finds nothing until the index is built
-  again from Settings, which runs every passage through the model once more.
-- *Read the text of every document again.* Rebuilds extracted text and search passages
-  from the original files, one document at a time. Each document stays searchable by
-  its old text until the new text is in. Text read by OCR is kept. Documents on a
-  location that is not connected are skipped.
-- *Compact the database.* Deleting things leaves empty space inside the database file;
-  this hands it back to the disk. Outpost stops answering while it runs, about a second
-  for every 100 MB, and it needs free space equal to the size of the database.
-
-Nothing you keep is lost by any of these. The keyword index is not cleared separately:
-it is rebuilt from the extracted text, which the second option does.
-
-**3. Erase everything and start again.** The only clean-up that destroys things that
-cannot be downloaded again.
-
-- Removes: everything the first clean-up removes; documents you added, files and all;
-  notes and their attachments; saved places and routes; contacts; every chat conversation
-  with its messages; every repeater, both the lists you imported and the entries you
-  added or changed; what the HF planner keeps for you (communication plans, the contact
-  log, radio and antenna profiles, saved predictions and coverage maps, and every
-  answer worked out); power plans and devices of your own; supplies, the household and
-  the shopping list; weather places, the forecasts fetched for them and barometer
-  readings; emergency plans; saved nuclear effects scenarios; devices found on the
-  network with the names and notes given them; the Morse trainer's sessions and
-  progress; the allotment and each game's tally; PGP keys, your own private key among
-  them; the records of merges from portable drives (they hold earlier versions of
-  pages); settings; search data; the history of downloads and other work; and the
-  copies of earlier data that a restore set aside (they hold the same notes). The
-  summary shown before it starts counts each of these.
-- On a portable drive it also clears the drive's record of what it held when it was
-  written, and the drive stops counting as a copy of the library it came from: a later
-  merge home brings what is made on it as new and takes nothing as removed.
-- Keeps: storage locations and their marker files; network shares and any password
-  remembered in the Keychain; catalogue manifests of your own; programs fetched for
-  portable drives and search model files (clear those from Leftovers); the catalogue's
-  last answers, so Explore still reads offline; the satellites' orbital elements and
-  transmitters, which are public data; and the kiwix-serve program, which is not
-  Outpost's.
-- Leaves alone, and says where they are: any file outside the folders Outpost made (an
-  archive of your own that you pointed Outpost at), and everything on a location that
-  is not connected. Outpost forgets them; delete them by hand if you want them gone.
-- Does not delete backups kept on a storage location by automatic backups. They hold
-  the notes that are being erased; delete them from **Settings → Automatic backups**
-  first, or by hand from the `outpost-backups` folder, if you want them gone.
-- Needs the words "erase everything" typed, and offers a backup first. A backup holds
-  notes, attachments, saved places, routes, contacts, chat conversations, repeaters,
-  radio plans, logged contacts and equipment profiles, and settings. It does **not**
-  hold the files
-  of documents you added: copy those from the `documents` folder of each storage
-  location if you want to keep them.
-- Can only be started on the computer Outpost runs on, unless Outpost was started with
-  `OUTPOST_ALLOW_REMOTE_ERASE=true`. From any other device the screen says so and does
-  not offer the button. See [security.md](security.md#erasing-everything).
-
-Content is deleted through the same code as removing one item at a time, then the
-database is emptied in place and compacted. No restart is needed, and no folder is
-deleted wholesale in a storage location.
-
-Each clean-up runs as a job with progress and can be stopped. Only one runs at a time.
-A stopped clean-up leaves what it had already removed removed, and reports what it had
-and had not reached.
-
-## One location per item
-
-Each document and each collection lives on exactly one location. Outpost does not
-combine drives into a pool, mirror content across drives, or split a collection
-between them. Storage pools are a possible future extension; nothing in this version
-implements them.
+Each document and collection lives on exactly one location: there is no pooling or
+mirroring across drives.
 
 ## Backing up
 
-**Settings → Backup** saves one `.zip` with the database, note attachments, extracted
-text and your own catalogue manifests. It does not include documents, collections or
-maps: those stay on their storage locations, and the backup records where.
+**Settings → Backup** saves one `.zip` with the database, attachments, extracted text
+and your own catalogue manifests. It does **not** include documents, collections or
+maps; back those up as ordinary folders. Unless protected with a passphrase, anyone with
+the file can read it.
 
-A backup is not encrypted unless you set a passphrase for backups (see
-[Protecting backups with a passphrase](#protecting-backups-with-a-passphrase)). Without
-one it holds your notes, contacts, saved places and settings as they are, and anyone
-who can open the file can read them: keep it on storage you trust, and on an encrypted
-disk if it leaves the house.
-
-Restoring replaces the database, attachments and extracted text after a restart. The
-dialog lists what is replaced, what is not touched, when it happens and how to cancel,
-and its button is **Restore after restart**. The backup is checked first; nothing
-changes until Outpost starts again, and until then **Cancel restore** drops it. Downloads that were under way stop. The files of
-collections, maps and documents on your storage locations are not touched. The
-data they replace is kept in the data directory in a folder named
-`before-restore-<time>`. After a restore, add the same storage locations again (their
-marker files are recognised) to bring the content back.
-
-Restoring can only be done on the computer Outpost runs on, unless Outpost was started
-with `OUTPOST_ALLOW_REMOTE_ERASE=true`: it replaces everything at once, as erasing
-does. From another device the screen says so and does not offer it. See
-[security.md](security.md#backup-and-restore).
+Restoring happens at the next restart: the dialog lists what is replaced and what is
+not, the backup is checked first, and **Cancel restore** drops it until then. Downloads
+under way stop. What it replaces is kept as `before-restore-<time>` in the data
+directory. Add the same storage locations again afterwards; their markers are
+recognised. A restore does not bring back catalogue manifests (copy them from `catalog`
+in the zip), network shares, or unfinished jobs. It is allowed only at the computer
+Outpost runs on, or with `OUTPOST_ALLOW_REMOTE_ERASE=true`
+([security.md](security.md#backup-and-restore)).
 
 ### Protecting backups with a passphrase
 
-**Settings → Backup → Protect backups with a passphrase** is off to begin with. Set a
-passphrase, typed twice, and every backup made from then on is encrypted: the ones made
-on the schedule, the ones started with **Back up now**, and the download from Settings.
-A protected backup is named `….zip.enc`, and restoring one asks for the passphrase.
+**Settings → Backup → Protect backups with a passphrase.** Every backup from then on
+(scheduled, **Back up now**, downloaded) is encrypted as `….zip.enc`.
 
-**A protected backup cannot be opened without the passphrase, and Outpost cannot recover
-it.** The screen says so before the passphrase is set. Outpost does not keep it: what it
-keeps is a public key, which can only lock, and the matching private key locked under
-the passphrase. That is why a backup can be made at three in the morning with nobody
-there, and why nothing on the computer can read one back afterwards. Write the
-passphrase down and keep the paper somewhere other than with the backups.
+**Without the passphrase a protected backup cannot be opened, and Outpost cannot recover
+it.** Outpost keeps only a key that can lock, so backups are made unattended and nothing
+on the computer can read them back. Write the passphrase down and keep it apart from the
+backups.
 
-- **Any passphrase is accepted.** There are no rules about length or kinds of
-  character. One shorter than twelve characters is said to be short, because anyone
-  who gets a backup file can try passphrases against it for as long as they like;
-  **Suggest one** makes five random words of five letters, which is 80 bits.
-- **Changing it** applies to backups made afterwards. The ones already made are not
-  touched: each still opens with the passphrase that was set when it was made, so keep
-  the old one for as long as you keep them. The old passphrase is not asked for when
-  you change it, so a forgotten one does not stop you protecting what comes next. The
-  list of stored backups shows for each whether it is protected, and marks the ones
-  that open with an earlier passphrase.
-- **Switching it off** makes the backups made from then on plain zips again. It
-  decrypts nothing: protected backups stay protected.
-- **Where it can be set.** Setting, changing and removing the passphrase are accepted
-  only where restoring is: at the computer Outpost runs on, or from other devices when
-  Outpost was started with `OUTPOST_ALLOW_REMOTE_ERASE=true`. Otherwise anyone on the
-  network could set a passphrase of their own and lock you out of every backup made
-  from then on. And a passphrase is never accepted from another device over plain
-  `http`, whatever that option says, because it would cross the network where anyone
-  could copy it: from another device, open Outpost at its `https` address
-  ([deployment.md](deployment.md)). The same goes for the passphrase typed to restore.
-- **Restoring.** Choose the file, or **Restore this one** in the list, and give the
-  passphrase. A wrong passphrase is said to be wrong; a file that has been damaged,
-  altered or cut short is said to be that, and nothing of it is restored. The backup is
-  decrypted in memory as it is unpacked; no decrypted copy of the file is written. On a
-  fresh installation the file and the passphrase are all that is needed, and the
-  restored Outpost goes on protecting its backups with that same passphrase.
-- **After restoring an older backup onto an Outpost that protects its backups**, the
-  passphrase in use stays the one in use: the older backup's passphrase does not come
-  back with it.
-- **A portable drive** carries the setting, so a backup made from the drive is
-  protected with the same passphrase.
+- Any passphrase is accepted; under twelve characters is called short. **Suggest one**
+  gives five random words (80 bits).
+- **Changing it** affects later backups only; keep the old one as long as its backups.
+  The list marks which open with an earlier passphrase.
+- **Switching it off** makes later backups plain again; it decrypts nothing.
+- It can be set, changed or removed only where restoring can, and from another device
+  **only over `https`**, as can the passphrase typed to restore.
+- A wrong passphrase is said to be wrong; a damaged or cut-short file is refused whole.
+  Nothing decrypted is written to disk. On a fresh install, the file and passphrase are
+  all you need.
+- Restoring an older backup does not bring back its older passphrase. A portable drive
+  carries the setting.
 
-**What protection does not hide.** The file's name and its header say when the backup
-was made, which version of Outpost made it and how large it is; the small
-`.verified.json` file beside a stored backup says the same. Nothing about what is in
-the notes can be read from them. And the passphrase is all that stands between the file
-and whoever holds it: a short or guessable one can be found by trying. Deriving the key
-is made slow on purpose (about a second, and 32 to 512 MiB of memory, on the computer
-that set the passphrase) so that each guess costs that much.
-
-**What it does not protect.** Outpost itself: anyone who can open it on your network
-can still read the notes there. The data directory, which is not encrypted. Backups
-made before a passphrase was set. Storage locations (documents, collections, maps),
-which are not in a backup at all.
-
-**A protected backup is checked after it is written like any other.** The run that
-wrote it still holds the key of that one file in memory, reads the whole file back with
-it, and then discards it. After that only the passphrase opens the file.
-
-**What it costs.** Measured on 16 November 2026 on an Apple M-series Mac with 32 GB
-(Node 24.15), three runs each, while other work was running on the machine, so the
-times are rough. "Small" is a new library with one note and a 300 kB attachment;
-"large" is 500 MB of attachments, half of them bytes that do not compress, which makes
-a 251 MB backup. A backup is timed from **Back up now** to the end of its check; a
-restore from the request to the backup being staged. Memory is the most the whole
-server process held, which idles at about 310 MiB.
-
-| | Plain | Protected |
-| --- | --- | --- |
-| Small, back up | 0.06 to 0.07 s, 322 to 330 MiB | 0.06 to 0.08 s, 332 to 349 MiB |
-| Small, restore | 0.02 to 0.03 s, 321 to 329 MiB | 1.06 to 1.07 s, 819 to 824 MiB |
-| Large, back up | 5.8 to 6.3 s, 430 to 446 MiB | 6.5 to 10.5 s, 472 to 488 MiB |
-| Large, restore | 0.7 to 0.9 s, 415 to 430 MiB | 2.3 to 2.9 s, 815 to 829 MiB |
-
-Making a protected backup costs little more than making a plain one: no passphrase is
-involved, and the encryption is far quicker than the compression. Restoring one costs
-the second and the memory that deriving the key is meant to cost (here 512 MiB, the
-most Outpost ever asks), and reads the file twice: once to check every chunk, once to
-unpack it. A computer with less memory chooses a smaller cost when the passphrase is
-set there; a backup made on a large computer and restored on a small one needs the
-memory its header asks for, and the restore says so if it is not there.
-
-#### The protected backup file
-
-Written out so that another program can read one. Version 1; integers are big-endian.
-Code: `apps/server/src/modules/backup/sealed.ts`. A test
-(`apps/server/test/backup-protection.test.ts`) opens a backup with a reader written
-from this section alone.
-
-The file is a header followed by the zip that an unprotected backup would have been,
-encrypted in chunks.
-
-| Offset | Bytes | Field |
-| --- | --- | --- |
-| 0 | 8 | The ASCII letters `OPBACKUP`. |
-| 8 | 1 | Format version: `1`. |
-| 9 | 4 | `H`, the length of the header in bytes: `210 + M`. |
-| 13 | 4 | `C`, the bytes of zip in each chunk but the last. Outpost writes 65,536. |
-| 17 | 32 | The public key the backup is encrypted to (X25519, the 32 raw bytes). |
-| 49 | 32 | The public key made for this one file (X25519, raw). |
-| 81 | 1 | scrypt cost: `N` is 2 to the power of this byte, 15 to 20. Outpost writes 15 to 19. |
-| 82 | 1 | scrypt `r`: `8`. |
-| 83 | 1 | scrypt `p`: `1`. |
-| 84 | 32 | scrypt salt. |
-| 116 | 12 | Nonce of the wrapped private key. |
-| 128 | 48 | The wrapped private key: 32 encrypted bytes, then a 16-byte tag. |
-| 176 | 2 | `M`, the length of the manifest in bytes, at most 16,384. |
-| 178 | `M` | The backup's `manifest.json`, as UTF-8 text, in the clear. |
-| 178 + `M` | 32 | SHA-256 of every byte of the header before this one. |
-
-Then, from offset `H` to the end of the file, the chunks, one after another. Each is
-its encrypted bytes followed by a 16-byte tag. Every chunk but the last holds exactly
-`C` bytes of the zip; the last holds what is left, between 1 and `C` bytes (0 only when
-the zip itself is empty). So the number of chunks is the length of the rest of the file
-divided by `C + 16`, rounded up.
-
-To open one:
-
-1. **The passphrase's bytes** are its UTF-8 encoding after Unicode normalisation to
-   NFC. Nothing is trimmed.
-2. **The wrapping key** is `scrypt(passphrase bytes, salt, N, r, p)`, 32 bytes.
-3. **The private key** is the wrapped private key decrypted with ChaCha20-Poly1305
-   (RFC 8439) under the wrapping key and the nonce beside it, with the ASCII text
-   `outpost-backup-v1 key` followed by the 32 bytes at offset 17 as associated data. If
-   the tag does not match, the passphrase is wrong. The X25519 public key of the result
-   must equal the bytes at offset 17.
-4. **The shared secret** is X25519 of that private key and the public key at offset 49.
-5. **The file key** is HKDF-SHA-256 (RFC 5869) of the shared secret, 32 bytes long,
-   with salt the 32 bytes at offset 49 followed by the 32 bytes at offset 17, and info
-   the ASCII text `outpost-backup-v1 file` followed by the 32-byte SHA-256 that ends
-   the header.
-6. **Each chunk** is decrypted with ChaCha20-Poly1305 under the file key, with no
-   associated data and a 12-byte nonce: the chunk's number, counting from 0, as an
-   11-byte integer, then one byte that is `1` for the last chunk of the file and `0`
-   for every other. A chunk whose tag does not match means the file is damaged,
-   altered or cut short, and the whole file is refused.
-
-The last byte of the nonce is what makes a file cut off exactly between two chunks fail:
-its last chunk was not written as the last. The numbering is what makes chunks that
-have been swapped, dropped or repeated fail. The checksum in the header catches
-accidental damage there before a passphrase is tried, so that damage is not reported as
-a wrong passphrase; because it also goes into the file key, a header altered on purpose
-with its checksum put right opens nothing. One case cannot be told apart: a salt or
-wrapped key altered that way looks the same as a wrong passphrase.
-
-The manifest in the header is what lets Outpost list a protected backup, with its date
-and version, without the passphrase. It is the same text as `manifest.json` inside, and
-a restore reads the one inside.
-
-Outpost reads `N` up to 2 to the power 20 (1 GiB of memory) and refuses a header that
-asks for more, a chunk size below 4 KiB or above 4 MiB, and any other `r` or `p`.
+The file's name and header still show when it was made, by which version, and its
+size. It does not protect Outpost itself, the data directory, older backups, or storage
+locations. Restoring one takes about a second longer and up to 512 MiB of memory, on
+purpose, to make guessing slow. The file format is in
+[development/storage-and-https.md](development/storage-and-https.md#the-protected-backup-file).
 
 ### Automatic backups
 
-**Settings → Automatic backups** makes the same backup on a schedule and keeps it on a
-storage location. It is off until you choose a location.
+**Settings → Automatic backups** makes the same backup on a schedule onto a storage
+location (a share included), in a folder `outpost-backups`, named
+`outpost-backup-<UTC time>-scheduled.zip` or `-manual.zip`.
 
-- **Where.** Any storage location that is connected, a network share included. Backups
-  go into a folder named `outpost-backups` at the top of that location, and nowhere
-  else. The files are named
-  `outpost-backup-<date and time, UTC>-scheduled.zip` (or `-manual.zip` for one started
-  with **Back up now**), ending `.zip.enc` when backups are protected with a passphrase. Outpost writes through the folder the location is mounted at;
-  it does not read or store anything about a share's sign-in for this.
-- **When.** Every day, or every week on a day you choose, at a time you choose, by the
-  clock of the computer Outpost runs on. The first one is made at the next such time
-  after you choose, not at once. **Back up now** makes one whenever you like and does
-  not change the schedule. Between backups the schedule sleeps until the next time one
-  is due (or a failed one is to be tried again), looking again at least every quarter of an hour
-  in case the computer's clock was changed or it was asleep meanwhile; it does not wake every minute.
-- **How it is made.** Each backup is a job (it shows under Downloads with the other
-  background work). The database is copied with SQLite's online backup, which gives one
-  consistent state even while notes are being saved. The file is written as
-  `<name>.zip.part` and flushed to the disk. Then it is read back from the location
-  from start to finish: every file in it must match the checksum the archive recorded,
-  and the database inside must pass SQLite's integrity check. Only then is it recorded
-  as verified, in a small file beside it, `<name>.verified.json`, and given its own
-  name; so a backup is not listed while it is being checked.
-- **If the check fails.** The job fails and says why, the screen reports it, and the
-  file is kept, shown as **Not verified**. It is never counted towards the number to
-  keep and never replaces a good backup. A scheduled backup that failed is tried again
-  after an hour, then after two, four and eight, the wait doubling up to a day until
-  one succeeds; the screen says when the next try is. The next scheduled time is always
-  tried when it comes.
-- **Backups that failed their check do not pile up.** Outpost keeps the newest two
-  archives whose check failed or was cut short (the fault may be in the checking, not
-  in the file) and removes older ones as each new one is written. It tells them by a
-  small file it writes beside each, `<name>.failed.json`, and removes one only while it
-  is still the size that run wrote. A verified backup, a backup with no such file
-  beside it (one you copied in by hand, say) and anything that is not Outpost's are
-  never removed this way.
-- **If the location is not connected.** The backup is skipped. Nothing is written
-  anywhere else: not to another location, not to the data directory. The screen says
-  when the last backup was, which one is owed, and that the location is not connected.
-  The backup is made as soon as the location is seen again, or when the server next
-  starts and finds it. However many times were missed, one backup is made.
-- **How many are kept.** Seven by default. The newest seven scheduled backups and the
-  newest seven started by hand are kept, counted separately, so that pressing **Back up
-  now** several times cannot push the scheduled ones out. Older ones are deleted after
-  each successful backup. Outpost deletes a file only if it has the name Outpost gives
-  its backups, is an ordinary file (not a link), sits directly in `outpost-backups`,
-  and still reads as an Outpost backup when it is opened. Anything else in the folder
-  is left alone, and the newest verified backup is never deleted this way.
-- **The list.** Each stored backup is shown with its date, size, the version of Outpost
-  that made it, and whether it verified. From there you can download one, restore one
-  (**Restore this one** checks it again and stages it, exactly as an uploaded backup
-  is), or delete one after confirming.
-- **Test a restore.** In a stored backup's menu. The backup is opened into a scratch
-  folder in the data directory, every file checked against its checksum and the
-  database through SQLite's integrity check, and then counted: pages, saved places,
-  tracks and routes, documents and contacts in the backup against how many are here
-  now. A backup made by a newer version of Outpost fails the test, as it could not be
-  restored here. The scratch folder is removed afterwards; nothing here is changed and
-  no restore is staged. A protected backup asks for its passphrase, which is held in
-  memory for that one test only. The result is shown under the list and on **Settings →
-  Server status**.
-- **On the status screen.** **Settings → Server status** shows the last backup's age,
-  how many are kept, whether the location was away when one was due, and the last
-  restore test (see [device.md](device.md)).
-- **Who may do what.** Any device that can reach Outpost can choose a location, change
-  the schedule, start a backup, test a restore and download one. Restoring, deleting a stored backup
-  and lowering the number to keep (which deletes older ones at the next backup) can
-  only be done on the computer Outpost runs on, unless Outpost was started with
+- **When**: daily or weekly at a time you choose, by the server's clock; the first at
+  the next such time. **Back up now** makes one any time.
+- **Checked**: each is read back whole, every file against its checksum and the
+  database through SQLite's integrity check, before it is listed as verified. One that
+  fails is kept as **Not verified**, never counted or used to replace a good one, and
+  tried again after 1, 2, 4, 8 hours up to a day. Only the newest two failed ones are
+  kept.
+- **Location not connected**: the backup is skipped, written nowhere else, and made as
+  soon as the location is back (once, however many were missed). The screen says so.
+- **How many**: seven scheduled and seven by hand, counted apart. Outpost deletes only
+  its own backup files in that folder, and never the newest verified one.
+- **The list** shows each with date, size, version and whether it verified, to
+  download, **Restore this one** or delete.
+- **Test a restore** opens a stored backup in a scratch folder, checks everything,
+  counts what it holds against what is here now, and removes the scratch copy; nothing
+  is changed. The result shows on **Settings → Server status** ([device.md](device.md)).
+- **Who may**: any device can set the schedule, back up, test and download; restoring,
+  deleting and keeping fewer need the computer Outpost runs on, or
   `OUTPOST_ALLOW_REMOTE_ERASE=true`.
 
-Switching automatic backups off, removing the location from Outpost, or **Erase
-everything** does not delete the backups already made: they stay in `outpost-backups`
-until you delete them. "Erase everything" resets settings, so it also switches
-automatic backups off. The schedule is not copied to a portable drive.
-
-Not tried: a share that drops part-way through a write on a real NAS. The tests stand
-in for it with a folder that is moved away and an empty folder left in its place, which
-is what an unmounted share looks like on Linux.
-
-Three things a restore deliberately does not carry over:
-
-- **Catalogue manifests.** They are in the backup for safe keeping, but they decide
-  which hosts Outpost will download from, so a backup file is not allowed to change
-  them. Copy your own manifests back by hand from the `catalog` folder inside the zip.
-- **Network shares.** The shares the other machine had connected are not remembered
-  here; connect them again from the Storage screen.
-- **Unfinished work.** Downloads and other jobs that were queued or running when the
-  backup was made do not start on the machine it is restored to.
-
-Back up the storage locations themselves with whatever you use for files: they are
-ordinary folders.
-
-The `before-restore-<time>` folders can be deleted from **Storage → Manage and clean up
-→ Leftovers** once you are sure a restore was right.
+Turning it off, removing the location or erasing everything leaves existing backups in
+place. The schedule is not copied to a portable drive.
 
 ## Taking everything out
 
-A backup can only be read by Outpost. **Settings → Take everything out** makes one
-`.zip` of your own things in formats other programs open, for leaving Outpost or
-reading them anywhere else:
+**Settings → Take everything out** makes a `.zip` of your things in formats other
+programs read:
 
-| Folder | What is in it | Format |
+| Folder | What | Format |
 | --- | --- | --- |
-| `notes/` | Every page, nested as in Notes, with attachments in `_attachments/` | Markdown |
+| `notes/` | Every page, nested, attachments in `_attachments/` | Markdown |
 | `contacts/` | Every contact | vCard 4.0 |
-| `places/` | Map markers, routes and tracks | GPX and GeoJSON |
-| `supplies/` | The supplies list | CSV |
-| `barometer/` | The barometer log | CSV |
-| `radio-log/` | The contact log: contacts and stations heard as ADIF, every entry as CSV | ADIF 3.1.8 and CSV |
-| `plans/` | Each emergency plan | JSON |
-| `papers/` | Medical sheets and the keeping-in-touch plan; a locked sheet stays locked | JSON, OpenPGP |
-| `board/` | The household board, one text file per channel, with the files sent | Plain text |
-| `documents/` | Every document as the file that was added, a folder per category, and a list | The original files |
+| `places/` | Markers, routes and tracks | GPX and GeoJSON |
+| `supplies/`, `barometer/` | Supplies list, barometer log | CSV |
+| `radio-log/` | The contact log | ADIF 3.1.8 and CSV |
+| `plans/` | Emergency plans | JSON |
+| `papers/` | Medical sheets and the keeping-in-touch plan (locked sheets stay locked) | JSON, OpenPGP |
+| `board/` | The household board, with files sent | Plain text |
+| `documents/` | Every document as added, a folder per category | The original files |
 
-`README.md` at the top says the same, when it was made, and what was left out. The
-CSV files are the ones Supplies and Weather read back in.
-
-Before anything is made, the section shows how much there is of each and roughly how
-large the zip will be. Documents on a location that is not connected cannot be
-included and are listed as left out: connect the location and export again. Pages in
-the bin, removed board messages, collections, maps and other downloads, and settings
-are not in it.
-
-Choose where it goes:
-
-- **Download to this device**: the zip is made on the server, then **Download** saves
-  it. Only the newest is kept on the server; making another, or **Remove from the
-  server**, deletes it.
-- **A storage location**: written to a folder named `outpost-exports` on it. Outpost
-  never deletes anything there.
-
-The zip is not encrypted. It holds your notes, contacts and documents as they are:
-keep it on storage you trust.
-
-See also [security.md](security.md) and [troubleshooting.md](troubleshooting.md).
+Its `README.md` says when it was made and what was left out (documents on disconnected
+locations, the bin, removed board messages, collections, maps, settings). The section
+shows the sizes first. **Download to this device** keeps only the newest on the server;
+**a storage location** writes to `outpost-exports`, which Outpost never deletes from.
+The zip is not encrypted.

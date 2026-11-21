@@ -12,6 +12,7 @@ import { type ReactNode, useEffect, useId, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useClockStyle } from "@/lib/clock";
+import { appLocale } from "@/lib/region";
 import { cn } from "@/lib/utils";
 import { useMapTheme, useStoredState } from "../hooks";
 import type { MapTheme } from "../lib/style";
@@ -39,7 +40,7 @@ const dateFormats = new Map<string, Intl.DateTimeFormat>();
 function longDate(ms: number, zone: string): string {
   let format = dateFormats.get(zone);
   if (!format) {
-    format = new Intl.DateTimeFormat("en-GB", { timeZone: zone, weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    format = new Intl.DateTimeFormat(appLocale(), { timeZone: zone, weekday: "long", day: "numeric", month: "long", year: "numeric" });
     dateFormats.set(zone, format);
   }
   const parts: Record<string, string> = {};

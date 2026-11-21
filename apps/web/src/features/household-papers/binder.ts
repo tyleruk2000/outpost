@@ -29,6 +29,7 @@ import { PAPERS } from "@/features/maps/print/paper";
 import { INK, MUTED, type Sheet, type SheetItem } from "@/features/maps/print/sheet";
 import { type Block, toSheets } from "@/features/propagation/plans/document";
 import type { ClockStyle } from "@/lib/clock";
+import { appLocale } from "@/lib/region";
 import { commsBlocks, usedEntries } from "./comms-words";
 import { type GrabHousehold, type GrabPerson, grabSheets, gridLines } from "./grab-cards";
 import type { PaperPerson } from "./household-data";
@@ -57,7 +58,7 @@ export interface BinderOptions {
   style: ClockStyle;
 }
 
-const longDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric" });
+const longDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "long", year: "numeric" });
 
 /** What a part holds now, in a few words; null when there is nothing to put in it. */
 export function partHolds(part: BinderPart, sources: BinderSources): string | null {

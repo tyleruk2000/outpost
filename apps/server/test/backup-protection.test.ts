@@ -105,7 +105,7 @@ const flipAndRechecksum = (at: number) => (bytes: Buffer) => {
 };
 
 /**
- * A reader written from the description in docs/storage.md alone, sharing no code with
+ * A reader written from the description in docs/development/storage-and-https.md alone, sharing no code with
  * `sealed.ts`: if the two disagree, the document is wrong or the code is.
  */
 function readByTheDocument(file: Buffer, passphrase: string): { plain: Buffer; manifest: string } {

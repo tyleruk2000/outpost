@@ -16,6 +16,7 @@ import { Badge, Checkbox } from "@/components/ui/misc";
 import { DownloadControls, DownloadProgress } from "@/features/downloads/download-progress";
 import { api, errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
+import { appLocale } from "@/lib/region";
 import { formatNumber } from "@/lib/utils";
 import { useRemovePlaces } from "../data";
 import { DestinationPicker, useDestination } from "./destination";
@@ -54,7 +55,7 @@ function useStart() {
 function editionLabel(edition: string | null): string {
   const match = /^(\d{4})-(\d{2})$/.exec(edition ?? "");
   if (!match) return edition ?? "";
-  return new Date(Number(match[1]), Number(match[2]) - 1, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+  return new Date(Number(match[1]), Number(match[2]) - 1, 1).toLocaleDateString(appLocale(), { month: "long", year: "numeric" });
 }
 
 const link = "text-primary underline decoration-1 underline-offset-2";

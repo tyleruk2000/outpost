@@ -694,15 +694,15 @@ function Form({ contact }: { contact?: ContactDto }) {
               <Input
                 value={address.region}
                 onChange={(event) => setAddress(index, { region: event.target.value })}
-                aria-label={`County or region of address ${index + 1}`}
-                placeholder="County or region"
+                aria-label={`County, state or province of address ${index + 1}`}
+                placeholder="County, state or province"
                 maxLength={CONTACT_LIMITS.value}
               />
               <Input
                 value={address.postcode}
                 onChange={(event) => setAddress(index, { postcode: event.target.value })}
-                aria-label={`Postcode of address ${index + 1}`}
-                placeholder="Postcode"
+                aria-label={`Postcode or ZIP code of address ${index + 1}`}
+                placeholder="Postcode or ZIP code"
                 maxLength={CONTACT_LIMITS.label}
               />
               <Input
