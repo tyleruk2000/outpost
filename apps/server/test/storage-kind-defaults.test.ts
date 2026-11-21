@@ -11,8 +11,8 @@ describe("a storage location for each kind of content", () => {
   beforeEach(async () => {
     app = await createTestApp();
     internalId = app.ctx.services.storage.getDefault().id;
-    nas = (await app.api("POST", "/api/storage/locations", { name: "NAS", path: path.join(app.dir, "storage", "nas"), kind: "network" })).body
-      .location;
+    nas = (await app.api("POST", "/api/storage/locations", { name: "NAS", path: path.join(app.dir, "storage", "nas"), kind: "network" }))
+      .body.location;
   });
   afterEach(() => app.close());
 

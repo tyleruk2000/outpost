@@ -118,8 +118,8 @@ starts on the kind's location and can still send one download elsewhere.
 
 Setting a kind changes only where new downloads go; nothing already kept is moved (move
 it under Manage and clean up). If the location set for a kind is not connected, the
-picker says so and offers another; a download started without a picker, such as an
-update of a collection, waits for that location rather than going somewhere else.
+picker says so and offers another; a download started without a picker is refused with
+a message naming the location, rather than sent somewhere else.
 Removing a location puts its kinds back on the default.
 
 ### Renaming and removing
@@ -1142,8 +1142,20 @@ storage location. It is off until you choose a location.
   that made it, and whether it verified. From there you can download one, restore one
   (**Restore this one** checks it again and stages it, exactly as an uploaded backup
   is), or delete one after confirming.
+- **Test a restore.** In a stored backup's menu. The backup is opened into a scratch
+  folder in the data directory, every file checked against its checksum and the
+  database through SQLite's integrity check, and then counted: pages, saved places,
+  tracks and routes, documents and contacts in the backup against how many are here
+  now. A backup made by a newer version of Outpost fails the test, as it could not be
+  restored here. The scratch folder is removed afterwards; nothing here is changed and
+  no restore is staged. A protected backup asks for its passphrase, which is held in
+  memory for that one test only. The result is shown under the list and on **Settings →
+  Server status**.
+- **On the status screen.** **Settings → Server status** shows the last backup's age,
+  how many are kept, whether the location was away when one was due, and the last
+  restore test (see [device.md](device.md)).
 - **Who may do what.** Any device that can reach Outpost can choose a location, change
-  the schedule, start a backup and download one. Restoring, deleting a stored backup
+  the schedule, start a backup, test a restore and download one. Restoring, deleting a stored backup
   and lowering the number to keep (which deletes older ones at the next backup) can
   only be done on the computer Outpost runs on, unless Outpost was started with
   `OUTPOST_ALLOW_REMOTE_ERASE=true`.

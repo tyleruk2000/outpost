@@ -4,7 +4,7 @@
  * modules that own them (storage, database, backups, jobs) and from the system
  * (`hardware.ts`); the event-loop delay from `vitals.ts`.
  */
-import type { DatabaseStatus, DeviceCheck, StorageLocation } from "@outpost/shared";
+import type { DatabaseStatus, DeviceCheck, RestoreTestResult, StorageLocation } from "@outpost/shared";
 import { formatBytes } from "@outpost/shared";
 import type { CardWear, Memory, Temperature, Throttling } from "./hardware.ts";
 
@@ -108,12 +108,46 @@ export function databaseCheck(database: DatabaseStatus): DeviceCheck {
   };
 }
 
-/** A backup older than this gets a word. */
-const BACKUP_OLD_MS = 7 * DAY;
+/** A backup older than this gets a word: a little over the schedule's own gap, or a week with none. */
+function oldAfter(frequency: BackupOverview["frequency"]): number {
+  return frequency === "daily" ? 2 * DAY : frequency === "weekly" ? 8 * DAY : 7 * DAY;
+}
 
-export function backupCheck(stored: DatabaseStatus["backup"], downloadedAt: number | null, now: number): DeviceCheck {
+/** What the status screen is told about backups on a schedule. */
+export interface BackupOverview {
+  frequency: "daily" | "weekly" | null;
+  locationName: string | null;
+  missing: { dueAt: number } | null;
+  away: { dueAt: number; locationName: string; madeAt: number | null } | null;
+  kept: { at: number; verified: number; newestAt: number | null; oldestAt: number | null } | null;
+  restoreTest: RestoreTestResult | null;
+}
+
+const NO_SCHEDULE: BackupOverview = { frequency: null, locationName: null, missing: null, away: null, kept: null, restoreTest: null };
+
+export function backupCheck(
+  stored: DatabaseStatus["backup"],
+  downloadedAt: number | null,
+  now: number,
+  overview: BackupOverview = NO_SCHEDULE,
+): DeviceCheck {
   const base = { id: "backup", group: "data" as const, title: "Last backup", link: { to: "/settings#backup", label: "Settings, Backup" } };
   const last = Math.max(stored.lastAt ?? 0, downloadedAt ?? 0) || null;
+  const where = overview.locationName ?? "a storage location";
+  const kept =
+    overview.kept && overview.kept.verified > 0 && overview.kept.oldestAt !== null
+      ? ` ${overview.kept.verified} kept on ${where}, the oldest ${ageWords(now - overview.kept.oldestAt)} old.`
+      : "";
+  // The location was away when a backup was due, and it has not been made since.
+  if (overview.missing && overview.locationName)
+    return {
+      ...base,
+      state: "attention",
+      summary: `The backup due ${ageWords(now - overview.missing.dueAt)} ago was not made: ${overview.locationName} was not connected.${
+        last === null ? "" : ` The last backup was ${ageWords(now - last)} ago.`
+      }`,
+      advice: `It is made as soon as ${overview.locationName} is back, and nothing is written anywhere else meanwhile. See that the NAS or drive is switched on and connected.`,
+    };
   if (last === null)
     return {
       ...base,
@@ -122,18 +156,59 @@ export function backupCheck(stored: DatabaseStatus["backup"], downloadedAt: numb
       advice:
         "A backup holds your pages, places, settings and library records. Save one from Settings, Backup, or have one made every night on another drive under Automatic backups.",
     };
-  const where = last === stored.lastAt ? "to a storage location" : "downloaded to a device";
+  const how = last === stored.lastAt ? `to ${where}` : "downloaded to a device";
   const age = now - last;
-  const summary = `${ageWords(age)} ago, ${where}.${stored.scheduled ? " Backups are made on a schedule." : ""}`;
-  if (age > BACKUP_OLD_MS)
+  const late =
+    overview.away?.madeAt && now - overview.away.madeAt < oldAfter(overview.frequency)
+      ? ` It was made late: ${overview.away.locationName} was not connected when it was due.`
+      : "";
+  const schedule = stored.scheduled ? ` Made ${overview.frequency === "weekly" ? "every week" : "every night"}.` : "";
+  const summary = `${ageWords(age)} ago, ${how}.${schedule}${kept}${late}`;
+  if (age > oldAfter(overview.frequency))
     return {
       ...base,
       state: "attention",
       summary,
       advice: stored.scheduled
-        ? "Scheduled backups have not been made for over a week. Settings, Automatic backups says why."
+        ? "Scheduled backups have not been made for longer than they should have been. Settings, Automatic backups says why."
         : "Make a new one, or have them made on a schedule under Settings, Automatic backups.",
     };
+  return { ...base, state: "good", summary, advice: null };
+}
+
+/** A restore test older than this gets a word: what was true of last season's backups says little about tonight's. */
+const RESTORE_TEST_OLD_MS = 90 * DAY;
+
+export function restoreTestCheck(overview: BackupOverview, now: number): DeviceCheck | null {
+  // Nothing to test until backups are kept on a location.
+  if (overview.frequency === null && overview.restoreTest === null) return null;
+  const base = {
+    id: "restore-test",
+    group: "data" as const,
+    title: "Restore tested",
+    link: { to: "/settings#automatic-backups", label: "Settings, Automatic backups" },
+  };
+  const test = overview.restoreTest;
+  if (!test)
+    return {
+      ...base,
+      state: "attention",
+      summary: "No backup has been test-restored yet.",
+      advice:
+        "Open the newest backup with Test a restore in its menu. It is read into a scratch copy and counted; nothing here is changed.",
+    };
+  const ago = ageWords(now - test.at);
+  if (!test.ok)
+    return {
+      ...base,
+      state: "problem",
+      summary: `${ago} ago, the backup of ${ageWords(now - test.backupCreatedAt)} ago did not restore: ${test.problem ?? "it could not be read."}`,
+      advice: "Make a new backup with Back up now and test that one. If it fails too, see that the drive or NAS it is on is sound.",
+    };
+  const counts = test.counts.map((entry) => `${entry.inBackup} ${entry.what.toLowerCase()}`).join(", ");
+  const summary = `${ago} ago, on the backup of ${ageWords(now - test.backupCreatedAt)} ago: it opened and its database is sound. It holds ${counts}.`;
+  if (now - test.at > RESTORE_TEST_OLD_MS)
+    return { ...base, state: "attention", summary, advice: "Test the newest backup again: it takes a minute and changes nothing." };
   return { ...base, state: "good", summary, advice: null };
 }
 

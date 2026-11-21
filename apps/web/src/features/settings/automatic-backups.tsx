@@ -11,7 +11,7 @@ import {
   weekdayName,
 } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, CircleAlert, DatabaseBackup, Download, Ellipsis, Lock, LockOpen, RotateCcw, Trash2 } from "lucide-react";
+import { Check, CircleAlert, DatabaseBackup, Download, Ellipsis, FlaskConical, Lock, LockOpen, RotateCcw, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ErrorState, Notice, Rows } from "@/components/page";
@@ -28,6 +28,7 @@ import { formatDateTime } from "@/lib/utils";
 import { passphraseProblem, RestorePassphrase } from "./backup-protection";
 import { backupSummary, checkText, kindText, protectionText, retryText, scheduleText, stagedText, waitingTitle } from "./backup-text";
 import { NumberSetting, SettingRow, SettingsSection } from "./parts";
+import { RestoreTestPart } from "./restore-test";
 import { RESTORE_LABEL, RestoreWords } from "./restore-words";
 
 const OFF = "off";
@@ -74,7 +75,8 @@ export function AutomaticBackups() {
     for (const key of ["schedule", "stored"]) void client.invalidateQueries({ queryKey: ["backup", key] });
   });
   useServerEvent("job.updated", ({ data }) => {
-    if ((data as JobDto | undefined)?.type === "backup.run") void refresh();
+    const type = (data as JobDto | undefined)?.type;
+    if (type === "backup.run" || type === "backup.test-restore") void refresh();
   });
 
   const save = useMutation({
@@ -248,6 +250,7 @@ export function AutomaticBackups() {
                 }
               />
               {data.location ? <StoredBackups schedule={data} locationName={data.location.name} protection={protection} /> : null}
+              {data.location ? <RestoreTestPart schedule={data} /> : null}
             </>
           ) : null}
         </>
@@ -270,6 +273,9 @@ function StoredBackups({
   const stored = useQuery({ queryKey: ["backup", "stored"], queryFn: () => api.get<StoredBackupsResponse>("/api/backup/stored") });
   const [restoring, setRestoringBackup] = useState<StoredBackup>();
   const [deleting, setDeleting] = useState<StoredBackup>();
+  /** A protected backup to test, while its passphrase is asked for. */
+  const [testing, setTesting] = useState<StoredBackup>();
+  const [testPassphrase, setTestPassphrase] = useState("");
   const [passphrase, setPassphrase] = useState("");
   const [problem, setProblem] = useState<string>();
   const setRestoring = (backup: StoredBackup | undefined) => {
@@ -300,6 +306,24 @@ function StoredBackups({
       notify.error(errorMessage(error));
     },
   });
+  const test = useMutation({
+    mutationFn: ({ backup, passphrase: typed }: { backup: StoredBackup; passphrase?: string }) =>
+      api.post<{ job: JobDto }>(
+        `/api/backup/stored/${encodeURIComponent(backup.name)}/test`,
+        typed === undefined ? undefined : { passphrase: typed },
+      ),
+    onSuccess: () => {
+      setTesting(undefined);
+      setTestPassphrase("");
+      toast.success("Testing a restore. Nothing here is changed; the result is shown below the list.");
+      return refresh();
+    },
+    onError: (error) => {
+      setTesting(undefined);
+      notify.error(errorMessage(error));
+    },
+  });
+  const startTest = (backup: StoredBackup) => (backup.protected ? setTesting(backup) : test.mutate({ backup }));
   const remove = useMutation({
     mutationFn: (backup: StoredBackup) => api.delete(`/api/backup/stored/${encodeURIComponent(backup.name)}`),
     onSuccess: () => {
@@ -378,6 +402,11 @@ function StoredBackups({
                           <Download /> Download
                         </a>
                       </MenuItem>
+                      {backup.check !== "unreadable" && !(backup.protected && protection?.right.allowed === false) ? (
+                        <MenuItem disabled={Boolean(schedule.restoreTestActive)} onSelect={() => startTest(backup)}>
+                          <FlaskConical /> Test a restore
+                        </MenuItem>
+                      ) : null}
                       {allowed && backup.check !== "unreadable" ? (
                         <MenuItem onSelect={() => setRestoring(backup)}>
                           <RotateCcw /> Restore this one
@@ -436,6 +465,29 @@ function StoredBackups({
             right={protection?.right}
           />
         ) : null}
+      </ConfirmDialog>
+      <ConfirmDialog
+        open={Boolean(testing)}
+        onOpenChange={(open) => !open && !test.isPending && setTesting(undefined)}
+        title="Test a restore of this backup?"
+        description={
+          <>
+            The backup of <span className="font-medium text-ink">{testing ? formatDateTime(testing.createdAt) : ""}</span> is protected. Its
+            passphrase opens it for the test only and is not kept. Nothing here is changed.
+          </>
+        }
+        confirmLabel="Test a restore"
+        confirmVariant="primary"
+        loading={test.isPending}
+        onConfirm={() => testing && testPassphrase !== "" && test.mutate({ backup: testing, passphrase: testPassphrase })}
+      >
+        <RestorePassphrase
+          value={testPassphrase}
+          onChange={setTestPassphrase}
+          problem={undefined}
+          earlier={testing?.currentPassphrase === false}
+          right={protection?.right}
+        />
       </ConfirmDialog>
       <ConfirmDialog
         open={Boolean(deleting)}

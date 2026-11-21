@@ -28,6 +28,10 @@ const schedule = (right: BackupRight, chosen: boolean): BackupSchedule => ({
   lastFailure: null,
   active: null,
   right,
+  away: null,
+  kept: null,
+  restoreTest: null,
+  restoreTestActive: null,
 });
 
 const backup = (change: Partial<StoredBackup> = {}): StoredBackup => ({

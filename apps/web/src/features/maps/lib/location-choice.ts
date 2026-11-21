@@ -2,7 +2,9 @@
 import type { ContentKind, StorageLocation } from "@outpost/shared";
 import { locationProblem, preferredLocation } from "@/features/downloads/location-picker";
 
-type Candidate = Pick<StorageLocation, "id" | "name" | "isDefault" | "status" | "freeBytes"> & { defaultFor?: StorageLocation["defaultFor"] };
+type Candidate = Pick<StorageLocation, "id" | "name" | "isDefault" | "status" | "freeBytes"> & {
+  defaultFor?: StorageLocation["defaultFor"];
+};
 
 export interface LocationChoice {
   /** Where the download will go; undefined when no location can take it. */

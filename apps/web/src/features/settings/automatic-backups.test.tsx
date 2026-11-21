@@ -22,6 +22,10 @@ const schedule = (change: Partial<BackupSchedule> = {}): BackupSchedule => ({
   lastFailure: null,
   active: null,
   right: local,
+  away: null,
+  kept: null,
+  restoreTest: null,
+  restoreTestActive: null,
   ...change,
 });
 
@@ -245,6 +249,40 @@ describe("automatic backups in Settings", () => {
     expect(requests).toHaveLength(1);
     await userEvent.click(within(deleting).getByRole("button", { name: "Delete backup" }));
     expect(requests[1]).toEqual({ call: "DELETE /api/backup/stored/outpost-backup-2026-11-15T03-00-00-000Z-manual.zip", body: undefined });
+  });
+
+  it("tests a restore of a stored backup from its menu, and shows what the last test found", async () => {
+    const tested = schedule({
+      restoreTest: {
+        at: NEWER + HOUR,
+        name: backup().name,
+        backupCreatedAt: NEWER,
+        ok: true,
+        problem: null,
+        appVersion: "0.1.0",
+        entries: 12,
+        migrations: { backup: 30, current: 30 },
+        counts: [
+          { what: "Pages", inBackup: 412, now: 415 },
+          { what: "Saved places", inBackup: 37, now: 37 },
+        ],
+        durationMs: 2_000,
+      },
+    });
+    serve({ schedule: schedule(), after: tested, backups: [backup()] });
+    const section = await show()();
+    expect(await within(section).findByText(/Not tested yet/)).toBeVisible();
+
+    const [row] = await within(section).findAllByRole("listitem");
+    await userEvent.click(within(row!).getByRole("button", { name: `Actions for the backup of ${formatDateTime(NEWER)}` }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Test a restore" }));
+    expect(requests).toEqual([{ call: "POST /api/backup/stored/outpost-backup-2026-11-16T03-00-00-000Z-scheduled.zip/test", body: {} }]);
+
+    expect(
+      await within(section).findByText(`The backup of ${formatDateTime(NEWER)} opened, and its database is sound.`, { exact: false }),
+    ).toBeVisible();
+    const table = within(section).getByRole("table", { name: "What the backup holds, against what is here now" });
+    expect(within(table).getByRole("row", { name: "Pages 412 415" })).toBeVisible();
   });
 
   it("starts a backup when asked, and shows one that is under way", async () => {

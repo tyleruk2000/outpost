@@ -37,6 +37,7 @@ import {
   jobsCheck,
   memoryCheck,
   powerCheck,
+  restoreTestCheck,
   slownessCheck,
   storageChecks,
   temperatureCheck,
@@ -114,7 +115,8 @@ export async function registerDevice(app: FastifyInstance, ctx: AppContext): Pro
     const checks = [
       ...storageChecks(ctx.services.storage.list() as never, SPACE_RESERVE_BYTES),
       databaseCheck(database),
-      backupCheck(database.backup, downloaded?.at ?? null, now),
+      backupCheck(database.backup, downloaded?.at ?? null, now, ctx.services.backups.overview()),
+      restoreTestCheck(ctx.services.backups.overview(), now),
       ...cardChecks(readCardWear(read, list)),
       memoryCheck(readMemory(read)),
       temperatureCheck(readTemperature(read, list), throttling),
