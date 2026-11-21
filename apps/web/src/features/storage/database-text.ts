@@ -45,8 +45,8 @@ export function countWords(counts: Array<{ id: DatabaseCountId; count: number }>
 export const GROUP_WORDS: Record<DatabaseGroupId, { label: string; detail: string }> = {
   search: { label: "Search index", detail: "Passages and the index of their words" },
   meaning: { label: "Search by meaning", detail: "A vector for each passage read" },
-  library: { label: "Library records", detail: "Documents, collections, downloads" },
-  notes: { label: "Notes", detail: "Pages, links, attachment records" },
+  library: { label: "Library records", detail: "Documents, highlights, collections, downloads" },
+  notes: { label: "Notes", detail: "Pages, earlier versions of pages, links, attachment records" },
   maps: { label: "Maps", detail: "Saved places, routes, place names, reference layers, nuclear effects scenarios" },
   radio: { label: "Radio", detail: "Repeaters, plans, the log, predictions, Morse practice" },
   prepare: {

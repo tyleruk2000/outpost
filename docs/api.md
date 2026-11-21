@@ -548,6 +548,11 @@ Types: `packages/shared/src/notes.ts`. See
 | `DELETE /api/notes/:id` | Moves the page and its sub-pages to the trash. `{ trashed: [ids] }`. |
 | `DELETE /api/notes/:id?permanent=1` | Deletes a page that is in the trash for good, with attachments nothing else uses. |
 | `POST /api/notes/:id/restore` | Brings a page back from the trash. |
+| `GET /api/notes/:id/versions` | Earlier versions of the page, newest first (`NoteVersionsResponse`). |
+| `GET /api/notes/:id/versions/:versionId` | `{ version }` (`NoteVersionDetail`), with its content. |
+| `POST /api/notes/:id/versions/:versionId/restore` | Body (`RestoreNoteVersionBody`): `baseUpdatedAt`. Saves the version as the page's newest, keeping the current one as a version. `409` if the page is newer than `baseUpdatedAt`. |
+| `GET /api/notes/versions/space` | `NoteVersionsSpace`: how many versions of how many pages, and their bytes. |
+| `DELETE /api/notes/versions` | Erases every earlier version of every page. `{ cleared }`. |
 | `GET /api/notes/:id/export.md` | The page as a Markdown file. |
 | `GET /api/notes/export.zip` | The whole workspace as a zip of Markdown files and attachments. |
 | `POST /api/attachments` | Uploads one file as `multipart/form-data` (at most 50 MB). Optional `noteId` field or query parameter. `{ attachment }` (`AttachmentDto`). |

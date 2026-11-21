@@ -154,6 +154,7 @@ export function App() {
           <Route path="radio/frequencies" element={<FrequenciesPage />} />
           <Route path="notes" element={<NotesPage />} />
           <Route path="notes/:id" element={<NotesPage />} />
+          <Route path="notes/:id/versions" element={<NotesPage versions />} />
           <Route path="chat" element={<ChatPage />} />
           <Route path="chat/:id" element={<ChatPage />} />
           <Route path="contacts/*" element={<ContactsPage />} />

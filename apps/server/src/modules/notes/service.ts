@@ -34,6 +34,7 @@ import * as content from "./content/index.ts";
 import { attachmentHref, docToSections, docToText, emptyDoc, extractLinks, noteHref, sanitizeDoc } from "./content/index.ts";
 import { needsRenumbering, positionBetween } from "./positions.ts";
 import { BUILTIN_PREFIX, BUILTIN_TEMPLATES, findBuiltinTemplate } from "./templates.ts";
+import { createNoteVersions, type NoteVersions } from "./versions.ts";
 
 export type NoteRow = typeof notes.$inferSelect;
 
@@ -134,6 +135,12 @@ export interface NotesService {
   deleteAttachment(id: string): Promise<void>;
   /** The stored row, for code in this module that needs more than the DTO. */
   getRow(id: string): NoteRow;
+  /** Earlier versions of pages: listed, read and measured here; kept by `update`. */
+  versions: Pick<NoteVersions, "list" | "get" | "space">;
+  /** Makes an earlier version the page's newest, keeping what it says now as a version. */
+  restoreVersion(id: string, versionId: string, options: { baseUpdatedAt: number; origin?: string }): NoteSaveResult;
+  /** Removes every earlier version of every page, erasing the space they took. */
+  clearVersions(): number;
   /** Pure helpers for page documents (Markdown and HTML conversion, text, links). */
   content: typeof content;
 }
@@ -191,6 +198,7 @@ interface TreeRow {
 export function createNotesService(ctx: AppContext, attachments: AttachmentStore): NotesService {
   const { db, sqlite } = ctx;
   const { search } = ctx.services;
+  const versions = createNoteVersions(ctx);
 
   const changed = (id: string, data?: NoteChangedEvent) => ctx.events.publish({ type: "notes.changed", id, data });
 
@@ -603,6 +611,15 @@ export function createNotesService(ctx: AppContext, attachments: AttachmentStore
     }
     if (Object.keys(set).length === 0) return { row, dirty: false };
 
+    // What the page said before this save is kept as an earlier version, except plain
+    // text of a page that is now being encrypted: that, and every plain version before
+    // it, is erased, so an encrypted page keeps ciphertext versions only.
+    if (set.content !== undefined || set.title !== undefined) {
+      const encrypting = set.content !== undefined && encryptedNoteArmor(set.content) !== null;
+      if (encrypting) versions.dropPlain(id);
+      if (!encrypting || encryptedNoteArmor(row.content) !== null) versions.keep(row);
+    }
+
     db.update(notes).set(set).where(eq(notes.id, id)).run();
     const next = getRow(id);
     if (doc) writeLinks(id, doc);
@@ -867,6 +884,24 @@ export function createNotesService(ctx: AppContext, attachments: AttachmentStore
     tree,
     getRow,
     content,
+    versions,
+
+    restoreVersion(id, versionId, options) {
+      const version = versions.get(id, versionId);
+      return service.update(id, {
+        title: version.title,
+        content: version.content,
+        baseUpdatedAt: options.baseUpdatedAt,
+        guardEncryption: true,
+        origin: options.origin,
+      });
+    },
+
+    clearVersions() {
+      const cleared = search.scrubbing(() => versions.clear());
+      if (cleared > 0) ctx.events.publish({ type: "notes.changed" });
+      return cleared;
+    },
 
     create(input) {
       const id = create.immediate(input);

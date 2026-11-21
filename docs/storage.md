@@ -655,6 +655,14 @@ reclaimed. Every page of the file belongs to one table or index or is unused, so
 groups and the unused space add up to the size of the file exactly. A build of SQLite
 without `dbstat` shows the counts only and says so; nothing is estimated.
 
+### Earlier versions of pages
+
+Under the database, **Earlier versions of pages** says how many versions of how many
+pages Outpost keeps and how much room they take. **Clear earlier versions** erases them
+all, overwriting the space they used; the pages stay as they are. The file does not
+shrink until unused space is reclaimed (below). How versions are kept is in
+[notes-and-imports.md](notes-and-imports.md#earlier-versions).
+
 ### Checking the database
 
 **Check the database** runs SQLite's `quick_check`, which reads every page and checks
