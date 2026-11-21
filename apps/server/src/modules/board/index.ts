@@ -44,7 +44,27 @@ const idParams = z.object({ id: z.string().min(1).max(64) });
 
 const postBody = z.object({ author: name, body, channel }).strict();
 const checkInBody = z
-  .object({ author: name, status, body: body.default(""), place: place.optional(), position: position.optional(), channel })
+  .object({
+    author: name,
+    status,
+    body: body.default(""),
+    place: place.optional(),
+    position: position.optional(),
+    channel,
+    writtenAt: z.number().int().min(0).optional(),
+    clientId: z
+      .string()
+      .regex(/^[A-Za-z0-9_-]{8,64}$/, "That is not an id a phone gives.")
+      .optional(),
+  })
+  .strict();
+const rollCallQuery = z.object({ since: z.coerce.number().int().min(0).optional() });
+const askBody = z
+  .object({
+    by: name,
+    note: z.string().max(400).default(""),
+    alsoOn: z.array(z.string().regex(CHANNEL_PATTERN, "That is not a channel.")).max(8).default([]),
+  })
   .strict();
 const editBody = z
   .object({ by: name, body: body.optional(), place: place.optional(), status: status.optional(), baseUpdatedAt: z.number().int() })
@@ -97,6 +117,16 @@ export async function registerBoard(app: FastifyInstance, ctx: AppContext): Prom
     const input = checkInBody.parse(request.body);
     posts.take(from(request));
     return { message: service.checkIn({ ...input, place: input.place ?? null, position: input.position ?? null }) };
+  });
+
+  /** The roll call: everyone's latest check-in, and who has checked in since a time (by default the latest ask). */
+  app.get("/api/board/roll-call", async (request) => service.rollCall(rollCallQuery.parse(request.query).since));
+
+  /** Asks everyone to check in, on the board and on any radio channels named. */
+  app.post("/api/board/roll-calls", async (request) => {
+    const input = askBody.parse(request.body);
+    posts.take(from(request));
+    return service.askRollCall(input);
   });
 
   app.patch("/api/board/messages/:id", async (request) => {

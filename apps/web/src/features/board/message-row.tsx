@@ -247,6 +247,9 @@ export function MessageRow({
             Changed by {message.edited.by} at {whenWritten(message.edited.at)}
           </p>
         ) : null}
+        {message.sentAt ? (
+          <p className="mt-1 text-micro text-ink-muted">Written on a phone out of reach; arrived at {whenWritten(message.sentAt)}</p>
+        ) : null}
       </>
     );
   }

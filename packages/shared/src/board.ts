@@ -86,6 +86,8 @@ export interface BoardMessage {
   updatedAt: number;
   edited: { at: number; by: string } | null;
   removed: { at: number; by: string } | null;
+  /** For one written on a phone out of reach and sent later: when it reached the server (`createdAt` is when it was written). */
+  sentAt: number | null;
   /** What a transport keeps with it (for a radio link, `MeshMeta`: who sent it, and what became of one written here); null for the household's own. */
   meta: Record<string, unknown> | null;
 }
@@ -138,7 +140,14 @@ export interface BoardCheckInInput {
   place?: string | null;
   position?: BoardPosition | null;
   channel?: string;
+  /** Written on a phone out of reach: when it was written. At most a week back. */
+  writtenAt?: number;
+  /** The phone's own id for it, so that one sent twice is kept once. */
+  clientId?: string;
 }
+
+/** How far back a check-in written on a phone may say it was written. */
+export const CHECK_IN_WRITTEN_DAYS = 7;
 
 export interface BoardEditInput {
   by: string;
@@ -165,6 +174,55 @@ export interface BoardEvent {
   /** The first words, for a toast. */
   excerpt?: string;
   status?: CheckInStatus | null;
+}
+
+// ── The roll call ──
+
+/** Someone asking everyone to check in. */
+export interface RollCallAsk {
+  id: string;
+  askedBy: string;
+  note: string;
+  at: number;
+}
+
+/** One person in the roll call: their latest check-in on any channel, and whether it is since the time chosen. */
+export interface RollCallLine {
+  name: string;
+  latest: {
+    id: string;
+    status: CheckInStatus;
+    body: string;
+    place: string | null;
+    hasPosition: boolean;
+    createdAt: number;
+    /** "board", or the radio channel it came in on. */
+    channel: string;
+  } | null;
+  /** Checked in at or after `since`. */
+  answered: boolean;
+}
+
+export interface RollCallResponse {
+  /** The time the roll call counts from. */
+  since: number;
+  lines: RollCallLine[];
+  /** The latest asks, newest first. */
+  asks: RollCallAsk[];
+  answered: number;
+}
+
+export interface RollCallAskInput {
+  by: string;
+  note?: string;
+  /** Radio channels to ask on as well as the board ("meshtastic:longfast"). */
+  alsoOn?: string[];
+}
+
+export interface RollCallAskResponse {
+  ask: RollCallAsk;
+  /** Channels the ask could not go on, with why. */
+  refused: Array<{ channel: string; reason: string }>;
 }
 
 /** What the board keeps: counted for "what is stored", and erased with everything else. */

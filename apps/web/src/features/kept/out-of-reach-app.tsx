@@ -5,7 +5,7 @@
  */
 import { ownValue } from "@outpost/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Map as MapIcon, RefreshCw, WifiOff } from "lucide-react";
+import { Map as MapIcon, PenLine, RefreshCw, WifiOff } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, Outlet, Route, Routes, useLocation } from "react-router";
 import { LogoMark } from "@/components/logo";
@@ -23,6 +23,8 @@ import { useKept } from "./store";
 
 const KeptMapScreen = lazy(() => import("./kept-map-screen"));
 const KeptPlanScreen = lazy(() => import("./kept-plan-screen"));
+const WriteScreen = lazy(() => import("./write-screen"));
+const KeptDrillScreen = lazy(() => import("./kept-drill-screen"));
 
 /** On the server's own computer "out of reach" can only mean the server is not running, and the line says what to do about that. */
 const ON_THE_SERVER_ITSELF = typeof window !== "undefined" && ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname);
@@ -30,6 +32,7 @@ const ON_THE_SERVER_ITSELF = typeof window !== "undefined" && ["localhost", "127
 const NAV = [
   { to: "/kept", label: ON_THIS_DEVICE, icon: DeviceIcon },
   { to: "/maps", label: "Maps", icon: MapIcon },
+  { to: "/kept/write", label: "Write", icon: PenLine },
 ];
 
 const spineLink =
@@ -92,6 +95,7 @@ function Shell({ checking, onCheck }: { checking: boolean; onCheck: () => void }
             <NavLink
               key={item.to}
               to={item.to}
+              end
               className={({ isActive }) =>
                 cn(
                   spineLink,
@@ -143,7 +147,7 @@ function Shell({ checking, onCheck }: { checking: boolean; onCheck: () => void }
         className="fixed inset-x-0 bottom-0 z-(--z-nav) flex border-t border-border bg-page/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm md:hidden"
       >
         {NAV.map((item) => (
-          <NavLink key={item.to} to={item.to} className={tab}>
+          <NavLink key={item.to} to={item.to} end className={tab}>
             <item.icon aria-hidden className="size-[22px]" strokeWidth={1.6} />
             {item.label}
           </NavLink>
@@ -222,6 +226,8 @@ export default function OutOfReachApp({ onReachable }: { onReachable: () => void
           <Route path="notes/:id" element={<KeptNoteScreen />} />
           <Route path="maps" element={<KeptMapScreen />} />
           <Route path="prepare/plans/:id/use" element={<KeptPlanScreen />} />
+          <Route path="kept/write" element={<WriteScreen />} />
+          <Route path="prepare/offline-drill" element={<KeptDrillScreen />} />
           <Route path="*" element={<NeedsServer />} />
         </Route>
       </Routes>

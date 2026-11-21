@@ -131,6 +131,11 @@ const TABLES: Record<string, Decision> = {
   medical_sheets: { group: "prepare", drive: true },
   comms_plans: { group: "prepare", drive: true },
   household_binder: { group: "prepare", drive: true },
+  // Readiness (modules/readiness): the log of events, routine checks and the offline drills done.
+  event_log: { group: "prepare", drive: true },
+  routine_checks: { group: "prepare", drive: true },
+  offline_drills: { group: "prepare", drive: true },
+  roll_calls: { group: "other", drive: "Part of the household board, which stays with the household's Outpost (docs/portable.md)." },
   nuclear_scenarios: { group: "maps", drive: true },
   nuclear_scenario_sets: { group: "maps", drive: true },
   reference_features: { group: "maps", drive: true },

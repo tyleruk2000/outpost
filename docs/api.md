@@ -1084,7 +1084,9 @@ change or remove 30 times a minute and send 30 files an hour; past that, `429` w
 | `GET /api/board/messages/:id` | `{ message }`. |
 | `GET /api/board/summary` | `{ checkIns, people, newSince, newestAt, fileDays, limits }`: each person's latest check-in on the household's board (the household's people first, then anyone else), the names to offer a device choosing one, how many messages are newer than `since` (a query parameter, milliseconds), the newest message's time, how many days sent files are kept (0: until removed), and the limits. |
 | `POST /api/board/messages` | `{ author, body, channel? }`. A name of 1–40 characters (longer is cut; control characters removed) and 1–10,000 characters of words. Returns `{ message }`. |
-| `POST /api/board/check-ins` | `{ author, status: "safe" \| "help" \| "other", body?, place?, position?, channel? }`. `other` needs words. `place` up to 120 characters; `position` is `{ lat, lon, accuracyM }` (`accuracyM` may be null). Returns `{ message }`. |
+| `POST /api/board/check-ins` | `{ author, status: "safe" \| "help" \| "other", body?, place?, position?, channel?, writtenAt?, clientId? }`. `other` needs words. `place` up to 120 characters; `position` is `{ lat, lon, accuracyM }` (`accuracyM` may be null). From a phone that held it out of reach: `writtenAt` becomes `createdAt` (held to the last 7 days) and `sentAt` is set; a `clientId` already kept returns that message instead of a second. Returns `{ message }`. |
+| `GET /api/board/roll-call` | `RollCallResponse`: everyone's latest check-in on any channel (the household first), `answered` for each checked in at or after `since` (a query parameter; by default the latest ask, or a day back), and the latest five asks. |
+| `POST /api/board/roll-calls` | `{ by, note?, alsoOn? }`: posts "Roll call: please check in." on the board, and on each radio channel in `alsoOn`, and records the ask. Returns `{ ask, refused }`, `refused` naming channels a transport would not take. |
 | `PATCH /api/board/messages/:id` | `{ by, body?, place?, status?, baseUpdatedAt }`: anyone may change any message; it records who and when. `place` and `status` only for a check-in. `409` when `baseUpdatedAt` is not the message's `updatedAt` (changed elsewhere meanwhile) or the message was removed; nothing changes. |
 | `POST /api/board/messages/:id/remove` | `{ by }`: removes a message for everyone. Its words, place, position and file go; the row stays with `removed: { by, at }`. Removing it again changes nothing. |
 | `POST /api/board/files` | `multipart/form-data`: the fields `author`, `body` (optional) and `channel` (optional), then one file of up to 200 MB. `413` over the size, `507` when the board already keeps 100 files or 4 GB, or the data folder lacks room, `400` for an empty file or fields after the file. Returns `{ message }` with `file: { id, name, sizeBytes, picture, expiresAt, gone, url }`. |
@@ -1362,6 +1364,27 @@ the `medical_sheets` tool only while `tools.medical` is on; encrypted ones never
 | `PUT /api/keeping-in-touch` | Replace the plan (`CommsInput`). `baseUpdatedAt` older than the stored plan: `409 conflict`. |
 | `GET /api/household-binder` | `BinderStatus`: the binder last made (`made`: `parts`, `contentAt`, `madeAt`, `pages`, or null), when each part's content last changed (`changedAt`), and the parts changed since (`stale`). |
 | `POST /api/household-binder/made` | Body `{ parts, contentAt, pages }`: record the binder just made in the browser. Answers `BinderStatus`. |
+
+## Readiness
+
+Types: `packages/shared/src/readiness.ts`; see [readiness.md](readiness.md). Changes
+publish `readiness.changed`.
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/event-log` | `EventLogResponse`: `lines` oldest first (at most 500), `entries` (all lines kept), `planInUse`. Query `from` (milliseconds) and `others=1`, which adds the board's check-ins and the steps ticked in plans (`kind: "checkin"`, `"tick"`) from `from`, or else from the first entry or a week back, whichever is earlier. |
+| `POST /api/event-log` | `{ author, text, at?, planId? }`: one line of up to 1,000 characters (line breaks become spaces). `at` up to 30 days back, never ahead. Returns `{ line }`. |
+| `PATCH /api/event-log/:id` | `{ by, text?, at?, baseUpdatedAt }`. Records who changed it. `409` when changed elsewhere meanwhile. |
+| `DELETE /api/event-log/:id` | Removes the line. |
+| `POST /api/event-log/to-notes` | `{ from?, others }`: the lines as `GET` gives them, written to a new page of Notes, a heading per day. Returns `{ note: { id, title }, lines }`. `400` when there is nothing. |
+| `GET /api/routine-checks` | `{ checks, expiringSupplies }`: each `RoutineCheck` with `dueAt` (last done plus its interval) and `overdue`; supplies dated within 30 days. |
+| `POST /api/routine-checks` | `{ name, everyDays, note?, link? }`. `everyDays` 1–3,650; `link` one of `CHECK_LINKS`. At most 60. |
+| `POST /api/routine-checks/suggested` | Adds the checks of `ROUTINE_CHECK_TEMPLATE` not already in the list. Returns `{ added }`. |
+| `PUT /api/routine-checks/:id` | Replace its name, interval, note and link. |
+| `POST /api/routine-checks/:id/done` | `{ by, at? }`: done now, or at `at`; `at: null` clears it. |
+| `DELETE /api/routine-checks/:id` | Removes it. |
+| `GET /api/offline-drill` | `OfflineDrillResponse`: `lines` (`DrillLine`: `held`, `missing`, `stale` or `untried`, with the screen that fixes it) read from what the modules hold, and `lastRun`. |
+| `POST /api/offline-drill/runs` | `{ by, startedAt, answers, notes? }`: the result of a drill, `answers` from step id (`DRILL_STEPS`) to `"worked"` or `"failed"`; unknown steps are dropped. |
 
 ## Mesh radio
 

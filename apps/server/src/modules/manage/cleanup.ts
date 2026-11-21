@@ -267,6 +267,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
         weather: ctx.services.weather.count(),
         emergencyPlans: ctx.services.emergencyPlans.kept.count(),
         householdPapers: ctx.services.householdPapers.kept.count(),
+        readiness: ctx.services.readiness.kept.count(),
         morse: ctx.services.morse.kept.count(),
         games: ctx.services.games.kept.count(),
         board: ctx.services.board.kept.count(),
@@ -535,6 +536,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
       weather: { places: 0, readings: 0, copies: 0, copyBytes: 0 },
       emergencyPlans: 0,
       householdPapers: 0,
+      readiness: 0,
       morse: { sessions: 0, progress: 0 },
       games: { saves: 0 },
       board: { messages: 0, files: 0, fileBytes: 0 },
@@ -596,6 +598,8 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
     personal.emergencyPlans = ctx.services.emergencyPlans.kept.eraseAll();
     // The household's papers: medical sheets, the communication plan and the record of the binder last made.
     personal.householdPapers = ctx.services.householdPapers.kept.eraseAll();
+    // Readiness: the log of events, the routine checks and the offline drills kept.
+    personal.readiness = ctx.services.readiness.kept.eraseAll();
     // The Morse trainer: its progress, settings and practice sessions.
     personal.morse = ctx.services.morse.kept.eraseAll();
     // The games: the allotment and each game's tally.

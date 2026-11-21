@@ -305,16 +305,19 @@ was.
   again every ten seconds while it is on screen, when the phone reports a network, and
   when the app comes back to the front, and returns to normal by itself. It asks
   nothing while it is in the background or the phone is locked.
-- The navigation holds only what works: **On this phone**, **Maps**, and the kept pages.
+- The navigation holds only what works: **On this phone**, **Maps**, **Write**, and the
+  kept pages.
 - A kept page opens as it is at home, with writing switched off. A page that was not
   kept says "This page is not kept on this phone". A screen that lives on the server
   (Library, Search, Settings and the rest) says it needs the server. Nothing spins and
   nothing shows an error for being out of reach.
-- **Nothing can be changed**, except ticking the steps of a kept emergency plan (see
-  [An emergency plan](#an-emergency-plan)). There is no editing out of reach in this
-  version. A kept copy is only ever replaced by the server's version; it is never sent
+- **Nothing kept can be changed**, except ticking the steps of a kept emergency plan (see
+  [An emergency plan](#an-emergency-plan)). New check-ins and new pages can be written
+  (see [Writing while out of reach](#writing-while-out-of-reach)); kept pages cannot be
+  edited. A kept copy is only ever replaced by the server's version; it is never sent
   back, so a stale copy cannot overwrite a page. Documents and reference collections
   cannot be kept.
+- The steps of the [offline drill](readiness.md#offline-drill) open and can be answered.
 
 How the app notices: the live connection to the server drops, and a plain question to
 the server (`/api/health`) goes unanswered for four seconds. That question is asked
@@ -326,6 +329,27 @@ If the server goes out of reach while a screen is open, that screen is left exac
 it is, because you may be half-way through writing. The notes editor holds unsaved
 changes until the server answers, as it always has. The kept copies take over from the
 next screen you open.
+
+### Writing while out of reach
+
+**Write**, in the navigation while the server is out of reach, holds two things:
+
+- **Check in**: your name, where you are, a few words, and **I'm safe**, **I need help** or
+  **Just my words**.
+- **A new page**: a title and plain text. Formatting and pictures can be added once it is
+  in Notes.
+
+Both are kept on the phone and listed under **Written here, waiting to be sent**, on
+Write and on **On this phone**. When the phone next reaches Outpost they are sent by
+themselves, oldest first, and a message says what went:
+
+- A check-in goes on the board with the time it was written, up to a week back, and
+  the board says when it arrived. Sending one twice keeps it once.
+- A page becomes a new page in Notes. It never changes a page that is already there.
+
+If Outpost refuses one (a name left empty, say), it stays on the phone with Outpost's
+words beside it and **Try again**. Taking something off the phone before it is sent asks
+first. Like keeping things, writing needs HTTPS.
 
 ### Keeping copies up to date
 

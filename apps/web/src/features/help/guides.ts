@@ -315,6 +315,14 @@ export const GUIDES: Guide[] = [
     opens: { to: "/prepare/plans", label: "Open Emergency plans" },
   },
   {
+    slug: "readiness",
+    file: "readiness.md",
+    group: "using",
+    about: "Check-ins and the roll call, the log of events, routine checks, and the offline drill.",
+    keywords: "check in roll call log of events routine checks overdue offline drill",
+    opens: { to: "/prepare/check-in", label: "Open Check-in and roll call" },
+  },
+  {
     slug: "household-papers",
     file: "household-papers.md",
     group: "using",

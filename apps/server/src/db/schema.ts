@@ -1605,6 +1605,8 @@ export const boardMessages = sqliteTable(
     editedBy: text("edited_by"),
     removedAt: integer("removed_at"),
     removedBy: text("removed_by"),
+    /** When it reached the server, for one written on a phone out of reach and sent later (`createdAt` is when it was written). Null otherwise. */
+    sentAt: integer("sent_at"),
   },
   (table) => [
     index("board_messages_channel_created").on(table.channel, table.createdAt),
@@ -1681,3 +1683,63 @@ export const learningTopics = sqliteTable(
   },
   (table) => [primaryKey({ columns: [table.archive, table.path] })],
 );
+
+// ── Readiness (Preparedness: roll call, the log of events, routine checks, the offline drill) ──
+
+/** Someone asked everyone to check in: the roll call counts from the latest. The message it posted is on the board. */
+export const rollCalls = sqliteTable("roll_calls", {
+  id: id(),
+  askedBy: text("asked_by").notNull(),
+  note: text("note").notNull().default(""),
+  /** The board message that asked; null once that message is gone. */
+  messageId: text("message_id"),
+  createdAt: createdAt(),
+});
+
+/** One line of the household's log of events: what happened, when, and who wrote it down. */
+export const eventLog = sqliteTable(
+  "event_log",
+  {
+    id: id(),
+    /** When it happened, which may be a little before it was written down. */
+    happenedAt: integer("happened_at").notNull(),
+    author: text("author").notNull(),
+    text: text("text").notNull(),
+    /** The emergency plan in use when it was written, and its name then (kept if the plan goes). */
+    planId: text("plan_id"),
+    planName: text("plan_name"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    editedAt: integer("edited_at"),
+    editedBy: text("edited_by"),
+  },
+  (table) => [index("event_log_happened").on(table.happenedAt)],
+);
+
+/** A check the household does every so often (rotate the water, run the generator), and when it was last done. */
+export const routineChecks = sqliteTable("routine_checks", {
+  id: id(),
+  name: text("name").notNull(),
+  everyDays: integer("every_days").notNull(),
+  note: text("note").notNull().default(""),
+  /** A screen of Outpost it belongs to ("supplies", "backup"), or null. */
+  link: text("link"),
+  /** The suggestion it was started from, or null for one of the household's own. */
+  templateId: text("template_id"),
+  lastDoneAt: integer("last_done_at"),
+  lastDoneBy: text("last_done_by"),
+  position: integer("position").notNull().default(0),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+/** An offline drill that was followed through: which steps worked, and what did not. */
+export const offlineDrills = sqliteTable("offline_drills", {
+  id: id(),
+  by: text("by").notNull(),
+  startedAt: integer("started_at").notNull(),
+  finishedAt: integer("finished_at").notNull(),
+  /** Step id to "worked" or "failed". Steps not answered are left out. */
+  answers: json<Record<string, "worked" | "failed">>("answers").notNull(),
+  notes: text("notes").notNull().default(""),
+});

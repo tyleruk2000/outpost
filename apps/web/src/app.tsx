@@ -51,6 +51,10 @@ const MedicalSheetPage = lazy(() => import("./features/household-papers/medical-
 const CommsPage = lazy(() => import("./features/household-papers/comms-page"));
 const GrabCardsPage = lazy(() => import("./features/household-papers/grab-cards-page"));
 const BinderPage = lazy(() => import("./features/household-papers/binder-page"));
+const CheckInPage = lazy(() => import("./features/readiness/check-in-page"));
+const EventLogPage = lazy(() => import("./features/readiness/log-page"));
+const ChecksPage = lazy(() => import("./features/readiness/checks-page"));
+const DrillPage = lazy(() => import("./features/readiness/drill-page"));
 const GamesPage = lazy(() => import("./features/games/games-page"));
 const AllotmentPage = lazy(() => import("./features/games/allotment/allotment-page"));
 const SolitairePage = lazy(() => import("./features/games/solitaire/solitaire-page"));
@@ -199,6 +203,10 @@ export function App() {
           <Route path="prepare/keeping-in-touch" element={<CommsPage />} />
           <Route path="prepare/grab-cards" element={<GrabCardsPage />} />
           <Route path="prepare/binder" element={<BinderPage />} />
+          <Route path="prepare/check-in" element={<CheckInPage />} />
+          <Route path="prepare/log" element={<EventLogPage />} />
+          <Route path="prepare/checks" element={<ChecksPage />} />
+          <Route path="prepare/offline-drill" element={<DrillPage />} />
           <Route path="radio/propagation" element={<PropagationPage />} />
           <Route path="radio/coverage" element={<CoveragePage />} />
           <Route path="radio/log" element={<LogPage />} />

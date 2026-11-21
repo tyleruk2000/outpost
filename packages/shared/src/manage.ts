@@ -140,6 +140,8 @@ export interface CleanupPlan {
     emergencyPlans?: number;
     /** Medical sheets, the communication plan and the binder's record (Preparedness). Absent from a plan made before they were counted. */
     householdPapers?: number;
+    /** The log of events, routine checks and offline drills kept (Preparedness). Absent from a plan made before they were counted. */
+    readiness?: number;
     /** The Morse trainer's practice sessions and its record of progress. Absent from a plan made before it was counted. */
     morse?: MorseKept;
     /** The games: the allotment's plot and each game's tally, one row each. Absent from a plan made before they were counted. */
@@ -227,6 +229,8 @@ export interface CleanupResult extends Record<string, unknown> {
     weather?: WeatherKept;
     emergencyPlans?: number;
     householdPapers?: number;
+    /** The log of events, routine checks and offline drills kept (Preparedness). Absent from a plan made before they were counted. */
+    readiness?: number;
     morse?: MorseKept;
     games?: GamesKept;
     board?: BoardKept;

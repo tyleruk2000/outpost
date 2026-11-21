@@ -63,6 +63,8 @@ export * from "./radio.ts";
 export * from "./radio-frequencies.ts";
 export * from "./radio-observations.ts";
 export * from "./radio-range.ts";
+// Readiness (the log of events, routine checks, the offline drill), on a line of its own.
+export * from "./readiness.ts";
 export * from "./recommended-models.ts";
 export * from "./reference-layers.ts";
 export * from "./repeaters.ts";

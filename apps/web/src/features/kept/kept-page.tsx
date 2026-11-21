@@ -18,6 +18,8 @@ import { notify } from "@/lib/notify";
 import { formatDateTime, formatNumber, plural } from "@/lib/utils";
 import { continueArea, stopArea, useAreaWork } from "./area";
 import { DEVICE, ON_THIS_DEVICE, runsInstalled } from "./device";
+import { useOutbox } from "./outbox";
+import { OutboxList } from "./outbox-list";
 import { type KeptItem, keepingSupported, removeKept, useKept } from "./store";
 
 const title = (item: KeptItem) => item.title.trim() || "Untitled";
@@ -277,6 +279,27 @@ function GoodToKnow() {
   );
 }
 
+/** What was written here while out of reach and has not been sent: there only when something is waiting, or out of reach. */
+function WaitingSection({ outOfReach }: { outOfReach: boolean }) {
+  const waiting = useOutbox();
+  if (!outOfReach && (waiting?.length ?? 0) === 0) return null;
+  return (
+    <Section
+      title="Written here, waiting to be sent"
+      description={`Check-ins and new pages written on this ${DEVICE} while the server was out of reach. They are sent when it is back.`}
+      actions={
+        outOfReach ? (
+          <Button asChild variant="primary" size="sm">
+            <Link to="/kept/write">Write something</Link>
+          </Button>
+        ) : null
+      }
+    >
+      <OutboxList canSend={!outOfReach} />
+    </Section>
+  );
+}
+
 export default function KeptPage({ outOfReach = false }: { outOfReach?: boolean }) {
   const kept = useKept();
   const supported = keepingSupported();
@@ -354,6 +377,7 @@ export default function KeptPage({ outOfReach = false }: { outOfReach?: boolean 
         })
       )}
 
+      {supported ? <WaitingSection outOfReach={outOfReach} /> : null}
       {supported ? <RoomSection keptBytes={total} /> : null}
       {supported && DEVICE !== "computer" && !runsInstalled() ? <HomeScreen /> : null}
       <GoodToKnow />
