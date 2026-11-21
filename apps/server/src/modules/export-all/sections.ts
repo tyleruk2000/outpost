@@ -1,0 +1,493 @@
+/**
+ * The parts of "Take everything out": for each, how much there is, and how it is
+ * written into the zip. Each part reuses the single export its own screen offers
+ * (notes as Markdown, contacts as vCard, places as GPX, supplies and the barometer log
+ * as CSV) so that the files are the ones a person already knows.
+ */
+import fs from "node:fs";
+import path from "node:path";
+import type { ExportSection, ExportSectionEstimate } from "@outpost/shared";
+import type { ZipArchive } from "archiver";
+import type { AppContext } from "../../core/context.ts";
+import { safeFileName } from "../../core/fs-safe.ts";
+import { VERSION } from "../../core/version.ts";
+import { addEntry } from "../notes/export.ts";
+import { toCsv as suppliesCsv } from "../supplies/csv.ts";
+import { writeReadingsCsv } from "../weather/csv.ts";
+import { type LogRow, writeAdif } from "./adif.ts";
+
+export interface Written {
+  count: number;
+  leftOut: string[];
+}
+
+export interface Section {
+  id: ExportSection;
+  label: string;
+  format: string;
+  /** What the README says this folder holds. */
+  readme: string;
+  estimate(ctx: AppContext): Promise<Omit<ExportSectionEstimate, "id" | "label" | "format">>;
+  write(ctx: AppContext, archive: ZipArchive, folder: string, now: number, signal: AbortSignal): Promise<Written>;
+}
+
+const bytesOf = (text: string) => Buffer.byteLength(text, "utf8");
+const json = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`;
+const scalar = <T>(ctx: AppContext, sql: string, ...params: unknown[]) =>
+  ctx.sqlite
+    .prepare(sql)
+    .pluck()
+    .get(...params) as T;
+
+/** A CSV cell: quoted when it must be, and never starting a formula in a spreadsheet. */
+function cell(value: string | number | null | undefined): string {
+  if (value === null || value === undefined) return "";
+  let text = String(value);
+  if (typeof value === "string" && /^[=+\-@\t\r]/.test(text) && !/^[+-]?[\d.]+$/.test(text)) text = `'${text}`;
+  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+const csvLine = (values: Array<string | number | null | undefined>) => values.map(cell).join(",");
+const iso = (at: number | null | undefined) => (at ? new Date(at).toISOString() : "");
+
+/** Names that are unique within one folder. */
+function namer() {
+  const used = new Set<string>();
+  return (wanted: string, extension: string) => {
+    const base = safeFileName(wanted, "untitled").slice(0, 80);
+    let name = `${base}${extension}`;
+    for (let n = 2; used.has(name.toLowerCase()); n += 1) name = `${base} (${n})${extension}`;
+    used.add(name.toLowerCase());
+    return name;
+  };
+}
+
+/** A section made of a few text files, worked out in full both to estimate and to write. */
+function textSection(
+  id: ExportSection,
+  label: string,
+  format: string,
+  readme: string,
+  files: (ctx: AppContext, now: number) => { count: number; files: Array<{ name: string; text: string }>; leftOut?: string[] },
+): Section {
+  return {
+    id,
+    label,
+    format,
+    readme,
+    async estimate(ctx) {
+      const made = files(ctx, Date.now());
+      return { count: made.count, bytes: made.files.reduce((sum, file) => sum + bytesOf(file.text), 0), leftOut: made.leftOut ?? [] };
+    },
+    async write(ctx, archive, folder, now) {
+      const made = files(ctx, now);
+      if (made.count === 0) return { count: 0, leftOut: made.leftOut ?? [] };
+      for (const file of made.files) await addEntry(archive, file.text, `${folder}/${file.name}`, new Date(now));
+      return { count: made.count, leftOut: made.leftOut ?? [] };
+    },
+  };
+}
+
+// ── Notes ──
+
+const notes: Section = {
+  id: "notes",
+  label: "Notes",
+  format: "Markdown, with attachments",
+  readme:
+    "Every page as a Markdown (.md) file, in folders as the pages are nested. Links between pages and pictures are relative, so the folder works in any Markdown editor. Attachments are in `_attachments/`. Pages in the bin are left out.",
+  async estimate(ctx) {
+    const pages = scalar<number>(ctx, "SELECT count(*) FROM notes WHERE trashed_at IS NULL");
+    const text = scalar<number | null>(ctx, "SELECT sum(length(content)) FROM notes WHERE trashed_at IS NULL") ?? 0;
+    const files = scalar<number | null>(
+      ctx,
+      "SELECT sum(size_bytes) FROM attachments WHERE note_id IN (SELECT id FROM notes WHERE trashed_at IS NULL)",
+    );
+    // The stored page is JSON; its Markdown is about half as long.
+    return { count: pages, bytes: Math.round(text / 2) + (files ?? 0), leftOut: [] };
+  },
+  async write(ctx, archive, folder) {
+    const done = await ctx.services.notesExport.into(archive, folder);
+    return { count: done.pages, leftOut: [] };
+  },
+};
+
+// ── Contacts ──
+
+const contacts = textSection(
+  "contacts",
+  "Contacts",
+  "vCard",
+  "Every contact in one vCard 4.0 file (`contacts.vcf`), which phones' and computers' contacts apps open.",
+  (ctx) => {
+    const count = ctx.services.contacts.count();
+    if (count === 0) return { count, files: [] };
+    return { count, files: [{ name: "contacts.vcf", text: ctx.services.contacts.exportCards({}, "4.0").body }] };
+  },
+);
+
+// ── Places and routes ──
+
+interface Feature {
+  type: "Feature";
+  geometry: unknown;
+  properties: Record<string, unknown>;
+}
+
+const places = textSection(
+  "places",
+  "Places and routes",
+  "GPX and GeoJSON",
+  "Your map markers and saved routes and tracks: `places.gpx` for GPS devices and mapping apps, and `places.geojson` (GeoJSON, WGS 84 longitude and latitude) for GIS programs.",
+  (ctx) => {
+    const { annotations } = ctx.services.maps;
+    const markers = annotations.listMarkers();
+    const tracks = annotations.listTracks();
+    const count = markers.length + tracks.length;
+    if (count === 0) return { count, files: [] };
+    const gpx = annotations.exportSelection({ markers: markers.length > 0, trackIds: tracks.map((track) => track.id) }).gpx;
+    const features: Feature[] = markers.map((marker) => ({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [marker.lon, marker.lat] },
+      properties: { kind: "marker", name: marker.name, note: marker.note, favourite: marker.isFavorite, created: iso(marker.createdAt) },
+    }));
+    for (const track of tracks) {
+      const collection = annotations.getTrack(track.id).geojson as unknown as { features?: Feature[] };
+      for (const feature of collection.features ?? []) {
+        features.push({ ...feature, properties: { ...feature.properties, kind: "route", route: track.name } });
+      }
+    }
+    return {
+      count,
+      files: [
+        { name: "places.gpx", text: gpx },
+        { name: "places.geojson", text: json({ type: "FeatureCollection", features }) },
+      ],
+    };
+  },
+);
+
+// ── Supplies ──
+
+const supplies = textSection(
+  "supplies",
+  "Supplies",
+  "CSV",
+  "The supplies list as `supplies.csv`, the same columns Supplies reads back in. Opens in any spreadsheet.",
+  (ctx) => {
+    const items = ctx.services.supplies.items();
+    return { count: items.length, files: items.length ? [{ name: "supplies.csv", text: suppliesCsv(items) }] : [] };
+  },
+);
+
+// ── Barometer ──
+
+const barometer = textSection(
+  "barometer",
+  "Barometer readings",
+  "CSV",
+  "The barometer log as `barometer-readings.csv`, the same file Weather reads back in.",
+  (ctx) => {
+    const readings = ctx.services.weather.readings();
+    return { count: readings.length, files: readings.length ? [{ name: "barometer-readings.csv", text: writeReadingsCsv(readings) }] : [] };
+  },
+);
+
+// ── Radio contact log ──
+
+const LOG_COLUMNS = [
+  "time_utc",
+  "outcome",
+  "frequency_mhz",
+  "band",
+  "mode",
+  "sent_by",
+  "sender_lat",
+  "sender_lon",
+  "received_by",
+  "receiver_lat",
+  "receiver_lon",
+  "power_watts",
+  "antenna",
+  "report_sent",
+  "report_received",
+  "propagation",
+  "notes",
+];
+
+const radioLog = textSection(
+  "radio-log",
+  "Radio contact log",
+  "ADIF and CSV",
+  "The contact log as `contact-log.adi` (ADIF 3.1.8), which logging programs import: contacts made and stations heard. `contact-log.csv` has every entry, attempts that failed included.",
+  (ctx, now) => {
+    const rows = ctx.sqlite
+      .prepare(
+        `SELECT at, frequency_mhz AS frequencyMhz, band, mode, outcome, tx_call AS txCall, tx_lat AS txLat, tx_lon AS txLon,
+          rx_call AS rxCall, rx_lat AS rxLat, rx_lon AS rxLon, power_watts AS powerWatts, antenna,
+          report_sent AS reportSent, report_received AS reportReceived, notes, prop_mode AS propMode
+         FROM radio_observations ORDER BY at, id`,
+      )
+      .all() as LogRow[];
+    if (rows.length === 0) return { count: 0, files: [] };
+    const csv = [
+      LOG_COLUMNS.join(","),
+      ...rows.map((row) =>
+        csvLine([
+          iso(row.at),
+          row.outcome,
+          row.frequencyMhz,
+          row.band,
+          row.mode,
+          row.txCall,
+          row.txLat,
+          row.txLon,
+          row.rxCall,
+          row.rxLat,
+          row.rxLon,
+          row.powerWatts,
+          row.antenna,
+          row.reportSent,
+          row.reportReceived,
+          row.propMode,
+          row.notes,
+        ]),
+      ),
+    ].join("\r\n");
+    return {
+      count: rows.length,
+      files: [
+        { name: "contact-log.adi", text: writeAdif(rows, now, VERSION) },
+        { name: "contact-log.csv", text: `${csv}\r\n` },
+      ],
+    };
+  },
+);
+
+// ── Emergency plans ──
+
+const plans = textSection(
+  "plans",
+  "Emergency plans",
+  "JSON",
+  "Each emergency plan as a JSON file: its steps, people, places and contacts as you wrote them, and how far through it you were. JSON opens in any text editor.",
+  (ctx) => {
+    const rows = ctx.sqlite
+      .prepare(
+        `SELECT name, kind, kind_text AS kindText, emergency_number AS emergencyNumber, review_every_days AS reviewEveryDays,
+          reviewed_at AS reviewedAt, body, use, created_at AS createdAt, updated_at AS updatedAt FROM emergency_plans ORDER BY name`,
+      )
+      .all() as Array<Record<string, unknown> & { name: string; body: string; use: string }>;
+    const name = namer();
+    return {
+      count: rows.length,
+      files: rows.map((row) => ({
+        name: name(row.name, ".json"),
+        text: json({
+          name: row.name,
+          kind: row.kindText || row.kind,
+          emergencyNumber: row.emergencyNumber,
+          reviewEveryDays: row.reviewEveryDays,
+          reviewed: iso(row.reviewedAt as number),
+          created: iso(row.createdAt as number),
+          updated: iso(row.updatedAt as number),
+          plan: JSON.parse(row.body),
+          inUse: JSON.parse(row.use),
+        }),
+      })),
+    };
+  },
+);
+
+// ── Household papers ──
+
+const papers = textSection(
+  "papers",
+  "Medical sheets and keeping in touch",
+  "JSON, and OpenPGP for locked sheets",
+  "Medical sheets as JSON, one file each; a sheet locked with a passphrase stays locked, as the armoured OpenPGP message (`.asc`) it is kept as, and opens with that passphrase in any OpenPGP program. `keeping-in-touch.json` is the household's communication plan.",
+  (ctx) => {
+    const sheets = ctx.sqlite
+      .prepare("SELECT name, record, armor, created_at AS createdAt, updated_at AS updatedAt FROM medical_sheets ORDER BY name")
+      .all() as Array<{ name: string; record: string | null; armor: string | null; createdAt: number; updatedAt: number }>;
+    const comms = ctx.sqlite.prepare("SELECT body FROM comms_plans WHERE id = 'household'").pluck().get() as string | undefined;
+    const name = namer();
+    const files = sheets.map((sheet) =>
+      sheet.armor
+        ? { name: name(`Medical sheet - ${sheet.name}`, ".asc"), text: sheet.armor }
+        : {
+            name: name(`Medical sheet - ${sheet.name}`, ".json"),
+            text: json({
+              name: sheet.name,
+              created: iso(sheet.createdAt),
+              updated: iso(sheet.updatedAt),
+              sheet: JSON.parse(sheet.record ?? "{}"),
+            }),
+          },
+    );
+    if (comms) files.push({ name: "keeping-in-touch.json", text: json(JSON.parse(comms)) });
+    return { count: files.length, files };
+  },
+);
+
+// ── The household board ──
+
+interface BoardRow {
+  createdAt: number;
+  channel: string;
+  kind: string;
+  author: string;
+  body: string;
+  status: string | null;
+  place: string | null;
+  lat: number | null;
+  lon: number | null;
+  fileId: string | null;
+  editedAt: number | null;
+}
+
+const BOARD_SQL = `SELECT created_at AS createdAt, channel, kind, author, body, status, place, lat, lon, file_id AS fileId, edited_at AS editedAt
+  FROM board_messages WHERE removed_at IS NULL ORDER BY channel, created_at, id`;
+
+const board: Section = {
+  id: "board",
+  label: "Message board",
+  format: "Plain text, with the files sent",
+  readme:
+    "The household board as plain text, one file per channel, oldest message first, with check-ins and where they were sent from. Files sent on the board are in `files/`. Messages that were removed are left out.",
+  async estimate(ctx) {
+    const count = scalar<number>(ctx, "SELECT count(*) FROM board_messages WHERE removed_at IS NULL");
+    const text = scalar<number | null>(ctx, "SELECT sum(length(body) + length(author) + 40) FROM board_messages WHERE removed_at IS NULL");
+    const files = scalar<number | null>(ctx, "SELECT sum(size_bytes) FROM board_files WHERE gone_at IS NULL");
+    return { count, bytes: (text ?? 0) + (files ?? 0), leftOut: [] };
+  },
+  async write(ctx, archive, folder, now, signal) {
+    const rows = ctx.sqlite.prepare(BOARD_SQL).all() as BoardRow[];
+    if (rows.length === 0) return { count: 0, leftOut: [] };
+    const fileName = namer();
+    const leftOut: string[] = [];
+    const byChannel = new Map<string, string[]>();
+    for (const row of rows) {
+      signal.throwIfAborted();
+      let line = `${iso(row.createdAt).slice(0, 16).replace("T", " ")} UTC  ${row.author}`;
+      if (row.kind === "checkin") line += ` checked in: ${row.status === "safe" ? "safe" : row.status === "help" ? "needs help" : "other"}`;
+      line += row.editedAt ? " (edited)" : "";
+      line += "\n";
+      if (row.body) line += `${row.body.replace(/^/gm, "    ")}\n`;
+      if (row.place || row.lat !== null)
+        line += `    Where: ${[row.place, row.lat !== null ? `${row.lat}, ${row.lon}` : null].filter(Boolean).join(", ")}\n`;
+      if (row.fileId) {
+        try {
+          const file = ctx.services.board.fileOf(row.fileId);
+          if (file.row.goneAt === null && fs.existsSync(file.path)) {
+            const name = fileName(path.parse(file.row.filename).name, path.extname(file.row.filename));
+            await addEntry(archive, fs.createReadStream(file.path), `${folder}/files/${name}`, new Date(row.createdAt));
+            line += `    File: files/${name}\n`;
+          } else {
+            line += `    File: ${file.row.filename} (no longer kept)\n`;
+          }
+        } catch {
+          leftOut.push("A file sent on the board could not be read.");
+        }
+      }
+      const lines = byChannel.get(row.channel) ?? [];
+      lines.push(line);
+      byChannel.set(row.channel, lines);
+    }
+    const name = namer();
+    for (const [channel, lines] of byChannel) {
+      await addEntry(
+        archive,
+        `${lines.join("\n")}`,
+        `${folder}/${name(channel === "board" ? "household board" : channel, ".txt")}`,
+        new Date(now),
+      );
+    }
+    return { count: rows.length, leftOut };
+  },
+};
+
+// ── Documents ──
+
+interface DocumentRow {
+  title: string;
+  originalName: string;
+  ext: string;
+  sizeBytes: number;
+  locationId: string | null;
+  relPath: string;
+  category: string | null;
+  createdAt: number;
+}
+
+function documentRows(ctx: AppContext): DocumentRow[] {
+  return ctx.sqlite
+    .prepare(
+      `SELECT title, original_name AS originalName, ext, size_bytes AS sizeBytes, location_id AS locationId, rel_path AS relPath,
+        category, created_at AS createdAt FROM documents ORDER BY category, title`,
+    )
+    .all() as DocumentRow[];
+}
+
+/** Which documents can be read now, and words for the ones that cannot. */
+function documentPlan(ctx: AppContext): { readable: DocumentRow[]; leftOut: string[] } {
+  const locations = new Map(ctx.services.storage.list().map((row) => [row.id, row]));
+  const away = new Map<string, number>();
+  const readable: DocumentRow[] = [];
+  for (const row of documentRows(ctx)) {
+    const location = row.locationId ? locations.get(row.locationId) : undefined;
+    if (location?.status === "available") readable.push(row);
+    else {
+      const name = location?.name ?? "a storage location that has been removed";
+      away.set(name, (away.get(name) ?? 0) + 1);
+    }
+  }
+  const leftOut = [...away].map(
+    ([name, count]) =>
+      `${count} document${count === 1 ? "" : "s"} on "${name}", which is not connected. Connect it and export again to include ${count === 1 ? "it" : "them"}.`,
+  );
+  return { readable, leftOut };
+}
+
+const documents: Section = {
+  id: "documents",
+  label: "Documents",
+  format: "The original files",
+  readme:
+    "Every document in the library as the file that was added (PDF, EPUB, Word and so on), in a folder per category. `documents.csv` lists each with its title and category.",
+  async estimate(ctx) {
+    const { readable, leftOut } = documentPlan(ctx);
+    return { count: readable.length, bytes: readable.reduce((sum, row) => sum + row.sizeBytes, 0), leftOut };
+  },
+  async write(ctx, archive, folder, _now, signal) {
+    const { readable, leftOut } = documentPlan(ctx);
+    if (readable.length === 0) return { count: 0, leftOut };
+    const names = new Map<string, ReturnType<typeof namer>>();
+    const listed = [csvLine(["file", "title", "category", "added"])];
+    let count = 0;
+    let missing = 0;
+    for (const row of readable) {
+      signal.throwIfAborted();
+      const file = ctx.services.storage.resolve(row.locationId!, row.relPath);
+      if (!fs.existsSync(file)) {
+        missing += 1;
+        continue;
+      }
+      const category = row.category ? safeFileName(row.category, "Other") : "Uncategorised";
+      const name = names.get(category) ?? namer();
+      names.set(category, name);
+      const extension = row.ext ? `.${row.ext.replace(/^\./, "")}` : path.extname(row.originalName);
+      const entry = `${category}/${name(path.parse(row.originalName).name || row.title, extension)}`;
+      await addEntry(archive, fs.createReadStream(file), `${folder}/${entry}`, new Date(row.createdAt));
+      listed.push(csvLine([entry, row.title, row.category, iso(row.createdAt)]));
+      count += 1;
+    }
+    await addEntry(archive, `${listed.join("\r\n")}\r\n`, `${folder}/documents.csv`, new Date());
+    if (missing > 0)
+      leftOut.push(
+        `${missing} document${missing === 1 ? " whose file is" : "s whose files are"} missing from where ${missing === 1 ? "it was" : "they were"} kept.`,
+      );
+    return { count, leftOut };
+  },
+};
+
+export const SECTIONS: Section[] = [notes, contacts, places, supplies, barometer, radioLog, plans, papers, board, documents];

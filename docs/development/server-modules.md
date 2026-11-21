@@ -71,7 +71,7 @@ at a time), `reference-files` (copying the documents of a reference collection i
 the library, one collection at a time), `database` (checking the database and reclaiming
 unused space in it, one at a time; reclaiming holds every other queue with
 `ctx.jobs.holdFor` while it runs), `engine-build` (building the P.533 engine, one at a
-time), `update` (checking a release and handing it to the update service, one at a time). Handlers
+time), `update` (checking a release and handing it to the update service, one at a time), `export` (taking everything out as one zip, one at a time). Handlers
 receive an `AbortSignal`
 and must stop promptly when it fires (pause, cancel, shutdown). Report progress with
 `run.progress({ current, total, message })`. Throw `PermanentJobError` for failures
