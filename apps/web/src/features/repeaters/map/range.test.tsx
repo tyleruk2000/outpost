@@ -1,64 +1,43 @@
-import { RANGE_BEARINGS, RANGE_DEFAULT_AERIAL_METERS, type SightRange } from "@outpost/shared";
+import { RANGE_DEFAULT_AERIAL_METERS, rangeGrid, type SightRange } from "@outpost/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MapEngine } from "@/features/maps/map/engine";
+import { discPaths } from "@/features/maps/radio/range-why";
 import {
   aerialOf,
   DEFAULT_RANGE_PREFS,
   formatReach,
+  formatShare,
+  furthestOf,
   migrateRangePrefs,
   RANGE_KEY,
   RANGE_MOST,
   rangeBounds,
   rangeData,
   rangeLayers,
+  rangeShade,
   readRange,
 } from "./range";
+import { rangeFixture } from "./range-fixture";
 import { useRepeaterRange } from "./use-repeater-range";
 
 const AT = { lat: 57, lon: -3.4 };
+const range = (coverage: SightRange["coverage"], rule: Parameters<typeof rangeFixture>[1] = {}, at = AT) =>
+  rangeFixture(coverage, rule, at);
+/** Hemmed in by nearer slopes, open down one glen: in sight to 900 m, and to 31 km along a gap 1.5° wide to the north-east. */
+const glen = () =>
+  range("terrain", { seen: (bearing, meters) => meters <= 900 || (bearing >= 44.5 && bearing <= 45.5 && meters <= 31_000) });
 
-function range(
-  coverage: SightRange["coverage"],
-  shape: (bearing: number) => Partial<SightRange["bearings"][number]> = () => ({}),
-  at = AT,
-): SightRange {
-  return {
-    at,
-    aerialMeters: 10,
-    stationMeters: 1.5,
-    maxMeters: 100_000,
-    nearStepMeters: 100,
-    farStepMeters: 250,
-    nearMeters: 25_000,
-    coverage,
-    groundMeters: coverage === "none" ? null : 100,
-    horizonMeters: 18_085,
-    bearings:
-      coverage === "none"
-        ? []
-        : Array.from({ length: RANGE_BEARINGS }, (_, index) => ({
-            bearingDeg: index * 5,
-            reachMeters: 18_000,
-            limit: "sight" as const,
-            furtherMeters: null,
-            unknownFromMeters: coverage === "partial" ? 30_000 : null,
-            ...shape(index * 5),
-          })),
-    hiddenShare: coverage === "none" ? null : 0.12,
-    terrain: coverage === "none" ? null : { finestCellMeters: 92, coarsestCellMeters: 184, installedMaxZoom: 12 },
-  };
-}
-
-describe("the estimate in words and on the map", () => {
-  it("rounds a reach no finer than it is good for, with miles beside it", () => {
+describe("the estimate in words", () => {
+  it("rounds a reach no finer than it is good for, with miles beside it, and a share as a person says it", () => {
     expect(formatReach(18_085)).toBe("18 km (11 mi)");
     expect(formatReach(4_300)).toBe("4.5 km (2.5 mi)");
     expect(formatReach(430)).toBe("400 m");
     expect(formatReach(100_000)).toBe("100 km (62 mi)");
+    expect([0, 0.004, 0.12, 0.996].map(formatShare)).toEqual(["none", "under 1%", "12%", "all"]);
   });
 
   it("uses the listed aerial height, or the one assumed on this device where the list gives none", () => {
@@ -67,37 +46,19 @@ describe("the estimate in words and on the map", () => {
     expect(RANGE_DEFAULT_AERIAL_METERS).toBe(10);
   });
 
-  it("says a ridge and the share hidden", () => {
-    const ridged = range("terrain", (bearing) =>
-      bearing === 90 ? { reachMeters: 4000 } : bearing === 180 ? { furtherMeters: 41_000 } : {},
-    );
-    const reading = readRange(ridged);
-    expect(reading.title).toBe("Ground in sight as far as about 18 km (11 mi) on most bearings, from 4 km (2.5 mi) to 18 km (11 mi).");
-    // Said beside the answer: only the shaded ground is in sight.
-    expect(reading.note).toBe("About 10% of the ground within it is hidden by nearer ground: only the shaded ground is in sight.");
+  it("says the share in sight near and further out, and the furthest with its direction, not where most bearings end", () => {
+    const reading = readRange(glen());
+    expect(reading.title).toMatch(/^In sight: \d+% of the ground within 10 km, (under 1%|\d+%) within 25 km\.$/);
+    expect(reading.furthest).toBe("The furthest ground in sight is 31 km (19 mi) away to the north-east, through a gap about 2° wide.");
+    expect(reading.short).toMatch(/^\d+% in sight within 10 km, furthest 31 km north-east$/);
     expect(reading.needsTerrain).toBe(false);
-    // The few words for the folded card say the nearest as well, when none goes further than most.
-    expect(reading.short).toBe("Mostly about 18 km, down to 4 km");
-  });
+    expect(furthestOf(glen())).toMatchObject({ meters: 31_000, bearingDeg: 44.5, widthDeg: 1.5 });
 
-  it("says a spike in the few words too, rather than only where most bearings end", () => {
-    const spiked = readRange(range("terrain", (bearing) => (bearing === 45 ? { reachMeters: 8000 } : { reachMeters: 1000 })));
-    expect(spiked.short).toBe("Mostly about 1 km, up to 8 km");
-    expect(spiked.title).toBe("Ground in sight as far as about 1 km (0.5 mi) on most bearings, from 1 km (0.5 mi) to 8 km (5 mi).");
-    expect(readRange(range("terrain")).short).toBe("In sight to about 18 km");
-    expect(readRange(range("partial", (bearing) => (bearing === 90 ? { reachMeters: 41_000 } : {}))).short).toBe(
-      "Mostly 18 km, up to 41 km, terrain partial",
-    );
-    expect(readRange(range("partial")).short).toBe("About 18 km, terrain partial");
-  });
-
-  it("labels each outline's edge with its repeater's callsign", () => {
-    const data = rangeData(range("terrain"), "QZ3RNG");
-    expect(data.features.filter((feature) => feature.properties.kind === "edge").every((edge) => edge.properties.name === "QZ3RNG")).toBe(
-      true,
-    );
-    const label = rangeLayers({ ink: "#000", page: "#fff" } as never).find((layer) => layer.id === "o-range-label")!;
-    expect((label.layout as Record<string, unknown>)["text-field"]).toEqual(["get", "name"]);
+    const open = readRange(range("terrain"));
+    expect(open.title).toBe("In sight: all of the ground within 10 km, 52% within 25 km.");
+    expect(open.furthest).toBe("The furthest ground in sight is 18 km (11 mi) away to the north.");
+    expect(open.short).toBe("All in sight within 10 km, furthest 18 km north");
+    expect(readRange(range("partial")).short).toBe("All in sight within 10 km, furthest 18 km north, terrain partial");
   });
 
   it("keeps the station and assumed height from what an earlier version stored, and takes a range that was on as none chosen", () => {
@@ -107,24 +68,69 @@ describe("the estimate in words and on the map", () => {
     const present = { chosen: ["a", "b"], station: "car", assumedAerial: 12 };
     expect(migrateRangePrefs(present)).toEqual(present);
   });
+});
 
-  it("draws an outline with a dashed edge where terrain ran out, and a dashed circle with none", () => {
-    const cut = rangeData(range("partial", (bearing) => (bearing >= 100 && bearing <= 120 ? { limit: "terrain", reachMeters: 9000 } : {})));
-    const area = cut.features.find((feature) => feature.properties.kind === "area")!;
-    // Shaded: a wedge for each stretch in sight on each bearing (here one each, from the aerial out).
-    expect(area.geometry.type).toBe("MultiPolygon");
-    expect(area.geometry.coordinates as unknown[]).toHaveLength(RANGE_BEARINGS);
-    const edges = cut.features.filter((feature) => feature.properties.kind === "edge");
-    // Solid, then dashed round the bearings that ran out, then solid again.
-    expect(edges.map((edge) => edge.properties.dashed)).toEqual([false, true, false]);
+describe("the estimate on the map", () => {
+  it("shades the ground in sight as one picture, clear where it is hidden, in the range's colour", () => {
+    const picture = rangeShade(glen(), "#13905a", 200)!;
+    const alpha = (x: number, y: number) => picture.pixels[(y * picture.width + x) * 4 + 3]!;
+    const middle = Math.floor(picture.width / 2);
+    // The aerial's own ground is in sight; the ground just beyond the slopes is clear.
+    expect(alpha(middle, middle)).toBe(255);
+    expect(Array.from(picture.pixels.slice((middle * picture.width + middle) * 4, (middle * picture.width + middle) * 4 + 3))).toEqual([
+      0x13, 0x90, 0x5a,
+    ]);
+    expect(alpha(middle - 40, middle)).toBe(0);
+    // Along the glen to the north-east, 20 km out, the ground is shaded.
+    const out = Math.round((middle * 20) / 31.3);
+    const glenPixels = [-1, 0, 1].map((step) =>
+      alpha(middle + Math.round(out * Math.SQRT1_2) + step, middle - Math.round(out * Math.SQRT1_2)),
+    );
+    expect(Math.max(...glenPixels)).toBeGreaterThan(0);
+    // The picture covers the box the map is fitted to.
+    const [west, south, east, north] = rangeBounds(glen());
+    expect(picture.coordinates).toEqual([
+      [west, north],
+      [east, north],
+      [east, south],
+      [west, south],
+    ]);
+    // Nothing to shade with no terrain: the plain circle is a shape.
+    expect(rangeShade(range("none"), "#13905a")).toBeNull();
+  });
+
+  it("draws rings at 10, 25, 50 and 100 km out to the first beyond the ground in sight, each written once, and no spiky outline", () => {
+    const data = rangeData(glen(), "QZ3RNG");
+    const rings = data.features.filter((feature) => feature.properties.kind === "ring");
+    expect(rings).toHaveLength(3);
+    expect(data.features.filter((feature) => feature.properties.kind === "ring-label").map((feature) => feature.properties.label)).toEqual([
+      "10 km",
+      "25 km",
+      "50 km",
+    ]);
+    expect(rings.every((ring) => ring.properties.name === "QZ3RNG" && ring.properties.dashed === false)).toBe(true);
+    expect(data.features.some((feature) => feature.properties.kind === "edge")).toBe(false);
+    const layers = rangeLayers({ ink: "#000", page: "#fff", range: "#13905a" } as never);
+    const ring = layers.find((layer) => layer.id === "o-range-ring") as { paint: Record<string, unknown> };
+    expect(ring.paint["line-color"]).toBe("#13905a");
+    // With no terrain: a washed, dashed circle at the smooth-Earth horizon.
     const none = rangeData(range("none"));
-    expect(none.features.filter((feature) => feature.properties.kind === "edge").every((edge) => edge.properties.dashed)).toBe(true);
+    expect(none.features.map((feature) => feature.properties.kind)).toEqual(["area", "ring"]);
+    expect(none.features[1]!.properties.dashed).toBe(true);
+  });
+
+  it("draws the disc of the why view from the same answer, with the ground not known told apart", () => {
+    const answer = range("partial", { unknownFrom: (bearing) => (bearing < 90 ? 20_000 : 60_000) });
+    const paths = discPaths(answer, rangeGrid(answer));
+    expect(paths.seen.length).toBeGreaterThan(0);
+    expect(paths.unknown.length).toBeGreaterThan(0);
+    expect(discPaths(range("terrain"), rangeGrid(range("terrain"))).unknown).toBe("");
   });
 });
 
 // ── The switch in each repeater's card ──────────────────────────────────────
 
-const engine = { setOverlay: vi.fn(), fitBounds: vi.fn() };
+const engine = { setOverlay: vi.fn(), fitBounds: vi.fn(), setShades: vi.fn() };
 const fetched = vi.fn();
 const json = (body: unknown, status = 200) =>
   Promise.resolve(new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } }));
@@ -139,7 +145,7 @@ interface Held {
 /** The repeaters the server holds: r1 is QZ3RNG at AT, r2 to r9 are QZ3RN2 to QZ3RN9 further north. */
 let held: Record<string, Held> = {};
 /** How the server answers for an outline; by default, terrain all round at the place asked about. */
-let answerRange: (at: { lat: number; lon: number }) => Promise<Response> = (at) => json(range("terrain", () => ({}), at));
+let answerRange: (at: { lat: number; lon: number }) => Promise<Response> = (at) => json(range("terrain", {}, at));
 
 function server(input: RequestInfo | URL) {
   const url = new URL(String(input), "http://outpost.test");
@@ -166,7 +172,7 @@ const labelled = () =>
   [
     ...new Set(
       overlay()
-        .features.filter((feature: { properties: { kind: string } }) => feature.properties.kind === "edge")
+        .features.filter((feature: { properties: { kind: string } }) => feature.properties.kind === "ring")
         .map((feature: { properties: { name: string } }) => feature.properties.name),
     ),
   ].sort();
@@ -245,7 +251,7 @@ beforeEach(() => {
       ]),
     ),
   };
-  answerRange = (at) => json(range("terrain", () => ({}), at));
+  answerRange = (at) => json(range("terrain", {}, at));
   fetched.mockReset();
   fetched.mockImplementation(server);
   vi.stubGlobal("fetch", fetched);
@@ -284,7 +290,8 @@ describe("the estimated range switch", () => {
     answer(await json(range("terrain")));
     // Drawn, the card folds to one line and the outline is brought into view.
     await unfold();
-    expect(screen.getByText("Ground in sight as far as about 18 km (11 mi) on most bearings.")).toBeInTheDocument();
+    expect(screen.getByText(/^In sight: all of the ground within 10 km, 52% within 25 km\.$/)).toBeInTheDocument();
+    expect(screen.getByText("The furthest ground in sight is 18 km (11 mi) away to the north.")).toBeInTheDocument();
     expect(labelled()).toEqual(["QZ3RNG"]);
     await waitFor(() => expect(engine.fitBounds).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole("button", { name: "Get terrain in Offline maps" })).toBeNull();
@@ -293,7 +300,11 @@ describe("the estimated range switch", () => {
     expect(
       screen.getByText(/It takes no account of transmitter power, aerial gain or pattern, frequency, buildings and trees/),
     ).toBeVisible();
-    expect(screen.getByText(/Ground read every 100 m out to 25 km and every 250 m beyond/)).toBeVisible();
+    expect(
+      screen.getByText(
+        /Ground read along 720 bearings, 0.5° apart: every 50 m out to 25 km, every 100 m to 50 km and every 250 m to 100 km/,
+      ),
+    ).toBeVisible();
 
     // Another station asks again, with its own height: once, though the card and the map both want it.
     await userEvent.click(screen.getByRole("radio", { name: "Roof aerial" }));
@@ -319,8 +330,8 @@ describe("the estimated range switch", () => {
     expect(onOpenOffline).toHaveBeenCalled();
   });
 
-  it("with part of the area's terrain says the outline stops short", async () => {
-    answerRange = () => json(range("partial", (bearing) => (bearing < 30 ? { limit: "terrain", reachMeters: 9000 } : {})));
+  it("with part of the area's terrain says more may be in sight beyond", async () => {
+    answerRange = () => json(range("partial", { unknownFrom: (bearing) => (bearing < 30 ? 9000 : 30_000) }));
     show();
     await userEvent.click(screen.getByRole("switch", { name: "Estimated range" }));
     await unfold();
@@ -330,7 +341,7 @@ describe("the estimated range switch", () => {
     await userEvent.click(screen.getByText("What this is, and is not"));
     expect(
       screen.getByText(
-        "Terrain is held for only part of the area within 100 km (62 mi). On 6 of 72 bearings it runs out while the aerial is still in sight, so the outline stops short there and is dashed.",
+        "Terrain is held for only part of the area within 100 km (62 mi). On 60 of 720 bearings it runs out while the ground is still in sight, so more may be in sight beyond.",
       ),
     ).toBeVisible();
   });
@@ -340,17 +351,18 @@ describe("the estimated range switch", () => {
     show();
     await userEvent.click(screen.getByRole("switch", { name: "Estimated range" }));
     expect(await screen.findByText("The range could not be worked out")).toBeInTheDocument();
-    answerRange = (at) => json(range("terrain", () => ({}), at));
+    answerRange = (at) => json(range("terrain", {}, at));
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     await unfold();
-    expect(screen.getByText("Ground in sight as far as about 18 km (11 mi) on most bearings.")).toBeInTheDocument();
+    expect(screen.getByText(/^In sight: all of the ground within 10 km, 52% within 25 km\.$/)).toBeInTheDocument();
+    expect(screen.getByText("The furthest ground in sight is 18 km (11 mi) away to the north.")).toBeInTheDocument();
   });
 
   it("folds the card to one line once the outline is drawn, on a phone as on a wide screen, and unfolds it again", async () => {
     show(15, vi.fn(), true);
     await userEvent.click(screen.getByRole("switch", { name: "Estimated range" }));
     const folded = await screen.findByRole("region", { name: "QZ3RNG: estimated range" });
-    expect(folded).toHaveTextContent(/QZ3RNG\s*In sight to about 18 km$/);
+    expect(folded).toHaveTextContent(/QZ3RNG\s*All in sight within 10 km, furthest 18 km north$/);
     expect(screen.queryByRole("radio", { name: "Handheld" })).toBeNull();
     await waitFor(() => expect(engine.fitBounds).toHaveBeenCalledTimes(1));
     await userEvent.click(screen.getByRole("button", { name: "Show the details" }));
@@ -402,11 +414,11 @@ describe("ranges chosen repeater by repeater", () => {
   it("is remembered on this device: drawn again with no card open, each asked once, as they come", async () => {
     localStorage.setItem(RANGE_KEY, JSON.stringify({ chosen: ["r1", "r3"], station: "car", assumedAerial: 10 }));
     let late: (value: Response) => void = () => {};
-    answerRange = (at) => (at.lat > 57.2 ? new Promise<Response>((resolve) => (late = resolve)) : json(range("terrain", () => ({}), at)));
+    answerRange = (at) => (at.lat > 57.2 ? new Promise<Response>((resolve) => (late = resolve)) : json(range("terrain", {}, at)));
     show(15, vi.fn(), false, { open: null });
     // The one answered first is drawn without waiting for the other.
     await waitFor(() => expect(labelled()).toEqual(["QZ3RNG"]));
-    late(await json(range("terrain", () => ({}), { lat: 57.3, lon: -3.4 })));
+    late(await json(range("terrain", {}, { lat: 57.3, lon: -3.4 })));
     await waitFor(() => expect(labelled()).toEqual(["QZ3RN3", "QZ3RNG"]));
     expect(asked()).toHaveLength(2);
     expect(asked().every((url) => url.searchParams.get("station") === "2")).toBe(true);
@@ -464,35 +476,5 @@ describe("ranges chosen repeater by repeater", () => {
     show(15, vi.fn(), false, { open: null, visible: false });
     expect(fetched).not.toHaveBeenCalled();
     expect(drawn()).toEqual([]);
-  });
-});
-
-describe("what is in sight from a summit", () => {
-  // As from Scafell Pike: the slopes just below are out of sight at once, other hills far off are in sight.
-  const summit = (bearing: number) => ({
-    reachMeters: 100,
-    furthestMeters: 60_000,
-    runs: [
-      [0, 150],
-      [25_000, 32_000],
-      [55_000, 60_000],
-    ] as Array<[number, number]>,
-    outlineLimit: "sight" as const,
-    bearingDeg: bearing,
-  });
-
-  it("draws the outline at the furthest ground in sight, shades only the stretches in sight, and says most is hidden", () => {
-    const answer = { ...range("terrain", summit), hiddenShare: 0.82 };
-    const reading = readRange(answer, "here");
-    expect(reading.title).toBe("Ground in sight as far as about 60 km (37 mi) on most bearings.");
-    expect(reading.note).toBe("About 80% of the ground within it is hidden by nearer ground: only the shaded ground is in sight.");
-    expect(reading.needsTerrain).toBe(false);
-    const data = rangeData(answer, "Scafell Pike");
-    const area = data.features.find((feature) => feature.properties.kind === "area")!;
-    expect(area.geometry.coordinates as unknown[]).toHaveLength(RANGE_BEARINGS * 3);
-    // The outline is out at 60 km, not at the 100 m where the first slope falls away.
-    const [west, south, east, north] = rangeBounds(answer);
-    expect(north - south).toBeGreaterThan(1);
-    expect(east - west).toBeGreaterThan(1.5);
   });
 });

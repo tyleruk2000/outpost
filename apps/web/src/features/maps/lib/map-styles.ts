@@ -373,6 +373,8 @@ const HIGH_CONTRAST: Omit<MapTheme, "primary" | "lamp" | "effects"> = {
   ink: "#000000",
   inkMuted: "#1f1f1f",
   contour: "#7a3e00",
+  range: "#0b7a49",
+  walk: "#b4530a",
 };
 
 /** Heavier names: medium weight for regular, and a wider halo. */
@@ -449,6 +451,8 @@ const LOW_INK: Omit<MapTheme, "primary" | "lamp" | "effects"> = {
   ink: "#1a1a1a",
   inkMuted: "#4d4d4d",
   contour: "#a07d55",
+  range: "#13905a",
+  walk: "#c8620f",
 };
 /** The edge of the sea, lakes and rivers: the only blue on the page, and a thin line of it. */
 const LOW_INK_WATER = "#5f8fbd";

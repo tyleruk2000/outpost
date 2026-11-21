@@ -1277,6 +1277,7 @@ describe("heights for a found route", () => {
     },
     // The route finder asks only for heights; how fine the terrain was is the line-of-sight check's question.
     sampleWithCells: notAsked,
+    sampleGrid: notAsked,
   };
   const source = {
     id: "stand-in",
@@ -1320,6 +1321,7 @@ describe("heights for a found route", () => {
     const everywhere = {
       sample: async (positions: ReadonlyArray<readonly [number, number]>) => positions.map(() => 321),
       sampleWithCells: notAsked,
+      sampleGrid: notAsked,
     };
     const later = createRouteFinder({
       loaded: { sources: [source], defaultId: "stand-in", problems: [] },
@@ -1345,8 +1347,8 @@ describe("heights for a found route", () => {
     createRouteFinder({
       loaded: { sources: [source], defaultId: "stand-in", problems: [] },
       overpass: { ask: async () => relationAnswer },
-      annotations: createAnnotationsService(app.ctx, { elevation: { sample, sampleWithCells: notAsked } }),
-      elevation: { sample, sampleWithCells: notAsked },
+      annotations: createAnnotationsService(app.ctx, { elevation: { sample, sampleWithCells: notAsked, sampleGrid: notAsked } }),
+      elevation: { sample, sampleWithCells: notAsked, sampleGrid: notAsked },
       userAgent: "test",
     });
   const storedLines = async (app: TestApp, id: string) => {
@@ -1368,7 +1370,7 @@ describe("heights for a found route", () => {
         },
         listTracks: () => made.map((_collection, index) => ({ id: `t${index + 1}` })),
       } as unknown as AnnotationsService,
-      elevation: { sample: async (positions) => positions.map(() => null), sampleWithCells: notAsked },
+      elevation: { sample: async (positions) => positions.map(() => null), sampleWithCells: notAsked, sampleGrid: notAsked },
       userAgent: "test",
     });
     const tokens: string[] = [];

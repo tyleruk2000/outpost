@@ -34,11 +34,13 @@ import { createPlanner } from "./planner.ts";
 import { removeExtractSidecars } from "./pmtiles/extract.ts";
 import { createPointHeight, pointHeightQuery } from "./point-height.ts";
 import { createRegionsService, estimateSchema, importSchema, type RegionsService, startRegionSchema } from "./regions.ts";
+import { createRelayPlanner, relayQuery } from "./relay.ts";
 import { registerRouteFinder } from "./route-finder/index.ts";
 import { createSightRanger, sightRangeQuery } from "./sight-range.ts";
 import { createSourceResolver } from "./source.ts";
 import { createTerrainProfiler, terrainProfileQuery } from "./terrain-profile.ts";
 import { createTileServer, type TileServer } from "./tile-server.ts";
+import { createWalkReacher, walkReachQuery } from "./walk-reach.ts";
 
 export interface MapsService {
   regions: RegionsService;
@@ -98,6 +100,8 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
   const annotations = createAnnotationsService(ctx, { elevation });
   const terrainProfile = createTerrainProfiler(elevation, tiles);
   const sightRange = createSightRanger(elevation, tiles);
+  const relayPlanner = createRelayPlanner(sightRange);
+  const walkReach = createWalkReacher(ctx, elevation, tiles);
   const pointHeight = createPointHeight(elevation);
   const regions = createRegionsService(ctx, { planner, sources });
   const imagery = registerImagery(app, ctx, { client, ...ctx.config.imagery });
@@ -265,6 +269,16 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
   app.get("/api/maps/sight-range", async (request) => {
     const query = sightRangeQuery.parse(request.query);
     return sightRange(query.at, query.aerial, query.station);
+  });
+
+  // High ground in sight of two places, for a relay between them: the two places' viewsheds read together.
+  app.get("/api/maps/relay", async (request) => {
+    return relayPlanner(relayQuery.parse(request.query));
+  });
+
+  // The ground reachable on foot from a point in a set time, over installed terrain and along the map's paths.
+  app.get("/api/maps/walk-reach", async (request) => {
+    return walkReach(walkReachQuery.parse(request.query));
   });
 
   // ── Places ──

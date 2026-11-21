@@ -118,6 +118,7 @@ import { useResection } from "./resection/resection-card";
 import { SearchBox } from "./search-box";
 import { DesktopPanel, type Detent, detentHeight, MobileSheet, PANEL_TABS, type PanelTab, PanelTabs, PEEK_HEIGHT } from "./side-panel";
 import { PanelLoading } from "./ui";
+import { useWalkReach } from "./walk/walk-reach";
 
 /** "Print or save as PDF", fetched when it is first asked for. */
 const PrintTool = lazy(() => import("./print/print-tool"));
@@ -987,6 +988,12 @@ export default function MapsPage() {
     where: (position) => formatPosition(position.lat, position.lon, format, engine?.getZoom()).text,
     onOpenOffline: () => openOffline({ type: "add" }),
   });
+  // "How far on foot from here", from the same menu.
+  const walk = useWalkReach({
+    engine,
+    where: (position) => formatPosition(position.lat, position.lon, format, engine?.getZoom()).text,
+    onOpenOffline: () => openOffline({ type: "add" }),
+  });
   const repeaters = useRepeatersOnMap({
     extraRange: pointRange.outline,
     engine,
@@ -1319,6 +1326,7 @@ export default function MapsPage() {
         sight={sight}
         format={format}
         mapReady={Boolean(engine)}
+        engine={engine}
         onDone={leaveTool}
         onOpenOffline={() => {
           leaveTool();
@@ -1392,6 +1400,8 @@ export default function MapsPage() {
         }}
         onClose={() => closeDrawing()}
       />
+    ) : walk.card ? (
+      walk.card
     ) : pointRange.card ? (
       pointRange.card
     ) : pin ? (
@@ -1671,7 +1681,17 @@ export default function MapsPage() {
               setDraft(null);
               setMoving(null);
               setPin(null);
+              walk.stop();
               pointRange.start({ position: contextMenu.position, name: contextPlace?.name });
+              setDetent("peek");
+            }}
+            onWalk={() => {
+              setContextMenu(null);
+              setDraft(null);
+              setMoving(null);
+              setPin(null);
+              pointRange.stop();
+              walk.start(contextMenu.position);
               setDetent("peek");
             }}
             onClose={() => setContextMenu(null)}

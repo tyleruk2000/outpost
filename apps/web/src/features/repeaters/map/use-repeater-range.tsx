@@ -25,10 +25,13 @@ import { type ReactNode, type Ref, useCallback, useEffect, useId, useMemo, useRe
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Segmented, Spinner, Switch } from "@/components/ui/misc";
-import { useStoredState } from "@/features/maps/hooks";
+import { useShadeColour, useStoredState } from "@/features/maps/hooks";
 import { readStored } from "@/features/maps/lib/view";
 import type { MapEngine } from "@/features/maps/map/engine";
 import { EMPTY } from "@/features/maps/map/overlays";
+import { canShade } from "@/features/maps/map/shades";
+import { useShades } from "@/features/maps/map/use-shades";
+import { RangeWhy } from "@/features/maps/radio/range-why";
 import { NumberField } from "@/features/maps/radio/sight-panel";
 import { mapCard } from "@/features/maps/ui";
 import { ApiError, api, errorMessage } from "@/lib/api";
@@ -44,9 +47,11 @@ import {
   migrateRangePrefs,
   RANGE_KEY,
   RANGE_MOST,
+  RANGE_SHADE_OPACITY,
   RANGE_SOURCE,
   type RangePrefs,
   rangeBounds,
+  rangeShade,
   rangesData,
   readRange,
   stationOf,
@@ -167,6 +172,13 @@ export function useRepeaterRange({
     engine?.setOverlay(RANGE_SOURCE, drawn.length > 0 ? rangesData(drawn) : EMPTY);
   }, [engine, drawn]);
   useEffect(() => () => engine?.setOverlay(RANGE_SOURCE, EMPTY), [engine]);
+  // The ground in sight, one picture for each range, painted once for each answer and theme.
+  const colour = useShadeColour("range");
+  const pictures = useMemo(
+    () => (engine && canShade() ? drawn.flatMap(({ range: one }) => rangeShade(one, colour, drawn.length > 2 ? 1024 : 1536) ?? []) : []),
+    [engine, drawn, colour],
+  );
+  useShades(engine, "range", pictures, RANGE_SHADE_OPACITY);
 
   // A repeater that is no longer held, or no longer has a position, is dropped from the chosen.
   const dropped = prefs.chosen.filter((_, index) => {
@@ -398,6 +410,7 @@ function RangeControl({
             ) : reading ? (
               <div className="grid gap-1 text-small">
                 <p className="font-medium text-ink">{reading.title}</p>
+                {reading.furthest ? <p className="text-ink">{reading.furthest}</p> : null}
                 {reading.note ? (
                   <p className="text-ink-muted">
                     {reading.note}{" "}
@@ -427,25 +440,35 @@ function RangeControl({
                 <p key={sentence}>{sentence}</p>
               ))}
               <p>
-                An estimate of line of sight only: on each of {RANGE_BEARINGS} bearings, how far out a station at the height above stays in
-                sight of the repeater's aerial over the ground, on an Earth of 4/3 radius, as the line-of-sight check uses.
+                An estimate of line of sight only: along {RANGE_BEARINGS} bearings, which ground a station at the height above would be in
+                sight of the repeater's aerial from, on an Earth of 4/3 radius, as the line-of-sight check uses.
               </p>
               <p>
                 It takes no account of transmitter power, aerial gain or pattern, frequency, buildings and trees, or signals bending over
-                ridges. A repeater may be heard beyond the outline and not heard inside it.
+                ridges. A repeater may be heard from ground left clear and not heard from shaded ground.
               </p>
               <p>
-                The shaded ground is in sight of the aerial; ground left clear inside the outline is hidden by nearer ground. The outline is
-                the furthest ground in sight on each bearing. A dashed edge is where terrain ran out, or where none is held: there the shape
-                is not from the ground.
+                The shaded ground is in sight of the aerial; ground left clear is hidden by nearer ground, or too far. The rings are 10, 25,
+                50 and 100 km from the aerial.
               </p>
               <p>
-                With no terrain the circle is the smooth-Earth radio horizon, about 4.12 × (√h1 + √h2) km for heights in metres above the
-                ground around them.
+                With no terrain the dashed circle is the smooth-Earth radio horizon, about 4.12 × (√h1 + √h2) km for heights in metres above
+                the ground around them.
               </p>
               {terrain ? <p>{terrain}</p> : null}
             </div>
           </details>
+          {range.data && range.data.coverage !== "none" ? (
+            <details className="group/why">
+              <summary className="flex min-h-11 cursor-default items-center gap-2 py-1 text-small font-medium text-ink marker:content-none hover:text-primary [&::-webkit-details-marker]:hidden">
+                <ChevronRight aria-hidden className="size-4 text-ink-muted transition-transform duration-150 group-open/why:rotate-90" />
+                Why this shape: look along one direction
+              </summary>
+              <div className="pb-1">
+                <RangeWhy range={range.data} aerialName="the repeater" />
+              </div>
+            </details>
+          ) : null}
         </div>
       ) : null}
     </section>

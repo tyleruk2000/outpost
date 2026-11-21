@@ -20,9 +20,10 @@ import { trackEnds, trackLines } from "../lib/profile";
 import { midpoints } from "../lib/route-edit";
 import { MAP_FONTS, type MapTheme } from "../lib/style";
 import type { LayerSpecification, SourceSpecification } from "../lib/style-types";
-import { gridLayers, sightLayers } from "../radio/layers";
+import { gridLayers, relayLayers, sightLayers } from "../radio/layers";
 import { recordingLayers } from "../recording/overlay";
 import { resectionLayers } from "../resection/layers";
+import { walkLayers } from "../walk/walk-map";
 
 export const OVERLAY_SOURCES = [
   "o-population",
@@ -36,10 +37,12 @@ export const OVERLAY_SOURCES = [
   "o-tracks",
   "o-track-ends",
   "o-measure",
+  "o-walk",
   "o-range",
   "o-repeaters",
   "o-reference",
   "o-heard",
+  "o-relay",
   "o-sight",
   // Resection: back-bearings from landmarks (resection/).
   "o-resection",
@@ -234,6 +237,7 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
       paint: halo,
     },
     // The estimated range of the repeater that is open, beneath the repeaters; see features/repeaters/map/range.ts.
+    ...walkLayers(theme),
     ...rangeLayers(theme),
     // Repeaters, when they are switched on; see features/repeaters/map.
     ...repeaterLayers(theme),
@@ -242,6 +246,7 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
     // What the household's receivers heard (features/heard): above the reference layers, under saved places.
     ...heardLayers(theme),
     // The path of a line-of-sight check.
+    ...relayLayers(theme),
     ...sightLayers(theme),
     ...resectionLayers(theme),
     // A track being recorded; see recording/overlay.ts.

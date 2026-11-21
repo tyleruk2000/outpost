@@ -80,6 +80,8 @@ export function readMapTheme(): { flavour: MapFlavour; theme: MapTheme } {
         radiation: hex("--map-effect-radiation", fallback.effects.radiation),
         fallout: hex("--map-effect-fallout", fallback.effects.fallout),
       },
+      range: hex("--map-range", fallback.range),
+      walk: hex("--map-walk", fallback.walk),
     },
   };
 }
@@ -104,6 +106,22 @@ export function useMapTheme(): { flavour: MapFlavour; theme: MapTheme } {
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     return () => observer.disconnect();
   }, [resolved]);
+  return value;
+}
+
+/**
+ * One of the map's shading colours (`--map-range`, `--map-walk`), for what paints a picture in it: read again when the
+ * app's theme changes. Needs no theme provider, so a hook used outside the maps screen can use it.
+ */
+export function useShadeColour(which: "range" | "walk"): string {
+  const [value, setValue] = useState(() => readMapTheme().theme[which]);
+  useEffect(() => {
+    const update = () => setValue(readMapTheme().theme[which]);
+    update();
+    const observer = new MutationObserver(update);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
+  }, [which]);
   return value;
 }
 

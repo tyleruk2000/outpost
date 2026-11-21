@@ -17,13 +17,13 @@ test("a repeater's estimated range on a wide screen: fitted beside the card, whi
     await page.goto(`/maps?repeater=${repeaterId}&range=1`);
     // Drawn, the card folds to one line at the top right of the map.
     const folded = page.getByRole("region", { name: "QZ3RNG: estimated range" });
-    await expect(folded).toContainText(/QZ3RNG\s*(About|Mostly) .* km, terrain partial/);
+    await expect(folded).toContainText(/QZ3RNG\s*.* in sight within 10 km, furthest .* km .*, terrain partial/);
     await idle(page);
 
     // Opened out it stays short: the long account is behind a closed disclosure, and scrolls inside the card when open.
     await folded.getByRole("button", { name: "Show the details" }).click();
     const card = page.getByRole("region", { name: "Estimated range" });
-    await expect(card.getByText(/^Ground in sight as far as about .* on most bearings/)).toBeVisible();
+    await expect(card.getByText(/^In sight: .* of the ground within 10 km, .* within 25 km\./)).toBeVisible();
     const whole = card.locator("xpath=ancestor::*[contains(@class, 'outpost-map-card')][1]");
     const map = (await page.locator(".outpost-map").boundingBox())!;
     expect((await whole.boundingBox())!.height).toBeLessThan(map.height * 0.8);

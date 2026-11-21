@@ -61,6 +61,11 @@ Rules:
 - Surfaces carry no warmth. Neutrals lean very slightly toward the brand's own hue.
 - Text on a tinted background uses a darker shade of that hue, never grey.
 - State is never colour alone: there is always a word, and usually an icon.
+- The map has hues of its own for what is drawn over it, each with one job and never a
+  status colour: `map-effect-*` for the nuclear effects, `map-range` (green) for the
+  ground in sight of an aerial, `map-walk` (orange) for the ground a walk reaches. Each
+  is checked for colour-blind separation against the map's land and the others it can
+  meet (the figures are beside the tokens).
 
 ## Typography
 

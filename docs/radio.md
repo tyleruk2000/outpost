@@ -334,36 +334,57 @@ merged repeater once.
 
 A repeater open on the map has a switch in its card, **Estimated range**, and its own
 screen has a button of the same name that opens the map with it on. The switch belongs
-to that repeater: switched on, its outline is drawn and stays on the map after its card
+to that repeater: switched on, its range is drawn and stays on the map after its card
 is closed and while other repeaters are opened, until it is switched off in its own
 card. Another repeater's switch is off until it is switched on too. Up to eight can be
 on at once; switching on a ninth leaves it off and the card says that eight are shown,
 as many as can be at once. Which repeaters are on is remembered on the device, with the
-other station and the assumed aerial height, which apply to every outline. A repeater
-that is no longer held (its list was removed) is dropped quietly. The outlines are drawn
+other station and the assumed aerial height, which apply to every range. A repeater
+that is no longer held (its list was removed) is dropped quietly. The ranges are drawn
 only while the map's repeaters are switched on, as the dots are. While none is on,
 nothing is worked out and nothing is drawn.
 
 When more than one is on, an open repeater's card says how many are shown and has
 **Hide all ranges**, which switches them all off. There is no other place for it: the
-map's tools have only the one button for repeaters, which hides the outlines with the
+map's tools have only the one button for repeaters, which hides the ranges with the
 dots and leaves the choice as it was.
 
-**What it is.** An estimate of line of sight only: on each of 72 bearings, 5° apart,
-where a station at a stated height above the ground would have line of sight to the
-repeater's aerial, over the terrain installed on this device, out to 100 km. The ground
-in sight is shaded with a light wash, and ground hidden by nearer ground is left clear;
-the outline, a thin ink line, is the furthest ground in sight on each bearing. The card
-says how far that is on most bearings and, beside it, how much of the ground within it is
-hidden. Until 18 November 2026 the outline was the first unbroken stretch in sight (a
-shadow under 1 km bridged), which from a hilltop is nearly nothing: from Scafell Pike, with
-a handheld at both ends, it ended 0.1 to 3.3 km out on every bearing, where the slopes just
-below fall out of sight, while ground was in sight again 55 to 100 km away on every one.
-The outline is labelled with the repeater's callsign along its edge, so that where
-several are on each can be told from the others. Where outlines cross, the washes add
-up and the labels give way to each other rather than overprint. Where there is terrain the
-outline is an irregular shape, not a circle. It has no colour of its own, so that it is
-not taken for an HF coverage map (shaded cells) or the nuclear effects (rings in hues).
+**What it is.** An estimate of line of sight only: the ground from which a station at a
+stated height above it would have line of sight to the repeater's aerial, over the
+terrain installed on this device, out to 100 km. The ground is looked at along 720
+bearings, half a degree apart, every 50 m out to 25 km, every 100 m to 50 km and every
+250 m to 100 km; bearings next to one another are about 220 m apart 25 km out, so a
+glen a few hundred metres wide is neither missed nor widened into a wedge.
+
+**On the map.** The ground in sight is shaded green (in both themes, on the plain map
+and on satellite imagery), as one smooth layer; ground hidden by nearer ground is left
+clear. From a hillside that is often a patch round the aerial and a few long fingers down
+the valleys. Rings in the same green mark 10, 25, 50 and 100 km from the aerial, each
+written once with its distance, out to the first ring beyond the furthest ground in
+sight. Where several ranges are on, their shading overlaps; each repeater's dot is at the
+middle of its own. The green is its own colour, apart from the HF coverage shades and the
+nuclear effects' hues.
+
+**In words.** The card gives the share of the ground in sight within 10 km and within
+25 km, and the furthest ground in sight with its direction: "The furthest ground in
+sight is 31 km (19 mi) away to the north-east, through a gap about 2° wide." Distances
+are to the whole kilometre from 10 km and the half kilometre below that, with miles
+beside them.
+
+**Why this shape.** Under **Why this shape: look along one direction** the card shows
+the range from above, north up: a disc with the ground in sight shaded by bearing and
+distance, rings at 10, 25, 50 and 100 km (spaced by the square root of the distance, so
+the nearer ground has room), and ground with no terrain greyed. Press or drag on the
+disc to choose a direction and a distance (or use the arrow keys: left and right turn,
+Page Up and Page Down turn by a sixteenth of the compass, up and down look further or
+nearer). Below it is the ground's cross-section from the aerial to that place, drawn as
+the line-of-sight check draws a path: the terrain with the Earth's curve (4/3 radius)
+drawn into it, the straight line of sight from the aerial to a station there, the
+stretches of ground in sight along the way marked in green, and, where something is in
+the way, the place it is worst. A line under the disc says it in words: "Hidden: ground
+900 m out stands 40 m above the line of sight." The cross-section is read afresh from the
+terrain at its finest, so on a slope at the edge of what is in sight it can differ from
+the shading by a sample.
 
 **How it is worked out.** It is the same test as the line-of-sight check between two
 points (an Earth of 4/3 radius; ground in the way of the straight ray between the two
@@ -371,85 +392,57 @@ aerials blocks it). Walking outward along a bearing, every place is tested at on
 one pass: seen from the top of the repeater's aerial, with each height lowered by the
 Earth's curve, d² ÷ (2 × k × R), a station is in sight when the slope up to it is at
 least the steepest slope up to any ground nearer in. That is the same condition as
-"nothing between them stands above the ray"; the tests check one against the other
-sample by sample. The ground is read every 100 m out to 25 km and every 250 m from there
-to 100 km, through the same terrain code as the check between two points (tiles whose
-cells are about the size of the step). A bearing ends where the aerial has been out of
-sight for more than 1 km, so a small hollow or a fold in a slope does not end it.
+"nothing between them stands above the ray". The ground is read through the same
+terrain code as the check between two points, from tiles whose cells are about the
+size of the step.
 
-**On screen.** Once the outline of a repeater just switched on is drawn the card folds
-to two short lines (the callsign with the switch, a button to open it out and the close
-button; then the answer in a few words, such as "Mostly about 1 km, up to 8 km" or
-"Mostly 18 km, up to 41 km, terrain partial": where most bearings end, and the furthest
-when one goes further, so that a spike is not hidden), and the map is fitted round that
-outline, not the others, in the part the card leaves clear: above it on a phone, below or beside it on a
-wide screen, whichever is larger. Opened out, the card says the heights and the limit,
-the answer in one sentence (distances to the whole kilometre from 10 km, the half
-kilometre below that, with miles beside them), and one more line where the terrain is
-partial or missing. The rest is behind **What this is, and is not**, which scrolls
-inside the card: the share of the ground inside the outline hidden by nearer ground,
-when it is 5% or more; on how many bearings higher ground further out is in sight
-again, and how far; on how many it is still in sight at 100 km; and what the estimate
-leaves out. On a wide screen the opened card scrolls inside a greatest height rather
-than growing over the map.
+**On screen.** Once the range of a repeater just switched on is drawn the card folds to
+two short lines (the callsign with the switch, a button to open it out and the close
+button; then the answer in a few words, such as "4% in sight within 10 km, furthest 31 km
+north-east"), and the map is fitted round that range, not the others, in the part the
+card leaves clear: above it on a phone, below or beside it on a wide screen, whichever
+is larger. Opened out, the card says the heights and the limit, the answer, and one more
+line where the terrain is partial or missing. The rest is behind **What this is, and is
+not**, which scrolls inside the card. On a wide screen the opened card scrolls inside a
+greatest height rather than growing over the map.
 
 **Heights.**
 
 | Height | Used |
 | --- | --- |
-| The repeater's aerial | The aerial height in its list, as listed. Where the list gives none: **10 m**, said on the card as assumed, and changeable there (remembered on the device). 10 m is low on purpose: most repeater aerials are higher, so the outline errs small. |
+| The repeater's aerial | The aerial height in its list, as listed. Where the list gives none: **10 m**, said on the card as assumed, and changeable there (remembered on the device). 10 m is low on purpose: most repeater aerials are higher, so the estimate errs small. |
 | The other station | A choice of three: **Handheld 1.5 m** (held at head height), **Car 2 m** (an aerial on the car's roof), **Roof aerial 8 m** (on a house roof). Handheld is the first choice. |
 | The ground | From installed terrain, under the repeater and along each bearing. Nothing is invented. |
 
-**With no terrain.** Where no terrain is installed under the repeater, the outline is
-the smooth-Earth radio horizon, a plain dashed circle, and the card says so with a link,
-**Get terrain in Offline maps**, where terrain comes with a map region. Its radius is
-√(2kRh1) + √(2kRh2), with h1 and h2 the two heights in metres above the ground around
-them, R = 6,371 km and k = 4/3: about **4.12 × (√h1 + √h2) km**. (√(2 × 4/3 × 6,371,008.8 m)
-= 4,121.8 m for each √m.) This is the standard radio-horizon form for an effective Earth
-of 4/3 radius, as radio planning texts give it; the effective-radius factor is the one
-explained under [the line-of-sight sums](maps.md#the-sums). The formula was not checked
-against a published copy during this work: the arithmetic above is what the code does.
+**With no terrain.** Where no terrain is installed under the repeater, the range is the
+smooth-Earth radio horizon, a plain dashed circle with a light wash, and the card says
+so with a link, **Get terrain in Offline maps**, where terrain comes with a map region.
+Its radius is √(2kRh1) + √(2kRh2), with h1 and h2 the two heights in metres above the
+ground around them, R = 6,371 km and k = 4/3: about **4.12 × (√h1 + √h2) km**.
+(√(2 × 4/3 × 6,371,008.8 m) = 4,121.8 m for each √m.) This is the standard radio-horizon
+form for an effective Earth of 4/3 radius; the effective-radius factor is the one
+explained under [the line-of-sight sums](maps.md#the-sums). The formula has not been
+checked against a published copy: the arithmetic above is what the code does.
 
 **With part of the terrain.** Where terrain is installed under the repeater but runs out
-on some bearings within 100 km, the card says the terrain covers only part of the area.
-On a bearing where it runs out while the aerial is still in sight, the outline stops at
-the last ground known and that part of its edge is dashed: the reach there may be
-longer. Where it runs out only after the aerial is already out of sight, the outline is
-complete, but high ground beyond could still be in sight, and the card says that too.
+on some bearings within 100 km, the card says the terrain covers only part of the area,
+and behind the disclosure on how many bearings it runs out while the ground is still in
+sight, so that more may be in sight beyond. Ground with no terrain is never shaded.
 
 **What it leaves out.** Transmitter power, aerial gain and pattern, frequency (there is
 no Fresnel zone here, unlike the check between two points), buildings and trees, and
-signals bending over ridges or carried by the weather. A repeater may be heard beyond
-the outline and not heard inside it. The terrain's cells are tens to hundreds of metres
-wide, so a narrow ridge or a cutting can be missed.
+signals bending over ridges or carried by the weather. A repeater may be heard from
+ground left clear and not heard from shaded ground. The terrain's cells are tens to
+hundreds of metres wide, so a narrow ridge or a cutting can be missed.
 
-**Where and when it runs.** On the server, as one request
-(`GET /api/maps/sight-range`, see [api.md](api.md)): one answer is a few kilobytes,
-where working it out in the browser would mean dozens of profile requests. It is worked
-out once for each place, pair of heights and installed terrain, and kept (the last 32
-answers); moving or zooming the map asks nothing, and a hidden page asks nothing. With
-several on, each is asked once, at the same time, and each outline is drawn as its
-answer comes, so the map is not held up while the rest are worked out. Where each
-chosen repeater is comes from its own record (`GET /api/repeaters/:id`, the request its
-card makes), not from the dots in view, so one off the screen is still drawn. One
-outline at 100 km over 512-pixel lossless WebP terrain took about 250 to 300 ms on the
-development Mac, with the server never held up for more than about 30 ms at a time
-(the terrain sampler yields between tiles).
-
-The sums are in `packages/shared/src/radio-range.ts`, the request in
-`apps/server/src/modules/maps/sight-range.ts`, the card and the drawing in
-`apps/web/src/features/repeaters/map/`. Tests: `apps/server/test/maps-sight-range.test.ts`
-(flat ground against the formula, the pass against the two-point check, a ridge, a hill
-against a valley, short and long shadows, partial and no terrain, refused input),
-`apps/web/src/features/repeaters/map/range.test.tsx` (the switch off, working, with
-terrain, without, with part, failed, and the card folding; one repeater at a time, two
-on at once each labelled, remembered, the earlier stored shape, the limit of eight,
-hiding all, a removed repeater dropped, nothing asked with none on), and
-`e2e/tests/repeater-range.mobile.spec.ts` and `repeater-range.spec.ts` (switched on over
-the suite's terrain fixture at 390 and 1280 px wide: the outline at least 120 px across
-on screen and none of it under the card; two switched on from their cards, both kept
-with the card closed, and one switched off alone).
+**Where and when it runs.** On the server, as one request (see [api.md](api.md)), worked
+out once for each place, pair of heights and installed terrain and kept (the last 32
+answers); moving or zooming the map asks nothing. On a Raspberry Pi 5 with the United
+Kingdom's terrain, one range takes about two seconds the first time; the server answers
+other requests meanwhile. With several on, each is asked once, at the same time, and each
+is drawn as its answer comes. Where each chosen repeater is comes from its own record,
+not from the dots in view, so one off the screen is still drawn. The shading is painted
+in the browser from the answer, which is about 170 kB.
 
 ### Taking a set out
 

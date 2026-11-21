@@ -2234,6 +2234,17 @@ Escape puts the tool down.
   Fresnel radius at that place; the place is shown on the map.
 - On the map, the path as the great circle it is, with A, B and the place the answer
   turns on.
+- **A relay between A and B**, under the answer: for when the two are not in sight of
+  each other. Give the relay's aerial height (1.5 m, a radio held up, unless changed;
+  remembered on this device) and press **Find high ground in sight of both**. It takes a
+  few seconds. The ground in sight of both is shaded green on the map, and up to eight
+  of the highest places in it are listed and numbered, each well apart from the others,
+  with up to eight of the nearest to both; **Highest first** or **Nearest first** orders
+  them. Each gives the height of the ground and its distance from A and from B; choose
+  one to draw its lines of sight to A and B. It is worked out from the ground each end
+  can see, as the [estimated range](#estimated-radio-range-from-a-point) is, with the
+  heights at A and B given above. It looks out to 100 km from each end, for ends up to
+  200 km apart. Line of sight only: check a place with this tool before relying on it.
 
 ### The sums
 
@@ -2309,30 +2320,61 @@ in the same file; the web app runs it in the browser.
 ## Estimated radio range from a point
 
 Press and hold the map (or right-click it with a mouse) and choose **Estimated radio
-range from here**: how far a radio at that point could reach over the terrain, drawn as
-an outline with the answer in a card. For a hilltop where someone would set up, a planned
+range from here**: the ground a radio at that point could see over the terrain, shaded on
+the map, with the answer in a card. For a hilltop where someone would set up, a planned
 base, or a saved place (the name is used when the point is one).
 
-It is the repeaters' estimate, the same sums and the same outline (see
+It is the repeaters' estimate, the same sums and the same picture (see
 [docs/radio.md](radio.md#the-estimated-range)), from a point instead of a repeater:
 
 - **The heights.** Your aerial, 1.5 m above the ground unless changed (a radio held in
   the hand; give a mast's height if it is on one), and the other station: a handheld
   (1.5 m), a car (2 m) or a roof aerial (8 m). Under **Heights and details**; remembered
   on this device.
-- **What it is.** The ground a radio there can see: on each of 72 bearings, where the
-  other station would be in sight of your aerial over the installed terrain, out to
-  100 km. The ground in sight is shaded and the ground hidden by nearer ground (from a
-  summit, most of the slopes just below it) is left clear; the outline is the furthest
-  ground in sight. The card gives how far that is on most bearings, the nearest and the
-  furthest, how much of the ground within it is hidden, and the height of the ground there.
+- **What it is.** The ground a radio there can see: along 720 bearings out to 100 km,
+  where the other station would be in sight of your aerial over the installed terrain.
+  The ground in sight is shaded green and the ground hidden by nearer ground (from a
+  summit, most of the slopes just below it) is left clear, with rings at 10, 25, 50 and
+  100 km. The card gives the share of the ground in sight within 10 km and 25 km, the
+  furthest ground in sight and its direction, and the height of the ground there.
+- **Why this shape.** **Why this shape: look along one direction** shows the range from
+  above, north up, as a disc; press or drag on it to see the ground's cross-section from
+  your aerial to that place, with the line of sight and what stands in the way.
 - **What it is not.** An estimate of line of sight, not a promise: power, the band,
   aerials, woods and buildings and signals bending over ridges are not counted. Radio
-  often reaches less than the outline, and sometimes more.
+  often reaches less than this, and sometimes more.
 - **No terrain there.** It says so, and the shape is the plain smooth-Earth radio
-  horizon, with **Get terrain in Offline maps**. A dashed edge is where terrain ran out.
+  horizon, a dashed circle, with **Get terrain in Offline maps**.
 - One point at a time, drawn with any repeaters' ranges that are on. **Stop showing this
   range** (the card's ×) takes it away. It works anywhere terrain is installed.
+
+## How far on foot from a point
+
+Press and hold the map (or right-click it) and choose **How far on foot from here**: the
+ground you could reach on foot in a set time, shaded orange on the map, palest in the last
+hour, with a ring and its time at each half hour (for a walk of an hour or less) or each
+hour. For planning a way home or a place to meet.
+
+- **The time.** 30 minutes, 1, 1½, 2, 3 or 4 hours, chosen in the card and remembered on
+  this device.
+- **The pace.** Tobler's hiking function: about 5 km/h on a flat path, fastest (6 km/h)
+  on a gentle descent, slower uphill and down steep slopes; off paths and roads three
+  fifths of that. It assumes a fit adult with no load. Under **Pace and what this is**
+  you can choose **Slower** (three quarters of it: a heavy pack, children, an easy day) or
+  **Much slower** (half: someone hurt, tired or unused to hills). Those two are
+  Outpost's own allowances, not from Tobler.
+- **The ground.** Heights from installed terrain; paths and roads from the installed map.
+  Water, rivers, canals and cliffs on the map are barred except where a bridge crosses
+  them, as is ground steeper than 45° and ground with no terrain. Streams are stepped over.
+  With no map installed, every step is off-path, and the card says so. With no terrain at
+  the point it says so, with **Get terrain in Offline maps**.
+- **What it does not know.** Fences, walls, private land, bog, deep heather, woods, snow,
+  darkness and weather, which can each halve a pace or stop it; and rests. The ground is
+  read in squares 25 m across for a walk of up to 1½ hours, up to 60 m for 4 hours, so a
+  narrow gully or a footbridge can be missed.
+- It is worked out on this server in a few seconds (about 3 s for four hours on a
+  Raspberry Pi 5) and asks nothing of the internet. One point at a time; the card's ×
+  takes it away.
 
 ## Repeaters on the map
 
@@ -2367,14 +2409,13 @@ Outpost holds none until you import a list or enter some; it downloads none.
   listed aerial height is on the repeater's own screen, to type in as the height at B;
   it is not filled in for you.
 
-- **Estimated range** on the card draws an outline of where the repeater's aerial is in
-  line of sight over installed terrain, for a handheld, a car or a roof aerial: a thin
-  ink line with a light wash, labelled with the callsign along its edge, dashed where
-  terrain ran out (a plain dashed circle, the smooth-Earth radio horizon, where there is
-  none). The switch is that repeater's own: its outline stays after the card is closed,
-  until switched off in its card, and up to eight can be on at once, with **Hide all
-  ranges** in the card when more than one is. Off until switched on, remembered on the
-  device. See [radio.md](radio.md#the-estimated-range).
+- **Estimated range** on the card shades the ground from which a handheld, a car or a
+  roof aerial would be in line of sight of the repeater's aerial over installed terrain,
+  in green, with rings at 10, 25, 50 and 100 km (a plain dashed circle, the smooth-Earth
+  radio horizon, where there is no terrain). The switch is that repeater's own: its range
+  stays after the card is closed, until switched off in its card, and up to eight can be
+  on at once, with **Hide all ranges** in the card when more than one is. Off until
+  switched on, remembered on the device. See [radio.md](radio.md#the-estimated-range).
 
 Links of the form `/maps?repeater=<id>` open the map on a repeater, and with `&sight=1`
 (and optionally `&from=latitude,longitude`) go straight to the check, or with `&range=1`

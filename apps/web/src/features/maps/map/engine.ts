@@ -52,6 +52,7 @@ import {
   overlaySources,
 } from "./overlays";
 import { providePlaceImages } from "./place-images";
+import { loadShade, SHADE_PROTOCOL, type Shade, type ShadeGroup, shadeStyle } from "./shades";
 
 setWorkerUrl(workerUrl);
 addProtocol(
@@ -63,6 +64,8 @@ addProtocol(
 );
 // Contour lines are traced in a worker of our own from installed terrain; see contours.ts.
 addProtocol(CONTOUR_PROTOCOL, loadContourTile);
+// Shading drawn in the page (shades.ts) is handed to the map by name, not fetched: nothing leaves the page.
+addProtocol(SHADE_PROTOCOL, loadShade);
 
 export class MapUnsupportedError extends Error {
   constructor() {
@@ -210,6 +213,7 @@ export class MapEngine {
   private readonly map: MapLibreMap;
   private readonly listeners = new Map<keyof MapEvents, Set<Listener<never>>>();
   private readonly overlayData: Partial<Record<OverlaySource, FeatureCollection>> = {};
+  private readonly shades: Partial<Record<ShadeGroup, Shade[]>> = {};
   private styleInput: Omit<StyleInput, "overlays">;
   private countryLabels: FeatureCollection | undefined;
   private pin: Marker | undefined;
@@ -476,10 +480,26 @@ export class MapEngine {
   // ── Style and overlays ──
 
   private composeStyle() {
+    const shades = shadeStyle(this.shades);
     return buildStyle({
       ...this.styleInput,
-      overlays: { sources: overlaySources(this.overlayData), layers: overlayLayers(this.styleInput.theme) },
+      overlays: {
+        sources: { ...overlaySources(this.overlayData), ...shades.sources },
+        layers: [...shades.layers, ...overlayLayers(this.styleInput.theme)],
+      },
     });
+  }
+
+  /**
+   * Shading drawn as pictures over the map (the ground in sight of an aerial, the ground a walk reaches): each group
+   * replaces what it showed before. The style is applied again in place, so only the pictures that changed are loaded.
+   */
+  setShades(group: ShadeGroup, shades: Shade[]): void {
+    if (this.destroyed) return;
+    const current = this.shades[group] ?? [];
+    if (current.length === 0 && shades.length === 0) return;
+    this.shades[group] = shades;
+    this.map.setStyle(this.composeStyle(), { diff: true });
   }
 
   /** Applies a new style in place: the camera, the overlays and loaded tiles that still apply are kept. */
