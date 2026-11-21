@@ -251,6 +251,8 @@ export function mapTools({
     onPress: () => onContoursChange(!contours),
     disabled,
   });
+  // Where you are from compass bearings to landmarks; resection/.
+  tools.push(take("resection", "Find where you are from bearings", <Waypoints />, "tools"));
   // How the map itself is drawn: the standard map, or another style built from the same tiles (lib/map-styles.ts).
   if (onMapStyleChange) {
     const current = mapStyle ?? "standard";
@@ -268,8 +270,6 @@ export function mapTools({
       disabled,
     });
   }
-  // Where you are from compass bearings to landmarks; resection/.
-  tools.push(take("resection", "Find where you are from bearings", <Waypoints />, "tools"));
   // A paper map of part of this one; the tool itself is in print/.
   tools.push(take("print", "Print or save as PDF", <Printer />, "tools"));
   // Radio: the locator grid, the repeaters, and whether two points can see each other.
