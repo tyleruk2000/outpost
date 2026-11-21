@@ -12,6 +12,8 @@
 import {
   MESH_CHANNEL_NAME_MAX,
   MESH_DEFAULT_PORTS,
+  type MeshBrokerFound,
+  type MeshBrokerTestInput,
   type MeshChannel,
   type MeshCoreInput,
   type MeshCoreMode,
@@ -29,8 +31,8 @@ import { toast } from "sonner";
 import { Disclosure, Notice } from "@/components/page";
 import { NotFromThisDevice, REMOTE_SETTINGS_SCOPE, rightReason } from "@/components/setting-right";
 import { Button } from "@/components/ui/button";
-import { Field, Input } from "@/components/ui/input";
-import { Select, Skeleton } from "@/components/ui/misc";
+import { Field, Input, Textarea } from "@/components/ui/input";
+import { Checkbox, Select, Skeleton } from "@/components/ui/misc";
 import { allMessages, useBoardMessages, useDeviceName } from "@/features/board/data";
 import { SettingRow, SettingsSection } from "@/features/settings/parts";
 import { errorMessage } from "@/lib/api";
@@ -39,16 +41,24 @@ import { notify } from "@/lib/notify";
 import { usePageVisible } from "@/lib/page-visible";
 import { cn } from "@/lib/utils";
 import { suggestPassword, useMesh, useMeshDevices, useMeshTest, useSaveMeshCore, useSaveMeshtastic } from "./data";
+import { DynamicSecurity, FindBroker, PortInUse, TestBroker } from "./household-broker";
+import { MosquittoGuide } from "./mosquitto-guide";
 import {
+  awayAdvice,
+  CHOOSE_BROKER,
   deliveryWords,
   heardWords,
   INTRO,
+  inUseWords,
   JSON_OFF,
   meshcoreStateWords,
   meshtasticStateWords,
   NO_LAN,
+  NOT_MANAGED,
   REGION_URL,
   REMOTE,
+  radiosWords,
+  switchWords,
   TRADEMARK,
   UNTRIED,
   WARNINGS,
@@ -335,6 +345,8 @@ function MeshtasticPart({ data }: { data: MeshResponse }) {
   const [clientUser, setClientUser] = useState(config.client.userName);
   const [clientPassword, setClientPassword] = useState("");
   const [rootTopic, setRootTopic] = useState(config.client.rootTopic || "msh/EU_868");
+  const [tls, setTls] = useState(config.client.tls);
+  const [ca, setCa] = useState(config.client.ca ?? "");
   const [channels, setChannels] = useState<ChannelDraft[]>(() =>
     (config.channels.length > 0 ? config.channels : [{ name: "LongFast", index: 0 }]).map((channel) => ({
       key: draftKey(),
@@ -366,6 +378,8 @@ function MeshtasticPart({ data }: { data: MeshResponse }) {
         port: Number(clientPort),
         userName: clientUser.trim(),
         rootTopic: rootTopic.trim(),
+        tls,
+        ca: tls ? ca.trim() || null : config.client.ca,
         ...(clientPassword ? { password: clientPassword } : {}),
       };
     if (mode !== "off") input.channels = carried;
@@ -383,10 +397,54 @@ function MeshtasticPart({ data }: { data: MeshResponse }) {
 
   const addresses = status.brokerAddresses.map((address) => `${address}:${isPort(brokerPort) ? Number(brokerPort) : config.broker.port}`);
   const carriedNames = channels.map((channel) => channel.name.trim()).filter(Boolean);
+  const switching =
+    mode === "off"
+      ? null
+      : switchWords(config, { mode, host: host.trim(), port: portText, userName: clientUser.trim() }, addresses[0] ?? null);
+  const testInput: MeshBrokerTestInput | null =
+    host.trim() && isPort(clientPort) && rootTopic.trim()
+      ? {
+          host: host.trim(),
+          port: Number(clientPort),
+          userName: clientUser.trim(),
+          rootTopic: rootTopic.trim(),
+          tls,
+          ...(tls && ca.trim() ? { ca: ca.trim() } : {}),
+          ...(clientPassword ? { password: clientPassword } : {}),
+        }
+      : null;
+  const fillFromFound = (found: MeshBrokerFound) => {
+    setMode("client");
+    setHost(found.host);
+    setClientPort(String(found.port));
+    setTls(found.tls);
+  };
 
   return (
     <Part id={headingId} title="Meshtastic, by MQTT">
       <StateLine words={meshtasticStateWords(config, status)} state={status.state} lastHeardAt={status.lastHeardAt} />
+      <LinkDetails config={config} status={status} />
+      {status.portInUse ? (
+        <PortInUse
+          port={status.portInUse.port}
+          freePort={status.portInUse.freePort}
+          disabled={!allowed}
+          onFreePort={(free) => {
+            setMode("broker");
+            setBrokerPort(String(free));
+          }}
+          onUseExisting={() =>
+            fillFromFound({
+              host: "127.0.0.1",
+              port: status.portInUse?.port ?? 1883,
+              tls: false,
+              where: "this-computer",
+              answer: "needs-login",
+              words: "",
+            })
+          }
+        />
+      ) : null}
       {status.state !== "off" && status.json === false ? (
         <Notice tone="warning" icon={<CircleAlert aria-hidden />}>
           {JSON_OFF}
@@ -426,7 +484,7 @@ function MeshtasticPart({ data }: { data: MeshResponse }) {
         <SettingRow
           htmlFor={modeId}
           label="How Outpost reaches the radio"
-          hint="A radio on the home Wi-Fi sends what it hears to an MQTT broker and takes what the broker gives it."
+          hint={`A radio on the home Wi-Fi sends what it hears to an MQTT broker and takes what the broker gives it. ${CHOOSE_BROKER}`}
           control={
             <Select
               id={modeId}
@@ -450,6 +508,15 @@ function MeshtasticPart({ data }: { data: MeshResponse }) {
             <PasswordField label="Password" value={brokerPassword} set={config.broker.passwordSet} onChange={setBrokerPassword} />
           </div>
         ) : null}
+        {mode === "broker" && data.inContainer ? (
+          <p className="text-small text-ink-muted">
+            Outpost runs in a container: a radio reaches this broker only if compose.yaml publishes the port (
+            <span className={mono}>
+              - "{isPort(brokerPort) ? brokerPort : 1883}:{isPort(brokerPort) ? brokerPort : 1883}"
+            </span>
+            ). If a Mosquitto on this computer already has port 1883, Docker cannot give it to Outpost too: use that Mosquitto instead.
+          </p>
+        ) : null}
 
         {mode === "client" ? (
           <div className="grid gap-4 sm:grid-cols-2">
@@ -464,13 +531,39 @@ function MeshtasticPart({ data }: { data: MeshResponse }) {
               hint={status.heardRoot ? `The radio was last heard under ${status.heardRoot}.` : "As set on the radio."}
             />
             <PasswordField label="Password" value={clientPassword} set={config.client.passwordSet} onChange={setClientPassword} optional />
+            <TlsFields tls={tls} onTls={setTls} ca={ca} onCa={setCa} />
+          </div>
+        ) : null}
+        {mode === "client" ? (
+          <div className="grid gap-4">
+            <FindBroker host={host} port={isPort(clientPort) ? Number(clientPort) : null} disabled={!allowed} onUse={fillFromFound} />
+            <TestBroker input={testInput} disabled={!allowed} />
+            <p className="text-small text-ink-muted">{NOT_MANAGED}</p>
           </div>
         ) : null}
 
         {mode !== "off" ? <ChannelsEditor channels={channels} onChange={setChannels} /> : null}
 
+        {switching ? (
+          <Notice tone="warning" icon={<CircleAlert aria-hidden />} title="Before you save: what changes on the radio">
+            <ul className="grid list-disc gap-1 pl-5">
+              {switching.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </Notice>
+        ) : null}
         <SaveRow allowed={allowed} problem={problem} pending={save.isPending} onSave={submit} />
       </fieldset>
+
+      {mode === "client" ? (
+        <DynamicSecurity
+          saved={config.mode === "client" && Boolean(config.client.host)}
+          disabled={!allowed}
+          rootTopic={rootTopic.trim() || "msh/EU_868"}
+        />
+      ) : null}
+      {mode !== "off" ? <MosquittoGuide rootTopic={rootTopic} outpostUser={clientUser} /> : null}
 
       {mode !== "off" ? (
         <MeshtasticSteps
@@ -482,9 +575,73 @@ function MeshtasticPart({ data }: { data: MeshResponse }) {
           userName={(mode === "broker" ? brokerUser : clientUser).trim()}
           rootTopic={rootTopic.trim()}
           channels={carriedNames}
+          tls={mode === "client" && tls}
         />
       ) : null}
     </Part>
+  );
+}
+
+/** Which broker is in use, who has published, how much, and what to do when it is down. */
+function LinkDetails({ config, status }: { config: MeshResponse["meshtastic"]["config"]; status: MeshResponse["meshtastic"]["status"] }) {
+  const inUse = inUseWords(config);
+  if (!inUse) return null;
+  const radios = radiosWords(status);
+  return (
+    <div className="grid gap-1 text-small text-ink-muted">
+      <p>{inUse}</p>
+      {status.state === "connected" || status.state === "listening" ? (
+        <p>
+          {radios.length > 0 ? `Published: ${radios.join("; ")}. ` : "No radio has published since the link started. "}
+          {status.perMinute} message{status.perMinute === 1 ? "" : "s"} in the last minute.
+        </p>
+      ) : null}
+      {status.dropped > 0 ? (
+        <p className="text-warning">
+          {status.dropped} message{status.dropped === 1 ? "" : "s"} from the broker left unread: more came than the 20 a second Outpost
+          takes.
+        </p>
+      ) : null}
+      {status.state === "away" ? <p>{awayAdvice(config)}</p> : null}
+    </div>
+  );
+}
+
+/** TLS to the household's broker, and the household's own certificate authority to check it with. */
+function TlsFields({ tls, onTls, ca, onCa }: { tls: boolean; onTls: (on: boolean) => void; ca: string; onCa: (ca: string) => void }) {
+  const id = useId();
+  return (
+    <div className="grid gap-3 sm:col-span-2">
+      <div className="flex items-start gap-2">
+        <Checkbox id={id} checked={tls} onCheckedChange={(value) => onTls(value === true)} className="mt-0.5" />
+        <label htmlFor={id} className="text-small text-ink">
+          Use TLS
+          <span className="block text-ink-muted">
+            Encrypts the sign-in and the messages on the home network. Mosquitto's TLS port is usually 8883. The broker's certificate is
+            always checked.
+          </span>
+        </label>
+      </div>
+      {tls ? (
+        <Field
+          label="The household's CA certificate"
+          optional
+          hint="Paste the ca.crt the broker's certificate was made with. Leave it empty for a certificate from a public authority."
+        >
+          {(ids) => (
+            <Textarea
+              {...ids}
+              value={ca}
+              rows={4}
+              spellCheck={false}
+              placeholder="-----BEGIN CERTIFICATE-----"
+              onChange={(event) => onCa(event.target.value)}
+              className="font-mono text-[0.8125rem]"
+            />
+          )}
+        </Field>
+      ) : null}
+    </div>
   );
 }
 
@@ -559,6 +716,7 @@ function MeshtasticSteps({
   userName,
   rootTopic,
   channels,
+  tls,
 }: {
   mode: "broker" | "client";
   addresses: string[];
@@ -568,6 +726,7 @@ function MeshtasticSteps({
   userName: string;
   rootTopic: string;
   channels: string[];
+  tls: boolean;
 }) {
   const server =
     mode === "client" ? (
@@ -618,7 +777,7 @@ function MeshtasticSteps({
             <span className="font-medium">JSON output on.</span> Meshtastic says “JSON is not supported on the nRF52 platform”, so this
             works with ESP32 radios only.
           </li>
-          <li>TLS off.</li>
+          <li>{tls ? "TLS on (not tried with a real radio)." : "TLS off."}</li>
         </ul>
       </li>
       <li>On {named}: Uplink on and Downlink on.</li>

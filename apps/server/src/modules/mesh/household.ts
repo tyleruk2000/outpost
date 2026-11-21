@@ -266,7 +266,7 @@ async function withDynsec<T>(
       return {
         state: "not-allowed",
         words:
-          "Mosquitto refused this account its dynamic security topics: the plugin is on (or the broker forbids them), and Outpost's account may not manage it. To let it add radio accounts, give it the admin role (see the guide), or add them yourself with mosquitto_ctrl.",
+          "Mosquitto refused this account its dynamic security topics: the plugin is on (or the broker forbids them), and Outpost's account may not manage it. To let it add radio accounts, give it the dynsec-admin role (see the guide), or add them yourself with mosquitto_ctrl.",
         clients: [],
       };
     return await then(session);

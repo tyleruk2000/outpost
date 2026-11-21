@@ -50,6 +50,60 @@ export const JSON_OFF = "The radio is sending, but not as JSON: turn JSON output
 export const NO_LAN =
   "Outpost listens only on this computer at the moment, so a radio on Wi-Fi cannot reach its broker. Share Outpost with your network first (see “Who can use this library”).";
 
+/** Under the choice of broker: which to choose. */
+export const CHOOSE_BROKER =
+  "Outpost's own broker needs nothing else and carries the radios only. Use the household's broker if you already run Mosquitto, or want other things (Home Assistant, sensors) on it too.";
+
+/** Said wherever the household's broker is set up: it is theirs, not Outpost's. */
+export const NOT_MANAGED =
+  "Outpost does not install, start, stop, upgrade or change the household's Mosquitto, its files or its container: other things may depend on it. Outpost signs in to it like any other client.";
+
+/** Which broker is in use, said plainly, so that two brokers do not fight over one port. */
+export function inUseWords(config: MeshtasticConfig): string | null {
+  if (config.mode === "client")
+    return `In use: the household's broker at ${config.client.host}:${config.client.port}${config.client.tls ? ", over TLS" : ""}. Outpost's own broker is switched off, so it leaves port ${config.broker.port} to anything else on this computer.`;
+  if (config.mode === "broker") return `In use: Outpost's own broker, on port ${config.broker.port} of this computer.`;
+  return null;
+}
+
+/** What changes on the radio when the saved choice of broker is changed, said before anything is saved. */
+export function switchWords(
+  from: MeshtasticConfig,
+  to: { mode: "broker" | "client"; host: string; port: string; userName: string },
+  brokerAddress: string | null,
+): string[] | null {
+  if (from.mode === "off" || from.mode === to.mode) return null;
+  if (to.mode === "client")
+    return [
+      `Outpost's own broker stops when you save, and port ${from.broker.port} is free for the household's.`,
+      `On the radio, in Meshtastic's app under Settings → MQTT: set the server address to ${to.host ? `${to.host}:${to.port}` : "the household's broker"}, and the user name and password to the radio's own account on that broker${to.userName ? ` (not Outpost's, ${to.userName})` : ""}.`,
+      "Until then the radio keeps trying Outpost's broker, and nothing is carried.",
+    ];
+  return [
+    `Outpost stops using the household's broker at ${from.client.host}:${from.client.port} when you save, and starts its own on port ${to.port}${
+      from.client.host === "127.0.0.1" || from.client.host === "localhost"
+        ? ": if the household's Mosquitto is still on that port, Outpost's cannot start"
+        : ""
+    }.`,
+    `On the radio, in Meshtastic's app under Settings → MQTT: set the server address to ${brokerAddress ?? "this computer's address"}, and the user name and password to the ones set here.`,
+    "The household's Mosquitto is left as it is.",
+  ];
+}
+
+/** What to do when the link is down, by way in. */
+export function awayAdvice(config: MeshtasticConfig): string {
+  return config.mode === "client"
+    ? "Outpost tries again by itself. If it does not come back, check that Mosquitto is running on that computer (sudo docker ps, or systemctl status mosquitto), that the address and port are right, and that the user name and password are the ones in Mosquitto's password file. Test, below, says which step fails."
+    : "Outpost tries again by itself.";
+}
+
+/** "!a1b2c3d4: 12 messages, last 2 minutes ago". */
+export function radiosWords(status: MeshtasticStatus): string[] {
+  return status.radios.map(
+    (radio) => `${radio.id}: ${radio.messages} message${radio.messages === 1 ? "" : "s"}, last ${timeAgo(radio.lastAt)}`,
+  );
+}
+
 const at = (time: number) => formatTimeOfDay(time);
 
 /** "Listening on port 1883; no radio connected yet", "A radio connected since 14:02 (from 192.168.1.40)", and so on. */
