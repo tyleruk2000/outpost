@@ -471,6 +471,12 @@ export const GUIDES: Guide[] = [
     group: "developers",
     about: "Making and signing a release, and how an update is installed.",
   },
+  {
+    slug: "propagation-development",
+    file: "development/propagation.md",
+    group: "developers",
+    about: "How the HF propagation engines and the Morse trainer are built, checked and rebuilt.",
+  },
 ];
 
 /** Pages of docs/ that are deliberately not guides, each with the reason. Keep it short. */
