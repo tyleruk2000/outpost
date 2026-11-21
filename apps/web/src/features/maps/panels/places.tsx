@@ -10,6 +10,7 @@ import { ConfirmDialog } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Skeleton, Switch } from "@/components/ui/misc";
 import { KeepPlacesRow } from "@/features/kept/keep-controls";
+import { ShareCodeButton } from "@/features/qr/share-code";
 import { copyText } from "@/lib/clipboard";
 import { cn, plural } from "@/lib/utils";
 import { formatPosition, type ReadoutFormat } from "../lib/coords";
@@ -226,6 +227,13 @@ export function PlaceEditor({
             <Copy aria-hidden className="size-3.5 text-ink-faint group-hover:text-ink" />
           </button>
           {format === "maidenhead" ? null : <Locator position={draft} className="self-start" />}
+          {saved ? (
+            <div>
+              <ShareCodeButton
+                target={{ name: saved.name, outpostPath: `/maps?marker=${saved.id}`, geo: { lat: saved.lat, lon: saved.lon } }}
+              />
+            </div>
+          ) : null}
           {saved && moved >= 1 ? (
             <Notice
               tone="info"

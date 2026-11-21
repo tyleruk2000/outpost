@@ -21,6 +21,7 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Segmented, Spinner } from "@/components/ui/misc";
+import { ShareCodeButton } from "@/features/qr/share-code";
 import { describeRangeTerrain, formatHeight, formatReach, rangeBounds, readRange, stationOf } from "@/features/repeaters/map/range";
 import { useSightRange } from "@/features/repeaters/map/use-repeater-range";
 import { errorMessage } from "@/lib/api";
@@ -159,6 +160,18 @@ export function usePointRange({
               ) : null}
             </div>
           ) : null}
+        </div>
+
+        <div>
+          {/* The range is worked out again on the phone: the link opens the map at the point, as the line says. */}
+          <ShareCodeButton
+            target={{
+              name: name === "Estimated range" ? "this range" : `the range from ${name}`,
+              outpostPath: `/maps?lat=${at.position.lat.toFixed(5)}&lon=${at.position.lon.toFixed(5)}&z=12`,
+              geo: at.position,
+              outpostNote: "It opens the map at the point; there, Estimated radio range from here works the range out again.",
+            }}
+          />
         </div>
 
         <button

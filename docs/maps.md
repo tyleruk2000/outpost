@@ -940,6 +940,28 @@ names are used.
 - **Backups** are the whole database, so they hold the icons. **Erase everything**
   removes places one at a time through the same service as before, icon and all.
 
+### A place, a route or a range on a phone, by QR code
+
+**QR code** on a saved place, on a route and on an estimated radio range shows a code
+for a phone to scan. It is made on this device; nothing is sent to make it. Choose what
+the code opens:
+
+- **Open in Outpost**: a link to the same place, route or point in Outpost, for a phone
+  on the same network. It uses an address the phone can reach: an HTTPS address from
+  Settings, "HTTPS on your network", first, else the address this page is open at. With
+  more than one, choose under **Address**. Opened on the computer Outpost runs on (at
+  `localhost`), there is no such address until HTTPS is on, and the dialog says so. For
+  a range, the link opens the map at its point: the range is worked out again there
+  with **Estimated radio range from here**.
+- **Map apps (geo:)**, for a place or a range's point: a `geo:` link, which a phone's
+  own map apps open with no network at all.
+- **GPX file**, for a route: a link to the route's GPX file, for a phone on the same
+  network to download and open in another app.
+
+**Copy** copies what the code holds. If Outpost answers this computer only, a phone
+cannot open the links: the dialog says so, and Settings, "Who can use this library",
+shares it with the network.
+
 ### Moving a saved place
 
 A saved place can be moved straight from the map, without opening it. **Nothing is
