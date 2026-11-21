@@ -128,6 +128,18 @@ With no terrain you get the smooth-Earth radio horizon, about 4.12 × (√h1 + �
 **Get terrain in Offline maps**. It leaves out power, aerial gain, frequency, buildings and
 trees, and can miss a narrow ridge.
 
+The ground in sight is a green wash with a solid green edge round each patch, and the map
+first fits nine tenths of it, so one far glen does not shrink the rest.
+
+**How accurate it is.** Treat the shading as the most a radio could see over bare ground.
+Over the terrain held, the share in sight is within about 1.5 percentage points of a
+careful reading of the same terrain, erring generous, and its edge is good to a sample or
+two. Two things matter more: trees and buildings (the terrain in England and Wales is bare
+earth, so in a town or wood the real view is far smaller; elsewhere it is a 30 m surface
+model, with canopy and buildings averaged in), and the terrain's own error (±15 cm from
+lidar in Great Britain, under 4 m elsewhere). How this was checked is in
+[development/radio.md](development/radio.md#estimated-range-accuracy).
+
 ### Taking a set out
 
 **Export these** writes the repeaters shown, nearest first: **CHIRP (CSV)** for programming

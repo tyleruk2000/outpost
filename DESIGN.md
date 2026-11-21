@@ -66,6 +66,15 @@ Rules:
   ground in sight of an aerial, `map-walk` (orange) for the ground a walk reaches. Each
   is checked for colour-blind separation against the map's land and the others it can
   meet (the figures are beside the tokens).
+- A wash over the map is never the only mark of a shape. The range's ground in sight is
+  the `map-range` wash at 55% with an edge in the same hue at full strength, 2 px, cased
+  in the page colour, traced round every patch in sight: the wash lets the map show
+  through, the edge carries the shape on hill shading, woods and satellite imagery and
+  keeps a small patch from being lost. Checked at phone size on the light and dark maps,
+  every map style and satellite imagery (21 November 2026): on the light map's land the
+  edge is at least 3:1 and the wash 1.9:1 (it was 1.6:1 at 42% with no edge); on the
+  dark map's land both are at least 3:1; edge and wash are 15 apart in the worst
+  colour-blind simulation. The why view's disc edges its shape the same way.
 
 ## Typography
 

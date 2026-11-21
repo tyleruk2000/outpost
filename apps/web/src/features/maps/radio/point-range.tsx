@@ -22,7 +22,15 @@ import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Segmented, Spinner } from "@/components/ui/misc";
 import { ShareCodeButton } from "@/features/qr/share-code";
-import { describeRangeTerrain, formatHeight, formatReach, rangeBounds, readRange, stationOf } from "@/features/repeaters/map/range";
+import {
+  describeRangeTerrain,
+  formatHeight,
+  formatReach,
+  RANGE_ACCURACY,
+  rangeFitBounds,
+  readRange,
+  stationOf,
+} from "@/features/repeaters/map/range";
 import { useSightRange } from "@/features/repeaters/map/use-repeater-range";
 import { errorMessage } from "@/lib/api";
 import { useDebounced } from "@/lib/use-debounced";
@@ -101,7 +109,7 @@ export function usePointRange({
     if (fitted.current === key) return;
     fitted.current = key;
     const clearBottom = (card.current?.closest(".outpost-map-card")?.getBoundingClientRect().height ?? 0) + 16;
-    engine.fitBounds(rangeBounds(range.data), { clearBottom, maxZoom: 13 });
+    engine.fitBounds(rangeFitBounds(range.data), { clearBottom, maxZoom: 13 });
   }, [engine, range.data, at]);
 
   const name = at?.name ?? "Estimated range";
@@ -253,6 +261,7 @@ export function usePointRange({
                   plain dashed circle, and says so.
                 </p>
                 {terrain ? <p>{terrain}</p> : null}
+                {range.data && range.data.coverage !== "none" ? <p>{RANGE_ACCURACY}</p> : null}
               </div>
             </details>
           </>

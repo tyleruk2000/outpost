@@ -156,6 +156,13 @@ export interface RangeReading {
   needsTerrain: boolean;
 }
 
+/**
+ * How far to trust the shading, said in both range cards. From the check against GDAL's viewshed and a 5 m walk over
+ * the same terrain at four places (docs/radio.md, "How accurate it is").
+ */
+export const RANGE_ACCURACY =
+  "How close it is: over the terrain held, the share of ground in sight is within about 1.5 percentage points of a careful reading, and errs on the generous side; the edge of the shading is good to a sample or two. Trees and buildings are not in the terrain, so expect less in practice, often much less in a town or a wood.";
+
 /** `where` says where the aerial is, for the one sentence that names it: a repeater, or a point chosen on the map ("here"). */
 export function readRange(range: SightRange, where: "repeater" | "here" = "repeater"): RangeReading {
   const max = formatReach(range.maxMeters);
@@ -240,8 +247,12 @@ export function describeRangeTerrain(range: SightRange): string | null {
 
 /** The rings drawn round a range, and in the disc of the why view. */
 export const RANGE_RINGS = [10_000, 25_000, 50_000, 100_000] as const;
-/** How solid the shading of the ground in sight is: the map's names, roads and coast still show through it. */
-export const RANGE_SHADE_OPACITY = 0.42;
+/**
+ * How solid the shading of the ground in sight is: the map's names, roads and coast still show through it. With the
+ * edge drawn round it (`rangeEdges`), it reads on the light, dark and satellite maps and every map style at phone
+ * size in sunlight; at the 0.42 it once was, specks and narrow fingers of ground in sight were lost in hill shading.
+ */
+export const RANGE_SHADE_OPACITY = 0.55;
 
 const EARTH = 6_371_008.8;
 const DEG = Math.PI / 180;
@@ -284,6 +295,9 @@ export function rangeData(range: SightRange | undefined, name = ""): FeatureColl
     return { type: "FeatureCollection", features };
   }
   if (rangeExtent(range) <= 0) return { type: "FeatureCollection", features };
+  const edges = rangeEdges(range);
+  if (edges.length > 0)
+    features.push({ type: "Feature", properties: { kind: "seen-edge", name }, geometry: { type: "MultiLineString", coordinates: edges } });
   for (const meters of ringsFor(rangeExtent(range))) {
     features.push({
       type: "Feature",
@@ -302,10 +316,48 @@ export function rangeData(range: SightRange | undefined, name = ""): FeatureColl
 
 /** The box the shading and its rings fill, to bring them into view. */
 export function rangeBounds(range: SightRange): Bbox {
-  const extent = Math.max(500, rangeExtent(range));
-  const lat = extent / EARTH / DEG;
+  return boxAround(range, Math.max(500, rangeExtent(range)));
+}
+
+const boxAround = (range: SightRange, meters: number): Bbox => {
+  const lat = meters / EARTH / DEG;
   const lon = lat / Math.max(0.05, Math.cos(range.at.lat * DEG));
   return [range.at.lon - lon, range.at.lat - lat, range.at.lon + lon, range.at.lat + lat];
+};
+
+/** The share of the ground in sight the map is fitted round when a range is first shown. */
+const FIT_SHARE = 0.9;
+
+/**
+ * The box the map is fitted round when a range is first shown: round nine tenths of the ground in sight (and at least
+ * 1.5 km), not round the furthest. Fitted round the furthest, one glen in sight 30 km out shrank the patch round the
+ * aerial, which is most of the answer, to a few pixels on a phone. The rings and the card say how far the rest goes.
+ */
+export function rangeFitBounds(range: SightRange): Bbox {
+  if (range.coverage === "none" || range.bearingCount === 0) return rangeBounds(range);
+  const grid = rangeGrid(range);
+  const { distances } = grid;
+  const seenAt = new Float64Array(distances.length);
+  let total = 0;
+  for (let i = 0; i < distances.length; i += 1) {
+    let count = 0;
+    for (let b = 0; b < grid.bearingCount; b += 1) if (grid.seen(b, i)) count += 1;
+    // The ground a sample stands for grows with its distance and the step around it.
+    const weight = count * distances[i]! * ((distances[i + 1] ?? distances[i]!) - (distances[i - 1] ?? 0));
+    seenAt[i] = weight;
+    total += weight;
+  }
+  if (total <= 0) return rangeBounds(range);
+  let sum = 0;
+  let meters = rangeExtent(range);
+  for (let i = 0; i < distances.length; i += 1) {
+    sum += seenAt[i]!;
+    if (sum >= FIT_SHARE * total) {
+      meters = distances[i]!;
+      break;
+    }
+  }
+  return boxAround(range, Math.min(Math.max(500, rangeExtent(range)), Math.max(1_500, meters)));
 }
 
 /**
@@ -350,6 +402,105 @@ export function rangeShade(range: SightRange, colour: string, pixels = 1536): Sh
   });
 }
 
+/** How many squares across the edge is traced in: fine enough to follow a glen, few enough to stay quick. */
+const EDGE_CELLS = 640;
+
+/**
+ * The edge of the ground in sight, as short lines to draw over the shading, so that its shape reads however busy the
+ * map beneath is (hill shading, woods, satellite imagery) and a small patch in sight is not lost. Traced by marching
+ * squares over the same in-sight values the picture is painted from, where they cross one half, on a lattice laid on
+ * the map's own projection over the box the picture fills. Empty with no terrain (the plain circle has its own line).
+ */
+export function rangeEdges(range: SightRange, cells = EDGE_CELLS): Array<[[number, number], [number, number]]> {
+  if (range.coverage === "none" || range.bearingCount === 0) return [];
+  const extent = rangeExtent(range);
+  if (extent <= 0) return [];
+  const grid = rangeGrid(range);
+  const [west, south, east, north] = rangeBounds(range);
+  const mercator = (lat: number) => Math.log(Math.tan(Math.PI / 4 + (lat * DEG) / 2));
+  const top = mercator(north);
+  const spanY = top - mercator(south);
+  const { lat: lat0, lon: lon0 } = range.at;
+  const reach = extent + 300;
+  const size = cells + 1;
+  const lons = new Float64Array(size);
+  const lats = new Float64Array(size);
+  for (let i = 0; i < size; i += 1) {
+    lons[i] = west + (i / cells) * (east - west);
+    lats[i] = (2 * Math.atan(Math.exp(top - (i / cells) * spanY)) - Math.PI / 2) / DEG;
+  }
+  const values = new Float32Array(size * size);
+  for (let y = 0; y < size; y += 1) {
+    const dy = (lats[y]! - lat0) * DEG * EARTH;
+    const across = Math.cos(((lats[y]! + lat0) / 2) * DEG);
+    for (let x = 0; x < size; x += 1) {
+      const dx = (lons[x]! - lon0) * DEG * EARTH * across;
+      const meters = Math.hypot(dx, dy);
+      values[y * size + x] = meters > reach ? 0 : seenAt(range, grid, Math.atan2(dx, dy) / DEG, meters);
+    }
+  }
+  const round = (value: number) => Number(value.toFixed(6));
+  // A point on a lattice edge, where the value crosses one half between its two ends.
+  const cross = (x0: number, y0: number, x1: number, y1: number): [number, number] => {
+    const a = values[y0 * size + x0]!;
+    const b = values[y1 * size + x1]!;
+    const t = a === b ? 0.5 : Math.min(1, Math.max(0, (0.5 - a) / (b - a)));
+    const x = x0 + (x1 - x0) * t;
+    const y = y0 + (y1 - y0) * t;
+    const lon = west + (x / cells) * (east - west);
+    const lat = (2 * Math.atan(Math.exp(top - (y / cells) * spanY)) - Math.PI / 2) / DEG;
+    return [round(lon), round(lat)];
+  };
+  const lines: Array<[[number, number], [number, number]]> = [];
+  for (let y = 0; y < cells; y += 1) {
+    for (let x = 0; x < cells; x += 1) {
+      const tl = values[y * size + x]! >= 0.5 ? 1 : 0;
+      const tr = values[y * size + x + 1]! >= 0.5 ? 1 : 0;
+      const br = values[(y + 1) * size + x + 1]! >= 0.5 ? 1 : 0;
+      const bl = values[(y + 1) * size + x]! >= 0.5 ? 1 : 0;
+      const corners = tl * 8 + tr * 4 + br * 2 + bl;
+      if (corners === 0 || corners === 15) continue;
+      const topEdge = () => cross(x, y, x + 1, y);
+      const right = () => cross(x + 1, y, x + 1, y + 1);
+      const bottom = () => cross(x, y + 1, x + 1, y + 1);
+      const left = () => cross(x, y, x, y + 1);
+      switch (corners) {
+        case 1:
+        case 14:
+          lines.push([left(), bottom()]);
+          break;
+        case 2:
+        case 13:
+          lines.push([bottom(), right()]);
+          break;
+        case 3:
+        case 12:
+          lines.push([left(), right()]);
+          break;
+        case 4:
+        case 11:
+          lines.push([topEdge(), right()]);
+          break;
+        case 6:
+        case 9:
+          lines.push([topEdge(), bottom()]);
+          break;
+        case 7:
+        case 8:
+          lines.push([left(), topEdge()]);
+          break;
+        case 5:
+          lines.push([left(), topEdge()], [bottom(), right()]);
+          break;
+        case 10:
+          lines.push([topEdge(), right()], [left(), bottom()]);
+          break;
+      }
+    }
+  }
+  return lines;
+}
+
 /**
  * What the map draws beside the shading: rings at 10, 25, 50 and 100 km in the range's colour, cased in the page
  * colour so that they read on the plain map, on satellite imagery and in the dark theme; each written once with its
@@ -364,6 +515,22 @@ export function rangeLayers(theme: MapTheme): LayerSpecification[] {
       source: RANGE_SOURCE,
       filter: ["==", ["get", "kind"], "area"],
       paint: { "fill-color": theme.range, "fill-opacity": 0.18 },
+    },
+    {
+      id: "o-range-edge-casing",
+      type: "line",
+      source: RANGE_SOURCE,
+      filter: ["==", ["get", "kind"], "seen-edge"],
+      layout: { "line-join": "round", "line-cap": "round" },
+      paint: { "line-color": theme.page, "line-width": 4, "line-opacity": 0.75 },
+    },
+    {
+      id: "o-range-edge",
+      type: "line",
+      source: RANGE_SOURCE,
+      filter: ["==", ["get", "kind"], "seen-edge"],
+      layout: { "line-join": "round", "line-cap": "round" },
+      paint: { "line-color": theme.range, "line-width": 2 },
     },
     {
       id: "o-range-casing",

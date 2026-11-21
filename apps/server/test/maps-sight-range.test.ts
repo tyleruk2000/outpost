@@ -178,15 +178,16 @@ describe("how far a station stays in sight", () => {
     expect(walled).toMatchObject({ runs: [[0, 75]], furthestMeters: 50, limit: "sight" });
   });
 
-  it("walks every 50 m to 25 km, every 100 m to 50 km and every 250 m to 100 km, and finds points along a bearing", () => {
+  it("walks every 10 m to 2 km, every 50 m to 25 km, every 100 m to 50 km and every 250 m to 100 km, and finds points along a bearing", () => {
     const distances = rangeDistances();
-    expect(distances[0]).toBe(50);
+    expect(distances[0]).toBe(10);
     expect(distances.at(-1)).toBe(RANGE_MAX_METERS);
-    expect(distances.filter((d) => d <= 25_000)).toHaveLength(500);
+    expect(distances.filter((d) => d <= 2_000)).toHaveLength(200);
+    expect(distances.filter((d) => d > 2_000 && d <= 25_000)).toHaveLength(460);
     expect(distances.filter((d) => d > 25_000 && d <= 50_000)).toHaveLength(250);
-    expect(distances).toHaveLength(500 + 250 + 200);
+    expect(distances).toHaveLength(200 + 460 + 250 + 200);
     // The index of a sample is worked out from the bands, without looking: at or just beyond the distance.
-    for (const meters of [1, 50, 51, 24_999, 25_000, 25_001, 49_950, 50_000, 50_100, 99_999, 100_000]) {
+    for (const meters of [1, 10, 11, 1_999, 2_000, 2_001, 2_050, 50, 51, 24_999, 25_000, 25_001, 49_950, 50_000, 50_100, 99_999, 100_000]) {
       const index = rangeSampleIndex(meters, RANGE_BANDS);
       expect(distances[index], `${meters} m`).toBeGreaterThanOrEqual(meters);
       if (index > 0) expect(distances[index - 1], `${meters} m`).toBeLessThan(meters);
