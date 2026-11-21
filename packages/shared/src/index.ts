@@ -84,13 +84,17 @@ export * from "./sun.ts";
 export * from "./supplies.ts";
 export * from "./supplies-energy.ts";
 export * from "./system.ts";
+// Heights from terrain tiles and an aerial's viewshed, read alike on the server and on a phone out of reach.
+export * from "./terrain-sampler.ts";
 export * from "./tools.ts";
 // UTM, UPS and MGRS, on a line of their own.
 export * from "./utm.ts";
+export * from "./viewshed.ts";
 export * from "./walk-reach.ts";
 export * from "./weather.ts";
 export * from "./weather-alerts.ts";
 export * from "./weather-rivers.ts";
 export * from "./weather-zambretti.ts";
+export * from "./webp-lossless.ts";
 export * from "./webpages.ts";
 export * from "./wmm.ts";
