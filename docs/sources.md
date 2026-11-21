@@ -1539,3 +1539,21 @@ fetched by Outpost; they decided what could be built, and how.
 | MeshCore `src/helpers/ArduinoSerialInterface.cpp` | `if (c == '<') {`; `hdr[0] = '>';`; `hdr[1] = (len & 0xFF);  // LSB`, `hdr[2] = (len >> 8);    // MSB`. | The USB frame format. |
 | MeshCore `src/helpers/esp32/SerialWifiInterface.cpp` | Could not be read: 404 on 17 November 2026. Not got another way. | The network port is assumed to use the USB frames, as the FAQ implies; said to be untested. |
 | MeshCore `docs/faq.md` | "Connect on TCP port 5000 (same as the WiFi companion radio)." Serial examples use `-b 115200`. | Port 5000 by default; 115200 for the USB serial. |
+
+## The Steading's household figures (read 2026-11-21)
+
+Games → Steading ([games.md](games.md#steading)) says what a household uses in a day
+with real figures. Nothing is fetched by Outpost and no document is bundled: the figures
+are numbers in `packages/shared/src/games/steading/numbers.ts`, said in Outpost's own
+words with the source named.
+
+| What | Where it comes from | How it was read |
+| --- | --- | --- |
+| Food energy, 2,000 and 2,500 kcal a day (women and men, 19 to 64) | Public Health England, Government Dietary Recommendations (2016) | Already held by Supplies (`ENERGY_BANDS` in `packages/shared/src/supplies.ts`); not read again. |
+| White bread, 266 kcal per 100 g | USDA FoodData Central, SR Legacy (April 2018), FDC 174924, "Bread, white, commercially prepared" | Already held by Supplies in its food table (public domain, CC0); not read again. |
+| Water, 7.5 to 15 litres a person a day for drinking, cooking and basic hygiene | WHO, Technical notes on drinking-water, sanitation and hygiene in emergencies, note 9 (2013), table 9.1 | Already held by Supplies (`WATER_FIGURES`); not read again. |
+| Electricity 2,500 kWh and gas 9,500 kWh a year, medium use, from 1 July 2026 | Ofgem, "Review of typical domestic consumption values: decision", 27 May 2026, table 1, <https://www.ofgem.gov.uk/sites/default/files/2026-05/Review%20of%20typical%20domestic%20consumption%20values%20decision.pdf> | The PDF fetched once on 21 November 2026 and its text read. The 2023 values it replaces (2,700 and 11,500) are in the same table. |
+| Log wood, stacked and air dry (20% moisture), 4.1 kWh per kg; house coal 7.5 to 8.6 | Forest Research, "Typical calorific values of fuels", <https://www.forestresearch.gov.uk/tools-and-resources/biomass-energy-resources/reference-biomass/facts-figures/typical-calorific-values-of-fuels/> | The page fetched once on 21 November 2026 (© Crown copyright, Forest Research 2026). Only the two figures are used. |
+
+Made up for the game: every rate of work, cost, reach, the size of a loaf (800 g) and of a
+bundle of firewood (10 kg), the trade, and a settlement day passing in an hour.

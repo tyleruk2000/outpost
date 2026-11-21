@@ -310,6 +310,7 @@ Small games for when the internet is out, drawn in code, with no sound and nothi
 | Feature | What it does | Docs |
 | --- | --- | --- |
 | Allotment | One plot for the household, the same on every device: sow, water, harvest, sell at the stall, and add beds, hens, a hive or a greenhouse. A crop grows only in its real British months (from the RHS's calendar) and while its bed is moist from the can or the rain, and otherwise waits, losing nothing; an almanac says what to sow this month. Nothing withers or runs out; left for a year, everything is ripe and waiting. | [Games](docs/games.md#allotment) |
+| Steading | One settlement for the household: build workshops, link them with routes and find what holds each chain back; houses fill once they have water, food and firewood, with real figures for what a household uses in a day. Nothing gets worse while you are away. | [Games](docs/games.md#steading) |
 | Solitaire | The card game also called patience or Klondike: draw one or three, undo, tap a card to send it where it fits. | [Games](docs/games.md#solitaire) |
 | Peg solitaire | The English board of 33 holes: jump pegs until one is left. | [Games](docs/games.md#peg-solitaire) |
 | Sudoku | Puzzles made on the device at three levels, each with exactly one answer; notes, undo and a check. | [Games](docs/games.md#sudoku) |
@@ -317,6 +318,7 @@ Small games for when the internet is out, drawn in code, with no sound and nothi
 | Chess | Full rules, against Outpost's own computer at four strengths (not a strong engine) or two at one device; PGN and FEN copied out and pasted in. | [Games](docs/games.md#chess) |
 | Pairs | A memory game for children, in three sizes. | [Games](docs/games.md#pairs) |
 | Snake | The classic, at four speeds (a slow one for small children), with walls or wrapping edges. | [Games](docs/games.md#snake) |
+| Skerry | Twelve puzzles solved by typing commands at a pretend terminal, as the new keeper of an island weather station; it teaches finding your way round files, searching, counting and pipes. Nothing typed touches anything real. | [Games](docs/games.md#skerry) |
 
 ![The allotment by day: four beds sown, one waiting for its months, and the stall](docs/screenshots/allotment.webp)
 
@@ -779,7 +781,7 @@ Every page below is also inside Outpost, under **Help**.
 | [Supplies](docs/supplies.md) | Stock, the household, food energy, barcodes, CSV |
 | [Weather and hazards](docs/weather.md) | What is fetched, from whom, and how old it is; river and sea levels; the barometer |
 | [Nuclear preparedness](docs/nuclear-preparedness.md) | The workspace, the effects simulator, its rules and its sources |
-| [Games](docs/games.md) | The eight games, their rules, the allotment's real months, and what is kept where |
+| [Games](docs/games.md) | The games, their rules, the allotment's real months, and what is kept where |
 | [Sources](docs/sources.md) | Every content source considered, and its terms |
 | [Security](docs/security.md) | Threat model and controls |
 | [API](docs/api.md) | HTTP API reference |

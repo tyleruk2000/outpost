@@ -6,6 +6,7 @@ Preparedness), in the phone's More sheet and in the quick search:
 | Game | Address | For |
 | --- | --- | --- |
 | Allotment | `/games/allotment` | A plot for the household to sow, grow and harvest, slowly. |
+| Steading | `/games/steading` | A settlement for the household to build: production chains, households and trade. |
 | Solitaire | `/games/solitaire` | The card game for one, also called patience or Klondike. |
 | Peg solitaire | `/games/peg-solitaire` | The traditional board of 33 holes. |
 | Sudoku | `/games/sudoku` | Puzzles made on the device, each with one answer. |
@@ -13,13 +14,14 @@ Preparedness), in the phone's More sheet and in the quick search:
 | Chess | `/games/chess` | Chess, against the computer at four strengths or two at one device. |
 | Pairs | `/games/pairs` | A memory game for children. |
 | Snake | `/games/snake` | Steer a growing snake, at four speeds. |
+| Skerry | `/games/skerry` | Puzzles solved at a pretend command line. |
 
-They are traditional games, or (the allotment) a design of Outpost's own. Everything is
+They are traditional games, or (the allotment, the Steading and Skerry) designs of Outpost's own. Everything is
 drawn in code (SVG and HTML, the colours from `--game-*` tokens in
 `apps/web/src/styles/tokens.css`, for light and dark): there are no image, font or sound
 files and no sound. Each game is a lazy chunk of its own. None asks the network for
-anything; the only requests are to Outpost's own server, for the allotment and the
-tallies.
+anything; the only requests are to Outpost's own server, for the allotment, the
+Steading and the tallies.
 
 Every game is played with a finger, a mouse or the keyboard. Each cell, card, square or
 hole is a button with a spoken name ("7 of hearts, face up", "Row 3, column 5, empty,
@@ -33,16 +35,18 @@ under reduced motion.
 | What | Where | Why |
 | --- | --- | --- |
 | The allotment's plot | On the server, the `allotment` row of `game_saves` | One plot for the household: every device sees the same. |
+| The Steading's settlement | On the server, the `steading` row of `game_saves` | One settlement for the household: every device sees the same. |
 | Each game's tally: played, won, best time, fewest moves (for Peg solitaire, fewest pegs left; for Snake, the highest score), for each way of playing | On the server, a row of `game_saves` per game | Shared by the household. |
 | An unfinished game of Solitaire, Peg solitaire, Sudoku, Draughts, Chess or Pairs | In the browser it is being played in (`localStorage`, `outpost.games.<game>`) | Two people playing at once on two devices must not overwrite each other's board. |
 | Snake's best scores and settings | In the browser (`outpost.games.snake`) | A game of Snake lasts minutes and is not kept part-played. |
+| Skerry's progress: the levels solved, the level being played, the commands typed | In the browser it is played in (`localStorage`, `outpost.games.skerry`) | Nothing about it needs the server. |
 
 `game_saves` (migration `0027_games`) has one row per game: a JSON state (at most 64 KB),
 a version that goes up with each write, and timestamps. It is the household's own data:
 counted under **Storage → Database** ("games kept for the household", in "Everything
 else") and in **Manage and clean up**, erased by erase everything, and in every backup. A
 game's tally is forgotten with **Clear the tally** under its board, and the allotment
-with **Start again**, in plain view at the foot of its screen; both ask first.
+and the Steading each with **Start again**, in plain view at the foot of its screen; both ask first.
 
 The game kept in the browser is read and written inside `try`/`catch` and checked field
 by field when it is read back: in a private window, with site data blocked, or with a
@@ -296,6 +300,98 @@ and what it costs.
   garden: frost dates and rainfall differ from place to place, and the southern months are
   Britain's moved on six, not a southern gardening calendar.
 
+## Steading
+
+A settlement in Ashgill, a valley of woods, rock, clay banks and a river, for the
+household to build. Everything is made from something and carried from somewhere: a
+bakery with no flour bakes nothing, and a quarry with no route fills its yard and stops.
+
+**Leave it as long as you like: nothing here ever gets worse while you are away.** That
+line is on the game's page. Work goes on while it is closed until the stores and yards
+are full, then stops, with everything kept. Nothing decays, runs out, leaves or is
+used up by itself; there are no streaks, timers, reminders or events. Coming back there
+is nothing to catch up on.
+
+### Production chains
+
+- Tap a square of meadow to build on it. Each building shows what it uses and makes in a
+  day, its workers and its cost. Woodcutters, quarries, clay pits and coal pits stand
+  beside their woods, rock, clay or coal; the landing, water wheel and waterworks beside
+  the river. Woodcutters, quarries, clay pits and fields are free, so the settlement is
+  never stuck.
+- A building sends what it makes along **routes**: to a workshop that uses it, or to a
+  storehouse. Choose the building, then **Send its … to…**, the place and how it is
+  carried:
+
+  | Carried | Per day | Reach | Costs a square |
+  | --- | --- | --- | --- |
+  | By hand | 12 | 3 squares | nothing |
+  | Cart road | 40 | 8 squares | a plank and a stone |
+  | Track (40 people) | 160 | 20 squares | a bar of iron and a plank |
+
+- A building fills its first route first; **Fill this first** changes the order. What
+  cannot be sent on waits in its yard (20 of each thing); a full yard rests the work.
+  **Carry the yard to the store** empties it by hand.
+- The chains: logs to a sawmill (planks) or a woodyard (firewood); clay and firewood to a
+  brick kiln; grain to a mill, flour and firewood to a bakery; later ore and coal to a
+  smelter, iron and planks to a smithy.
+- Each building says what holds it back: short of workers, waiting for an input, or its
+  yard full. A flag on its corner marks it on the plan. The plan draws every route as a
+  line whose width is what it carries in a day, dashed by hand, solid for a cart road,
+  railed for track.
+- The **ledger** lists every good: what is in store (each storehouse holds 200 of each),
+  what is kept each day, what goes to the households, and how much has been made.
+  Stock in store is for building and trade: workshops take only what is sent to them,
+  which is why time never draws a stock down.
+- Taking a building down gives back everything it and its routes cost, and its yard. A
+  house with a household in it stays.
+
+### Households
+
+A new settlement has a storehouse, two households of four and a well. People work within
+4 squares of home. A new house fills once it has a well within 3 squares, a storehouse
+within 5, and enough water, bread and firewood coming in for it as well as for everyone
+already there; otherwise it says what it waits for. Households never leave, and a
+shortage only keeps a new house waiting.
+
+What a household of four uses in a day, from real figures:
+
+| | A day | From |
+| --- | --- | --- |
+| Food | 9,000 kcal, about 4.2 loaves of 800 g | 2,250 kcal a person (Public Health England); 266 kcal in 100 g of white bread (USDA) |
+| Water | 60 litres | 15 litres a person, the top of WHO's 7.5 to 15 for drinking, cooking and basic hygiene |
+| Heat | 26 kWh, about 6.3 kg of dry logs | 9,500 kWh of gas a year for a typical household (Ofgem, from July 2026); 4.1 kWh per kg of air-dry logs (Forest Research) |
+| Electricity | 6.8 kWh | 2,500 kWh a year for a typical household (Ofgem) |
+
+The heat is what a typical household's gas gives, counted as if from wood; a stove and a
+boiler are not equally efficient, and the game does not count the difference.
+Electricity is not needed to move in. A **water wheel** (24 people) makes 120 kWh a day:
+it lights the houses within 5 squares first, then runs the sawmill, mill and smithy within
+reach at twice the pace. The **waterworks** (40 people) waters every house in the valley.
+
+### Trade
+
+The valley has no ore. Once 12 people live here a **landing** on the river can be built.
+Choose a trade for it (planks, bricks or bread for ore; grain for coal) and lay routes to
+it and from it: the barge then takes and brings that every day. The landing also buys
+anything from the store at a fixed price, for credit, and sells coal, ore, iron and tools
+for credit. Prices never change.
+
+### Time
+
+A day in the settlement passes in an hour, and every rate is per such day. Between the
+moments when something fills or a household moves in, every flow is steady, so the
+server works the settlement out from the time exactly, however long it was left; there
+is no timer on the server. Each action is applied with the server's clock, and a clock
+that jumps back changes nothing. **Start again** at the foot of the screen clears the
+valley for a new settlement, for everyone, and asks first.
+
+What is made up: every rate, cost, reach and price, the sizes of a loaf and a bundle of
+firewood, and the hour-long day. The household figures above are real.
+
+The Steading adds 60 KB of script (20 KB compressed), loaded when the screen is opened,
+and no image, font or sound files.
+
 ## Solitaire
 
 Klondike, also called patience. Seven piles of 1 to 7 cards, the last of each face up;
@@ -466,6 +562,40 @@ The best score for each speed and kind of edge, and the speed and edges chosen, 
 in this browser. Each game's score also goes to the household's tally, which keeps the
 highest score; a game in progress is not kept.
 
+## Skerry
+
+You are the relief keeper at the weather station on Tarrow Skerry, a small made-up island
+far out to sea. The keeper before you, Ines, left her handover notes in the station
+computer's files, and the computer is worked by typing commands. Each of the twelve levels
+asks one thing (which hook the paint store key hangs on, how many days of October had fog,
+where the birthday cake is hidden), and the files hold the answer.
+
+- Type a command and press Enter. `help` lists the commands, `man` and a command's name
+  says more about one, `goal` repeats what the level asks, and `answer` gives your answer
+  (`answer 5`). Some levels are solved by reading the right file.
+- `hint` gives a hint, as many as you like, for nothing. The last hint all but says what
+  to type.
+- The commands are the everyday ones of a real command line, and behave like them: `pwd`,
+  `ls` (`-a` for hidden names), `cd` (with `..`, `~` and paths from `/`), `cat`, `head`,
+  `tail`, `grep` (`-i`, `-n`, `-c`, `-v`, `-r`), `wc`, `sort` (`-n`, `-r`), `uniq` (`-c`),
+  `find` (`-name`, `-type`), `echo`, `rev`, `history` and `clear`, joined with `|`. One is
+  the game's own: `decode 3 note.txt` undoes a Caesar shift of three, as the Encryption
+  screen does by hand.
+- Tab finishes a command's or a file's name, and lists the choices when there are several;
+  the up and down arrows bring back what you typed. On a phone, the buttons under the
+  terminal do the same, and type the `|` that phone keyboards hide.
+- The levels start with looking and reading and end with putting several commands
+  together. Any level can be played from the list, in any order, and played again.
+
+The command line is pretend. It is part of the page: its commands only read the level's
+own made-up files, nothing can be changed, deleted or written, and it runs nothing on the
+device or on Outpost and reaches no network. Commands that would change things, or
+connect to somewhere, say that they are not here. Nothing in it is about getting into
+anyone else's computer.
+
+Skerry adds 62 KB of script (16 KB compressed), text only, loaded when the screen is
+opened.
+
 ## Not tested
 
 - On a real iPhone, Android phone or Raspberry Pi. The end-to-end tests run Chromium at
@@ -477,3 +607,5 @@ highest score; a game in progress is not kept.
 - Chess: how long the computer takes on a Raspberry Pi or an old phone, and how strong
   each level is against real players. Swipes and the arrow buttons of Snake on a real
   phone.
+- The Steading's settlement left for a day, a month and a year was checked in the
+  engine's tests, not by leaving a real one.

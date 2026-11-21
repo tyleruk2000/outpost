@@ -1,0 +1,487 @@
+{
+  "version": 1,
+  "levels": [
+    {
+      "id": "arrival",
+      "title": "Arrival",
+      "teaches": "ls and cat",
+      "story": [
+        "The supply boat Marigold has put you ashore on Tarrow Skerry, a rock of grass and gannets twelve miles out, to keep its weather station for the winter.",
+        "Ines Calder, the keeper you are relieving, went back on the same boat. She left the station in good order and her handover notes on the station's old computer, which is on in front of you.",
+        "This computer works by typing. Type ls and press Enter to see what is in this folder."
+      ],
+      "goal": {
+        "text": "Read Ines's welcome note.",
+        "type": "read",
+        "path": "/home/keeper/welcome.txt"
+      },
+      "hints": [
+        "ls lists what is in the folder you are in. Type ls and press Enter.",
+        "There is a file called welcome.txt. cat shows a file: type cat welcome.txt and press Enter."
+      ],
+      "done": ["That is the first note read. ls to look, cat to read: most of the work on a computer like this starts with those two."],
+      "start": "/home/keeper",
+      "home": "/home/keeper",
+      "tree": {
+        "home": {
+          "keeper": {
+            "kettle.txt": "The kettle takes about four minutes on the small stove.\nTea is in the tin with the gannet on it. Coffee ran out in September.\n",
+            "welcome.txt": "Welcome to Tarrow Skerry!\n\nEverything you need to know is in the files on this computer.\nI have left a note for each thing, a little at a time.\nThe station's own files are in a folder called station, at the top.\n\nInes\n"
+          }
+        },
+        "station": {
+          "readme.txt": "Tarrow Skerry weather station.\nReadings are taken every three hours and sent to the mainland by radio.\nLogs are in logs/, the stores list is in stores/, the instruments' papers are in instruments/.\n"
+        }
+      }
+    },
+    {
+      "id": "keys",
+      "title": "The key board",
+      "teaches": "cd and paths",
+      "story": [
+        "The paint store needs opening: the rust on the instrument enclosure wants touching up before the gales.",
+        "There is a board of keys by the door, but the hooks are not labelled. Ines's handover note says where the list is."
+      ],
+      "goal": {
+        "text": "Which hook does the paint store key hang on? Give the number with answer, as in: answer 3",
+        "type": "answer",
+        "answers": ["5", "hook 5", "five", "hook five"]
+      },
+      "hints": [
+        "Read the handover note in this folder first: cat handover.txt",
+        "cd moves you into a folder. cd /station goes to the station folder from anywhere; then ls shows what is in it.",
+        "From /station, cd stores and then cat keys.txt. Or in one go: cat /station/stores/keys.txt"
+      ],
+      "done": [
+        "Hook 5. A path like /station/stores/keys.txt names a file from the top of the computer; cd takes you there one folder at a time, and cd .. takes you back up."
+      ],
+      "start": "/home/keeper",
+      "home": "/home/keeper",
+      "tree": {
+        "home": {
+          "keeper": {
+            "kettle.txt": "The kettle takes about four minutes on the small stove.\nTea is in the tin with the gannet on it. Coffee ran out in September.\n",
+            "handover.txt": "Handover, Tarrow Skerry\n\n1. Keys: the board by the door. Which key is which is written in\n   the stores folder, inside the station folder.\n2. The generator is serviced. It will want oil at the new year.\n3. The gannets leave in October and come back in spring.\n"
+          }
+        },
+        "station": {
+          "readme.txt": "Tarrow Skerry weather station.\nReadings are taken every three hours and sent to the mainland by radio.\nLogs are in logs/, the stores list is in stores/, the instruments' papers are in instruments/.\n",
+          "stores": {
+            "keys.txt": "Hook 1  front door (spare)\nHook 2  generator shed\nHook 3  boat house\nHook 4  oil store\nHook 5  paint store\nHook 6  radio cupboard\nHook 7  instrument enclosure\n",
+            "paint.txt": "White gloss: 3 tins\nGrey primer: 1 tin\nBrushes: in the jar on the shelf\n"
+          },
+          "logs": {
+            "radio.log": "01 Nov 08:00  mainland: readings received, thank you\n"
+          },
+          "instruments": {
+            "enclosure.txt": "The white louvred box on legs. Keep it painted white: dark paint warms it and spoils the readings.\n"
+          }
+        }
+      }
+    },
+    {
+      "id": "hidden",
+      "title": "Hidden names",
+      "teaches": "ls -a",
+      "story": [
+        "The lights went out for a moment last night while the generator changed over, and your torch is nearly flat.",
+        "Ines will have kept spare batteries somewhere. She mentioned keeping small notes out of the way."
+      ],
+      "goal": {
+        "text": "Where are the spare torch batteries? Answer in a few words, as in: answer under the stairs",
+        "type": "answer",
+        "answers": ["biscuit tin", "tin"],
+        "match": "contains"
+      },
+      "hints": [
+        "Read the note in this folder: cat notes.txt",
+        "A name that starts with a dot is hidden: ls leaves it out. ls -a shows every name.",
+        "There is a file called .batteries. Read it with cat .batteries"
+      ],
+      "done": [
+        "In the biscuit tin. Names that start with a dot are left out of a plain ls; on real computers that is where settings are kept, out of the way."
+      ],
+      "start": "/home/keeper",
+      "home": "/home/keeper",
+      "tree": {
+        "home": {
+          "keeper": {
+            "kettle.txt": "The kettle takes about four minutes on the small stove.\nTea is in the tin with the gannet on it. Coffee ran out in September.\n",
+            "notes.txt": "Small things I keep in small files, with a dot at the start of the name\nso they do not clutter the folder. They are here if you look for them.\n",
+            ".batteries": "Spare torch batteries: in the biscuit tin on top of the radio cupboard.\n",
+            ".birds": "Gannets: thousands. Puffins: May to August. A great skua stayed three days in September.\n"
+          }
+        },
+        "station": {
+          "readme.txt": "Tarrow Skerry weather station.\nReadings are taken every three hours and sent to the mainland by radio.\nLogs are in logs/, the stores list is in stores/, the instruments' papers are in instruments/.\n",
+          "stores": {
+            "keys.txt": "Hook 1  front door (spare)\nHook 2  generator shed\nHook 3  boat house\nHook 4  oil store\nHook 5  paint store\nHook 6  radio cupboard\nHook 7  instrument enclosure\n"
+          }
+        }
+      }
+    },
+    {
+      "id": "last-reading",
+      "title": "The last reading",
+      "teaches": "head and tail",
+      "story": [
+        "The mainland calls on the radio: they missed the last reading Ines sent before she left and would like it read out again.",
+        "Readings are kept in the weather log in the station's logs folder, oldest at the top. It is a long file."
+      ],
+      "goal": {
+        "text": "What was the wind speed, in knots, at the last reading in the weather log? As in: answer 12",
+        "type": "answer",
+        "answers": ["27", "27 kn", "27 knots"]
+      },
+      "hints": [
+        "The log is /station/logs/weather.log. head shows the first lines of a file, tail the last.",
+        "tail -n 1 shows only the last line: tail -n 1 /station/logs/weather.log"
+      ],
+      "done": [
+        "27 knots from the south-west, and the pressure falling: a blow on the way. head and tail are how people look at the start and the end of a log too long to read whole."
+      ],
+      "start": "/home/keeper",
+      "home": "/home/keeper",
+      "tree": {
+        "home": {
+          "keeper": {
+            "kettle.txt": "The kettle takes about four minutes on the small stove.\nTea is in the tin with the gannet on it. Coffee ran out in September.\n"
+          }
+        },
+        "station": {
+          "readme.txt": "Tarrow Skerry weather station.\nReadings are taken every three hours and sent to the mainland by radio.\nLogs are in logs/, the stores list is in stores/, the instruments' papers are in instruments/.\n",
+          "logs": {
+            "weather.log": "17 Nov 00:00  wind SW 15 kn  pressure 1009 hPa  visibility moderate\n17 Nov 03:00  wind NE 18 kn  pressure 1006 hPa  visibility moderate\n17 Nov 06:00  wind SW 15 kn  pressure 1004 hPa  visibility good\n17 Nov 09:00  wind SW 15 kn  pressure 1002 hPa  visibility good\n17 Nov 12:00  wind NE 17 kn  pressure 1001 hPa  visibility moderate\n17 Nov 15:00  wind NW 15 kn  pressure 1001 hPa  visibility good\n17 Nov 18:00  wind NE 12 kn  pressure 1000 hPa  visibility good\n17 Nov 21:00  wind N  10 kn  pressure 998 hPa  visibility moderate\n18 Nov 00:00  wind N  10 kn  pressure 999 hPa  visibility poor\n18 Nov 03:00  wind E   8 kn  pressure 997 hPa  visibility good\n18 Nov 06:00  wind SW  8 kn  pressure 998 hPa  visibility moderate\n18 Nov 09:00  wind W  10 kn  pressure 998 hPa  visibility poor\n18 Nov 12:00  wind SE 10 kn  pressure 999 hPa  visibility good\n18 Nov 15:00  wind NW 13 kn  pressure 997 hPa  visibility poor\n18 Nov 18:00  wind NE 15 kn  pressure 997 hPa  visibility poor\n18 Nov 21:00  wind NE 19 kn  pressure 997 hPa  visibility moderate\n19 Nov 00:00  wind SW 21 kn  pressure 994 hPa  visibility poor\n19 Nov 03:00  wind S  21 kn  pressure 991 hPa  visibility good\n19 Nov 06:00  wind W  19 kn  pressure 990 hPa  visibility good\n19 Nov 09:00  wind SW 19 kn  pressure 990 hPa  visibility moderate\n19 Nov 12:00  wind W  16 kn  pressure 990 hPa  visibility good\n19 Nov 15:00  wind NW 19 kn  pressure 991 hPa  visibility good\n19 Nov 18:00  wind SW 17 kn  pressure 991 hPa  visibility good\n19 Nov 21:00  wind SE 14 kn  pressure 991 hPa  visibility moderate\n20 Nov 00:00  wind N  18 kn  pressure 992 hPa  visibility moderate\n20 Nov 03:00  wind E  15 kn  pressure 993 hPa  visibility good\n20 Nov 06:00  wind NE 19 kn  pressure 994 hPa  visibility poor\n20 Nov 09:00  wind S  21 kn  pressure 994 hPa  visibility moderate\n20 Nov 12:00  wind NE 18 kn  pressure 993 hPa  visibility poor\n20 Nov 15:00  wind SE 15 kn  pressure 992 hPa  visibility good\n20 Nov 18:00  wind N  12 kn  pressure 993 hPa  visibility good\n20 Nov 21:00  wind SE  9 kn  pressure 991 hPa  visibility poor\n21 Nov 00:00  wind S   7 kn  pressure 989 hPa  visibility good\n21 Nov 03:00  wind NE  7 kn  pressure 988 hPa  visibility good\n21 Nov 06:00  wind S  10 kn  pressure 985 hPa  visibility poor\n21 Nov 09:00  wind SE 10 kn  pressure 983 hPa  visibility poor\n21 Nov 12:00  wind NE  8 kn  pressure 982 hPa  visibility poor\n21 Nov 15:00  wind N  12 kn  pressure 983 hPa  visibility good\n21 Nov 18:00  wind S  15 kn  pressure 981 hPa  visibility good\n21 Nov 21:00  wind SW 27 kn  pressure 998 hPa  visibility moderate\n",
+            "radio.log": "21 Nov 21:10  mainland: reading received\n"
+          },
+          "stores": {
+            "keys.txt": "Hook 1  front door (spare)\nHook 2  generator shed\nHook 3  boat house\nHook 4  oil store\nHook 5  paint store\nHook 6  radio cupboard\nHook 7  instrument enclosure\n"
+          }
+        }
+      }
+    },
+    {
+      "id": "boat-day",
+      "title": "Boat day",
+      "teaches": "grep",
+      "story": [
+        "The mainland asks how the Marigold has been managing the crossing this month: once she had to turn back.",
+        "Every call is written in the radio log. It is long, but you only need the lines about the Marigold."
+      ],
+      "goal": {
+        "text": "On which day of November did the Marigold turn back? As in: answer 9",
+        "type": "answer",
+        "answers": ["14", "14 nov", "14 november", "14th", "14th november", "november 14"]
+      },
+      "hints": ["grep shows only the lines of a file that hold some text: grep word file.", "grep Marigold /station/logs/radio.log"],
+      "done": ["The 14th. grep finds the lines that matter in a file of any length; it is one of the most used commands there is."],
+      "start": "/station/logs",
+      "home": "/home/keeper",
+      "tree": {
+        "home": {
+          "keeper": {
+            "kettle.txt": "The kettle takes about four minutes on the small stove.\nTea is in the tin with the gannet on it. Coffee ran out in September.\n"
+          }
+        },
+        "station": {
+          "readme.txt": "Tarrow Skerry weather station.\nReadings are taken every three hours and sent to the mainland by radio.\nLogs are in logs/, the stores list is in stores/, the instruments' papers are in instruments/.\n",
+          "logs": {
+            "radio.log": "01 Nov 08:40  mainland: readings received, thank you\n01 Nov 11:20  mainland: forecast for the islands sent\n01 Nov 14:20  coastguard: radio check, loud and clear\n02 Nov 08:40  mainland: all well here\n02 Nov 14:20  mainland: forecast for the islands sent\n02 Nov 17:05  coastguard: weekly check, all well\n03 Nov 09:30  Marigold: leaving harbour, with you by noon\n03 Nov 14:05  mainland: readings received, thank you\n03 Nov 14:20  Guillemot: anchored in the lee for the night\n03 Nov 17:05  Guillemot: anchored in the lee for the night\n04 Nov 08:40  mainland: all well here\n04 Nov 09:30  Marigold: alongside, stores landed\n04 Nov 11:40  mainland: readings received, thank you\n04 Nov 17:20  coastguard: radio check, loud and clear\n05 Nov 08:20  coastguard: radio check, loud and clear\n05 Nov 14:20  mainland: please repeat the 06:00 pressure\n05 Nov 17:05  Guillemot: asking for the visibility\n06 Nov 14:20  mainland: please repeat the 06:00 pressure\n06 Nov 17:05  mainland: please repeat the 06:00 pressure\n06 Nov 17:40  mainland: all well here\n07 Nov 11:05  mainland: readings received, thank you\n07 Nov 17:40  mainland: forecast for the islands sent\n08 Nov 14:20  mainland: readings received, thank you\n08 Nov 17:20  coastguard: radio check, loud and clear\n09 Nov 11:05  Kittiwake: asking for the wind at the station\n09 Nov 11:40  mainland: readings received, thank you\n09 Nov 14:40  mainland: please repeat the 06:00 pressure\n10 Nov 08:40  mainland: all well here\n10 Nov 14:20  Guillemot: anchored in the lee for the night\n10 Nov 14:20  mainland: please repeat the 06:00 pressure\n11 Nov 08:05  Kittiwake: passing to the north, fishing\n11 Nov 17:05  mainland: forecast for the islands sent\n11 Nov 17:40  Kittiwake: passing to the north, fishing\n12 Nov 08:20  Kittiwake: passing to the north, fishing\n12 Nov 11:20  mainland: readings received, thank you\n12 Nov 11:40  Kittiwake: passing to the north, fishing\n13 Nov 11:05  Guillemot: anchored in the lee for the night\n13 Nov 17:20  mainland: forecast for the islands sent\n14 Nov 09:30  Marigold: turning back for the weather, will try again on Monday\n14 Nov 14:05  Kittiwake: asking for the wind at the station\n14 Nov 14:20  mainland: please repeat the 06:00 pressure\n15 Nov 08:05  mainland: readings received, thank you\n15 Nov 11:05  mainland: please repeat the 06:00 pressure\n15 Nov 14:20  mainland: all well here\n16 Nov 08:20  mainland: all well here\n16 Nov 17:05  Guillemot: anchored in the lee for the night\n16 Nov 17:05  mainland: readings received, thank you\n17 Nov 08:05  mainland: forecast for the islands sent\n17 Nov 08:40  mainland: all well here\n17 Nov 09:30  Marigold: alongside, mail and fresh food landed\n17 Nov 11:40  Guillemot: asking for the visibility\n18 Nov 11:20  coastguard: weekly check, all well\n18 Nov 14:20  Kittiwake: asking for the wind at the station\n18 Nov 17:20  coastguard: radio check, loud and clear\n19 Nov 17:20  coastguard: radio check, loud and clear\n19 Nov 17:40  mainland: please repeat the 06:00 pressure\n20 Nov 08:05  Kittiwake: asking for the wind at the station\n20 Nov 14:40  mainland: all well here\n20 Nov 17:40  Guillemot: asking for the visibility\n",
+            "weather.log": "17 Nov 00:00  wind SW 15 kn  pressure 1009 hPa  visibility moderate\n17 Nov 03:00  wind NE 18 kn  pressure 1006 hPa  visibility moderate\n17 Nov 06:00  wind SW 15 kn  pressure 1004 hPa  visibility good\n17 Nov 09:00  wind SW 15 kn  pressure 1002 hPa  visibility good\n17 Nov 12:00  wind NE 17 kn  pressure 1001 hPa  visibility moderate\n17 Nov 15:00  wind NW 15 kn  pressure 1001 hPa  visibility good\n17 Nov 18:00  wind NE 12 kn  pressure 1000 hPa  visibility good\n17 Nov 21:00  wind N  10 kn  pressure 998 hPa  visibility moderate\n"
+          },
+          "stores": {
+            "keys.txt": "Hook 1  front door (spare)\nHook 2  generator shed\nHook 3  boat house\nHook 4  oil store\nHook 5  paint store\nHook 6  radio cupboard\nHook 7  instrument enclosure\n"
+          }
+        }
+      }
+    },
+    {
+      "id": "foggy-days",
+      "title": "Foggy days",
+      "teaches": "grep -i, wc and |",
+      "story": [
+        "The station keeps a count of days with fog each month. October's was never sent.",
+        "Ines wrote one line a day in the October diary. Fog is written in more than one way."
+      ],
+      "goal": {
+        "text": "How many days in October had fog? As in: answer 4",
+        "type": "answer",
+        "answers": ["9", "nine"]
+      },
+      "hints": [
+        "grep fog finds lines with fog, but not Fog or FOG. grep -i finds all of them.",
+        "wc -l counts lines. The | sign sends one command's output into the next: grep -i fog october.txt | wc -l",
+        "grep -c does the counting by itself: grep -ic fog october.txt"
+      ],
+      "done": ["9 days. The | sign joins small commands into a bigger one: this one found the lines, the next counted them."],
+      "start": "/station/logs",
+      "home": "/home/keeper",
+      "tree": {
+        "home": {
+          "keeper": {
+            "kettle.txt": "The kettle takes about four minutes on the small stove.\nTea is in the tin with the gannet on it. Coffee ran out in September.\n"
+          }
+        },
+        "station": {
+          "readme.txt": "Tarrow Skerry weather station.\nReadings are taken every three hours and sent to the mainland by radio.\nLogs are in logs/, the stores list is in stores/, the instruments' papers are in instruments/.\n",
+          "logs": {
+            "october.txt": "01 Oct  overcast\n02 Oct  fog patches\n03 Oct  bright, a few showers\n04 Oct  clear and cold\n05 Oct  Thick fog until evening\n06 Oct  fog patches\n07 Oct  drizzle\n08 Oct  drizzle\n09 Oct  overcast\n10 Oct  bright, a few showers\n11 Oct  Fog all morning, clearing by noon\n12 Oct  Fog all morning, clearing by noon\n13 Oct  Thick fog until evening\n14 Oct  drizzle\n15 Oct  overcast\n16 Oct  bright, a few showers\n17 Oct  sunny spells\n18 Oct  clear and cold\n19 Oct  FOG, visibility under 200 m\n20 Oct  overcast\n21 Oct  bright, a few showers\n22 Oct  overcast\n23 Oct  clear and cold\n24 Oct  gale in the afternoon\n25 Oct  sunny spells\n26 Oct  Thick fog until evening\n27 Oct  drizzle\n28 Oct  gale in the afternoon\n29 Oct  rain, heavy at times\n30 Oct  sea fog rolling in at dusk\n31 Oct  drizzle\n",
+            "radio.log": "01 Nov 08:40  mainland: readings received, thank you\n01 Nov 11:20  mainland: forecast for the islands sent\n01 Nov 14:20  coastguard: radio check, loud and clear\n02 Nov 08:40  mainland: all well here\n02 Nov 14:20  mainland: forecast for the islands sent\n02 Nov 17:05  coastguard: weekly check, all well\n03 Nov 09:30  Marigold: leaving harbour, with you by noon\n03 Nov 14:05  mainland: readings received, thank you\n03 Nov 14:20  Guillemot: anchored in the lee for the night\n03 Nov 17:05  Guillemot: anchored in the lee for the night\n04 Nov 08:40  mainland: all well here\n04 Nov 09:30  Marigold: alongside, stores landed\n04 Nov 11:40  mainland: readings received, thank you\n04 Nov 17:20  coastguard: radio check, loud and clear\n05 Nov 08:20  coastguard: radio check, loud and clear\n05 Nov 14:20  mainland: please repeat the 06:00 pressure\n05 Nov 17:05  Guillemot: asking for the visibility\n06 Nov 14:20  mainland: please repeat the 06:00 pressure\n06 Nov 17:05  mainland: please repeat the 06:00 pressure\n06 Nov 17:40  mainland: all well here\n07 Nov 11:05  mainland: readings received, thank you\n07 Nov 17:40  mainland: forecast for the islands sent\n08 Nov 14:20  mainland: readings received, thank you\n08 Nov 17:20  coastguard: radio check, loud and clear\n09 Nov 11:05  Kittiwake: asking for the wind at the station\n09 Nov 11:40  mainland: readings received, thank you\n09 Nov 14:40  mainland: please repeat the 06:00 pressure\n10 Nov 08:40  mainland: all well here\n10 Nov 14:20  Guillemot: anchored in the lee for the night\n10 Nov 14:20  mainland: please repeat the 06:00 pressure\n11 Nov 08:05  Kittiwake: passing to the north, fishing\n11 Nov 17:05  mainland: forecast for the islands sent\n11 Nov 17:40  Kittiwake: passing to the north, fishing\n12 Nov 08:20  Kittiwake: passing to the north, fishing\n12 Nov 11:20  mainland: readings received, thank you\n12 Nov 11:40  Kittiwake: passing to the north, fishing\n13 Nov 11:05  Guillemot: anchored in the lee for the night\n13 Nov 17:20  mainland: forecast for the islands sent\n14 Nov 09:30  Marigold: turning back for the weather, will try again on Monday\n14 Nov 14:05  Kittiwake: asking for the wind at the station\n14 Nov 14:20  mainland: please repeat the 06:00 pressure\n15 Nov 08:05  mainland: readings received, thank you\n15 Nov 11:05  mainland: please repeat the 06:00 pressure\n15 Nov 14:20  mainland: all well here\n16 Nov 08:20  mainland: all well here\n16 Nov 17:05  Guillemot: anchored in the lee for the night\n16 Nov 17:05  mainland: readings received, thank you\n17 Nov 08:05  mainland: forecast for the islands sent\n17 Nov 08:40  mainland: all well here\n17 Nov 09:30  Marigold: alongside, mail and fresh food landed\n17 Nov 11:40  Guillemot: asking for the visibility\n18 Nov 11:20  coastguard: weekly check, all well\n18 Nov 14:20  Kittiwake: asking for the wind at the station\n18 Nov 17:20  coastguard: radio check, loud and clear\n19 Nov 17:20  coastguard: radio check, loud and clear\n19 Nov 17:40  mainland: please repeat the 06:00 pressure\n20 Nov 08:05  Kittiwake: asking for the wind at the station\n20 Nov 14:40  mainland: all well here\n20 Nov 17:40  Guillemot: asking for the visibility\n"
+          }
+        }
+      }
+    },
+    {
+      "id": "tide-tables",
+      "title": "Tide tables",
+      "teaches": "find",
+      "story": [
+        "The landing is only safe near high water, and the Marigold is due on the 23rd.",
+        "Ines filed the tide tables somewhere in the station folder, which has a great many folders in it. There may be more than one table."
+      ],
+      "goal": {
+        "text": "What is the time of the first high water on 23 November this year (2026)? As in: answer 10:15",
+        "type": "answer",
+        "answers": ["05:02", "0502", "5:02"]
+      },
+      "hints": [
+        "find looks for files by name in a folder and every folder inside it. * stands for anything: find /station -name '*tide*'",
+        "Two tables turn up. Only one is for 2026: the path says which.",
+        "cat the 2026 one and look along the line for 23 Nov: the first time on it is the answer."
+      ],
+      "done": ["05:02. find saves opening every folder in turn, and the path it gives is often the clue: here, the year."],
+      "start": "/home/keeper",
+      "home": "/home/keeper",
+      "tree": {
+        "home": {
+          "keeper": {
+            "kettle.txt": "The kettle takes about four minutes on the small stove.\nTea is in the tin with the gannet on it. Coffee ran out in September.\n"
+          }
+        },
+        "station": {
+          "readme.txt": "Tarrow Skerry weather station.\nReadings are taken every three hours and sent to the mainland by radio.\nLogs are in logs/, the stores list is in stores/, the instruments' papers are in instruments/.\n",
+          "library": {
+            "almanac": {
+              "2025": {
+                "sunrise.txt": "18 Nov 08:31\n28 Nov 08:48\n"
+              },
+              "2026": {
+                "sunrise.txt": "18 Nov 08:30\n28 Nov 08:47\n",
+                "sea": {
+                  "tides-november.txt": "High water, Tarrow Skerry (times in UTC)\n18 Nov  00:52  13:17\n19 Nov  01:42  14:07\n20 Nov  02:32  14:57\n21 Nov  03:22  15:47\n22 Nov  04:12  16:37\n23 Nov  05:02  17:27\n24 Nov  05:52  18:17\n25 Nov  06:42  19:07\n26 Nov  07:32  19:57\n27 Nov  08:22  20:47\n28 Nov  09:12  21:37\n"
+                }
+              }
+            },
+            "manuals": {
+              "generator.txt": "Change the oil every 250 hours.\n"
+            }
+          },
+          "archive": {
+            "2025": {
+              "tides-november.txt": "High water, Tarrow Skerry (times in UTC)\n18 Nov  01:29  13:54\n19 Nov  02:19  14:44\n20 Nov  03:09  15:34\n21 Nov  03:59  16:24\n22 Nov  04:49  17:14\n23 Nov  05:39  18:04\n24 Nov  06:29  18:54\n25 Nov  07:19  19:44\n26 Nov  08:09  20:34\n27 Nov  08:59  21:24\n28 Nov  09:49  22:14\n",
+              "notes.txt": "A quiet November.\n"
+            }
+          },
+          "logs": {
+            "radio.log": "01 Nov 08:40  mainland: readings received, thank you\n01 Nov 11:20  mainland: forecast for the islands sent\n01 Nov 14:20  coastguard: radio check, loud and clear\n02 Nov 08:40  mainland: all well here\n02 Nov 14:20  mainland: forecast for the islands sent\n02 Nov 17:05  coastguard: weekly check, all well\n03 Nov 09:30  Marigold: leaving harbour, with you by noon\n03 Nov 14:05  mainland: readings received, thank you\n03 Nov 14:20  Guillemot: anchored in the lee for the night\n03 Nov 17:05  Guillemot: anchored in the lee for the night\n04 Nov 08:40  mainland: all well here\n04 Nov 09:30  Marigold: alongside, stores landed\n04 Nov 11:40  mainland: readings received, thank you\n04 Nov 17:20  coastguard: radio check, loud and clear\n05 Nov 08:20  coastguard: radio check, loud and clear\n05 Nov 14:20  mainland: please repeat the 06:00 pressure\n05 Nov 17:05  Guillemot: asking for the visibility\n06 Nov 14:20  mainland: please repeat the 06:00 pressure\n06 Nov 17:05  mainland: please repeat the 06:00 pressure\n06 Nov 17:40  mainland: all well here\n07 Nov 11:05  mainland: readings received, thank you\n07 Nov 17:40  mainland: forecast for the islands sent\n08 Nov 14:20  mainland: readings received, thank you\n08 Nov 17:20  coastguard: radio check, loud and clear\n09 Nov 11:05  Kittiwake: asking for the wind at the station\n09 Nov 11:40  mainland: readings received, thank you\n09 Nov 14:40  mainland: please repeat the 06:00 pressure\n10 Nov 08:40  mainland: all well here\n10 Nov 14:20  Guillemot: anchored in the lee for the night\n10 Nov 14:20  mainland: please repeat the 06:00 pressure\n11 Nov 08:05  Kittiwake: passing to the north, fishing\n11 Nov 17:05  mainland: forecast for the islands sent\n11 Nov 17:40  Kittiwake: passing to the north, fishing\n12 Nov 08:20  Kittiwake: passing to the north, fishing\n12 Nov 11:20  mainland: readings received, thank you\n12 Nov 11:40  Kittiwake: passing to the north, fishing\n13 Nov 11:05  Guillemot: anchored in the lee for the night\n13 Nov 17:20  mainland: forecast for the islands sent\n14 Nov 09:30  Marigold: turning back for the weather, will try again on Monday\n14 Nov 14:05  Kittiwake: asking for the wind at the station\n14 Nov 14:20  mainland: please repeat the 06:00 pressure\n15 Nov 08:05  mainland: readings received, thank you\n15 Nov 11:05  mainland: please repeat the 06:00 pressure\n15 Nov 14:20  mainland: all well here\n16 Nov 08:20  mainland: all well here\n16 Nov 17:05  Guillemot: anchored in the lee for the night\n16 Nov 17:05  mainland: readings received, thank you\n17 Nov 08:05  mainland: forecast for the islands sent\n17 Nov 08:40  mainland: all well here\n17 Nov 09:30  Marigold: alongside, mail and fresh food landed\n17 Nov 11:40  Guillemot: asking for the visibility\n18 Nov 11:20  coastguard: weekly check, all well\n18 Nov 14:20  Kittiwake: asking for the wind at the station\n18 Nov 17:20  coastguard: radio check, loud and clear\n19 Nov 17:20  coastguard: radio check, loud and clear\n19 Nov 17:40  mainland: please repeat the 06:00 pressure\n20 Nov 08:05  Kittiwake: asking for the wind at the station\n20 Nov 14:40  mainland: all well here\n20 Nov 17:40  Guillemot: asking for the visibility\n"
+          }
+        }
+      }
+    },
+    {
+      "id": "odd-reading",
+      "title": "The odd reading",
+      "teaches": "sort",
+      "story": [
+        "The mainland's forecasters have queried one of November's morning barometer readings: they say it cannot be right.",
+        "Air pressure at sea level is nearly always between about 950 and 1050 hectopascals. One of the readings is far outside that."
+      ],
+      "goal": {
+        "text": "On which day of November was the wrong barometer reading written? As in: answer 3",
+        "type": "answer",
+        "answers": ["17", "17", "17 nov", "17 november", "17th"]
+      },
+      "hints": [
+        "The readings are in /station/instruments/barometer.txt, one a day. Reading thirty numbers by eye is slow.",
+        "sort -n puts lines in order by the number at their start; the odd one comes first or last. sort -n barometer.txt | head -n 3"
+      ],
+      "done": [
+        "The 17th: 101 should have been 1012, a digit left off. Sorting puts what does not belong at one end, where it is easy to see."
+      ],
+      "start": "/station/instruments",
+      "home": "/home/keeper",
+      "tree": {
+        "home": {
+          "keeper": {
+            "kettle.txt": "The kettle takes about four minutes on the small stove.\nTea is in the tin with the gannet on it. Coffee ran out in September.\n"
+          }
+        },
+        "station": {
+          "readme.txt": "Tarrow Skerry weather station.\nReadings are taken every three hours and sent to the mainland by radio.\nLogs are in logs/, the stores list is in stores/, the instruments' papers are in instruments/.\n",
+          "instruments": {
+            "barometer.txt": "1016 hPa  01 Nov 09:00\n1019 hPa  02 Nov 09:00\n1024 hPa  03 Nov 09:00\n1029 hPa  04 Nov 09:00\n1032 hPa  05 Nov 09:00\n1032 hPa  06 Nov 09:00\n1028 hPa  07 Nov 09:00\n1033 hPa  08 Nov 09:00\n1035 hPa  09 Nov 09:00\n1035 hPa  10 Nov 09:00\n1035 hPa  11 Nov 09:00\n1029 hPa  12 Nov 09:00\n1027 hPa  13 Nov 09:00\n1021 hPa  14 Nov 09:00\n1015 hPa  15 Nov 09:00\n1011 hPa  16 Nov 09:00\n 101 hPa  17 Nov 09:00\n1016 hPa  18 Nov 09:00\n1016 hPa  19 Nov 09:00\n1014 hPa  20 Nov 09:00\n1016 hPa  21 Nov 09:00\n1010 hPa  22 Nov 09:00\n1006 hPa  23 Nov 09:00\n1000 hPa  24 Nov 09:00\n1005 hPa  25 Nov 09:00\n 999 hPa  26 Nov 09:00\n 995 hPa  27 Nov 09:00\n 993 hPa  28 Nov 09:00\n 989 hPa  29 Nov 09:00\n 994 hPa  30 Nov 09:00\n",
+            "enclosure.txt": "Keep it painted white.\n"
+          }
+        }
+      }
+    },
+    {
+      "id": "most-calls",
+      "title": "Who called most",
+      "teaches": "sort, uniq -c and pipes",
+      "story": [
+        "The fishing boats that call the station on the radio are given a calendar at Christmas. The one that called most often gets the big one.",
+        "Ines wrote the name of every boat that called in November, one name to a line, in the order they called."
+      ],
+      "goal": {
+        "text": "Which boat called most often in November? As in: answer Fulmar",
+        "type": "answer",
+        "answers": ["kittiwake"]
+      },
+      "hints": [
+        "The names are in /station/logs/calls.txt. uniq -c counts repeated lines, but only lines that are next to each other.",
+        "sort first, so that the same names are together: sort calls.txt | uniq -c",
+        "Add sort -rn to put the biggest count first: sort calls.txt | uniq -c | sort -rn"
+      ],
+      "done": [
+        "The Kittiwake, eleven times. sort, then uniq -c, then sort -rn: three small commands that between them count anything listed a line at a time."
+      ],
+      "start": "/station/logs",
+      "home": "/home/keeper",
+      "tree": {
+        "home": {
+          "keeper": {
+            "kettle.txt": "The kettle takes about four minutes on the small stove.\nTea is in the tin with the gannet on it. Coffee ran out in September.\n"
+          }
+        },
+        "station": {
+          "readme.txt": "Tarrow Skerry weather station.\nReadings are taken every three hours and sent to the mainland by radio.\nLogs are in logs/, the stores list is in stores/, the instruments' papers are in instruments/.\n",
+          "logs": {
+            "calls.txt": "Fulmar\nKittiwake\nMarigold\nGuillemot\nShearwater\nFulmar\nMarigold\nKittiwake\nMarigold\nMarigold\nKittiwake\nShearwater\nGuillemot\nShearwater\nKittiwake\nKittiwake\nGuillemot\nKittiwake\nShearwater\nMarigold\nMarigold\nGuillemot\nKittiwake\nKittiwake\nKittiwake\nGuillemot\nKittiwake\nStorm Petrel\nShearwater\nMarigold\nStorm Petrel\nFulmar\nKittiwake\nGuillemot\nGuillemot\nMarigold\n",
+            "radio.log": "01 Nov 08:40  mainland: readings received, thank you\n01 Nov 11:20  mainland: forecast for the islands sent\n01 Nov 14:20  coastguard: radio check, loud and clear\n02 Nov 08:40  mainland: all well here\n02 Nov 14:20  mainland: forecast for the islands sent\n02 Nov 17:05  coastguard: weekly check, all well\n03 Nov 09:30  Marigold: leaving harbour, with you by noon\n03 Nov 14:05  mainland: readings received, thank you\n03 Nov 14:20  Guillemot: anchored in the lee for the night\n03 Nov 17:05  Guillemot: anchored in the lee for the night\n04 Nov 08:40  mainland: all well here\n04 Nov 09:30  Marigold: alongside, stores landed\n04 Nov 11:40  mainland: readings received, thank you\n04 Nov 17:20  coastguard: radio check, loud and clear\n05 Nov 08:20  coastguard: radio check, loud and clear\n05 Nov 14:20  mainland: please repeat the 06:00 pressure\n05 Nov 17:05  Guillemot: asking for the visibility\n06 Nov 14:20  mainland: please repeat the 06:00 pressure\n06 Nov 17:05  mainland: please repeat the 06:00 pressure\n06 Nov 17:40  mainland: all well here\n07 Nov 11:05  mainland: readings received, thank you\n07 Nov 17:40  mainland: forecast for the islands sent\n08 Nov 14:20  mainland: readings received, thank you\n08 Nov 17:20  coastguard: radio check, loud and clear\n09 Nov 11:05  Kittiwake: asking for the wind at the station\n09 Nov 11:40  mainland: readings received, thank you\n09 Nov 14:40  mainland: please repeat the 06:00 pressure\n10 Nov 08:40  mainland: all well here\n10 Nov 14:20  Guillemot: anchored in the lee for the night\n10 Nov 14:20  mainland: please repeat the 06:00 pressure\n11 Nov 08:05  Kittiwake: passing to the north, fishing\n11 Nov 17:05  mainland: forecast for the islands sent\n11 Nov 17:40  Kittiwake: passing to the north, fishing\n12 Nov 08:20  Kittiwake: passing to the north, fishing\n12 Nov 11:20  mainland: readings received, thank you\n12 Nov 11:40  Kittiwake: passing to the north, fishing\n13 Nov 11:05  Guillemot: anchored in the lee for the night\n13 Nov 17:20  mainland: forecast for the islands sent\n14 Nov 09:30  Marigold: turning back for the weather, will try again on Monday\n14 Nov 14:05  Kittiwake: asking for the wind at the station\n14 Nov 14:20  mainland: please repeat the 06:00 pressure\n15 Nov 08:05  mainland: readings received, thank you\n15 Nov 11:05  mainland: please repeat the 06:00 pressure\n15 Nov 14:20  mainland: all well here\n16 Nov 08:20  mainland: all well here\n16 Nov 17:05  Guillemot: anchored in the lee for the night\n16 Nov 17:05  mainland: readings received, thank you\n17 Nov 08:05  mainland: forecast for the islands sent\n17 Nov 08:40  mainland: all well here\n17 Nov 09:30  Marigold: alongside, mail and fresh food landed\n17 Nov 11:40  Guillemot: asking for the visibility\n18 Nov 11:20  coastguard: weekly check, all well\n18 Nov 14:20  Kittiwake: asking for the wind at the station\n18 Nov 17:20  coastguard: radio check, loud and clear\n19 Nov 17:20  coastguard: radio check, loud and clear\n19 Nov 17:40  mainland: please repeat the 06:00 pressure\n20 Nov 08:05  Kittiwake: asking for the wind at the station\n20 Nov 14:40  mainland: all well here\n20 Nov 17:40  Guillemot: asking for the visibility\n"
+          }
+        }
+      }
+    },
+    {
+      "id": "checks",
+      "title": "What needs seeing to",
+      "teaches": "grep -v",
+      "story": [
+        "Every week the keeper goes round the station with a checklist. Ines did the last round before she left.",
+        "Almost everything says ok. Something does not."
+      ],
+      "goal": {
+        "text": "Which instrument needs seeing to? As in: answer rain gauge",
+        "type": "answer",
+        "answers": ["anemometer", "the anemometer"]
+      },
+      "hints": ["The list is /station/instruments/checks.txt.", "grep -v shows the lines that do not hold the text: grep -v ok checks.txt"],
+      "done": [
+        "The anemometer, which measures the wind speed: its cups want oil. grep -v hides what is fine and leaves what is not, which is often the quicker way round."
+      ],
+      "start": "/station/instruments",
+      "home": "/home/keeper",
+      "tree": {
+        "home": {
+          "keeper": {
+            "kettle.txt": "The kettle takes about four minutes on the small stove.\nTea is in the tin with the gannet on it. Coffee ran out in September.\n"
+          }
+        },
+        "station": {
+          "readme.txt": "Tarrow Skerry weather station.\nReadings are taken every three hours and sent to the mainland by radio.\nLogs are in logs/, the stores list is in stores/, the instruments' papers are in instruments/.\n",
+          "instruments": {
+            "checks.txt": "barometer: ok\ndry thermometer: ok\nwet thermometer: ok\nmaximum thermometer: ok\nminimum thermometer: ok\ngrass minimum thermometer: ok\nrain gauge: ok\nwind vane: ok\nsunshine recorder: ok\nenclosure louvres: ok\nenclosure door: ok\nanemometer: cups turn stiffly, needs oil\nradio aerial: ok\nradio battery: ok\ngenerator: ok\ngenerator fuel: ok\nspare generator: ok\nfog signal: ok\nlanding light: ok\nrope at the landing: ok\nfirst aid box: ok\nfire extinguisher: ok\nstove: ok\nwater tank: ok\nwater filter: ok\n",
+            "barometer.txt": "1016 hPa  01 Nov 09:00\n1019 hPa  02 Nov 09:00\n1024 hPa  03 Nov 09:00\n1029 hPa  04 Nov 09:00\n1032 hPa  05 Nov 09:00\n"
+          }
+        }
+      }
+    },
+    {
+      "id": "puzzle",
+      "title": "Ines's puzzle",
+      "teaches": "decode and wc -l",
+      "story": [
+        "Sam, the mainland radio operator, has a birthday on Friday. Ines baked a cake before she left and hid it.",
+        "She left you a note about where, in a Caesar shift: every letter moved on the same number of places in the alphabet."
+      ],
+      "goal": {
+        "text": "Where is the cake? Answer in a few words, as in: answer in the boat house",
+        "type": "answer",
+        "answers": ["flour", "cold store"],
+        "match": "contains"
+      },
+      "hints": [
+        "Read cake.txt and clue.txt in this folder.",
+        "The clue says the shift is the number of hooks on the key board. wc -l counts the lines in a file: wc -l /station/stores/keys.txt",
+        "There are 7 hooks: decode 7 cake.txt"
+      ],
+      "done": [
+        "Behind the flour in the cold store. A Caesar shift hides a message from a glance but not from anyone who tries all 25 shifts: the Encryption screen under Tools has it, and ciphers that are harder to undo."
+      ],
+      "start": "/home/keeper",
+      "home": "/home/keeper",
+      "tree": {
+        "home": {
+          "keeper": {
+            "kettle.txt": "The kettle takes about four minutes on the small stove.\nTea is in the tin with the gannet on it. Coffee ran out in September.\n",
+            "cake.txt": "AOL JHRL MVY ZHT'Z IPYAOKHF PZ PU AOL JVSK ZAVYL, ILOPUK AOL MSVBY.\n",
+            "clue.txt": "The shift is the number of hooks on the key board.\n(No looking at the board itself: count the list.)\n"
+          }
+        },
+        "station": {
+          "readme.txt": "Tarrow Skerry weather station.\nReadings are taken every three hours and sent to the mainland by radio.\nLogs are in logs/, the stores list is in stores/, the instruments' papers are in instruments/.\n",
+          "stores": {
+            "keys.txt": "Hook 1  front door (spare)\nHook 2  generator shed\nHook 3  boat house\nHook 4  oil store\nHook 5  paint store\nHook 6  radio cupboard\nHook 7  instrument enclosure\n",
+            "food.txt": "Flour: 2 sacks, in the cold store\nTins: the shelves in the porch\n"
+          }
+        }
+      }
+    },
+    {
+      "id": "handover",
+      "title": "Handover",
+      "teaches": "grep -r, and putting it together",
+      "story": ["One last note from Ines, in your home folder."],
+      "goal": {
+        "text": "Put Ines's last message together and give it with answer.",
+        "type": "answer",
+        "answers": ["the station is yours", "station is yours"],
+        "match": "contains"
+      },
+      "hints": [
+        "Read last.txt in your home folder.",
+        "grep -r looks in every file under a folder: grep -r piece /station",
+        "Put the pieces in order. Piece 1 says how to undo the rest: echo XLI WXEXMSR MW CSYVW | decode 4"
+      ],
+      "done": [
+        "THE STATION IS YOURS. You have found your way round a whole computer by typing: folders, paths, reading, searching, counting, sorting and pipes. Real terminals work the same way.",
+        "Every level can be played again from the list under the terminal."
+      ],
+      "start": "/home/keeper",
+      "home": "/home/keeper",
+      "tree": {
+        "home": {
+          "keeper": {
+            "kettle.txt": "The kettle takes about four minutes on the small stove.\nTea is in the tin with the gannet on it. Coffee ran out in September.\n",
+            "last.txt": "I hid one last message in four pieces, in four of the station's files.\nEach piece is on a line of its own that starts with the word piece.\n\nInes\n"
+          }
+        },
+        "station": {
+          "readme.txt": "Tarrow Skerry weather station.\nReadings are taken every three hours and sent to the mainland by radio.\nLogs are in logs/, the stores list is in stores/, the instruments' papers are in instruments/.\n",
+          "logs": {
+            "radio.log": "20 Nov 08:05  mainland: readings received\npiece 3 of 4: MW\n20 Nov 11:20  coastguard: weekly check, all well\n",
+            "weather.log": "17 Nov 00:00  wind SW 15 kn  pressure 1009 hPa  visibility moderate\npiece 1 of 4: shift back 4\n17 Nov 03:00  wind NE 18 kn  pressure 1006 hPa  visibility moderate\n"
+          },
+          "instruments": {
+            "checks.txt": "barometer: ok\npiece 4 of 4: CSYVW\nrain gauge: ok\n"
+          },
+          "stores": {
+            "food.txt": "Flour: 2 sacks\npiece 2 of 4: XLI WXEXMSR\nTea: the gannet tin\n",
+            "keys.txt": "Hook 1  front door (spare)\nHook 2  generator shed\nHook 3  boat house\nHook 4  oil store\nHook 5  paint store\nHook 6  radio cupboard\nHook 7  instrument enclosure\n"
+          }
+        }
+      }
+    }
+  ]
+}

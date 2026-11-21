@@ -240,10 +240,11 @@ describe("the quick search's Go to list", () => {
 });
 
 describe("the Games section", () => {
-  it("lists its eight games under it, in order, each with a quick-search entry", () => {
+  it("lists its games under it, in order, each with a quick-search entry", () => {
     const games = allNav.find((item) => item.to === "/games")!;
     expect(games.children!.map((child) => [child.label, child.to])).toEqual([
       ["Allotment", "/games/allotment"],
+      ["Steading", "/games/steading"],
       ["Solitaire", "/games/solitaire"],
       ["Peg solitaire", "/games/peg-solitaire"],
       ["Sudoku", "/games/sudoku"],
@@ -251,9 +252,10 @@ describe("the Games section", () => {
       ["Chess", "/games/chess"],
       ["Pairs", "/games/pairs"],
       ["Snake", "/games/snake"],
+      ["Skerry", "/games/skerry"],
     ]);
     expect(allNav.map((item) => item.to).indexOf("/games")).toBe(allNav.map((item) => item.to).indexOf("/prepare") + 1);
-    expect(everyScreen.filter((item) => item.parent?.to === "/games")).toHaveLength(8);
+    expect(everyScreen.filter((item) => item.parent?.to === "/games")).toHaveLength(games.children!.length);
   });
 });
 

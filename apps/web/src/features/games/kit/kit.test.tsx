@@ -214,13 +214,14 @@ describe("a game's tally", () => {
 });
 
 describe("the Games page", () => {
-  it("lists the eight games in order, each linking to its screen", () => {
+  it("lists the games in order, each linking to its screen", () => {
     show(<GamesPage />);
     expect(screen.getByRole("heading", { level: 1, name: "Games" })).toBeInTheDocument();
     const links = screen.getAllByRole("link");
     expect(links.map((link) => link.getAttribute("href"))).toEqual(gameScreens.map((game) => game.to));
     expect(gameScreens.map((game) => game.label)).toEqual([
       "Allotment",
+      "Steading",
       "Solitaire",
       "Peg solitaire",
       "Sudoku",
@@ -228,6 +229,7 @@ describe("the Games page", () => {
       "Chess",
       "Pairs",
       "Snake",
+      "Skerry",
     ]);
     expect(screen.getByText(/stays on the device it is being played on/)).toBeInTheDocument();
   });

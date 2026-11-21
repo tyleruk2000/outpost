@@ -53,6 +53,8 @@ const DraughtsPage = lazy(() => import("./features/games/draughts/draughts-page"
 const ChessPage = lazy(() => import("./features/games/chess/chess-page"));
 const PairsPage = lazy(() => import("./features/games/pairs/pairs-page"));
 const SnakePage = lazy(() => import("./features/games/snake/snake-page"));
+const SkerryPage = lazy(() => import("./features/games/skerry/skerry-page"));
+const SteadingPage = lazy(() => import("./features/games/steading/steading-page"));
 const PowerPage = lazy(() => import("./features/power/power-page"));
 const PowerPlanPage = lazy(() => import("./features/power/plan-page"));
 const SuppliesPage = lazy(() => import("./features/supplies/supplies-page"));
@@ -198,6 +200,8 @@ export function App() {
           <Route path="games/chess" element={<ChessPage />} />
           <Route path="games/pairs" element={<PairsPage />} />
           <Route path="games/snake" element={<SnakePage />} />
+          <Route path="games/skerry" element={<SkerryPage />} />
+          <Route path="games/steading" element={<SteadingPage />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
