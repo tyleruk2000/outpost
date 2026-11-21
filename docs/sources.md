@@ -1603,6 +1603,25 @@ and `packages/shared/src/radio-licences/`. Read on 21 November 2026:
 - France: Arcep décisions 2012-1241 and 2019-1412. The arrêté of 21 September 2000 on the
   certificate classes and the current short range devices decision could not be read, so
   France has no licence-free services listed.
+- Belgium: the BIPT Council decision of 24 May 2019 (Annex 2) and BIPT's English extract of
+  its band table; the BIPT decision of 29 August 2023 on 40.66 to 40.69 MHz, read in the copy
+  the UBA hosts (BIPT's own address for it returned not found); BIPT's pages on free use of
+  radio (CB and PMR446).
+- Switzerland: the VNF (SR 784.102.1, version of 1 January 2024) and the VVNF (SR 784.102.11,
+  version of 1 January 2026, Anhang 4); OFCOM's Merkblatt Amateurfunk (30 September 2026);
+  RIR0507-35 (PMR446) and RIR1102-02 (CB). Anhang 1 (short range devices) is published only
+  by reference on a fedlex page that needs a script, so it was not read.
+- Spain: Orden IET/1311/2013 (consolidated, last amended 2015 by IET/614/2015) and the CNAF,
+  Orden TDF/732/2026 (in force from 18 July 2026), notes UN-3, UN-100, UN-108, UN-110,
+  UN-122 and UN-132.
+- Italy: Allegato 26 to the Codice delle comunicazioni elettroniche (as replaced in 2021) and
+  articles 134 to 145 of the Codice (the ministry's copy in force on 28 April 2025); the
+  national frequency plan (PNRF, decree of 31 August 2022); the decree of 26 January 2026 on
+  classe N.
+- Corrections on the same day: Canadian CB FM from RSS-236 Issue 2, section 4.8; US 60 m
+  channels from 47 CFR 97.303(h); Irish PMR446 from ComReg 02/71 R16. A search suggested
+  ComReg now points to a revision R17 of 02/71, which could not be read (ComReg's pages
+  answered with redirects only).
 
 Band plans of national societies (RSGB, ARRL, WIA) were used only to find the regulator's
 document, never as the source of a figure. The IARU regional band plans are cited for the

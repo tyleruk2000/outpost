@@ -58,9 +58,9 @@ Choose another country from the list to see its rules. Every figure names the re
 document it comes from and the day it was read, and what could not be read is said under
 **Not read**.
 
-Nine countries have been read: the United Kingdom, Ireland, the United States, Canada,
-Australia, New Zealand, Germany, the Netherlands and France (France without its
-licence-free services). The screen lists the other main countries with their regulators,
+Thirteen countries have been read: the United Kingdom, Ireland, the United States,
+Canada, Australia, New Zealand, Germany, the Netherlands, France (without its
+licence-free services), Belgium, Switzerland, Spain and Italy. The screen lists the other main countries with their regulators,
 for you to ask; it says nothing about their rules. Rules change: check the regulator's own
 page before relying on a figure. This is general information, not legal advice.
 
