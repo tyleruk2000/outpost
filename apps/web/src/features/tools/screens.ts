@@ -15,6 +15,7 @@ import {
   QrCode,
   RadioTower,
   SunMedium,
+  Wheat,
 } from "lucide-react";
 import type { SectionScreen } from "@/components/section";
 
@@ -57,6 +58,14 @@ export const toolScreens: SectionScreen[] = [
     keywords: "kitchen roast turkey oven gas mark temperature recipe timer weights measures conversions",
     about:
       "Roasting times and safe temperatures from UK food-safety guidance, a timer, boiling at altitude, conversions and scaling a recipe.",
+  },
+  {
+    to: "/tools/rations",
+    label: "Rations",
+    icon: Wheat,
+    keywords: "ration rationing stockpile staples lasts share out reduced half",
+    about:
+      "A day's energy for a household, how long food lasts at full and reduced rations, what to store, and a stock shared out by need. A planning aid.",
   },
   {
     to: "/tools/power",

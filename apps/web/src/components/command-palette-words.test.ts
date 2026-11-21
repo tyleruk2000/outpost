@@ -39,6 +39,8 @@ const lands: Array<[string, string | null]> = [
   // Screens by their everyday words.
   ["water", "Tools: Water"],
   ["safe drinking water", "Tools: Water"],
+  ["rationing", "Tools: Rations"],
+  ["stockpile", "Tools: Rations"],
   ["weather", "Preparedness: Weather and hazards"],
   ["flood", "Preparedness: Emergency plans"],
   ["river levels", "Preparedness: Weather and hazards"],

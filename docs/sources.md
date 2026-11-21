@@ -1584,3 +1584,16 @@ read from the system and how it is described.
 | prometheus.io/docs/instrumenting/exposition_formats/ | Text format `version=0.0.4`, lines ending in a line feed, `# HELP` and `# TYPE` once per name before its samples, label escaping, histogram buckets with `le` ending in `+Inf` equal to `_count`. | `/metrics` is written by hand to that format; no client library. |
 | nodejs.org/docs/latest-v24.x/api/perf_hooks.html, `monitorEventLoopDelay` | "By default, the histogram is updated by a timer using the configured resolution"; the per-iteration mode "does not keep the loop alive". | The per-iteration mode was ignored by Node 24.15 when tried, so the timer is used, and only while there is work. |
 | manpages.debian.org, avahi-daemon(8) and avahi-publish(1) (bookworm); avahi 0.8's `avahi-publish.c` | `--reload` rereads `/etc/avahi/services/`; `avahi-publish -a` registers "an address/host name mapping"; `-R --no-reverse` "Do not publish reverse entry with address"; `-f` waits for the daemon and reconnects. | `outpost-name.service` runs `avahi-publish -f -a -R NAME.local ADDRESS`. |
+
+## Ration calculator
+
+Tools → Rations ([tools.md](tools.md#rations)) quotes figures from these documents, read on
+21 November 2026. Nothing is fetched by Outpost and no document is bundled: the figures
+are numbers in `packages/shared/src/rations.ts`, each with its source named on screen.
+
+| What | Where it comes from | How it was read |
+| --- | --- | --- |
+| 2,100 kcal a person a day; protein 10 to 12% and fat 17% of the energy (53 g and 40 g); options for reducing a ration | The Sphere Handbook (2018), food security standard 6.1, food assistance standard 6.3 and appendix 6 | From the chapter as UNHCR hosts it, <https://emergency.unhcr.org/sites/default/files/2024-05/SphereFS%2BN.pdf>; Sphere's own site answered HTTP 403 (row N9). No newer edition is published. Quoted, with the source named. |
+| Need by age and sex (annex 1), +285 pregnant, +500 lactating, +100 kcal for every 5° below 20 °C, reducing a ration with a safety net for the vulnerable (table 12) | UNHCR, UNICEF, WFP and WHO, Food and Nutrition Needs in Emergencies (2002) | The PDF on WHO's IRIS, <https://iris.who.int/server/api/core/bitstreams/c6f336b9-0c36-4431-80fd-840c05344817/content>. Quoted. |
+| +191 kcal a day in the last trimester; +330 kcal a day in the first six months of breastfeeding | SACN, Dietary Reference Values for Energy (2011), paragraphs S50 and S51 | <https://assets.publishing.service.gov.uk/media/5a7edb37ed915d74e33f2d8f/SACN_Dietary_Reference_Values_for_Energy.pdf>, Open Government Licence. |
+| Twelve staple foods' energy, protein and fat | USDA FoodData Central, SR Legacy (April 2018) | Already held by Supplies (public domain, CC0); not read again. The server's tests hold each figure to the table. |
