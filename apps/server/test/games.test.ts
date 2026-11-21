@@ -33,7 +33,7 @@ async function waitForJob(id: string) {
 describe("a game's tally", () => {
   it("starts empty for every game", async () => {
     expect(await get()).toEqual({
-      tallies: { solitaire: {}, "peg-solitaire": {}, sudoku: {}, draughts: {}, pairs: {} },
+      tallies: { solitaire: {}, "peg-solitaire": {}, sudoku: {}, draughts: {}, chess: {}, pairs: {}, snake: {} },
       allotmentStarted: false,
     });
     expect(app.ctx.services.games.kept.count()).toEqual({ saves: 0 });
@@ -55,7 +55,7 @@ describe("a game's tally", () => {
   });
 
   it("refuses a game, a way of playing or a figure that is not one, saying why", async () => {
-    expect((await app.api("POST", "/api/games/chess/results", { variant: "x", won: true })).status).toBe(400);
+    expect((await app.api("POST", "/api/games/go/results", { variant: "x", won: true })).status).toBe(400);
     expect((await app.api("POST", "/api/games/allotment/results", { variant: "x", won: true })).status).toBe(400);
     expect((await app.api("POST", "/api/games/sudoku/results", { variant: "draw-1", won: true })).status).toBe(400);
     expect((await app.api("POST", "/api/games/sudoku/results", { variant: "gentle", won: true, seconds: -1 })).status).toBe(400);
@@ -75,6 +75,19 @@ describe("a game's tally", () => {
     await app.api("DELETE", "/api/games/peg-solitaire");
   });
 
+  it("keeps Snake's highest score, from any game, and Chess for each level", async () => {
+    await app.api("POST", "/api/games/snake/results", { variant: "steady-walls", won: false, score: 12, seconds: 40 });
+    await app.api("POST", "/api/games/snake/results", { variant: "steady-walls", won: false, score: 30 });
+    await app.api("POST", "/api/games/snake/results", { variant: "steady-walls", won: false, score: 7 });
+    expect((await get()).tallies.snake["steady-walls"]).toMatchObject({ played: 3, won: 0, bestScore: 30, bestSeconds: null });
+    expect((await app.api("POST", "/api/games/snake/results", { variant: "warp", won: false, score: 1 })).status).toBe(400);
+    expect((await app.api("POST", "/api/games/snake/results", { variant: "fast-wrap", won: false, score: -1 })).status).toBe(400);
+    await app.api("POST", "/api/games/chess/results", { variant: "learner", won: true, seconds: 300, moves: 24 });
+    expect((await get()).tallies.chess.learner).toMatchObject({ played: 1, won: 1, fewestMoves: 24, bestScore: null });
+    await app.api("DELETE", "/api/games/snake");
+    await app.api("DELETE", "/api/games/chess");
+  });
+
   it("is cleared on request, one game at a time", async () => {
     await app.api("POST", "/api/games/pairs/results", { variant: "small", won: true, seconds: 40, moves: 9 });
     const cleared = await app.api("DELETE", "/api/games/solitaire");
@@ -91,7 +104,7 @@ describe("a game's tally", () => {
       .run(JSON.stringify({ computer: { played: "many", won: -5 }, junk: 3 }));
     const { tallies } = await get();
     expect(tallies.draughts).toEqual({
-      computer: { played: 0, won: 0, bestSeconds: null, fewestMoves: null, fewestLeft: null, lastAt: null },
+      computer: { played: 0, won: 0, bestSeconds: null, fewestMoves: null, fewestLeft: null, bestScore: null, lastAt: null },
     });
     await app.api("POST", "/api/games/draughts/results", { variant: "computer", won: true });
     expect((await get()).tallies.draughts.computer).toMatchObject({ played: 1, won: 1 });
@@ -120,7 +133,7 @@ describe("a person's own data", () => {
     expect(job?.state).toBe("succeeded");
     expect((job!.result as CleanupResult).personal?.games).toEqual({ saves: 2 });
     expect(await get()).toEqual({
-      tallies: { solitaire: {}, "peg-solitaire": {}, sudoku: {}, draughts: {}, pairs: {} },
+      tallies: { solitaire: {}, "peg-solitaire": {}, sudoku: {}, draughts: {}, chess: {}, pairs: {}, snake: {} },
       allotmentStarted: false,
     });
   });

@@ -32,7 +32,10 @@ function show(address = `/games/pairs?seed=${SEED}&size=small`) {
   );
 }
 
-const tallies = { tallies: { solitaire: {}, "peg-solitaire": {}, sudoku: {}, draughts: {}, pairs: {} }, allotmentStarted: false };
+const tallies = {
+  tallies: { solitaire: {}, "peg-solitaire": {}, sudoku: {}, draughts: {}, chess: {}, pairs: {}, snake: {} },
+  allotmentStarted: false,
+};
 let reachable = true;
 const posted: unknown[] = [];
 

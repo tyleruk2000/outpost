@@ -50,7 +50,9 @@ const SolitairePage = lazy(() => import("./features/games/solitaire/solitaire-pa
 const PegSolitairePage = lazy(() => import("./features/games/peg-solitaire/peg-solitaire-page"));
 const SudokuPage = lazy(() => import("./features/games/sudoku/sudoku-page"));
 const DraughtsPage = lazy(() => import("./features/games/draughts/draughts-page"));
+const ChessPage = lazy(() => import("./features/games/chess/chess-page"));
 const PairsPage = lazy(() => import("./features/games/pairs/pairs-page"));
+const SnakePage = lazy(() => import("./features/games/snake/snake-page"));
 const PowerPage = lazy(() => import("./features/power/power-page"));
 const PowerPlanPage = lazy(() => import("./features/power/plan-page"));
 const SuppliesPage = lazy(() => import("./features/supplies/supplies-page"));
@@ -193,7 +195,9 @@ export function App() {
           <Route path="games/peg-solitaire" element={<PegSolitairePage />} />
           <Route path="games/sudoku" element={<SudokuPage />} />
           <Route path="games/draughts" element={<DraughtsPage />} />
+          <Route path="games/chess" element={<ChessPage />} />
           <Route path="games/pairs" element={<PairsPage />} />
+          <Route path="games/snake" element={<SnakePage />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

@@ -73,6 +73,13 @@
   --color-game-peg-edge: var(--game-peg-edge);
   --color-game-peg-shine: var(--game-peg-shine);
   --color-game-peg-hint: var(--game-peg-hint);
+  --color-game-snake-field: var(--game-snake-field);
+  --color-game-snake-grid: var(--game-snake-grid);
+  --color-game-snake: var(--game-snake);
+  --color-game-snake-edge: var(--game-snake-edge);
+  --color-game-snake-eye: var(--game-snake-eye);
+  --color-game-snake-food: var(--game-snake-food);
+  --color-game-snake-leaf: var(--game-snake-leaf);
   --color-focus: var(--focus);
   --color-overlay: var(--overlay);
 

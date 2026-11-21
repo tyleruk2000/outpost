@@ -1501,6 +1501,19 @@ Only the RHS was used, so no two sources had to be reconciled. Made up for the g
 said so on the screen: how fast things grow, prices, how long water lasts and how often it
 rains.
 
+## Chess: the rules and the move generator's check (read 2026-11-21)
+
+Games → Chess ([games.md](games.md#chess)). Nothing is bundled or fetched by Outpost.
+
+| What | Source | How it was used |
+| --- | --- | --- |
+| The rules | FIDE Laws of Chess taking effect from 1 January 2023, <https://handbook.fide.com/chapter/E012023> | Read once with the ordinary fetch tool. Articles 3.7 (en passant, promotion), 3.8 (castling and its conditions), 5.2 (stalemate, dead position), 9.2 and 9.3 (repetition and the fifty-move rule, both claimed) and 9.6 (fivefold repetition and 75 moves, automatic). Outpost ends the game at the third repetition and the fiftieth move without a claim, and says so. |
+| Perft counts | Chess Programming Wiki, "Perft Results", <https://www.chessprogramming.org/Perft_Results> (CC BY-SA 3.0) | Read once. The six standard positions and their leaf counts by depth are the move generator's test; only the counts (facts) and the FENs are used, none of the page's text or pictures. |
+
+The computer's piece-square values are Outpost's own, written as a few plain rules
+(knights to the centre, pawns forward, the king home until the queens are off), not taken
+from a published table.
+
 ## Mesh radio (read 2026-11-17)
 
 For the mesh radio link ([mesh-radio.md](mesh-radio.md)). Each page was read once, with

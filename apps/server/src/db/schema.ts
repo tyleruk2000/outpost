@@ -1499,7 +1499,7 @@ export const networkScans = sqliteTable("network_scans", {
  * stays on the device it is being played on.
  */
 export const gameSaves = sqliteTable("game_saves", {
-  /** The game's id: "allotment", "solitaire", "peg-solitaire", "sudoku", "draughts" or "pairs". */
+  /** The game's id: "allotment", "solitaire", "peg-solitaire", "sudoku", "draughts", "chess", "pairs" or "snake". */
   id: id(),
   state: json<Record<string, unknown>>("state").notNull(),
   /** Goes up by one each time the row is written, so that two writes at once cannot both win. */

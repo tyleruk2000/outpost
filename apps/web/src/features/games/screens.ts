@@ -3,7 +3,7 @@
  * and the Games page are both drawn from this list: to add a game, add an entry here and
  * a route in app.tsx.
  */
-import { CircleDot, Crown, Hash, Shapes, Spade, Sprout } from "lucide-react";
+import { ChessKnight, CircleDot, Crown, Hash, Shapes, Spade, Sprout, Worm } from "lucide-react";
 import type { SectionScreen } from "@/components/section";
 
 export const gameScreens: SectionScreen[] = [
@@ -45,10 +45,24 @@ export const gameScreens: SectionScreen[] = [
     about: "English draughts on an 8 by 8 board, against the computer or with two people at one device.",
   },
   {
+    to: "/games/chess",
+    keywords: "board game strategy",
+    label: "Chess",
+    icon: ChessKnight,
+    about: "Chess by the full rules, against the computer at four strengths or with two people at one device.",
+  },
+  {
     to: "/games/pairs",
     keywords: "memory matching cards children",
     label: "Pairs",
     icon: Shapes,
     about: "Turn over two cards at a time to find the matching pictures. Three sizes, for small hands and bigger ones.",
+  },
+  {
+    to: "/games/snake",
+    keywords: "arcade worm",
+    label: "Snake",
+    icon: Worm,
+    about: "Steer a snake that grows with every bite, without hitting the walls or itself. A slow speed for small children.",
   },
 ];
