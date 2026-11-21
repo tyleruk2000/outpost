@@ -9,6 +9,7 @@ import { everyPlace, findPlaces, placeName } from "./find-places";
 const lands: Array<[string, string | null]> = [
   // The words of the walk that found nothing.
   ["wifi", "Tools: QR codes"],
+  ["calibre", "Library: Import from Calibre"],
   ["compass", "Tools: Compass"],
   ["torch", null],
   ["battery", "Tools: Power and batteries"],

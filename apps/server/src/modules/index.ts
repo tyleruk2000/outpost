@@ -10,6 +10,7 @@ import { registerAudiobooks } from "./audiobooks/index.ts";
 import { registerBackup } from "./backup/index.ts";
 import { registerBoard } from "./board/index.ts";
 import { registerBooks } from "./books/index.ts";
+import { registerCalibre } from "./calibre/index.ts";
 import { registerCatalog } from "./catalog/index.ts";
 import { registerChat } from "./chat/index.ts";
 import { registerCollections } from "./collections/index.ts";
@@ -102,6 +103,8 @@ export const modules: ModuleRegister[] = [
   registerMesh,
   // The household's papers (medical sheets, keeping in touch, the binder), after the mesh link, on a line of their own.
   registerHouseholdPapers,
+  // Bringing in a Calibre library (Library), after documents, on a line of its own.
+  registerCalibre,
   // Tools a language model may call (Chat, and /mcp), last: they read from every module above.
   registerTools,
 ];

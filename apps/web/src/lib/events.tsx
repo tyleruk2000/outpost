@@ -49,6 +49,8 @@ const invalidations: Record<string, string[][]> = {
   "semantic.changed": [["semantic"]],
   "portable.changed": [["portable"]],
   "merge.changed": [["merge"]],
+  // A Calibre library was read or brought in (features/library/calibre).
+  "calibre.changed": [["calibre"]],
   "backup.changed": [["backup"], ["database"]],
   // A check or a reclaim of the database finished, or its contents were worked out.
   "database.changed": [["database"]],
