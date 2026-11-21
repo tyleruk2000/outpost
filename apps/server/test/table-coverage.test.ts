@@ -159,6 +159,7 @@ const TABLES: Record<string, Decision> = {
   medical_sheets: { group: "prepare", drive: true },
   comms_plans: { group: "prepare", drive: true },
   household_binder: { group: "prepare", drive: true },
+  household_book: { group: "prepare", drive: true },
   // Readiness (modules/readiness): the log of events, routine checks and the offline drills done.
   event_log: { group: "prepare", drive: true },
   routine_checks: { group: "prepare", drive: true },

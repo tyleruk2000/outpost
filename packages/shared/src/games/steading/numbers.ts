@@ -10,6 +10,8 @@
  * the landing are made up for the game.
  */
 
+import type { TerrainId } from "./map.ts";
+
 /** A day in the settlement passes in an hour of ours: every rate in the game is per such day. */
 export const DAY_MS = 60 * 60 * 1000;
 
@@ -29,6 +31,10 @@ export const GOOD_IDS = [
   "ore",
   "iron",
   "tools",
+  "diesel",
+  "panels",
+  "leadcells",
+  "lifecells",
 ] as const;
 export type GoodId = (typeof GOOD_IDS)[number];
 
@@ -56,6 +62,10 @@ export const GOODS: Record<GoodId, Good> = {
   ore: { name: "ore", one: "a basket of ore", sells: 4, buys: 6 },
   iron: { name: "iron", one: "a bar of iron", sells: 8, buys: 12 },
   tools: { name: "tools", one: "a set of tools", sells: 16, buys: 24 },
+  diesel: { name: "cans of diesel", one: "a 20-litre can of diesel", sells: 4, buys: 6 },
+  panels: { name: "solar panels", one: "a 400 W solar panel", sells: 20, buys: 30 },
+  leadcells: { name: "lead-acid cells", one: "a 2 V 1,000 Ah lead-acid cell", sells: 8, buys: 12 },
+  lifecells: { name: "LiFePO4 cells", one: "a 3.2 V 280 Ah LiFePO4 cell", sells: 16, buys: 25 },
 };
 
 /** What a storehouse holds of each good; each one built adds as much again. */
@@ -69,9 +79,6 @@ export const MADE_CAP = 999_999_999;
 
 // ── The ground ──────────────────────────────────────────────────────────────
 
-export const TERRAIN_IDS = ["meadow", "woods", "rock", "clay", "river", "hill", "coal"] as const;
-export type TerrainId = (typeof TERRAIN_IDS)[number];
-
 export const TERRAIN_NAMES: Record<TerrainId, string> = {
   meadow: "meadow",
   woods: "woods",
@@ -80,50 +87,9 @@ export const TERRAIN_NAMES: Record<TerrainId, string> = {
   river: "river",
   hill: "fell",
   coal: "coal seam",
+  ore: "ore",
+  water: "water",
 };
-
-const TERRAIN_CHARS: Record<string, TerrainId> = {
-  ".": "meadow",
-  T: "woods",
-  R: "rock",
-  C: "clay",
-  "~": "river",
-  "^": "hill",
-  K: "coal",
-};
-
-/**
- * Ashgill, the valley the settlement is in, west to east and north to south: woods on the
- * west side, a rock outcrop or two, clay banks along the river on the east, and a coal
- * seam in the fell at the head of the valley. There is no ore: it comes up the river.
- */
-export const VALLEY_ROWS = [
-  "TTT..^K^^~",
-  "TT.....^.~",
-  "T........~",
-  "TT...RR..~",
-  "T....R...~",
-  "........C~",
-  "T.......C~",
-  "TT.......~",
-  "T........~",
-  ".........~",
-  "T........~",
-  "RR......C~",
-  "R.......C~",
-  "TT.......~",
-] as const;
-
-export const VALLEY_WIDTH = 10;
-export const VALLEY_HEIGHT = VALLEY_ROWS.length;
-
-export function terrainAt(x: number, y: number): TerrainId | null {
-  if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= VALLEY_WIDTH || y >= VALLEY_HEIGHT) return null;
-  return TERRAIN_CHARS[VALLEY_ROWS[y]?.[x] ?? ""] ?? null;
-}
-
-/** Squares apart, a step to any of the eight neighbours counting one. */
-export const distance = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 
 // ── Buildings ───────────────────────────────────────────────────────────────
 
@@ -146,6 +112,12 @@ export const KIND_IDS = [
   "smithy",
   "wheel",
   "waterworks",
+  "mine",
+  "solar",
+  "turbine",
+  "generator",
+  "leadbank",
+  "lithiumbank",
 ] as const;
 export type KindId = (typeof KIND_IDS)[number];
 
@@ -162,8 +134,10 @@ export interface Kind {
   /** What it makes in a day at full pace. */
   outputs: Amounts;
   cost: Amounts;
-  /** Where it may stand: on meadow, and next to this ground (one of the eight squares round it). */
-  beside: TerrainId | null;
+  /** Where it may stand: on meadow (or the ground in `on`), and next to this ground (one of the eight squares round it). */
+  beside: TerrainId | readonly TerrainId[] | null;
+  /** The ground it may stand on, when it is not only meadow. */
+  on?: readonly TerrainId[];
   /** The people the settlement must have before it can be built. */
   unlockAt: number;
   /**
@@ -317,7 +291,7 @@ export const KINDS: Record<KindId, Kind> = {
     inputs: {},
     outputs: {},
     cost: { planks: 30, stone: 20 },
-    beside: "river",
+    beside: ["river", "water"],
     unlockAt: 12,
     stage: 3,
   },
@@ -357,7 +331,7 @@ export const KINDS: Record<KindId, Kind> = {
   },
   wheel: {
     name: "Water wheel",
-    about: "Turns a generator in the river's flow, for the houses and workshops within reach.",
+    about: "Turns a generator in the river's flow, day and night, for the settlement's line.",
     workers: 0,
     inputs: {},
     outputs: {},
@@ -377,9 +351,76 @@ export const KINDS: Record<KindId, Kind> = {
     unlockAt: 40,
     stage: 9,
   },
+  mine: {
+    name: "Ore mine",
+    about: "Digs iron ore from the deposit beside it.",
+    workers: 3,
+    inputs: {},
+    outputs: { ore: 8 },
+    cost: { planks: 16, stone: 10 },
+    beside: "ore",
+    unlockAt: 12,
+    stage: 0,
+  },
+  solar: {
+    name: "Solar array",
+    about: "Twelve 400 W panels on a frame, 4.8 kW at their peak: power by day, more in summer, none at night.",
+    workers: 0,
+    inputs: {},
+    outputs: {},
+    cost: { panels: 12, iron: 4, planks: 6 },
+    beside: null,
+    unlockAt: 24,
+    stage: 9,
+  },
+  turbine: {
+    name: "Wind turbine",
+    about: "A 10 kW turbine with a 7 m rotor on a mast: power whenever the wind blows, day and night. It may stand on a fell.",
+    workers: 0,
+    inputs: {},
+    outputs: {},
+    cost: { iron: 24, tools: 6, stone: 20, planks: 6 },
+    beside: null,
+    on: ["meadow", "hill"],
+    unlockAt: 24,
+    stage: 9,
+  },
+  generator: {
+    name: "Generator",
+    about: "A 10 kW diesel generator with a 200-litre tank. It starts only when the batteries are flat and the sun and wind fall short.",
+    workers: 0,
+    inputs: {},
+    outputs: {},
+    cost: { iron: 10, tools: 4, bricks: 12 },
+    beside: null,
+    unlockAt: 24,
+    stage: 9,
+  },
+  leadbank: {
+    name: "Lead-acid battery",
+    about: "Twenty-four 2 V 1,000 Ah cells in series: 48 V, 1,000 Ah, 48 kWh, of which half is used to spare the cells.",
+    workers: 0,
+    inputs: {},
+    outputs: {},
+    cost: { leadcells: 24, bricks: 8 },
+    beside: null,
+    unlockAt: 24,
+    stage: 9,
+  },
+  lithiumbank: {
+    name: "Lithium battery",
+    about: "Sixteen 3.2 V 280 Ah LiFePO4 cells in series: 51.2 V, 280 Ah, 14.3 kWh, of which 80% is used.",
+    workers: 0,
+    inputs: {},
+    outputs: {},
+    cost: { lifecells: 16, iron: 2, planks: 4 },
+    beside: null,
+    unlockAt: 24,
+    stage: 9,
+  },
 };
 
-/** The kinds that make something from something along routes (not houses, stores, wells or wheels). */
+/** The kinds that make something from something along routes (not houses, stores, wells or power). */
 export const isWorkplace = (kind: KindId) => KINDS[kind].stage < 9;
 
 /** Squares from home to work that a worker will walk. */
@@ -388,7 +429,7 @@ export const WORK_REACH = 4;
 export const STORE_REACH = 5;
 /** Squares from a house to its well. */
 export const WELL_REACH = 3;
-/** Squares a water wheel's line reaches. */
+/** Squares a water wheel's line reached, in the first settlements; power now runs on one line for the whole settlement. */
 export const WHEEL_REACH = 5;
 
 /** People in each house. */
@@ -424,9 +465,29 @@ export const MODES: Record<ModeId, Mode> = {
   track: { name: "Track", reach: 20, carries: 160, perSquare: { iron: 1, planks: 1 }, unlockAt: 40 },
 };
 
+// ── Belts ───────────────────────────────────────────────────────────────────
+
+export const BELT_TIERS = ["roller", "chain"] as const;
+export type BeltTier = (typeof BELT_TIERS)[number];
+
+export interface BeltKind {
+  name: string;
+  /** What one square of it carries in a day, each way through a junction. */
+  carries: number;
+  /** What each square costs to lay; a junction costs twice as much. */
+  perSquare: Amounts;
+  unlockAt: number;
+}
+
+/** Belts laid square by square, made up for the game: a wooden roller belt, then a chain belt with iron. */
+export const BELTS: Record<BeltTier, BeltKind> = {
+  roller: { name: "Roller belt", carries: 60, perSquare: { planks: 1 }, unlockAt: 0 },
+  chain: { name: "Chain belt", carries: 240, perSquare: { planks: 1, iron: 1 }, unlockAt: 24 },
+};
+
 // ── Trade at the landing ────────────────────────────────────────────────────
 
-export const CONTRACT_IDS = ["planks-ore", "bricks-ore", "bread-ore", "grain-coal"] as const;
+export const CONTRACT_IDS = ["planks-ore", "bricks-ore", "bread-ore", "grain-coal", "bricks-diesel"] as const;
 export type ContractId = (typeof CONTRACT_IDS)[number];
 
 export interface Contract {
@@ -441,6 +502,7 @@ export const CONTRACTS: Record<ContractId, Contract> = {
   "bricks-ore": { name: "Bricks for ore", inputs: { bricks: 16 }, outputs: { ore: 8 } },
   "bread-ore": { name: "Bread for ore", inputs: { bread: 20 }, outputs: { ore: 8 } },
   "grain-coal": { name: "Grain for coal", inputs: { grain: 20 }, outputs: { coal: 8 } },
+  "bricks-diesel": { name: "Bricks for diesel", inputs: { bricks: 16 }, outputs: { diesel: 6 } },
 };
 
 // ── What a household uses in a day: real figures ────────────────────────────
@@ -533,6 +595,9 @@ export const MILESTONE_IDS = [
   "first-tools",
   "first-power",
   "first-track",
+  "first-belt",
+  "first-sun",
+  "first-battery",
 ] as const;
 export type MilestoneId = (typeof MILESTONE_IDS)[number];
 
@@ -546,8 +611,11 @@ export const MILESTONE_NAMES: Record<MilestoneId, string> = {
   "first-trade": "The first barge came up the river",
   "first-iron": "The first iron smelted",
   "first-tools": "The first tools made",
-  "first-power": "The first power from the river",
+  "first-power": "The first power on the line",
   "first-track": "The first track laid",
+  "first-belt": "The first belt laid",
+  "first-sun": "The first power from the sun",
+  "first-battery": "The first battery charged",
 };
 
 /** The people at which the larger works are unlocked, in order. */

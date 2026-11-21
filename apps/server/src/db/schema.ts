@@ -1528,6 +1528,18 @@ export const householdBinder = sqliteTable("household_binder", {
   pages: integer("pages").notNull(),
 });
 
+/**
+ * The household book (Preparedness): the wizard's answers, kept as a draft, and the
+ * record of the last book made with the summary the next one compares itself with. One
+ * row, id "household".
+ */
+export const householdBook = sqliteTable("household_book", {
+  id: id(),
+  answers: json<unknown>("answers").notNull(),
+  answersAt: integer("answers_at"),
+  made: json<unknown>("made"),
+});
+
 export const nowMs = sql`(unixepoch('subsec') * 1000)`;
 
 /**

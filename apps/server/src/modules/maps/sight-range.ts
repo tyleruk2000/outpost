@@ -15,7 +15,7 @@ import type { TileServer } from "./tile-server.ts";
 
 export { positionsAlong, type Viewshed, viewshedOf } from "@outpost/shared";
 
-/** Answers kept, most recently asked last. Each is about 150 kB. */
+/** Answers kept, most recently asked last. Each is about 190 kB. */
 const KEPT = 32;
 /** Viewsheds kept with their heights, for the relay planner: each is a few megabytes. */
 const KEPT_GRIDS = 4;

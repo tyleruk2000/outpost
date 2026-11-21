@@ -299,8 +299,8 @@ Fresnel zone should be clear. The ray runs from aerial top to aerial top.
 ## Estimated radio range from a point
 
 Press and hold the map and choose **Estimated radio range from here**: the ground in line of
-sight of a radio there, shaded green with rings at 10, 25, 50 and 100 km, and the furthest
-ground in sight. Set your aerial's height and the other station's (handheld, car, roof)
+sight of a radio there, shaded green with a green edge round each patch, rings at 10, 25,
+50 and 100 km, and the furthest ground in sight. Set your aerial's height and the other station's (handheld, car, roof)
 under **Heights and details**. **Why this shape: look along one direction** shows the
 ground along any bearing. It counts only line of sight: power, aerials, woods and buildings
 are not counted, and radio often reaches less. It works the same way as a repeater's

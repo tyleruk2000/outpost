@@ -174,7 +174,7 @@ export function NumberPad({
               )}
             >
               {digit}
-            </span>
+            </span>{" "}
             <span aria-hidden className="mt-1 text-micro leading-none text-ink-muted tabular">
               {count === 0 ? "none left" : `${count} left`}
             </span>

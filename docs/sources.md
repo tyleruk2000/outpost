@@ -862,6 +862,31 @@ day, in Outpost's own words with the source named. Nothing fetched or bundled.
 Everything else in the game is made up (an 800 g loaf, a 10 kg bundle of firewood, rates,
 costs, a day passing in an hour).
 
+## The Steading's lands and power (read 2026-11-21)
+
+Games → Steading ([games.md](games.md#steading)) gives each kind of land the sun, wind and
+cold of a real place, and models solar arrays, a wind turbine, batteries and a diesel
+generator with published figures. Nothing is fetched by Outpost and no document is
+bundled: the figures are numbers in `packages/shared/src/games/steading/lands.ts` and
+`electric.ts`, said in Outpost's own words with the source named.
+
+| What | Where it comes from | How it was read |
+| --- | --- | --- |
+| Each land's monthly solar output per kWp (E_d), at the optimal fixed slope, crystalline silicon, 14% system loss | European Commission Joint Research Centre, PVGIS API v5.3, `PVcalc` (PVGIS-SARAH3, or PVGIS-ERA5 for Kiruna, with the horizon from the terrain), for Keswick (54.60, −3.13), Davos (46.80, 9.84), Kiruna (67.86, 20.23), Ouarzazate (30.93, −6.91), Belmullet (54.23, −9.99) and Freudenstadt (48.46, 8.41) | Each place asked once on 21 November 2026; the twelve monthly figures kept. |
+| Daylight hours, mean temperature and mean wind at 10 m for each month; heating degree days (base 15.5 °C) and growing degree days (base 5 °C) | PVGIS API v5.3, `tmy` (typical meteorological year; ERA5) for the same six places | Each place's hourly year fetched once on 21 November 2026 and summed by a short script; only the derived monthly figures are kept. |
+| PVGIS terms | PVGIS data download pages (joint-research-centre.ec.europa.eu): "The data in the sections below are free for public use if the source is acknowledged (PVGIS © European Communities, 2001-2026)" | Read 21 November 2026. The API page states no terms of its own; the download pages' condition is taken to carry over, and the credit line is given in the game and here. The Commission's general reuse notice could not be read (the site refused the request). |
+| A Bergey Excel 10's power curve (W against hub-height wind speed, 0.5 to 20.5 m/s, sea-level density), 8.9 kW rated at 11 m/s, 12.6 kW peak, 38.5 m² swept | ICC-SWCC, Summary Report SWCC-10-12 (2022), <https://smallwindcertification.org/wp-content/uploads/2022/04/SWCC-10-12-Summary-Report-20220406.pdf> | Text of the PDF read 21 November 2026. The curve is applied to each hour of the typical year with the hub at 10 m (where PVGIS gives the wind; a real tower is taller, so the game's figure is low); the standby draw below cut-in is counted as nothing. |
+| Excel 10 cut-in 2.5 m/s, no cut-out, furling 14–20 m/s, 7.0 m rotor | Bergey Excel 10 specification sheet, a copy hosted by a reseller (renewableenergyhub.co.uk) | Read 21 November 2026; used only to describe the turbine. |
+| Battery cell voltages, usable share and round trip (lead acid 2.0 V, 50%, 80%; LiFePO4 3.2 V, 80%, 92%); each way √η | Tools → Power's figures (Battery University BU-201, BU-216, BU-303; Victron Energy data sheets; HOMER Pro manual), listed in [tools-power.md](tools-power.md#sources) | Reused from `packages/shared/src/power.ts`; not read again. |
+| A generator's straight fuel line, from HOMER's worked example (50 kW: 1.655 L/h with no load, 15.3 L/h at full load), scaled to 10 kW | UL Solutions, HOMER Pro manual, as in Tools → Power | Reused; not read again. |
+| Household electricity and heat, food, water, firewood | As in [the Steading's household figures](#the-steadings-household-figures-read-2026-11-21) | Unchanged. |
+
+Made up for the game: the array's size (twelve 400 W panels), the cells in each battery,
+the 200-litre tank and the 20-litre can, the belts, the water wheel's 120 kWh a day,
+how heat and harvests follow the land (two thirds of the heat by heating degree days;
+harvest by growing degree days between a quarter and one and a half), the wells' water,
+the extra bricks, and every price.
+
 ## The server's own figures, read on 21 November 2026
 
 For Server status, the clock, `outpost.local` and `/metrics` ([device.md](device.md)).
@@ -900,8 +925,8 @@ after the last frost" and is not the RHS's own calculation.
 
 ## Tidal constants
 
-**Tools → Tide times** ([tides.md](tides.md)) ships NOAA's harmonic constants and works the
-tides out from them. Read on 21 November 2026.
+**Tools → Tide times** ([tides.md](tides.md)) ships NOAA's harmonic constants for the United States and TICON-4's for the
+rest of the world, and works the tides out from them. Read on 21 November 2026.
 
 | What | Where it comes from | Notes |
 | --- | --- | --- |
@@ -909,6 +934,9 @@ tides out from them. Read on 21 November 2026.
 | The licence | NOAA Tides and Currents, [Disclaimers](https://tidesandcurrents.noaa.gov/disclaimers.html) | "in the public domain, unless specifically annotated otherwise"; "NOS requests that attribution be given". The screen names NOAA CO-OPS. Stations outside the US (Bermuda, Central America) are kept on the same footing. |
 | The method | P. Schureman, *Manual of Harmonic Analysis and Prediction of Tides*, Special Publication 98 (1958), [NOAA's scan](https://tidesandcurrents.noaa.gov/publications/SpecialPubNo98.pdf) | Tables 1, 2, 2a and 6; paragraphs 24 and 77; the node-factor formulas (73–80, 141–150, 195–235). |
 | Predictions the tests are held to | NOAA CO-OPS data API, `product=predictions`, MLLW, GMT | High and low waters, 15 to 21 January 2027, at The Battery, San Francisco, Honolulu and Galveston; hourly heights for January 2027 at the first two. Every high and low within 1 minute and 1 mm (2 minutes at Galveston), every hourly height within 2 mm. |
+| TICON-4 constants for 4,838 tide gauges (2,728 kept: lakes dropped, gauges within 2 km of a NOAA station give way) | M. Hart-Davis, D. Dettmering and F. Seitz (2025), *TICON-4: TIdal CONstants based on GESLA-4 sea-level records*, SEANOE, <https://doi.org/10.17882/109129> | CC BY 4.0 (the SEANOE page's licence link, "Open access"); the screen names the dataset, its authors and the licence. Built by `scripts/build-ticon-stations.mjs`; 39 of 50 constituents used. |
+| The gauge records TICON comes from | GESLA-3/4 licence page: records under several licences, some for research use only | Not shipped. Whether those terms reach the derived constants is an open question (about 650 gauges); see the follow-up in the issue tracker. |
+| Predictions the TICON tests are held to | Kartverket, API for water level data, <https://vannstand.kartverket.no/tideapi_en.html>, CC BY 4.0 | Bergen within 14 minutes and 2.5 cm, Narvik 11 minutes and 3.3 cm, Oslo 15 minutes and 7 cm. |
 
 Not shipped: the **Canadian Hydrographic Service** (its [licence](https://tides.gc.ca/en/licence-agreement)
 forbids giving the data to a third party and can be withdrawn; whether the open.canada.ca copy
@@ -963,3 +991,33 @@ For **Settings → Updates** ([updating.md](updating.md)).
 | --- | --- | --- |
 | Each country's languages, most used first | GeoNames [`countryInfo.txt`](https://download.geonames.org/export/dump/countryInfo.txt), fetched once on 21 November 2026 | The language column only, in `packages/shared/src/country-languages.ts`. CC BY 4.0, per GeoNames' `readme.txt`. |
 | Wikipedia in twelve more languages (French, Spanish, German, Portuguese, Arabic, Russian, Chinese, Hindi, Swahili, Italian, Japanese, Indonesian) | The Kiwix feed, one query per language for `wikipedia_<code>_all` (21 November 2026) | Names, editions and sizes in `catalog/manifests/kiwix-languages.json`; the smallest edition of each (introductions only; Swahili's without images). CC BY-SA 4.0. |
+
+## The household book (read 2026-11-21)
+
+- **First aid: the NHS website.** Whole lines of eleven pages (how to resuscitate a
+  child, heart attack, symptoms of a stroke, cuts and grazes, burns and scalds,
+  anaphylaxis, hypothermia, heat exhaustion and heatstroke, carbon monoxide poisoning,
+  poisoning, head injury), copied unchanged on 21 November 2026 and checked word for word
+  against the pages as downloaded that day. The NHS website's terms (read the same day,
+  as recorded for the emergency plan templates) release its content under the Open
+  Government Licence, and ask that content reused unchanged be credited "Information from
+  the NHS website" with the date copied; the book prints that credit with each page's
+  lines. The NHS website's own first aid pages for adults (CPR, the recovery position,
+  choking, severe bleeding) now redirect to St John Ambulance.
+- **Not used: St John Ambulance, the British Red Cross, Resuscitation Council UK.** RCUK's
+  terms (read 21 November 2026, resus.org.uk/terms-and-conditions): "reproduction of part
+  or all of the contents of this web site in any form is prohibited." The British Red
+  Cross's are recorded under the emergency plan templates. The book points to their pages.
+- **Hygiene: CDC, "Guidelines for Personal Hygiene During an Emergency"** (page dated 5
+  August 2024), four sentences quoted unchanged. cdc.gov refused requests from here
+  (HTTP 403) on 21 November 2026, so the page was read through a reader that day; US
+  federal government work.
+- **The wind's direction: NASA POWER, WD10M** ("Wind Direction at 10 Meters", defined by
+  POWER as "The average of the wind direction at 10 meters above the surface of the
+  earth"), asked for with the climate averages, monthly and for the year. Checked on 21
+  November 2026 against the climatology API for a point near Reading (annual 245.8°).
+  The same acknowledgement as the other POWER figures.
+- **Walking pace:** Tobler's hiking function, as for the walking reach on Maps.
+- **Not held, and said so in the book:** major hazard (COMAH) sites and their public
+  information zones, and industrial sites other than nuclear ones. No openly licensed copy
+  Outpost could fetch was found.

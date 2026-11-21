@@ -54,7 +54,7 @@ describe("Help", () => {
 
   it("keeps the pages for developers folded away until asked for", async () => {
     show("/help");
-    const developers = screen.getByText("For developers: 16 pages");
+    const developers = screen.getByText("For developers: 17 pages");
     expect(screen.getByRole("link", { name: /^API reference/, hidden: true })).not.toBeVisible();
     await userEvent.click(developers);
     expect(screen.getByRole("link", { name: /^API reference/ })).toBeVisible();

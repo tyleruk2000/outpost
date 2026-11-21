@@ -35,6 +35,16 @@ of what each feature does are in its own guide.
 - Nothing has been printed: map pages, emergency and wallet cards, cipher pads, the binder, the sundial
   and the nocturnal were checked as PDF files only. Printers that scale to fit print cards smaller.
 
+## Accessibility
+
+- **Checked automatically:** every screen reached from the navigation, wide and on a
+  phone, light and dark, with axe-core against WCAG 2.2 AA. Serious and critical
+  findings fail the suite; waivers and their reasons are in `e2e/tests/a11y-waivers.ts`.
+  Only the first state of each screen is checked: dialogs, menus and screens opened
+  from inside another are not.
+- **Not tried:** a pass by hand with a screen reader. No one has used the map, the notes
+  editor or the reader with VoiceOver from start to finish.
+
 ## Installing and looking after it
 
 ### HTTPS on your network

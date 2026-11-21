@@ -56,8 +56,8 @@ describe("today's sunrise and sunset under the centre readout", () => {
   it("says which point the times are for where the coordinates above it may be the pointer's, as on a wide screen", () => {
     const { engine } = fakeEngine(GREENWICH);
     render(<SunGlance engine={engine} onOpen={() => {}} zone="Europe/London" where="At the centre" />);
-    const line = screen.getByRole("button", { name: /^Today at the centre of the map: Sunrise 04:43, Sunset 21:21/ });
-    expect(line).toHaveTextContent("At the centreSunrise 04:43Sunset 21:21");
+    const line = screen.getByRole("button", { name: /^At the centre: Sunrise 04:43, Sunset 21:21, today/ });
+    expect(line).toHaveTextContent("At the centre Sunrise 04:43 Sunset 21:21");
   });
 
   it("keeps each piece whole, so a narrow phone or large text puts the sunset under the sunrise instead of cutting it", () => {

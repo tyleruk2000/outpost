@@ -73,3 +73,35 @@ carries(channel), send(message), refuse? })`, `receive({ channel, source, extern
 author, body, … })` (stored once per source and id), `onMessage(listener)` and `setMeta(id,
 meta)` (at most 4 KB; announces `board.changed` with `delivery`). Messages live in
 `board_messages` (`source`, `external_id`, `meta`) and files in `board_files` and `board/`.
+
+## Estimated range accuracy
+
+The viewshed reads 720 bearings, half a degree apart: every 10 m to 2 km (from the finest
+terrain), 50 m to 25 km, 100 m to 50 km and 250 m to 100 km. The answer is about 190 kB.
+
+*How it was checked* (21 November 2026). The same terrain tiles were read at four places:
+a hillside near the A9 (56.8866, −4.1454, 750 m), Ben Nevis summit (56.7969, −5.0036,
+1,340 m), Beachy Head cliff top (50.7380, 0.2420, 110 m, with the sea in view) and
+south-west London (51.4330, −0.2110, 20 m, flat), each with a 1.5 m aerial and a 10 m
+mast, a 1.5 m station, out to 100 km. Outpost's answer was compared with GDAL 3.13's
+`gdal_viewshed` (the method of Wang, Robinson and White, 2000) on the same terrain warped
+to a grid centred on the aerial, with curvature coefficient 0.75 (k = 4/3), and with a
+separate line-of-sight walk every 5 m along each of the 720 bearings over the finest
+tiles (a walk every 2 m gave the same answer). With the same tiles, Outpost and GDAL
+agreed to within 1 percentage point of the ground in sight at every distance. The check
+found one real error, now fixed: the ground was read every 50 m from the aerial, which
+skipped a summit's crown, and on Ben Nevis gave 15.9% of the ground within 2 km in sight
+where the 5 m walk gives 8.8%. The first 2 km are now read every 10 m from the finest
+terrain, which gives 8.9%. The largest remaining difference is far out from a high
+summit: from Ben Nevis with a 10 m mast, 10.6% of the ground within 100 km against 9.2%,
+because beyond 50 km the ground is read every 250 m from cells of about 170 m. Over the
+sea the terrain holds 0 m, so a station there is taken as at sea level; tides are not
+counted.
+
+Sources, read 21 November 2026: which source covers where, from Mapterhorn's
+`attribution.json` (download.mapterhorn.com); GLO-30's accuracy and that it is a surface
+model "including buildings, infrastructure and vegetation", from the Copernicus DEM
+collection page (dataspace.copernicus.eu, COP-DEM); "All LIDAR data has a vertical
+accuracy of +/-15cm RMSE", from the Environment Agency's *LIDAR Composite DTM 2020 - 1m*
+record on data.gov.uk; the curvature coefficient as 1 − the refraction coefficient, from
+GDAL's `gdal_viewshed` page (gdal.org).

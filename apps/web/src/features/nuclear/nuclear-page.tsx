@@ -42,7 +42,7 @@ import {
 } from "@outpost/shared";
 import { CloudOff, Eye, EyeOff, PanelRightClose, PanelRightOpen, Plus, Trash2, TriangleAlert, X } from "lucide-react";
 import { lazy, type ReactNode, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation } from "react-router";
+import { Link, useLocation } from "react-router";
 import { toast } from "sonner";
 import { EmptyState, ErrorState, Notice, Page, PageHeader, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -735,11 +735,19 @@ function OfflineLine({ regions, loading }: { regions: number; loading: boolean }
       <span>
         Works offline: the map, the model, the reference data you installed and your plans are on this device, and nothing here uses the
         internet unless you press Download.{" "}
-        {loading
-          ? ""
-          : regions > 0
-            ? `${plural(regions, "offline map region")} installed.`
-            : "No offline map region is installed, so the map shows coastlines and borders only. Add a region under Maps, Offline maps, for streets and names."}
+        {loading ? (
+          ""
+        ) : regions > 0 ? (
+          `${plural(regions, "offline map region")} installed.`
+        ) : (
+          <>
+            No offline map region is installed, so the map shows coastlines and borders only.{" "}
+            <Link to="/maps?offline=region" className="font-medium text-primary underline underline-offset-2">
+              Add your area in Offline maps
+            </Link>{" "}
+            for streets and names (the world overview alone is about 45 MB; it needs the internet once).
+          </>
+        )}
       </span>
     </p>
   );
@@ -789,12 +797,12 @@ function OnTheMap({
                 type="button"
                 onClick={() => onSelect(slot.key)}
                 aria-pressed={selected}
-                aria-label={`${slot.letter}: ${name}${selected ? ", being edited" : ""}`}
+                aria-label={`${slot.letter}: ${name}, ${what}, ${where}${slot.hidden ? ", hidden" : ""}${selected ? ", being edited" : ""}`}
                 className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 px-1.5 py-1.5 text-left"
               >
-                <LetterBadge letter={slot.letter} selected={selected} />
+                <LetterBadge letter={slot.letter} selected={selected} />{" "}
                 <span className="min-w-0">
-                  <span className={cn("block truncate text-small text-ink", selected && "font-semibold")}>{name}</span>
+                  <span className={cn("block truncate text-small text-ink", selected && "font-semibold")}>{name}</span>{" "}
                   <span className="block truncate text-micro text-ink-muted">
                     {what}, {where}
                     {slot.hidden ? ", hidden" : ""}

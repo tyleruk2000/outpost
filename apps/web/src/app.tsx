@@ -55,6 +55,7 @@ const MedicalSheetPage = lazy(() => import("./features/household-papers/medical-
 const CommsPage = lazy(() => import("./features/household-papers/comms-page"));
 const GrabCardsPage = lazy(() => import("./features/household-papers/grab-cards-page"));
 const BinderPage = lazy(() => import("./features/household-papers/binder-page"));
+const HouseholdBookPage = lazy(() => import("./features/household-book/book-page"));
 const CheckInPage = lazy(() => import("./features/readiness/check-in-page"));
 const EventLogPage = lazy(() => import("./features/readiness/log-page"));
 const ChecksPage = lazy(() => import("./features/readiness/checks-page"));
@@ -222,6 +223,7 @@ export function App() {
           <Route path="prepare/keeping-in-touch" element={<CommsPage />} />
           <Route path="prepare/grab-cards" element={<GrabCardsPage />} />
           <Route path="prepare/binder" element={<BinderPage />} />
+          <Route path="prepare/book" element={<HouseholdBookPage />} />
           <Route path="prepare/check-in" element={<CheckInPage />} />
           <Route path="prepare/log" element={<EventLogPage />} />
           <Route path="prepare/checks" element={<ChecksPage />} />

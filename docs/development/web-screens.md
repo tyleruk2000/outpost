@@ -209,6 +209,10 @@ secret (a one-time pad) gets none of these buttons.
   `public/pre-paint.js`; size in `rem`. `e2e/tests/shell-large-text.mobile.spec.ts`
   checks every top-level screen.
 - Body contrast ≥4.5:1; `text-ink-faint` only for placeholders and disabled text.
+- **axe-core checks every screen** in both themes in the every-screen walks
+  (`e2e/tests/a11y.ts`); a serious or critical finding fails them. Waive only with a
+  reason, in `e2e/tests/a11y-waivers.ts`. What it does not check is in
+  [testing-status.md](../testing-status.md#accessibility).
 
 ## Things over a map
 

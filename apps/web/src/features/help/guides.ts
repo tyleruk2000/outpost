@@ -437,6 +437,14 @@ export const GUIDES: Guide[] = [
     opens: { to: "/prepare/medical", label: "Open Medical sheets" },
   },
   {
+    slug: "household-book",
+    file: "household-book.md",
+    group: "using",
+    about: "A few questions about the household, and a printable book made from the answers and from what Outpost holds.",
+    keywords: "household book emergency book wizard first aid journeys checklists",
+    opens: { to: "/prepare/book", label: "Open Household book" },
+  },
+  {
     slug: "weather",
     file: "weather.md",
     group: "using",
@@ -494,6 +502,12 @@ export const GUIDES: Guide[] = [
     file: "development/maps-on-a-phone.md",
     group: "developers",
     about: "What a study of the Maps screen on an iPhone found, and what was done about it.",
+  },
+  {
+    slug: "offline-audit",
+    file: "development/offline-audit.md",
+    group: "developers",
+    about: "What each screen needs from outside, and what it says when that is missing.",
   },
   {
     slug: "releases",

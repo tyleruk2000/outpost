@@ -435,7 +435,18 @@ export default function SearchPage() {
                 )}
                 {referenceBelow ? <ReferenceLine reference={reference} onShow={() => setParam("kind", "reference")} /> : null}
                 {data.warnings.map((warning) => (
-                  <Notice key={warning.source} tone="info" className="mt-3 max-w-[46rem]">
+                  <Notice
+                    key={warning.source}
+                    tone="info"
+                    className="mt-3 max-w-[46rem]"
+                    action={
+                      warning.source === "semantic" ? (
+                        <Link to="/settings#semantic" className="text-primary underline underline-offset-2">
+                          Set up search by meaning
+                        </Link>
+                      ) : undefined
+                    }
+                  >
                     {warning.message}
                   </Notice>
                 ))}

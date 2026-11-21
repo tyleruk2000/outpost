@@ -141,7 +141,7 @@ formula, its source with the date read, and the range it holds for.
 | [Solar clock](docs/tools-solar-clock.md) | The sun's position, setting a clock from a shadow after a power cut, and a sundial and nocturnal to print. |
 | [Night sky](docs/night-sky.md) | The Moon's phase and times, a star chart for a place and time, and finding north by the stars. |
 | [Celestial navigation](docs/celestial-navigation.md) | A position from sextant sights with the almanac worked out on the device; for learning and as a fallback, not for navigating a vessel. |
-| [Tide times](docs/tides.md) | High and low water at nearby stations from NOAA's constants (the US and a few ports elsewhere); not for navigation. |
+| [Tide times](docs/tides.md) | High and low water at stations within 100 km, worldwide, from NOAA's and TICON-4's constants; not for navigation. |
 | [Garden](docs/garden.md) | What to sow, plant and harvest this month in the UK from the RHS calendar, and a record of sowings. |
 | [QR codes and devices on this network](docs/tools-qr-and-network.md) | Make QR codes on the device, and list what answers on the local network. |
 
@@ -151,6 +151,7 @@ formula, its source with the date read, and the range it holds for.
 | --- | --- |
 | [Emergency plans](docs/emergency-plans.md) | Plans for a power cut, flood, severe weather, sheltering or leaving, from templates that say whose guidance each step is; **Use now** shows them in large type, and cards print as PDF. |
 | [Household papers](docs/household-papers.md) | A medical sheet for each person, the communication plan, grab cards and one PDF binder. Records only, no medical advice. |
+| [Household book](docs/household-book.md) | A few questions, then a printable emergency book made from the answers and what Outpost holds: first minutes, people, help near home, first aid, water, journeys, checklists. |
 | [Check-ins, log, checks, drill](docs/readiness.md) | "I'm safe" in one press with a roll call, a log of events, routine checks with what is overdue, and an offline drill. |
 | [Supplies](docs/supplies.md) | Food, water and kit at home: how many days they last for your household, what to use first, and what to buy; food energy from USDA FoodData Central, shipped. |
 | [Weather and hazards](docs/weather.md) | Forecasts, UK warnings, climate averages and England's river and sea levels, fetched on a press and kept with their age; a barometer log. |
@@ -162,7 +163,7 @@ formula, its source with the date read, and the range it holds for.
 
 | Feature | What it does |
 | --- | --- |
-| [Allotment and Steading](docs/games.md) | A household plot that grows in real British months, and a settlement of workshops and supply chains; nothing is lost while you are away. |
+| [Allotment and Steading](docs/games.md) | A household plot that grows in real British months, and a settlement of workshops, belts and power on a land you choose; nothing is lost while you are away. |
 | [Cards and puzzles](docs/games.md) | Solitaire, peg solitaire, Sudoku, Pairs and Snake. |
 | [Draughts and chess](docs/games.md) | Against the computer or two at one device; chess reads and writes PGN and FEN. |
 | [Skerry](docs/games.md) | Twelve puzzles solved at a pretend terminal that teach files, searching and pipes. |
@@ -313,6 +314,7 @@ Every source and its terms, in its publisher's words, are in [sources.md](docs/s
 | Open-Meteo; Met Office; NASA POWER; PVGIS | CC BY 4.0; Crown copyright; credit to NASA; credit to the JRC |
 | OurAirports; Wikidata; WorldPop; BABS | Public domain; CC0; CC BY 4.0; open use with source |
 | USDA FoodData Central; World Magnetic Model 2025; NOAA tide constants (shipped) | CC0; public domain; public domain |
+| TICON-4 tide constants, DGFI-TUM (shipped) | CC BY 4.0 |
 | Frequencies, the RHS's growing months | Facts, each page named and dated |
 | Emergency plan templates (UK Government and others) | OGL v3 and others, quoted where allowed |
 | Glasstone and Dolan, *The Effects of Nuclear Weapons* (1977) | A US Government work |

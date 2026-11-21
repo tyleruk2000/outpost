@@ -87,6 +87,25 @@ export function classifyNetworkError(error: unknown): NetworkFailure {
   return "other";
 }
 
+/**
+ * A plain sentence for a failed fetch from the internet, or null when the error is not a
+ * network failure (and the caller's own words, or its message, should be used). `what`
+ * names what was asked, as the start of a sentence: "The release page", "CelesTrak".
+ * Only a raw failure is put in these words: one that a module has already worded, wrapping
+ * the raw one as its cause, keeps its own.
+ */
+export function networkSentence(error: unknown, what: string): string | null {
+  const own = (error as { code?: unknown } | null)?.code;
+  const raw = messageOf(error) === "fetch failed" || (typeof own === "string" && (offlineCodes.has(own) || transientCodes.has(own)));
+  const name = (error as { name?: unknown } | null)?.name;
+  if (!raw && name !== "TimeoutError") return null;
+  const kind = classifyNetworkError(error);
+  if (kind === "offline") {
+    return `${what} could not be reached: this computer has no internet connection, or the site is down. Try again when it is connected.`;
+  }
+  return `${what} did not answer. Check the internet connection and try again.`;
+}
+
 export function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }

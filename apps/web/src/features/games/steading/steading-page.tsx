@@ -8,7 +8,16 @@
  * The server applies every action with its own clock. Between fetches the screen works the
  * settlement out with `advance`, for drawing only, every 15 seconds while it is in view.
  */
-import { advance, flowsOf, peopleOf, type SteadingAction, storeCap } from "@outpost/shared/games/steading";
+import {
+  advance,
+  type BeltSquare,
+  type BeltTier,
+  flowsOf,
+  LANDS,
+  peopleOf,
+  type SteadingAction,
+  storeCap,
+} from "@outpost/shared/games/steading";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ErrorState, Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -19,7 +28,10 @@ import { formatNumber } from "@/lib/utils";
 import { useServerNow } from "../allotment/queries";
 import { GameAbout, GameFrame } from "../kit/frame";
 import { useClearGame } from "../kit/queries";
+import { BeltTool, extendDraft } from "./belts";
+import { FoundSettlement } from "./land";
 import { BuildingList, Households, Ledger, Milestones, SquarePanel, Trade } from "./panels";
+import { Power } from "./power";
 import { type SteadingView, useSteading, useSteadingAction } from "./queries";
 import { Valley } from "./valley";
 import { amountsWords, doneWords } from "./words";
@@ -54,7 +66,7 @@ function ValleySkeleton() {
     >
       <div>
         <Skeleton className="mb-3 h-5 w-56" />
-        <Skeleton className="w-full rounded-panel" style={{ aspectRatio: "10 / 14" }} />
+        <Skeleton className="w-full rounded-panel" style={{ aspectRatio: "1 / 1" }} />
       </div>
       <div className="grid content-start gap-3">
         <Skeleton className="h-6 w-32" />
@@ -98,7 +110,7 @@ function StartAgain({ damaged, message }: { damaged?: boolean; message?: string 
         open={asking}
         onOpenChange={setAsking}
         title="Start the settlement again?"
-        description="This clears the whole valley for everyone in the household: every building and route, the households, the stock, the credit at the landing and the milestones. A new settlement starts with a storehouse, two households and a well. It cannot be undone."
+        description="This clears the whole settlement for everyone in the household: every building, route and belt, the households, the stock, the batteries, the credit at the landing and the milestones. Then you choose the land and the seed for a new one, which starts with a storehouse, two households and a well. It cannot be undone."
         confirmLabel="Start again"
         loading={clear.isPending}
         onConfirm={() => clear.mutate(undefined, { onSuccess: () => setAsking(false) })}
@@ -108,14 +120,23 @@ function StartAgain({ damaged, message }: { damaged?: boolean; message?: string 
 }
 
 function Steading({ view }: { view: SteadingView }) {
+  const action = useSteadingAction();
+  if (!view.started) return <FoundSettlement busy={action.isPending} act={(next) => action.mutate(next)} />;
+  return <Settlement view={view} />;
+}
+
+function Settlement({ view }: { view: SteadingView }) {
   const now = useServerNow(view.clockOffset, () => REDRAW_MS);
   const settlement = useMemo(() => advance(view.settlement, now), [view.settlement, now]);
   const flows = useMemo(() => flowsOf(settlement), [settlement]);
   const [selected, setSelected] = useState<{ x: number; y: number } | null>(null);
   const [said, setSaid] = useState("");
+  const [draft, setDraft] = useState<BeltSquare[] | null>(null);
+  const [tier, setTier] = useState<BeltTier>("roller");
   const panel = useRef<HTMLElement>(null);
   const action = useSteadingAction((done, before, after) => {
     if (before) setSaid(doneWords(done, before.settlement, after.settlement));
+    if (done.type === "belts") setDraft(null);
   });
   const act = (next: SteadingAction) => action.mutate(next);
   const busy = action.isPending;
@@ -132,7 +153,12 @@ function Steading({ view }: { view: SteadingView }) {
   const kept = Object.fromEntries(
     Object.entries(settlement.stock).filter(([good]) => ["planks", "stone", "bricks", "logs"].includes(good)),
   );
-  const firstVisit = !view.started;
+  const firstVisit = settlement.buildings.length === 4 && settlement.routes.length === 0 && settlement.belts.length === 0;
+  const land = LANDS[settlement.map.land];
+  const choose = (square: { x: number; y: number }) => {
+    if (draft) setDraft(extendDraft(settlement, draft, square));
+    else setSelected(square);
+  };
 
   return (
     <div className="grid gap-x-10 gap-y-6 md:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
@@ -140,19 +166,24 @@ function Steading({ view }: { view: SteadingView }) {
         <div className="mb-3 grid gap-2">
           {firstVisit ? (
             <p className="text-body text-ink">
-              A storehouse, two households and a well in the valley of Ashgill. Choose a square on the meadow beside the woods and build a
-              woodcutter, then send its logs to the storehouse.
+              A storehouse, two households and a well{settlement.map.legacy ? " in the valley of Ashgill" : ""}. Choose a square on the{" "}
+              {land.ground} beside the woods and build a woodcutter, then send its logs to the storehouse.
             </p>
           ) : null}
+          <p className="text-small text-ink-muted">
+            {settlement.map.legacy ? "Ashgill, the small valley of the first settlements" : `${land.name}, drawn from ${land.place}`} · seed{" "}
+            <span className="font-mono text-ink select-all">{settlement.map.seed}</span>
+          </p>
           <p className="tabular text-small text-ink-muted">
             {formatNumber(people)} people · {amountsWords(kept, (n) => formatNumber(Math.floor(n + 1e-9)))} in store, of {formatNumber(cap)}{" "}
             each
           </p>
         </div>
-        <Valley state={settlement} flows={flows} selected={selected} onSelect={setSelected} />
+        <Valley state={settlement} flows={flows} selected={draft ? null : selected} onSelect={choose} draft={draft ?? undefined} />
         <p className="mt-2 text-small text-ink-muted">
           A route's width is what it carries in a day: dashed by hand, solid for a cart road, railed for track; the arrow points the way it
-          goes. A corner flag marks a building held back. Squares are small on a phone: every building is also in the list.
+          goes. A belt is a band with its way marked; what it carries runs along it. A corner flag marks a building held back. Squares are
+          small on a phone: every building is also in the list.
         </p>
         <p className="sr-only" aria-live="polite">
           {said}
@@ -160,7 +191,18 @@ function Steading({ view }: { view: SteadingView }) {
       </div>
 
       <div className="grid min-w-0 content-start gap-8">
-        {selected ? (
+        {draft ? (
+          <BeltTool
+            state={settlement}
+            draft={draft}
+            tier={tier}
+            busy={busy}
+            onTier={setTier}
+            onChange={setDraft}
+            onCancel={() => setDraft(null)}
+            act={act}
+          />
+        ) : selected ? (
           <SquarePanel
             ref={panel}
             state={settlement}
@@ -169,6 +211,10 @@ function Steading({ view }: { view: SteadingView }) {
             busy={busy}
             act={act}
             onClose={() => setSelected(null)}
+            onStartBelt={(square) => {
+              setDraft(extendDraft(settlement, [], square));
+              setSelected(null);
+            }}
           />
         ) : (
           <p className="text-small text-ink-muted">
@@ -181,6 +227,7 @@ function Steading({ view }: { view: SteadingView }) {
       <div className="grid gap-8 md:col-span-2 md:grid-cols-2">
         <Ledger state={settlement} flows={flows} />
         <Households state={settlement} flows={flows} />
+        <Power state={settlement} flows={flows} busy={busy} act={act} />
         <Trade state={settlement} busy={busy} act={act} />
         <Milestones state={settlement} />
       </div>
@@ -189,9 +236,10 @@ function Steading({ view }: { view: SteadingView }) {
         <GameAbout>
           <p>
             Every building makes something from something. Lay a route from each to where its goods are wanted: a workshop that uses them,
-            or the storehouse. Carried by hand a route takes 12 a day up to 3 squares; a cart road 40 a day up to 8; track, later, 160. What
-            cannot be sent on waits in the building's yard, and when the yard is full the work rests. The tightest part of a chain sets its
-            pace: its building says what it is waiting for.
+            or the storehouse. Carried by hand a route takes 12 a day up to 3 squares; a cart road 40 a day up to 8; track, later, 160. Or
+            lay a belt square by square: a roller belt carries 60 a day as far as it runs, a chain belt, later, 240; belts merge where they
+            meet, and cross at a junction. What cannot be sent on waits in the building's yard, and when the yard is full the work rests.
+            The tightest part of a chain sets its pace: its building says what it is waiting for.
           </p>
           <p>
             People work within 4 squares of home. A new house fills once it has a well and a storehouse within reach and enough water, bread
@@ -200,18 +248,20 @@ function Steading({ view }: { view: SteadingView }) {
           </p>
           <p>
             Time away only adds. Work goes on while the screen is closed until the stores and yards are full, then simply stops, with
-            everything kept; nothing is ever used up from the store but by your own building and trading. A day in the settlement passes in
-            an hour.
+            everything kept; nothing is ever used up from the store but by your own building and trading. The batteries may run flat in the
+            night and a generator's tank run dry; that only slows the machines until the sun or the wind is back. A day in the settlement
+            passes in an hour.
           </p>
           <p>
-            What a household uses in a day is real (see "Where the figures come from" under Households). How fast things are made, their
-            costs and the trade are made up for the game. The settlement is the household's, kept on this Outpost: the same on every device.
+            What a household uses in a day is real (see "Where the figures come from" under Households), and so are each land's sun, wind
+            and cold, the batteries and the generator's fuel (under Power). How fast things are made, their costs and the trade are made up
+            for the game. The settlement is the household's, kept on this Outpost: the same on every device.
           </p>
         </GameAbout>
         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-4">
           <StartAgain />
           <p className="min-w-0 flex-1 basis-56 text-small text-ink-muted">
-            Start again clears the valley for a new settlement, for everyone. It asks first.
+            Start again clears the settlement so that a new one can be founded, on any land, for everyone. It asks first.
           </p>
         </div>
       </div>

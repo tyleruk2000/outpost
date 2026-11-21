@@ -17,6 +17,7 @@ import {
   RANGE_MOST,
   rangeBounds,
   rangeData,
+  rangeFitBounds,
   rangeLayers,
   rangeShade,
   readRange,
@@ -109,14 +110,64 @@ describe("the estimate on the map", () => {
       "50 km",
     ]);
     expect(rings.every((ring) => ring.properties.name === "QZ3RNG" && ring.properties.dashed === false)).toBe(true);
+    // No spiky outline joining the furthest ground on each bearing.
     expect(data.features.some((feature) => feature.properties.kind === "edge")).toBe(false);
     const layers = rangeLayers({ ink: "#000", page: "#fff", range: "#13905a" } as never);
+    const edge = layers.find((layer) => layer.id === "o-range-edge") as { paint: Record<string, unknown> };
+    expect(edge.paint["line-color"]).toBe("#13905a");
     const ring = layers.find((layer) => layer.id === "o-range-ring") as { paint: Record<string, unknown> };
     expect(ring.paint["line-color"]).toBe("#13905a");
     // With no terrain: a washed, dashed circle at the smooth-Earth horizon.
     const none = rangeData(range("none"));
     expect(none.features.map((feature) => feature.properties.kind)).toEqual(["area", "ring"]);
     expect(none.features[1]!.properties.dashed).toBe(true);
+  });
+
+  it("is fitted round nine tenths of the ground in sight, not round one far glen", () => {
+    const bearing0 = (bearing: number) => bearing === 0;
+    // In sight to 8 km all round, and along a gap half a degree wide to 40 km.
+    const wide = range("terrain", { seen: (bearing, meters) => meters <= 8_000 || (bearing >= 90 && bearing <= 90.5 && meters <= 40_000) });
+    const half = (box: number[]) => ((box[3]! - box[1]!) / 2) * (Math.PI / 180) * 6_371_008.8;
+    expect(half(rangeBounds(wide))).toBeCloseTo(40_000, -2);
+    // π r² = 0.9 × (π × 8² + the gap's 6.7 km²): about 7.7 km.
+    expect(half(rangeFitBounds(wide)) / 1000).toBeCloseTo(7.7, 0);
+    // Never closer than 1.5 km unless that is all there is, nor further than the furthest ground in sight.
+    expect(
+      half(rangeFitBounds(range("terrain", { seen: (_bearing, meters) => meters <= 1_000 || (bearing0(_bearing) && meters <= 9_000) }))),
+    ).toBeCloseTo(1_500, -2);
+    const small = range("terrain", { seen: (_bearing, meters) => meters <= 300 });
+    expect(rangeFitBounds(small)).toEqual(rangeBounds(small));
+    expect(rangeFitBounds(range("none"))).toEqual(rangeBounds(range("none")));
+  });
+
+  it("edges the ground in sight with a line traced where it meets hidden ground, round the patch and along the glen", () => {
+    const data = rangeData(glen(), "QZ3RNG");
+    const edges = data.features.filter((feature) => feature.properties.kind === "seen-edge");
+    expect(edges).toHaveLength(1);
+    expect(edges[0]!.properties.name).toBe("QZ3RNG");
+    const lines = (edges[0]!.geometry as { coordinates: Array<Array<[number, number]>> }).coordinates;
+    expect(lines.length).toBeGreaterThan(20);
+    const DEG = Math.PI / 180;
+    for (const [lon, lat] of lines.flat()) {
+      const dy = (lat - AT.lat) * DEG * 6_371_008.8;
+      const dx = (lon - AT.lon) * DEG * 6_371_008.8 * Math.cos(AT.lat * DEG);
+      const meters = Math.hypot(dx, dy);
+      const bearing = (Math.atan2(dx, dy) / DEG + 360) % 360;
+      // On the patch's edge 900 m out, or along the glen to the north-east and its end 31 km out: within a square or two.
+      const onPatch = Math.abs(meters - 900) < 250;
+      const onGlen = bearing > 43 && bearing < 47 && meters < 31_300;
+      expect(onPatch || onGlen, `${meters.toFixed(0)} m at ${bearing.toFixed(1)}°`).toBe(true);
+    }
+    // All round the patch: some edge in every quarter.
+    for (const quarter of [0, 90, 180, 270]) {
+      const inQuarter = lines.flat().some(([lon, lat]) => {
+        const bearing = (Math.atan2((lon - AT.lon) * Math.cos(AT.lat * DEG), lat - AT.lat) / DEG + 360) % 360;
+        return bearing >= quarter && bearing < quarter + 90;
+      });
+      expect(inQuarter).toBe(true);
+    }
+    // Nothing to edge with no terrain: the dashed circle is the line.
+    expect(rangeData(range("none")).features.some((feature) => feature.properties.kind === "seen-edge")).toBe(false);
   });
 
   it("draws the disc of the why view from the same answer, with the ground not known told apart", () => {
@@ -302,7 +353,7 @@ describe("the estimated range switch", () => {
     ).toBeVisible();
     expect(
       screen.getByText(
-        /Ground read along 720 bearings, 0.5° apart: every 50 m out to 25 km, every 100 m to 50 km and every 250 m to 100 km/,
+        /Ground read along 720 bearings, 0.5° apart: every 10 m out to 2 km, every 50 m to 25 km, every 100 m to 50 km and every 250 m to 100 km/,
       ),
     ).toBeVisible();
 

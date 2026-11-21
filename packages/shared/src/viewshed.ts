@@ -5,9 +5,11 @@
  * the same way from the terrain tiles it kept (`terrain-sampler.ts` reads both), so the
  * two give the same answer where they hold the same tiles.
  *
- * The ground is read in three bands, each one call to the sampler, bearing by bearing so
- * that neighbouring positions fall on the same tiles: every 50 m out to 25 km, every
- * 100 m to 50 km and every 250 m to 100 km, each from tiles about as fine as its step.
+ * The ground is read in four bands, each one call to the sampler, bearing by bearing so
+ * that neighbouring positions fall on the same tiles: every 10 m out to 2 km, every 50 m
+ * to 25 km, every 100 m to 50 km and every 250 m to 100 km, each from tiles about as
+ * fine as its step. Checked against GDAL's gdal_viewshed and a reading every 5 m over the
+ * finest terrain on real ground (docs/radio.md, "How accurate it is").
  */
 import type { RoutePoint } from "./maps.ts";
 import { EARTH_RADIUS_METERS, RADIO_EARTH_FACTOR } from "./radio.ts";

@@ -100,6 +100,14 @@ describe("the Devices on this network screen", () => {
     expect(api.bodiesOf("POST /api/network/scan")[0]).toEqual({});
   });
 
+  it("says why the last fetch of the registry did not work, beside the button to try again", async () => {
+    fakeApi({ "GET /api/network": status({ makersFailed: "The site this needs could not be reached: no internet connection." }) });
+    renderScreen(<NetworkPage />, "/tools/network");
+    expect(await screen.findByText("The last fetch of the registry did not work")).toBeInTheDocument();
+    expect(screen.getByText(/could not be reached: no internet connection/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Fetch the registry from the IEEE/ })).toBeInTheDocument();
+  });
+
   it("in a container, says plainly that the home network cannot be seen and what would be needed", async () => {
     fakeApi({ "GET /api/network": status({ unavailable: "container", os: "linux" }) });
     renderScreen(<NetworkPage />, "/tools/network");
