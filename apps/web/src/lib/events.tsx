@@ -68,6 +68,7 @@ const invalidations: Record<string, string[][]> = {
   "emergency-plans.changed": [["emergency-plans"], ["manage"], ["household-papers", "binder"]],
   // A medical sheet, the communication plan or the binder's record changed, here or on another device.
   "household-papers.changed": [["household-papers"], ["search"], ["manage"]],
+  "household-book.changed": [["household-book"], ["manage"]],
   // The log of events, a routine check or an offline drill changed, here or on another device.
   "readiness.changed": [["readiness"], ["manage"]],
   // A sowing or the last-frost date changed in the garden, here or on another device.

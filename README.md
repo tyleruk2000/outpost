@@ -151,6 +151,7 @@ formula, its source with the date read, and the range it holds for.
 | --- | --- |
 | [Emergency plans](docs/emergency-plans.md) | Plans for a power cut, flood, severe weather, sheltering or leaving, from templates that say whose guidance each step is; **Use now** shows them in large type, and cards print as PDF. |
 | [Household papers](docs/household-papers.md) | A medical sheet for each person, the communication plan, grab cards and one PDF binder. Records only, no medical advice. |
+| [Household book](docs/household-book.md) | A few questions, then a printable emergency book made from the answers and what Outpost holds: first minutes, people, help near home, first aid, water, journeys, checklists. |
 | [Check-ins, log, checks, drill](docs/readiness.md) | "I'm safe" in one press with a roll call, a log of events, routine checks with what is overdue, and an offline drill. |
 | [Supplies](docs/supplies.md) | Food, water and kit at home: how many days they last for your household, what to use first, and what to buy; food energy from USDA FoodData Central, shipped. |
 | [Weather and hazards](docs/weather.md) | Forecasts, UK warnings, climate averages and England's river and sea levels, fetched on a press and kept with their age; a barometer log. |

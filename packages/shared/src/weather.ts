@@ -252,6 +252,11 @@ export interface ClimateMonth {
   precipMmMonth: number | null;
   /** Mean wind speed at 10 m, m/s. */
   windMs: number | null;
+  /**
+   * The direction the wind comes from at 10 m, degrees: NASA POWER's WD10M, "the average of the wind direction".
+   * Absent from averages kept before it was asked for.
+   */
+  windFromDeg?: number | null;
   /** Sunshine energy on level ground, kWh/m² a day. */
   sunKwhLevel: number | null;
 }
@@ -261,6 +266,8 @@ export interface ClimateData {
   /** The period averaged, in the publisher's words. */
   period: string;
   months: ClimateMonth[];
+  /** The year's average direction the wind comes from (WD10M, annual); absent from averages kept before it was asked for. */
+  windFromDeg?: number | null;
 }
 
 export interface SolarData {

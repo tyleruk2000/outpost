@@ -140,6 +140,14 @@ export default function BinderPage() {
             )
           ) : null}
 
+          <p className="text-small text-ink-muted">
+            For a fuller book made from a few questions, with first aid, help near home, journeys and checklists, see the{" "}
+            <Link to="/prepare/book" className="text-primary underline underline-offset-2">
+              Household book
+            </Link>
+            .
+          </p>
+
           <Section title="What goes in it">
             <Rows>
               {BINDER_PARTS.map((part) => {

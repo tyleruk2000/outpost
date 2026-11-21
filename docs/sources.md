@@ -991,3 +991,33 @@ For **Settings → Updates** ([updating.md](updating.md)).
 | --- | --- | --- |
 | Each country's languages, most used first | GeoNames [`countryInfo.txt`](https://download.geonames.org/export/dump/countryInfo.txt), fetched once on 21 November 2026 | The language column only, in `packages/shared/src/country-languages.ts`. CC BY 4.0, per GeoNames' `readme.txt`. |
 | Wikipedia in twelve more languages (French, Spanish, German, Portuguese, Arabic, Russian, Chinese, Hindi, Swahili, Italian, Japanese, Indonesian) | The Kiwix feed, one query per language for `wikipedia_<code>_all` (21 November 2026) | Names, editions and sizes in `catalog/manifests/kiwix-languages.json`; the smallest edition of each (introductions only; Swahili's without images). CC BY-SA 4.0. |
+
+## The household book (read 2026-11-21)
+
+- **First aid: the NHS website.** Whole lines of eleven pages (how to resuscitate a
+  child, heart attack, symptoms of a stroke, cuts and grazes, burns and scalds,
+  anaphylaxis, hypothermia, heat exhaustion and heatstroke, carbon monoxide poisoning,
+  poisoning, head injury), copied unchanged on 21 November 2026 and checked word for word
+  against the pages as downloaded that day. The NHS website's terms (read the same day,
+  as recorded for the emergency plan templates) release its content under the Open
+  Government Licence, and ask that content reused unchanged be credited "Information from
+  the NHS website" with the date copied; the book prints that credit with each page's
+  lines. The NHS website's own first aid pages for adults (CPR, the recovery position,
+  choking, severe bleeding) now redirect to St John Ambulance.
+- **Not used: St John Ambulance, the British Red Cross, Resuscitation Council UK.** RCUK's
+  terms (read 21 November 2026, resus.org.uk/terms-and-conditions): "reproduction of part
+  or all of the contents of this web site in any form is prohibited." The British Red
+  Cross's are recorded under the emergency plan templates. The book points to their pages.
+- **Hygiene: CDC, "Guidelines for Personal Hygiene During an Emergency"** (page dated 5
+  August 2024), four sentences quoted unchanged. cdc.gov refused requests from here
+  (HTTP 403) on 21 November 2026, so the page was read through a reader that day; US
+  federal government work.
+- **The wind's direction: NASA POWER, WD10M** ("Wind Direction at 10 Meters", defined by
+  POWER as "The average of the wind direction at 10 meters above the surface of the
+  earth"), asked for with the climate averages, monthly and for the year. Checked on 21
+  November 2026 against the climatology API for a point near Reading (annual 245.8°).
+  The same acknowledgement as the other POWER figures.
+- **Walking pace:** Tobler's hiking function, as for the walking reach on Maps.
+- **Not held, and said so in the book:** major hazard (COMAH) sites and their public
+  information zones, and industrial sites other than nuclear ones. No openly licensed copy
+  Outpost could fetch was found.
