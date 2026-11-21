@@ -397,6 +397,9 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   code and playable by touch, mouse and keyboard with spoken names.
 - **Allotment**: one shared plot; crops grow only in their real British months and in
   moist beds; rain worked out from the date; nothing withers or is lost.
+- Allotment, 17 November 2026: crops wait rather than wither; water lasts 12 hours, plus
+  rain by date and a water butt; broad beans, garlic, onions and kale added for winter.
+  Version 1 plots are read into version 2 with nothing lost.
 - Solitaire (draw one or three), Peg solitaire (33 holes), Sudoku with one answer each,
   Draughts against the computer or two players, and Pairs.
 - Each game's tally in one table (`0027_games`); a game in progress stays on its device.
@@ -592,6 +595,8 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 - **Learning progress** in reference archives per learner (pages, time, done), kept
   through updates, listed under **Library → Learning** and printable
   (`0029_learning_progress`).
+- **Import from Calibre** under Library: copy the books or use them in place; the Calibre
+  folder is only read.
 
 #### Catalogue additions (17 November 2026)
 
@@ -600,6 +605,8 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
   Preservation Briefs, the ICRC's *War Surgery*, OpenStax, NASA histories).
 - 18 more Kiwix archives, kept by the owner's decision although Kiwix's `robots.txt`
   disallows every client: Outpost fetches only when a person presses Download.
+- Three Ordnance Survey map-reading guides added and taken out on 16 November by the
+  owner's decision: not openly licensed, and a portable drive could copy them.
 - Five new packs, making 22, and a "Literature and reading" category.
 
 #### Help
@@ -737,6 +744,13 @@ not yet been tried is listed in [docs/testing-status.md](docs/testing-status.md)
 - A download stops as soon as more arrives than it should.
 - **A NAS that is switched off no longer stops the map**: storage checks wait elsewhere,
   five seconds at most.
+  On the first Pi with its NAS blocked, health then answered within 21 ms and tiles within
+  70 ms over 90 seconds (the map had stalled 10 to 25 seconds at a time). The check stays
+  every 30 seconds: every 5 seconds cost about 1.3 ms of processor time each.
+- **Devices on this network** no longer marks other devices "this computer" because macOS
+  loopback and tunnel interfaces carry link-local addresses (16 November).
+- **Storage → Manage and clean up → Installed** lists map layers (Natural Earth, airports,
+  OpenStreetMap extracts) as a kind of their own rather than with the radio data.
 - **What is written to storage is read back** against a checksum per megabyte, and a bad
   part is fetched again; added after a NAS share lost a 4 KiB block of a 2.3 GB file.
 - Geofabrik extracts are held to their published MD5, and a failed file is deleted so
