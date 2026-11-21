@@ -16,6 +16,7 @@
  * 10 000 S/m is perfect for this purpose.
  */
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { ANTENNA_PRESETS, type AntennaSpec, HF_BANDS, initialBearingDeg, type PredictionCell, runWords } from "@outpost/shared";
 import { afterAll, expect, it } from "vitest";
@@ -28,8 +29,12 @@ import { REFERENCE_CASES } from "./fixtures/propagation/cases.ts";
 import { tempDir } from "./temp.ts";
 import { describeWithVoacapData, seedVoacapData, voacapDataAbsent } from "./voacap-data.ts";
 
-const scratch = tempDir("outpost-hf-sloping-");
-afterAll(() => fs.rmSync(scratch, { recursive: true, force: true }));
+// Made only when there is data to test with: with every test skipped, Vitest runs no afterAll, so a folder made
+// regardless was left behind and failed the run's check for leftovers.
+const scratch = voacapDataAbsent ? path.join(os.tmpdir(), "outpost-hf-sloping-unused") : tempDir("outpost-hf-sloping-");
+afterAll(() => {
+  if (!voacapDataAbsent) fs.rmSync(scratch, { recursive: true, force: true });
+});
 seedVoacapData(path.join(scratch, "data"));
 const paths = voacapPaths(path.join(scratch, "data"));
 const engine = voacapDataAbsent ? (null as never) : createVoacapEngine(paths);
