@@ -549,6 +549,12 @@ export const GUIDES: Guide[] = [
     group: "developers",
     about: "How the reference layers, the nuclear effects model and the preparedness screens work inside.",
   },
+  {
+    slug: "worldwide",
+    file: "development/worldwide.md",
+    group: "developers",
+    about: "Where Outpost assumed the United Kingdom, and what each screen does elsewhere.",
+  },
 ];
 
 /** Pages of docs/ that are deliberately not guides, each with the reason. Keep it short. */
