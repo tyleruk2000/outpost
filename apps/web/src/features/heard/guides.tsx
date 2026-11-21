@@ -20,9 +20,9 @@ type Tried = string | false;
 function Cmd({ lines, tried, label }: { lines: string[]; tried: Tried; label: string }) {
   const text = lines.join("\n");
   return (
-    <div className="mt-1.5 grid gap-1">
+    <div className="mt-1.5 grid grid-cols-1 gap-1">
       <div className="flex items-start gap-2">
-        <pre className="min-w-0 flex-1 overflow-x-auto rounded-control bg-surface px-2.5 py-1.5 font-mono text-[0.8125rem] text-ink">
+        <pre className="min-w-0 flex-1 whitespace-pre-wrap break-all rounded-control bg-surface px-2.5 py-1.5 font-mono text-[0.8125rem] text-ink">
           {text}
         </pre>
         <Button
@@ -47,9 +47,9 @@ function Cmd({ lines, tried, label }: { lines: string[]; tried: Tried; label: st
 
 function Step({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <li className="grid gap-1">
+    <li className="grid grid-cols-1 gap-1">
       <p className="text-small font-medium text-ink">{title}</p>
-      <div className="grid gap-1 text-small text-ink">{children}</div>
+      <div className="grid grid-cols-1 gap-1 text-small text-ink">{children}</div>
     </li>
   );
 }
@@ -65,13 +65,13 @@ function Platforms({ pi, mac, windows }: { pi: ReactNode; mac: ReactNode; window
         <TabsTrigger value="windows">Windows</TabsTrigger>
       </TabsList>
       <TabsContent value="pi" className="mt-3">
-        <ol className="grid list-decimal gap-3 pl-5">{pi}</ol>
+        <ol className="grid grid-cols-1 list-decimal gap-3 pl-5">{pi}</ol>
       </TabsContent>
       <TabsContent value="mac" className="mt-3">
-        <ol className="grid list-decimal gap-3 pl-5">{mac}</ol>
+        <ol className="grid grid-cols-1 list-decimal gap-3 pl-5">{mac}</ol>
       </TabsContent>
       <TabsContent value="windows" className="mt-3">
-        <ol className="grid list-decimal gap-3 pl-5">{windows}</ol>
+        <ol className="grid grid-cols-1 list-decimal gap-3 pl-5">{windows}</ol>
       </TabsContent>
     </Tabs>
   );
@@ -123,8 +123,8 @@ const SLEEP_WINDOWS = (
 
 export function AprsGuide() {
   return (
-    <div className="grid gap-4">
-      <div className="grid gap-1 text-small text-ink">
+    <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 gap-1 text-small text-ink">
         <p>
           <span className="font-medium">Frequency.</span> 144.800 MHz in Europe (IARU Region 1 VHF Handbook, version 10.03, February 2026);
           145.175 MHz in Australia (WIA band plan 2026). In North America 144.390 MHz is the one Dire Wolf's own SDR example tunes to;
@@ -256,7 +256,7 @@ export function AprsGuide() {
 
 export function AircraftGuide() {
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-1 gap-4">
       <p className="text-small text-ink">
         An SDR dongle with an aerial for 1090 MHz, and readsb (or dump1090) offering its BaseStation (SBS) text on port 30003, which Outpost
         reads. Outpost reads SBS rather than Beast because SBS carries the decoder's own result, the position already worked out. No
@@ -330,7 +330,7 @@ export function AircraftGuide() {
 
 export function ShipsGuide() {
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-1 gap-4">
       <p className="text-small text-ink">
         An SDR with a marine VHF aerial (AIS is on 161.975 and 162.025 MHz, as gpsd's AIVDM documentation gives them), and AIS-catcher or
         rtl-ais writing NMEA sentences. Outpost connects to AIS-catcher's TCP server; a decoder that only sends UDP (rtl-ais sends to port
@@ -388,7 +388,7 @@ export function ShipsGuide() {
 
 export function BoardsGuide() {
   return (
-    <div className="grid gap-3 text-small text-ink">
+    <div className="grid grid-cols-1 gap-3 text-small text-ink">
       <p>Two kinds of small board can hear APRS on their own, with no computer, from the firmware's own documentation and source:</p>
       <div>
         <p className="font-medium">LoRa APRS: a T-Beam, a Heltec or similar with CA2RXU's LoRa_APRS_iGate firmware</p>
