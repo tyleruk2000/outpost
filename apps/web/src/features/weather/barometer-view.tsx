@@ -27,6 +27,7 @@ import { formatDateTime, plural } from "@/lib/utils";
 import { ClearReadingsDialog } from "./clear-readings";
 import { deviceZone, useAddReading, useImportReadings, useReadings, useRemoveReading } from "./data";
 import { TimeLine } from "./time-chart";
+import { ZambrettiForecast } from "./zambretti-view";
 
 const HEIGHT_KEY = "outpost.weather.barometerHeight";
 const DAY = 86_400_000;
@@ -46,7 +47,7 @@ const localInput = (at: number) => {
   return date.toISOString().slice(0, 16);
 };
 
-export function BarometerView() {
+export function BarometerView({ homeLat = null }: { homeLat?: number | null }) {
   const readings = useReadings();
   const add = useAddReading();
   const remove = useRemoveReading();
@@ -206,6 +207,8 @@ export function BarometerView() {
               </p>
             </details>
           </section>
+
+          {tendency.ok ? <ZambrettiForecast tendency={tendency.tendency} now={Date.now()} homeLat={homeLat} /> : null}
 
           <ChartFrame title="Pressure at sea level over the last three days of readings" reading={`${plural(recent.length, "reading")}.`}>
             <TimeLine

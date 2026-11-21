@@ -164,6 +164,11 @@ describe("weather and hazards", () => {
       "environment.data.gov.uk",
       "power.larc.nasa.gov",
       "re.jrc.ec.europa.eu",
+      "www.gdacs.org",
+      "earthquake.usgs.gov",
+      "feeds.meteoalarm.org",
+      "api.weather.gov",
+      "services.swpc.noaa.gov",
     ]);
     await app.api("GET", "/api/weather/home-warnings");
     await app.api("GET", "/api/weather/readings");

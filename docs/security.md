@@ -913,7 +913,7 @@ kept only if it reads as the registry.
 ### Weather and hazards
 
 Preparedness → Weather and hazards ([weather.md](weather.md)) fetches forecasts,
-warnings and flood data from five publishers, and keeps the person's barometer
+warnings, flood data and alerts from ten publishers, and keeps the person's barometer
 readings. What it sends, and to whom:
 
 | Host | When | What is sent |
@@ -924,6 +924,11 @@ readings. What it sends, and to whom:
 | `environment.data.gov.uk` | "Fetch the last 3 days" on a station's view, under River and sea levels | The station's level measure and a start time; no position |
 | `power.larc.nasa.gov` | "Fetch the averages for this place" only | A place's latitude and longitude to two decimal places |
 | `re.jrc.ec.europa.eu` | The same | A place's latitude and longitude to two decimal places |
+| `www.gdacs.org` | **Fetch alerts** under Worldwide only | Nothing about the person or their places: the one feed for the whole world |
+| `earthquake.usgs.gov` | The same | Nothing about the person or their places: the one feed for the whole world |
+| `feeds.meteoalarm.org` | The same, when Home is in one of MeteoAlarm's 38 countries | The country, as the feed's address; no position |
+| `api.weather.gov` | The same, when Home is in the United States or a territory the National Weather Service serves | Home's latitude and longitude to two decimal places, and Outpost's generic client name, which the service requires as its User-Agent |
+| `services.swpc.noaa.gov` | **Fetch today's conditions** under HF propagation → Plan only | Nothing about the person or their places: five small files for the whole Earth |
 
 - **Only on a press.** The routes that fetch, `POST /api/weather/update` and
   `POST /api/weather/river-readings` (a station's last days), are `POST`s, so `core/guard.ts` lets only Outpost's own pages cause them (a test checks that
@@ -936,8 +941,12 @@ readings. What it sends, and to whom:
 - **To the named hosts only.** The addresses are built in code (`modules/weather/sources.ts`).
   The HTTP client holds every hop, redirects included, to the publisher's host, and to
   public addresses. The client name is Outpost's generic one, with no contact details:
-  that is why MET Norway is not used (sources.md). Each answer is at most 2 MB and 30
-  seconds.
+  that is why MET Norway is not used (sources.md). Each answer is at most 2 MB (GDACS
+  4 MB, a country's MeteoAlarm feed 12 MB, as Germany's is about 3 MB) and 30 seconds.
+- **The country for national warnings** is worked out on this computer from Home's
+  position (the smallest Natural Earth box that holds it), and the screen names the
+  country taken. Only MeteoAlarm or the National Weather Service is asked, never both,
+  and neither when no saved place has the home icon.
 - **What is kept.** The publishers' answers, read into checked figures and words, are
   in the database (`weather_cache`) with the size received and a line saying what was
   sent. They are visible to anyone who can reach Outpost, as everything is, and so is
@@ -948,6 +957,9 @@ readings. What it sends, and to whom:
   The Met Office's RSS is read by Outpost's strict XML reader (`maps/gpx-xml.ts`),
   which refuses a DOCTYPE, so no entity can be expanded or fetched. Words are shown as
   text, never as HTML. A warning's link is kept only if it is on `www.metoffice.gov.uk`.
+  GDACS's RSS and MeteoAlarm's Atom feeds go through the same strict reader; a link is
+  kept only on the publisher's own host (`gdacs.org`, `meteoalarm.org`,
+  `earthquake.usgs.gov`).
 - **The device's position** is asked for only after "Use this device's position" is
   pressed, and only on a secure page (otherwise the button is not there and the dialog
   says why). Once given, it is stored as a place like any other.
@@ -1858,6 +1870,8 @@ to the cross-site rules above, except the few `GET`s named there.
 | **Save to library** on a link; **Look at the page** and **Save page** | The host in the address, and its redirects | `links/index.ts`, `webpages/fetch.ts`, `webpages/pictures.ts` |
 | **Get the list** for a repeater source | The source's own host | `repeaters/fetch.ts` |
 | **Update now** on Weather and hazards (or opening it with the option ticked); climate averages | `api.open-meteo.com`, `www.metoffice.gov.uk`, `environment.data.gov.uk`; `power.larc.nasa.gov`, `re.jrc.ec.europa.eu` | `weather/sources.ts` |
+| **Fetch alerts** under Weather and hazards → Worldwide | `www.gdacs.org`, `earthquake.usgs.gov`; for Home's country, `feeds.meteoalarm.org` or `api.weather.gov` | `weather/sources.ts` |
+| **Fetch today's conditions** under HF propagation | `services.swpc.noaa.gov` | `weather/sources.ts` |
 | A newer solar cycle table | `services.swpc.noaa.gov` (`OUTPOST_SOLAR_TABLE_URL`) | `propagation/datasets.ts` |
 | The second HF model's maps | `raw.githubusercontent.com` | `propagation/p533/maps.ts` |
 | **Build the P.533 engine** | `raw.githubusercontent.com` (the ITU's source); `github.com` and `release-assets.githubusercontent.com` (the compiler) | `propagation/p533/build.ts` |

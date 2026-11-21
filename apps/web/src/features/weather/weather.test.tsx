@@ -195,6 +195,63 @@ describe("the Weather and hazards screen", () => {
   });
 });
 
+describe("alerts worldwide", () => {
+  const plan = {
+    home: { name: "Home", lat: 50.72, lon: -3.53 },
+    country: "GB",
+    countryName: "the United Kingdom",
+    national: "meteoalarm" as const,
+  };
+  const meteoalarm: KeptCopy = {
+    id: "m1",
+    kind: "meteoalarm",
+    source: "meteoalarm",
+    placeId: null,
+    fetchedAt: NOW - 60_000,
+    validFrom: null,
+    validUntil: null,
+    bytes: 14_837,
+    sent: "feeds.meteoalarm.org: the feed for the United Kingdom; no position",
+    data: {
+      country: "GB",
+      countryName: "the United Kingdom",
+      updatedAt: NOW,
+      items: [
+        {
+          id: "w1",
+          title: "Yellow rain warning",
+          event: "Yellow rain warning",
+          area: "South West England",
+          level: "yellow",
+          severity: "Moderate",
+          urgency: "Future",
+          certainty: "Likely",
+          sent: NOW - 3_600_000,
+          onset: NOW,
+          expires: NOW + 3_600_000,
+          coversHome: true,
+          link: "https://meteoalarm.org/",
+        },
+      ],
+    },
+  };
+
+  it("says which country Home is taken to be in, and fetches the worldwide feeds and that country's on a press", async () => {
+    const posted = show({ alerts: plan }, "?view=world");
+    expect(await screen.findByText(/Home \(Home\) is taken to be in the United Kingdom/)).toBeInTheDocument();
+    expect(posted).toEqual([]);
+    await userEvent.click(screen.getByRole("button", { name: "Fetch alerts" }));
+    await waitFor(() => expect(posted).toEqual([{ path: "POST /api/weather/update", body: { kinds: ["gdacs", "quakes", "meteoalarm"] } }]));
+  });
+
+  it("shows MeteoAlarm's warnings covering Home with its time of issue and its disclaimer, word for word", async () => {
+    show({ alerts: plan, kept: [meteoalarm] }, "?view=world");
+    expect(await screen.findByRole("heading", { name: "Covering Home (1)" })).toBeInTheDocument();
+    expect(screen.getByText(/^Time delays between this website and the www\.meteoalarm\.org website are possible\./)).toBeInTheDocument();
+    expect(screen.getByText(/South West England\..*Issued /)).toBeInTheDocument();
+  });
+});
+
 describe("clearing barometer readings", () => {
   const reading = (id: string, hoursAgo: number, seaLevelHpa: number): PressureReading => ({
     id,
@@ -213,6 +270,7 @@ describe("clearing barometer readings", () => {
   it("states the count, offers the CSV first, removes only what it said, and the log goes to its empty state", async () => {
     const posted = show({}, "?view=barometer", [], three);
     expect(await screen.findByTestId("tendency")).toHaveTextContent("Rising: +2.0 hPa");
+    expect(screen.getByTestId("zambretti")).toHaveTextContent("Becoming fine");
     await userEvent.click(screen.getByRole("button", { name: "Clear readings" }));
     expect(screen.getByTestId("clear-question")).toHaveTextContent("Remove all 3 readings? This cannot be undone.");
     expect(screen.getByText(/Saved places and fetched forecasts are not touched/)).toBeInTheDocument();
@@ -233,6 +291,7 @@ describe("clearing barometer readings", () => {
     );
     expect(await screen.findByRole("heading", { name: "No readings yet" })).toBeInTheDocument();
     expect(screen.queryByTestId("tendency")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("zambretti")).not.toBeInTheDocument();
   });
 
   it("removes one reading from its row with a button that says so", async () => {

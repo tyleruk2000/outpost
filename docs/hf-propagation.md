@@ -25,8 +25,9 @@ Read [What it is not](#what-it-is-not) before relying on it.
 - **Not today's conditions.** Every prediction is a *monthly median*: what a month like
   the one asked about usually does, from maps of the ionosphere built from decades of
   soundings. A geomagnetic storm, a flare or sporadic E can make any one day quite
-  different. Nothing in Outpost measures the ionosphere, and nothing on the screen is
-  called live or current.
+  different. Nothing in Outpost measures the ionosphere. Today's figures from NOAA can
+  be fetched and set beside the prediction ([Today's conditions](#todays-conditions)),
+  but they never change it.
 - **Not a promise of a contact.** "Reliability" is the share of the month's days on
   which the signal-to-noise ratio is predicted to reach what a mode needs. Whether a
   contact is made also depends on interference, the operators and the equipment.
@@ -36,6 +37,29 @@ Read [What it is not](#what-it-is-not) before relying on it.
   missing or damaged, it says so and predicts nothing.
 - **Not permission to transmit.** Which frequencies you may use is set by your licence.
   The band sheets in the library give the limits ([radio.md](radio.md)).
+
+## Today's conditions
+
+Under the planner, **Fetch today's conditions** asks NOAA's Space Weather Prediction
+Center for five small files (about 9 kB in all) and keeps them, with their age, as the
+weather is kept. Nothing about you is sent. It is fetched only when you press.
+
+- **The figures:** the 10.7 cm solar flux, the day's sunspot number (SESC), the latest
+  planetary K index and the running a index, and NOAA's three scales as they stand:
+  radio blackouts (R), solar radiation storms (S) and geomagnetic storms (G), 0 to 5.
+  The WWV geophysical alert message is shown as NOAA wrote it.
+- **In words, against the prediction.** A radio blackout (R1 or more) means HF on the
+  sunlit side is likely worse than predicted today. A geomagnetic storm of G2 or more
+  means HF is likely worse, most of all on paths at high latitudes. A radiation storm
+  (S1 or more) means polar paths are likely worse. Each line quotes NOAA's own words
+  for the level, from its [scales](https://www.swpc.noaa.gov/noaa-scales-explanation).
+  With none of these in force, the screen says nothing points away from the median. It
+  never says the bands are better than predicted, as these figures cannot show that.
+- **Never fed into the prediction.** The prediction uses the sunspot number chosen in
+  the form. The day's sunspot count is a different measure from the smoothed monthly
+  number the engine takes, and the screen says so.
+- **Old copies.** After three hours the copy is called old and each line reads "when
+  fetched". The Sun's state changes within hours.
 
 ## Making a prediction
 

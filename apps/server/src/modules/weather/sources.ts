@@ -13,6 +13,7 @@ import type { HttpClient } from "../../core/http.ts";
 import { NASA_POWER_PARAMETERS, OPEN_METEO_DAILY, OPEN_METEO_HOURLY, OPEN_METEO_MODEL } from "./parsers.ts";
 
 const TERMS_READ = "2026-11-16";
+const ALERTS_READ = "2026-11-21";
 
 export const WEATHER_SOURCES: Record<WeatherSourceId, WeatherSourceInfo> = {
   "open-meteo": {
@@ -109,7 +110,95 @@ export const WEATHER_SOURCES: Record<WeatherSourceId, WeatherSourceInfo> = {
       "https://joint-research-centre.ec.europa.eu/photovoltaic-geographical-information-system-pvgis/getting-started-pvgis/api-non-interactive-service_en",
     termsRead: TERMS_READ,
   },
+  gdacs: {
+    id: "gdacs",
+    kind: "gdacs",
+    publisher: "GDACS (European Commission Joint Research Centre and the United Nations)",
+    name: "Disasters worldwide: earthquakes, tropical cyclones, floods, volcanoes, droughts and wildfires",
+    covers: "The whole world.",
+    host: "www.gdacs.org",
+    sends: "Nothing about you or your places: the one feed for the whole world is fetched.",
+    licence: "European Union, CC BY 4.0",
+    licenceUrl: "https://creativecommons.org/licenses/by/4.0/",
+    attribution: "GDACS, Global Disaster Alert and Coordination System. © European Union, CC BY 4.0",
+    liveUrl: "https://www.gdacs.org/",
+    termsUrl: "https://www.gdacs.org/About/termofuse.aspx",
+    termsRead: ALERTS_READ,
+  },
+  "usgs-quakes": {
+    id: "usgs-quakes",
+    kind: "quakes",
+    publisher: "U.S. Geological Survey",
+    name: "Earthquakes of magnitude 4.5 and over in the past week",
+    covers: "The whole world.",
+    host: "earthquake.usgs.gov",
+    sends: "Nothing about you or your places: the one feed for the whole world is fetched.",
+    licence: "Work of the US Government, not under copyright in the US (the USGS's own copyright page could not be read from here)",
+    licenceUrl: "https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits",
+    attribution: "Earthquake data: U.S. Geological Survey",
+    liveUrl: "https://earthquake.usgs.gov/earthquakes/map/",
+    termsUrl: "https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits",
+    termsRead: ALERTS_READ,
+  },
+  meteoalarm: {
+    id: "meteoalarm",
+    kind: "meteoalarm",
+    publisher: "EUMETNET – MeteoAlarm",
+    name: "National weather warnings in Europe",
+    covers: "38 European countries, one country's feed at a time: the one Home is in.",
+    host: "feeds.meteoalarm.org",
+    sends: "The name of the country Home is in, as the feed's address; no position.",
+    licence: "Terms equivalent to CC BY 4.0, with MeteoAlarm's additional requirements for redistribution",
+    licenceUrl: "https://meteoalarm.org/en/live/page/terms-and-conditions",
+    attribution: "EUMETNET – MeteoAlarm, with the warnings of the country's national meteorological service. www.meteoalarm.org",
+    liveUrl: "https://meteoalarm.org/en/live/",
+    termsUrl: "https://meteoalarm.org/en/live/page/terms-and-conditions",
+    termsRead: ALERTS_READ,
+  },
+  "nws-alerts": {
+    id: "nws-alerts",
+    kind: "nws",
+    publisher: "US National Weather Service",
+    name: "Watches, warnings and advisories in force at Home",
+    covers: "The United States and the territories the Weather Service serves.",
+    host: "api.weather.gov",
+    sends:
+      "Home's latitude and longitude, rounded to two decimal places (about a kilometre), and Outpost's name as the User-Agent the service requires.",
+    licence: "Public domain (National Weather Service)",
+    licenceUrl: "https://www.weather.gov/disclaimer",
+    attribution: "National Weather Service, weather.gov",
+    liveUrl: "https://www.weather.gov/",
+    termsUrl: "https://www.weather.gov/documentation/services-web-api",
+    termsRead: ALERTS_READ,
+  },
+  swpc: {
+    id: "swpc",
+    kind: "space-weather",
+    publisher: "NOAA Space Weather Prediction Center",
+    name: "Today's solar flux, sunspot number, K and A indices, and radio blackouts and storms in force",
+    covers: "The whole Earth: these are planetary figures, not a place's.",
+    host: "services.swpc.noaa.gov",
+    sends: "Nothing about you or your places: five small files for the whole Earth are fetched.",
+    licence: "Public domain (National Weather Service and NOAA web pages)",
+    licenceUrl: "https://www.weather.gov/disclaimer",
+    attribution: "NOAA Space Weather Prediction Center, swpc.noaa.gov",
+    liveUrl: "https://www.swpc.noaa.gov/",
+    termsUrl: "https://www.weather.gov/disclaimer",
+    termsRead: ALERTS_READ,
+  },
 };
+
+/** The space weather files asked for on one press, by name. */
+export const SWPC_FILES = {
+  scales: "https://services.swpc.noaa.gov/products/noaa-scales.json",
+  flux: "https://services.swpc.noaa.gov/products/summary/10cm-flux.json",
+  kp: "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json",
+  wwv: "https://services.swpc.noaa.gov/text/wwv.txt",
+  sunspots: "https://services.swpc.noaa.gov/text/daily-solar-indices.txt",
+} as const;
+
+/** How large an answer may be, by source, when it is more than `MAX_ANSWER_BYTES`: a large country's MeteoAlarm feed is about 3 MB. */
+export const MAX_BYTES_OF: Partial<Record<WeatherSourceId, number>> = { meteoalarm: 12 * 1024 * 1024, gdacs: 4 * 1024 * 1024 };
 
 /** How far round a place flood warnings are asked for, km. River and sea levels use the distance a person chooses (`weather.riversKm`). */
 export const FLOOD_WARNINGS_KM = 15;
@@ -164,6 +253,21 @@ export const sourceUrls = {
     });
     return `https://power.larc.nasa.gov/api/temporal/climatology/point?${query}`;
   },
+  /** Every event GDACS calls current, worldwide. */
+  gdacs(): string {
+    return "https://www.gdacs.org/xml/rss.xml";
+  },
+  quakes(): string {
+    return "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojson";
+  },
+  meteoalarm(slug: string): string {
+    if (!/^[a-z-]{2,40}$/.test(slug)) throw new AppError("bad_request", "That is not one of MeteoAlarm's countries.");
+    return `https://feeds.meteoalarm.org/feeds/meteoalarm-legacy-atom-${slug}`;
+  },
+  nws(lat: number, lon: number): string {
+    const at = position(lat, lon);
+    return `https://api.weather.gov/alerts/active?point=${at.lat},${at.lon}`;
+  },
   solar(lat: number, lon: number): string {
     const at = position(lat, lon);
     return `https://re.jrc.ec.europa.eu/api/v5_3/MRcalc?lat=${at.lat}&lon=${at.lon}&horirrad=1&optrad=1&outputformat=json`;
@@ -173,6 +277,8 @@ export const sourceUrls = {
 /** What a request sends, in words, for the record kept beside the copy. */
 export function sentWords(url: string): string {
   const parsed = new URL(url);
+  const point = /^(-?[\d.]+),(-?[\d.]+)$/.exec(parsed.searchParams.get("point") ?? "");
+  if (point) return `${parsed.hostname}: latitude ${point[1]}, longitude ${point[2]}`;
   const lat = parsed.searchParams.get("latitude") ?? parsed.searchParams.get("lat");
   const lon = parsed.searchParams.get("longitude") ?? parsed.searchParams.get("long") ?? parsed.searchParams.get("lon");
   return lat && lon ? `${parsed.hostname}: latitude ${lat}, longitude ${lon}` : `${parsed.hostname}: no position`;
@@ -201,7 +307,9 @@ export function createSourceFetcher(http: HttpClient, options: { standIn?: strin
           everyHop: true,
           maxRedirects: 3,
           signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
-          headers: { accept: "application/json, application/rss+xml, application/xml;q=0.9, */*;q=0.5" },
+          headers: {
+            accept: "application/json, application/geo+json, application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.5",
+          },
         })
         .catch((error: unknown) => {
           if (error instanceof AppError) throw error;
@@ -213,8 +321,9 @@ export function createSourceFetcher(http: HttpClient, options: { standIn?: strin
         const busy = response.status === 429 ? " It says it has had too many requests; try again later." : "";
         throw new AppError("upstream", `${WEATHER_SOURCES[source].publisher} answered ${response.status}.${busy}`);
       }
+      const limit = MAX_BYTES_OF[source] ?? MAX_ANSWER_BYTES;
       const declared = Number(response.headers.get("content-length") ?? 0);
-      if (declared > MAX_ANSWER_BYTES) {
+      if (declared > limit) {
         await response.body?.cancel();
         throw new AppError("upstream", `${WEATHER_SOURCES[source].publisher} sent more than Outpost will keep.`);
       }
@@ -222,8 +331,7 @@ export function createSourceFetcher(http: HttpClient, options: { standIn?: strin
       let bytes = 0;
       for await (const chunk of response.body ?? []) {
         bytes += chunk.byteLength;
-        if (bytes > MAX_ANSWER_BYTES)
-          throw new AppError("upstream", `${WEATHER_SOURCES[source].publisher} sent more than Outpost will keep.`);
+        if (bytes > limit) throw new AppError("upstream", `${WEATHER_SOURCES[source].publisher} sent more than Outpost will keep.`);
         chunks.push(chunk);
       }
       return { text: Buffer.concat(chunks).toString("utf8"), bytes };

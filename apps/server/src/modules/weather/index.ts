@@ -154,6 +154,7 @@ export async function registerWeather(app: FastifyInstance, ctx: AppContext): Pr
       sources: Object.values(WEATHER_SOURCES),
       updateOnOpen: ctx.services.settings.get("weather.updateOnOpen"),
       riversKm: riversKm(),
+      alerts: service.alertsPlan(),
       now: Date.now(),
     }),
   );

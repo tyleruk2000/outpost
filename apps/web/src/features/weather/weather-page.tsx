@@ -18,6 +18,7 @@ import { Checkbox, Segmented, Select, Skeleton, Tabs, TabsContent, TabsList, Tab
 import { errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { plural } from "@/lib/utils";
+import { AlertsView } from "./alerts-view";
 import { BarometerView } from "./barometer-view";
 import { ClimateView } from "./climate-view";
 import { useSetUpdateOnOpen, useUpdate, useWeather } from "./data";
@@ -28,7 +29,7 @@ import { PlacesView } from "./places-view";
 import { RiversView } from "./rivers-view";
 import type { TempUnit, WindUnit } from "./words";
 
-const VIEWS = ["forecast", "warnings", "flood", "rivers", "climate", "barometer", "places", "kept"] as const;
+const VIEWS = ["forecast", "warnings", "world", "flood", "rivers", "climate", "barometer", "places", "kept"] as const;
 type View = (typeof VIEWS)[number];
 const WIND_KEY = "outpost.weather.wind";
 const TEMP_KEY = "outpost.weather.temp";
@@ -62,6 +63,11 @@ const KIND_WORDS: Record<WeatherKind, string> = {
   "river-readings": "a station's readings",
   climate: "climate averages",
   solar: "sunshine figures",
+  gdacs: "GDACS's disasters worldwide",
+  quakes: "the USGS's earthquakes",
+  meteoalarm: "MeteoAlarm's warnings",
+  nws: "the National Weather Service's alerts",
+  "space-weather": "today's space weather",
 };
 
 function outcomeSentence(outcome: UpdateOutcome): string {
@@ -120,7 +126,7 @@ export default function WeatherPage() {
     if (weather.data.updateOnOpen) runUpdate(weather.data.places.length > 0 ? LIVE_KINDS : ["warnings"]);
   }, [weather.data]);
 
-  const noPlace = places.length === 0 && view !== "places" && view !== "barometer" && view !== "warnings";
+  const noPlace = places.length === 0 && view !== "places" && view !== "barometer" && view !== "warnings" && view !== "world";
   const place =
     places.find((candidate) => candidate.id === chosenPlace) ?? places.find((candidate) => candidate.isHome) ?? places[0] ?? null;
   const kept = weather.data?.kept ?? [];
@@ -243,6 +249,7 @@ export default function WeatherPage() {
             <TabsList className="mb-6" aria-label="Weather and hazards">
               <TabsTrigger value="forecast">Forecast</TabsTrigger>
               <TabsTrigger value="warnings">Warnings</TabsTrigger>
+              <TabsTrigger value="world">Worldwide</TabsTrigger>
               <TabsTrigger value="flood">Flood</TabsTrigger>
               <TabsTrigger value="rivers">River and sea levels</TabsTrigger>
               <TabsTrigger value="barometer">Barometer</TabsTrigger>
@@ -263,6 +270,16 @@ export default function WeatherPage() {
             </TabsContent>
             <TabsContent value="warnings">
               <WarningsView copy={copyOf("warnings", null)} place={place} source={source("warnings")} now={now} />
+            </TabsContent>
+            <TabsContent value="world">
+              <AlertsView
+                plan={weather.data.alerts ?? { home: null, country: null, countryName: null, national: null }}
+                copyOf={(kind) => copyOf(kind, null)}
+                sources={weather.data.sources}
+                now={now}
+                fetching={update.isPending}
+                onFetch={(kinds) => runUpdate(kinds)}
+              />
             </TabsContent>
             <TabsContent value="flood">
               {place ? <FloodView copy={copyOf("flood", place.id)} source={source("flood")} now={now} /> : null}
@@ -296,7 +313,7 @@ export default function WeatherPage() {
               ) : null}
             </TabsContent>
             <TabsContent value="barometer">
-              <BarometerView />
+              <BarometerView homeLat={places.find((candidate) => candidate.isHome)?.lat ?? null} />
             </TabsContent>
             <TabsContent value="places">
               <PlacesView places={places} />

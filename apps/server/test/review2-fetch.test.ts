@@ -56,6 +56,9 @@ const LINKS_ONLY = new Set([
   "www.openstreetmap.org",
   "www.ordnancesurvey.co.uk",
   "www.sipri.org",
+  "www.swpc.noaa.gov",
+  "www.usgs.gov",
+  "www.weather.gov",
   "www.wikidata.org",
   "www.worldpop.org",
 ]);
