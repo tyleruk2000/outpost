@@ -141,6 +141,29 @@ press that adds the place to this list if need be and asks for its `solar` copy 
 through `POST /api/weather/update`, the same route this screen uses. See
 [tools-power.md](tools-power.md#peak-sun-hours-from-weather-and-hazards).
 
+## Worldwide alerts
+
+The **Worldwide** tab fetches alerts beyond the UK on its own press, **Fetch alerts**.
+Update now does not fetch them.
+
+- **Disasters worldwide** from GDACS (the European Commission's Joint Research Centre
+  and the United Nations): earthquakes, tropical cyclones, floods, volcanoes, droughts
+  and wildfires, with GDACS's green, orange or red alert. Orange and red come first;
+  green ones are folded away. GDACS says its alerts are automatic and do not replace
+  the authorities' own.
+- **Earthquakes of magnitude 4.5 and over in the past week** from the USGS, newest
+  first, with the distance from Home. Those within 1,000 km of Home are listed first.
+- **National warnings for the country Home is in.** Outpost works out the country from
+  Home's position on the map and says which it took (a border can mislead it). In
+  Europe it asks MeteoAlarm for that country's feed, and marks the warnings whose drawn
+  area holds Home; some countries name their areas without drawing them, so the rest
+  are listed by name. In the United States it asks the National Weather Service for the
+  watches, warnings and advisories in force at Home. Elsewhere, and when no saved place
+  has the home icon, only the worldwide feeds are fetched.
+- Each shows when it was fetched, and is called old after an hour (GDACS after three).
+  The publishers' words are shown as written. MeteoAlarm's warnings carry their time of
+  issue, MeteoAlarm's credit and link, and the disclaimer its terms require.
+
 ## Not used, and why
 
 - **Met Office Weather DataHub.** Needs an account and an API key in a header. Its
@@ -153,12 +176,21 @@ through `POST /api/weather/update`, the same route this screen uses. See
   find contact information", and a generic client name gets "403 Forbidden". Outpost's
   client name is generic. Sending the owner's contact details is the owner's decision,
   so it was left out.
-- **US National Weather Service.** Public domain, with no key. It covers the United
-  States only, and asks for contact details in the client name too. Not built.
-- **MeteoAlarm.** Its terms ask redistributors to show warnings within "never longer
-  than ten minutes" of MeteoAlarm. A copy kept for offline reading cannot promise
-  that. Over the UK, its warnings are the Met Office's own, which Outpost fetches
+- **The US National Weather Service's forecasts.** Only its alerts are fetched (under
+  Worldwide). Its documentation says the client name "can be anything" and that
+  contact details are optional, so Outpost's generic name is sent.
+- **MeteoAlarm, kept for more than ten minutes.** Its terms ask that warnings
+  "operationally redistributed" reach users within "never longer than ten minutes" of
+  MeteoAlarm. A copy kept for offline reading cannot promise that. Outpost fetches a
+  country's feed only on a press, for the household's own use, shows when it was
+  fetched and the disclaimer the terms require, and calls it old after an hour. Whether
+  that is enough is the owner's decision; until then it is offered as it is. Over the
+  UK, MeteoAlarm's warnings are the Met Office's own, which Outpost also fetches
   directly.
+- **Other national services.** Canada (Environment and Climate Change Canada's CAP
+  files), New Zealand (MetService's CAP feed, CC BY 4.0) and Japan (the JMA's Atom
+  feed) publish open feeds; they are not built yet. Australia's Bureau of Meteorology
+  is not used: its default terms say "You must not supply it to any other person".
 - **Flood risk maps** (Flood Map for Planning, Risk of Flooding from Rivers and Sea).
   These are open data. The Flood Zones have an OGC API that answers by bounding box
   (see sources.md), so they can be fetched by area. A map layer was not built in this
@@ -343,6 +375,35 @@ It adds that one barometer cannot tell which of these is happening, and that a
 forecast or a warning is the thing to act on. No more specific barometer rule from
 the Met Office, the Royal Meteorological Society, the WMO or NOAA was found.
 
+### A forecast from your readings
+
+When there is a tendency, the screen also gives a forecast in words by the Zambretti
+forecaster's method, worked out on this computer with no connection: "Becoming fine",
+"Unsettled, rain later", and so on, from A (settled fine) to Z (stormy, much rain).
+
+- **What it uses:** the latest sea-level pressure, whether it is rising, steady or
+  falling over the three hours, and the wind direction you choose (remembered on that
+  device). The readings and the change are named beside it.
+- **Rising, steady or falling.** The dial has only these three. A change under 1.6 hPa
+  in three hours (the Met Office's "steady" and "slowly") is read as steady; this is
+  Outpost's choice, and the screen then also gives what the dial says read the other
+  way.
+- **The wind.** A northerly wind can move the dial up to one forecast better and a
+  southerly up to two worse. The screen names those neighbouring forecasts rather than
+  moving the answer, as no table of the wind's effect was found.
+- **Where it comes from.** The forecaster was sold by Negretti & Zambra from 1915
+  (patent 6276/1915). Its directions are quoted from the Science Museum Group's
+  example. No scan of its scales was found; the letters and the pressure at which each
+  shows are those Meteormetrics read off the instrument and published. Outpost takes
+  the letter listed at the pressure nearest yours. Sources are in
+  [sources.md](sources.md#weather-and-hazards-read-on-2026-11-16).
+- **How far to trust it.** A rule of thumb for about the next twelve hours, made for
+  the British Isles and similar northern temperate latitudes. It does not hold in the
+  southern hemisphere (the screen says so when Home is there) or the tropics. It knows
+  nothing of weather elsewhere. Claims of 90 or 94 per cent accuracy come from sellers
+  of instruments and have not been checked independently. After twelve hours without a
+  new reading the screen says the forecast is for a time that has passed.
+
 ### Readings from a file
 
 **Bring in a CSV file** reads a file and shows what it would add, and which rows
@@ -368,7 +429,25 @@ not already kept: a reading at the same time is not added twice.
   as nought. Changing either after the file has been read clears what it would add
   until it is read again, so that Add never adds something other than what was shown.
 - Readings brought in from a file say "from a file" in the list; typed ones say
-  nothing. There is no export of readings.
+  nothing.
+
+### Clearing readings
+
+Each reading in the list has a **Remove** button. **Clear readings**, above the list,
+removes many at once:
+
+- **All**, **Before a day** (readings on that day are kept), or **Between two days**
+  (both days included). Days are the calendar days of the device you are using.
+- The dialog says how many readings will go before you press, and offers **Save them
+  as a CSV file first**. That file is the same readings, in a form **Bring in a CSV
+  file** reads back as they were.
+- If readings were added or removed elsewhere since the dialog counted them, nothing
+  is removed and the dialog says how many are in the range now.
+- Only readings are removed. Saved places and fetched forecasts are not touched.
+- The chart, the tendency and the forecast from your readings are worked out from what
+  is left, straight away.
+
+There is no undo, and readings are not kept anywhere else unless a backup has them.
 
 ### A weather station
 

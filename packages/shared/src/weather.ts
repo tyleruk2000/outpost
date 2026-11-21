@@ -11,21 +11,64 @@
  * fetched, and `freshness` is the one place that decides what may be said about it.
  */
 
+import type { AlertsPlan, GdacsData, MeteoalarmData, NwsData, QuakesData, SpaceWeatherData } from "./weather-alerts.ts";
 import type { RiverReadingsData, RiversData } from "./weather-rivers.ts";
 
 // ── What is fetched, and from whom ──────────────────────────────────────────
 
 /** The kinds of thing kept, each fetched and replaced on its own. */
-export const WEATHER_KINDS = ["forecast", "warnings", "flood", "rivers", "river-readings", "climate", "solar"] as const;
+export const WEATHER_KINDS = [
+  "forecast",
+  "warnings",
+  "flood",
+  "rivers",
+  "river-readings",
+  "climate",
+  "solar",
+  "gdacs",
+  "quakes",
+  "meteoalarm",
+  "nws",
+  "space-weather",
+] as const;
 export type WeatherKind = (typeof WEATHER_KINDS)[number];
 
 /** The kinds `POST /api/weather/update` takes. A station's readings are fetched on its own view, for one station (`river-readings`). */
-export const UPDATE_KINDS = ["forecast", "warnings", "flood", "rivers", "climate", "solar"] as const satisfies readonly WeatherKind[];
+export const UPDATE_KINDS = [
+  "forecast",
+  "warnings",
+  "flood",
+  "rivers",
+  "climate",
+  "solar",
+  "gdacs",
+  "quakes",
+  "meteoalarm",
+  "nws",
+  "space-weather",
+] as const satisfies readonly WeatherKind[];
 
 /** The kinds "Update now" fetches. Climate averages and sunshine change over decades and are fetched on a press of their own. */
 export const LIVE_KINDS: WeatherKind[] = ["forecast", "warnings", "flood", "rivers"];
 
-export type WeatherSourceId = "open-meteo" | "met-office-warnings" | "ea-flood" | "ea-levels" | "nasa-power" | "pvgis";
+export type WeatherSourceId =
+  | "open-meteo"
+  | "met-office-warnings"
+  | "ea-flood"
+  | "ea-levels"
+  | "nasa-power"
+  | "pvgis"
+  | "gdacs"
+  | "usgs-quakes"
+  | "meteoalarm"
+  | "nws-alerts"
+  | "swpc";
+
+/** The kinds that are one copy for the household, not one for each place. */
+export const HOUSEHOLD_KINDS: WeatherKind[] = ["warnings", "gdacs", "quakes", "meteoalarm", "nws", "space-weather"];
+
+/** The kinds the alerts view fetches on its own press: worldwide ones always, and the national service for Home. */
+export const WORLD_KINDS: WeatherKind[] = ["gdacs", "quakes"];
 
 export interface WeatherSourceInfo {
   id: WeatherSourceId;
@@ -241,6 +284,11 @@ export interface WeatherDataByKind {
   "river-readings": RiverReadingsData;
   climate: ClimateData;
   solar: SolarData;
+  gdacs: GdacsData;
+  quakes: QuakesData;
+  meteoalarm: MeteoalarmData;
+  nws: NwsData;
+  "space-weather": SpaceWeatherData;
 }
 
 export interface KeptCopy<K extends WeatherKind = WeatherKind> {
@@ -267,6 +315,8 @@ export interface WeatherResponse {
   updateOnOpen: boolean;
   /** How far round a place river and sea levels are asked for, km: one setting for every device. */
   riversKm: number;
+  /** Where Home is taken to be, and which national warning service covers it. */
+  alerts: AlertsPlan;
   /** The server's clock, so that ages are worked out against one time. */
   now: number;
 }
@@ -324,6 +374,11 @@ export const FRESH_FOR: Record<WeatherKind, number> = {
   "river-readings": 1 * HOUR,
   climate: Number.POSITIVE_INFINITY,
   solar: Number.POSITIVE_INFINITY,
+  gdacs: 3 * HOUR,
+  quakes: 1 * HOUR,
+  meteoalarm: 1 * HOUR,
+  nws: 1 * HOUR,
+  "space-weather": 3 * HOUR,
 };
 
 export type FreshState = "fresh" | "old" | "ran-out" | "averages";
@@ -354,6 +409,11 @@ const KIND_WORDS: Record<WeatherKind, string> = {
   "river-readings": "set of readings",
   climate: "set of averages",
   solar: "set of averages",
+  gdacs: "list of disasters",
+  quakes: "list of earthquakes",
+  meteoalarm: "list of warnings",
+  nws: "list of alerts",
+  "space-weather": "set of space weather figures",
 };
 
 /**
@@ -380,7 +440,11 @@ export function freshness(copy: Pick<KeptCopy, "kind" | "fetchedAt" | "validUnti
           ? "warnings may have been issued, changed or ended since"
           : copy.kind === "flood"
             ? "warnings may have been issued, changed or ended since"
-            : "levels may have changed since";
+            : copy.kind === "rivers" || copy.kind === "river-readings"
+              ? "levels may have changed since"
+              : copy.kind === "space-weather"
+                ? "the Sun and the indices will have moved on since"
+                : "events may have begun, changed or ended since";
     return { state: "old", ageMs, age, sentence: `${fetched}: this ${KIND_WORDS[copy.kind]} is old, and ${why}.` };
   }
   return { state: "fresh", ageMs, age, sentence: `${fetched}.` };
@@ -618,6 +682,25 @@ export interface ReadingImportResult {
 
 export interface ReadingsResponse {
   readings: PressureReading[];
+}
+
+/**
+ * Which readings `POST /api/weather/readings/clear` removes and `GET
+ * /api/weather/readings/export` writes out: all of them, those taken before a moment, or
+ * those from one moment up to (not including) another. The screen turns days into
+ * moments in the device's own time; the server compares times only.
+ */
+export type ReadingsRange = { range: "all" } | { range: "before"; before: number } | { range: "between"; from: number; to: number };
+
+/** Whether a reading is in a range. */
+export function inReadingsRange(takenAt: number, range: ReadingsRange): boolean {
+  if (range.range === "all") return true;
+  if (range.range === "before") return takenAt < range.before;
+  return takenAt >= range.from && takenAt < range.to;
+}
+
+export interface ReadingsClearResult {
+  removed: number;
 }
 
 /** The person's own things here, as "Manage and clean up" counts them; and the fetched copies, which can be fetched again. */

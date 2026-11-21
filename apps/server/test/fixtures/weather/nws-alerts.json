@@ -1,0 +1,73 @@
+{
+  "@context": [
+    "https://geojson.org/geojson-ld/geojson-context.jsonld",
+    {
+      "@version": "1.1",
+      "wx": "https://api.weather.gov/ontology#",
+      "@vocab": "https://api.weather.gov/ontology#"
+    }
+  ],
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.5b29e7dc6acb807051b77c98d412d51bcbe56502.001.1",
+      "type": "Feature",
+      "geometry": null,
+      "properties": {
+        "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.5b29e7dc6acb807051b77c98d412d51bcbe56502.001.1",
+        "@type": "wx:Alert",
+        "id": "urn:oid:2.49.0.1.840.0.5b29e7dc6acb807051b77c98d412d51bcbe56502.001.1",
+        "areaDesc": "Central San Joaquin County Including Stockton Metro; Tracy Triangle Below 1000 ft; Northeastern San Joaquin Valley Below 1000 ft; Western Stanislaus County Below 1000 ft Including Interstate 5; Central Stanislaus County Including Modesto Metro",
+        "geocode": {
+          "SAME": ["006077", "006099", "006009", "006109"],
+          "UGC": ["CAZ159", "CAZ160", "CAZ161", "CAZ163", "CAZ164"]
+        },
+        "affectedZones": [
+          "https://api.weather.gov/zones/forecast/CAZ159",
+          "https://api.weather.gov/zones/forecast/CAZ160",
+          "https://api.weather.gov/zones/forecast/CAZ161",
+          "https://api.weather.gov/zones/forecast/CAZ163",
+          "https://api.weather.gov/zones/forecast/CAZ164"
+        ],
+        "references": [],
+        "sent": "2026-11-21T03:03:00-08:00",
+        "effective": "2026-11-21T03:03:00-08:00",
+        "onset": "2026-11-21T03:03:00-08:00",
+        "expires": "2026-11-21T10:00:00-08:00",
+        "ends": "2026-11-21T10:00:00-08:00",
+        "status": "Actual",
+        "messageType": "Alert",
+        "category": "Met",
+        "severity": "Moderate",
+        "certainty": "Likely",
+        "urgency": "Expected",
+        "event": "Dense Fog Advisory",
+        "sender": "w-nws.webmaster@noaa.gov",
+        "senderName": "NWS Sacramento CA",
+        "headline": "Dense Fog Advisory issued November 21 at 3:03AM PST until November 21 at 10:00AM PST by NWS Sacramento CA",
+        "description": "* WHAT...Visibility one quarter mile or less in dense fog.\n\n* WHERE...Northern San Joaquin Valley.\n\n* WHEN...Until 10 AM PST this morning.\n\n* IMPACTS...Low visibility could make driving conditions hazardous.\n\n* ADDITIONAL DETAILS...Find the latest road conditions at\nquickmap.dot.ca.gov",
+        "instruction": "If driving, slow down, use your headlights, and leave plenty of\ndistance ahead of you.",
+        "response": "Execute",
+        "note": null,
+        "parameters": {
+          "AWIPSidentifier": ["NPWSTO"],
+          "WMOidentifier": ["WWUS76 KSTO 211103"],
+          "NWSheadline": ["DENSE FOG ADVISORY IN EFFECT UNTIL 10 AM PST THIS MORNING"],
+          "BLOCKCHANNEL": ["EAS", "NWEM", "CMAS"],
+          "VTEC": ["/O.NEW.KSTO.FG.Y.0023.261121T1103Z-261121T1800Z/"],
+          "eventEndingTime": ["2026-11-21T10:00:00-08:00"]
+        },
+        "scope": "Public",
+        "code": "IPAWSv1.0",
+        "language": "en-US",
+        "web": "http://www.weather.gov",
+        "eventCode": {
+          "SAME": ["NWS"],
+          "NationalWeatherService": ["FGY"]
+        }
+      }
+    }
+  ],
+  "title": "Current watches, warnings, and advisories for 37.96 N, 121.29 W",
+  "updated": "2026-11-21T11:45:01+00:00"
+}

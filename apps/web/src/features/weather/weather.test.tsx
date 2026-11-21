@@ -1,4 +1,4 @@
-import type { KeptCopy, ReadingImportResult, WeatherPlace, WeatherResponse, WeatherSourceInfo } from "@outpost/shared";
+import type { KeptCopy, PressureReading, ReadingImportResult, WeatherPlace, WeatherResponse, WeatherSourceInfo } from "@outpost/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -81,8 +81,9 @@ const importAnswer: ReadingImportResult = {
   added: 0,
 };
 
-function show(response: Partial<WeatherResponse> | "fails" | "never", view = "", markers: unknown[] = []) {
+function show(response: Partial<WeatherResponse> | "fails" | "never", view = "", markers: unknown[] = [], kept: PressureReading[] = []) {
   const posted: Array<{ path: string; body: unknown }> = [];
+  let readings = [...kept];
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -93,8 +94,14 @@ function show(response: Partial<WeatherResponse> | "fails" | "never", view = "",
         posted.push({ path: `${init.method} ${pathname}`, body: init.body ? JSON.parse(String(init.body)) : null });
         if (pathname === "/api/weather/update") return json({ outcomes: [] });
         if (pathname === "/api/weather/readings/import") return json(importAnswer);
+        if (pathname === "/api/weather/readings/clear") {
+          const removed = readings.length;
+          readings = [];
+          return json({ removed });
+        }
         return json({ ok: true });
       }
+      if (pathname === "/api/weather/readings") return json({ readings });
       if (pathname === "/api/weather") {
         if (response === "never") return new Promise<Response>(() => {});
         if (response === "fails") return json({ error: { code: "internal", message: "The database is busy." } }, 500);
@@ -185,6 +192,115 @@ describe("the Weather and hazards screen", () => {
   it("says when warnings have never been fetched", async () => {
     show({ places: [home] }, "?view=warnings");
     expect(await screen.findByText(/Warnings have not been fetched yet/)).toBeInTheDocument();
+  });
+});
+
+describe("alerts worldwide", () => {
+  const plan = {
+    home: { name: "Home", lat: 50.72, lon: -3.53 },
+    country: "GB",
+    countryName: "the United Kingdom",
+    national: "meteoalarm" as const,
+  };
+  const meteoalarm: KeptCopy = {
+    id: "m1",
+    kind: "meteoalarm",
+    source: "meteoalarm",
+    placeId: null,
+    fetchedAt: NOW - 60_000,
+    validFrom: null,
+    validUntil: null,
+    bytes: 14_837,
+    sent: "feeds.meteoalarm.org: the feed for the United Kingdom; no position",
+    data: {
+      country: "GB",
+      countryName: "the United Kingdom",
+      updatedAt: NOW,
+      items: [
+        {
+          id: "w1",
+          title: "Yellow rain warning",
+          event: "Yellow rain warning",
+          area: "South West England",
+          level: "yellow",
+          severity: "Moderate",
+          urgency: "Future",
+          certainty: "Likely",
+          sent: NOW - 3_600_000,
+          onset: NOW,
+          expires: NOW + 3_600_000,
+          coversHome: true,
+          link: "https://meteoalarm.org/",
+        },
+      ],
+    },
+  };
+
+  it("says which country Home is taken to be in, and fetches the worldwide feeds and that country's on a press", async () => {
+    const posted = show({ alerts: plan }, "?view=world");
+    expect(await screen.findByText(/Home \(Home\) is taken to be in the United Kingdom/)).toBeInTheDocument();
+    expect(posted).toEqual([]);
+    await userEvent.click(screen.getByRole("button", { name: "Fetch alerts" }));
+    await waitFor(() => expect(posted).toEqual([{ path: "POST /api/weather/update", body: { kinds: ["gdacs", "quakes", "meteoalarm"] } }]));
+  });
+
+  it("shows MeteoAlarm's warnings covering Home with its time of issue and its disclaimer, word for word", async () => {
+    show({ alerts: plan, kept: [meteoalarm] }, "?view=world");
+    expect(await screen.findByRole("heading", { name: "Covering Home (1)" })).toBeInTheDocument();
+    expect(screen.getByText(/^Time delays between this website and the www\.meteoalarm\.org website are possible\./)).toBeInTheDocument();
+    expect(screen.getByText(/South West England\..*Issued /)).toBeInTheDocument();
+  });
+});
+
+describe("clearing barometer readings", () => {
+  const reading = (id: string, hoursAgo: number, seaLevelHpa: number): PressureReading => ({
+    id,
+    takenAt: NOW - hoursAgo * HOUR,
+    value: seaLevelHpa,
+    unit: "hPa",
+    stationHpa: seaLevelHpa,
+    heightM: 0,
+    seaLevelHpa,
+    note: "",
+    origin: "typed",
+    createdAt: 1,
+  });
+  const three = [reading("r1", 72, 1004), reading("r2", 3, 1008), reading("r3", 0, 1010)];
+
+  it("states the count, offers the CSV first, removes only what it said, and the log goes to its empty state", async () => {
+    const posted = show({}, "?view=barometer", [], three);
+    expect(await screen.findByTestId("tendency")).toHaveTextContent("Rising: +2.0 hPa");
+    expect(screen.getByTestId("zambretti")).toHaveTextContent("Becoming fine");
+    await userEvent.click(screen.getByRole("button", { name: "Clear readings" }));
+    expect(screen.getByTestId("clear-question")).toHaveTextContent("Remove all 3 readings? This cannot be undone.");
+    expect(screen.getByText(/Saved places and fetched forecasts are not touched/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Save them as a CSV file first" })).toHaveAttribute("href", "/api/weather/readings/export");
+
+    await userEvent.click(screen.getByRole("radio", { name: "Between two days" }));
+    expect(screen.getByTestId("clear-question")).toHaveTextContent(/^Remove \d readings? taken from .+ to .+\? This cannot be undone\.$/);
+    expect(screen.getByRole("link", { name: /as a CSV file first/ }).getAttribute("href")).toMatch(
+      /^\/api\/weather\/readings\/export\?from=\d+&to=\d+$/,
+    );
+
+    await userEvent.click(screen.getByRole("radio", { name: "All" }));
+    await userEvent.click(screen.getByRole("button", { name: "Remove 3 readings" }));
+    await waitFor(() =>
+      expect(posted.filter((call) => call.path === "POST /api/weather/readings/clear")).toEqual([
+        { path: "POST /api/weather/readings/clear", body: { range: { range: "all" }, expected: 3 } },
+      ]),
+    );
+    expect(await screen.findByRole("heading", { name: "No readings yet" })).toBeInTheDocument();
+    expect(screen.queryByTestId("tendency")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("zambretti")).not.toBeInTheDocument();
+  });
+
+  it("removes one reading from its row with a button that says so", async () => {
+    const posted = show({}, "?view=barometer", [], three);
+    const buttons = await screen.findAllByRole("button", { name: /^Remove the reading of / });
+    expect(buttons).toHaveLength(3);
+    expect(buttons[0]).toHaveTextContent("Remove");
+    await userEvent.click(buttons[0]!);
+    await waitFor(() => expect(posted.map((call) => call.path)).toEqual(["DELETE /api/weather/readings/r3"]));
   });
 });
 

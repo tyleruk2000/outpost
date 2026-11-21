@@ -15,6 +15,7 @@ import {
   OPERATING_MODES,
   type PredictionResult,
 } from "@outpost/shared";
+
 import { useEffect, useId, useState } from "react";
 import { Link } from "react-router";
 import { EmptyState, Notice, Rows, Section } from "@/components/page";
@@ -50,6 +51,7 @@ import { PlaceInput } from "./place-field";
 import { PredictionExport } from "./prediction-export";
 import { bestHour, Results } from "./results";
 import { SecondModel } from "./second-model";
+import { TodayConditions } from "./today";
 
 const longDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
@@ -535,6 +537,8 @@ export function Planner() {
           </EmptyState>
         )}
       </div>
+
+      <TodayConditions />
 
       {saved.data && saved.data.length > 0 ? (
         <Section title="Saved predictions">

@@ -1296,6 +1296,8 @@ and only `POST`s can cause them. River and sea levels' types are in
 | `GET /api/weather/readings` | Barometer readings, oldest first (`PressureReading[]`: `takenAt`, `value` and `unit` as given, `stationHpa`, `heightM`, `seaLevelHpa`, `note`, `origin` (`typed` or `file`)). |
 | `POST /api/weather/readings` | Keep a reading: `takenAt` (ms), `value`, `unit` (`hPa` or `inHg`), `heightM` (−450 to 3000), optionally `note`. Refused when it comes to under 850 or over 1100 hPa at sea level. |
 | `DELETE /api/weather/readings/:id` | Remove a reading. |
+| `POST /api/weather/readings/clear` | Remove many readings. Body: `range` (`ReadingsRange`: `{ range: "all" }`, `{ range: "before", before }` or `{ range: "between", from, to }`, times in ms, `to` not included) and optionally `expected`: with it, nothing is removed unless the range holds exactly that many (409 with the number it holds now). Answers `{ removed }`. Touches nothing but readings. |
+| `GET /api/weather/readings/export` | The readings as CSV (`time` in UTC, `pressure`, `unit`, `height_m`, `sea_level_hpa`, `note`, `origin`), which the import reads back. Query: `before`, or `from` and `to` (ms), or neither for all. Changes nothing. |
 | `POST /api/weather/readings/import` | Body: `text` (a CSV file, at most 4 MB), `unit` and `heightM` for rows that give none, `zone` (an IANA time zone, for times with none), `apply`. Answers `ReadingImportResult`: `rows` (each marked `duplicate` when a reading at that time is kept, with `notes`: how a pressure or height that was not written plainly was read, such as `“1.013,2” read as 1013.2.`), `problems` (`line`, `message`) and `added` (0 unless `apply`). |
 
 ## Emergency plans

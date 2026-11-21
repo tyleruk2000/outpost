@@ -14,6 +14,15 @@ const ANSWERS: Record<string, string> = {
   "/weather/ea-levels/flood-monitoring/id/stations": "ea-level-stations.json",
   "/weather/nasa-power/api/temporal/climatology/point": "nasa-power-climatology.json",
   "/weather/pvgis/api/v5_3/MRcalc": "pvgis-mrcalc.json",
+  "/weather/gdacs/xml/rss.xml": "gdacs-rss.xml",
+  "/weather/usgs-quakes/earthquakes/feed/v1.0/summary/4.5_week.geojson": "usgs-4.5-week.geojson",
+  "/weather/meteoalarm/feeds/meteoalarm-legacy-atom-united-kingdom": "meteoalarm-united-kingdom.xml",
+  "/weather/nws-alerts/alerts/active": "nws-alerts.json",
+  "/weather/swpc/products/noaa-scales.json": "swpc-noaa-scales.json",
+  "/weather/swpc/products/summary/10cm-flux.json": "swpc-10cm-flux.json",
+  "/weather/swpc/products/noaa-planetary-k-index.json": "swpc-planetary-k-index.json",
+  "/weather/swpc/text/wwv.txt": "swpc-wwv.txt",
+  "/weather/swpc/text/daily-solar-indices.txt": "swpc-daily-solar-indices.txt",
 };
 
 export function serveWeatherStandIn(request: IncomingMessage, response: ServerResponse): void {

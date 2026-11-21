@@ -13,7 +13,7 @@ import {
   type ReadingImportResult,
   TENDENCY_SOURCE,
 } from "@outpost/shared";
-import { FileUp, Trash2 } from "lucide-react";
+import { Eraser, FileUp, Trash2 } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { toast } from "sonner";
 import { EmptyState, ErrorState, Notice } from "@/components/page";
@@ -24,8 +24,10 @@ import { Segmented, Skeleton } from "@/components/ui/misc";
 import { ChartFrame } from "@/features/propagation/charts";
 import { errorMessage } from "@/lib/api";
 import { formatDateTime, plural } from "@/lib/utils";
+import { ClearReadingsDialog } from "./clear-readings";
 import { deviceZone, useAddReading, useImportReadings, useReadings, useRemoveReading } from "./data";
 import { TimeLine } from "./time-chart";
+import { ZambrettiForecast } from "./zambretti-view";
 
 const HEIGHT_KEY = "outpost.weather.barometerHeight";
 const DAY = 86_400_000;
@@ -45,7 +47,7 @@ const localInput = (at: number) => {
   return date.toISOString().slice(0, 16);
 };
 
-export function BarometerView() {
+export function BarometerView({ homeLat = null }: { homeLat?: number | null }) {
   const readings = useReadings();
   const add = useAddReading();
   const remove = useRemoveReading();
@@ -56,6 +58,7 @@ export function BarometerView() {
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -205,6 +208,8 @@ export function BarometerView() {
             </details>
           </section>
 
+          {tendency.ok ? <ZambrettiForecast tendency={tendency.tendency} now={Date.now()} homeLat={homeLat} /> : null}
+
           <ChartFrame title="Pressure at sea level over the last three days of readings" reading={`${plural(recent.length, "reading")}.`}>
             <TimeLine
               marks
@@ -215,9 +220,15 @@ export function BarometerView() {
           </ChartFrame>
 
           <section aria-labelledby="readings-heading">
-            <h3 id="readings-heading" className="text-body font-semibold text-ink">
-              Readings, newest first
-            </h3>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 id="readings-heading" className="text-body font-semibold text-ink">
+                Readings, newest first
+              </h3>
+              <Button variant="danger-ghost" size="sm" onClick={() => setClearing(true)}>
+                <Eraser />
+                Clear readings
+              </Button>
+            </div>
             <ul className="mt-1 divide-y divide-border border-y border-border">
               {[...list]
                 .reverse()
@@ -239,17 +250,23 @@ export function BarometerView() {
                     </div>
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size="sm"
                       aria-label={`Remove the reading of ${formatDateTime(reading.takenAt)}`}
                       onClick={() => remove.mutate(reading.id)}
                     >
                       <Trash2 />
+                      <span aria-hidden>Remove</span>
                     </Button>
                   </li>
                 ))}
             </ul>
-            {list.length > 50 ? <p className="mt-2 text-small text-ink-muted">The 50 newest of {list.length} are listed.</p> : null}
+            {list.length > 50 ? (
+              <p className="mt-2 text-small text-ink-muted">
+                The 50 newest of {list.length} are listed. Clear readings removes older ones by date.
+              </p>
+            ) : null}
           </section>
+          {clearing ? <ClearReadingsDialog readings={list} onClose={() => setClearing(false)} /> : null}
         </>
       )}
       {importing ? <ImportDialog defaultUnit={unit} defaultHeight={height} onClose={() => setImporting(false)} /> : null}

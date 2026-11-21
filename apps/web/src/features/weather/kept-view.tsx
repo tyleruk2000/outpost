@@ -1,5 +1,5 @@
 /** What is kept on the server from each publisher, with its size, and the publishers themselves: what is sent to each, and their terms. */
-import { formatBytes, freshness, type KeptCopy, type WeatherPlace, type WeatherSourceInfo } from "@outpost/shared";
+import { formatBytes, freshness, type KeptCopy, type WeatherKind, type WeatherPlace, type WeatherSourceInfo } from "@outpost/shared";
 import { Trash2 } from "lucide-react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,12 @@ const KIND_WORDS = {
   "river-readings": "River and sea levels, stations' last days",
   climate: "Climate averages",
   solar: "Sunshine on a panel",
-};
+  gdacs: "Disasters worldwide (GDACS)",
+  quakes: "Earthquakes worldwide (USGS)",
+  meteoalarm: "National warnings (MeteoAlarm)",
+  nws: "National alerts (US National Weather Service)",
+  "space-weather": "Space weather today (NOAA)",
+} satisfies Record<WeatherKind, string>;
 
 export function KeptView({
   kept,

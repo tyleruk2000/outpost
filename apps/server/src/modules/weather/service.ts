@@ -7,23 +7,31 @@
  * failed fetch never takes away what was kept, and the copy keeps saying how old it is.
  */
 import {
+  type AlertsPlan,
+  countryAt,
   type FloodData,
   freshness,
   HELD_STATION_HISTORIES,
+  HOUSEHOLD_KINDS,
   type HomeWarningsResponse,
   homePlaceOf,
   type KeptCopy,
   type LevelReading,
   MAX_RIVER_STATIONS,
+  METEOALARM_COUNTRIES,
   type MetOfficeRegionId,
+  NWS_COUNTRIES,
   type PressureReading,
   type PressureUnit,
   type ReadingImportResult,
+  type ReadingsClearResult,
+  type ReadingsRange,
   type RiverLevelStation,
   type RiverReadingsData,
   type RiversData,
   regionName,
   SEA_LEVEL_RANGE,
+  type SpaceWeatherData,
   STATION_HISTORY_DAYS,
   type StationReadings,
   seaLevelPressure,
@@ -37,7 +45,7 @@ import {
   type WeatherSourceId,
   warningState,
 } from "@outpost/shared";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, gte, lt, sql } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, conflict } from "../../core/errors.ts";
 
@@ -46,6 +54,18 @@ const gone = (message: string) => new AppError("not_found", message);
 
 import { newId } from "../../core/ids.ts";
 import { weatherCache, weatherPlaces, weatherReadings } from "../../db/schema.ts";
+import { COUNTRIES } from "../layers/countries.ts";
+import {
+  parseGdacs,
+  parseMeteoalarm,
+  parseNwsAlerts,
+  parseSwpcFlux,
+  parseSwpcKp,
+  parseSwpcScales,
+  parseSwpcSunspots,
+  parseSwpcWwv,
+  parseUsgsQuakes,
+} from "./alert-parsers.ts";
 import { readReadingsCsv } from "./csv.ts";
 import {
   distanceKm,
@@ -59,7 +79,7 @@ import {
   parsePvgis,
   SourceFormatError,
 } from "./parsers.ts";
-import { FLOOD_WARNINGS_KM, type SourceFetcher, sentWords, sourceUrls, WEATHER_SOURCES } from "./sources.ts";
+import { FLOOD_WARNINGS_KM, type SourceFetcher, SWPC_FILES, sentWords, sourceUrls, WEATHER_SOURCES } from "./sources.ts";
 
 /** Readings asked for with each station's latest, enough for three hours at the usual 15 minutes and a margin. */
 const LATEST_COUNT = 16;
@@ -92,9 +112,17 @@ export interface WeatherService {
   /** Fetches one station's last few days of readings, for a station held in a place's river and sea levels. */
   stationReadings(input: { placeId: string; stationId: string }, signal?: AbortSignal): Promise<StationReadings>;
   homeWarnings(now?: number): HomeWarningsResponse;
+  /** Where Home is taken to be for alerts, and which national service covers it. Fetches nothing. */
+  alertsPlan(): AlertsPlan;
   readings(): PressureReading[];
   addReading(input: ReadingInput): PressureReading;
   removeReading(id: string): void;
+  /**
+   * Removes the readings in a range, and nothing else: not places, not fetched copies.
+   * With `expected`, removes nothing unless that many are in the range, so that what the
+   * person was told is what goes.
+   */
+  clearReadings(range: ReadingsRange, expected?: number): ReadingsClearResult;
   importReadings(text: string, options: { unit: PressureUnit; heightM: number; zone: string; apply: boolean }): ReadingImportResult;
   count(): WeatherKept;
   /** Removes every fetched copy; places and readings stay. Returns what went. */
@@ -111,6 +139,11 @@ const SOURCE_OF: Record<WeatherKind, WeatherSourceId> = {
   "river-readings": "ea-levels",
   climate: "nasa-power",
   solar: "pvgis",
+  gdacs: "gdacs",
+  quakes: "usgs-quakes",
+  meteoalarm: "meteoalarm",
+  nws: "nws-alerts",
+  "space-weather": "swpc",
 };
 
 export function createWeatherService(ctx: AppContext, fetcher: SourceFetcher, options: { riversKm: () => number }): WeatherService {
@@ -278,6 +311,95 @@ export function createWeatherService(ctx: AppContext, fetcher: SourceFetcher, op
     return { bytes };
   }
 
+  /** Where Home is, the country it is taken to be in, and the national service that covers it. */
+  function alertsPlan(): AlertsPlan {
+    let marker: { name: string; lat: number; lon: number } | null = null;
+    try {
+      const home = homePlaceOf(ctx.services.maps.annotations.listMarkers());
+      marker = home ? { name: home.name || "Home", lat: home.lat, lon: home.lon } : null;
+    } catch {
+      marker = null;
+    }
+    const country = marker ? countryAt(marker, COUNTRIES) : null;
+    const national =
+      country && METEOALARM_COUNTRIES[country]
+        ? "meteoalarm"
+        : country && (NWS_COUNTRIES as readonly string[]).includes(country)
+          ? "nws"
+          : null;
+    const countryName = country
+      ? (METEOALARM_COUNTRIES[country]?.name ?? COUNTRIES.find((entry) => entry.code === country)?.name ?? country)
+      : null;
+    return { home: marker, country, countryName, national };
+  }
+
+  /** Fetches and keeps one of the kinds that are one copy for the household. Returns the bytes received. */
+  async function fetchForHousehold(kind: WeatherKind, signal?: AbortSignal): Promise<number> {
+    if (kind === "warnings") {
+      const url = sourceUrls.warnings();
+      const answer = await fetcher.get("met-office-warnings", url, signal);
+      keep("warnings", null, parseMetOfficeWarnings(answer.text), answer.bytes, sentWords(url));
+      return answer.bytes;
+    }
+    if (kind === "gdacs" || kind === "quakes") {
+      const url = kind === "gdacs" ? sourceUrls.gdacs() : sourceUrls.quakes();
+      const answer = await fetcher.get(SOURCE_OF[kind], url, signal);
+      keep(kind, null, kind === "gdacs" ? parseGdacs(answer.text) : parseUsgsQuakes(answer.text), answer.bytes, sentWords(url));
+      return answer.bytes;
+    }
+    if (kind === "meteoalarm" || kind === "nws") {
+      const plan = alertsPlan();
+      if (!plan.home) throw badRequest("No saved place has the home icon, so Outpost does not know which country's warnings to fetch.");
+      if (plan.national !== kind)
+        throw badRequest(
+          `Home is taken to be in ${plan.countryName ?? "no country Outpost can name"}, which ${kind === "meteoalarm" ? "MeteoAlarm" : "the US National Weather Service"} does not cover.`,
+        );
+      if (kind === "meteoalarm") {
+        const country = METEOALARM_COUNTRIES[plan.country!]!;
+        const url = sourceUrls.meteoalarm(country.slug);
+        const answer = await fetcher.get("meteoalarm", url, signal);
+        const parsed = parseMeteoalarm(answer.text, { code: plan.country!, name: country.name }, plan.home);
+        keep(kind, null, parsed, answer.bytes, `feeds.meteoalarm.org: the feed for ${country.name}; no position`);
+        return answer.bytes;
+      }
+      const url = sourceUrls.nws(plan.home.lat, plan.home.lon);
+      const answer = await fetcher.get("nws-alerts", url, signal);
+      keep(kind, null, parseNwsAlerts(answer.text), answer.bytes, sentWords(url));
+      return answer.bytes;
+    }
+    if (kind === "space-weather") {
+      // The scales are what must be had; each other file is kept when it comes, and left out when it does not.
+      let bytes = 0;
+      const get = async <T>(url: string, read: (text: string) => T, needed: boolean): Promise<T | null> => {
+        try {
+          const answer = await fetcher.get("swpc", url, signal);
+          bytes += answer.bytes;
+          return read(answer.text);
+        } catch (error) {
+          if (needed || (error as Error).name === "AbortError") throw error;
+          return null;
+        }
+      };
+      const scales = (await get(SWPC_FILES.scales, parseSwpcScales, true))!;
+      const data: SpaceWeatherData = {
+        scales,
+        flux: await get(SWPC_FILES.flux, parseSwpcFlux, false),
+        kp: await get(SWPC_FILES.kp, parseSwpcKp, false),
+        wwv: await get(SWPC_FILES.wwv, parseSwpcWwv, false),
+        sunspots: await get(SWPC_FILES.sunspots, parseSwpcSunspots, false),
+      };
+      keep(
+        kind,
+        null,
+        { data, validFrom: null, validUntil: null },
+        bytes,
+        "services.swpc.noaa.gov: five files for the whole Earth; no position",
+      );
+      return bytes;
+    }
+    throw badRequest("That is fetched for a place.");
+  }
+
   const copyFor = <K extends WeatherKind>(kind: K, placeId: string): KeptCopy<K> | null => {
     const row = db
       .select()
@@ -434,33 +556,17 @@ export function createWeatherService(ctx: AppContext, fetcher: SourceFetcher, op
         const chosen = input.placeIds ? all.filter((candidate) => input.placeIds!.includes(candidate.id)) : all;
         if (input.placeIds && chosen.length !== input.placeIds.length) throw gone("One of those places is not in the list any more.");
         if (input.kinds.includes("river-readings")) throw badRequest("A station's readings are fetched from its own view.");
-        const perPlace = input.kinds.filter((kind) => kind !== "warnings");
+        const perPlace = input.kinds.filter((kind) => !HOUSEHOLD_KINDS.includes(kind));
         if (perPlace.length > 0 && chosen.length === 0)
           throw badRequest("Choose a place first: forecasts are fetched for the places in the list.");
-        if (input.kinds.includes("warnings")) {
+        for (const kind of HOUSEHOLD_KINDS.filter((candidate) => input.kinds.includes(candidate))) {
+          if (signal?.aborted) break;
+          const source = SOURCE_OF[kind];
           try {
-            const url = sourceUrls.warnings();
-            const answer = await fetcher.get("met-office-warnings", url, signal);
-            keep("warnings", null, parseMetOfficeWarnings(answer.text), answer.bytes, sentWords(url));
-            outcomes.push({
-              kind: "warnings",
-              placeId: null,
-              placeName: null,
-              source: "met-office-warnings",
-              ok: true,
-              message: null,
-              bytes: answer.bytes,
-            });
+            const bytes = await fetchForHousehold(kind, signal);
+            outcomes.push({ kind, placeId: null, placeName: null, source, ok: true, message: null, bytes });
           } catch (error) {
-            outcomes.push({
-              kind: "warnings",
-              placeId: null,
-              placeName: null,
-              source: "met-office-warnings",
-              ok: false,
-              message: failure(error),
-              bytes: 0,
-            });
+            outcomes.push({ kind, placeId: null, placeName: null, source, ok: false, message: failure(error), bytes: 0 });
           }
         }
         for (const target of chosen) {
@@ -501,6 +607,8 @@ export function createWeatherService(ctx: AppContext, fetcher: SourceFetcher, op
       }
       return outcomes;
     },
+
+    alertsPlan,
 
     homeWarnings(now = Date.now()) {
       const all = places();
@@ -565,6 +673,27 @@ export function createWeatherService(ctx: AppContext, fetcher: SourceFetcher, op
     removeReading(id) {
       if (db.delete(weatherReadings).where(eq(weatherReadings.id, id)).run().changes === 0) throw gone("That reading has already gone.");
       changed();
+    },
+
+    clearReadings(range, expected) {
+      const where =
+        range.range === "all"
+          ? sql`1 = 1`
+          : range.range === "before"
+            ? lt(weatherReadings.takenAt, range.before)
+            : and(gte(weatherReadings.takenAt, range.from), lt(weatherReadings.takenAt, range.to));
+      const removed = sqlite.transaction(() => {
+        if (expected !== undefined) {
+          const found = db.select({ n: sql<number>`count(*)` }).from(weatherReadings).where(where).get()?.n ?? 0;
+          if (found !== expected)
+            throw conflict(
+              `The readings have changed since this was asked: ${found === 1 ? "1 reading is" : `${found} readings are`} in that range now. Nothing was removed; look again and choose.`,
+            );
+        }
+        return db.delete(weatherReadings).where(where).run().changes;
+      })();
+      if (removed > 0) changed();
+      return { removed };
     },
 
     importReadings(text, options) {

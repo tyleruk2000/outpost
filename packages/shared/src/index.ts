@@ -76,6 +76,8 @@ export * from "./supplies-energy.ts";
 export * from "./system.ts";
 export * from "./tools.ts";
 export * from "./weather.ts";
+export * from "./weather-alerts.ts";
 export * from "./weather-rivers.ts";
+export * from "./weather-zambretti.ts";
 export * from "./webpages.ts";
 export * from "./wmm.ts";
