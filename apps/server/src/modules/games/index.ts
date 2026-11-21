@@ -33,6 +33,7 @@ import type { AppContext } from "../../core/context.ts";
 import { AppError } from "../../core/errors.ts";
 import { gameSaves } from "../../db/schema.ts";
 import { registerAllotment } from "./allotment.ts";
+import { registerSteading } from "./steading.ts";
 
 /** The most a row's state may be, written out as JSON. The allotment's is a few kilobytes. */
 export const GAME_SAVE_MAX_BYTES = 64 * 1024;
@@ -203,4 +204,5 @@ export async function registerGames(app: FastifyInstance, ctx: AppContext): Prom
   });
 
   await registerAllotment(app, ctx, saves);
+  await registerSteading(app, saves);
 }

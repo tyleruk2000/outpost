@@ -1,14 +1,15 @@
 /**
  * Games (the Games section): what the server keeps for them. Outpost has no accounts,
  * so what is kept is the household's: one row of `game_saves` per game. The allotment
- * keeps its whole plot there (its engine is pure and lives in `./games/allotment/`);
+ * keeps its whole plot there (its engine is pure and lives in `./games/allotment/`), and the
+ * Steading its whole settlement (`./games/steading/`);
  * Solitaire, Peg solitaire, Sudoku, Draughts and Pairs keep only a tally of games played and won. An
  * unfinished game of those five stays on the device it is being played on, so that two
  * people playing at once on two devices never overwrite each other's board.
  */
 
 /** Every game, in the order the Games section lists them. */
-export const GAME_IDS = ["allotment", "solitaire", "peg-solitaire", "sudoku", "draughts", "pairs"] as const;
+export const GAME_IDS = ["allotment", "steading", "solitaire", "peg-solitaire", "sudoku", "draughts", "pairs"] as const;
 export type GameId = (typeof GAME_IDS)[number];
 
 /** The games that keep a tally on the server (the allotment keeps its plot instead). */
