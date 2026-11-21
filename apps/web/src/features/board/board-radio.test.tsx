@@ -52,6 +52,7 @@ const mesh = (channels: MeshChannel[]): MeshResponse => ({
 });
 
 const message = (over: Partial<BoardMessage> = {}): BoardMessage => ({
+  sentAt: null,
   id: "m1",
   channel: "board",
   source: "here",

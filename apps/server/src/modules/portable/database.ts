@@ -64,6 +64,7 @@ export function prepareDriveDatabase(file: string, contents: DriveContents): { c
         DELETE FROM chat_conversations;
         DELETE FROM board_messages;
         DELETE FROM board_files;
+        DELETE FROM roll_calls;
         DELETE FROM settings WHERE key IN ('mesh.config', 'mesh.heard');
       `);
 

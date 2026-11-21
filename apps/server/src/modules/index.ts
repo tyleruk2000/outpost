@@ -39,6 +39,7 @@ import { registerNuclear } from "./nuclear/index.ts";
 import { registerPortable } from "./portable/index.ts";
 import { registerPower } from "./power/index.ts";
 import { registerPropagation } from "./propagation/index.ts";
+import { registerReadiness } from "./readiness/index.ts";
 import { registerRepeaters } from "./repeaters/index.ts";
 import { registerRetrieval } from "./retrieval/index.ts";
 import { registerSearch } from "./search/index.ts";
@@ -100,6 +101,8 @@ export const modules: ModuleRegister[] = [
   registerMesh,
   // The household's papers (medical sheets, keeping in touch, the binder), after the mesh link, on a line of their own.
   registerHouseholdPapers,
+  // Readiness (the log of events, routine checks, the offline drill), after the papers, on a line of its own.
+  registerReadiness,
   // Tools a language model may call (Chat, and /mcp), last: they read from every module above.
   registerTools,
 ];

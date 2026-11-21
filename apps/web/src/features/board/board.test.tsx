@@ -66,6 +66,7 @@ describe("the words", () => {
 // ── The screen ──
 
 const message = (over: Partial<BoardMessage> = {}): BoardMessage => ({
+  sentAt: null,
   id: "m1",
   channel: "board",
   source: "here",

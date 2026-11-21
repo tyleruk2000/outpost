@@ -271,6 +271,7 @@ describe("Settings, Mesh radio", () => {
   it("sends a test message and says what became of it", async () => {
     setDeviceName("Sam");
     const test: BoardMessage = {
+      sentAt: null,
       id: "t1",
       channel: "meshtastic:longfast",
       source: "here",

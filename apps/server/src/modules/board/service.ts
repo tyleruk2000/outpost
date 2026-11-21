@@ -26,13 +26,17 @@ import {
   type BoardMessagesResponse,
   type BoardPosition,
   type BoardSummaryResponse,
+  CHECK_IN_WRITTEN_DAYS,
   type CheckInStatus,
+  type RollCallAsk,
+  type RollCallAskResponse,
+  type RollCallResponse,
 } from "@outpost/shared";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, conflict, messageOf, notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
-import { boardFiles, boardMessages } from "../../db/schema.ts";
+import { boardFiles, boardMessages, rollCalls } from "../../db/schema.ts";
 import { type BoardFileRow, type BoardFileStore, createBoardFileStore, fileDto } from "./files.ts";
 import type { BoardTransport, IncomingMessage, MessageListener, OutgoingCheck } from "./transport.ts";
 
@@ -76,6 +80,8 @@ export interface NewCheckIn extends NewMessage {
   status: CheckInStatus;
   place: string | null;
   position: BoardPosition | null;
+  writtenAt?: number;
+  clientId?: string;
 }
 
 export interface BoardService {
@@ -90,6 +96,10 @@ export interface BoardService {
   ): BoardMessage;
   remove(id: string, by: string): Promise<BoardMessage>;
   summary(since?: number): BoardSummaryResponse;
+  /** Everyone's latest check-in on any channel, and who has checked in since `since` (by default the latest ask, or a day back). */
+  rollCall(since?: number): RollCallResponse;
+  /** Asks everyone to check in: a message on the board, and on each radio channel named. */
+  askRollCall(input: { by: string; note: string; alsoOn: string[] }): RollCallAskResponse;
   /** The stored file of a message, for "Add to library". */
   fileOf(fileId: string): { row: BoardFileRow; path: string; message: BoardMessage | null };
 
@@ -143,6 +153,15 @@ export function createBoardService(ctx: AppContext): BoardService {
     planBodies: sqlite.prepare("SELECT body FROM emergency_plans ORDER BY created_at"),
     fileMessage: sqlite.prepare("SELECT * FROM board_messages WHERE file_id = ? LIMIT 1"),
     heard: sqlite.prepare("SELECT 1 FROM board_messages WHERE source = ? AND external_id = ?"),
+    byExternal: sqlite.prepare("SELECT * FROM board_messages WHERE source = ? AND external_id = ?"),
+    latestAnyChannel: sqlite.prepare(
+      `SELECT m.* FROM board_messages m
+         JOIN (SELECT lower(author) AS who, max(created_at) AS at FROM board_messages
+                WHERE kind = 'checkin' AND removed_at IS NULL GROUP BY lower(author)) latest
+           ON lower(m.author) = latest.who AND m.created_at = latest.at
+        WHERE m.kind = 'checkin' AND m.removed_at IS NULL
+        ORDER BY m.created_at DESC, m.id DESC`,
+    ),
   };
 
   // Rows read with raw SQL come back with column names; these turn them into the schema's shape.
@@ -167,6 +186,7 @@ export function createBoardService(ctx: AppContext): BoardService {
     editedBy: (raw.edited_by as string | null) ?? null,
     removedAt: (raw.removed_at as number | null) ?? null,
     removedBy: (raw.removed_by as string | null) ?? null,
+    sentAt: (raw.sent_at as number | null) ?? null,
   });
 
   function toDto(row: BoardMessageRow, fileRow?: BoardFileRow | null): BoardMessage {
@@ -186,6 +206,7 @@ export function createBoardService(ctx: AppContext): BoardService {
       updatedAt: row.updatedAt,
       edited: row.editedAt !== null ? { at: row.editedAt, by: row.editedBy ?? "" } : null,
       removed: row.removedAt !== null ? { at: row.removedAt, by: row.removedBy ?? "" } : null,
+      sentAt: row.sentAt ?? null,
       meta: row.meta ?? null,
     };
   }
@@ -209,6 +230,13 @@ export function createBoardService(ctx: AppContext): BoardService {
   function announce(event: BoardEvent, id?: string): void {
     ctx.events.publish({ type: "board.changed", ...(id ? { id } : {}), data: event });
   }
+
+  const askDto = (row: typeof rollCalls.$inferSelect): RollCallAsk => ({
+    id: row.id,
+    askedBy: row.askedBy,
+    note: row.note,
+    at: row.createdAt,
+  });
 
   const excerpt = (text: string) => (text.length > 120 ? `${text.slice(0, 119).trimEnd()}…` : text);
 
@@ -248,8 +276,18 @@ export function createBoardService(ctx: AppContext): BoardService {
     }
   }
 
-  function insert(row: Omit<BoardMessageRow, "updatedAt" | "editedAt" | "editedBy" | "removedAt" | "removedBy">): BoardMessageRow {
-    const full: BoardMessageRow = { ...row, updatedAt: row.createdAt, editedAt: null, editedBy: null, removedAt: null, removedBy: null };
+  function insert(
+    row: Omit<BoardMessageRow, "updatedAt" | "editedAt" | "editedBy" | "removedAt" | "removedBy" | "sentAt"> & { sentAt?: number | null },
+  ): BoardMessageRow {
+    const full: BoardMessageRow = {
+      ...row,
+      sentAt: row.sentAt ?? null,
+      updatedAt: row.sentAt ?? row.createdAt,
+      editedAt: null,
+      editedBy: null,
+      removedAt: null,
+      removedBy: null,
+    };
     db.insert(boardMessages).values(full).run();
     return full;
   }
@@ -410,12 +448,23 @@ export function createBoardService(ctx: AppContext): BoardService {
       if (input.status === "other" && !body)
         throw badRequest("Write a few words of your own for this check-in, or choose “I’m safe” or “I need help”.");
       const place = input.place ? cleanLine(input.place, BOARD_LIMITS.place) || null : null;
+      // Sent from a phone that held it while out of reach: once only, however often the phone tries.
+      const externalId = input.clientId ? `phone:${input.clientId}` : null;
+      if (externalId) {
+        const known = statements.byExternal.get("here", externalId) as Record<string, unknown> | undefined;
+        if (known) return toDto(fromRaw(known));
+      }
       check({ channel: input.channel, kind: "checkin", author, body, status: input.status, place });
+      const now = Date.now();
+      // Written earlier on the phone: it says when it was written, and when it arrived. Never later than now, never more than a week back.
+      const writtenAt =
+        input.writtenAt !== undefined ? Math.min(now, Math.max(now - CHECK_IN_WRITTEN_DAYS * DAY_MS, input.writtenAt)) : now;
       const row = insert({
         id: newId(),
         channel: input.channel,
         source: "here",
-        externalId: null,
+        externalId,
+        sentAt: now - writtenAt > 60_000 ? now : null,
         kind: "checkin",
         author,
         body,
@@ -426,7 +475,7 @@ export function createBoardService(ctx: AppContext): BoardService {
         accuracyM: input.position?.accuracyM ?? null,
         fileId: null,
         meta: null,
-        createdAt: Date.now(),
+        createdAt: writtenAt,
       });
       const message = toDto(row);
       tell(message, "posted");
@@ -577,6 +626,57 @@ export function createBoardService(ctx: AppContext): BoardService {
       };
     },
 
+    rollCall(sinceAsked) {
+      const asks = db.select().from(rollCalls).orderBy(desc(rollCalls.createdAt)).limit(5).all().map(askDto);
+      const since = sinceAsked ?? asks[0]?.at ?? Date.now() - DAY_MS;
+      const byName = new Map<string, BoardMessageRow>();
+      for (const raw of statements.latestAnyChannel.all() as Array<Record<string, unknown>>) {
+        const row = fromRaw(raw);
+        if (!byName.has(row.author.toLowerCase())) byName.set(row.author.toLowerCase(), row);
+      }
+      const line = (name: string, row: BoardMessageRow | undefined) => ({
+        name,
+        latest: row
+          ? {
+              id: row.id,
+              status: row.status ?? ("other" as const),
+              body: row.body,
+              place: row.place,
+              hasPosition: row.lat !== null && row.lon !== null,
+              createdAt: row.createdAt,
+              channel: row.channel,
+            }
+          : null,
+        answered: row !== undefined && row.createdAt >= since,
+      });
+      const household = people();
+      const lines = household.map((name) => line(name, byName.get(name.toLowerCase())));
+      const known = new Set(household.map((name) => name.toLowerCase()));
+      const others = [...byName.values()]
+        .filter((row) => !known.has(row.author.toLowerCase()))
+        .sort((a, b) => a.author.localeCompare(b.author, "en-GB"));
+      for (const row of others) lines.push(line(row.author, row));
+      return { since, lines, asks, answered: lines.filter((entry) => entry.answered).length };
+    },
+
+    askRollCall(input) {
+      const by = required(cleanName(input.by), "a name", BOARD_LIMITS.name);
+      const note = cleanLine(input.note, 200);
+      const body = `Roll call: please check in.${note ? ` ${note}` : ""}`;
+      const message = service.post({ channel: BOARD_CHANNEL, author: by, body });
+      const refused: Array<{ channel: string; reason: string }> = [];
+      for (const channel of new Set(input.alsoOn.filter((name) => name !== BOARD_CHANNEL))) {
+        try {
+          service.post({ channel, author: by, body });
+        } catch (error) {
+          refused.push({ channel, reason: messageOf(error) });
+        }
+      }
+      const row = { id: newId(), askedBy: by, note, messageId: message.id, createdAt: message.createdAt };
+      db.insert(rollCalls).values(row).run();
+      return { ask: askDto(row), refused };
+    },
+
     fileOf(fileId) {
       const row = files.get(fileId);
       if (row.goneAt !== null) {
@@ -652,6 +752,7 @@ export function createBoardService(ctx: AppContext): BoardService {
         sqlite.transaction(() => {
           db.delete(boardMessages).run();
           db.delete(boardFiles).run();
+          db.delete(rollCalls).run();
         })();
         await fs.promises.rm(files.root, { recursive: true, force: true });
         schedule();
