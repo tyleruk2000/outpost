@@ -46,6 +46,20 @@ export function MenuCheckItem({ className, children, ...props }: ComponentProps<
   );
 }
 
+export const MenuRadioGroup = Primitive.RadioGroup;
+
+/** One of a set of which only one is chosen, as in a `MenuRadioGroup`. */
+export function MenuRadioItem({ className, children, ...props }: ComponentProps<typeof Primitive.RadioItem>) {
+  return (
+    <Primitive.RadioItem className={cn(item, "relative pr-8", className)} {...props}>
+      <span className="flex-1">{children}</span>
+      <Primitive.ItemIndicator className="absolute right-2.5">
+        <Check className="text-primary!" />
+      </Primitive.ItemIndicator>
+    </Primitive.RadioItem>
+  );
+}
+
 export function MenuLabel({ className, ...props }: ComponentProps<typeof Primitive.Label>) {
   return <Primitive.Label className={cn("px-2.5 pt-1.5 pb-1 text-micro font-medium text-ink-faint", className)} {...props} />;
 }

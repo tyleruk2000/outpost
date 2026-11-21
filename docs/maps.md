@@ -57,8 +57,13 @@ On the map itself:
 - **Hill shading** appears as a button once terrain is installed.
 - **Contour lines** is the button below it (see [Contour lines](#contour-lines)). It
   is always there: pressed where there is nothing to draw them from, it says so.
+- **Map style** (the palette) is next: the standard map, or one of the others under
+  [Map styles](#map-styles).
 - **Print or save as PDF** is the button below that (see
   [Printing a map](#printing-a-map)).
+- **Road numbers** and **Magnetic north lines** follow it. On a phone they are the
+  last in the column, so the first to move into the menu (see
+  [Road numbers](#road-numbers) and [Magnetic north lines](#magnetic-north-lines)).
 - **Maidenhead locator grid**, **Grey line (day and night)**, **Satellite** (see
   [Satellite imagery](#satellite-imagery)) and **Line of sight between two points** are
   the last buttons in the column. See
@@ -391,6 +396,66 @@ A region is fetched by the same download manager as everything else: it appears 
 it stopped. If the day's map build is withdrawn before a download finishes, Outpost
 starts that download again from the newest build and says so.
 
+## Map styles
+
+**The standard map is the default, and it is drawn as it always was.** The other
+styles are drawn beside it from the same downloaded maps, so choosing one downloads
+nothing and works offline. Choose one with **Map style** (the palette button) in the
+map's tools, or in the menu at the end of the search box on a phone. The choice is
+remembered on this device; another device keeps its own.
+
+| Style | What it is for |
+| --- | --- |
+| Standard | The usual map, in the app's own colours, light or dark with the app. |
+| Road map | Roads coloured by class: motorways deep red, then trunk, primary, secondary and tertiary roads in lighter warm colours, minor roads white. The more important the road, the deeper its colour, so it reads anywhere in the world without a key. |
+| Road map, UK atlas colours | As a British road atlas: motorways blue, primary routes green, other A roads red, B roads orange, smaller classified roads yellow. |
+| Walking | Woods and open land stronger, paths and tracks dashed in rust red and heavier, roads quieter. |
+| High contrast | For a screen in bright sun: white land, strong blue water, black roads and names with a heavier weight. Always light. |
+| Night (red) | Dark and in reds only, so looking at the map does not spoil your eyes for the dark. Pairs with the app's dark theme. |
+| Low ink | For printing: white land and water, the coast and shores as thin blue lines, thin dark roads, no fills. Always light. |
+
+- **Choosing a style switches on what it is made for.** The road maps switch on
+  [road numbers](#road-numbers); the walking map switches on hill shading and, where
+  terrain is downloaded, contour lines. Each can be switched off again afterwards, and
+  switching back to the standard map leaves them as they are.
+- **The classes are the map data's own**: motorway, trunk, primary, secondary, tertiary
+  and minor, the same names in every country. In Great Britain trunk roads are the
+  primary routes with green signs, primary roads the other A roads and secondary roads
+  the B roads, which is what the UK atlas colours follow. Elsewhere they mean what that
+  country's mappers have made them mean.
+- **Night (red)** makes every colour the map draws red, your own lines and grid among
+  them. Saved places keep their own colours and icons, and a route keeps the colour you
+  gave it; satellite imagery keeps its colours too. The pictures of shops, peaks and
+  other points of interest are left out in this style, since a picture cannot be
+  recoloured; their names stay.
+- A printed page can be in any of these styles but Night; see
+  [Printing a map](#printing-a-map).
+
+### Road numbers
+
+**Road numbers** (the signpost button) writes road numbers on the map: M6, A591,
+B5289. They are drawn for motorways, trunk, primary and secondary roads, from about
+zoom 7, on a small shield where the number has five characters or fewer and in plain
+lettering where it is longer ("A1(M)"). A road with two numbers shows the first. Off
+unless switched on (or a road map style is chosen), and remembered on this device.
+
+The numbers come from the map data's `ref` on each road. The maps Outpost downloads do
+not carry the separate fields that the map's own shield lettering expects, which is why
+there were no road numbers before.
+
+### Magnetic north lines
+
+**Magnetic north lines** (the magnet button) draws thin blue lines across the map that
+point to magnetic north, as on a printed sheet with **Magnetic north** ticked. They are
+about 140 pixels apart on screen, at the angle the World Magnetic Model gives for the
+centre of the map today (the same figure the readout and the Compass give), and are
+drawn afresh as you move the map. Off unless switched on, and remembered on this device.
+
+Outside the model's years (2025 to 2030 for WMM2025) no lines are drawn. The angle is the
+one for the centre of the view, and the real angle changes from place to place: on a
+map of a large area the lines are right near the centre, so zoom in on the area you are
+working in.
+
 ## Contour lines
 
 **Contour lines are drawn on your device from the terrain you have already
@@ -465,14 +530,17 @@ until you save or share it.
    to magnetic north, as orienteering maps do, so a compass can be set against the map
    anywhere on it. Outside the model's years (2025 to 2030 for WMM2025) the sheet says
    that magnetic north is not shown.
-3. **Preview the page** shows the sheet as it will be made. Give it a title, and tick
-   what goes on the map:
+3. **Preview the page** shows the sheet as it will be made. Give it a title, choose the
+   **Map style** (it starts as the style of the map on screen, or Standard when that is
+   Night; **Low ink** uses least ink; see [Map styles](#map-styles)), and tick what goes
+   on the map:
 
    | | Starts ticked when | Notes |
    | --- | --- | --- |
    | Names of places, roads and water | always | Unticked, the map is drawn without lettering, for writing on. |
    | Contour lines | the map on screen shows them | Need terrain for the area; not drawn at scales smaller than about 1:420,000 (the figure depends on latitude). |
    | Hill shading | the map on screen shows it | Needs terrain for the area. |
+   | Road numbers | the map on screen shows them | Drawn even when names are left out. |
    | Routes and tracks | any route showing on the map crosses the page | Each route that crosses the page can be ticked by itself. |
    | Saved places | any are on the page | Favourites are named; the others are named when the page is at zoom 9 or closer, as on screen. |
    | Lines of latitude and longitude | never | The figures round the edge are printed either way; this draws the lines across the map as well. |
