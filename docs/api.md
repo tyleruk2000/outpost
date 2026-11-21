@@ -1325,6 +1325,29 @@ document and nuclear scenario is now, `null` for one deleted since.
 | `POST /api/emergency-plans/:id/reviewed` | Mark it looked over now. |
 | `POST /api/emergency-plans/:id/opened` | Record that it was opened now (sent by the screens when a person opens one). |
 
+## Household papers
+
+Types: `packages/shared/src/household-papers.ts`; see [household-papers.md](household-papers.md).
+Changes publish `household-papers.changed`.
+
+A medical sheet (`MedicalSheet`) is `memberId` (a member of the Supplies household, or
+null), `name`, and either `record` (`MedicalRecord`) or `armor` (one armoured OpenPGP
+message made in the browser, whose plain text is `MedicalPayload`), never both. Plain
+sheets are in search (kind `medical`) only while `medical.inSearch` is on, and read by
+the `medical_sheets` tool only while `tools.medical` is on; encrypted ones never.
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/medical-sheets` | `{ sheets, inSearch, inTools }`. |
+| `POST /api/medical-sheets` | Make a sheet (`MedicalSheetInput`): `record` or `armor`. `400` for both, neither, or `armor` that is not an armoured message. At most 60. |
+| `GET /api/medical-sheets/:id` | `{ sheet }`. |
+| `PUT /api/medical-sheets/:id` | Replace it. `baseUpdatedAt` older than the stored sheet: `409 conflict`. A `record` over an encrypted sheet needs `removeEncryption: true`, or `400`. |
+| `DELETE /api/medical-sheets/:id` | Delete it, and its place in search. |
+| `GET /api/keeping-in-touch` | `CommsResponse`: the communication plan (`CommsPlan`, `updatedAt` null until first saved) and `resolved`, what each linked contact, saved place, repeater and mesh channel is now, `null` for one gone. Channels from the list of frequencies (`frequency: { entryId, channel }`) are not resolved here. |
+| `PUT /api/keeping-in-touch` | Replace the plan (`CommsInput`). `baseUpdatedAt` older than the stored plan: `409 conflict`. |
+| `GET /api/household-binder` | `BinderStatus`: the binder last made (`made`: `parts`, `contentAt`, `madeAt`, `pages`, or null), when each part's content last changed (`changedAt`), and the parts changed since (`stale`). |
+| `POST /api/household-binder/made` | Body `{ parts, contentAt, pages }`: record the binder just made in the browser. Answers `BinderStatus`. |
+
 ## Mesh radio
 
 Types: `packages/shared/src/mesh.ts`; see [mesh-radio.md](mesh-radio.md). Radio channels

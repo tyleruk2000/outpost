@@ -38,10 +38,10 @@ const invalidations: Record<string, string[][]> = {
   "notes.changed": [["notes"], ["search"]],
   "collections.changed": [["collections"], ["catalog"], ["storage"], ["kiwix"], ["maps"], ["manage"]],
   "catalog.changed": [["catalog"]],
-  "maps.changed": [["maps"], ["collections"]],
+  "maps.changed": [["maps"], ["collections"], ["household-papers", "binder"]],
   // A reference pack was installed, updated or removed (features/layers).
   "layers.changed": [["layers"], ["collections"], ["manage"], ["search"]],
-  "contacts.changed": [["contacts"], ["search"], ["manage"]],
+  "contacts.changed": [["contacts"], ["search"], ["manage"], ["household-papers", "binder"]],
   "repeaters.changed": [["repeaters"], ["search"]],
   "imports.changed": [["imports"]],
   "semantic.changed": [["semantic"]],
@@ -54,11 +54,13 @@ const invalidations: Record<string, string[][]> = {
   "encryption.changed": [["encryption"]],
   "propagation.changed": [["propagation"]],
   "power.changed": [["power"]],
-  "supplies.changed": [["supplies"], ["manage"]],
+  "supplies.changed": [["supplies"], ["manage"], ["household-papers", "binder"]],
   "nuclear.changed": [["nuclear"]],
   "network.changed": [["network"], ["manage"]],
   "weather.changed": [["weather"], ["manage"]],
-  "emergency-plans.changed": [["emergency-plans"], ["manage"]],
+  "emergency-plans.changed": [["emergency-plans"], ["manage"], ["household-papers", "binder"]],
+  // A medical sheet, the communication plan or the binder's record changed, here or on another device.
+  "household-papers.changed": [["household-papers"], ["search"], ["manage"]],
   // The Morse trainer kept a session or a change of progress, here or on another device.
   "morse.changed": [["morse"], ["manage"]],
   // The allotment or a game's tally changed, here or on another device.

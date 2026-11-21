@@ -26,7 +26,7 @@ export interface PickedContact {
 }
 
 /** Search Contacts and choose one, or (where a number typed is kept) type a name and number. */
-function ContactPicker({
+export function ContactPicker({
   open,
   onOpenChange,
   title,

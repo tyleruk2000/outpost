@@ -33,14 +33,14 @@ function unbroken(text: string, x: number, y: number, size: number, width: numbe
   return { kind: "text", x, y, text, size: fitted, bold, color: INK, fit: width };
 }
 
-function dashed(x1: number, y: number, x2: number, color: Rgb = GREY): SheetItem[] {
+export function dashed(x1: number, y: number, x2: number, color: Rgb = GREY): SheetItem[] {
   const out: SheetItem[] = [];
   for (let x = x1; x < x2; x += 6) out.push({ kind: "line", x1: x, y1: y, x2: Math.min(x + 3, x2), y2: y, color, width: 0.5 });
   return out;
 }
 
 /** Marks to cut along, at the four corners of a box, outside it. */
-function cropMarks(x: number, y: number, width: number, height: number): SheetItem[] {
+export function cropMarks(x: number, y: number, width: number, height: number): SheetItem[] {
   const gap = 3;
   const length = 9;
   const items: SheetItem[] = [];
@@ -59,7 +59,7 @@ function cropMarks(x: number, y: number, width: number, height: number): SheetIt
 }
 
 /** Lines of text written down a box from `top`, wrapped to `width`; how far down they went, and whether they all fitted above `bottom`. */
-class Column {
+export class Column {
   items: SheetItem[] = [];
   overflow = false;
   x: number;
@@ -209,7 +209,7 @@ export function walletSheets(
   return { pages, cards };
 }
 
-function shift(item: SheetItem, dx: number, dy: number): SheetItem {
+export function shift(item: SheetItem, dx: number, dy: number): SheetItem {
   switch (item.kind) {
     case "text":
     case "image":

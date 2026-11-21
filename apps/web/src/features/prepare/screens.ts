@@ -4,7 +4,7 @@
  * screen, add an entry here and a route in app.tsx. Keep one entry to one line group, so
  * that two people adding screens at once meet only here.
  */
-import { ClipboardList, CloudSun, Package, Radius } from "lucide-react";
+import { BookCopy, ClipboardList, CloudSun, HeartPulse, IdCard, Package, RadioTower, Radius } from "lucide-react";
 import type { SectionScreen } from "@/components/section";
 
 export const prepareScreens: SectionScreen[] = [
@@ -39,5 +39,37 @@ export const prepareScreens: SectionScreen[] = [
     keywords: "nuclear bomb fallout blast shelter radiation detonation",
     about:
       "An offline map workspace with an educational effects simulator: what a published model says a detonation of a stated size does at a distance, for an idealised case.",
+  },
+  // The household's papers (features/household-papers), one entry each.
+  {
+    to: "/prepare/medical",
+    label: "Medical sheets",
+    icon: HeartPulse,
+    keywords: "medical medicines medication allergies allergy conditions blood group gp doctor next of kin paramedic prescription",
+    about:
+      "For each person: medicines with dose and where they are kept, allergies, conditions, blood group, GP, pharmacy and next of kin. Can be kept encrypted. Records only, no medical advice.",
+  },
+  {
+    to: "/prepare/keeping-in-touch",
+    label: "Keeping in touch",
+    icon: RadioTower,
+    keywords: "communication plan pace primary alternate contingency emergency check in comms phones down walkie talkie pmr446 mesh",
+    about:
+      "The household's communication plan: for each situation, what to try first and what next, when to check in and who to contact. A page for each person.",
+  },
+  {
+    to: "/prepare/grab-cards",
+    label: "Grab cards",
+    icon: IdCard,
+    keywords: "grab card wallet card a6 ice in case of emergency card id card print",
+    about:
+      "A card for each person to carry, wallet size or A6: medical needs, who to contact, where to meet, and where home is in several grid formats.",
+  },
+  {
+    to: "/prepare/binder",
+    label: "Household binder",
+    icon: BookCopy,
+    keywords: "binder folder print everything pdf paper copy household binder",
+    about: "Everything that matters on paper, as one PDF with a contents page. Home says when it is older than what is in it.",
   },
 ];

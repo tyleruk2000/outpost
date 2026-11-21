@@ -340,6 +340,7 @@ export function personalWords(personal: NonNullable<CleanupPlan["personal"]>): s
   const weather = weatherWords(personal.weather);
   if (weather) parts.push(weather);
   if ((personal.emergencyPlans ?? 0) > 0) parts.push(plural(personal.emergencyPlans ?? 0, "emergency plan"));
+  if ((personal.householdPapers ?? 0) > 0) parts.push(plural(personal.householdPapers ?? 0, "household paper"));
   const morse = morseWords(personal.morse);
   if (morse) parts.push(morse);
   const games = gamesWords(personal.games);
@@ -402,6 +403,7 @@ export function resultSentences(result: CleanupResult): string[] {
         : null,
       weatherWords(weather),
       (result.personal.emergencyPlans ?? 0) > 0 ? plural(result.personal.emergencyPlans ?? 0, "emergency plan") : null,
+      (result.personal.householdPapers ?? 0) > 0 ? plural(result.personal.householdPapers ?? 0, "household paper") : null,
       morseWords(result.personal.morse),
       gamesWords(result.personal.games),
       boardWords(result.personal.board),

@@ -1070,6 +1070,7 @@ under Maps → Layers"), and the model is told to pass that on instead of guessi
 | `tools.radio` | on | Radio: `radio_frequencies`, `repeaters_near`, `saved_predictions`. |
 | `tools.catalogue` | on | The catalogue: `search_catalogue`. |
 | `tools.board` | **off** | Messages on the board: `board_messages`. |
+| `tools.medical` | **off** | Medical sheets that are not encrypted: `medical_sheets`. Medicines, allergies, conditions and blood group; never the GP, pharmacy or next of kin, and never an encrypted sheet. |
 | `tools.offForModels` | none | Models that say they can call tools and do it badly: Chat offers them none. |
 
 These are ordinary settings: the household is one trust group, and anyone who can open

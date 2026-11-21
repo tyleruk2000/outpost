@@ -6,6 +6,7 @@
 import { BOARD_TOOLS } from "./board.ts";
 import { CATALOGUE_TOOLS } from "./catalogue.ts";
 import { LIBRARY_TOOLS } from "./library.ts";
+import { MEDICAL_TOOLS } from "./medical.ts";
 import { PLACES_TOOLS } from "./places.ts";
 import { PLANS_TOOLS } from "./plans.ts";
 import { RADIO_TOOLS } from "./radio.ts";
@@ -22,4 +23,5 @@ export const TOOLS: readonly ToolDefinition[] = [
   ...RADIO_TOOLS,
   ...CATALOGUE_TOOLS,
   ...BOARD_TOOLS,
+  ...MEDICAL_TOOLS,
 ];

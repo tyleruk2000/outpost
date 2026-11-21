@@ -19,13 +19,24 @@ const settings = (over: Partial<Settings> = {}) =>
     "tools.radio": true,
     "tools.catalogue": true,
     "tools.board": false,
+    "tools.medical": false,
     "tools.offForModels": [],
     ...over,
   }) as Settings;
 
 const status = (mcp: Partial<ToolsStatus["mcp"]> = {}): ToolsStatus => ({
   enabled: false,
-  areas: { library: true, places: true, supplies: true, plans: true, weather: true, radio: true, catalogue: true, board: false },
+  areas: {
+    library: true,
+    places: true,
+    supplies: true,
+    plans: true,
+    weather: true,
+    radio: true,
+    catalogue: true,
+    board: false,
+    medical: false,
+  },
   offForModels: [],
   tools: [],
   mcp: {

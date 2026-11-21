@@ -21,6 +21,7 @@ import { Contour } from "@/components/contour";
 import { StorageBar } from "@/components/storage-bar";
 import { Progress, Skeleton } from "@/components/ui/misc";
 import { BoardHomeLine } from "@/features/board/elsewhere";
+import { BinderHomeLine } from "@/features/household-papers/binder-line";
 import { api } from "@/lib/api";
 import { useActiveJobs, useStorage } from "@/lib/queries";
 import { timeAgo } from "@/lib/utils";
@@ -161,6 +162,7 @@ export default function HomePage() {
           <div className="mt-3 max-w-[56ch] text-lead text-ink-muted">{summary ?? <Skeleton className="h-6 w-96 max-w-full" />}</div>
           <BoardHomeLine className="mt-2" />
           <PreparedLines className="mt-2" />
+          <BinderHomeLine className="mt-1" />
           {/* biome-ignore lint/a11y/useSemanticElements: a form with role="search" is the search landmark every browser and screen reader knows */}
           <form onSubmit={submit} role="search" className="relative mt-6 max-w-[34rem]">
             <Search aria-hidden className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-ink-muted" />

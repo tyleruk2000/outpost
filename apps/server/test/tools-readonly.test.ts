@@ -40,6 +40,7 @@ const MAIN_PATH: Record<string, Record<string, unknown>> = {
   saved_predictions: {},
   search_catalogue: { subject: "first aid" },
   board_messages: {},
+  medical_sheets: { person: "Sam" },
 };
 
 const changes = () => (filled.app.ctx.sqlite.prepare("SELECT total_changes() AS n").get() as { n: number }).n;

@@ -64,6 +64,8 @@ const GROUPS: Record<Exclude<DatabaseGroupId, "other">, string[]> = {
 };
 // Emergency plans (modules/emergency-plans), on a line of their own so that other additions merge cleanly.
 GROUPS.prepare.push("emergency_plans");
+// The household's papers (modules/household-papers), on a line of their own so that other additions merge cleanly.
+GROUPS.prepare.push("medical_sheets", "comms_plans", "household_binder");
 // The Morse trainer (modules/morse), on a line of its own so that other additions merge cleanly.
 GROUPS.radio.push("morse_progress", "morse_sessions");
 // Learning progress in reference archives (modules/learning), on a line of its own so that other additions merge cleanly.
@@ -107,6 +109,7 @@ const COUNTS: Array<{ id: DatabaseCountId; table: string; sql: string }> = [
   { id: "networkDevices", table: "network_devices", sql: "SELECT count(*) AS n FROM network_devices" },
   { id: "pressureReadings", table: "weather_readings", sql: "SELECT count(*) AS n FROM weather_readings" },
   { id: "emergencyPlans", table: "emergency_plans", sql: "SELECT count(*) AS n FROM emergency_plans" },
+  { id: "medicalSheets", table: "medical_sheets", sql: "SELECT count(*) AS n FROM medical_sheets" },
   { id: "morseSessions", table: "morse_sessions", sql: "SELECT count(*) AS n FROM morse_sessions" },
   { id: "gameSaves", table: "game_saves", sql: "SELECT count(*) AS n FROM game_saves" },
   { id: "boardMessages", table: "board_messages", sql: "SELECT count(*) AS n FROM board_messages WHERE removed_at IS NULL" },

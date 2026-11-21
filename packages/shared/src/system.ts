@@ -69,6 +69,10 @@ export interface Settings {
   "tools.radio": boolean;
   "tools.catalogue": boolean;
   "tools.board": boolean;
+  /** Plain medical sheets for a language model. Off by default. */
+  "tools.medical": boolean;
+  /** Plain medical sheets in search. Off by default. */
+  "medical.inSearch": boolean;
   /** Models not offered tools, though they say they can call them. */
   "tools.offForModels": string[];
 }
