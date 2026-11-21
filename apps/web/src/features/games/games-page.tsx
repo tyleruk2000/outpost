@@ -8,9 +8,9 @@ export default function GamesPage() {
       description="A few small games to pass the time, for one or for the household. They need no connection, and nothing is sent anywhere but this Outpost."
       screens={gameScreens}
     >
-      The allotment and each game's tally of wins are kept on this Outpost for the whole household, so every device sees the same. A game of
-      Solitaire, Peg solitaire, Sudoku, Draughts or Pairs still being played stays on the device it is being played on, so two people can
-      play at once. Skerry's progress is kept on the device too.
+      The allotment, the Steading's settlement and each game's tally of wins are kept on this Outpost for the whole household, so every
+      device sees the same. A game of Solitaire, Peg solitaire, Sudoku, Draughts or Pairs still being played stays on the device it is being
+      played on, so two people can play at once. Skerry's progress is kept on the device too.
     </SectionPage>
   );
 }

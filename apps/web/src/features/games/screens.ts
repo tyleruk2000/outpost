@@ -3,7 +3,7 @@
  * and the Games page are both drawn from this list: to add a game, add an entry here and
  * a route in app.tsx.
  */
-import { CircleDot, Crown, Hash, Shapes, Spade, Sprout, SquareTerminal } from "lucide-react";
+import { CircleDot, Crown, Hash, Shapes, Spade, Sprout, SquareTerminal, Warehouse } from "lucide-react";
 import type { SectionScreen } from "@/components/section";
 
 export const gameScreens: SectionScreen[] = [
@@ -13,6 +13,14 @@ export const gameScreens: SectionScreen[] = [
     icon: Sprout,
     about:
       "A small plot for the household to sow, grow and harvest, slowly. Nothing ever withers: leave it a year and it will all be waiting.",
+  },
+  {
+    to: "/games/steading",
+    label: "Steading",
+    keywords: "settlement village city builder factory production chains resources economy",
+    icon: Warehouse,
+    about:
+      "A settlement in a valley for the household to build: production chains, households and trade, where everything is made from something. Nothing gets worse while you are away.",
   },
   {
     to: "/games/solitaire",

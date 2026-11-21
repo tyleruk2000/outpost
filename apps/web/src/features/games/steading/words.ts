@@ -32,9 +32,11 @@ export const held = (value: number) => formatNumber(Math.floor(value + 1e-9));
 
 /** "12 planks, 16 bricks and 4 stone". */
 export function amountsWords(amounts: Amounts, round: (n: number) => string = amount): string {
-  const parts = (Object.entries(amounts) as [GoodId, number][]).filter(([, n]) => n > 0).map(([good, n]) => `${round(n)} ${GOODS[good].name}`);
+  const parts = (Object.entries(amounts) as [GoodId, number][])
+    .filter(([, n]) => n > 0)
+    .map(([good, n]) => `${round(n)} ${GOODS[good].name}`);
   if (parts.length === 0) return "nothing";
-  if (parts.length === 1) return parts[0];
+  if (parts.length === 1) return parts[0] as string;
   return `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`;
 }
 

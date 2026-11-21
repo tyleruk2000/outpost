@@ -244,6 +244,7 @@ describe("the Games section", () => {
     const games = allNav.find((item) => item.to === "/games")!;
     expect(games.children!.map((child) => [child.label, child.to])).toEqual([
       ["Allotment", "/games/allotment"],
+      ["Steading", "/games/steading"],
       ["Solitaire", "/games/solitaire"],
       ["Peg solitaire", "/games/peg-solitaire"],
       ["Sudoku", "/games/sudoku"],

@@ -292,9 +292,7 @@ function assignWorkers(state: SteadingState): Map<number, number> {
   for (const b of state.buildings) {
     const need = KINDS[b.kind].workers;
     if (need === 0 || b.paused) continue;
-    const near = homes
-      .filter((home) => distance(home, b) <= WORK_REACH)
-      .sort((a, c) => distance(a, b) - distance(c, b) || a.id - c.id);
+    const near = homes.filter((home) => distance(home, b) <= WORK_REACH).sort((a, c) => distance(a, b) - distance(c, b) || a.id - c.id);
     let got = 0;
     for (const home of near) {
       const left = free.get(home.id) ?? 0;
@@ -364,9 +362,7 @@ export function solve(state: SteadingState, open = false): Flows {
   const storeDemand = (good: GoodId) => (open || state.stock[good] < cap - EPS ? Number.POSITIVE_INFINITY : (houseTake[good] ?? 0));
 
   // Workplaces in the order the chains run: a building only takes from lower stages.
-  const work = state.buildings
-    .filter((b) => isWorkplace(b.kind))
-    .sort((a, b) => KINDS[a.kind].stage - KINDS[b.kind].stage || a.id - b.id);
+  const work = state.buildings.filter((b) => isWorkplace(b.kind)).sort((a, b) => KINDS[a.kind].stage - KINDS[b.kind].stage || a.id - b.id);
   const potential = new Map<number, number>();
   for (const b of work) {
     const need = KINDS[b.kind].workers;
@@ -448,7 +444,8 @@ export function solve(state: SteadingState, open = false): Flows {
         for (const route of routesFrom.get(b.id) ?? []) {
           if (route.good !== good) continue;
           const to = byId.get(route.to) as Building;
-          const asks = to.kind === "storehouse" ? (storeLeft[good] ?? 0) : (demand.get(to.id)?.[good] ?? 0) - (nextReceived.get(to.id)?.[good] ?? 0);
+          const asks =
+            to.kind === "storehouse" ? (storeLeft[good] ?? 0) : (demand.get(to.id)?.[good] ?? 0) - (nextReceived.get(to.id)?.[good] ?? 0);
           const lane = Math.max(0, Math.min(MODES[route.mode].carries, asks));
           canPlace += lane;
           const sent = Math.min(lane, left);
@@ -568,9 +565,7 @@ function households(state: SteadingState, store: Flows["store"], power: PowerSha
   const houses = state.buildings.filter((b) => b.kind === "house");
   const occupied = houses.filter((b) => b.occupied);
   const water = waterFor(state, occupied);
-  const waiting = houses
-    .filter((b) => !b.occupied)
-    .map((b) => ({ id: b.id, for: [] as HouseholdsFlow["waiting"][number]["for"] }));
+  const waiting = houses.filter((b) => !b.occupied).map((b) => ({ id: b.id, for: [] as HouseholdsFlow["waiting"][number]["for"] }));
   const breadIn = store.bread.inflow;
   const woodIn = store.firewood.inflow;
   return {
@@ -667,8 +662,14 @@ function markMilestones(state: SteadingState, at: number, movedIn?: number): Ste
   mark("people-100", people >= 100);
   mark("first-iron", state.made.iron > 0);
   mark("first-tools", state.made.tools > 0);
-  mark("first-power", state.buildings.some((b) => b.kind === "wheel"));
-  mark("first-track", state.routes.some((r) => r.mode === "track"));
+  mark(
+    "first-power",
+    state.buildings.some((b) => b.kind === "wheel"),
+  );
+  mark(
+    "first-track",
+    state.routes.some((r) => r.mode === "track"),
+  );
   mark("first-trade", state.made.ore > 0);
   const changed = MILESTONE_IDS.some((id) => milestones[id] !== state.milestones[id]);
   return changed ? { ...state, milestones } : state;
@@ -724,9 +725,12 @@ export function advance(state: SteadingState, now: number): SteadingState {
       return { ...b, yard };
     });
     const clock = until >= (now - current.clock) / DAY_MS ? now : current.clock + days * DAY_MS;
-    const traded = days > 0 && current.buildings.some((b) => b.kind === "landing" && entries(flows.buildings[b.id]?.makes ?? {}).some(([, n]) => n > EPS));
+    const traded =
+      days > 0 &&
+      current.buildings.some((b) => b.kind === "landing" && entries(flows.buildings[b.id]?.makes ?? {}).some(([, n]) => n > EPS));
     current = { ...current, clock, stock, made, buildings };
-    if (traded && current.milestones["first-trade"] === undefined) current = { ...current, milestones: { ...current.milestones, "first-trade": current.clock } };
+    if (traded && current.milestones["first-trade"] === undefined)
+      current = { ...current, milestones: { ...current.milestones, "first-trade": current.clock } };
     current = markMilestones(current, clock);
     current = settle(current, clock).state;
   }
@@ -792,7 +796,8 @@ export function siteProblem(state: SteadingState, kind: KindId, x: number, y: nu
   if (def.beside) {
     let near = false;
     for (let dx = -1; dx <= 1; dx += 1) for (let dy = -1; dy <= 1; dy += 1) if (terrainAt(x + dx, y + dy) === def.beside) near = true;
-    if (!near) return `A ${def.name.toLowerCase()} must stand beside ${def.beside === "river" ? "the river" : def.beside === "coal" ? "the coal seam" : def.beside === "clay" ? "a clay bank" : def.beside}.`;
+    if (!near)
+      return `A ${def.name.toLowerCase()} must stand beside ${def.beside === "river" ? "the river" : def.beside === "coal" ? "the coal seam" : def.beside === "clay" ? "a clay bank" : def.beside}.`;
   }
   return null;
 }
@@ -868,7 +873,8 @@ function act(state: SteadingState, action: SteadingAction): SteadingState {
       if (route.mode === action.mode) return state;
       const length = routeLength(state, route);
       if (peopleOf(state) < MODES[action.mode].unlockAt) refuse(`Track can be laid once ${MODES[action.mode].unlockAt} people live here.`);
-      if (length > MODES[action.mode].reach) refuse(`${MODES[action.mode].name} reaches ${MODES[action.mode].reach} squares; that is ${length}.`);
+      if (length > MODES[action.mode].reach)
+        refuse(`${MODES[action.mode].name} reaches ${MODES[action.mode].reach} squares; that is ${length}.`);
       const back = giveBack(state.stock, routeCost(route.mode, length));
       const stock = pay({ ...state, stock: back }, routeCost(action.mode, length));
       return { ...state, stock, routes: state.routes.map((r) => (r.id === route.id ? { ...r, mode: action.mode } : r)) };
@@ -908,7 +914,8 @@ function act(state: SteadingState, action: SteadingAction): SteadingState {
       if (!state.buildings.some((b) => b.kind === "landing")) refuse("Build a landing first: the barge is what buys.");
       const count = Math.floor(action.count);
       if (count < 1) refuse("Choose how many to sell.");
-      if (state.stock[action.good] < count - EPS) refuse(`There are only ${Math.floor(state.stock[action.good])} ${GOODS[action.good].name} in the store.`);
+      if (state.stock[action.good] < count - EPS)
+        refuse(`There are only ${Math.floor(state.stock[action.good])} ${GOODS[action.good].name} in the store.`);
       const room = CREDIT_CAP - state.credit;
       const selling = Math.min(count, Math.floor(room / GOODS[action.good].sells));
       if (selling < 1) refuse("The landing holds as much credit as it can.");
@@ -960,4 +967,13 @@ export function destinationsFor(state: SteadingState, from: number, good: GoodId
   return state.buildings
     .filter((b) => b.id !== a.id && takes(b, good) && (b.kind === "storehouse" || KINDS[b.kind].stage > KINDS[a.kind].stage))
     .sort((p, q) => distance(a, p) - distance(a, q) || p.id - q.id);
+}
+
+/** GET /api/games/steading and each action's answer: the settlement worked out to the server's now. */
+export interface SteadingResponse {
+  settlement: SteadingState;
+  /** The server's clock when it answered. */
+  now: number;
+  /** Whether the settlement is kept yet: a new one is not, until its first action. */
+  started: boolean;
 }

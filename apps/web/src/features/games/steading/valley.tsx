@@ -101,27 +101,51 @@ function Ground({ x, y, ground }: { x: number; y: number; ground: TerrainId }) {
     }
   } else if (ground === "rock") {
     for (let i = 1; i < 5; i++)
-      marks.push(<line key={i} x1={ox + i * 2} y1={oy + 9} x2={ox + i * 2 + 2} y2={oy + 1} stroke="var(--game-plan-ink)" strokeWidth={0.3} opacity={0.55} />);
+      marks.push(
+        <line
+          key={i}
+          x1={ox + i * 2}
+          y1={oy + 9}
+          x2={ox + i * 2 + 2}
+          y2={oy + 1}
+          stroke="var(--game-plan-ink)"
+          strokeWidth={0.3}
+          opacity={0.55}
+        />,
+      );
   } else if (ground === "clay") {
     for (let i = 0; i < 6; i++)
       marks.push(
-        <circle key={i} cx={ox + 1.5 + jitter(x, y, i) * 7} cy={oy + 1.5 + jitter(x, y, i + 3) * 7} r={0.45} fill="var(--game-plan-ink)" opacity={0.5} />,
+        <circle
+          key={i}
+          cx={ox + 1.5 + jitter(x, y, i) * 7}
+          cy={oy + 1.5 + jitter(x, y, i + 3) * 7}
+          r={0.45}
+          fill="var(--game-plan-ink)"
+          opacity={0.5}
+        />,
       );
   } else if (ground === "river") {
     for (const dy of [3.2, 6.8])
       marks.push(
-        <path
-          key={dy}
-          d={`M${ox} ${oy + dy} q2.5 -1 5 0 t5 0`}
-          fill="none"
-          stroke="var(--game-plan-river-line)"
-          strokeWidth={0.4}
-        />,
+        <path key={dy} d={`M${ox} ${oy + dy} q2.5 -1 5 0 t5 0`} fill="none" stroke="var(--game-plan-river-line)" strokeWidth={0.4} />,
       );
   } else if (ground === "hill" || ground === "coal") {
-    for (let i = 0; i < 4; i++)
+    // Hill marks: low rounded brows, as an old plan draws a fell.
+    for (const [dx, dy] of [
+      [1.2, 4.2],
+      [5, 3],
+      [3, 7.6],
+    ] as const)
       marks.push(
-        <path key={i} d={`M${ox + 1 + i * 2.2} ${oy + 7} l1 -3`} stroke="var(--game-plan-ink)" strokeWidth={0.35} opacity={0.5} />,
+        <path
+          key={`${dx}`}
+          d={`M${ox + dx} ${oy + dy} q1.6 -2.4 3.2 0`}
+          fill="none"
+          stroke="var(--game-plan-ink)"
+          strokeWidth={0.35}
+          opacity={0.55}
+        />,
       );
     if (ground === "coal")
       for (let i = 0; i < 4; i++)
@@ -136,10 +160,18 @@ function Ground({ x, y, ground }: { x: number; y: number; ground: TerrainId }) {
           />,
         );
   } else {
-    for (let i = 0; i < 2; i++) {
-      const gx = ox + 2 + jitter(x, y, i) * 6;
-      const gy = oy + 3 + jitter(x, y, i + 4) * 5;
-      marks.push(<path key={i} d={`M${gx} ${gy} l-0.5 -1 M${gx} ${gy} l0.5 -1`} stroke="var(--game-plan-woods-deep)" strokeWidth={0.3} opacity={0.5} />);
+    if (jitter(x, y, 7) > 0.45) {
+      const gx = ox + 2 + jitter(x, y, 1) * 6;
+      const gy = oy + 3 + jitter(x, y, 5) * 5;
+      marks.push(
+        <path
+          key="g"
+          d={`M${gx} ${gy} l-0.5 -1 M${gx} ${gy} l0.5 -1`}
+          stroke="var(--game-plan-woods-deep)"
+          strokeWidth={0.3}
+          opacity={0.4}
+        />,
+      );
     }
   }
   return (
@@ -206,10 +238,10 @@ function BuildingMark({ building, held, selected }: { building: Building; held: 
         strokeDasharray={empty ? "1.2 0.8" : undefined}
       />
       <Icon x={ox + 2.4} y={oy + 2.4} width={5.2} height={5.2} color="var(--game-plan-ink)" strokeWidth={2} aria-hidden />
-      {held ? <path d={`M${ox + 8.8} ${oy + 1.2} l-3 0 l3 3 Z`} fill="var(--game-plan-route)" stroke="var(--game-plan-ink)" strokeWidth={0.3} /> : null}
-      {building.paused ? (
-        <line x1={ox + 2} y1={oy + 8} x2={ox + 8} y2={oy + 2} stroke="var(--game-plan-ink)" strokeWidth={0.5} />
+      {held ? (
+        <path d={`M${ox + 8.8} ${oy + 1.2} l-3 0 l3 3 Z`} fill="var(--game-plan-route)" stroke="var(--game-plan-ink)" strokeWidth={0.3} />
       ) : null}
+      {building.paused ? <line x1={ox + 2} y1={oy + 8} x2={ox + 8} y2={oy + 2} stroke="var(--game-plan-ink)" strokeWidth={0.5} /> : null}
     </g>
   );
 }
@@ -237,7 +269,7 @@ export function Valley({
   const byId = new Map(state.buildings.map((b) => [b.id, b]));
   const chosen = selected ? state.buildings.find((b) => b.x === selected.x && b.y === selected.y) : undefined;
   const reach = chosen ? reachOf(chosen) : null;
-  const grid = useRef<HTMLDivElement>(null);
+  const grid = useRef<HTMLFieldSetElement>(null);
   const focusAt = (x: number, y: number) => {
     const cell = grid.current?.querySelector<HTMLButtonElement>(`[data-square="${x},${y}"]`);
     cell?.focus();
@@ -258,15 +290,29 @@ export function Valley({
   const focusSquare = selected ?? { x: state.buildings[0]?.x ?? 0, y: state.buildings[0]?.y ?? 0 };
 
   const squares = [];
-  for (let y = 0; y < VALLEY_HEIGHT; y++) for (let x = 0; x < VALLEY_WIDTH; x++) squares.push({ x, y, ground: terrainAt(x, y) ?? "meadow" });
+  for (let y = 0; y < VALLEY_HEIGHT; y++)
+    for (let x = 0; x < VALLEY_WIDTH; x++) squares.push({ x, y, ground: terrainAt(x, y) ?? "meadow" });
 
   return (
-    <div className={cn("relative w-full overflow-hidden rounded-panel border border-border", boardSurface)} style={{ aspectRatio: `${VALLEY_WIDTH} / ${VALLEY_HEIGHT}` }}>
+    <div
+      className={cn("relative w-full overflow-hidden rounded-panel border border-border", boardSurface)}
+      style={{ aspectRatio: `${VALLEY_WIDTH} / ${VALLEY_HEIGHT}` }}
+    >
       <svg viewBox={`0 0 ${VALLEY_WIDTH * T} ${VALLEY_HEIGHT * T}`} className="absolute inset-0 size-full" aria-hidden>
         <rect width={VALLEY_WIDTH * T} height={VALLEY_HEIGHT * T} fill="var(--game-plan-paper)" />
         {squares.map((square) => (
           <Ground key={`${square.x},${square.y}`} {...square} />
         ))}
+        {/* A faint survey grid, so that squares can be counted. */}
+        <path
+          d={[
+            ...Array.from({ length: VALLEY_WIDTH - 1 }, (_, i) => `M${(i + 1) * T} 0 V${VALLEY_HEIGHT * T}`),
+            ...Array.from({ length: VALLEY_HEIGHT - 1 }, (_, i) => `M0 ${(i + 1) * T} H${VALLEY_WIDTH * T}`),
+          ].join(" ")}
+          stroke="var(--game-plan-ink)"
+          strokeWidth={0.15}
+          opacity={0.25}
+        />
         {reach !== null && chosen ? (
           <rect
             x={Math.max(0, chosen.x - reach) * T + 0.4}
@@ -293,14 +339,22 @@ export function Valley({
           />
         ))}
         {selected && !chosen ? (
-          <rect x={selected.x * T + 0.5} y={selected.y * T + 0.5} width={T - 1} height={T - 1} fill="none" stroke="var(--primary)" strokeWidth={0.9} rx={1} />
+          <rect
+            x={selected.x * T + 0.5}
+            y={selected.y * T + 0.5}
+            width={T - 1}
+            height={T - 1}
+            fill="none"
+            stroke="var(--primary)"
+            strokeWidth={0.9}
+            rx={1}
+          />
         ) : null}
       </svg>
-      <div
+      <fieldset
         ref={grid}
-        role="group"
         aria-label="The valley: a square for each place. Use the arrow keys to move between them."
-        className="absolute inset-0 grid"
+        className="absolute inset-0 m-0 grid min-w-0 border-0 p-0"
         style={{ gridTemplateColumns: `repeat(${VALLEY_WIDTH}, 1fr)`, gridTemplateRows: `repeat(${VALLEY_HEIGHT}, 1fr)` }}
       >
         {squares.map(({ x, y }) => {
@@ -319,7 +373,7 @@ export function Valley({
             />
           );
         })}
-      </div>
+      </fieldset>
     </div>
   );
 }

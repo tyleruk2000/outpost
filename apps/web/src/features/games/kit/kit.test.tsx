@@ -218,6 +218,7 @@ describe("the Games page", () => {
     expect(links.map((link) => link.getAttribute("href"))).toEqual(gameScreens.map((game) => game.to));
     expect(gameScreens.map((game) => game.label)).toEqual([
       "Allotment",
+      "Steading",
       "Solitaire",
       "Peg solitaire",
       "Sudoku",

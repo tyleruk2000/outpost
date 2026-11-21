@@ -20,11 +20,11 @@ import {
   newSteading,
   peopleOf,
   readSteading,
+  STORE_CAP,
   type SteadingAction,
   SteadingRefusal,
   type SteadingState,
   solve,
-  STORE_CAP,
   terrainAt,
   VALLEY_HEIGHT,
   VALLEY_ROWS,
@@ -37,6 +37,11 @@ const T0 = Date.UTC(2027, 0, 1);
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
 
+/** The thing asked for, which the test knows is there. */
+function there<T>(value: T | undefined): T {
+  if (value === undefined) throw new Error("expected a value");
+  return value;
+}
 const act = (state: SteadingState, action: SteadingAction, at = state.clock) => applyAction(state, action, at);
 const idAt = (state: SteadingState, x: number, y: number) => {
   const found = state.buildings.find((b) => b.x === x && b.y === y);
@@ -104,20 +109,20 @@ describe("work flows along routes", () => {
     const wc = idAt(s, 1, 8);
     s = act(s, { type: "route", from: wc, to: 1, good: "logs", mode: "hand" });
     const flows = solve(s);
-    expect(flows.routes[s.routes[0].id]).toBe(12);
-    expect(flows.buildings[wc].toYard.logs).toBe(12);
+    expect(there(flows.routes[there(s.routes[0]).id])).toBe(12);
+    expect(there(flows.buildings[wc]).toYard.logs).toBe(12);
     // 20 logs fit in the yard: full after 20/12 of a day, then the woodcutter works at the route's pace.
     s = advance(s, T0 + 2 * DAY_MS);
     expect(s.buildings.find((b) => b.id === wc)?.yard.logs).toBe(YARD_CAP);
     expect(s.stock.logs).toBeCloseTo(10 + 24, 9);
-    const after = solve(s).buildings[wc];
+    const after = there(solve(s).buildings[wc]);
     expect(after.makes.logs).toBe(12);
     expect(after.limit).toEqual({ kind: "room", good: "logs" });
   });
 
   it("makes nothing in a bakery with no flour, and says so", () => {
     let s = act(stocked(), { type: "build", kind: "bakery", x: 5, y: 6 });
-    const bakery = solve(s).buildings[idAt(s, 5, 6)];
+    const bakery = there(solve(s).buildings[idAt(s, 5, 6)]);
     expect(bakery.makes.bread ?? 0).toBe(0);
     expect(bakery.limit.kind).toBe("input");
     s = advance(s, T0 + 30 * DAY_MS);
@@ -129,18 +134,18 @@ describe("work flows along routes", () => {
     s = advance(s, T0 + 10 * DAY_MS);
     const quarry = s.buildings.find((b) => b.kind === "quarry") as Building;
     expect(quarry.yard.stone).toBe(YARD_CAP);
-    expect(solve(s).buildings[quarry.id].makes.stone).toBe(0);
+    expect(there(solve(s).buildings[quarry.id]).makes.stone).toBe(0);
     expect(s.stock.stone).toBe(20);
   });
 
   it("runs a chain at the pace of its narrowest part", () => {
     const s = village();
     const flows = solve(s);
-    const bakery = flows.buildings[idAt(s, 5, 6)];
+    const bakery = there(flows.buildings[idAt(s, 5, 6)]);
     // The mill makes 20 flour a day; the bakery uses 10 of them and bakes 20 loaves.
     expect(bakery.uses.flour).toBeCloseTo(10, 9);
     expect(bakery.makes.bread).toBeCloseTo(20, 9);
-    const mill = flows.buildings[idAt(s, 4, 6)];
+    const mill = there(flows.buildings[idAt(s, 4, 6)]);
     expect(mill.makes.flour).toBeCloseTo(20, 9);
     expect(mill.toYard.flour).toBeCloseTo(10, 9);
     // What reaches the store goes first to the households, the rest into stock.
@@ -153,9 +158,9 @@ describe("work flows along routes", () => {
     const wc = idAt(s, 1, 8);
     const toStore = s.routes.find((r) => r.from === wc && r.to === 1);
     if (!toStore) throw new Error("no route");
-    const before = solve(s).routes[toStore.id];
+    const before = there(solve(s).routes[toStore.id]);
     s = act(s, { type: "routeFirst", id: toStore.id });
-    expect(solve(s).routes[toStore.id]).toBeGreaterThan(before);
+    expect(there(solve(s).routes[toStore.id])).toBeGreaterThan(before);
   });
 
   it("stops filling a full store, keeping everything", () => {
@@ -163,7 +168,7 @@ describe("work flows along routes", () => {
     s = act(s, { type: "route", from: idAt(s, 1, 8), to: 1, good: "logs", mode: "cart" });
     s = advance(s, T0 + 100 * DAY_MS);
     expect(s.stock.logs).toBe(STORE_CAP);
-    expect(solve(s).routes[s.routes[0].id]).toBe(0);
+    expect(there(solve(s).routes[there(s.routes[0]).id])).toBe(0);
   });
 
   it("runs a powered workshop twice as fast with a water wheel in reach", () => {
@@ -179,9 +184,9 @@ describe("work flows along routes", () => {
     s = act(s, { type: "route", from: idAt(s, 1, 10), to: idAt(s, 5, 10), good: "logs", mode: "cart" });
     s = act(s, { type: "route", from: idAt(s, 5, 10), to: 1, good: "planks", mode: "cart" });
     const sawmill = idAt(s, 5, 10);
-    expect(solve(s).buildings[sawmill].makes.planks).toBeCloseTo(24, 9);
+    expect(there(solve(s).buildings[sawmill]).makes.planks).toBeCloseTo(24, 9);
     s = act(s, { type: "build", kind: "wheel", x: 8, y: 10 });
-    const powered = solve(s).buildings[sawmill];
+    const powered = there(solve(s).buildings[sawmill]);
     expect(powered.power).toBe(40);
     expect(powered.makes.planks).toBeCloseTo(48, 9);
     expect(powered.uses.logs).toBeCloseTo(24, 9);
@@ -234,7 +239,7 @@ describe("time away never makes anything worse", () => {
     expect(after.routes).toEqual(before.routes);
     expect(after.buildings.map((b) => b.id)).toEqual(before.buildings.map((b) => b.id));
     for (const [i, b] of before.buildings.entries()) {
-      const later = after.buildings[i];
+      const later = there(after.buildings[i]);
       if (b.occupied) expect(later.occupied).toBe(true);
       for (const good of GOOD_IDS) expect(later.yard[good] ?? 0).toBeGreaterThanOrEqual(b.yard[good] ?? 0);
     }
@@ -269,7 +274,8 @@ describe("time away never makes anything worse", () => {
       expect(steps.stock[good]).toBeCloseTo(once.stock[good], 6);
       expect((steps.made[good] - once.made[good]) / Math.max(1, once.made[good])).toBeCloseTo(0, 9);
     }
-    for (const [i, b] of once.buildings.entries()) for (const good of GOOD_IDS) expect(steps.buildings[i].yard[good] ?? 0).toBeCloseTo(b.yard[good] ?? 0, 6);
+    for (const [i, b] of once.buildings.entries())
+      for (const good of GOOD_IDS) expect(there(steps.buildings[i]).yard[good] ?? 0).toBeCloseTo(b.yard[good] ?? 0, 6);
   });
 
   it("changes nothing when the clock goes backwards", () => {
@@ -319,13 +325,13 @@ describe("actions", () => {
     expect(s.milestones["first-trade"]).toBeDefined();
     expect(() => act(s, { type: "buy", good: "bread", count: 1 })).toThrow(/makes its own/);
     s = act(s, { type: "contract", id: idAt(s, 8, 8), contract: "planks-ore" });
-    expect(flowsOf(s).buildings[idAt(s, 8, 8)].limit.kind).toBe("input");
+    expect(there(flowsOf(s).buildings[idAt(s, 8, 8)]).limit.kind).toBe("input");
   });
 
   it("only rests places of work", () => {
     const s = act(newSteading(T0), { type: "build", kind: "woodcutter", x: 1, y: 8 });
     const rested = act(s, { type: "pause", id: idAt(s, 1, 8), paused: true });
-    expect(solve(rested).buildings[idAt(s, 1, 8)].makes.logs ?? 0).toBe(0);
+    expect(there(solve(rested).buildings[idAt(s, 1, 8)]).makes.logs ?? 0).toBe(0);
     expect(() => act(s, { type: "pause", id: 2, paused: true })).toThrow(SteadingRefusal);
   });
 });
@@ -347,7 +353,8 @@ describe("a stored settlement", () => {
 
   it("keeps every kind's numbers sound", () => {
     for (const kind of Object.values(KINDS)) {
-      for (const n of [...Object.values(kind.inputs), ...Object.values(kind.outputs), ...Object.values(kind.cost)]) expect(n).toBeGreaterThan(0);
+      for (const n of [...Object.values(kind.inputs), ...Object.values(kind.outputs), ...Object.values(kind.cost)])
+        expect(n).toBeGreaterThan(0);
     }
   });
 });

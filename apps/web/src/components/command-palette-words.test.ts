@@ -81,6 +81,8 @@ const lands: Array<[string, string | null]> = [
   ["allotment", "Games: Allotment"],
   ["command line", "Games: Skerry"],
   ["terminal", "Games: Skerry"],
+  ["settlement", "Games: Steading"],
+  ["city builder", "Games: Steading"],
   ["mesh", "Settings: Mesh radio"],
   ["calories", "Preparedness: Supplies"],
   ["text size", "Settings: Text size"],
