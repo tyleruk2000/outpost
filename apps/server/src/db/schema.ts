@@ -293,6 +293,44 @@ export const bookChapters = sqliteTable(
   ],
 );
 
+/**
+ * What a book brought in from a Calibre library says about itself beyond what every
+ * document has: all its authors, its series and place in it, and whether Outpost kept a
+ * copy of its cover (under `<data>/covers/`). Deleting the document removes the row.
+ */
+export const bookDetails = sqliteTable("book_details", {
+  documentId: text("document_id")
+    .primaryKey()
+    .references(() => documents.id, { onDelete: "cascade" }),
+  authors: json<string[]>("authors").notNull(),
+  series: text("series"),
+  seriesIndex: real("series_index"),
+  /** Extension of the kept cover ("jpg", "png"), or null when there is none. */
+  coverExt: text("cover_ext"),
+  /** Calibre's own identifier for the book, so the same book brought in twice is recognised. */
+  calibreUuid: text("calibre_uuid"),
+  createdAt: createdAt(),
+});
+
+/**
+ * Bringing in a Calibre library from a folder on a storage location: read first (the
+ * plan), then carried out as the person chose. The Calibre folder is only ever read.
+ */
+export const calibreImports = sqliteTable("calibre_imports", {
+  id: id(),
+  state: text("state", { enum: ["reading", "ready", "importing", "completed", "failed", "discarded"] }).notNull(),
+  /** No reference to the location: forgetting a location must not be held up by an old import. */
+  locationId: text("location_id").notNull(),
+  /** The Calibre library's folder inside the location. */
+  relPath: text("rel_path").notNull(),
+  plan: json<Record<string, unknown>>("plan"),
+  options: json<Record<string, unknown>>("options"),
+  report: json<Record<string, unknown>>("report"),
+  error: text("error"),
+  createdAt: createdAt(),
+  completedAt: integer("completed_at"),
+});
+
 // ── Notes ───────────────────────────────────────────────────────────────────
 
 export const notes = sqliteTable(

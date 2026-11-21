@@ -527,6 +527,22 @@ played from `GET /api/documents/:id/file`. See [library.md](library.md#audiobook
 | `POST /api/audiobooks` | Multipart: one `.zip`, or one or more audio files; optional fields `title`, `librivoxId` and `locationId` (as fields or in the query). Each file is checked from its first bytes. `202` with `{ job }`: job `audiobook.add` unpacks a zip inside the location's incoming folder (names that climb out of it, absolute names and encrypted entries refuse the zip; links and other files are left out and listed in the result), orders the audio files by track number or name, files them under `collections/audiobooks/<title>/` and records the book. Its result is `AudiobookAddResult`: `collectionId`, `title`, `chapters`, `leftOut`. `400` for a zip together with other files, two zips, or a file that is neither a zip nor audio. |
 | `GET /api/audiobooks/librivox` | `LibrivoxShelfResponse`: the LibriVox shelf from `catalog/audiobooks.json`, each book with `approxBytes` and `inLibrary`. Makes no request to LibriVox or the Internet Archive. |
 
+### Calibre libraries
+
+Types: `packages/shared/src/calibre.ts`. Reading a library only ever reads its folder; see
+[library.md](library.md#books-from-calibre).
+
+| Route | What it does |
+| --- | --- |
+| `POST /api/calibre` | Body `{ locationId, relPath }`: the library's folder on a storage location. The path is checked with symbolic links followed (`403` for one that leads outside every storage location, `400` for a path out of the location or not a folder). Starts job `calibre.read` and answers `CalibreImportResponse` in state `reading`. The plan (`CalibrePlan`) has `bookCount`, `totalBytes` (book files and covers), `coverCount`, `hasCalibreDatabase`, the first 300 `books`, `leftOut` with a reason each, and `beyondLimit` (books past 20,000). A folder with no books ends `failed` with a message. |
+| `GET /api/calibre` | `CalibreImportListResponse`: the latest imports, newest first. Query `limit` (20 by default, at most 100). |
+| `GET /api/calibre/:id` | One import with its plan, its options, its job's progress while one runs, and its `report` (`added`, `alreadyThere`, `failed`, `stopped`) when it has run. |
+| `POST /api/calibre/:id/commit` | Body `{ mode: "copy" \| "in-place", locationId? }`. `copy` checks the destination has room for `totalBytes` first (`507`); `in-place` records each file where it is. Starts job `calibre.import`. `409` unless the import is `ready` or `failed` with a plan. Committing a `failed` import again adds only what is missing. |
+| `POST /api/calibre/:id/cancel` | Stops reading or importing. Books already added stay. |
+| `DELETE /api/calibre/:id` | Sets aside a plan that was not carried out (`discarded`). `409` while importing and once completed. |
+| `GET /api/documents/:id/book` | `BookDetailsResponse`: `details` with `authors`, `series`, `seriesIndex`, `coverUrl` and `inCalibreFolder` (the file is read where it lies; the web app then removes only the record), or `null` for a document that did not come from Calibre. |
+| `GET /api/documents/:id/cover` | The kept cover picture (JPEG, PNG, WebP or GIF, with its type). `404` when there is none. |
+
 ## Notes
 
 Types: `packages/shared/src/notes.ts`. See

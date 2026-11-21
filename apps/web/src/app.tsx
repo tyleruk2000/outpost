@@ -16,6 +16,7 @@ const HomePage = lazy(() => import("./features/home/home-page"));
 const LibraryPage = lazy(() => import("./features/library/library-page"));
 const DocumentPage = lazy(() => import("./features/library/document-page"));
 const CollectionPage = lazy(() => import("./features/library/collection-page"));
+const CalibrePage = lazy(() => import("./features/library/calibre/calibre-page"));
 const ReaderPage = lazy(() => import("./features/reader/reader-page"));
 const NotesPage = lazy(() => import("./features/notes/notes-page"));
 const ChatPage = lazy(() => import("./features/chat/chat-page"));
@@ -144,6 +145,7 @@ export function App() {
           <Route path="search" element={<SearchPage />} />
           <Route path="explore" element={<ExplorePage />} />
           <Route path="library" element={<LibraryPage />} />
+          <Route path="library/calibre" element={<CalibrePage />} />
           <Route path="library/documents/:id" element={<DocumentPage />} />
           <Route path="library/collections/:id" element={<CollectionPage />} />
           <Route path="library/read/:collectionId/*" element={<ReaderPage />} />

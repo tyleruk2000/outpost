@@ -27,6 +27,8 @@ export const FORMAT = "outpost-backup";
 export const DATA_FOLDERS = ["attachments", "extracted", "catalog"];
 // Files sent on the household board (modules/board), so that a restored board's files are there.
 DATA_FOLDERS.push("board");
+// The covers of books brought in from Calibre (modules/calibre).
+DATA_FOLDERS.push("covers");
 /** The manifest is a few lines of JSON; anything much larger is not one. */
 const MAX_MANIFEST_BYTES = 64 * 1024;
 const MANIFEST_WITHIN = 8;

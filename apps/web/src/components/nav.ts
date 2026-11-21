@@ -9,6 +9,7 @@
  */
 import {
   AudioWaveform,
+  BookCopy,
   BookMarked,
   BookOpen,
   ClipboardList,
@@ -90,6 +91,9 @@ export const knowledgeNav: NavItem[] = [
     icon: BookOpen,
     key: "l",
     keywords: "documents books ebooks pdf files reading audiobooks learning school course lessons progress khan upload",
+    children: [
+      { to: "/library/calibre", label: "Import from Calibre", icon: BookCopy, keywords: "calibre ebook library epub authors series" },
+    ],
   },
   {
     to: "/maps",

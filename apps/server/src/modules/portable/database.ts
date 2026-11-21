@@ -55,6 +55,7 @@ export function prepareDriveDatabase(file: string, contents: DriveContents): { c
         DELETE FROM downloads;
         DELETE FROM jobs;
         DELETE FROM imports;
+        DELETE FROM calibre_imports;
         DELETE FROM network_shares;
         DELETE FROM drive_merges;
         DELETE FROM settings WHERE key = 'backup.schedule';

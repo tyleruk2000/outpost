@@ -8,6 +8,8 @@ export * from "./answers.ts";
 export * from "./audiobooks.ts";
 export * from "./backup.ts";
 export * from "./board.ts";
+// Bringing in a Calibre library, on a line of its own.
+export * from "./calibre.ts";
 export * from "./catalog.ts";
 // What Explore and the catalogue tool match entries by, on a line of its own.
 export * from "./catalog-match.ts";

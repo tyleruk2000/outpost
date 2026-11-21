@@ -71,6 +71,9 @@ const TABLES: Record<string, Decision> = {
   tags: { group: "library", drive: true },
   document_tags: { group: "library", drive: true },
   book_chapters: { group: "library", drive: true },
+  // Books from a Calibre library (modules/calibre). The covers are in the data folder, which a drive does not carry.
+  book_details: { group: "library", drive: true },
+  calibre_imports: { group: "library", drive: "The records of past imports are not copied (docs/portable.md)." },
   notes: { group: "notes", drive: true },
   note_tags: { group: "notes", drive: true },
   note_links: { group: "notes", drive: true },
