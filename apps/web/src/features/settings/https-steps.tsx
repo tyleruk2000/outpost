@@ -6,7 +6,7 @@
  * the root of an authority of the person's own when they brought their own certificate.
  *
  * The menu names and commands are the makers' own, read in November 2026;
- * docs/deployment.md gives the source of each and says which are from a help page and
+ * docs/development/storage-and-https.md gives the source of each and says which are from a help page and
  * which only from the words in a program's source. On a Mac the two downloads were
  * added to and removed from a keychain made for the purpose, and the checking commands
  * were run. Nothing here was tried on an iPhone, an Android phone, a Windows or a Linux

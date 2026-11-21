@@ -2,7 +2,7 @@
 
 Outpost is one Node.js process that serves a web app and an HTTP API from a SQLite
 database and a set of folders. One optional helper process, kiwix-serve, reads ZIM
-archives. That is the whole system. Everything below is detail.
+archives.
 
 ```
  Browser ──────────────► Outpost server (Node 24, Fastify)
@@ -15,335 +15,233 @@ archives. That is the whole system. Everything below is detail.
 
 ## Decisions and why
 
-### Node and TypeScript on the server, not Python
+### Node and TypeScript on the server
 
-The brief suggested Python and FastAPI; the maintainer prefers Node. One language
-across server, web app and shared types means the API contract is checked by the
-compiler on both sides (`packages/shared`). The equivalents used:
-
-| Brief | Outpost | Notes |
-| --- | --- | --- |
-| FastAPI | Fastify 5 | Plugin per feature module |
-| Pydantic | zod 4 | Request validation at the route |
-| SQLAlchemy | Drizzle ORM | Typed schema, generated SQL migrations |
-| Background jobs | In-process job queue on SQLite | See below |
-| PyMuPDF | unpdf (PDF.js) | MIT/Apache; PyMuPDF and the `mupdf` npm package are AGPL |
+One language across server, web app and shared types, so the API contract is checked
+by the compiler on both sides (`packages/shared`). Fastify 5 (a plugin per module), zod 4
+at the routes, Drizzle ORM with generated migrations, an in-process job queue on SQLite,
+and unpdf (PDF.js) for PDF text (PyMuPDF and the `mupdf` npm package are AGPL).
 
 The server runs TypeScript directly on Node 24 (type stripping), so development has no
-build step. For release it is bundled with esbuild into `dist/app`, a directory that
-runs with nothing but a Node binary. The Docker image and portable drives both use
-that same bundle.
+build step. Releases are bundled with esbuild into `dist/app`, which runs with nothing
+but a Node binary; the Docker image and portable drives use the same bundle.
 
 ### SQLite for everything, including search
 
-One file, no service to run, safe on a Raspberry Pi's SD card in WAL mode, and FTS5 is
-a capable full-text engine. The database lives in the data directory, which should be
-a local disk: WAL needs real file locking, which network shares do not provide
-reliably. Large content does not live in the database and can be on any storage.
-
-PostgreSQL with pgvector is not implemented. The seams where it would attach are the
-`VectorIndex` interface and the search service; see [Limits](#limits-and-trade-offs).
+One file, no service, safe on an SD card in WAL mode, and FTS5 is a capable full-text
+engine. The database belongs on a local disk: WAL needs real file locking, which network
+shares do not reliably give. Large content lives outside it, on any storage. PostgreSQL
+with pgvector is not built; the seams are `VectorIndex` and the search service.
 
 ### Storage locations are identified by a marker file, not a path
 
-Every location has `.outpost-location.json` at its root holding its id. Records refer
-to content as *(location id, relative path)*. If a USB drive comes back at a different
-mount point, or a share is remounted under another name, Outpost finds the marker
-inside the configured roots and carries on. If a *different* drive appears at the old
-path, the marker does not match and the location is reported as disconnected rather
-than silently used.
-
-Browsers can only name folders inside the **storage roots** set when the server starts
-(`OUTPOST_STORAGE_ROOTS`). The server never accepts an absolute path from a request
-without checking it against those roots.
+Each location has `.outpost-location.json` at its root holding its id, and records refer
+to *(location id, relative path)*. A drive that comes back at another mount point is
+found by its marker inside the configured roots; a different drive at the old path does
+not match and the location shows as disconnected. Browsers can only name folders inside
+the storage roots set at start (`OUTPOST_STORAGE_ROOTS`), and every path from a request
+is checked against them.
 
 ### One job queue for all long work
 
-Downloads, text extraction, imports, moving and verifying collections, index builds,
-writing portable drives and bringing their changes back are rows in a `jobs` table,
-run in-process on named queues with their own concurrency limits. Rows survive restarts; whatever was running is
-queued again and its handler resumes from what is on disk. Progress reaches the
-browser over one server-sent-events stream. A separate job server (Redis and a worker
-fleet) would be the wrong weight for a single-node tool that must run on a Pi.
+Long work is rows in a `jobs` table, run in-process on named queues with their own
+concurrency. Rows survive restarts; whatever was running is queued again and resumes
+from what is on disk. Progress reaches the browser over one server-sent-events stream.
+A Redis-and-workers job server would be the wrong weight for a single node on a Pi.
 
-Stopping is one path for a signal and for the server restarting itself (`core/stop.ts`,
-and the close hooks in `app.ts`): stop accepting; abort `ctx.stopping`, on which the
-responses that never end by themselves (live events, a reply being written) end; give
-requests in flight `DRAIN_LIMIT_MS` and then close their connections; stop jobs with
-the reason "shutdown", which leaves their rows running for the next start to queue
-again; run the modules' close callbacks; close the database; exit. The process exits
-after `EXIT_LIMIT_MS` whether or not that finished.
+**Stopping** is one path for a signal and a self-restart (`core/stop.ts`, close hooks in
+`app.ts`): stop accepting; abort `ctx.stopping`, which ends never-ending responses; give
+requests in flight `DRAIN_LIMIT_MS`, then close them; stop jobs with reason "shutdown"
+(they stay running for the next start to requeue); run modules' close callbacks; close
+the database; exit. It exits after `EXIT_LIMIT_MS` regardless.
 
-A fault nothing else caught (`core/faults.ts`): a rejected promise nobody handled is
-logged and the server carries on, because it ends only the piece of work it came from;
-an uncaught exception is logged and the server stops in that same order and exits with
-code 1, because the process may be half-way through a change, and Docker's restart
-policy (or whatever supervises it) starts it again.
+**Faults** (`core/faults.ts`): an unhandled rejection is logged and the server carries
+on; an uncaught exception is logged and the server stops in the same order with code 1,
+for its supervisor to restart it.
 
-At rest, with nobody using it, the server sets no timer of its own on a fixed tick
-except a few checks of things outside it that send no event (storage locations, HTTPS,
-scheduled backups, network shares: see each module). The job runner sets a timer only
-for a job told to wait. Open live-events streams share one 50-second keep-alive, which
-stops with the last of them. The web app's files are compressed once, at build time,
-and sent as they are; fingerprinted files, and the map's icons (in a folder named for
-their version), are cached by browsers for a year, the map's fonts for a week. The
-API's JSON answers over 1 kB are compressed as they are sent (`core/compress.ts`:
-Brotli at quality 4, else gzip; the 420 kB catalogue goes as 57 kB, in about 2 ms);
-streams, files, tiles and anything already compressed are not.
+**At rest** the server sets no fixed-tick timer except a few checks of outside things
+that send no event (storage locations, HTTPS, scheduled backups, shares). The job runner
+sets a timer only for a job told to wait. Live-event streams share one keep-alive. The
+web app's files are compressed at build time; fingerprinted files and map icons are
+cached for a year, map fonts for a week. API JSON over 1 kB is compressed as sent
+(`core/compress.ts`: Brotli quality 4, else gzip); streams, files and tiles are not.
 
-CPU-heavy parsing (PDF text) runs in a worker thread so that one large document cannot
-stall the HTTP server. OCR does the same, on a queue of its own that runs one document
-at a time. So does the built-in embedding model, in a worker that stays loaded while it
-is in use and is ended after five idle minutes. A web page being saved is read in a
-worker for the same reason: finding the article in somebody else's HTML is work in
-proportion to the page, and a worker can be ended (see
-[security.md](security.md#downloads-the-ssrf-guard)). A GPX file is read in a worker too, by
-a reader that keeps only what is stored and never builds a tree of the file, so what it
-costs in memory is bounded by the points in it (see [security.md](security.md#files-people-upload)).
-Imported Markdown, HTML and text files are converted to pages in a child process, one
-kept for as long as an import is using it: a process and not a thread, because the
-memory a file needs is not bounded by its size and a worker that runs out of heap can
-take the server with it (see [security.md](security.md#notes-markdown-and-html)).
+**Off the main thread:** PDF text, OCR (its own queue, one at a time), the built-in
+embedding model (a worker ended after five idle minutes), reading a saved web page, and
+reading GPX (a streaming reader whose memory is bounded by the points kept) run in
+worker threads. Imported Markdown, HTML and text are converted in a child process,
+because their memory is not bounded by file size and a worker out of heap can take the
+server with it ([security.md](security.md#files-people-upload)).
 
 ### Search in three layers behind one entry point
 
-Owning modules describe what they hold (`search.upsert({ kind, title, sections, url })`)
-and never see how search works.
+Modules describe what they hold (`search.upsert({ kind, title, sections, url })`) and
+never see how search works.
 
 1. **Keyword**: FTS5 over passages, BM25 with title, heading and tag columns weighted
-   above body text, snippets with match positions, prefix matching on the word being
-   typed, and a fallback from "all words" to "any word" that is stated in the results.
-2. **Semantic** (optional): vectors per passage, keyed by *(passage, model id)* so
-   models of different dimensions coexist and an index can be rebuilt for a new model
-   without disturbing the old one. The built-in index is flat (exact, no native code).
-   A small embedding model ships with Outpost and runs as WebAssembly; a local
-   embedding server can be used instead.
-3. **Hybrid**: reciprocal rank fusion of every source's ranked list. Because it uses
-   ranks, not scores, the same fusion also folds in articles from Kiwix archives, whose
-   scores are not comparable to anything.
+   above body, snippets, prefix matching on the word being typed, and a stated fallback
+   from "all words" to "any word".
+2. **Semantic** (optional): vectors keyed by *(passage, model id)*, so models of
+   different sizes coexist and a new model's index builds without disturbing the old.
+   The index is flat and exact. A small model ships as WebAssembly; a local embedding
+   server can be used instead.
+3. **Hybrid**: reciprocal rank fusion of every ranked list. Using ranks, not scores,
+   lets it fold in Kiwix articles, whose scores compare with nothing.
 
-Passages keep document id, page, heading, character offsets, content hash and index
-version: everything needed to cite a source. The retrieval module turns a question
-into numbered, quoted context with citations.
+Passages keep document, page, heading, offsets, content hash and index version, which is
+everything needed to cite. The retrieval module turns a question into numbered, quoted
+context.
 
 ### Answers: a model the person runs, never one Outpost ships
 
-The last step of that pipeline, a language model writing an answer from the numbered
-passages, is done by a server the person runs themselves (Ollama, llama.cpp, LM
-Studio), reached over the OpenAI-compatible chat API. Outpost bundles no model and
-downloads none: a model is gigabytes, the good choice changes every few months, and
-which one to trust with your documents is not Outpost's decision to make. The
-`answers` module is therefore small: an address, one prompt, a stream.
+A model server the person runs (Ollama, llama.cpp, LM Studio) writes the answer, over
+the OpenAI-compatible chat API. Outpost bundles and downloads no model: they are
+gigabytes, the good choice changes every few months, and which to trust is the person's
+decision.
 
-- **One question, one answer.** No conversation, memory, agents or tools. Each of
-  those widens what a planted sentence in a document could make the model do; a
-  reference tool that can also write a sourced summary does not need them.
-- **Streamed, not a job.** An answer is tied to the person waiting for it. It is sent
-  as server-sent events on the `POST` that asked for it, and when that connection
-  closes (Stop, a closed tab, a lost network) the connection to the model closes too.
-  A job would outlive the reader and would have to be stored.
-- **One at a time, refused not queued.** A model on a home machine cannot write two
-  answers at once, and a queue would hide a wait of minutes behind a spinner.
-- **Nothing stored.** The question, the passages sent and the answer exist for the
-  length of the request. The browser keeps the current answer in memory only.
-- **Sources fenced, answers inert.** Passages are sent between marker lines carrying a
-  code made up for that request, with a rule that nothing between them is an
-  instruction. The answer is drawn as words; the only links are citation markers,
-  which lead to passages Outpost supplied.
-- **Grounding is checked where it can be.** No passage found means no request to the
-  model. Markers that match no source are flagged. Whether a real source supports a
-  claim cannot be checked mechanically, so every marker opens its passage.
+- **One question, one answer.** No memory, agents or tools in Answers: each widens what
+  a planted sentence could make the model do.
+- **Streamed, not a job.** Sent as server-sent events on the `POST` that asked; when
+  that connection closes, so does the model's.
+- **One at a time, refused not queued.** A queue would hide minutes behind a spinner.
+- **Nothing stored.** The question, passages and answer last as long as the request.
+- **Sources fenced, answers inert.** Passages sit between marker lines with a per-request
+  code and a rule that nothing between them is an instruction. The answer is drawn as
+  words; the only links are citation markers to passages Outpost supplied.
+- **Grounding checked where it can be.** No passage, no request. Markers matching no
+  source are flagged; every marker opens its passage.
 
-It has been tested against a stand-in server that speaks the protocol, not against a
-real model. The interfaces are in `modules/retrieval/types.ts`; the whole of it is
-described in [ai.md](ai.md).
+Interfaces: `modules/retrieval/types.ts`; the whole of it: [ai.md](ai.md).
 
 ### Reference collections through kiwix-serve, behind a sandboxing proxy
 
-ZIM archives are served by the Kiwix project's own server rather than re-implemented:
-it is maintained, it handles the format's full-text indexes, and running it as a
-separate process keeps its GPL code at arm's length from Outpost's MIT code.
+ZIM archives are served by the Kiwix project's own server: maintained, it handles the
+format's full-text indexes, and a separate process keeps its GPL code apart from
+Outpost's MIT code.
 
-A ZIM archive is a copy of someone else's web site, scripts included. Served from
-Outpost's origin, those scripts could call Outpost's API and change the library, just
-as the person reading can. So the browser never talks to kiwix-serve. Outpost proxies
-only article content and replaces the response's security policy with a `sandbox` that
-omits `allow-same-origin`. The page then runs in an origin of its own: it cannot read
-Outpost's storage or API responses, cannot send the header a state-changing request
-needs, and cannot load anything from the internet. This was checked in a real browser
-against kiwix-serve 3.8.2 with a Wikipedia archive.
+A ZIM archive is someone else's web site, scripts included. Served from Outpost's
+origin, they could call the API. So the browser never talks to kiwix-serve: Outpost
+proxies article content only and replaces the security policy with a `sandbox` without
+`allow-same-origin`. The page runs in an origin of its own: it cannot read Outpost's
+storage or responses, cannot send the header a change needs, and cannot load from the
+internet.
 
-The frame cannot be inspected from outside, so the proxy adds a small script to each
-page that tells the reader around it which page is showing, which files the page links
-to, and which link was pressed. It runs before the archive's own scripts and keeps its
-own way of reading a link's address, because books made from web sites carry a script
-that makes every link report the address it had on the live site. The reader treats
-everything the frame says as untrusted. A PDF inside the archive opens in Outpost's
-own PDF viewer, read straight from the archive, and a PDF or e-book can be copied into
-the document library, which needs no connection. A link that really does leave the
-archive is never followed inside the frame; if it points at a file the library keeps,
-the reader offers to fetch it through the download manager.
+The proxy adds a small script to each page that tells the reader which page is showing,
+what it links to and which link was pressed; it runs before the archive's scripts and
+keeps its own way of reading a link (some books rewrite links to their live-site
+addresses). The reader treats all of it as untrusted. PDFs open in Outpost's viewer
+straight from the archive; PDFs and e-books can be copied into the library offline. A
+link that leaves the archive is never followed in the frame; a file the library keeps
+is offered through the download manager.
 
-A page in that sandbox has no storage: the browser gives none to a page without an
-origin of its own. A collection made with openZIM's nautilus, which is a set of
-documents with a list, draws its list from a browser database and so draws nothing.
-For those the server reads the list out of the archive, with a parser of its own that
-runs nothing, and the reader shows it as a list of its own in place of the page
-(`modules/kiwix/nautilus.ts`, `literal.ts`, `document-lists.ts`;
-[security.md](security.md#reference-zim-content) says why the sandbox was not loosened
-instead).
+A sandboxed page has no storage, so a nautilus collection (documents with a list drawn
+from a browser database) would draw nothing. The server reads the list out of the
+archive with a parser that runs nothing (`modules/kiwix/nautilus.ts`, `literal.ts`,
+`document-lists.ts`), and the reader shows it itself.
 
-kiwix-serve trusts its library file and will not search a book that has no language
-recorded, so Outpost writes complete metadata, which it reads back from each archive.
+kiwix-serve will not search a book with no language recorded, so Outpost writes
+complete metadata, read back from each archive.
 
 ### A book is a collection of documents, one per chapter
 
-The handbook and radio guides that ship with Outpost are book-length. Kept as one
-document each, search could only say "somewhere in this book" and a phone would load
-eighty thousand words to show a page. So a book is one collection (kind `file`, with
-`meta.book`) whose folder holds one Markdown file per chapter, and each chapter is an
-ordinary document recorded where it lies. The `book_chapters` table ties the two
-together: which document is which chapter, in what order, under which part. The
-collection is what a person adds, checks, moves and removes; its page is the contents.
-The chapters are searched and opened like any document, and are left out of the
-library's own list and counts so that three hundred of them do not bury everything
-else. Links between chapters are written as `outpost:entry/<entry id>/<chapter key>`
-and looked up when a chapter is shown, so they work across books and say plainly when
-the other book has not been added. Code: `modules/books`, `modules/catalog`
+The handbook and radio guides that ship with Outpost are book-length. A book is one
+collection (kind `file`, `meta.book`) whose folder holds a Markdown file per chapter,
+each an ordinary document; `book_chapters` records order and parts. The collection is
+what is added, checked, moved and removed; chapters are searched and opened like any
+document but left out of the library's list. Links between chapters are
+`outpost:entry/<entry id>/<chapter key>`, resolved when shown, so they work across books
+and say when the other book is missing. Code: `modules/books`, `modules/catalog`
 (`addBook`), `documents/markdown-view.ts`.
 
 ### A drive comes home as a three-way comparison, not a sync
 
-A portable drive is a second copy of the library that changes on its own, on computers
-with clocks nobody controls. To bring its changes home without guessing, three states
-are needed for every page, document, saved place and track: what it is on the drive,
-what it is at home, and what it was when the two were last the same. So a drive is
-written with that third state on it (`drive_baseline`: a fingerprint of each thing,
-and `library_meta`: which library wrote it and when), and every merge records what it
-did with each of the drive's things (`drive_merge_actions`), which serves as the base
-the next time the same drive is read. Dates are only consulted for a drive that has no
-record, and there anything they do not settle is a conflict for a person to decide.
+A portable drive changes on its own, on computers with clocks nobody controls. Bringing
+its changes home without guessing needs three states for every page, document, place
+and track: the drive's, home's, and what both were when last the same. A drive is
+written with that third state (`drive_baseline` fingerprints; `library_meta`), and each
+merge records what it did per thing (`drive_merge_actions`), which becomes the base next
+time. Dates are consulted only for a drive with no record, and anything they do not
+settle is a conflict for a person.
 
-The drive is untrusted and is never written to. Its database is copied into the data
-directory (with its write-ahead log, which holds the newest changes after an unclean
-stop) and read from the copy, read-only, table by table, with every value checked.
-Changes at home go through the owning services, so a page from a drive is sanitised,
-linked and indexed like any other, and each change is written in one transaction with
-its line in the merge's record. That record is what a person reads afterwards, what
-"undo" works from, and why stopping part-way leaves a whole library. Code:
-`modules/merge` (`drive.ts`, `fingerprint.ts`, `diff.ts`, `apply.ts`, `service.ts`).
+The drive is untrusted and never written to. Its database (with its write-ahead log) is
+copied into the data directory and read from the copy, read-only, every value checked.
+Changes at home go through the owning services, each in one transaction with its line
+in the merge's record, which is what a person reads, what undo works from, and why
+stopping part-way leaves a whole library. Code: `modules/merge`.
 
 ### Maps: regional extracts of a planet archive, composited on the server
 
-Tiles come from the Protomaps daily planet build (OpenStreetMap data, ODbL), a single
-PMTiles archive that supports HTTP range requests. Outpost reads the archive's
-directories to work out exactly which byte ranges a region needs, which gives an
-**exact** size before downloading, then fetches only those ranges into a new, valid
-PMTiles file. This is the same method as the Protomaps `pmtiles extract` tool,
-implemented in Node so that it is resumable, reports progress, goes through the same
-download manager as everything else, and adds no binary dependency. OpenStreetMap's
-public tile servers are never used.
+Tiles come from the Protomaps daily planet build (OpenStreetMap data, ODbL), one
+PMTiles archive that supports range requests. Outpost reads its directories to find the
+byte ranges a region needs, which gives an **exact** size before downloading, then
+fetches only those into a new, valid PMTiles file: the method of `pmtiles extract`, in
+Node, so it is resumable, reports progress and goes through the download manager.
+OpenStreetMap's public tile servers are never used.
 
-Satellite imagery is the same kind of archive with WebP pictures in it, made on the
-person's computer by a download-manager fetcher from NASA's GeoTIFFs or from the parts
-of a Sentinel-2 scene or of a national aerial photograph that cover a chosen area, read
-by range requests (`modules/maps/imagery/`, [maps.md](maps.md#satellite-imagery)).
+Satellite imagery is the same kind of archive holding WebP pictures, made on the
+person's computer from NASA's GeoTIFFs or from the parts of a Sentinel-2 scene or a
+national aerial photograph that cover the area (`modules/maps/imagery/`).
 
-The browser sees one tile endpoint. The server looks through installed regions for
-the best archive holding each tile, so regions join seamlessly and a world overview
-fills in when zoomed out. Styles, fonts and sprites are served by Outpost. Place-name
-search uses GeoNames data loaded into FTS5.
+The browser sees one tile endpoint; the server picks the best installed archive for each
+tile, so regions join seamlessly and a world overview fills in when zoomed out. Styles,
+fonts and sprites are served by Outpost. Place search uses GeoNames in FTS5.
 
-### A phone out of reach: a kept app and chosen copies, not a second library
+### A phone out of reach: a kept app and chosen copies
 
-Outpost is used from a phone that leaves the house. The server stays behind, so the
-web app keeps itself in the browser with a service worker and lets a person keep
-chosen things there: a page of notes with the pages inside it, a route, the saved
-places, a box of the map. Out of reach the app shows those, read-only. It is not a
-sync: a kept copy is only ever replaced by the server's version, never sent back, so
-there is no queue of changes and no conflict to settle. Editing away from the server
-would need the editor to keep a history of edits, the same thing live co-editing and
-merging inside a page would need.
+The web app keeps itself in the browser with a service worker, and a person keeps chosen
+things there (a page of notes and the pages inside it, a route, saved places, a box of
+map). Out of reach the app shows those. A kept copy is only ever replaced by the
+server's version; the few writes allowed away (page text, new pages, check-ins) are sent
+on return, and a page changed on both sides asks which to keep.
 
 - **The worker is hand-written, about 150 lines** (`apps/web/src/sw/`). Workbox was
-  looked at on 16 November 2026 (`workbox-build` 7.4.1 and `vite-plugin-pwa` 2.0.0,
-  both MIT and maintained). What Outpost needs is narrow and unusual: pages always
-  from the server first, a short fixed list of API addresses answered from a cache
-  only for things a person kept, tiles stored gzipped and unpacked on the way out,
-  "no tile here" for a map tile outside a kept area. A library's defaults would have
-  to be switched off one by one to get there, and a worker that goes wrong strands
-  people on an old app, so it is better read whole. Its decisions are plain functions
-  in `rules.ts`, tested without a browser.
+  considered; what Outpost needs is narrow (pages from the server first, a short list of
+  API addresses answered from cache only for kept things, tiles stored gzipped, "no
+  tile" outside a kept area), and a worker that goes wrong strands people on an old app,
+  so it is better read whole. Its decisions are plain functions in `rules.ts`.
 - **What is kept of the app is worked out at build time** (`apps/web/sw-plugin.ts`):
-  the entry, everything the out-of-reach screens load, styles, fonts and the world
-  outline, 4.5 MB of the 11 MB of scripts. The build's name and a hash of those files
-  are written into the worker, so any change to them is a new worker.
-- **Kept things are files in Cache Storage under the addresses they came from**, one
-  cache per thing. The map code is unchanged: it asks for the same tile addresses and
-  the worker answers. The server's part is two small additions: it measures a box from
-  its archives' directories, and it can give a tile still gzipped
-  (`modules/maps/kept-area.ts`).
-- **Reach is asked, not assumed.** The browser's own "online" flag says nothing about
-  a server on a home network, so the app asks `/api/health` with a four-second limit.
+  everything the out-of-reach screens load, about 4.5 MB of 11 MB of scripts. The
+  build's name and a hash are written into the worker.
+- **Kept things are Cache Storage entries under their own addresses**, one cache per
+  thing, so the map code is unchanged. The server measures a box from its archives'
+  directories and can give a tile still gzipped (`modules/maps/kept-area.ts`).
+- **Reach is asked, not assumed**: `/api/health` with a four-second limit.
 
-The limits a browser puts on stored data, and what was not tested, are in
-[offline.md](offline.md#a-phone-out-of-reach-of-the-server).
+Browser limits on stored data: [offline.md](offline.md#a-phone-out-of-reach-of-the-server).
 
 ### Security posture
 
-- There are no accounts: whoever can reach Outpost can use all of it. What is
-  controlled is who can reach it, and what a browser can be tricked into doing. The
-  rules are in `core/guard.ts`.
-- A few actions ask where a request came from: erasing a person's own notes and
-  documents, restoring a backup over them, deleting stored backups, and replacing or
-  deleting the HTTPS certificate authority are accepted only from the computer Outpost
-  runs on, unless a start-up option says otherwise (`core/local.ts`).
-- HTTPS for the home network is optional and off by default: a second listener with a
-  certificate from an authority Outpost makes for itself, limited to private addresses
-  and local names, or with a certificate the person brought, which Outpost checks first
-  and reloads when its files are renewed. The same request handler serves both
-  listeners (`modules/https`).
-- Binds to localhost by default. Sharing it on the network is a start-up setting
-  (`OUTPOST_LAN_ACCESS`), never changeable from the browser, and the server refuses to
-  start on an address other devices can reach without it.
-- Every state-changing request must carry a custom header and come from the same
-  origin. A page on another site cannot add the header without a CORS preflight, which
-  is never approved. The Host header is checked against the names the server answers
-  to, which defeats DNS rebinding. Every response carries `X-Content-Type-Options:
-  nosniff`, `Referrer-Policy: no-referrer`, `Cross-Origin-Opener-Policy: same-origin`
-  and, outside the reference proxy, `X-Frame-Options: SAMEORIGIN`.
-- The app's Content Security Policy is `default-src 'self'` with `connect-src 'self'`:
-  the browser itself enforces that nothing is loaded from, or sent to, anywhere else.
-- Files people upload are served with `Content-Security-Policy: sandbox`, so an
-  uploaded HTML or SVG file can never run script in Outpost's origin. Imported HTML and
-  Markdown are converted to a fixed node schema; nothing is stored as raw HTML.
-- Downloads are limited to hosts named in catalogue manifests for the first request,
-  and every connection, including each redirect hop, must land on a public address.
-  Integrity comes from the checksum published by the source, not from the mirror.
-- The one fetch from a host no manifest lists is a file a person chooses to save from
-  a link in a reference page. It must be an `http` or `https` address ending in a kind
-  of file the library keeps, it goes through the same download manager and the same
-  public-address rule, and what arrives is kept only if it is the kind of file its name
-  says.
-- Archives are unpacked with path, size, count and ratio limits, and never onto paths
-  outside the staging folder.
-- A web page a person saves is fetched through the same client, read in a worker
-  thread under limits of size, elements and time, and kept as a Markdown document: it
-  is cleaned with an allow-list, and shown, like any Markdown file, as a tree of plain
-  values. One page per action; nothing is crawled, scheduled or fetched again.
-- Encryption is done in the browser. The server keeps public keys and, if asked, a
-  private key in the form its passphrase protects, which it checks; it never sees a
-  passphrase or anything in the clear, and does no cryptography itself. Where a browser
-  will not do cryptography (plain HTTP from another device) the feature is unavailable
-  rather than moved to the server.
-- No telemetry. The server makes an outbound request only as the direct result of a
-  person's action: refreshing the catalogue, starting a download, saving a file from
-  a link, saving a web page, estimating or downloading a map region or place names, searching for a route
-  in a route source or choosing one of the results, estimating or downloading reference data for the map, fetching the runtimes
-  for a portable drive, or, if they configured one, calling their own embedding server
-  or asking their own model server for an answer.
-
-See [security.md](security.md) for the threat model.
+- No accounts: whoever can reach Outpost can use all of it. What is controlled is who
+  can reach it and what a browser can be tricked into doing (`core/guard.ts`).
+- Binds to localhost by default. Sharing on the network is a start-up setting
+  (`OUTPOST_LAN_ACCESS`), never changeable from the browser; the server refuses to bind
+  a reachable address without it.
+- A few actions are accepted only from the computer Outpost runs on unless a start-up
+  option says otherwise: erasing, restoring and deleting backups, replacing or deleting
+  HTTPS certificates, reclaiming database space (`core/local.ts`).
+- Every state-changing request carries a custom header and comes from the same origin;
+  the CORS preflight another site would need is never approved. The Host header is
+  checked against the names served, which defeats DNS rebinding. Responses carry
+  `nosniff`, `Referrer-Policy: no-referrer`, `Cross-Origin-Opener-Policy: same-origin`
+  and, outside the reference proxy, `X-Frame-Options: SAMEORIGIN`. The app's CSP is
+  `default-src 'self'` with `connect-src 'self'`.
+- Uploaded files are served with `Content-Security-Policy: sandbox`. Imported HTML and
+  Markdown become a fixed node schema; nothing is stored as raw HTML.
+- Downloads go only to hosts named in catalogue manifests for the first request, and
+  every connection, each redirect included, must land on a public address. Integrity
+  comes from the source's checksum. The exceptions a person triggers directly (a file
+  linked from a reference page, a web page saved) follow the same public-address rule
+  and are kept only if they are what they claim.
+- Archives are unpacked with path, size, count and ratio limits, inside staging only.
+- Encryption happens in the browser. The server keeps public keys and, if asked, a
+  passphrase-protected private key; it never sees a passphrase or plain text. Where a
+  browser will not do cryptography (plain HTTP from another device) the feature is
+  unavailable rather than moved to the server.
+- HTTPS for the home network is optional: a second listener with a certificate from
+  Outpost's own authority (private addresses and local names only), or the person's own
+  certificate, checked and reloaded when renewed (`modules/https`).
+- No telemetry. The server reaches out only as the direct result of a person's action;
+  every host is listed in [security.md](security.md) and [offline.md](offline.md).
 
 ## Code layout
 
@@ -359,144 +257,129 @@ apps/web/src/
   components/        shell and controls
   features/          one folder per screen
 packages/shared/     API types and pure helpers used by both sides
-catalog/             catalogue manifests, their schema, packs, map region presets, and the
-                     sheets and books that ship with Outpost (bundled/)
-engines/             the HF propagation engine as WebAssembly, the data it reads, the
-                     solar cycle table, and the source of Outpost's bridge to the engine
-scripts/             packaged-app build, map asset fetch, embedding model fetch, engine build
+catalog/             catalogue manifests, schema, packs, map region presets, bundled sheets and books
+engines/             the HF propagation engine (WebAssembly), its data, the solar cycle table
+scripts/             app build, asset and model fetches, engine builds, generated docs
 e2e/                 Playwright tests against the packaged app
 ```
 
-Modules, in registration order: search, semantic, retrieval, answers, documents, notes, chat, imports,
-collections, books, kiwix, downloads, links, webpages, catalog, maps, repeaters, encryption, backup, portable, merge, manage, https, contacts, propagation, power. A module may use the
-collections, books, kiwix, downloads, links, webpages, catalog, maps, repeaters, encryption, backup, portable, merge, manage, https, contacts, propagation, layers. A module may use the
-services of those before it. [development/server-modules.md](development/server-modules.md)
-is the contract a module works to.
+Registration order is in `modules/index.ts`; a module may use the services of those
+before it. [development/server-modules.md](development/server-modules.md) is the
+contract a module works to.
 
 ## Limits and trade-offs
 
-These are deliberate, and stated so nobody has to discover them.
+Deliberate, and stated so nobody has to discover them. What has not been tried yet is
+in [testing-status.md](testing-status.md).
 
 | Area | Limit | Why, and what would lift it |
 | --- | --- | --- |
-| Scale | One node, one writer. | SQLite. Fine for a household or a classroom; a larger deployment needs the PostgreSQL seam filled in. |
-| Vector search | Flat index: every query compares against every stored vector. | Exact and dependency-free; comfortable to roughly 100,000 passages. `VectorIndex` is the seam for sqlite-vec or pgvector. |
-| Built-in embedding model | Small and English (all-MiniLM-L6-v2): other languages are matched poorly. It reads 256 word pieces at a time, so a longer passage is read in stretches and their vectors averaged. Run by ONNX Runtime as WebAssembly, about four times slower than its native build: 33 to 54 seconds per thousand passages on an Apple M2 Max, about 300 MB of memory while loaded. Not run on a Raspberry Pi, an Intel Mac, Windows or musl Linux. | WebAssembly needs no binary per platform, so it runs wherever Node does (the native runtime has no musl or Intel-macOS builds). A small multilingual model is five times the size and half the speed; a local embedding server (Ollama, llama.cpp) is the way to use one today. Other models could be offered as downloads; that is not built. |
-| EPUB books | Shown as their words and pictures in Outpost's own type, a chapter at a time, at most 2 MB a chapter. The book's styling, fixed layouts, audio, video, MathML and scripts are left out; a copy-protected (DRM) book is not read. Tested with books built for the tests, not with a set of published ones. | The book's own pages are never put in the browser (see security.md). Showing them as designed would need a sandboxed frame per chapter, as reference archives have. See epub.md. |
-| OCR | Optional and off by default; slow, and it makes mistakes. Tesseract compiled to WebAssembly, English built in, other languages from a data file a person adds. Only pictures on a page are read: text drawn as shapes is not. A page scanned the wrong way up is found by trying the other ways, not by detecting its orientation. | No native code, so it runs everywhere Node does. Reading drawn text needs a PDF renderer with a canvas (`@napi-rs/canvas`), a native dependency. Languages could be fetched through the download manager; that is not built. `modules/ocr/types.ts` is the seam for another engine. |
-| Language model answers and chat | Need a model server the person runs (Ollama, llama.cpp, LM Studio); no model is bundled. One answer or reply is written at a time, across Outpost. The library is read from documents, notes and book chapters only. Conversations are readable by everyone who can open Outpost. Tested automatically against a stand-in server; tried by hand, briefly, with a real Ollama and two small models. | Bundling a model would add gigabytes and a native runtime. Reference articles would need Outpost to split ZIM content into passages. See ai.md. |
-| ZIM archives | Need kiwix-serve (the Compose sidecar, or a binary for non-Docker installs). | Reading the format in pure JavaScript would mean reimplementing libzim. |
-| Maps | Vector basemap only from the Protomaps schema; hill shading and contour lines need a separate terrain download; contour lines are only as fine as that terrain; routing is not offered; the line-of-sight check is geometry over that terrain, not a prediction of radio coverage. | Contour lines are traced in the browser from the installed terrain (see maps.md), so there is no contour tileset to download or host. |
-| HF propagation | A monthly median from VOACAP, never today's conditions; 2 to 30 MHz, short path, a coverage map is one frequency on a grid of at most 2,304 cells; a plan is at most eight stations; a comparison of the contact log counts and calibrates nothing, and ADIF was tested only against files written from its specification. A second model, the ITU's P.533, is optional, isotropic only, and only beside a single prediction; it is built on each computer and never shipped. The engine is a three-month-old Rust translation by one author; it was held here to the Fortran original's printed output on three circuits and not compared with signals measured on the air. Not run on Windows, a real Raspberry Pi or an Intel Mac. | The engine sits behind an interface (`modules/propagation/engine.ts`) so that another can replace it. See hf-propagation.md. |
-| Recording a track | Only while the screen is on and Outpost is the page in front: no browser gives a web page positions otherwise. Not tried on a real phone outdoors. | A limit of browsers, not of Outpost; lifting it needs an app that is not a web page. What is done within it is in maps.md. |
-| Repeaters | None ship with Outpost. Two publishers' lists can be fetched when a person asks (the IRTS's and Hearham's); every other list is a file the person downloaded, or entries typed in. The fetch was tested against a stand-in, not pressed against either publisher. Listed positions are often approximate and are marked so. Fifty thousand entries were measured on a laptop, not on a Raspberry Pi. The CHIRP export has not been loaded into CHIRP or a radio. Not kept on a phone out of reach, not on a printed map, not brought back from a portable drive. | Most publishers whose terms were read do not allow an application to fetch their list, or put a check for a browser in the way (see sources.md). A source becomes one Outpost fetches by a change to `catalog/repeater-sources.json` once its publisher allows it. See radio.md. |
-| Printed maps | One page (A4, A3, US Letter), the map as a picture at 300 or 150 dots to the inch. The scale is exact along the middle of the sheet only. Not put through a printer, and not tried on an iPhone or in Safari. | The map is drawn in Web Mercator, on screen and on paper alike, and a manual pass with a printer and a phone has not been made. See maps.md. |
-| Calculators under Tools | Textbook and published formulas only; health and safety figures quoted from official pages read on one day, and USDA's pages could not be read then, so none of its figures is used. Not tried on a real iPhone. | A calculator that guesses beyond its source would mislead; each says its source, range and limits on screen. See tools.md. |
-| Reference layers | No historical targeting dataset ships: none cleared for redistribution exists as data. OpenStreetMap layers by Overpass only within the boxes of servers whose terms allow it (Europe and North America as shipped), elsewhere from a Geofabrik extract. A first view of the world with a few hundred thousand records takes about a second on a laptop. Not run on a Raspberry Pi. | The adapters are one interface (`modules/layers/types.ts`); a source becomes one Outpost fetches once its terms allow. See reference-layers.md. |
-| Map source | Depends on the Protomaps build host staying available for new downloads. | The source address is a setting; any PMTiles archive with the same schema works, including one you host. |
-| Notes collaboration | Last writer wins, with conflict detection; no live co-editing. | The editor could take a CRDT later; the storage format would need to change. |
-| Portable drives | A drive is a copy, not a live sync partner. Changes made on it come home only when a person plugs it in and brings them back, one drive at a time, after reading a preview. Conflicts are settled per item, as whole pages: text is not merged line by line. Settings, the order of pages among their siblings, and the favourite mark on existing pages are not brought back. | Deliberate: nothing is overwritten that a person has not seen. Merging inside a page would need the editor to keep a history of edits (a CRDT), as live co-editing would. |
-| Bringing a drive back | Tested with two real libraries on one computer, with the drive as a folder. Not tried with a physical USB drive carried to a second computer and back, nor with a drive written by a genuinely older release (there is none yet; the tests strip the record from a drive to stand in for one). A drive is read up to 100,000 pages, 100,000 documents, 100,000 saved places, 20,000 tracks and a 32 GB database. A document removed at home because it was ticked in a merge cannot be brought back by undo. | A manual pass with a real drive. The limits are constants in `modules/merge/fingerprint.ts` and `drive.ts`. |
-| Windows without Docker | Untried. Nobody has run the server tests or the packaged app on Windows. | A manual pass on a Windows machine. |
-| HTTPS on the home network | Each device has to be told by hand to trust Outpost's certificate. Tested with Node, OpenSSL, curl and macOS's trust evaluation; never installed on a real iPhone, iPad, Android phone or Windows computer, nor trusted in a real browser. Android does not hold the certificate authority to its limits. In Docker a person has to publish the port and name the host's address. A person who has a certificate of their own can give it to Outpost instead; that has been tested with certificates the tests make, never with one from a real public authority, a PKCS#12 file from anything but OpenSSL, or in Docker, and a public name still has to be listed in `OUTPOST_ALLOWED_HOSTS` where Outpost is started. | A certificate browsers trust unaided needs a public domain name and the internet, which is what Outpost's own avoids. A manual pass on real devices. See deployment.md and security.md. |
-| A phone out of reach | Only what was kept on purpose: pages of notes, routes, saved places, map areas. A kept page's title and text can be changed, and new pages and check-ins written, sent when back in reach; a page changed on both sides asks which version to keep. No documents, reference collections or search. Needs HTTPS. The browser decides how long kept data lives: Safari deletes it after seven days of Safari use without a visit unless Outpost is on the Home Screen. Tested in Chromium only, never on a phone. | Changing a page's tags, icon or cover out of reach is not offered. Documents could be kept the same way notes are. See offline.md. |
-| Contacts | No photos. Phones can keep a copy over CardDAV and cannot write to it; contacts come from a phone as a vCard file (or, in Chrome on Android over https, picked on the phone). CardDAV has been tested with a client library and a sync program, never with a phone. Contacts changed on a portable drive are not brought back by a merge. A phone out of reach does not show them unless it keeps a CardDAV copy. | Two-way sync needs what a phone sends kept exactly, a holding place for a phone's deletions, and a pass on real phones. See contacts.md. |
-| Access | No accounts and no per-person permissions: everyone who can reach Outpost can read, add, change and delete everything. | Outpost is for one household or one trusted network. Anything wider needs an authenticating proxy in front of it. |
+| Scale | One node, one writer. | SQLite; fine for a household or classroom. Larger needs the PostgreSQL seam filled. |
+| Vector search | Flat index: every query compares every vector. | Exact and dependency-free to about 100,000 passages. `VectorIndex` is the seam for sqlite-vec or pgvector. |
+| Built-in embedding model | Small and English (all-MiniLM-L6-v2); 256 word pieces at a time, longer passages averaged. WebAssembly, about four times slower than native: 33 to 54 s per thousand passages on an M2 Max, ~300 MB loaded. Not run on a Pi, Intel Mac, Windows or musl Linux. | WebAssembly needs no per-platform binary. A multilingual model is five times the size and half the speed; use a local embedding server for one. |
+| EPUB | Words and pictures in Outpost's type, a chapter at a time, ≤2 MB a chapter. No book styling, fixed layouts, audio, video, MathML, scripts or DRM. | The book's own pages never enter the browser; showing them would need a sandboxed frame per chapter. |
+| OCR | Optional, slow, makes mistakes. Tesseract in WebAssembly, English built in. Reads pictures on a page, not text drawn as shapes; orientation by trying each way. | Drawn text needs a canvas renderer (`@napi-rs/canvas`, native). `modules/ocr/types.ts` is the seam. |
+| Answers and chat | Need the person's own model server. One answer or reply at a time. Library read from documents, notes and chapters only. Conversations visible to everyone who can open Outpost. | Reference articles would need ZIM content split into passages. |
+| ZIM archives | Need kiwix-serve. | Reading the format in JavaScript means reimplementing libzim. |
+| Maps | Protomaps schema only; hill shading and contours need a terrain download and are only as fine as it; no routing; line of sight is geometry, not a coverage prediction. | Contours are traced in the browser, so there is no contour tileset. |
+| Map source | Depends on the Protomaps build host for new downloads. | The address is a setting; any PMTiles archive of the same schema works. |
+| HF propagation | VOACAP monthly medians, never today's conditions; 2 to 30 MHz, short path; coverage ≤2,304 cells; plans ≤8 stations; the log comparison calibrates nothing. P.533 optional, isotropic, built on each computer. The engine is a young one-author Rust translation. | The engine sits behind `modules/propagation/engine.ts`. |
+| Recording a track | Only with the screen on and Outpost in front. | A browser limit; lifting it needs a native app. |
+| Repeaters | None shipped. Two lists can be fetched on request (IRTS, Hearham); others are files or typed. Positions often approximate. Not kept on a phone, printed, or merged from a drive. | Most publishers' terms forbid an app fetching; a source is added in `catalog/repeater-sources.json` when allowed. |
+| Printed maps | One page (A4, A3, Letter), a picture at 300 or 150 dpi; scale exact along the middle only. | Web Mercator on screen and paper. |
+| Calculators | Published formulas only; health and safety figures quoted from official pages. | A calculator that guesses beyond its source would mislead. |
+| Reference layers | No historical targeting dataset ships (none is cleared as data). Overpass only within servers whose terms allow it (Europe and North America), elsewhere a Geofabrik extract. | Adapters share `modules/layers/types.ts`. |
+| Notes | Last writer wins, with conflict detection; no live co-editing. | A CRDT editor; the storage format would change. |
+| Portable drives | A copy, not a sync partner: changes come home when plugged in, one drive at a time, after a preview, as whole items. Settings, sibling order and favourite marks are not brought back. Read up to 100,000 pages, documents and places, 20,000 tracks, a 32 GB database. A document removed by a merge is not restored by undo. | Merging inside a page needs an edit history (a CRDT). Limits in `modules/merge/fingerprint.ts`, `drive.ts`. |
+| HTTPS at home | Each device must be told to trust Outpost's certificate. Android does not hold the authority to its limits. In Docker the port must be published and the host's address named. A public name on an own certificate must be in `OUTPOST_ALLOWED_HOSTS`. | A certificate browsers trust unaided needs a public domain and the internet. |
+| A phone out of reach | Only what was kept: pages, routes, places, map areas. No documents, reference or search. Needs HTTPS. The browser decides how long it lasts (Safari: seven days without a visit unless on the Home Screen). | Documents could be kept the way notes are. |
+| Contacts | No photos. Phones read over CardDAV and cannot write; contacts come in as vCard files or from Chrome's picker on Android over https. Not merged from a drive. | Two-way sync needs a holding place for a phone's deletions. |
+| Access | No accounts or per-person permissions. | For one household or trusted network; anything wider needs an authenticating proxy. |
 
 ## Dependency licences
 
-Outpost is MIT. Everything linked into it is MIT, ISC, BSD or Apache-2.0. Things that
-are not are kept outside the process or left out, with one exception, OpenPGP.js, which
-is LGPL and is shipped as a separate file that Outpost loads at run time (see its row
-below, and [The OpenPGP library](#the-openpgp-library)):
-
-The packaged app and the Docker image carry `THIRD-PARTY-LICENSES.txt`: every package
-the server and the web app depend on when running, each with its licence text. It is
-written by `scripts/build-app.mjs` from the installed packages.
+Outpost is MIT. Everything linked into it is MIT, ISC, BSD or Apache-2.0 ("the four").
+What is not is kept outside the process or left out, with one exception, OpenPGP.js
+(LGPL), shipped as a separate file loaded at run time ([below](#the-openpgp-library)).
+The packaged app and Docker image carry `THIRD-PARTY-LICENSES.txt`, every runtime
+package with its licence text, written by `scripts/build-app.mjs`.
 
 | Component | Licence | How it is used |
 | --- | --- | --- |
-| kiwix-serve, libzim | GPL-3.0 / GPL-2.0+ | Separate process, reached over HTTP. Not linked, not bundled in the Outpost image. |
-| Dire Wolf 1.8, readsb 3.16, AIS-catcher, rtl-sdr (Heard on the radio) | GPL-2.0-or-later; GPL-3.0-or-later; GPL-3.0; GPL-2.0-or-later | Separate programs the person runs, on the Pi (installed by `deploy/pi/install.sh --decoders`, each its own service) or another computer. Outpost reads their network port and never links, bundles or starts them itself. Its KISS, AX.25, APRS, SBS and AIS readers are its own (`modules/heard/`). |
-| pyais 3.3.1 | MIT | Not used by Outpost. Run once on the development computer to decode (and encode) the AIS sentences the tests check Outpost's own reader against (`apps/server/test/fixtures/heard/ais-pyais.json`). |
-| `mupdf` (npm), PyMuPDF | AGPL-3.0 | Not used. PDF text comes from unpdf (PDF.js, Apache-2.0). |
-| Tesseract (`tesseract.js-core`) and its English model | Apache-2.0 | Bundled, for OCR. The model is Tesseract's English `tessdata_best` in integer form, as packaged in `@tesseract.js-data/eng` (whose own packaging is MIT). |
-| all-MiniLM-L6-v2 (embedding model) | Apache-2.0 | Bundled, for semantic search; fetched at build time from Hugging Face at a pinned revision and checked against checksums, never committed. Trained by the Sentence Transformers project; the files are the 8-bit ONNX conversion published as `Xenova/all-MiniLM-L6-v2`. Its model card lists training data with terms of their own (MS MARCO, Reddit comments and others); the weights are released under Apache-2.0. Hugging Face's terms of service, read on 2026-11-15, say that content in a public repository stays under the licence its owner gave it. Notice and licence text: `server/embed/all-MiniLM-L6-v2/`. |
-| ONNX Runtime (`onnxruntime-web`), `@huggingface/tokenizers` | MIT, Apache-2.0 | Bundled; they run the embedding model. The runtime is the project's own WebAssembly build. The npm package carries no licence file, so the licence and third-party notices from the project's repository at the release's commit are kept in this repository under `third-party/onnxruntime-1.31.1/` and copied into the build: `server/embed/LICENSE-onnxruntime.txt`, `ThirdPartyNotices-onnxruntime.txt`. |
-| hfcast (`engines/voacap/engine/voacap.wasm`): VOACAP translated to Rust, compiled to WebAssembly | Apache-2.0 | Bundled; it works out HF propagation predictions. Pinned to one commit and built by `scripts/build-hf-engine.mjs`; licence and notice travel beside it. VOACAP itself is NTIA/ITS work (United States Government). See [hf-propagation.md](hf-propagation.md#licences-and-attribution). |
-| VOACAP's antenna files (`engines/voacap/data/`) | **Not one of the four.** NTIA/ITS work "not subject to copyright protection in the U.S." | Bundled, 15 kB. Full texts: `engines/voacap/NOTICE.txt`. |
-| VOACAP's coefficient files (CCIR Reports 322 and 340, with NTIA/ITS tables) | **Not one of the four.** CCIR data the ITU publishes for implementers "free from any copyright assertions", in a repository whose headers reserve all rights | **Not shipped and not in the repository** (since 16 November 2026). Listed with checksums in `engines/voacap/coefficients.json`; fetched once, 559 kB, from the engine's own repository when a person presses Download, or at set-up by `scripts/fetch-voacap-data.mjs`. See [hf-propagation.md](hf-propagation.md#data). |
-| USDA FoodData Central, SR Legacy (`apps/server/src/modules/supplies/foods/fdc-sr-legacy.json`) | Public domain, CC0 1.0 (United States Government work, USDA Agricultural Research Service) | Bundled, 724 kB (164 kB compressed): energy, protein, fat and carbohydrate per 100 g for 7,793 foods, for Supplies. Made from USDA's published CSV by `scripts/build-food-energy.mjs`; USDA asks to be named as the source, which the screen does. See [supplies.md](supplies.md#energy-from-usda-fooddata-central). |
-| NOAA CO-OPS tidal constants (`apps/server/src/modules/tides/data/noaa-harmonic.json`) | Public domain (United States Government work, NOAA National Ocean Service) | Bundled, 409 kB (about 165 kB compressed): 37 harmonic constituents and two datums for 1,370 tide stations, for Tide times. Made from NOAA's metadata API by `scripts/build-tide-stations.mjs`; NOAA asks to be named, which the screen does. See [sources.md](sources.md#tidal-constants). |
-| Yale Bright Star Catalogue, 5th revised edition (`packages/shared/src/sky/stars.gen.ts`) | Public domain (listed on data.gov, published by NASA's HEASARC, as "U.S. Government Works"); the NASA Astronomical Data Center asked users to credit it and the authors, D. Hoffleit and W. H. Warren Jr. Debian, on an older note that the files must not be altered, files it as non-free: an owner's decision is open (see sources.md) | Bundled, 44 kB: position, magnitude and proper motion of the 906 stars of magnitude 4.5 or brighter (and the few fainter ones the constellation figures join), for Night sky and Celestial navigation. Written by `scripts/write-star-catalogue.mjs`; the figures are Outpost's own. See [sources.md](sources.md#the-night-sky-and-celestial-navigation). |
-| Solar cycle table (`engines/solar/`) | Public domain (United States Government work, NOAA) | Bundled as NOAA served it on 16 November 2026; a newer one can be fetched by the user. |
-| ITURHFProp (the ITU's P.533 software) and its maps | **Not one of the four.** No licence file; a statement for implementers "free from any copyright assertions", and headers that reserve all rights | Not shipped and not in the repository. The optional second HF model: built from source on each computer by `scripts/build-p533-engine.mjs` (Docker, wasi-sdk 34.0), its maps downloaded when asked. See [hf-propagation.md](hf-propagation.md#the-second-models-terms). |
-| `voacapl` (Fortran VOACAP) | US Government work and CC0 | Not shipped. Built from source only to check the engine against. |
-| BlockNote | MPL-2.0, with GPL add-ons | Not used. The editor is Tiptap (MIT) with Outpost's own blocks. |
-| Workbox (`workbox-build`, `workbox-window`), `vite-plugin-pwa` | MIT | Not used. The service worker is Outpost's own (`apps/web/src/sw/`); see "A phone out of reach" above. No dependency was added for it. |
-| `@mozilla/readability`, with `jsdom` or `linkedom` (finding the article in a web page) | Apache-2.0; MIT; ISC | Not used, and no package was added for saving a web page. Readability is the obvious choice (0.6.0, 155 kB, last published in March 2025), but it works on a browser's DOM, so on a server it needs one built for it: `jsdom` (31.0.1: 6.9 MB unpacked and eighteen packages of its own, among them a cookie jar and a second XML parser, to stand in for a browser) or `linkedom` (0.18.15: 1.2 MB and five packages, among them `htmlparser2`, a second HTML parser beside the one the server has). Outpost already parses HTML into a tree with `rehype-parse`, cleans it with `rehype-sanitize` and converts it with `rehype-remark`, for imports. The article is found by Readability's published method (score blocks of text by length and commas, pass the score up, take the best, clean it), written against that tree in `apps/server/src/modules/webpages/readable.ts`, about 900 lines. Figures from the npm registry on 16 November 2026. The cost of this choice is that Outpost's finder has been tried on far fewer pages than Mozilla's. |
-| `@zxing/library`, `@ericblade/quagga2` (barcode readers) | Apache-2.0; MIT | Not used. Supplies reads EAN-13, UPC-A, EAN-8 and Code 128 with a reader of Outpost's own (`apps/web/src/features/supplies/barcode/decode.ts`, about 540 lines), and uses the browser's `BarcodeDetector` where there is one. Both libraries are general barcode toolkits many times the size of what is read; see [supplies.md](supplies.md#what-reads-the-barcode). |
-| `saxes`, `sax` (streaming XML parsers) | ISC; BlueOak-1.0.0 | Not used. GPX is read by Outpost's own small XML reader (`apps/server/src/modules/maps/gpx-xml.ts`). Looked at on 16 November 2026: `saxes` is strict but its repository is archived; `sax` is maintained but accepts XML that is not well-formed, and its licence is not one of the four above. `@tmcw/togeojson` and `@xmldom/xmldom`, which read GPX before, are no longer shipped; `@xmldom/xmldom` (MIT) remains for one test. |
-| `@peculiar/x509`, `selfsigned`, `node-forge` (X.509 certificate libraries) | MIT; MIT; BSD-3-Clause or GPL-2.0 | Not used. Node writes no certificates, so the HTTPS module lays them out itself (`apps/server/src/modules/https/der.ts`, `certificates.ts`: about 400 lines) and leaves keys, signing and reading back to Node. Looked at on 16 November 2026: `@peculiar/x509` 3.1.0 is maintained and MIT but brings nine direct dependencies, among them `tsyringe`, which needs `tslib` (0BSD, not one of the four licences above); `selfsigned` 5.5.0 wraps `@peculiar/x509` and `pkijs`; `node-forge` 1.4.3 carries its own cryptography in JavaScript. The `openssl` program is not used either: the Docker image does not have it. For the same reasons a PKCS#12 file (`.pfx`) given as a certificate of the person's own is read by a reader of Outpost's own (`pkcs12.ts`, about 290 lines): Node loads such a file but does not hand its key back. |
-| `vcf`, `vcard4`, `ical.js` (vCard parsers) | MIT; ISC; MPL-2.0 | Not used. Contacts are read by Outpost's own vCard reader (`apps/server/src/modules/contacts/vcard.ts`, about 400 lines). Looked at on 16 November 2026: `vcard4` 4.0.5 reads version 4.0 only; `vcf` 2.1.2 was last published in 2023, its repository is gone, and no decoding of quoted-printable or of a character set per line was found in it; `ical.js` 2.2.1 is MPL-2.0 and reads no 2.1. The 2.1 rules are where the work is, and an Android or Outlook export is 2.1. |
-| `tsdav` (a CardDAV client) | MIT | **Tests only**, never shipped: `apps/server/test/contacts-dav.test.ts` drives it against the address book for phones. 2.5.0, published October 2026. It depends on `xml-js` (MIT, last published 2019), which depends on `sax`; the newest `sax` is BlueOak-1.0.0, which is not one of the four licences above, so the root `package.json` holds it at 1.2.4, the ISC release (`pnpm.overrides`). No CardDAV server library is used: the server is `apps/server/src/modules/contacts/dav.ts`. |
+| kiwix-serve, libzim | GPL-3.0 / GPL-2.0+ | Separate process over HTTP. Not linked or in the image. |
+| Dire Wolf 1.8, readsb 3.16, AIS-catcher, rtl-sdr | GPL-2.0+; GPL-3.0+; GPL-3.0; GPL-2.0+ | Separate programs the person runs (on the Pi via `deploy/pi/install.sh --decoders`). Outpost reads their ports; its KISS, AX.25, APRS, SBS and AIS readers are its own (`modules/heard/`). |
+| pyais 3.3.1 | MIT | Not used; run once to make the AIS test fixture. |
+| `mupdf`, PyMuPDF | AGPL-3.0 | Not used; PDF text from unpdf (Apache-2.0). |
+| Tesseract (`tesseract.js-core`) and English model | Apache-2.0 | Bundled for OCR (`tessdata_best` integer model from `@tesseract.js-data/eng`, MIT packaging). |
+| all-MiniLM-L6-v2 | Apache-2.0 | Bundled for semantic search; fetched at build from Hugging Face at a pinned revision, checksummed, never committed (8-bit ONNX `Xenova/all-MiniLM-L6-v2`). Its training data has terms of its own; the weights are Apache-2.0, and Hugging Face's terms (read 2026-11-15) keep repository content under its owner's licence. Notice: `server/embed/all-MiniLM-L6-v2/`. |
+| `onnxruntime-web`, `@huggingface/tokenizers` | MIT, Apache-2.0 | Bundled; run the model. The npm package has no licence file, so the project's licence and notices are kept in `third-party/onnxruntime-1.31.1/` and copied into the build. |
+| hfcast (`engines/voacap/engine/voacap.wasm`) | Apache-2.0 | Bundled; VOACAP in Rust, compiled to WebAssembly, pinned and built by `scripts/build-hf-engine.mjs`. VOACAP is NTIA/ITS work. See [hf-propagation.md](hf-propagation.md#licences-and-attribution). |
+| VOACAP antenna files (`engines/voacap/data/`) | **Not one of the four.** NTIA/ITS work "not subject to copyright protection in the U.S." | Bundled, 15 kB; texts in `engines/voacap/NOTICE.txt`. |
+| VOACAP coefficient files (CCIR Reports 322 and 340, NTIA/ITS tables) | **Not one of the four.** ITU data "free from any copyright assertions", in a repository whose headers reserve all rights | **Not shipped or in the repository.** Listed with checksums in `engines/voacap/coefficients.json`; fetched (559 kB) on a press of Download or by `scripts/fetch-voacap-data.mjs`. See [hf-propagation.md](hf-propagation.md#data). |
+| USDA FoodData Central SR Legacy (`modules/supplies/foods/fdc-sr-legacy.json`) | Public domain, CC0 1.0 | Bundled, 724 kB: energy and macronutrients for 7,793 foods. Built by `scripts/build-food-energy.mjs`; USDA is named on screen. |
+| NOAA CO-OPS tidal constants (`modules/tides/data/noaa-harmonic.json`) | Public domain | Bundled, 409 kB: 37 constituents and two datums for 1,370 stations. Built by `scripts/build-tide-stations.mjs`; NOAA is named on screen. |
+| Yale Bright Star Catalogue, 5th revised edition (`packages/shared/src/sky/stars.gen.ts`) | Public domain (US Government Works via NASA HEASARC); NASA ADC asks to credit it and Hoffleit and Warren. Debian files it as non-free over an old note against altering the files: an owner's decision is open (see sources.md) | Bundled, 44 kB: the 906 stars to magnitude 4.5 and a few fainter figure stars. Written by `scripts/write-star-catalogue.mjs`. |
+| Solar cycle table (`engines/solar/`) | Public domain (NOAA) | Bundled as served on 16 Nov 2026; a newer one can be fetched. |
+| ITURHFProp (ITU P.533) and its maps | **Not one of the four.** No licence file; "free from any copyright assertions", headers reserve all rights | Not shipped. Built on each computer by `scripts/build-p533-engine.mjs` (Docker, wasi-sdk 34.0); maps downloaded when asked. See [hf-propagation.md](hf-propagation.md#the-second-models-terms). |
+| `voacapl` (Fortran VOACAP) | US Government work, CC0 | Not shipped; built only to check the engine. |
+| BlockNote | MPL-2.0, GPL add-ons | Not used; the editor is Tiptap (MIT). |
+| Workbox, `vite-plugin-pwa` | MIT | Not used; the service worker is Outpost's own. |
+| `@mozilla/readability` with `jsdom` or `linkedom` | Apache-2.0; MIT; ISC | Not used. Readability needs a DOM on the server (`jsdom`: 6.9 MB and eighteen packages; `linkedom`: a second HTML parser). Outpost already has `rehype-parse`, `rehype-sanitize` and `rehype-remark`; the article is found by Readability's published method in `modules/webpages/readable.ts` (~900 lines), tried on far fewer pages than Mozilla's. |
+| `@zxing/library`, `@ericblade/quagga2` | Apache-2.0; MIT | Not used. Supplies reads EAN-13, UPC-A, EAN-8 and Code 128 itself (`features/supplies/barcode/decode.ts`), or with the browser's `BarcodeDetector`. |
+| `saxes`, `sax` | ISC; BlueOak-1.0.0 | Not used; GPX is read by Outpost's own XML reader (`modules/maps/gpx-xml.ts`). `saxes` is archived; `sax` accepts malformed XML and its licence is not one of the four. `@xmldom/xmldom` (MIT) remains for one test. |
+| `@peculiar/x509`, `selfsigned`, `node-forge` | MIT; MIT; BSD-3-Clause or GPL-2.0 | Not used. The HTTPS module lays out certificates itself (`modules/https/der.ts`, `certificates.ts`, ~400 lines) and leaves keys and signing to Node; `@peculiar/x509` pulls in `tslib` (0BSD). PKCS#12 is read by `pkcs12.ts` (~290 lines), since Node does not return the key. No `openssl` in the image. |
+| `vcf`, `vcard4`, `ical.js` | MIT; ISC; MPL-2.0 | Not used. vCard is read by `modules/contacts/vcard.ts` (~400 lines): none of these reads vCard 2.1 properly, which Android and Outlook export. |
+| `tsdav` | MIT | **Tests only**, driving the CardDAV server. Its `xml-js` depends on `sax`, held at 1.2.4 (ISC) by `pnpm.overrides`. The server is `modules/contacts/dav.ts`. |
 | Atkinson Hyperlegible, Literata, Noto Sans | OFL-1.1 | Bundled fonts. |
 | Protomaps basemap styles | BSD-3-Clause (design CC0) | Bundled. |
-| Helvetica's character widths (`apps/web/src/features/maps/print/helvetica.ts`) | Adobe's notice for the Core 14 AFM files: free to use, copy and distribute with the notice kept | Bundled in the web app: 448 numbers, used to lay out the lettering of a printed map. The typeface itself is not bundled; every PDF reader supplies it. |
-| jsPDF, pdf-lib, pdfkit | MIT | Not used. A printed map is written by Outpost's own PDF writer (`apps/web/src/features/maps/print/pdf.ts`); the reasons are at the top of that file. |
-| maplibre-contour | BSD-3-Clause (includes code adapted from d3-contour, ISC, and vt-pbf, MIT) | Bundled in the web app. Traces contour lines in the browser from installed terrain. |
-| `@jsquash/webp` 1.5.0 (libwebp 1.0.2 compiled to WebAssembly) | Apache-2.0 (libwebp itself BSD-3-Clause) | Bundled in the server; encodes satellite imagery tiles as WebP. Pinned exactly. Its `.wasm` and loader are copied to `server/imagery/` with its licence (`scripts/build-app.mjs`); only the encoder is used, never libwebp's decoder. Chosen over `sharp` because sharp's prebuilt libvips is LGPL-3.0, and over a JPEG encoder because the edge of an area must be transparent. Runs wherever Node runs, so on macOS arm64, Linux arm64 and Linux amd64 alike with no native build step; tried only on macOS arm64. GeoTIFF reading, reprojection and the PMTiles writer are Outpost's own (`modules/maps/imagery/`), not `geotiff.js`, whose dependency `xml-utils` is CC0. See [maps.md](maps.md#satellite-imagery). |
-| Map data | ODbL (OpenStreetMap) | Downloaded by the user; attribution shown on the map. |
-| GeoNames | CC BY 4.0 | Downloaded by the user; credited where shown. |
-| Natural Earth | Public domain | Bundled world outline; countries, regions and populated places downloaded by the user as reference layers ([reference-layers.md](reference-layers.md)). |
-| Catalogue content | Per collection | Never bundled. Each entry states its licence, and says so when it has not been verified. |
-| Reference sheets (`catalog/bundled/radio/`) | MIT, with the project | Bundled. The project's own compilations of facts from official sources, each listing its sources. |
-| Satellite tracking, ported from LogBook73 (`apps/web/src/features/satellites/`) | MIT, © 2026 Tyler Allen | LogBook73's tracker (its SGP4 engine and pass schedule, the manual element parser, the tracker, the weather satellite planner, the map overlay and its space-data fetcher) rewritten into Outpost. LogBook73's licence is MIT, read in its repository on 21 November 2026. |
-| `satellite.js` 6.0.2 (SGP4/SDP4) | MIT | Bundled in the web app, pinned exactly; works out satellite positions and passes in the browser. No dependencies of its own. The library LogBook73 uses. |
-| CelesTrak GP orbital elements | No data licence; CelesTrak's usage policy (updated 16 November 2026) | Not shipped. Fetched only when a person presses "Get orbital elements" on Radio → Satellites, and not again within CelesTrak's two-hour update, as the policy asks. Asked for as CSV, not TLE: the policy says TLE no longer carries newly catalogued objects. Kept in the database; never republished. |
-| SatNOGS DB transmitters | CC BY-SA 4.0 ("All data are public and freely distributed under the Creative Commons Atribution-Share Alike v4.0 license", db.satnogs.org/about, read 21 November 2026) | Not shipped. Fetched on the same press, at most once a day, kept for the satellites whose elements are kept, and credited on the screen and on each printed pass. A copy passed on (a printed pass, a backup) stays under CC BY-SA 4.0. |
-| Handbook and radio guides (`catalog/bundled/logbook73/`) | MIT, © 2026 Tyler Allen | Bundled. Written by this project's author for LogBook73 and generated from it; each book's last chapter carries the licence text. See [radio.md](radio.md#the-handbook-and-the-radio-guides). |
-| Signal figures (`apps/web/src/features/library/figures/radio-viz*.ts*`) | MIT, © 2026 Tyler Allen | Ported from LogBook73's `RadioViz` component and its maths; the files say so. |
-| Mermaid 12 | MIT | Bundled in the web app; draws diagrams in Markdown documents. Its dependencies are MIT, ISC, BSD-3-Clause or Apache-2.0, with two notes: DOMPurify is dual-licensed and is used under Apache-2.0, and `robust-predicates` is released into the public domain (Unlicense). |
-| `jsqr` 1.4.0 | Apache-2.0 | A development dependency of `@outpost/web` only, pinned exactly: an independent QR decoder the tests read the QR encoder's output back with. Not in the app; the encoder is Outpost's own (`apps/web/src/features/qr/encoder.ts`). See [tools-qr-and-network.md](tools-qr-and-network.md). |
-| The IEEE's registry of hardware-address prefixes (`oui.csv`) | **Not one of the four.** No licence stated; the IEEE's pages are "all rights reserved" | Not shipped and not in the repository. Fetched from the IEEE (about 3.9 MB) only when a person presses "Fetch the registry" on Devices on this network, and kept in the data directory. See [tools-qr-and-network.md](tools-qr-and-network.md#who-made-each-device). |
-| OpenPGP.js 6.3.2 (`openpgp`) | LGPL-3.0-or-later | **The one exception.** Not bundled into Outpost's code: the file its authors publish is copied unchanged to `web/vendor/openpgp/openpgp.min.mjs`, with `LGPL-3.0.txt`, `GPL-3.0.txt` and a `NOTICE.txt` naming its version and its source, and is loaded at run time only by the Encryption screen and encrypted pages. It can be replaced by another build. See below. |
-| `@rnpgp/rnp` 0.1.1 (RNP compiled to WebAssembly) | BSD-2-Clause | Not used; the alternative to OpenPGP.js. See below. |
-| `kbpgp` | BSD-3-Clause | Not used. See below. |
-| elkjs (Mermaid's optional ELK layout) | EPL-2.0 or GPL-3.0-or-later | Not shipped. The build replaces it with a stand-in (`figures/no-elk.ts`, `resolve.alias` in `apps/web/vite.config.ts`); diagrams are laid out with dagre. |
+| Helvetica character widths (`features/maps/print/helvetica.ts`) | Adobe's Core 14 AFM notice: free to use and distribute with the notice | 448 numbers for laying out printed maps; the typeface is not bundled. |
+| jsPDF, pdf-lib, pdfkit | MIT | Not used; printed maps use Outpost's PDF writer (`features/maps/print/pdf.ts`). |
+| maplibre-contour | BSD-3-Clause (with d3-contour, ISC, and vt-pbf, MIT) | Bundled; traces contours in the browser. |
+| `@jsquash/webp` 1.5.0 (libwebp 1.0.2 in WebAssembly) | Apache-2.0 (libwebp BSD-3-Clause) | Bundled in the server, pinned; encodes imagery tiles. Copied to `server/imagery/` with its licence. Chosen over `sharp` (LGPL-3.0 libvips) and JPEG (edges must be transparent). GeoTIFF reading, reprojection and the PMTiles writer are Outpost's own (not `geotiff.js`, whose `xml-utils` is CC0). |
+| Map data | ODbL (OpenStreetMap) | Downloaded by the user; credited on the map. |
+| GeoNames | CC BY 4.0 | Downloaded by the user; credited. |
+| Natural Earth | Public domain | Bundled world outline; other layers downloaded as reference layers. |
+| Catalogue content | Per collection | Never bundled; each entry states its licence, or that it is unverified. |
+| Reference sheets (`catalog/bundled/radio/`) | MIT | Bundled; compilations of facts from official sources, each listing them. |
+| Satellite tracking, ported from LogBook73 (`features/satellites/`) | MIT, © 2026 Tyler Allen | LogBook73's tracker rewritten into Outpost; its licence read 21 Nov 2026. |
+| `satellite.js` 6.0.2 | MIT | Bundled, pinned; SGP4/SDP4 in the browser. |
+| CelesTrak GP elements | No data licence; CelesTrak's usage policy | Not shipped. Fetched on "Get orbital elements", not within two hours, as CSV (the policy says TLE lacks new objects). Never republished. |
+| SatNOGS DB transmitters | CC BY-SA 4.0 (db.satnogs.org/about, read 21 Nov 2026) | Not shipped. Fetched on the same press, at most daily, credited on screen and printed passes; copies stay CC BY-SA 4.0. |
+| Handbook and radio guides (`catalog/bundled/logbook73/`) | MIT, © 2026 Tyler Allen | Bundled; each book's last chapter carries the licence. |
+| Signal figures (`features/library/figures/radio-viz*`) | MIT, © 2026 Tyler Allen | Ported from LogBook73's `RadioViz`. |
+| Mermaid 12 | MIT | Bundled; diagrams in Markdown. Dependencies within the four, with DOMPurify used under Apache-2.0 and `robust-predicates` public domain (Unlicense). |
+| elkjs (Mermaid's optional ELK layout) | EPL-2.0 or GPL-3.0+ | Not shipped; replaced by a stand-in (`figures/no-elk.ts`); diagrams use dagre. |
+| `jsqr` 1.4.0 | Apache-2.0 | Development dependency only: the tests read Outpost's QR encoder (`features/qr/encoder.ts`) back with it. |
+| IEEE registry of hardware-address prefixes (`oui.csv`) | **Not one of the four.** No licence; IEEE pages "all rights reserved" | Not shipped. Fetched (~3.9 MB) on "Fetch the registry", kept in the data directory. |
+| OpenPGP.js 6.3.2 | LGPL-3.0-or-later | **The one exception.** The published file is copied unchanged to `web/vendor/openpgp/openpgp.min.mjs` with `LGPL-3.0.txt`, `GPL-3.0.txt` and `NOTICE.txt`, loaded at run time only by Encryption and encrypted pages. Replaceable. |
+| `@rnpgp/rnp` 0.1.1 | BSD-2-Clause | Not used; the alternative to OpenPGP.js. |
+| `kbpgp` | BSD-3-Clause | Not used. |
 
 ### The OpenPGP library
 
-The Encryption screen needs an implementation of OpenPGP that works with GnuPG, and
-writing one was never an option. Three were looked at on 16 November 2026.
+Encryption needs an OpenPGP implementation that works with GnuPG. Three were compared
+(16 Nov 2026):
 
 | | OpenPGP.js 6.3.2 | `@rnpgp/rnp` 0.1.1 | `kbpgp` 2.1.20 |
 | --- | --- | --- | --- |
 | Licence | LGPL-3.0-or-later | BSD-2-Clause | BSD-3-Clause |
-| What it is | JavaScript, written for browsers | RNP (the OpenPGP library in Thunderbird) and Botan, compiled to WebAssembly, with new TypeScript bindings | Keybase's JavaScript implementation |
-| Age and state | On npm since January 2014; 6.3.2 on 24 September 2026; its README records two complete security audits by Cure53 | First release 29 July 2026, second the next day, none since; its README says "Status: alpha" | No release between April 2020 and September 2025; written in IcedCoffeeScript |
-| Size sent to the browser | 395 kB | 10.7 MB of WebAssembly plus 224 kB | not measured |
-| Works with GnuPG 2.5.18 | Yes, both directions, in the test suite | Yes in a short trial in Node: keys, encryption to a key both ways, `gpg -c` both ways, a clear-signed message | not tried |
-| Needs a secure origin | Yes: it will not load without `crypto.subtle` | No | No |
-| Other | Asynchronous; reads and writes streams | Synchronous, so it would need a worker; as published it cannot find its own `.wasm` file unless told where it is | Callback-based |
+| What it is | JavaScript for browsers | RNP and Botan in WebAssembly, new bindings | Keybase's, in IcedCoffeeScript |
+| State | On npm since 2014; two Cure53 audits | First released July 2026; "Status: alpha" | No release April 2020 to September 2025 |
+| Size in the browser | 395 kB | 10.7 MB WebAssembly + 224 kB | not measured |
+| Works with GnuPG 2.5.18 | Yes, both ways, in the test suite | Yes, in a short trial in Node | not tried |
+| Needs a secure origin | Yes (`crypto.subtle`) | No | No |
 
 OpenPGP.js was chosen: for a security feature, twelve years of releases and two audits
-outweigh a licence that needs care. The care taken is this.
+outweigh a licence that needs care. The care:
 
-- **It is not part of Outpost's bundles.** `openpgpVendor` in `apps/web/vite.config.ts`
-  copies the published file as it is; nothing imports `openpgp` except for its types,
-  and the end-to-end suite checks that the file served is the published one and that no
-  other screen fetches it.
-- **Its licence travels with it**: the LGPL and the GPL it builds on, and a notice
-  giving the version and where the source is, in the same folder; and its entry in
-  `THIRD-PARTY-LICENSES.txt`.
-- **It can be replaced.** Putting another build with the same interface at that path is
-  all it takes. Outpost itself reaches the library through one interface
-  (`features/encryption/engine.ts`) with one implementation (`engine-openpgp.ts`).
+- **Not part of Outpost's bundles.** `openpgpVendor` in `apps/web/vite.config.ts` copies
+  the published file; nothing imports `openpgp` except for types, and the end-to-end
+  suite checks the file served is the published one and that no other screen fetches it.
+- **Its licence travels with it**, in the same folder and in `THIRD-PARTY-LICENSES.txt`.
+- **Replaceable**: another build with the same interface at that path. Outpost reaches it
+  through `features/encryption/engine.ts`, implemented by `engine-openpgp.ts`.
 
-This is a reading of the licence by the people who wrote the code, not legal advice.
-
-If the exception is not wanted, the alternative is `@rnpgp/rnp` behind the same
-interface: a second file beside `engine-openpgp.ts`, run in a worker. It meets the
-licence policy and would also work on plain HTTP. It would mean shipping a library that
-calls itself alpha in the one feature where that matters most, and 10.7 MB more.
+The alternative is `@rnpgp/rnp` behind the same interface, in a worker: within the
+licence policy and usable on plain HTTP, but alpha, in the one feature where that
+matters most, and 10.7 MB more. This is the authors' reading of the licence, not legal
+advice.

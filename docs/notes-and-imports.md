@@ -1,609 +1,240 @@
 # Notes and imports
 
-This page describes the notes workspace (pages, blocks, links, templates, trash,
-attachments and Markdown export), how to import existing notes, including an export
-from Notion, how to save a web page into the library, and what happens to notes
-written on a portable drive.
-
 ## The notes workspace
 
-### Pages and hierarchy
-
-Notes are **pages** arranged in a tree. Any page can have sub-pages, to any depth.
-Each page has a title, an optional icon, an optional cover picture, tags and content.
-
-- Pages are ordered by hand among their siblings, and can be moved to another parent
-  or to the top level. A page cannot be moved inside itself. See
-  [Moving pages](#moving-pages).
-- A page can be duplicated, with or without its sub-pages. The copy is named
-  "… (copy)".
-- Tags are shared with the document library, and "Water" and "water" are the same
-  tag. A page can have up to 50 tags.
-- Pages are found by the app-wide search, by title, tags, parent titles and text.
-- Opening a page records it for the list of recent pages.
+Notes are **pages** in a tree; any page can have sub-pages. A page has a title, an
+optional icon and cover picture, up to 50 tags (shared with the library; "Water" and
+"water" are one tag) and its content. Search finds pages by title, tags, parent titles
+and text. A page can be duplicated, with or without its sub-pages.
 
 ### Moving pages
 
-The page tree is in the sidebar and, on a phone, on the Notes screen.
+- **With a mouse**, drag a page in the tree: onto the middle of a row to put it inside,
+  onto the top or bottom edge to put it before or after.
+- **With a finger**, press and hold until the page lifts, then drag; a label says where
+  it will land.
+- **Without dragging**, the page's **…** menu has **Move to…**, **Move up** and **Move
+  down**. Alt with an arrow key moves the focused page; Shift+F10 opens its menu.
 
-- **With a mouse**, drag a page. The middle of a row puts it inside that page; the top
-  or bottom edge puts it before or after, and the line shows the level it will have.
-  Resting on a closed page opens it. The list scrolls when the page is held near its
-  top or bottom edge.
-- **With a finger**, press and hold a page for a moment until it lifts, then drag. A
-  label that travels with the finger says where the page will land ("Inside …",
-  "Before …", "After …"). A swipe that does not start with a hold scrolls the list as
-  usual.
-- **Without dragging**, open the page's menu (the "…" on its row): **Move to…** opens
-  a list of pages to put it inside, with a search field, and **Move up** and **Move
-  down** change its place among its neighbours. From the keyboard, Alt with the up or
-  down arrow moves the focused page a place, and Shift+F10 opens its menu.
-- Every move shows a message with **Undo**, which puts the page back exactly where it
-  was.
-- A page is never offered its own sub-pages as a place to go.
-
-The tree copes with thousands of pages: past two hundred rows it draws only the rows
-near the part on screen. Arrow keys, Home and End, the focus and screen readers work
-as in a small tree; each row carries its level and its position among its siblings.
-
-### Blocks
-
-A page's content is made of blocks. The complete list is in
-`packages/shared/src/notes.ts`; nothing outside it can be stored.
-
-| Block | Notes |
-| --- | --- |
-| Paragraph | |
-| Heading | Levels 1 to 3 |
-| Bulleted list, numbered list | Can be nested; a numbered list can start at any number |
-| Task list | Items with a tick box |
-| Quote | |
-| Code block | With an optional language. A long line scrolls sideways inside the block rather than wrapping |
-| Divider | |
-| Table | With a header row; cells can hold blocks, and can be merged |
-| Image | A picture stored as an attachment |
-| Callout | Four kinds: info, warning, success, danger |
-| Toggle | A summary line that opens to show its content |
-| Document embed | A block link to a document in the library |
-
-Within text: **bold**, *italic*, ~~strikethrough~~, `code`, underline, highlight,
-links, line breaks, and **page links**, which are inline links to another page.
-
-A page can hold up to 5 MB of content and 40 levels of nesting.
+Every move offers **Undo**.
 
 ### Writing
 
-- **Type `/`** on an empty line for the block menu, and keep typing to filter it
-  ("/call" for a callout, "/tab" for a table).
-- **Markdown shortcuts** work as you type: `#`, `##`, `###` for headings, `-` for a
-  bulleted list, `1.` for a numbered list, `[]` for a to-do, `>` for a quote, three
-  backticks for code, `---` for a divider.
-- **Type `[[` or `@`** to link to another page; pick it from the list or keep typing
-  its name.
-- **Select text** for the formatting bar: bold, italic, underline, strikethrough,
-  code, highlight, link, and "Turn into" to change the kind of block.
-- **The grip beside a block** drags it to a new position, and opens a menu to turn it
-  into something else, duplicate it, move it up or down, or delete it.
-- **In a list the grip belongs to one item**: the one under the pointer, at any depth,
-  in bulleted, numbered and to-do lists. Dragging it moves that item with everything
-  nested under it. Dropped in another list it becomes an item of that kind of list (a
-  bullet dropped among to-dos becomes an unticked to-do); dropped outside any list it
-  becomes a list of its own kind. The menu acts on that item: "Turn into" changes just
-  that item and leaves a list either side of it, a numbered one carrying on counting.
-- **To move a whole list**, hold Alt (Option on a Mac) while starting to drag any of
-  its items' grips, or switch the grip's menu from "This item" to "Whole list". The
-  same goes for a quote, callout or toggle that holds a list. Lists inside a table are
-  not split up: there the grip is the table's.
-- **From the keyboard**, Alt+Shift+↑ and Alt+Shift+↓ move a block, and ⌘/Ctrl+Shift+D
-  duplicates it. With the cursor in a list item they act on that item, which stops at
-  the top and bottom of its list. With several items selected they act on the whole
-  list, and a list of one item moves as a whole.
-- Each move of a list item, by dragging, menu or keyboard, is one step of undo.
-- **Pictures** can be pasted, dropped in or chosen from the block menu. Upload progress
-  is shown in place.
-- **On a phone or tablet** there is no floating bar and no grip, so the phone's own
-  menu over a selection (copy, paste) is never covered; a formatting bar sits above the
-  keyboard instead. **Add a block** and **Block actions** are at its left end and
-  **Undo** and **Redo** at its right, always in sight; the formatting between them
-  scrolls sideways when the screen is too narrow for all of it, and fades at the edge
-  that has more. "Block actions" does what the grip's menu does, for the list item the
-  cursor is in or for the whole list. With the cursor in a link, its address shows over
-  it, to open, change or remove. Tick boxes, a callout's icon and a toggle's arrow have a
-  finger-sized target. List items are not dragged by touch.
+A page is made of blocks: paragraphs, headings (three levels), bulleted, numbered and
+task lists, quotes, code blocks, dividers, tables (cells can hold blocks and be merged),
+pictures, callouts (info, warning, success, danger), toggles, and embeds of a library
+document. Text can be bold, italic, underlined, struck through, highlighted, code or a
+link. A page holds up to 5 MB.
 
-### Links and backlinks
-
-A page link points at another page by its id, so it keeps working when the target is
-renamed or moved. Every page lists its **backlinks**: the pages whose content links to
-it. Backlinks are worked out from the content each time a page is saved; pages in the
-trash are left out.
+- Type `/` on an empty line for the block menu, and keep typing to filter it.
+- Markdown shortcuts work as you type: `#` to `###`, `-`, `1.`, `[]`, `>`, three
+  backticks, `---`.
+- Type `[[` or `@` to link to another page. A page link survives renaming and moving,
+  and each page lists its **backlinks**.
+- Select text for the formatting bar. The grip beside a block drags it or opens its
+  menu. In a list the grip moves one item; hold Alt (Option) as you drag, or choose
+  **Whole list**, to move the list. Alt+Shift+↑/↓ moves a block; ⌘/Ctrl+Shift+D
+  duplicates it.
+- **On a phone or tablet** the formatting bar sits above the keyboard, with **Add a
+  block** and **Block actions** at its left and **Undo** and **Redo** at its right. List
+  items are not dragged by touch.
 
 ### Favourites and templates
 
-- **Favourites.** Star a page to list it under Favourites. Starring is not an edit:
-  it does not change the page's "last changed" time.
-- **Built-in templates.** Five ship with Outpost: Meeting notes, Trip plan, Kit list,
-  Reference card and Daily log. Creating a page from a template copies its title,
-  icon and content. The built-in ones have no icon of their own, so a page made from
-  one shows the plain page icon until you choose one: Outpost draws line icons, and an
-  emoji on a page is always one somebody picked.
-- **Your own templates.** Any page without sub-pages can be turned into a template. A
-  template lives outside the page tree, is not listed in search, and cannot have
-  sub-pages. Turning it back makes it an ordinary top-level page.
+Star a page to list it under **Favourites**. Five templates come with Outpost (Meeting
+notes, Trip plan, Kit list, Reference card, Daily log). Any page without sub-pages can be
+turned into a template of your own; templates live outside the tree and are not
+searched.
 
 ### Saving, and editing in two places
 
-Pages save as you type, and the bar above the page says "Saving…" and "Saved". A screen
-reader is told only when something needs attention (offline, refused, not saved) and
-when the page is saved again after it. Each save says which version it was based on. If the page was
-changed in another tab or on another device in the meantime, the save is refused and
-nothing is overwritten: "This page was changed somewhere else after you opened it".
-There is no live co-editing; see
-[the limits table](architecture.md#limits-and-trade-offs).
+Pages save as you type. There is no live co-editing: if the page was changed elsewhere
+since you opened it, your save is refused and nothing is overwritten; choose **Keep my
+version** or **Load the other version**.
 
-A tab with nothing unsaved follows a change made elsewhere as soon as it is saved.
-With unsaved changes it is left alone, and its next save is the one refused; the
-notice then offers **Keep my version** (which replaces the other one) or **Load the
-other version**.
+If the server cannot be reached, changes are kept in the tab and retried; after a reload
+the page offers **Restore my changes**.
 
-If the server cannot be reached, unsaved changes are kept and retried until it
-answers. Changes not yet saved are also kept in the tab itself, so that a reload or a
-tab closed too soon does not lose them: the page then offers **Restore my changes**.
-When the page has been saved since (in another tab, on another device), the notice
-says so and the button reads **Replace with my changes**, because restoring puts the
-kept version in place of the newer one.
-
-A page can also be kept on a phone, from its menu, to be read where the server cannot
-be reached at all. The pages inside it come too. A kept page cannot be edited there,
-and the copy is never sent back, so it cannot overwrite the page: see
-[offline.md](offline.md#a-phone-out-of-reach-of-the-server).
+A page can be kept on a phone, from its menu, with its sub-pages, to read out of reach of
+the server; that copy cannot be edited and is never sent back
+([offline.md](offline.md#a-phone-out-of-reach-of-the-server)).
 
 ### Earlier versions
 
-Each save that changes a page's title or words keeps what the page said before it.
-**Earlier versions** in a page's menu lists them by time. Choose one to see it beside
-the page as it is now (on a phone, switch between **This version** and **Now**).
-**Restore this version** makes it the page's newest version; what the page said a
-moment before is kept as a version too, so restoring loses nothing. If the page was
-changed somewhere else since you opened the list, the restore is refused and says so.
+Each save that changes a page's title or words keeps what it said before. **Earlier
+versions** in the page's menu lists them; choose one to see it beside the page as it is
+now, and **Restore this version** to make it the newest (the version it replaces is kept
+too). Every save is kept for an hour, then the last of each hour for a day, then the last
+of each day. Tags, icon, cover and favourites are not versioned.
 
-Versions are thinned as the page is saved again: every save is kept for an hour, then
-the last save of each hour for a day, then the last save of each day. Tags, icon,
-cover and favourites are not versioned.
-
-An encrypted page keeps encrypted versions only. Encrypting a page erases every
-earlier version that is plain text, and the versions kept after that are ciphertext,
-which Outpost cannot show; restore one to read it on the page with its passphrase.
-
-Storage shows how much room the versions of all pages take, and **Clear earlier
-versions** erases them all (the pages stay as they are). Versions go with a page when
-it is deleted for good. A merge from a portable drive keeps its own record of the
-pages it updated; see [Notes written on a portable drive](#notes-written-on-a-portable-drive).
+**Clear earlier versions** under Storage erases them all. Encrypting a page erases its
+plain-text versions.
 
 ### Encrypted pages
 
-**Encrypt this page…** in a page's menu replaces the page's text with an encrypted copy
-that only its passphrase or key can open, in the browser. The title, tags, icon and
-cover stay readable; pictures and attached files are not allowed on an encrypted page;
-and the text is taken out of search. An encrypted page is unlocked, read and edited on
-its own screen, and locks itself after five idle minutes. It needs a page opened over
-HTTPS, or on the computer Outpost runs on.
-
-Copies made before a page was encrypted (backups, portable drives, exports) still hold
-its text. [encryption.md](encryption.md#pages-of-notes) says exactly what is and is not
-covered, and how the page is stored.
+**Encrypt this page…** in the page's menu replaces its text with a copy only its
+passphrase or key can open, in the browser. Title, tags, icon and cover stay readable;
+pictures and files are not allowed; the text leaves search. It locks after five idle
+minutes and needs HTTPS or the computer Outpost runs on. Backups, drives and exports made
+before still hold the text. See [encryption.md](encryption.md#pages-of-notes).
 
 ### Trash
 
-Deleting a page moves it, and its sub-pages, to the trash. Nothing is lost. The trash is
-reached from **Trash** at the foot of the Notes screen, or from its "…" menu.
-
-- A page in the trash keeps everything and can be restored. Its sub-pages come back
-  with it. If its old parent is gone, it returns to the top level.
-- A page in the trash cannot be edited or moved, and is not found by search.
-- **Deleting for good** is a separate step, only possible from the trash. It removes
-  the page, its sub-pages in the trash, and any attachments that no remaining page
-  uses.
-- The trash is not emptied automatically.
+Deleting a page moves it and its sub-pages to **Trash** (foot of the Notes screen). From
+there it can be restored, with its sub-pages, or deleted for good, which also removes
+attachments no other page uses. The trash is never emptied by itself.
 
 ### Attachments
 
-Files attached to pages are stored in the data directory, next to the database, and
-are included in backups.
-
-- Accepted: pictures (PNG, JPEG, GIF, WebP, SVG), PDF, text (TXT, Markdown, CSV, JSON),
-  GPX tracks and ZIP archives, up to 50 MB each.
-- A file must be what its name says: the first bytes are checked against the
-  extension.
-- Attachments are served in a sandbox, so an SVG or other file can never run script
-  inside Outpost.
-- An attachment can only be deleted once no page uses it, as content or as a cover.
+Pictures (PNG, JPEG, GIF, WebP, SVG), PDF, text, Markdown, CSV, JSON, GPX and ZIP files,
+up to 50 MB each. A file must be what its name says. Attachments are shown in a sandbox,
+so none can run script, and are in backups. One can be deleted only once no page uses it.
 
 ### Markdown export
 
-One page can be exported as a `.md` file, and the whole workspace as a `.zip`
-(`GET /api/notes/:id/export.md`, `GET /api/notes/export.zip`).
+Export one page as `.md`, or the whole workspace as a `.zip` that mirrors the tree, with
+links rewritten to relative paths, pictures and files in `_attachments/` and your
+templates in `_templates/`. It is GitHub-flavoured Markdown: callouts become `> [!NOTE]`
+alerts, toggles `<details>`, underline and highlight `<u>` and `<mark>`. Outpost reads
+all of it back.
 
-The workspace export mirrors the tree: a page with sub-pages becomes `Title.md` next
-to a folder `Title/`. Links between pages are rewritten to relative paths, and
-pictures and files that pages mention are copied to `_attachments/`, so the export
-reads correctly offline and outside Outpost. Your own templates go to `_templates/`.
-Pages in the trash are not exported.
-
-The output is GitHub-flavoured Markdown. Constructs Markdown has no syntax for are
-written the way GitHub renders them, and Outpost reads all of them back:
-
-| In Outpost | In the export |
-| --- | --- |
-| Callout | An alert blockquote: `> [!NOTE]`, `> [!WARNING]`, `> [!TIP]`, `> [!CAUTION]` |
-| Toggle | `<details>` with a `<summary>` |
-| Underline, highlight | `<u>…</u>`, `<mark>…</mark>` |
-| Page link | An ordinary link to the other page's file |
-| Document embed | A link to `/library/documents/<id>` |
-
-#### What does not survive
-
-The round trip is exact for every block type (the test suite checks each one), with
-these known exceptions. Moving or converting single list items does not add to them:
-a page stores the same lists and items as before, and where two lists end up directly
-after one another the export tells them apart by alternating `-` and `*`.
-
-- **Empty paragraphs** and spaces or line breaks at the very end of a paragraph are
-  dropped.
-- **Table cells are flattened to one line.** Several paragraphs, lists or pictures in
-  a cell are joined with `<br>`, a code block in a cell becomes inline code, and
-  merged cells and column widths are not written.
-- **Toggle summaries** keep their formatting, but a page link in a summary becomes
-  plain text.
-- **Page properties are not in the file.** Tags, icon, cover picture and the favourite
-  mark are not exported. The title is written as the first heading.
-- **Document embeds** point at an address that only works inside the Outpost they came
-  from. The document itself is not included.
-- **Links to pages that are not in the export** (pages in the trash) keep their
-  in-app address.
-- **Attachments nobody mentions** are not included: only files a page links to or
-  shows.
-
-For a complete copy of your notes, including everything above, use **Settings →
-Backup**.
+Lost on the way: empty paragraphs and trailing spaces; table cells are flattened to one
+line; a page link in a toggle's summary becomes text; tags, icon, cover and favourite;
+document embeds (they only work in the Outpost they came from); pages in the trash and
+attachments no page mentions. For a complete copy, use **Settings → Backup**.
 
 ## Imports
 
-Importing brings existing notes into the workspace as pages. It works in fixed steps,
-and nothing is written to your notes until you have seen exactly what will be created.
-
-### What can be imported
+An import brings existing notes in as pages. Nothing is written until you have seen
+exactly what will be created.
 
 | File | Becomes |
 | --- | --- |
-| `.md`, `.markdown` | A page. `title` and `tags` in front matter are used. |
-| `.html`, `.htm` | A page. Anything that could run is removed first. |
-| `.txt` | A page of plain paragraphs, titled by its file name. |
-| `.csv` | A page holding one table. |
-| `.pdf` | A document in the library (or left out, your choice). |
-| `.zip` | Unpacked, then everything inside is treated as above. |
+| `.md`, `.markdown` | A page; `title` and `tags` in front matter are used. |
+| `.html`, `.htm` | A page, with anything that could run removed. |
+| `.txt` | A page of paragraphs, titled by its file name. |
+| `.csv` | A page holding one table (up to 500 rows and 30 columns shown; the full CSV is attached). |
+| `.pdf` | A document in the library, or left out. |
+| `.zip` | Unpacked, and its contents treated as above. |
 
-Up to 500 files can be uploaded at once; for more, put them in a ZIP. Each file may be
-as large as the server's upload limit (`OUTPOST_MAX_UPLOAD_MB`).
+Up to 500 files at once; for more, put them in a ZIP. An import never downloads
+anything: a picture at a web address stays a link.
 
-An import never downloads anything. A picture at a web address stays a link. Fetching
-a page from the web is a separate thing, asked for separately: see
-[Saving a web page](#saving-a-web-page).
+1. **Upload** the files or a ZIP.
+2. Outpost reads them and shows the **plan**: every page in a tree, with warnings and
+   which pages already exist.
+3. **Choose** where the pages go, what to do with pages that exist, and whether PDFs go
+   to the library. The plan says in sentences what will happen.
+4. **Import.** One page failing does not stop the rest. You can leave the screen.
+5. The **report** lists what was created, updated, skipped and failed, and why.
 
-### The steps
+You can cancel, or discard an import not yet committed. One that failed or was cut short
+can be run again; it adds only what is missing.
 
-1. **Upload.** Choose files or a ZIP (`POST /api/imports`).
-2. **Analysis.** Outpost unpacks and reads the files and builds a **plan**: every page
-   it would create, in a tree, with titles, sizes, warnings, and which pages already
-   exist. Your notes are not touched.
-3. **Your choices.** Where to put the pages (under an existing page or at the top
-   level), what to do with pages that already exist, and whether PDFs go to the
-   library. Beside the button, before it is pressed, the plan says in sentences what
-   the import will do with these choices: how many new pages are made and where, how
-   many are overwritten (or "Nothing is overwritten"), how many already here are left
-   as they are, and how many PDFs go to the library.
-4. **Commit.** A background job creates the pages. One page failing does not stop the
-   rest.
-5. **Report.** What was created, updated, skipped and failed, with reasons.
+Folders become the tree (a folder's `README.md` or `index.md`, or `X.md` beside `X/`, is
+its page); hidden files are passed over. Links between imported files become page links,
+and pictures and files inside the import become attachments.
 
-The screen follows the work by the server's live events, so its progress bar moves
-with the job. A screen reader hears the stage (reading, importing) and a pause, not each
-page as it is made; the count is on the bar. Only while the connection to the server is down does it ask every few
-seconds instead. You can leave the screen; the job carries on.
-
-You can cancel while it is analysing or importing, and discard an import you have not
-committed, which removes its uploaded files. Uploads that are never finished are
-cleared after a week.
-
-### How files become a tree of pages
-
-- A file `X.md` with a folder `X/` beside it is the parent of what is in the folder.
-- A folder with a `README.md` or `index.md` gets that file as its page.
-- Any other folder that holds pages becomes an empty page named after the folder.
-- A folder that holds only pictures and other files is not a page.
-- Pages are created in the order a file manager would list them ("2" before "10").
-- Hidden and system files (`.DS_Store`, `__MACOSX`, folders starting with a dot such
-  as `.obsidian`) are passed over.
-
-A page's title comes from its front matter, or from its first heading when that
-heading is the first thing in the file, or from the HTML title, or otherwise from the
-file name.
-
-### What is reconstructed
-
-- **Hierarchy**, as above.
-- **Links between imported pages.** A relative link to another file in the import
-  becomes a page link to the page made from it, whether it points forward or back.
-- **Pictures and files.** Those inside the import are stored as attachments and the
-  page points at them. Files over 50 MB, or of a kind pages cannot attach, are left
-  out and listed.
-- **PDFs.** Added to the document library, where their text is read for search. A page
-  that links to a PDF beside it then links to the library copy. If you leave PDFs out
-  of the library, such a PDF is attached to the page instead.
-- **Tags** from front matter.
-- **Callouts and toggles** in HTML (`<aside>`, `<details>`) and in Markdown (GitHub
-  alerts) become Outpost's own blocks.
-- **Tables from CSV.** Up to 500 rows and 30 columns are shown in the page. A longer
-  or wider table is cut, the cut is reported, and the complete CSV is attached to the
-  page so nothing is lost.
-
-### What does not come across intact
-
-The plan lists these before you commit, with a count and an example file:
-
-| Found in the source | What happens |
-| --- | --- |
-| Equations (`$…$`, `$$…$$`) | Kept as their LaTeX text |
-| A database shown inside a Notion page | Becomes a link to the database's own page |
-| Embedded media (`<iframe>`, `<video>`, `<audio>`, `<embed>`, `<object>`) | Left out |
-| HTML the page model cannot hold | The tags are removed and the words kept |
-| HTML comments | Left out |
-| Elements that hold only white space | One space, so the words either side stay apart. Inside a block of code (`<pre>`) the white space comes through exactly as written: a highlighter puts a line's indent, and sometimes the line end, in an element of its own |
-| Notion columns (in an HTML export) | Their content follows one after another |
-| Footnotes | Kept as ordinary paragraphs |
-| `[[Wiki links]]` | Kept as text |
-| Pictures at a web address | Kept as links |
-| Links to files that are not in the import | Kept as text |
-| Links with a disallowed address such as `javascript:` | The link is removed, the words kept |
-| Files of a kind Outpost does not import | Skipped and listed |
+The plan lists what does not come across intact, with an example of each: equations stay
+LaTeX text, embedded media is left out, footnotes become paragraphs, `[[wiki links]]` and
+links to files not in the import stay as text.
 
 ### Importing from Notion
 
-Notion's **Markdown & CSV** export is the format Outpost's tests cover.
-
-1. In Notion, open the page or workspace you want, and choose **Export** from its
-   menu.
-2. Choose the format **Markdown & CSV**, and include sub-pages. These names are
-   Notion's and may change.
-3. Notion gives you a `.zip`. Upload it to Outpost as it is. Do not unpack it: large
-   exports arrive as a ZIP holding several ZIPs, and Outpost unpacks those itself.
-
-What Outpost does with it:
-
-- **Names.** Notion ends every file and folder name with a 32-character id. Outpost
-  removes it from titles and uses it to recognise the same page in a later import.
-- **Hierarchy.** Sub-pages are folders beside their parent's file, which is the layout
-  described above.
-- **Databases.** A Notion database arrives as a CSV plus a folder of row pages. It
-  becomes a table page whose first column links to the row pages. Where Notion
-  exports two CSV files for one database, the fuller one is used and listed once.
-- **Pictures** are stored as attachments.
-- **Callouts** are kept; **equations** are kept as text; the other cases are in the
-  table above.
+In Notion, choose **Export**, format **Markdown & CSV**, with sub-pages, and upload the
+`.zip` as it is, without unpacking it. Outpost strips Notion's 32-character ids from
+titles and uses them to recognise the same page next time. A Notion database becomes a
+table page whose first column links to its row pages.
 
 ### Pages that already exist
 
-Outpost recognises two kinds of existing page:
-
-| Kind | Meaning |
-| --- | --- |
-| Imported before | A page made by an earlier import of the same source. |
-| Same content | A page with the same title and text that did not come from this source, most likely written by hand. |
-
-You choose one policy for the import:
+Outpost recognises a page **imported before** from the same source, and a page with the
+**same content** (same title and text, most likely written by hand).
 
 | Policy | Imported before | Same content |
 | --- | --- | --- |
-| **Skip** | Left untouched, nothing new created | Left untouched |
-| **Copy** | A second page is created | A second page is created |
-| **Replace** | Updated in place from the new files, except a page encrypted since, which is left untouched | Left untouched: hand-written pages are never overwritten |
+| **Skip** | Left untouched | Left untouched |
+| **Copy** | A second page is made | A second page is made |
+| **Replace** | Updated from the new files (except a page encrypted since) | Left untouched |
 
-Replace overwrites pages, so it is refused until you confirm it (`replaceConfirmed`).
-It overwrites what was changed in those pages since they were imported, as the
-preview says.
-Pages in the trash do not count as existing. New sub-pages of a skipped page are put
-under the existing page.
-
-### If an import stops part-way
-
-An import that fails, is cancelled or is cut short by a restart can be committed
-again. What it already created is kept and not made twice; only what is missing is
-imported. The report of the first attempt is kept.
-
-### Safety
-
-A ZIP is unpacked without trusting it. An entry that tries to write outside its
-folder (`../`, an absolute path, a drive letter) refuses the whole archive. Links and
-device files are never created. Password-protected archives are refused. Limits: at
-most 50,000 files and 8 GB unpacked, including archives inside the archive; a file
-that inflates more than 200 times is treated as a zip bomb; a single file over the
-upload limit is left out and the rest imported. See [security.md](security.md#archives).
-
-A Markdown, HTML or text file is turned into a page in a process of its own, not in the
-server, because what that costs in time and memory depends on what is in the file and
-not on its size. A file of at most 4 MB is read; one that takes more than a minute or
-more memory than the converter is allowed (1 GB) is stopped, and comes in as an empty
-page with a note saying why, as a file that cannot be converted always has. The rest of
-the import carries on. See [security.md](security.md#notes-markdown-and-html).
-
-### What importing does not do
-
-- It does not import into the document library, except PDFs. To add documents, upload
-  them in the Library.
-- It does not read Word (`.docx`), OneNote or Evernote (`.enex`) files.
-- It does not merge two workspaces or sync with the source afterwards. (Notes written
-  on a portable drive are a different matter: see below.)
-
-## Saving a web page
-
-Paste the address of a page you are reading, and Outpost keeps a readable copy of it
-in the document library: the article, without the menus, adverts and buttons around it,
-searchable like every other document and readable with no connection.
-
-It is on the Library (**Save a web page**, beside **Add documents**), on the Import
-screen, and in the command palette.
-
-**It is a copy for your own reading.** The page still belongs to whoever published it.
-Outpost has no way to publish or share a saved page, and adds none. A saved page is
-one of your documents, so it travels wherever your documents do: into a backup, and
-onto a portable drive if you choose to copy documents to it. Think about that before
-handing a drive to someone else (see [portable.md](portable.md#what-a-drive-contains)).
-
-### The steps
-
-1. **Paste the address** and choose **Look at the page**. Outpost fetches that one page
-   and shows what it found: the title, who wrote it and for which site if the page
-   says, how many words, the opening lines, how many pictures the article has and
-   which hosts they would come from, and whether the address is already in your
-   library. Nothing has been kept yet.
-2. **Decide about the pictures.** With the box ticked they are fetched and kept with the
-   page. Without it, each picture's description is kept in its place.
-3. **Save page.** The document appears in the library, and its text is read for search
-   like any other.
-
-The opening lines are there so that a sign-in notice, or a page that turned out to be
-a cookie banner and nothing else, is seen for what it is before it is saved.
-
-### One page, when you ask
-
-- One address, one page, each time you press the button. It follows no link, takes no
-  list of addresses, has no "save the whole site", and fetches nothing again later:
-  a saved page is as it was when it was saved and is never refreshed.
-- A save that was not carried out within fifteen minutes of being asked for (the
-  server was stopped, or the job was paused) is dropped, not run late.
-- Looking at the page fetches the page. Saving does not fetch it a second time, as
-  long as it follows within fifteen minutes; it fetches the pictures, if asked.
-
-### Saving the same address again
-
-If the address is already in your library, Outpost says so and asks, with nothing
-chosen for you:
-
-| Choice | What happens |
-| --- | --- |
-| **Keep both** | The earlier copy stays exactly as it is, and the page as it is now is added beside it. |
-| **Replace the earlier copy** | The page as it is now is saved first. Only then is the earlier copy deleted, after a confirmation that names it. The new copy takes the earlier one's tags and category. |
-
-Nothing is replaced without that choice. Only a document that Outpost itself saved
-from the address can be replaced this way: a file of your own to which you gave the
-same address as its source is never offered, and is refused if named.
-
-"The same address" means the address after any redirects, compared exactly. The same
-article at an address that differs by so much as a tracking parameter counts as a
-different page.
-
-### What is kept
-
-- **The article:** title, the writer and the site's name when the page gives them, the
-  date it says it was published, and the text with its headings, lists, quotations,
-  tables, code and links. Links are made complete (a link written as `/about` becomes
-  the full address), so they still lead somewhere from your library. They open in a
-  new tab and need a connection.
-- **Where it came from and when.** The document opens with "Saved from *address* on
-  *date*", the address being a link, and the same is in the document's details
-  (Source, Author, Language).
-- **Pictures, if you asked:** PNG, JPEG, GIF and WebP pictures from inside the article.
-- **Nothing that runs or tracks.** Scripts, styles, frames, forms, embedded video and
-  audio, and anything hidden from a reader are gone before the page is kept. So are the
-  things around an article: the site's header and menus, sidebars, sharing buttons,
-  comment sections, "related articles", cookie notices and the footer.
-
-The copy is a Markdown file in your library, with the record of where it came from at
-the top and, if pictures were brought, the pictures inside the same file. Being one
-file is what lets it be moved to another drive, checked against its checksum, backed up
-and written to a portable drive like any other document. **Download the original**
-gives you that file; other Markdown programs can read it, pictures included.
+**Replace** overwrites changes made since the last import and asks you to confirm.
 
 ### Limits
 
+Password-protected ZIPs are refused, and an archive is limited to 50,000 files and 8 GB
+unpacked ([security.md](security.md#archives)). A file over 4 MB, or one too slow to
+convert, comes in as an empty page saying why.
+
+Imports do not read Word, OneNote or Evernote files, and do not sync with the source
+afterwards. To add other documents, use the Library.
+
+## Saving a web page
+
+Paste the address of a page and Outpost keeps a readable copy of the article in the
+library, without its menus and adverts, searchable and readable offline. It is under
+**Library → Save a web page**, on the Import screen, and in the command palette.
+
+1. Paste the address and choose **Look at the page**. Outpost fetches that one page and
+   shows its title, author, site, word count, opening lines, how many pictures it has and
+   where from, and whether you already have it. Nothing is kept yet. The opening lines
+   show when a page is only a sign-in notice or a cookie banner.
+2. Tick the box to keep the pictures, or leave it to keep their descriptions.
+3. **Save page.**
+
+It fetches one page each time you ask: it follows no links and never refreshes a saved
+page. A save not carried out within fifteen minutes is dropped.
+
+**It is a copy for your own reading.** It goes into backups, and onto a portable drive if
+documents are copied there ([portable.md](portable.md#what-a-drive-contains)).
+
+**The same address again.** Choose **Keep both**, or **Replace the earlier copy** (the new
+one is saved first; the old one is deleted after you confirm).
+
+**What is kept.** The article's text, with headings, lists, tables, code and links, under
+"Saved from *address* on *date*", and its PNG, JPEG, GIF and WebP pictures if asked.
+Scripts, forms, video, menus, comments and cookie notices are removed. The copy is one
+Markdown file (**Download the original**).
+
 | Limit | Value |
 | --- | --- |
-| The page | 5 MB of HTML (after any compression is undone), 20 seconds to arrive, 50,000 elements, 20 seconds to read |
-| Pictures | 30 to a page, 5 MB each, 20 MB in all; 20 seconds each and 3 minutes together |
+| The page | 5 MB of HTML, 50,000 elements, 20 seconds to arrive, 20 seconds to read |
+| Pictures | 30 to a page, 5 MB each, 20 MB in all |
 | Redirects | 8 |
 
-An article whose own text comes to more than 2 MB is still saved and searched, but is
-shown as plain text, without its formatting or pictures, as any Markdown file that
-large is.
-
-A picture over a limit is left out and the page is saved without it; the report after
-saving lists each picture left out and why. Pictures narrower or shorter than 8 pixels
-(spacers and counters) are dropped altogether. Drawings in SVG are not fetched: SVG can
-carry script, so the library never shows one in place.
+A picture over a limit is left out and listed; SVG is never fetched.
 
 ### What cannot be saved, and what Outpost says
 
 | The address… | What you are told |
 | --- | --- |
-| is not `http` or `https`, carries a user name or password, or is more than one address | The field says what is wrong with it. Nothing is fetched. |
+| is not `http` or `https`, holds a user name or password, or is more than one address | What is wrong with it. Nothing is fetched. |
 | is on this computer or a private network, or redirects to one | "Outpost only fetches from the public internet." See [security.md](security.md#downloads-the-ssrf-guard). |
-| holds something that is not a web page (a PDF, a picture, a data file) | What it is, and that a file is added in the Library instead. |
-| is larger than 5 MB, or made of more than 50,000 elements | Which limit, and that it was not saved. |
-| takes longer than 20 seconds to arrive | That Outpost stopped waiting. |
+| is not a web page (a PDF, a picture) | What it is, and to add it in the Library instead. |
+| is over 5 MB or 50,000 elements, or takes over 20 seconds | Which limit stopped it. |
 | answers with an error (404, 403, 500…) | The number and what it usually means. |
-| has no readable text | "No readable text was found on this page", and why that happens (below). |
+| has no readable text | "No readable text was found on this page". |
 
-**Pages with no readable text.** Outpost has no browser inside it and never runs a
-page's scripts. Many sites that work like an app send a nearly empty page and draw the
-content with a script after it loads; from such a page there is nothing to keep, and
-Outpost says so. The same goes for a page that only asks you to sign in: Outpost does
-not sign in to sites, sends no cookies, and so sees what a stranger would see. A page
-behind a paywall is saved as whatever the site shows to someone who has not paid.
+Outpost runs no page scripts, does not sign in and sends no cookies, so it sees what a
+stranger would. A site that draws its content with a script, or asks you to sign in, has
+nothing to keep; a paywalled page is saved as the site shows it to a non-payer.
 
-### What it does not get right
-
-Finding the article is done by rules, not by understanding the page, and it has only
-been tried by hand on two public pages (a Wikipedia article and an MDN guide) besides
-the pages the tests serve to themselves.
-
-- A page laid out in an unusual way can lose a part of the article, or keep a part of
-  what surrounds it. The preview's word count and opening lines are the check.
-- Formulas keep the line their author wrote for them (the LaTeX), not their drawn
-  form. Superscripts and subscripts survive only where Unicode has the character
-  ("x²", "H₂O").
-- Footnote marks stay as text, such as "[3]", but do not jump to the note.
-- A table inside a table, and other pages laid out with tables, come out as text.
-- Sites that only serve pictures to their own pages (by checking the referrer, which
-  Outpost never sends) refuse them; those pictures are left out and listed.
-- A site that turns away programs that are not browsers will refuse the page itself.
-  Outpost says who it is ("Outpost (self-hosted offline library)") and does not
-  pretend to be a browser.
+The article is found by rules, so an unusual layout can lose part of it; check the word
+count and opening lines. Some sites refuse their pictures or the page to anything that
+is not a browser, and Outpost does not pretend to be one.
 
 ## Notes written on a portable drive
 
-A portable drive carries all your notes, and pages can be written and edited while
-running Outpost from it. When the drive comes home, those changes are brought back
-from **Storage → Bring back changes from a drive**, not through an import. The full
-guide is in [portable.md](portable.md#bringing-changes-back-from-a-drive); what it
-means for notes:
+Pages written on a portable drive come home through **Storage → Bring back changes from a
+drive**, not an import ([portable.md](portable.md#bringing-changes-back-from-a-drive)).
 
-- **New pages** arrive with their sub-pages, tags, cover, pictures and files, and keep
-  the dates they were written. Links between pages keep working, and a link to a
-  document added on the drive points at the library's copy.
-- **A page edited only on the drive** updates the page at home. Notes keep no history
-  of their own, so the version home had is kept in the record of the merge, and
-  undoing the merge puts it back. If you have edited the page again by then, your
-  newer text is left alone and the earlier version is added beside it as a page named
-  "… (as it was before the merge of <date>)".
-- **A page edited on both sides** is never settled for you. Unless you choose
-  otherwise both are kept: home's page is untouched, and the drive's version arrives
-  as the next page along, named "… (from drive <name>, <date>)". You can read the two
-  side by side first, and instead keep home's or use the drive's, per page or for all.
-- **A page deleted on the drive** stays at home unless you tick it. Ticked, it goes to
-  the trash with its sub-pages and can be restored from there.
-- **A page moved on the drive** is moved at home too, if it was not also moved at home.
-- Content from a drive goes through the same sanitiser as an import: only the blocks
-  and marks listed above can arrive.
-- A template made on the drive arrives as a template.
-- Not brought back: the favourite mark on pages that already exist at home, the order
-  of pages among their siblings, and pages in the drive's trash.
+- **New pages** arrive with sub-pages, tags, pictures and files, and links keep working.
+- **A page edited only on the drive** updates the home page; the home version is kept in
+  the record of the merge, and undoing the merge puts it back.
+- **A page edited on both sides** is never settled for you: both are kept unless you
+  choose, the drive's as "… (from drive <name>, <date>)". Compare them side by side first
+  if you like.
+- **A page deleted on the drive** stays at home unless you tick it; ticked, it goes to the
+  trash.
+- **A page moved on the drive** is moved at home, unless it was moved at home too.
+- Not brought back: favourites on existing pages, the order of pages among siblings, and
+  the drive's trash.

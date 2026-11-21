@@ -1,307 +1,201 @@
 # Troubleshooting
 
-Real problems, the messages Outpost shows for them, and what to do. The messages are
-quoted from the code, so you can search this page for the words on your screen.
-
-Start with the log. It usually says more than the screen does.
+The messages Outpost shows, quoted as on screen, and what to do. Start with the log:
 
 ```bash
 docker compose logs --tail 200 outpost     # Docker
 docker compose logs --tail 200 kiwix
 ```
 
-Without Docker, the log is whatever the server prints in its terminal.
+Without Docker, the log is what the server prints in its terminal.
 
 ## Starting and reaching Outpost
 
 ### The server refuses to start, naming OUTPOST_LAN_ACCESS
 
-With Docker: "Outpost does not know that its port is published only to this computer…"
-Without Docker: "OUTPOST_HOST is …, which other devices can reach, but
-OUTPOST_LAN_ACCESS is not set."
-
-The port would be reachable from your network, and Outpost will not allow that unless
-you have chosen it. There are no accounts, so everyone who can reach Outpost can
-change and delete what is in it.
-
-- To keep it private to this computer, set `OUTPOST_BIND=127.0.0.1` in `.env` (or
-  `OUTPOST_HOST=127.0.0.1` without Docker). These are the defaults.
-- To share it with everyone on your network, also set `OUTPOST_LAN_ACCESS=true`. Read
-  [deployment.md](deployment.md#letting-other-devices-use-it-lan-access) first.
-
-If you start the image with plain `docker run`, the server cannot see how the port was
-published: pass `-e OUTPOST_PUBLISHED_ADDRESS=127.0.0.1` when you publish it with
-`-p 127.0.0.1:8080:8080`.
+The port would be reachable from your network, where everyone can change and delete
+everything. To keep it to this computer, set `OUTPOST_BIND=127.0.0.1` in `.env`
+(`OUTPOST_HOST=127.0.0.1` without Docker). To share it, also set
+`OUTPOST_LAN_ACCESS=true`, after reading
+[deployment.md](deployment.md#letting-other-devices-use-it-lan-access). With plain
+`docker run -p 127.0.0.1:8080:8080`, add `-e OUTPOST_PUBLISHED_ADDRESS=127.0.0.1`.
 
 ### The port is already in use
 
-Without Docker the server stops with an `EADDRINUSE` error. With Docker,
-`docker compose up` reports that the port is already allocated. Something else is
-using port 8080. Choose another port and restart:
-
-```ini
-OUTPOST_PORT=8090
-```
-
-With Compose this goes in `.env` and changes the port on the host; then open
-`http://localhost:8090`. A portable drive moves to the next free port by itself and
-prints the address it is using.
+`EADDRINUSE`, or "port is already allocated": something else has port 8080. Set
+`OUTPOST_PORT=8090` (in `.env` with Compose), restart, and open `http://localhost:8090`.
 
 ### "This address is not one Outpost answers to. Add it to OUTPOST_ALLOWED_HOSTS to use it."
 
-You opened Outpost by a name or address the server does not recognise as its own.
+- From another device, turn LAN access on (`OUTPOST_LAN_ACCESS=true`, and with Docker
+  `OUTPOST_BIND=0.0.0.0`).
+- With it on, IP addresses, single-word names and names ending `.local`, `.lan`, `.home`,
+  `.internal` or `.home.arpa` are accepted. List any other name:
+  `OUTPOST_ALLOWED_HOSTS=outpost.example.net`.
+- Behind a reverse proxy, pass the original `Host` header on.
 
-- From another device, you need LAN access on: `OUTPOST_LAN_ACCESS=true` (and, with
-  Docker, `OUTPOST_BIND=0.0.0.0`). Without it only `localhost`, `127.0.0.1` and `::1`
-  are accepted.
-- With LAN access on, IP addresses, single-word names and names ending in `.local`,
-  `.lan`, `.home`, `.internal` or `.home.arpa` are accepted. Any other name, such as
-  `outpost.example.net`, must be listed:
-
-  ```ini
-  OUTPOST_ALLOWED_HOSTS=outpost.example.net
-  ```
-
-- Behind a reverse proxy, make sure the proxy passes the original `Host` header on.
-
-Restart after changing either setting.
+Restart after changing either.
 
 ### The browser says the HTTPS address is not private
 
-The device has not been told to trust Outpost's certificate, or the address in the
-address bar is not one the certificate lists. Open **Settings → HTTPS on your network**
-at the `http` address, which always works: it lists the addresses the certificate
-covers and gives the steps for each kind of device. After **Make a new certificate
-authority**, every device has to trust the new one. See
-[deployment.md](deployment.md#https-on-your-network).
+The device does not trust Outpost's certificate, or the address is not one it covers.
+Open **Settings → HTTPS on your network** at the `http` address: it lists the covered
+addresses and the steps for each device. After **Make a new certificate authority**,
+every device must trust the new one ([deployment.md](deployment.md#https-on-your-network)).
 
 ### "Port 8443 is already in use on this computer, so HTTPS could not start."
 
-Something else has the HTTPS port. Start Outpost with `OUTPOST_HTTPS_PORT` set to a
-free one. Plain HTTP is not affected.
+Set `OUTPOST_HTTPS_PORT` to a free port. Plain HTTP still works.
 
 ### "This request did not come from the Outpost app."
 
-A script or tool called a state-changing API route without the required header. Add
-`-H "X-Outpost-Request: 1"`. See [api.md](api.md#the-x-outpost-request-header).
+A script called the API without `-H "X-Outpost-Request: 1"`
+([api.md](api.md#the-x-outpost-request-header)).
 
 ### "The server is not responding"
 
-The web app loaded but cannot reach its server. If you just started or restarted
-Outpost, wait a few seconds. Otherwise check that the service or container is running
-(`docker compose ps`) and read the log. Behind a reverse proxy, also check that the
-proxy does not buffer `/api/events`.
+Wait a few seconds after a start. Otherwise check the container or service is running
+(`docker compose ps`) and read the log. Behind a reverse proxy, make sure `/api/events`
+is not buffered.
 
 ### "The server is out of reach. Showing what is kept on this phone, for reading only."
 
-The app opened from the copy kept in the browser, and the server did not answer within
-a few seconds. Away from home this is expected. At home, check that the phone is on
-the same network and the server is running; the app asks again every ten seconds and
-goes back to normal by itself, or press **Try again**. See
-[offline.md](offline.md#a-phone-out-of-reach-of-the-server).
+Expected away from home. At home, check the phone is on the same network and the server
+is running; press **Try again** or wait
+([offline.md](offline.md#a-phone-out-of-reach-of-the-server)).
 
 ### "Nothing can be kept on this phone over plain HTTP"
 
-Browsers only let a site keep itself and its data on a secure address: HTTPS, or
-`localhost` on the computer itself. Give Outpost an HTTPS address (Settings → HTTPS on
-your network) and open it there.
+Give Outpost an HTTPS address (**Settings → HTTPS on your network**) and open it there.
 
 ### Something kept on the phone has gone
 
-The browser removed it; Outpost never removes a kept copy by itself. On an iPhone or
-iPad, Safari deletes a site's stored data after seven days of using Safari without
-visiting the site, unless the site is on the Home Screen; any browser may clear data
-when the device runs short of room. Add Outpost to the Home Screen, keep things from
-there, and use "Ask the browser to keep this data" on "On this phone". The details and
-sources are in [offline.md](offline.md#what-the-browser-may-do-with-kept-copies).
+The browser removed it. Keep things from the Home Screen app and press **Ask the browser
+to keep this data** ([offline.md](offline.md#what-the-browser-may-do-with-kept-copies)).
 
 ### "The Outpost server is running, but the web app has not been built."
 
-You are running from source and `apps/web/dist` does not exist. Run `pnpm build`, or
-use `pnpm dev` for development.
+From source, run `pnpm build`, or `pnpm dev` for development.
 
 ### The packaged app stops at start-up mentioning "pino-pretty"
 
-The message is `unable to determine transport target for "pino-pretty"`. Set
-`NODE_ENV=production` when running `dist/app/server/outpost.mjs`. See
-[deployment.md](deployment.md#the-packaged-app).
+Set `NODE_ENV=production` when running `dist/app/server/outpost.mjs`
+([deployment.md](deployment.md#the-packaged-app)).
 
 ## Storage
 
 ### A storage location shows as disconnected
 
-The detail under the location says which case it is.
-
-- **"The folder is not reachable. The drive may be unplugged or the share not
-  mounted."** Plug the drive in or mount the share. Outpost notices within about 30
-  seconds, or straight away if you press **Check drives** on the Storage screen. With Docker, a drive
-  that was not mounted when the containers started may need
+- **"The folder is not reachable…"** Plug the drive in or mount the share, then **Check
+  drives** (or wait 30 seconds). With Docker, a drive mounted after start may need
   `docker compose restart`.
-- **"The folder is there but is not this Outpost location. The drive mounted at this
-  path may be a different one."** The marker file `.outpost-location.json` is missing
-  or belongs to another location. Check that the right drive is mounted. If the drive
-  now appears at a different path inside a storage root, Outpost finds it by itself,
-  up to three folders deep, within ten minutes, or at once with **Check drives**.
+- **"The folder is there but is not this Outpost location…"** The wrong drive is mounted,
+  or its `.outpost-location.json` is missing. A drive that moved within a storage root is
+  found within ten minutes, or at once with **Check drives**.
 
-Nothing is lost while a location is disconnected. See
-[storage.md](storage.md#what-happens-when-a-drive-is-unplugged).
+Nothing is lost meanwhile ([storage.md](storage.md#what-happens-when-a-drive-is-unplugged)).
 
 ### "…is not connected. Reconnect it and try again."
 
-You tried to open, download to, check or delete something on a disconnected location.
-Reconnect it. To remove an item whose drive is gone for good, remove only Outpost's
-record and leave the file.
+Reconnect the drive. For an item whose drive is gone for good, remove only Outpost's
+record.
 
 ### "That folder is outside the storage roots this server allows."
 
-Storage locations can only be created inside the storage roots set when the server
-starts. The Storage screen lists them at the bottom. Mount the drive or share under a
-root (with Docker, under `/storage` in `compose.yaml`), or add its path to
-`OUTPOST_STORAGE_ROOTS`.
+Mount the drive under a storage root (with Docker, under `/storage` in `compose.yaml`),
+or add its path to `OUTPOST_STORAGE_ROOTS`. The Storage screen lists the roots.
 
 ### "Outpost cannot write to that folder. Check its permissions."
 
-Also: "That folder could not be created: … permission denied".
-
-In Docker the server runs as user id 1000. The folder must be writable by that user.
-
-```bash
-sudo chown -R 1000:1000 /mnt/usb-ssd/outpost
-```
-
-- exFAT, FAT32 and NTFS drives have no Unix ownership: mount them with
-  `uid=1000,gid=1000`.
-- SMB shares: add `uid=1000,gid=1000` to the mount options.
-- NFS shares: set ownership or permissions on the NAS, and check the export is
-  read-write.
-- A mount written with `:ro` in `compose.yaml` is read-only. Only the `kiwix` service
-  should have `:ro`.
+In Docker the server runs as user 1000: `sudo chown -R 1000:1000 /mnt/usb-ssd/outpost`.
+Mount exFAT, FAT32, NTFS and SMB with `uid=1000,gid=1000`; on NFS set permissions on the
+NAS and export read-write. Only the `kiwix` service's mounts should be `:ro`.
 
 ### "…does not have enough free space for this."
 
-Outpost always leaves 256 MB free on a location, so the space needed is the size of
-the item plus that reserve. Free some space or choose another location. **Storage →
-Manage and clean up** shows what is taking the space, lists unfinished downloads and
-stray files that can be cleared, and removes what you no longer want.
+Outpost leaves 256 MB free on every location. Free space, choose another location, or use
+**Storage → Manage and clean up**.
 
 ### "Erasing everything can only be started on the computer Outpost runs on."
 
-Outpost has no accounts, so the one action that destroys notes and documents is tied to
-where the request comes from. Open Outpost on the computer it runs on, or start it
-with `OUTPOST_ALLOW_REMOTE_ERASE=true`. In Docker with `OUTPOST_LAN_ACCESS=true`, or
-behind a reverse proxy, no request looks local, so the option is the only way. See
-[security.md](security.md#erasing-everything).
+Open Outpost on that computer, or start it with `OUTPOST_ALLOW_REMOTE_ERASE=true` (the
+only way in Docker with LAN access or behind a proxy)
+([security.md](security.md#erasing-everything)).
 
 ### "Restarting Outpost can only be done on the computer Outpost runs on."
 
-A restart stops Outpost for everyone using it, and its one use from the browser is
-switching to a restored backup, which is itself only offered at that computer. Open
-Outpost there and press **Restart now**, restart it by hand (`docker compose restart`,
-or stop and start the program), or start it with `OUTPOST_ALLOW_REMOTE_ERASE=true` to
-allow restoring and restarting from every device.
+Press **Restart now** at that computer, restart by hand (`docker compose restart`), or
+start with `OUTPOST_ALLOW_REMOTE_ERASE=true`.
 
 ### The database file did not get smaller after removing things
 
-SQLite keeps the freed space inside the file for reuse. **Storage → Manage and clean
-up → Clean up → Compact the database** hands it back to the disk.
+**Storage → Manage and clean up → Clean up → Compact the database**.
 
 ### "…still holds N items. Move or remove them first."
 
-A storage location cannot be removed while documents or collections are recorded on
-it. Move them (see [storage.md](storage.md)) or remove them, then try again.
+Move or remove what is on the location ([storage.md](storage.md)), then remove it.
 
 ### A collection shows as "missing" or "damaged"
 
-- **Missing:** the location is connected but the file is not there. Put the file back
-  at the same path, or download the collection again.
-- **Damaged:** the file no longer matches its recorded checksum. Download it again or
-  restore it from a backup of the drive. Run **Check files** again afterwards.
+**Missing:** put the file back at its path, or download it again. **Damaged:** it no
+longer matches its checksum; download it again or restore it, then **Check files**.
 
 ## Downloads
 
 ### A download says "No connection" and does not move
 
-- "No connection. This download will resume when the network is back." It is retrying
-  by itself, with longer pauses each time. Nothing to do but restore the connection.
-- "No connection. Outpost has stopped trying for now. Choose Retry when the network is
-  back; the part already downloaded is kept." It used up its attempts (8 by default;
-  **Settings → Downloads → Attempts before giving up**). Press **Retry** once you are
-  online. The download continues from where it stopped.
-
-Outpost itself runs offline by design, so check the server's own connection, not just
-your browser's: in Docker, the container must be able to reach the internet.
+"…will resume when the network is back" means it is retrying by itself. "…has stopped
+trying for now" means it used its attempts (**Settings → Downloads → Attempts before
+giving up**, 8 by default): press **Retry** once online; it continues where it stopped.
+Check the server's own connection, not only your browser's.
 
 ### "The downloaded file does not match its published checksum…"
 
-The file was damaged on the way or altered at its source. Outpost deleted it and
-installed nothing. Press **Retry** to download it again. If it fails the same way,
-press **Refresh** on Explore so that Outpost has the source's current details, then
-start the download afresh. Where the message says "it is the file as it arrived",
-what was written to the storage read back the same, so the storage is not at fault.
+It was damaged on the way or changed at its source; nothing was installed. Press
+**Retry**. If it fails again, **Refresh** on Explore and start afresh.
 
 ### "… is not keeping what is written to it"
 
-Part of a download read back from the storage location differently from what Outpost
-wrote to it, three times running. Outpost checks this for every download as the file
-is checked, published checksum or not, and when it happens once it puts the file right
-by itself: the download's history says "Storage lost part of the file — fetching it
-again", and only the part from the damage on is fetched. Three times in one download
-is a drive or a share that cannot be relied on: nothing was installed and the file was
-deleted. Download to the device's own storage instead, and see
-[Storage](storage.md#what-is-written-is-read-back) for what to check.
+The storage read back differently from what was written, three times in one download.
+Nothing was installed. Download to the device's own storage instead, and see
+[storage.md](storage.md#what-is-written-is-read-back).
 
 ### "… is not a download source listed in any catalogue manifest."
 
-Downloads may only start from hosts named in a manifest. If you run your own mirror,
-add its host to `OUTPOST_DOWNLOAD_HOSTS`. With Docker Compose this variable must also
-be passed into the container; see
-[deployment.md](deployment.md#read-by-composeyaml-only).
+For a mirror of your own, add its host to `OUTPOST_DOWNLOAD_HOSTS`, passed into the
+container with Compose ([deployment.md](deployment.md#read-by-composeyaml-only)).
 
 ### "Downloads from … are blocked because it is not a public address."
 
-The address is on a private network. This protects your own network from being probed
-through Outpost. If the address is a mirror you run, start the server with
+For a mirror on your own network, start the server with
 `OUTPOST_ALLOW_PRIVATE_DOWNLOADS=true`.
 
-### "…was disconnected during this download."
+### "…was disconnected during this download." or "…is full…"
 
-The drive it was writing to went away. The partial file is still on the drive, and
-the download continues by itself when the drive is connected again.
-
-### "…is full. Free some space on it, then retry; the part already downloaded is kept."
-
-Free space on that drive, then press **Retry**.
+Reconnect the drive (the download continues by itself), or free space and **Retry**. The
+part downloaded is kept.
 
 ### The catalogue will not refresh
 
-"The catalogue was not refreshed: there is no connection" is normal offline. Explore
-keeps working from the last known details. A different message names the source that
-failed; try again later.
+"…there is no connection" is normal offline; Explore uses the last known details. Any
+other message names the source that failed.
 
 ### "No readable text was found on this page."
 
-Saving a web page keeps what is written in the page's own HTML. A page that is drawn
-by a script after it loads (most sites that work like an app), or that only asks you
-to sign in, has nothing in it to keep: Outpost has no browser inside it, runs no
-page's scripts, and does not sign in to sites. Look for a plain or printable version
-of the page, or save it as a PDF from your browser's Print menu and add that to the
-Library. The other things Outpost says when a page cannot be saved are listed in
-[notes-and-imports.md](notes-and-imports.md#what-cannot-be-saved-and-what-outpost-says).
+The page is drawn by a script or asks you to sign in, and Outpost runs no scripts. Look
+for a printable version, or print it to PDF from your browser and add that
+([notes-and-imports.md](notes-and-imports.md#what-cannot-be-saved-and-what-outpost-says)).
 
 ### A saved web page is missing a part, or some of its pictures
 
-The article is found by rules, and a page laid out in an unusual way can lose a part.
-Pictures are left out when they are over a limit, are not PNG, JPEG, GIF or WebP, or
-when their host refuses to serve them to anything but its own pages; the report after
-saving lists each one and why. The address at the top of the saved page leads back to
-the original while you have a connection.
+An unusual layout can lose a part. Pictures over the limit, not PNG, JPEG, GIF or WebP,
+or refused by their host are left out; the report after saving lists each.
 
 ## Reference collections
 
 ### "Reading reference collections needs the kiwix-serve program, which this installation does not have."
 
-Outpost was started without `OUTPOST_KIWIX_URL` or `OUTPOST_KIWIX_BIN`. With Docker,
-use the `kiwix` service in `compose.yaml`. Without Docker, see
+With Docker, use the `kiwix` service in `compose.yaml`. Without, see
 [deployment.md](deployment.md#reference-collections-without-docker).
 
 ### "The Kiwix server at … is not answering. Check that its container is running."
@@ -312,592 +206,259 @@ docker compose logs --tail 100 kiwix
 docker compose up -d kiwix
 ```
 
-The `kiwix` container starts only after `outpost` is healthy, so it comes up a little
-later.
+It starts only after `outpost` is healthy.
 
 ### "The kiwix-serve program was not found at …" or "kiwix-serve stopped (code …)"
 
-`OUTPOST_KIWIX_BIN` points at a missing file, or the program cannot run on this
-machine (the wrong build for the processor, for example). Outpost restarts it with
-growing pauses; the last line the program printed is included in the message.
+`OUTPOST_KIWIX_BIN` points at a missing file or a build for the wrong processor. The
+message ends with the program's last line.
 
 ### A collection is installed but cannot be read
 
-- **Its drive is not mounted in the `kiwix` service.** Every `/storage/...` mount of
-  the `outpost` service must be repeated, read-only and at the same path, under
-  `kiwix` in `compose.yaml`. Then `docker compose up -d`.
-- **"This collection is on "…", which is not connected."** Reconnect the drive.
-- **"This collection is not ready to read yet."** kiwix-serve needs a moment to
-  notice a newly installed archive. Wait a few seconds and reload.
+- Every `/storage/...` mount of `outpost` must be repeated, read-only at the same path,
+  under `kiwix` in `compose.yaml`; then `docker compose up -d`.
+- "…which is not connected": reconnect the drive.
+- "This collection is not ready to read yet": wait a few seconds and reload.
 
 ### A collection opens as a list of documents
 
-Some collections are not copies of web sites. They are a set of files (PDFs, sound
-recordings, films) with a list of them, made with openZIM's "nautilus" tool; the Post
-Disaster Resource Library is one. Such a collection has a single page of its own,
-which draws the list in the browser from a database the browser keeps for that page.
-Outpost shows every collection's pages in a sandbox where a page has no such storage,
-so that page draws its header and nothing else.
+Some collections are a set of files (PDFs, recordings, films) rather than a web site, such
+as the Post Disaster Resource Library. Outpost shows their list itself, with a search box
+(each word must start a word: "pur" finds "purification"), **Add to library** on each PDF
+or e-book and **Add all to library** above. Recordings and films play where the browser
+can; otherwise **Open the file**. **Show the collection's own page** is usually empty.
 
-Outpost reads the collection's list itself and shows it in the reader:
-
-- The search box above it looks through titles, authors, descriptions and file names
-  as you type. Each word must start a word: "pur" finds "purification".
-- A PDF or e-book opens over the list, with **Add to library**; the same button is on
-  each line of the list, and **Add all to library** above it adds every one. The
-  document takes the title the collection gives it. See
-  [Adding a collection's documents to the library](#adding-a-collections-documents-to-the-library).
-- A sound recording or a film plays in the browser's own player. Which kinds play is
-  up to the browser; a WAV recording and a WebM film were tried in Chromium. When a
-  file cannot be played, **Open the file** hands it to the browser, which can save it.
-- Any other kind of file (a spreadsheet, an archive) is a link that opens in a new tab.
-- **Show the collection's own page**, under the list, shows the page as the collection
-  made it. It will usually be empty, for the reason above.
-
-If you see a line saying the collection's list could not be read:
-
-- "…from a file that is not where Outpost looks for it." The collection was made with
-  a version of nautilus older than 1.0.8 (October 2022), which laid its files out
-  differently, or with a changed copy of the tool. Outpost has not been tried against
-  one and shows its own page.
-- "…is larger than Outpost reads (4 MB)." About 25,000 documents of ordinary length.
-- "…is not written the way Outpost reads it." The list is a script, and Outpost reads
-  it without running it. Anything in it beyond a plain list is refused whole.
-
-Only the first 20,000 documents of a list are read, and at most 50 files of any one
-document; the list says so when it has been cut short. An entry that names no file
-inside the collection is left out, and counted under the list.
-
-What has been tried: one real collection (Post Disaster Resource Library, May 2024,
-108 PDFs, carrying the same script as nautilus 1.2.1), read through kiwix-serve; and a stand-in of the
-same shape for the tests, with files in folders, several files to a document, a WAV
-recording and names with awkward characters. **Add all to library**, the sizes and the
-check for room have been tried against the stand-in only, not against kiwix-serve
-itself: the sizes rely on kiwix-serve answering a `HEAD` request with the file's
-length, and fall back to asking for the file and hanging up once the length has
-arrived. Film was tried by hand with one WebM
-clip. No collection holding real recordings or films, and none from before October
-2022, was to hand.
+The list is not read if the collection was made before October 2022, is over 4 MB (about
+25,000 documents), or is more than a plain list. Only the first 20,000 documents, and 50
+files each, are read.
 
 ### Adding a collection's documents to the library
 
-**Add to library** copies a document out of the collection into your document
-library. Nothing is downloaded: the bytes are read from the collection already on
-your storage, through kiwix-serve, and written to the default storage location under
-`documents/`. The collection is not changed, so the document is then on disk twice,
-and each line of the list says how large it is. In the library its text is read so
-that search finds it to the page (the same reading every document gets, as many at a
-time as **Settings → Reading documents → Documents processed at once** allows), and
-it shows with your other documents. Pages that are scans are read by OCR only if
-**Read text from scans automatically** is on; otherwise the document offers it.
+**Add to library** copies a document out of the collection, with no download, to the
+default storage location, so it is on disk twice. **Add all to library** (or **Add
+these**, for what the search shows) says how many, how much space and where first, and
+will not start without room. It runs on the server (see **Downloads → Other work in the
+background**), goes on after a restart, and **Stop** keeps what was added. It ends with
+what was added, already there and failed, with **Try again**. Removing the collection
+later keeps the documents.
 
-**Add all to library**, above the list, adds every PDF and e-book in it that is not in
-the library yet. With words in the search box it becomes **Add these**, for what is
-showing. Before it starts it says how many documents, how much space and on which
-storage location, and it does not start if they would not fit (Outpost keeps 268 MB
-clear on every location).
-
-- It runs on the server, one document after another. You can close the page; it is
-  also listed under **Downloads → Other work in the background**, counted the same way
-  ("12 of 108").
-- **Stop** keeps what has been added. Asking again later adds only what is left.
-- After a restart it goes on from where it was. It works out what is left from what
-  the library holds, so nothing is copied twice.
-- It copies the next document only when the reading of text has nearly caught up, so
-  that a hundred documents do not queue ahead of something else you add meanwhile.
-  "Waiting for the text of the documents just added to be read" means exactly that.
-- At the end it says how many were added, how many were in the library already, and
-  which could not be added, each with the reason. A line that failed says so and has
-  **Try again**; the button above the list then offers only what is left.
-- One collection is added from at a time, and one such job runs per collection.
-- Removing the collection afterwards does not remove the documents added from it.
-  They are the library's own copies. Removing a collection while it is being added
-  from stops the adding and keeps what was added.
-
-What it says when it cannot go on:
-
-- "…does not have room for these N files: … would be needed and … is free" Free some
-  space on that location, or make another location the default under **Storage**.
-- "Stopped after N of M: no room left." The location filled up part of the way
-  through. What was added stays.
-- "Stopped after N of M: the storage location could not be written to." The default
-  location was disconnected part of the way through. Reconnect it and ask again.
-- "This collection cannot be read right now…" or "Stopped after N of M: the collection
-  could not be read." Its drive was disconnected, or kiwix-serve stopped. Reconnect
-  and ask again.
-- "…stopped arriving from this collection part of the way through." Nothing came for
-  thirty seconds. A copy has no limit on how long it takes as a whole.
-- "…is larger than this server accepts for one document." The limit for one document
-  is `OUTPOST_MAX_UPLOAD_MB` (2 GB unless changed).
-
-How long it takes, measured on 16 November 2026 on an Apple M2 Max with the archive
-on the same disk, from a stand-in for kiwix-serve and PDFs of plain text made for the
-measurement: 108 PDFs of 30 pages (139 kB each), 18 seconds from the press to the last
-text being read; 20 of 200 pages (0.9 MB each), 7 seconds; 4 of 2,000 pages (9.4 MB
-each), 12 seconds. Real PDFs with pictures are larger and
-slower to read, and an archive on a network share is slower to copy from. It has not
-been timed against a real collection, nor on a Raspberry Pi.
+If it stops: free space or change the default location; reconnect the location or the
+collection's drive; "stopped arriving" means nothing came for thirty seconds; one
+document may be at most `OUTPOST_MAX_UPLOAD_MB` (2 GB).
 
 ### A link in a reference page shows a notice instead of opening
 
-Pressing a link in a reference page does one of three things:
-
-- A PDF or e-book that is **inside the collection** opens over the page, with **Add to
-  library**. Adding it copies it out of the collection and needs no connection. The
-  bar under the reader's header lists every such file on the page; **Add them to your
-  library** says how much space the chosen ones take and where, and adds them by the
-  same job as [a collection's documents](#adding-a-collections-documents-to-the-library),
-  so closing the page does not stop it.
-- "This file is not in the collection. It is on the internet at …" The copy of the
-  site did not include that file. With a connection, **Save to library** fetches it
-  and it appears under Documents when the download finishes. Without one, it cannot be
-  had.
-- "That link leaves your library and needs the internet: …" The link goes to a web
-  page outside the collection.
-
-Collections made from web sites carry a script that makes every link report the
-address it had on the live site. Outpost reads each link before that script runs, so
-a file that is inside the collection is recognised as such. If a file is still
-reported as being on the internet, the page links to it at an address outside the
-collection's copy of the site, and the internet is the only place Outpost can get it
-from.
+- A PDF or e-book **inside the collection** opens with **Add to library**. The bar under
+  the reader lists every such file on the page.
+- "This file is not in the collection. It is on the internet at …": with a connection,
+  **Save to library** fetches it.
+- "That link leaves your library and needs the internet: …": a web page outside the
+  collection.
 
 ### A file from a reference page cannot be added to the library
 
-- "…is not in this collection. The site it was copied from may have had it; the copy
-  does not." The page links to a file that was never packed into the collection.
-- "Outpost can save links to files it can keep (PDF, EPUB, Markdown, plain text and
-  images). This link does not end in one of those." Web pages and other kinds of file
-  are not fetched.
-- "That link points at this computer or your own network, which Outpost does not fetch
-  from." See the entry on blocked addresses under [Downloads](#downloads).
-- The download fails with "…is named like a PDF, but its contents are not one." The
-  address answered with something else, often a page asking you to log in. Outpost
-  kept nothing and does not try again.
+The file was never packed into the collection; or the link is not to a PDF, EPUB,
+Markdown, text or image; or it points at your own network; or "…is named like a PDF, but
+its contents are not one" (often a log-in page). Nothing is kept.
 
 ### Search results have no reference articles
 
-A note under **In reference collections** says why. Either kiwix-serve is not running
-(see above), or **Settings → Search → Search inside reference collections** is off, in
-which case there is no such heading at all.
+kiwix-serve is not running, or **Settings → Search → Search inside reference
+collections** is off.
 
 ### Reference articles arrive late, or a note says a collection was not searched in time
 
-Your own results are shown at once; archives are searched after that, three at a time,
-and each collection's articles are added as it answers. On a slow drive or a network
-share the first search of an archive can take several seconds, because kiwix-serve has
-to read its index from the drive. A collection that takes more than 8 seconds, or is
-not reached within 30, is named in a note. Search for the same words again: what was
-being read is kept, so the second time is quick. See
-[search.md](search.md#reference-collections-in-results).
+On a slow drive the first search of an archive can take seconds. A collection that takes
+over 8 seconds is named in a note; search again and it is quick
+([search.md](search.md#reference-collections-in-results)).
 
 ## Maps
 
 ### The map has no labels
 
-Roads and land are drawn but there are no place names or icons. The map fonts and
-icons were not present when Outpost was built. From the repository, with a
-connection:
-
-```bash
-node scripts/fetch-map-assets.mjs
-```
-
-Then rebuild whatever you run: `pnpm build` for a source installation,
-`node scripts/build-app.mjs` for the packaged app, or `docker compose build` for the
-image (the image build runs the fetch itself). `node scripts/fetch-map-assets.mjs
---force` fetches everything again.
+The map fonts and icons were missing when Outpost was built. With a connection, run
+`node scripts/fetch-map-assets.mjs`, then rebuild: `pnpm build`,
+`node scripts/build-app.mjs`, or `docker compose build`. `--force` fetches again.
 
 ### "Outpost could not reach the map source."
 
-Estimating and downloading a region need a connection. Installed regions do not.
+Downloading a region needs a connection; installed regions do not.
 
 ### "The map source is no longer available at its address."
 
-If you set `maps.tileSource`, check the address. Otherwise the daily build was
-withdrawn; try again in a few minutes, or remove the download and start the region
-again.
+Check `maps.tileSource` if you set it; otherwise try again in a few minutes, or remove the
+download and start again.
 
 ### "Find a route" says the server is busy, or did not answer
 
-The servers that answer route searches are run by volunteers, for everyone, with no
-promise of being there. Wait a minute and try again, or choose **Ask another server**
-(or **Change server** under the search). After a server says it is busy, Outpost does
-not ask it again for 30 seconds. If no listed server works for you, an administrator
-can declare another in `<data directory>/catalog/routes/route-sources.json`; see
-[maps.md](maps.md#what-is-sent-and-to-whom). Routes already on your map are not
-affected.
+The servers are volunteers'. Wait a minute, or **Ask another server**. An administrator
+can declare another in `<data directory>/catalog/routes/route-sources.json`
+([maps.md](map-routes.md#what-is-sent-and-to-whom)).
 
 ### "Find a route" finds nothing for a path I know exists
 
-Names are matched as OpenStreetMap writes them: try part of the name. A path that
-nobody has mapped as a route is only found when you search **This map view** with the
-map over it, not **Anywhere**. A regional server knows only its region: the note under
-the search says which. And some paths are simply not named in OpenStreetMap; draw the
-route, or import a GPX file.
+Try part of the name. A path not mapped as a route is found only with **This map view**
+over it. A regional server knows only its region. Otherwise draw it or import a GPX file.
 
 ### "That area is too large to download at zoom N in one go"
 
-Lower the maximum zoom or split the area into smaller regions. A single region is
-also limited to 60 GB.
+Lower the maximum zoom or split the area. One region is at most 60 GB.
 
 ### The map is empty somewhere
 
-Only installed regions are drawn. Zoomed out, a world overview region fills the gaps.
-A region whose drive is disconnected is not drawn until it returns.
+Only installed regions are drawn, and not while their drive is disconnected.
 
 ## Documents and search
 
 ### A PDF has no searchable text
 
-"This PDF has no text of its own. Its pages appear to be scans…" The file is stored,
-opens normally, and is found by its title and tags. To search inside it, choose **Read
-text from the scanned pages** on the document; see
-[Scanned pages and images](search.md#scanned-pages-and-images-ocr) for what that can
-and cannot read. PDFs larger than 512 MB are stored but their text is not read.
+Its pages are scans. Choose **Read text from the scanned pages**
+([search.md](search.md#scanned-pages-and-images-ocr)). Text is not read from PDFs over
+512 MB.
 
 ### An EPUB book will not open, or looks different from the printed book
 
-- "This book is copy-protected": the book is locked by a rights scheme (DRM). Outpost
-  stores it and can hand it back, but does not read it and does not remove the lock.
-- "This book could not be opened": the message says what is missing. The file is
-  usually damaged or was cut short when it was copied; add a fresh copy. If its text
-  was read before, **Show its plain text** still shows that.
-- "This chapter cannot be shown": that one chapter is over 2 MB, or too tangled to read
-  safely. The rest of the book reads normally. **Download original** to read it in
-  another program.
-- The book looks plainer than in another reader: Outpost shows a book's words and
-  pictures in its own type and leaves the book's styling out, on purpose. Fixed-layout
-  books, audio, video, mathematics and interactive pages are not supported. See
-  [Reading EPUB books](epub.md).
-- A search result opens the start of the book instead of the chapter: the book was
-  added before chapters were recorded. Choose **Read text again** in its details.
+- "This book is copy-protected": Outpost keeps it but neither reads it nor removes DRM.
+- "This book could not be opened": usually a damaged copy; add a fresh one.
+- "This chapter cannot be shown": that chapter is over 2 MB; **Download original**.
+- Plain look: on purpose. Fixed layout, audio, video and maths are not supported
+  ([epub.md](epub.md)).
+- A result opens at the start: **Read text again** in its details.
 
 ### OCR found no text, or the wrong words
 
-- "OCR found no text…": the page may be blank, sideways, handwritten, or in a language
-  OCR has not been given. Only pictures are read, so a page whose words are drawn as
-  shapes gives "…has no picture that OCR could read".
-- Wrong words are normal on poor scans. **Read the scanned pages again** only helps if
-  something has changed, such as the language setting.
-- "Reading text from scans (OCR) is not part of this installation…": the OCR engine or
-  its English data is missing from the installation. From source, run `pnpm install`;
-  a packaged app should be rebuilt with `node scripts/build-app.mjs`.
+The page may be blank, sideways, handwritten, or in a language not set. Wrong words are
+normal on poor scans. "…is not part of this installation": run `pnpm install` from
+source, or rebuild the packaged app.
 
 ### An upload is refused
 
-- "…is larger than the N MB this server accepts per file." Raise
-  `OUTPOST_MAX_UPLOAD_MB` and, behind a reverse proxy, the proxy's own limit.
-- "…is a .xyz file, which the library cannot store." Only the listed types are
-  accepted.
-- "…is named like a PDF, but its contents are not one." The file is not what its
-  extension says.
-- "…is not UTF-8 text." Save the file with UTF-8 encoding and try again.
+Raise `OUTPOST_MAX_UPLOAD_MB` (and a proxy's limit) for large files. Only the listed types
+are accepted; a file must be what its extension says; text must be UTF-8.
 
 ### Semantic search: "The embedding server at … is not reachable."
 
-Check that the server is running and that the address is right from where Outpost
-runs. In Docker, `127.0.0.1` is the container itself; see
-[search.md](search.md#a-local-embedding-server-local-server).
+Check it is running and the address is right from where Outpost runs. In Docker,
+`127.0.0.1` is the container ([search.md](search.md#a-local-embedding-server-local-server)).
 
 ### Semantic search: "The built-in model has not been fetched yet" or "…is not part of this installation"
 
-The model's files are missing. Running from source, fetch them once with
-`node scripts/fetch-embedding-model.mjs` (it needs a connection, that once). A packaged
-app or image without them was built without that step: build it again after running
-the script, or use a local embedding server. Ordinary search is not affected.
+From source, run `node scripts/fetch-embedding-model.mjs` once. Otherwise rebuild after
+that step, or use a local embedding server. "…does not match its checksum": reinstall, or
+run the script with `--force`.
 
-### Semantic search: "…does not match its checksum"
+### Answers and chat
 
-A file of the built-in model is damaged or was replaced. Install Outpost again (or,
-from source, run `node scripts/fetch-embedding-model.mjs --force`).
-
-### There is no "Answer from my library" button
-
-It appears on the Search screen only when **Settings → Answers from your library** is
-switched on and a model is chosen. Outpost does not include a language model; see
-[ai.md](ai.md#setting-it-up).
-
-### Answers: "No model server answered at …"
-
-The model server is not running, or the address is wrong from where Outpost runs.
-Start it (for Ollama, `ollama serve` or the Ollama app) and press **Test** in
-Settings. In Docker, `127.0.0.1` is the container itself; see
-[ai.md](ai.md#in-docker-or-with-the-model-on-another-machine). llama.cpp's server
-changed its default port from 8080 to 9931: use the address it prints.
-
-### Answers: "The model server … has no model called …"
-
-The name must be the one the server uses, including any tag (`llama3.2:3b`, not
-`llama3.2 3b`). Choose it from the list in Settings, which comes from the server, or
-fetch it first (`ollama pull llama3.2:3b`).
-
-### Answers: "… cannot write text. It is probably an embedding model…"
-
-A model such as `nomic-embed-text` turns text into numbers for search by meaning and
-cannot answer. Choose a chat model.
-
-### Answers: "The passages and the question were too long for the model."
-
-Lower **Context budget** in Settings, or start the model with a larger context
-(`-c 8192` for llama.cpp's server). Ollama does not report this: it silently drops
-what does not fit, so with Ollama keep the budget inside its context size (4,096
-tokens by default; the default budget fits). See [ai.md](ai.md#with-ollama).
-
-### Answers: "The model had not started writing after 3 minutes…"
-
-The machine is too slow for that model with that much text. Use a smaller model or a
-smaller context budget. The first answer after starting the model server is the
-slowest, because the model is loaded into memory then.
-
-### Answers: "Outpost is already writing an answer…"
-
-One answer is written at a time, across every device using this Outpost. Wait for the
-other to finish, or stop it where it was asked.
-
-### An answer cites nothing, or cites a number that is struck through
-
-The model did not follow its instructions. Small models do this more often. Treat the
-answer as unsupported, read the passages listed beneath it, and consider a larger
-model. Outpost flags this; it cannot prevent it.
+| Message | What to do |
+| --- | --- |
+| No **Answer from my library** button | Switch on **Settings → Answers from your library** and choose a model ([ai.md](ai.md#setting-it-up)). |
+| "No model server answered at …" | Start it (`ollama serve` or the Ollama app) and press **Test**. In Docker, `127.0.0.1` is the container ([ai.md](ai.md#in-docker-or-with-the-model-on-another-machine)). llama.cpp's server now defaults to port 9931. |
+| "The model server … has no model called …" | Use the exact name with its tag (`llama3.2:3b`), or `ollama pull` it. |
+| "… cannot write text. It is probably an embedding model…" | Choose a chat model. |
+| "The passages and the question were too long for the model." | Lower **Context budget**. Ollama drops what does not fit without saying; keep within its 4,096 tokens ([ai.md](ai.md#with-ollama)). |
+| "The model had not started writing after 3 minutes…" | Use a smaller model or budget. The first answer after a start is slowest. |
+| "Outpost is already writing an answer…" | One answer at a time for the household; wait, or stop the other. |
+| An answer cites nothing, or a struck-through number | The model ignored its instructions: treat the answer as unsupported, read the passages, try a larger model. |
 
 ## Notes
 
 ### "This page was changed somewhere else after you opened it…"
 
-The page was saved from another tab or device after you opened it. Your changes were
-not saved over the newer version. Reload to see it.
+Your changes were not saved over the newer version. Reload.
 
 ## Backup and restore
 
 ### "A restore is waiting for a restart"
 
-A restore is applied when the server next starts. Restart it:
-
-```bash
-docker compose restart outpost
-```
-
-Without Docker, stop the server and start it again. From a portable drive or the
-Compose stack, Outpost can restart itself when you ask it to. "Outpost cannot restart
-itself here. Stop it and start it again to finish." means nothing is supervising the
-server, which is the case when you run it from source or run the packaged app
-yourself.
-
-To change your mind before restarting, cancel the staged restore in **Settings →
-Backup**.
-
-After the restart, the data that was replaced is in the data directory in a folder
-named `before-restore-<time>`. Delete it yourself when you are sure you do not need
-it.
+Restart: `docker compose restart outpost`, or stop and start the server. "Outpost cannot
+restart itself here" means nothing supervises it (from source, or the packaged app run by
+hand). Cancel in **Settings → Backup** to change your mind. The replaced data is kept in
+`before-restore-<time>` in the data directory; delete it when sure.
 
 ### "Restoring is not offered on this device"
 
-Settings says this, under **Backup**, on any device but the computer Outpost runs on,
-for the reason in the next entry. Moving to a Raspberry Pi in Docker, where no device
-counts as that computer, has the steps in
+Restoring is only at the computer Outpost runs on. Moving to a Pi in Docker:
 [deployment.md](deployment.md#6-bring-your-library-across).
 
 ### "Restoring a backup can only be done on the computer Outpost runs on."
 
-Restoring replaces everything at once, and Outpost has no accounts, so it is tied to
-where the request comes from, as erasing everything is. The same goes for deleting a
-stored backup and for keeping fewer of them. Open Outpost on the computer it runs on,
-or start it with `OUTPOST_ALLOW_REMOTE_ERASE=true`. In Docker with
-`OUTPOST_LAN_ACCESS=true`, or behind a reverse proxy, no request looks local, so the
-option is the only way. See [security.md](security.md#backup-and-restore).
+Also deleting backups and keeping fewer. Open Outpost there, or start with
+`OUTPOST_ALLOW_REMOTE_ERASE=true` ([security.md](security.md#backup-and-restore)).
 
 ### "The backup due … has not been made"
 
-The storage location chosen for automatic backups was not connected when the backup was
-due. Nothing was written anywhere else. Connect the drive or the share (**Storage →
-Check drives** looks at once); the backup is made as soon as Outpost sees the location,
-and one backup covers however many were missed. If the location is gone for good,
-choose another in **Settings → Automatic backups**.
+Its location was not connected. Connect it; one backup covers all missed. Or choose
+another in **Settings → Automatic backups**.
 
 ### A backup is shown as "Not verified"
 
-It was written, but there is no record that it read back correctly: the check failed
-(the job's message under Downloads says how), the server stopped before the check
-finished, or the file has changed size since. It is not counted towards the number to
-keep. The next backup does not depend on it. If it keeps happening on one location,
-the disk or the network connection to it is the first thing to suspect. Outpost keeps
-only the newest two that failed their check, and tries a failing scheduled backup less
-often each time (after one hour, then two, four, eight, up to a day), so a fault that
-lasts does not fill the location.
+It did not read back correctly, or the check was interrupted. It does not count towards
+those kept. If it keeps happening, suspect the disk or network. Failing backups are tried
+less often, and only the newest two failures are kept.
 
 ### A file in `outpost-backups` is not in the list, or is never removed
 
-Outpost lists and removes only files it named itself
-(`outpost-backup-<time>-scheduled.zip` or `-manual.zip`, or the same ending `.zip.enc`
-for a protected one) that read as its backups.
-A backup you downloaded from Settings and copied there has a different name, so it is
-left alone; restore it with **Choose backup** instead.
+Outpost manages only files it named (`outpost-backup-<time>-scheduled.zip`,
+`-manual.zip`, or `.zip.enc`). Restore any other with **Choose backup**.
 
 ### "That passphrase does not open this backup."
 
-A protected backup opens with the passphrase that was set **when it was made**. If the
-passphrase has been changed since, older backups still need the older one; the list in
-**Settings → Automatic backups** marks those. Check for a trailing space and for the
-keyboard layout: the passphrase is used exactly as typed. Outpost keeps no copy of any
-passphrase and cannot recover one. If it is lost, the backups made under it cannot be
-opened by anyone; set a new passphrase and make a new backup while the library is still
-here.
+Use the passphrase set **when the backup was made**; **Settings → Automatic backups**
+marks older ones. Check for a trailing space and the keyboard layout. A lost passphrase
+cannot be recovered by anyone: set a new one and make a new backup now.
 
-### "That backup cannot be restored. … damaged, altered or cut short."
+### Other restore messages
 
-The passphrase was right or was never tried: the file itself does not read. A protected
-backup is refused whole if any part of it has changed or is missing, which is what a
-copy that was interrupted looks like. Copy it again from where it is kept, or use
-another backup.
-
-### "A passphrase sent from this device would cross your network unencrypted"
-
-Setting the passphrase for backups, and restoring a protected backup, send a
-passphrase to Outpost. From another device that is only accepted over HTTPS. Do it at
-the computer Outpost runs on, or turn HTTPS on (**Settings → HTTPS**) and open Outpost
-at its `https` address. `OUTPOST_ALLOW_REMOTE_ERASE=true` is needed as well, as for
-any restore from another device.
-
-### "That backup was made by a newer Outpost (…). Update Outpost, then restore it."
-
-A backup can be restored into the same or a newer version, not an older one.
-
-### After a restore, documents and collections show as unavailable
-
-A backup holds the database, not the content. Add the same storage locations again:
-their marker files are recognised and the content lines up.
+- "That backup cannot be restored. … damaged, altered or cut short.": copy it again, or
+  use another.
+- "A passphrase sent from this device would cross your network unencrypted": do it at the
+  computer Outpost runs on, or over HTTPS with `OUTPOST_ALLOW_REMOTE_ERASE=true`.
+- "That backup was made by a newer Outpost": update Outpost first.
+- Documents and collections unavailable after a restore: a backup holds the database, not
+  the files. Add the same storage locations again.
 
 ## Portable drives
 
 ### "This drive does not include Outpost for this kind of computer"
 
-The drive was made without the runtime for this platform. Update the drive from the
-Outpost that made it and tick this kind of computer.
+Update the drive from the Outpost that made it, ticking this kind of computer.
 
 ### "…is too large for this drive's format. Reformat the drive as exFAT and try again."
 
-The drive is FAT32, which cannot hold a file of 4 GB or more.
+FAT32 cannot hold a file of 4 GB or more.
 
 ### Reference collections do not open from a drive on Windows
 
-The Kiwix project publishes no Windows build of its reader at the version Outpost
-uses. Everything else works. See
-[portable.md](portable.md#which-computers-it-runs-on).
+There is no Windows build of the reader; everything else works
+([portable.md](portable.md#which-computers-it-runs-on)).
 
 ## The Raspberry Pi scripts
 
-What `deploy/pi/install.sh`, `deploy/pi/nas-share.sh` and `deploy/pi/hotspot.sh` print
-when they stop, and what to do. The first two have been run on one real Raspberry Pi and
-`hotspot.sh` on none
-([deployment.md](deployment.md#what-has-been-tried-and-what-has-not)), so a message not
-listed here is possible: the script's own words, and the lines just above them, say
-what it was doing.
+What `deploy/pi/install.sh`, `nas-share.sh` and `hotspot.sh` print when they stop. For a
+message not here, read the lines above it.
 
-### "Your kernel does not support memory limit capabilities or the cgroup is not mounted. Limitation discarded."
-
-Docker's words, once for each container, every time they start. Raspberry Pi OS starts
-with memory limits switched off, so the ceilings in `compose.yaml` are not applied.
-Outpost runs the same. See
-[Raspberry Pi 4 and 5](deployment.md#raspberry-pi-4-and-5).
-
-### Outpost answers, but `sudo docker ps` does not list it (or `docker compose ps` lists nothing)
-
-The Pi has two Dockers, the system's and a rootless one of your own user's, and Outpost
-is in the other one from the command you typed. `docker context ls` shows which plain
-`docker` means. To move it to the system's: in the `outpost` folder, `docker compose
-down` (add `-v` only if nothing in it is worth keeping: that deletes its notes and
-library), then `./deploy/pi/install.sh --lan --https --sudo`.
-
-### "`docker` here is rootless Docker (your own user's). A share mounted by the system cannot be handed to a rootless container …"
-
-From `nas-share.sh`. If Outpost runs in the system's Docker, run it again with `--sudo`.
-If Outpost runs in the rootless one, move it first, as above.
-
-### "… could not be mounted." (from `nas-share.sh`)
-
-The line under it is the system's own reason. A wrong password: run it again with
-`--new-password`. A share or folder that is not there: the folder must exist on the NAS
-already, spelled the same, capitals included. A NAS that wants another SMB version:
-change `vers=3.0` in the line in `/etc/fstab` to `2.1` or `3.1.1`, then
-`sudo systemctl daemon-reload` and run the script again.
-
-### "The password is asked for at the keyboard, and there is none here."
-
-`nas-share.sh` was started by something with no terminal. Run it in a terminal; over
-`ssh`, with `ssh -t`.
-
-### "A 64-bit system is needed: this one reports armv7l. Install Raspberry Pi OS (64-bit)."
-
-The card holds the 32-bit Raspberry Pi OS, and Outpost has no 32-bit build. The same
-goes for "The kernel is 64-bit but the system's programs are armhf". Write the card
-again with **Raspberry Pi OS (64-bit)** in Raspberry Pi Imager.
-
-### "Run this as your own user, not with sudo. It asks for sudo where it needs it."
-
-Run `./deploy/pi/install.sh …` without `sudo` in front.
-
-### "Docker with the Compose plugin is not installed."
-
-Run the script again with `--install-docker`, which installs both from Docker's own
-apt repository and needs the internet that once.
-
-### "compose.yaml was not found in … Run this from a checkout of Outpost."
-
-The script was copied out of the folder `git clone` made. Run it from there:
-`cd outpost`, then `./deploy/pi/install.sh …`.
-
-### "Outpost did not answer within five minutes. Look at: docker compose logs outpost"
-
-The containers started but the server did not answer at
-`http://127.0.0.1:8080/api/health`. Read the log it names (the last lines matter most).
-A first start that is still building its search index can be slow on a Pi: run
-`curl http://localhost:8080/api/health` again after a few minutes. If the log ends in an
-error, look it up on this page.
-
-### `permission denied while trying to connect to the Docker daemon socket`
-
-Docker was installed in this sign-in, and being allowed to use it without `sudo`
-counts from the next one. Sign out of the Pi and in again, or put `sudo` before
-`docker`.
-
-### "They could not be fetched now. The planner will offer a Download button; or run this again later."
-
-The coefficients for the HF propagation planner could not be downloaded, usually for
-want of the internet. Everything else is installed. Press **Download** on the HF
-propagation screen once the Pi is online, or run the script again.
-
-### "The Wi-Fi country is not set. Set it first: sudo raspi-config nonint do_wifi_country GB (with your own country code)."
-
-A Raspberry Pi keeps its Wi-Fi off until it knows which country it is in. Run the
-command it gives, with your own two-letter country code, then `hotspot.sh on` again.
-
-### "nmcli was not found." or "NetworkManager is not running."
-
-`hotspot.sh` needs NetworkManager, which Raspberry Pi OS uses from Bookworm on. An
-older system needs writing again with a current Raspberry Pi OS.
-
-### "wlan0 is not a Wi-Fi interface on this computer. Name yours with --interface."
-
-The Wi-Fi is called something else on this Pi. `nmcli device` lists the names; give
-the Wi-Fi one with `--interface`.
-
-### "The password must be 8 to 63 characters." or "The two did not match."
-
-The Wi-Fi network's password is checked before anything changes. Nothing was changed;
-run it again.
-
-### Phones join the Pi's network but Outpost does not open
-
-Outpost answers other devices only when it is shared with the network:
-`./deploy/pi/install.sh --lan` sets that up. `sudo ./deploy/pi/hotspot.sh status`
-says whether the network is on. A phone may say the network has no internet and ask
-whether to stay on it: stay.
+| Message | What to do |
+| --- | --- |
+| "Your kernel does not support memory limit capabilities…" | Nothing: Raspberry Pi OS turns memory limits off ([deployment.md](deployment.md#raspberry-pi-4-and-5)). |
+| Outpost answers, but `sudo docker ps` does not list it | It is in the other Docker (the system's or your rootless one; `docker context ls` says which). To move it: `docker compose down` in the `outpost` folder (`-v` deletes its data), then `./deploy/pi/install.sh --lan --https --sudo`. |
+| "`docker` here is rootless Docker…" (`nas-share.sh`) | Run it again with `--sudo`, moving Outpost to the system's Docker first if needed. |
+| "… could not be mounted." (`nas-share.sh`) | The line below says why. Wrong password: `--new-password`. The share folder must exist, spelled exactly. Another SMB version: change `vers=3.0` in `/etc/fstab` to `2.1` or `3.1.1`, `sudo systemctl daemon-reload`, run again. |
+| "The password is asked for at the keyboard…" | Run it in a terminal (`ssh -t`). |
+| "A 64-bit system is needed…" or "…programs are armhf" | Write the card again with **Raspberry Pi OS (64-bit)**. |
+| "Run this as your own user, not with sudo…" | Leave `sudo` off. |
+| "Docker with the Compose plugin is not installed." | Run again with `--install-docker` (needs the internet once). |
+| "compose.yaml was not found in …" | Run it from the `outpost` folder `git clone` made. |
+| "Outpost did not answer within five minutes…" | Read the log's last lines. A first start can be slow; try `curl http://localhost:8080/api/health` in a few minutes. |
+| `permission denied while trying to connect to the Docker daemon socket` | Sign out and in again, or use `sudo docker`. |
+| "They could not be fetched now. The planner will offer a Download button…" | Press **Download** on HF propagation once online. |
+| "The Wi-Fi country is not set…" | Run the command it gives with your country code, then `hotspot.sh on`. |
+| "nmcli was not found." or "NetworkManager is not running." | `hotspot.sh` needs Raspberry Pi OS Bookworm or later. |
+| "wlan0 is not a Wi-Fi interface…" | `nmcli device` lists names; pass yours with `--interface`. |
+| "The password must be 8 to 63 characters." | Nothing changed; run it again. |
+| Phones join the Pi's network but Outpost does not open | Share it with `./deploy/pi/install.sh --lan`; `sudo ./deploy/pi/hotspot.sh status` says whether the network is on. Stay on a network that "has no internet". |
 
 ## Still stuck
 
-Open an issue on the project's GitHub page with the Outpost version (**Settings →
-This installation**), how you run it (Docker, source, packaged app or portable
-drive), the operating system, and the relevant lines of the log. Remove anything
-private from the log first. For security problems, see
-[SECURITY.md](../SECURITY.md) instead.
+Open an issue on GitHub with the version (**Settings → This installation**), how you run
+it, the operating system and the relevant log lines, with anything private removed.
+Security problems: [SECURITY.md](../SECURITY.md).
