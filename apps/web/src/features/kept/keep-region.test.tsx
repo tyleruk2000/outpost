@@ -15,13 +15,32 @@ import { KeepAreaSection } from "./keep-controls";
 const sources = {
   hasTiles: true,
   hasTerrain: true,
-  sources: { basemap: { minzoom: 0, maxzoom: 15, bounds: [-180, -85, 180, 85] }, terrain: { minzoom: 0, maxzoom: 12, bounds: [-4, 54, -2, 55] } },
+  sources: {
+    basemap: { minzoom: 0, maxzoom: 15, bounds: [-180, -85, 180, 85] },
+    terrain: { minzoom: 0, maxzoom: 12, bounds: [-4, 54, -2, 55] },
+  },
   attributions: [],
 } as unknown as MapSources;
 const overview = {
   regions: [
-    { id: "r1", regionId: "lake-district", name: "Lake District", tileType: "vector", bounds: [-3.6, 54.2, -2.6, 54.8], minZoom: 0, maxZoom: 15 },
-    { id: "r2", regionId: null, name: "Lake District terrain", tileType: "terrain", bounds: [-3.6, 54.2, -2.6, 54.8], minZoom: 0, maxZoom: 12 },
+    {
+      id: "r1",
+      regionId: "lake-district",
+      name: "Lake District",
+      tileType: "vector",
+      bounds: [-3.6, 54.2, -2.6, 54.8],
+      minZoom: 0,
+      maxZoom: 15,
+    },
+    {
+      id: "r2",
+      regionId: null,
+      name: "Lake District terrain",
+      tileType: "terrain",
+      bounds: [-3.6, 54.2, -2.6, 54.8],
+      minZoom: 0,
+      maxZoom: 12,
+    },
   ],
   places: [],
   counts: { markers: 0, tracks: 0, places: 0 },

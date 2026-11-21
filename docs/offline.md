@@ -296,8 +296,8 @@ button on the map) work with the server off: the phone works them out from the k
 terrain tiles with the server's own sums. Within reach the server always answers
 instead. The range reaches 100 km from the aerial; the phone holds only the ground of
 the areas it kept (detailed inside them, coarser around them), so past that the card
-says the ground is not known, and the outline stops there. Working out a range takes the
-phone a few seconds. Line of sight between two points, the walk reach, the relay
+says the ground is not known, and the outline stops there. How long a phone takes to work
+out a range has not been measured. Line of sight between two points, the walk reach, the relay
 planner and route heights still need the server.
 
 If the regions installed on the server change after an area was kept, "On this phone"
