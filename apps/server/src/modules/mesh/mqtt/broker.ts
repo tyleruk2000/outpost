@@ -15,6 +15,7 @@
 import { randomBytes } from "node:crypto";
 import net from "node:net";
 import { limitKey } from "../../../core/address-key.ts";
+import { socketBytes } from "../../../core/socket-bytes.ts";
 import {
   CONNACK,
   encodePacket,
@@ -233,7 +234,7 @@ export function createBroker(options: BrokerOptions): MqttBroker {
       drop(conn, "no CONNECT in time");
     }, limits.connectTimeoutMs);
 
-    socket.on("data", (chunk) => onData(conn, chunk));
+    socket.on("data", (chunk) => onData(conn, socketBytes(chunk)));
     socket.on("timeout", () => {
       if (conn.closing) socket.destroy();
       else drop(conn, "keep-alive expired");

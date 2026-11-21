@@ -14,6 +14,7 @@
  * PUBACK. A stopped client has none.
  */
 import type net from "node:net";
+import { socketBytes } from "../../../core/socket-bytes.ts";
 import type { MqttLog } from "./broker.ts";
 import {
   CONNACK,
@@ -159,7 +160,7 @@ export function createClient(options: ClientOptions): MqttClient {
       if (socket !== sock) return;
       let packets: Packet[];
       try {
-        packets = reader.push(chunk);
+        packets = reader.push(socketBytes(chunk));
       } catch (error) {
         const reason = error instanceof MqttProtocolError ? error.message : "unreadable packet";
         return lose(sock, `The broker sent something that is not MQTT 3.1.1 (${reason})`);

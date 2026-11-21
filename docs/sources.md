@@ -900,7 +900,7 @@ Nothing bundled or fetched.
   `pre_eol_info`): wear in tens of per cent, pre-EOL normal, warning (80%) or urgent (90%).
   SD cards have no such attributes, and the screen says their wear is not reported.
 - The Prometheus text format 0.0.4, followed by hand for `/metrics`.
-- Node 24's `monitorEventLoopDelay`, used in its timer mode and only while there is work.
+- Node's `monitorEventLoopDelay`, used in its timer mode and only while there is work.
 - avahi-publish(1) (Debian bookworm): `outpost-name.service` runs
   `avahi-publish -f -a -R NAME.local ADDRESS`.
 

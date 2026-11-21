@@ -69,7 +69,7 @@ After changing issues, write the export and commit it with the work:
 
 ## Build & Test
 
-Node 24 and pnpm 9. The server runs TypeScript directly (type stripping); there is no
+Node 26 and pnpm 9. The server runs TypeScript directly (type stripping); there is no
 server build step in development.
 
 ```bash

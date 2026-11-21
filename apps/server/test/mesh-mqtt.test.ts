@@ -6,6 +6,7 @@
  */
 import net from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
+import { socketBytes } from "../src/core/socket-bytes.ts";
 import { type BrokerLimits, createBroker, type MqttBroker } from "../src/modules/mesh/mqtt/broker.ts";
 import { createClient, type MqttClient } from "../src/modules/mesh/mqtt/client.ts";
 import {
@@ -109,7 +110,7 @@ async function raw(port: number): Promise<Raw> {
   sockets.push(sock);
   const chunks: Buffer[] = [];
   let closedAt: number | null = null;
-  sock.on("data", (c) => chunks.push(c));
+  sock.on("data", (c) => chunks.push(socketBytes(c)));
   sock.on("error", () => {});
   const closed = new Promise<void>((resolve) =>
     sock.on("close", () => {

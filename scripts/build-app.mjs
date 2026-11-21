@@ -90,7 +90,7 @@ const common = {
   bundle: true,
   platform: "node",
   format: "esm",
-  target: "node24",
+  target: "node26",
   // Native code cannot be bundled; it is copied next to the bundle below.
   external: ["better-sqlite3", "pino-pretty", "sharp"],
   banner,

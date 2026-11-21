@@ -5,7 +5,7 @@ database and a set of folders. One optional helper process, kiwix-serve, reads Z
 archives.
 
 ```
- Browser ──────────────► Outpost server (Node 24, Fastify)
+ Browser ──────────────► Outpost server (Node 26, Fastify)
    React app                 │
    same origin only          ├── SQLite (one file): library records, notes, search index, jobs
                              ├── data directory:    attachments, extracted text, staging, models
@@ -22,7 +22,7 @@ by the compiler on both sides (`packages/shared`). Fastify 5 (a plugin per modul
 at the routes, Drizzle ORM with generated migrations, an in-process job queue on SQLite,
 and unpdf (PDF.js) for PDF text (PyMuPDF and the `mupdf` npm package are AGPL).
 
-The server runs TypeScript directly on Node 24 (type stripping), so development has no
+The server runs TypeScript directly on Node 26 (type stripping), so development has no
 build step. Releases are bundled with esbuild into `dist/app`, which runs with nothing
 but a Node binary; the Docker image and portable drives use the same bundle.
 

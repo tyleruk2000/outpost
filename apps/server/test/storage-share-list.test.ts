@@ -7,6 +7,7 @@
 import net from "node:net";
 import { isValidShareName } from "@outpost/shared";
 import { afterEach, describe, expect, it } from "vitest";
+import { socketBytes } from "../src/core/socket-bytes.ts";
 import {
   aesCmac,
   type ListedShare,
@@ -292,7 +293,8 @@ describe("a server that misbehaves", () => {
   const ask = (port: number, timeoutMs = 2000) =>
     listServerShares({ address: "127.0.0.1", port, user: "walker", password: "secret" }, timeoutMs);
   /** One SMB2 answer: a header saying `status`, echoing the request's number, then `body`. */
-  const reply = (request: Buffer, status: number, body: Buffer) => {
+  const reply = (chunk: string | Buffer, status: number, body: Buffer) => {
+    const request = socketBytes(chunk);
     const header = Buffer.alloc(64);
     Buffer.from([0xfe, 0x53, 0x4d, 0x42]).copy(header);
     header.writeUInt16LE(64, 4);
@@ -376,7 +378,7 @@ describe("a server that misbehaves", () => {
             body.writeUInt16LE(65, 0);
             body.writeUInt16LE(0x0210, 4);
             socket.write(reply(request, 0, body));
-          } else then(socket, request);
+          } else then(socket, socketBytes(request));
         });
       });
     const locked = await negotiated((socket, request) => socket.write(reply(request, 0xc0000234, Buffer.alloc(9))));

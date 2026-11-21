@@ -214,7 +214,7 @@ OUTPOST_BIND=0.0.0.0
 
 ### From source
 
-You need Node.js 24 or newer and pnpm 9.
+You need Node.js 26 or newer and pnpm 9.
 
 ```bash
 git clone https://github.com/tyleruk2000/outpost.git
@@ -231,7 +231,7 @@ Open <http://localhost:8080>. `pnpm start` does not read `.env`: set `OUTPOST_DA
 `OUTPOST_STORAGE_ROOTS` and, for LAN access, `OUTPOST_HOST=0.0.0.0` with
 `OUTPOST_LAN_ACCESS=true` in the shell. Reference collections need kiwix-serve beside it.
 
-The packaged app (`node scripts/build-app.mjs`, a folder that runs with only Node 24) is
+The packaged app (`node scripts/build-app.mjs`, a folder that runs with only Node 26) is
 described in [deployment.md](docs/deployment.md).
 
 ### On a Raspberry Pi

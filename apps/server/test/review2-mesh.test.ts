@@ -4,6 +4,7 @@
  */
 import net from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
+import { socketBytes } from "../src/core/socket-bytes.ts";
 import { createBroker, type MqttBroker } from "../src/modules/mesh/mqtt/broker.ts";
 import { createClient } from "../src/modules/mesh/mqtt/client.ts";
 import { encodePacket, type Packet, PacketReader } from "../src/modules/mesh/mqtt/packets.ts";
@@ -53,7 +54,7 @@ async function login(password: string): Promise<number | null> {
   const reader = new PacketReader(1024);
   return new Promise((resolve) => {
     socket.on("data", (chunk) => {
-      for (const packet of reader.push(chunk)) if (packet.type === "connack") resolve(packet.returnCode);
+      for (const packet of reader.push(socketBytes(chunk))) if (packet.type === "connack") resolve(packet.returnCode);
     });
     socket.once("close", () => resolve(null));
     const connect: Packet = {
