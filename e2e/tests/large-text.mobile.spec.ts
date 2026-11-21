@@ -137,8 +137,10 @@ for (const size of [
         .first()
         .click();
       await page.locator(sheet).getByRole("button", { name: "Draw a route" }).click();
-      await expect(page.locator(sheet).getByRole("button", { name: /Add a point at the centre of the map/ })).toBeVisible();
-      await expect.poll(() => pastEdge(page, sheet)).toEqual([]);
+      // Drawing has its card in the sheet's place (web-screens.md, "Things over a map").
+      const dock = ".outpost-furniture-dock";
+      await expect(page.locator(dock).getByRole("button", { name: /Add a point at the centre of the map/ })).toBeVisible();
+      await expect.poll(() => pastEdge(page, dock)).toEqual([]);
       expect(await tooWide(page)).toEqual([]);
     });
   });
