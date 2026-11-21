@@ -16,6 +16,7 @@ import {
   Contact,
   Download,
   FolderInput,
+  Gauge,
   Grid3x3,
   HardDrive,
   Home,
@@ -184,7 +185,16 @@ export const upkeepNav: NavItem[] = [
     key: ",",
     keywords: "preferences options",
     // How to set up search by meaning, answers and chat (SETUP_GUIDE_PATH): its settings link to it part by part.
-    children: [{ to: "/help/search-and-answers", label: "Set-up guide", icon: LifeBuoy, keywords: "help models ollama install" }],
+    children: [
+      // How the computer Outpost runs on is doing (features/device): storage, backups, memory, temperature, the clock.
+      {
+        to: "/settings/status",
+        label: "Server status",
+        icon: Gauge,
+        keywords: "health device temperature sd card wrong time server clock slow",
+      },
+      { to: "/help/search-and-answers", label: "Set-up guide", icon: LifeBuoy, keywords: "help models ollama install" },
+    ],
   },
   // The guides, made from docs/ (features/help/guides.ts); each guide is a page of its own, found by the quick search. "i" for information: "h" is Home's.
   {

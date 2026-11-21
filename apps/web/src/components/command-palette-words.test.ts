@@ -20,6 +20,8 @@ const lands: Array<[string, string | null]> = [
   ["food", "Preparedness: Supplies"],
   ["password", "Tools: QR codes"],
   ["update", "Settings: This installation"],
+  ["sd card", "Settings: Server status"],
+  ["wrong time", "Settings: Server status"],
   // Settings, section by section.
   ["backup", "Settings: Backup"],
   ["restore", "Settings: Backup"],
@@ -123,7 +125,7 @@ describe("the quick search's places, for the words people use", () => {
   });
 
   it("lists the Settings screen for “settings”, not each of its sections as well", () => {
-    expect(findPlaces("settings").map(placeName)).toEqual(["Settings", "Settings: Set-up guide"]);
+    expect(findPlaces("settings").map(placeName)).toEqual(["Settings", "Settings: Server status", "Settings: Set-up guide"]);
   });
 
   it("offers Help, where every guide is, for “guide”", () => {

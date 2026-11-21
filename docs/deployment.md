@@ -21,7 +21,11 @@ by itself after being unmounted and after the containers were restarted. What th
 did **not** cover: a Pi 4, a board with 4 GB, putting the system on the card (steps 1
 and 2 below), `--install-docker`, `hotspot.sh`, HTTPS from a phone, restoring a backup
 on the Pi, NFS, a collection read from the share, and how the Pi does under a real
-library. Nothing was timed beyond the build.
+library. Nothing was timed beyond the build. Added to the install script since, and not
+yet run on a Pi: the name `outpost.local`, the service that sets the clock, and
+`--metrics` with a real Prometheus scrape (see [device.md](device.md)). They were
+written from Avahi's, systemd's and Prometheus's documentation and tried with `--dry-run`
+and stand-ins on the Mac.
 
 **Nothing else has been tried**: not Linux on a PC, not an Intel Mac, not Windows, not
 Outpost running on a NAS. The steps for those were written from their makers'
@@ -1325,7 +1329,9 @@ sudo ./deploy/pi/hotspot.sh on --ssid "Outpost"         # asks for a password
   Last, it fetches VOACAP's coefficients for the HF propagation planner (15 files,
   559 kB) into the data volume, so that the Pi predicts with no internet from then on;
   `--no-voacap-data` skips that, and the planner then offers a Download button. If the
-  fetch fails the script says so and carries on.
+  fetch fails the script says so and carries on. With `--lan` it also announces the Pi
+  as `outpost.local`, and it adds a service that lets Outpost set the Pi's clock; those and
+  `--metrics` are described in [device.md](device.md).
 - `hotspot.sh on` makes a NetworkManager connection called `outpost-hotspot`: a WPA2
   access point on `wlan0` with the Pi at `10.42.0.1`, started by itself at boot. Phones
   that join open `http://10.42.0.1:8080`, or `http://outpost.home.arpa:8080` (the
@@ -1589,6 +1595,8 @@ value the image sets when it differs from the default.
 | `OUTPOST_P533_MAPS_MANIFEST` | | | For testing only: a JSON file listing map files to fetch and use for the second HF model in place of the ITU's (same shape as `maps` in `modules/propagation/p533/manifest.json`). The end-to-end suite uses it for small stand-ins. Leave unset. |
 | `OUTPOST_VOACAP_DATA_MANIFEST` | | | For testing only: a JSON file in the shape of `engines/voacap/coefficients.json` listing VOACAP's coefficient files to fetch, check and use in its place. The end-to-end suite uses it to fetch the real files from its own file server. Leave unset. |
 | `OUTPOST_ALLOW_REMOTE_ERASE` | `false` | | Let **Erase everything** (Storage → Manage and clean up) be started from any device that can reach Outpost, and likewise restoring a backup, deleting a stored backup, keeping fewer of them, setting or removing the passphrase backups are protected with, and replacing or deleting the HTTPS certificate authority. Without it, only the computer Outpost runs on may. A passphrase for backups is still never accepted from another device over plain http: open Outpost at its https address for that. See [security.md](security.md#erasing-everything). |
+| `OUTPOST_ALLOW_REMOTE_CLOCK` | `false` | | Let any device set the server's clock when it is wrong. Without it, only a browser on the computer Outpost runs on may. See [device.md](device.md#the-servers-clock). |
+| `OUTPOST_METRICS` | `false` | | Answer Prometheus at `/metrics`, for this computer and private networks only. See [device.md](device.md#prometheus-and-grafana). |
 | `OUTPOST_NETWORK_SCAN_LOCAL_ONLY` | `false` | | Let only the computer Outpost runs on start a scan in **Tools → Devices on this network**. Off, any device that can reach Outpost may, as with every other action. `OUTPOST_ALLOW_REMOTE_ERASE` does not lift it. See [security.md](security.md#devices-on-this-network). |
 | `OUTPOST_ALLOW_REMOTE_MODEL_SERVER` | `false` | | Let **Answers from your library**, and a local embedding server for search by meaning, be on the public internet. Without it, such a server must be on this computer or a private network, so that nobody who can open Outpost can have passages from the library sent elsewhere. See [ai.md](ai.md). |
 | `OUTPOST_OLLAMA_ADDRESSES` | empty | | Where **Look for Ollama on this computer** looks after the address in Settings, as a comma-separated list of addresses. Empty means the two places Ollama listens by default (`http://127.0.0.1:11434/v1` and `http://host.docker.internal:11434/v1`). Set it when your Ollama listens on another port. The test suites set it so that they never ask a real Ollama on the machine they run on. |

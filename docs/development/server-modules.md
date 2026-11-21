@@ -150,15 +150,18 @@ table; see `modules/repeaters/index.ts`.
    request to the Host check, and every request that is not a `GET`, `HEAD` or
    `OPTIONS` to the `X-Outpost-Request` header and the same origin. That protection
    covers only those methods: a `GET` must never change anything. It also covers only
-   routes under `/api/`. The one module with routes elsewhere is contacts (`/dav/`, for
-   contacts apps, which cannot send the header); nothing under it can change anything
-   by any method, and a route outside `/api/` that could would need a defence of its own.
+   routes under `/api/`. The modules with routes elsewhere are contacts (`/dav/`, for
+   contacts apps, which cannot send the header) and the device (`/metrics`, for
+   Prometheus, off unless started with `OUTPOST_METRICS` and answered only to private
+   addresses); nothing under them can change anything by any method, and a route outside
+   `/api/` that could would need a defence of its own.
    The routes that ask where a request came from are "erase everything", the ones
    that restore a backup, delete a stored one or keep fewer (`modules/backup/right.ts`),
    reclaiming unused space in the database (`modules/database`),
    and, in `modules/https`, replacing or deleting the certificate authority, deleting a
    certificate the person brought, and uploading a private key (which is also accepted
-   over a connection that is already HTTPS). They
+   over a connection that is already HTTPS), and setting the server's clock
+   (`modules/device/clock.ts`). They
    use `isLocalRequest` from `core/local.ts`; that is not a permission, and nothing
    else should lean on it without a reason as strong.
 8. **Messages are for people.** Say what happened and what to do next, in plain words.

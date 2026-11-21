@@ -15,6 +15,7 @@ import { registerChat } from "./chat/index.ts";
 import { registerCollections } from "./collections/index.ts";
 import { registerContacts } from "./contacts/index.ts";
 import { registerDatabase } from "./database/index.ts";
+import { registerDevice } from "./device/index.ts";
 import { registerDocuments } from "./documents/index.ts";
 import { registerDownloads } from "./downloads/index.ts";
 import { registerEmergencyPlans } from "./emergency-plans/index.ts";
@@ -50,6 +51,8 @@ import { registerWebPages } from "./webpages/index.ts";
 export type ModuleRegister = (app: FastifyInstance, ctx: AppContext) => Promise<void>;
 
 export const modules: ModuleRegister[] = [
+  // The device (status, clock, /metrics), first: its hooks time every request. It reads the other modules only when asked.
+  registerDevice,
   registerSearch,
   registerSemantic,
   registerRetrieval,

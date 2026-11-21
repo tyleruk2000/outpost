@@ -30,10 +30,28 @@
 #                     Outpost there, where `sudo docker ps` does not show it, where it
 #                     stops when you sign out unless lingering is on, and where
 #                     deploy/pi/nas-share.sh cannot be used.
+#   --name=NAME       Announce the Pi on the network as NAME.local (default: outpost), so
+#                     phones reach it at http://outpost.local:8080 whatever the router
+#                     calls it. Installs avahi-utils if it is missing (needs the internet),
+#                     adds a service that keeps the name announced, and adds NAME.local to
+#                     OUTPOST_ALLOWED_HOSTS so that Outpost answers to it and HTTPS
+#                     certificates carry it. Only with --lan.
+#   --no-name         Do not announce a name of Outpost's own.
+#   --no-clock        Do not add the service that lets Outpost set the Pi's clock. A Pi has
+#                     no clock that keeps time while it is off (unless a Pi 5 is given a
+#                     battery), and without the internet it starts at the wrong time;
+#                     Outpost notices and offers to set it from a phone's or laptop's
+#                     clock. The service does that and nothing else (see set-clock.sh).
+#   --clock-from-network  Let any device on the network set the clock (sets
+#                     OUTPOST_ALLOW_REMOTE_CLOCK=true). Without it only a browser on the Pi
+#                     itself may, which in Docker is the only one Outpost recognises.
+#   --metrics         Give Outpost's figures to Prometheus at /metrics, to this computer
+#                     and the local network only (sets OUTPOST_METRICS=true). See
+#                     deploy/pi/monitoring.md.
 #   --dry-run         Print the commands instead of running them.
 #
-# It never deletes anything, and it does not touch an existing .env except, with --lan,
-# the lines named above (the file as it was is kept beside it).
+# It never deletes anything, and it does not touch an existing .env except the lines
+# named above (with --lan, the file as it was is kept beside it).
 set -euo pipefail
 
 INSTALL_DOCKER=false
@@ -42,6 +60,10 @@ HTTPS=false
 VOACAP_DATA=true
 USE_SUDO=false
 DRY_RUN=false
+NAME=outpost
+CLOCK=true
+CLOCK_FROM_NETWORK=false
+METRICS=false
 for arg in "$@"; do
   case "$arg" in
     --install-docker) INSTALL_DOCKER=true ;;
@@ -50,8 +72,13 @@ for arg in "$@"; do
     --no-voacap-data) VOACAP_DATA=false ;;
     --sudo) USE_SUDO=true ;;
     --dry-run) DRY_RUN=true ;;
+    --name=*) NAME="${arg#--name=}" ;;
+    --no-name) NAME="" ;;
+    --no-clock) CLOCK=false ;;
+    --clock-from-network) CLOCK_FROM_NETWORK=true ;;
+    --metrics) METRICS=true ;;
     -h | --help)
-      sed -n '2,36p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,54p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *)
@@ -60,6 +87,11 @@ for arg in "$@"; do
       ;;
   esac
 done
+
+if [ -n "$NAME" ] && ! [[ "$NAME" =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$ ]]; then
+  echo "--name takes one word of letters, digits and hyphens, such as outpost or kitchen-pi." >&2
+  exit 2
+fi
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
@@ -179,6 +211,70 @@ if $LAN; then
   set_env OUTPOST_BIND 0.0.0.0
 fi
 
+add_allowed_host() { # add_allowed_host NAME: adds one name to OUTPOST_ALLOWED_HOSTS in .env, keeping the others
+  local name="$1" current
+  current="$(grep '^OUTPOST_ALLOWED_HOSTS=' .env 2>/dev/null | head -1 | cut -d= -f2- || true)"
+  case ",${current}," in *",${name},"*) return ;; esac
+  set_env OUTPOST_ALLOWED_HOSTS "${current:+${current},}${name}"
+}
+
+$CLOCK_FROM_NETWORK && set_env OUTPOST_ALLOW_REMOTE_CLOCK true
+$METRICS && set_env OUTPOST_METRICS true
+
+# ── A name on the network: outpost.local ─────────────────────────────────────
+# Avahi (mDNS) answers for NAME.local on the local network. Raspberry Pi OS runs
+# avahi-daemon already, which announces the Pi's own name (raspberrypi.local); this adds a
+# second name for the same address, and says on the network that a web server is there.
+if [ -n "$NAME" ] && $LAN && [ "$(hostname 2>/dev/null | tr '[:upper:]' '[:lower:]')" = "$NAME" ]; then
+  # The Pi's own name is NAME already, which Avahi announces as NAME.local by itself.
+  say "This Pi is called $NAME already, so it is ${NAME}.local on the network as it is."
+  add_allowed_host "${NAME}.local"
+elif [ -n "$NAME" ] && $LAN; then
+  say "Announcing Outpost on the network as ${NAME}.local."
+  if ! command -v avahi-publish >/dev/null 2>&1; then
+    run sudo apt-get install -y avahi-daemon avahi-utils
+  fi
+  run sudo install -d -m 0755 /usr/local/lib/outpost
+  run sudo install -m 0755 "$HERE/announce-name.sh" /usr/local/lib/outpost/announce-name.sh
+  name_unit="[Unit]
+Description=Outpost: announce this computer as ${NAME}.local
+Wants=network-online.target avahi-daemon.service
+After=network-online.target avahi-daemon.service
+
+[Service]
+ExecStart=/usr/local/lib/outpost/announce-name.sh ${NAME}.local
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target"
+  http_port="$(grep '^OUTPOST_PORT=' .env 2>/dev/null | head -1 | cut -d= -f2- || true)"
+  service_file="<?xml version=\"1.0\" standalone=\"no\"?>
+<!DOCTYPE service-group SYSTEM \"avahi-service.dtd\">
+<!-- Written by deploy/pi/install.sh: Outpost's web address, for apps that look for one. -->
+<service-group>
+  <name>Outpost</name>
+  <service>
+    <type>_http._tcp</type>
+    <port>${http_port:-8080}</port>
+    <host-name>${NAME}.local</host-name>
+  </service>
+</service-group>"
+  if $DRY_RUN; then
+    printf '  would write /etc/systemd/system/outpost-name.service:\n%s\n' "$name_unit" | sed 's/^/    /'
+    printf '  would write /etc/avahi/services/outpost.service:\n%s\n' "$service_file" | sed 's/^/    /'
+  else
+    printf '%s\n' "$name_unit" | sudo tee /etc/systemd/system/outpost-name.service >/dev/null
+    sudo install -d -m 0755 /etc/avahi/services
+    printf '%s\n' "$service_file" | sudo tee /etc/avahi/services/outpost.service >/dev/null
+  fi
+  run sudo systemctl daemon-reload
+  run sudo systemctl enable --now outpost-name.service
+  # avahi-daemon reads its service files again when told to (avahi-daemon(8), --reload).
+  run sudo systemctl reload avahi-daemon
+  add_allowed_host "${NAME}.local"
+fi
+
 # ── HTTPS ────────────────────────────────────────────────────────────────────
 # Docker only lets a port in when it is published. compose.yaml leaves the HTTPS one
 # commented out; a file called compose.override.yaml is read after it by itself.
@@ -217,6 +313,61 @@ if ! $DRY_RUN; then
   $ok || stop "Outpost did not answer within five minutes. Look at: ${DOCKER[*]} compose logs outpost"
 fi
 
+# ── Setting the clock ────────────────────────────────────────────────────────
+# Outpost runs in a container, which cannot set the Pi's clock. A path unit watches one
+# folder in Outpost's data volume; when Outpost leaves a request there, set-clock.sh moves
+# the clock by the amount asked and writes back what happened. The script is root's, in
+# /usr/local/lib, out of the container's reach; the folder is Outpost's, and the script
+# trusts nothing in it (see the script).
+if $CLOCK; then
+  say "Adding the service that lets Outpost set this Pi's clock (and nothing else)."
+  volume="outpost_outpost-data"
+  data=""
+  if ! $DRY_RUN; then
+    data="$("${DOCKER[@]}" volume inspect "$volume" --format '{{ .Mountpoint }}' 2>/dev/null || true)"
+  fi
+  if [ -z "$data" ] && ! $DRY_RUN; then
+    say "Outpost's data volume ($volume) was not found, so the clock service was not added. Run this again once Outpost is running."
+  else
+    clock_dir="${data:-/var/lib/docker/volumes/$volume/_data}/clock"
+    run sudo install -d -m 0755 /usr/local/lib/outpost
+    run sudo install -m 0755 "$HERE/set-clock.sh" /usr/local/lib/outpost/set-clock.sh
+    # The folder belongs to the user the container runs as (node, uid 1000); the file
+    # "helper" tells Outpost the service is there.
+    run sudo install -d -m 0755 -o 1000 -g 1000 "$clock_dir"
+    if $DRY_RUN; then
+      printf '  would write %s/helper\n' "$clock_dir"
+    else
+      printf 'Written by deploy/pi/install.sh: outpost-clock.path sets the clock from requests here.\n' | sudo tee "$clock_dir/helper" >/dev/null
+      sudo chown 1000:1000 "$clock_dir/helper"
+    fi
+    path_unit="[Unit]
+Description=Outpost: watch for a request to set the clock
+
+[Path]
+PathExists=${clock_dir}/request
+
+[Install]
+WantedBy=multi-user.target"
+    service_unit="[Unit]
+Description=Outpost: set the clock as asked
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/outpost/set-clock.sh ${clock_dir}"
+    if $DRY_RUN; then
+      printf '  would write /etc/systemd/system/outpost-clock.path:\n%s\n' "$path_unit" | sed 's/^/    /'
+      printf '  would write /etc/systemd/system/outpost-clock.service:\n%s\n' "$service_unit" | sed 's/^/    /'
+    else
+      printf '%s\n' "$path_unit" | sudo tee /etc/systemd/system/outpost-clock.path >/dev/null
+      printf '%s\n' "$service_unit" | sudo tee /etc/systemd/system/outpost-clock.service >/dev/null
+    fi
+    run sudo systemctl daemon-reload
+    run sudo systemctl enable --now outpost-clock.path
+    $CLOCK_FROM_NETWORK || say "Note: only a browser on this Pi may set the clock. To allow phones and laptops on your network, run this again with --clock-from-network."
+  fi
+fi
+
 # ── HF propagation data ──────────────────────────────────────────────────────
 # The one set-up download Outpost's planner needs: 15 files, 559 kB, from the engine's
 # own repository at a pinned commit, each checked against engines/voacap/coefficients.json.
@@ -232,6 +383,7 @@ fi
 say "Outpost is running."
 echo "  On this Pi:        http://localhost:${port}"
 if $LAN; then
+  [ -n "$NAME" ] && echo "  By name:           http://${NAME}.local:${port}"
   # Each address of this Pi, leaving out Docker's own networks, which no phone can reach.
   if command -v ip >/dev/null 2>&1; then
     while read -r interface address; do

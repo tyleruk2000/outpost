@@ -54,6 +54,9 @@ const envSchema = z.object({
   OUTPOST_VOACAP_DATA_MANIFEST: z.string().optional(),
   OUTPOST_ALLOW_REMOTE_ERASE: bool(false),
   OUTPOST_OWN_ADDRESS_IS_LOCAL: bool(true),
+  // The device: Outpost's figures for Prometheus at /metrics, and setting the server's clock from another device (docs/device.md).
+  OUTPOST_METRICS: bool(false),
+  OUTPOST_ALLOW_REMOTE_CLOCK: bool(false),
   OUTPOST_ALLOW_REMOTE_MODEL_SERVER: bool(false),
   OUTPOST_OLLAMA_ADDRESSES: list,
   OUTPOST_DOWNLOAD_HOSTS: list,
@@ -140,6 +143,10 @@ export interface Config {
    * computer forwards connections from elsewhere without a forwarding header.
    */
   ownAddressIsLocal: boolean;
+  /** Answer Prometheus at /metrics, from this computer and the local network only (modules/device). Off by default. */
+  metrics: boolean;
+  /** Let any device that can reach Outpost set the server's clock, not only this computer (modules/device). */
+  allowRemoteClock: boolean;
   /** Let answers be written by a model server on the internet, not only one on this computer or the local network. */
   allowRemoteModelServer: boolean;
   /**
@@ -267,6 +274,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     extraDownloadHosts: parsed.OUTPOST_DOWNLOAD_HOSTS.map((host) => host.toLowerCase()),
     allowRemoteErase: parsed.OUTPOST_ALLOW_REMOTE_ERASE,
     ownAddressIsLocal: parsed.OUTPOST_OWN_ADDRESS_IS_LOCAL,
+    metrics: parsed.OUTPOST_METRICS,
+    allowRemoteClock: parsed.OUTPOST_ALLOW_REMOTE_CLOCK,
     allowRemoteModelServer: parsed.OUTPOST_ALLOW_REMOTE_MODEL_SERVER,
     ollamaAddresses: parsed.OUTPOST_OLLAMA_ADDRESSES,
     // A portable drive runs in a window a person is looking at: keep it quiet.

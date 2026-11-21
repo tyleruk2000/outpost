@@ -160,6 +160,17 @@ Types: `packages/shared/src/system.ts`, `common.ts`.
 | `GET /api/events` | The live event stream described above. |
 | `POST /api/system/restart` | Stops the server so that its supervisor starts it again, which is how a staged restore is applied. Accepted only from the computer Outpost runs on, or from anywhere with `OUTPOST_ALLOW_REMOTE_ERASE=true`; otherwise `403 forbidden`. Answers `409 conflict` unless the server was started with `OUTPOST_SUPERVISED=true`. |
 
+### The device
+
+Types: `packages/shared/src/device.ts`. See [device.md](device.md).
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/device/status` | The Server status screen's lines (`DeviceStatus`): each `DeviceCheck` with a `state` (`good`, `attention`, `problem`, `unknown`), a `summary` and `advice` in words, and a `link`; and the event-loop delay by minute. |
+| `GET /api/device/clock` | The server's time and time zone, and whether this request may set the clock (`ServerClock.setting`: `possible`, `how`, `allowed`, and the `reason` in words when not). |
+| `POST /api/device/clock` | `{ deviceNow }`, the browser's clock in milliseconds. Moves the server's clock to it. `403 forbidden` with the reason when it cannot be set or this request may not (only from the computer Outpost runs on unless `OUTPOST_ALLOW_REMOTE_CLOCK=true`); `400` for a time before 2024 or after 2100. Answers `{ now, movedMs }`. |
+| `GET /metrics` | Prometheus's text format, with `OUTPOST_METRICS=true` (`404` otherwise), to loopback and private addresses only (`403` otherwise, also when a forwarding header names a public address). The names are listed in `deploy/pi/monitoring.md`. |
+
 ### Jobs
 
 | Method and path | Purpose |

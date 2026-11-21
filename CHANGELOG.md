@@ -1379,6 +1379,23 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Checks to run locally: lint, type checking, server and web tests, catalogue
   validation, and browser tests against the packaged app with the internet blocked.
 
+#### The server: status, clock, name and figures
+
+- Settings → Server status: each storage location (a network share answering or not)
+  with its free space, the database, the last backup and its age, an SD or eMMC card's
+  wear where it says, memory, temperature, the Pi's power, the clock, jobs and any
+  hold-up of the server lately, each in words with what to do.
+- The server's clock is compared with the browser's on each visit; more than a minute out,
+  a line says so and offers to set it from the browser's, or says why not and what to
+  set. In Docker on a Pi, through a service the install script adds
+  (`OUTPOST_ALLOW_REMOTE_CLOCK` lets other devices).
+- `install.sh --lan` announces the Pi as `outpost.local` and adds the name to the
+  allowed host names and HTTPS certificates.
+- `/metrics` for Prometheus (`OUTPOST_METRICS`, private networks only), an example
+  Grafana dashboard, and `deploy/pi/monitoring.md`.
+- The map layers' summary is counted in a worker and kept in the database, so the first
+  map after a restart no longer waits about 5 s for it on a Pi with 190,000 places.
+
 #### Tools: calculators
 
 - Five screens of calculators under Tools: Water, Outdoors, Radio calculators, Building

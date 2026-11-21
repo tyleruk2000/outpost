@@ -99,6 +99,14 @@ export const GUIDES: Guide[] = [
     opens: { to: "/storage", label: "Open Storage" },
   },
   {
+    slug: "device",
+    file: "device.md",
+    group: "looking-after",
+    about: "How the server is doing, putting its clock right, reaching a Pi as outpost.local, and Prometheus and Grafana.",
+    keywords: "status health temperature sd card clock time wrong mdns avahi outpost.local prometheus grafana metrics",
+    opens: { to: "/settings/status", label: "Open Server status" },
+  },
+  {
     slug: "troubleshooting",
     file: "troubleshooting.md",
     group: "looking-after",

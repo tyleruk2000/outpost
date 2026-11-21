@@ -19,6 +19,8 @@ export * from "./contacts.ts";
 // The country a point is in, from the Natural Earth boxes, on a line of its own.
 export * from "./country-at.ts";
 export * from "./database.ts";
+// The device Outpost runs on: its status and its clock, on a line of its own so that other additions merge cleanly.
+export * from "./device.ts";
 export * from "./documents.ts";
 export * from "./downloads.ts";
 export * from "./emergency-plans.ts";

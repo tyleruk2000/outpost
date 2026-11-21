@@ -752,6 +752,7 @@ Every page below is also inside Outpost, under **Help**.
 | --- | --- |
 | [Deployment](docs/deployment.md) | Installing on each platform, from a Mac to a Raspberry Pi step by step, LAN access, HTTPS, settings |
 | [Storage](docs/storage.md) | Locations, NAS examples, moving, backups |
+| [The server](docs/device.md) | Server status, setting a wrong clock, `outpost.local`, Prometheus and Grafana |
 | [Offline use](docs/offline.md) | What works without a connection, and keeping things on a phone |
 | [Portable drives](docs/portable.md) | Making and using a USB drive |
 | [Search](docs/search.md) | Query syntax, quick search, semantic and hybrid search, OCR |

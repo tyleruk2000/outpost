@@ -43,9 +43,11 @@ import { createOverpassAdapter } from "./adapters/overpass.ts";
 import { createWikidataAdapter } from "./adapters/wikidata.ts";
 import { createWorldPopAdapter } from "./adapters/worldpop.ts";
 import { COUNTRIES, countryOf } from "./countries.ts";
+import { kindLabel } from "./kinds.ts";
 import { createPopulationService, type PopulationMeta, type PopulationService } from "./population.ts";
 import { LINKED, PROVIDERS } from "./providers.ts";
 import { createReferenceStore, type ReferenceStore } from "./store.ts";
+import { type CountedLayer, countInWorker, nameLayers, readKept, writeKept } from "./summary.ts";
 import type { EstimatedItem, ReadResult, ReferenceAdapter, ReferenceMeta } from "./types.ts";
 
 const ESTIMATE_TTL_MS = 30 * 60_000;
@@ -104,6 +106,11 @@ export interface LayersService {
     progress: (current: number, total: number | null, message: string) => void,
   ): Promise<ReferenceImportResult>;
   layers(): Promise<ReferenceLayersResponse>;
+  /**
+   * Counts what each layer holds again in the background, and keeps the answer. Run once the server is listening, so
+   * that the copy kept from before a restart, which the map is answered from meanwhile, is brought up to date.
+   */
+  countLayers(): Promise<void>;
   installer: Installer;
   packTitles(): Map<string, { title: string }>;
   /** Geofabrik's regions as kept, with those to offer first for a point (the home place); asks nothing. */
@@ -171,15 +178,56 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
 
   const changed = () => ctx.events.publish({ type: "layers.changed" });
   /**
-   * What each layer holds, as `layers()` gives it: five counts over every place held, about 5 s on a Raspberry Pi's
-   * SD card with 190,000 places (18 November 2026), during which the server answered nothing else. It changes only
-   * when places are added or taken away, which is always followed by "layers.changed": kept until then.
+   * What each layer holds, as `layers()` gives it (see `summary.ts`): counted in a worker and kept in the database, so
+   * neither the first map after a restart nor the server's other requests wait for it. It changes only when places are
+   * added or taken away, which is always followed by "layers.changed": the count is then made again in the background.
    */
-  let summary: ReturnType<typeof store.summary> | undefined;
+  const databaseFile = path.join(ctx.config.dataDir, "outpost.db");
+  let counted: CountedLayer[] | null = readKept(ctx.sqlite);
+  let counting: Promise<void> | null = null;
+  let generation = 0;
+  let recountTimer: NodeJS.Timeout | undefined;
+  const stopCounting = new AbortController();
+  const countHere = (): CountedLayer[] =>
+    store.summary(new Map()).map(({ providers, kinds, ...layer }) => ({
+      ...layer,
+      providers: providers.map(({ id, count }) => ({ id, count })),
+      kinds: kinds.map(({ kind, count }) => ({ kind, count })),
+    }));
+  function recount(): Promise<void> {
+    if (counting) return counting;
+    const started = generation;
+    counting = countInWorker(databaseFile, stopCounting.signal)
+      .then((layers) => {
+        if (stopCounting.signal.aborted || started !== generation) return;
+        counted = layers;
+        writeKept(ctx.sqlite, layers);
+      })
+      .catch((error) => {
+        if (stopCounting.signal.aborted) return;
+        ctx.log.warn({ err: error }, "the map layers could not be counted in the background; counting them on the server's thread");
+        if (started === generation) counted = countHere();
+      })
+      .finally(() => {
+        counting = null;
+      });
+    return counting;
+  }
   const unsubscribe = ctx.events.subscribe((event) => {
-    if (event.type === "layers.changed") summary = undefined;
+    if (event.type !== "layers.changed") return;
+    generation += 1;
+    counted = null;
+    writeKept(ctx.sqlite, null);
+    // A burst of changes (a pack replacing another) is counted once, a moment after the last.
+    clearTimeout(recountTimer);
+    recountTimer = setTimeout(() => void recount(), 1_000);
+    recountTimer.unref();
   });
-  ctx.onClose.push(() => unsubscribe());
+  ctx.onClose.push(() => {
+    unsubscribe();
+    clearTimeout(recountTimer);
+    stopCounting.abort();
+  });
 
   function toPack(row: CollectionRow, meta: PackMeta): ReferencePackDto {
     const counts = store.countsOf(row.id);
@@ -454,7 +502,16 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
 
   // Rows whose pack is gone (removed while the server was down, or an install cut off) are cleared at start.
   const known = new Set(installedPacks().map(({ row }) => row.id));
-  for (const owner of store.owners()) if (!known.has(owner)) store.removeRowsNow(owner);
+  let cleared = false;
+  for (const owner of store.owners())
+    if (!known.has(owner)) {
+      store.removeRowsNow(owner);
+      cleared = true;
+    }
+  if (cleared) {
+    counted = null;
+    writeKept(ctx.sqlite, null);
+  }
 
   return {
     store,
@@ -631,6 +688,10 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
       return { pack: toPack(collection, packMeta), imported: packMeta.records, skipped, duplicates, problems };
     },
 
+    countLayers() {
+      return recount();
+    },
+
     async layers() {
       const credits = new Map<string, { provider: string; text: string; url: string | null }>();
       for (const { meta, row } of installedPacks()) {
@@ -671,8 +732,13 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
           });
         }
       }
-      summary ??= store.summary(providerNames);
-      return { layers: summary, population: await population.sets(), credits: [...credits.values()] };
+      // A change made while it was being counted makes that count out of date: count again until one is current.
+      while (counted === null) await recount();
+      return {
+        layers: nameLayers(counted, (id) => providerNames.get(id) ?? id, kindLabel),
+        population: await population.sets(),
+        credits: [...credits.values()],
+      };
     },
 
     regions(point) {

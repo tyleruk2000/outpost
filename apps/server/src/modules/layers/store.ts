@@ -39,6 +39,7 @@ import { yieldToEventLoop } from "../../core/event-loop.ts";
 import { classifyFood, foodFacts, foodKindSql, SAME_SHOP_POSTCODE_METRES, sameShop } from "./adapters/food-tags.ts";
 import { splitFrequencies } from "./adapters/ourairports-frequencies.ts";
 import { kindLabel } from "./kinds.ts";
+import { countLayers, nameLayers } from "./summary.ts";
 import type { FeatureSink, GeoJsonGeometry, NewCountryFigure, NewFeature } from "./types.ts";
 
 const INSERT_BATCH = 2_000;
@@ -895,43 +896,7 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
     },
 
     summary(providerNames) {
-      const live = "duplicate_of IS NULL AND collection_id NOT LIKE 'pending:%'";
-      const layers = prepared(`SELECT layer, count(*) AS n FROM reference_features WHERE ${live} GROUP BY layer`).all() as Array<{
-        layer: ReferenceLayerId;
-        n: number;
-      }>;
-      return layers.map(({ layer, n }) => {
-        const countries = (
-          prepared(
-            `SELECT DISTINCT country FROM reference_features WHERE ${live} AND layer = ? AND country IS NOT NULL ORDER BY country`,
-          ).all(layer) as Array<{ country: string }>
-        ).map((row) => row.country);
-        const providers = (
-          prepared(
-            `SELECT provider, count(*) AS n FROM reference_features WHERE ${live} AND layer = ? GROUP BY provider ORDER BY provider`,
-          ).all(layer) as Array<{
-            provider: string;
-            n: number;
-          }>
-        ).map((row) => ({ id: row.provider, name: providerNames.get(row.provider) ?? row.provider, count: row.n }));
-        const kinds = (
-          prepared(`SELECT kind, count(*) AS n FROM reference_features WHERE ${live} AND layer = ? GROUP BY kind ORDER BY kind`).all(
-            layer,
-          ) as Array<{
-            kind: string;
-            n: number;
-          }>
-        ).map((row) => ({ kind: row.kind, label: kindLabel(row.kind), count: row.n }));
-        const provenance = (
-          prepared(`SELECT provenance, count(*) AS n FROM reference_features WHERE ${live} AND layer = ? GROUP BY provenance`).all(
-            layer,
-          ) as Array<{
-            provenance: FeatureProvenance;
-            n: number;
-          }>
-        ).map((row) => ({ provenance: row.provenance, count: row.n }));
-        return { id: layer, count: n, countries, providers, kinds, provenance };
-      });
+      return nameLayers(countLayers(sqlite), (id) => providerNames.get(id) ?? id, kindLabel);
     },
 
     countsOf(collectionId) {

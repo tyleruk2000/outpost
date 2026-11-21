@@ -37,6 +37,7 @@ const StoragePage = lazy(() => import("./features/storage/storage-page"));
 const ManagePage = lazy(() => import("./features/manage/manage-page"));
 const MergePage = lazy(() => import("./features/merge/merge-page"));
 const SettingsPage = lazy(() => import("./features/settings/settings-page"));
+const StatusPage = lazy(() => import("./features/device/status-page"));
 const SetupGuidePage = lazy(() => import("./features/help/setup-guide-page"));
 const HelpPage = lazy(() => import("./features/help/help-page"));
 const GuidePage = lazy(() => import("./features/help/guide-page"));
@@ -166,6 +167,7 @@ export function App() {
           <Route path="storage/manage" element={<ManagePage />} />
           <Route path="storage/merge" element={<MergePage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="settings/status" element={<StatusPage />} />
           <Route path="help/search-and-answers" element={<SetupGuidePage />} />
           <Route path="help" element={<HelpPage />} />
           <Route path="help/:slug" element={<GuidePage />} />

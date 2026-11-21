@@ -50,6 +50,8 @@ export interface DiskSpace {
 export interface DatabaseService {
   /** Why nothing can be written to the database now (space is being reclaimed), or null. */
   busy(): string | null;
+  /** What the Storage screen shows of the database; the device's status screen reads it too. */
+  status(request: Parameters<typeof backupRight>[0]): Promise<DatabaseStatus>;
   /**
    * Runs `copy`, which takes a copy of the database (a backup's snapshot), unless space
    * is being reclaimed; reclaiming is refused while a copy is being taken.
@@ -384,6 +386,7 @@ export async function registerDatabase(app: FastifyInstance, ctx: AppContext): P
 
   ctx.services.database = {
     busy: () => (vacuuming || ctx.jobs.holding ? BUSY : null),
+    status,
     async whileCopying(copy) {
       if (vacuuming || ctx.jobs.holding) throw conflict(BUSY);
       copying += 1;
