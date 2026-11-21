@@ -625,7 +625,8 @@ export function createRunner(ctx: AppContext, store: ChatStore) {
       const run = current;
       if (!run) return;
       run.shutDown();
-      await Promise.race([run.finished, new Promise((resolve) => setTimeout(resolve, 2000).unref())]);
+      // Shut down at once above; waited for at length so that nothing writes after the database closes.
+      await Promise.race([run.finished, new Promise((resolve) => setTimeout(resolve, 10_000).unref())]);
     },
   };
 }
