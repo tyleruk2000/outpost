@@ -477,6 +477,12 @@ export const GUIDES: Guide[] = [
     group: "developers",
     about: "How the HF propagation engines and the Morse trainer are built, checked and rebuilt.",
   },
+  {
+    slug: "encryption-and-contacts",
+    file: "development/encryption-and-contacts.md",
+    group: "developers",
+    about: "How encryption, encrypted pages, vCard reading and the address book for phones are built.",
+  },
 ];
 
 /** Pages of docs/ that are deliberately not guides, each with the reason. Keep it short. */
