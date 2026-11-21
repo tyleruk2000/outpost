@@ -364,6 +364,8 @@ preview, which shows how the file was read before anything is kept
 | 27 | NASA Earthdata Search | A search tool over NASA's Earth-observation datasets | **Not integrated.** It is an interactive search over scientific data files, not a set of documents or map tiles; nothing in it is a single stable file that the library or the map could use as it stands. | NASA's [data use guidance](https://www.earthdata.nasa.gov/engage/open-data-services-software-policies/data-use-guidance) says the data are freely accessible and asks for citation. |
 | C1 | NOAA NCEI and the British Geological Survey, World Magnetic Model 2025 (ncei.noaa.gov) | The model of the Earth's magnetic field used for navigation, 2025.0 to 2030.0: 90 coefficients and their yearly changes | **Built in, shipped**: the coefficient file `WMM.COF` unchanged in `packages/shared/src/wmm-coefficients.ts`, for the declination on Tools → Compass and the map's centre card. Fetched by hand once on 2026-11-17; nothing is fetched at run time. See [The World Magnetic Model and the compass](#the-world-magnetic-model-and-the-compass) and [tools-compass.md](tools-compass.md). | Public domain: "The WMM source code is in the public domain and not licensed or under copyright." Notice given under 17 U.S.C. 403 in the file's header and the docs. |
 | C2 | Ordnance Survey, A guide to coordinate systems in Great Britain (v3.6, 2020) | The National Grid's datum and projection, with formulae and worked examples | **Formulae only**: the map's grid references already follow it; the compass works grid convergence from that projection. The PDF is not shipped. | © OS 2020. Only the published formulae are used; no text or figure is reproduced. `robots.txt` allows `/documents/resources/`. |
+| C3 | NGA.SIG.0012_2.0.0_UTMUPS, The Universal Grids and the Transverse Mercator and Polar Stereographic Map Projections (NGA, 2014-03-25) | The definition of UTM, UPS and MGRS on WGS 84, with worked examples | **Rules and test figures only**: zones, bands, the Norway and Svalbard exceptions, the 100 km square letters (scheme "AA") and the polar letters; its worked examples are the tests. The PDF is not shipped. | A US Government work. NGA's servers did not answer on 2026-11-21; the official file was read from the Internet Archive's copy. |
+| C4 | DMA TM 8358.2, The Universal Grids: UTM and UPS (1989); NOAA NGS datasheets HV4442, UW5293, AI9478 and TW0515; FGDC-STD-011-2001, United States National Grid | UPS worked examples on WGS 84; survey marks with their UTM coordinates, convergence and USNG references; the USNG's truncation rule | **Test figures only.** Read 2026-11-21. | US Government works. TM 8358.2 from DTIC's copy in the Internet Archive (DTIC refused the request). |
 
 ### The World Magnetic Model and the compass
 
@@ -407,6 +409,13 @@ was read the same day (its `robots.txt` disallows only licence pages and search)
 the projection's formulae and a worked example of them, but no worked figures for grid
 convergence, so the convergence is checked against NOAA's UTM example and the projection's
 own properties instead ([tools-compass.md](tools-compass.md#tests)).
+
+For UTM, UPS and MGRS (C3, C4), read on 2026-11-21: NGA.SIG.0012 §3.4 and §3.6 (the
+projection), §7.2 and §7.3 (UTM forward and inverse tables), §7.4 and §7.5 (zones), §10
+(UPS), §11 and §12 (MGRS); TM 8358.2 §3-7; the four NGS datasheets from
+`ngs.noaa.gov/cgi-bin/ds_mark.prl`; FGDC-STD-011-2001 §3.3.3 and Annex B. The only polar
+MGRS reference found in print is in the manual of GeographicLib's GeoConvert (Karney), a
+secondary source, used for one test.
 
 The [W3C Device Orientation and Motion](https://www.w3.org/TR/orientation-event/)
 specification was read for the orientation angles, its compass-heading example and

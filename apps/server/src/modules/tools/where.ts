@@ -93,7 +93,16 @@ export function resolveNear(ctx: AppContext, text: string): Where | null {
   const found = ctx.services.maps.places.search(words, { limit: 1 });
   if (found.coordinate) {
     const { lat, lon, format } = found.coordinate;
-    const as = format === "osgb" ? "an Ordnance Survey grid reference" : format === "maidenhead" ? "a Maidenhead locator" : "a position";
+    const as =
+      format === "osgb"
+        ? "an Ordnance Survey grid reference"
+        : format === "maidenhead"
+          ? "a Maidenhead locator"
+          : format === "utm"
+            ? "UTM coordinates"
+            : format === "mgrs"
+              ? "an MGRS reference"
+              : "a position";
     return { lat, lon, name: at4(lat, lon), how: `read as ${as}`, country: countryOfPoint(lat, lon) };
   }
   const place = found.places[0];

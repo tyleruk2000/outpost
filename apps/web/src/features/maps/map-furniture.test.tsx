@@ -36,6 +36,7 @@ describe("the list the map's controls are drawn from", () => {
       "add-place",
       "hillshade",
       "contours",
+      "resection",
       "print",
       "locator-grid",
       "repeaters",
@@ -45,7 +46,7 @@ describe("the list the map's controls are drawn from", () => {
 
   it("leaves out what there is nothing for: no compass until the map is turned, no shading without terrain, no locating without a position", () => {
     const ids = mapTools(input({ locate: undefined, hillshade: undefined, onRepeatersChange: undefined })).map((tool) => tool.id);
-    expect(ids).toEqual(["measure", "draw", "add-place", "contours", "print", "locator-grid", "sight"]);
+    expect(ids).toEqual(["measure", "draw", "add-place", "contours", "resection", "print", "locator-grid", "sight"]);
     expect(mapTools(input({ rotated: true })).map((tool) => tool.id)[0]).toBe("north");
   });
 
@@ -77,6 +78,7 @@ describe("the menu of the map's tools on a phone", () => {
       "Measure a distance",
       "Draw a route",
       "Save a place: then click the map",
+      "Find where you are from bearings",
       "Print or save as PDF",
       "Line of sight between two points",
       "Hill shading",
@@ -158,7 +160,7 @@ describe("the column of tools on a phone", () => {
       </Tooltip.Provider>,
     );
     // Not laid out here, so there is room for all of them; in a browser it shows as many as fit (see the end-to-end tests).
-    expect(screen.getAllByRole("button")).toHaveLength(10);
+    expect(screen.getAllByRole("button")).toHaveLength(11);
     expect(screen.getByRole("button", { name: "Draw a route" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.queryByRole("button", { name: "Zoom in" })).not.toBeInTheDocument();
   });

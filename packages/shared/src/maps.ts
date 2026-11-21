@@ -4,6 +4,7 @@
  * to show the position under the cursor). Everything here is pure arithmetic.
  */
 import { parseMaidenhead } from "./locator.ts";
+import { parseMgrs, parseUtmReadings } from "./utm.ts";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -352,7 +353,7 @@ export interface PlaceSearchResponse {
 
 // ── Coordinates ─────────────────────────────────────────────────────────────
 
-export type CoordinateFormat = "decimal" | "ddm" | "dms" | "geo" | "osgb" | "maidenhead";
+export type CoordinateFormat = "decimal" | "ddm" | "dms" | "geo" | "osgb" | "maidenhead" | "utm" | "mgrs";
 
 export interface ParsedCoordinate {
   lat: number;
@@ -362,6 +363,8 @@ export interface ParsedCoordinate {
   precisionMeters?: number;
   /** For Maidenhead locators: the locator as it is written, in upper case. The position is the middle of its cell. */
   locator?: string;
+  /** For UTM, UPS and MGRS: the reference written out in the usual way, upper case and spaced ("33U XP 04542 31236"). */
+  reference?: string;
 }
 
 const DEG = Math.PI / 180;
@@ -715,6 +718,13 @@ function parseLocator(text: string): ParsedCoordinate | null {
   return { lat: square.lat, lon: square.lon, format: "maidenhead", locator: square.locator };
 }
 
+/** UTM or UPS coordinates, or an MGRS reference: one reading, or two for a UTM zone letter S (band or hemisphere). */
+function parseGridReadings(text: string): ParsedCoordinate[] {
+  const mgrs = parseMgrs(text);
+  if (mgrs) return [{ lat: mgrs.lat, lon: mgrs.lon, format: "mgrs", precisionMeters: mgrs.precisionMeters, reference: mgrs.text }];
+  return parseUtmReadings(text).map((reading) => ({ lat: reading.lat, lon: reading.lon, format: "utm", reference: reading.text }));
+}
+
 /**
  * Every position a piece of typed text can mean, most likely first. Almost always one
  * or none. The exception is four characters such as "NN16": a British grid reference
@@ -724,6 +734,8 @@ function parseLocator(text: string): ParsedCoordinate | null {
 export function parseCoordinateReadings(input: string): ParsedCoordinate[] {
   const text = input.trim();
   if (text.length < 3 || text.length > 80) return [];
+  const grid = parseGridReadings(text);
+  if (grid.length > 0) return grid;
   const first = parseGeoUri(text) ?? parseOsGridRef(text) ?? parseEastingNorthing(text) ?? parseLatLon(text);
   const locator = parseLocator(text);
   return [first, locator].filter((reading) => reading !== null);
@@ -732,7 +744,8 @@ export function parseCoordinateReadings(input: string): ParsedCoordinate[] {
 /**
  * Understands a position typed by hand: decimal degrees ("54.4609, -3.0886"), with
  * hemisphere letters, degrees and decimal minutes, degrees-minutes-seconds, `geo:`
- * links, British National Grid references and Maidenhead locators. Returns null for
+ * links, British National Grid references, Maidenhead locators, UTM and UPS coordinates
+ * and MGRS references. Returns null for
  * anything else, so the caller can treat the text as a place name.
  */
 export function parseCoordinates(input: string): ParsedCoordinate | null {

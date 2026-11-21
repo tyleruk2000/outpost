@@ -54,6 +54,9 @@ is where the conventions phone readers follow are written down:
 - **Saved place**: `geo:lat,lon` (RFC 5870) to six decimal places. The name of the
   place is not in the code (`geo:` has no field for one); it is on the sheet.
 
+The same encoder makes the **QR code** on a saved place, a route and an estimated
+radio range on Maps (see [maps.md](maps.md#a-place-a-route-or-a-range-on-a-phone-by-qr-code)).
+
 ### The encoder
 
 Written from ISO/IEC 18004:2015: numeric, alphanumeric and byte modes, with the text

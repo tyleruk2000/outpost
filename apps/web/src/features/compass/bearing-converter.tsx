@@ -90,7 +90,7 @@ export function BearingConverter({ norths }: { norths: Norths | null }) {
             <p>East counts as plus, west as minus, with the figures from North here.</p>
           </>
         }
-        sources={[S.wmm, S.osgb]}
+        sources={[S.wmm, S.osgb, S.utm]}
       />
     </Calculator>
   );

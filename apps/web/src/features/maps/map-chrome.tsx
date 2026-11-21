@@ -20,6 +20,7 @@ import {
   Signpost,
   SunMoon,
   Undo2,
+  Waypoints,
   X,
 } from "lucide-react";
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -53,7 +54,7 @@ import { SunSection } from "./panels/sun";
 import { Locator, PathLocators } from "./radio/locator";
 import { ControlButton, ControlGroup, mapCard, mapCardFoot, mapCardHeader, mapSurface } from "./ui";
 
-export type Tool = "browse" | "measure" | "add-place" | "draw" | "sight" | "print";
+export type Tool = "browse" | "measure" | "add-place" | "draw" | "sight" | "print" | "resection";
 
 /** A map pin with a plus: the "add a place" tool. Drawn here because the icon set has no exact match at this weight. */
 function PinPlus() {
@@ -267,6 +268,8 @@ export function mapTools({
       disabled,
     });
   }
+  // Where you are from compass bearings to landmarks; resection/.
+  tools.push(take("resection", "Find where you are from bearings", <Waypoints />, "tools"));
   // A paper map of part of this one; the tool itself is in print/.
   tools.push(take("print", "Print or save as PDF", <Printer />, "tools"));
   // Radio: the locator grid, the repeaters, and whether two points can see each other.

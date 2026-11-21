@@ -27,6 +27,7 @@ import { Field, Input } from "@/components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/menu";
 import { Checkbox, Skeleton, Spinner } from "@/components/ui/misc";
 import { KeepTrackButton } from "@/features/kept/keep-controls";
+import { ShareCodeButton } from "@/features/qr/share-code";
 import { errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { formatDate, formatNumber, plural } from "@/lib/utils";
@@ -207,6 +208,10 @@ export function RouteDetail({
             </a>
           </Button>
           <KeepTrackButton track={track} />
+          <ShareCodeButton
+            size="md"
+            target={{ name: track.name, outpostPath: `/maps?track=${track.id}`, gpxPath: `/api/maps/tracks/${track.id}/export.gpx` }}
+          />
         </div>
 
         <div className="flex items-center gap-3">

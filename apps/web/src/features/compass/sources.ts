@@ -17,6 +17,11 @@ export const COMPASS_SOURCES = {
     url: "https://www.ordnancesurvey.co.uk/documents/resources/guide-coordinate-systems-great-britain.pdf",
     read: "2026-11-17",
   },
+  utm: {
+    name: "NGA.SIG.0012_2.0.0 (2014), The Universal Grids and the Transverse Mercator and Polar Stereographic Map Projections: UTM and UPS, as Outpost's grids use them",
+    url: "http://web.archive.org/web/20180516193526id_/http://earth-info.nga.mil:80/GandG/publications/NGA_SIG_0012_2_0_0_UTMUPS/NGA.SIG.0012_2.0.0_UTMUPS.pdf",
+    read: "2026-11-21",
+  },
   orientation: {
     name: "W3C, Device Orientation and Motion: the orientation angles and the worked example of a compass heading",
     url: "https://www.w3.org/TR/orientation-event/",

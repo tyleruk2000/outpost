@@ -14,6 +14,7 @@
  * the second, and is negative when the second lies to the west.
  */
 import { toOsGrid } from "./maps.ts";
+import { toGrid, utmConvergence } from "./utm.ts";
 import { decimalYear, type MagneticField, magneticField } from "./wmm.ts";
 
 export type North = "true" | "grid" | "magnetic";
@@ -41,23 +42,56 @@ export function nationalGridConvergence(lat: number, lon: number): number | null
   return convergenceOf(toOsGrid, lat, lon);
 }
 
+/**
+ * The grid a map is drawn with: Great Britain's National Grid, or UTM, which most of the
+ * world's topographic maps carry (UPS over the poles). "none" is a map drawn to true north.
+ */
+export type MapGrid = "osgb" | "utm" | "none";
+
 export interface Norths {
   field: MagneticField;
   /** Magnetic north from true north, degrees east. */
   declination: number;
-  /** Grid north from true north on the National Grid, degrees east; null outside Great Britain. */
+  /** The grid the convergence is for; null when there is none (the National Grid outside Great Britain, or none asked for). */
+  grid?: "osgb" | "utm" | "ups" | null;
+  /** The UTM zone and band ("31U"), or "UPS N" or "UPS S", when the grid is UTM or UPS. */
+  zone?: string;
+  /** Grid north from true north, degrees east; null with no grid. */
   convergence: number | null;
-  /** Magnetic north from grid north, degrees east; null outside Great Britain. */
+  /** Magnetic north from grid north, degrees east; null with no grid. */
   gridMagneticAngle: number | null;
 }
 
-/** The three norths at a place on a date (milliseconds, or a Date). */
-export function northsAt(lat: number, lon: number, date: Date | number, heightKm = 0): Norths {
+/** The grid a map of a place most likely has: the National Grid in Great Britain, UTM elsewhere. */
+export function usualGrid(lat: number, lon: number): MapGrid {
+  return nationalGridConvergence(lat, lon) !== null ? "osgb" : "utm";
+}
+
+/**
+ * The three norths at a place on a date (milliseconds, or a Date). `grid` is the map's
+ * grid; left out, it is the National Grid, which is null outside Great Britain.
+ */
+export function northsAt(lat: number, lon: number, date: Date | number, heightKm = 0, grid: MapGrid = "osgb"): Norths {
   const field = magneticField(lat, lon, decimalYear(date), heightKm);
-  const convergence = nationalGridConvergence(lat, lon);
+  let convergence: number | null = null;
+  let kind: Norths["grid"] = null;
+  let zone: string | undefined;
+  if (grid === "osgb") {
+    convergence = nationalGridConvergence(lat, lon);
+    kind = convergence === null ? null : "osgb";
+  } else if (grid === "utm") {
+    convergence = utmConvergence(lat, lon);
+    const at = convergence === null ? null : toGrid(lat, lon);
+    if (at) {
+      kind = at.kind;
+      zone = at.kind === "utm" ? `${at.zone}${at.band}` : `UPS ${at.hemisphere}`;
+    }
+  }
   return {
     field,
     declination: field.declination,
+    grid: kind,
+    ...(zone ? { zone } : {}),
     convergence,
     gridMagneticAngle: convergence === null ? null : field.declination - convergence,
   };

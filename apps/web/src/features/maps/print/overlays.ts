@@ -40,6 +40,7 @@ import { locatorGridShown } from "../radio/use-locator-grid";
 import { readable } from "./coverage";
 import { type Graticule, graticuleLines } from "./graticule";
 import { formatScale, latitudeAt, longitudeAt, mercatorX, mercatorY, scaleForZoom } from "./scale";
+import { utmGrid, utmGridNote } from "./utm-grid";
 
 /** What an overlay may know about the page being made. */
 export interface PrintContext {
@@ -121,6 +122,7 @@ const tracksHere = (context: PrintContext) => context.tracks.filter((track) => t
 const markersHere = (context: PrintContext) => context.markers.filter((marker) => inside(context.bbox, marker.lat, marker.lon));
 
 const GRATICULE_SOURCE = "print-graticule";
+const UTM_SOURCE = "print-utm-grid";
 
 export const PRINT_OVERLAYS: PrintOverlay[] = [
   {
@@ -225,6 +227,47 @@ export const PRINT_OVERLAYS: PrintOverlay[] = [
         source: GRATICULE_SOURCE,
         paint: { "line-color": context.theme.ink, "line-width": 0.6, "line-opacity": 0.5 },
       });
+    },
+  },
+  {
+    id: "utm-grid",
+    label: "UTM grid lines",
+    hint: (context) => {
+      const grid = utmGrid(context.bbox, context.zoom);
+      if (!grid) return undefined;
+      const every = grid.spacing >= 1000 ? `${grid.spacing / 1000} km` : `${grid.spacing} m`;
+      const name = grid.zone.startsWith("UPS") ? grid.zone : `zone ${grid.zone}`;
+      return `Every ${every} in ${name}, for UTM positions and MGRS references off the paper.`;
+    },
+    unavailable: (context) => (utmGrid(context.bbox, context.zoom) ? undefined : "There is no UTM grid for this area."),
+    initially: () => false,
+    apply: (draft, context) => {
+      const grid = utmGrid(context.bbox, context.zoom);
+      if (!grid) return;
+      draft.sources[UTM_SOURCE] = { type: "geojson", data: grid.lines as never };
+      draft.layers.push(
+        {
+          id: UTM_SOURCE,
+          type: "line",
+          source: UTM_SOURCE,
+          paint: { "line-color": context.theme.primary, "line-width": 0.7, "line-opacity": 0.7 },
+        },
+        {
+          id: `${UTM_SOURCE}-figures`,
+          type: "symbol",
+          source: UTM_SOURCE,
+          layout: {
+            "symbol-placement": "line",
+            "symbol-spacing": 220,
+            "text-field": ["get", "label"],
+            "text-font": [MAP_FONTS.medium],
+            "text-size": 10,
+            "text-keep-upright": true,
+          },
+          paint: { "text-color": context.theme.primary, "text-halo-color": context.theme.page, "text-halo-width": 1.5 },
+        },
+      );
+      draft.notes.push(utmGridNote(grid));
     },
   },
   {

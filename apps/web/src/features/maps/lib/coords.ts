@@ -1,14 +1,25 @@
 /** The coordinate readout: one position in the format the person chose, at an honest precision. */
-import { formatDecimal, formatDms, formatOsGridRef, type LocatorLength, toMaidenhead } from "@outpost/shared";
+import {
+  formatDecimal,
+  formatDms,
+  formatMgrs,
+  formatOsGridRef,
+  formatUtm,
+  type LocatorLength,
+  type MgrsDigits,
+  toMaidenhead,
+} from "@outpost/shared";
 import { metersPerPixel } from "./geo";
 
-export const READOUT_FORMATS = ["decimal", "dms", "osgb", "maidenhead"] as const;
+export const READOUT_FORMATS = ["decimal", "dms", "osgb", "utm", "mgrs", "maidenhead"] as const;
 export type ReadoutFormat = (typeof READOUT_FORMATS)[number];
 
 export const READOUT_LABELS: Record<ReadoutFormat, string> = {
   decimal: "Decimal degrees",
   dms: "Degrees, minutes, seconds",
   osgb: "British National Grid",
+  utm: "UTM",
+  mgrs: "MGRS (US National Grid)",
   maidenhead: "Maidenhead locator",
 };
 
@@ -16,7 +27,10 @@ export const isReadoutFormat = (value: unknown): value is ReadoutFormat => (READ
 
 export interface Readout {
   text: string;
-  /** The format actually used: a grid reference falls back to decimal degrees outside Great Britain. */
+  /**
+   * The format actually used: a British grid reference falls back to decimal degrees outside
+   * Great Britain. UTM and MGRS cover the whole Earth, with UPS over the poles.
+   */
   format: ReadoutFormat;
 }
 
@@ -50,6 +64,11 @@ export function formatPosition(lat: number, lon: number, format: ReadoutFormat, 
   if (format === "osgb") {
     const reference = formatOsGridRef(lat, lon, zoom === undefined ? 8 : gridFiguresFor(perPixel));
     if (reference) return { text: reference, format: "osgb" };
+  }
+  if (format === "utm" || format === "mgrs") {
+    const figures = zoom === undefined ? 10 : gridFiguresFor(perPixel);
+    const text = format === "utm" ? formatUtm(lat, lon, 10 ** (5 - figures / 2)) : formatMgrs(lat, lon, (figures / 2) as MgrsDigits);
+    if (text) return { text, format };
   }
   if (format === "maidenhead") {
     const locator = toMaidenhead(lat, lon, zoom === undefined ? 8 : locatorLengthFor(perPixel));

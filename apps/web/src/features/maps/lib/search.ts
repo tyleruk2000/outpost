@@ -71,7 +71,31 @@ const COORDINATE_KINDS: Record<ParsedCoordinate["format"], string> = {
   geo: "Coordinates",
   osgb: "Grid reference",
   maidenhead: "Maidenhead locator",
+  utm: "UTM coordinates",
+  mgrs: "MGRS reference",
 };
+
+/** "UTM coordinates · 54.46090, -3.08860", "MGRS reference, the middle of a 10 m square · …". */
+function gridDetail(coordinate: ParsedCoordinate): string {
+  const position = formatDecimal(coordinate.lat, coordinate.lon, 5);
+  const kind =
+    coordinate.format === "utm" && coordinate.reference?.startsWith("UPS") ? "UPS coordinates" : COORDINATE_KINDS[coordinate.format];
+  const square = coordinate.precisionMeters;
+  const size =
+    square === undefined || square <= 1
+      ? ""
+      : square >= 1000
+        ? `, the middle of a ${square / 1000} km square`
+        : `, the middle of a ${square} m square`;
+  // A zone letter S may be band S (32° to 40° N) or the southern hemisphere; say which this reading takes.
+  const side =
+    coordinate.format === "utm" && !coordinate.reference?.startsWith("UPS")
+      ? coordinate.lat < 0
+        ? ", south of the equator"
+        : ", north of the equator"
+      : "";
+  return `${kind}${size}${side} · ${position}`;
+}
 
 /** "Middle of a locator subsquare, 5.53 km × 4.63 km · 53.52083, -2.62500" */
 function locatorDetail(coordinate: ParsedCoordinate): string {
@@ -88,6 +112,7 @@ function locatorDetail(coordinate: ParsedCoordinate): string {
 
 export function coordinateDetail(coordinate: ParsedCoordinate): string {
   if (coordinate.format === "maidenhead") return locatorDetail(coordinate);
+  if (coordinate.format === "utm" || coordinate.format === "mgrs") return gridDetail(coordinate);
   if (coordinate.format !== "osgb") {
     const grid = formatOsGridRef(coordinate.lat, coordinate.lon, 8);
     return grid ? `Coordinates · grid reference ${grid}` : COORDINATE_KINDS[coordinate.format];
@@ -139,7 +164,7 @@ export function buildSearchResults(input: SearchInput): SearchResult[] {
       title:
         coordinate.format === "osgb"
           ? input.query.trim().toUpperCase()
-          : (coordinate.locator ?? formatDecimal(position.lat, position.lon, 5)),
+          : (coordinate.locator ?? coordinate.reference ?? formatDecimal(position.lat, position.lon, 5)),
       detail: coordinateDetail(coordinate),
       position,
       distance: distanceTo(position),

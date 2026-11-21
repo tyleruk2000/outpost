@@ -36,7 +36,7 @@ describe("what a printed map says of itself", () => {
   it("says where it is, how large, at what scale and when, and lists the names on it", () => {
     const [first, places, routes, names] = mapWords(input);
     expect(first).toMatch(
-      /^What this map shows: Helvellyn from Glenridding\. An area of [\d.]+ × [\d.]+ km centred on 54\.5270°N 3\.0170°W \(Maidenhead locator IO84LM\), from 54\.\d{4}°N 3\.\d{4}°W at its south-west corner to 54\.\d{4}°N 2\.\d{4}°W at its north-east\. Scale 1:25,000 on A4, portrait\. Drawn by Outpost on 16 November 2026 from the maps installed then\.$/,
+      /^What this map shows: Helvellyn from Glenridding\. An area of [\d.]+ × [\d.]+ km centred on 54\.5270°N 3\.0170°W \(Maidenhead locator IO84LM, MGRS 30U \w\w \d{4} \d{4}\), from 54\.\d{4}°N 3\.\d{4}°W at its south-west corner to 54\.\d{4}°N 2\.\d{4}°W at its north-east\. Scale 1:25,000 on A4, portrait\. Drawn by Outpost on 16 November 2026 from the maps installed then\.$/,
     );
     expect(places).toBe("Your saved places on it: Boathouse.");
     expect(routes).toBe("Your routes on it: Swirral Edge round.");

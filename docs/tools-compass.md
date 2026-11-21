@@ -25,8 +25,11 @@ server.
   > east a year. Grid north is 1.0° west of true north here. Magnetic north is 0.9° east of
   > grid north here.
 
-  Outside Great Britain there is no grid: the rule is for a map drawn to true north, from
-  the declination alone. **Copy** and **Save as a page** keep the answer.
+  **The map's grid** chooses which grid the rule is for: the usual one for the place
+  (the National Grid in Great Britain, UTM elsewhere, in the place's own zone), the
+  National Grid, UTM, or no grid (a map drawn to true north, from the declination alone).
+  Near the poles UTM gives way to UPS. The place's MGRS reference is written under its
+  coordinates. **Copy** and **Save as a page** keep the answer.
   Under it, the three norths drawn as a map's margin draws them; the angles between them
   are drawn a stated whole number of times their size (10 in most of Britain) so that
   they can be seen, and the figures written on the drawing are the real ones.
@@ -113,9 +116,11 @@ what a hand compass is set and read to (a baseplate compass is commonly marked e
 figures under it are given to a tenth. Where the angle rounds to nothing, the screen says
 to use a bearing as it is.
 
-The grid is Great Britain's only. Maps of Ireland and Northern Ireland use the Irish
-Grid, which is not worked out: the screen says so under How this is worked out. Outside
-the National Grid's area only true and magnetic north are given.
+On a UTM map the convergence is worked the same way, from the UTM projection in the
+place's own zone (UPS near the poles); it matches NGA's published convergence figures.
+National grids other than Britain's (the Irish Grid, for one) are not worked out: on a
+map with one, the UTM figure can be out by a degree or more. Choosing the National Grid
+outside its area gives true and magnetic north only.
 
 ## The live compass
 

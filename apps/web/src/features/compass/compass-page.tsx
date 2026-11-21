@@ -8,11 +8,11 @@
  * the middle of the map, where the device is, or typed); the map's centre card opens this
  * screen with `?lat=&lon=`. The choice is a preference of this browser, nothing more.
  */
-import { type Norths, northsAt } from "@outpost/shared";
+import { formatMgrs, type MapGrid, type Norths, northsAt, usualGrid } from "@outpost/shared";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { OriginPicker, useOrigin } from "@/features/repeaters/origin";
-import { Calculator, Formula, HowWorkedOut, Result, ToolScreen } from "../tools/kit";
+import { Calculator, ChoiceField, Formula, HowWorkedOut, Result, ToolScreen, useChoice } from "../tools/kit";
 import { BearingConverter } from "./bearing-converter";
 import { LiveCompass } from "./live-compass";
 import { NorthsAnswer } from "./norths-answer";
@@ -26,6 +26,14 @@ const CALCULATORS = [
 ] as const;
 
 const KEYS = { choice: "outpost.compass.from", typed: "outpost.compass.fromTyped" };
+
+type GridChoice = MapGrid | "usual";
+const GRID_OPTIONS = [
+  { value: "usual", label: "The usual one there", description: "The National Grid in Great Britain, UTM elsewhere" },
+  { value: "osgb", label: "Ordnance Survey National Grid", description: "Great Britain only" },
+  { value: "utm", label: "UTM", description: "Most topographic maps outside Britain; UPS near the poles" },
+  { value: "none", label: "No grid", description: "A map drawn to true north" },
+] as const satisfies ReadonlyArray<{ value: GridChoice; label: string; description: string }>;
 
 /** A position handed in by the address, as the map's centre card gives it. */
 function givenPosition(params: URLSearchParams): { lat: number; lon: number } | null {
@@ -43,7 +51,14 @@ export default function CompassPage() {
   // The date the figures are for: today, as this device's clock has it when the screen is opened.
   const [now] = useState(() => Date.now());
   const position = origin.position;
-  const norths: Norths | null = useMemo(() => (position ? northsAt(position.lat, position.lon, now) : null), [position, now]);
+  const [gridChoice, setGridChoice] = useChoice<GridChoice>("compass.grid", GRID_OPTIONS, "usual");
+  const grid: MapGrid =
+    position && gridChoice === "usual" ? usualGrid(position.lat, position.lon) : gridChoice === "usual" ? "osgb" : gridChoice;
+  const norths: Norths | null = useMemo(
+    () => (position ? northsAt(position.lat, position.lon, now, 0, grid) : null),
+    [position, now, grid],
+  );
+  const mgrs = position ? formatMgrs(position.lat, position.lon, 5) : null;
 
   return (
     <ToolScreen
@@ -63,18 +78,26 @@ export default function CompassPage() {
           <p className="self-end font-mono text-small text-ink-muted sm:col-span-2">
             {origin.name ? `${origin.name} · ` : ""}
             {position.lat.toFixed(4)}, {position.lon.toFixed(4)}
+            {mgrs ? ` · MGRS ${mgrs}` : ""}
           </p>
         ) : null}
+        <ChoiceField
+          label="The map's grid"
+          value={gridChoice}
+          onChange={setGridChoice}
+          options={GRID_OPTIONS}
+          hint="Grid north is up the grid lines printed on the map. The rule between map and compass is worked from it."
+        />
       </section>
 
       <Calculator
         id="norths"
         title="North here"
-        intro="True north is along the meridian, magnetic north is where a compass needle points, and grid north is up the lines of an Ordnance Survey map."
+        intro="True north is along the meridian, magnetic north is where a compass needle points, and grid north is up the grid lines of the map."
       >
         {norths ? (
           <>
-            <NorthsAnswer norths={norths} at={now} placeName={origin.name} />
+            <NorthsAnswer norths={norths} at={now} placeName={origin.name} grid={grid} />
             <NorthsRose norths={norths} />
           </>
         ) : (
@@ -105,7 +128,8 @@ export default function CompassPage() {
               <p>
                 where X and Y are the field's north and east parts, from the model's spherical-harmonic coefficients to degree 12 for
                 today's date, at the place's latitude and longitude on the ground. Grid north from true north, the convergence C, is the
-                direction a meridian runs on the National Grid, worked from the grid's own projection, as the map draws it. Then:
+                direction a meridian runs on the map's grid (the National Grid, or UTM in the place's own zone), worked from the grid's own
+                projection, as the map draws it. Then:
               </p>
               <Formula>grid magnetic angle = D − C</Formula>
               <Formula>bearing on the compass = bearing on the map − grid magnetic angle</Formula>
@@ -118,8 +142,9 @@ export default function CompassPage() {
           range={
             <>
               The model is for 2025 to 2029 and anywhere on Earth, except close to the magnetic poles (NOAA's blackout and caution zones,
-              which are said when a place is in one). The grid is Great Britain's National Grid only: maps of Ireland and Northern Ireland
-              use the Irish Grid, which is not worked out here.
+              which are said when a place is in one). The grids are Great Britain's National Grid and UTM, with UPS north of 84° N and south
+              of 80° S. National grids other than Britain's (the Irish Grid, for one) are not worked out here; on a map with one, UTM's
+              figure can be out by a degree or more.
             </>
           }
           limits={
@@ -128,7 +153,7 @@ export default function CompassPage() {
               magnetic storms; and height, which changes nothing a compass could show.
             </>
           }
-          sources={[S.wmm, S.report, S.osgb]}
+          sources={[S.wmm, S.report, S.osgb, S.utm]}
         />
       </Calculator>
 

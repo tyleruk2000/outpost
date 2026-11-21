@@ -81,14 +81,30 @@ describe("north here", () => {
     expect(within(region("Convert a bearing")).getByText(/Choose a place above: the norths are different/)).toBeInTheDocument();
   });
 
-  it("takes the place the map hands it, and outside Great Britain gives true and magnetic only", async () => {
+  it("takes the place the map hands it, and outside Great Britain works to the UTM grid of its zone", async () => {
     fakeApi({ "GET /api/maps/markers": { markers: [home] } });
     renderScreen(<CompassPage />, "/tools/compass?lat=48.8566&lon=2.3522");
     const section = region("North here");
-    expect(await within(section).findByText("With a map drawn to true north here")).toBeInTheDocument();
-    expect(within(section).getByText(/There is no Ordnance Survey grid here/)).toBeInTheDocument();
-    expect(within(section).queryByText(/Grid north is/)).toBeNull();
-    expect(screen.getByText(/the middle of the map · 48\.8566, 2\.3522/)).toBeInTheDocument();
+    expect(await within(section).findByText("With a UTM map here, zone 31U")).toBeInTheDocument();
+    const norths = northsAt(48.8566, 2.3522, NOW, 0, "utm");
+    // Paris is 0.65° west of zone 31's central meridian, 3° E: grid north is a little west of true north.
+    expect(norths.convergence!).toBeCloseTo(-0.65 * Math.sin((48.8566 * Math.PI) / 180), 2);
+    expect(within(section).getByText(/Grid north is 0\.5° west of true north here/)).toBeInTheDocument();
+    expect(screen.getByText(/the middle of the map · 48\.8566, 2\.3522 · MGRS 31U DQ \d{5} \d{5}/)).toBeInTheDocument();
+  });
+
+  it("gives true and magnetic only when the National Grid is asked for outside Great Britain, or no grid", async () => {
+    fakeApi({ "GET /api/maps/markers": { markers: [home] } });
+    localStorage.setItem("outpost.tools.choice.compass.grid", "osgb");
+    const first = renderScreen(<CompassPage />, "/tools/compass?lat=48.8566&lon=2.3522");
+    expect(await within(region("North here")).findByText("With a map drawn to true north here")).toBeInTheDocument();
+    expect(within(region("North here")).getByText(/There is no Ordnance Survey grid here/)).toBeInTheDocument();
+    expect(within(region("North here")).queryByText(/Grid north is/)).toBeNull();
+    first.unmount();
+    localStorage.setItem("outpost.tools.choice.compass.grid", "none");
+    renderScreen(<CompassPage />, "/tools/compass?lat=48.8566&lon=2.3522");
+    expect(await within(region("North here")).findByText("With a map drawn to true north here")).toBeInTheDocument();
+    expect(within(region("North here")).queryByText(/There is no Ordnance Survey grid here/)).toBeNull();
   });
 
   it("reads a typed grid reference", async () => {
