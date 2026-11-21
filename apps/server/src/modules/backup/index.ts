@@ -40,20 +40,23 @@ const BACKUP_TYPES = /^application\/(zip|vnd\.outpost\.backup)\b/i;
 /** The last backup saved from Settings: a fact about this library, kept with the others. */
 const DOWNLOADED_KEY = "backup.downloaded";
 
+/** The last backup saved from Settings to the device that asked for it, or null. */
+export function lastDownloadedBackup(ctx: Pick<AppContext, "sqlite">): BackupDownloaded | null {
+  const row = ctx.sqlite.prepare("SELECT value FROM library_meta WHERE key = ?").get(DOWNLOADED_KEY) as { value: string } | undefined;
+  try {
+    const value = JSON.parse(row?.value ?? "null") as BackupDownloaded | null;
+    return value && typeof value.at === "number" && typeof value.name === "string" && typeof value.bytes === "number" ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function registerBackup(app: FastifyInstance, ctx: AppContext): Promise<void> {
   const { dataDir } = ctx.config;
   const stager = createRestoreStager(ctx);
   const protection = registerProtection(app, ctx);
 
-  const lastDownload = (): BackupDownloaded | null => {
-    const row = ctx.sqlite.prepare("SELECT value FROM library_meta WHERE key = ?").get(DOWNLOADED_KEY) as { value: string } | undefined;
-    try {
-      const value = JSON.parse(row?.value ?? "null") as BackupDownloaded | null;
-      return value && typeof value.at === "number" && typeof value.name === "string" && typeof value.bytes === "number" ? value : null;
-    } catch {
-      return null;
-    }
-  };
+  const lastDownload = () => lastDownloadedBackup(ctx);
 
   app.get("/api/backup/status", async (request): Promise<BackupStatus> => {
     const kept = (await fs.promises.readdir(dataDir)).filter((name) => name.startsWith("before-restore-")).sort();
