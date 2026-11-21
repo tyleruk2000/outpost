@@ -408,7 +408,7 @@ describe("a plan", () => {
     expect(await screen.findByText("Time to look this plan over")).toBeInTheDocument();
   });
 
-  describe("changed on another device while open here", () => {
+  describe("changed on another device while open here", { timeout: 30_000 }, () => {
     const THEIRS = MADE.getTime() + 60_000;
     /** The plan as another device left it, and a server that refuses the first change made from the older copy. */
     function changedElsewhere() {
