@@ -31,6 +31,7 @@ import {
   type BackupAway,
   type BackupSchedule,
   type BackupScheduleSettings,
+  type BackupStagedResponse,
   type BackupsKept,
   nextBackupSlot,
   previousBackupSlot,
@@ -170,6 +171,12 @@ export interface BackupsService {
   last(): { lastAt: number | null; kind: StoredBackupKind | null; scheduled: boolean };
   /** For the status screen: how often, where, a backup owed while the location is away, what is kept, the last restore test. */
   overview(): BackupOverview;
+  /**
+   * Checks a backup file Outpost wrote itself (the one made before an update) and stages
+   * it for the next start, as "Restore this one" does. The caller holds the request to
+   * the rule for restoring; a passphrase is held to its own here.
+   */
+  stage(file: string, passphrase: string | undefined, request: FastifyRequest): Promise<BackupStagedResponse>;
   /** Tests move time: everything the schedule decides is decided by this clock. */
   setClock(now: () => number): void;
   /** Tests damage a backup between its being written and its being read back. */
@@ -547,6 +554,12 @@ export function registerAutomaticBackups(
         kept: state.kept,
         restoreTest: tests.last(),
       };
+    },
+    async stage(file, passphrase, request) {
+      if (passphrase !== undefined) assertPassphraseRight(request, ctx, "Restoring a backup");
+      const staged = await stager.stage(async () => file, passphrase);
+      changed();
+      return staged;
     },
     nextWake: () => wakeAt,
     setClock(now) {

@@ -107,6 +107,14 @@ export const GUIDES: Guide[] = [
     opens: { to: "/settings/status", label: "Open Server status" },
   },
   {
+    slug: "updating",
+    file: "updating.md",
+    group: "looking-after",
+    about: "Updating Outpost from the app or from a release file on a USB stick, and what each kind of installation allows.",
+    keywords: "update upgrade new version release usb stick offline install roll back",
+    opens: { to: "/settings#updates", label: "Open Settings, Updates" },
+  },
+  {
     slug: "troubleshooting",
     file: "troubleshooting.md",
     group: "looking-after",
@@ -368,6 +376,12 @@ export const GUIDES: Guide[] = [
   { slug: "api", file: "api.md", group: "developers", about: "Every route the server answers, with what it takes and gives." },
   { slug: "server-modules", file: "development/server-modules.md", group: "developers", about: "Writing a module of the server." },
   { slug: "web-screens", file: "development/web-screens.md", group: "developers", about: "Building a screen of the web app." },
+  {
+    slug: "releases",
+    file: "development/releases.md",
+    group: "developers",
+    about: "Making and signing a release, and how an update is installed.",
+  },
 ];
 
 /** Pages of docs/ that are deliberately not guides, each with the reason. Keep it short. */

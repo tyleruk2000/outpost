@@ -1582,3 +1582,11 @@ read from the system and how it is described.
 | prometheus.io/docs/instrumenting/exposition_formats/ | Text format `version=0.0.4`, lines ending in a line feed, `# HELP` and `# TYPE` once per name before its samples, label escaping, histogram buckets with `le` ending in `+Inf` equal to `_count`. | `/metrics` is written by hand to that format; no client library. |
 | nodejs.org/docs/latest-v24.x/api/perf_hooks.html, `monitorEventLoopDelay` | "By default, the histogram is updated by a timer using the configured resolution"; the per-iteration mode "does not keep the loop alive". | The per-iteration mode was ignored by Node 24.15 when tried, so the timer is used, and only while there is work. |
 | manpages.debian.org, avahi-daemon(8) and avahi-publish(1) (bookworm); avahi 0.8's `avahi-publish.c` | `--reload` rereads `/etc/avahi/services/`; `avahi-publish -a` registers "an address/host name mapping"; `-R --no-reverse` "Do not publish reverse entry with address"; `-f` waits for the daemon and reconnects. | `outpost-name.service` runs `avahi-publish -f -a -R NAME.local ADDRESS`. |
+
+## Updating Outpost, read on 21 November 2026
+
+For Settings → Updates ([updating.md](updating.md)). Nothing from this is bundled.
+
+| Page | What it says | What was concluded |
+| --- | --- | --- |
+| jedisct1.github.io/minisign/, "Signature format" and "Public key format" | Public key: base64(`Ed` ‖ key id (8 bytes) ‖ Ed25519 public key). Signature: base64(algorithm ‖ key id ‖ signature), a trusted comment, then base64(global signature), where the global signature is `ed25519(<signature> ‖ <trusted_comment>)`. `Ed` signs the file, `ED` signs its BLAKE2b-512 hash; "New implementations must use the hashed signature format". | The server checks signatures with Node's Ed25519 and BLAKE2b-512 and nothing else; releases are signed with `minisign -S` (hashed). Checked both ways against minisign 0.11 from Debian bookworm (ISC licence, installed on the host by `install.sh`, not shipped). |

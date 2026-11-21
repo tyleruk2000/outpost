@@ -19,7 +19,8 @@ const lands: Array<[string, string | null]> = [
   ["sunrise", "Tools: Outdoors"],
   ["food", "Preparedness: Supplies"],
   ["password", "Tools: QR codes"],
-  ["update", "Settings: This installation"],
+  ["update", "Settings: Updates"],
+  ["usb stick update", "Settings: Updates"],
   ["sd card", "Settings: Server status"],
   ["wrong time", "Settings: Server status"],
   // Settings, section by section.

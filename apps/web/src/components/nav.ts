@@ -255,7 +255,8 @@ export const settingsSections: SettingsSection[] = [
     inContents: true,
     keywords: "wifi wi-fi network lan phones share sharing household password sign in accounts",
   },
-  { id: "about", label: "This installation", inContents: true, keywords: "version update memory processor about" },
+  { id: "updates", label: "Updates", inContents: true, keywords: "update upgrade newer release usb stick install" },
+  { id: "about", label: "This installation", inContents: true, keywords: "version memory processor about" },
 ];
 
 /**

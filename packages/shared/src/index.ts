@@ -80,6 +80,7 @@ export * from "./supplies-energy.ts";
 export * from "./system.ts";
 export * from "./tools.ts";
 // UTM, UPS and MGRS, on a line of their own.
+export * from "./update.ts";
 export * from "./utm.ts";
 export * from "./weather.ts";
 export * from "./weather-alerts.ts";

@@ -21,6 +21,7 @@ import { NumberSetting, SettingRow, SettingsSection, TextSetting } from "./parts
 import { SemanticSection } from "./semantic-section";
 import { TextSizeSetting } from "./text-size-setting";
 import { ToolsSection } from "./tools-section";
+import { UpdateSection } from "./update-section";
 
 function Fact({ label, value }: { label: string; value: ReactNode }) {
   return (
@@ -324,6 +325,8 @@ export default function SettingsPage() {
           <BackupSection />
 
           <HttpsSection settings={s} disabled={disabled} save={save} />
+
+          <UpdateSection />
         </>
       )}
 

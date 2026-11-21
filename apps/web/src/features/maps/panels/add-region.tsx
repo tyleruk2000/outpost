@@ -242,7 +242,7 @@ export function AddRegion({
   const requiredBytes = estimate.data?.totalBytes ?? null;
   const destination = useDestination(requiredBytes, "maps");
   const terrainOwn = destination.locations.find(
-    (location) => location.defaultFor.includes("terrain") && location.status === "available" && location.id !== destination.locationId,
+    (location) => location.defaultFor?.includes("terrain") && location.status === "available" && location.id !== destination.locationId,
   );
   const terrainElsewhere = includeTerrain && !destination.picked ? terrainOwn : undefined;
 

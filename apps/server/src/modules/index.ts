@@ -45,6 +45,7 @@ import { registerSearch } from "./search/index.ts";
 import { registerSemantic } from "./semantic/index.ts";
 import { registerSupplies } from "./supplies/index.ts";
 import { registerTools } from "./tools/index.ts";
+import { registerUpdate } from "./update/index.ts";
 import { registerWeather } from "./weather/index.ts";
 import { registerWebPages } from "./webpages/index.ts";
 
@@ -100,6 +101,8 @@ export const modules: ModuleRegister[] = [
   registerMesh,
   // The household's papers (medical sheets, keeping in touch, the binder), after the mesh link, on a line of their own.
   registerHouseholdPapers,
+  // Updating Outpost itself (Settings, Updates), after backups it makes first, on a line of its own.
+  registerUpdate,
   // Tools a language model may call (Chat, and /mcp), last: they read from every module above.
   registerTools,
 ];

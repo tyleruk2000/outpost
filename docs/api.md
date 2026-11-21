@@ -1165,11 +1165,35 @@ says why in `error.details.reason`: `passphrase_required`, `wrong_passphrase`,
 | `GET /api/backup/stored/:name/download` | The file. Refuses a request that another site caused the browser to make. |
 | `POST /api/backup/stored/:name/restore` | Local only. Body: `{}`, or `{ passphrase }` for a protected backup (never from another device over plain http). Checks that backup and stages it, exactly as an upload is. `{ staged, createdAt, appVersion, supervised }`. |
 | `DELETE /api/backup/stored/:name` | Local only. Deletes that backup and the record of its check. |
+| `POST /api/backup/stored/:name/test` | Test a restore. Body: `{}`, or `{ passphrase }` for a protected backup (held in memory for that job only). Opens the backup into a scratch folder, checks it and counts what it holds, then removes the folder; nothing live changes. `{ job }`. The result is `restoreTest` in `GET /api/backup/schedule`. |
 
 `:name` must be a file name Outpost gives its backups (`….zip`, or `….zip.enc` for a
 protected one); anything else is `404`. The
 server publishes `backup.changed` on the event stream when the schedule, a backup or
 the list changes.
+
+## Storage: where new things go
+
+| Route | What it does |
+| --- | --- |
+| `PUT /api/storage/kind-defaults` | Body `{ kind, locationId }`, `kind` one of `maps`, `terrain`, `places`, `layers`, `collections`, `documents`; `locationId: null` puts the kind back on the default. `{ kindDefaults }`. Each location in `GET /api/storage/locations` lists its kinds as `defaultFor`. |
+
+## Updates
+
+| Route | What it does |
+| --- | --- |
+| `GET /api/update/status` | `UpdateStatus`: `current`, `install` (`docker-helper`, `docker`, `portable`, `source`), `keyed`, `latest`, `staged`, `lastResult`, `waiting`, `active`, `right`. |
+| `POST /api/update/check` | Fetches `latest.json` and its signature from `OUTPOST_UPDATE_URL` and checks them. The status, with `latest`. |
+| `POST /api/update/download` | Local only. Fetches the newer release file and checks and keeps it, as a job. `{ job }`. |
+| `POST /api/update/upload` | Local only. The release file as the body, `Content-Type: application/vnd.outpost.update`; checked and kept as a job. `{ job }`. |
+| `GET /api/update/files` | `{ files }`: release files at the top of connected storage locations and in their `outpost-updates` folders. |
+| `POST /api/update/from-storage` | Local only. Body `{ locationId, relPath }`. Checks and keeps that file, as a job; the file is left where it is. `{ job }`. |
+| `POST /api/update/apply` | Local only, and only with the update service. Backs up, then hands the kept release to the service. `{ job }`. |
+| `DELETE /api/update/staged` | Removes the kept release. |
+| `POST /api/update/restore-before` | Local only. Body `{}` or `{ passphrase }`. Stages the backup made before the last update, as a restore. |
+
+"Local only" is the rule restoring a backup follows. The server publishes `update.changed`
+when a release is kept or removed and when the update service's answer is read.
 
 ## Managing and cleaning up
 
