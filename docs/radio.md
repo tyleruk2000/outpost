@@ -40,6 +40,30 @@ band and the kind of set you have, and prints as a PDF. It has a page of its own
 [radio-frequencies.md](radio-frequencies.md). The reference sheets below overlap with it for
 the UK and the United States; the list is wider and is the one kept up to date.
 
+And **Satellites** (Radio → Satellites): passes over Home, where each satellite is now,
+and what to tune to through a pass. It has a page of its own: [satellites.md](satellites.md).
+
+Every radio screen says in one line whether what it does needs a licence. What you may
+listen to and what needs a licence, from Ofcom and the FCC, is on
+[What needs a radio licence](radio-licences.md); a household with a licensed operator can
+say so under **Settings → Radio licence**, and the reminders are left out.
+
+## Licences and band plans
+
+**Radio → Licences and band plans** shows, for the country Home is in, each class of amateur
+licence with the bands it may use, the most power on each and the conditions, and the
+licence-free radio anyone may use there (PMR446, CB, FRS and GMRS, UHF CB, short range
+devices such as the 868 and 915 MHz bands Meshtastic uses), each with its power limit.
+Choose another country from the list to see its rules. Every figure names the regulator's
+document it comes from and the day it was read, and what could not be read is said under
+**Not read**.
+
+Nine countries have been read: the United Kingdom, Ireland, the United States, Canada,
+Australia, New Zealand, Germany, the Netherlands and France (France without its
+licence-free services). The screen lists the other main countries with their regulators,
+for you to ask; it says nothing about their rules. Rules change: check the regulator's own
+page before relying on a figure. This is general information, not legal advice.
+
 ## Radio tools on the map
 
 Both are on the **Maps** screen and work from what is installed, with no connection.

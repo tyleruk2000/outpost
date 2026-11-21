@@ -69,6 +69,12 @@ export * from "./propagation-p533.ts";
 export * from "./propagation-plans.ts";
 export * from "./radio.ts";
 export * from "./radio-frequencies.ts";
+// Radio licences, band plans by country and satellite tracking, on lines of their own.
+export * from "./radio-licence.ts";
+export * from "./radio-licence-doc.ts";
+export * from "./radio-licence-statements.ts";
+export * from "./radio-licences/index.ts";
+export * from "./radio-licences.ts";
 export * from "./radio-observations.ts";
 export * from "./radio-range.ts";
 // Readiness (the log of events, routine checks, the offline drill), on a line of its own.
@@ -78,6 +84,7 @@ export * from "./reference-layers.ts";
 export * from "./repeaters.ts";
 export * from "./retrieval.ts";
 export * from "./route-finder.ts";
+export * from "./satellites.ts";
 export * from "./search.ts";
 export * from "./semantic.ts";
 export * from "./setup-guide.ts";

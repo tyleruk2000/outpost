@@ -88,6 +88,8 @@ const envSchema = z.object({
   OUTPOST_LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).optional(),
   // For tests: one local server that stands in for every weather publisher (modules/weather/sources.ts).
   OUTPOST_WEATHER_STAND_IN: z.string().url().optional(),
+  // For tests: one local server in place of CelesTrak and SatNOGS DB (modules/satellites), at /celestrak/... and /satnogs/...
+  OUTPOST_SATELLITES_STAND_IN: z.string().url().optional(),
   // For tests: a local server in place of the Environment Agency's flood zones service (modules/layers/adapters/flood-zones.ts).
   OUTPOST_FLOOD_ZONES_URL: z.string().url().optional(),
   OUTPOST_FSA_URL: z.string().url().optional(),
@@ -191,6 +193,8 @@ export interface Config {
   };
   /** For tests: a local server answering for every weather publisher, at /<source id>/<path>; unset in use. */
   weatherStandIn?: string;
+  /** For tests: a local server answering for CelesTrak and SatNOGS DB, at /celestrak/<path> and /satnogs/<path>; unset in use. */
+  satellitesStandIn?: string;
   /** For tests: the flood zones collection's address in place of the Environment Agency's; unset in use. */
   floodZonesUrl?: string;
   /** The Food Standards Agency's API, or a stand-in for it (tests). */
@@ -309,6 +313,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     },
     imagery: imageryStandIns(parsed),
     weatherStandIn: parsed.OUTPOST_WEATHER_STAND_IN,
+    satellitesStandIn: parsed.OUTPOST_SATELLITES_STAND_IN,
     floodZonesUrl: parsed.OUTPOST_FLOOD_ZONES_URL,
     fsaUrl: parsed.OUTPOST_FSA_URL,
     geofabrikUrl: parsed.OUTPOST_GEOFABRIK_URL,

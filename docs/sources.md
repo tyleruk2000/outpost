@@ -1564,6 +1564,50 @@ fetched by Outpost; they decided what could be built, and how.
 | MeshCore `src/helpers/esp32/SerialWifiInterface.cpp` | Could not be read: 404 on 17 November 2026. Not got another way. | The network port is assumed to use the USB frames, as the FAQ implies; said to be untested. |
 | MeshCore `docs/faq.md` | "Connect on TCP port 5000 (same as the WiFi companion radio)." Serial examples use `-b 115200`. | Port 5000 by default; 115200 for the USB serial. |
 
+## Satellites, licences and band plans (read 2026-11-21)
+
+**Satellite tracking** ([satellites.md](satellites.md)) was ported from LogBook73 (MIT), on
+`satellite.js` 6.0.2 (MIT). Its two data sources are fetched only on a press:
+
+| Page | What it says | What was concluded |
+| --- | --- | --- |
+| celestrak.org/usage-policy.php (updated 16 November 2026) | GP data updates "once every 2 hours"; "only download data once per update"; asking for GP data with FORMAT=tle can 404 for newly catalogued objects, and FORMAT=csv is recommended; stop on any answer that is not 200. No data licence and no redistribution terms are given. | Asked for as CSV; not again within 2 hours; a failed answer keeps what was there; nothing is republished. |
+| db.satnogs.org/about | "All data are public and freely distributed under the Creative Commons Atribution-Share Alike v4.0 license." | Credited on the screen and on each printed pass; kept for the satellites whose elements are kept. |
+| db.satnogs.org/api/transmitters/?format=json (one record read) | Fields `uuid`, `description`, `alive`, `type`, `uplink_low`, `uplink_high`, `downlink_low`, `downlink_high`, `mode`, `invert`, `baud`, `norad_cat_id`, `status`, `updated`. | Read by `apps/server/src/modules/satellites/satnogs.ts`. |
+
+**What needs a radio licence** ([radio-licences.md](radio-licences.md)) and **Licences and
+band plans** (Radio) rest on the regulators' own documents, each named with its date
+beside the statement or figure it supports, in `packages/shared/src/radio-licence-statements.ts`
+and `packages/shared/src/radio-licences/`. Read on 21 November 2026:
+
+- United Kingdom: Ofcom's Amateur Radio Licence Conditions Booklet (OFW611, 21 February
+  2024) and its amateur radio guidance (14 October 2025); IR 2030 (23 October 2026), IR 2027
+  and IR 2027.2; "Rules on using radio equipment" (10 July 2023); the Wireless Telegraphy Act
+  2006, sections 8 and 48; SI 1989/123; SI 2021/493.
+- Ireland: ComReg 09/45R6 (29 May 2023), ComReg 02/71 R16 (20 May 2024), S.I. 93/1998 and
+  436/1998. ComReg's own web page could not be read (a script challenge).
+- United States: 47 CFR Parts 97, 95 and 15 from the eCFR (up to date as of 19 November
+  2026) and govinfo (1 October 2025 edition); 47 U.S.C. 605 and 18 U.S.C. 2510 and 2511. The
+  FCC's consumer guide on interception was not public when checked, and fcc.gov refused the
+  fetch tool.
+- Canada: ISED RBR-4 (Issue 3, July 2022), RIC-3, RSS-210 (Issue 11), RSS-236 (Issue 2),
+  RIC-18.
+- Australia: the Radiocommunications (Amateur Stations) Class Licence 2023, the Citizen Band
+  Radio Stations Class Licence 2025 and the LIPD Class Licence 2025.
+- New Zealand: the Amateur GURL Notice 2025, the CB GURL Notice 2011 and the Short Range
+  Devices GURL Notice 2022.
+- Germany: the Amateurfunkverordnung as amended 27 May 2024, BNetzA Vfg 21/2021 (CB) and Vfg
+  91/2025 (short range devices, PMR446).
+- Netherlands: the two Regelingen gebruik van frequentieruimte (met meldingsplicht 2015, in
+  force from 20 June 2024; zonder vergunning en zonder meldingsplicht 2015, from 1 July 2025).
+- France: Arcep décisions 2012-1241 and 2019-1412. The arrêté of 21 September 2000 on the
+  certificate classes and the current short range devices decision could not be read, so
+  France has no licence-free services listed.
+
+Band plans of national societies (RSGB, ARRL, WIA) were used only to find the regulator's
+document, never as the source of a figure. The IARU regional band plans are cited for the
+APRS frequencies, which no regulator names.
+
 ## The Steading's household figures (read 2026-11-21)
 
 Games → Steading ([games.md](games.md#steading)) says what a household uses in a day

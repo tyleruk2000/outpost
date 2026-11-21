@@ -58,7 +58,7 @@ export default function RadioToolsPage() {
       footer={
         <>
           These are the textbook sums. A real antenna is trimmed to resonance where it is put up, and a real path has ground, buildings and
-          weather in it. Nothing here says which frequencies you may transmit on: that is set by your licence.
+          weather in it. Which frequencies a licence lets you transmit on is under Radio, Licences and band plans.
         </>
       }
     >

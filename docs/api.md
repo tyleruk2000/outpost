@@ -1474,6 +1474,20 @@ when asked from the bundled constants.
 | `GET /api/tides/stations?lat=&lon=&limit=` | `TideStationsResponse`: the `limit` (1 to 50, default 8) nearest stations with `distanceKm` and `datum` ("MLLW" or "MSL"), and the `source`. |
 | `GET /api/tides/stations/:id/predictions?from=&days=&lat=&lon=` | `TidePredictionResponse`: high and low waters (`turns`) and the height every 10 minutes (`curve`), in metres above the datum, from `from` (ms) for `days` (1 to 31, default 7). `lat` and `lon`, if given, set `distanceKm`. `404` for an unknown station. |
 
+## Satellites
+
+Types: `packages/shared/src/satellites.ts`; see [satellites.md](satellites.md). Positions and
+passes are worked out in the browser (`apps/web/src/features/satellites/engine.ts`); the
+server keeps elements and transmitters only. Changes publish `satellites.changed`.
+
+| Route | What it does |
+| --- | --- |
+| `GET /api/satellites` | `SatellitesResponse`: `satellites` (`noradId`, `name`, `designator`, `epoch` in ms, `elements` as CelesTrak's OMM fields, `groups`), `transmitters` (Hz; `uplinkLowHz`, `downlinkLowHz` …, `alive`, `mode`, `type`, `invert`), `sources` (`celestrak`, `satnogs`: `fetchedAt`, `count`, `error`, `triedAt`), `fetching`, `now`. Asks no one. |
+| `POST /api/satellites/fetch` | The one route that contacts CelesTrak and SatNOGS DB. CelesTrak is not asked within 2 hours of the last good fetch, SatNOGS DB not within a day. `SatellitesFetchResponse`: `sources`, `said` (what was done, in words). `502` when CelesTrak fails; the elements kept before stay. Two presses at once share one fetch. |
+
+The licence setting is two ordinary settings, `radio.licensed` and `radio.callsign`
+(`PATCH /api/settings`).
+
 ## Mesh radio
 
 Types: `packages/shared/src/mesh.ts`; see [mesh-radio.md](mesh-radio.md). Radio channels

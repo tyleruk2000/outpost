@@ -9,6 +9,7 @@
  */
 import {
   AudioWaveform,
+  BadgeCheck,
   BookCopy,
   BookMarked,
   BookOpen,
@@ -34,6 +35,7 @@ import {
   Radio,
   RadioReceiver,
   RadioTower,
+  SatelliteDish,
   Search,
   Settings,
   ShieldCheck,
@@ -156,6 +158,18 @@ export const knowledgeNav: NavItem[] = [
         icon: Radio,
         keywords: "frequency scanner shortwave broadcast channels listen pmr cb",
       },
+      {
+        to: "/radio/satellites",
+        label: "Satellites",
+        icon: SatelliteDish,
+        keywords: "satellite iss pass orbit amsat weather noaa doppler",
+      },
+      {
+        to: "/radio/licences",
+        label: "Licences and band plans",
+        icon: BadgeCheck,
+        keywords: "licence license band plan privileges power pmr446 frs gmrs cb uhf country",
+      },
     ],
   },
   // Two sections that are lists of screens, each drawn from its own registry (features/<section>/screens.ts).
@@ -250,6 +264,7 @@ export const settingsSections: SettingsSection[] = [
   { id: "maps", label: "Maps", inContents: true, keywords: "map source terrain tiles" },
   { id: "board", label: "Message board", inContents: true, keywords: "messages files keep" },
   { id: "mesh", label: "Mesh radio", inContents: true, keywords: "meshtastic meshcore lora mqtt radio link mesh off grid messages" },
+  { id: "radio-licence", label: "Radio licence", inContents: true, keywords: "amateur licence license ham callsign licensed listen only" },
   { id: "backup", label: "Backup", inContents: true, keywords: "back up restore copy save everything password passphrase protect" },
   { id: "automatic-backups", label: "Automatic backups", inContents: true, keywords: "backup schedule every night nas" },
   {

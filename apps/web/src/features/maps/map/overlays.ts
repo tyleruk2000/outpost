@@ -12,6 +12,7 @@ import { nuclearLayers } from "@/features/nuclear/layers";
 import { propagationLayers } from "@/features/propagation/map/layers";
 import { repeaterLayers } from "@/features/repeaters/map/layers";
 import { rangeLayers } from "@/features/repeaters/map/range";
+import { satelliteLayers } from "@/features/satellites/map";
 import { greyLineLineLayers, greyLineShadeLayers } from "../grey-line/layers";
 import { bboxRing, circleRing, formatDistance, type LatLon, metersPerPixel } from "../lib/geo";
 import { measure } from "../lib/measure";
@@ -44,6 +45,8 @@ export const OVERLAY_SOURCES = [
   "o-reference",
   "o-heard",
   "o-relay",
+  // Satellites now, and the chosen one's track (features/satellites/map.tsx).
+  "o-satellites",
   "o-sight",
   // Resection: back-bearings from landmarks (resection/).
   "o-resection",
@@ -248,6 +251,8 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
     ...referenceLayers(theme),
     // What the household's receivers heard (features/heard): above the reference layers, under saved places.
     ...heardLayers(theme),
+    // Satellites now, with footprints and one satellite's track (features/satellites/map.tsx).
+    ...satelliteLayers(theme),
     // The path of a line-of-sight check.
     ...relayLayers(theme),
     ...sightLayers(theme),

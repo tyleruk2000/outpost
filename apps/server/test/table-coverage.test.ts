@@ -122,6 +122,24 @@ const TABLES: Record<string, Decision> = {
   radio_observations: { group: "radio", drive: true },
   morse_progress: { group: "radio", drive: true },
   morse_sessions: { group: "radio", drive: true },
+  satellite_elements: {
+    group: "radio",
+    keptByErase:
+      "Public orbital elements and transmitters fetched from CelesTrak and SatNOGS DB, like the catalogue's last answers: nothing of the household's.",
+    drive: true,
+  },
+  satellite_transmitters: {
+    group: "radio",
+    keptByErase:
+      "Public orbital elements and transmitters fetched from CelesTrak and SatNOGS DB, like the catalogue's last answers: nothing of the household's.",
+    drive: true,
+  },
+  satellite_fetches: {
+    group: "radio",
+    keptByErase:
+      "Public orbital elements and transmitters fetched from CelesTrak and SatNOGS DB, like the catalogue's last answers: nothing of the household's.",
+    drive: true,
+  },
   power_plans: { group: "other", drive: true },
   power_devices: { group: "other", drive: true },
   supply_items: { group: "prepare", drive: true },

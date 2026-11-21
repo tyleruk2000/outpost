@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Progress, Select, Skeleton } from "@/components/ui/misc";
+import { LicenceLine } from "@/features/radio/licence";
 import { errorMessage } from "@/lib/api";
 import { formatNumber, plural } from "@/lib/utils";
 import { AntennaPicker, antennaChoices } from "../antenna-picker";
@@ -594,6 +595,7 @@ export default function LogPage() {
         description="What actually happened on the air: contacts, stations heard, and calls that got no answer. Typed in, or read from your logging program's ADIF file, and set beside what the engine predicted for the same paths."
         actions={log.data && log.data.total > 0 ? actions : undefined}
       />
+      <LicenceLine use="listen-and-transmit" className="mb-6" />
       {importJobId ? (
         <div className="mb-6 flex flex-wrap items-center gap-3" aria-live="polite">
           <div className="min-w-40 flex-1">

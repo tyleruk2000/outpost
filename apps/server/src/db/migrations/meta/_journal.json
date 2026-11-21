@@ -239,6 +239,13 @@
       "when": 1795268563348,
       "tag": "0033_note_versions_highlights_calibre",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "6",
+      "when": 1795268984944,
+      "tag": "0034_satellites",
+      "breakpoints": true
     }
   ]
 }
