@@ -37,7 +37,7 @@ test("a repeater's estimated range on a wide screen: fitted beside the card, whi
     await page.getByRole("button", { name: "Show less" }).click();
     await idle(page);
     const cardBox = (await folded.boundingBox())!;
-    const outline = await outlineBox(page, () => folded.getByRole("switch", { name: "Estimated range" }).click());
+    const outline = await outlineBox(page, () => folded.getByRole("switch", { name: "Estimated range" }).click(), true);
     expect(outline, "the outline changes the map").not.toBeNull();
     expect(Math.min(outline!.width, outline!.height)).toBeGreaterThanOrEqual(120);
     expect(overlaps(outline!, cardBox), `outline ${JSON.stringify(outline)} and card ${JSON.stringify(cardBox)}`).toBe(false);

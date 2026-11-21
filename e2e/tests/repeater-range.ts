@@ -42,12 +42,13 @@ export interface Box {
 export const overlaps = (a: Box, b: Box) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 
 /**
- * The box on screen that the shading of the ground in sight takes, found as the green pixels of
- * the map that change when it is switched off. Everything over the map (cards, the search box, the tools) is made
+ * The box on screen that the outline takes, found as the pixels of the map that change when
+ * it is switched off; with `shadingOnly`, only the green of the ground in sight, leaving out
+ * the grey rings and the typical range's circle, which reach past it by design. Everything over the map (cards, the search box, the tools) is made
  * see-through first, though it still takes presses: so that any part of the outline under a
  * card is counted, and a card or a column of tools that changes when the switch does is not.
  */
-export async function outlineBox(page: Page, switchOff: () => Promise<void>): Promise<Box | null> {
+export async function outlineBox(page: Page, switchOff: () => Promise<void>, shadingOnly = false): Promise<Box | null> {
   const map = (await page.locator(".outpost-map").boundingBox())!;
   await page.addStyleTag({
     content:
@@ -59,7 +60,7 @@ export async function outlineBox(page: Page, switchOff: () => Promise<void>): Pr
   await idle(page);
   const off = await page.screenshot({ clip: map });
   const box = await page.evaluate(
-    async ([one, two]) => {
+    async ([one, two, green]) => {
       const read = async (png: string) => {
         const bytes = Uint8Array.from(atob(png), (character) => character.charCodeAt(0));
         const bitmap = await createImageBitmap(new Blob([bytes], { type: "image/png" }));
@@ -78,9 +79,7 @@ export async function outlineBox(page: Page, switchOff: () => Promise<void>): Pr
             Math.abs(a.data[index + 1]! - b.data[index + 1]!) +
             Math.abs(a.data[index + 2]! - b.data[index + 2]!);
           if (change <= 9) continue;
-          // Only the green of the ground in sight and its edge: the grey rings and the typical range's dashed circle
-          // reach out past it on purpose, and are not what has to be clear of the card.
-          if (a.data[index + 1]! - Math.max(a.data[index]!, a.data[index + 2]!) <= 8) continue;
+          if (green && a.data[index + 1]! - Math.max(a.data[index]!, a.data[index + 2]!) <= 8) continue;
           left = Math.min(left, x);
           right = Math.max(right, x);
           top = Math.min(top, y);
@@ -89,7 +88,7 @@ export async function outlineBox(page: Page, switchOff: () => Promise<void>): Pr
       }
       return right < 0 ? null : { x: left, y: top, width: right - left + 1, height: bottom - top + 1, scale: a.width };
     },
-    [on.toString("base64"), off.toString("base64")],
+    [on.toString("base64"), off.toString("base64"), shadingOnly] as const,
   );
   if (!box) return null;
   // Screenshots are in device pixels; the boxes Playwright gives are in CSS pixels.
