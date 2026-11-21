@@ -483,6 +483,12 @@ export const GUIDES: Guide[] = [
     group: "developers",
     about: "How encryption, encrypted pages, vCard reading and the address book for phones are built.",
   },
+  {
+    slug: "library-and-games",
+    file: "development/library-and-games.md",
+    group: "developers",
+    about: "How the library, notes, audiobooks, PDFs made in Outpost, the EPUB reader, learning progress and the games are built and stored.",
+  },
 ];
 
 /** Pages of docs/ that are deliberately not guides, each with the reason. Keep it short. */
