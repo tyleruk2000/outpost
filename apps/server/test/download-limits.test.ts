@@ -6,7 +6,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import type { HttpClient, SafeFetchOptions } from "../src/core/http.ts";
+import type { HttpClient, SafeFetchOptions, SafeFetchResult } from "../src/core/http.ts";
 import { PermanentJobError } from "../src/core/jobs.ts";
 import { createHttpFetcher } from "../src/modules/downloads/http-fetcher.ts";
 import type { FetchContext } from "../src/modules/downloads/types.ts";
@@ -21,7 +21,7 @@ function fakeClient(body: () => ReadableStream<Uint8Array>, headers: Record<stri
   const client: HttpClient = {
     async fetch(url, options = {}) {
       asked.push(options);
-      return { response: new Response(body(), { status: 200, headers }), url };
+      return { response: new Response(body(), { status: 200, headers }) as unknown as SafeFetchResult["response"], url };
     },
     close: async () => undefined,
   };

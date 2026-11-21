@@ -16,7 +16,6 @@
  * 10 000 S/m is perfect for this purpose.
  */
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { ANTENNA_PRESETS, type AntennaSpec, HF_BANDS, initialBearingDeg, type PredictionCell, runWords } from "@outpost/shared";
 import { afterAll, expect, it } from "vitest";
@@ -26,9 +25,10 @@ import { createVoacapEngine, type WireCell } from "../src/modules/propagation/vo
 import { loadDataset, loadEngineFile, voacapPaths } from "../src/modules/propagation/voacap/files.ts";
 import { VoacapInstance } from "../src/modules/propagation/voacap/instance.ts";
 import { REFERENCE_CASES } from "./fixtures/propagation/cases.ts";
+import { tempDir } from "./temp.ts";
 import { describeWithVoacapData, seedVoacapData, voacapDataAbsent } from "./voacap-data.ts";
 
-const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-hf-sloping-"));
+const scratch = tempDir("outpost-hf-sloping-");
 afterAll(() => fs.rmSync(scratch, { recursive: true, force: true }));
 seedVoacapData(path.join(scratch, "data"));
 const paths = voacapPaths(path.join(scratch, "data"));
