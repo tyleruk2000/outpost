@@ -33,6 +33,9 @@ services:
       OUTPOST_ALLOW_PRIVATE_DOWNLOADS: ${OUTPOST_ALLOW_PRIVATE_DOWNLOADS:-false}
       OUTPOST_ALLOW_REMOTE_ERASE: ${OUTPOST_ALLOW_REMOTE_ERASE:-false}
       OUTPOST_ALLOW_REMOTE_MODEL_SERVER: ${OUTPOST_ALLOW_REMOTE_MODEL_SERVER:-false}
+      # The device (docs/device.md): figures for Prometheus at /metrics, and setting the clock from other devices.
+      OUTPOST_METRICS: ${OUTPOST_METRICS:-false}
+      OUTPOST_ALLOW_REMOTE_CLOCK: ${OUTPOST_ALLOW_REMOTE_CLOCK:-false}
       OUTPOST_KIWIX_URL: http://kiwix:8080
     ports:
       # 127.0.0.1 keeps the port private to this machine. Set OUTPOST_BIND=0.0.0.0

@@ -1522,3 +1522,19 @@ fetched by Outpost; they decided what could be built, and how.
 | MeshCore `src/helpers/ArduinoSerialInterface.cpp` | `if (c == '<') {`; `hdr[0] = '>';`; `hdr[1] = (len & 0xFF);  // LSB`, `hdr[2] = (len >> 8);    // MSB`. | The USB frame format. |
 | MeshCore `src/helpers/esp32/SerialWifiInterface.cpp` | Could not be read: 404 on 17 November 2026. Not got another way. | The network port is assumed to use the USB frames, as the FAQ implies; said to be untested. |
 | MeshCore `docs/faq.md` | "Connect on TCP port 5000 (same as the WiFi companion radio)." Serial examples use `-b 115200`. | Port 5000 by default; 115200 for the USB serial. |
+
+## The server's own figures, read on 21 November 2026
+
+For the Server status screen, the clock, `outpost.local` and `/metrics`
+([device.md](device.md)). Nothing from these is bundled or fetched; they decided what is
+read from the system and how it is described.
+
+| Page | What it says | What was concluded |
+| --- | --- | --- |
+| raspberrypi.com/documentation/computers/raspberry-pi.html, "Frequency management and thermal control" | "When the core temperature is between 80°C and 85°C, the Arm cores will be progressively throttled back." "If the temperature reaches 85°C, both the Arm cores and the GPU will be throttled back." | Needs attention from 80 °C, a problem from 85 °C. No other temperature is used. |
+| raspberrypi.com/documentation/computers/os.html, `get_throttled` | Bit 0 "Undervoltage detected", 1 "Arm frequency capped", 2 "Currently throttled", 3 "Soft temperature limit active", 16 to 19 the same "has occurred". | Read from the firmware's `get_throttled` file in `/sys`, which a container can read. |
+| netmodule-linux.readthedocs.io/en/latest/howto/mmc.html | Life time estimation "0x01 = 0-10% device life time used", "0x02 = 10-20%"; pre-EOL "0x01 = Normal", "0x02 = Warning: consumed 80% of the reserved blocks", "0x03 = Urgent: consumed 90%". | An eMMC card's wear in tens of per cent; values above 0x0A are not interpreted. |
+| lore.kernel.org, "mmc: core: Export device lifetime information through sysfs" (22 December 2016) | Adds the `life_time` and `pre_eol_info` attributes for eMMC 5.0 and later. | SD cards have no such attributes; the screen says their wear is not reported. Seen on a Pi 5's SD card: none. |
+| prometheus.io/docs/instrumenting/exposition_formats/ | Text format `version=0.0.4`, lines ending in a line feed, `# HELP` and `# TYPE` once per name before its samples, label escaping, histogram buckets with `le` ending in `+Inf` equal to `_count`. | `/metrics` is written by hand to that format; no client library. |
+| nodejs.org/docs/latest-v24.x/api/perf_hooks.html, `monitorEventLoopDelay` | "By default, the histogram is updated by a timer using the configured resolution"; the per-iteration mode "does not keep the loop alive". | The per-iteration mode was ignored by Node 24.15 when tried, so the timer is used, and only while there is work. |
+| manpages.debian.org, avahi-daemon(8) and avahi-publish(1) (bookworm); avahi 0.8's `avahi-publish.c` | `--reload` rereads `/etc/avahi/services/`; `avahi-publish -a` registers "an address/host name mapping"; `-R --no-reverse` "Do not publish reverse entry with address"; `-f` waits for the daemon and reconnects. | `outpost-name.service` runs `avahi-publish -f -a -R NAME.local ADDRESS`. |
