@@ -537,6 +537,12 @@ export const GUIDES: Guide[] = [
     group: "developers",
     about: "How the map's parts work, its own map and route sources, and its constants.",
   },
+  {
+    slug: "radio-development",
+    file: "development/radio.md",
+    group: "developers",
+    about: "Repeater sources, the radio sheets and frequency data, the LogBook73 importer, and the mesh radio broker.",
+  },
 ];
 
 /** Pages of docs/ that are deliberately not guides, each with the reason. Keep it short. */
