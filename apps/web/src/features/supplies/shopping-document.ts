@@ -7,10 +7,11 @@
 import type { ShoppingLine } from "@outpost/shared";
 import { writePdfPages } from "@/features/maps/print/pdf";
 import { type Block, toSheets } from "@/features/propagation/plans/document";
+import { appLocale } from "@/lib/region";
 import { lineWords, reasonsWords } from "./words";
 
-const longDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric" });
-const shortDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
+const longDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "long", year: "numeric" });
+const shortDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "short", year: "numeric" });
 
 export const shoppingTitle = (workedOutAt: number | null, now: number) =>
   `Shopping list for supplies, ${shortDate.format(workedOutAt ?? now)}`;

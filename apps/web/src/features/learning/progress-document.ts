@@ -7,9 +7,10 @@
 import { aboutTime, type LearningCourse, learnerLabel } from "@outpost/shared";
 import { writePdfPages } from "@/features/maps/print/pdf";
 import { type Block, toSheets } from "@/features/propagation/plans/document";
+import { appLocale } from "@/lib/region";
 
-const longDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric" });
-const shortDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
+const longDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "long", year: "numeric" });
+const shortDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "short", year: "numeric" });
 
 /** Whose record it is: a learner's name, "Just me", or everyone. */
 export const progressWhose = (learner: string | null) => (learner === null ? "everyone" : learnerLabel(learner));

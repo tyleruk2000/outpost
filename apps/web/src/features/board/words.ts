@@ -5,10 +5,11 @@
  */
 import type { BoardCheckInLine, CheckInStatus } from "@outpost/shared";
 import { formatTimeOfDay } from "@/lib/clock";
+import { appLocale } from "@/lib/region";
 import { formatDate } from "@/lib/utils";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const weekday = new Intl.DateTimeFormat("en-GB", { weekday: "long" });
+const weekday = new Intl.DateTimeFormat(appLocale(), { weekday: "long" });
 
 const startOfDay = (at: number) => {
   const date = new Date(at);

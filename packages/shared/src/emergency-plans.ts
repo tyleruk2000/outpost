@@ -172,7 +172,7 @@ export interface EmergencyPlanInput {
   kindText: string;
   /** The template it was started from, or null for a blank plan. */
   templateId: string | null;
-  /** The number for the emergency services where the household is: "999" in the UK. Plain text. */
+  /** The number for the emergency services where the household is: "999" in the UK, "911" in the United States. Plain text. */
   emergencyNumber: string;
   /** Days after which the plan asks to be looked over again; null never to ask. */
   reviewEveryDays: number | null;
@@ -316,11 +316,12 @@ export function reviewDue(plan: Pick<EmergencyPlan, "reviewedAt" | "reviewEveryD
 // ── The emergency number ──────────────────────────────────────────────────────
 
 /**
- * The number offered first, by the country the device says it is in. Everywhere else
- * the household types its own. The numbers and where each comes from are in
- * `emergency-templates.ts` (`EMERGENCY_NUMBERS`).
+ * The number offered when neither Home's country nor the device's region is one listed
+ * in `emergency-templates.ts` (`EMERGENCY_NUMBERS`): 112, the number across the
+ * European Union, also used in the UK and some countries beyond. Elsewhere the
+ * household types its own; the field says so and lists the others.
  */
-export const DEFAULT_EMERGENCY_NUMBER = "999";
+export const DEFAULT_EMERGENCY_NUMBER = "112";
 
 // ── The supplies this plan needs, against what is held ───────────────────────
 

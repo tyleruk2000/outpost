@@ -4,6 +4,7 @@
  * words are in rivers-view.tsx and @outpost/shared's weather-rivers.ts.
  */
 import { cToF, type ForecastDay, type ForecastHour, kmhToMph, weatherWords } from "@outpost/shared";
+import { appLocale } from "@/lib/region";
 
 export type WindUnit = "kmh" | "mph";
 export type TempUnit = "c" | "f";
@@ -40,6 +41,6 @@ export const daysAhead = (days: ForecastDay[], now: number): ForecastDay[] => {
   return days.filter((day) => day.date >= today);
 };
 
-const weekday = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+const weekday = new Intl.DateTimeFormat(appLocale(), { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 /** "Tuesday 17 November", for a UTC calendar day. */
 export const dayName = (date: string): string => weekday.format(Date.parse(`${date}T12:00:00Z`));

@@ -7,8 +7,12 @@ export interface CameraView {
   zoom: number;
 }
 
-/** Britain and Ireland, where a first-time map opens: wide enough to recognise at a glance. */
-export const DEFAULT_VIEW: CameraView = { lat: 54.6, lon: -3.6, zoom: 4.6 };
+/**
+ * The whole world, where a first-time map opens when no map is installed to open on
+ * (with one installed, the map fits it instead). Outpost is used anywhere, so no
+ * country is the starting place.
+ */
+export const DEFAULT_VIEW: CameraView = { lat: 20, lon: 0, zoom: 1.5 };
 
 const MAX_ZOOM = 20;
 

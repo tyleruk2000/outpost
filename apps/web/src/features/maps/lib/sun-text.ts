@@ -7,6 +7,7 @@
  * write on, so nothing here depends on where the tests run. Pure.
  */
 import { type ClockStyle, clockText } from "@/lib/clock";
+import { appLocale } from "@/lib/region";
 import { formatBearing } from "./geo";
 import type { MoonPhase } from "./moon";
 import { type Band, type IsoDate, type SunDay, utcToDate } from "./sun";
@@ -28,7 +29,7 @@ const partFormats = new Map<string, Intl.DateTimeFormat>();
 function readingIn(zone: string, ms: number): { date: IsoDate; hour: number; minute: number; asUtc: number } {
   let format = partFormats.get(zone);
   if (!format) {
-    format = new Intl.DateTimeFormat("en-GB", {
+    format = new Intl.DateTimeFormat(appLocale(), {
       timeZone: zone,
       year: "numeric",
       month: "2-digit",
@@ -70,7 +71,7 @@ export function formatOffset(minutes: number): string {
   return `UTC${minutes < 0 ? "−" : "+"}${Math.floor(abs / 60)}${rest ? `:${String(rest).padStart(2, "0")}` : ""}`;
 }
 
-const dayFormat = new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", day: "numeric", month: "short" });
+const dayFormat = new Intl.DateTimeFormat(appLocale(), { timeZone: "UTC", day: "numeric", month: "short" });
 
 /** "17 May" */
 export const formatShortDate = (date: IsoDate) => dayFormat.format(new Date(`${date}T00:00:00Z`));

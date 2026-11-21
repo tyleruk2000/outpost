@@ -3,6 +3,7 @@ import net from "node:net";
 import { cleanup } from "@testing-library/react";
 import { afterEach, beforeEach, expect } from "vitest";
 import { setClockChoice, setDeviceClockStyle } from "@/lib/clock";
+import { setDeviceRegion } from "@/lib/region";
 
 afterEach(() => cleanup());
 
@@ -36,7 +37,11 @@ const inBrowserLikeEnvironment = typeof window !== "undefined";
 
 // Times are written as the device writes them. The tests run as a device on the 24-hour clock,
 // whatever language the machine they run on is set to; a test of the 12-hour clock says so itself.
+// In the same way the tests run as a device in Great Britain, where its region decides a first
+// choice (the date's style, the emergency number, a forecast's units); a test of another region says so.
+setDeviceRegion("GB");
 beforeEach(() => {
+  setDeviceRegion("GB");
   if (!inBrowserLikeEnvironment) return;
   setDeviceClockStyle("24");
   setClockChoice("device");

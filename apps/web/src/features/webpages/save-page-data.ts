@@ -9,6 +9,7 @@ import {
   type WebPagePreview,
 } from "@outpost/shared";
 import { ApiError, api } from "@/lib/api";
+import { appLocale } from "@/lib/region";
 import { formatNumber, plural } from "@/lib/utils";
 
 /**
@@ -88,7 +89,7 @@ export function creditLine(preview: Pick<WebPagePreview, "byline" | "site" | "pu
   if (day) {
     // The calendar day the page names, not that moment in this reader's time zone.
     const date = new Date(Date.UTC(Number(day[1]), Number(day[2]) - 1, Number(day[3])));
-    published = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(date);
+    published = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(date);
   }
   return [preview.byline ? `By ${preview.byline}` : "", preview.site ?? "", published ?? ""].filter(Boolean).join(", ");
 }

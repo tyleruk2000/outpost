@@ -32,6 +32,7 @@ import { encodeWinAnsi, wrapText } from "@/features/maps/print/helvetica";
 import { PAPERS } from "@/features/maps/print/paper";
 import { writePdfPages } from "@/features/maps/print/pdf";
 import { INK, MUTED, type Sheet, type SheetItem } from "@/features/maps/print/sheet";
+import { appLocale } from "@/lib/region";
 
 export type Block =
   | { kind: "title"; text: string }
@@ -47,8 +48,8 @@ export type Block =
    */
   | { kind: "drawing"; height: number; draw: (x: number, y: number, width: number) => SheetItem[]; words?: string };
 
-const longDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
-const monthYear = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
+const longDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+const monthYear = new Intl.DateTimeFormat(appLocale(), { month: "long", year: "numeric", timeZone: "UTC" });
 const dateOf = (iso: string) => new Date(`${iso}T00:00:00Z`);
 
 /** A two-way figure as it is written: a share of days, or decibels when bands are compared by ratio. */

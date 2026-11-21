@@ -23,6 +23,7 @@ import type { MadePdf } from "@/features/library/made/made-pdf";
 import { PdfButtons, PdfStatus, useMadePdf } from "@/features/library/made/pdf-actions";
 import { api, errorMessage } from "@/lib/api";
 import { usePrinting } from "@/lib/printing";
+import { appLocale } from "@/lib/region";
 import { mapsKeys, useMapOverview, useMarkers, useTracks } from "../data";
 import { useStoredState } from "../hooks";
 import { imageryCredits } from "../imagery/use-satellite";
@@ -73,7 +74,7 @@ function magneticAt(bbox: Bbox, lines: boolean, now = new Date()): MagneticNorth
   }
 }
 
-const DATE = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric" });
+const DATE = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "long", year: "numeric" });
 
 interface Lines {
   geometries: TrackWithGeometryDto[];

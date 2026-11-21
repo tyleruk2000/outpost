@@ -12,6 +12,7 @@ import type {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
+import { appLocale } from "@/lib/region";
 
 export const logKeys = { all: ["propagation", "log"] as const, page: (limit: number) => ["propagation", "log", limit] as const };
 
@@ -81,7 +82,7 @@ export function rememberSsn(values: Record<string, string>): void {
   }
 }
 
-const stamp = new Intl.DateTimeFormat("en-GB", {
+const stamp = new Intl.DateTimeFormat(appLocale(), {
   day: "numeric",
   month: "short",
   year: "numeric",
@@ -93,5 +94,5 @@ const stamp = new Intl.DateTimeFormat("en-GB", {
 /** "16 Nov 2026, 12:04 UTC". A log is kept in UTC, always on the 24-hour clock. */
 export const utcStamp = (at: number): string => `${stamp.format(at)} UTC`;
 
-const monthName = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
+const monthName = new Intl.DateTimeFormat(appLocale(), { month: "long", year: "numeric", timeZone: "UTC" });
 export const monthWords = (month: string): string => monthName.format(new Date(`${month}-15T00:00:00Z`));

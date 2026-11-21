@@ -109,8 +109,8 @@ export const useImportReadings = () => {
 /** The device's time zone, for times in a file that carry none. */
 export const deviceZone = (): string => {
   try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/London";
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   } catch {
-    return "Europe/London";
+    return "UTC";
   }
 };

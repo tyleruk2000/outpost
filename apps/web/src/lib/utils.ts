@@ -1,6 +1,7 @@
 import { type ClassValue, clsx } from "clsx";
 import { extendTailwindMerge } from "tailwind-merge";
 import { formatTimeOfDay } from "./clock";
+import { appLocale } from "./region";
 
 /**
  * tailwind-merge has to be told about the project's own scale names. Without this it
@@ -22,7 +23,16 @@ export function cn(...inputs: ClassValue[]): string {
 }
 
 const relative = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-const dateFormat = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
+/** "21 Nov 2026", or "Nov 21, 2026" on a device set to the United States: English as the device's region writes it (`region.ts`). */
+let dates: { locale: string; format: Intl.DateTimeFormat } | undefined;
+const dateFormat = {
+  format(timestamp: number): string {
+    const locale = appLocale();
+    if (dates?.locale !== locale)
+      dates = { locale, format: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" }) };
+    return dates.format.format(timestamp);
+  },
+};
 
 /** "3 minutes ago", "yesterday", or a date once it is more than a week old. */
 export function timeAgo(timestamp: number | null | undefined): string {
@@ -40,6 +50,9 @@ export const formatDate = (timestamp: number) => dateFormat.format(timestamp);
 /** "17 Nov 2026, 14:32", or "17 Nov 2026, 2:32 pm" where the 12-hour clock is in use (see `clock.ts`). */
 export const formatDateTime = (timestamp: number) => `${dateFormat.format(timestamp)}, ${formatTimeOfDay(timestamp)}`;
 
+// Numbers keep the full stop for the decimal point and the comma between thousands on every
+// device: many figures are written by code that cannot localise them (a frequency, a grid
+// reference), and one screen must not show "1.234,5" beside "2.5".
 const numberFormat = new Intl.NumberFormat("en-GB");
 export const formatNumber = (value: number) => numberFormat.format(value);
 

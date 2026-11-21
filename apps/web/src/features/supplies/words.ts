@@ -1,8 +1,9 @@
 /** How the Supplies screen says things: quantities, dates, reasons. Kept apart so they can be tested on their own. */
 import { daysBetween, kcalOfUnit, type LeftOutReason, type ShoppingLine, type ShoppingReason, type SupplyItem } from "@outpost/shared";
+import { appLocale } from "@/lib/region";
 import { formatNumber } from "@/lib/utils";
 
-const longDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+const longDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 /** "3 Dec 2026", from a calendar day. */
 export const dayWords = (day: string): string => longDate.format(new Date(`${day}T00:00:00Z`));
 

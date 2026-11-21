@@ -9,6 +9,7 @@
 import { type KeyboardEvent, type PointerEvent, useId, useState } from "react";
 import { roundTicks } from "@/features/propagation/charts";
 import { formatTimeOfDay } from "@/lib/clock";
+import { appLocale } from "@/lib/region";
 import { useWidth } from "@/lib/use-width";
 
 const AXIS_TEXT = "tabular fill-ink-muted text-[11px]";
@@ -19,7 +20,7 @@ export interface TimePoint {
   value: number;
 }
 
-const dayLabel = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric" });
+const dayLabel = new Intl.DateTimeFormat(appLocale(), { weekday: "short", day: "numeric" });
 
 /** "Tue 17, 14:00": a moment on the axis and in the readout, in the device's own time. */
 export const momentText = (t: number): string => `${dayLabel.format(t)}, ${formatTimeOfDay(t)}`;

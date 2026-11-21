@@ -115,7 +115,7 @@ describe("a medical sheet on paper", () => {
         "2026-11-21",
       ),
     );
-    expect(words).toContain("GP: Fell Surgery, 01632 960 000");
+    expect(words).toContain("Doctor: Fell Surgery, 01632 960 000");
     expect(words).toContain("Ana, no longer in Contacts");
   });
 

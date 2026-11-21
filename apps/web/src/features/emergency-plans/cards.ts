@@ -17,6 +17,7 @@ import { planCaveat } from "@outpost/shared";
 import { measure, wrapLine } from "@/features/contacts/emergency-document";
 import { PAPERS, PT_PER_MM } from "@/features/maps/print/paper";
 import { INK, MUTED, type Rgb, type Sheet, type SheetItem } from "@/features/maps/print/sheet";
+import { appLocale } from "@/lib/region";
 import type { Readable, ReadContact, ReadPerson } from "./printable";
 
 export type CardPaper = "a4" | "letter";
@@ -25,7 +26,7 @@ const GREY: Rgb = [0.55, 0.55, 0.55];
 export const CARD_WIDTH = 85.6 * PT_PER_MM;
 export const CARD_HEIGHT = 53.98 * PT_PER_MM;
 
-const shortDate = (date: Date) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(date);
+const shortDate = (date: Date) => new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "short", year: "numeric" }).format(date);
 
 /** Text placed with a baseline, at a size that fits `width` without breaking: for a number. */
 function unbroken(text: string, x: number, y: number, size: number, width: number, bold = true): SheetItem {

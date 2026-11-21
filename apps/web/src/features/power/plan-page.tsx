@@ -26,6 +26,7 @@ import { Skeleton, Switch } from "@/components/ui/misc";
 import { madePdf } from "@/features/library/made/made-pdf";
 import { PdfButtons, PdfStatus, useMadePdf } from "@/features/library/made/pdf-actions";
 import { errorMessage } from "@/lib/api";
+import { appLocale } from "@/lib/region";
 import { formatDateTime, plural } from "@/lib/utils";
 import { assumptions, loadDailyWh, radioDuty, simulate, usbEfficiency, workOut } from "./calc/plan";
 import { inputOf, isConflict, useCopyPowerPlan, usePowerPlan, useRemovePowerPlan, useSavePowerPlan } from "./data";
@@ -40,7 +41,7 @@ import { SunFromWeather } from "./sun-from-weather";
 
 const HOURS = Array.from({ length: 24 }, (_, hour) => ({ value: String(hour), label: `${String(hour).padStart(2, "0")}:00` }));
 const SAVE_AFTER_MS = 700;
-const shortDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
+const shortDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "short", year: "numeric" });
 
 /** "Power plan, Shack, 16 Nov 2026" */
 export const powerPlanTitle = (plan: PowerPlan) => `Power plan, ${plan.name}, ${shortDate.format(new Date(plan.updatedAt))}`;
@@ -726,7 +727,7 @@ export default function PowerPlanPage() {
         <div className="mt-6 flex items-center gap-3">
           <Switch id="power-charger" checked={draft.charger.enabled} onCheckedChange={(enabled) => charger({ enabled })} />
           <label htmlFor="power-charger" className="text-body font-semibold text-ink">
-            A generator or mains charger as well
+            A generator or a charger on grid power as well
           </label>
         </div>
         {draft.charger.enabled ? (

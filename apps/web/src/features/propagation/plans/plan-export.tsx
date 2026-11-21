@@ -13,10 +13,11 @@ import { Notice } from "@/components/page";
 import { type MadePdf, madePdf } from "@/features/library/made/made-pdf";
 import { type MadePdfHandle, PdfStatus, useMadePdf } from "@/features/library/made/pdf-actions";
 import { errorMessage } from "@/lib/api";
+import { appLocale } from "@/lib/region";
 import { cn } from "@/lib/utils";
 import { planDocument, planPdf, unwritable } from "./document";
 
-const shortDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+const shortDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
 /** "Communication plan, Family net, for 16 Nov 2026" */
 export const planTitle = (plan: CommunicationPlan): string =>

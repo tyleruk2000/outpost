@@ -531,7 +531,11 @@ function MeshtasticPart({ data }: { data: MeshResponse }) {
               value={rootTopic}
               onChange={setRootTopic}
               monoText
-              hint={status.heardRoot ? `The radio was last heard under ${status.heardRoot}.` : "As set on the radio."}
+              hint={
+                status.heardRoot
+                  ? `The radio was last heard under ${status.heardRoot}.`
+                  : "As set on the radio. A radio with none set uses msh/ and its LoRa region: msh/US in the United States, msh/EU_868 in Europe."
+              }
             />
             <PasswordField label="Password" value={clientPassword} set={config.client.passwordSet} onChange={setClientPassword} optional />
             <TlsFields tls={tls} onTls={setTls} ca={ca} onCa={setCa} />

@@ -44,7 +44,7 @@ describe("a height, written", () => {
     expect(localStorage.getItem("outpost.heights")).toBe("ft");
     expect(formatHeight(312)).toBe("1,025 ft");
     setHeightUnit("m");
-    expect(localStorage.getItem("outpost.heights")).toBeNull();
+    expect(localStorage.getItem("outpost.heights")).toBe("m");
   });
 
   it("is the one formatter the map screens use: the readout and profiles, the line of sight and the repeater card", () => {

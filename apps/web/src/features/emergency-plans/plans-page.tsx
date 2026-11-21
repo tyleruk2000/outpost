@@ -12,12 +12,13 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/misc";
+import { useHomeCountry } from "@/features/frequencies/home-country";
 import { errorMessage } from "@/lib/api";
 import { formatDate, localId, plural } from "@/lib/utils";
 import { useCreatePlan, usePlans } from "./data";
 import { TemplateLicences, templateSources } from "./licences";
 import { HomeWarningLine } from "./warning-line";
-import { blankPlan, guessEmergencyNumber } from "./words";
+import { blankPlan, guessEmergencyNumber, templatesWhereLine } from "./words";
 
 function PlanRow({ plan }: { plan: EmergencyPlanSummary }) {
   const review = reviewDue(plan, Date.now());
@@ -69,7 +70,9 @@ function NewPlanDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
     }
     onOpenChange(next);
   };
-  const number = guessEmergencyNumber();
+  const home = useHomeCountry();
+  const number = guessEmergencyNumber(undefined, home?.code);
+  const whereLine = templatesWhereLine(home);
   const make = () => {
     if (!chosen) return;
     const input = chosen === "blank" ? blankPlan(name.trim() || "Our plan", number) : planFromTemplate(chosen, localId, number);
@@ -121,6 +124,11 @@ function NewPlanDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
               })}
             </Rows>
           </fieldset>
+          {whereLine ? (
+            <p className="mt-4 max-w-[65ch] text-small text-ink" data-testid="templates-where">
+              {whereLine}
+            </p>
+          ) : null}
           <div className="mt-4">
             <TemplateLicences sources={templateSources()} />
           </div>
