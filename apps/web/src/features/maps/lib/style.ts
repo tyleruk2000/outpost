@@ -47,6 +47,8 @@ export interface MapTheme {
   effects: EffectHues;
   /** The ground in sight of an aerial: the estimated range, its rings and the relay planner (token `--map-range`). */
   range: string;
+  /** The typical-range circle round an estimated range: its own hue, apart from the wash, the edge and the grey rings (token `--map-range-typical`). */
+  rangeTypical: string;
   /** The ground a walk reaches in a set time (token `--map-walk`). */
   walk: string;
   /** What the household's receivers heard, one hue per source (the chart tokens `--chart-1` to `--chart-4`); features/heard. */

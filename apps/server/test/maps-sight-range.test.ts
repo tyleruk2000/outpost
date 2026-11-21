@@ -25,6 +25,7 @@ import {
   sightAlong,
   sightRunsAlong,
   smoothRangeMeters,
+  typicalRangeMeters,
 } from "@outpost/shared";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Compression, TileType } from "../src/modules/maps/pmtiles/header.ts";
@@ -274,6 +275,28 @@ const ridgeGround: Ground = (worldX, worldY) => 100 + 400 * Math.exp(-(((positio
 const AT = { lat: 53, lon: -4.06 };
 const towards = (range: SightRange, bearing: number) => range.bearings.find((entry) => entry.bearingDeg === bearing)!;
 
+describe("the typical range", () => {
+  const of = (...furthest: number[]) => typicalRangeMeters(furthest.map((furthestMeters) => ({ furthestMeters })));
+
+  it("is the median of the furthest ground in sight on each bearing, so one long glen does not pull it out", () => {
+    expect(of(3000, 5000, 4000)).toBe(4000);
+    expect(of(3000, 5000, 4000, 90_000)).toBe(4500);
+    // 719 bearings to 12 km and one to 95 km: the mean would be 12.1 km and grows with every far glen; the median stays.
+    expect(of(...Array.from({ length: 719 }, () => 12_000), 95_000)).toBe(12_000);
+  });
+
+  it("counts a bearing with nothing in sight as 0 m", () => {
+    expect(of(0, 0, 0, 20_000)).toBe(0);
+    expect(of(0, 0, 20_000, 30_000)).toBe(10_000);
+    expect(of(0, 10_000, 20_000)).toBe(10_000);
+  });
+
+  it("is null with no bearings, and rounded to the metre", () => {
+    expect(of()).toBeNull();
+    expect(of(1000.4, 2000.3)).toBe(1500);
+  });
+});
+
 describe("a repeater's estimated range", () => {
   it("with no terrain installed gives the smooth-Earth horizon and says it has nothing else", async () => {
     const { status, body } = await rangeOf(AT, 10, 1.5);
@@ -286,6 +309,7 @@ describe("a repeater's estimated range", () => {
       seen: "",
       hiddenShare: null,
       terrain: null,
+      typicalMeters: null,
       maxMeters: 100_000,
     });
     expect(body.shares.every((share) => share.share === null)).toBe(true);
@@ -332,6 +356,10 @@ describe("a repeater's estimated range", () => {
     const near = body.shares.find((share) => share.withinMeters === 10_000)!.share!;
     expect(near).toBeGreaterThan(0.6);
     expect(near).toBeLessThan(1);
+
+    // Typical: most bearings look over the plain to the horizon, the few across the ridge stop at its crest.
+    expect(body.typicalMeters).toBe(typicalRangeMeters(body.bearings));
+    expect(Math.abs(body.typicalMeters! - maxSightDistanceMeters(10, 1.5))).toBeLessThan(400);
 
     // Asked again, the answer is the same.
     expect((await rangeOf(AT, 10, 1.5)).body).toEqual(body);

@@ -374,6 +374,7 @@ const HIGH_CONTRAST: Omit<MapTheme, "primary" | "lamp" | "effects"> = {
   inkMuted: "#1f1f1f",
   contour: "#7a3e00",
   range: "#0b7a49",
+  rangeTypical: "#a3229a",
   walk: "#b4530a",
 };
 
@@ -415,9 +416,17 @@ function highContrastVariant(theme: MapTheme, tuned: (flavour: MapFlavour, theme
 
 // ── Night ──
 
+/** The typical-range circle before the night style makes it red: light, so that it stays the brightest range line. */
+const NIGHT_RANGE_TYPICAL = "#f29be9";
+
 function nightVariant(flavour: MapFlavour, theme: MapTheme, tuned: (flavour: MapFlavour, theme: MapTheme) => Flavor): StyleVariant {
   // The dark map, made red. The app's own dark colours when it is in its dark theme, else the dark fallback.
   const dark: MapTheme = flavour === "dark" ? theme : { ...theme, ...FALLBACK_THEME.dark, effects: theme.effects };
+  // Every colour keeps only its lightness, so the typical-range circle is first made the lightest of the range's lines:
+  // in red it is then 2.4:1 on the land, where the dark theme's magenta would be 1.6:1. Dashed and labelled, it is told
+  // from the edge and the rings by form as well. The overlays are drawn in the app's own colours, so those are swapped.
+  const typical = new Set([theme.rangeTypical, dark.rangeTypical].map((colour) => colour.toLowerCase()));
+  const red = (colour: string) => nightRed(typical.has(colour.toLowerCase()) ? NIGHT_RANGE_TYPICAL : colour);
   // Drawn in the dark colours; `finish` then makes every colour of the map red, hill shading and contours with it.
   return {
     flavour: "dark",
@@ -432,7 +441,7 @@ function nightVariant(flavour: MapFlavour, theme: MapTheme, tuned: (flavour: Map
       }),
     finish: (layers) =>
       layers.map((layer) =>
-        "paint" in layer && layer.paint ? ({ ...layer, paint: mapStrings(layer.paint, nightRed) } as LayerSpecification) : layer,
+        "paint" in layer && layer.paint ? ({ ...layer, paint: mapStrings(layer.paint, red) } as LayerSpecification) : layer,
       ),
     shields: false,
   };
@@ -452,6 +461,7 @@ const LOW_INK: Omit<MapTheme, "primary" | "lamp" | "effects"> = {
   inkMuted: "#4d4d4d",
   contour: "#a07d55",
   range: "#13905a",
+  rangeTypical: "#a3229a",
   walk: "#c8620f",
 };
 /** The edge of the sea, lakes and rivers: the only blue on the page, and a thin line of it. */

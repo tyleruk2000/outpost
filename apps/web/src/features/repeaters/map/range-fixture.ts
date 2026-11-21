@@ -10,6 +10,7 @@ import {
   type RoutePoint,
   rangeDistances,
   type SightRange,
+  typicalRangeMeters,
 } from "@outpost/shared";
 
 /**
@@ -42,6 +43,7 @@ export function rangeFixture(
       seen: "",
       shares: RANGE_SHARE_WITHIN_METERS.map((withinMeters) => ({ withinMeters, share: null })),
       bearings: [],
+      typicalMeters: null,
       hiddenShare: null,
       terrain: null,
     };
@@ -83,6 +85,7 @@ export function rangeFixture(
     seen: encodeBits(bits),
     shares: within.map((share) => ({ withinMeters: share.meters, share: share.known > 0 ? share.seen / share.known : null })),
     bearings,
+    typicalMeters: typicalRangeMeters(bearings),
     hiddenShare: 0,
     terrain: { finestCellMeters: 41, coarsestCellMeters: 171, installedMaxZoom: 12 },
   };

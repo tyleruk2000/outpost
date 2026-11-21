@@ -1,5 +1,6 @@
 import type { MapSources } from "@outpost/shared";
 import { describe, expect, it } from "vitest";
+import { rangeLayers } from "@/features/repeaters/map/range";
 import { MAP_STYLE_IDS, MAP_STYLES, nightRed, parseColour, roadClassColour } from "./map-styles";
 import { FALLBACK_THEME } from "./palette";
 import { buildStyle, type StyleInput } from "./style";
@@ -154,6 +155,20 @@ describe("the night map", () => {
     }
     expect(colours).toBeGreaterThan(50);
     expect(MAP_STYLES.night.printable).toBe(false);
+  });
+
+  it("draws the typical-range circle as the lightest of the range's lines, so that it shows on the dark red land", () => {
+    const theme = FALLBACK_THEME.light;
+    const overlays = {
+      sources: { "o-range": { type: "geojson", data: { type: "FeatureCollection", features: [] } } as never },
+      layers: rangeLayers(theme),
+    };
+    const style = buildStyle(input({ mapStyle: "night", overlays }));
+    const colourOf = (id: string) =>
+      (style.layers.find((layer) => layer.id === id) as unknown as { paint: Record<string, string> }).paint["line-color"]!;
+    const redness = (colour: string) => parseColour(colour)![0];
+    expect(redness(colourOf("o-range-typical"))).toBeGreaterThan(redness(colourOf("o-range-edge")));
+    expect(redness(colourOf("o-range-typical"))).toBeGreaterThan(redness(colourOf("o-range-ring")));
   });
 
   it("keeps a colour's lightness as a red", () => {

@@ -55,8 +55,10 @@ import {
   rangeShade,
   rangesData,
   readRange,
+  setRangesShown,
   stationOf,
 } from "./range";
+import { RangeKey } from "./range-key";
 
 /**
  * The part of the map the repeater's card leaves clear, measured: on a phone the card
@@ -171,8 +173,15 @@ export function useRepeaterRange({
   }, [outlines, names, extra]);
   useEffect(() => {
     engine?.setOverlay(RANGE_SOURCE, drawn.length > 0 ? rangesData(drawn) : EMPTY);
+    setRangesShown(engine ? drawn : []);
   }, [engine, drawn]);
-  useEffect(() => () => engine?.setOverlay(RANGE_SOURCE, EMPTY), [engine]);
+  useEffect(
+    () => () => {
+      engine?.setOverlay(RANGE_SOURCE, EMPTY);
+      setRangesShown([]);
+    },
+    [engine],
+  );
   // The ground in sight, one picture for each range, painted once for each answer and theme.
   const colour = useShadeColour("range");
   const pictures = useMemo(
@@ -412,6 +421,8 @@ function RangeControl({
               <div className="grid gap-1 text-small">
                 <p className="font-medium text-ink">{reading.title}</p>
                 {reading.furthest ? <p className="text-ink">{reading.furthest}</p> : null}
+                {reading.typicalMeans ? <p className="text-ink-muted">{reading.typicalMeans}</p> : null}
+                {range.data && range.data.coverage !== "none" ? <RangeKey typical={Boolean(reading.typicalMeans)} /> : null}
                 {reading.note ? (
                   <p className="text-ink-muted">
                     {reading.note}{" "}
@@ -449,8 +460,9 @@ function RangeControl({
                 ridges. A repeater may be heard from ground left clear and not heard from shaded ground.
               </p>
               <p>
-                The shaded ground is in sight of the aerial; ground left clear is hidden by nearer ground, or too far. The rings are 10, 25,
-                50 and 100 km from the aerial.
+                The shaded ground is in sight of the aerial; ground left clear is hidden by nearer ground, or too far. The grey rings are
+                10, 25, 50 and 100 km from the aerial, drawn out to the first beyond the furthest ground in sight. The dashed circle is the
+                typical range: half the directions round the aerial reach further, half not as far.
               </p>
               <p>
                 With no terrain the dashed circle is the smooth-Earth radio horizon, about 4.12 × (√h1 + √h2) km for heights in metres above

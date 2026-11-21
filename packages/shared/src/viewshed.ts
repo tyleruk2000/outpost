@@ -23,6 +23,7 @@ import {
   type SightRange,
   type SightRangeBearing,
   smoothRangeMeters,
+  typicalRangeMeters,
 } from "./radio-range.ts";
 import type { ElevationSampler } from "./terrain-sampler.ts";
 
@@ -185,6 +186,7 @@ export async function computeViewshed(
       seen: "",
       shares: RANGE_SHARE_WITHIN_METERS.map((withinMeters) => ({ withinMeters, share: null })),
       bearings: [],
+      typicalMeters: null,
       hiddenShare: null,
       terrain: null,
     },
@@ -226,6 +228,7 @@ export async function computeViewshed(
       seen: encodeBits(shed.bits),
       shares: shed.shares,
       bearings: shed.bearings,
+      typicalMeters: typicalRangeMeters(shed.bearings),
       hiddenShare: shed.hiddenShare,
       terrain:
         coarsest > 0
