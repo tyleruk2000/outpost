@@ -172,6 +172,9 @@ of what each feature does are in its own guide.
 - **GPX**: exported files have not been opened in another program (BaseCamp, OsmAnd, Organic Maps, Gaia
   GPS, Komoot, QGIS, GPXSee, gpx.studio, Google Earth, JOSM). No long national trail has been fetched to
   try the size limits.
+- **Finding a known route**: not tried with a route of thousands of ways from a real source, with real
+  gaps or branches, from a phone, or over a slow connection; a found route's heights not seen on real
+  terrain.
 - **Printing**: not tried on an iPhone, iPad or in Safari; canvas limits come from WebKit's source and
   bug tracker. Poppler drew bold lines regular.
 - **Place names for Great Britain**: search speed not measured on a Pi.
@@ -196,6 +199,8 @@ of what each feature does are in its own guide.
   once by hand on 16 November 2026 (Hearham 22,816 of 22,947 rows, IRTS 45 of 45, WIA 914 repeaters
   from 1,023 rows).
 - The by-hand steps for RepeaterBook and the Finnish site have not been walked through.
+- Quotations of several repeater publishers' pages were read through an extracting fetch tool and are
+  worth a second look by eye.
 - The CHIRP export has not been loaded into CHIRP or a radio.
 - 50,000 entries were measured on an Apple M2 Max, not a Pi.
 - The no-terrain radio-horizon formula has not been checked against a published copy.
@@ -221,6 +226,8 @@ of what each feature does are in its own guide.
 - Not tried on a real iPhone (first-tap sound, the silent switch, sound after sleep), or with a real
   paddle on a USB serial adapter, game-controller interface or mouse adapter. The suite's audio was not
   listened to.
+- The Farnsworth formula was not checked against the QEX article itself, the Koch order against LCWO's
+  list, or the keyer presets against makers' manuals.
 
 ### Mesh radio and the board
 
@@ -263,6 +270,8 @@ of what each feature does are in its own guide.
   2026; King's Lynn river stations, 17 November); the tests use recorded answers. Environment Agency
   warning times carry no zone and are read as UK time, unverified in summer and across a clock change.
   No real device position was asked for; a whole river-levels press for a real place was not timed.
+  Two publishers' pages that build themselves with JavaScript were read through a summary (marked
+  "(summary)" in [sources.md](sources.md)) and not read again on the page.
 - **Reference layers**: Overpass, Wikidata, Natural Earth, OurAirports, WorldPop, BABS and one Geofabrik
   extract were each fetched once by hand; the airport frequencies file, flood zones, Food Standards
   Agency and Geofabrik region downloads only against stand-ins. No whole state or country extract has

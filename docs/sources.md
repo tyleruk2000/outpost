@@ -1,1768 +1,948 @@
 # Sources for the catalogue
 
-This page lists the information sources that have been considered for Outpost's
-catalogue, says what Outpost does with each one, and gives the reason wherever a source
-is not used. It was last checked on 2026-11-16; the rows for FEMA and the CDC were checked again on 2026-11-17, and a wider search on 2026-11-17 added the rows numbered W1 onwards.
+Every source considered for the catalogue and for the figures Outpost ships: what Outpost
+does with each, its terms as read at the source, the day read, and why any is not used. Rows keep their numbers (1, R1, N1, W1,
+P1, T1 and so on) because the catalogue's notes and the code refer to them.
 
-The catalogue itself lives in [`catalog/manifests/`](../catalog/manifests):
+The catalogue lives in [`catalog/manifests/`](../catalog/manifests):
 
 | Manifest | What it holds | Entries |
 | --- | --- | --- |
-| `kiwix-essentials.json` | A starter selection of archives from the Kiwix library | 61 |
-| `kiwix-more.json` | Further Kiwix archives: programming documentation, more Project Gutenberg shelves, medical and science references, courses, talks, preparedness, more question-and-answer sites, and literature, picture books and sheet music | 107 |
-| `official-publications.json` | Individual PDF handbooks, guides, leaflets and textbooks, each fetched from its publisher's own website | 174 |
-| `radio.json` | Radio rules, frequency tables, field guides, broadcast guides and band plans as PDFs from their publishers (38), and five more Kiwix archives | 43 |
-| `outpost-reference.json` | Reference sheets written for Outpost and shipped with it; see [radio.md](radio.md) | 9 |
-| `logbook73.json` | The Radio Engineering Handbook and fifteen radio companion guides, written by this project's author for LogBook73 (MIT) and shipped as books; generated, see [radio.md](radio.md#the-handbook-and-the-radio-guides) | 16 |
-
-A manifest only describes content and says where it comes from, and nothing is fetched
-until a person asks for it. Two kinds of content ship with Outpost, in
-[`catalog/bundled/`](../catalog/bundled), and are added to the library by copying, with
-no network: its own reference sheets, which are original compilations written for
-Outpost; and the radio handbook and guides its author wrote for LogBook73, which are
-generated from that project under its MIT licence and are not checked by Outpost against
-the manufacturers' manuals ([radio.md](radio.md#the-handbook-and-the-radio-guides)). The
-format and the rules for entries are in [`catalog/README.md`](../catalog/README.md).
-
-## Status of each source
-
-"Via Kiwix" means the source is packaged as a ZIM archive by the Kiwix project and
-Outpost fetches that archive from Kiwix. "Direct" means an entry points at a file on
-the publisher's own website. Links in the last column go to the page that was read on
-2026-11-15; where a page could not be read, that is said. Sources first looked at on 2026-11-16 are in
-[their own section](#added-on-2026-11-16), numbered N1 onwards; rows here that changed that day say so.
-
-### General
-
-| # | Source | What it is | How Outpost uses it | Licence and terms |
-| --- | --- | --- | --- | --- |
-| 1 | Kiwix Library (library.kiwix.org) | A library of websites packaged as ZIM archives for offline reading | **Built in, and 173 catalogue entries** (61 in `kiwix-essentials`, 107 in `kiwix-more`, 5 in `radio`; 18 added on 2026-11-17, see [their section](#kiwix-entries-added-on-2026-11-17)). Each entry names a book; Outpost looks the book up in the library's feed at download time and takes the address, size and checksum from there. | No single licence: every book keeps its publisher's licence. Entries state the licence where it is known and say "See source" where it has not been checked. Kiwix's English terms-of-use page returned "not found" on the day, so no terms page is linked. On 2026-11-17 the `robots.txt` of the feed and of the file servers read `Disallow: /` for every client: see [Kiwix's robots.txt](#kiwixs-robotstxt-read-on-2026-11-17). |
-| 2 | Kiwix direct downloads (download.kiwix.org/zim/) | The file servers behind the library | **Built in.** Files are fetched from these servers and their mirrors, but manifests never contain the address of a `.zim` file: Kiwix rebuilds most books every month or two and removes old builds. | As for source 1. |
-| 3 | Project Gutenberg (gutenberg.org) | Public-domain books | **Via Kiwix: 17 entries.** Seven shelves and the complete English library in `kiwix-more`, eight literature and humanities shelves added on 2026-11-17 ([below](#kiwix-entries-added-on-2026-11-17)) (medicine, agriculture, technology, science, geography and recreation, naval science, military science, everything), one shelf in `kiwix-essentials`. **No direct entries, by decision.** On 2026-11-15 www.gutenberg.org answered every request with "403 Forbidden". On 2026-11-16 it answered, and its [robot access policy](https://www.gutenberg.org/policy/robot_access.html) was read: the website "is intended for human users only", automated tools are blocked, and the exceptions are for people who mirror or harvest the collection. It also says the generated formats (EPUB among them) "are re-built monthly". An entry that had Outpost fetch a book from the website would go against the first statement, and its pinned checksum would stop matching every month, so none is listed and nothing further was fetched. On 2026-11-17 the site answered 503 (Service Unavailable) with a retry-after of an hour, was not asked again, and the decision stands. A single book is best downloaded in a browser and added under Library. | Entries are marked "Public domain in the United States", as Project Gutenberg describes its books. `robots.txt` (read 2026-11-16) disallows only the search pages; the policy page is what rules out automated downloads. |
-| 4 | OpenStax (openstax.org) | Peer-reviewed college textbooks from Rice University | **Direct: 30 entries** (15 more on 2026-11-17: row W29) in `official-publications` (Anatomy and Physiology 2e, Microbiology, Clinical Nursing Skills, Biology 2e, Chemistry 2e, College Physics 2e, Astronomy 2e, Precalculus 2e, Introductory Statistics 2e; and, added on 2026-11-16, University Physics Volume 2, Calculus Volume 1, Prealgebra 2e, Pharmacology for Nurses, Additive Manufacturing Essentials and the high-school Physics). The PDF addresses come from OpenStax's own catalogue. The Kiwix library has no OpenStax archive. | CC BY-NC-SA 4.0. This is stated inside each PDF and in the licence fields of [OpenStax's catalogue](https://openstax.org/apps/cms/api/v2/pages/207/). Note that this is a non-commercial licence, not CC BY. The one exception listed is the high-school *Physics*, which its own copyright page and the catalogue give as CC BY 4.0. For the five other books added on 2026-11-16 the licence was taken from the catalogue; each file was seen to say its content is under a Creative Commons licence, and was deleted before the full line was copied down. |
-| 5 | Internet Archive (archive.org) | A very large archive of books, recordings, software and web pages | **Add your own files.** Not in the catalogue: rights differ from item to item, so no general entry would be honest. | The [terms of use](https://archive.org/about/terms) page is drawn by a script and could not be read by the catalogue check. Read the rights statement on each item. |
-| 6 | NASA (nasa.gov) | The US space agency | **Direct: 2 entries** from the NASA Technical Reports Server (NASA Systems Engineering Handbook; Fastener Design Manual). **Via Kiwix: 2 entries** in `kiwix-more` (Astronomy Picture of the Day; TED talks about NASA). | Each [Technical Reports Server record](https://ntrs.nasa.gov/api/citations/20170001761) gives the document's copyright status; both documents are marked as public use permitted. Astronomy Picture of the Day [says](https://apod.nasa.gov/apod/lib/about_apod.html) that NASA images are in the public domain but that some pictures are copyrighted by the people credited. |
-
-### Survival and preparedness
-
-| # | Source | What it is | How Outpost uses it | Licence and terms |
-| --- | --- | --- | --- | --- |
-| 7 | Ready.gov | The US government's public preparedness campaign, run by FEMA | **Direct: 9 entries** (5 more on 2026-11-17: row W6) (Are You Ready?; the full set of hazard information sheets; Emergency Supply List; Disaster Preparedness Guide for Older Adults). **Via Kiwix: 1 entry** in `kiwix-essentials` (the whole site). | The [publications page](https://www.ready.gov/publications) says the files may be downloaded at no cost and reproduced, provided nothing is altered and no endorsement is implied. |
-| 8 | FEMA (fema.gov) | The US Federal Emergency Management Agency | **Direct: 7 entries** (changed 2026-11-17): Planning Guidance for Response to a Nuclear Detonation (Third Edition); Taking Shelter from the Storm (FEMA P-320, December 2024); and the five *Protect Your Property* brochures (earthquakes, flooding, severe winds, storm surge, wildfires). On 2026-11-15 and 2026-11-16 www.fema.gov answered with HTTP 403 and nothing there was fetched. On 2026-11-17 it answered Outpost's own client, unchanged, with 200; `robots.txt` was read (it asks for `crawl-delay: 15` and disallows `/disaster/*`, search and the non-English paths) and every request to the host was at least 15 seconds after the last. **Left out:** the CERT Basic Training participant manual, because neither FEMA's CERT page nor Ready.gov's (which now redirects to it) links a copy, and Earthquake Safety at Home (FEMA P-530), because it was prepared by a contractor and some 40 of its photographs and graphics are credited to outside people and bodies. See [the 2026-11-17 section](#what-was-added-on-2026-11-17-for-cdc-and-fema-and-how). FEMA publications hosted on Ready.gov are covered by source 7. | The [website information page](https://www.fema.gov/about/website-information) (read 2026-11-17, last updated 1 May 2023): "Most material on FEMA.gov is free of copyright and may be copied and distributed without permission." It says FEMA sometimes uses licensed or restricted photos or graphics, to be checked for a copyright notice or photo credit, and that the DHS seal and marks have their own rules. |
-| 9 | Survivor Library (survivorlibrary.com) | A private collection of scanned older books on pre-industrial skills | **Not in the catalogue.** It is a third party's collection of other people's works, and the site's home page states no licence for the scans. Kiwix does publish the site as an archive (`survivorlibrary.com_en_all`, about 220 GB); it has been left out until someone has checked the rights. | No licence statement found on the [home page](https://www.survivorlibrary.com/). |
-| 10 | TruePrepper survival PDF collection | A preparedness website's page of downloadable manuals | **Not in the catalogue.** The page re-hosts manuals written by other publishers. The site says it will not infringe copyrights but gives no licence for the individual files, and the site itself is marked "All rights reserved". Where a manual has an official publisher (FEMA, the US Army, the FAA), the catalogue points at that publisher instead. Kiwix publishes the site's own articles as `trueprepper.com_en_all` (about 1.4 GB); it has been left out for the same reason. | [The page](https://trueprepper.com/survival-pdfs-downloads/): "All rights reserved". |
-
-### Medicine and food
-
-| # | Source | What it is | How Outpost uses it | Licence and terms |
-| --- | --- | --- | --- | --- |
-| 11 | CDC (cdc.gov) | The US Centers for Disease Control and Prevention | **Direct: 13 entries** (changed 2026-11-17; 5 more in row W7), one-page sheets: Make Water Safe During an Emergency; Water treatment while hiking, camping, and traveling; Eat Safe Food after a Power Outage; Emergency Wound Care After a Natural Disaster; Preventing Diarrhea After A Disaster; Heat-Related Illnesses; Carbon Monoxide Hazard: Using a Generator; Wash Your Hands. **Via Kiwix: 1 entry** in `kiwix-essentials` (Travelers' Health). On 2026-11-15 and 2026-11-16 www.cdc.gov and stacks.cdc.gov answered with HTTP 403. On 2026-11-17 www.cdc.gov answered Outpost's own client, unchanged, with 200; `robots.txt` was read (it disallows `/travel/`, `/flu/espanol/`, `/migration/`, `/niosh/archive/` and template paths, none of which is used). stacks.cdc.gov was not asked again and nothing is listed from it. **Left out:** Extreme Cold: A Prevention Guide, because its old page is gone (404) and the current winter weather pages link no PDF. | The [Use of Agency Materials page](https://www.cdc.gov/other/agencymaterials.html) (read 2026-11-17): "Most of the information on the CDC and ATSDR websites is not subject to copyright, is in the public domain, and may be freely used or reproduced without obtaining copyright permission." Conditions: credit CDC, imply no endorsement, do not change the substantive content, and say the material is available on the agency's website at no charge. Exceptions: material by contractors, grantees or third parties (which should carry a copyright statement), and the CDC logo. None of the eight sheets carries a copyright statement or outside credit. |
-| 12 | WHO publications (who.int) | The World Health Organization's guidelines and manuals, held in its IRIS repository | **Direct: 8 entries** (2 more on 2026-11-17: row W17) (Basic Emergency Care; Pocket Book of Primary Health Care for Children and Adolescents; Managing Complications in Pregnancy and Childbirth; Model List of Essential Medicines; Guidelines for Drinking-water Quality; Preventing Drowning). The repository answers a `HEAD` request with HTTP 500 although an ordinary download works, so the online check asks it for the first byte of each file instead. | CC BY-NC-SA 3.0 IGO for WHO's own publications, per its [copyright page](https://www.who.int/about/policies/publishing/copyright). Older documents need care: the 2013 *Pocket book of hospital care for children* is marked CC in the repository record but "All rights reserved" inside the file, so it was dropped. |
-| 13 | National Center for Home Food Preservation (nchfp.uga.edu) | A US centre for research-based home food preservation, hosted by the University of Georgia | **Direct: 8 entries**: the eight files that make up the *USDA Complete Guide to Home Canning* (2015 revision). **Via Kiwix: 1 entry** in `kiwix-essentials` (the same guide as an archive). | The guide is a US Department of Agriculture bulletin, offered by the centre as ["the electronic version of the USDA canning guide"](https://nchfp.uga.edu/resources/entry/about-the-usda-guide-to-home-canning-2015-revision). No reuse licence is stated in the files or on the page, and the website is marked "All rights reserved", so the entries say "See source". |
-
-### Repair, engineering and computing
-
-| # | Source | What it is | How Outpost uses it | Licence and terms |
-| --- | --- | --- | --- | --- |
-| 14 | iFixit | Community repair guides | **Via Kiwix: 1 entry** in `kiwix-essentials`. | CC BY-NC-SA 3.0, per iFixit's [licensing page](https://www.ifixit.com/Info/Licensing). |
-| 15 | Arduino documentation (docs.arduino.cc) | Official documentation for Arduino boards and software | **Not integrated.** No official offline bundle was found on the site. The text is kept in a Git repository, which is not a file Outpost can download and open. The Arduino questions and answers from Stack Exchange are in `kiwix-essentials`. | The content repository is licensed [CC BY-SA 4.0](https://github.com/arduino/docs-content/blob/main/LICENSE.md). |
-| 16 | DevDocs (devdocs.io) | Programming documentation gathered into one compact format | **Via Kiwix: 18 entries** in `kiwix-more` (Python, JavaScript, HTML, CSS, Web APIs, HTTP, Bash, Git, Linux man pages, C, C++, Go, Rust, Node.js, TypeScript, Docker, PostgreSQL, SQLite). Kiwix publishes about 225 more; add any of them with a manifest of your own. | The DevDocs application is under the [Mozilla Public License 2.0](https://github.com/freeCodeCamp/devdocs/blob/main/LICENSE); each documentation set keeps its own project's licence, so the entries say "See source". |
-
-### Agriculture, aviation, radio, weather and mountaineering
-
-| # | Source | What it is | How Outpost uses it | Licence and terms |
-| --- | --- | --- | --- | --- |
-| 17 | FAO publications (fao.org) | Manuals and reports of the UN Food and Agriculture Organization | **Direct: 7 entries** (3 more on 2026-11-17: row W18) (A Vegetable Garden for All; Small-scale Aquaponic Food Production; Farmer's Compost Handbook; Manual on Small Earth Dams). | © FAO. Each document prints its own terms; these four allow copying and downloading for private study, teaching and non-commercial use with acknowledgement, in line with FAO's [terms](https://www.fao.org/contact-us/terms/en/). *Rural structures in the tropics* (2011) was dropped because it asks for permission on request. |
-| 18 | FAA aviation handbooks | The US Federal Aviation Administration's training handbooks | **Direct: 6 entries** (Pilot's Handbook of Aeronautical Knowledge; Airplane Flying Handbook; Aviation Weather Handbook; Instrument Flying Handbook; Helicopter Flying Handbook; Aviation Maintenance Technician Handbook: General). | Works of the US Government. The [handbooks page](https://www.faa.gov/regulations_policies/handbooks_manuals/aviation) offers them for download; the FAA's [web policies](https://www.faa.gov/web_policies) carry no separate reuse statement. Images credited to outside contributors may remain in copyright. |
-| 19 | ARRL (arrl.org) | The US national association for amateur radio | **Not integrated.** ARRL's [copyright page](https://www.arrl.org/copyright) reserves all rights and forbids storing its publications in a retrieval system. Radio material in the catalogue comes from elsewhere: see [Radio](#radio) below. One ARRL newsletter page was read, and nothing kept, to trace where the "Wilderness Protocol" comes from; the reference sheet names it as the source. | All rights reserved. |
-| 20 | NOAA (noaa.gov) | The US National Oceanic and Atmospheric Administration, which includes the National Weather Service | **Direct: 9 entries.** Seven from the National Weather Service (Weather Spotter's Field Guide; Thunderstorms, Tornadoes, Lightning; Winter Storms; Cloud Chart; Observing Handbook No. 1; Worldwide Marine Radiofacsimile Broadcast Schedules; and, in `radio`, the NOAA Weather Radio brochure). Two added on 2026-11-16: *U.S. Chart No. 1* from the Office of Coast Survey (nauticalcharts.noaa.gov), and, in `radio`, the *NOAA Space Weather Scales* from the Space Weather Prediction Center (www.spaceweather.gov). The Weather Service's two-page *Lightning Safety for Backpackers and Campers* was downloaded and **left out**: it names no author, points to an outdoor school's lightning guidance, and may not be the Weather Service's own work. | Public domain unless noted otherwise, per the [NWS disclaimer](https://www.weather.gov/disclaimer), which asks that the material is not claimed as your own or altered and then presented as official; it was read again on 2026-11-16, and the Space Weather Prediction Center's pages point to it. For Chart No. 1 no reuse statement was read: www.noaa.gov/disclaimer answered HTTP 403. The chart's page says it is produced by NOAA and the National Geospatial-Intelligence Agency, and the entry says what was and was not read. |
-| 21 | UIAA (theuiaa.org) | The International Climbing and Mountaineering Federation | **Direct: 2 entries** from its Medical Commission (Emergency Field Management of Altitude Sickness; Water Disinfection in the Mountains). | The [medical advice page](https://www.theuiaa.org/mountain-medicine/medical-advice/) offers the papers for free download. No reuse licence is stated there or in the papers, and the site's terms page had no readable text, so the entries say "See source". |
-
-### Radio
-
-Added on 2026-11-15 with the radio reference sheets. These rows are numbered R1 onwards
-because they were not in the original list of sources. "Read for the sheets" means the
-page or document was fetched once and its facts used in a reference sheet, with nothing
-from it stored in the catalogue.
-
-| # | Source | What it is | How Outpost uses it | Licence and terms |
-| --- | --- | --- | --- | --- |
-| R1 | Ofcom (ofcom.org.uk) | The UK communications regulator | **Direct: 15 entries** in `radio` (Amateur Radio Licence Conditions Booklet; Amateur Radio Guidance for Licensees; Notice of Coordination Procedures; Phase 2 and 3 Change Guide; UK Frequency Allocation Table; Frequencies for Distress and Safety annex; Interface Requirements 2030, 2028, 2027 and 2027.2; PMR446 Information Sheet; Ship Radio Licences guidance notes; Ship Radio licence terms; and, added on 2026-11-16, Guidance on EMF Compliance and Enforcement and the EMF guide for amateur radio users). **Read for the sheets**: the same documents, and the page on receivers and scanners. | **Not the Open Government Licence.** Ofcom's [copyright page](https://www.ofcom.org.uk/about-ofcom/our-website/copyright) says its material "may be reproduced free of charge in any format or medium, provided that it is reproduced accurately and not used in a misleading context", acknowledged as Ofcom copyright with the document's title. The entries say so. The page was read again on 2026-11-16. |
-| R2 | US Government Publishing Office (govinfo.gov) | The official publisher of the Code of Federal Regulations | **Direct: 2 entries** in `radio` (47 CFR Part 97, amateur radio; Part 95, personal radio services; both the 1 October 2025 edition, the latest printed). **Read for the sheets**: the current electronic Title 47 from govinfo's bulk data, a 2013 Federal Register notice, and 47 U.S.C. 605. | Works of the US Government. |
-| R3 | eCFR (ecfr.gov) | The daily-updated electronic Code of Federal Regulations | **Not contacted for content.** Its `robots.txt` disallows the interfaces that serve whole parts, so the same text was taken from govinfo.gov's bulk data instead. | Works of the US Government. |
-| R4 | FCC (fcc.gov) | The US communications regulator | **Not integrated directly.** www.fcc.gov answered the catalogue check with HTTP 403 and was left alone. Its rules are covered by source R2. | Could not be read. |
-| R5 | NTIA (ntia.gov) | The US agency that manages federal spectrum use | **Direct: 1 entry** in `radio` (United States Frequency Allocation Chart, September 2025). The "Redbook" manual is now published as a web application at redbook.ntia.gov, with no single file to list, so it is **not integrated**. | Works of the US Government; the [chart page](https://www.ntia.gov/page/united-states-frequency-allocation-chart) carries no separate reuse statement. |
-| R6 | NIST (nist.gov) | The US national standards laboratory, which runs WWV, WWVH and WWVB | **Direct: 2 entries** in `radio` (Special Publication 432, NIST Time and Frequency Services, 2012; Special Publication 250-67, NIST Time and Frequency Radio Stations, 2005). **Read for the sheets**: the three station pages. **Direct: 1 entry** in `official-publications`, added later on 2026-11-16 once the online check could confirm it: Special Publication 811 (Guide for the Use of the SI, 2008). **Not listed:** Special Publication 330 (The International System of Units, 2019). It was fetched again and read: it is the United States version of the English text of the SI Brochure of the International Bureau of Weights and Measures, and carries a note from that body that all its works are protected by copyright and that the document was drafted with its permission. NIST's statement covers works its own employees wrote and says works by third parties may be in copyright, so no licence that lets the text be reused was read; see [the check and these three files](#what-the-online-check-could-not-express-and-now-can). | Works of the US Government, for what NIST's employees wrote: its [statement](https://www.nist.gov/open/copyright-fair-use-and-licensing-statements-srd-data-software-and-technical-series-publications), read on 2026-11-16, says such works are not subject to copyright protection within the United States and grants a worldwide right to reprint them, and that some works NIST publishes were written by third parties and may be in copyright. |
-| R7 | Maritime and Coastguard Agency (gov.uk) | The UK agency responsible for maritime safety information | **Direct: 3 entries.** In `radio`: Maritime Safety Information Leaflet, Advice Note 1033, January 2026; and, added on 2026-11-16, GMDSS: The Benefits of Digital Selective Calling. In `official-publications`: Life Saving Signals (added 2026-11-16). **Read for the sheets**: the leaflet, the GOV.UK page on 406 MHz beacons, and (2026-11-16) MGN 324 (M+F) Amendment 2 on the use of VHF. | [GOV.UK](https://www.gov.uk/government/publications/advice-note-1033-maritime-safety-information-msi-leaflet) says its content is under the Open Government Licence v3.0 "except where otherwise stated"; the leaflet's maps and one diagram are marked "All rights reserved", and the entry says so. |
-| R8 | IARU (iaru.org, iaru-r1.org, iaru-r2.org) | The International Amateur Radio Union and its regional organisations | **Direct: 7 entries** in `radio` (Ethics and Operating Procedures for the Radio Amateur, 4th edition; Region 1 HF and VHF band plans; Region 2 band plan; Region 3 band plan; Emergency Telecommunications Guide; Amateur and Amateur-satellite Service Spectrum). **Read for the sheets**: the same documents and the emergency frequencies page. | The operating guide states CC BY-SA 4.0 inside the file. The band plans, the emergency guide and the spectrum summary state no licence, and the website says its materials "may be subject to copyright", so those six entries say "See source". |
-| R9 | ITU (itu.int) | The UN agency for telecommunications | **Not in the catalogue.** Recommendations M.1677-1 (Morse code) and M.1172 (Q code) were **read for the sheets**; both are marked "All rights reserved. No part of this publication may be reproduced ... without written permission of ITU". The Radio Regulations themselves were not read. **The P.533 software and its maps** (github.com/ITU-R-Study-Group-3/ITU-R-HF, Study Group 3's repository, commit `82017594a1c6`): not in the repository or the packaged app; the HF planner's optional second model fetches the 25 map files from that repository's `P372/Data/` (137 MB) when a person asks, and the person builds the engine from its source. See [hf-propagation.md](hf-propagation.md#the-second-models-terms). **VOACAP's CCIR-derived coefficients** (CCIR Reports 322 and 340), shipped until 2026-11-16 on the strength of the first statement in the next column, are no longer in the repository or the packaged app because of the second; see source 37. | All rights reserved. For the P.533 software: no licence file; "may be used by implementers in their implementation of the Recommendation ... free from any copyright assertions", and headers that say "All rights reserved. No part of this publication may be reproduced, by any means whatsoever, without written permission of ITU". |
-| R10 | CEPT Electronic Communications Committee (docdb.cept.org) | The European body that harmonises spectrum use | **Direct: 3 entries** in `radio` (Recommendation T/R 61-01, the CEPT Radio Amateur Licence; T/R 61-02, the harmonised examination certificate and syllabus; ECC Decision (15)05 on PMR446, which was also **read for the sheets**). The database's older addresses redirect over plain http, so the entries use its https download addresses. | No licence is stated in the documents and the database's terms were not found, so the entries say "See source". |
-| R11 | US Coast Guard Navigation Center (navcen.uscg.gov) | The Coast Guard's pages on marine radio | **Not integrated.** The site answered the catalogue check with HTTP 403 twice (including for `robots.txt`) and was left alone. The marine distress frequencies in the sheets come from Ofcom and from 47 CFR Part 80 instead. | Could not be read. |
-| R12 | National Research Council Canada (nrc.canada.ca) | The operator of the time station CHU | **Not integrated.** The site answered HTTP 403 and was left alone; the sheet marks CHU "not verified". It answered HTTP 403 again on 2026-11-16 for the station's page, although its `robots.txt` now answers and admits ordinary clients. | Could not be read. |
-| R13 | National Physical Laboratory (npl.co.uk) and PTB (ptb.de) | The operators of the time stations MSF and DCF77 | **Read for the sheets** only: one page each. Nothing to download. | Not checked. |
-| R14 | BBC (bbc.co.uk) | The broadcaster of the Shipping Forecast | **Not read.** The BBC's website does not admit automated clients. The Shipping Forecast times in the sheet come from the MCA leaflet, and the reported closure of Radio 4 long wave is marked "not verified". | Not applicable. |
-| R15 | RSGB (rsgb.org) | The UK national society for amateur radio | **Not integrated.** No explicit licence was found for its publications or band plans, so none is listed and the UK band plans are not reproduced in the sheets. One news page was read, as a secondary source that the sheet names as such, for the reported date of the Radio 4 long wave closure. Its repeater list is source P1 below. | No licence found. |
-| R16 | US Army publications (armypubs.army.mil) | Field manuals and training circulars on radio and antennas | **Not integrated.** The site's `robots.txt` disallows all automated access, so no manual was looked for, whatever its distribution statement. Copies on other websites are re-uploads and are not used. | Could not be read. |
-| R17 | Preparedness websites (radiofreeq.wordpress.com, amrron.com) | A hobbyist blog and a private network's website | **Read for the sheets** only: one page each, to say where the "3-3-3" and "channel 3" conventions come from. Nothing from them is in the catalogue. | Not checked. |
-| R19 | CISA (cisa.gov) | The US agency responsible for emergency communications | **Direct: 2 entries** in `radio` (National Interoperability Field Operations Guide, version 2.02; Auxiliary Communications Field Operations Guide, version 1.1). | Works of the US Government; the [page that offers them](https://www.cisa.gov/resources-tools/resources/field-operations-guides) carries no separate reuse statement. |
-| R20 | Innovation, Science and Economic Development Canada (ised-isde.canada.ca) | The Canadian spectrum regulator | **Direct: 1 entry** in `radio` (RBR-4, Standards for the Operation of Radio Stations in the Amateur Radio Service). The site asks for a crawl delay of five to ten seconds. Its other amateur radio circulars were not looked for once a guessed address was not found. | No licence is stated in the file, and the Government of Canada's terms page would not load for the catalogue check, so the entry says "See source". |
-| R21 | ACMA (acma.gov.au) | The Australian communications regulator | **Not integrated.** The site dropped the connection on both attempts and was left alone. | Could not be read. |
-| R22 | ARISS (ariss.org) | The body that runs amateur radio on the International Space Station | **Read for the sheets** only: one page, for the station's frequencies. | Not checked. |
-| R23 | MCA marine guidance notes on radio (gov.uk) | For example MGN 324 on the use of VHF radio and AIS | **Not integrated.** The current edition is published as a web page with no PDF to list. On 2026-11-16 it was **read for the sheets** through GOV.UK's content service, and the emergency frequencies sheet quotes it. | Open Government Licence v3.0. |
-| R24 | Reticulum and Meshtastic | Open-source mesh radio projects | **Not integrated.** Reticulum's manual is offered only at a "latest release" address on GitHub that changes with every release and is served from other hosts, and it carries the project's own licence with restrictions; Meshtastic's documentation is a website with no single file. | Reticulum: its own licence. Meshtastic: not checked. |
-| R18 | Kiwix archives on radio | Searched for in the Kiwix library's feed | The feed has very little on radio beyond what was already listed (the amateur radio, signal processing and electronics Stack Exchange archives). **5 entries added** in `radio`: the Raspberry Pi, Network Engineering, Internet of Things, Space Exploration and Aviation Stack Exchange archives. Searches of the feed for amateur, ham, CW, SDR, packet, APRS, Meshtastic, LoRa, satellite, shortwave, scanner, RF, telecommunication, telegraph and wireless found nothing else. *S2 Underground* (a 5.5 GB video channel on "communications doctrine") was **left out**: it is a third party's video channel and its rights have not been checked. | Stack Exchange content is CC BY-SA. |
-
-### Added on 2026-11-16
-
-Sources first looked at on 2026-11-16. "Listed" means entries were added; "candidate"
-means the source looks worth having and something stopped it, which the row names.
-
-| # | Source | What it is | How Outpost uses it | Licence and terms |
-| --- | --- | --- | --- | --- |
-| N1 | Met Office (metoffice.gov.uk) | The UK's national weather service | **Listed: 9 entries** in `official-publications`, factsheets of its National Meteorological Library and Archive (1 Clouds, 2 Thunderstorms, 4 Climate of the British Isles, 6 The Beaufort Scale, 8 The Shipping Forecast, 10 Air masses and weather fronts, 11 Interpreting weather charts, 14 Microclimates, 15 Weather radar). **Left out:** factsheet 3 (Water in the atmosphere), whose text cannot be extracted from the file, so it could not be read or searched. Factsheet 2 was first left out because its address answers `HEAD` with "404" until an ordinary request has warmed the publisher's cache, and was added later the same day ([see below](#what-the-online-check-could-not-express-and-now-can)). | The [factsheets page](https://www.metoffice.gov.uk/research/library-and-archive/publications/factsheets) says all information originating from the Met Office is Crown copyright and available under the Open Government Licence. Photographs credited to named people or other bodies are not covered; the entries say so. |
-| N2 | Health and Safety Executive (hse.gov.uk) | The UK regulator for health and safety at work | **Listed: 6 entries** (INDG238 added on 2026-11-17: row W5) in `official-publications` (Basic advice on first aid at work, INDG347; Electrical safety and you, INDG231; Electricity at work: safe working practices, HSG85; Chainsaws at work, INDG317; Working at height, INDG401). Addresses were taken from each publication's own page. *First aid at work: guidance on regulations* (L74) was downloaded and left out: it is guidance for employers on the regulations and not a first aid reference. | The [copyright page](https://www.hse.gov.uk/help/copyright.htm) allows re-use of Crown material free of charge under the Open Government Licence, with the acknowledgement the entries carry; images the Crown does not own are excepted. |
-| N3 | GOV.UK publications (gov.uk) | Guides published by UK departments and agencies | **Listed: 6 entries.** In `official-publications`: Life Saving Signals (Maritime and Coastguard Agency), The Countryside Code summary (Natural England and Natural Resources Wales), Personal Flood Plan (Environment Agency), National Risk Register 2025 (Cabinet Office), Know Your Traffic Signs (Department for Transport). In `radio`: GMDSS: The Benefits of Digital Selective Calling (MCA). Each address was taken from GOV.UK's content service for the publication's own page. **Left out:** *SOLAS V for pleasure craft*, which GOV.UK marks as withdrawn; and the collision regulations (MSN 1781), whose current amendment is a web page. | Open Government Licence v3.0 "except where otherwise stated", read in the footer of a [publication page](https://www.gov.uk/government/publications/live-saving-signals). The Risk Register and the traffic signs book state the licence inside the file as well. |
-| N4 | Ordnance Survey (ordnancesurvey.co.uk) | Great Britain's national mapping agency | **Not listed.** Three guides were entered on 16 November 2026 and taken out again the same day, on the owner's decision: Map Reading: from the beginner to the advanced map reader; Map Reading Made Easy; Using the National Grid. They are not openly licensed (see the next column), and nothing in Outpost stops a portable drive from making a second copy. They can be had from its [teaching resources page](https://www.ordnancesurvey.co.uk/education/teacher-resources/primary). **Left out:** the legends for OS Explorer and OS Landranger maps, which print "Reproduction in whole or in part by any means is prohibited without the prior written permission of Ordnance Survey Limited"; and the map abbreviations sheet, whose address answered "not found". | **Not an open licence.** The guides are © Crown copyright, offered among OS's "free" teaching resources. The website's [general terms](https://www.ordnancesurvey.co.uk/legal/general-terms) say "You may access, view, download and print off one copy of any pages of our Website for your own personal use" and forbid commercial use without a licence. The entries say the file is for the person's own use and is not to be passed on. |
-| N5 | US Department of Energy (energy.gov) | The department's technical standards programme | **Listed: 18 entries** (10 more on 2026-11-17: row W15) in `official-publications`, DOE Fundamentals Handbooks from the 1990s: Electrical Science (4 volumes), Engineering Symbology, Prints, and Drawings (2), Mechanical Science (2). Addresses were taken from each volume's own page; the old address standards.doe.gov now redirects to the programme's page on energy.gov. The other handbooks in the series (mathematics, classical physics, thermodynamics, chemistry, instrumentation, materials, nuclear physics) were not looked at. | Each file is marked "Distribution Statement A. Approved for public release; distribution is unlimited." Works of the US Government. The department lists the series under the status "Archive". |
-| N6 | Lessons In Electric Circuits (ibiblio.org/kuphaldt) | Tony R. Kuphaldt's free textbook series on electricity and electronics, hosted by ibiblio | **Listed: 6 entries** in `official-publications` (DC, AC, Semiconductors, Digital, Reference, Experiments). Each address comes from the volume's own contents page. ibiblio asks crawlers to wait two seconds; three were left. | CC BY 4.0: each volume reproduces the licence. The series index says only "the Creative Commons License". |
-| N7 | Wireless Networking in the Developing World (wndw.net) | A free book on building low-cost wireless networks | **Listed: 1 entry** in `radio` (third edition, 2013; about 200 MB, the only edition the site's page links). | CC BY-SA 3.0, stated in the book and on the [licence page](https://wndw.net/license.html), which asks for a prominent link to wndw.net on copies. |
-| N8 | Kiwix library, second pass | The library's English feed as it stood on 2026-11-16 (1,309 books) | **Listed: 27 entries** in `kiwix-more`. Stack Exchange sites: Home Improvement, Woodworking, Travel, Medical Sciences, Homebrewing, Astronomy, Physics, Chemistry, Biology, Mathematics, Geographic Information Systems, Unix & Linux, Server Fault, Information Security, Stack Overflow, the French, German and Spanish language sites, and Language Learning. Wikimedia: Wikiversity, Wikipedia's million top articles, and Wikipedia's history and climate change selections. Others: Rabbit Waves, Grimgrains, Based Cooking and the OpenWrt wiki. Every name and edition was taken from the feed, and each resolves there. **Left out**, with reasons: the 193 map archives named `maps_en_*` (Outpost has its own maps); CrashCourse, Surviving Residency, Skin of Color Society and other video or third-party collections whose terms were not read; the further LibreTexts shelves (K-12, Workforce and others) and Book Dash, because the addresses tried for their licence pages were not found; game, fiction and fan wikis; and the rest of the Project Gutenberg shelves, which the complete edition already covers. | Stack Exchange: CC BY-SA, versions by date of contribution, per its [licensing page](https://stackoverflow.com/help/licensing). Wikimedia: CC BY-SA 4.0, read on [Wikiversity](https://en.wikiversity.org/wiki/Wikiversity:Copyrights) and Wikipedia. Grimgrains: CC BY-NC-SA 4.0, per its [about page](https://grimgrains.com/site/about.html). OpenWrt wiki: CC BY-SA 4.0, per its [licence page](https://openwrt.org/license). Rabbit Waves and Based Cooking state no licence on their pages; their own repositories carry the MIT licence and the Unlicense, and the entries say that this is where the licence was read. |
-| N9 | Sphere (spherestandards.org) | The Sphere Handbook of minimum standards in humanitarian response | **Candidate, not listed.** The site's `robots.txt` admits ordinary clients, but its pages on the handbook and on intellectual property answered HTTP 403, so the terms could not be read. Search results describe the handbook as free to download with all rights reserved. | Could not be read. |
-| N10 | IFRC (ifrc.org) | The Red Cross and Red Crescent's international first aid, resuscitation and education guidelines | **Candidate, not listed.** The document's page answered HTTP 403. | Could not be read. |
-| N11 | Médecins Sans Frontières medical guidelines (medicalguidelines.msf.org) | Clinical guidelines and essential drugs | **Not listed.** The address a search gives for the guideline as a PDF returns a one-page error; the site builds its PDFs on request, so there is no fixed file. Its about page states no licence. | Not found. |
-| N12 | Hesperian Health Guides (hesperian.org) | *Where There Is No Doctor* and related books | **Not listed.** The [open copyright policy](https://hesperian.org/open-copyright-policy/) covers translation and adaptation in print, and says "please contact Hesperian for written permission to use our materials in any digital format". The books are also offered a chapter at a time under file names that change. Download them yourself and add them under Library. | Permission needed for digital use. |
-| N13 | US agencies whose sites refused or failed | National Geospatial-Intelligence Agency (msi.nga.mil: *American Practical Navigator*, *International Code of Signals*), Forest Products Laboratory (*Wood Handbook*), PHMSA (*Emergency Response Guidebook*), NWCG (*Incident Response Pocket Guide*), USDA Food Safety and Inspection Service | **Candidates, not listed.** msi.nga.mil answered HTTP 503 twice; www.fpl.fs.usda.gov answered 502 twice, and the Forest Service's research repository disallows all automated access in `robots.txt`; www.phmsa.dot.gov, www.nwcg.gov and www.fsis.usda.gov answered 403. None was asked again. | Could not be read. These would be works of the US Government. |
-| N14 | US Environmental Protection Agency (epa.gov) | Emergency disinfection of drinking water | **Not listed.** The guidance is a web page; the page links no PDF of its own. | Not applicable. |
-| N15 | Radio sources looked at again | RSGB's repeater list (ukrepeater.net), Summits on the Air, the IARU Region 1 VHF and HF managers' handbooks | **Not listed.** ukrepeater.net's `robots.txt` disallows its data and documents folders and asks for ten seconds between requests; nothing was fetched. A search found no licence for the Summits on the Air rules, only a copyright notice on a copy elsewhere; of its own site only `robots.txt` was read. The IARU handbooks were not fetched: the IARU documents already listed state no licence, and no more "See source" entries were added. | No licence found. |
-| N16 | Not examined | Mountaineering Scotland, the British Mountaineering Council, Mountain Rescue England and Wales, CAWST, Practical Action, Oxfam's technical briefs, the US National Park Service, the US Fire Administration, the US Coast Guard's boating safety site, the remaining FAO and WHO titles | **Thought of and not pursued** for want of time. Only `robots.txt` was read for some of them, and nothing else was fetched. They are named here so that the next pass can start with them. | Not checked. |
-### Audiobooks and the NIOSH Pocket Guide, added on 2026-11-17
-
-Read on 2026-11-17 for two requests: public-domain audiobooks from LibriVox, and the
-NIOSH Pocket Guide to Chemical Hazards. How each was read is in
-[the section below](#what-was-read-on-2026-11-17-for-audiobooks-and-the-niosh-pocket-guide-and-how).
-
-| # | Source | What it is | How Outpost uses it | Licence and terms |
-| --- | --- | --- | --- | --- |
-| AU1 | NIOSH (cdc.gov/niosh) | The US National Institute for Occupational Safety and Health, part of the CDC | **Listed: 1 entry** in `official-publications`: *NIOSH Pocket Guide to Chemical Hazards*, DHHS (NIOSH) Publication No. 2005-149, third printing (September 2007), 454 pages, 6,339,883 bytes. The address was taken from NIOSH's own pages: the [Pocket Guide page](https://www.cdc.gov/niosh/npg/) links "PDF Version" to the publication's page, which links the file. NIOSH also keeps an online edition that it updates more often than the PDF; the entry says so. | The file's own page ii: "This document is in the public domain and may be freely copied or reprinted." CDC's terms as in row 11, whose attribution wording the entry carries. The file names NIOSH as author and carries no copyright notice or outside credit. |
-| AU2 | LibriVox (librivox.org) | Volunteer recordings of public-domain books | **Link out, by decision**: a shelf of 15 books in Explore (`catalog/audiobooks.json`), each with a link to its LibriVox page and to its zip, which the person downloads in their own browser and adds under Library. Outpost never fetches a recording. | The [public domain page](https://librivox.org/pages/public-domain/): "all our recordings are public domain in the USA, but not necessarily in other countries", and "if you are outside the USA, we recommend that you check the copyright status of the work in your country before downloading our recording of it." It explains that LibriVox works under US law because its domain, website and audio files are in the USA. It also says "book summaries, CD cover art, and any other material that goes into our catalog with the audio recordings are in the public domain", which is what lets the shelf hold LibriVox's records. |
-| AU3 | Internet Archive (archive.org), for LibriVox's files | Where LibriVox's audio is hosted | **Not fetched.** LibriVox's [API page](https://librivox.org/api/info) says each book's zip is "Hosted by Archive.org", and its addresses are now archive.org's `/compress/` service, which builds the zip when it is asked. The terms of use could not be read (as row 5), so Outpost does not fetch from archive.org; the shelf's links are followed by the person's browser. | `robots.txt` (read 2026-11-17) disallows only `/control/` and `/report/`. [Terms of use](https://archive.org/about/terms): the page, and its older address `terms.php`, are drawn by a script ("Javascript is required for this site") and could not be read on 2026-11-17. |
-| AU4 | Kiwix library, for LibriVox | The Kiwix feed Outpost already uses | **Nothing to list.** One search of the feed (`entries?q=librivox`) on 2026-11-17 found no book. | Not applicable. |
-
-### The wider search, 2026-11-17
-
-Read on 2026-11-17 for the owner's request for more sources, "think prepper stuff, world
-ended or just no internet or power for a few days or even years what would we need. Also
-just interesting stuff to read". Rows are numbered W1 onwards. How the pages were read,
-and what was fetched, is in [the section below](#what-was-added-on-2026-11-17-in-the-wider-search-and-how);
-what was wanted and could not be had is in [Wanted, and not yet possible](#wanted-and-not-yet-possible).
-Every quotation was read on that day on the page linked, through Outpost's own client.
-
-**A few days without power or internet**
-
-| # | Source | What it is | How Outpost uses it | Licence and terms |
-| --- | --- | --- | --- | --- |
-| W1 | Be Ready, Cabinet Office (beready.campaign.gov.uk) | The UK Government's preparedness campaign | **Listed: 2 entries**: Household Emergency Plan (8 pages) and Be Ready Checklist (2 pages), both October 2026, linked from its [Be ready for emergencies](https://beready.campaign.gov.uk/be-ready-for-emergencies/) page. `robots.txt` allows everything. | [About this website](https://beready.campaign.gov.uk/about-this-website-and-uk-resilience/): "All content is available under the Open Government Licence v3.0, except where otherwise stated". Neither file states otherwise. |
-| W2 | GOV.UK: Home Office and UK Health Security Agency (www.gov.uk, assets.publishing.service.gov.uk) | Fire safety, cold, heat and flooding guidance | **Listed: 6 entries**: *Fire Safety in the Home* (Home Office, 24 pages, version 4, 2021); UKHSA's Easy Read booklets on staying safe in cold weather, staying safe in hot weather, keeping cool at home and what to do after a flood; and *Top tips for keeping warm and well this winter*. Addresses from GOV.UK's content service for each publication. **Left out:** the main UKHSA guidance, the Food Standards Agency's advice on food in a power cut and after a flood, the Environment Agency's *Prepare your property for flooding* (now an HTML guide), UKHSA's chemical emergency advice: all HTML only, with no file to list. UKHSA's carbon monoxide documents are for clinicians, not households. | The footer of each publication page: "All content is available under the Open Government Licence v3.0, except where otherwise stated". The fire safety booklet: "©Crown Copyright 2021. Published by the Home Office." The top-tips leaflet says it "was prepared by UK Health Security Agency (UKHSA) and Age UK"; GOV.UK publishes it under the same footer and nothing in it is marked as excepted, so it is listed, and its entry names Age UK. **For the owner:** drop it if joint work with a charity should be treated like FEMA P-530. |
-| W3 | Ready Scotland (www.ready.scot, which redirects to ready.campaign.gov.scot) | The Scottish Government's preparedness site | **Listed: 1 entry**: Home Emergency Plan (2 pages, March 2026). Its list of publications for responders and community groups was not taken further. | The plan's page: "All content is available under the Open Government Licence v3.0, except for graphic assets and where otherwise stated". The entry says the graphics are not covered. |
-| W4 | nidirect (www.nidirect.gov.uk) | Northern Ireland's government site; plans by the Regional Community Resilience Group | **Listed: 2 entries**: Household Emergency Life-Saving Plan (8 pages) and Household Severe Weather Plan (20 pages). `robots.txt` asks for a ten-second crawl delay, which was kept. | [Crown copyright](https://www.nidirect.gov.uk/articles/crown-copyright): "You may use and re-use the information featured on this website (not including logos) free of charge in any format or medium, under the terms of the Open Government Licence". Third-party rights, logos and images are excepted. |
-| W5 | Health and Safety Executive (www.hse.gov.uk) | Gas safety | **Listed: 1 entry**: *Gas appliances: get them checked, keep them safe* (INDG238), on carbon monoxide. Address from HSE's gas safety index. | The file: "© Crown copyright If you wish to reuse this information visit www.hse.gov.uk/copyright.htm"; that page is quoted at row N2. |
-| W6 | Ready.gov (www.ready.gov) | FEMA's Ready campaign | **Listed: 5 entries**: Prepare Your Pets for Disasters; Disaster Preparedness Guide for Caregivers; Preparing Makes Sense for People with Disabilities (September 2026 file); Family Emergency Communication Plan; Prepare with Pedro, a children's activity book. **Fetched and left for later:** the children's emergency kit checklist, *Safeguard Critical Documents and Valuables*. | As row 7. The caregivers' guide says FEMA made it with the Rosalynn Carter Institute for Caregivers and carries no copyright statement of either; Pedro was made "in partnership with the American Red Cross" and says "© 2018 by the Federal Emergency Management Agency", the Red Cross claiming only its name and emblem as trademarks. Both entries name the partner. **For the owner:** as for W2. |
-| W7 | CDC (www.cdc.gov) | Natural disaster communication resources | **Listed: 5 entries**: Coping with a Disaster or Traumatic Event; Ready Wrigley Prepares for Winter Weather (a 20-page children's book); Managing Chronic Conditions after a Natural Disaster; Managing Your Period During a Natural Disaster; Safe and Healthy Diaper Changing Steps in Emergency Settings. **Left out:** *Helping Children Cope During and After a Disaster*, whose page describes a factsheet for parents but whose file is a hurricane activity sheet. Fetched and left for later: *You Can Control Mold*, *Use Safe Water During an Emergency*, the Ready Wrigley emergency kit booklet. | As row 11. The Wrigley book credits its artwork and layout to a named person and claims no copyright. |
-| W8 | US Environmental Protection Agency (www.epa.gov) | Mould after a flood | **Listed: 1 entry**: *Homeowner's and Renter's Guide to Mold Cleanup After Disasters* (4 pages, 2015). The emergency disinfection guidance remains a web page (row N14). | [EPA disclaimers](https://www.epa.gov/web-policies-and-procedures/epa-disclaimers): "These documents may be freely distributed and used for non-commercial, scientific and educational purposes. ... Individual documents on the EPA website may have different copyright conditions, and that will be noted in those documents." The file has no such note. |
-| W9 | FEMA (www.fema.gov) and the Met Office's WeatherReady | Winter storm and power-cut material | **Not listed.** Of FEMA only `robots.txt` was read (crawl delay 15 kept); the winter storm brochure was found only by a search engine, and Ready.gov's hazard sheets already cover it. The Met Office's winter toolkit page offers only a toolkit of campaign messages for organisations. | Not applicable. |
-| W10 | Government of Canada (getprepared.gc.ca, which redirects to canada.ca) | *Your emergency preparedness guide* | **Not listed.** canada.ca's Get Prepared pages are HTML only, and the PDF guide is on publications.gc.ca, which was not asked. | [Terms](https://www.canada.ca/en/transparency/terms.html): "Unless otherwise specified you may reproduce the materials in whole or in part for non-commercial purposes, and in any format, without charge or further permission". A candidate for the next pass. |
-| W11 | New Zealand's National Emergency Management Agency (getready.govt.nz) | Household plan and Get Ready booklets | **Not listed: refused.** `robots.txt` answered 404 and the home page 403; not asked again. | Could not be read. |
-| W12 | St John Ambulance (www.sja.org.uk) | First aid advice | **Not listed.** | [Legal and site information](https://www.sja.org.uk/legal-and-site-information/): "No material from this Website ... may be copied, modified, republished, posted, transmitted, or distributed in any way, without the prior written permission of St John Ambulance National Headquarters." |
-| W13 | RoSPA (www.rospa.com) and the American Red Cross (www.redcross.org) | Home safety; preparedness checklists | **Not listed.** | RoSPA's [copyright page](https://www.rospa.com/help-information/copyright-disclaimer): "You may store on your personal computer or print copies of extracts from these pages for your personal and non-commercial use only". The American Red Cross's [terms](https://www.redcross.org/terms-of-use.html): "You may use and access the Service solely for Your personal, non-commercial use." |
-| W14 | Electrical Safety First, the National Fire Chiefs Council, London Fire Brigade | Electrical and fire safety | **Not listed.** Electrical Safety First's `/legal/` answered 404, so its terms were not read. The NFCC's `robots.txt` (nfcc.org.uk) has `Disallow: *.pdf` for all clients. London Fire Brigade has no `robots.txt` and no terms page was found; the Home Office booklet (W2) covers the same ground. The NHS, gov.wales and gov.scot were not asked: searches found HTML pages only. | As said. |
-
-**Months and years: growing, repair, medicine and the knowledge underneath**
-
-| # | Source | What it is | How Outpost uses it | Licence and terms |
-| --- | --- | --- | --- | --- |
-| W15 | US Department of Energy (www.energy.gov) | The rest of the DOE Fundamentals Handbooks (row N5) | **Listed: 10 entries**: Mathematics (2 volumes), Chemistry (2), Material Science (2), Classical Physics, Thermodynamics, Heat Transfer and Fluid Flow (3). Addresses from each handbook's page. Instrumentation and Control, and Nuclear Physics and Reactor Theory, were not fetched. | Each file: "Distribution Statement A. Approved for public release; distribution is unlimited." As row N5. |
-| W16 | USDA Forest Service, National Technology and Development Program (www.fs.usda.gov) | Hand tools and trail work | **Listed: 3 entries**: *One Moving Part: The Forest Service Ax Manual* (2020); *Crosscut Saw Manual* (1977, revised 2003); *Trail Construction and Maintenance Notebook* (2007). Addresses from each publication's library card. **Left out:** *Saws That Sing* (about fifteen figures reproduced "with permission" from other publishers; for later); *An Ax to Grind* (replaced by the 2020 manual). | [Disclaimers and important notices](https://www.fs.usda.gov/about-agency/disclaimers-important-notices): "Information presented on the Forest Service website is considered public information and may be distributed or copied. Use of appropriate byline/photo/image credits is requested." The ax manual's outside material (a poem, a painting, artwork used with permission, a photographer's pictures) is named in its entry. |
-| W17 | WHO (iris.who.int) | More WHO manuals | **Listed: 2 entries**: *Doing What Matters in Times of Stress* (2020) and *Guidelines on Sanitation and Health* (2018). **Left out**, because the file says "All rights reserved" although the repository record gives a Creative Commons licence (as with the 2013 pocket book in row 12): the mhGAP Intervention Guide 2.0 (2016), *Pregnancy, Childbirth, Postpartum and Newborn Care* (3rd edition, 2015), and *Psychological First Aid: Guide for Field Workers* (2011). | Both listed files: "Some rights reserved. This work is available under the Creative Commons Attribution-NonCommercial-ShareAlike 3.0 IGO licence". Crawl delay of ten seconds kept. |
-| W18 | FAO (www.fao.org, openknowledge.fao.org) | More FAO manuals, asked for by document code | **Listed: 3 entries**: *Small-scale Poultry Production* (2004); *Quality Declared Seed System* (2006); *The Importance of Soil Organic Matter* (Soils Bulletin 80, 2005). **Left out:** *Beekeeping and Sustainable Livelihoods* (2nd edition) and *Seeds in Emergencies*, which authorise non-commercial use "upon request" (as *Rural structures in the tropics*, row 17); *Meat Processing Technology* ("No part of this publication may be reproduced ... without the prior permission"); *Bees and their Role in Forest Livelihoods* ("No images to be reproduced without permission"). The post-harvest losses manual, the small-scale fish farming handbook and *Grain storage techniques* have no PDF (HTML only). | "Reproduction and dissemination of material in this information product for educational or other non-commercial purposes are authorized without any prior written permission from the copyright holders provided the source is fully acknowledged." For the poultry book this was read in FAO's [HTML edition](https://www.fao.org/4/y5169e/y5169e00.htm), because the PDF's copyright page has no extractable text; the seed book's text is in a font whose letters had to be decoded. |
-| W19 | USGS (pubs.usgs.gov) | Water from the ground | **Listed: 1 entry**: *Basic Ground-Water Hydrology* (Water-Supply Paper 2220). | The file: "Although this report is in the public domain, it contains copyrighted materials that are noted in the text." |
-| W20 | US National Park Service (www.nps.gov) | Preservation Briefs: repairing old buildings | **Listed: 5 entries**: Briefs 2 (repointing with lime mortar), 21 (flat plaster), 29 (slate roofs), 39 (controlling damp) and 47 (maintaining the outside of small and medium buildings), from the [Preservation Briefs page](https://www.nps.gov/orgs/1739/preservation-briefs.htm). They suit British houses of brick, stone, lime and slate. Brief 9 (wooden windows) was fetched and left for later: its scanned text has no readable reuse sentence. | Each listed file: "This publication is not copyrighted and can be reproduced without penalty. Normal procedures for credit to the author[s] and the National Park Service are appreciated." Briefs 39 and 47 add that outside photographs may not be used to illustrate other publications; their entries say so. |
-| W21 | SARE (www.sare.org) | Sustainable Agriculture Research and Education, a US Department of Agriculture programme | **Listed: 1 entry**: *Building Soils for Better Crops*, 4th edition (2021). *Crop Rotation on Organic Farms* was fetched and left for later: first published by another body, with no copyright statement of its own. | [Permissions and attribution](https://www.sare.org/about/sare-outreach/publishing-with-sare-outreach/recommended-attribution-format/): "SARE content may be copied and distributed with attribution for educational, non-commercial purposes." and "Copyright is retained by SARE and the University of Maryland." |
-| W22 | ICRC (www.icrc.org, shop.icrc.org) | *War Surgery*, Volume 1 (2nd edition, 2019): surgery for injuries with few resources | **Listed: 1 entry.** The address is the shop's free e-book download for the English edition, confirmed by the file's own reference number. Volume 2 was not fetched. | [Copyright and terms of use](https://www.icrc.org/en/copyright-and-terms-use), under personal and non-commercial use: "Documents may be copied on condition that copyright and source indications are also copied, no modifications are made and the document is copied entirely." The file: "© ICRC, November 2019". |
-| W23 | FAA (www.faa.gov) | Mechanics' handbooks | **Not listed, by choice.** The *Aviation Maintenance Technician Handbook: Airframe* (112 MB) and AC 43.13-1B were fetched and pass (works of the US Government, as row 18), but are about aircraft and were set aside for things a household needs more. The Powerplant handbook (205 MB, no published checksum) was not fetched. | As row 18. |
-| W24 | CAWST (www.cawst.org, washresources.cawst.org) | Household water treatment and the biosand filter construction manual | **Candidate, not listed.** The files are served from `cdn.sanity.io`, CAWST's content service, which was not asked; so no file was fetched, measured or read. | [Terms](https://www.cawst.org/privacy-policy-and-terms?lang=en): "The content on this website is licensed under Creative Commons Attribution-ShareAlike 4.0 International License (CC BY-SA 4.0)". |
-| W25 | Peace Corps (files.peacecorps.gov) | Manuals on beekeeping, gardening, water and appropriate technology | **Not listed:** `robots.txt` disallows `/manuals/` (and `/etools/`). Nothing else was asked. | Not applicable. |
-| W26 | Practical Action (practicalaction.org) | Technical briefs | **Not listed.** The pages read (the energy briefs page and the batteries brief) give no file address and no licence or terms. | None found. |
-| W27 | Forest Products Laboratory (www.fpl.fs.usda.gov) and NGA (msi.nga.mil) | The *Wood Handbook*; Bowditch's *American Practical Navigator* and the *International Code of Signals* | **Not listed: failed again.** Each was allowed one attempt, since on 2026-11-16 they failed rather than refused (row N13): `robots.txt` answered 502 ("Our services aren't available right now") and 503 (an apology page). research.fs.usda.gov disallows all automated access and was not asked. | Could not be read. |
-| W28 | NRCS, the Marine Corps, the Navy, ATTRA | Pond handbook (AH 590), survival manuals, rate training manuals, sustainable farming notes | **Not found** on the publishers' own hosts: searches found copies only on other people's sites, which are not used. Only `robots.txt` was read at NRCS, the Marine Corps and ATTRA; no Navy host was asked. | Not applicable. |
-
-**Textbooks, reference and good reading**
-
-| # | Source | What it is | How Outpost uses it | Licence and terms |
-| --- | --- | --- | --- | --- |
-| W29 | OpenStax (openstax.org, assets.openstax.org) | More textbooks (source 4) | **Listed: 15 entries**: University Physics Volumes 1 and 3, Calculus Volumes 2 and 3, Algebra and Trigonometry 2e, Organic Chemistry, World History Volumes 1 and 2, U.S. History, Introduction to Philosophy, Principles of Economics 3e, Writing Guide with Handbook, and three nursing books (Fundamentals, Medical-Surgical, Maternal-Newborn), whose entries say they were written for practice in the United States. Addresses from OpenStax's catalogue. assets.openstax.org has no `robots.txt` (it answers 403 from its storage service). | Each file's copyright page: "Textbook content produced by OpenStax is licensed under a Creative Commons Attribution Non-Commercial ShareAlike 4.0 International License (CC BY-NC-SA 4.0)", and the catalogue's licence field agrees. No file says "all rights reserved"; the many © lines in the nursing and history books are credits for figures, which the entries except. |
-| W30 | NASA history e-books (www.nasa.gov) | The NASA History Series, from [nasa.gov/ebooks](https://www.nasa.gov/ebooks/) | **Listed: 2 entries**: *NACA to NASA to Now* (SP-4419) and *50 Years of Solar System Exploration* (SP-2021-4705). history.nasa.gov now redirects its books to www.nasa.gov. Six more books on the page were not opened. | [Media usage guidelines](https://www.nasa.gov/nasa-brand-center/images-and-media/): NASA content "generally are not subject to copyright in the United States", "NASA should be acknowledged as the source of the material", and NASA occasionally uses third parties' copyright material. Neither file contains a copyright notice. |
-| W31 | Standard Ebooks (standardebooks.org) | Carefully made public-domain EPUBs of the classics | **A link candidate, not listed.** No file was fetched. | The texts are thought public domain in the United States and Standard Ebooks' own work is CC0, so the licence is not what stands in the way. [Bulk downloads](https://standardebooks.org/bulk-downloads): "Access to our bulk downloads is a benefit of Patrons circle membership."; [feeds](https://standardebooks.org/feeds): access to its catalogue feeds for reading apps is likewise a benefit of membership. Its `robots.txt` disallows the download folders for named AI agents. A program fetching its books for free reads against those, and it revises books in place, so a pinned checksum would drift. A shelf of links followed in the browser, as for LibriVox, would be honest. |
-| W32 | Open Book Publishers, StoryWeaver, African Storybook, Global Digital Library, LibreTexts | Open scholarship; children's picture books; open textbooks | **Not listed.** Open Book Publishers answered `robots.txt` with 429 and a "Vercel Security Checkpoint" page that asks for JavaScript; StoryWeaver's terms page was a Cloudflare challenge; African Storybook states no licence in text and builds its files on request; the Global Digital Library was not followed for want of time; libretexts.org links no licensing page (as in N8). None was asked again. | Could not be read, or none found. |
-
-### Kiwix's robots.txt, read on 2026-11-17
-
-A finding about the source Outpost's Kiwix downloads rest on (rows 1 and 2), with what
-the owner decided at the end.
-
-- **What the files say.** Read through Outpost's own client on 2026-11-17:
-  `https://opds.library.kiwix.org/robots.txt` (the feed every Kiwix entry is resolved
-  through) and `https://download.kiwix.org/robots.txt` (the file servers) both read, in
-  full:
-
-  ```
-  User-agent: *
-  Disallow: /
-  ```
-
-  `https://library.kiwix.org/robots.txt` was redirected to `browse.library.kiwix.org`,
-  which answered with a page headed "Access confirmation": "Please confirm… Due to
-  unreasonnable traffic from (AI) crawlers, we're requiring an initial confirmation step
-  to continue. … This requires Javascript and Cookies to be enabled (content you're
-  looking for already requires JS). You shall be prompted only once a week, given you
-  keep the cookie." (its `last-modified` was 26 October 2026).
-- **One request before the rule was read.** The researcher reading the feed sent the
-  request for `robots.txt` and the request for the English feed
-  (`/catalog/v2/entries?lang=eng&count=-1`, 1,312 books) in one go, so the feed was
-  fetched once before the rule was read. Nothing more was asked of either host after
-  that, by any tool; the online check of 2026-11-17 was run with
-  `--skip-host opds.library.kiwix.org`, so no Kiwix entry was checked online that day.
-- **What Kiwix says elsewhere.** www.kiwix.org's `robots.txt` disallows only
-  `/wp-admin/`; its sitemap lists no terms of use (privacy policy, about, contact,
-  non-profit, donate). wiki.kiwix.org's `robots.txt` asks for a ten-second crawl delay
-  and nothing else. Its [OPDS page](https://wiki.kiwix.org/wiki/OPDS) says "Kiwix-serve
-  provides an OPDS feed. This API allows to retrieve the library metadata, but not the
-  content themselves." and gives the feed's addresses; its
-  [Catalog page](https://wiki.kiwix.org/wiki/Catalog) sets out the catalogue's fields
-  with a column saying which projects use each (IIAB, RACHEL, Kiwix, "Everyone"); its
-  [content page](https://wiki.kiwix.org/wiki/Content_in_all_languages) says "Kiwix
-  recommends using BitTorrent", which "saves our bandwidth", or a direct download in the
-  browser. None of these pages says, for or against, whether other software may read
-  the feed or download the files on a person's behalf.
-- **Two readings.** One: `robots.txt` speaks to crawlers, and a reader fetching one feed
-  and one file because a person pressed Download is doing what Kiwix's own apps do.
-  The other: the file names no exception, and the rule this catalogue keeps for its
-  sources is that a path `robots.txt` disallows is left alone.
-- **What was decided.** The owner decided on 17 November 2026: Outpost goes on as it
-  was. It fetches Kiwix's feed and a file only when a person presses Download, which is
-  what the feed is published for and what Kiwix's own readers do, and is not crawling.
-  What changed: the catalogue's online check, which walks every entry, now leaves Kiwix's
-  hosts alone unless `--include-kiwix` is given (`KIWIX_HOSTS` in
-  `apps/server/src/cli/validate-catalog.ts`), and no development tool or builder asks
-  those hosts for anything. Kiwix has not been asked for its view; writing to the project
-  to ask would settle it, and nothing depends on the answer for now. The Kiwix entries
-  added on 2026-11-17 were kept.
-
-### Kiwix entries added on 2026-11-17
-
-Kept, by the owner's decision on [Kiwix's robots.txt](#kiwixs-robotstxt-read-on-2026-11-17). Names, editions and sizes were taken from the one copy of
-the English feed fetched on 2026-11-17 (1,312 books), and each name was checked against
-that copy; none of these entries was checked online. **18 entries** in `kiwix-more`:
-
-| Archive | Size in the feed | Licence, and where it was read (2026-11-17) |
-| --- | --- | --- |
-| Project Gutenberg shelves PR (English literature), PS (American literature), PZ (fiction and juvenile), PN (literature, general), PA (Greek and Latin), PE (English language), M (music), B (philosophy, psychology, religion) | 13.0, 11.6, 14.5, 3.1, 0.5, 0.6, 3.7 and 5.4 GB | "Public domain in the United States", as row 3; Project Gutenberg's own site was not asked. The notes say a few books may still be in copyright in the United Kingdom. **A new fact against N8**, which left these shelves out because the complete edition covers them: `gutenberg_en_all` is now 221 GB in the feed, so the shelves are the way to have the literature. |
-| Wikiquote (without images) | 401 MB | [Wikiquote:Copyrights](https://en.wikiquote.org/wiki/Wikiquote:Copyrights): material written by its editors, "including the selection and arrangement of quotes", is under CC BY-SA; "Most quotations are ... either from public domain sources or copyrighted sources, and are subject to their own licensing requirements". |
-| Book Dash picture books | 11.7 GB (built June 2024) | **N8 left it out** for want of a licence page; it was found on the [open content partners page](https://bookdash.org/who-we-are/open-content-partners/): "We publish all of our books under a Creative Commons CC BY 4.0 license". |
-| Mutopia Project sheet music | 6.6 GB (2,124 pieces) | [Legal page](https://www.mutopiaproject.org/legal.html): "All music on Mutopia may be freely downloaded, printed, copied, distributed, modified, performed and recorded", each piece under CC BY-SA, CC BY or in the public domain. |
-| Stack Exchange: Literature, History, Philosophy, English Language and Usage, Puzzling, Music: Practice and Theory, Parenting | 74, 324, 219, 774, 591, 345 and 60 MB | CC BY-SA, as the other Stack Exchange entries (N8). |
-
-**Considered and left out from the feed:** the Internet Encyclopedia of Philosophy,
-Prunelle's children's books, Tom Lehrer's songs, xkcd, Nicky Case, Open Music Theory,
-the Milne open textbooks, ProofWiki, PlanetMath, VOA Learning English and the Chopin and
-Celtic score collections (their publishers' licences were not read; several are probably
-open and are the place to start next); One More Library (a third party's collection);
-CrashCourse and TED (video; TED's terms not read); the Gutenberg history shelves of 40
-and 47 GB. No Wikijunior, Wikibooks selection, smaller Wiktionary or "wp1" Wikipedia
-selection is in the English feed. Fifteen more Stack Exchange sites, three more
-Gutenberg shelves and two Wikipedia selections pass and are left for later.
-
-With them, `pnpm catalog:validate` passes with 410 entries. In packs they appear only in
-"Something good to read" (Wikiquote, the Greek and Latin shelf, Literature and Puzzling),
-"General reference" (Wikiquote) and "For children" (Parenting); the larger archives are
-left to be fetched one at a time.
-
-### Repeater lists
-
-Read on 2026-11-16 for the repeater database ([radio.md](radio.md#repeaters)), in two
-sittings: the first for importing a file a person has, the second for the sources the
-Repeaters screen lists by country. These rows are numbered P1 onwards. The question
-asked of each was narrower than for a document: may an application fetch the list when
-a person asks, keep a copy for that person, and show it with no connection?
-
-**Where this stands.** Each publisher is declared in
-[`catalog/repeater-sources.json`](../catalog/repeater-sources.json) as one of three
-kinds, and the Repeaters screen shows them by country:
-
-- **fetch**: the publisher offers a data file, and nothing in its terms or `robots.txt`
-  forbids an application fetching it when a person asks. Outpost fetches that one file
-  when somebody presses **Get the list**, and at no other time.
-- **link**: the publisher offers files but an application may not fetch them (its
-  terms, `robots.txt`, a sign-in or a check for a browser say so), or its terms could
-  not be established. The screen gives the publisher's page and the steps to download
-  the file by hand; the importer reads it.
-- **none**: nothing usable. Said so that nobody looks twice.
-
-Outpost does not read a list out of a web page, does not answer a check that its
-visitor is a browser, does not sign in, and does not go round a `robots.txt` rule or a
-rate limit. Nothing here is in the catalogue and nothing is bundled.
-
-| Country | Publisher | Kind | Why, in short | Where the terms were read |
-| --- | --- | --- | --- | --- |
-| United Kingdom | RSGB ETCC, ukrepeater.net (P1) | **link** | On the second reading its server refused a program outright and then put up a check for a browser, before any file was asked for. Its pages state no terms either way. | `robots.txt` (refused, HTTP 403, twice); its pages as read in the first sitting |
-| Ireland | IRTS (P4) | **fetch** | Offers a CHIRP file by name at a fixed address with no sign-in; `robots.txt` disallows only `/callbook` and `/lib`; no terms, licence or copyright notice on the pages that offer it. The one fetch that rests on a file being offered and nothing forbidding it, not on stated leave. | `robots.txt`, [the repeater page](https://www.irts.ie/cgi/repeater.cgi), its downloads page |
-| Worldwide | Hearham, hearham.com (P12) | **fetch** | Its page says the listing is "Free to use and free to use in your application" and the "JSON API is available to download or use in your offline/online application". | `robots.txt`, [the repeaters page](https://hearham.com/repeaters), [its terms](https://hearham.com/terms) |
-| Worldwide | RepeaterBook (P2) | **link** | Forbids it in so many words: "bulk extraction, mirroring, redistribution, offline bundling, and secondary API use require written permission". | [`robots.txt`](https://www.repeaterbook.com/robots.txt); its API and legal pages as read in the first sitting |
-| Worldwide | Open Repeater (P3) | **link** | Offers files to people, names no file address, and disallows the API a program would use; its terms contradict the licence it states. | `robots.txt`; its downloads and terms pages as read in the first sitting |
-| Australia | Wireless Institute of Australia (P5) | **link** | "© 2026 Wireless Institute of Australia all rights reserved"; the CSV is offered to anyone in a browser. | [The repeater data page](https://www.wia.org.au/members/repeaters/data/) (the site has no `robots.txt`) |
-| Australia | ACMA register (P6) | **none** | Its licence would allow a copy, but it is every radio service in several tables and Outpost does not read it. | [Its licence](https://cdn.acma.gov.au/offline-rrl/doc/LICENCE.TXT) |
-| Finland | SRAL, automatic.sral.fi (P7) | **link** | Its terms allow non-commercial amateur radio applications. Not fetched yet because its API gives modes and access as numbers from further tables, which Outpost does not read. | `robots.txt`; the terms of use in the script that draws its pages; `/openapi.yaml` |
-| Europe | PZK: przemienniki.net and repeate.rs (P13) | **none** | Maps only: no file is offered and no terms are stated for the data. | `robots.txt` and the home page of each |
-
-| # | Source | What it holds | What its terms say | What Outpost does |
-| --- | --- | --- | --- | --- |
-| P1 | RSGB ETCC (ukrepeater.net) | The list of United Kingdom repeaters and gateways kept by the RSGB's Emerging Technology Co-ordination Committee. Its [downloads page](https://ukrepeater.net/csvfiles.html) offers nine CSV files, made afresh on each request, with no registration: voice repeaters (808 rows, 68 kB on the day), voice repeaters and gateways with status (1,348 rows, 148 kB), all modes (808 rows, 63 kB), a version with no headings, Echolink and AllStar links, a list up to UHF, packet, and a channel plan. Fields in the fullest file: the list's own number, callsign, band, channel, the two frequencies, aerial height, power, modes, locator, town, postcode area, region, CTCSS tone, DMR colour code, keeper, latitude, longitude, status. The page says entries whose keepers asked for privacy "are likely to have the location detail truncated or obfuscated". The same page names a "beta" API at api-beta.rsgb.online. The home page carried news dated the day before, so the list is current. | **Nothing either way.** The downloads page, the home page, the about page and the API's page state no licence, no copyright notice, no terms of use and nothing about automated access or keeping a copy. The only words near the subject are the footer's "free of sponsors – free of ads – no cookies – no registration – yours to enjoy!". `robots.txt` asks every client for a ten-second crawl delay and disallows a list of folders (`/data3/`, `/documents/`, `/scripts/` and others); the addresses of the CSV files are not among them. The privacy policy (a PDF) was not read. | **Link: downloaded by hand.** Read again on 2026-11-16 to decide between fetching and a link, and the site decided it: two requests for `robots.txt`, eleven seconds apart, by a program that named itself plainly, were refused. The first answer was "403 - Forbidden | Access to this page is forbidden."; the second was a page titled "Just a moment..." that asks for JavaScript and cookies, which is a check that the visitor is a browser. Nothing else was asked of the site. Outpost does not get round such a check, so the list is one to download in a browser. Had the site answered, the case for fetching was fair (files offered to anyone with no sign-in, a crawl delay that expects programs, the CSV addresses not disallowed) and so was the case against (no stated leave); it did not come to that. A catalogue entry is also ruled out by the catalogue's own rule that a file carries a checksum: these files are generated on request. The importer recognises three of the layouts by their headings (the two voice lists and the all-modes list), so a file saved from that page in a browser is read with nothing to configure. To learn those headings and the forms their values take, three of the files were fetched once each on 2026-11-16, eleven seconds apart, with a generic client name; they were read, used to write the importer, and deleted. No row of them is in this repository: the tests use made-up stations. **What would change this:** a written answer from the ETCC that an application may fetch the file when a person asks, and a server that lets one. The committee is reached through ukrepeater.net. An administrator who has such an answer can declare the source as `fetch` in their own source file. |
-| P2 | RepeaterBook (repeaterbook.com) | A worldwide directory with an export API (one address for North America, one for the rest of the world). Fields named on its [API page](https://www.repeaterbook.com/wiki/doku.php?id=api): frequency, input, tones, town, county, state, callsign, use, operational status, mode flags, DMR colour code and ID, D-STAR, Fusion, NXDN, P25, linked-node numbers, notes, last update. | **Forbidden without written permission.** `robots.txt` opens with a policy summary: "AI/model training, bulk extraction, mirroring, redistribution, offline bundling, and secondary API use require written permission", and disallows `/api/`. The API page (last modified 2026-10-25) says "API access is not open by default", "Approval is required before access is granted", that a distributed application must not embed a shared token, that a client "may cache only the minimum data reasonably necessary for the approved workflow", and lists "redistributable offline repeater databases" among the things not authorised. Its [legal page](https://www.repeaterbook.com/index.php/about/legal) (last revised 2025-05-13) limits material to "your personal, non-commercial home use only" and forbids "data-mining, web-mirroring, scraping, or automated data copying of any kind". | **Not integrated, and not contacted** beyond `robots.txt` and those two pages. An offline repeater database is the very thing its terms name. Whether a file a person exported for their own use may be kept in a tool of their own is between that person and RepeaterBook; Outpost's importer will read such a CSV, as it reads any, and says nothing either way. **What would change this:** RepeaterBook's written approval of Outpost as an application, which its page says it may give a non-commercial project. Each person would then need a token of their own. |
-| P3 | Open Repeater (openrepeater.org) | A directory of repeaters which, by a [write-up of it](https://hamradio.my/openrepeater-free-amateur-radio-repeater-directory/) dated 2026-08-10, are submitted by its users and reviewed before they are published; the same write-up says its API needs a free key and allows 30 requests a day. The pages read give no count of repeaters or countries. | **Stated as open, with a contradiction.** Its [downloads page](https://www.openrepeater.org/downloads) says "Repeater data is licensed under CC0" and anyone can "download files without signing in"; the footer says "Data licensed under CC0 1.0". Its [terms](https://www.openrepeater.org/terms) (last updated June 2026) say "Site content belongs to Open Repeater and its contributors unless stated otherwise" and "You may not resell or commercially redistribute the database without written permission", which does not sit with CC0. `robots.txt` disallows `/api/`. The terms name no legal entity, and where its entries first came from was not looked into. | **Not integrated.** The page that offers the files is drawn by a script and names no file address, so there is nothing fixed to list, and the route a script would use is the API that `robots.txt` disallows. The contradiction in its terms, and not knowing where its rows came from, are reasons of their own. A CSV saved from it in a browser can be imported like any other. |
-| P4 | IRTS (irts.ie) | The Irish Radio Transmitters Society's [repeater page](https://www.irts.ie/cgi/repeater.cgi): about seventy voice repeaters with channel, frequencies, callsign, access and location, marked "Updated 24/02/2026", and four files for programming radios, one of them a CHIRP CSV. | No licence, copyright notice or terms on the page, and none on the society's downloads page, which lists the same four files (the CHIRP file as 4.5 kB). `robots.txt`, read on 2026-11-16: "Disallow: /callbook", "Disallow: /lib", and nothing else. The privacy policy was not read. | **Fetch: the CHIRP file, when a person asks.** The page offers the files by name ("Download the repeater listings in various formats") at fixed addresses with no sign-in, the file's folder is not disallowed, and nothing forbids it. Nothing grants leave in so many words either: this is the one source Outpost fetches on that footing, and the Repeaters screen says so beside it. The file was fetched once on 2026-11-16 to confirm it is CHIRP's layout: 45 channels, last changed by the society on 31 March 2026, each named with a callsign and a site. It holds no positions, so these entries are listed but are not on the map. **What would change this:** a word from the IRTS either way. An administrator can make it a link in their own source file. |
-| P5 | Wireless Institute of Australia (wia.org.au) | A [repeater directory](https://www.wia.org.au/members/repeaters/data) as PDF and CSV (dated 2026-07-05), which the page says is cross-referenced with the regulator's register. | "© 2026 Wireless Institute of Australia all rights reserved." The page addresses "Application Developers who use this data" but grants nothing. The site has no `robots.txt` (HTTP 404 on 2026-11-16). | **Link: downloaded by hand.** The importer recognises the CSV by its headings. To learn them, the file dated 5 July 2026 was fetched once on 2026-11-16 from the address the page gives, read, and kept out of the repository: twelve columns, rows that head each section and name its mode, about 900 repeaters once those listed under two modes are counted once. It gives no positions. Its status letters are explained in a PDF that was not read: O and W are read as operational, as the page says, and the others are kept as written. |
-| P6 | ACMA Register of Radiocommunications Licences (Australia) | The regulator's register of licensed stations in Australia, offered as one download. Its download page was not opened; a search engine's extract of it says the file is remade every few hours. Amateur repeaters would be a small part of it. | Not Creative Commons: its own [licence](https://cdn.acma.gov.au/offline-rrl/doc/LICENCE.TXT), accepted by downloading, allows a person "to use, reproduce and adapt the Register" and "to incorporate the Register in an electronic information retrieval system", asks for the credit "Based on Australian Communications and Media Authority information", and forbids reproducing the details of licensees who are people. | **None: nothing Outpost can read.** Its licence, read again byte for byte on 2026-11-16, would allow a copy to be kept. It is not built because the register is every radio service in several tables to be joined and filtered, far larger than the importer's limits, and its licence is accepted by the person who downloads it ("By clicking on the link below you are agreeing"). The register itself was not downloaded. It is the place to start if positions for Australian repeaters are wanted, since the WIA's file has none. |
-| P7 | SRAL (automatic.sral.fi) | The Finnish league's list of automatic stations, with a page headed "Data export / machine-to-machine API". | **Read on 2026-11-16, at the source.** The site is drawn by scripts; `robots.txt` disallows its sign-in, help and old pages and `/js`, and the scripts that draw the pages are in `/assets`, which it does not disallow. The terms of use in them read: "This service and data may be used for non-commercial amateur radio applications only. Commercial use is not permitted.", "Do not overload the service. Avoid unnecessary queries.", and that breaking them may end in blocking. Its API is described at `/openapi.yaml`, whose header gives the API description itself an MIT licence. | **Link, for now.** Its terms would let Outpost fetch it. It is not fetched because `GET /api/stations` gives each station's modes and access as numbers that are looked up in further tables, and that reading has not been built; the API was not called. Until then the site's own export for CHIRP is the way (the names of its pages were taken from its script, not walked through in a browser). Seven requests were made of it in all, which is more than was meant: a home page and an export page that are both the same empty shell, then two scripts and the API description. |
-| P8 | BrandMeister, EchoLink, AllStarLink, IRLP, RadioID | Networks and registries that publish lists of their own nodes or of DMR repeaters. | **No terms found.** A search for each found descriptions of the lists and of other people's use of them, and no page stating who may fetch or keep them. On 2026-11-16 RadioID's `robots.txt` was read (it disallows `/account/` and `/database/view`) and its page of database files was asked for once: the answer was a page headed "Checking your browser…". BrandMeister's site has no `robots.txt`. The others were not contacted. | **Not listed on the screen.** Not finding terms is not finding permission, and a check for a browser is not something Outpost answers. |
-| P9 | OpenStreetMap | The map's own data has a tag for an amateur repeater (`communication:amateur_radio:repeater`), with frequency, shift and tone as further tags. | ODbL, as for the rest of the map. | **Not used.** A 2021 question on OpenStreetMap's help site, as a search engine extracted it, gives 182 mapped worldwide; it is not a repeater list, and the map tiles Outpost installs do not carry these tags. |
-| P10 | Regulators other than the ACMA | No list of repeaters published by Ofcom itself was found: the licence says a repeater's callsign is "allocated and published by the Radio Society of Great Britain or any other body stipulated by Ofcom", which is source P1. Germany's Bundesnetzagentur publishes a list of callsigns as a PDF; it was not read. | Not applicable, or not read. | **Not integrated.** |
-| P11 | CHIRP (chirpmyradio.com) | Not a list: the radio programming software whose CSV layout Outpost reads and writes. | Its licence was not read, because nothing of it is in Outpost. | **Read for the format only.** The column names, their order, the defaults and the words for tone modes and modes were taken from `chirp/chirp_common.py` in [CHIRP's source](https://github.com/kk7ds/chirp) on 2026-11-16. A layout is not a work; no code was copied. |
-| P12 | Hearham (hearham.com) | A listing of about 23,000 repeaters (22,947 on 2026-11-16), two thirds of them in North America, offered as one JSON file of about 10 MB at `/api/repeaters/v1`. Fields: its own number, callsign, latitude, longitude, town, group, linked node, mode, the tone or code to send and to expect, frequency and shift in hertz, description, power source, whether it is in use, and any restriction. | **Offered to applications, in so many words.** Its [repeaters page](https://hearham.com/repeaters) says: "Free to use and free to use in your application. ( JSON API is available to download or use in your offline/online application!)". `robots.txt` disallows only comment and favourite pages. Its [terms](https://hearham.com/terms) (updated 14 November 2024) ask users not to "disassemble, reverse engineer, or otherwise intrude on server components or app components not expressly published as open-source", and say nothing against fetching the list. The answer carried a header "X-RateLimit-Limit: 60". | **Fetch, when a person asks.** One request for the one file, no more often than once a minute. It was fetched once on 2026-11-16 to learn its layout and kept out of the repository. **Two things to know.** The "group" field of 1,911 rows reads RSGB and of 979 reads WIA, with others naming other bodies: those rows appear to come from the lists of P1 and P5, whose publishers grant nothing. Hearham's leave is Hearham's to give for its own service; what it covers for those rows was not established, and Outpost keeps the list on the person's device and passes it to nobody. And 1,225 callsign and frequency pairs appear more than once in the file, which is what the import's handling of duplicates is for. |
-| P13 | Polski Związek Krótkofalowców: przemienniki.net and repeate.rs | Maps of repeaters, for Poland and for 26 more countries, "created by" the Polish Amateur Radio Union. | **Nothing stated.** Both `robots.txt` files allow browsing; przemienniki.net's adds content signals ("search=yes,ai-train=no"). Neither home page, read on 2026-11-16, mentions an export, an API for others or a licence. Each draws its map from an address of its own under `/wp-json/`. Their privacy policies were not read. | **None.** No file is offered, and Outpost does not read a list out of a web page or use an address a site keeps for itself. An older przemienniki.net is remembered as having an export; nothing of one was found on the day. |
-| P14 | ÖVSV (repeater.oevsv.at) | The Austrian society's map and list of repeaters. | **Not established.** `robots.txt` reads "Allow: /". The page is drawn by a script and the part that came back states no terms; a search found none. | **Not listed on the screen.** Worth reading by hand in a browser. |
-| P15 | Germany, the Netherlands, Japan, Belgium | Searched for on 2026-11-16, not visited. | A search found no list of repeaters as a data file from the Bundesnetzagentur, the Dutch RDI or JARL (only notices and PDFs about them). A search extract says the Belgian UBA offers its list as XLS, PDF and KMZ; that was not confirmed at the source, and Outpost reads none of those formats. | **Not listed on the screen.** These, and every country not named here, are covered only as far as the worldwide sources cover them. |
-
-What this means for a person, said once: under **Repeaters → Get a list**, press
-**Get the list** for a source Outpost may fetch, or follow the steps for one it may
-not and import the file you saved. Either way the list goes into your own database and
-nowhere else, and Outpost keeps the date of its data and says how old it has become.
-
-A fetched file cannot be held to a checksum, as a catalogue download is: its publisher
-makes it afresh when it is asked for. What stands in its place is the importer, which
-reads the file as text, checks every value and caps its size and its rows, and the
-preview, which shows how the file was read before anything is kept
-([security.md](security.md)).
-
-### Maps and geospatial data
-
-| # | Source | What it is | How Outpost uses it | Licence and terms |
-| --- | --- | --- | --- | --- |
-| 22 | OpenStreetMap | The free, community-made map of the world | **Built in.** The Maps screen downloads regions cut from the Protomaps build of OpenStreetMap data; see [maps.md](maps.md). The OpenStreetMap wiki is also in `kiwix-essentials`. Named routes are fetched from it on request: see [Routes](#routes). | Open Database Licence, per the [copyright page](https://www.openstreetmap.org/copyright). The credit is shown on the map. |
-| 23 | Geofabrik downloads (download.geofabrik.de) | Regional extracts of raw OpenStreetMap data, updated daily | **Not integrated for map tiles.** The extracts are raw data, not tiles. See [the note below](#geofabrik-extracts-and-what-outpost-uses-instead). Since 2026-11-16 they are read for the reference layers (R4). | [ODbL 1.0](https://download.geofabrik.de/); the service is offered free of charge by Geofabrik. |
-| 24–25 | Natural Earth | Public-domain map data at small scales | **Built in.** The 1:110m data draws the simple world outline beneath the map and the boxes of the country presets. | Public domain, as recorded in [maps.md](maps.md). The Natural Earth terms page did not answer on the day (two time-outs), so it was not read again. |
-| 26 | USGS (usgs.gov) | The US Geological Survey | **Direct: 5 entries** (Basic Ground-Water Hydrology added on 2026-11-17: row W19) (Topographic Map Symbols; Finding Your Way with Map and Compass; Map Projections: A Working Manual; and, added on 2026-11-16, The Universal Transverse Mercator (UTM) Grid). USGS map and elevation data are not integrated. | The Publications Warehouse [says](https://pubs.usgs.gov/documentation/faq) that PDF files of USGS-published reports are in the public domain, though some illustrations are used with permission. The main usgs.gov site returned an empty page to the catalogue check. |
-| 27a | Ordnance Survey OpenData: OS Open Names (read 2026-11-17) | Settlements, hills and other named features, roads and postcodes of Great Britain, about three million records, republished every three months | **Downloaded on a press** from the [OS Downloads API](https://docs.os.uk/os-apis/accessing-os-apis/os-downloads-api/technical-specification), which "To use the OS OpenData parts of this API, you do not require an API Key": no account, no key. The CSV file (103,312,081 bytes for the October 2026 edition) is read into the place search; see [maps.md](maps.md#place-names-for-great-britain). OS Terrain 50 was read and not added (see maps.md). `api.os.uk` has no robots.txt (it answers the address with the API's own index); docs.os.uk's robots.txt allows all. | [OS OpenData](https://www.ordnancesurvey.co.uk/opendata): "OS OpenData is licensed under the Open Government Licence (OGL) which allows you to use the OS OpenData datasets in any way and for any purpose"; "We simply ask that you acknowledge us with “Contains OS data © Crown Copyright [and database right] (year)”". The file's own `Doc/licence.txt`: "Contains OS data © Crown Copyright and database rights 2026." — Outpost shows this line, from each edition's file, on the map, in the search list and beside the download. [OGL v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/): "You are free to: copy, publish, distribute and transmit the Information; adapt the Information"; "You must … acknowledge the source of the Information in your product or application by including or linking to any attribution statement specified by the Information Provider(s) and, where possible, provide a link to this licence". The test fixture `apps/server/test/fixtures/maps/os-names-sample.ts` holds 44 records copied from the file, with the statement. |
-| 27 | NASA Earthdata Search | A search tool over NASA's Earth-observation datasets | **Not integrated.** It is an interactive search over scientific data files, not a set of documents or map tiles; nothing in it is a single stable file that the library or the map could use as it stands. | NASA's [data use guidance](https://www.earthdata.nasa.gov/engage/open-data-services-software-policies/data-use-guidance) says the data are freely accessible and asks for citation. |
-| C1 | NOAA NCEI and the British Geological Survey, World Magnetic Model 2025 (ncei.noaa.gov) | The model of the Earth's magnetic field used for navigation, 2025.0 to 2030.0: 90 coefficients and their yearly changes | **Built in, shipped**: the coefficient file `WMM.COF` unchanged in `packages/shared/src/wmm-coefficients.ts`, for the declination on Tools → Compass and the map's centre card. Fetched by hand once on 2026-11-17; nothing is fetched at run time. See [The World Magnetic Model and the compass](#the-world-magnetic-model-and-the-compass) and [tools-compass.md](tools-compass.md). | Public domain: "The WMM source code is in the public domain and not licensed or under copyright." Notice given under 17 U.S.C. 403 in the file's header and the docs. |
-| C3 | W. Tobler, *Three presentations on geographical analysis and modeling*, NCGIA Technical Report 93-1 (1993), [eScholarship copy](https://escholarship.org/uc/item/05r820mz) (read 2026-11-21) | The hiking function: walking speed from the slope of the ground, from Imhof's (1950) data | **Formula only**, for how far on foot from a point ([maps.md](maps.md#how-far-on-foot-from-a-point)). Page 4: "For walking on footpaths in hilly terrain: W = 6 exp ( -3.5 * abs(S + 0.05)) where W is the walking velocity, S is dh/dx = slope = tan (theta) ... The velocity is given in km/hr. On flat terrain this works out to 5 km/hr. For off-path travel multiply by 3/5 (= 0.6)." The slower paces and the 45° limit are Outpost's own, and are said to be. | A university technical report; only the published formula is used, with the credit. |
-| C2 | Ordnance Survey, A guide to coordinate systems in Great Britain (v3.6, 2020) | The National Grid's datum and projection, with formulae and worked examples | **Formulae only**: the map's grid references already follow it; the compass works grid convergence from that projection. The PDF is not shipped. | © OS 2020. Only the published formulae are used; no text or figure is reproduced. `robots.txt` allows `/documents/resources/`. |
-| C3 | NGA.SIG.0012_2.0.0_UTMUPS, The Universal Grids and the Transverse Mercator and Polar Stereographic Map Projections (NGA, 2014-03-25) | The definition of UTM, UPS and MGRS on WGS 84, with worked examples | **Rules and test figures only**: zones, bands, the Norway and Svalbard exceptions, the 100 km square letters (scheme "AA") and the polar letters; its worked examples are the tests. The PDF is not shipped. | A US Government work. NGA's servers did not answer on 2026-11-21; the official file was read from the Internet Archive's copy. |
-| C4 | DMA TM 8358.2, The Universal Grids: UTM and UPS (1989); NOAA NGS datasheets HV4442, UW5293, AI9478 and TW0515; FGDC-STD-011-2001, United States National Grid | UPS worked examples on WGS 84; survey marks with their UTM coordinates, convergence and USNG references; the USNG's truncation rule | **Test figures only.** Read 2026-11-21. | US Government works. TM 8358.2 from DTIC's copy in the Internet Archive (DTIC refused the request). |
-
-### The World Magnetic Model and the compass
-
-Read on 2026-11-17, one request each, with an honest client name. NOAA's `robots.txt`
-(www.ncei.noaa.gov) disallows only `/data*`, `/orders*` and some `/access/crn/` paths;
-none of the pages below is under them.
-
-- [The model's page](https://www.ncei.noaa.gov/products/world-magnetic-model): "The WMM
-  source code is in the public domain and not licensed or under copyright." "The
-  information and software may be used freely by the public." "As required by 17 U.S.C.
-  403, third parties producing copyrighted works consisting predominantly of the material
-  produced by U.S. government agencies must provide notice with such work(s) identifying
-  the U.S. Government material incorporated and stating that such material is not subject
-  to copyright protection." The current model: "The current version (WMM2025) was released
-  on December 17, 2024"; its input dates are "2025.0 to 2030.0"; "the current model
-  expires on December 31, 2029". How to cite it: "NOAA NCEI Geomagnetic Modeling Team;
-  British Geological Survey. 2024: World Magnetic Model 2025. NOAA National Centers for
-  Environmental Information. https://doi.org/10.25921/aqfd-sd83."
-- [The coefficients](https://www.ncei.noaa.gov/products/world-magnetic-model/wmm-coefficients),
-  reached from the model's page through a voluntary survey page, which was not filled in:
-  `WMM2025COF.zip` (42,887 bytes), holding `WMM.COF` (header "2025.0 WMM-2025
-  11/13/2024", 90 rows) and a list of 100 test values.
-- [The published test values](https://www.ncei.noaa.gov/sites/default/files/2025-02/WMM2025_TEST_VALUES.txt)
-  (12 rows, 2,652 bytes), kept with the 100 from the package in
-  `apps/server/test/fixtures/wmm/`.
-- The technical report, Chulliat, A. et al. (2025), "The US/UK World Magnetic Model for
-  2025-2030: Technical Report", https://doi.org/10.25923/prbc-s316, read from NOAA's
-  library (library.oarcloud.noaa.gov, which has no `robots.txt`): section 1.2 for the
-  equations, Table 3b for a worked example, Table 3d for a worked example of UTM grid
-  convergence, section 1.8 for the blackout and caution zones, section 1.10 for the
-  precision a new implementation must reach ("correct to within 0.1 nT"), section 3.4
-  for the error model of the declination.
-
-The model is made jointly with the British Geological Survey; its copy was not used. The
-coefficient file is put in the repository unchanged by
-`scripts/write-wmm-coefficients.mjs`, so that WMM2030 can be put in the same way at the
-end of 2029.
-
-The Ordnance Survey's [guide to coordinate systems](https://www.ordnancesurvey.co.uk/documents/resources/guide-coordinate-systems-great-britain.pdf)
-was read the same day (its `robots.txt` disallows only licence pages and search). It gives
-the projection's formulae and a worked example of them, but no worked figures for grid
-convergence, so the convergence is checked against NOAA's UTM example and the projection's
-own properties instead ([tools-compass.md](tools-compass.md#tests)).
-
-For UTM, UPS and MGRS (C3, C4), read on 2026-11-21: NGA.SIG.0012 §3.4 and §3.6 (the
-projection), §7.2 and §7.3 (UTM forward and inverse tables), §7.4 and §7.5 (zones), §10
-(UPS), §11 and §12 (MGRS); TM 8358.2 §3-7; the four NGS datasheets from
-`ngs.noaa.gov/cgi-bin/ds_mark.prl`; FGDC-STD-011-2001 §3.3.3 and Annex B. The only polar
-MGRS reference found in print is in the manual of GeographicLib's GeoConvert (Karney), a
-secondary source, used for one test.
-
-The [W3C Device Orientation and Motion](https://www.w3.org/TR/orientation-event/)
-specification was read for the orientation angles, its compass-heading example and
-"Interfaces are now only available in secure contexts."
-
-### Satellite imagery
-
-Read on 16 November 2026. Nothing below is bundled with Outpost: each picture is
-fetched from its publisher when a person asks for it (see
-[maps.md](maps.md#satellite-imagery)).
-
-| Source | What it is | How Outpost uses it | Licence and terms, in the publisher's words |
-| --- | --- | --- | --- |
-| NASA Blue Marble: Next Generation | Monthly cloud-free composites of the whole world for 2004, at 500 m | **Built in, downloaded on request.** July 2004, from the 2 km single GeoTIFF (255,799,706 bytes) or the eight 500 m GeoTIFFs (3,259,890,999 bytes), at `assets.science.nasa.gov`. | [The Blue Marble page](https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/): "Blue Marble: Next Generation was produced by Reto Stöckli, NASA Earth Observatory (NASA Goddard Space Flight Center)." and "Anyone using or republishing Blue Marble: Next Generation please credit “NASA Earth Observatory.”" [NASA's media guidelines](https://www.nasa.gov/nasa-brand-center/images-and-media/): NASA content "generally are not subject to copyright in the United States. You may use this material for educational or informational purposes, including photo collections, textbooks, public exhibits, computer graphical simulations and Internet Web pages." "NASA should be acknowledged as the source of the material." "If the NASA material is to be used for commercial purposes, including advertisements, it must not explicitly or implicitly convey NASA’s endorsement of commercial goods or services." The old Visible Earth "image use policy" addresses now lead to a page without one. |
-| Copernicus Sentinel-2, Level-2A, Collection 1 | Surface reflectance at 10 m, every few days, from 2015 | **Built in, for areas chosen on the map.** Scenes found with [Earth Search](https://earth-search.aws.element84.com/v1) (collection `sentinel-2-c1-l2a`); only the parts of the red, green, blue and scene-classification files that cover the area are fetched, from `e84-earth-search-sentinel-data.s3.us-west-2.amazonaws.com`. | [Legal notice on the use of Copernicus Sentinel Data and Service Information](https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice): "the law provides that users shall have a free, full and open access to Copernicus Sentinel Data and Service Information without any express or implied warranty, including as regards quality and suitability for any purpose." and "Where the Copernicus Sentinel Data and Service Information have been adapted or modified, the user shall provide the following notice: (1) 'Contains modified Copernicus Sentinel data [Year]' for Sentinel data". The [AWS Open Data registry](https://registry.opendata.aws/sentinel-2-l2a-cogs/) lists both buckets in us-west-2 under "Access (No AWS account required)", with no requester-pays; its licence line reads "Access to Sentinel data is free, full and open for the broad Regional, National, European and International user community." |
-| Element 84 Earth Search | The STAC catalogue of those files | One search per press of **Find pictures** (`POST /v1/search`). | Its [README](https://github.com/Element84/earth-search): "Earth Search is a free-to-use SpatioTemporal Asset Catalog (STAC) API" and "This public API does not come with any guaranteed service." No terms of use or numeric rate limit were found. Outpost sends one search per press and, for a build, at most four requests at once to the bucket, backing off on 429 and 503. |
-| EOX Sentinel-2 cloudless ("EOxCloudless") | A cloud-free 10 m mosaic, by year | **Not integrated.** See below. | [Licence page](https://cloudless.eox.at/license-non-commercial): "For the years 2018 to 2025, EOxCloudless WM(T)S layers is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License." and "For the year 2016, EOxCloudless is licensed under the Creative Commons Attribution 4.0 International License." [FAQ](https://cloudless.eox.at/documentation/faq): "2018+ Layers: No. Using the public WMS/WMTS endpoints for commercial production apps is strictly prohibited." and "2016 Layer: Commercial apps may access the free 2016 endpoint under CC BY 4.0, provided traffic is reasonable." Prices there: "starting at €1,500 excluding VAT per country/region"; "€5,000 excluding VAT per vintage"; "€6,000 excluding VAT (perpetual, one-off payment)". |
-| USGS Landsat on AWS | 30 m imagery from 1982 | **Not integrated.** | The [registry page](https://registry.opendata.aws/usgs-landsat/) quotes USGS: "There are no restrictions on Landsat data downloaded from the USGS; it can be used or redistributed as desired." The bucket `usgs-landsat` is "Requester Pays": every download is billed to the downloader's AWS account. The USGS's own FAQ page refused automated reading on the day, so its wording was not read there. |
-| Copernicus Data Space Ecosystem | ESA's own catalogue and archive | **Not used.** Its catalogue answers without an account, but files need one: "For downloading products you need an authorization token as only authorized users are allowed to download data products." ([OData documentation](https://documentation.dataspace.copernicus.eu/APIs/OData.html)). Its products are JPEG 2000, not cloud-optimised GeoTIFFs. | |
-
-**The EOX route, checked and set aside.** The brief asked for EOX's cloudless mosaic
-through the person's own AWS account, from a requester-pays bucket. EOX's 2017 post
-([eox.at](https://www.eox.at/2017/03/sentinel-2-cloudless-original-tiles-available/))
-said: "The bucket uses the "requester pays" setting which means you need to access it
-using your AWS credentials", "Bucket ID: eox-s2maps Region: eu-central-1". On 16
-November 2026 `https://eox-s2maps.s3.eu-central-1.amazonaws.com/` answered
-`NoSuchBucket`, and no current EOX page mentions a bucket. With no files to read and
-the map service's terms not permitting bulk downloads for keeping, nothing was built.
-What building it would need, were the files offered again: EOX's terms for keeping a
-copy of the year chosen (only 2016 is CC BY 4.0); credentials kept in the operating
-system's secret store and accepted only from the computer Outpost runs on; requests
-signed with AWS Signature Version 4 by Outpost's own code; and before each download the
-transfer in gigabytes, the number of requests, AWS's price for the bucket's region (the
-price list read on 16 November 2026 gave 0.09 USD a GB out to the internet in both
-eu-central-1 and us-west-2 after the first 100 GB a month, which AWS gives free across
-all services) and a hard cap the job stops at.
-
-**A finding about Earth Search's older collection.** In `sentinel-2-l2a` (bucket
-`sentinel-cogs`) the values of many files do not agree with the scale and offset in
-the metadata ([issue 71](https://github.com/Element84/earth-search/issues/71), open on
-16 November 2026, with no reply from the maintainers). Outpost uses Collection 1, whose
-values were checked against its metadata on a scene over Keswick.
-
-### Aerial photographs
-
-Read on 16 November 2026, from each publisher's own pages and, where a page could not
-be read, from its files and catalogues; where a fact comes only from search results it
-says so. What was built is described in [maps.md](maps.md#aerial-photographs). The test
-for each: an open licence that allows keeping a copy; no account, key or payment; and a
-form Outpost can read a small area of without downloading a large file
-(Cloud-Optimised GeoTIFF, or a modestly sized GeoTIFF, read by range request).
-
-| Source | Licence | Detail | Form | Verdict |
-| --- | --- | --- | --- | --- |
-| England: Environment Agency vertical aerial photography | Open Government Licence | 10 to 50 cm, project by project since 2006, patchy | ECW only, in 5 km zip files per survey year | **Cannot be built**: ECW needs a closed decoder; no open form is offered |
-| Scotland: Scottish Remote Sensing Portal | Open Government Licence v3 | (LiDAR only) | (LiDAR only) | **Nothing to build**: it holds no aerial photographs |
-| Wales: Welsh Government and Natural Resources Wales | APGB public sector licence, or internal use only | | | **Cannot**: not open |
-| Northern Ireland: DAERA coastal orthophotography (OpenDataNI) | Open Government Licence (search results) | 10 cm colour infra-red, a 200 m strip of the coast, 2021 | ArcGIS image service | **Not built**: a viewing service, not files; the coast only; not colour |
-| Great Britain: APGB | Licensed to the public sector | 12.5 to 50 cm | | **Out**: not open |
-| New Zealand: LINZ | CC BY 4.0, credited to each survey's licensor | 5 to 30 cm by survey | COG, WebP, NZTM, public S3 bucket | **Built** |
-| United States: USDA NAIP via Microsoft's Planetary Computer | Public domain | 30 cm, 60 cm, 1 m | COG, Deflate, NAD83 / UTM, Azure blob with an anonymous token | **Built** |
-| United States: NAIP on AWS | Public domain | | COG, but requester-pays | **Cannot**: requester-pays bills an AWS account |
-| Switzerland: swisstopo SWISSIMAGE 10 cm | Free geodata, use and distribution allowed, source must be named | 10 cm (25 cm over the Alps), 3-year cycle | COG, JPEG (YCbCr) 2017 to 2025, Deflate 2026; LV95 | **Could be built; not built**: needs a JPEG decoder and the Swiss projection |
-| Netherlands: Beeldmateriaal Nederland | CC BY 4.0 | 8 cm (and 25 cm) | 1 km tiled GeoTIFF, JPEG (YCbCr), no overviews, RD New | **Could be built; not built**: JPEG decoder, Dutch projection; no reduced copies, so a coarse zoom reads the full photograph |
-| France: IGN BD ORTHO | Licence Ouverte 2.0 | 20 cm | JPEG 2000 per département, in archives | **Cannot**: no small-area access in an open form Outpost reads |
-| Spain: PNOA | CC BY 4.0 | 25 cm (15 cm in places) | COG through the CNIG download centre | **Not verified**: whether files can be had without registration was not confirmed |
-| Finland: NLS orthophotos | CC BY 4.0 | 50 cm | TIFF with world file; interfaces need an API key | **Cannot without a key** |
-| Estonia: Land and Spatial Development Board | Open data licence | 10 to 40 cm | GeoTIFF, ECW | **Not verified**: whether COG, the projection and any key were not confirmed |
-| Norway: Norge i bilder | Licensed products | | WMTS | **Cannot**: copying needs the rights holders' permission |
-| Denmark: Dataforsyningen orthophotos | "Free data" | | Services need a free account and token (search results) | **Cannot without an account** |
-
-**England, in the Environment Agency's words.** Its record on the Defra Data Services
-Platform ([environment.data.gov.uk](https://environment.data.gov.uk/dataset/dae203a8-ba24-4c54-bab0-866b9faadb58),
-the same text on [data.gov.uk](https://www.data.gov.uk/dataset/4921f8a1-d47e-458b-873b-2a489b1c8165/vertical-aerial-photography)):
-"Images of the ground are captured at resolutions between 10cm and 50cm, and
-ortho-rectified using simultaneous LIDAR and GPS to a high spatial accuracy." "The
-Environment Agency has been capturing vertical aerial photography data regularly since
-2006 on a project by project basis each ranging in coverage from a few square
-kilometers to hundreds of square kilometers." "The data is available as a raster dataset
-in ECW (enhanced compressed wavelet) format as either a true colour (RGB), near
-infra-red (NIR) or a 4-band (RGBN) raster." "Data is available in 5km download zip files
-for each year of survey. Within each zip file are ECW files aligned to the Ordinance
-Survey grid." The record's data format: "Proprietary format | ER Mapper (ECW)". Its
-licence: "Open Government Licence", with the attribution "© Environment Agency
-copyright and/or database right 2022. All rights reserved." Its dates run from
-15 December 2005 to 1 August 2024. The only download offered is the Survey Data
-download page, a zip of ECW files per 5 km square and year; the record's WMS and WFS are
-of the index of surveys, not of the photographs. So the licence would allow an offline
-copy, and the obstacle is the form alone: ECW is read by Hexagon's ECW SDK, which is
-closed and not under a licence Outpost may use, and a small area cannot be had without
-the whole 5 km zip. What would change it: the Agency publishing the same photographs as
-GeoTIFF or COG. A person can convert the ECW
-files themselves with desktop software that includes the SDK, but Outpost
-does not yet import a GeoTIFF of one's own as imagery.
-
-**Scotland.** The [Scottish Remote Sensing Portal](https://remotesensingdata.gov.scot/about):
-"The portal currently contains Scottish Public Sector LiDAR data." and "All data is made
-available under the Open Government Licence v3". No aerial photographs.
-
-**Wales.** From search results of DataMapWales and Natural Resources Wales, not read on
-the pages themselves: "APGB dates flown (Wales)" is under the "APGB - Aerial Photography
-and Height Data Supply (APHDS) Public Sector End User Licence"; NRW's aerial imagery
-record says "the licencing conditions mean that NRW can only use this data for internal
-use". No open orthophoto download was found.
-
-**Northern Ireland.** OpenDataNI's pages refused automated reading (403); from search
-results only: the 2021 NI 3D Coastal Survey's colour infra-red orthophotography at 10 cm,
-covering the coastline about 200 m inland, offered as an ArcGIS service, under the Open
-Government Licence. Not built: a map service is for viewing, and it is the coast only.
-
-**New Zealand.** The [AWS Open Data registry](https://registry.opendata.aws/nz-imagery/):
-"Licensed for re-use under "CC-BY-4.0"."; LINZ "does not own the copyright for all of the
-imagery … licensors are listed in each survey's STAC Collection"; the suggested credit is
-"Licensed by (insert the licensor) for re-use under CC-BY-4.0."; access "No AWS account
-required"; "Cloud Optimised GeoTIFFs … using lossless WEBP compression for the main image
-and lossy WEBP compression for the overviews." The bucket's own
-[catalog.json](https://nz-imagery.s3.ap-southeast-2.amazonaws.com/catalog.json): "This
-public S3 bucket has been made available to enable bulk access and cloud-based data
-processing." Each survey's description gives its licensor (for example "Environment
-Canterbury", "Christchurch City Council"), extent, dates flown and ground sample
-distance; Outpost credits the licensor of the survey used, as the registry asks. Files
-were read anonymously over HTTPS with range requests (206).
-
-**United States.** The [Planetary Computer's NAIP collection](https://planetarycomputer.microsoft.com/api/stac/v1/collections/naip):
-"provides U.S.-wide, high-resolution aerial imagery, with four spectral bands (R, G, B,
-IR)", "Data are captured at least once every three years for each state." and "This
-dataset represents NAIP data from 2010-present, in cloud-optimized GeoTIFF format."; its
-providers name the USDA Farm Service Agency as "producer" and "licensor". The licence
-in USDA's own words, as written into every file (TIFF ImageDescription): "Imagery has
-been placed in the public domain and may be used and reproduced without permission or
-fee. Please credit 'NAIP imagery provided by USDA Farm Service Agency' on any use."
-USDA's NAIP page did not answer on the day (it timed out twice), so that wording was not
-read there. The Planetary Computer's documentation on tokens (from search results; its
-pages are drawn by JavaScript and could not be read directly): "Anyone can get a token
-from our Data Authentication API - you don't have to be a registered Planetary Computer
-user to get an access token." Outpost asks `planetarycomputer.microsoft.com/api/sas/v1/token/naip`
-for one when it first needs it, adds it to each file request, keeps it in memory until
-five minutes before it lapses, and never stores it. A file request without it also
-worked on the day, but the documentation says to use one. The
-[AWS registry](https://registry.opendata.aws/naip/) lists its NAIP buckets as "Requester
-Pays", so they are not used. No rate limit was published that could be read; Outpost
-sends at most four file requests at once and backs off on 429 and 503.
-
-**Switzerland.** [swisstopo's terms](https://www.swisstopo.admin.ch/en/terms-of-use-free-geodata-and-geoservices):
-"The free geodata and geoservices of swisstopo may be used, distributed and made
-accessible." "Furthermore, they may be enriched and processed and also used
-commercially." "A reference to the source is mandatory." The
-[product page](https://www.swisstopo.admin.ch/en/orthoimage-swissimage-10): for 2026
-"Format: Cloud Optimized Geotiff (COG), RGBN (4 x 8 bit), DEFLATE compression", for
-2017 to 2025 "Cloud Optimized Geotiff (COG), RGB (3 x 8 bit), JPEG95 compression";
-"Coordinate systems: CH1903+ / LV95 (EPSG:2056)". Files at `data.geo.admin.ch`, found
-through its STAC API, readable by range request with no key. The 2026 files would be
-read today, but they cover only the part flown that year; the rest needs JPEG, and every
-file needs the Swiss oblique Mercator on the Bessel ellipsoid with a datum shift. Not
-built in the time.
-
-**The Netherlands.** [Beeldmateriaal Nederland's dataroom](https://beeldmateriaal.nl/dataroom):
-"De downloads worden aangeboden in een 1×1km index … U kunt de luchtfoto downloaden in
-GeoTIFF-formaat." "De beelden worden beschikbaar gesteld met een CC BY 4.0 licentie."
-"De data is beschikbaar op basis van self-service." The 8 cm tiles (about 40 MB each)
-are JPEG in YCbCr with no reduced copies, in RD New (EPSG 28992), at
-`fsn1.your-objectstorage.com`, range-readable with no key. PDOK's map tile service of the
-same photographs is for viewing; no statement allowing it to be downloaded in bulk was
-found, so it is not used.
-
-**France, Spain, Finland, Estonia, Norway, Denmark.** IGN's
-[BD ORTHO](https://www.data.gouv.fr/datasets/bd-ortho-r) is "Licence Ouverte / Open
-Licence version 2.0", "à 20 cm de résolution", downloaded per département as JPEG 2000
-from `data.geopf.fr`. Spain's PNOA record in the
-[CODSI catalogue](https://www.idee.es/csw-codsi-idee/srv/api/records/spaignTrueOrto2025)
-gives "Cloud Optimized GeoTIFF, COG", the credit "PNOA 2025 CC-BY 4.0 scne.es" and
-"Descarga gratuita a través del centro de descargas del CNIG"; whether that centre's files
-can be had without registration was not confirmed. Finland's
-[NLS](https://www.maanmittauslaitos.fi/en/maps-and-spatial-data/datasets-and-interfaces/product-descriptions/orthophotos):
-"Attribution 4.0 International (CC BY 4.0)", "Pixel size 0.5 m", "Distribution format
-Tiff (tfw)"; its [interfaces](https://www.maanmittauslaitos.fi/en/node/11149): "The open
-interface works using an API key." Estonia's
-[geoportal](https://geoportaal.maaruum.ee/eng/Spatial-Data/Orthophotos-p309.html):
-"GeoTIFF, ECW", 10 to 40 cm, open data licence; form and access not confirmed. Norway's
-[Kartverket](https://www.kartverket.no/api-og-data/vilkar-for-bruk): "Alle flybilete på
-norgeskart.no og norgeibilder.no er lisensierte produkt." and "Det må imidlertid
-innhentast særskild løyve frå rettshavarane dersom dataa skal kopierast eller brukast på
-annan måte." Denmark's
-[Klimadatastyrelsen](https://www.klimadatastyrelsen.dk/kortlaegning/flyfotos-og-laserscanning):
-"Både kortprodukter og ortofotos udstilles via Datafordeleren og Dataforsyningen som frie
-data."; the need for an account and token comes from search results.
-
-### Routes
-
-Added on 2026-11-16 with "Find a route" on the Maps screen ([maps.md](maps.md#finding-a-known-route)).
-The question was whether a named route, such as the Llanberis Path, can be put on the
-map without the person finding a GPX file somewhere. These rows are numbered T1
-onwards. Every page linked in the last column was read on 2026-11-16; where a page was
-read somewhere other than its own address, that is said.
-
-| # | Source | What it has | How Outpost uses it | Licence, terms and what they say about automated access |
-| --- | --- | --- | --- | --- |
-| T1 | OpenStreetMap route relations and named ways | Walking, cycling, riding and running routes that mappers have gathered into "route relations", each a list of ways; and paths that merely share a name. The Llanberis Path is a route relation ([4004181](https://www.openstreetmap.org/relation/4004181), five ways, 6.0 km as mapped); a search of ways round Snowdon turned up eight separate ways named Miners' Track. | **Built in: "Find a route".** Outpost's installed map does not carry routes, so one is fetched when a person chooses it, through a server in rows T2 and T3, and kept as a track. Nothing is bundled. | Open Database Licence 1.0, per the [copyright page](https://www.openstreetmap.org/copyright). Credit: "© OpenStreetMap contributors". What the licence asks of a route kept as data and of a map with the route on it is set out [below](#what-the-open-database-licence-asks-of-a-found-route). OpenStreetMap's own servers are not contacted: see T8. |
-| T2 | Overpass API at Private.coffee (overpass.private.coffee) | A public Overpass API server for the whole world, run by a non-profit association in Austria (the server formerly at overpass.kumi.systems) | **Built in, listed in `catalog/route-sources.json`:** asked about any part of the world that no regional server is listed for. | Its [own page](https://overpass.private.coffee/) carries terms of use dated 10 April 2026: "Use our endpoints in any project requiring access to OpenStreetMap data, including commercial use. No registration needed, just point your application to our endpoint", with no rate limit. It asks users to optimise queries and limit simultaneous requests, to make sure requests "do not contain any personally identifiable information", to credit OpenStreetMap, and to send "a meaningful User-Agent header" with "your project name and a means to contact you (e.g., a link to your project website)"; it prefers `POST`. Not to be used in "projects related to warfare, military applications", nor "for critical infrastructure or where incorrect data could cause serious consequences". No warranty; may end at any time. Outpost does each of the things asked: one question at a time, `POST`, the client name "Outpost/&lt;version&gt;" with the project's address, the credit kept with every route. **On the day:** one search answered, after 95 seconds, from a copy of the map dated 2026-07-28; three more searches and one status request got no answer within 29 to 60 seconds. |
-| T3 | Overpass API at dresel.systems (ovp.dresel.systems) | Two public Overpass API databases on one privately run machine in Germany: Europe and North America, from Geofabrik's extracts, refreshed about daily | **Built in, listed in `catalog/route-sources.json`:** asked first about views in Europe and in North America. | The operator's [own page](https://ovp.dresel.systems/) (in German) calls it an open server, "ohne Anmeldung und ohne API-Schlüssel", a free offer for everyone ("ein freies Angebot für alle"), on limited hardware (four cores): at most four queries at once per address and region, bulk queries to be batched not looped, no guarantee of availability, blocking in case of abuse. Its row on the [OpenStreetMap wiki](https://wiki.openstreetmap.org/wiki/Overpass_API#Public_Overpass_API_instances) adds: "Please send a User-Agent or Referer that identifies your app." The operator's page says nothing for or against use by applications; the wiki row expects it. **On the day:** nine questions to the Europe database answered in 0.2 to 5.5 seconds and one to the North America database in 0.5, all from the map as it was the evening before. |
-| T4 | Overpass API main instance (overpass-api.de), run by FOSSGIS | The original public Overpass API servers | **Not listed.** Three things were read, and together they say an application should not be pointed at it by default. The [Overpass manual](https://dev.overpass-api.de/overpass-doc/en/preface/commons.html) lists among "problematic behaviour": "Setting up an app for more than just OSM mappers and relying on the public instances as backend", for which "only running your own instance sustainably serves your mission". FOSSGIS's [terms of use](https://www.fossgis.de/arbeitsgruppen/osm-server/nutzungsbedingungen/) say its services exist chiefly for its own website and for OpenStreetMap contributors, welcome third-party use within limits, and add "Explicitly recommended: The URLs of our services should not be hardcoded into the app." And on the day its status address answered "This Overpass API server is currently at capacity ... This public endpoint is intended for browser-based and human-operated tools." A person can still declare it for their own use in their own route source file; it is then their use to answer for. | As quoted. The same terms ask for a User-Agent that identifies the application, at most two connections, attribution, and a link for reporting map errors. |
-| T5 | Britain and Ireland Overpass instance (overpass.atownsend.org.uk) | A regional Overpass API server run by one mapper | **Not listed.** Its [usage policy](https://overpass.atownsend.org.uk/) refers to the "problematic behaviours" of row T4, which include applications that depend on a public instance, and says it is not for commercial use. It mostly answers over IPv6 only. | As described. |
-| T6 | VK Maps Overpass instance (maps.mail.ru) | A public Overpass API server run by a Russian company | **Not listed.** The OpenStreetMap wiki's table says "Feel free to use our services in any project", but the operator's [own page](https://maps.mail.ru/osm/tools/overpass/) is a query tool with no terms on it, so nothing was read from the operator. | Not found at the source. |
-| T7 | Overpass API servers that need a key or payment (Geofabrik, FairwayMapper, Tracestrack, Overspan, NextGIS, Mapsource, Overpass.ch) | Commercial or registered-access servers, as listed on the OpenStreetMap wiki | **Not listed.** Outpost has no accounts and stores no keys for this. Someone who has such a service can declare its address in their own route source file if the key is not part of a secret (the file is not a place for credentials). | Not read: each has its own terms. |
-| T8 | OpenStreetMap's editing API (api.openstreetmap.org) | The API the map is edited through, which can also return one relation | **Not used.** The [API usage policy](https://operations.osmfoundation.org/policies/api/): "The editing API is provided in order to edit the map data, not for read-only purposes or projects." | As quoted. |
-| T9 | Waymarked Trails (waymarkedtrails.org) | A map of OpenStreetMap's route relations, with a GPX file for each | **Not used.** Its "Legal and usage terms" say: "GPX tracks are provided for the convenience of visitors of this site. Mass download is not allowed." Nothing there offers its search or its files to other applications. Outpost reads the same relations from the same data instead (T1). | The routes overlay is CC BY-SA 3.0 DE and the GPX tracks ODbL. The site draws its help pages with a script, so the text was read in the site's [source](https://github.com/waymarkedtrails/waymarkedtrails-website/blob/master/src/i18n/qot/helppages.yaml), not on the site itself; its `robots.txt` answered "not found". |
-| T10 | National Trails (England), Natural England | The lines of the National Trails as one dataset: shapefile, GeoPackage, GeoJSON (zipped), and map services | **A candidate, not integrated.** The files are real and open, but they are one zip of every trail, in a format Outpost has no reader for, and would need splitting into trails and joining into lines; none was downloaded, so there is no size or checksum to list. Until someone builds that, the same trails are found through T1 where mappers have recorded them. | The [data.gov.uk record](https://www.data.gov.uk/dataset/national-trails-england3) (updated 15 May 2026) links the Open Government Licence v3.0 and gives the attribution "© Natural England copyright. Contains Ordnance Survey data © Crown copyright and database right [year]". The Natural England geoportal page it points to is drawn by a script and was not read. Trails in Wales and Scotland are published by other bodies and were not looked for. |
-| T11 | US National Park Service public trails | Trail lines for the national parks, as a map service | **A candidate, not integrated.** The [service's own description](https://mapservices.nps.gov/arcgis/rest/services/NationalDatasets/NPS_Public_Trails/MapServer/0/iteminfo?f=pjson) states no licence. It says the data is "for general informational and mapping purposes only" and "Not for navigation, emergency response, or resource protection decision-making". It is trail segments, not named routes put together. | No licence statement found. Works of the US Government are generally in the public domain, but that was not confirmed for this dataset, and copies of it on data.gov carry differing labels. |
-| T12 | US Forest Service, National Forest System Trails | Trail lines for the national forests: a 248 MB shapefile or a 119 MB geodatabase, refreshed 8 November 2026 | **A candidate, not integrated.** Found on the Forest Service's [dataset list](https://data.fs.usda.gov/geodata/edw/datasets.php?xmlKeyword=trail); neither the file nor its metadata was downloaded, so no licence was read. Segments, not named routes, in a format Outpost does not read. | Not read. |
-| T13 | Route-sharing websites and apps (AllTrails, Komoot, Walkhighlands, OS Maps, Strava, Wikiloc and the like) | Routes drawn or recorded by their staff and users | **Not used, and not contacted.** These are their owners' collections under their owners' terms, which were not read for this work; nothing is fetched from them and nothing was. If your account with one lets you export a GPX file, import that file. | Not read. |
-
-#### What the Open Database Licence asks of a found route
-
-Read on 2026-11-16 in the [licence itself](https://opendatacommons.org/licenses/odbl/1-0/)
-and in three guidelines of the OpenStreetMap Foundation: on
-[produced works](https://osmfoundation.org/wiki/Licence/Community_Guidelines/Produced_Work_-_Guideline),
-on [what is substantial](https://osmfoundation.org/wiki/Licence/Community_Guidelines/Substantial_-_Guideline),
-and on [attribution](https://osmfoundation.org/wiki/Licence/Attribution_Guidelines).
-This is a reading of those texts, not legal advice.
-
-- **A route's points, kept as data, are an extract of the database, not a "produced
-  work".** The licence defines a produced work as "a work (such as an image,
-  audiovisual material, text, or sounds)" made from the data. The Foundation's
-  guideline draws the line by purpose: "If the published result of your project is
-  intended for the extraction of the original data, then it is a database and not a
-  Produced Work." A track in Outpost's database, and a GPX file of it, exist to hand
-  the coordinates on. So they are OpenStreetMap data still: a "derivative database"
-  where the extract is substantial.
-- **Whether one route is "substantial" is not settled by a number, and Outpost does
-  not try to settle it.** The Foundation regards "less than 100 Features" taken once
-  as not substantial; the Llanberis Path is five ways, a long trail is thousands. A
-  rule that changed the credit at some size would be a guess. Every found route is
-  treated the same: as OpenStreetMap's data, with the notice kept.
-- **What that asks.** Section 4.2: whoever passes the data on to people outside their
-  own household or organisation must do so under the same licence, "include a copy of
-  this License ... or its Uniform Resource Identifier (URI) with the Database", and
-  "keep intact any copyright or Database Right notices". Hence the licence address and
-  the credit inside the GPX file, in the fields GPX has for them, and in the route's
-  description. Section 4.4 (share alike) and 4.6 (offering the data) fall on the
-  person who publishes it, not on Outpost: Outpost passes nothing on. Keeping a route
-  on your own server for your own household is not "public" use (the licence's
-  definition of "Publicly", and section 4.5 c).
-- **A map with the route drawn on it is a produced work.** That covers the screen, a
-  screenshot, a printed map, a PDF. Section 4.3: when it is shown to other people it
-  needs "a notice ... reasonably calculated to make any Person that uses, views,
-  accesses, interacts with, or is otherwise exposed to the Produced Work aware that
-  Content was obtained from the Database ... and that it is available under this
-  License". The attribution guideline accepts "© OpenStreetMap contributors" with a
-  way to reach openstreetmap.org/copyright, in a corner of an interactive map, and
-  asks for the address printed out on paper. Hence "Routes: © OpenStreetMap
-  contributors", linked, in the map's credits while a found route is drawn.
-
-#### What was done on 2026-11-16 for routes, and how
-
-- **Terms.** Each operator's own page was fetched once and read. Web search was used
-  twice, to find the government datasets.
-- **Questions to route sources.** Sixteen in all, each typed or started by hand, one
-  at a time. Five to overpass.private.coffee: routes named "llanberis path" anywhere
-  (answered in 95 seconds: relation 4004181); the routes in a box round Snowdon (no
-  answer in 60 seconds); its status address (no answer in 30); and the same box
-  searched twice through Outpost itself (no answer in 30 and in 29). One to
-  overpass-api.de: its status address, which answered that it was at capacity. Nine
-  to the Europe database at ovp.dresel.systems: relation 4004181 with its points;
-  routes and paths named "track" round Snowdon; every route in that box with its
-  length (19 routes); "llanberis path" across Europe; and through Outpost itself
-  "pyg track" in that box, "Llanberis Path" anywhere, and the preview of relation
-  4004181; and, once the interface was built, "Llanberis Path" in the view round
-  Snowdon and its preview again, from a browser. One to its North America database, through Outpost: "Bright Angel" in a box
-  at the Grand Canyon (two routes and three named paths).
-- **The Llanberis Path, end to end.** Through a private copy of Outpost on a
-  development machine: found by name anywhere in 5.5 seconds, and in the view round
-  Snowdon in 0.8; previewed in 0.2 to 0.4 as one unbroken line of 277 points from five
-  ways, 6.03 km; added; exported as GPX with its credit; the file validated against
-  the GPX 1.1 schema. In the browser run, the browser itself contacted nothing but
-  Outpost. No terrain was installed on
-  that copy, so its heights were not seen; heights are tested with made-up terrain
-  tiles and the made-up route.
-- **What was not tried.** A route of thousands of ways from a real source; a route
-  with real gaps or branches (the tests use made-up ones); the search on a real
-  source from a phone; any source over a slow connection.
-- **Conduct.** A plain client name on every request, nothing personal in any of them,
-  no retries beyond those listed, and nothing fetched that was not looked at.
-
-### Map file formats
-
-What the KML, KMZ and GeoJSON import relies on, read on 21 Nov 2026. No data comes from
-either; they are the formats' own descriptions.
-
-- RFC 7946, The GeoJSON Format (https://www.rfc-editor.org/rfc/rfc7946): positions are
-  longitude then latitude, in WGS 84 decimal degrees (section 4), and the older `crs`
-  member is no longer used (appendix B).
-- Google's KMZ files page (https://developers.google.com/kml/documentation/kmzarchives):
-  the main KML file is `doc.kml` by default, and Google Earth opens the first `.kml`
-  file in the archive's list.
-
-### Reference layers
-
-Added on 2026-11-16 with the map's reference layers ([reference-layers.md](reference-layers.md),
-which quotes each source's terms in full and says how each is used). Every page was
-read on that day; where a page could not be read, that is said. Rows are numbered R1
-onwards.
-
-| # | Source | How Outpost uses it | Licence and the terms that decide it |
-| --- | --- | --- | --- |
-| R1 | Natural Earth: 1:50m countries, 1:10m regions and populated places | **Downloaded on request**, GeoJSON from `raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/`. | Public domain: "All versions of Natural Earth raster + vector map data found on this website are in the public domain." ([terms](https://www.naturalearthdata.com/about/terms-of-use/)). No checksums published. |
-| R2 | OurAirports | **Downloaded on request**: `airports.csv` from `davidmegginson.github.io/ourairports-data/`, and with it, in the same install, `airport-frequencies.csv` from the same folder (listed under the repository README's direct downloads; 1,302,744 bytes and 30,397 rows on 17 November 2026), of which only the kept airports' rows are stored. | The data repository's licence is the Unlicense ("released into the public domain"), and covers both files. ourairports.com itself could not be read: its certificate expired on 6 November 2026 and still had not been renewed on 17 November, so its own terms and data dictionary were not read. The frequency file's columns are taken from its own header row: `id`, `airport_ref`, `airport_ident`, `type`, `description`, `frequency_mhz`. |
-| R3 | OpenStreetMap by Overpass | **Downloaded on request**, one layer of one country per question, through the servers of the route sources (T3), or one the person declares. | ODbL. **T2 (Private.coffee) is not used for reference layers**: its terms exclude "projects related to warfare, military applications", and these layers include publicly mapped military sites. |
-| R4 | Geofabrik extracts | **Downloaded on request**, one country's `.osm.pbf` with its MD5; or imported. This replaces "not integrated" in row 23 for these layers: Outpost now reads the tags it needs from a `.osm.pbf` itself; it still makes no map tiles from one. | "License: ODbL 1.0"; "Download responsibly!" (10 September 2025). No numeric limit is published. |
-| R5 | Wikidata Query Service | **Asked on request**: nuclear power stations and research reactors with a position. | CC0; 60 seconds a query; an informative User-Agent with contact information. |
-| R6 | WorldPop, population counts 2020, 1 km, UN-adjusted | **Downloaded on request**, by country. | CC BY 4.0 ([licence](https://hub.worldpop.org/data/licence.txt)); the citation WorldPop asks for is shown. |
-| R7 | Swiss emergency meeting points (BABS) | **Downloaded on request**: one GeoJSON file. | opendata.swiss "terms_by" (open use, source to be given) as the dataset lists it; the opendata.swiss terms page refused to be read. |
-| R8 | FAS Nuclear Notebook and Status of World Nuclear Forces | **Linked.** | "Federation of American Scientists © 2026"; the Bulletin of the Atomic Scientists' terms forbid automated extraction "regardless of whether the data is publicly accessible". |
-| R9 | SIPRI Yearbook, World nuclear forces | **Linked.** A person may save the free summary or sample chapter. | Downloading for non-commercial use and single private copies are allowed; reproducing more than 10% of a data set needs permission. |
-| R10 | NTI Index | **Linked.** | Not read (browser check; terms page refused). |
-| R11 | IAEA PRIS | **Linked.** | Not read (402/403 on every terms page). |
-| R12 | GeoNuclearData, WRI Global Power Plant Database, Global Energy Monitor | **Not used.** | Upstream terms unread; unmaintained since 2022; "All Rights Reserved". |
-| R13 | National Security Archive, EBB 538; FEMA NAPB-90 (at FAS); The National Archives, HO 322 | **Linked.** No machine-readable transcription under an open licence exists; Outpost transcribed none. | US government works are public domain; the Archive's pages are its copyright; the UK files are not digitised. |
-| R14 | UK REPPIR zones, US EPZs, Swiss ENSI zone plans, cantonal shelter files, Taiwan and Korea shelter data | **Linked or imported** by the person. | See [reference-layers.md](reference-layers.md#emergency-planning-zones-and-shelters). |
-| R15 | OpenStreetMap by Overpass, food and supplies (read 2026-11-17) | **Downloaded on request**, as R3, for the food and supplies layer: shops, markets, food banks, drinking water, fuel and pharmacies, for the area on screen only, at most 1.5° by 2° (about a county) and 30,000 places; never a country. | As R3. The tags are from the wiki pages for `shop=*`, `amenity=marketplace`, `amenity=drinking_water`, `amenity=water_point`, `man_made=water_tap`, `amenity=fuel`, `amenity=pharmacy` and `social_facility=food_bank`; see [reference-layers.md](reference-layers.md#food-and-supplies). One real answer for the middle of Keswick (13,427 bytes) was fetched once on 17 November 2026 to learn its shape and kept, trimmed, as the tests' fixture. |
-| R16 | Food Standards Agency, food hygiene rating data (registered food businesses, UK) (read 2026-11-17) | **Downloaded on request**, retailers only (business types 7840 "Retailers - supermarkets/hypermarkets" and 4613 "Retailers - other"), for the area on screen up to about a county, from `api.ratings.food.gov.uk`. Hygiene ratings are not kept or shown. | [Terms and conditions](https://ratings.food.gov.uk/terms-and-conditions): "Use of proprietary food hygiene ratings information and services is subject to the terms of the Open Government Licence"; "It is the responsibility of users to ensure that the current rating is used or to indicate the date when the information was updated." [Open data page](https://ratings.food.gov.uk/open-data): the API "is a free service and there is no need to register to use it"; "The data is updated daily." The [API's help](https://api.ratings.food.gov.uk/help): no keys or login "at this time"; no limit on requests stated; the `x-api-version` header is required. `ratings.food.gov.uk/robots.txt` and `api.ratings.food.gov.uk/robots.txt` answered 404 (nothing disallowed). Credited "Food businesses: Food Standards Agency, Open Government Licence v3.0". |
-| R17 | Give Food, UK food banks (read 2026-11-17) | **Linked only**, under "wanted, and what stands in the way". | [API page](https://www.givefood.org.uk/api/): "Please contact us at mail@givefood.org.uk if you're going to launch something using our data." "Keep the information up to date." "This data changes multiple times per day with updates to locations, contact information, closures and food bank needs." "credit us with a link when you use it." No licence is stated. A copy kept offline cannot be kept up to date several times a day, and the project has not been asked. |
-| R18 | Geofabrik extracts by region, for food and supplies and the other OpenStreetMap layers (read again 2026-11-17) | **Downloaded on request**, as R4, now also for a part of a country (a US state, a German Land or Regierungsbezirk, an English county, one of Italy's five parts), chosen from Geofabrik's own list of extracts, `index-v1-nogeom.json` (512,389 bytes on the day), which is read only when a person presses "Read the list of regions" and then kept. The list gives each file's address but **no sizes**, so Show the size asks one `HEAD` (and the `.md5` of the dated file it leads to). One file per region, never retried in a loop; up to three regions a press, each its own pack. Food and supplies is read only when ticked. A region's file, or a file read for food, is deleted once read unless the person ticks to keep it. | [download.geofabrik.de](https://download.geofabrik.de/): "License: ODbL 1.0", "Data processed by Geofabrik GmbH and created by OpenStreetMap Contributors", "This open data download service is offered free of charge by Geofabrik GmbH." [Technical details](https://download.geofabrik.de/technical.html): "If you want a machine-readable list of all files the server offers, check out our GeoJSON index at https://download.geofabrik.de/index-v1.json (or https://download.geofabrik.de/index-v1-nogeom.json for a smaller file without the boundary geometries)"; "The structure is guaranteed to remain stable"; nothing on sizes, automated use or limits. [Download responsibly!](https://blog.geofabrik.de/index.php/2025/09/10/download-responsibly/) (10 September 2025): "There's a limit to the outgoing network bandwidth"; "If you automate anything with regard to our download server, monitor what your script is doing"; "build in appropriate catches so that you don't end up downloading the same file 1000 times". `download.geofabrik.de/robots.txt` does not exist (it redirects to a directory address). Sizes by HEAD on the day: Monaco 708,123 bytes, Rutland 1.95 MB, District of Columbia 21.1 MB, Cumbria 45.9 MB, Oberbayern 260 MB, Ohio 328 MB, Bayern 858 MB, California 1.34 GB, England 1.72 GB, the United States 12.3 GB. Germany's whole-country address redirects to a mirror on another host (`ftp5.gwdg.de`), which Outpost does not follow, so Germany is fetched by its Länder. Monaco's extract was downloaded once, its MD5 checked and its contents read to learn the numbers above, then deleted. |
-| R19 | USDA Food and Nutrition Service, SNAP Retailer Locator data (tried 2026-11-17) | **Not used.** It would have been a second source for the United States, as R16 is for the UK. | **Could not be read.** `www.fns.usda.gov/snap/retailer-locator`, `www.fns.usda.gov/snap/retailer-locator/data` and `www.fns.usda.gov/robots.txt` each answered HTTP 403 to one ordinary request; they were left alone (no other client, no mirror: a copy at `fns-prod.azureedge.us` was not used). The only licence seen is the [data.gov record](https://catalog.data.gov/dataset/snap-retail-locator) "SNAP Retail Locator", publisher "Food and Nutrition Service, Department of Agriculture", licence "https://creativecommons.org/licenses/by/4.0", last modified 2014-04-30, pointing at the locator page rather than at the data file; it is not the publisher's own statement of the current data's terms, and without `robots.txt` and the data page's own words Outpost does not fetch from the site. If FNS's pages become readable, what it would take is in [reference-layers.md](reference-layers.md#a-second-source-for-the-united-states-not-built). |
-| R20 | EU-wide lists of food shops (searched 2026-11-17) | **None found; nothing built.** OpenStreetMap is the source in the EU and elsewhere. | One search found no EU-wide or multi-country open register of food retailers on Eurostat or data.europa.eu, only commercial lists. ESPON's "Location of Shops in Europe" (indicator 880: supermarkets and convenience stores in 2016 and 2021, compiled mainly from OpenStreetMap) could not be read (`database.espon.eu` answered 403); as a fixed snapshot made from OpenStreetMap it would add nothing to a current extract. National registers (as the UK's R16) were not looked for. |
-
-### Reference software
-
-These are programs, not content, so none of them appears in the catalogue.
-
-| # | Source | What it is | Relation to Outpost | Licence |
-| --- | --- | --- | --- | --- |
-| 28 | Kiwix | Readers and servers for ZIM archives | Outpost reads ZIM archives through kiwix-serve; see [architecture.md](architecture.md). | kiwix-serve is GPL-3.0 (see 29). |
-| 29 | kiwix-tools | The command-line tools that include kiwix-serve | Run by Outpost as a separate, sandboxed program. | [GPL-3.0](https://github.com/kiwix/kiwix-tools/blob/main/COPYING). |
-| 30 | Internet-in-a-Box | An offline learning server for low-cost hardware | Named in the README as one of the projects that showed the way. No code was taken from it. | [GPL-2.0](https://github.com/iiab/iiab/blob/master/LICENSE). |
-| 31 | PrepperPi | Offline knowledge servers for the Raspberry Pi | Named in the README as one of the projects that showed the way. No code was taken from it. More than one small project on GitHub uses this name; those seen carry MIT-style licences. | MIT-style (per GitHub's listing; not read in full). |
-| 32 | Paperless-ngx | A document management system | Named in the README as one of the projects that showed the way. No code was taken from it. | [GPL-3.0](https://github.com/paperless-ngx/paperless-ngx/blob/dev/LICENSE). |
-| 33 | Offgrid Pi | An offline knowledge server for the Raspberry Pi | Named in the README as one of the projects that showed the way. No code was taken from it. | MIT (per GitHub's listing; not read in full). |
-| 34 | Organic Maps | An offline maps application for phones | Named in the README as one of the projects that showed the way. No code was taken from it. | [Apache-2.0](https://github.com/organicmaps/organicmaps/blob/master/LICENSE). |
-| 35 | MapLibre | An open-source map renderer | Outpost's map is drawn with MapLibre GL JS. | [BSD 3-Clause](https://github.com/maplibre/maplibre-gl-js/blob/main/LICENSE.txt). |
-| 36 | Notion | A hosted note-taking service | Supplied as a point of reference. It is a commercial online service, with no content to list. | Proprietary. Its terms page is drawn by a script and could not be read by the catalogue check. |
-| 37 | hfcast-engine (github.com/jonathanmcsweet/hfcast-engine) | VOACAP translated to Rust, and the engine's data files in `embedded/` | The HF planner's engine is built from it at commit `bf34e8f9f375` (shipped, Apache-2.0). **Its coefficient files are not shipped**: 13 files holding the CCIR Report 322 and 340 maps, with NTIA/ITS tables, and two short-whip patterns, 559 kB, listed in `engines/voacap/coefficients.json` and fetched from `raw.githubusercontent.com` at that commit, one request per file, only when a person presses Download (or at set-up by `scripts/fetch-voacap-data.mjs`). Checked on 2026-11-16: each file there is byte for byte the one Outpost shipped before. See [hf-propagation.md](hf-propagation.md#data). | Code: Apache-2.0. The data files: no licence; its `NOTICE` says "Apache-2.0 covers the software in this repository. It does not cover these data files, which are the work of other bodies and keep their own status." The CCIR part is the ITU's (source R9). |
-| 38 | Calibre (github.com/kovidgoyal/calibre) | An e-book manager | Outpost reads the `metadata.opf` files Calibre writes beside each book. The names it reads (`dc:creator` with `opf:role="aut"`, `dc:subject`, `dc:description`, `calibre:series`, `calibre:series_index`, the `uuid` identifier and the guide's cover reference) were taken from `metadata_to_opf` in `src/calibre/ebooks/metadata/opf2.py`, read on 2026-11-21. No code was taken from it. | [GPL-3.0](https://github.com/kovidgoyal/calibre/blob/master/LICENSE). |
+| `kiwix-essentials.json` | A starter selection of Kiwix archives | 61 |
+| `kiwix-more.json` | Further Kiwix archives: programming documentation, Project Gutenberg shelves, medicine and science, courses, preparedness, question-and-answer sites, literature, picture books, sheet music | 107 |
+| `kiwix-languages.json` | Wikipedia in twelve more languages | 12 |
+| `official-publications.json` | PDF handbooks, guides, leaflets and textbooks, each from its publisher's own website | 174 |
+| `radio.json` | Radio rules, frequency tables, field guides and band plans (38 PDFs) and five Kiwix archives | 43 |
+| `outpost-reference.json` | Reference sheets written for Outpost and shipped with it ([radio.md](radio.md)) | 9 |
+| `logbook73.json` | The Radio Engineering Handbook and fifteen radio guides by this project's author for LogBook73 (MIT), generated and shipped as books ([radio.md](radio.md)) | 16 |
+
+Nothing is fetched until a person asks. Two kinds of content ship in [`catalog/bundled/`](../catalog/bundled) and are
+added by copying, with no network: Outpost's own reference sheets, and the LogBook73
+handbook and guides, which are not checked against the manufacturers' manuals. The format
+and rules for entries are in [`catalog/README.md`](../catalog/README.md).
 
 ## How the catalogue treats licences
 
-- An entry states a licence only when it was read at the source: in the file itself, on
-  the publisher's page, or in the publisher's own catalogue record. The `licenseNote`
-  says where the statement comes from and what its main conditions are.
-- Where no licence statement could be found, or it has not been checked, the entry
-  says `"See source"` and the note says so. That applies to most Kiwix archives of
-  third-party websites, to the USDA canning guide and to the UIAA papers.
-- Ofcom's documents are not under the Open Government Licence. They carry Ofcom's own
-  terms, which allow free reproduction with acknowledgement; the entries quote them.
-  GOV.UK documents are under the Open Government Licence v3.0 only "except where
-  otherwise stated", and the entries say what is excepted where that was seen. The Met
-  Office and the Health and Safety Executive publish under the same licence by their
-  own statements; photographs they credit to someone else are not covered.
-- "Public domain (US Government work)" is used for documents published by US federal
-  agencies. Such documents can still contain photographs or figures owned by someone
-  else; the note says so where this was seen.
-- Several licences in the catalogue do not allow commercial use (CC BY-NC-SA for
-  OpenStax and WHO, FAO's terms, and since 2026-11-17 SARE's, the ICRC's and the EPA's). That does not affect downloading and reading, but it matters
-  if you pass the files on.
-- Outpost never redistributes anything. A download goes from the publisher's server to
-  your disk. What you do with the file afterwards is governed by its licence.
+- An entry states a licence only when it was read at the source: in the file, on the
+  publisher's page, or in the publisher's catalogue record. The `licenseNote` says where
+  and gives the main conditions.
+- Where no licence statement was found or checked, the entry says `"See source"`. That
+  covers most Kiwix archives of third-party websites, the USDA canning guide and the UIAA
+  papers.
+- Ofcom's documents are under Ofcom's own terms (row R1), not the Open Government Licence.
+  GOV.UK documents are under the Open Government
+  Licence v3.0 "except where otherwise stated"; entries name what is excepted where seen.
+  The Met Office and HSE publish under the same licence; photographs credited to others
+  are not covered.
+- "Public domain (US Government work)" is used for US federal documents. They can still
+  hold photographs or figures owned by someone else; the note says so where seen.
+- Several licences do not allow commercial use: CC BY-NC-SA (OpenStax, WHO), FAO's terms,
+  SARE's, the ICRC's and the EPA's. That does not affect downloading and reading; it
+  matters if you pass the files on.
+- Outpost never redistributes anything: a download goes from the publisher to your disk,
+  and the file's licence governs what you do with it.
 - Everything listed may be kept and, as far as its licence note says, passed on. A
-  [portable drive](portable.md) copies whatever documents and collections you tick from
-  your own library to your own drive; it does not look at licences, and its README
-  says only that each collection carries its own licence. For that reason sources that
-  allow only one copy for personal use (Ordnance Survey's map reading guides) are not
-  listed, and nor are those that ask for permission for any digital copy (Hesperian).
-  If the catalogue ever gains a way to mark an entry "for your own use only" and keep
-  it off a drive made for someone else, such sources could be listed.
-- Where a website states no licence but its publisher's own repository does (Rabbit
-  Waves, Based Cooking), the entry gives the repository's licence and says that is
-  where it was read.
-- A route found with "Find a route" is OpenStreetMap data under the Open Database
-  Licence. Its credit is stored with it and written into its GPX export; see
-  [what the licence asks](#what-the-open-database-licence-asks-of-a-found-route).
+  [portable drive](portable.md) copies whatever you tick and does not look at licences, so
+  sources that allow only one personal copy (Ordnance Survey's map reading guides) or need
+  permission for any digital copy (Hesperian) are not listed. If the catalogue gains a
+  "for your own use only" mark that keeps an entry off a drive, they could be.
+- A route found with **Find a route** is OpenStreetMap data under the Open Database
+  Licence; its credit is stored with it and written into its GPX export (see
+  [what the licence asks](#what-the-open-database-licence-asks-of-a-found-route)).
 
-## Checksums, and what happens when a publisher changes a file
+## Checksums, and when a publisher changes a file
 
-Kiwix entries carry no address or checksum: both are taken from the Kiwix library's
-feed at the moment of download, because the files are rebuilt regularly.
+Kiwix entries carry no address or checksum: both come from the Kiwix feed at download
+time, because Kiwix rebuilds most books every month or two and removes old builds.
 
-Every direct entry carries the exact size and the SHA-256 checksum of the file as it was
-on the day it was verified. Publishers replace PDFs in place from time to time (every OpenStax PDF checked had
-been rebuilt during 2026, and agencies issue corrected editions under the same
-address). When that happens the checksum no longer matches, the download is
-refused with a clear message, and nothing is added to the library. A maintainer then
-downloads the new file, checks it, and updates the entry's `sha256`, `sizeBytes`,
-`version` and `lastVerified`. This is deliberate: a file that differs from the one that
-was checked should not arrive silently.
+Every direct entry carries the exact size and SHA-256 of the file as verified.
+Publishers replace PDFs in place (every OpenStax PDF checked had been rebuilt during 2026).
+When that happens the download is refused with a clear message and nothing is added. A
+maintainer then checks the new file and updates `sha256`, `sizeBytes`, `version` and
+`lastVerified`. A file that differs from the one checked should not arrive silently.
 
-## What was verified on 2026-11-15, and how
+The online check (`pnpm catalog:validate --online`) asks each address with `HEAD`, and
+when `HEAD` is refused (a "404" included) asks for the first byte, taking only that answer
+as the file being gone: NIST's publications server and the Met Office's file service answer
+`HEAD` with 404 for files they serve. It leaves Kiwix's hosts alone unless
+`--include-kiwix` is given (see [Kiwix's robots.txt](#kiwixs-robotstxt-read-on-2026-11-17)).
+On its last full run, `nasa.fastener-design-manual` failed to fetch; CDC's page for *Eat Safe
+Food after a Power Outage* now links `eat_safe-r5-infographic2-h.pdf`, where the entry has
+`…-h_1.pdf` (the old address still answers; its checksum was not compared).
 
-- **Kiwix entries.** Every book name and edition in `kiwix-more` was taken from a copy
-  of the Kiwix library's full feed (3,655 books) saved that day. Descriptions were
-  written from the titles and summaries in the feed. Sizes are the feed's figures,
-  rounded, and are estimates until Outpost resolves the book.
-- **Direct entries.** Each file was downloaded once from the address in the manifest,
-  confirmed to be a real PDF and not a web page, measured and hashed. The title, page
-  count, edition and date were read from the file. The licence was read from the file,
-  the publisher's page or the publisher's catalogue record. About 3.1 GB was downloaded
-  in all, across 61 files; the large files were deleted once hashed.
-- **Addresses** were taken from the publishers' own pages or catalogue services (the FAA
-  handbooks page, OpenStax's catalogue, the Ready.gov publications page, the NCHFP
-  guide pages, the National Weather Service brochures page, the NASA Technical Reports
-  Server, the USGS Publications Warehouse, the UIAA medical advice page). FAO documents
-  were requested by document code and WHO records by record number; in both cases the
-  title was confirmed from what came back before anything was used.
-- **The validator.** `node apps/server/src/cli/validate-catalog.ts` passes, and with
-  `--online` all 220 entries resolve at their source (checked again after the radio
-  sources were added).
-- **Conduct.** Requests were made one at a time with a generic client name and no
-  personal information. `robots.txt` was read where present, and the ten-second crawl
-  delay that the WHO and FAO repositories ask for was kept between downloads. The
-  validator's online check keeps the same ten seconds between requests to any one
-  host. A catalogue refresh in the app does not contact these publishers at all: every
-  direct entry pins its size and checksum, and the download itself is the check. Hosts that
-  refused the client (gutenberg.org, fema.gov, cdc.gov) were left alone after one or
-  two requests, and nothing was done to get round the refusal. (fema.gov and cdc.gov
-  answered the same client on 2026-11-17; see below.) No search pages were
-  crawled and no site was scraped.
+## How sources were read
 
-## What was added on 2026-11-15 for radio, and how
+The same rules for every source:
 
-- **Reference sheets.** Nine sheets were written for Outpost from the regulators' and
-  bodies' own documents; [radio.md](radio.md) lists the sources of each, what could not
-  be verified, and what the second reading of each table found.
-- **Direct entries.** Thirty-three PDFs (about 38 MB in all) were downloaded once each from
-  the address in the manifest, confirmed to be real PDFs, measured and hashed; the title,
-  edition and date were read from each file. Ofcom's addresses are written without the
-  `?v=` number its website adds, and redirect to the current file; when Ofcom replaces a
-  document the checksum stops matching and the entry needs checking again.
-- **Kiwix.** The library's feed was asked for a handful of subject words (radio,
-  electronics, antenna, Morse, meteorology, weather, signal, and a few neighbours), one
-  request at a time. Nothing on antennas, Morse or meteorology is published there beyond
-  the archives already listed.
-- **The validator.** After these additions `node apps/server/src/cli/validate-catalog.ts`
-  passes, and with `--online` all 220 entries resolve at their source (the nine bundled
-  sheets resolve by being present on disk).
-- **Conduct.** As before: one request at a time, a generic client name, no personal
-  information, `robots.txt` read first. Hosts that refused the client (navcen.uscg.gov,
-  fcc.gov, nrc.canada.ca, acma.gov.au) were left alone after one or two requests; armypubs.army.mil
-  and the eCFR interfaces were not used because their `robots.txt` says no; nothing was
-  done to get round any of these. Search engines were used to find publishers' pages;
-  no publisher's own search pages were crawled.
+- `robots.txt` first, for every new host. A path it disallows is left alone.
+- One request at a time, through Outpost's own client ("Outpost (self-hosted offline
+  library)"), with nothing personal. At least two seconds between requests to one host,
+  more where asked (ten at WHO, FAO and nidirect; fifteen or more at fema.gov). The online
+  check keeps ten seconds per host.
+- A host that refused (403, a browser check, a challenge) or failed was left after one or
+  two requests. Nothing was done to get round a refusal: no other client name, browser,
+  mirror, cache or summarising service.
+- Each file was fetched once, confirmed to be a real PDF, measured, hashed, read for its
+  title, edition, pages, licence and outside credits, and deleted. Nothing fetched is
+  kept.
+- Addresses came from the publisher's own pages or catalogue services. Search engines
+  were used to find pages, and are named where an address came from one. No publisher's
+  own search was crawled.
+- Where a quotation comes from a search result's extract, or from a page read through a
+  summarising tool, the row says so.
 
-## What was added on 2026-11-16, and how
+Exceptions: the Kiwix feed was fetched once before its `robots.txt` was read; the radio
+frequency pages were read with a fetch that names itself an AI agent
+([below](#frequencies-to-listen-to-read-2026-11-17)); the garden pages were fetched with
+curl.
 
-- **What was asked for.** More sources worth having offline, each one fetched and
-  checked the same day, and nothing listed whose licence statement could not be read
-  at the publisher. 75 entries were added: 48 PDFs and 27 Kiwix archives (three of the PDFs, the Ordnance Survey guides, were then taken out again, leaving 72). One of them,
-  U.S. Chart No. 1, rests on being a work of the US Government with no separate
-  statement read; its entry says so.
-- **Direct entries.** Each file was downloaded once from the address in the manifest
-  with Outpost's own client name, confirmed to be a real PDF, measured and hashed; the
-  title, page count and edition were read from the file, and what each description
-  says the document covers was checked against the file's text or the publisher's page. About
-  770 MB was downloaded in 58 requests for files; the large ones were deleted once
-  hashed. Forty-eight became entries and ten were left out, for the reasons given in
-  the tables above.
-- **Addresses** were taken from the publishers' own pages or services: the Met Office
-  factsheets page, each HSE publication's page, GOV.UK's content service, the OS
-  teaching resources page, each Department of Energy handbook's page, OpenStax's
-  catalogue, the contents page of each Lessons In Electric Circuits volume, the WNDW
-  home page, the NOAA Chart No. 1 page, the Space Weather Prediction Center's scales
-  page, the USGS Publications Warehouse and Ofcom's EMF guidance page. Search engines
-  were used to find those pages; no publisher's own search was used.
-- **Kiwix.** The library's English feed was fetched once (1,309 books). Names, editions
-  and sizes come from that copy. For each publisher that is not Stack Exchange or
-  Wikimedia, the licence was read on the publisher's site or in its repository.
-- **Dropped after checking.** Three files that passed every check by hand were not
-  listed because the online check could not confirm them; two have since been added
-  (next section). One Met Office
-  factsheet has no readable text. One Weather Service sheet may not be its own work.
-- **The validator.** `pnpm catalog:validate` passes, and with `--online` all 311 (308 since the three Ordnance Survey guides were taken out)
-  entries resolve at their source.
-- **Conduct.** One request at a time, `robots.txt` read first for every new host, at
-  least two seconds between requests to one host and more where asked. Hosts that
-  refused (cdc.gov, stacks.cdc.gov, fema.gov (cdc.gov and fema.gov answered on 2026-11-17), phmsa.dot.gov, nwcg.gov, fsis.usda.gov,
-  spherestandards.org, ifrc.org, nrc.canada.ca, noaa.gov's disclaimer page) or failed
-  (msi.nga.mil, fpl.fs.usda.gov) were left alone after one or two requests, and nothing
-  was done to get round a refusal. One mistake: a faulty script sent ten requests to
-  the Met Office for an address with no file name, which answered "not found" each
-  time, before the ten factsheets were fetched properly. Project Gutenberg was asked
-  for `robots.txt` and its policy page only, and for nothing after the policy was read.
+## Open questions for the owner
 
-### What the online check could not express, and now can
+- **Joint works with charities.** UKHSA and Age UK's *Top tips for keeping warm* (W2), and
+  Ready.gov's caregivers' guide and *Prepare with Pedro* (W6), are listed. Drop them if
+  joint work with a charity should be treated like FEMA P-530 (left out for outside
+  credits).
+- **Met Office warnings RSS.** Its terms neither allow nor forbid keeping a copy for
+  offline reading.
+- **NASA POWER.** No licence is named on its pages.
+- **MeteoAlarm.** Whether a household's kept copy is "operational redistribution", which
+  must be within ten minutes of real time.
+- **MET Norway.** It would need contact details in Outpost's client name.
+- **The Bright Star Catalogue.** Whether shipping a subset of its figures needs the
+  authors' permission ([below](#the-night-sky-and-celestial-navigation)).
+- **Kiwix.** Not yet asked about its `robots.txt` (below).
+- Publishers worth asking for permission are listed under
+  [Wanted, and not yet possible](#wanted-and-not-yet-possible).
 
-The online check asks each address with `HEAD`. It used to fall back to asking for the
-first byte only when the answer was an error other than "not found", and two publishers
-answer `HEAD` with "404 Not Found" for a file they serve normally: nvlpubs.nist.gov
-(NIST's publications server), and the Met Office's file service until an ordinary
-request has put the file in its cache. Three files that had been checked by hand were
-left out for that reason alone.
+## Status of each source
 
-The check now asks for the first byte whenever `HEAD` is refused, "not found" included,
-and takes only that second answer as the file being gone
-(`apps/server/src/modules/catalog/resolve.ts`). The three were then looked at again,
-later on 2026-11-16. `robots.txt` was read for each host first (nvlpubs.nist.gov has
-none), the address of each file was taken from the publisher's own page (the NIST pages
-give a DOI, which was followed to the file), requests were made one at a time with a
-generic client name, and each file was read with Outpost's own PDF reader:
+"Via Kiwix": packaged as a ZIM archive by Kiwix and fetched from Kiwix. "Direct": the
+entry points at a file on the publisher's own website. Rows 1 to 36 were read on
+2026-11-15 unless a date is given.
 
-- **Met Office factsheet 2, Thunderstorms** (2026 edition, 24 pages, 5,113,428 bytes):
-  **listed.** `HEAD` answered 404 and the request for the first byte answered 200. The
-  licence statement on the factsheets page was read again. The file service does not
-  honour a request for one byte and sent the whole file in answer to it, so this file
-  was fetched twice, not once; the second copy is the one that was hashed.
-- **NIST Special Publication 811** (2008 edition, 90 pages, 2,027,518 bytes): **listed.**
-  This time `HEAD` answered 200; the first byte answered 206. Written by two NIST
-  employees; NIST's statement was read again. The entry notes that the guide's appendix
-  of conversion factors descends from one reprinted from an IEEE standard with
-  permission.
-- **NIST Special Publication 330** (2019 edition, 138 pages, 1,098,279 bytes): **still
-  not listed**, for a different reason. `HEAD` answered 404 and the first byte 206, so
-  the check would now pass. But page vi of the file carries a note from the
-  International Bureau of Weights and Measures: "All BIPM's works are internationally
-  protected by copyright. This document has been drafted with permission obtained from
-  the BIPM." The text is that body's, in a United States version edited at NIST. NIST's
-  statement gives the right to reprint works its employees wrote and says works by
-  third parties may be in copyright. The Bureau's own terms were not read, so nothing
-  that was read says this text may be reused, and the entry was left out as the 2013 WHO
-  pocket book was. NIST offers the file free of charge at
-  <https://doi.org/10.6028/NIST.SP.330-2019>; a person can download it there and add it
-  under Library.
+### General
 
-The whole catalogue was not run through the online check again after this change: that
-is some three hundred requests to other people's servers, made once already that day.
-The two new entries were checked as above, by hand, and `pnpm catalog:validate` passes
-with 310 entries.
+| # | Source | How Outpost uses it | Licence and terms |
+| --- | --- | --- | --- |
+| 1 | Kiwix Library (library.kiwix.org) | **Built in; 185 entries** across the Kiwix manifests, each naming a book whose address, size and checksum come from the feed at download time. | Every book keeps its publisher's licence; entries say "See source" where unchecked. Kiwix's English terms page returned "not found". Its feed's `robots.txt` disallows everything: see [below](#kiwixs-robotstxt-read-on-2026-11-17). |
+| 2 | Kiwix downloads (download.kiwix.org/zim/) | **Built in.** Files come from these servers and mirrors; manifests never hold a `.zim` address. | As row 1. |
+| 3 | Project Gutenberg (gutenberg.org) | **Via Kiwix: 17 entries.** **No direct entries, by decision**: the [robot access policy](https://www.gutenberg.org/policy/robot_access.html) says the site "is intended for human users only", and its formats "are re-built monthly". Download a single book in a browser and add it under Library. | "Public domain in the United States", as Project Gutenberg describes its books. |
+| 4 | OpenStax (openstax.org) | **Direct: 30 entries** (anatomy, microbiology, nursing, biology, chemistry, physics, astronomy, mathematics, statistics, history, philosophy, economics, writing). Addresses from OpenStax's catalogue. No Kiwix archive exists. | CC BY-NC-SA 4.0, inside each PDF and in [the catalogue](https://openstax.org/apps/cms/api/v2/pages/207/): non-commercial. The high-school *Physics* is CC BY 4.0. Figures credited to others are excepted. |
+| 5 | Internet Archive (archive.org) | **Add your own files.** Rights differ by item, so no general entry would be honest. | The [terms](https://archive.org/about/terms) are drawn by a script and could not be read. Read each item's rights statement. |
+| 6 | NASA (nasa.gov) | **Direct: 4**: the Systems Engineering Handbook and Fastener Design Manual (Technical Reports Server); *NACA to NASA to Now* and *50 Years of Solar System Exploration* (history e-books, W30). **Via Kiwix: 2** (Astronomy Picture of the Day; TED talks about NASA). | Each [NTRS record](https://ntrs.nasa.gov/api/citations/20170001761) marks public use permitted. NASA's [media guidelines](https://www.nasa.gov/nasa-brand-center/images-and-media/): generally not under US copyright; acknowledge NASA; imply no endorsement. Some APOD pictures are copyrighted by those credited. |
 
-## What was added on 2026-11-17 for CDC and FEMA, and how
+### Survival and preparedness
 
-- **Why now.** On 2026-11-15 and 2026-11-16 www.cdc.gov, stacks.cdc.gov and
-  www.fema.gov refused the catalogue check with HTTP 403. On 2026-11-17 `robots.txt`
-  for www.cdc.gov and www.fema.gov was requested with Outpost's own HTTP client
-  (`apps/server/src/core/http.ts`, user agent "Outpost (self-hosted offline library)",
-  unchanged) and both answered 200. Every request below went through that client. No
-  other user agent, browser, proxy, mirror, cache or summarising fetcher was used.
-  stacks.cdc.gov was not asked again.
-- **Terms read.** CDC's [Use of Agency Materials](https://www.cdc.gov/other/agencymaterials.html)
-  and FEMA's [website information](https://www.fema.gov/about/website-information) page,
-  both quoted in rows 11 and 8 above. Each CDC entry's attribution carries the credit,
-  the no-endorsement line and "available at no charge on www.cdc.gov", as CDC's page
-  asks. Each file was searched for copyright notices and credits before it was listed.
-- **Addresses** were taken from the agencies' own pages: CDC's water emergency and
-  natural disaster communication resources pages and the page of each sheet, CDC's
-  hiking water page and power-cut food page; FEMA's safe room resources page and its
-  *Protect Your Property* brochures page. The one exception is the nuclear detonation
-  planning guidance: none of the FEMA pages read (planning guides, radiological,
-  hazardous response, the Office of Emerging Threats) links it, so its address came
-  from a search engine. It is FEMA's own file store, the file names FEMA as publisher,
-  and the entry's homepage is the Office of Emerging Threats page the guidance itself
-  names. Search engines were used to find pages; neither agency's own search was used.
-- **Files.** Sixteen PDFs, each fetched once (about 53 MB): measured, hashed, and the title,
-  page count, edition and date read from the file. Fifteen were listed. FEMA's P-320
-  address without a date redirects to the April 2025 file, so the entry names that file.
-  P-320's own copyright note says its illustrations are by FEMA or a FEMA contractor
-  and its photographs public domain or FEMA's; the ICC 500 section it reproduces with
-  permission, and a copyright line on its design drawing sheets that names no holder,
-  are stated in the entry. The nuclear guidance credits one figure to an outside
-  author; the entry says so.
-- **Left out.** FEMA P-530, Earthquake Safety at Home (fetched, not listed: prepared by
-  the Applied Technology Council for FEMA, with some 40 photographs and graphics credited
-  to outside people and organisations); the CERT Basic Training participant manual
-  (FEMA's CERT page lists "Participant manuals" with no link, and Ready.gov's CERT page
-  redirects there); CDC's Extreme Cold guide (no current page offers the PDF). Spanish
-  and other language editions were not listed; the brief was English only.
-- **Conduct.** At least 15 seconds between requests to www.fema.gov, as its
-  `robots.txt` asks, and a few seconds between requests to www.cdc.gov. About 25 pages (twelve at the CDC,
-  twelve at FEMA, one at Ready.gov that redirected to FEMA) and 16 files were requested,
-  besides the online check. The downloaded files were kept outside the repository
-  and deleted.
-- **Checks.** `pnpm catalog:validate` passes with 325 entries, and
-  `pnpm catalog:validate --online --delay 16` reports 325 of 325 entries resolving at
-  their source. One entry from each host (the CDC generator flyer and FEMA's earthquake
-  brochure) was downloaded through a throwaway Outpost server started from the
-  repository, and both completed at the pinned size and checksum.
+| # | Source | How Outpost uses it | Licence and terms |
+| --- | --- | --- | --- |
+| 7 | Ready.gov (FEMA) | **Direct: 9 entries** (Are You Ready?, hazard sheets, supply list, guides for older adults, pets, caregivers, disabilities, family communication plan, *Prepare with Pedro*). **Via Kiwix: 1** (the whole site). | The [publications page](https://www.ready.gov/publications): files may be downloaded and reproduced, provided nothing is altered and no endorsement is implied. |
+| 8 | FEMA (fema.gov) (read 2026-11-17) | **Direct: 7 entries**: Planning Guidance for Response to a Nuclear Detonation (3rd ed.; address from a search engine, as no FEMA page links it); *Taking Shelter from the Storm* (P-320, the April 2025 file); five *Protect Your Property* brochures. **Left out:** the CERT participant manual (no page links a copy); *Earthquake Safety at Home* (P-530: prepared by a contractor, some 40 photographs and graphics credited to outsiders). `robots.txt` asks `crawl-delay: 15`. | [Website information](https://www.fema.gov/about/website-information): "Most material on FEMA.gov is free of copyright and may be copied and distributed without permission." Licensed photos and the DHS seal are excepted. P-320 reproduces an ICC 500 section with permission; the nuclear guidance credits one figure to an outside author; the entries say so. |
+| 9 | Survivor Library (survivorlibrary.com) | **Not listed.** A third party's scans of others' works; no licence on the [home page](https://www.survivorlibrary.com/). Kiwix's archive of it (about 220 GB) is left out until the rights are checked. | None found. |
+| 10 | TruePrepper survival PDFs | **Not listed.** The page re-hosts other publishers' manuals; where one has an official publisher, the catalogue points there. Its Kiwix archive is left out too. | [The page](https://trueprepper.com/survival-pdfs-downloads/): "All rights reserved". |
 
-## What was read on 2026-11-17 for audiobooks and the NIOSH Pocket Guide, and how
+### Medicine and food
 
-- **Client.** Every request went through Outpost's own client (`apps/server/src/core/http.ts`,
-  user agent "Outpost (self-hosted offline library)"), one at a time, a few seconds apart.
-  No other user agent, browser, mirror, cache or summarising service was used.
-- **NIOSH.** www.cdc.gov's `robots.txt` was read first; it disallows `/niosh/archive/`,
-  which was not visited. Then the [Pocket Guide page](https://www.cdc.gov/niosh/npg/),
-  its "PDF Version" link (`/niosh/docs/2005-149/default.html`, a page that sends the
-  browser on to `/niosh/publications/numbered/2005-149.html`), and that publication page,
-  which links `/niosh/docs/2005-149/pdfs/2005-149.pdf`. The file was fetched once:
-  6,339,883 bytes (the page says "6,192KB"), SHA-256
-  `c008054cef5aae66addaeab70549d4d549de409f3db75df73c5e7c631a674ad9`, 454 pages, its
-  title, edition and public-domain statement read from the file, and it was searched for
-  copyright notices and credits (none). The file was then deleted. `pnpm catalog:validate`
-  passes with 326 entries; `pnpm catalog:validate --online --delay 16` reported 325 of 326
-  resolving, the NIOSH entry among them, and one failure that is not this entry's
-  (`nasa.fastener-design-manual: fetch failed`).
-- **LibriVox, terms first.** `robots.txt` (it allows ordinary clients everywhere but
-  `/uploads/`, `/librivox-validator-books/`, `/public_readers_iframe/` and `/auth/`, and
-  carries the content signals `search=yes,ai-train=no,use=reference`), the public domain
-  page, its note for readers in the European Union (a page about LibriVox not being the
-  German firm Libri; nothing on copyright), the API page and the [API update of
-  16 September 2026](https://librivox.org/2026/09/16/librivox-api-update/). That post
-  says "because all LibriVox recordings are in the Public Domain, third parties – app
-  developers, archivists, streaming channels and curators – are more than welcome to
-  share and re-share them with the world", sets a limit of 500 records a request, and
-  asks "that developers be considerate and separate their requests by several seconds".
-- **What decided it.** A catalogue entry that fetched a book on a press would fetch from
-  archive.org, not from LibriVox: the API names each zip "Hosted by Archive.org". LibriVox
-  welcomes reuse of its recordings, but the Internet Archive's terms could not be read,
-  so it is not clear that a program may fetch its files; and its `/compress/` addresses
-  build each zip on request, so no size or checksum could be pinned as an entry needs.
-  So the smaller thing was done: a link the person follows in their browser, and an
-  importer in the Library for the zip they get.
-- **The shelf.** 28 title searches of LibriVox's API (`/api/feed/audiobooks/?title=^…`,
-  with `extended=1`), five seconds apart. Fifteen books were chosen: three practical, six
-  classics for adults, six for children, a solo reader wherever there was a complete
-  English version with one. `catalog/audiobooks.json` keeps LibriVox's record of each as
-  the API gave it (title, authors, readers, running time, number of files, page and zip
-  addresses) and a one-line summary written for Outpost. Sizes are not in the record and
-  archive.org was not asked: the shelf says "about" a size worked out from the running
-  time at the 64 kbps the zips hold. To make the shelf again, search the API by title for
-  each id in the file and copy the same fields.
-- **Kiwix.** One search of the feed for "librivox"; no result.
-- **Not read.** archive.org's terms (drawn by a script); no other archive.org page was
-  asked for.
+| # | Source | How Outpost uses it | Licence and terms |
+| --- | --- | --- | --- |
+| 11 | CDC (cdc.gov) (read 2026-11-17) | **Direct: 13 one-page sheets**: water in an emergency and while hiking; food after a power cut; wound care; diarrhoea; heat illness; generators and carbon monoxide; hand washing; coping with a disaster; *Ready Wrigley Prepares for Winter Weather*; chronic conditions, periods and nappy changing after a disaster. **Via Kiwix: 1** (Travelers' Health). **Left out:** *Extreme Cold* (no current page offers the PDF); *Helping Children Cope* (its file is a different sheet). stacks.cdc.gov refused and was not used. | [Use of Agency Materials](https://www.cdc.gov/other/agencymaterials.html): most material "is in the public domain, and may be freely used or reproduced". Credit CDC, imply no endorsement, do not change the substance, say it is available at no charge on www.cdc.gov. Contractor and third-party material and the logo are excepted; no listed sheet carries any. |
+| 12 | WHO (iris.who.int) | **Direct: 8 entries** (Basic Emergency Care; Pocket Book of Primary Health Care for Children; Managing Complications in Pregnancy and Childbirth; Essential Medicines list; Drinking-water Quality; Preventing Drowning; *Doing What Matters in Times of Stress*; *Guidelines on Sanitation and Health*). The repository answers `HEAD` with 500, so the check asks for the first byte. | CC BY-NC-SA 3.0 IGO ([copyright page](https://www.who.int/about/policies/publishing/copyright)). Files that say "All rights reserved" inside although the record says CC are left out (the 2013 hospital pocket book, mhGAP 2.0, *Pregnancy, Childbirth, Postpartum and Newborn Care*, *Psychological First Aid*). |
+| 13 | National Center for Home Food Preservation (nchfp.uga.edu) | **Direct: 8 entries**, the eight files of the *USDA Complete Guide to Home Canning* (2015). **Via Kiwix: 1** (the same guide). | A USDA bulletin; no reuse licence in the files or [page](https://nchfp.uga.edu/resources/entry/about-the-usda-guide-to-home-canning-2015-revision), site "All rights reserved": "See source". |
+| AU1 | NIOSH (cdc.gov/niosh) | See [Audiobooks and the NIOSH Pocket Guide](#audiobooks-and-the-niosh-pocket-guide-added-on-2026-11-17). | Public domain. |
 
-## What was added on 2026-11-17 in the wider search, and how
+### Repair, engineering and computing
 
-- **What was asked for.** More sources for a household cut off for days, months or
-  years, and good things to read, each passing the same test as before: terms that let
-  a program fetch the file when a person asks, a file that is the publisher's own, a
-  stable address, a host that answers Outpost's own client, and a licence read at the
-  source. The rows are W1 to W32 above.
-- **Who read what.** Three researchers worked at once, each with a list of hosts that
-  was theirs alone, so that no host was asked by two of them: official guidance for the
-  first few days (UK first, then the United States and others); governments, UN bodies
-  and development libraries for the months and years; and the Kiwix feed, textbooks and
-  reading. A coordinator merged their findings and checked them.
-- **Client.** Every request to a publisher went through Outpost's own HTTP client
-  (`apps/server/src/core/http.ts`, user agent "Outpost (self-hosted offline library)"),
-  through a small script that waited at least six seconds between requests to one host
-  (ten or more where `robots.txt` or a repository asked: nidirect, WHO, FAO; sixteen at
-  fema.gov) and logged each request. No other user agent, browser, mirror, cache or
-  summarising service was used to read a publisher's page. Search engines were used to
-  find publishers' pages, and are named where an address came from one.
-- **`robots.txt` first.** It was read for every new host before anything else, with
-  the one exception at Kiwix described [above](#kiwixs-robotstxt-read-on-2026-11-17).
-- **How much was asked.** 270 requests to 64 hosts in all, as the script's log records them
-  (179 for pages, 89 for files, 2 for headers only), besides the online check. 89 files were fetched, each once,
-  about 1.9 GB in all, the largest OpenStax's *Organic Chemistry* (207,713,388 bytes);
-  nothing over about 210 MB was fetched, and the one larger file wanted (the FAA's
-  Powerplant handbook) was left alone because no checksum is published for it. Each file
-  was measured, hashed, read for its title, edition, pages and any copyright or licence
-  statement and outside credits, and deleted. Nothing fetched is kept anywhere.
-- **What became entries.** 66 direct entries in `official-publications`: 23 for the
-  first few days, 26 for months and years, 17 textbooks and books to read. 23 files were
-  fetched and not listed, for the reasons in the rows (outside credits, a mismatch
-  between page and file, "all rights reserved" inside the file, overlap with what is
-  listed, or not what a household most needs). Kiwix entries prepared the same day are kept
-  apart, in a commit of their own, until the owner decides on Kiwix's `robots.txt`.
-- **Refused or unreadable.** getready.govt.nz (403); www.openbookpublishers.com (429 and a
-  JavaScript check); storyweaver.org.in (a Cloudflare challenge); msi.nga.mil (503) and
-  www.fpl.fs.usda.gov (502), each given the one attempt allowed; Electrical Safety
-  First's terms page (404). `robots.txt` ruled out files.peacecorps.gov's `/manuals/`,
-  nfcc.org.uk's PDFs and research.fs.usda.gov, and Kiwix's two library hosts as above.
-  None was asked again or reached another way.
-- **Mistakes.** The Kiwix feed was fetched before its `robots.txt` was read (above).
-  One researcher's script deleted the two NASA books before it had printed the one line
-  containing "permission" in each; neither has a copyright notice, and the entries rest
-  on that and NASA's guidelines. Another's helper overwrote its text copies of the WHO
-  files, so the description of *Doing What Matters in Times of Stress* was cut back to
-  what was read at fetch time. ready.campaign.gov.scot, weather.metoffice.gov.uk,
-  nfcc.org.uk and canada.ca were reached only by following redirects.
-- **A finding about an existing entry.** CDC's page for *Eat Safe Food after a Power
-  Outage* now links `eat_safe-r5-infographic2-h.pdf`, where the entry has
-  `eat_safe-r5-infographic2-h_1.pdf`; see the online check below.
-- **New category.** Explore has a category "Literature and reading" (`reading`) for
-  literature, poetry, plays, music and books read for pleasure.
-- **Packs.** Five new packs: "A few days without power", "If it goes on for months",
-  "Rebuilding", "Something good to read" and "For children". "First things" now opens
-  with the UK household emergency plan and checklist, and adds the CDC's sheets on food
-  in a power cut and on generators and carbon monoxide; "Home preparedness", "Medicine
-  and first aid", "Food and growing", "Repair and making" and "Schoolroom" take in what
-  fits them.
-- **Checks.** `pnpm catalog:validate` passes with 392 entries (before the Kiwix entries of the
-  next section). `pnpm catalog:validate --online --delay 16 --skip-host opds.library.kiwix.org`
-  reported 236 of 237 entries checked resolving at their source, every new one among
-  them, and 155 Kiwix entries not checked because their host was skipped. The one
-  failure is not new: `nasa.fastener-design-manual: fetch failed`, as on the previous
-  run (2026-11-17, NIOSH section). The CDC food sheet's old address still answers; the
-  check asks whether a file is there, not whether it is the same file, so its checksum
-  was not compared.
+| # | Source | How Outpost uses it | Licence and terms |
+| --- | --- | --- | --- |
+| 14 | iFixit | **Via Kiwix: 1 entry.** | CC BY-NC-SA 3.0 ([licensing](https://www.ifixit.com/Info/Licensing)). |
+| 15 | Arduino documentation | **Not integrated**: no offline bundle; the text is a Git repository. Arduino's Stack Exchange is in `kiwix-essentials`. | Content [CC BY-SA 4.0](https://github.com/arduino/docs-content/blob/main/LICENSE.md). |
+| 16 | DevDocs (devdocs.io) | **Via Kiwix: 18 entries** (Python, JavaScript, HTML, CSS, Web APIs, HTTP, Bash, Git, Linux man pages, C, C++, Go, Rust, Node.js, TypeScript, Docker, PostgreSQL, SQLite). Kiwix has about 225 more; add any with your own manifest. | App: [MPL 2.0](https://github.com/freeCodeCamp/devdocs/blob/main/LICENSE). Each set keeps its project's licence: "See source". |
+
+### Agriculture, aviation, weather and mountaineering
+
+| # | Source | How Outpost uses it | Licence and terms |
+| --- | --- | --- | --- |
+| 17 | FAO (fao.org) | **Direct: 7 entries** (A Vegetable Garden for All; Small-scale Aquaponics; Farmer's Compost Handbook; Small Earth Dams; Small-scale Poultry Production; Quality Declared Seed System; Soil Organic Matter). **Left out:** *Rural structures in the tropics*, *Beekeeping and Sustainable Livelihoods* and *Seeds in Emergencies* (use "upon request"); *Meat Processing Technology* and *Bees and their Role in Forest Livelihoods* (permission needed); post-harvest, fish farming and grain storage manuals (HTML only). | © FAO; each document prints its terms. Listed ones: "Reproduction and dissemination … for educational or other non-commercial purposes are authorized without any prior written permission … provided the source is fully acknowledged" ([terms](https://www.fao.org/contact-us/terms/en/)). |
+| 18 | FAA handbooks | **Direct: 6 entries** (Pilot's Handbook of Aeronautical Knowledge; Airplane Flying; Aviation Weather; Instrument Flying; Helicopter Flying; Aviation Maintenance Technician: General). The Airframe handbook and AC 43.13-1B pass but are set aside as aircraft-only; Powerplant (205 MB, no checksum published) not fetched. | US Government works; [handbooks page](https://www.faa.gov/regulations_policies/handbooks_manuals/aviation). Images credited to outsiders may be in copyright. |
+| 19 | ARRL (arrl.org) | **Not integrated.** The [copyright page](https://www.arrl.org/copyright) reserves all rights and forbids storing its publications in a retrieval system. One newsletter page was read to trace the "Wilderness Protocol". | All rights reserved. |
+| 20 | NOAA (noaa.gov) | **Direct: 9 entries**: from the National Weather Service, the Weather Spotter's Field Guide, Thunderstorms, Winter Storms, Cloud Chart, Observing Handbook No. 1, Marine Radiofacsimile Schedules, the NOAA Weather Radio brochure; *U.S. Chart No. 1* (Office of Coast Survey); *NOAA Space Weather Scales* (SWPC). **Left out:** *Lightning Safety for Backpackers* (no author; may not be NWS's work). | Public domain unless noted ([NWS disclaimer](https://www.weather.gov/disclaimer)): do not claim it as yours or alter it and present it as official. For Chart No. 1 no reuse statement could be read (noaa.gov/disclaimer answered 403); its entry says so. |
+| 21 | UIAA (theuiaa.org) | **Direct: 2 entries** (Altitude Sickness; Water Disinfection in the Mountains). | Offered free on the [medical advice page](https://www.theuiaa.org/mountain-medicine/medical-advice/); no reuse licence found: "See source". |
+
+### Radio
+
+"Read for the sheets": fetched once and its facts used in a reference sheet, with nothing
+stored in the catalogue.
+
+| # | Source | How Outpost uses it | Licence and terms |
+| --- | --- | --- | --- |
+| R1 | Ofcom (ofcom.org.uk) | **Direct: 15 entries** in `radio`: the licence conditions and guidance, coordination notice, Frequency Allocation Table, distress and safety annex, interface requirements IR 2027 to 2030, PMR446, ship radio and EMF guidance. **Read for the sheets**, with the page on receivers and scanners. | **Not the Open Government Licence.** [Copyright page](https://www.ofcom.org.uk/about-ofcom/our-website/copyright): material "may be reproduced free of charge in any format or medium, provided that it is reproduced accurately and not used in a misleading context", acknowledged as Ofcom copyright with the title. |
+| R2 | US Government Publishing Office (govinfo.gov) | **Direct: 2 entries** (47 CFR Parts 97 and 95, 1 October 2025 edition). **Read for the sheets**: Title 47 from govinfo's bulk data, a 2013 Federal Register notice, 47 U.S.C. 605. | US Government works. |
+| R3 | eCFR (ecfr.gov) | **Not used for content**: its `robots.txt` disallows the interfaces that serve whole parts; govinfo's bulk data is used instead. | US Government works. |
+| R4 | FCC (fcc.gov) | **Not integrated**: answered 403. Its rules are covered by R2. | Could not be read. |
+| R5 | NTIA (ntia.gov) | **Direct: 1 entry** (US Frequency Allocation Chart, September 2025). The "Redbook" is now a web application with no file. | US Government works. |
+| R6 | NIST (nist.gov) | **Direct: 3 entries**: SP 432 and SP 250-67 (time and frequency services and stations), SP 811 (Guide for the Use of the SI; its conversion appendix descends from an IEEE standard reprinted with permission). **Not listed:** SP 330, the US version of the BIPM's SI Brochure, which the BIPM says is copyright; free at <https://doi.org/10.6028/NIST.SP.330-2019> to add yourself. | [NIST's statement](https://www.nist.gov/open/copyright-fair-use-and-licensing-statements-srd-data-software-and-technical-series-publications): its employees' works are not under US copyright and may be reprinted; third parties' may be. |
+| R7 | Maritime and Coastguard Agency (gov.uk) | **Direct: 3 entries**: the Maritime Safety Information leaflet (January 2026), *GMDSS: The Benefits of DSC*, *Life Saving Signals*. **Read for the sheets**: the leaflet, the 406 MHz beacon page, MGN 324. | Open Government Licence v3.0 "except where otherwise stated"; the leaflet's maps and one diagram are "All rights reserved", and the entry says so. |
+| R8 | IARU (iaru.org, iaru-r1.org, iaru-r2.org) | **Direct: 7 entries**: the operating guide (4th ed.), the three regions' band plans, the Emergency Telecommunications Guide, the spectrum summary. **Read for the sheets.** | The operating guide is CC BY-SA 4.0. The others state no licence and the site says materials "may be subject to copyright": "See source". |
+| R9 | ITU (itu.int) | **Not listed.** M.1677-1 (Morse) and M.1172 (Q code) read for the sheets. **P.533 software and maps** (github.com/ITU-R-Study-Group-3/ITU-R-HF, commit `82017594a1c6`): not shipped; the HF planner's optional second model fetches the 25 map files (137 MB) when a person asks, and the person builds the engine ([hf-propagation.md](hf-propagation.md)). VOACAP's CCIR coefficients are not shipped either (row 37). | All rights reserved. The P.533 software has no licence file; it "may be used by implementers … free from any copyright assertions", with headers reserving all rights. |
+| R10 | CEPT ECC (docdb.cept.org) | **Direct: 3 entries** (T/R 61-01, the CEPT licence; T/R 61-02, the examination certificate; ECC Decision (15)05 on PMR446, also read for the sheets). | No licence stated: "See source". |
+| R11 | US Coast Guard NAVCEN | **Not integrated**: 403 twice. Marine distress frequencies come from Ofcom and 47 CFR Part 80. | Could not be read. |
+| R12 | National Research Council Canada (CHU) | **Not integrated**: 403; the sheet marks CHU "not verified". | Could not be read. |
+| R14 | BBC | **Not read**: its site does not admit automated clients. Shipping Forecast times come from the MCA leaflet. | Not applicable. |
+| R15 | RSGB (rsgb.org) | **Not integrated**: no licence found for its publications or band plans. One news page read as a secondary source. Its repeater list is P1. | No licence found. |
+| R16 | US Army publications (armypubs.army.mil) | **Not integrated**: `robots.txt` disallows all automated access. Re-uploads elsewhere are not used. | Could not be read. |
+| R18 | Kiwix archives on radio | **5 entries** in `radio` (Raspberry Pi, Network Engineering, Internet of Things, Space Exploration, Aviation Stack Exchange). The feed has little else on radio. *S2 Underground* (a 5.5 GB video channel) left out: rights unchecked. | Stack Exchange: CC BY-SA. |
+| R19 | CISA (cisa.gov) | **Direct: 2 entries** (National Interoperability Field Operations Guide 2.02; Auxiliary Communications Field Operations Guide 1.1). | US Government works. |
+| R20 | ISED Canada | **Direct: 1 entry** (RBR-4). Crawl delay of five to ten seconds asked. | No licence in the file; terms page would not load: "See source". |
+| R21 | ACMA (acma.gov.au) | **Not integrated**: dropped the connection twice. | Could not be read. |
+| R23 | MCA guidance notes (MGN 324) | **Not listed**: a web page with no PDF. Read through GOV.UK's content service and quoted in the emergency frequencies sheet. | Open Government Licence v3.0. |
+| R24 | Reticulum and Meshtastic | **Not integrated**: Reticulum's manual is at a "latest release" address that changes, under its own restrictive licence; Meshtastic's docs are a website with no file. See also [Mesh radio](#mesh-radio-read-2026-11-17). | Reticulum: its own licence. Meshtastic: not checked. |
+
+Also read for the sheets only, one page each, terms not checked: NPL (MSF) and PTB (DCF77) (R13); radiofreeq.wordpress.com and amrron.com, for where "3-3-3" and "channel 3" come from (R17); ARISS, for the ISS's frequencies (R22).
+
+### Added on 2026-11-16
+
+"Candidate": worth having, but something stopped it, named in the row.
+
+| # | Source | How Outpost uses it | Licence and terms |
+| --- | --- | --- | --- |
+| N1 | Met Office (metoffice.gov.uk) | **Listed: 9 factsheets** (1 Clouds, 2 Thunderstorms, 4 Climate of the British Isles, 6 Beaufort Scale, 8 Shipping Forecast, 10 Air masses and fronts, 11 Weather charts, 14 Microclimates, 15 Weather radar). **Left out:** factsheet 3, whose text cannot be extracted. | [Factsheets page](https://www.metoffice.gov.uk/research/library-and-archive/publications/factsheets): Crown copyright under the Open Government Licence. Photographs credited to others excepted. |
+| N2 | HSE (hse.gov.uk) | **Listed: 6 entries** (First aid at work INDG347; Electrical safety INDG231; Electricity at work HSG85; Chainsaws INDG317; Working at height INDG401; Gas appliances INDG238). L74 left out: guidance for employers, not a first aid reference. | [Copyright page](https://www.hse.gov.uk/help/copyright.htm): Open Government Licence with acknowledgement; images not Crown-owned excepted. |
+| N3 | GOV.UK publications | **Listed: 6 entries**: *Life Saving Signals* (MCA), Countryside Code summary, Personal Flood Plan, National Risk Register 2025, *Know Your Traffic Signs*, GMDSS DSC (MCA). Addresses from GOV.UK's content service. **Left out:** *SOLAS V for pleasure craft* (withdrawn); MSN 1781 (a web page). | Open Government Licence v3.0 "except where otherwise stated". |
+| N4 | Ordnance Survey (ordnancesurvey.co.uk) | **Not listed**, by the owner's decision: the map reading guides are not openly licensed and a portable drive could copy them; get them from the [teaching resources page](https://www.ordnancesurvey.co.uk/education/teacher-resources/primary). Map legends prohibit reproduction. | © Crown copyright. [General terms](https://www.ordnancesurvey.co.uk/legal/general-terms): "You may access, view, download and print off one copy of any pages of our Website for your own personal use". |
+| N5 | US Department of Energy (energy.gov) | **Listed: 18 entries**, DOE Fundamentals Handbooks: Electrical Science (4), Engineering Symbology (2), Mechanical Science (2), Mathematics (2), Chemistry (2), Material Science (2), Classical Physics, Thermodynamics, Heat Transfer and Fluid Flow (3). Instrumentation and Nuclear Physics not fetched. | "Distribution Statement A. Approved for public release; distribution is unlimited." Listed by the department as "Archive". |
+| N6 | Lessons In Electric Circuits (ibiblio.org/kuphaldt) | **Listed: 6 entries** (DC, AC, Semiconductors, Digital, Reference, Experiments). | CC BY 4.0, reproduced in each volume. |
+| N7 | Wireless Networking in the Developing World (wndw.net) | **Listed: 1 entry** in `radio` (3rd ed., 2013, about 200 MB). | CC BY-SA 3.0 ([licence page](https://wndw.net/license.html)), which asks for a prominent link to wndw.net on copies. |
+| N8 | Kiwix library, second pass (1,309 books) | **Listed: 27 entries** in `kiwix-more`: 19 Stack Exchange sites (home improvement, woodworking, medicine, homebrewing, sciences, GIS, Unix, Server Fault, security, Stack Overflow, languages), Wikiversity, three Wikipedia selections, Rabbit Waves, Grimgrains, Based Cooking, the OpenWrt wiki. **Left out:** the 193 `maps_en_*` archives (Outpost has its own maps), video and third-party collections with unread terms, LibreTexts shelves (no licence page), game and fan wikis. | Stack Exchange: CC BY-SA ([licensing](https://stackoverflow.com/help/licensing)). Wikimedia: CC BY-SA 4.0. Grimgrains: CC BY-NC-SA 4.0. OpenWrt: CC BY-SA 4.0. Rabbit Waves and Based Cooking: MIT and the Unlicense, read in their repositories. |
+| N9 | Sphere Handbook (spherestandards.org) | **Candidate.** Its handbook and IP pages answered 403. Search results describe it as free to download, all rights reserved. | Could not be read. |
+| N10 | IFRC first aid guidelines | **Candidate.** The page answered 403. | Could not be read. |
+| N11 | MSF medical guidelines | **Not listed**: PDFs are built on request, so there is no fixed file; no licence on the about page. | Not found. |
+| N12 | Hesperian (*Where There Is No Doctor*) | **Not listed.** The [open copyright policy](https://hesperian.org/open-copyright-policy/): "please contact Hesperian for written permission to use our materials in any digital format". Download the books yourself and add them under Library. | Permission needed for digital use. |
+| N13 | US agencies that refused or failed | **Candidates**: 503, 502 and 403 answers; tried again in W27. | Would be US Government works. |
+| N15 | Radio sources again | ukrepeater.net (disallows its data folders), Summits on the Air (no licence found), IARU VHF and HF managers' handbooks (not fetched). **Not listed.** | No licence found. |
+
+Also: the EPA's emergency water disinfection is a web page with no PDF (N14). Not yet examined (N16): Mountaineering Scotland, the BMC, Mountain Rescue England and Wales, Oxfam's technical briefs, the US Fire Administration, the US Coast Guard's boating safety site, remaining FAO and WHO titles.
+
+### Audiobooks and the NIOSH Pocket Guide, added on 2026-11-17
+
+| # | Source | How Outpost uses it | Licence and terms |
+| --- | --- | --- | --- |
+| AU1 | NIOSH (cdc.gov/niosh) | **Listed: 1 entry**: *NIOSH Pocket Guide to Chemical Hazards*, DHHS (NIOSH) 2005-149, third printing (September 2007), 454 pages, 6,339,883 bytes. Address from the [Pocket Guide page](https://www.cdc.gov/niosh/npg/). NIOSH updates its online edition more often than the PDF; the entry says so. | Page ii: "This document is in the public domain and may be freely copied or reprinted." CDC's attribution wording (row 11) is carried. |
+| AU2 | LibriVox (librivox.org) | **Links only, by decision**: a shelf of 15 books in Explore (`catalog/audiobooks.json`: three practical, six classics, six for children), each linking to its LibriVox page and zip, which you download in your browser and add under Library. Outpost never fetches a recording. Sizes are "about", worked out from the running time at 64 kbps. | [Public domain page](https://librivox.org/pages/public-domain/): "all our recordings are public domain in the USA, but not necessarily in other countries"; outside the USA, "check the copyright status of the work in your country before downloading". Its catalogue records are public domain too. The [API update](https://librivox.org/2026/09/16/librivox-api-update/) welcomes reuse and asks for requests "several seconds" apart. |
+| AU3 | Internet Archive, for LibriVox's files | **Not fetched.** LibriVox's zips are "Hosted by Archive.org" at its `/compress/` service, which builds each zip on request, so no size or checksum can be pinned, and archive.org's terms could not be read. | `robots.txt` disallows only `/control/` and `/report/`; [terms](https://archive.org/about/terms) need JavaScript. |
+| AU4 | Kiwix, for LibriVox | **Nothing to list**: no book found. | Not applicable. |
+
+### The wider search, 2026-11-17
+
+More sources for a household cut off for days, months or years, and good things to read.
+Rows for publishers already above (W5 HSE, W6 Ready.gov, W7 CDC, W15 DOE, W17 WHO, W18
+FAO, W19 USGS, W29 OpenStax, W30 NASA) are folded into those rows.
+
+**A few days without power or internet**
+
+| # | Source | How Outpost uses it | Licence and terms |
+| --- | --- | --- | --- |
+| W1 | Be Ready, Cabinet Office (beready.campaign.gov.uk) | **Listed: 2**: Household Emergency Plan and Be Ready Checklist (October 2026). | [About this website](https://beready.campaign.gov.uk/about-this-website-and-uk-resilience/): "All content is available under the Open Government Licence v3.0, except where otherwise stated". |
+| W2 | GOV.UK: Home Office and UKHSA | **Listed: 6**: *Fire Safety in the Home* (2021); UKHSA's Easy Read booklets on cold, heat, keeping cool and after a flood; *Top tips for keeping warm and well this winter* (with Age UK; see [open questions](#open-questions-for-the-owner)). The Food Standards Agency's and the EA's flood and power cut advice is HTML only. | Open Government Licence v3.0 "except where otherwise stated". |
+| W3 | Ready Scotland (ready.campaign.gov.scot) | **Listed: 1**: Home Emergency Plan (March 2026). | Open Government Licence v3.0 "except for graphic assets"; the entry says so. |
+| W4 | nidirect | **Listed: 2**: Household Emergency Life-Saving Plan; Household Severe Weather Plan. Ten-second crawl delay kept. | [Crown copyright](https://www.nidirect.gov.uk/articles/crown-copyright): reuse under the Open Government Licence, logos and images excepted. |
+| W8 | US EPA (epa.gov) | **Listed: 1**: *Homeowner's and Renter's Guide to Mold Cleanup After Disasters* (2015). | [Disclaimers](https://www.epa.gov/web-policies-and-procedures/epa-disclaimers): "may be freely distributed and used for non-commercial, scientific and educational purposes". |
+| W10 | Government of Canada (*Your emergency preparedness guide*) | **Candidate**: canada.ca pages are HTML only; the PDF is on publications.gc.ca, not yet asked. | [Terms](https://www.canada.ca/en/transparency/terms.html): reproduction for non-commercial purposes without charge or permission. |
+| W11 | New Zealand NEMA (getready.govt.nz) | **Not listed**: refused (403). | Could not be read. |
+| W12 | St John Ambulance | **Not listed.** | [Legal page](https://www.sja.org.uk/legal-and-site-information/): no copying "without the prior written permission". |
+| W14 | Electrical Safety First, NFCC, London Fire Brigade | **Not listed**: ESF's terms page not found; NFCC's `robots.txt` disallows PDFs; LFB has no terms page. The Home Office booklet (W2) covers the ground. | As said. |
+
+Also not listed: FEMA's and the Met Office's winter material (W9: covered by Ready.gov's sheets); RoSPA and the American Red Cross (W13: personal use only).
+
+**Months and years: growing, repair, medicine**
+
+| # | Source | How Outpost uses it | Licence and terms |
+| --- | --- | --- | --- |
+| W16 | USDA Forest Service (fs.usda.gov) | **Listed: 3**: *The Forest Service Ax Manual* (2020; outside material named in the entry), *Crosscut Saw Manual*, *Trail Construction and Maintenance Notebook*. | [Notices](https://www.fs.usda.gov/about-agency/disclaimers-important-notices): "public information and may be distributed or copied"; credits requested. |
+| W20 | US National Park Service, Preservation Briefs | **Listed: 5**: Briefs 2 (lime mortar), 21 (plaster), 29 (slate roofs), 39 (damp), 47 (exteriors). They suit British houses of brick, stone, lime and slate. | "This publication is not copyrighted and can be reproduced without penalty." Outside photographs in Briefs 39 and 47 may not be reused. |
+| W21 | SARE (sare.org) | **Listed: 1**: *Building Soils for Better Crops*, 4th ed. (2021). | [Permissions](https://www.sare.org/about/sare-outreach/publishing-with-sare-outreach/recommended-attribution-format/): "may be copied and distributed with attribution for educational, non-commercial purposes." |
+| W22 | ICRC | **Listed: 1**: *War Surgery*, Volume 1 (2nd ed., 2019), from the shop's free e-book download. | [Terms](https://www.icrc.org/en/copyright-and-terms-use): personal and non-commercial copying, entire and unmodified, with copyright and source. |
+| W24 | CAWST (household water treatment, biosand filter) | **Candidate**: files are on `cdn.sanity.io`, not yet asked. | [Terms](https://www.cawst.org/privacy-policy-and-terms?lang=en): CC BY-SA 4.0. |
+| W25 | Peace Corps manuals | **Not listed**: `robots.txt` disallows `/manuals/`. | Not applicable. |
+| W27 | Forest Products Laboratory and NGA, second try | **Not listed**: failed again (502, 503). | Could not be read. |
+
+Also not listed: Practical Action's briefs (W26: no file or terms); NRCS, the Marine Corps, the Navy and ATTRA (W28: copies only on other sites).
+
+**Textbooks, reference and good reading**
+
+| # | Source | How Outpost uses it | Licence and terms |
+| --- | --- | --- | --- |
+| W31 | Standard Ebooks | **Not listed.** The texts are public domain in the US and its own work is CC0, but [bulk downloads](https://standardebooks.org/bulk-downloads) and feeds are for paying members, and books are revised in place. A link shelf, as for LibriVox, would be honest. | As said. |
+| W32 | Open Book Publishers, StoryWeaver, African Storybook, Global Digital Library, LibreTexts | **Not listed**: each refused, built files on request, stated no licence or was not followed. | Could not be read, or none found. |
+
+### Kiwix's robots.txt, read on 2026-11-17
+
+`https://opds.library.kiwix.org/robots.txt` (the feed every Kiwix entry is resolved
+through) and `https://download.kiwix.org/robots.txt` (the file servers) both read, in full:
+
+```
+User-agent: *
+Disallow: /
+```
+
+library.kiwix.org redirects to a JavaScript "Access confirmation" page, citing AI crawlers.
+No Kiwix page read (its [OPDS page](https://wiki.kiwix.org/wiki/OPDS) among them) allows or
+forbids other software fetching for a person.
+
+**The owner's decision (17 November 2026):** Outpost fetches the feed and a file only
+when a person presses Download, which is what the feed is published for and what Kiwix's
+own readers do; that is not crawling. The catalogue's online check, which walks every
+entry, leaves Kiwix's hosts alone unless `--include-kiwix` is given, and no development
+tool asks those hosts for anything. Kiwix has not been asked for its view; nothing depends
+on the answer for now.
+
+### Kiwix entries added on 2026-11-17
+
+18 entries in `kiwix-more`, from one copy of the feed, not checked online:
+
+| Archive | Size | Licence (read 2026-11-17) |
+| --- | --- | --- |
+| Project Gutenberg shelves PR, PS, PZ, PN, PA, PE, M, B | 13.0, 11.6, 14.5, 3.1, 0.5, 0.6, 3.7, 5.4 GB | As row 3; a few may be in copyright in the UK. The complete edition is 221 GB, so the shelves are the practical way in. |
+| Wikiquote (no images) | 401 MB | [Wikiquote:Copyrights](https://en.wikiquote.org/wiki/Wikiquote:Copyrights): editors' work CC BY-SA; quotations carry their own terms. |
+| Book Dash picture books | 11.7 GB | [Open content partners](https://bookdash.org/who-we-are/open-content-partners/): CC BY 4.0. |
+| Mutopia Project sheet music | 6.6 GB | [Legal page](https://www.mutopiaproject.org/legal.html): each piece CC BY-SA, CC BY or public domain. |
+| Stack Exchange: Literature, History, Philosophy, English Language, Puzzling, Music, Parenting | 74, 324, 219, 774, 591, 345, 60 MB | CC BY-SA. |
+
+Left out, licences not read (the place to start next): the Internet Encyclopedia of
+Philosophy, Prunelle, Tom Lehrer, xkcd, Nicky Case, Open Music Theory, the Milne textbooks,
+ProofWiki, PlanetMath, VOA Learning English, the Chopin and Celtic scores. Also out: One More
+Library (a third party's collection), CrashCourse and TED.
+
+### Repeater lists
+
+Read on 2026-11-16 for the repeater database ([radio.md](radio.md)). The question asked of
+each: may an application fetch the list when a person asks, keep a copy for that person,
+and show it with no connection? Each publisher is declared in
+[`catalog/repeater-sources.json`](../catalog/repeater-sources.json) as one of three kinds:
+
+- **fetch**: the publisher offers a data file and nothing in its terms or `robots.txt`
+  forbids an application fetching it. Outpost fetches that one file when somebody presses
+  **Get the list**, and at no other time.
+- **link**: files are offered but an application may not fetch them, or the terms could
+  not be established. The screen gives the publisher's page and the steps to download the
+  file by hand; the importer reads it.
+- **none**: nothing usable.
+
+Outpost does not read a list out of a web page, answer a browser check, sign in, or go
+round `robots.txt` or a rate limit. Nothing here is in the catalogue or bundled. A fetched
+file cannot be held to a checksum (its publisher makes it afresh); the importer's checks,
+caps and preview stand in for one ([security.md](security.md)). Under **Repeaters → Get a
+list**, either press **Get the list** or follow the steps and import the file you saved;
+the list goes into your own database only, with the date of its data.
+
+| # | Country | Source | Kind | What its terms say, and what Outpost does |
+| --- | --- | --- | --- | --- |
+| P1 | United Kingdom | RSGB ETCC (ukrepeater.net): nine CSV files made on request; private keepers' locations "truncated or obfuscated" | **link** | **No terms stated** on any page read. On 2026-11-16 the server refused a program (403, then a browser check), so download the list in a browser; the importer recognises three of its layouts. A written answer from the ETCC would change this; an administrator with one can declare it `fetch` in their own source file. |
+| P2 | Worldwide | RepeaterBook (repeaterbook.com), with an export API | **link** | **Forbidden without written permission**: `robots.txt` lists "offline bundling" among uses needing it and disallows `/api/`; the [legal page](https://www.repeaterbook.com/index.php/about/legal) limits use to "personal, non-commercial home use only". Its written approval, and a token per person, would change it. Your own CSV export can be imported. |
+| P3 | Worldwide | Open Repeater (openrepeater.org) | **link** | [Downloads](https://www.openrepeater.org/downloads): "Repeater data is licensed under CC0"; but its [terms](https://www.openrepeater.org/terms) forbid commercial redistribution without permission, which does not sit with CC0, and `robots.txt` disallows `/api/`. The page names no file address. A CSV saved from it can be imported. |
+| P4 | Ireland | IRTS ([repeater page](https://www.irts.ie/cgi/repeater.cgi)): about seventy voice repeaters, and a CHIRP file of 45 channels | **fetch** | No licence, copyright notice or terms on its pages; `robots.txt` disallows only `/callbook` and `/lib`. The file is offered by name at a fixed address with no sign-in. **The one source fetched on that footing alone**, not on stated leave; the screen says so. It holds no positions, so these repeaters are listed but not on the map. |
+| P5 | Australia | Wireless Institute of Australia ([data page](https://www.wia.org.au/members/repeaters/data/)): PDF and CSV, about 900 repeaters, no positions | **link** | "© 2026 Wireless Institute of Australia all rights reserved." No `robots.txt`. The importer recognises its CSV; status letters O and W are read as operational, others kept as written. |
+| P6 | Australia | ACMA Register of Radiocommunications Licences | **none** | Its own [licence](https://cdn.acma.gov.au/offline-rrl/doc/LICENCE.TXT) would allow a copy (credit "Based on Australian Communications and Media Authority information"; licensees who are people not reproduced), but it is every radio service in several tables, beyond the importer, and the licence is accepted by the person downloading. The place to start for Australian repeater positions. |
+| P7 | Finland | SRAL (automatic.sral.fi) | **link** | Terms, in the site's scripts: "may be used for non-commercial amateur radio applications only"; "Do not overload the service." Not fetched yet: its API gives modes and access as numbers from further tables, which Outpost does not read. Use the site's CHIRP export. |
+| P11 | Format | CHIRP ([source](https://github.com/kk7ds/chirp)) | format only | Column names, order, defaults and mode words taken from `chirp/chirp_common.py` on 2026-11-16. A layout is not a work; no code copied. |
+| P12 | Worldwide | Hearham (hearham.com): one JSON file of about 23,000 repeaters, about 10 MB | **fetch** | [Repeaters page](https://hearham.com/repeaters): "Free to use and free to use in your application. ( JSON API is available to download or use in your offline/online application!)". One request, no more than once a minute. **Know:** 1,911 rows are marked RSGB and 979 WIA, so appear to come from P1 and P5, whose publishers grant nothing; Outpost passes the list to nobody. 1,225 callsign and frequency pairs repeat; the import's duplicate handling deals with them. |
+
+Not listed: BrandMeister, EchoLink, AllStarLink, IRLP and RadioID (P8: no terms found; RadioID answered with a browser check); OpenStreetMap's repeater tags (P9: few mapped, not in the tiles); regulators' lists (P10: Ofcom publishes none); PZK's przemienniki.net and repeate.rs (P13: maps only, **none**); ÖVSV (P14: no terms found); Germany, the Netherlands, Japan and Belgium (P15: no data file found). Other countries are covered only as far as the worldwide sources cover them.
+
+The line on the repeater screens about who may use a repeater was checked against Ofcom's
+licence conditions (a repeater "may be operated (but not controlled) by other radio
+amateurs") and guidance section 4.5.3 (a keeper may restrict access "to certain
+licensees").
+
+### Maps and geospatial data
+
+| # | Source | How Outpost uses it | Licence and terms |
+| --- | --- | --- | --- |
+| 22 | OpenStreetMap | **Built in.** Map regions are cut from the Protomaps build of OpenStreetMap ([maps.md](maps.md)); named routes are fetched on request ([Routes](#routes)). The OSM wiki is in `kiwix-essentials`. | Open Database Licence ([copyright](https://www.openstreetmap.org/copyright)). The credit is shown on the map. |
+| 23 | Geofabrik (download.geofabrik.de) | **Not used for map tiles** ([below](#geofabrik-extracts-and-what-outpost-uses-instead)); read for the reference layers (R4, R18). | [ODbL 1.0](https://download.geofabrik.de/); free of charge from Geofabrik. |
+| 24–25 | Natural Earth | **Built in**: the 1:110m world outline and the country presets' boxes. | Public domain. |
+| 26 | USGS (usgs.gov) | **Direct: 5 entries** (Topographic Map Symbols; Finding Your Way with Map and Compass; Map Projections: A Working Manual; The UTM Grid; Basic Ground-Water Hydrology). | The [Publications Warehouse](https://pubs.usgs.gov/documentation/faq): report PDFs are public domain, some illustrations used with permission. |
+| 27a | Ordnance Survey OS Open Names (read 2026-11-17) | **Downloaded on a press** from the [OS Downloads API](https://docs.os.uk/os-apis/accessing-os-apis/os-downloads-api/technical-specification), with no key or account. The CSV (about 103 MB for October 2026) feeds the place search for Great Britain ([maps.md](maps.md)). OS Terrain 50 was read and not added. | [OS OpenData](https://www.ordnancesurvey.co.uk/opendata) under the [OGL v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/). Outpost shows each edition's own line, "Contains OS data © Crown Copyright and database rights 2026.", on the map, in the search list and beside the download. |
+| 27 | NASA Earthdata Search | **Not integrated**: a search over scientific data files, not documents or tiles. | [Data use guidance](https://www.earthdata.nasa.gov/engage/open-data-services-software-policies/data-use-guidance): freely accessible, citation asked. |
+| C1 | World Magnetic Model 2025 (NOAA NCEI and the British Geological Survey) | **Built in**: `WMM.COF` unchanged, for the declination on **Tools → Compass** and the map's centre card. Fetched by hand once; nothing at run time. See [below](#the-world-magnetic-model-and-the-compass). | Public domain. |
+| C2 | Ordnance Survey, *A guide to coordinate systems in Great Britain* (v3.6, 2020) | **Formulae only**, for National Grid references and grid convergence. Not shipped. | © OS 2020; no text or figure reproduced. |
+| C3 | NGA.SIG.0012_2.0.0_UTMUPS (NGA, 2014) | **Rules and test figures only** for UTM, UPS and MGRS: zones, bands, the Norway and Svalbard exceptions, 100 km square letters, polar letters. Read 2026-11-21 from the Internet Archive's copy (NGA's servers did not answer). | US Government work. |
+| C3 | W. Tobler, NCGIA Technical Report 93-1 (1993), [eScholarship](https://escholarship.org/uc/item/05r820mz) (read 2026-11-21) | **Formula only**, for how far on foot from a point: "W = 6 exp ( -3.5 * abs(S + 0.05))" km/h, times 0.6 off path. The slower paces and the 45° limit are Outpost's own. | Published formula, credited. |
+| C4 | DMA TM 8358.2 (1989); NGS datasheets HV4442, UW5293, AI9478, TW0515; FGDC-STD-011-2001 (USNG) | **Test figures only**: UPS examples, survey marks with UTM coordinates and convergence, the USNG truncation rule. Read 2026-11-21. A polar MGRS test uses GeographicLib's GeoConvert manual (Karney), a secondary source. | US Government works. |
+
+### The World Magnetic Model and the compass
+
+Read on 2026-11-17. [The model's page](https://www.ncei.noaa.gov/products/world-magnetic-model):
+"The WMM source code is in the public domain and not licensed or under copyright." "The
+information and software may be used freely by the public." Under 17 U.S.C. 403 a
+copyrighted work consisting mainly of US Government material must say so; Outpost gives
+that notice in the file's header and here. WMM2025 was released on 17 December 2024, covers
+2025.0 to 2030.0, and "expires on December 31, 2029". Citation: "NOAA NCEI Geomagnetic
+Modeling Team; British Geological Survey. 2024: World Magnetic Model 2025. NOAA National
+Centers for Environmental Information. https://doi.org/10.25921/aqfd-sd83."
+
+- [Coefficients](https://www.ncei.noaa.gov/products/world-magnetic-model/wmm-coefficients):
+  `WMM2025COF.zip` (42,887 bytes), holding `WMM.COF` (90 rows) and 100 test values.
+- [Published test values](https://www.ncei.noaa.gov/sites/default/files/2025-02/WMM2025_TEST_VALUES.txt)
+  (12 rows).
+- Chulliat, A. et al. (2025), "The US/UK World Magnetic Model for 2025-2030: Technical
+  Report", https://doi.org/10.25923/prbc-s316: equations, worked examples of the field and
+  of UTM grid convergence, blackout and caution zones, the precision required ("correct to
+  within 0.1 nT"), the declination's error model.
+- The [W3C Device Orientation and Motion](https://www.w3.org/TR/orientation-event/)
+  specification, for the orientation angles and "Interfaces are now only available in
+  secure contexts."
+
+The OS guide (C2) gives no worked figures for grid convergence, so convergence is checked
+against NOAA's UTM example and the projection's own properties. When WMM2030 is published at
+the end of 2029, it goes in the same way.
+
+### Satellite imagery
+
+Read on 2026-11-16. Nothing is bundled: each picture is fetched from its publisher when a
+person asks ([maps.md](maps.md)).
+
+| Source | How Outpost uses it | Licence and terms |
+| --- | --- | --- |
+| NASA Blue Marble: Next Generation (July 2004, 500 m) | **Downloaded on request**: the 2 km GeoTIFF (255,799,706 bytes) or eight 500 m GeoTIFFs (3,259,890,999 bytes) from `assets.science.nasa.gov`. | [Blue Marble page](https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/): produced by Reto Stöckli; "please credit “NASA Earth Observatory.”" NASA's media guidelines as row 6. |
+| Copernicus Sentinel-2 Level-2A, Collection 1 (10 m, from 2015) | **For areas chosen on the map.** Scenes found with Element 84's Earth Search (`sentinel-2-c1-l2a`); only the parts of the red, green, blue and scene-classification files covering the area are read, from `e84-earth-search-sentinel-data.s3.us-west-2.amazonaws.com`. The older `sentinel-2-l2a` collection is not used: many of its files disagree with their metadata's scale and offset ([issue 71](https://github.com/Element84/earth-search/issues/71)). | [Legal notice](https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice): "free, full and open access … without any express or implied warranty"; adapted data must say "Contains modified Copernicus Sentinel data [Year]". The [AWS registry](https://registry.opendata.aws/sentinel-2-l2a-cogs/): no AWS account required, not requester-pays. |
+| Element 84 Earth Search (STAC) | One search per press of **Find pictures**; at most four requests at once to the bucket, backing off on 429 and 503. | [README](https://github.com/Element84/earth-search): "free-to-use"; "does not come with any guaranteed service." No rate limit found. |
+| EOX Sentinel-2 cloudless | **Not integrated.** The requester-pays bucket EOX described in 2017 (`eox-s2maps`) no longer exists, and the map service's terms do not allow bulk downloads for keeping. Building it would need EOX's terms for a kept copy, the person's AWS credentials in the system's secret store, and the cost (0.09 USD a GB out, as AWS priced it) shown before download with a hard cap. | [Licence](https://cloudless.eox.at/license-non-commercial): 2018–2025 CC BY-NC-SA 4.0; 2016 CC BY 4.0. [FAQ](https://cloudless.eox.at/documentation/faq): commercial use of 2018+ public endpoints "strictly prohibited". Paid licences from €1,500. |
+| USGS Landsat on AWS | **Not integrated**: the bucket is requester-pays, billed to the downloader's AWS account. | "There are no restrictions on Landsat data downloaded from the USGS" ([registry](https://registry.opendata.aws/usgs-landsat/)). |
+| Copernicus Data Space Ecosystem | **Not used**: downloads need an account token ([OData](https://documentation.dataspace.copernicus.eu/APIs/OData.html)), and files are JPEG 2000. | |
+
+### Aerial photographs
+
+Read on 2026-11-16 ([maps.md](maps.md)). The test for each: an open licence that allows
+keeping a copy; no account, key or payment; and a form Outpost can read a small area of
+(a Cloud-Optimised or modest GeoTIFF, by range request). Facts from search results only
+are marked so.
+
+| Source | Licence | Detail and form | Verdict |
+| --- | --- | --- | --- |
+| New Zealand: LINZ ([AWS registry](https://registry.opendata.aws/nz-imagery/)) | CC BY 4.0, credited to each survey's licensor ("Licensed by (insert the licensor) for re-use under CC-BY-4.0.") | 5 to 30 cm; COG (WebP), NZTM, public S3 bucket, no account | **Built.** Outpost credits the licensor of the survey used. |
+| United States: USDA NAIP via Microsoft's [Planetary Computer](https://planetarycomputer.microsoft.com/api/stac/v1/collections/naip) | Public domain: "Please credit 'NAIP imagery provided by USDA Farm Service Agency' on any use." (in every file) | 30 cm to 1 m, at least every three years per state, 2010 onwards; COG | **Built.** An anonymous token from `planetarycomputer.microsoft.com/api/sas/v1/token/naip` is fetched when first needed, held in memory until five minutes before it lapses, never stored. At most four file requests at once, backing off on 429 and 503. |
+| England: Environment Agency vertical aerial photography ([record](https://environment.data.gov.uk/dataset/dae203a8-ba24-4c54-bab0-866b9faadb58)) | Open Government Licence ("© Environment Agency copyright and/or database right 2022. All rights reserved.") | 10 to 50 cm, project by project since 2006, patchy; ECW only, in 5 km zips per survey year | **Cannot**: ECW needs Hexagon's closed decoder, and a small area needs the whole zip. GeoTIFF or COG from the Agency would change it. You can convert ECW yourself with desktop software, but Outpost does not yet import your own GeoTIFF as imagery. |
+| Switzerland: swisstopo SWISSIMAGE 10 cm ([terms](https://www.swisstopo.admin.ch/en/terms-of-use-free-geodata-and-geoservices)) | Free use and distribution, commercial included; "A reference to the source is mandatory." | 10 cm (25 cm over the Alps); COG, JPEG 2017–2025, Deflate 2026; LV95 | **Could be built, not built**: needs a JPEG decoder and the Swiss projection. |
+| Netherlands: [Beeldmateriaal Nederland](https://beeldmateriaal.nl/dataroom) | CC BY 4.0 | 8 cm; 1 km GeoTIFF tiles, JPEG, no overviews, RD New | **Could be built, not built**: JPEG, the Dutch projection, and no reduced copies. PDOK's tile service is for viewing. |
+| France: IGN [BD ORTHO](https://www.data.gouv.fr/datasets/bd-ortho-r) | Licence Ouverte 2.0 | 20 cm; JPEG 2000 per département | **Cannot**: no small-area access in a form Outpost reads. |
+| Spain: PNOA ([record](https://www.idee.es/csw-codsi-idee/srv/api/records/spaignTrueOrto2025)) | CC BY 4.0 ("PNOA 2025 CC-BY 4.0 scne.es") | 25 cm; COG via the CNIG download centre | **Not verified**: whether files need registration. |
+| Finland: [NLS](https://www.maanmittauslaitos.fi/en/maps-and-spatial-data/datasets-and-interfaces/product-descriptions/orthophotos) | CC BY 4.0 | 50 cm; TIFF; interfaces need an API key | **Cannot without a key.** |
+
+Also not built: NAIP on AWS (requester-pays); Scotland's portal (LiDAR only, OGL v3); Wales and APGB (public sector licences only); Northern Ireland's DAERA coastal photographs (a viewing service of the coast, OGL per search results); Estonia (form and access not confirmed); Norway (copying needs the rights holders' permission); Denmark (an account and token, per search results).
+
+### Routes
+
+Read on 2026-11-16 for **Find a route** on the Maps screen ([maps.md](maps.md)). A route is
+fetched when a person chooses one, through a server in T2 or T3, and kept as a track;
+nothing is bundled. Sources are declared in `catalog/route-sources.json`; you can add your
+own in `<data directory>/catalog/routes/route-sources.json` (not a place for credentials).
+
+| # | Source | How Outpost uses it | Licence and terms |
+| --- | --- | --- | --- |
+| T1 | OpenStreetMap route relations and named ways | **Built in.** The Llanberis Path, for example, is relation [4004181](https://www.openstreetmap.org/relation/4004181), five ways, 6.0 km. | ODbL 1.0; credit "© OpenStreetMap contributors". See [below](#what-the-open-database-licence-asks-of-a-found-route). |
+| T2 | Overpass API at Private.coffee (overpass.private.coffee), a non-profit in Austria | **Built in**, for any part of the world no regional server covers. Often slow: on the day one search answered after 95 seconds and four got no answer within a minute. | [Its page](https://overpass.private.coffee/) (10 April 2026): any project, commercial included, no registration or rate limit; optimise queries; nothing personal; credit OpenStreetMap; "a meaningful User-Agent header" with a project link; `POST` preferred; not for "projects related to warfare, military applications" or critical infrastructure. Outpost sends one question at a time by `POST` as "Outpost/<version>" with the project's address. |
+| T3 | Overpass API at dresel.systems (ovp.dresel.systems), Europe and North America, privately run in Germany | **Built in**, asked first for views in Europe and North America. Answers in under six seconds. | [Its page](https://ovp.dresel.systems/): open, "ohne Anmeldung und ohne API-Schlüssel", a free offer for all; at most four queries at once; no guarantee. The [OSM wiki](https://wiki.openstreetmap.org/wiki/Overpass_API#Public_Overpass_API_instances): "Please send a User-Agent or Referer that identifies your app." |
+| T4 | overpass-api.de (FOSSGIS) | **Not listed.** The [Overpass manual](https://dev.overpass-api.de/overpass-doc/en/preface/commons.html) counts relying on the public instances as an app's backend as problematic, and [FOSSGIS](https://www.fossgis.de/arbeitsgruppen/osm-server/nutzungsbedingungen/) says its URLs "should not be hardcoded into the app." You may declare it for your own use. | As quoted. |
+| T8 | OpenStreetMap editing API | **Not used.** [Policy](https://operations.osmfoundation.org/policies/api/): "not for read-only purposes or projects." | As quoted. |
+| T9 | Waymarked Trails | **Not used**: "Mass download is not allowed" (its [help text](https://github.com/waymarkedtrails/waymarkedtrails-website/blob/master/src/i18n/qot/helppages.yaml)). Outpost reads the same relations from T1. | Overlay CC BY-SA 3.0 DE; GPX ODbL. |
+| T10 | National Trails (England), Natural England ([data.gov.uk](https://www.data.gov.uk/dataset/national-trails-england3)) | **Candidate**: one zip of every trail in formats Outpost has no reader for. | OGL v3.0; "© Natural England copyright. Contains Ordnance Survey data © Crown copyright and database right [year]". |
+
+Also not listed: overpass.atownsend.org.uk (T5: its policy points to the same "problematic behaviours"; not for commercial use), VK Maps (T6: no terms on the operator's page), and servers needing a key or payment (T7: Outpost keeps no keys for this). Candidates not built: the US National Park Service's and Forest Service's trail lines (T11, T12: segments, licences not confirmed). Route-sharing sites (AllTrails, Komoot, Walkhighlands, OS Maps, Strava, Wikiloc; T13) are not used or contacted: export a GPX from your own account and import it.
+
+#### What the Open Database Licence asks of a found route
+
+Read on 2026-11-16 in the [licence](https://opendatacommons.org/licenses/odbl/1-0/) and
+the OpenStreetMap Foundation's guidelines on
+[produced works](https://osmfoundation.org/wiki/Licence/Community_Guidelines/Produced_Work_-_Guideline),
+[substantial extracts](https://osmfoundation.org/wiki/Licence/Community_Guidelines/Substantial_-_Guideline)
+and [attribution](https://osmfoundation.org/wiki/Licence/Attribution_Guidelines). A reading,
+not legal advice.
+
+- **A route's points, kept as data or a GPX file, are an extract of the database**, not a
+  produced work: "If the published result of your project is intended for the extraction
+  of the original data, then it is a database and not a Produced Work."
+- **Whether one route is "substantial" is not settled by a number**, so every found route
+  is treated the same: as OpenStreetMap data, with the notice kept.
+- **Passing it on** to people outside your household (section 4.2) means the same licence,
+  its address with the data, and the notices intact: hence the licence address and credit
+  in the GPX file and the route's description. Share-alike (4.4, 4.6) falls on whoever
+  publishes it; Outpost passes nothing on, and keeping a route for your own household is
+  not "public" use (4.5 c).
+- **A map with the route on it is a produced work** (screen, screenshot, print, PDF).
+  Shown to others it needs a notice (4.3): "© OpenStreetMap contributors" with a link to
+  openstreetmap.org/copyright, printed out on paper. Hence "Routes: © OpenStreetMap
+  contributors", linked, in the map's credits while a found route is drawn.
+
+### Map file formats
+
+What the KML, KMZ and GeoJSON import follows (read 2026-11-21):
+
+- [RFC 7946](https://www.rfc-editor.org/rfc/rfc7946): positions are longitude then latitude
+  in WGS 84 (section 4); the old `crs` member is no longer used (appendix B).
+- Google's [KMZ page](https://developers.google.com/kml/documentation/kmzarchives): the main
+  file is `doc.kml` by default; Google Earth opens the first `.kml` in the archive.
+
+### Reference layers
+
+Read on 2026-11-16 unless a date is given, for the map's reference layers
+([reference-layers.md](reference-layers.md), which says how each is used).
+
+| # | Source | How Outpost uses it | Licence and terms |
+| --- | --- | --- | --- |
+| R1 | Natural Earth: 1:50m countries, 1:10m regions and populated places | **Downloaded on request** from `raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/`. | Public domain ([terms](https://www.naturalearthdata.com/about/terms-of-use/)). No checksums published. |
+| R2 | OurAirports | **Downloaded on request**: `airports.csv` and, in the same install, `airport-frequencies.csv` (about 1.3 MB) from `davidmegginson.github.io/ourairports-data/`; only kept airports' frequency rows are stored. | The data repository's Unlicense covers both. ourairports.com's certificate had expired (6 November 2026), so its own terms were not read. |
+| R3 | OpenStreetMap by Overpass | **Downloaded on request**, one layer of one country per question, through T3 or a server you declare. **T2 is not used here**: its terms exclude "military applications", and these layers include publicly mapped military sites. | ODbL. |
+| R4 | Geofabrik extracts | **Downloaded on request**, one country's `.osm.pbf` with its MD5, or imported. Outpost reads the tags it needs itself; it still makes no tiles. | "License: ODbL 1.0"; "Download responsibly!" (10 September 2025). No numeric limit. |
+| R5 | Wikidata Query Service | **Asked on request**: nuclear power stations and research reactors with a position. | CC0; 60 seconds a query; an informative User-Agent with contact information. |
+| R6 | WorldPop, population counts 2020, 1 km, UN-adjusted | **Downloaded on request**, by country. | CC BY 4.0 ([licence](https://hub.worldpop.org/data/licence.txt)); its citation is shown. |
+| R7 | Swiss emergency meeting points (BABS) | **Downloaded on request**: one GeoJSON file. | opendata.swiss "terms_by" (open use, source given), as the dataset lists it. |
+| R8 | FAS Nuclear Notebook, Status of World Nuclear Forces | **Linked.** | "Federation of American Scientists © 2026"; the Bulletin's terms forbid automated extraction. |
+| R9 | SIPRI Yearbook, World nuclear forces | **Linked**; save the free summary yourself. | Non-commercial download and single copies allowed; more than 10% of a data set needs permission. |
+| R13 | National Security Archive EBB 538; FEMA NAPB-90 (at FAS); The National Archives HO 322 | **Linked.** No open machine-readable transcription exists; Outpost made none. | US works public domain; the Archive's pages its copyright; the UK files not digitised. |
+| R14 | UK REPPIR zones, US EPZs, Swiss ENSI plans, cantonal shelters, Taiwan and Korea shelters | **Linked, or imported by you.** | See [reference-layers.md](reference-layers.md). |
+| R15 | OpenStreetMap by Overpass, food and supplies (read 2026-11-17) | **Downloaded on request**, as R3: shops, markets, food banks, drinking water, fuel and pharmacies, for the area on screen only, at most 1.5° by 2° (about a county) and 30,000 places. | As R3. Tags from the wiki pages for `shop=*`, `amenity=marketplace`, `amenity=drinking_water`, `amenity=water_point`, `man_made=water_tap`, `amenity=fuel`, `amenity=pharmacy`, `social_facility=food_bank`. |
+| R16 | Food Standards Agency, food hygiene rating data (read 2026-11-17) | **Downloaded on request**, retailers only (business types 7840 and 4613), for the area on screen up to about a county, from `api.ratings.food.gov.uk`. Ratings are not kept or shown. | [Terms](https://ratings.food.gov.uk/terms-and-conditions): Open Government Licence; free, no registration, updated daily. Credited "Food businesses: Food Standards Agency, Open Government Licence v3.0". |
+| R17 | Give Food, UK food banks (read 2026-11-17) | **Linked only.** | [API page](https://www.givefood.org.uk/api/): contact them before launching; "Keep the information up to date" (it changes several times a day); credit with a link; no licence stated. An offline copy cannot keep up, and the project has not been asked. |
+| R18 | Geofabrik extracts by region (read 2026-11-17) | **Downloaded on request**, as R4, for part of a country (a US state, a German Land or Regierungsbezirk, an English county, one of Italy's five parts), chosen from Geofabrik's `index-v1-nogeom.json`, read only when you press **Read the list of regions** and then kept. The list gives no sizes, so **Show the size** asks one `HEAD` (and the dated file's `.md5`). Up to three regions a press, each its own pack, never retried in a loop. A region's file is deleted once read unless you tick to keep it. Germany is fetched by Länder (its whole-country address redirects to another host). Sizes on the day run from Rutland 1.95 MB to England 1.72 GB and the United States 12.3 GB. | [download.geofabrik.de](https://download.geofabrik.de/): ODbL 1.0, "Data processed by Geofabrik GmbH and created by OpenStreetMap Contributors", free of charge. [Download responsibly!](https://blog.geofabrik.de/index.php/2025/09/10/download-responsibly/): bandwidth is limited; don't download "the same file 1000 times". |
+| R19 | USDA SNAP Retailer Locator (tried 2026-11-17) | **Not used**: every page, `robots.txt` included, answered 403. The only licence seen is a 2014 data.gov record, not the publisher's. | Could not be read. |
+
+Also: the NTI Index (R10) and IAEA PRIS (R11) are linked, their terms unread (a browser check; 402 and 403); GeoNuclearData, the WRI database and Global Energy Monitor (R12) are not used (terms unread, unmaintained, all rights reserved); no EU-wide open list of food shops was found (R20), so OpenStreetMap is the source there.
+
+### Reference software
+
+Programs, not content; none is in the catalogue.
+
+| # | Source | Relation to Outpost | Licence |
+| --- | --- | --- | --- |
+| 28–29 | Kiwix, kiwix-tools (kiwix-serve) | Outpost reads ZIM archives through kiwix-serve, run as a separate, sandboxed program ([architecture.md](architecture.md)). | [GPL-3.0](https://github.com/kiwix/kiwix-tools/blob/main/COPYING). |
+| 30 | Internet-in-a-Box | Named in the README as a project that showed the way; no code taken. | [GPL-2.0](https://github.com/iiab/iiab/blob/master/LICENSE). |
+| 31 | PrepperPi | As 30. Several small projects use the name. | MIT-style (per GitHub's listing). |
+| 32 | Paperless-ngx | As 30. | [GPL-3.0](https://github.com/paperless-ngx/paperless-ngx/blob/dev/LICENSE). |
+| 33 | Offgrid Pi | As 30. | MIT (per GitHub's listing). |
+| 34 | Organic Maps | As 30. | [Apache-2.0](https://github.com/organicmaps/organicmaps/blob/master/LICENSE). |
+| 35 | MapLibre GL JS | Draws Outpost's map. | [BSD 3-Clause](https://github.com/maplibre/maplibre-gl-js/blob/main/LICENSE.txt). |
+| 36 | Notion | A point of reference; a commercial online service. | Proprietary. |
+| 37 | hfcast-engine (github.com/jonathanmcsweet/hfcast-engine), commit `bf34e8f9f375` | VOACAP in Rust; the HF planner's engine is built from it (shipped). **Its 13 coefficient files are not shipped** (CCIR Reports 322 and 340, NTIA/ITS tables, two short-whip patterns, 559 kB): they are fetched from `raw.githubusercontent.com` at that commit, one request per file, when a person presses Download ([hf-propagation.md](hf-propagation.md)). | Code Apache-2.0. Its `NOTICE`: Apache-2.0 "does not cover these data files, which are the work of other bodies". The CCIR part is the ITU's (R9). |
+| 38 | Calibre | Outpost reads the `metadata.opf` Calibre writes beside each book: `dc:creator` (role `aut`), `dc:subject`, `dc:description`, `calibre:series`, `calibre:series_index`, the `uuid` and the cover reference, as in `metadata_to_opf` (read 2026-11-21). No code taken. | [GPL-3.0](https://github.com/kovidgoyal/calibre/blob/master/LICENSE). |
 
 ## Wanted, and not yet possible
 
-The gaps that matter most after 2026-11-17, and what stands in the way of each, so that
-the owner can decide whether to ask a publisher.
-
 | What is wanted | Best source known | What stands in the way |
 | --- | --- | --- |
-| A first aid manual for households, UK | St John Ambulance, British Red Cross | Both reserve all rights (W12, and the emergency plan templates' table). The NHS's pages are HTML only. **Ask** St John Ambulance for written permission. |
-| *Where There Is No Doctor* and *Where There Is No Dentist* | Hesperian | Permission is needed for any digital copy (row N12). **Ask** Hesperian. Nothing open on dentistry was found anywhere. |
-| A midwifery and newborn care manual, mental health in primary care, psychological first aid | WHO: *Pregnancy, Childbirth, Postpartum and Newborn Care*, mhGAP 2.0, *Psychological First Aid* | Each file says "All rights reserved" although the repository record gives a Creative Commons licence (W17). **Ask** WHO which statement governs. |
-| The *Wood Handbook*; Bowditch and the *International Code of Signals* | Forest Products Laboratory; NGA | Hosts failing on 16 and 17 November (W27). Try again another day; they would be works of the US Government. |
-| Peace Corps manuals (beekeeping, gardening, water, appropriate technology) | files.peacecorps.gov | `robots.txt` disallows `/manuals/` (W25). **Ask** the Peace Corps. |
-| Household water filters and latrines | CAWST | Its files are on `cdn.sanity.io`, not yet looked at (W24); its terms are CC BY-SA 4.0. The owner can allow that host for CAWST. |
-| Beekeeping, seeds in emergencies | FAO | Non-commercial use "authorized free of charge, upon request" (W18). **Ask** FAO. |
-| Food storage beyond canning, food in a power cut (UK) | FAO post-harvest manuals; Food Standards Agency | HTML only, with no file to list (W18, W2). |
-| The classics as well-made single books | Standard Ebooks | Programmatic access is a benefit of paid membership (W31). A link shelf like LibriVox's is possible; or **ask** Standard Ebooks. |
-| Children's picture books as single files | African Storybook, StoryWeaver, Global Digital Library | No licence in text and files built on request; a Cloudflare challenge; not yet followed (W32). Book Dash through Kiwix fills part of it, if the Kiwix entries stand. |
-| Open scholarship and literature in translation | Open Book Publishers | Its site refused (W32). |
-| Generator, electrical and fire safety, UK | Electrical Safety First; NFCC | Terms page not found; `robots.txt` disallows PDFs (W14). |
-| New Zealand's and Canada's household guides | NEMA; Public Safety Canada | getready.govt.nz refused; Canada's PDF is on publications.gc.ca, not yet asked (W10, W11). |
-| Anything more from Kiwix | The Kiwix library | Its `robots.txt` (above), until the owner decides. |
+| A household first aid manual, UK | St John Ambulance, British Red Cross | Both reserve all rights (W12; [emergency plan templates](#emergency-plan-templates-what-is-quoted-and-on-what-terms-read-2026-11-16)). The NHS's pages are HTML only. **Ask** St John Ambulance. |
+| *Where There Is No Doctor*, *Where There Is No Dentist* | Hesperian | Permission needed for any digital copy (N12). **Ask** Hesperian. Nothing open on dentistry was found. |
+| Midwifery and newborn care, mental health in primary care, psychological first aid | WHO | Each file says "All rights reserved" although the record gives CC (row 12). **Ask** WHO which governs. |
+| The *Wood Handbook*; Bowditch; the *International Code of Signals* | Forest Products Laboratory; NGA | Hosts failing (W27). Try another day. |
+| Peace Corps manuals | files.peacecorps.gov | `robots.txt` disallows `/manuals/` (W25). **Ask** the Peace Corps. |
+| Household water filters and latrines | CAWST | Files on `cdn.sanity.io`, not yet asked (W24); CC BY-SA 4.0. The owner can allow that host. |
+| Beekeeping, seeds in emergencies | FAO | Use "upon request" (row 17). **Ask** FAO. |
+| Food storage beyond canning; food in a power cut (UK) | FAO post-harvest manuals; Food Standards Agency | HTML only (row 17, W2). |
+| The classics as well-made books | Standard Ebooks | Paid membership for programmatic access (W31). A link shelf is possible, or **ask**. |
+| Children's picture books as single files | African Storybook, StoryWeaver, Global Digital Library | W32. Book Dash through Kiwix fills part of it. |
+| Open scholarship, literature in translation | Open Book Publishers | Refused (W32). |
+| Generator, electrical and fire safety, UK | Electrical Safety First; NFCC | W14. |
+| New Zealand's and Canada's household guides | NEMA; Public Safety Canada | W11 refused; W10 not yet asked. |
 
-## What was read on 2026-11-16 for repeaters, and how
+## Sources that are not integrated: what you can do
 
-- **Terms first.** For each publisher its `robots.txt` was read before anything else,
-  then the page that offers the data and the pages that state terms. Requests were made
-  one at a time with a generic client name and no personal information.
-- **Three files, once each.** Three of the ETCC's CSV files were fetched to learn their
-  headings (about 280 kB in all), ten seconds or more apart as its `robots.txt` asks.
-  They were kept outside the repository and deleted. Nothing else that is a list of
-  repeaters was downloaded from anyone.
-- **Not read.** RepeaterBook's API was not called. Open Repeater's API was not called.
-  The ACMA's register was not downloaded. SRAL's page could not be read. BrandMeister,
-  EchoLink, AllStarLink, IRLP and RadioID were looked for with a search engine and not
-  visited.
-- **How the pages were read.** The `robots.txt` files, Open Repeater's downloads page
-  and the three CSV files were read byte for byte. The other pages were read through a
-  tool that fetches a page and returns extracts from it; the quotations above are as it
-  returned them, and are worth a second look by eye before anything is built on one.
-- **What a search engine said is marked as that.** Three statements above come from a
-  search result's extract and not from the page itself (SRAL's sentence, how often the
-  ACMA's file is remade, and the count of repeaters mapped in OpenStreetMap); each says
-  so.
-- **The line about who may use a repeater** shown on the repeater screens was checked
-  against Ofcom's own documents, fetched again that day and matching the checksums in
-  `radio.json`: the licence conditions (a repeater "may be operated (but not controlled)
-  by other radio amateurs", and its keeper "takes all reasonable steps to ensure that
-  the Repeater is only used by an Amateur") and the guidance for licensees, section
-  4.5.3 (a keeper's remedies for misuse include "restricting access to the station to
-  certain licensees").
+- **Import a repeater list you have.** See [radio.md](radio.md). Outpost fetches a list only
+  from publishers marked **fetch** above; for the rest the Repeaters screen gives the steps.
+- **Add your own files.** Download the file yourself, on terms you are satisfied with, and
+  add it under **Library → Add documents**. This is the route for Internet Archive items,
+  single Project Gutenberg books, CDC and FEMA guides the catalogue does not list,
+  Hesperian's books, the Sphere Handbook, Standard Ebooks, and anything you hold a licence
+  for.
+- **Contribute a manifest entry.** A publisher's stable file address and a licence that
+  allows free download is enough. See [`catalog/README.md`](../catalog/README.md). Or keep
+  your own manifest in `<data directory>/catalog/`, listing any Kiwix book by name.
+- **Peak sun hours for a power plan.** **Tools → Power and batteries** links to the
+  European Commission's [PVGIS](https://re.jrc.ec.europa.eu/pvg_tools/en/) for the twelve
+  monthly figures to type in; **Preparedness → Weather and hazards** can fetch them on a
+  press ([weather.md](weather.md), [tools-power.md](tools-power.md)).
 
-## What was read on 2026-11-16 for the repeater sources, and how
+## Geofabrik extracts, and what Outpost uses instead
 
-The second sitting, for the sources by country.
+Geofabrik's `.osm.pbf` files are raw map data; a map cannot be drawn from them until a
+tile-generation program has made tiles, a step Outpost does not include. Instead:
 
-- **`robots.txt` first, one request, by a program that says what it is.** Seventeen
-  were asked for at once, and repeate.rs's afterwards, with the client name "repeater-list-reader/1.0 (reading terms; one
-  request per file)". Eleven answered with rules, four sites have none (HTTP 404), one
-  redirected and was not followed, and one connection failed (the ACMA's). The project
-  is not named in that client name; what Outpost itself sends when it fetches a list
-  is the plain name it uses for every download, "Outpost (self-hosted offline library)",
-  with no version and no project address (the owner's choice, 16 November 2026: no
-  repeater publisher's terms ask for more).
-- **ukrepeater.net was asked twice and refused twice**, as its row says. It was not
-  asked a third time, and nothing was tried to get past the refusal: no other client
-  name, no browser.
-- **Then the page that offers the data, and the page that states terms.** One request
-  each. These were read byte for byte, with the markup stripped by a script; the
-  quotations above are from those bytes.
-- **Three files were fetched, once each, to learn their layouts**: Hearham's JSON
-  (9.6 MB), the IRTS's CHIRP file (4.5 kB) and the WIA's CSV (68 kB). Each is offered
-  by its publisher at the address it was fetched from. They were kept outside the
-  repository and described by their shape (field names, forms of value, counts); the
-  tests use made-up stations in the same shapes.
-- **Requests per site** were at most five, except automatic.sral.fi, which took seven
-  because its pages are empty until a script fills them; that is said in its row.
-- **Not read.** RepeaterBook's API, Open Repeater's API, the SRAL's API and the ACMA's
-  register were not called or downloaded. RepeaterBook's and Open Repeater's pages
-  were not read again beyond `robots.txt`; what is said of them is from the first
-  sitting. No privacy policy was read.
-- **Three searches** were made for Germany, the Netherlands and Japan and found
-  nothing to build on. Countries with many amateurs that were not looked at at all:
-  the United States beyond the worldwide sources, Canada, Spain, Italy, France,
-  Thailand, South Korea, China, Russia, Brazil, New Zealand.
-- **Not walked through.** The steps the screen gives for RepeaterBook and for the
-  SRAL's site were written from what their terms and scripts say, not by doing them
-  in a browser. The steps for ukrepeater.net and the WIA are from the pages as read.
+- **Map tiles** come from the [Protomaps](https://protomaps.com) build of the whole planet,
+  one PMTiles archive, of which the Maps screen downloads only the part you ask for. Same
+  OpenStreetMap data, same Open Database Licence.
+- **The world outline** and country boxes come from Natural Earth.
+- **Place names** come from GeoNames, and for Great Britain from OS Open Names (27a).
+
+If you make your own tiles from an extract, point Outpost at any PMTiles archive that
+follows the Protomaps basemap schema ([maps.md](maps.md)).
 
 ## Planning figures for supplies, read on 2026-11-16
 
-Not catalogue entries: figures that Preparedness → Supplies works with, each quoted in
-[supplies.md](supplies.md) with where it is used. Nothing is fetched from any of them.
+Figures **Preparedness → Supplies** works with ([supplies.md](supplies.md)). Nothing is
+fetched from any of them.
 
 | Source | What is used | Terms |
 | --- | --- | --- |
-| Public Health England, *Government Dietary Recommendations* (August 2016), tables 1 and 2 ([PDF](https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/618167/government_dietary_recommendations.pdf)) | Energy a day by age band and sex | Crown copyright, Open Government Licence v3.0 (stated on page 2) |
-| UK government, *Be ready: get prepared for emergencies* ([beready.campaign.gov.uk](https://beready.campaign.gov.uk/get-prepared-for-emergencies), formerly prepare.campaign.gov.uk) | 3 litres a person a day to drink | GOV.UK campaign page; a figure quoted, nothing copied |
-| WHO, *Technical notes on drinking-water, sanitation and hygiene in emergencies*, note 9 (WEDC, July 2013) ([PDF of all notes](https://wedc-knowledge.lboro.ac.uk/resources/who_notes/WHO_TNE_ALL.pdf)) | 7.5 to 15 litres a day for drinking, cooking and basic hygiene (table 9.1) | © WHO 2013, all rights reserved: figures quoted, nothing copied |
-| FEMA, [ready.gov/water](https://www.ready.gov/water) (updated 22 February 2021) | One US gallon a day for drinking and sanitation; needs can double in heat | US government work |
-| FEMA, [ready.gov/water](https://www.ready.gov/water) (read 2026-11-21) | "Water that has not been commercially bottled should be replaced every six months": the interval of the suggested routine check for stored water ([readiness.md](readiness.md#routine-checks)). The page gives no interval for bottled water. | US government work |
-| GOV.UK, [Best before and use-by dates](https://www.gov.uk/understanding-food-labelling/best-before-and-use-by-dates) (updated 25 June 2026) | Use-by is safety, best before is quality | Open Government Licence v3.0 |
-| Open Food Facts, [data](https://world.openfoodfacts.org/data) | Nothing used. What it would allow is in supplies.md | ODbL (database), DbCL (contents), CC BY-SA (images) |
-| USDA FoodData Central, SR Legacy (April 2018), [download page](https://fdc.nal.usda.gov/download-datasets/) (read 2026-11-17) | **Built in.** Energy, protein, fat and carbohydrate per 100 g for 7,793 foods, offered by name when a food is added; made by `scripts/build-food-energy.mjs` from `FoodData_Central_sr_legacy_food_csv_2018-04.zip` (6.1 MB, fetched once on 2026-11-17; sha256 `b8081729…3e6fd0`). See [supplies.md](supplies.md#energy-from-usda-fooddata-central) | The [home page](https://fdc.nal.usda.gov/), read 2026-11-17: "USDA FoodData Central data are in the public domain and they are not copyrighted. They are published under CC0 1.0 Universal (CC0 1.0). No permission is needed for their use, but we request that users list FoodData Central as the source of the data" (and, where possible, "notify us of the product that uses the data"). Citation it asks for: "U.S. Department of Agriculture, Agricultural Research Service, Beltsville Human Nutrition Research Center. FoodData Central. [Internet]. [cited (enter date)]. Available from https://fdc.nal.usda.gov/." `robots.txt` disallows nothing. The download page and the FAQ carry no licence wording of their own. USDA has not been notified. |
+| Public Health England, *Government Dietary Recommendations* (August 2016), tables 1 and 2 ([PDF](https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/618167/government_dietary_recommendations.pdf)) | Energy a day by age band and sex | Crown copyright, OGL v3.0 |
+| UK government, *Be ready* ([beready.campaign.gov.uk](https://beready.campaign.gov.uk/get-prepared-for-emergencies)) | 3 litres a person a day to drink | A figure quoted |
+| WHO, *Technical notes on drinking-water, sanitation and hygiene in emergencies*, note 9 (WEDC, 2013) ([PDF](https://wedc-knowledge.lboro.ac.uk/resources/who_notes/WHO_TNE_ALL.pdf)) | 7.5 to 15 litres a day for drinking, cooking and basic hygiene (table 9.1) | © WHO 2013, all rights reserved: figures quoted, nothing copied |
+| FEMA, [ready.gov/water](https://www.ready.gov/water) | One US gallon a day for drinking and sanitation; needs can double in heat. Read again 2026-11-21: "Water that has not been commercially bottled should be replaced every six months", the interval of the stored-water check ([readiness.md](readiness.md)); no interval is given for bottled water | US Government work |
+| GOV.UK, [Best before and use-by dates](https://www.gov.uk/understanding-food-labelling/best-before-and-use-by-dates) | Use-by is safety, best before is quality | OGL v3.0 |
+| Open Food Facts ([data](https://world.openfoodfacts.org/data)) | Nothing used; what it would allow is in supplies.md | ODbL (database), DbCL (contents), CC BY-SA (images) |
+| USDA FoodData Central, SR Legacy (April 2018) ([downloads](https://fdc.nal.usda.gov/download-datasets/), read 2026-11-17) | **Built in**: energy, protein, fat and carbohydrate per 100 g for 7,793 foods, made by `scripts/build-food-energy.mjs` from `FoodData_Central_sr_legacy_food_csv_2018-04.zip` (6.1 MB; sha256 `b8081729…3e6fd0`) | [Home page](https://fdc.nal.usda.gov/): public domain, CC0 1.0; "we request that users list FoodData Central as the source". Citation: "U.S. Department of Agriculture, Agricultural Research Service, Beltsville Human Nutrition Research Center. FoodData Central. [Internet]. [cited (enter date)]. Available from https://fdc.nal.usda.gov/." USDA asks to be told of products that use it; it has not been told. |
+
 ## Device figures for the battery calculators, read on 2026-11-16
 
-Not catalogue entries: the published power figures of common devices (Raspberry Pi
-boards, phones, radios, routers, NAS boxes, lamps, a cool box) that Tools → Power and
-batteries offers, each quoted with its publisher, document, URL and date in
-[tools-power.md](tools-power.md#common-devices) and in
-`packages/shared/src/power-devices-data.ts`. Nothing is fetched from any of them: the
-figures were read once, by hand-run fetches of the makers' own pages and manuals, and
-are bundled as data. Each figure is a short factual quotation (a current, a voltage, a
-capacity) with its source; no document is copied. Read the same way, and quoted on the
-screen: GOV.UK (OPSS and the UK Chief Medical Officers, Open Government Licence v3.0),
-the London Fire Brigade and Electrical Safety First on charging, extension leads and
-generators; Battery University (BU-303, BU-808c) for a lithium-ion cell's nominal voltage
-and energy efficiency; MEAN WELL's SD-25 specification for a 12 V to 5 V converter's
-efficiency.
+The published power figures of common devices (Raspberry Pi boards, phones, radios,
+routers, NAS boxes, lamps, a cool box) that **Tools → Power and batteries** offers, each with
+its publisher, document, address and date, are in [tools-power.md](tools-power.md) and
+`packages/shared/src/power-devices-data.ts`. They were read once from the makers' own pages
+and manuals and are bundled as short factual quotations; no document is copied. Also
+quoted on the screen: GOV.UK (OPSS and the UK Chief Medical Officers, OGL v3.0), the London
+Fire Brigade and Electrical Safety First on charging, extension leads and generators;
+Battery University (BU-303, BU-808c) for a lithium-ion cell's voltage and efficiency;
+MEAN WELL's SD-25 specification for a 12 V to 5 V converter's efficiency.
 
 ## The IEEE's registry of device makers, read on 2026-11-16
 
-"Devices on this network" can show who made a device from the first half of its
-hardware address. The list of those prefixes is the IEEE Registration Authority's
-public listing (MA-L), offered as a download at
-<https://standards-oui.ieee.org/oui/oui.csv> from
-<https://standards.ieee.org/products-programs/regauth/>. Those pages state no licence
-and no permission to redistribute the file; the site's footer reads "© Copyright 2026
-IEEE – All rights reserved", and links to the IEEE's site terms, whose text could not
-be fetched. Since the terms do not clearly allow passing the file on, it is not
-bundled: Outpost fetches it from the IEEE when a person presses "Fetch the registry",
-states the size first (3,876,189 bytes on 2026-11-16), and keeps it in that computer's
-data directory. See [tools-qr-and-network.md](tools-qr-and-network.md#who-made-each-device).
+**Devices on this network** can name a device's maker from its hardware address, using the
+IEEE Registration Authority's MA-L listing at <https://standards-oui.ieee.org/oui/oui.csv>
+(from <https://standards.ieee.org/products-programs/regauth/>). The pages state no licence
+to redistribute it; the footer reads "© Copyright 2026 IEEE – All rights reserved", and the
+site terms could not be fetched. So it is not bundled: Outpost fetches it when a person
+presses **Fetch the registry**, states the size first (3,876,189 bytes on the day), and
+keeps it in that computer's data directory ([tools-qr-and-network.md](tools-qr-and-network.md)).
 
 ## Weather and hazards, read on 2026-11-16
 
-What Preparedness → Weather and hazards fetches, on a press only, and what it does not
-([weather.md](weather.md)). Every quotation was read on 16 November 2026 from the
-publisher's own page, mostly from the page's text as served. Two pages that build
-themselves with JavaScript were read through a summary and are marked "(summary)".
-Those quotations should be read again on the page before being relied on.
+What **Preparedness → Weather and hazards** fetches, on a press only, and what it does not
+([weather.md](weather.md)). Two pages that build themselves with JavaScript were read
+through a summary and are marked "(summary)".
 
 ### Used
 
-| Source | Licence and attribution, in its words | Automated use, limits, key | Keeping a copy | Verdict |
-| --- | --- | --- | --- | --- |
-| **Open-Meteo** forecast API, `api.open-meteo.com/v1/forecast`, asked for `models=ukmo_seamless` | [Licence](https://open-meteo.com/en/licence): "API data are offered under Attribution 4.0 International (CC BY 4.0)"; "You must include a link next to any location Open-Meteo data are displayed", e.g. "Weather data by Open-Meteo.com"; it credits "Atmospheric forecasts from UK Met Office ( CC-BY-SA Licence )". [UKMO page](https://open-meteo.com/en/docs/ukmo-api): "UK Met Office data is provided under the CC BY-SA 4.0 licence. Therefore, any derived products from this data should also be redistributed under the same or a compatible licence." | [Terms](https://open-meteo.com/en/terms): "Less than 10'000 API calls per day, 5'000 per hour and 600 per minute." "You may only use the free API services for non-commercial purposes." Non-commercial examples include "Personal home automation purposes." No key for non-commercial use. A request of more than 10 variables counts as more than one call ([pricing](https://open-meteo.com/en/pricing)); Outpost's asks 8 hourly and 7 daily. | Not stated; CC BY and CC BY-SA allow copying with credit. | **Used**, no key. The credit and a link are shown under every forecast. A copy kept by a household is not redistributed; if one ever were, it would be under CC BY-SA. |
-| **Met Office** warnings RSS, `www.metoffice.gov.uk/public/data/PWSCache/WarningsRSS/Region/UK` | Channel: "(c) Crown copyright". [RSS terms](https://weather.metoffice.gov.uk/guides/rss): "You must provide attribution to the Met Office website in connection with your use of the RSS feeds." "The Met Office retains all ownership and other rights in the RSS Content". | Same page: "The RSS service may be used only with those platforms from which a functional link is made available that, when accessed, takes the viewer directly to the display of the full article on the Met Office Site." "You may not insert any intermediate page, splash page or other content between the RSS link and the applicable Met office Site web page." No rate limit stated. No key. The [website terms](https://www.metoffice.gov.uk/policies/tandc) forbid automated copying "Save for any APIs that we provide or expressly authorise you to use"; the RSS service is one the Met Office provides for this. | Not addressed by the RSS terms. | **Used**, no key, one feed for the whole UK (no position sent). Every warning keeps its link straight to the Met Office page, the titles and descriptions are unaltered, and the credit is shown. **For the owner:** that the RSS terms neither allow nor forbid keeping a copy for offline reading. |
-| **Environment Agency** real-time flood-monitoring API, `environment.data.gov.uk/flood-monitoring` | [Reference](https://environment.data.gov.uk/flood-monitoring/doc/reference): "These APIs are provided as open data under the Open Government Licence with no requirement for registration." Attribution: "this uses Environment Agency flood and river level data from the real-time data API (Beta)". | No numeric limit stated. "should not be relied upon for safety critical applications. They do not replace the existing channels by which the Agency notifies members of the public". | The OGL allows copying. | **Used**, no key. The caveat is quoted on the screen. England only. |
-| **Environment Agency** real-time flood-monitoring API, river and sea levels: `/id/stations?parameter=level&lat=…&long=…&dist=…&_view=full`, `/id/measures/{id}/readings?_sorted&_limit=16`, `/id/measures/{id}/readings?since=…` | Read again on 17 November 2026, [reference](https://environment.data.gov.uk/flood-monitoring/doc/reference): "These APIs are provided as open data under the Open Government Licence with no requirement for registration. If you make use of this data please acknowledge this with the following attribution statement: this uses Environment Agency flood and river level data from the real-time data API (Beta)". Every answer's `meta` names the licence as OGL v3 and says "Status: Beta service". Typical range: "typicalRangeHigh … the measurement exceeded this for 5% of the relevant data on record"; "typicalRangeLow … exceeded this for 95%"; "highestRecent … The highest reading for this measurement in recent times (typically the last 5 years)"; "maxOnRecord … The highest reading for this measurement on record". Units: "mAOD (for metres relative to the Ordnance Survey datum), mASD (for metres relative to the local stage datum), m (for metres with an unspecified datum)". | Same page: "Water levels and flows are regularly monitored, usually every 15 minutes. However, data is transferred back to the Environment Agency at various frequencies … typically once or twice per day, but usually increases during times of heightened flood risk." "Readings … are available for the recent period (up to the last four weeks)." Its note on crawling asks programs that keep "a copy of all the latest level/flow values" to make "a single call every 15 mins" to `/data/readings?latest` rather than "crawling all the stations every 15 mins"; at high load, "limiting API use to common patterns (avoiding custom filtering) will improve the chances of cache hits". No numeric limit, contact or key is asked for. "should not be relied upon for safety critical applications. They do not replace the existing channels by which the Agency notifies members of the public". Readings are limited to "a hard limit of 10000 items". `robots.txt` at environment.data.gov.uk (read the same day) disallows `/doc/`, `/data/` and others at the root, not `/flood-monitoring/`. | The OGL allows copying and keeping. | **Used**, no key, on a press only: one request for the stations within the distance chosen, one for each of the nearest ten's latest readings, and one for a station's last three days on its own view. Outpost keeps no all-stations copy and polls nothing, so the crawling note's single `?latest` call (every measure in England; its size was not measured) does not fit a press for one place. England only. The attribution is on the screen. The Agency's "Check for flooding" station pages (`check-for-flooding.service.gov.uk/station/{RLOIid}`, read 17 November 2026; its `robots.txt` allows all) are linked, not fetched; Floodline's number, "0345 988 1188 … Open 24 hours a day, 7 days a week", is quoted from one. |
-| **NASA POWER** climatology, `power.larc.nasa.gov/api/temporal/climatology/point` | [Referencing](https://power.larc.nasa.gov/docs/referencing/): "The data was obtained from National Aeronautics and Space Administration ( NASA ) Langley Research Center's Prediction Of Worldwide Energy Resources ( POWER ) project funded through the NASA Earth Science Division." It also says: "the Project requests notification if POWER data is transmitted to other researchers." No licence is named on the pages read (API, climatology, referencing, FAQ). | "A maximum of 20 parameters can currently be requested in one submission for a single point." The docs list a 429 response, with no number. No key. | Not stated. | **Used**, no key, with NASA's acknowledgement. **For the owner:** no licence is named. |
-| **PVGIS** `MRcalc`, `re.jrc.ec.europa.eu/api/v5_3/MRcalc` | [Data page](https://joint-research-centre.ec.europa.eu/photovoltaic-geographical-information-system-pvgis/general-information/geospatial-data-download_en): "The data in the sections below are free for public use if the source is acknowledged ( PVGIS © European Communities, 2001-2026)". Nothing specific to the API's answers was found. | [API page](https://joint-research-centre.ec.europa.eu/photovoltaic-geographical-information-system-pvgis/getting-started-pvgis/api-non-interactive-service_en): "API calls have a rate limit of 30 calls/second per IP address". "access to PVGIS APIs via AJAX is not allowed" (Outpost calls it from the server). No key. | Not stated. | **Used**, no key, with the acknowledgement. |
-| **GDACS** current events RSS, `www.gdacs.org/xml/rss.xml` (read 2026-11-21) | Channel: "public domain"; each item: "Copyright notice: European Union (CC BY 4.0), reuse is allowed, provided appropriate credit to GDACS is given." [Terms of use](https://www.gdacs.org/About/termofuse.aspx) are a disclaimer: alerts are "not meant to substitute nor to override any official information or alert message from local or national disaster management authorities". | The [feed reference](https://www.gdacs.org/feed_reference.aspx) says it is "updated every 6 minutes". No key; no rate limit published. | Allowed with credit. | **Used**, on a press, with the credit and the disclaimer. |
-| **USGS** earthquake summary feed, `earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojson` (read 2026-11-21) | The USGS's [copyrights and credits](https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits) page could not be read from here (usgs.gov answered with an empty page). As a work of the US Government it is not under copyright in the US (17 U.S.C. § 105). Credited as "U.S. Geological Survey". | [Feed page](https://earthquake.usgs.gov/earthquakes/feed/v1.0/geojson.php): "Updated every minute." No key. | Not stated. | **Used**, on a press. The credit page is to be read by hand. |
-| **MeteoAlarm** country feeds, `feeds.meteoalarm.org/feeds/meteoalarm-legacy-atom-<country>` (read again 2026-11-21) | "Licensed under terms equivalent to CC BY 4.0, with additional requirements". [Terms](https://meteoalarm.org/en/live/page/terms-and-conditions) ("Last Updated: 15/03/2024"), section 5: credit "EUMETNET – MeteoAlarm" across countries, or the national service for one; "The time of issue … must be included"; a link to www.meteoalarm.org; "Any Information being operationally redistributed must always be made available to users in real-time, with the delay … never longer than ten minutes"; and a set disclaimer. | No key; no registration ("Non-Registered Redistributors" are supported). No rate limit published. | A kept copy cannot meet the ten minutes. | **Used** for Home's country, on a press, with the time of issue, credit, link and disclaimer. Whether a household's kept copy is "operational redistribution" is the owner's decision. The national service is not yet named per country. |
-| **US National Weather Service** alerts, `api.weather.gov/alerts/active?point=` (read again 2026-11-21) | [Disclaimer](https://www.weather.gov/disclaimer): "in the public domain, unless specifically noted otherwise, and may be used without charge for any lawful purpose". | [API documentation](https://www.weather.gov/documentation/services-web-api): "A User Agent is required to identify your application. This string can be anything"; contact details optional. "The rate limit is not public information". Answers 400 for a point outside its area. | Not stated. | **Used** when Home is in the US, on a press. |
-| **NOAA SWPC** `services.swpc.noaa.gov`: `products/noaa-scales.json`, `products/summary/10cm-flux.json`, `products/noaa-planetary-k-index.json`, `text/wwv.txt`, `text/daily-solar-indices.txt` (read 2026-11-21) | [Disclaimer](https://www.weather.gov/disclaimer) (SWPC links to it): public domain, provided you do not claim it as your own, imply endorsement, or present modified content as official. [Privacy](https://www.weather.gov/privacy): "Use of appropriate byline/photo/image credits is requested." | Same disclaimer: "users should limit the number of retries to 1 minute intervals" and "Request only the data that you need." No key or User-Agent rule found. The K-index file changed format on about 31 March 2026 (Service Change Notice 26-21). | Not stated. | **Used** under HF propagation, on a press. Scale words quoted from [NOAA's scales](https://www.swpc.noaa.gov/noaa-scales-explanation); a-index bands from the [glossary](https://www.swpc.noaa.gov/content/space-weather-glossary). |
-| **The Zambretti forecaster** (the barometer's forecast), read 2026-11-21 | The instrument's directions: [Science Museum Group, object 1984-531](https://collection.sciencemuseumgroup.org.uk/objects/co54425). The letters and their pressures: Meteormetrics Ltd, "Short-Range Local Forecasting with a Digital Barograph using an Algorithm based on the Zambretti Forecaster", tables 1a–1c ([archived copy](http://web.archive.org/web/20160213225210/http://meteormetrics.com/zambretti.htm)), figures read off a 1915 instrument. | Nothing fetched: the tables are in Outpost's code. | Not applicable. | **Used** as figures with their source. Not used: beteljuice's widely copied `betel_cast.js`, whose terms ("free to use … as long as NO CHARGE is EVER made for its use or output") do not fit Outpost's MIT licence. |
+| Source | Licence and attribution | Automated use, limits, key | Verdict |
+| --- | --- | --- | --- |
+| **Open-Meteo** forecast, `api.open-meteo.com/v1/forecast`, `models=ukmo_seamless` | [Licence](https://open-meteo.com/en/licence): CC BY 4.0, with a link next to the data; the Met Office models are CC BY-SA 4.0 ([UKMO page](https://open-meteo.com/en/docs/ukmo-api)). | [Terms](https://open-meteo.com/en/terms): under 10,000 calls a day; non-commercial only ("Personal home automation" is an example). No key. Outpost asks 8 hourly and 7 daily variables, one call. | **Used.** Credit and link under every forecast. A household copy is not redistributed; if it were, CC BY-SA. |
+| **Met Office** warnings RSS, `www.metoffice.gov.uk/public/data/PWSCache/WarningsRSS/Region/UK` | "(c) Crown copyright". [RSS terms](https://weather.metoffice.gov.uk/guides/rss): attribute the Met Office website; it keeps all rights. | Each item must link straight to the full article, with nothing in between. No rate limit or key. | **Used**, one feed for the whole UK (no position sent). Links, titles and descriptions unaltered; credit shown. Keeping a copy is an [open question](#open-questions-for-the-owner). |
+| **Environment Agency** flood-monitoring API, `environment.data.gov.uk/flood-monitoring`: warnings, and river and sea levels (`/id/stations?parameter=level&lat=…&long=…&dist=…&_view=full`, `/id/measures/{id}/readings?_sorted&_limit=16`, `…?since=…`) (read again 2026-11-17) | [Reference](https://environment.data.gov.uk/flood-monitoring/doc/reference): open data under the OGL with no registration; attribution "this uses Environment Agency flood and river level data from the real-time data API (Beta)". | No numeric limit or key. Levels usually every 15 minutes, sent back once or twice a day (more in floods); readings kept four weeks. Outpost keeps no all-stations copy and polls nothing. "should not be relied upon for safety critical applications". | **Used**, England only, on a press: stations within the distance chosen, the nearest ten's latest readings, a station's last three days. The caveat and attribution are on the screen. "Check for flooding" station pages are linked, not fetched; Floodline, "0345 988 1188 … Open 24 hours a day, 7 days a week", is quoted from one. |
+| **NASA POWER** climatology, `power.larc.nasa.gov/api/temporal/climatology/point` | [Referencing](https://power.larc.nasa.gov/docs/referencing/): "The data was obtained from National Aeronautics and Space Administration ( NASA ) Langley Research Center's Prediction Of Worldwide Energy Resources ( POWER ) project funded through the NASA Earth Science Division." It asks to be told if data is passed to other researchers. No licence named. | At most 20 parameters a request; 429 documented with no number. No key. | **Used**, with the acknowledgement. |
+| **PVGIS** `re.jrc.ec.europa.eu/api/v5_3/MRcalc` | [Data page](https://joint-research-centre.ec.europa.eu/photovoltaic-geographical-information-system-pvgis/general-information/geospatial-data-download_en): free if acknowledged ("PVGIS © European Communities, 2001-2026"). | [API page](https://joint-research-centre.ec.europa.eu/photovoltaic-geographical-information-system-pvgis/getting-started-pvgis/api-non-interactive-service_en): 30 calls a second per address; no AJAX (Outpost calls from the server). No key. | **Used**, with the acknowledgement. |
+| **GDACS** RSS, `www.gdacs.org/xml/rss.xml` (read 2026-11-21) | Each item: "European Union (CC BY 4.0), reuse is allowed, provided appropriate credit to GDACS is given." [Terms](https://www.gdacs.org/About/termofuse.aspx): alerts do not replace official ones. | Updated every 6 minutes; no key or limit. | **Used**, with credit and disclaimer. |
+| **USGS** earthquakes, `earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojson` (read 2026-11-21) | US Government work (17 U.S.C. § 105); credited "U.S. Geological Survey". Its credits page answered empty; to be read by hand. | Updated every minute; no key. | **Used.** |
+| **MeteoAlarm**, `feeds.meteoalarm.org/feeds/meteoalarm-legacy-atom-<country>` (read 2026-11-21) | "terms equivalent to CC BY 4.0, with additional requirements" ([terms](https://meteoalarm.org/en/live/page/terms-and-conditions), 15/03/2024, section 5): credit "EUMETNET – MeteoAlarm" (or the national service), the time of issue, a link, a set disclaimer; operational redistribution within ten minutes of real time. | No key or registration; no limit published. | **Used** for Home's country, with all of those. The national service is not yet named per country. |
+| **US National Weather Service** alerts, `api.weather.gov/alerts/active?point=` (read 2026-11-21) | [Disclaimer](https://www.weather.gov/disclaimer): public domain unless noted. | A User-Agent is required ("can be anything"); the rate limit "is not public information". | **Used** when Home is in the US. |
+| **NOAA SWPC** `services.swpc.noaa.gov`: `products/noaa-scales.json`, `products/summary/10cm-flux.json`, `products/noaa-planetary-k-index.json`, `text/wwv.txt`, `text/daily-solar-indices.txt` (read 2026-11-21) | The NWS disclaimer: public domain; do not claim it, imply endorsement or present it altered as official. Credits requested. | Retry no more than once a minute; "Request only the data that you need." The K-index file changed format about 31 March 2026 (Service Change Notice 26-21). | **Used** under HF propagation. Scale words from [NOAA's scales](https://www.swpc.noaa.gov/noaa-scales-explanation); a-index bands from the [glossary](https://www.swpc.noaa.gov/content/space-weather-glossary). |
+| **The Zambretti forecaster** (read 2026-11-21) | The instrument's directions: [Science Museum Group, object 1984-531](https://collection.sciencemuseumgroup.org.uk/objects/co54425). Letters and pressures: Meteormetrics Ltd, tables 1a–1c ([archived copy](http://web.archive.org/web/20160213225210/http://meteormetrics.com/zambretti.htm)), read off a 1915 instrument. | Nothing fetched; the tables are in the code. | **Used** as figures with their source. beteljuice's `betel_cast.js` is not used: "free … as long as NO CHARGE is EVER made" does not fit Outpost's MIT licence. |
 
 ### Not used
 
 | Source | Why | What is offered instead |
 | --- | --- | --- |
-| Met Office Weather DataHub (site-specific forecasts; NSWWS warnings API) | Needs an account and an API key ([FAQ](https://datahub.metoffice.gov.uk/support/faqs): "After subscribing to a product, you'll be provided with an API key."). Its FAQ says a 10,000-a-month allowance is "limited to 360 calls per day". Its terms (Version 13, 2024, [PDF](https://www.metoffice.gov.uk/api/assets/file/met-office-weatherdatahub-terms-and-conditionspdf?prefix=assets)) say: "You must not sub-license, distribute, sell, or otherwise make the Met Office Weather DataHub Products available to third parties other than via Your Application". Attribution: "Powered by Met Office data". The free plan's exact figures could not be read (the pricing page needs JavaScript). | The same Met Office models through Open-Meteo. It could be added as an optional source with the person's own key, kept the way other secrets are. |
-| MET Norway, `api.met.no` locationforecast 2.0 | Licence NLOD 2.0 and CC BY 4.0, "Data from MET Norway". [Terms](https://api.met.no/doc/TermsOfService) (revised 2026-11-05): "All requests must (if possible) include an identifying User Agent-string (UA) in the request with the application/domain name, optionally version number. You should also include a company email address or a link to the company website where we can find contact information." The [HowTO](https://docs.api.met.no/doc/locationforecast/HowTO) says: "If this is missing or generic, you will get a 403 Forbidden response." It also requires caching until `Expires` and coordinates of at most 4 decimals. | **For the owner:** it would need contact details in Outpost's client name. Not built. |
-| Environment Agency, Flood Map for Planning (Flood Zones 2 and 3) | Read again on 16 November 2026. [data.gov.uk](https://www.data.gov.uk/dataset/flood-map-for-planning-flood-zones1) ("Updated 22 October 2026"): licence "Open Government Licence"; "Attribution statement: © Environment Agency copyright and/or database right 2025. All rights reserved."; "The Flood Zones are designed to only give an indication of flood risk to an area of land and are not suitable for showing whether an individual property is at risk of flooding. This is because we cannot know all the details about each property. Users of these datasets should always check they are suitable for the intended use."; "if downloading data for an area of interest, all polygons that intersect this area will be provided. Some polygons may be quite large and extend beyond the drawn area of interest." The OGC API Features service (landing page at `environment.data.gov.uk/spatialdata/flood-map-for-planning-flood-zones/ogc/features/v1`, which points to `environment.data.gov.uk/geoservices/datasets/04532375-a198-476e-985e-0579a0a11b47/ogc/features/v1`) has one collection, `Flood_Zones_2_3_Rivers_and_Sea`, extent −6.99 to 2.07 E, 49.88 to 55.81 N, stored in EPSG:27700 and served as GeoJSON in CRS84, `limit` "Minimum = 1. Maximum = 10000. Default = 10", paging by `startIndex`, with `numberMatched` in each answer. Properties: `flood_zone` (`FZ2`, `FZ3`), `flood_source` (`river`, `sea`, `unknown`), `origin`. Tried by hand that day: a box 0.1° by 0.06° round Bedford, 248 areas, 4,637,709 bytes, 0.43 s; a box 0.3° by 0.15° with `limit=1` was not answered within 90 seconds. No limit on requests, and no terms of service for the platform beyond the dataset's licence, were found on the publisher's pages (environment.data.gov.uk's support pages need JavaScript and its terms address answered 404). | **Fetched on a press** as a reference layer, for the area on screen up to 0.2° by 0.3° (about 20 km), at most 5,000 areas, one request after a count ([reference-layers.md](reference-layers.md)). |
-| Environment Agency, Risk of Flooding from Rivers and Sea | OGL. Only a WMS and a bulk download are published; no feature API (as read by the weather work; not read again on 16 November 2026 for the flood layer). | Not built: a WMS is pictures, not areas Outpost can keep and draw, and the bulk file is national. |
-| SEPA (Scotland) | [Time-series API](https://timeseriesdoc.sepa.org.uk/): OGL, "with no requirement for registration"; "please acknowledge SEPA". No flood-warning feed was found. | Linked; not built. |
-| Natural Resources Wales | [API portal](https://api-portal.naturalresources.wales/): "Sign up now for an API key"; OGL. | Linked; would need the person's own key. |
-| DfI Rivers (Northern Ireland) | Flood maps "available to be licensed commercially" ([DfI](https://www.infrastructure-ni.gov.uk/articles/can-data-within-flood-maps-ni-be-licensed-commercial-use)). | Not used. |
-| Met Office Fire Severity Index | "The Fire Severity Index (FSI) webpage is moving from the Met Office to the Open Access site by Natural England." It is published as maps only, with no feed and no licence stated. "the FSI does not predict when or where wildfires will start." | Linked ([Open Access](https://openaccess.naturalengland.org.uk/)). |
-| EFFIS fire danger forecast | [CC BY 4.0](https://forest-fire.emergency.copernicus.eu/about-effis/data-license): "reuse is allowed, provided appropriate credit is given and changes are indicated." Published as WMS images whose request is built in JavaScript; the exact request was not resolved. | Not built. |
-| Met Office climate averages (1991–2020) and station data files | Shown on its website; the data files carry no licence line, and the website's OGL terms do not cover "Any underlying web services". | Linked; NASA POWER is used instead. |
-| WorldClim | "Redistribution or commercial use is not allowed without prior permission." | Not used. |
-| ERA5 (Copernicus CDS) | CC BY 4.0, but it needs an account, and "One must agree to the Terms of Use of a dataset before downloading any data out of it. This step must be done manually". | Not used; NASA POWER needs no account. |
-| CRU TS | ODbL; "Please use the attribution Climatic Research Unit, University of East Anglia". Bulk gridded files, with no point API. | Not used. |
-| NOAA US climate normals | No licence wording was found on the [product page](https://www.ncei.noaa.gov/products/land-based-station/us-climate-normals). US only. | Not used. |
+| Met Office Weather DataHub | Needs an account and API key ([FAQ](https://datahub.metoffice.gov.uk/support/faqs)); a 10,000-a-month allowance "limited to 360 calls per day"; its [terms](https://www.metoffice.gov.uk/api/assets/file/met-office-weatherdatahub-terms-and-conditionspdf?prefix=assets) forbid making products available to third parties except via your application. | The same models through Open-Meteo. Could be an optional source with your own key. |
+| MET Norway `api.met.no` | NLOD 2.0 and CC BY 4.0. [Terms](https://api.met.no/doc/TermsOfService) (2026-11-05): an identifying User-Agent with contact details, or "403 Forbidden"; caching until `Expires`; coordinates to 4 decimals. | Not built ([open question](#open-questions-for-the-owner)). |
+| Environment Agency, Flood Map for Planning (Flood Zones 2 and 3) | [data.gov.uk](https://www.data.gov.uk/dataset/flood-map-for-planning-flood-zones1): OGL; "© Environment Agency copyright and/or database right 2025. All rights reserved."; "not suitable for showing whether an individual property is at risk of flooding". An OGC API Features service, up to 10,000 features a page; larger boxes time out. | **Fetched on a press as a reference layer**, for the area on screen up to 0.2° by 0.3° (about 20 km), at most 5,000 areas ([reference-layers.md](reference-layers.md)). |
 
-## Sources that are not integrated: what you can do
-
-- **Import a repeater list you obtained.** See [radio.md](radio.md#repeaters). Outpost
-  fetches a list only from the publishers the table above marks **fetch**; for the
-  rest the Repeaters screen gives the page and the steps.
-- **Add your own files.** Download the file yourself from the source, on terms you are
-  satisfied with, and add it under **Library → Add documents**. It is stored on your
-  disk, indexed for search, and opens in the built-in viewer like any other document.
-  This is the right route for Internet Archive items, single Project Gutenberg books,
-  CDC and FEMA guides the catalogue does not list, Hesperian's books, the Sphere Handbook, Standard Ebooks' books (row W31), and anything you hold a
-  licence for.
-- **Contribute a manifest entry.** If a publisher offers a stable address for a file
-  and a licence that allows free download, it can be listed. The format, the rules and
-  the checks to run are in [`catalog/README.md`](../catalog/README.md). You can also
-  keep a manifest of your own in `<data directory>/catalog/` without sending it to
-  anyone.
-- **Peak sun hours for a power plan.** Tools → Power and batteries links to the
-  European Commission's [PVGIS](https://re.jrc.ec.europa.eu/pvg_tools/en/) and asks
-  for the twelve monthly figures to be typed in. The power screen itself fetches
-  nothing. Preparedness → Weather and hazards can fetch the same figures from PVGIS's
-  API for a place, on a press (below and [weather.md](weather.md#the-power-planner)).
-  See [tools-power.md](tools-power.md).
-- **Use the Kiwix archive.** Many websites that offer no downloadable file are
-  packaged by Kiwix. Any book in the [Kiwix library](https://library.kiwix.org) can be
-  listed by name in a manifest.
-
-## Geofabrik extracts, and what Outpost uses instead
-
-Geofabrik publishes OpenStreetMap data as `.osm.pbf` files: the raw points, lines and
-tags of the map for a country or region. A map cannot be drawn from such a file
-directly. It first has to be turned into tiles by a tile-generation program, which
-takes time and memory for anything larger than a small region. Outpost does not
-include that step, so a Geofabrik extract cannot be added to the map as it
-stands.
-
-Outpost uses data that has already been through that step:
-
-- **Map tiles** come from the [Protomaps](https://protomaps.com) build of the whole
-  OpenStreetMap planet, published as one PMTiles archive. The Maps screen downloads
-  only the part you ask for (a rectangle and a range of zoom levels) and saves it as a
-  region. The underlying data is the same OpenStreetMap data that Geofabrik
-  distributes, under the same Open Database Licence.
-- **The world outline** and the boxes of the country presets come from Natural Earth.
-- **Place names** for offline search come from GeoNames, and for Great Britain also from
-  Ordnance Survey's OS Open Names (row 27a above).
-
-If you already make your own tiles from a Geofabrik extract, you can point Outpost at
-any PMTiles archive that follows the Protomaps basemap schema. See
-[maps.md](maps.md) for regions, credits and using your own map source.
+Also not used: the EA's Risk of Flooding from Rivers and Sea (a WMS and a national file only); SEPA's time-series API (OGL, no flood-warning feed; linked); Natural Resources Wales (needs an API key; linked); DfI Rivers (licensed commercially); the Met Office Fire Severity Index (maps only, moving to Natural England's [Open Access](https://openaccess.naturalengland.org.uk/) site; linked); EFFIS fire danger (CC BY 4.0, but images built in JavaScript); Met Office climate averages (no licence on the data; linked); WorldClim (no redistribution without permission); ERA5 (account and manual terms); CRU TS (bulk gridded files only); NOAA US climate normals (no licence found). For climate, NASA POWER is used.
 
 ## Emergency plan templates: what is quoted, and on what terms (read 2026-11-16)
 
-The emergency plan templates ([emergency-plans.md](emergency-plans.md)) carry short
-quotations from official pages, each with its publisher, title, address and date, in
-`packages/shared/src/emergency-templates-data.ts`. No page or document is bundled or
-fetched by Outpost; the sources were read by hand once. Only the words of a publisher
-whose own terms allow them to be copied are shipped, under those terms; a test holds
-this. Each publisher's terms, as read on its own terms, copyright or reuse page:
+The templates ([emergency-plans.md](emergency-plans.md)) carry short quotations, each with
+publisher, title, address and date. Nothing is bundled or fetched. Only the words of a
+publisher whose terms allow copying are shipped; a test holds this.
 
-| Publisher | Terms page (read 16 November 2026) | What it says | Verdict |
+| Publisher | Terms page | What it allows | Verdict |
 | --- | --- | --- | --- |
-| GOV.UK (Government Digital Service), including the Environment Agency's pages on GOV.UK | https://www.gov.uk/help/terms-conditions | “Most content on GOV.UK is subject to Crown copyright protection and is published under the Open Government Licence (OGL), which also sets out which content is exempt. … You can reproduce content published on GOV.UK under the OGL as long as you follow the licence’s conditions.” | Cleared: Open Government Licence v3.0 (logos, crests, the Royal Arms and third-party rights are exempt; none is used). Shown with its words: “Contains public sector information licensed under the Open Government Licence v3.0.” |
-| Be Ready (Cabinet Office), beready.campaign.gov.uk | https://beready.campaign.gov.uk/about-this-website-and-uk-resilience/ | “It was developed by the Cabinet Office, in partnership with experts from across local and national government, … All content is available under the Open Government Licence v3.0, except where otherwise stated” | Cleared: Open Government Licence v3.0 (the site's own statement; its two PDFs carry no other notice). Shown with its words: “Contains public sector information licensed under the Open Government Licence v3.0.” |
-| Met Office | https://www.metoffice.gov.uk/policies/tandc | “the Met Office grants you a worldwide, royalty-free, perpetual, non-exclusive licence to use, copy and adapt the Content (the "Licensed Content") under the terms of the UK Open Government Licence for Public Sector Information v3.0 … You must place the following attribution statement adjacent to the Licensed Content when reproducing the Licensed Content, as required by the Open Government Licence: "Contains public sector information licensed under the Open Government Licence v3.0"” | Cleared: Open Government Licence v3.0, with the statement adjacent to the words. Shown with its words: “Contains public sector information licensed under the Open Government Licence v3.0.” |
-| NHS website (Department of Health and Social Care) | https://www.nhs.uk/our-policies/terms-and-conditions/ | “Copyright and database rights in NHS Website Content are released free-of-charge under the current version of the Open Government Licence ("OGL"), except where specified … If you copy and reuse NHS Website Content but do not make any changes or adaptions … then you must attribute us as follows: "Information from the NHS website", and "as at DDMMYY" … You must not attribute the content to the NHS website or cite the NHS specifically as the source of the adapted, updated or non-refreshed content.” | Cleared for exact copies only: Open Government Licence v3.0 with the NHS website's own conditions: an unchanged copy is credited "Information from the NHS website" with the date copied, on every appearance; an adapted one may not name the NHS. No NHS words are shipped: Be Ready's own (OGL) heat advice, which points to the NHS, is used instead.. |
-| Ofcom | https://www.ofcom.org.uk/about-ofcom/our-website/copyright | “Unless indicated as Crown-owned material or otherwise, the material featured on this website or provided in hard copy may be reproduced free of charge in any format or medium, provided that it is reproduced accurately and not used in a misleading context. The material must be acknowledged as Ofcom copyright and the title of the document/publication specified.” | Cleared for exact copies only: Ofcom's permission to reproduce accurately, acknowledged; not a licence to adapt, so each step is a whole sentence of the page, unchanged. Shown with its words: “Ofcom copyright: words from “Stay connected in severe weather”, reproduced unchanged.” |
-| European Commission | https://commission.europa.eu/legal-notice_en | “Unless otherwise indicated (e.g. in individual copyright notices), content owned by the EU on this website is licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0) licence. This means that reuse is allowed, provided appropriate credit is given and changes are indicated.” | Cleared: CC BY 4.0. Shown with its words: “© European Union, CC BY 4.0 (European Commission, “112 - the EU's emergency phone number”).” |
-| Queensland Government | https://www.qld.gov.au/legal/copyright | “Unless otherwise noted, all copyright material available on or through this website is licensed under a Creative Commons Attribution 4.0 International licence (CC BY 4.0). … You must keep the copyright notice on the copyright material and attribute the State of Queensland as the source of the copyright material.” | Cleared: CC BY 4.0. Shown with its words: “© State of Queensland, CC BY 4.0 (“Triple Zero (000)”, qld.gov.au).” |
-| British Red Cross | https://www.redcross.org.uk/terms-and-conditions | “We and our licensors reserve all of our and their rights in any intellectual property in connection with these Terms. … Commercial use or publication of any or all of the Content is strictly prohibited without prior authorisation from us. Nothing contained herein shall be construed as conferring any licence to use any item displayed, other than as necessary to enable you to access the Site.” | Not cleared: All rights reserved: pointed to, not quoted. |
-| Ready.gov and FEMA (United States) | https://www.fema.gov/about/website-information | “Not read directly: fema.gov refused every request from here (HTTP 403). Read through a summarising fetcher, the page says “Most material on FEMA.gov is free of copyright and may be copied and distributed without permission”, which names FEMA.gov and not Ready.gov; Ready.gov has no terms page of its own that could be found.” | Not cleared: Not established from a page that could be read: pointed to or left as a question, not quoted. |
-| New Zealand Police | https://www.police.govt.nz/about-site-and-nz-police-app/copyright | “You may save to disk and reprint images and other information contained on this site for non-commercial private purposes only. Requests and enquiries concerning the reproduction of information on this website, or the use of web scripts or code, for any other purpose requires permission.” | Not cleared: Permission needed: the number 111 is given as a fact, cited, with none of the page's words. |
+| GOV.UK (including the Environment Agency's pages) | https://www.gov.uk/help/terms-conditions | OGL. | **Cleared**: OGL v3.0, shown with "Contains public sector information licensed under the Open Government Licence v3.0." |
+| Be Ready (Cabinet Office) | https://beready.campaign.gov.uk/about-this-website-and-uk-resilience/ | "All content is available under the Open Government Licence v3.0, except where otherwise stated" | **Cleared**, as GOV.UK. |
+| Met Office | https://www.metoffice.gov.uk/policies/tandc | Use, copy and adapt under the OGL, with the attribution statement adjacent. | **Cleared**, statement adjacent. |
+| NHS website | https://www.nhs.uk/our-policies/terms-and-conditions/ | OGL; an unchanged copy credited "Information from the NHS website" with the date; an adapted one may not name the NHS. | Exact copies only. **No NHS words shipped**: Be Ready's heat advice, which points to the NHS, is used instead. |
+| Ofcom | https://www.ofcom.org.uk/about-ofcom/our-website/copyright | Reproduce accurately, not misleadingly, acknowledged with the title. | Exact copies only: each step a whole unchanged sentence, shown "Ofcom copyright: words from “Stay connected in severe weather”, reproduced unchanged." |
+| European Commission | https://commission.europa.eu/legal-notice_en | CC BY 4.0. | **Cleared**: "© European Union, CC BY 4.0 (European Commission, “112 - the EU's emergency phone number”)." |
+| Queensland Government | https://www.qld.gov.au/legal/copyright | CC BY 4.0, keep the notice, attribute the State. | **Cleared**: "© State of Queensland, CC BY 4.0 (“Triple Zero (000)”, qld.gov.au)." |
+| British Red Cross | https://www.redcross.org.uk/terms-and-conditions | All rights reserved. | **Not cleared**: pointed to, not quoted. |
+| Ready.gov and FEMA | https://www.fema.gov/about/website-information | fema.gov refused (403) on the day; read only through a summarising fetcher; Ready.gov has no terms page of its own. | **Not cleared**: pointed to, not quoted. |
 
-| International Commission on Radiological Protection (ICRP) | https://www.icrp.org/page.asp?id=11 | “The publications of ICRP are copyright protected. If you want to reproduce material from an ICRP report, or if you want to translate and distribute it, permission is required from ICRP.” Its publications page: “ICRP retains copyrights on all its publications; even free to access publications require permission for reuse.” | Not cleared: permission needed. Nothing used. |
-| International Atomic Energy Agency (IAEA), iaea.org | https://www.iaea.org/about/terms-of-use (refused, HTTP 403; read from the Internet Archive's copy of 17 October 2026) | “Content may be adapted, translated, copied, printed and downloaded for private study, research and teaching purposes, and for use in commercial and non-commercial products or services, provided that appropriate acknowledgement of the IAEA as the source is given and that the IAEA's endorsement of users' views, products or services is not stated or implied in any way. Specific restrictions and/or conditions may apply to specific Materials within this Site.” | Cleared for the website's own content, with acknowledgement; a publication's own notice would be read first. Nothing used: no IAEA page for households was found. |
+Not used: ICRP (permission needed for any reuse); New Zealand Police (non-commercial private use only, so 111 is given as a fact); the IAEA (its website allows reuse with acknowledgement, per the Internet Archive's copy of its terms, but no page for households was found).
 
-The radiation emergency template (nuclear preparedness) adds two GOV.UK pages of the UK
-Health Security Agency, under GOV.UK's terms above, each also saying “This publication
-is licensed under the terms of the Open Government Licence v3.0 except where otherwise
-stated”, and points to Ready.gov's “Radiation Emergencies” page. Its sources and what
-was not used (local-authority REPPIR leaflets, which carry no licence statement) are in
-[nuclear-preparedness.md](nuclear-preparedness.md#the-radiation-emergency-template).
-
-The British Red Cross, Ready.gov and New Zealand Police are pointed to or cited for a
-fact, never quoted. The NHS's terms allow reuse with conditions that the templates do
-not take on; no NHS words are shipped.
+The radiation emergency template adds two UKHSA pages on GOV.UK (OGL v3.0) and points to
+Ready.gov's "Radiation Emergencies". Local-authority REPPIR leaflets carry no licence
+statement and are not used ([nuclear-preparedness.md](nuclear-preparedness.md)).
 
 ## The Morse trainer: its method, timing and content (read 2026-11-16)
 
-Radio → Morse trainer ([morse-trainer.md](morse-trainer.md)) came from LogBook73, by the
-same author under the same MIT licence. It bundles no document and fetches nothing; what
-it is built on is named here.
+**Radio → Morse trainer** ([morse-trainer.md](morse-trainer.md)) came from LogBook73 (same
+author, MIT). It bundles no document and fetches nothing.
 
-| What | Where it comes from | How it was checked |
+| What | Where it comes from | Notes |
 | --- | --- | --- |
-| The code itself (letters, digits, punctuation, prosigns) | International Morse code, ITU-R M.1677-1 (source R9 above) | Written out in `packages/shared/src/morse/table.ts`, not copied from the Recommendation. |
-| The timing proportions: dah 3 dits; gaps of 1 dit inside a character, 3 between characters, 7 between words | ITU-R M.1677-1 (source R9 above) | As in the Recommendation's part on spacing and length of signals, read for the radio sheets. |
-| Speed in words per minute, and the dit length | The PARIS standard word: "PARIS", with the space after it, is 50 dits long, so at *w* wpm a dit lasts 60 / (50 *w*) = 1.2 / *w* seconds. Described, for example, by Pieter-Tjerk de Boer, PA3FWM, <https://pa3fwm.nl/technotes/tn31-morse-timing.html> | Read on 16 November 2026: "This word, including the space at the end, has a duration of exactly 50 units of time, each as long as a dot", "generally used to define the speed in words per minute (wpm)". The 1.2 / *w* follows from it. |
-| Farnsworth spacing | Jon Bloom, KE3Z, "A Standard for Morse Timing Using the Farnsworth Technique", QEX, April 1990, pp. 8–9 (ARRL), listed on <https://www.arrl.org/cw-mode>, scan at <https://www.arrl.org/files/file/Technology/x9004008.pdf> | The listing was read; the scan is a fax-compressed image and was not read here. The engine's formula (characters at the character speed; PARIS's 19 spacing dits stretched so the word takes 60 / *s* seconds at the effective speed *s*: one spacing dit = (60 / *s* − 37.2 / *c*) / 19 seconds) is LogBook73's and matches the secondary descriptions found; it was not checked against the article itself. |
-| The Koch method: start at full character speed with two characters, add one when a session is copied at 90 % | Ludwig Koch's work of the 1930s, as used by LCWO (lcwo.net, by Fabian Kurz, DJ5CW) | Common knowledge. LCWO's own course pages need signing in and could not be read here, so the 41-character order in `koch.ts` is as LogBook73 recorded it, not checked against LCWO's list. |
-| Q-codes and abbreviations (CQ, DE, QRS, QTH, 73, 5NN…) | Common operating practice; the Q code is ITU-R M.1172 (source R9) | Short words in use on every band; no list was copied. |
-| The words of the word drill | The 50 most common short English words and 40 longer ones, typed for LogBook73 | Common words. The first fifty follow the order of a common frequency list of English words; a list of common words is not a work of anyone's, so they are kept. |
-| Example and practice callsigns | Made up | The fixed ones (the practice contact's stations, the defaults, the tests) start with Q, which the ITU never issues as a call prefix. The drills' random calls use real country prefixes and random letters, so one can happen to match a real station. GB100RSGB is kept as the form of a special-event call. |
-| What a Reverse Beacon Network skimmer needs | The RBN's "How to get spotted by the RBN", <https://www.reversebeacon.net/pages/How+to+get+spotted+by+the+RBN+44>, and HamSCI's "Getting Spotted by the RBN", <https://www.hamsci.org/node/188> | Both read on 16 November 2026. Quoted: "you must send one of the key-words: TEST or CQ"; "Skimmer may want to "hear" two, three, or four repetitions of the call before it will be spotted."; "Skimmer may copy the T in CWT and run it together with the real callsign."; a node that has spotted you "will ignore you until 10 minutes have passed", or "QSY 300 Hz or more between transmissions"; HamSCI: "(1) calling CQ and (2) having a valid call sign", "The CQ word may have one other word between the CQ word and the call sign", unusual prefixes "can require up to 4 repetitions before they are spotted". |
-| The network's own page, linked from On the air | <https://www.reversebeacon.net/main.php> | Read on 16 November 2026. The site's own pages give no address for the spots of one call (its search is a box on the page), so the link is to the page with that box. Outpost makes no request to the network; the link is opened only by a person. |
-| The keyer presets (what each maker's radio does out of the box) | As LogBook73 recorded them | Not checked against each maker's manual; the screen says so. |
+| The code (letters, digits, punctuation, prosigns) | ITU-R M.1677-1 (R9) | Written out for Outpost, not copied. |
+| Timing: dah 3 dits; gaps of 1, 3 and 7 dits | ITU-R M.1677-1 | As in its part on spacing. |
+| Words per minute | The PARIS standard: 50 dits a word, so a dit lasts 1.2 / *w* seconds. See [PA3FWM](https://pa3fwm.nl/technotes/tn31-morse-timing.html). | Read. |
+| Farnsworth spacing | J. Bloom, KE3Z, "A Standard for Morse Timing Using the Farnsworth Technique", QEX, April 1990 ([ARRL listing](https://www.arrl.org/cw-mode)) | One spacing dit = (60 / *s* − 37.2 / *c*) / 19 seconds. LogBook73's formula, matching secondary descriptions; the article (a fax scan) was not read. |
+| The Koch method | Ludwig Koch (1930s), as used by LCWO | Common knowledge. The 41-character order is LogBook73's, not checked against LCWO (sign-in needed). |
+| Callsigns, Q-codes, word drill | Made up; common practice (ITU-R M.1172); common English words | Fixed callsigns start with Q, never issued by the ITU; random drill calls use real prefixes and may match a real station. No list copied. |
+| What a Reverse Beacon Network skimmer needs | [RBN](https://www.reversebeacon.net/pages/How+to+get+spotted+by+the+RBN+44), [HamSCI](https://www.hamsci.org/node/188) | "you must send one of the key-words: TEST or CQ"; two to four repetitions of the call; a node ignores you for 10 minutes once spotted, or QSY 300 Hz. |
+| The RBN's page, linked from **On the air** | <https://www.reversebeacon.net/main.php> | There is no address for one call's spots, so the link is to the page with its search box. Outpost makes no request to it. |
+| Keyer presets | As LogBook73 recorded them | Not checked against makers' manuals; the screen says so. |
 
 ## The Solar clock: its formulas and reference values (read 2026-11-17)
 
-Tools → Solar clock ([tools-solar-clock.md](tools-solar-clock.md)) bundles no document and
-fetches nothing. Its arithmetic and the values its tests are held to come from these:
+**Tools → Solar clock** ([tools-solar-clock.md](tools-solar-clock.md)) bundles and fetches
+nothing.
 
-| What | Where it comes from | How it was checked |
+| What | Where it comes from | Notes |
 | --- | --- | --- |
-| The sun's position, the equation of time, refraction, sunrise at 0.833° | NOAA Global Monitoring Laboratory, "Solar Calculation Details", <https://gml.noaa.gov/grad/solcalc/calcdetails.html>, after J. Meeus, *Astronomical Algorithms* | The page was read: it names Meeus's book without an edition, gives the refraction model (quoted from its images' alt text) and says the calculator "is no longer actively supported". Meeus's book was **not** read; its chapter numbers (25 and 28, second edition) are as `sun.ts` already gave them. |
-| Altitude, azimuth, dip of the horizon, the sidereal rate 1.00273791 | N. Bowditch, *The American Practical Navigator*, NGA Pub. 9, 2019, vol. 1, appendix B, <https://thenauticalalmanac.com/2019_Bowditch-_American_Practical_Navigator/Volume-_1/13-%20Appendices/Appendix%20B-%20Calculations%20and%20Conversions.pdf> (a copy of the US Government publication) | Pages 707 to 712 read: "Dip of the visible horizon … D = 1.76′ √h_m"; "Hc = sin⁻¹[(sin L sin d) + (cos L cos d cos LHA)]"; the time azimuth formula; "1 mean solar unit = 1.00273791 sidereal units". |
-| Sidereal time | US Naval Observatory, "Computing Approximate Sidereal Time", <https://aa.usno.navy.mil/faq/GAST> | Read: "GMST = mod (18.697375 + 24.065709824279 DUT, 24h)"; "an accuracy of about 0.1 second of time". |
-| Reference values for the tests | US Naval Observatory APIs: `api/celnav` (sun and star altitude, azimuth, declination, Greenwich hour angle), `api/siderealtime`, `api/rstt/oneday` | Queried on 17 November 2026 for the dates and places in the tests; each value is copied into the test that uses it with the address it came from. The star places of Polaris, Dubhe and Kochab are taken from the same data for 1 January 2026 and 2046. CDS (SIMBAD, VizieR) answered "Page unavailable" and was not used. |
-| Horizontal sundial hour lines | North American Sundial Society, "Sundial Math", <https://sundials.org/education/sundial-math>: "tan(theta) = tan(HA) x sin(lat)", "the gnomon rises at an angle equal to the sundial site's latitude", "Civil = Sundial + EoT + dLon" | Read. |
-| A table of hour-line angles | K. Gibbs, schoolphysics, "Making a horizontal sundial", <https://www.schoolphysics.co.uk/age14-16/Astronomy/text/Sundial_/index.html> | Read; the table for 50° to 55° is copied into `sundial.test.ts`. |
-| Setting up a sundial, the equation of time and longitude in words | British Sundial Society, "Setting Up A Sundial", <https://sundialsoc.org.uk/all-about-sundials/setting-up-a-sundial/> | Read: "subtract 4 minutes per degree if you are West of the timezone"; it gives no shadow method for north. |
-| True north from the shortest shadow | Yohkoh Public Outreach Project, "Finding Geographic North", <https://solar.physics.montana.edu/ypop/Classroom/Lessons/Sundials/north.html> | Read: "Draw a line from the dowel base to this point". The page names no institution; Montana State University is inferred from the address. |
-| The nocturnal | L. Devoy, Royal Museums Greenwich, "What is a nocturnal?" (30 October 2023), <https://www.rmg.co.uk/stories/blog/astronomy/what-nocturnal> | Read: the steps of use, "to within 15 minutes", "around 40-60 degrees north latitude", "23 hours, 56 minutes and 4 seconds (1 sidereal day)". It does not name Kochab or cover the southern hemisphere. |
-| A southern star clock | None | No source that could be checked was found; the screen says the south is not covered. |
+| The sun's position, equation of time, refraction, sunrise at 0.833° | NOAA GML, ["Solar Calculation Details"](https://gml.noaa.gov/grad/solcalc/calcdetails.html), after J. Meeus, *Astronomical Algorithms* | The page is "no longer actively supported". Meeus's book was not read; its chapter numbers (25 and 28, 2nd ed.) are as the code gave them. |
+| Altitude, azimuth, dip, the sidereal rate 1.00273791 | N. Bowditch, *American Practical Navigator*, NGA Pub. 9 (2019), vol. 1, appendix B ([copy](https://thenauticalalmanac.com/2019_Bowditch-_American_Practical_Navigator/Volume-_1/13-%20Appendices/Appendix%20B-%20Calculations%20and%20Conversions.pdf)) | Pages 707 to 712: dip D = 1.76′ √h; Hc = sin⁻¹[(sin L sin d) + (cos L cos d cos LHA)]; the time azimuth formula. |
+| Sidereal time | USNO, ["Computing Approximate Sidereal Time"](https://aa.usno.navy.mil/faq/GAST) | GMST = mod (18.697375 + 24.065709824279 DUT, 24h), "about 0.1 second". |
+| Test values | USNO APIs `api/celnav`, `api/siderealtime`, `api/rstt/oneday` (queried 2026-11-17) | Each value copied into its test with its address. Polaris, Dubhe and Kochab for 2026 and 2046 from the same data. |
+| Horizontal sundial hour lines | North American Sundial Society, ["Sundial Math"](https://sundials.org/education/sundial-math) | tan(θ) = tan(HA) × sin(lat); the gnomon at the latitude; "Civil = Sundial + EoT + dLon". Also K. Gibbs, [schoolphysics](https://www.schoolphysics.co.uk/age14-16/Astronomy/text/Sundial_/index.html) (a table for the tests), and the British Sundial Society, ["Setting Up A Sundial"](https://sundialsoc.org.uk/all-about-sundials/setting-up-a-sundial/). |
+| True north from the shortest shadow | Yohkoh Public Outreach Project, ["Finding Geographic North"](https://solar.physics.montana.edu/ypop/Classroom/Lessons/Sundials/north.html) | Montana State University inferred from the address. |
+| The nocturnal | L. Devoy, Royal Museums Greenwich, ["What is a nocturnal?"](https://www.rmg.co.uk/stories/blog/astronomy/what-nocturnal) (2023) | "to within 15 minutes", "around 40-60 degrees north latitude"; it does not name Kochab or cover the south. |
+| A southern star clock | None found | The screen says the south is not covered. |
 
 ## Frequencies to listen to (read 2026-11-17)
 
-Radio → Frequencies to listen to ([radio-frequencies.md](radio-frequencies.md)) ships a
-list of facts (frequencies, channels, hours, places) with, for each entry, the page it
-was checked against and the day. Nothing is fetched by Outpost: the addresses are plain
-links. Each entry's sources are in its file under `packages/shared/src/radio-frequencies/`
-and on the screen; this section records how they were chosen and the terms that bore on
-them.
+**Radio → Frequencies to listen to** ([radio-frequencies.md](radio-frequencies.md)) ships
+facts (frequencies, channels, hours, places), each with the page it was checked against and
+the day; the full list of sources is in the data files and on the screen, and the addresses
+are plain links. Primary sources are the regulators, time-signal laboratories (NIST, NPL,
+PTB, NICT, the BIPM), national emergency and civil protection agencies, the broadcasters
+themselves, weather and maritime services (NWS, the MCA, the Met Office, the IMO), the IARU
+regions and national amateur societies, and the CFR from govinfo (not the eCFR, whose
+`robots.txt` disallows its API). Secondary sources (the RSGB and WorldDAB on Radio 4 long
+wave ending on 27 June 2026, Radio World, the SWLing Post on CHU's closure on 22 June 2026,
+and a few others) are each used for one fact and said so in the entry.
 
-**How pages were read.** Each page was read on 17 November 2026 with an ordinary fetch
-that names itself as an AI agent. Where a site refused that fetch, or its `robots.txt` or
-terms forbid AI agents, that was taken as the site's answer: the page was not read another
-way (no other user-agent, cache or mirror), and nothing in the set rests on it. Two
-researchers had first read some pages with a browser user-agent; every such page was read
-again the ordinary way, or its content was removed. The US regulations were first read
-through the eCFR's API, which `ecfr.gov`'s `robots.txt` disallows; they were replaced by
-the Government Publishing Office's 1 October 2025 edition of the Code of Federal
-Regulations on govinfo.gov.
+Pages were read with a fetch that names itself as an AI agent. Where a site refused it, or
+its `robots.txt` or terms forbid AI agents, that was its answer: the page was not read
+another way and nothing rests on it.
 
-**Primary sources used**, by kind (the full list is in the data files):
+**Terms that bore on reuse:** GOV.UK (OGL v3.0); Ofcom (reproduce accurately, acknowledged);
+Denk vooruit (CC0, images excepted); ISED (non-commercial with attribution); VOA (public
+domain); the IARU Region 1 VHF Handbook (non-commercial, source quoted); the WIA band plan
+(CC BY-NC-ND 4.0: single frequencies only, credited); US federal works. Radio Romania
+International and RTVE allow only personal use, so nothing is taken from them; the SABC
+likewise, so its entry says only that Channel Africa's shortwave has closed.
 
-| Kind | Sources |
-| --- | --- |
-| Time signals | NIST (WWV, WWVH, WWVB), NPL (MSF), PTB (DCF77), NICT (JJY), ANFR (ALS162), GUM (e-Czas, Poland), the BIPM's annual table of time signals (February and March 2026 returns: HLA, RWM, RBU, RTZ, Beta, MIKES, LOL, BPM), NTSC's bulletin, ITU-R TF.768-4, INRiM, METAS, Royal Museums Greenwich (the pips) |
-| Emergency broadcasting | GOV.UK and Be Ready, Ireland's Be Emergency Ready booklet, Ready.gov, Alert Ready and canada.ca, BBK, oesterreich.gv.at, BABS, Krisinformation and MCF, Statsforvalteren, borger.dk, FMI, kriis.ee and ERR, LRT, HZS ČR, Denk vooruit, centredecrise.be, Radio France's convention with the Ministry of the Interior, Protección Civil, Io non rischio, Yamanashi Prefecture |
-| News broadcasters | Ofcom's transmitter parameters, RTÉ, 2RN, ANFR, Polskie Radio, Antena Satelor, NMHH, 47 CFR Part 73, MIC (Japan), EBC (Brazil), Radio Nacional (Argentina), Český rozhlas, RÚV, Deutschlandradio; for shortwave, RTI, WRMI, Radio Prague International, RFA, RFE/RL, VOV, Channel Africa |
-| Weather | NWS (NOAA Weather Radio, US marine broadcasts, the radiofax schedule compilation), canada.ca and the Canadian Coast Guard's Radio Aids to Marine Navigation 2026, the MCA's MSI leaflet, the Met Office, Ofcom, NATS's UK AIP and AirNav Ireland's AIP (VOLMET), the IMO NAVTEX Manual and the IHO's WWNWS reports, DWD, Kystverket, Météo-France, ANFR, ICAO regional air navigation plans, Airservices Australia |
-| Distress and calling | Ofcom's distress and safety annex, the MCA (MGN 324), 47 CFR Parts 80 and 87 (govinfo), the UK AIP, Transport Canada's AIM, the Canadian Coast Guard, NSW and Queensland maritime pages, the IMO, NOAA SARSAT, the Wireless Telegraphy Act 2006 |
-| Amateur | IARU Regions 1, 2 and 3 (emergency frequencies page, band plans, the VHF Handbook), ARRL, JARL, WIA, NZART, SARL HAMNET, the Hurricane Watch Net, NCDXF, JS8Call's own source, 47 CFR Part 97 (govinfo) |
-| Licence-free | CEPT ECC/DEC/(15)05 and (11)03, ERC/REC 70-03, Ofcom IR 2027, IR 2027.2, IR 2030 and its CB guidance, BNetzA, 47 CFR Part 95 (govinfo), ISED RSS-210 and RIC-18, ACMA's CB class licence 2025, the New Zealand Gazette and RSM, Japan's Radio Act regulations (e-Gov), MCMC, ICASA |
-| Bands | Ofcom's UK Frequency Allocation Table, NTIA's Redbook, 47 CFR Part 2 (govinfo), the IARU's summary of amateur allocations, ITU-R BS.1660-7, MIC, the Bureau of Meteorology's introduction to HF radio |
-
-**Secondary sources**, each used for one fact and said so in the entry's notes: the RSGB
-and WorldDAB (BBC Radio 4 long wave ending, 27 June 2026), Radio World (RTL 234 kHz, the
-end of German medium wave, the CBC time signal), Avvenire (RAI medium wave), L'Adige (the
-RAI time signal), the SWLing Post (CHU's closure, 22 June 2026, and Channel Africa's),
-Keep Long Wave (the delay of the pips on digital radio), a district council page (the
-UK's Radio 2 and Radio 4 frequencies in its own area), Hackaday and CERN's amateur radio
-club (what sideband sounds like; the word "utility").
-
-**Terms that bore on reuse**, as read:
-
-- GOV.UK: "This publication is licensed under the terms of the Open Government Licence
-  v3.0 except where otherwise stated."
-- Ofcom: material "may be reproduced free of charge in any format or medium … provided
-  that it is reproduced accurately and not used in a misleading context", and "must be
-  acknowledged as Ofcom copyright and the title of the document/publication specified."
-- Denk vooruit (Netherlands): "Unless stated otherwise, CC0 (Creative Commons Zero)
-  applies to the content on our website… CC0 does not apply to photographs, videos,
-  infographics or other images."
-- ISED: "Unless otherwise specified, you may reproduce the materials in whole or in part
-  for non-commercial purposes", with attribution and a link to the original.
-- VOA: "All text, audio and video material produced exclusively by the Voice of America
-  is in the public domain."
-- IARU Region 1 VHF Handbook: copying "is allowed for IARU member societies and for
-  non-commercial purposes provided the source of information is quoted."
-- WIA band plan: CC BY-NC-ND 4.0, "copying and redistribution of the material in its
-  original, unaltered form for non-commercial purposes only"; "You must not adapt,
-  modify, transform, or build upon this material without prior written permission."
-  Only single frequencies are taken from it, credited, not the plan.
-- Radio Romania International ("The content of this Website cannot be copied, reproduced,
-  republished, recompiled … with the exception of personal, non-commercial use") and
-  RTVE (which reserves the rights of reproduction of its content): their shortwave
-  schedules were listed at first, frequencies and times only, and were **removed on
-  17 November 2026** by the owner's decision, with every mention of them in the
-  shortwave guide. Outpost is published for anyone to copy, which is more than personal
-  use, so nothing is taken from either site. Their own pages are where to look.
-- The SABC grants use "for your personal, non-commercial use": its entry says only that
-  Channel Africa's shortwave has closed, and gives no schedule.
-- US federal works (NIST, NWS, the CFR) carry no restriction.
-- Natural Earth (countries' boxes, used to find the home place's country) is already in
-  this page under reference layers.
-
-**Not used because of their terms or because they refuse AI agents**: the BBC (its
-`robots.txt` forbids "agentic AI or grounding using BBC content"), ABC (Australia), RNZ,
-CBC, NHK, NRK, DR, Yle, KBS, Vatican News, RFI, Deutsche Welle, USAGM, Radio France's
-radiofrance.fr, the Bureau of Meteorology's own pages, USCG NAVCEN, the FAA's AIP,
-gov.ie, Cospas-Sarsat, aprs.org, the WSJT-X source on SourceForge, and Google Docs
-(WRMI's schedule grid). What each would have given is listed as a gap in
-[radio-frequencies.md](radio-frequencies.md#gaps), so that someone can fill it in by hand
-from the broadcaster's own page.
-
-**Not used as sources at all**: Wikipedia, hobbyist schedule lists (EiBi, Aoki and the
-like), HFCC data, commercial frequency guides and RepeaterBook.
+**Not used, by their terms or because they refuse AI agents:** the BBC, ABC, RNZ, CBC, NHK,
+NRK, DR, Yle, KBS, Vatican News, RFI, Deutsche Welle, USAGM, radiofrance.fr, the Bureau of
+Meteorology's pages, USCG NAVCEN, the FAA's AIP, gov.ie, Cospas-Sarsat, aprs.org, WSJT-X on
+SourceForge, Google Docs. What each would have given is a gap in
+[radio-frequencies.md](radio-frequencies.md). **Not sources at all:** Wikipedia, hobbyist
+lists (EiBi, Aoki), HFCC data, commercial guides, RepeaterBook.
 
 ## The allotment's months and facts (read 2026-11-17)
 
-Games → Allotment ([games.md](games.md#the-crops)) uses real sowing and harvest months for
-its twelve crops, and a few facts about each on its almanac card. Nothing is fetched by
-Outpost and no page or picture is bundled: the months are numbers in
-`packages/shared/src/games/allotment/numbers.ts`, the facts are sentences written for
-Outpost in `notes.ts`, and the pages are plain links behind "Where this comes from".
+**Games → Allotment** ([games.md](games.md)) uses real sowing and harvest months for twelve
+crops and a few facts each. Nothing is fetched or bundled; the pages are plain links behind
+**Where this comes from**.
 
-| What | Where it comes from | How it was read |
+| What | Where it comes from | Notes |
 | --- | --- | --- |
-| Sowing, planting and harvest months; hardiness, watering and a few facts for each crop | Royal Horticultural Society, "Grow your own" pages: <https://www.rhs.org.uk/vegetables/radishes/grow-your-own>, and the same address with `salad-leaves`, `onions`, `peas`, `carrots`, `beetroot`, `kale`, `broad-beans`, `potatoes`, `leeks`, `garlic` and `squash` | Each page fetched once on 17 November 2026 with Outpost's own user agent ("Outpost (self-hosted offline library)"), three seconds apart; every one answered 200. The month calendar is in the page's HTML (each month marked active or not, in rows Sow, Plant, Plant out and Harvest), and was read from it. The radishes page was also opened once with the ordinary fetch tool first, whose summary left out the calendar; that was the second request to that page. |
-| The crop families and why rotation matters | RHS, "Crop rotation", <https://www.rhs.org.uk/vegetables/crop-rotation> | Fetched once the same day. Used: the four groups (brassicas, legumes, onions, the potato family, roots), that salads and the squash family can go anywhere, that soil pests and diseases attack one family again and again and decline while it is absent, clubroot in brassicas and onion white rot. |
-| Which pages exist | The RHS sitemaps, <https://www.rhs.org.uk/sitemap_index.xml>, `sitemap-general.xml` and `sitemap-kontent-ai.xml` | Fetched once each, to find the addresses above rather than guess them. |
-| What a robot may read | <https://www.rhs.org.uk/robots.txt> | Read the same day: for all user agents it disallows only `/api/`, Word documents, and paths ending `undefined` or `thank-you`, and names five crawlers that are shut out entirely; no crawl delay. `/vegetables/` is not disallowed. |
-| Terms of reuse | The RHS site's footer and its policies page, <https://www.rhs.org.uk/about-us/what-we-do/policies> | No terms of use or reuse policy is linked: the footer says "© The Royal Horticultural Society 2026", and the policies page lists none for website content. So no prose, table or picture is copied. Outpost keeps only facts (which months; which family; hardy or tender; wants much or little water) and says them in its own words, with the source named and linked. |
+| Sowing, planting and harvest months; hardiness, watering, facts | RHS "Grow your own": `https://www.rhs.org.uk/vegetables/<crop>/grow-your-own` for radishes, salad-leaves, onions, peas, carrots, beetroot, kale, broad-beans, potatoes, leeks, garlic, squash | Fetched once each with Outpost's own client. The calendar was read from the page's HTML (rows Sow, Plant, Plant out, Harvest). |
+| Crop families and rotation | RHS, ["Crop rotation"](https://www.rhs.org.uk/vegetables/crop-rotation) | The four groups; salads and squash go anywhere; soil pests decline while their family is absent; clubroot, onion white rot. |
+| Terms | The RHS footer ("© The Royal Horticultural Society 2026") and [policies page](https://www.rhs.org.uk/about-us/what-we-do/policies) | No reuse terms, so only facts are kept, in Outpost's own words, with the source named. `robots.txt` does not disallow `/vegetables/`. |
 
-The months as the RHS calendars gave them (Sow / Plant / Plant out / Harvest), so that
-they can be checked again: radishes Mar–Sep / – / – / Jan, Feb, Apr–Dec (the winter months
-are winter radishes; the game's salad radishes are harvested April to October, "about four
-to six weeks" after sowing, as the page says); salad leaves Feb–Sep / – / – / Apr–Dec;
-onions Jan–Apr, Aug–Sep / Mar–Apr, Sep–Nov / – / Jun–Sep; peas Feb–Jun / – / Mar–Apr /
-Jun–Oct; carrots Feb–Jul / – / – / May–Nov; beetroot Mar–Jul / – / – / Jun–Oct; kale
-Mar–Jun / – / May–Jul / Oct–Apr; broad beans Feb–May, Oct–Nov / – / Apr–May / May–Aug;
-potatoes – / Mar–May / – / Jun–Oct; leeks Feb–Jun / May–Jul / – / Jan–Mar, Aug–Dec; garlic –
-/ Feb–Mar, Oct–Dec / – / May–Aug; squash Apr–May / – / May–Jun / Jul–Oct.
+The months as read are in `packages/shared/src/games/allotment/numbers.ts`. The game's salad
+radishes are harvested April to October, "about four to six weeks" after sowing; the RHS's
+winter months are winter radishes.
 
-Only the RHS was used, so no two sources had to be reconciled. Made up for the game, and
-said so on the screen: how fast things grow, prices, how long water lasts and how often it
-rains.
+Made up for the game, and said so on the screen: growth rates, prices, how long water lasts
+and how often it rains.
 
 ## Chess: the rules and the move generator's check (read 2026-11-21)
 
-Games → Chess ([games.md](games.md#chess)). Nothing is bundled or fetched by Outpost.
+**Games → Chess** ([games.md](games.md)). Nothing bundled or fetched.
 
-| What | Source | How it was used |
+| What | Source | How it is used |
 | --- | --- | --- |
-| The rules | FIDE Laws of Chess taking effect from 1 January 2023, <https://handbook.fide.com/chapter/E012023> | Read once with the ordinary fetch tool. Articles 3.7 (en passant, promotion), 3.8 (castling and its conditions), 5.2 (stalemate, dead position), 9.2 and 9.3 (repetition and the fifty-move rule, both claimed) and 9.6 (fivefold repetition and 75 moves, automatic). Outpost ends the game at the third repetition and the fiftieth move without a claim, and says so. |
-| Perft counts | Chess Programming Wiki, "Perft Results", <https://www.chessprogramming.org/Perft_Results> (CC BY-SA 3.0) | Read once. The six standard positions and their leaf counts by depth are the move generator's test; only the counts (facts) and the FENs are used, none of the page's text or pictures. |
+| The rules | [FIDE Laws of Chess](https://handbook.fide.com/chapter/E012023) from 1 January 2023 | Articles 3.7, 3.8, 5.2, 9.2, 9.3 and 9.6. Outpost ends the game at the third repetition and the fiftieth move without a claim, and says so. |
+| Perft counts | Chess Programming Wiki, ["Perft Results"](https://www.chessprogramming.org/Perft_Results) (CC BY-SA 3.0) | The six standard positions' leaf counts are the move generator's test; only the counts and FENs are used. |
 
-The computer's piece-square values are Outpost's own, written as a few plain rules
-(knights to the centre, pawns forward, the king home until the queens are off), not taken
-from a published table.
+The computer's piece-square values are Outpost's own plain rules, not a published table.
 
 ## Mesh radio (read 2026-11-17)
 
-For the mesh radio link ([mesh-radio.md](mesh-radio.md)). Each page was read once, with
-the ordinary fetch tool, on 17 November 2026. Nothing from these projects is bundled or
-fetched by Outpost; they decided what could be built, and how.
+For the mesh radio link ([mesh-radio.md](mesh-radio.md)). Nothing from these projects is
+bundled or fetched.
 
-| Page | What it says (quoted) | What was concluded |
-| --- | --- | --- |
-| github.com/meshtastic/firmware, `LICENSE` | GNU General Public License, version 3: "The GNU General Public License is a free, copyleft license for software and other kinds of works." | No firmware code is used. |
-| github.com/meshtastic/protobufs, `LICENSE` | The same licence, GPL version 3, dated 29 June 2007. | The `.proto` files and code generated from them are not copied. |
-| meshtastic.org/docs/development/device/client-api/ | Framing: "Byte 0: START1 (0x94)", "Byte 1: START2 (0xc3)", then the length; "Clients connect over TCP on port 4403". It gives no field numbers and refers to `mesh.proto`. | The binary client API was not built: its field numbers are published only in the GPL files. |
-| meshtastic.org/docs/software/integrations/mqtt/ | Topics `msh/REGION/2/e/CHANNELNAME/USERID` and `msh/US/2/json/CHANNELNAME/USERID`; `from` is "the decimal Node ID" and "can thus be used as a stable identifier for a specific node"; "-1 means it was a broadcast message"; to send, "send a JSON message to the topic `msh/US/2/json/mqtt/`" with `from`, optional `to` and `channel`, `type` `"sendtext"` and the text as `payload`, with a channel named "mqtt" with Downlink on; "JSON is not supported on the nRF52 platform." It shows no text message example. | Built: `meshtastic/json.ts`. A text's payload is accepted as a string or as `payload.text`, and this is said to be unconfirmed. |
-| meshtastic.org/docs/legal/licensing-and-trademark/ | "you may not use the Meshtastic Trademarks or any confusingly similar mark as a trademark for your product"; use only if it "does not imply sponsorship or endorsement by Meshtastic"; noncommercial sites must indicate "clearly that it is not affiliated with or endorsed by Meshtastic." | "Works with" wording, and the not-affiliated sentence on the screen and in the docs. No logo. |
-| meshtastic.org/docs/configuration/radio/lora/ ("LoRa Configuration", `#region`) | "This will ensure that you are operating within the legal limits for your area." "Check your national band plan before transmitting." | Linked from the screen; no country's rules are stated by Outpost. |
-| meshtastic.org/robots.txt | `User-agent: *` / `Disallow: /docs/2.7/` | The pages read are not under the disallowed path. |
-| meshtastic.github.io/Meshtastic-Android, "Messages & Channels" | "Maximum length: 200 bytes"; the default LongFast channel "is encrypted with a well-known default key, so anyone running Meshtastic on the same preset can read it"; a broadcast shows "Delivered to mesh" with "no per-recipient acknowledgment". | 200 bytes is the Meshtastic limit; the public-channel warning. Over MQTT JSON no delivery report comes back, so none is claimed. |
-| github.com/meshcore-dev/MeshCore, `license.txt` | "MIT License", "Copyright (c) 2025 Scott Powell / rippleradios.com". | Its documented frames may be implemented. |
-| MeshCore `docs/companion_protocol.md` ("Companion Protocol", "Last Updated: 2026-03-08", companion firmware v1.12.0+) | Commands and answers by byte: app start `0x01`, send channel message `0x03`, get message `0x0A`, channel info `0x1F`/`0x12`, channel message `0x08` and `0x11`, messages waiting `0x83`; little-endian integers, UTF-8 text; messages limited to 133 characters. It says it "may be inaccurate" in places and covers BLE framing only. | Built: `meshcore/frames.ts`, `session.ts`. |
-| MeshCore `src/helpers/ArduinoSerialInterface.cpp` | `if (c == '<') {`; `hdr[0] = '>';`; `hdr[1] = (len & 0xFF);  // LSB`, `hdr[2] = (len >> 8);    // MSB`. | The USB frame format. |
-| MeshCore `src/helpers/esp32/SerialWifiInterface.cpp` | Could not be read: 404 on 17 November 2026. Not got another way. | The network port is assumed to use the USB frames, as the FAQ implies; said to be untested. |
-| MeshCore `docs/faq.md` | "Connect on TCP port 5000 (same as the WiFi companion radio)." Serial examples use `-b 115200`. | Port 5000 by default; 115200 for the USB serial. |
+- **Meshtastic.** Firmware and protobufs are GPL version 3, so no code or `.proto` file is
+  used, and the binary client API (TCP port 4403) is not built: its field numbers are
+  published only in those files. The [MQTT page](https://meshtastic.org/docs/software/integrations/mqtt/)
+  gives the topics (`msh/REGION/2/e/CHANNELNAME/USERID`, `msh/US/2/json/…`), `from` as the
+  decimal node ID, "-1" for a broadcast, and sending as JSON (`type` `"sendtext"`) to
+  `msh/US/2/json/mqtt/` on a channel named "mqtt" with Downlink on; "JSON is not supported
+  on the nRF52 platform." It shows no text example, so a payload is accepted as a string or
+  `payload.text`, unconfirmed. The Android docs: "Maximum length: 200 bytes"; LongFast uses
+  "a well-known default key, so anyone running Meshtastic on the same preset can read it";
+  no per-recipient acknowledgement, so none is claimed. The trademark terms ask
+  noncommercial sites to say they are "not affiliated with or endorsed by Meshtastic": the
+  screen says "works with" and that sentence, with no logo. The LoRa page's "Check your
+  national band plan before transmitting" is linked; Outpost states no country's rules.
+- **MeshCore** (MIT, © 2025 Scott Powell). Built from `docs/companion_protocol.md`
+  (2026-03-08, firmware v1.12.0+; it says it "may be inaccurate"): command and answer bytes,
+  little-endian, UTF-8, 133 characters. USB frames from `ArduinoSerialInterface.cpp`
+  (`<` in, `>` out, length LSB then MSB). The network interface's source answered 404, so
+  the network port (5000, per the FAQ) is assumed to use the USB frames: untested. Serial at
+  115200.
 
 ## Satellites, licences and band plans (read 2026-11-21)
 
-**Satellite tracking** ([satellites.md](satellites.md)) was ported from LogBook73 (MIT), on
-`satellite.js` 6.0.2 (MIT). Its two data sources are fetched only on a press:
+**Satellite tracking** ([satellites.md](satellites.md)) was ported from LogBook73 (MIT) and
+uses `satellite.js` 6.0.2 (MIT). Its two sources are fetched only on a press:
 
-| Page | What it says | What was concluded |
+| Page | What it says | What follows |
 | --- | --- | --- |
-| celestrak.org/usage-policy.php (updated 16 November 2026) | GP data updates "once every 2 hours"; "only download data once per update"; asking for GP data with FORMAT=tle can 404 for newly catalogued objects, and FORMAT=csv is recommended; stop on any answer that is not 200. No data licence and no redistribution terms are given. | Asked for as CSV; not again within 2 hours; a failed answer keeps what was there; nothing is republished. |
-| db.satnogs.org/about | "All data are public and freely distributed under the Creative Commons Atribution-Share Alike v4.0 license." | Credited on the screen and on each printed pass; kept for the satellites whose elements are kept. |
-| db.satnogs.org/api/transmitters/?format=json (one record read) | Fields `uuid`, `description`, `alive`, `type`, `uplink_low`, `uplink_high`, `downlink_low`, `downlink_high`, `mode`, `invert`, `baud`, `norad_cat_id`, `status`, `updated`. | Read by `apps/server/src/modules/satellites/satnogs.ts`. |
+| celestrak.org/usage-policy.php (updated 16 November 2026) | Data updates "once every 2 hours"; "only download data once per update"; FORMAT=tle can 404 for new objects, CSV recommended; stop on any answer but 200. No data licence or redistribution terms. | Asked as CSV, not again within 2 hours; a failed answer keeps what was there; nothing republished. |
+| db.satnogs.org/about | "All data are public and freely distributed under the Creative Commons Atribution-Share Alike v4.0 license." | Credited on the screen and each printed pass. |
+| db.satnogs.org transmitters API | Fields `uuid`, `description`, `alive`, `type`, uplink and downlink low and high, `mode`, `invert`, `baud`, `norad_cat_id`, `status`, `updated` | The fields read. |
 
 **What needs a radio licence** ([radio-licences.md](radio-licences.md)) and **Licences and
-band plans** (Radio) rest on the regulators' own documents, each named with its date
-beside the statement or figure it supports, in `packages/shared/src/radio-licence-statements.ts`
-and `packages/shared/src/radio-licences/`. Read on 21 November 2026:
+band plans** rest on the regulators' own documents, each named with its date beside the
+statement it supports:
 
-- United Kingdom: Ofcom's Amateur Radio Licence Conditions Booklet (OFW611, 21 February
-  2024) and its amateur radio guidance (14 October 2025); IR 2030 (23 October 2026), IR 2027
-  and IR 2027.2; "Rules on using radio equipment" (10 July 2023); the Wireless Telegraphy Act
-  2006, sections 8 and 48; SI 1989/123; SI 2021/493.
-- Ireland: ComReg 09/45R6 (29 May 2023), ComReg 02/71 R16 (20 May 2024), S.I. 93/1998 and
-  436/1998. ComReg's own web page could not be read (a script challenge).
-- United States: 47 CFR Parts 97, 95 and 15 from the eCFR (up to date as of 19 November
-  2026) and govinfo (1 October 2025 edition); 47 U.S.C. 605 and 18 U.S.C. 2510 and 2511. The
-  FCC's consumer guide on interception was not public when checked, and fcc.gov refused the
-  fetch tool.
-- Canada: ISED RBR-4 (Issue 3, July 2022), RIC-3, RSS-210 (Issue 11), RSS-236 (Issue 2),
-  RIC-18.
-- Australia: the Radiocommunications (Amateur Stations) Class Licence 2023, the Citizen Band
-  Radio Stations Class Licence 2025 and the LIPD Class Licence 2025.
-- New Zealand: the Amateur GURL Notice 2025, the CB GURL Notice 2011 and the Short Range
-  Devices GURL Notice 2022.
-- Germany: the Amateurfunkverordnung as amended 27 May 2024, BNetzA Vfg 21/2021 (CB) and Vfg
-  91/2025 (short range devices, PMR446).
-- Netherlands: the two Regelingen gebruik van frequentieruimte (met meldingsplicht 2015, in
-  force from 20 June 2024; zonder vergunning en zonder meldingsplicht 2015, from 1 July 2025).
-- France: Arcep décisions 2012-1241 and 2019-1412. The arrêté of 21 September 2000 on the
-  certificate classes and the current short range devices decision could not be read, so
-  France has no licence-free services listed.
+Ofcom (the Licence Conditions Booklet OFW611, its guidance, IR 2030, 2027 and 2027.2, "Rules
+on using radio equipment", the Wireless Telegraphy Act 2006 ss. 8 and 48); ComReg (09/45R6,
+02/71 R16, S.I. 93/1998 and 436/1998; its web page could not be read); 47 CFR Parts 97, 95
+and 15, 47 U.S.C. 605 and 18 U.S.C. 2510–2511 (fcc.gov refused); ISED (RBR-4, RIC-3, RSS-210,
+RSS-236, RIC-18); Australia's amateur, CB and LIPD class licences; New Zealand's GURL
+notices; Germany's Amateurfunkverordnung and BNetzA Vfg 21/2021 and 91/2025; the two Dutch
+Regelingen gebruik van frequentieruimte; Arcep décisions 2012-1241 and 2019-1412. France's
+certificate arrêté and current short range devices decision could not be read, so no
+French licence-free services are listed.
 
-Band plans of national societies (RSGB, ARRL, WIA) were used only to find the regulator's
-document, never as the source of a figure. The IARU regional band plans are cited for the
-APRS frequencies, which no regulator names.
+National societies' band plans (RSGB, ARRL, WIA) were used only to find the regulator's
+document. The IARU regional band plans are cited for APRS frequencies, which no regulator
+names.
 
 ## Heard on the radio (read 2026-11-21)
 
-For [Heard on the radio](heard-on-the-radio.md). Each was read once on 21 November 2026.
-Nothing from these is bundled or fetched by Outpost; the decoders are programs the person
-runs.
+For [Heard on the radio](heard-on-the-radio.md). Nothing is bundled or fetched; the
+decoders are programs you run.
 
-| Source | What it says (quoted) | What was concluded |
-| --- | --- | --- |
-| APRS Protocol Reference 1.2 draft c (APRS Working Group, github.com/wb2osz/aprsspec, `APRS12c.pdf`) | Chapters 8 to 12: plain and compressed positions, Mic-E, objects and items, weather; "The speed is expressed in knots" for a weather report's DIR/SPD; "s = sustained one-minute wind speed (in mph)". The 1.0.1 PDF of 2000 is marked "Obsolete" by the same project. | The APRS reader (`modules/heard/aprs.ts`). Checked against Dire Wolf 1.8.1 decoding the same packets. |
-| Dire Wolf User Guide, version 1.8, October 2025 (WB2OSZ) | KISS "with default port 8001"; `ADEVICE`, `ACHANNELS`, `MYCALL`; "Leave squelch open"; "set the audio input level so that most stations average somewhere around 50"; "frames from tcp port 8001 are transmitted on radio channel 1". | The guide's configuration: a null audio output, no PTT, beacon or digipeater, so nothing can be sent. Outpost writes nothing to the port. |
-| Dire Wolf, "Raspberry Pi SDR IGate" | `rtl_fm -f 144.39M - \| direwolf -c sdr.conf -r 24000 -D 1 -` | The SDR line of the guide, untried. 144.390 MHz is said to be the one that example uses: no North American band plan naming it could be read (aprs.org answered 403; the ARRL band plan page does not list APRS). |
-| IARU Region 1 VHF Handbook, version 10.03, February 2026 | "144.800 APRS" | Europe's APRS frequency. |
-| WIA Australian Band Plan, revision 2026-1 | "145.175 MHz – National AX.25 APRS" | Australia's. |
-| Ofcom, "Rules on using radio equipment" | "Generally, the use of radio receivers is exempt from requiring a licence unless it is also capable of transmission"; "receivers and scanners can only be used for 'general reception'". | The listening line; whether aircraft and ships count is not said, and the screen says Outpost does not know. |
-| Wireless Telegraphy Act 2006, s. 48 (legislation.gov.uk) | An offence to use apparatus "with intent to obtain information as to the contents, sender or addressee of a message" of which one is not an intended recipient. | Cited for the UK. |
-| 18 U.S.C. 2511(2)(g)(ii) (law.cornell.edu) | Not unlawful to intercept communication transmitted "by a station operating on an authorized frequency within the bands allocated to the amateur ... service" or "by any marine or aeronautical communications system". | Cited for the US. |
-| "SBS BaseStation Article 4.2: Socket Data and BST files" (woodair.net) | "listen to port 30003"; the 22 fields; flags "-1 for true, and a 0 for false". | The SBS reader (`sbs.ts`). Checked against readsb 3.16 (Homebrew), which wrote the lines in the tests from the worked examples of Junzi Sun's "The 1090MHz Riddle". |
-| "Mode-S Beast: Data Output Formats" (Jetvision wiki) | "<esc> "3" : 6 byte MLAT timestamp, 1 byte signal level, 14 byte Mode-S long frame". | Not used: Beast is raw frames, SBS the decoded result. |
-| dump1090-fa source (FlightAware) | "TCP BaseStation output listen ports (default: 30003)". | The usual port. readsb's own default is off; the guide gives `--net-sbs-port 30003`. |
-| readsb README and install wiki (wiedehopf) | "Run `brew install readsb`"; `sudo bash -c "$(wget -O - https://github.com/wiedehopf/adsb-scripts/raw/master/readsb-install.sh)"`. | The Mac line (tried) and the Pi line (untried). |
-| "AIVDM/AIVDO protocol decoding" (Eric S. Raymond, gpsd) | Payload armouring, the common navigation block, types 4, 5, 18, 19, 21, 24; "AIS Channel A is 161.975Mhz (87B); AIS Channel B is 162.025Mhz (88B)"; the navigation status and ship type tables. | The AIS reader (`ais.ts`). Checked against pyais 3.3.1. |
-| AIS-catcher, "Command Line" (jvde-github.github.io/AIS-catcher-docs) | "-S xxx - TCP server for NMEA lines at port xxx"; "-u xxx.xx.xx.xx yyy - UDP destination address and port"; "-d:x - select device based on index". | The guide's lines, untried. |
-| rtl-ais README | "[-P port (default: 10110)]" | 10110 as the ships port. |
-| CA2RXU LoRa_APRS_iGate (`tnc_utils.cpp`, `data/igate_conf.json`) | `#define TNC_PORT 8001`; `"enableServer": false`; `"callsign": "NOCALL-10"`; `"sendViaRF": false`, `"txActive": false`, `"rxFreq": 433775000`. | A KISS TCP receiver for LoRa APRS; the receive-only settings. Untried with a board. |
-| ESP32APRS_Audio (nakhonthai) | `config.bt_mode = 1; // 0-None,1-TNC2RAW,2-KISS`; no network KISS server in its source. | Not readable by Outpost without a bridge; none is built. |
-| LoRa APRS by OE5BPA (github.com/lora-aprs) | "This repository was archived by the owner on Sep 14, 2025". | Pointed to CA2RXU's. |
-| Raspberry Pi documentation, RTL-SDR Blog V4 datasheet, Heltec WiFi LoRa 32 V3 datasheet | Already in Power and batteries; Digirig's maker publishes no current. | The power cut guidance names them; no figure was measured by Outpost. |
+| Source | What follows |
+| --- | --- |
+| APRS Protocol Reference 1.2 draft c (github.com/wb2osz/aprsspec); 1.0.1 is marked "Obsolete" | The APRS reader: positions, Mic-E, objects, items, weather (DIR/SPD "in knots", "s" in mph). Checked against Dire Wolf 1.8.1. |
+| Dire Wolf User Guide 1.8 (October 2025) and "Raspberry Pi SDR IGate" | KISS on port 8001; squelch open; a configuration with null audio output and no PTT, beacon or digipeater, so nothing can be sent. Outpost writes nothing to the port. The SDR example uses 144.390 MHz; no North American band plan naming it could be read. |
+| IARU Region 1 VHF Handbook 10.03; WIA band plan 2026-1 | APRS on 144.800 MHz in Europe, 145.175 MHz in Australia. |
+| Ofcom, "Rules on using radio equipment"; Wireless Telegraphy Act 2006 s. 48; 18 U.S.C. 2511(2)(g)(ii) | Receivers are licence-exempt for "general reception"; using one to learn a message not meant for you is an offence in the UK; amateur, marine and aeronautical traffic may be received in the US. Whether aircraft and ships count as general reception in the UK is not said, and the screen says Outpost does not know. |
+| "SBS BaseStation Article 4.2" (woodair.net); dump1090-fa; readsb | Port 30003, 22 fields, flags -1 and 0. The SBS reader, checked against readsb 3.16. The Mac install line was tried; the Pi line was not. |
+| "AIVDM/AIVDO protocol decoding" (E. S. Raymond, gpsd); AIS-catcher; rtl-ais | The AIS reader (types 4, 5, 18, 19, 21, 24; channels 161.975 and 162.025 MHz), checked against pyais 3.3.1; port 10110. The AIS-catcher lines are untried. |
+| CA2RXU LoRa_APRS_iGate | A KISS TCP receiver on port 8001 with receive-only settings; untried with a board. OE5BPA's project was archived on 14 September 2025; ESP32APRS_Audio has no network KISS server, so it is not readable. |
 
 ## The Steading's household figures (read 2026-11-21)
 
-Games → Steading ([games.md](games.md#steading)) says what a household uses in a day
-with real figures. Nothing is fetched by Outpost and no document is bundled: the figures
-are numbers in `packages/shared/src/games/steading/numbers.ts`, said in Outpost's own
-words with the source named.
+**Games → Steading** ([games.md](games.md)) uses real figures for what a household uses in a
+day, in Outpost's own words with the source named. Nothing fetched or bundled.
 
-| What | Where it comes from | How it was read |
-| --- | --- | --- |
-| Food energy, 2,000 and 2,500 kcal a day (women and men, 19 to 64) | Public Health England, Government Dietary Recommendations (2016) | Already held by Supplies (`ENERGY_BANDS` in `packages/shared/src/supplies.ts`); not read again. |
-| White bread, 266 kcal per 100 g | USDA FoodData Central, SR Legacy (April 2018), FDC 174924, "Bread, white, commercially prepared" | Already held by Supplies in its food table (public domain, CC0); not read again. |
-| Water, 7.5 to 15 litres a person a day for drinking, cooking and basic hygiene | WHO, Technical notes on drinking-water, sanitation and hygiene in emergencies, note 9 (2013), table 9.1 | Already held by Supplies (`WATER_FIGURES`); not read again. |
-| Electricity 2,500 kWh and gas 9,500 kWh a year, medium use, from 1 July 2026 | Ofgem, "Review of typical domestic consumption values: decision", 27 May 2026, table 1, <https://www.ofgem.gov.uk/sites/default/files/2026-05/Review%20of%20typical%20domestic%20consumption%20values%20decision.pdf> | The PDF fetched once on 21 November 2026 and its text read. The 2023 values it replaces (2,700 and 11,500) are in the same table. |
-| Log wood, stacked and air dry (20% moisture), 4.1 kWh per kg; house coal 7.5 to 8.6 | Forest Research, "Typical calorific values of fuels", <https://www.forestresearch.gov.uk/tools-and-resources/biomass-energy-resources/reference-biomass/facts-figures/typical-calorific-values-of-fuels/> | The page fetched once on 21 November 2026 (© Crown copyright, Forest Research 2026). Only the two figures are used. |
+| What | Where it comes from |
+| --- | --- |
+| Food energy, 2,000 and 2,500 kcal a day (women and men, 19 to 64) | Public Health England, Government Dietary Recommendations (2016), as Supplies holds it |
+| White bread, 266 kcal per 100 g | USDA FoodData Central SR Legacy, FDC 174924, as Supplies holds it |
+| Water, 7.5 to 15 litres a person a day | WHO technical note 9 (2013), table 9.1, as Supplies holds it |
+| Electricity 2,500 kWh and gas 9,500 kWh a year, medium use, from 1 July 2026 (replacing 2,700 and 11,500) | Ofgem, ["Review of typical domestic consumption values: decision"](https://www.ofgem.gov.uk/sites/default/files/2026-05/Review%20of%20typical%20domestic%20consumption%20values%20decision.pdf), 27 May 2026, table 1 |
+| Air-dry log wood (20% moisture) 4.1 kWh per kg; house coal 7.5 to 8.6 | Forest Research, ["Typical calorific values of fuels"](https://www.forestresearch.gov.uk/tools-and-resources/biomass-energy-resources/reference-biomass/facts-figures/typical-calorific-values-of-fuels/) (© Crown copyright); only the two figures used |
 
-Made up for the game: every rate of work, cost, reach, the size of a loaf (800 g) and of a
-bundle of firewood (10 kg), the trade, and a settlement day passing in an hour.
+Everything else in the game is made up (an 800 g loaf, a 10 kg bundle of firewood, rates,
+costs, a day passing in an hour).
 
 ## The server's own figures, read on 21 November 2026
 
-For the Server status screen, the clock, `outpost.local` and `/metrics`
-([device.md](device.md)). Nothing from these is bundled or fetched; they decided what is
-read from the system and how it is described.
+For Server status, the clock, `outpost.local` and `/metrics` ([device.md](device.md)).
+Nothing bundled or fetched.
 
-| Page | What it says | What was concluded |
-| --- | --- | --- |
-| raspberrypi.com/documentation/computers/raspberry-pi.html, "Frequency management and thermal control" | "When the core temperature is between 80°C and 85°C, the Arm cores will be progressively throttled back." "If the temperature reaches 85°C, both the Arm cores and the GPU will be throttled back." | Needs attention from 80 °C, a problem from 85 °C. No other temperature is used. |
-| raspberrypi.com/documentation/computers/os.html, `get_throttled` | Bit 0 "Undervoltage detected", 1 "Arm frequency capped", 2 "Currently throttled", 3 "Soft temperature limit active", 16 to 19 the same "has occurred". | Read from the firmware's `get_throttled` file in `/sys`, which a container can read. |
-| netmodule-linux.readthedocs.io/en/latest/howto/mmc.html | Life time estimation "0x01 = 0-10% device life time used", "0x02 = 10-20%"; pre-EOL "0x01 = Normal", "0x02 = Warning: consumed 80% of the reserved blocks", "0x03 = Urgent: consumed 90%". | An eMMC card's wear in tens of per cent; values above 0x0A are not interpreted. |
-| lore.kernel.org, "mmc: core: Export device lifetime information through sysfs" (22 December 2016) | Adds the `life_time` and `pre_eol_info` attributes for eMMC 5.0 and later. | SD cards have no such attributes; the screen says their wear is not reported. Seen on a Pi 5's SD card: none. |
-| prometheus.io/docs/instrumenting/exposition_formats/ | Text format `version=0.0.4`, lines ending in a line feed, `# HELP` and `# TYPE` once per name before its samples, label escaping, histogram buckets with `le` ending in `+Inf` equal to `_count`. | `/metrics` is written by hand to that format; no client library. |
-| nodejs.org/docs/latest-v24.x/api/perf_hooks.html, `monitorEventLoopDelay` | "By default, the histogram is updated by a timer using the configured resolution"; the per-iteration mode "does not keep the loop alive". | The per-iteration mode was ignored by Node 24.15 when tried, so the timer is used, and only while there is work. |
-| manpages.debian.org, avahi-daemon(8) and avahi-publish(1) (bookworm); avahi 0.8's `avahi-publish.c` | `--reload` rereads `/etc/avahi/services/`; `avahi-publish -a` registers "an address/host name mapping"; `-R --no-reverse` "Do not publish reverse entry with address"; `-f` waits for the daemon and reconnects. | `outpost-name.service` runs `avahi-publish -f -a -R NAME.local ADDRESS`. |
+- Raspberry Pi documentation: cores are throttled progressively from 80 °C, cores and GPU
+  at 85 °C, so the screen needs attention from 80 °C and calls 85 °C a problem;
+  `get_throttled` bits 0 to 3 (under-voltage, frequency capped, throttled, soft temperature
+  limit) and 16 to 19 ("has occurred"), read from `/sys`, which a container can read.
+- eMMC wear (netmodule-linux.readthedocs.io; the 2016 kernel patch adding `life_time` and
+  `pre_eol_info`): wear in tens of per cent, pre-EOL normal, warning (80%) or urgent (90%).
+  SD cards have no such attributes, and the screen says their wear is not reported.
+- The Prometheus text format 0.0.4, followed by hand for `/metrics`.
+- Node 24's `monitorEventLoopDelay`, used in its timer mode and only while there is work.
+- avahi-publish(1) (Debian bookworm): `outpost-name.service` runs
+  `avahi-publish -f -a -R NAME.local ADDRESS`.
 
 ## The garden calendar (read 2026-11-21)
 
-Tools → Garden ([garden.md](garden.md)) uses the RHS's month calendar for 22 vegetables,
-with sowing, planting and harvest kept apart (the Allotment game holds the first twelve with
-sowing and planting together; a server test holds the two to each other). Nothing is
-fetched by Outpost and no page or picture is bundled: the months are numbers in
-`packages/shared/src/garden.ts`, the frost notes are sentences written for Outpost, and the
-pages are plain links at the foot of the screen.
+**Tools → Garden** ([garden.md](garden.md)) uses the RHS month calendar for 22 vegetables,
+with sowing, planting and harvest apart. Nothing fetched or bundled; the pages are links at
+the foot of the screen.
 
-| What | Where it comes from | How it was read |
+| What | Where it comes from | Notes |
 | --- | --- | --- |
-| Sow, Plant or Plant out, and Harvest months; which crops are tender and what the page says about frost | Royal Horticultural Society, "Grow your own" pages: `https://www.rhs.org.uk/vegetables/<crop>/grow-your-own` for radishes, salad-leaves, onions, peas, carrots, beetroot, kale, broad-beans, potatoes, leeks, garlic, squash, courgettes, cucumbers, french-beans, runner-beans, sweetcorn, tomatoes, lettuce, parsnips, cabbages and spinach | Each page fetched once on 21 November 2026 with curl (user agent "Mozilla/5.0"), about a third of a second apart; every one answered 200. The months were read from the calendar in the page's HTML (each month marked active or not in rows named by the page); the frost sentences were read from the page's text. `/vegetables/` is not disallowed by the site's robots.txt (as read on 17 November 2026, see the allotment's section above). The same terms apply as there: only facts are kept, in Outpost's words. |
-| When the last frost usually comes | Met Office, "Why frost can still occur in late spring" (2026), <https://www.metoffice.gov.uk/blog/2026/why-frost-can-still-occur-in-late-spring> | Read once on 21 November 2026. Used: air frost and ground frost defined; the average last air frost before the end of April in southern and coastal regions, well into May and in a few places June further north and on higher ground. It gives no date for a place, so the screen asks for the household's own. |
+| Sow, Plant or Plant out, Harvest; which crops are tender | RHS "Grow your own" for the twelve allotment crops and courgettes, cucumbers, french-beans, runner-beans, sweetcorn, tomatoes, lettuce, parsnips, cabbages, spinach | Each page fetched once with curl; months read from the calendar in the HTML, frost sentences from the text. Same terms as [the allotment](#the-allotments-months-and-facts-read-2026-11-17): facts only, in Outpost's words. |
+| When the last frost usually comes | Met Office, ["Why frost can still occur in late spring"](https://www.metoffice.gov.uk/blog/2026/why-frost-can-still-occur-in-late-spring) (2026) | Average last air frost before the end of April in the south and on coasts, well into May (a few places June) further north and higher. It gives no date for a place, so the screen asks for yours. |
 
-The months as the calendars gave them on 21 November 2026 (Sow / Plant or Plant out /
-Harvest), for the ten crops not in the allotment's section: cabbages Feb–Jul / Mar–Oct (out)
-/ all year; courgettes Apr–Jun / May–Jun (out) / Jul–Oct; cucumbers Feb–Jun / May–Jun (out)
-/ Jul–Oct; French beans Apr–Jul / May–Jun (out) / Jul–Oct; lettuce Feb–Oct / Mar–Apr (out) /
-May–Nov; parsnips Mar–May / – / Sep–Mar; runner beans Apr–Jul / May–Jul (out) / Jul–Oct;
-spinach Mar–May, Aug–Sep / – / Mar–Nov; sweetcorn Apr–Jun / May–Jun (out) / Aug–Oct; tomatoes
-Feb–Apr / May–Jun / Jul–Oct. The twelve allotment crops' rows were the same as on 17
-November.
+The months as read on 21 November 2026 are in `packages/shared/src/garden.ts`; a server test
+holds the twelve allotment crops to the game's.
 
-Tender, from each page's own words: courgettes, cucumbers, squash, sweetcorn and tomatoes
-("tender"), French and runner beans (sown outside or planted out "once all risk of frost has
-passed"). The rule the screen applies (tender crops kept back until the day after the
-household's last frost, never brought forward) follows the pages' "plant out after the last
-frost"; it is not the RHS's own calculation.
+Tender, in the pages' own words: courgettes, cucumbers, squash, sweetcorn and tomatoes; French
+and runner beans go out "once all risk of frost has passed". The screen keeps tender crops back
+until the day after your last frost, never earlier; that rule follows the pages' "plant out
+after the last frost" and is not the RHS's own calculation.
 
 ## Tidal constants
 
-Tools → Tide times ([tides.md](tides.md)) ships NOAA's harmonic constants and works out
-the tides from them. Read on 21 November 2026.
+**Tools → Tide times** ([tides.md](tides.md)) ships NOAA's harmonic constants and works the
+tides out from them. Read on 21 November 2026.
 
-| What | Where it comes from | How it was read |
+| What | Where it comes from | Notes |
 | --- | --- | --- |
-| Harmonic constituents (amplitude, Greenwich phase) and datums (MSL, MLLW) for every station NOAA lists with constituents, outside the Great Lakes | NOAA CO-OPS metadata API, <https://api.tidesandcurrents.noaa.gov/mdapi/prod/> (`stations.json?type=harcon`, then each station's `harcon.json` and `datums.json`, metric) | Fetched by `scripts/build-tide-stations.mjs`, four requests at a time: 1,374 listed, 1,370 kept; four (9415265, 9415423, 9415584, 9416131) answered 403 on every try and are left out. Written to `apps/server/src/modules/tides/data/noaa-harmonic.json`, 409 kB (about 165 kB compressed). |
-| The licence | NOAA Tides and Currents, Disclaimers, <https://tidesandcurrents.noaa.gov/disclaimers.html> | "The information on government servers are in the public domain, unless specifically annotated otherwise, and may be used freely by the public." "NOS requests that attribution be given whenever NOS material is reproduced and re-disseminated." The screen names NOAA CO-OPS. A few stations are outside the United States (Bermuda, Central America, others); NOAA publishes their constants with no other terms, and they are kept on the same footing. |
-| The method | P. Schureman, *Manual of Harmonic Analysis and Prediction of Tides*, US Coast and Geodetic Survey Special Publication 98 (1958), as NOAA publishes it: <https://tidesandcurrents.noaa.gov/publications/SpecialPubNo98.pdf> (a scan, 336 pages) | Read from the scan: table 1 (mean longitudes of moon, sun, perigees and node, epoch 31 December 1899 noon), table 2 and 2a (arguments V and u of each constituent), paragraph 24 (the triangle giving I, ν and ξ), formulas 73 to 80, 141 to 150, 195 to 207 (M1), 213 to 215 (L2), 216 to 227 (K1) and 228 to 235 (K2) for the node factors, paragraph 77 (node factors taken for the middle of the year), and table 6 (I, ν, ξ, ν′, 2ν″ by degree of N), which the tests hold the arithmetic to. |
-| Published predictions the tests are held to | NOAA CO-OPS data API, `product=predictions`, MLLW, GMT, metric | High and low waters for 15 to 21 January 2027 at The Battery (8518750), San Francisco (9414290), Honolulu (1612340) and Galveston Pier 21 (8771450), and hourly heights for January 2027 at the first two, fetched once and kept in `apps/server/test/fixtures/tides/`. Agreement found: every high and low within 1 minute and 1 mm (2 minutes at Galveston, where the turns are flat), every hourly height within 2 mm. |
+| Harmonic constituents and datums (MSL, MLLW) for every NOAA station with constituents, outside the Great Lakes | NOAA CO-OPS metadata API, <https://api.tidesandcurrents.noaa.gov/mdapi/prod/> | Fetched by `scripts/build-tide-stations.mjs`: 1,374 listed, 1,370 kept; four (9415265, 9415423, 9415584, 9416131) answered 403 every time. About 409 kB. |
+| The licence | NOAA Tides and Currents, [Disclaimers](https://tidesandcurrents.noaa.gov/disclaimers.html) | "in the public domain, unless specifically annotated otherwise"; "NOS requests that attribution be given". The screen names NOAA CO-OPS. Stations outside the US (Bermuda, Central America) are kept on the same footing. |
+| The method | P. Schureman, *Manual of Harmonic Analysis and Prediction of Tides*, Special Publication 98 (1958), [NOAA's scan](https://tidesandcurrents.noaa.gov/publications/SpecialPubNo98.pdf) | Tables 1, 2, 2a and 6; paragraphs 24 and 77; the node-factor formulas (73–80, 141–150, 195–235). |
+| Predictions the tests are held to | NOAA CO-OPS data API, `product=predictions`, MLLW, GMT | High and low waters, 15 to 21 January 2027, at The Battery, San Francisco, Honolulu and Galveston; hourly heights for January 2027 at the first two. Every high and low within 1 minute and 1 mm (2 minutes at Galveston), every hourly height within 2 mm. |
 
-Not shipped:
-
-| Source | Terms as read | Why not |
-| --- | --- | --- |
-| Canadian Hydrographic Service (tides.gc.ca) | Licence agreement, <https://tides.gc.ca/en/licence-agreement>: the data "shall not be sold, licensed, leased, assigned or given to a third party"; non-profit derived products allowed with a notice; the licence can be "terminated unilaterally by CHS", after which copies must be destroyed. | Giving the data to every household that installs Outpost is giving it to third parties, and a licence that can be withdrawn does not suit data shipped in a release. Whether the Open Government Licence copy on open.canada.ca includes harmonic constants was not settled. |
-| UK Hydrographic Office (Admiralty), tidal harmonics, <https://admiralty.co.uk/UKHO/tidal-harmonics> | The page offers the format's schema and examples "freely available for download"; it states no terms for the constants themselves. | No open licence found; not used. |
+Not shipped: the **Canadian Hydrographic Service** (its [licence](https://tides.gc.ca/en/licence-agreement)
+forbids giving the data to a third party and can be withdrawn; whether the open.canada.ca copy
+includes harmonic constants was not settled) and the **UK Hydrographic Office**
+([tidal harmonics](https://admiralty.co.uk/UKHO/tidal-harmonics): no terms for the constants,
+no open licence found).
 
 ## The night sky and celestial navigation
 
-Tools → Night sky ([night-sky.md](night-sky.md)) and Tools → Celestial navigation
+**Tools → Night sky** ([night-sky.md](night-sky.md)) and **Tools → Celestial navigation**
 ([celestial-navigation.md](celestial-navigation.md)) work out the sky on the device. Read on
 21 November 2026 unless a date is given.
 
 | What | Where it comes from | How it is used |
 | --- | --- | --- |
-| The stars | D. Hoffleit and W. H. Warren Jr, *The Bright Star Catalogue*, 5th revised edition (Yale University Observatory; NASA Astronomical Data Center catalogue V/50, 1991), the plain-text catalogue from <http://tdc-www.harvard.edu/catalogs/bsc5.dat.gz>, with its byte-by-byte description (`ybsc5.readme`) | J2000 position, visual magnitude and proper motion of every star of magnitude 4.5 or brighter, 906 in all, written into `packages/shared/src/sky/stars.gen.ts` by `scripts/write-star-catalogue.mjs`. Where two entries share a Bayer letter (Gacrux and its faint companion), the brighter is taken. |
-| The catalogue's licence | data.gov, "Bright Star Catalog", <https://catalog.data.gov/dataset/bright-star-catalog>: publisher HEASARC, licence "https://www.usa.gov/government-works", access public | Shipped on that footing, with the authors and the ADC credited. **Not settled:** Debian's copyright file for its `yale` package (<https://metadata.ftp-master.debian.org/changelogs/non-free/y/yale/stable_copyright>, read 21 November 2026) quotes the ADC as saying "you are free to distribute the files with your program" and asking that the ADC and the authors be acknowledged, but adds, in the packager's words, that the files "must NOT be altered in any way (without permission of the original authors)", and Debian files the package as non-free. Outpost ships a subset of the figures (positions, magnitudes, proper motions), not the files; whether that needs the authors' permission is for the owner to decide. |
-| Constellation figures | Outpost's own: the usual stick figures of 27 constellations, written by the stars' Bayer letters in the script and checked against the catalogue | No source's drawing is copied. |
-| Navigational stars and their numbers | US Naval Observatory, Celestial Navigation Data for Assumed Position and Time, <https://aa.usno.navy.mil/data/celnav> (its `nav_star_number`) | The 57 stars and Polaris, by name and number. |
-| The Sun, Moon and planets | P. Schlyter, *How to compute planetary positions*, <https://stjarnhimlen.se/comp/ppcomp.html>: orbital elements (section 4), Kepler's equation (6), the Moon's perturbations (9), Jupiter's and Saturn's (10), the Moon's parallax (13), diameters, phase and brightness (15) | Positions, parallax, semi-diameter, the Moon's phase and the planets' magnitudes. He gives the method as good to one or two minutes of arc. |
-| Precession and nutation | G. H. Kaplan, *The IAU Resolutions on Astronomical Reference Systems, Time Scales, and Earth Rotation Models*, USNO Circular 179 (2005), <https://aa.usno.navy.mil/downloads/Circular_179.pdf>: equations 5.11 and 5.12 (the IAU 2006 precession angles and obliquity), 5.19 (the fundamental arguments) and terms 1 to 13 of the IAU 2000A nutation series | The stars carried from J2000 to the day; nutation added to the Sun, Moon and planets and to sidereal time. |
-| Sidereal time | US Naval Observatory, *Computing Approximate Sidereal Time*, <https://aa.usno.navy.mil/faq/GAST> (read 17 November 2026) | Greenwich mean sidereal time, with the equation of the equinoxes. |
-| TT − UT | US Naval Observatory, monthly ΔT, <https://maia.usno.navy.mil/ser7/deltat.data> | 69.2 s, the value for 1 October 2026. |
-| Moonrise and moonset | US Naval Observatory, *Rise, Set, and Twilight Definitions*, <https://aa.usno.navy.mil/faq/RST_defs> | The Moon's centre at a zenith distance of 90.5666° plus its radius less its parallax. |
-| Finding north and south | US Army, FM 21-76 *Survival*, chapter 18, "Using the stars", <https://www.sjsu.edu/people/michelle.hager/docs/fm_21-76_us_army_survival_manual_2006.pdf> | The Plough's pointers about five times their distance to Polaris; the Cross's long axis carried on to the south. |
-| Sight corrections and reduction | N. Bowditch, *The American Practical Navigator* (NGA Pub. 9, 2019), vol. 1, appendix B, articles 3 and 5 | Dip 1.76′ √h (metres); computed altitude and the time azimuth formula. Refraction is NOAA's model, as for Sun times (*Solar Calculation Details*, read 17 November 2026). |
-| What the tests are held to | US Naval Observatory API: `/api/celnav` at five moments from 2026 to 2035 and four places, and `/api/rstt/oneday` for seven days and places, fetched once and kept in `apps/server/test/fixtures/sky/` | Found: stars and Aries within 0.5′, the Sun within 0.5′, the Moon and planets within 2′; moonrise and moonset within 3 minutes, phases within 10 minutes; fixes from the Observatory's computed altitudes within 0.5 mile. |
+| The stars | D. Hoffleit and W. H. Warren Jr, *The Bright Star Catalogue*, 5th revised ed. (Yale; NASA ADC V/50, 1991), <http://tdc-www.harvard.edu/catalogs/bsc5.dat.gz> | The 906 stars of magnitude 4.5 or brighter (position, magnitude, proper motion). |
+| The catalogue's licence | [data.gov](https://catalog.data.gov/dataset/bright-star-catalog): publisher HEASARC, licence "https://www.usa.gov/government-works" | Shipped on that footing, authors and ADC credited. **Not settled:** Debian's [copyright file](https://metadata.ftp-master.debian.org/changelogs/non-free/y/yale/stable_copyright) quotes the ADC allowing distribution with acknowledgement, but adds that the files "must NOT be altered in any way (without permission of the original authors)" and files the package as non-free. Outpost ships a subset of the figures, not the files; see [open questions](#open-questions-for-the-owner). |
+| Constellation figures | Outpost's own stick figures of 27 constellations | No source's drawing copied. |
+| Navigational stars | USNO, [Celestial Navigation Data](https://aa.usno.navy.mil/data/celnav) | The 57 stars and Polaris, by name and number. |
+| Sun, Moon and planets | P. Schlyter, [*How to compute planetary positions*](https://stjarnhimlen.se/comp/ppcomp.html), sections 4, 6, 9, 10, 13, 15 | Positions, parallax, semi-diameter, phase, magnitudes; good to one or two minutes of arc. |
+| Precession and nutation | G. H. Kaplan, USNO Circular 179 (2005), [PDF](https://aa.usno.navy.mil/downloads/Circular_179.pdf) | IAU 2006 precession; the first 13 terms of IAU 2000A nutation. |
+| Sidereal time | USNO, [GAST](https://aa.usno.navy.mil/faq/GAST) (read 2026-11-17) | With the equation of the equinoxes. |
+| TT − UT | USNO, [monthly ΔT](https://maia.usno.navy.mil/ser7/deltat.data) | 69.2 s, the value for 1 October 2026. |
+| Moonrise and moonset | USNO, [Rise, Set, and Twilight Definitions](https://aa.usno.navy.mil/faq/RST_defs) | The Moon's centre at 90.5666° plus its radius less its parallax. |
+| Finding north and south | US Army FM 21-76 *Survival*, chapter 18 ([copy](https://www.sjsu.edu/people/michelle.hager/docs/fm_21-76_us_army_survival_manual_2006.pdf)) | The Plough's pointers, about five times their distance to Polaris; the Southern Cross's long axis. |
+| Sight corrections and reduction | Bowditch, NGA Pub. 9 (2019), vol. 1, appendix B, articles 3 and 5 | Dip 1.76′ √h; computed altitude; time azimuth. Refraction as for Sun times (NOAA). |
+| Test values | USNO `/api/celnav` (five moments, 2026 to 2035, four places) and `/api/rstt/oneday` (seven days and places) | Stars and Aries within 0.5′, Sun within 0.5′, Moon and planets within 2′; moonrise and set within 3 minutes, phases within 10; fixes within 0.5 mile. |
 
 ## Updating Outpost, read on 21 November 2026
 
-For Settings → Updates ([updating.md](updating.md)). Nothing from this is bundled.
+For **Settings → Updates** ([updating.md](updating.md)).
 
-| Page | What it says | What was concluded |
+| Page | What it says | What follows |
 | --- | --- | --- |
-| jedisct1.github.io/minisign/, "Signature format" and "Public key format" | Public key: base64(`Ed` ‖ key id (8 bytes) ‖ Ed25519 public key). Signature: base64(algorithm ‖ key id ‖ signature), a trusted comment, then base64(global signature), where the global signature is `ed25519(<signature> ‖ <trusted_comment>)`. `Ed` signs the file, `ED` signs its BLAKE2b-512 hash; "New implementations must use the hashed signature format". | The server checks signatures with Node's Ed25519 and BLAKE2b-512 and nothing else; releases are signed with `minisign -S` (hashed). Checked both ways against minisign 0.11 from Debian bookworm (ISC licence, installed on the host by `install.sh`, not shipped). |
+| [minisign](https://jedisct1.github.io/minisign/), signature and public key formats | Public key: base64(`Ed` ‖ key id ‖ Ed25519 key). Signature: base64(algorithm ‖ key id ‖ signature), a trusted comment, base64(global signature) over signature ‖ comment. `ED` signs the BLAKE2b-512 hash; "New implementations must use the hashed signature format". | The server checks signatures with Node's Ed25519 and BLAKE2b-512; releases are signed with `minisign -S`. Checked both ways against minisign 0.11 (Debian bookworm, ISC; installed by `install.sh`, not shipped). |
 
 ## Ration calculator
 
-Tools → Rations ([tools.md](tools.md#rations)) quotes figures from these documents, read on
-21 November 2026. Nothing is fetched by Outpost and no document is bundled: the figures
-are numbers in `packages/shared/src/rations.ts`, each with its source named on screen.
+**Tools → Rations** ([tools.md](tools.md)) quotes figures from these, read on 21 November
+2026, each named on screen. Nothing fetched or bundled.
 
-| What | Where it comes from | How it was read |
-| --- | --- | --- |
-| 2,100 kcal a person a day; protein 10 to 12% and fat 17% of the energy (53 g and 40 g); options for reducing a ration | The Sphere Handbook (2018), food security standard 6.1, food assistance standard 6.3 and appendix 6 | From the chapter as UNHCR hosts it, <https://emergency.unhcr.org/sites/default/files/2024-05/SphereFS%2BN.pdf>; Sphere's own site answered HTTP 403 (row N9). No newer edition is published. Quoted, with the source named. |
-| Need by age and sex (annex 1), +285 pregnant, +500 lactating, +100 kcal for every 5° below 20 °C, reducing a ration with a safety net for the vulnerable (table 12) | UNHCR, UNICEF, WFP and WHO, Food and Nutrition Needs in Emergencies (2002) | The PDF on WHO's IRIS, <https://iris.who.int/server/api/core/bitstreams/c6f336b9-0c36-4431-80fd-840c05344817/content>. Quoted. |
-| +191 kcal a day in the last trimester; +330 kcal a day in the first six months of breastfeeding | SACN, Dietary Reference Values for Energy (2011), paragraphs S50 and S51 | <https://assets.publishing.service.gov.uk/media/5a7edb37ed915d74e33f2d8f/SACN_Dietary_Reference_Values_for_Energy.pdf>, Open Government Licence. |
-| Twelve staple foods' energy, protein and fat | USDA FoodData Central, SR Legacy (April 2018) | Already held by Supplies (public domain, CC0); not read again. The server's tests hold each figure to the table. |
+| What | Where it comes from |
+| --- | --- |
+| 2,100 kcal a person a day; protein 10 to 12% and fat 17% of energy (53 g and 40 g); options for reducing a ration | The Sphere Handbook (2018), food security standard 6.1, food assistance standard 6.3, appendix 6, from the chapter [as UNHCR hosts it](https://emergency.unhcr.org/sites/default/files/2024-05/SphereFS%2BN.pdf) (Sphere's own site answered 403). No newer edition. |
+| Need by age and sex; +285 kcal pregnant, +500 lactating; +100 kcal for every 5° below 20 °C; reducing a ration with a safety net for the vulnerable (table 12) | UNHCR, UNICEF, WFP and WHO, *Food and Nutrition Needs in Emergencies* (2002), [on WHO's IRIS](https://iris.who.int/server/api/core/bitstreams/c6f336b9-0c36-4431-80fd-840c05344817/content) |
+| +191 kcal a day in the last trimester; +330 kcal a day in the first six months of breastfeeding | SACN, *Dietary Reference Values for Energy* (2011), paragraphs S50 and S51 ([PDF](https://assets.publishing.service.gov.uk/media/5a7edb37ed915d74e33f2d8f/SACN_Dietary_Reference_Values_for_Energy.pdf)), OGL |
+| Twelve staple foods' energy, protein and fat | USDA FoodData Central SR Legacy, as Supplies holds it; a server test holds each figure to the table |
 
 ## Languages of each country, for Explore
 
-| What | Where it comes from | How it was read |
+| What | Where it comes from | Notes |
 | --- | --- | --- |
-| The languages of each country, most used first | GeoNames, `countryInfo.txt`, <https://download.geonames.org/export/dump/countryInfo.txt> | Fetched once on 21 November 2026; the language column only, kept in `packages/shared/src/country-languages.ts`. Licence: Creative Commons Attribution 4.0, per GeoNames' `readme.txt`. |
-| Wikipedia in twelve more languages (French, Spanish, German, Portuguese, Arabic, Russian, Chinese, Hindi, Swahili, Italian, Japanese, Indonesian) | The Kiwix library feed, `opds.library.kiwix.org`, one query per language for `wikipedia_<code>_all` | Read on 21 November 2026 for the names, editions and sizes in `catalog/manifests/kiwix-languages.json`; the smallest edition of each (introductions only; Swahili's has no such edition, so the one without images). CC BY-SA 4.0, as Wikipedia. |
+| Each country's languages, most used first | GeoNames [`countryInfo.txt`](https://download.geonames.org/export/dump/countryInfo.txt), fetched once on 21 November 2026 | The language column only, in `packages/shared/src/country-languages.ts`. CC BY 4.0, per GeoNames' `readme.txt`. |
+| Wikipedia in twelve more languages (French, Spanish, German, Portuguese, Arabic, Russian, Chinese, Hindi, Swahili, Italian, Japanese, Indonesian) | The Kiwix feed, one query per language for `wikipedia_<code>_all` (21 November 2026) | Names, editions and sizes in `catalog/manifests/kiwix-languages.json`; the smallest edition of each (introductions only; Swahili's without images). CC BY-SA 4.0. |
