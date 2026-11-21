@@ -127,7 +127,7 @@ function DownloadForm({
     const location = locations.find((item) => item.id === id);
     return location && locationProblem(location, requiredBytes) === null ? location : undefined;
   };
-  const selected = usable(chosen) ?? usable(preferredLocation(locations, requiredBytes));
+  const selected = usable(chosen) ?? usable(preferredLocation(locations, requiredBytes, "collections"));
   const date = publishedDate(entry);
   const edition = entry.version ? `Version ${entry.version}${date ? `, published ${date}` : ""}` : date ? `Published ${date}` : null;
 
@@ -178,6 +178,7 @@ function DownloadForm({
                 value={selected?.id}
                 onChange={setChosen}
                 requiredBytes={requiredBytes}
+                kind="collections"
                 approximate={approximate}
               />
               {selected ? null : (

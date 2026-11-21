@@ -17,6 +17,17 @@ describe("choosing where a map download goes", () => {
     expect(chooseLocation(all, 2 * GB, { remembered: "drive" })).toEqual({ locationId: "drive", displaced: undefined });
   });
 
+  it("goes where the kind of content is set to go, ahead of the remembered location, unless chosen just now", () => {
+    const setForMaps = [{ ...internal, defaultFor: ["maps" as const] }, drive, unplugged];
+    expect(chooseLocation(setForMaps, 2 * GB, { remembered: "drive", kind: "maps" })).toEqual({ locationId: "internal", displaced: undefined });
+    expect(chooseLocation(setForMaps, 2 * GB, { picked: "drive", kind: "maps" })).toEqual({ locationId: "drive", displaced: undefined });
+    // Another kind is not held to it.
+    expect(chooseLocation(setForMaps, 2 * GB, { remembered: "drive", kind: "places" })).toEqual({ locationId: "drive", displaced: undefined });
+    // Set to a drive that is not connected: another is chosen, and the screen says which was passed over.
+    const setToUnplugged = [internal, drive, { ...unplugged, defaultFor: ["maps" as const] }];
+    expect(chooseLocation(setToUnplugged, 2 * GB, { kind: "maps" })).toEqual({ locationId: "internal", displaced: setToUnplugged[2] });
+  });
+
   it("lets a choice made just now win over the remembered one", () => {
     expect(chooseLocation(all, 2 * GB, { picked: "internal", remembered: "drive" })).toEqual({
       locationId: "internal",

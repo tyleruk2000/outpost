@@ -14,7 +14,15 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { type DownloadDetail, type DownloadDto, type DownloadPlan, type DownloadPlanItem, formatBytes, type JobDto } from "@outpost/shared";
+import {
+  type ContentKind,
+  type DownloadDetail,
+  type DownloadDto,
+  type DownloadPlan,
+  type DownloadPlanItem,
+  formatBytes,
+  type JobDto,
+} from "@outpost/shared";
 import { and, count, desc, eq, inArray, ne, notInArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
@@ -42,6 +50,18 @@ import type {
 
 export const DOWNLOAD_JOB = "download.run";
 export const PART_SUFFIX = ".part";
+/** Which kind of content (Storage, "Where new things go") a download of each kind is. */
+const CONTENT_KIND_OF: Record<DownloadKind, ContentKind | null> = {
+  zim: "collections",
+  file: "collections",
+  map: "maps",
+  terrain: "terrain",
+  places: "places",
+  dataset: "layers",
+  document: "documents",
+  model: null,
+};
+
 const text = (value: unknown): string | undefined => (typeof value === "string" && value ? value : undefined);
 
 /** What a download is held to and what it turned out to be. A publisher's MD5, where that is what there is, is kept with the row's other details. */
@@ -1035,7 +1055,13 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
         }
       }
 
-      const location = input.locationId ? storage.get(input.locationId) : storage.getDefault();
+      // Unless one was chosen: where this kind of content is set to go (Storage), or the default.
+      const contentKind = CONTENT_KIND_OF[input.kind];
+      const location = input.locationId
+        ? storage.get(input.locationId)
+        : contentKind
+          ? storage.defaultFor(contentKind)
+          : storage.getDefault();
       // resolve() refuses anything that would land outside the location ("../x").
       const root = storage.resolve(location.id, "");
       const finalPath = storage.resolve(location.id, input.relPath);

@@ -109,6 +109,19 @@ One location is the default. New uploads and downloads go there unless you choos
 another when you start them. Change it with **Make default** in the location's menu on
 the Storage screen.
 
+### Where new things go
+
+With more than one location, **Storage → Where new things go** sets a location for each
+kind of download: maps, terrain, place names, map layers, collections and documents. A
+kind left on **The default** goes to the default location. The download's own picker
+starts on the kind's location and can still send one download elsewhere.
+
+Setting a kind changes only where new downloads go; nothing already kept is moved (move
+it under Manage and clean up). If the location set for a kind is not connected, the
+picker says so and offers another; a download started without a picker, such as an
+update of a collection, waits for that location rather than going somewhere else.
+Removing a location puts its kinds back on the default.
+
 ### Renaming and removing
 
 Renaming changes only the name shown. Removing a location makes Outpost forget the
@@ -250,9 +263,9 @@ answered within 21 ms and map tiles within 70 ms throughout.
 **Select everything shown**, then the same for **Terrain**, **Place names** and **Map
 layers** (the selection is kept as the filter changes). **Move** them to the device's
 own location. Each is copied, the copy checked, and only then the original removed.
-Leave the reference collections, documents and radio data where they are. New map
-regions go where **Offline maps → Add a region** is told; choose the device's own
-location there too.
+Leave the reference collections, documents and radio data where they are. Then, under
+**Where new things go**, set maps, terrain, place names and map layers to the device's
+own location and the rest to the NAS, so that new downloads follow.
 
 ## Connecting a network share
 

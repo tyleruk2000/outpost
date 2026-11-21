@@ -213,7 +213,7 @@ function PlaceNames({
   const [removing, setRemoving] = useState<PlacesDataset>();
   const start = useStartPlaces();
   const remove = useRemovePlaces();
-  const destination = useDestination(DATASET_CHOICES.find((item) => item.value === choice)?.bytes ?? null);
+  const destination = useDestination(DATASET_CHOICES.find((item) => item.value === choice)?.bytes ?? null, "places");
   // The country list comes from the outline map's own file: no connection needed to choose.
   const countries = useQuery({
     queryKey: ["maps", "countries"],

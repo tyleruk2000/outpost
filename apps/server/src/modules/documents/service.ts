@@ -376,7 +376,7 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
   // ── Adding ──
 
   function uploadLocation(locationId?: string): LocationRow {
-    const location = locationId ? storage.get(locationId) : storage.getDefault();
+    const location = locationId ? storage.get(locationId) : storage.defaultFor("documents");
     if (location.status !== "available") {
       throw new AppError(
         "storage_unavailable",
