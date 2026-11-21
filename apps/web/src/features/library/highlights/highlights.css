@@ -1,0 +1,24 @@
+/*
+ * Passages marked in a document (highlight-layer.tsx), painted by the browser over the
+ * text without changing it. Over a PDF the text layer lies on the picture of the page,
+ * so the colour there lets the page show through.
+ */
+::highlight(outpost-highlight) {
+  background-color: color-mix(in oklch, var(--mark) 70%, transparent);
+}
+
+::highlight(outpost-highlight-current) {
+  background-color: var(--mark);
+  text-decoration: underline 2px;
+  text-decoration-color: var(--ink);
+}
+
+.pdf-text ::highlight(outpost-highlight),
+.pdf-text::highlight(outpost-highlight) {
+  background-color: color-mix(in oklch, var(--mark) 40%, transparent);
+}
+
+.pdf-text ::highlight(outpost-highlight-current),
+.pdf-text::highlight(outpost-highlight-current) {
+  background-color: color-mix(in oklch, var(--mark) 60%, transparent);
+}

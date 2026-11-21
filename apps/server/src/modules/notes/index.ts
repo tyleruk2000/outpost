@@ -133,6 +133,33 @@ export async function registerNotes(app: FastifyInstance, ctx: AppContext): Prom
     return { note: notes.restore(params.id) };
   });
 
+  // ── Earlier versions ──
+
+  app.get("/api/notes/versions/space", async () => {
+    return notes.versions.space();
+  });
+
+  app.delete("/api/notes/versions", async () => {
+    return { cleared: notes.clearVersions() };
+  });
+
+  app.get("/api/notes/:id/versions", async (request) => {
+    const params = idParams.parse(request.params);
+    notes.getRow(params.id);
+    return { versions: notes.versions.list(params.id) };
+  });
+
+  app.get("/api/notes/:id/versions/:versionId", async (request) => {
+    const params = z.object({ id, versionId: id }).parse(request.params);
+    return { version: notes.versions.get(params.id, params.versionId) };
+  });
+
+  app.post("/api/notes/:id/versions/:versionId/restore", async (request) => {
+    const params = z.object({ id, versionId: id }).parse(request.params);
+    const body = z.object({ baseUpdatedAt: z.number(), origin: z.string().max(64).optional() }).parse(request.body);
+    return { note: notes.restoreVersion(params.id, params.versionId, body) };
+  });
+
   // ── Export ──
 
   app.get("/api/notes/:id/export.md", async (request, reply) => {

@@ -277,8 +277,9 @@ It does **not** reach, and the dialog says so before you confirm:
 - **A copy kept on a phone** for use offline.
 - **An unsaved draft** of the page open in another browser tab. (If that tab is this
   one, the encrypted page says so and offers to discard the draft.)
-- **Earlier wordings of the page**, from before your last edits. Outpost has no page
-  history, but text freed by earlier saves can lie in unused space in the database file
+- **Earlier wordings of the page**, from before your last edits. Encrypting erases the
+  page's plain earlier versions (and keeps only encrypted ones after), but text freed by
+  earlier saves can lie in unused space in the database file
   until it is compacted (**Storage, Manage and clean up, Compact the database**), and
   single words of it can remain as terms in the search index after that.
 - The disk underneath. Nothing here overwrites disk blocks.

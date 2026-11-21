@@ -8,6 +8,8 @@ export * from "./answers.ts";
 export * from "./audiobooks.ts";
 export * from "./backup.ts";
 export * from "./board.ts";
+// Bringing in a Calibre library, on a line of its own.
+export * from "./calibre.ts";
 export * from "./catalog.ts";
 // What Explore and the catalogue tool match entries by, on a line of its own.
 export * from "./catalog-match.ts";
@@ -29,6 +31,8 @@ export * from "./encryption.ts";
 export * from "./games.ts";
 // The garden calendar and the record of sowings, on a line of its own so that other additions merge cleanly.
 export * from "./garden.ts";
+// Passages marked in library documents, on a line of its own.
+export * from "./highlights.ts";
 export * from "./home-place.ts";
 // The household's papers (medical sheets, keeping in touch, grab cards, the binder), on a line of their own.
 export * from "./household-papers.ts";

@@ -11,6 +11,7 @@ import {
   MARKER_COLORS,
   MARKER_ICONS,
   MAX_RECORDING_POINTS,
+  type MapFilePreview,
   type MarkerColor,
   type MarkerDto,
   type RecordingSaveResponse,
@@ -30,8 +31,18 @@ import { newId } from "../../core/ids.ts";
 import { markers, tracks } from "../../db/schema.ts";
 import { buildDrawnLine, type DrawnLine, routePointsSchema } from "./drawn-route.ts";
 import type { ElevationSampler } from "./elevation.ts";
-import { buildGpx, type GpxDocument, type GpxWaypoint, parseGpxSafely, splitCollection, type TrackCollection, trackStats } from "./gpx.ts";
+import {
+  buildGpx,
+  type GpxDocument,
+  type GpxWaypoint,
+  type ParsedGpx,
+  parseGpxSafely,
+  splitCollection,
+  type TrackCollection,
+  trackStats,
+} from "./gpx.ts";
 import { GPX_LIMITS } from "./gpx-reader.ts";
+import { readMapFile } from "./map-files.ts";
 import { gpxCredit } from "./route-finder/credit.ts";
 import { iconForSymbol, symbolForPlace } from "./waypoint-symbols.ts";
 
@@ -90,6 +101,16 @@ export interface TrackImportInput {
   importWaypointsAsMarkers?: boolean;
 }
 
+export interface MapFileImportInput {
+  /** The file as uploaded. */
+  bytes: Buffer;
+  filename?: string;
+  name?: string;
+  color?: MarkerColor;
+  /** For a GPX file only; the points of other formats always become places. */
+  importWaypointsAsMarkers?: boolean;
+}
+
 export interface RecordingSaveInput {
   /** The id the recording was given on the device that made it; the track is saved under it. */
   id: string;
@@ -143,6 +164,10 @@ export interface AnnotationsService {
   listTracks(): TrackDto[];
   getTrack(id: string): TrackWithGeometryDto;
   importTrack(input: TrackImportInput): Promise<TrackImportResponse>;
+  /** Imports a GPX, KML, KMZ or GeoJSON file: its lines as a new route, its points as new places. */
+  importMapFile(input: MapFileImportInput): Promise<TrackImportResponse>;
+  /** What importing a map file would make, read without saving anything. */
+  previewMapFile(input: { bytes: Buffer; filename?: string }): Promise<MapFilePreview>;
   /**
    * Saves a track recorded on the map under the id its device gave it. Asked twice
    * with the same id, it answers the second time with the track that is already there.
@@ -356,6 +381,105 @@ export function createAnnotationsService(ctx: AppContext, deps: { elevation: Ele
         sym: symbolForPlace(asMarkerIcon(row.icon), row.gpxSym),
       }));
 
+  /**
+   * Stores what was read from a file: its lines as one new track, and its points as new
+   * places or kept on the track. All or nothing; nothing already saved is touched.
+   */
+  async function saveImported(
+    parsed: ParsedGpx,
+    input: Omit<TrackImportInput, "source" | "importWaypointsAsMarkers">,
+    asMarkers: boolean,
+  ): Promise<TrackImportResponse> {
+    const fallbackName = input.filename?.replace(/\.[^.]+$/, "").trim();
+    const name = (input.name?.trim() || parsed.name || fallbackName || "Imported track").slice(0, 200);
+    // Waypoints either stay with the track or become markers; never both, or they would show twice.
+    const features = asMarkers
+      ? parsed.collection.features.filter((feature) => feature.geometry.type !== "Point")
+      : parsed.collection.features;
+    const waypoints = parsed.collection.features.filter((feature) => feature.geometry.type === "Point");
+    if (asMarkers && waypoints.length > MAX_WAYPOINTS_AS_MARKERS) {
+      throw badRequest(
+        `That file has ${waypoints.length.toLocaleString("en-GB")} waypoints, and Outpost saves at most ${MAX_WAYPOINTS_AS_MARKERS.toLocaleString("en-GB")} as places from one file. Import it with its waypoints kept on the route, or split it into smaller files.`,
+      );
+    }
+
+    // Markers go in a batch at a time, each batch a transaction, so that twenty thousand of
+    // them do not hold the server for four seconds. The import is still all or nothing:
+    // if anything fails, in a later batch or in storing the track, what was written is
+    // taken out again. (Only the process dying part of the way through leaves markers
+    // without the rest.)
+    const created: MarkerRow[] = [];
+    const writeMarkers = sqlite.transaction((batch: typeof waypoints): MarkerRow[] =>
+      batch.map((waypoint) => {
+        const [lon, lat] = waypoint.geometry.coordinates as [number, number];
+        return insertMarker({
+          name: waypoint.properties.name ?? "Waypoint",
+          note: waypoint.properties.desc ?? "",
+          lat,
+          lon,
+          color: input.color,
+          // A symbol Outpost knows becomes its icon; any other stays a plain pin. Either way the file's own word is kept.
+          icon: iconForSymbol(waypoint.properties.sym),
+          gpxSym: waypoint.properties.sym,
+        });
+      }),
+    );
+    const takeOut = sqlite.transaction((batch: MarkerRow[]) => {
+      for (const row of batch) {
+        db.delete(markers).where(eq(markers.id, row.id)).run();
+        search.remove("marker", row.id);
+      }
+    });
+    const storeTrack = sqlite.transaction((): TrackRow | null => {
+      if (features.length === 0) return null;
+      const collection: TrackCollection = { type: "FeatureCollection", features };
+      const stats = trackStats(collection);
+      const now = Date.now();
+      const id = newId();
+      db.insert(tracks)
+        .values({
+          id,
+          name,
+          description: parsed.description ?? "",
+          color: input.color ?? "teal",
+          geojson: collection as unknown as Record<string, unknown>,
+          sourceFilename: input.filename?.slice(0, 255) ?? null,
+          distanceMeters: stats.distanceMeters,
+          ascentMeters: stats.ascentMeters,
+          pointCount: stats.pointCount,
+          bounds: stats.bounds,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+      const row = trackRow(id);
+      indexTrack(row);
+      return row;
+    });
+
+    let track: TrackRow | null;
+    try {
+      if (asMarkers) {
+        for (let start = 0; start < waypoints.length; start += MARKER_WRITE_BATCH) {
+          if (start > 0) await yieldToEventLoop();
+          created.push(...writeMarkers(waypoints.slice(start, start + MARKER_WRITE_BATCH)));
+        }
+      }
+      track = storeTrack();
+    } catch (error) {
+      for (let start = 0; start < created.length; start += MARKER_WRITE_BATCH) {
+        takeOut(created.slice(start, start + MARKER_WRITE_BATCH));
+        await yieldToEventLoop();
+      }
+      if (created.length > 0) changed();
+      throw error;
+    }
+    const result = { track, created };
+
+    changed();
+    return { track: result.track ? toTrackDto(result.track) : null, markers: result.created.map(toMarkerDto) };
+  }
+
   return {
     listMarkers() {
       return db.select().from(markers).orderBy(desc(markers.isFavorite), desc(markers.updatedAt)).all().map(toMarkerDto);
@@ -405,95 +529,30 @@ export function createAnnotationsService(ctx: AppContext, deps: { elevation: Ele
 
     async importTrack(input) {
       const parsed = await parseGpxSafely(input.source);
+      return saveImported(parsed, input, input.importWaypointsAsMarkers === true);
+    },
+
+    async importMapFile(input) {
+      const { format, parsed } = await readMapFile(input.bytes, input.filename);
+      // A GPX file's waypoints belong to its route unless asked otherwise; the points of
+      // the other formats are places in their own right.
+      const asMarkers = format === "gpx" ? input.importWaypointsAsMarkers === true : true;
+      const result = await saveImported(parsed, input, asMarkers);
+      return { ...result, outlines: result.track ? parsed.outlines : 0 };
+    },
+
+    async previewMapFile(input) {
+      const { format, parsed } = await readMapFile(input.bytes, input.filename);
       const fallbackName = input.filename?.replace(/\.[^.]+$/, "").trim();
-      const name = (input.name?.trim() || parsed.name || fallbackName || "Imported track").slice(0, 200);
-      const asMarkers = input.importWaypointsAsMarkers === true;
-      // Waypoints either stay with the track or become markers; never both, or they would show twice.
-      const features = asMarkers
-        ? parsed.collection.features.filter((feature) => feature.geometry.type !== "Point")
-        : parsed.collection.features;
-      const waypoints = parsed.collection.features.filter((feature) => feature.geometry.type === "Point");
-      if (asMarkers && waypoints.length > MAX_WAYPOINTS_AS_MARKERS) {
-        throw badRequest(
-          `That file has ${waypoints.length.toLocaleString("en-GB")} waypoints, and Outpost saves at most ${MAX_WAYPOINTS_AS_MARKERS.toLocaleString("en-GB")} as places from one file. Import it with its waypoints kept on the route, or split it into smaller files.`,
-        );
-      }
-
-      // Markers go in a batch at a time, each batch a transaction, so that twenty thousand of
-      // them do not hold the server for four seconds. The import is still all or nothing:
-      // if anything fails, in a later batch or in storing the track, what was written is
-      // taken out again. (Only the process dying part of the way through leaves markers
-      // without the rest.)
-      const created: MarkerRow[] = [];
-      const writeMarkers = sqlite.transaction((batch: typeof waypoints): MarkerRow[] =>
-        batch.map((waypoint) => {
-          const [lon, lat] = waypoint.geometry.coordinates as [number, number];
-          return insertMarker({
-            name: waypoint.properties.name ?? "Waypoint",
-            note: waypoint.properties.desc ?? "",
-            lat,
-            lon,
-            color: input.color,
-            // A symbol Outpost knows becomes its icon; any other stays a plain pin. Either way the file's own word is kept.
-            icon: iconForSymbol(waypoint.properties.sym),
-            gpxSym: waypoint.properties.sym,
-          });
-        }),
-      );
-      const takeOut = sqlite.transaction((batch: MarkerRow[]) => {
-        for (const row of batch) {
-          db.delete(markers).where(eq(markers.id, row.id)).run();
-          search.remove("marker", row.id);
-        }
-      });
-      const storeTrack = sqlite.transaction((): TrackRow | null => {
-        if (features.length === 0) return null;
-        const collection: TrackCollection = { type: "FeatureCollection", features };
-        const stats = trackStats(collection);
-        const now = Date.now();
-        const id = newId();
-        db.insert(tracks)
-          .values({
-            id,
-            name,
-            description: parsed.description ?? "",
-            color: input.color ?? "teal",
-            geojson: collection as unknown as Record<string, unknown>,
-            sourceFilename: input.filename?.slice(0, 255) ?? null,
-            distanceMeters: stats.distanceMeters,
-            ascentMeters: stats.ascentMeters,
-            pointCount: stats.pointCount,
-            bounds: stats.bounds,
-            createdAt: now,
-            updatedAt: now,
-          })
-          .run();
-        const row = trackRow(id);
-        indexTrack(row);
-        return row;
-      });
-
-      let track: TrackRow | null;
-      try {
-        if (asMarkers) {
-          for (let start = 0; start < waypoints.length; start += MARKER_WRITE_BATCH) {
-            if (start > 0) await yieldToEventLoop();
-            created.push(...writeMarkers(waypoints.slice(start, start + MARKER_WRITE_BATCH)));
-          }
-        }
-        track = storeTrack();
-      } catch (error) {
-        for (let start = 0; start < created.length; start += MARKER_WRITE_BATCH) {
-          takeOut(created.slice(start, start + MARKER_WRITE_BATCH));
-          await yieldToEventLoop();
-        }
-        if (created.length > 0) changed();
-        throw error;
-      }
-      const result = { track, created };
-
-      changed();
-      return { track: result.track ? toTrackDto(result.track) : null, markers: result.created.map(toMarkerDto) };
+      const stats = trackStats(parsed.collection);
+      return {
+        format,
+        name: (parsed.name || fallbackName || "Imported track").slice(0, 200),
+        points: parsed.waypoints,
+        lines: parsed.lines,
+        outlines: parsed.outlines,
+        linePoints: stats.pointCount,
+      };
     },
 
     async saveRecording(input) {
@@ -569,7 +628,10 @@ export function createAnnotationsService(ctx: AppContext, deps: { elevation: Ele
       // Read again: the heights took a moment, and the track may have been renamed or removed meanwhile.
       const current = trackRow(id);
       const previous = current.geojson as unknown as TrackCollection;
-      const waypoints = (previous.features ?? []).filter((feature) => feature.geometry?.type === "Point");
+      // Waypoints and outlines are not the line being reshaped, so they stay as they were.
+      const waypoints = (previous.features ?? []).filter(
+        (feature) => feature.geometry?.type === "Point" || feature.properties?._outline === true,
+      );
       // A route found in a route source is still that source's data after its shape is edited: the credit stays.
       const source = readTrackSource(previous);
       const collection: TrackCollection = {

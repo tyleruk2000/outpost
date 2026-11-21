@@ -13,8 +13,19 @@ import Database from "better-sqlite3";
 const GROUPS: Record<Exclude<DatabaseGroupId, "other">, string[]> = {
   search: ["search_entities", "chunks", "chunks_fts", "chunks_fts_config", "chunks_fts_data", "chunks_fts_docsize", "chunks_fts_idx"],
   meaning: ["embeddings", "embedding_models"],
-  library: ["documents", "document_tags", "tags", "book_chapters", "collections", "downloads", "catalog_cache"],
-  notes: ["notes", "note_tags", "note_links", "attachments", "imports"],
+  library: [
+    "documents",
+    "document_tags",
+    "document_highlights",
+    "tags",
+    "book_chapters",
+    "collections",
+    "downloads",
+    "catalog_cache",
+    "book_details",
+    "calibre_imports",
+  ],
+  notes: ["notes", "note_tags", "note_links", "note_versions", "attachments", "imports"],
   maps: [
     "places",
     "places_fts",

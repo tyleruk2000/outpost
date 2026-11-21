@@ -3,6 +3,7 @@ import type {
   Bbox,
   DownloadDto,
   MapEstimate,
+  MapFilePreview,
   MapOverview,
   MapRegionsResponse,
   MapSources,
@@ -194,12 +195,23 @@ export function useDeleteTrack() {
   });
 }
 
-export function importGpx(file: File, importWaypointsAsMarkers: boolean): Promise<TrackImportResponse> {
+/**
+ * Imports a GPX, KML, KMZ or GeoJSON file as a new route and new places. A GPX file's
+ * waypoints become places only when asked; the other formats' points always do.
+ */
+export function importMapFile(file: File, importWaypointsAsMarkers: boolean): Promise<TrackImportResponse> {
   const form = new FormData();
   // Fields go before the file: the server reads the parts in order.
   form.append("importWaypointsAsMarkers", importWaypointsAsMarkers ? "1" : "0");
   form.append("file", file, file.name);
-  return api.upload<TrackImportResponse>("/api/maps/tracks/import", form);
+  return api.upload<TrackImportResponse>("/api/maps/files/import", form);
+}
+
+/** What importing a map file would make. The server reads it and saves nothing. */
+export function previewMapFile(file: File): Promise<MapFilePreview> {
+  const form = new FormData();
+  form.append("file", file, file.name);
+  return api.upload<MapFilePreview>("/api/maps/files/preview", form);
 }
 
 export interface EstimateRequest {

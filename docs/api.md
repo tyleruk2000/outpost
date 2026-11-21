@@ -499,6 +499,12 @@ Types: `packages/shared/src/documents.ts`.
 | `GET /api/ocr` | Whether this installation can run OCR and with what (`OcrStatus`): `available`, `reason` when not, `engine`, the installed `languages` (each `builtIn` or added, and whether `selected`), `missingLanguages`, `languageFolder`, `auto`, and `limits`. |
 | `GET /api/documents/:id/text` | The extracted text in sections (`DocumentTextResponse`). Query: `page`. Each section has `ocr: true` when it was read from a picture by OCR. |
 | `GET /api/documents/:id/markdown` | A Markdown document with its formatting, as a tree of plain values (`DocumentMarkdownResponse`): headings (each with an `id` made from its words), paragraphs, lists, quotes, code (with the `lang` written after the fence, such as `mermaid` or `viz`), tables, and bold, italic, code and links inside them. Never HTML. A link is one of three things: `link`, for an `http`, `https` or `mailto` address; `jump`, to a heading of the same document; or `ref`, for `outpost:entry/<entry id>/<chapter key>`, which carries the entry's id and name and, when it is in the library, the `collectionId` and `documentId` the server found. Pictures become their description and caption; embedded HTML becomes its words. `415` for a document that is not Markdown, `413` for a file over 2 MB (the web app then shows the text from `/text`), `404` when the file is missing. |
+| `GET /api/documents/:id/highlights` | The document's highlights in order (`HighlightsResponse`). |
+| `POST /api/documents/:id/highlights` | Marks a passage of a PDF, EPUB or Markdown document. Body (`CreateHighlightBody`): `exact`, `prefix`, `suffix`, `page` (PDF), `chapter` (EPUB), `note`. `{ highlight }`. The file is not written to. |
+| `POST /api/documents/:id/highlights/to-notes` | Makes a page in Notes of the highlights (all, or `highlightIds`), each with a link back. `{ note }`. |
+| `GET /api/highlights` | Highlights of every document whose words, note or document title contain `q` (`HighlightSearchResponse`). Query: `q`, `limit`. |
+| `PATCH /api/highlights/:id` | Body: `note`. `{ highlight }`. |
+| `DELETE /api/highlights/:id` | Deletes a highlight. |
 | `GET /api/documents/:id/pictures/:number` | One picture that a Markdown document carries (a saved web page keeps its pictures inside its file). `number` is 1 to 9999. Sent only if its bytes are a PNG, JPEG, GIF or WebP image, with that type, an `ETag`, and a sandbox policy. `404` when the document has no such picture or is not Markdown. |
 | `GET /api/documents/:id/epub` | What an EPUB book says about itself (`DocumentEpubResponse`): `title`, `author` and `language` from its package file, `cover` (the cover picture's path inside the archive, or `null`), `chapters` in reading order (each with its `position` from 1, a `title`, and the `heading` search knows it by), `contents` (the table of contents from the navigation document or the NCX: `title`, `chapter`, an `anchor` inside it, `depth`; empty when the book has none) and `notes` (sentences, such as that the book is fixed-layout). At most 2,000 chapters. `415` for a document that is not an EPUB, and for a book that cannot be read: `error.details.reason` is `protected` for a copy-protected (DRM) book, which is never opened, and `damaged` for one that is malformed. `404` when the file is missing, `503` while its storage is disconnected. See [epub.md](epub.md). |
 | `GET /api/documents/:id/epub/chapters/:position` | One chapter, by its place in the reading order from 1, as the same tree of plain values as `/markdown` (`DocumentEpubChapterResponse`: `position`, `total`, `title`, `blocks`, `notes`). Never the book's HTML, styles or scripts. Beyond what a Markdown file produces, a run may be `sup` or `sub`, an `anchor` (a place a link can land on), a `picture` (`src` is its path inside the archive), or a `chapter` link (to another chapter by number, 0 being the contents, with an optional `anchor`); a block may be a `figure` (a picture with a caption), a `quote` of `kind: "note"` (a footnote or sidebar), or a `table` marked `plain` (no header row). `notes` says what was left out: scripts, audio and video, mathematics, drawings, forms. `404` for a position the book does not have, `413` for a chapter over 2 MB or 120,000 tags (`details.reason` is `too_large`), `415` for one nested too deeply to read, and the refusals of the route above. |
@@ -527,6 +533,22 @@ played from `GET /api/documents/:id/file`. See [library.md](library.md#audiobook
 | `POST /api/audiobooks` | Multipart: one `.zip`, or one or more audio files; optional fields `title`, `librivoxId` and `locationId` (as fields or in the query). Each file is checked from its first bytes. `202` with `{ job }`: job `audiobook.add` unpacks a zip inside the location's incoming folder (names that climb out of it, absolute names and encrypted entries refuse the zip; links and other files are left out and listed in the result), orders the audio files by track number or name, files them under `collections/audiobooks/<title>/` and records the book. Its result is `AudiobookAddResult`: `collectionId`, `title`, `chapters`, `leftOut`. `400` for a zip together with other files, two zips, or a file that is neither a zip nor audio. |
 | `GET /api/audiobooks/librivox` | `LibrivoxShelfResponse`: the LibriVox shelf from `catalog/audiobooks.json`, each book with `approxBytes` and `inLibrary`. Makes no request to LibriVox or the Internet Archive. |
 
+### Calibre libraries
+
+Types: `packages/shared/src/calibre.ts`. Reading a library only ever reads its folder; see
+[library.md](library.md#books-from-calibre).
+
+| Route | What it does |
+| --- | --- |
+| `POST /api/calibre` | Body `{ locationId, relPath }`: the library's folder on a storage location. The path is checked with symbolic links followed (`403` for one that leads outside every storage location, `400` for a path out of the location or not a folder). Starts job `calibre.read` and answers `CalibreImportResponse` in state `reading`. The plan (`CalibrePlan`) has `bookCount`, `totalBytes` (book files and covers), `coverCount`, `hasCalibreDatabase`, the first 300 `books`, `leftOut` with a reason each, and `beyondLimit` (books past 20,000). A folder with no books ends `failed` with a message. |
+| `GET /api/calibre` | `CalibreImportListResponse`: the latest imports, newest first. Query `limit` (20 by default, at most 100). |
+| `GET /api/calibre/:id` | One import with its plan, its options, its job's progress while one runs, and its `report` (`added`, `alreadyThere`, `failed`, `stopped`) when it has run. |
+| `POST /api/calibre/:id/commit` | Body `{ mode: "copy" \| "in-place", locationId? }`. `copy` checks the destination has room for `totalBytes` first (`507`); `in-place` records each file where it is. Starts job `calibre.import`. `409` unless the import is `ready` or `failed` with a plan. Committing a `failed` import again adds only what is missing. |
+| `POST /api/calibre/:id/cancel` | Stops reading or importing. Books already added stay. |
+| `DELETE /api/calibre/:id` | Sets aside a plan that was not carried out (`discarded`). `409` while importing and once completed. |
+| `GET /api/documents/:id/book` | `BookDetailsResponse`: `details` with `authors`, `series`, `seriesIndex`, `coverUrl` and `inCalibreFolder` (the file is read where it lies; the web app then removes only the record), or `null` for a document that did not come from Calibre. |
+| `GET /api/documents/:id/cover` | The kept cover picture (JPEG, PNG, WebP or GIF, with its type). `404` when there is none. |
+
 ## Notes
 
 Types: `packages/shared/src/notes.ts`. See
@@ -548,6 +570,11 @@ Types: `packages/shared/src/notes.ts`. See
 | `DELETE /api/notes/:id` | Moves the page and its sub-pages to the trash. `{ trashed: [ids] }`. |
 | `DELETE /api/notes/:id?permanent=1` | Deletes a page that is in the trash for good, with attachments nothing else uses. |
 | `POST /api/notes/:id/restore` | Brings a page back from the trash. |
+| `GET /api/notes/:id/versions` | Earlier versions of the page, newest first (`NoteVersionsResponse`). |
+| `GET /api/notes/:id/versions/:versionId` | `{ version }` (`NoteVersionDetail`), with its content. |
+| `POST /api/notes/:id/versions/:versionId/restore` | Body (`RestoreNoteVersionBody`): `baseUpdatedAt`. Saves the version as the page's newest, keeping the current one as a version. `409` if the page is newer than `baseUpdatedAt`. |
+| `GET /api/notes/versions/space` | `NoteVersionsSpace`: how many versions of how many pages, and their bytes. |
+| `DELETE /api/notes/versions` | Erases every earlier version of every page. `{ cleared }`. |
 | `GET /api/notes/:id/export.md` | The page as a Markdown file. |
 | `GET /api/notes/export.zip` | The whole workspace as a zip of Markdown files and attachments. |
 | `POST /api/attachments` | Uploads one file as `multipart/form-data` (at most 50 MB). Optional `noteId` field or query parameter. `{ attachment }` (`AttachmentDto`). |
@@ -826,6 +853,8 @@ The live event `layers.changed` is published when a pack is installed, updated o
 | `POST /api/maps/tracks` | Saves a route drawn on the map: straight lines between the points sent. Body: `name`, `points` (at least two of `{ lat, lon }`), `description?`, `color?`. Answers `{ track, elevation }` (`RouteSaveResponse`). |
 | `PUT /api/maps/tracks/:id/points` | Replaces a track's lines with one drawn through `points`. Its waypoints are kept. Answers `{ track, elevation }`. |
 | `POST /api/maps/tracks/import` | One GPX file as `multipart/form-data` (at most 20 MB). Optional fields: `name`, `color`, `importWaypointsAsMarkers`. Answers `{ track, markers }`. A waypoint saved as a marker takes the icon its `<sym>` stands for, when it is a known one. |
+| `POST /api/maps/files/preview` | One GPX, KML, KMZ or GeoJSON file as `multipart/form-data` (at most 20 MB). Reads it and saves nothing. Answers `{ format, name, points, lines, outlines, linePoints }`. |
+| `POST /api/maps/files/import` | The same file. Its lines become one new track (polygons' rings as closed lines marked `_outline`), its points new markers; a GPX file's waypoints only with `importWaypointsAsMarkers`. Optional fields as for the GPX import. Answers `{ track, markers, outlines }`. |
 | `PUT /api/maps/recordings/:id` | Saves a track recorded on the map. `:id` is 26 characters chosen by the device (digits and lower-case letters, without `i`, `l`, `o`, `u`), and becomes the track's id. Body: `multipart/form-data` with `name`, `color?` and one GPX file (at most 20 MB) holding tracks only, with a time at every point and at most 150,000 points. Answers `{ track, alreadySaved }`; sent again with the same id, it answers with the track already there and writes nothing. See [maps.md](maps.md#recording-a-track). |
 | `GET /api/maps/tracks/:id` | One track with its geometry as GeoJSON. |
 | `PATCH /api/maps/tracks/:id` | Body: `name?`, `description?`, `color?`. |

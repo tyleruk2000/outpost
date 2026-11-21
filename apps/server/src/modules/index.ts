@@ -10,6 +10,7 @@ import { registerAudiobooks } from "./audiobooks/index.ts";
 import { registerBackup } from "./backup/index.ts";
 import { registerBoard } from "./board/index.ts";
 import { registerBooks } from "./books/index.ts";
+import { registerCalibre } from "./calibre/index.ts";
 import { registerCatalog } from "./catalog/index.ts";
 import { registerChat } from "./chat/index.ts";
 import { registerCollections } from "./collections/index.ts";
@@ -22,6 +23,7 @@ import { registerEmergencyPlans } from "./emergency-plans/index.ts";
 import { registerEncryption } from "./encryption/index.ts";
 import { registerGames } from "./games/index.ts";
 import { registerGarden } from "./garden/index.ts";
+import { registerHighlights } from "./highlights/index.ts";
 import { registerHouseholdPapers } from "./household-papers/index.ts";
 import { registerHttps } from "./https/index.ts";
 import { registerImports } from "./imports/index.ts";
@@ -62,6 +64,7 @@ export const modules: ModuleRegister[] = [
   registerAnswers,
   registerDocuments,
   registerNotes,
+  registerHighlights,
   registerChat,
   registerImports,
   registerCollections,
@@ -109,6 +112,8 @@ export const modules: ModuleRegister[] = [
   registerGarden,
   // Tide times (Tools): predictions from bundled harmonic constants, nothing kept, on a line of its own.
   registerTides,
+  // Bringing in a Calibre library (Library), after documents, on a line of its own.
+  registerCalibre,
   // Tools a language model may call (Chat, and /mcp), last: they read from every module above.
   registerTools,
 ];

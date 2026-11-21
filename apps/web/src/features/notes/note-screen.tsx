@@ -502,3 +502,5 @@ function LoadedNote({ note, reload }: { note: NoteDetail; reload(): Promise<Note
     </article>
   );
 }
+
+export { NoteVersionsScreen } from "./note-versions";

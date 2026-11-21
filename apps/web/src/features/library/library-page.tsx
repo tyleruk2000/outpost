@@ -23,6 +23,7 @@ export default function LibraryPage() {
     <Page>
       <PageHeader
         title="Library"
+        under="/library"
         description="Everything you keep: your own documents, and the reference collections and maps you have installed."
       />
       <Tabs

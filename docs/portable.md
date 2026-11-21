@@ -53,8 +53,9 @@ What travels:
   drive) what should not be passed on.
 - The database on the drive is a copy narrowed to match: it lists only the documents
   and collections that were copied, and one storage location, "This drive", which is
-  the drive's `library` folder. Download history, background jobs, the records of
-  past imports and of past merges, the addresses of network shares, conversations
+  the drive's `library` folder. Download history, background jobs, earlier versions
+  of pages, the records of
+  past imports (of notes and of Calibre libraries) and of past merges, the addresses of network shares, conversations
   from [Chat](ai.md#chat), and the household board ([Messages](messages.md)) are not
   copied.
 - The database also carries a record of what every page, document, saved place and

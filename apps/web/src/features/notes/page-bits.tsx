@@ -1,7 +1,8 @@
 /** Small pieces shared by the tree, the page and the lists. */
 import type { NoteRef } from "@outpost/shared";
-import { Copy, CornerDownRight, Download, FileText, Star, StarOff, Trash2 } from "lucide-react";
+import { Copy, CornerDownRight, Download, FileText, History, Star, StarOff, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
+import { Link } from "react-router";
 import { MenuItem, MenuSeparator } from "@/components/ui/menu";
 import { cn } from "@/lib/utils";
 import { exportUrl, type NoteActions } from "./notes-data";
@@ -60,6 +61,11 @@ export function PageMenuItems({
         <a href={exportUrl(page.id)} download>
           <Download /> Export as Markdown
         </a>
+      </MenuItem>
+      <MenuItem asChild>
+        <Link to={`/notes/${page.id}/versions`}>
+          <History /> Earlier versions
+        </Link>
       </MenuItem>
       {children}
       <MenuSeparator />

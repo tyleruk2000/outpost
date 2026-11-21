@@ -95,7 +95,7 @@ in full, including what it does not do.
 | Terrain and contours | An optional terrain download gives hill shading, contour lines traced on your device, and the heights of routes. | [Maps](docs/maps.md#contour-lines) |
 | Height of the ground | The readout gives the height under a resting pointer, or at the centre of the map on a touch screen, from the installed terrain; nothing is shown where there is none. Metres or feet for every height on the map screens. | [Maps](docs/maps.md#the-height-of-the-ground) |
 | Places | Saved places with a note, a colour and one of sixteen icons. | [Maps](docs/maps.md#markers) |
-| Routes | Draw a route point by point, edit its shape, see its distance, ascent and elevation profile; import and export GPX. | [Maps](docs/maps.md#drawing-a-route) |
+| Routes | Draw a route point by point, edit its shape, see its distance, ascent and elevation profile; import GPX, KML, KMZ and GeoJSON; export GPX. | [Maps](docs/maps.md#drawing-a-route) |
 | Find a known route | Search OpenStreetMap for a named route and add it, through the route server named beside the search, only when you search. | [Maps](docs/maps.md#finding-a-known-route) |
 | Recording a track | Records where you walk while the screen is on. Needs an `https` address. | [Maps](docs/maps.md#recording-a-track) |
 | Coordinates and place search | Coordinates, British grid references and Maidenhead locators; offline place names from GeoNames; and for Great Britain, Ordnance Survey's OS Open Names: settlements, hills, roads and every postcode, found however a postcode is typed. | [Maps](docs/maps.md#coordinate-formats), [Great Britain](docs/maps.md#place-names-for-great-britain) |
