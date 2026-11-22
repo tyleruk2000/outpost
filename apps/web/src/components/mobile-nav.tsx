@@ -153,7 +153,7 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
   return (
     <>
       <header ref={header} className="sticky top-0 z-(--z-nav) flex h-13 items-center gap-2 bg-spine px-4 text-spine-ink md:hidden">
-        <Link to="/" className="flex min-h-11 flex-1 items-center gap-2.5">
+        <Link to="/" className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5">
           <LogoMark />
           <span className="font-title text-lead">Outpost</span>
         </Link>
@@ -161,7 +161,7 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
           type="button"
           onClick={onOpenSearch}
           aria-label="Quick search"
-          className="grid size-11 place-content-center rounded-control text-spine-ink-muted hover:text-spine-ink"
+          className="grid size-11 shrink-0 place-content-center rounded-control text-spine-ink-muted hover:text-spine-ink"
         >
           <Search className="size-5" strokeWidth={1.6} />
         </button>

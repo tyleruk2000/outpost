@@ -325,10 +325,10 @@ export default function HomePage() {
                   <Skeleton className="h-8" />
                 </div>
               ) : (
-                <ul className="grid gap-5">
+                <ul className="grid grid-cols-[minmax(0,1fr)] gap-5">
                   {locations.map((location) => (
                     <li key={location.id}>
-                      <div className="mb-1.5 flex items-baseline justify-between gap-4 text-small">
+                      <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-4 text-small">
                         <span className="min-w-0 truncate font-medium text-ink">{location.name}</span>
                         <span className="tabular shrink-0 text-ink-muted">
                           {location.status === "available" ? `${formatBytes(location.freeBytes)} free` : "Disconnected"}

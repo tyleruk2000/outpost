@@ -77,7 +77,7 @@ function ResultRow({ result, heading: Heading = "h2" }: { result: SearchResult; 
           {Math.round(result.score * 100)}% match
         </span>
       </div>
-      <Heading className="mt-1 font-title text-lead">
+      <Heading className="mt-1 font-title text-lead hyphens-auto break-words">
         <Link to={resultHref(result)} className="text-ink decoration-primary decoration-1 underline-offset-[0.22em] hover:underline">
           <Highlighted segments={result.titleSegments.length ? result.titleSegments : [{ text: result.title, hit: false }]} />
         </Link>
