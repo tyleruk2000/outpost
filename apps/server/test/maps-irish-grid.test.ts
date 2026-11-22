@@ -8,6 +8,7 @@ import {
   parseCoordinateReadings,
   parseCoordinates,
   parseIrishGridRef,
+  parseItm,
   toIrishGrid,
   toItm,
 } from "@outpost/shared";
@@ -79,5 +80,64 @@ describe("Irish Transverse Mercator", () => {
     const back = fromItm(spire.easting, spire.northing)!;
     expect(haversineMeters(53.3498, -6.2603, back.lat, back.lon)).toBeLessThan(0.01);
     expect(toItm(40, -74)).toBeNull();
+  });
+});
+
+// OSi's active GPS stations, as OSi published them: ETRS89 latitude and longitude, and ITM easting and northing
+// ("Active Stations", GPS-STATION-COORDINATES.pdf, osi.ie, 2012, read 2026-11-22 from the Internet Archive's copy).
+const OSI_STATIONS = [
+  { name: "Athlone", lat: dms(53, 25, 55.81991), lon: -dms(7, 54, 27.4616), e: 606_138.377, n: 742_456.436 },
+  { name: "Fingal CC", lat: dms(53, 27, 32.59727), lon: -dms(6, 13, 8.51778), e: 718_270.316, n: 746_920.838 },
+  { name: "Cork I.T", lat: dms(51, 53, 5.56759), lon: -dms(8, 31, 58.76032), e: 563_308.284, n: 570_435.33 },
+  { name: "Kilrea", lat: dms(54, 57, 53.77044), lon: -dms(6, 37, 4.92271), e: 688_495.96, n: 913_905.63 },
+  { name: "Tralee", lat: dms(52, 17, 12.39119), lon: -dms(9, 40, 23.21814), e: 485_854.024, n: 616_330.095 },
+] as const;
+
+describe("ITM against OSi's published station coordinates", () => {
+  it("projects each station to its published easting and northing, to the centimetre", () => {
+    for (const station of OSI_STATIONS) {
+      const grid = toItm(station.lat, station.lon)!;
+      expect(Math.abs(grid.easting - station.e), station.name).toBeLessThan(0.01);
+      expect(Math.abs(grid.northing - station.n), station.name).toBeLessThan(0.01);
+    }
+  });
+
+  it("reads each station's figures typed with ITM before them back to where the station is", () => {
+    for (const station of OSI_STATIONS) {
+      const reading = parseCoordinates(`ITM ${station.e} ${station.n}`)!;
+      expect(reading.format, station.name).toBe("itm");
+      expect(haversineMeters(reading.lat, reading.lon, station.lat, station.lon), station.name).toBeLessThan(0.01);
+    }
+  });
+});
+
+describe("typed ITM coordinates", () => {
+  it("are read with ITM before or after them, in any case and the usual spellings", () => {
+    for (const text of [
+      "ITM 715830 734697",
+      "itm 715830 734697",
+      "Itm: 715830, 734697",
+      "ITM E 715830 N 734697",
+      "ITM 715830E 734697N",
+      "ITM715830 734697",
+      "715830 734697 ITM",
+      "  ITM   715830.5   734697.25 ",
+    ]) {
+      const reading = parseCoordinates(text);
+      expect(reading?.format, text).toBe("itm");
+      expect(haversineMeters(reading!.lat, reading!.lon, 53.3498, -6.2603), text).toBeLessThan(10);
+    }
+    expect(parseItm("itm 715830, 734697")?.reference).toBe("ITM 715830 734697");
+  });
+
+  it("leaves bare six-figure pairs to the British grid, as they always were", () => {
+    expect(parseCoordinates("321540 507210")?.format).toBe("osgb");
+    expect(parseCoordinateReadings("ITM 715830 734697")).toHaveLength(1);
+  });
+
+  it("refuses what is not ITM, or is not in Ireland", () => {
+    for (const text of ["ITM 71583 734697", "ITM 715830", "ITM 715830 734697 1", "ITEM 715830 734697", "ITM 100000 100000"]) {
+      expect(parseItm(text), text).toBeNull();
+    }
   });
 });

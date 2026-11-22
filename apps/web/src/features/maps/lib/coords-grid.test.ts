@@ -28,6 +28,14 @@ describe("the Irish readouts", () => {
     expect(result!.title).toBe("O 159 346");
     expect(result!.detail).toMatch(/^Irish Grid reference, the middle of a 100 m square · 53\.349/);
   });
+
+  it("lists typed ITM coordinates as ITM, written out in the usual way", () => {
+    const query = "itm 715830, 734697";
+    const [reading] = parseCoordinateReadings(query);
+    const [result] = buildSearchResults({ query, coordinate: reading!, places: [], markers: [], tracks: [], center: null });
+    expect(result!.title).toBe("ITM 715830 734697");
+    expect(result!.detail).toMatch(/^ITM coordinates · 53\.349/);
+  });
 });
 
 describe("the UTM grid on the map on screen", () => {
