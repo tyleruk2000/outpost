@@ -369,8 +369,13 @@ export const alertCountryName = (code: string): string | null => ALERT_COUNTRIES
 
 /** What the alerts view needs to know before a press: where Home is taken to be, and which national service covers it. */
 export interface AlertsPlan {
-  /** The saved place with the home icon, or null when none has it. */
-  home: { name: string; lat: number; lon: number } | null;
+  /**
+   * The current household's home: its saved place, or a portable household's position,
+   * with `at`, when that was set (null for a saved place). Null when it has none.
+   */
+  home: { name: string; lat: number; lon: number; at?: number | null } | null;
+  /** The current household's name when there are several, so that the screen says whose home it is; else null. */
+  household?: string | null;
   /** The country Home is taken to be in, from the smallest Natural Earth box that holds it (rough near a border). */
   homeCountry: string | null;
   homeCountryName: string | null;

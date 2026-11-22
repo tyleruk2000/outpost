@@ -11,8 +11,6 @@
  */
 import { X509Certificate } from "node:crypto";
 import {
-  countryAt,
-  homePlaceOf,
   MESH_TEXT_BYTES,
   type MeshBrokerTestInput,
   type MeshBrokerTestResult,
@@ -33,7 +31,6 @@ import type { AppContext } from "../../core/context.ts";
 import { badRequest } from "../../core/errors.ts";
 import { containerReason } from "../../core/local.ts";
 import type { BoardTransport, OutgoingCheck } from "../board/transport.ts";
-import { COUNTRIES } from "../layers/countries.ts";
 import { addRadioAccount, dynsecStatus, findBrokers, testBroker } from "./household.ts";
 import { createMeshCoreLink, type MeshCoreLink, type Opener, openRadio } from "./meshcore/link.ts";
 import { createMeshtasticLink, type MeshtasticLink } from "./meshtastic/link.ts";
@@ -207,14 +204,15 @@ export function createMeshService(ctx: AppContext, options: { open?: Opener } = 
 
   /**
    * The root topic offered before a household broker is saved, as the settings form offers it: the one
-   * Meshtastic's table of regions gives for Home's country (the saved place with the home icon, in the
-   * smallest Natural Earth box round it), else msh/EU_868. Once a broker is saved, its root topic is the
+   * Meshtastic's table of regions gives for the first household's country (`households.country(first)`:
+   * its override, else the smallest Natural Earth box round its home), else msh/EU_868. The radio and
+   * the broker do not move with the current household, so it stays the first. Once a broker is saved, its root topic is the
    * one saved. (Rows saved before this held msh/EU_868 as a default; with no broker saved it is not a choice.)
    */
   function firstRoot(client: { host: string; rootTopic: string }): string {
     if (client.host && client.rootTopic) return client.rootTopic;
-    const home = homePlaceOf(ctx.services.maps.annotations.listMarkers());
-    return meshtasticRootFor(home ? countryAt(home, COUNTRIES) : null) ?? (client.rootTopic || FALLBACK_ROOT);
+    const households = ctx.services.households;
+    return meshtasticRootFor(households.country(households.first().id)) ?? (client.rootTopic || FALLBACK_ROOT);
   }
 
   function channels(): MeshChannel[] {

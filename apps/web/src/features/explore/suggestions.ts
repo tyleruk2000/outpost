@@ -5,8 +5,9 @@
  * own sources added in the UK only. Outpost is meant to work anywhere; nothing here
  * assumes Britain.
  *
- * Pure: the screen gives it what it has read (the saved places, the countries' boxes,
- * the map presets and what is installed, the catalogue) and draws the rows it returns.
+ * Pure: the screen gives it what it has read (the current household's home and country,
+ * the countries' boxes, the map presets and what is installed, the catalogue) and draws
+ * the rows it returns.
  */
 import {
   type Bbox,
@@ -37,7 +38,14 @@ export interface Suggestion {
 }
 
 export interface SuggestionInput {
-  markers: ReadonlyArray<{ icon: string; createdAt: number; id: string; lat: number; lon: number }> | undefined;
+  /**
+   * The current household's home (`useHousehold()`), or null when it has none. Left out,
+   * home is the saved place with the home icon among `markers`.
+   */
+  home?: { lat: number; lon: number } | null;
+  /** The current household's country (its override, else home's). Left out: the country home is in. */
+  country?: string | null;
+  markers?: ReadonlyArray<{ icon: string; createdAt: number; id: string; lat: number; lon: number }> | undefined;
   countries: ReadonlyArray<{ code: string; name: string; bbox: Bbox }> | undefined;
   presets: MapRegionPresetStatus[] | undefined;
   overview: MapOverview | undefined;
@@ -77,10 +85,9 @@ export function languageName(code: string): string {
 const isInstalled = (entry: CatalogEntryDto) => entry.status === "installed";
 
 export function suggestionsFor(input: SuggestionInput): Suggestions {
-  if (!input.markers) return { state: "no-home" };
-  const home = homePlaceOf(input.markers);
+  const home = input.home !== undefined ? input.home : input.markers ? homePlaceOf(input.markers) : null;
   if (!home) return { state: "no-home" };
-  const code = input.countries ? countryAt(home, input.countries) : null;
+  const code = input.country || (input.countries ? countryAt(home, input.countries) : null);
   const country = code ? input.countries?.find((entry) => entry.code === code) : undefined;
   if (!country) return { state: "no-country" };
   const uk = country.code === "GB";

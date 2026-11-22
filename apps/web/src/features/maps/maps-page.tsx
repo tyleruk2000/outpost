@@ -12,7 +12,7 @@ import {
   ACTIVE_DOWNLOAD_STATES,
   formatDecimal,
   haversineMeters,
-  homePlaceOf,
+  homeLabel,
   type MarkerDto,
   type TrackDto,
   type TrackWithGeometryDto,
@@ -32,6 +32,8 @@ import type { HeardTools } from "@/features/heard/card";
 import { HeardGroup } from "@/features/heard/heard";
 import { useHeardOnMap } from "@/features/heard/use-heard-on-map";
 import { useRangeOnMap } from "@/features/heard/use-range-on-map";
+import { useHome } from "@/features/households/home";
+import { useHouseholdsOnMap } from "@/features/households/map";
 import { useReferenceLayers } from "@/features/layers/use-reference-layers";
 import { useMeshOnMap } from "@/features/mesh/map";
 import { type SightStart, useRepeatersOnMap } from "@/features/repeaters/map/use-repeaters-on-map";
@@ -1097,7 +1099,14 @@ export default function MapsPage() {
   // Satellites now (features/satellites/map.tsx), worked out in the browser while switched on.
   const satellitesLayer = useSatellitesOnMap({ engine });
   // APRS, aircraft and ships (features/heard), and the one card for anything heard, with the map's tools from there.
-  const homeMarker = useMemo(() => homePlaceOf(markers.data ?? []), [markers.data]);
+  // "Near home" is the current household's home: its saved place, or where a portable household was last said to be.
+  // Every household's home is drawn, labelled with its name (features/households/map.ts).
+  useHouseholdsOnMap({ engine });
+  const currentHome = useHome().home;
+  const homeMarker = useMemo(
+    () => (currentHome ? { lat: currentHome.lat, lon: currentHome.lon, name: homeLabel(currentHome, Date.now()) } : null),
+    [currentHome],
+  );
   const heardTools = useMemo<HeardTools>(
     () => ({
       measure: (position) => {

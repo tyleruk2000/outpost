@@ -18,7 +18,7 @@ import {
   compassPoint,
   elementsAge,
   elementsAgeWarning,
-  homePlaceOf,
+  homeLabel,
   parseCoordinates,
   SATELLITE_GROUPS,
   SATELLITE_SOURCES,
@@ -36,6 +36,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Checkbox, Segmented, Select, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/misc";
+import { HomeAsOf, NoHome, useHome } from "@/features/households/home";
 import { PdfActions } from "@/features/library/made/pdf-actions";
 import { useMarkers } from "@/features/maps/data";
 import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
@@ -973,10 +974,13 @@ export default function SatellitesPage() {
   const data = useSatellites();
   const markers = useMarkers();
   const now = useNow(30_000);
-  const home = markers.data ? homePlaceOf(markers.data) : null;
+  // Seen from the current household's home: its saved place, or where it was last said to be (with its age).
+  const homeOf = useHome();
+  const home = homeOf.home;
   const [place, setPlace] = useState<PlaceField | null>(null);
   const field: PlaceField =
-    place ?? (home ? { text: `${home.lat.toFixed(5)}, ${home.lon.toFixed(5)}`, name: home.name } : { text: "", name: "" });
+    place ??
+    (home ? { text: `${home.lat.toFixed(5)}, ${home.lon.toFixed(5)}`, name: homeLabel(home, now.getTime()) } : { text: "", name: "" });
   const found = parseCoordinates(field.text);
   const lat = found?.lat;
   const lon = found?.lon;
@@ -1034,15 +1038,8 @@ export default function SatellitesPage() {
                   onChange={setPlace}
                   places={markers.data ?? []}
                 />
-                {!home && !place ? (
-                  <p className="mt-1 text-small text-ink-muted">
-                    No saved place has the home icon. Give a place here, or mark Home on the{" "}
-                    <Link to="/maps" className="text-primary underline underline-offset-2">
-                      Maps
-                    </Link>{" "}
-                    screen.
-                  </p>
-                ) : null}
+                {!home && !place && !homeOf.isPending ? <NoHome className="mt-1" /> : null}
+                {home && !place ? <HomeAsOf home={home} now={now.getTime()} className="mt-1" /> : null}
               </div>
               <Tabs value={tab} onValueChange={setTab}>
                 <TabsList aria-label="Satellites">

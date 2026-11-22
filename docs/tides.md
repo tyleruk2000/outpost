@@ -13,8 +13,9 @@ the water.
 
 ## Using it
 
-1. **Choose the place.** The home place (the saved place with the home icon) unless you
-   choose another saved place, or type coordinates. To use a point on the coast, save it
+1. **Choose the place.** The current household's home (its saved place, or where a portable
+   household was last said to be, named with how old that is) unless you choose another saved
+   place, or type coordinates. To use a point on the coast, save it
    as a place on the Maps screen first. The place and the clock are the same ones the Solar
    clock uses, and are remembered on this device.
 2. **Choose the clock** the times are written on: this device's time zone, or a fixed

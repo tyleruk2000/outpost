@@ -174,6 +174,15 @@ Meeting point, Danger, Star, Flag), a favourite flag, and optionally a link to a
 The app-wide search finds them. Favourites are named at every zoom, others from zoom 9.
 Where places crowd together an icon gives way to its neighbour until you zoom in.
 
+### Every household's home
+
+With several households, each one's home is labelled on the map with the household's name:
+a fixed household's under its saved place, a portable household's (a caravan, a car, a group
+on foot) as a ringed dot where it was last said to be, with how old that is ("as of 3 hours
+ago"). The ring is larger for the household Outpost is set to now, and it is that household's
+home that distances on the map are measured from (what was heard on the radio, the range of
+a point). With one household whose home is a saved place, nothing is added.
+
 ### A place, a route or a range on a phone, by QR code
 
 **QR code** on a saved place, a route or a radio range shows a code for a phone to scan:

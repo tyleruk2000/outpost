@@ -1,18 +1,18 @@
 /**
- * The places forecasts are kept for: chosen from the saved places on the map (the one
- * with the home icon is the home place), or this device's position where the browser
- * offers it. It offers it only on a secure page; the owner's plain http address is not
+ * The places forecasts are kept for: chosen from the saved places on the map (the
+ * current household's home place is badged Home), where a portable household was last
+ * said to be, or this device's position where the browser offers it. It offers it only on a secure page; the owner's plain http address is not
  * one, and the screen says so rather than offering a button that cannot work.
  */
 import {
-  homePlaceOf,
+  homeLabel,
   MET_OFFICE_REGIONS,
   type MetOfficeRegionId,
   WEATHER_LIMITS,
   type WeatherPlace,
   type WeatherPlacesImportResult,
 } from "@outpost/shared";
-import { House, LocateFixed, Plus, Trash2 } from "lucide-react";
+import { House, LocateFixed, MapPin, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
@@ -21,8 +21,8 @@ import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogBody, DialogContent } from "@/components/ui/dialog";
 import { Badge, Select, Spinner } from "@/components/ui/misc";
+import { NoHome, useHome } from "@/features/households/home";
 import { useMarkers } from "@/features/maps/data";
-import { NoHomePlace } from "@/features/maps/home-place";
 import { errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { plural } from "@/lib/utils";
@@ -49,8 +49,10 @@ export function PlacesView({ places }: { places: WeatherPlace[] }) {
   const bringIn = useImportPlaces();
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<WeatherPlace | null>(null);
-  const markers = useMarkers();
-  const home = markers.data ? homePlaceOf(markers.data) : undefined;
+  const current = useHome();
+  // The current household's home when it is a saved place; a portable household's position is added as a place of its own.
+  const home = current.isPending ? undefined : current.home?.kind === "place" ? current.home : null;
+  const here = current.home?.kind === "here" ? current.home : null;
   return (
     <div>
       {places.length > 0 ? (
@@ -86,13 +88,27 @@ export function PlacesView({ places }: { places: WeatherPlace[] }) {
         </ul>
       ) : null}
       <p className="mt-3 max-w-[70ch] text-small text-ink-muted">
-        The Met Office words its warnings by region and Outpost cannot tell a region from a position, so choose each place's. The home place
-        is the saved place with the home icon on the map (the first saved, if several have it).
+        The Met Office words its warnings by region and Outpost cannot tell a region from a position, so choose each place's.{" "}
+        {current.several && current.household
+          ? `The home place is ${current.household.name}'s, the household Outpost is set to now.`
+          : "The home place is the saved place with the home icon on the map (the first saved, if several have it)."}
       </p>
-      {home === null ? <NoHomePlace className="mt-2 max-w-[70ch]" /> : null}
+      {home === null && !here ? <NoHome className="mt-2 max-w-[70ch]" /> : null}
+      {here ? (
+        <p className="mt-2 max-w-[70ch] text-small text-ink-muted">
+          {homeLabel(here, Date.now())}. Its forecast is fetched only for a place in this list: add where it is now below, and press Update
+          now. Nothing is fetched because it moved.
+        </p>
+      ) : null}
       {home && !places.some((place) => place.markerId === home.id) ? (
         <p className="mt-2 max-w-[70ch] text-small text-ink-muted">
-          {home.name || "Your home"} has the home icon but is not in this list, so no warnings are matched to it. Add it below.
+          {home.name || "Your home"}{" "}
+          {current.several && current.household
+            ? `is ${current.household.name}'s home`
+            : current.household?.homePlaceId === home.id
+              ? "is the home place"
+              : "has the home icon"}{" "}
+          but is not in this list, so no warnings are matched to it. Add it below.
         </p>
       ) : null}
       <div className="mt-4 flex flex-wrap gap-2">
@@ -141,6 +157,9 @@ export function placesWords(result: WeatherPlacesImportResult): string {
 function AddPlaceDialog({ chosen, onClose }: { chosen: WeatherPlace[]; onClose: () => void }) {
   const markers = useMarkers();
   const add = useAddPlace();
+  const homeNow = useHome();
+  const here = homeNow.home?.kind === "here" ? homeNow.home : null;
+  const homeId = homeNow.home?.kind === "place" ? homeNow.home.id : null;
   const [locating, setLocating] = useState(false);
   const position = positionAvailable();
   const taken = new Set(chosen.map((place) => place.markerId));
@@ -179,12 +198,24 @@ function AddPlaceDialog({ chosen, onClose }: { chosen: WeatherPlace[]; onClose: 
                     onClick={() => add.mutate({ markerId: marker.id }, { onSuccess: (place) => done(place.name), onError: fail })}
                   >
                     <span className="min-w-0 flex-1 truncate text-ink">{marker.name || "Unnamed place"}</span>
-                    {marker.icon === "home" ? <Badge tone="primary">Home</Badge> : null}
+                    {marker.id === homeId ? <Badge tone="primary">Home</Badge> : null}
                   </button>
                 </li>
               ))}
             </ul>
           )}
+          {here ? (
+            <Button
+              variant="secondary"
+              disabled={add.isPending}
+              onClick={() =>
+                add.mutate({ name: here.name, lat: here.lat, lon: here.lon }, { onSuccess: (place) => done(place.name), onError: fail })
+              }
+            >
+              <MapPin />
+              Add {homeLabel(here, Date.now())}
+            </Button>
+          ) : null}
           {position.ok ? (
             <Button
               variant="secondary"

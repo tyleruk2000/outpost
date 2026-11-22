@@ -3,14 +3,14 @@ import type { GardenResponse, GardenSowing } from "@outpost/shared";
 import { fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { findPlaces, placeName } from "@/components/find-places";
-import { householdOf, householdsAnswer, ONE_HOUSEHOLD, placeHome } from "../households/test-support";
+import { householdOf, householdsAnswer, ONE_HOUSEHOLD, placeHomeIn } from "../households/test-support";
 import { fakeApi, renderScreen } from "../manage/test-support";
 import GardenPage, { heldBackText, sowingParts } from "./garden-page";
 
 const MAY = Date.UTC(2026, 4, 15, 12);
 /** One household, its home in a country. */
 const withHome = (country: string) =>
-  householdsAnswer([householdOf({ id: "household", name: "Home", home: placeHome("Home", country), country })]);
+  householdsAnswer([householdOf({ id: "household", name: "Home", home: placeHomeIn("Home", country), country })]);
 const catalogue = {
   providers: [],
   linked: [],
@@ -99,8 +99,8 @@ describe("the month", () => {
     const answer = (country: string | null) =>
       householdsAnswer(
         [
-          householdOf({ id: "household", name: "Home", home: placeHome("Home", "GB"), country: "GB" }),
-          householdOf({ id: "gran", name: "Gran's", home: country ? placeHome("Gran's", country) : null, country }),
+          householdOf({ id: "household", name: "Home", home: placeHomeIn("Home", "GB"), country: "GB" }),
+          householdOf({ id: "gran", name: "Gran's", home: country ? placeHomeIn("Gran's", country) : null, country }),
         ],
         "gran",
       );

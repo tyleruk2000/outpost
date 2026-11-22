@@ -29,6 +29,7 @@ import { conflictOf, inputOf, planKeys, useCreatePlan, usePlans } from "@/featur
 import { DaysHeld } from "@/features/emergency-plans/supplies-section";
 import { guessEmergencyNumber } from "@/features/emergency-plans/words";
 import { useHomeCountry } from "@/features/frequencies/home-country";
+import { useHome } from "@/features/households/home";
 import { api, errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { localId } from "@/lib/utils";
@@ -115,7 +116,9 @@ export function PlanningPanel({
   };
 
   const [fromId, setFromId] = useState<string | null>(null);
-  const from = places.find((place) => place.id === fromId) ?? places.find((place) => place.icon === "home") ?? places[0] ?? null;
+  // From the current household's home place first (a portable household's position is not a saved place).
+  const homeId = useHome().home?.id ?? null;
+  const from = places.find((place) => place.id === fromId) ?? places.find((place) => place.id === homeId) ?? places[0] ?? null;
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-8">

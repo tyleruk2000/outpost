@@ -24,6 +24,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { oneHouseholdOf } from "@/features/households/test-support";
 import { formatTimeOfDay } from "@/lib/clock";
 import { HourGrid, ShareBars } from "./charts";
 import { coverageRequestOf, emptyCoverageForm } from "./coverage-map/data";
@@ -85,6 +86,7 @@ function server(
       if (pathname === "/api/radio/profiles") return json({ radios: [], antennas: options.antennas ?? [] });
       if (pathname === "/api/radio/propagation/saved") return json({ saved: options.saved ?? [] });
       if (pathname === "/api/maps/markers") return json({ markers: options.markers ?? [] });
+      if (pathname === "/api/households") return json(oneHouseholdOf(options.markers ?? []));
       return json({}, 404);
     }),
   );

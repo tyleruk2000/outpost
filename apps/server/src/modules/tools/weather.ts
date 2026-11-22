@@ -23,7 +23,6 @@ import {
   type KeptCopy,
   latestReading,
   levelTrend,
-  NO_HOME_PLACE,
   northsAt,
   RANGE_WORDS,
   type RiversData,
@@ -41,7 +40,7 @@ import {
 import { z } from "zod";
 import { WEATHER_SOURCES } from "../weather/sources.ts";
 import { ageOf, defineTool, type ToolDefinition } from "./types.ts";
-import { at4, homePlace, resolveNear, unknownPlace, type Where } from "./where.ts";
+import { at4, homePlace, noHomeText, resolveNear, unknownPlace, type Where } from "./where.ts";
 
 const NOT_FETCHED = "not fetched yet: press Update now under Preparedness → Weather and hazards.";
 
@@ -236,7 +235,8 @@ export const sunAndCompass = defineTool({
       if (!where) return { held: false, text: unknownPlace(near), url: "/tools/compass" };
     } else {
       where = homePlace(ctx);
-      if (!where) return { held: false, text: `No place was given, and ${NO_HOME_PLACE} Ask again with near.`, url: "/maps" };
+      if (!where)
+        return { held: false, text: `No place was given, and ${noHomeText(ctx)} Ask again with near.`, url: "/prepare/households" };
     }
     const parts = date ? WHEN.exec(date) : null;
     const offset = date && !parts ? (DAY_WORDS[date.toLowerCase()] ?? 0) : 0;

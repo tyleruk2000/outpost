@@ -7,10 +7,10 @@
  * every 10 seconds while the map is open and in view (once a minute with reduced
  * motion), never while it is hidden. Off until switched on, remembered on this device.
  */
-import { homePlaceOf, type SatelliteElements } from "@outpost/shared";
+import type { SatelliteElements } from "@outpost/shared";
 import { useEffect, useId, useMemo, useState } from "react";
 import { Switch } from "@/components/ui/misc";
-import { useMarkers } from "@/features/maps/data";
+import { useHome } from "@/features/households/home";
 import { useStoredState } from "@/features/maps/hooks";
 import type { MapTheme } from "@/features/maps/lib/style";
 import { MAP_FONTS } from "@/features/maps/lib/style";
@@ -168,8 +168,7 @@ export function useSatellitesOnMap({ engine }: { engine: MapEngine | null }) {
   const [on, setOn] = useStoredState(ON_KEY, isBoolean, false);
   const [chosen] = useChosenSatellite();
   const data = useSatellites(on);
-  const markers = useMarkers();
-  const home = markers.data ? homePlaceOf(markers.data) : null;
+  const home = useHome().home;
   const visible = usePageVisible();
   const reduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
   const [now, setNow] = useState(() => Date.now());
