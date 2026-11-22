@@ -95,7 +95,7 @@ export function PageTitle({
           placeholder="Untitled"
           enterKeyHint="next"
           className={cn(
-            "block size-full resize-none overflow-hidden bg-transparent text-ink placeholder:text-ink-faint focus:outline-none",
+            "block size-full resize-none overflow-hidden rounded-control bg-transparent text-ink placeholder:text-ink-faint",
             face,
           )}
         />

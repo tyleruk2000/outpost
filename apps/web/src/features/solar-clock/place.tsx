@@ -129,7 +129,7 @@ export function usePlaceAndZone(): PlaceState {
                 placeholder="51.4779, -0.0015"
                 value={typed}
                 onChange={(event) => setTyped(event.target.value)}
-                className="h-9 w-full rounded-control border border-border-strong bg-page px-3 font-mono text-small text-ink placeholder:text-ink-faint hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus/30 aria-invalid:border-danger max-md:h-11"
+                className="h-9 w-full rounded-control border border-border-strong bg-page px-3 font-mono text-small text-ink placeholder:text-ink-faint hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus aria-invalid:border-danger max-md:h-11"
               />
             )}
           </Field>

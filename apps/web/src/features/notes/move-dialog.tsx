@@ -4,6 +4,7 @@ import { Command } from "cmdk";
 import { CornerLeftUp, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { searchRowFocus } from "@/components/ui/input";
 import { useIsTouch } from "./editor/use-touch";
 import { displayTitle, useNoteActions } from "./notes-data";
 import { PageIcon } from "./page-bits";
@@ -44,7 +45,7 @@ export function MoveDialog({ page, index, onClose }: { page: NoteRef; index: Tre
         size="sm"
       >
         <Command shouldFilter={false} loop label="Move to">
-          <div className="flex items-center gap-3 border-b border-border px-5">
+          <div className={`flex items-center gap-3 border-b border-border px-5 ${searchRowFocus}`}>
             <Search aria-hidden className="size-4 shrink-0 text-ink-muted" />
             <Command.Input
               // On a touch screen the list comes first: focusing the field would cover half of it with the keyboard.

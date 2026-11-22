@@ -178,7 +178,7 @@ function Predictions({ station, place, zone }: { station: TideStationDto; place:
               type="date"
               value={startText}
               onChange={(event) => setStartText(event.target.value)}
-              className="h-9 w-full rounded-control border border-border-strong bg-page px-3 text-body text-ink focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus/30 max-md:h-11"
+              className="h-9 w-full rounded-control border border-border-strong bg-page px-3 text-body text-ink focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus max-md:h-11"
             />
           )}
         </Field>

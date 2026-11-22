@@ -30,7 +30,7 @@ const STAR_CHOICES = [
 ];
 
 const inputClass =
-  "h-9 w-full rounded-control border border-border-strong bg-page px-3 text-body text-ink tabular hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus/30 aria-invalid:border-danger max-md:h-11";
+  "h-9 w-full rounded-control border border-border-strong bg-page px-3 text-body text-ink tabular hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus aria-invalid:border-danger max-md:h-11";
 
 export function NocturnalTab({ place, zone }: { place: ChosenPlace | null; zone: ZoneChoice }) {
   const style = useClockStyle();

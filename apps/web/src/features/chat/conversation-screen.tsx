@@ -109,7 +109,7 @@ function Title({
         }}
         maxLength={200}
         aria-label="Name of this conversation"
-        className="-mx-1.5 block w-[calc(100%+0.75rem)] resize-none overflow-hidden rounded-control bg-transparent px-1.5 font-title text-title text-ink max-md:min-h-11 max-md:py-1 outline-none hover:bg-surface focus-visible:bg-surface focus-visible:ring-2 focus-visible:ring-focus/40"
+        className="-mx-1.5 block w-[calc(100%+0.75rem)] resize-none overflow-hidden rounded-control bg-transparent px-1.5 font-title text-title text-ink max-md:min-h-11 max-md:py-1 outline-none hover:bg-surface focus-visible:bg-surface focus-visible:ring-2 focus-visible:ring-focus"
       />
     </h1>
   );

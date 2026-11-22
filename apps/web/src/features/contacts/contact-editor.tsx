@@ -26,7 +26,7 @@ import { toast } from "sonner";
 import { ErrorState, Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
-import { Field, Input, Textarea } from "@/components/ui/input";
+import { Field, Input, searchRowFocus, Textarea } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger, Segmented, Select, Switch } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
 import { BackToList, DetailSkeleton } from "./contact-detail";
@@ -153,7 +153,7 @@ function TagInput({ tags, onChange }: { tags: string[]; onChange: (tags: string[
       <label htmlFor={id} className="text-small font-medium text-ink">
         Tags
       </label>
-      <div className="flex flex-wrap items-center gap-1.5 rounded-control border border-border-strong bg-page p-1.5 focus-within:border-focus focus-within:ring-2 focus-within:ring-focus/30">
+      <div className="flex flex-wrap items-center gap-1.5 rounded-control border border-border-strong bg-page p-1.5 focus-within:border-focus focus-within:ring-2 focus-within:ring-focus">
         {tags.map((tag) => (
           <button
             key={tag}
@@ -218,7 +218,8 @@ function PagesInput({ pages, onChange }: { pages: ContactPageLink[]; onChange: (
         </div>
         <PopoverContent className="w-80 max-w-[calc(100vw-2rem)] p-0">
           <Command shouldFilter={false} loop label="Link a page of notes">
-            <div className="flex items-center gap-2.5 border-b border-border px-3">
+            {/* The search field draws no outline of its own: the row around it takes the 2 px focus ring. */}
+            <div className={`flex items-center gap-2.5 border-b border-border px-3 ${searchRowFocus}`}>
               <Search aria-hidden className="size-4 shrink-0 text-ink-muted" />
               <Command.Input
                 autoFocus

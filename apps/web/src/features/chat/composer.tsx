@@ -123,7 +123,7 @@ export function Composer({
         }}
         className={cn(
           "rounded-panel border border-border-strong bg-page transition-[border-color,box-shadow] duration-150",
-          "focus-within:border-focus focus-within:ring-2 focus-within:ring-focus/30",
+          "focus-within:border-focus focus-within:ring-2 focus-within:ring-focus",
         )}
       >
         {editing ? (

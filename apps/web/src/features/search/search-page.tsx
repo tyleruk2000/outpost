@@ -271,7 +271,7 @@ export default function SearchPage() {
             aria-label="Search your library"
             // biome-ignore lint/a11y/noAutofocus: the search screen exists to be typed into
             autoFocus
-            className="h-13 w-full rounded-panel border border-border-strong bg-page pr-12 pl-12 text-lead text-ink placeholder:text-ink-faint hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus/30 [&::-webkit-search-cancel-button]:hidden"
+            className="h-13 w-full rounded-panel border border-border-strong bg-page pr-12 pl-12 text-lead text-ink placeholder:text-ink-faint hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-search-cancel-button]:hidden"
           />
           {draft ? (
             <Button

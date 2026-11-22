@@ -72,7 +72,7 @@ function PageControls({
           }}
           // Wide enough for the longest page number this document has.
           style={{ width: `calc(${Math.max(2, String(pageCount).length)}ch + 1rem)` }}
-          className="h-7 rounded-control border border-border-strong bg-page px-1.5 text-center text-ink transition-[border-color,box-shadow] duration-150 hover:border-ink-faint focus-visible:border-focus focus-visible:ring-2 focus-visible:ring-focus/30 focus-visible:outline-none max-md:h-10 max-md:text-body"
+          className="h-7 rounded-control border border-border-strong bg-page px-1.5 text-center text-ink transition-[border-color,box-shadow] duration-150 hover:border-ink-faint focus-visible:border-focus focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none max-md:h-10 max-md:text-body"
         />
         of {formatNumber(pageCount)}
       </label>

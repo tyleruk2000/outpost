@@ -6,6 +6,7 @@
 import { ANTENNA_PRESETS, type AntennaProfile, antennaModelLabel, PRESET_GROUPS } from "@outpost/shared";
 import { Check, ChevronDown, Search } from "lucide-react";
 import { type KeyboardEvent, useId, useMemo, useRef, useState } from "react";
+import { searchRowFocus } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/misc";
 import { cn } from "@/lib/utils";
 
@@ -124,7 +125,7 @@ export function AntennaPicker({
           aria-invalid={invalid}
           aria-haspopup="listbox"
           aria-expanded={open}
-          className="flex h-9 w-full min-w-0 items-center justify-between gap-2 rounded-control border border-border-strong bg-page px-3 text-left text-small text-ink transition-colors hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus/30 max-md:h-11"
+          className="flex h-9 w-full min-w-0 items-center justify-between gap-2 rounded-control border border-border-strong bg-page px-3 text-left text-small text-ink transition-colors hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus max-md:h-11"
         >
           <span className={cn("min-w-0 truncate", !chosen && "text-ink-faint")}>{chosen?.name ?? "Choose an antenna"}</span>
           <ChevronDown aria-hidden className="size-4 shrink-0 text-ink-muted" />
@@ -141,7 +142,7 @@ export function AntennaPicker({
         }}
       >
         {choices.length > SEARCH_FROM ? (
-          <div className="flex items-center gap-2 border-b border-border px-2.5">
+          <div className={cn("flex items-center gap-2 border-b border-border px-2.5", searchRowFocus)}>
             <Search aria-hidden className="size-4 shrink-0 text-ink-muted" />
             <input
               type="search"

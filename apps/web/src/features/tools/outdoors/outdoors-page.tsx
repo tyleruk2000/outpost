@@ -287,7 +287,7 @@ function CoordinateInput({
           spellCheck={false}
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="h-9 w-full rounded-control border border-border-strong bg-page px-3 font-mono text-small text-ink hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus/30 aria-invalid:border-danger max-md:h-11"
+          className="h-9 w-full rounded-control border border-border-strong bg-page px-3 font-mono text-small text-ink hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus aria-invalid:border-danger max-md:h-11"
         />
       )}
     </Field>
@@ -412,7 +412,7 @@ function SunCalculator() {
               type="date"
               value={date}
               onChange={(event) => setDate(event.target.value)}
-              className="h-9 w-full rounded-control border border-border-strong bg-page px-3 text-body text-ink focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus/30 max-md:h-11"
+              className="h-9 w-full rounded-control border border-border-strong bg-page px-3 text-body text-ink focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus max-md:h-11"
             />
           )}
         </Field>

@@ -137,7 +137,7 @@ export function EchoTimeline({ tracks, analysis }: { tracks: TimelineTracks; ana
           aria-describedby={readoutId}
           onKeyDown={onKey}
           onPointerLeave={() => setActive(null)}
-          className="grid gap-1.5 rounded-control outline-none focus-visible:ring-2 focus-visible:ring-focus/40"
+          className="grid gap-1.5 rounded-control outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
           <Track label="Played" spans={tracks.played} totalMs={tracks.totalMs} colour={PLAYED} active={active} onPoint={setActive} />
           <Track label="You keyed" spans={tracks.keyed} totalMs={tracks.totalMs} colour={KEYED} active={active} onPoint={setActive} />
