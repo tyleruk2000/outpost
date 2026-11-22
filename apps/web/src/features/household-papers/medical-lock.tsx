@@ -116,7 +116,7 @@ export function OpenSheet({ sheet }: { sheet: MedicalSheet }) {
               <div className="flex flex-wrap gap-2">
                 <PassphraseInput
                   {...ids}
-                  className="min-w-[14rem] flex-1"
+                  className="min-w-[min(100%,14rem)] flex-1"
                   value={passphrase}
                   onChange={(event) => setPassphrase(event.target.value)}
                 />

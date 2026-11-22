@@ -218,6 +218,8 @@ export function SuppliesSection({
                     <label htmlFor={`${supply.id}-person`} className="flex min-h-11 items-center gap-2">
                       <Checkbox
                         id={`${supply.id}-person`}
+                        // Named with the supply: every row has the same two boxes.
+                        aria-label={`Each person: ${supply.name || `supply ${index + 1}`}`}
                         checked={supply.perPerson}
                         onCheckedChange={(checked) =>
                           onChange({ supplies: replaceAt(supplies, index, { ...supply, perPerson: checked === true }) })
@@ -228,6 +230,8 @@ export function SuppliesSection({
                     <label htmlFor={`${supply.id}-day`} className="flex min-h-11 items-center gap-2">
                       <Checkbox
                         id={`${supply.id}-day`}
+                        // Named with the supply: every row has the same two boxes.
+                        aria-label={`Each day: ${supply.name || `supply ${index + 1}`}`}
                         checked={supply.perDay}
                         onCheckedChange={(checked) =>
                           onChange({ supplies: replaceAt(supplies, index, { ...supply, perDay: checked === true }) })

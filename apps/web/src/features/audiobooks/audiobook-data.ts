@@ -46,7 +46,9 @@ export const useLibrivoxShelf = (enabled = true) =>
 /** "1 hour 12 minutes", rounded to the minute: what a running time is spoken as. */
 export function runningTime(seconds: number | null | undefined): string | null {
   if (seconds === null || seconds === undefined || !Number.isFinite(seconds) || seconds <= 0) return null;
-  const minutes = Math.max(1, Math.round(seconds / 60));
+  // A recording of a few seconds is not said to be a minute long.
+  if (seconds < 30) return "under a minute";
+  const minutes = Math.round(seconds / 60);
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
   if (hours === 0) return plural(minutes, "minute");

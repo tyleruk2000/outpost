@@ -18,6 +18,7 @@ import {
   type BookMade,
   type BookMadeInput,
   type BookResponse,
+  type BookSectionId,
   type BookSource,
   DEFAULT_BOOK_ANSWERS,
 } from "@outpost/shared";
@@ -104,6 +105,7 @@ export const bookSchema = z
     notesPages: z.number().int().min(0).max(L.notesPages).default(DEFAULT_BOOK_ANSWERS.notesPages),
     medicalInFull: z.boolean().default(false),
     planChoice: z.enum(["all", "some"]).default("all"),
+    grabCardSize: z.enum(["wallet", "a6"]).default("wallet"),
     planIds: z.array(itemId).max(200).default([]),
     baseAnswersAt: z.number().int().nonnegative().nullable().optional(),
   })
@@ -134,8 +136,17 @@ function withDefaults(stored: unknown): BookAnswers {
   const parsed = bookSchema.safeParse({ ...(stored as object) });
   if (!parsed.success) return { ...DEFAULT_BOOK_ANSWERS };
   const { baseAnswersAt: _base, ...answers } = parsed.data;
+  // Answers saved before the binder became part of the book (they have no `planChoice`) chose from fewer sections:
+  // the binder's are added, so that a book made from them has everything the binder had.
+  if (stored && typeof stored === "object" && !("planChoice" in stored)) {
+    const sections = new Set([...answers.sections, ...SECTIONS_FROM_BINDER]);
+    answers.sections = BOOK_SECTION_IDS.filter((id) => sections.has(id));
+  }
   return answers;
 }
+
+/** The sections the household binder brought into the book. */
+const SECTIONS_FROM_BINDER: BookSectionId[] = ["fridge-sheets", "places", "frequencies", "supplies", "grab-cards"];
 
 export function createBookService(
   ctx: AppContext,

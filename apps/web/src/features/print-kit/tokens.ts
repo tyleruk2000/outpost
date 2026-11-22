@@ -39,43 +39,43 @@ export const PRINT_COLOURS = {
 
 export type PrintColour = keyof typeof PRINT_COLOURS;
 
-/** The type scale, in points. The body is 9.5 pt: a printed book read at arm's length in poor light. */
+/** The type scale, in points. The body is 9 pt, the least for a book read at arm's length in poor light; nothing a person must act on is smaller. */
 export const PRINT_TYPE = {
   /** The cover's title. */
-  cover: 30,
+  cover: 34,
   /** A section's big number. */
-  sectionNumber: 30,
+  sectionNumber: 28,
   /** A section's title. */
-  title: 19,
+  title: 18,
   /** A section's grey line under the title. */
-  subtitle: 9.5,
+  subtitle: 9,
   /** A heading inside a section. */
-  heading: 12,
+  heading: 11.5,
   /** A callout's or a group's heading. */
-  label: 10,
-  body: 9.5,
+  label: 9.5,
+  body: 9,
   /** Tables of places and figures. */
-  table: 8.5,
+  table: 8,
   /** Captions, credits, notes under a table. */
-  small: 7.5,
+  small: 7,
   /** The footer and running header. */
   footer: 7,
   /** Leading: line height as a multiple of the size. */
-  leading: 1.22,
+  leading: 1.18,
 } as const;
 
 /** Spacing, in points. */
 export const PRINT_SPACE = {
   /** Between paragraphs. */
-  paragraph: 5,
+  paragraph: 3.5,
   /** Above a heading. */
-  heading: 10,
+  heading: 8,
   /** Between blocks: a callout, a table, a figure. */
-  block: 10,
+  block: 8,
   /** Inside a callout or a box. */
-  inset: 8,
+  inset: 6,
   /** Between two columns. */
-  gutter: 16,
+  gutter: 14,
 } as const;
 
 export type PrintPaper = "a4" | "letter";
@@ -87,7 +87,7 @@ export const PRINT_PAPERS: Record<PrintPaper, { width: number; height: number; l
 };
 
 /** Left, top, right, bottom. The bottom leaves room for the footer, the top for the running header. */
-export const PRINT_MARGINS: [number, number, number, number] = [48, 54, 48, 54];
+export const PRINT_MARGINS: [number, number, number, number] = [42, 50, 42, 50];
 
 /** The width text runs across on a page of this paper. */
 export const measureOf = (paper: PrintPaper): number => PRINT_PAPERS[paper].width - PRINT_MARGINS[0] - PRINT_MARGINS[2];

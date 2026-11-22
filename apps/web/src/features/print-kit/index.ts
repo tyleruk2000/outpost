@@ -6,6 +6,7 @@ export * from "./blocks";
 export * from "./components";
 export * from "./diagrams";
 export * from "./document";
+export { type FallbackFont, fallbackFor, fontRuns, printCovers, withFallbacks } from "./fallback";
 export { type RenderedPdf, renderPdf } from "./render";
 export { contentText } from "./text";
 export * from "./tokens";

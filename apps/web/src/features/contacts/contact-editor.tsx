@@ -291,7 +291,7 @@ function BirthdayInput({ value, onChange }: { value: string; onChange: (value: s
   return (
     <div className="grid gap-1.5">
       <p className="text-small font-medium text-ink">Birthday</p>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Input
           aria-label="Day of birthday"
           inputMode="numeric"
@@ -309,7 +309,7 @@ function BirthdayInput({ value, onChange }: { value: string; onChange: (value: s
             { value: "none", label: "No birthday" },
             ...MONTHS.map((name, index) => ({ value: String(index + 1).padStart(2, "0"), label: name })),
           ]}
-          className="min-w-0 flex-1"
+          className="min-w-32 flex-1"
         />
         <Input
           aria-label="Year of birth, if known"
@@ -390,7 +390,8 @@ function Form({ contact }: { contact?: ContactDto }) {
 
   return (
     <form
-      className="max-w-[40rem]"
+      // A field moved to by Tab stops short of the bar of Cancel and Save at the foot, not under it (and, on a phone, of the bar of screens below that).
+      className="max-w-[40rem] [&_:is(input,textarea,button,select,[tabindex])]:scroll-mb-20 max-md:[&_:is(input,textarea,button,select,[tabindex])]:scroll-mb-36"
       aria-labelledby="editor-title"
       // The browser's own checks would refuse an address or number written in a way it does not expect. The server says what it will not keep.
       noValidate

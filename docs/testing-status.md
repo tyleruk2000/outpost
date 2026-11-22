@@ -50,11 +50,36 @@ of what each feature does are in its own guide.
   accessibility tree. Not tried: VoiceOver, TalkBack or NVDA reading the screen names and the
   setting hints aloud; a real phone or tablet with a keyboard, switch access or the
   on-screen keyboard over a setting's field; Windows high contrast.
+- **Library, reader, notes, contacts, messages and Kept:** walked full and empty at 1280 by 800,
+  390 by 844 (Chromium and WebKit) and 320 by 568, light and dark, at 150% and 200% text, by
+  keyboard, and with their menus and dialogs open. Not tried: VoiceOver or TalkBack on a real
+  phone, a phone's own text size, the on-screen keyboard over the notes editor and the contact
+  form, a switch or voice control, and a real audiobook played to the end. The notes editor's
+  formatting bar over a selection is reached by its shortcuts, not by Tab; that it is enough has
+  not been tried with anyone who uses only a keyboard.
 - **Tools and Games, not tried:** VoiceOver or TalkBack playing any game or working any
   calculator (the move and state announcements were read from the page, not heard); a real
   phone's touch, on-screen keyboard and safe areas (only Chromium and WebKit with touch at
   phone sizes); the live compass, the phone's motion sensors and the camera on a real device;
   Windows High Contrast and forced colours; a switch device or voice control.
+- **Preparedness screens** (plans, medical sheets, Keeping in touch, grab cards, check-in, log, checks,
+  offline drill, supplies, weather): walked in Chromium at 1280, 390 and 320 wide, light and dark, text
+  at 200% and at Largest, with axe, a layout measure, a Tab walk and the accessibility tree read back,
+  and every dialog opened from the keyboard. Not tried: VoiceOver or TalkBack reading them, Safari on a
+  real iPhone (the bar of screens' room for the home indicator is worked out, not seen), Windows High
+  Contrast, a switch or voice control, the barcode scanner with a screen reader, and the sheets and
+  cards printed and read by someone with low vision.
+- **Storage, backups, downloads, import and access, not tried:** VoiceOver or TalkBack through
+  adding a location, connecting a share, restoring a backup or entering the PIN; a real USB drive
+  pulled out, a real NAS switched off and a really full disk (each was stood in for by a removed
+  folder or a changed answer from the server); the Mac Keychain prompt and real SMB mounts from
+  the Connect a network share dialog; Docker's and Linux's mount lines typed into a real system.
+- **Game boards on small phones, accepted:** Sudoku's cells are 40 px on a phone 390 px wide,
+  and the squares of Chess and Draughts, the holes of Peg solitaire, Solitaire's cards and
+  Allotment's stall are 36 to 41 px at 320 px wide. A whole board has to fit the screen, so they
+  stay under the 44 px the design asks of touch controls. They meet WCAG 2.5.8 (24 px), each is a
+  separate square with no other control inside it, and every board can also be played from the
+  keyboard.
 
 ## Installing and looking after it
 

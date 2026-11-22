@@ -187,6 +187,8 @@ export interface BookAnswers {
   medicalInFull: boolean;
   /** Which emergency plans go in the book: every one the household has, or only those in `planIds`. */
   planChoice: "all" | "some";
+  /** The size of the grab cards: wallet (two panels, folded) or A6. */
+  grabCardSize: "wallet" | "a6";
   /** The plans chosen when `planChoice` is "some". */
   planIds: string[];
 }
@@ -207,6 +209,7 @@ export const DEFAULT_BOOK_ANSWERS: BookAnswers = {
   notesPages: 2,
   medicalInFull: false,
   planChoice: "all",
+  grabCardSize: "wallet",
   planIds: [],
 };
 

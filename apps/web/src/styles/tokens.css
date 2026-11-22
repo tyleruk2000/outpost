@@ -133,6 +133,9 @@
   /* Draughts */
   --game-board-light: oklch(0.93 0.025 85);
   --game-board-dark: oklch(0.55 0.05 195);
+  /* The coordinate marks in the board's edge squares: 4.5:1 or more on the square they sit on (WCAG 1.4.3). */
+  --game-board-mark-on-light: oklch(0.42 0.05 195);
+  --game-board-mark-on-dark: oklch(0.995 0.008 85);
   --game-piece-light: oklch(0.98 0.008 90);
   --game-piece-light-edge: oklch(0.62 0.02 90);
   --game-piece-dark: oklch(0.3 0.03 30);
@@ -370,6 +373,8 @@
   --game-card-picked: oklch(0.82 0.14 78);
   --game-board-light: oklch(0.72 0.03 85);
   --game-board-dark: oklch(0.38 0.04 195);
+  --game-board-mark-on-light: oklch(0.25 0.03 195);
+  --game-board-mark-on-dark: oklch(0.95 0.02 85);
   --game-piece-light: oklch(0.95 0.008 90);
   --game-piece-light-edge: oklch(0.55 0.02 90);
   --game-piece-dark: oklch(0.25 0.03 30);

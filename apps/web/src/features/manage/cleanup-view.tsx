@@ -33,35 +33,38 @@ function Rung({
 }) {
   const id = `rung-${title.replace(/\W+/g, "-").toLowerCase()}`;
   return (
-    <section aria-labelledby={id} className="grid gap-x-10 gap-y-4 border-t border-border py-8 first:border-t-0 lg:grid-cols-[17rem_1fr]">
-      <div>
-        <h2 id={id} className="text-lead font-semibold text-ink">
-          {title}
-        </h2>
-        <p className="mt-1 text-small text-pretty text-ink-muted">{summary}</p>
-      </div>
-      <div className="grid max-w-[44rem] gap-4">
-        <div className="grid gap-x-8 gap-y-3 text-small sm:grid-cols-2">
-          <div>
-            <h3 className="font-semibold text-ink">Removes</h3>
-            <ul className="mt-1 grid gap-1 text-pretty text-ink">
-              {removes.map((line, index) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: a fixed list of sentences
-                <li key={index}>{line}</li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <h3 className="font-semibold text-ink">Keeps</h3>
-            <ul className="mt-1 grid gap-1 text-pretty text-ink-muted">
-              {keeps.map((line, index) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: a fixed list of sentences
-                <li key={index}>{line}</li>
-              ))}
-            </ul>
-          </div>
+    <section aria-labelledby={id} className="@container border-t border-border py-8 first:border-t-0">
+      {/* Side by side only where the room is there in rem, so that larger text stacks them instead of squeezing them. */}
+      <div className="grid gap-x-10 gap-y-4 @4xl:grid-cols-[17rem_minmax(0,1fr)]">
+        <div>
+          <h2 id={id} className="text-lead font-semibold text-ink">
+            {title}
+          </h2>
+          <p className="mt-1 text-small text-pretty text-ink-muted">{summary}</p>
         </div>
-        {children}
+        <div className="@container grid max-w-[44rem] gap-4">
+          <div className="grid gap-x-8 gap-y-3 text-small @xl:grid-cols-2">
+            <div>
+              <h3 className="font-semibold text-ink">Removes</h3>
+              <ul className="mt-1 grid gap-1 text-pretty text-ink">
+                {removes.map((line, index) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: a fixed list of sentences
+                  <li key={index}>{line}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-semibold text-ink">Keeps</h3>
+              <ul className="mt-1 grid gap-1 text-pretty text-ink-muted">
+                {keeps.map((line, index) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: a fixed list of sentences
+                  <li key={index}>{line}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          {children}
+        </div>
       </div>
     </section>
   );

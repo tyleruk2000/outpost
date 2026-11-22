@@ -224,7 +224,7 @@ describe("the book's pages", () => {
   const all = texts(book);
 
   it("has a cover with the number to call, a contents page, and the sections numbered in order", () => {
-    expect(all).toContain("The Rowans: household book");
+    expect(all).toContain("Household book The Rowans Made on 21 November 2026");
     expect(all).toMatch(/In an emergency, call .{0,80}999/);
     expect(all).toContain("Contents");
     expect(book.contents.map((entry) => entry.label)).toContain("First aid");
@@ -526,7 +526,11 @@ describe("what the binder held, now in the book", () => {
     expect(words).toMatch(/Licence-free radio: no licence needed, within the power and equipment limits/);
     expect(words).toMatch(/Listening: no licence needed\./);
     expect(words).toMatch(/GB3XX 145\.7250 MHz 145\.1250 MHz 77 Hz Hilltop 12 km E/);
-    expect(words).toMatch(/Amateur radio repeaters\. Listening: no licence needed\. Transmitting: needs an amateur licence\./);
+    expect(words).toMatch(/GB3XX .* Licence needed/);
+    expect(words).toMatch(/Notes .*Listening: no licence needed\. Transmitting: needs an amateur licence\./);
+    // Short statuses in the tables, the legal words once each in the notes.
+    expect(words).toMatch(/No licence Listen only Licence needed/);
+    expect(words.match(/Licence-free radio: no licence needed/g)).toHaveLength(1);
   });
 
   it("lists the supplies kept, and a grab card for each person", () => {
@@ -563,6 +567,9 @@ describe("what the binder held, now in the book", () => {
         const printed = await renderPdf(full.document);
         fs.writeFileSync(path.join(process.env.OUTPOST_PRINT_SAMPLES!, `full-${paper}.pdf`), printed.bytes);
       }
+      // Only the grab cards, at A6.
+      const cards = makeBook(inputs({ answers: { ...inputs().answers, sections: ["grab-cards"], grabCardSize: "a6" } }));
+      fs.writeFileSync(path.join(process.env.OUTPOST_PRINT_SAMPLES!, "cards-a6.pdf"), (await renderPdf(cards.document)).bytes);
     },
     60_000,
   );
@@ -600,7 +607,7 @@ describe("what the binder held, now in the book", () => {
       resolved: { contacts: {}, places: {}, repeaters: {}, mesh: {} },
     } as unknown as BookInputs["comms"];
     const withPlan = texts(makeBook(inputs({ comms })));
-    expect(withPlan).toMatch(/Our communication plan's channels Channel Frequency Licence Our plan: PMR446/);
+    expect(withPlan).toMatch(/Our communication plan's channels Name Frequency Licence Our plan: PMR446/);
   });
 });
 

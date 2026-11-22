@@ -30,6 +30,9 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+/** Brings a notice that appears at the foot of a long dialog into sight, rather than leaving it below the fold on a phone. */
+const intoSight = (node: HTMLDivElement | null) => node?.scrollIntoView?.({ block: "nearest" });
+
 /** Why the download could not start, in words that say what to do next. */
 function StartError({ error, locationName }: { error: unknown; locationName: string | undefined }) {
   if (error instanceof ApiError && error.code === "insufficient_space") {
@@ -234,7 +237,9 @@ function DownloadForm({
         </div>
 
         {start.isError ? (
-          <StartError error={start.error} locationName={locations.find((item) => item.id === start.variables)?.name} />
+          <div ref={intoSight}>
+            <StartError error={start.error} locationName={locations.find((item) => item.id === start.variables)?.name} />
+          </div>
         ) : null}
       </DialogBody>
       <DialogFooter>

@@ -7,7 +7,7 @@
 import fs from "node:fs";
 import type { Page } from "@playwright/test";
 import { api, expect, test, watchForErrors } from "./fixtures";
-import { keep } from "./map-fixture";
+import { CENTRE, type InstalledTestMaps, installTestMaps, keep, removeTestMaps, SUMMIT } from "./map-fixture";
 
 /** Waits until the server has read a document's text, and returns it run together. */
 async function readByLibrary(page: Page, documentId: string) {
@@ -22,9 +22,12 @@ async function readByLibrary(page: Page, documentId: string) {
 }
 
 test.describe("the household book", () => {
-  const made: { documents: string[]; plans: string[] } = { documents: [], plans: [] };
+  const made: { documents: string[]; plans: string[]; markers: string[] } = { documents: [], plans: [], markers: [] };
+  let maps: InstalledTestMaps | undefined;
   test.afterAll(async ({ browser }) => {
     const page = await browser.newPage();
+    await removeTestMaps(page, maps);
+    for (const id of made.markers) await page.request.delete(`/api/maps/markers/${id}`, { headers: { "X-Outpost-Request": "1" } });
     for (const id of made.documents) await page.request.delete(`/api/documents/${id}`, { headers: { "X-Outpost-Request": "1" } });
     for (const id of made.plans) await page.request.delete(`/api/emergency-plans/${id}`, { headers: { "X-Outpost-Request": "1" } });
     await page.close();
@@ -55,6 +58,11 @@ test.describe("the household book", () => {
       },
     });
     made.plans.push(plan.plan.id);
+    // Home and a meeting point on the test map, for the page of home and the meeting points.
+    maps = await installTestMaps(page);
+    const home = await api(page, "POST", "/api/maps/markers", { name: "Book home", lat: CENTRE.lat, lon: CENTRE.lon, icon: "home" });
+    const hill = await api(page, "POST", "/api/maps/markers", { name: SUMMIT.name, lat: SUMMIT.lat, lon: SUMMIT.lon });
+    made.markers.push(home.marker.id, hill.marker.id);
 
     // The binder's old address opens the book.
     await page.goto("/prepare/binder");
@@ -67,6 +75,7 @@ test.describe("the household book", () => {
       householdName: "The Rowans",
       paper: "a4",
       notesPages: 0,
+      meetingPoints: [{ id: "m1", markerId: hill.marker.id, role: "near", note: "By the cairn" }],
       baseAnswersAt: book.answersAt,
     });
     await page.reload();
@@ -86,6 +95,8 @@ test.describe("the household book", () => {
     expect(file).toContain("595.28 841.89");
     // The typeface is in the file, not one a reader is asked to supply.
     expect(file).toMatch(/\/FontName \/[A-Z]{6}\+AtkinsonHyperlegibleNext/);
+    // The map of home and the meeting points, drawn from the offline map on this device, is a picture in it.
+    expect(file).toContain("/Subtype /Image");
 
     await page.getByRole("button", { name: "Add to library" }).click();
     await page.getByRole("alertdialog").getByRole("button", { name: "Add to library" }).click();

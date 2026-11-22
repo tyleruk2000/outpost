@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { Segmented, Select } from "@/components/ui/misc";
 import { useHomeCountry } from "@/features/frequencies/home-country";
+import { SAVE_BAR_ROOM } from "@/features/household-papers/save-bar";
 import { errorMessage } from "@/lib/api";
 import { formatNumber, localId, plural } from "@/lib/utils";
 import { useSetHousehold } from "./data";
@@ -169,6 +170,8 @@ export function HouseholdView({ household }: { household: Household }) {
         event.preventDefault();
         submit();
       }}
+      // What Tab reaches is scrolled clear of the bar with Save at the foot (WCAG 2.4.11).
+      className={SAVE_BAR_ROOM}
     >
       <Notice className="mb-8">
         These are planning figures for a store of food and water, from official guidance, and not dietary advice. A baby, someone pregnant,
@@ -247,8 +250,8 @@ export function HouseholdView({ household }: { household: Household }) {
               const table = member.kind === "person" ? tableKcal(member.band, member.sex, energyTable) : null;
               return (
                 <li key={member.key} className="grid gap-3 py-4">
-                  <div className="flex items-end gap-2">
-                    <Field label={member.kind === "pet" ? "Pet's name" : "Name"} optional className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-end justify-end gap-2">
+                    <Field label={member.kind === "pet" ? "Pet's name" : "Name"} optional className="min-w-[min(100%,10rem)] flex-1">
                       {(ids) => (
                         <Input
                           {...ids}

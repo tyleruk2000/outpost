@@ -5,7 +5,7 @@
  */
 import type { Content, ContentSection, DynamicContent, TDocumentDefinitions } from "pdfmake/interfaces";
 import { footer, runningHeader } from "./components";
-import { measureOf, PRINT_COLOURS, PRINT_FONT, PRINT_MARGINS, PRINT_PAPERS, PRINT_TYPE, type PrintPaper } from "./tokens";
+import { PRINT_COLOURS, PRINT_FONT, PRINT_MARGINS, PRINT_PAPERS, PRINT_TYPE, type PrintPaper } from "./tokens";
 
 export interface PrintPart {
   /** cover: no header or footer. section: the running header and the footer. plain: the footer only. */
@@ -13,6 +13,12 @@ export interface PrintPart {
   content: Content[];
   /** The running header's words: "3 · Water". */
   running?: string;
+  /** Drawn behind every page of the part, from the page's top-left corner, ignoring the margins: a cover's band. */
+  background?: Content;
+  /** Landscape pages, for things laid out across (A6 cards two to a sheet). */
+  orientation?: "portrait" | "landscape";
+  /** Margins of its own: left, top, right, bottom. */
+  margins?: [number, number, number, number];
 }
 
 export interface PrintBook {
@@ -47,14 +53,25 @@ function firstPages() {
 
 export function printDocument(book: PrintBook): TDocumentDefinitions {
   const paper = PRINT_PAPERS[book.paper];
-  const measure = measureOf(book.paper);
+
   const isFirst = firstPages();
   const foot = footer(book.footerName, book.footerRight, PRINT_MARGINS);
-  const sections: ContentSection[] = book.parts.map((part, index) => ({
-    section: part.content,
-    header: part.kind === "section" && part.running ? runningHeader(part.running, PRINT_MARGINS, measure, isFirst(index)) : null,
-    footer: part.kind === "cover" ? null : foot,
-  }));
+  const sections: ContentSection[] = book.parts.map((part, index) => {
+    const across = part.orientation === "landscape";
+    const margins = part.margins ?? PRINT_MARGINS;
+    const width = across ? paper.height : paper.width;
+    return {
+      section: part.content,
+      header:
+        part.kind === "section" && part.running
+          ? runningHeader(part.running, margins, width - margins[0] - margins[2], isFirst(index))
+          : null,
+      footer: part.kind === "cover" ? null : part.margins ? footer(book.footerName, book.footerRight, margins) : foot,
+      ...(across ? { pageSize: { width: paper.height, height: paper.width } } : {}),
+      ...(part.margins ? { pageMargins: part.margins } : {}),
+      ...(part.background ? { background: part.background } : {}),
+    } as ContentSection;
+  });
   return {
     pageSize: { width: paper.width, height: paper.height },
     pageMargins: PRINT_MARGINS,

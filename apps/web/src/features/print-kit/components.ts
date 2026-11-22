@@ -9,7 +9,7 @@
  * (tokens.ts). docs/development/printed-pages.md says how to use them.
  */
 import type { Content, ContentTable, CustomTableLayout, DynamicContent, TableCell } from "pdfmake/interfaces";
-import { PRINT_COLOURS as C, PRINT_FONT, PRINT_SPACE as S, PRINT_TYPE as T } from "./tokens";
+import { PRINT_COLOURS as C, PRINT_FONT, PRINT_MARGINS, PRINT_PAPERS, type PrintPaper, PRINT_SPACE as S, PRINT_TYPE as T } from "./tokens";
 
 /**
  * Marks the typeface does not have, written with ones it does: the minutes and seconds of
@@ -214,11 +214,11 @@ export function steps(items: Array<string | Content>, options: { mark?: StepMark
   return {
     stack: items.map((item, index) => ({
       columns: [
-        { svg: stepDisc(stepMark(index + (options.start ?? 0), mark), colour), width: 14, height: 14 },
-        { stack: [typeof item === "string" ? rich(item) : item], width: "*", margin: [0, 1, 0, 0] },
+        { svg: stepDisc(stepMark(index + (options.start ?? 0), mark), colour), width: 11.5, height: 11.5, margin: [0, 0.5, 0, 0] },
+        { stack: [typeof item === "string" ? rich(item) : item], width: "*", margin: [0, 0.5, 0, 0] },
       ],
-      columnGap: 7,
-      margin: [0, 0, 0, 5],
+      columnGap: 5,
+      margin: [0, 0, 0, 3],
       unbreakable: true,
     })),
     margin: [0, 0, 0, S.paragraph],
@@ -234,8 +234,8 @@ const ruledLayout: CustomTableLayout = {
   fillColor: (row) => (row === 0 ? C.shade : null),
   paddingLeft: (index) => (index === 0 ? 4 : 5),
   paddingRight: () => 5,
-  paddingTop: () => 2.6,
-  paddingBottom: () => 2.6,
+  paddingTop: () => 2,
+  paddingBottom: () => 2,
 };
 
 /**
@@ -266,24 +266,29 @@ export function columnWidths(head: string[], rows: string[][]): string[] {
 /** A table of facts or figures: a shaded head, hairlines between rows, figures to the right where asked. */
 export function dataTable(
   head: string[],
-  rows: string[][],
-  options: { right?: number[]; widths?: Array<number | "*" | "auto">; bold?: number[] } = {},
+  /** Each cell is words (with **bold** runs), or content of its own: a licence status, a box to tick. */
+  rows: Array<Array<string | Content>>,
+  options: { right?: number[]; widths?: Array<number | string>; bold?: number[] } = {},
 ): Content {
   const right = new Set(options.right ?? []);
-  const cell = (text: string, column: number, isHead: boolean): TableCell => ({
-    text: rich(text) as never,
-    bold: isHead || options.bold?.includes(column),
-    fontSize: isHead ? T.small + 0.5 : T.table,
-    color: isHead ? C.ink : C.ink,
-    alignment: right.has(column) ? "right" : "left",
-  });
+  const cell = (text: string | Content, column: number, isHead: boolean): TableCell =>
+    typeof text === "string"
+      ? {
+          text: rich(text) as never,
+          bold: isHead || options.bold?.includes(column),
+          fontSize: isHead ? T.small + 0.5 : T.table,
+          color: C.ink,
+          alignment: right.has(column) ? "right" : "left",
+        }
+      : (text as TableCell);
   const filled = head.some((title) => title.trim() !== "");
   const body = [
     ...(filled ? [head.map((title, column) => cell(title, column, true))] : []),
     ...rows.map((row) => head.map((_, column) => cell(row[column] ?? "", column, false))),
   ];
+  const words = rows.map((row) => row.map((value) => (typeof value === "string" ? value : "xxxxxxxxxxxx")));
   return {
-    table: { headerRows: filled ? 1 : 0, widths: options.widths ?? columnWidths(head, rows), body, dontBreakRows: true },
+    table: { headerRows: filled ? 1 : 0, widths: options.widths ?? columnWidths(head, words), body, dontBreakRows: true },
     layout: filled
       ? ruledLayout
       : {
@@ -293,6 +298,93 @@ export function dataTable(
         },
     margin: [0, 2, 0, S.block],
   } as Content;
+}
+
+// ── Licence status and numbered notes ───────────────────────────────────────
+
+/** Whether a frequency needs a licence: free to talk on, to listen to only, or a licence to talk. */
+export type LicenceStatusKind = "free" | "listen" | "licence";
+
+const LICENCE_STATUS: Record<LicenceStatusKind, { words: string; colour: string; mark: string }> = {
+  // An open ring, a half-filled ring and a filled square: told apart in grey as well as in colour.
+  free: {
+    words: "No licence",
+    colour: C.accent,
+    mark: `<circle cx="4" cy="4" r="3.1" fill="none" stroke="${C.accent}" stroke-width="1.3"/>`,
+  },
+  listen: {
+    words: "Listen only",
+    colour: C.know,
+    mark: `<circle cx="4" cy="4" r="3.1" fill="none" stroke="${C.know}" stroke-width="1.3"/><path d="M4 0.9 A3.1 3.1 0 0 0 4 7.1 Z" fill="${C.know}"/>`,
+  },
+  licence: { words: "Licence needed", colour: C.act, mark: `<rect x="0.8" y="0.8" width="6.4" height="6.4" fill="${C.act}"/>` },
+};
+
+/** A licence status in two words with its mark, and the numbers of the notes that say why. */
+export function licenceStatus(kind: LicenceStatusKind, notes: number[] = []): Content {
+  const status = LICENCE_STATUS[kind];
+  const cited = [...new Set(notes)].filter((number) => number > 0);
+  return {
+    columns: [
+      {
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 8 8">${status.mark}</svg>`,
+        width: 7,
+        margin: [0, 1.5, 0, 0],
+      },
+      {
+        width: "*",
+        text: [
+          { text: status.words, bold: true, color: status.colour },
+          ...(cited.length > 0 ? [{ text: ` ${cited.join(",")}`, sup: true, color: C.muted }] : []),
+        ],
+        fontSize: T.table,
+      },
+    ],
+    columnGap: 3,
+  } as Content;
+}
+
+/** The three statuses with their marks, in one line: the key to a table of them. */
+export function licenceKey(): Content {
+  return {
+    columns: (Object.keys(LICENCE_STATUS) as LicenceStatusKind[]).map((kind) => ({ width: "auto", stack: [licenceStatus(kind)] })),
+    columnGap: 14,
+    margin: [0, 0, 0, S.paragraph + 2],
+  } as Content;
+}
+
+/**
+ * Notes at the end of a section, numbered in the order first cited. The same words cited
+ * twice are one note with one number, so rows that rest on the same source share it.
+ */
+export class NoteList {
+  private notes: string[] = [];
+  /** The note's number, from 1; 0 for no words. */
+  cite(words: string): number {
+    const text = words.trim();
+    if (!text) return 0;
+    const at = this.notes.indexOf(text);
+    if (at >= 0) return at + 1;
+    this.notes.push(text);
+    return this.notes.length;
+  }
+  get size(): number {
+    return this.notes.length;
+  }
+  /** The notes, numbered, small. */
+  content(): Content[] {
+    if (this.notes.length === 0) return [];
+    return [
+      {
+        ol: this.notes.map((text) => rich(text)),
+        fontSize: T.small,
+        color: C.muted,
+        markerColor: C.muted,
+        lineHeight: 1.12,
+        margin: [0, 0, 0, S.paragraph],
+      } as Content,
+    ];
+  }
 }
 
 /** A box to tick, drawn. */
@@ -393,6 +485,66 @@ export function card(lines: Array<string | Content>, width: number): Content {
     layout: boxLayout(C.muted, 0.9, true, C.paper, 10),
     unbreakable: true,
     margin: [0, 0, 0, 12],
+  } as Content;
+}
+
+/**
+ * A card to print at its real size and cut out: each panel `width` by `height` points,
+ * panels one above the other with a broken fold line between, and corner marks outside
+ * to cut along. A wallet card is two panels (front and back, folded); an A6 card one.
+ */
+export function cutCard(panels: Content[][], size: { width: number; height: number; inset?: number }): Content {
+  const { width, height } = size;
+  const inset = size.inset ?? 8;
+  const total = height * panels.length;
+  const mark = 7;
+  const gap = 3;
+  const marks = [];
+  for (const [x, y, dx, dy] of [
+    [0, 0, -1, -1],
+    [width, 0, 1, -1],
+    [0, total, -1, 1],
+    [width, total, 1, 1],
+  ] as const) {
+    marks.push({ type: "line" as const, x1: x + dx * gap, y1: y, x2: x + dx * (gap + mark), y2: y, lineWidth: 0.5, lineColor: C.ink });
+    marks.push({ type: "line" as const, x1: x, y1: y + dy * gap, x2: x, y2: y + dy * (gap + mark), lineWidth: 0.5, lineColor: C.ink });
+  }
+  for (let index = 1; index < panels.length; index += 1)
+    marks.push({
+      type: "line" as const,
+      x1: 0,
+      y1: height * index,
+      x2: width,
+      y2: height * index,
+      lineWidth: 0.5,
+      lineColor: C.muted,
+      dash: { length: 3, space: 2 },
+    });
+  return {
+    // The marks first, taking the card's room; the card is laid over them, drawn back up by that room.
+    stack: [
+      { canvas: marks },
+      {
+        table: {
+          widths: [width - 2 * inset],
+          heights: panels.map(() => height - 2 * inset),
+          body: panels.map((panel) => [{ stack: panel }]),
+          dontBreakRows: true,
+        },
+        layout: {
+          hLineWidth: () => 0,
+          vLineWidth: () => 0,
+          paddingLeft: () => inset,
+          paddingRight: () => inset,
+          paddingTop: () => inset,
+          paddingBottom: () => inset,
+        },
+        margin: [0, -(total + gap + mark), 0, 0],
+      },
+    ],
+    unbreakable: true,
+    width,
+    margin: [mark + gap, mark + gap, 0, mark + gap + 4],
   } as Content;
 }
 
@@ -497,6 +649,108 @@ export function cover(input: CoverInput): Content[] {
       margin: [0, 0, 0, 20],
     },
   ] as Content[];
+}
+
+export interface BookCoverInput {
+  /** "Household book". */
+  kicker: string;
+  /** The household's name, large: "The Rowans". */
+  title: string;
+  /** "Made on 22 November 2026 from what Outpost held then." */
+  subtitle: string;
+  call: { label: string; number: string; note?: string };
+  facts: Array<[string, string]>;
+  /** A drawing for the band at the top (contourArt), as wide as the page. */
+  art?: string;
+  /** A small map of where home is, as SVG, with its caption. */
+  locator?: { svg: string; caption: string };
+  /** What the book is, at the foot of the cover. */
+  footnote?: string;
+  paper: PrintPaper;
+}
+
+/** The band at the top of the cover, in points. */
+export const COVER_BAND = 300;
+
+/**
+ * A cover to keep on a shelf: a band of Outpost's colour across the top with a contour
+ * drawing in it, the household's name large in the band, then the number to call, the
+ * facts beside a small map of where home is, and a line at the foot. Give `background`
+ * to the cover part (PrintPart.background) and `content` as its content.
+ */
+export function bookCover(input: BookCoverInput): { content: Content[]; background: Content } {
+  const page = PRINT_PAPERS[input.paper];
+  const measure = page.width - PRINT_MARGINS[0] - PRINT_MARGINS[2];
+  const background: Content = [
+    { canvas: [{ type: "rect", x: 0, y: 0, w: page.width, h: COVER_BAND, color: C.accent }], absolutePosition: { x: 0, y: 0 } },
+    ...(input.art ? [{ svg: input.art, width: page.width, absolutePosition: { x: 0, y: 0 } }] : []),
+    {
+      canvas: [{ type: "line", x1: PRINT_MARGINS[0], y1: 0, x2: page.width - PRINT_MARGINS[2], y2: 0, lineWidth: 0.6, lineColor: C.rule }],
+      absolutePosition: { x: 0, y: page.height - 40 },
+    },
+    ...(input.footnote
+      ? [{ text: input.footnote, fontSize: T.small, color: C.muted, absolutePosition: { x: PRINT_MARGINS[0], y: page.height - 34 } }]
+      : []),
+  ] as Content;
+  const facts: Content = {
+    table: {
+      widths: [62, "*"],
+      body: input.facts.map(([name, value]) => [
+        { text: name, bold: true, color: C.muted, fontSize: 9 },
+        { text: rich(value) as never, fontSize: 10 },
+      ]),
+    },
+    layout: {
+      hLineWidth: (index: number) => (index === 0 ? 0 : 0.4),
+      vLineWidth: () => 0,
+      hLineColor: () => C.rule,
+      paddingLeft: () => 0,
+      paddingTop: () => 5,
+      paddingBottom: () => 5,
+    },
+  } as Content;
+  const content = [
+    { text: input.kicker, fontSize: 12, bold: true, color: "#cfe3e6", characterSpacing: 1, margin: [0, 104, 0, 8] },
+    { text: printable(input.title), fontSize: T.cover + 4, bold: true, color: "#ffffff", lineHeight: 1.02, margin: [0, 0, 0, 10] },
+    { text: input.subtitle, fontSize: 11, color: "#e4f0f2", margin: [0, 0, 0, 0] },
+    {
+      table: {
+        widths: ["*", "auto"],
+        body: [
+          [
+            {
+              stack: [
+                { text: input.call.label, fontSize: 14, bold: true, color: C.act },
+                ...(input.call.note ? [{ text: input.call.note, fontSize: T.body, color: C.ink, margin: [0, 4, 0, 0] }] : []),
+              ],
+              margin: [0, 8, 0, 0],
+            },
+            { text: input.call.number, fontSize: 48, bold: true, color: C.act, alignment: "right", lineHeight: 0.95 },
+          ],
+        ],
+      },
+      layout: boxLayout(C.act, 2, false, C.actSoft, 14),
+      absolutePosition: { x: PRINT_MARGINS[0], y: COVER_BAND + 28 },
+    },
+    {
+      columns: input.locator
+        ? [
+            { width: measure - 208, stack: [facts] },
+            {
+              width: 190,
+              stack: [
+                { svg: input.locator.svg, width: 190 },
+                { text: input.locator.caption, fontSize: T.small, color: C.muted, margin: [0, 3, 0, 0] },
+              ],
+            },
+          ]
+        : [{ width: "*", stack: [facts] }],
+      columnGap: 18,
+      absolutePosition: { x: PRINT_MARGINS[0], y: COVER_BAND + 130 },
+      width: measure,
+    } as Content,
+  ];
+  return { content: content as Content[], background };
 }
 
 /** A page of ruled lines with a heading. */

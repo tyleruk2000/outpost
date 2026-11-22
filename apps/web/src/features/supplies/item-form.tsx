@@ -188,7 +188,7 @@ export function Stepper({
     onChange(String(Math.max(0, Math.round((current + by) * 100) / 100)));
   };
   return (
-    <div className="flex items-stretch gap-2">
+    <div className="flex max-w-full items-stretch gap-2">
       <Button variant="secondary" size="icon" className="size-11" aria-label={`One fewer: ${label}`} onClick={() => step(-1)}>
         <Minus />
       </Button>
@@ -199,7 +199,7 @@ export function Stepper({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         inputMode="decimal"
-        className="tabular h-11 w-24 text-center text-lead"
+        className="tabular h-11 w-24 min-w-0 shrink text-center text-lead"
       />
       <Button variant="secondary" size="icon" className="size-11" aria-label={`One more: ${label}`} onClick={() => step(1)}>
         <Plus />
@@ -306,7 +306,10 @@ export function ItemDialog({
         }
         onOpenAutoFocus={(event) => {
           event.preventDefault();
-          (item ? null : nameRef.current)?.focus();
+          // A change starts on the dialog itself, which raises no phone keyboard; the focus must still move into
+          // it, or Tab would go on through the screen behind (WCAG 2.4.3).
+          if (item) (event.target as HTMLElement | null)?.focus();
+          else nameRef.current?.focus();
         }}
       >
         <form

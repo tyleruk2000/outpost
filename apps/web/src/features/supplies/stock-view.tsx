@@ -56,11 +56,25 @@ export function ItemFacts({ item, today, className }: { item: SupplyItem; today:
   );
 }
 
-/** Minus and plus for one row: 44 px each, so that a thumb finds them. */
+/**
+ * Minus and plus for one row: 44 px each, so that a thumb finds them. The new count is
+ * said after a press, since the figure between them is not read out (WCAG 4.1.3). At
+ * nought minus is marked unavailable rather than disabled: a disabled button drops the
+ * keyboard's focus to the top of the page.
+ */
 export function Adjuster({ item }: { item: SupplyItem }) {
   const adjust = useAdjust();
+  const [said, setSaid] = useState("");
   // "Use one tin of Baked beans"; counted without a unit, "Use one of AA batteries".
-  const one = item.unit ? `one ${item.unit}` : "one";
+  // A unit typed in the plural ("bottles") is left out, not read as "one bottles".
+  const unit = item.unit.trim();
+  const one = unit && !/[^s]s$/i.test(unit) ? `one ${unit}` : "one";
+  const none = item.quantity <= 0;
+  const press = (by: -1 | 1) => {
+    if (by < 0 && none) return setSaid(`None of ${item.name} left to use.`);
+    adjust.mutate({ id: item.id, by });
+    setSaid(`${quantityWords(Math.max(0, item.quantity + by), item.unit)} of ${item.name}.`);
+  };
   return (
     <div className="relative flex shrink-0 items-center gap-1">
       <Button
@@ -68,23 +82,20 @@ export function Adjuster({ item }: { item: SupplyItem }) {
         size="icon"
         className="size-11"
         aria-label={`Use ${one} of ${item.name}`}
-        disabled={item.quantity <= 0}
-        onClick={() => adjust.mutate({ id: item.id, by: -1 })}
+        aria-disabled={none || undefined}
+        onClick={() => press(-1)}
       >
         <Minus />
       </Button>
       <span className="tabular w-9 text-center text-lead text-ink" aria-hidden>
         {Math.round(item.quantity * 100) / 100}
       </span>
-      <Button
-        variant="secondary"
-        size="icon"
-        className="size-11"
-        aria-label={`Add ${one} of ${item.name}`}
-        onClick={() => adjust.mutate({ id: item.id, by: 1 })}
-      >
+      <Button variant="secondary" size="icon" className="size-11" aria-label={`Add ${one} of ${item.name}`} onClick={() => press(1)}>
         <Plus />
       </Button>
+      <span className="sr-only" aria-live="polite">
+        {said}
+      </span>
     </div>
   );
 }
@@ -128,28 +139,30 @@ export function StockView({ items, locations, onAdd }: { items: SupplyItem[]; lo
   const categories = SUPPLY_CATEGORIES.filter((entry) => items.some((item) => item.category === entry.id));
   return (
     <div>
-      <div className="mb-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
+      {/* Wraps rather than sharing a fixed row: with large text the two choices go under the search, which keeps its width. */}
+      <div className="mb-4 flex flex-wrap items-end gap-3">
         <Input
           type="search"
           aria-label="Find in supplies"
           placeholder="Find by name, note or barcode"
           value={text}
           onChange={(event) => setText(event.target.value)}
+          className="min-w-[min(100%,16rem)] flex-1"
         />
-        <div className="grid grid-cols-2 gap-3 sm:contents">
+        <div className="grid w-full grid-cols-2 gap-3 sm:flex sm:w-auto sm:max-w-full sm:flex-wrap">
           <Select<string>
             aria-label="Category"
             value={category}
             onChange={(value) => setCategory(value as SupplyCategory | typeof EVERY)}
             options={[{ value: EVERY, label: "Every category" }, ...categories.map((entry) => ({ value: entry.id, label: entry.label }))]}
-            className="sm:w-44"
+            className="max-w-full sm:w-44"
           />
           <Select<string>
             aria-label="Kept in"
             value={place}
             onChange={setPlace}
             options={[{ value: EVERY, label: "Everywhere" }, ...locations.map((location) => ({ value: location, label: location }))]}
-            className="sm:w-44"
+            className="max-w-full sm:w-44"
           />
         </div>
       </div>

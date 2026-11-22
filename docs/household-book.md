@@ -35,7 +35,8 @@ you through them again.
    emergency plans**, choose whether all of them go in the book or only some.
 6. **What goes in the book.** The household's name for the cover, the paper (A4 or US
    Letter, first set from the country home is in), the sections, blank pages for notes,
-   and whether each medical sheet goes in in full. Untick sections to print only some.
+   whether each medical sheet goes in in full, and the size of the grab cards (wallet or
+   A6). Untick sections to print only some.
 
 ## What is in the book
 
@@ -63,7 +64,7 @@ foot.
 | Checklists | A shopping list for your people and days, the grab bag, the first aid kit and the car, with a box for **Got it** and **To get** |
 | Supplies | What is kept, where and until when, and how long it lasts |
 | Local risks | Flood and emergency planning zones at home where a layer is held, and the climate's extremes |
-| Grab cards | A card for each person, to cut out: medical lines, who to call, where to meet, home's position |
+| Grab cards | A card for each person at its real size, wallet (folded) or A6, with marks to cut along: medical lines, who to call, where to meet, home's position |
 | Cards for the children | A card each, to cut out |
 | Pages for notes | Ruled pages |
 
@@ -75,6 +76,21 @@ only some, and **Make the book again** when the book is older than the plans.
 Something the book needs and Outpost does not hold is said where it belongs, with how to
 get it: a reference layer (**Maps → Layers**), the climate for home (**Weather and
 hazards → Climate**), terrain for the journeys, a communication plan.
+
+## Radio frequencies and licences
+
+Each frequency says in two words whether it needs a licence: **No licence**, **Listen
+only** or **Licence needed**, each with its own mark so it reads on a black-and-white
+copy. The rules behind them, and anything Outpost's list says about listening, are
+numbered notes at the end of the section.
+
+## Names in other scripts
+
+The book's typeface has Latin letters only. A name in Greek, Cyrillic, Arabic, Hebrew,
+Devanagari, Thai, Chinese, Japanese kana or Korean is set in a Noto Sans font, kept in
+Outpost and loaded only when a book needs it. A rare Chinese or Korean character outside
+the common set prints as an empty box. Arabic and Hebrew print in the order they were
+typed, not right to left.
 
 ## Journeys
 
