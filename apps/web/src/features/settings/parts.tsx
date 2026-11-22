@@ -165,7 +165,7 @@ export function NumberSetting({
   const range = `${decimals ? "a number" : "a whole number"} from ${min} to ${max}`;
   return (
     <span className="grid justify-items-end gap-1">
-      <span className="flex items-center gap-2">
+      <span className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
         <Input
           id={id}
           aria-describedby={describedBy(hint, unit && `${id}-unit`, refused !== null && `${id}-refused`)}

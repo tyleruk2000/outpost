@@ -182,7 +182,7 @@ export default function HomePage() {
 
       {/* Two columns by the room there is, not the window's width, so that text at 200% on a wide window does not run off it. */}
       <div className="@container">
-        <div className="mx-auto grid w-full max-w-[70rem] gap-x-16 gap-y-10 px-5 pt-9 pb-24 md:px-10 md:pb-16 @3xl:grid-cols-[minmax(0,1fr)_19rem]">
+        <div className="mx-auto grid w-full max-w-[70rem] gap-x-16 gap-y-10 px-5 pt-9 pb-24 md:px-10 md:pb-16 grid-cols-[minmax(0,1fr)] @3xl:grid-cols-[minmax(0,1fr)_19rem]">
           <div className="min-w-0">
             {(downloads.data?.length ?? 0) > 0 || otherWork.length > 0 ? (
               <Block title="Happening now" more={{ to: "/downloads", label: "All downloads" }}>

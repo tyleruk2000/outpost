@@ -64,6 +64,27 @@ test("the set-up guide fits a phone with the text at 200%, its long addresses br
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
 });
 
+test("Home and Settings fit a narrow phone with the text at 200%, and so does the bar of screens", async ({ page }) => {
+  // The bar is as wide as the page: a screen wider than the phone made the bar overhang it too.
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.addInitScript(() => {
+    const apply = () => document.documentElement.style.setProperty("font-size", "32px", "important");
+    if (document.documentElement) apply();
+    document.addEventListener("DOMContentLoaded", apply);
+  });
+  for (const path of ["/", "/settings"]) {
+    await page.goto(path);
+    await expect(page.locator("main h1").first()).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth),
+      path,
+    ).toBeLessThanOrEqual(0);
+    const bar = await page.getByRole("navigation", { name: "Main" }).boundingBox();
+    expect(bar!.x + bar!.width, path).toBeLessThanOrEqual(320);
+  }
+});
+
 test("search results with their filter tabs do not scroll the page sideways on a narrow phone", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
   await page.goto("/search?q=water");

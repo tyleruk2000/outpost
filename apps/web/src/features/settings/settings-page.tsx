@@ -30,9 +30,9 @@ import { UpdateSection } from "./update-section";
 
 function Fact({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="flex items-baseline justify-between gap-6 border-b border-border py-2 last:border-b-0">
+    <div className="flex flex-wrap items-baseline justify-between gap-x-6 border-b border-border py-2 last:border-b-0">
       <dt className="text-small text-ink-muted">{label}</dt>
-      <dd className="tabular text-right text-small text-ink">{value}</dd>
+      <dd className="tabular ml-auto text-right text-small text-ink [overflow-wrap:anywhere]">{value}</dd>
     </div>
   );
 }
