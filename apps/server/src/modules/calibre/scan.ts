@@ -10,6 +10,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { CalibreBook, CalibreLeftOut } from "@outpost/shared";
+import { AppError } from "../../core/errors.ts";
+import { resolveInside } from "../../core/fs-safe.ts";
 import { naturalCompare } from "../imports/names.ts";
 import { readOpf } from "./opf.ts";
 
@@ -45,7 +47,7 @@ const OTHER_FORMATS = new Set([
 const COVER_EXTS = new Set(["jpg", "jpeg", "png", "webp", "gif"]);
 
 export const MAX_OPF_BYTES = 1024 * 1024;
-const MAX_COVER_BYTES = 20 * 1024 * 1024;
+export const MAX_COVER_BYTES = 20 * 1024 * 1024;
 /** How deep below the chosen folder book folders are looked for (library, author, book, and one more). */
 const MAX_DEPTH = 4;
 /** Folders read at most, so a folder that is not a Calibre library does not keep the walk going for ever. */
@@ -64,6 +66,49 @@ export interface ScanResult {
 }
 
 const extOf = (name: string) => path.extname(name).slice(1).toLowerCase();
+
+const notOrdinary = (relative: string) =>
+  new AppError("bad_request", `“${relative}” is now a link or not an ordinary file, so it was left out.`);
+
+/**
+ * A file of the library as it is now: every folder between the library and it an ordinary
+ * folder and the file an ordinary file, no link anywhere. The library is read again when
+ * books are added, perhaps long after the plan, and anything in it may have changed since.
+ */
+export async function ordinaryFile(root: string, relative: string): Promise<{ path: string; stat: fs.Stats }> {
+  const realRoot = await fs.promises.realpath(root);
+  const target = resolveInside(realRoot, relative);
+  const parts = path.relative(realRoot, target).split(path.sep);
+  let current = realRoot;
+  for (const [index, part] of parts.entries()) {
+    current = path.join(current, part);
+    const stat = await fs.promises.lstat(current).catch(() => undefined);
+    const last = index === parts.length - 1;
+    if (!stat || (last ? !stat.isFile() : !stat.isDirectory())) throw notOrdinary(relative);
+    // Named under the root as given (which may itself be reached through a link), as the rest of Outpost names it.
+    if (last) return { path: resolveInside(root, relative), stat };
+  }
+  throw notOrdinary(relative);
+}
+
+/**
+ * Reads a file of the library, never through a link: checked as `ordinaryFile`, opened
+ * without following a link, and the file opened must be the one checked, so a folder
+ * swapped for a link between the two is caught too.
+ */
+export async function readOrdinaryFile(root: string, relative: string, maxBytes: number): Promise<Buffer> {
+  const checked = await ordinaryFile(root, relative);
+  if (checked.stat.size > maxBytes) throw new AppError("bad_request", `“${relative}” is too large.`);
+  const handle = await fs.promises.open(checked.path, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0));
+  try {
+    const stat = await handle.stat();
+    if (!stat.isFile() || stat.ino !== checked.stat.ino || stat.dev !== checked.stat.dev) throw notOrdinary(relative);
+    if (stat.size > maxBytes) throw new AppError("bad_request", `“${relative}” is too large.`);
+    return await handle.readFile();
+  } finally {
+    await handle.close();
+  }
+}
 
 /** "Dune (12)" is Calibre's folder for book 12; the title without the number. */
 const titleFromFolder = (folder: string) => path.basename(folder).replace(/\s*\(\d+\)$/, "") || folder;
@@ -112,9 +157,7 @@ async function readBook(dir: string, folder: string, entries: fs.Dirent[], resul
   const files = entries.filter((entry) => entry.isFile()).map((entry) => entry.name);
   let opf: ReturnType<typeof readOpf>;
   try {
-    const stat = await fs.promises.stat(path.join(dir, "metadata.opf"));
-    if (stat.size > MAX_OPF_BYTES) throw new Error("too large");
-    opf = readOpf(await fs.promises.readFile(path.join(dir, "metadata.opf"), "utf8"));
+    opf = readOpf((await readOrdinaryFile(dir, "metadata.opf", MAX_OPF_BYTES)).toString("utf8"));
   } catch {
     result.leftOut.push({ folder, title: titleFromFolder(folder), reason: "Its metadata.opf could not be read." });
     return;
@@ -144,7 +187,7 @@ async function readBook(dir: string, folder: string, entries: fs.Dirent[], resul
     return;
   }
   const fileName = byExt.get(chosenExt)!;
-  const fileSize = (await fs.promises.stat(path.join(dir, fileName))).size;
+  const fileSize = (await fs.promises.lstat(path.join(dir, fileName))).size;
   if (fileSize > maxFileBytes) {
     result.leftOut.push({ folder, title, reason: `Its ${chosenExt.toUpperCase()} is larger than this server takes for one file.` });
     return;
@@ -157,7 +200,7 @@ async function readBook(dir: string, folder: string, entries: fs.Dirent[], resul
   );
   let cover: CalibreBook["cover"] = null;
   if (coverName) {
-    const size = (await fs.promises.stat(path.join(dir, coverName))).size;
+    const size = (await fs.promises.lstat(path.join(dir, coverName))).size;
     if (size > 0 && size <= MAX_COVER_BYTES) cover = { name: coverName, sizeBytes: size };
   }
 

@@ -32,7 +32,7 @@ import { newId } from "../../core/ids.ts";
 import { type JobRow, type JobRun, PermanentJobError } from "../../core/jobs.ts";
 import { bookDetails, calibreImports, documents as documentsTable } from "../../db/schema.ts";
 import { readOpf } from "./opf.ts";
-import { MAX_OPF_BYTES, type ScannedBook, scanLibrary } from "./scan.ts";
+import { MAX_COVER_BYTES, MAX_OPF_BYTES, ordinaryFile, readOrdinaryFile, type ScannedBook, scanLibrary } from "./scan.ts";
 
 export type CalibreImportRow = typeof calibreImports.$inferSelect;
 
@@ -193,14 +193,16 @@ export function createCalibreService(ctx: AppContext): CalibreService {
 
   // ── Importing ──
 
-  async function keepCover(documentId: string, bookDir: string, book: ScannedBook): Promise<string | null> {
+  // The library is read again here, perhaps long after the plan: every file is read as `readOrdinaryFile`
+  // and `ordinaryFile` say (scan.ts), so a link put in place of a book, a cover or a folder since is not followed.
+  async function keepCover(documentId: string, root: string, book: ScannedBook): Promise<string | null> {
     if (!book.cover) return null;
     const ext = path.extname(book.cover.name).slice(1).toLowerCase();
     if (!COVER_EXTS.includes(ext)) return null;
     await fs.promises.mkdir(coversDir, { recursive: true });
     const target = path.join(coversDir, `${documentId}.${ext}`);
     try {
-      await fs.promises.copyFile(resolveInside(bookDir, book.cover.name), `${target}.part`);
+      await fs.promises.writeFile(`${target}.part`, await readOrdinaryFile(root, path.join(book.folder, book.cover.name), MAX_COVER_BYTES));
       await fs.promises.rename(`${target}.part`, target);
       return ext;
     } catch {
@@ -209,9 +211,9 @@ export function createCalibreService(ctx: AppContext): CalibreService {
     }
   }
 
-  async function recordDetails(documentId: string, bookDir: string, book: ScannedBook): Promise<void> {
+  async function recordDetails(documentId: string, root: string, book: ScannedBook): Promise<void> {
     if (db.select({ id: bookDetails.documentId }).from(bookDetails).where(eq(bookDetails.documentId, documentId)).get()) return;
-    const coverExt = await keepCover(documentId, bookDir, book);
+    const coverExt = await keepCover(documentId, root, book);
     // Deleted in the meantime: nothing to describe.
     if (!db.select({ id: documentsTable.id }).from(documentsTable).where(eq(documentsTable.id, documentId)).get()) return;
     db.insert(bookDetails)
@@ -227,11 +229,9 @@ export function createCalibreService(ctx: AppContext): CalibreService {
       .run();
   }
 
-  async function description(bookDir: string): Promise<string | null> {
+  async function description(root: string, book: ScannedBook): Promise<string | null> {
     try {
-      const opfPath = path.join(bookDir, "metadata.opf");
-      if ((await fs.promises.stat(opfPath)).size > MAX_OPF_BYTES) return null;
-      return readOpf(await fs.promises.readFile(opfPath, "utf8")).description;
+      return readOpf((await readOrdinaryFile(root, path.join(book.folder, "metadata.opf"), MAX_OPF_BYTES)).toString("utf8")).description;
     } catch {
       return null;
     }
@@ -256,9 +256,9 @@ export function createCalibreService(ctx: AppContext): CalibreService {
       }
       run.progress({ current: index, total, message: `Adding ${book.title}` });
       try {
-        const bookDir = resolveInside(root, book.folder);
+        const file = await ordinaryFile(root, path.join(book.folder, book.file.name));
         const outcome = await documents.ingestFile({
-          sourcePath: resolveInside(bookDir, book.file.name),
+          sourcePath: file.path,
           originalName: book.file.name,
           title: book.title,
           tags: tagsFor(book),
@@ -269,15 +269,15 @@ export function createCalibreService(ctx: AppContext): CalibreService {
         if (outcome.status === "duplicate") {
           // Already in the library: what is there stays as it is; only missing details are added.
           report.alreadyThere += 1;
-          await recordDetails(outcome.document.id, bookDir, book);
+          await recordDetails(outcome.document.id, root, book);
           continue;
         }
         await documents.update(outcome.document.id, {
           author: book.authors.length ? book.authors.join(" & ").slice(0, 300) : null,
-          description: await description(bookDir),
+          description: await description(root, book),
           language: book.language,
         });
-        await recordDetails(outcome.document.id, bookDir, book);
+        await recordDetails(outcome.document.id, root, book);
         report.added += 1;
       } catch (error) {
         if (run.signal.aborted) {
