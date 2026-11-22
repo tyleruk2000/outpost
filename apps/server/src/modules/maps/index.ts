@@ -448,13 +448,38 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
     return sendGpx(reply, annotations.exportTrack(request.params.id));
   });
 
-  app.get("/api/maps/export.gpx", async (request, reply) => {
-    const query = z.object({ markers: flag, tracks: z.string().max(4000).optional() }).parse(request.query);
-    const trackIds = (query.tracks ?? "")
+  const selectionQuery = (query: unknown) => {
+    const parsed = z.object({ markers: flag, tracks: z.string().max(4000).optional() }).parse(query);
+    const trackIds = (parsed.tracks ?? "")
       .split(",")
       .map((id) => id.trim())
       .filter(Boolean);
-    return sendGpx(reply, annotations.exportSelection({ markers: query.markers, trackIds }));
+    return { markers: parsed.markers, trackIds };
+  };
+
+  app.get("/api/maps/export.gpx", async (request, reply) => {
+    return sendGpx(reply, annotations.exportSelection(selectionQuery(request.query)));
+  });
+
+  /** KML and GeoJSON: written like GPX, and like it served as a download that never runs in Outpost's origin. */
+  function sendExport(reply: FastifyReply, file: { filename: string; contentType: string; body: string }) {
+    const ascii = file.filename.replace(/[^\x20-\x7e]/g, "_").replace(/["\\]/g, "_");
+    return reply
+      .header("Content-Type", file.contentType)
+      .header("Content-Disposition", `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(file.filename)}`)
+      .header("Content-Security-Policy", "sandbox; default-src 'none'")
+      .header("X-Content-Type-Options", "nosniff")
+      .send(file.body);
+  }
+  const exportFormat = z.enum(["kml", "geojson"]);
+
+  app.get<{ Params: { id: string; format: string } }>("/api/maps/tracks/:id/export.:format", async (request, reply) => {
+    const format = exportFormat.parse(request.params.format);
+    return sendExport(reply, annotations.exportAs(format, { markers: false, trackIds: [request.params.id] }));
+  });
+
+  app.get<{ Params: { format: string } }>("/api/maps/export.:format", async (request, reply) => {
+    return sendExport(reply, annotations.exportAs(exportFormat.parse(request.params.format), selectionQuery(request.query)));
   });
 
   app.get<IdParams>("/api/maps/tracks/:id", async (request) => {

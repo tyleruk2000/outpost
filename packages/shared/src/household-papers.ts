@@ -315,19 +315,35 @@ export interface BinderMade {
   contentAt: number;
   madeAt: number;
   pages: number;
+  /**
+   * What each part was made from, as `BinderStatus.fingerprints` said when it was made. A
+   * binder recorded before these were kept has none, and is compared by `contentAt` alone.
+   */
+  fingerprints?: Record<BinderPart, string> | null;
 }
 
 export interface BinderStatus {
   made: BinderMade | null;
   /** When each part's content last changed; null when it has none. */
   changedAt: Record<BinderPart, number | null>;
+  /** What each part is made from now, as a short hash that changes with any change to it, a deletion included. */
+  fingerprints: Record<BinderPart, string>;
   /** The parts of the binder last made that have changed since: what makes it older than its contents. */
   stale: BinderPart[];
 }
 
-/** Which of a binder's parts changed after it was made. */
-export function staleParts(made: BinderMade | null, changedAt: Record<BinderPart, number | null>): BinderPart[] {
+/**
+ * Which of a binder's parts changed after it was made: by what it was made from where the
+ * binder recorded that (a deletion counts), and otherwise by when its content last changed.
+ */
+export function staleParts(
+  made: BinderMade | null,
+  changedAt: Record<BinderPart, number | null>,
+  fingerprints?: Record<BinderPart, string>,
+): BinderPart[] {
   if (!made) return [];
+  const then = made.fingerprints;
+  if (then && fingerprints) return made.parts.filter((part) => then[part] !== undefined && then[part] !== fingerprints[part]);
   return made.parts.filter((part) => {
     const at = changedAt[part];
     return at !== null && at > made.contentAt;

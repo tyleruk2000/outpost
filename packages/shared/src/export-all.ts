@@ -15,6 +15,9 @@ export const EXPORT_SECTIONS = [
   "barometer",
   "radio-log",
   "plans",
+  "weather-places",
+  "radio-plans",
+  "power-plans",
   "papers",
   "board",
   "documents",
@@ -70,3 +73,20 @@ export interface ExportStatus {
 
 /** The folder inside a storage location that exports are written to. */
 export const EXPORT_FOLDER = "outpost-exports";
+
+/**
+ * The JSON files a power plan and a communication plan are written as in an export.
+ * Power and batteries and Communication plans read them back in (and read a bare plan,
+ * without the wrapper, the same way).
+ */
+export const PLAN_FILE_FORMATS = { power: "outpost-power-plan", radio: "outpost-communication-plan" } as const;
+export const PLAN_FILE_VERSION = 1;
+/** The largest plan file either screen reads back in. */
+export const PLAN_FILE_MAX_BYTES = 1024 * 1024;
+
+export interface PlanFile<T> {
+  format: (typeof PLAN_FILE_FORMATS)[keyof typeof PLAN_FILE_FORMATS];
+  version: number;
+  exported: string;
+  plan: T;
+}

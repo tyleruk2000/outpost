@@ -1,6 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { ExportEstimate, ExportResult, ExportStatus, JobDto } from "@outpost/shared";
+import {
+  ANTENNA_PRESETS,
+  type ExportEstimate,
+  type ExportResult,
+  type ExportStatus,
+  type JobDto,
+  newPowerPlan,
+  type WeatherPlacesImportResult,
+} from "@outpost/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import yauzl from "yauzl";
 import { adifLocation, writeAdif } from "../src/modules/export-all/adif.ts";
@@ -9,6 +17,32 @@ import { multipart } from "./fixtures/documents/builders.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
 let app: TestApp;
+
+const dipole = ANTENNA_PRESETS.find((preset) => preset.id === "low-dipole")!.spec;
+const station = (id: string, lat: number) => ({
+  id,
+  name: id,
+  lat,
+  lon: -0.1,
+  powerWatts: 5,
+  antenna: dipole,
+  antennaName: "Low horizontal dipole, 5 m",
+  noise: "residential",
+});
+const commsPlan = {
+  name: "Family net",
+  notes: "Sundays",
+  stations: [station("a", 51.5), station("b", 54.4)],
+  date: "2026-11-16",
+  fromUtc: 8,
+  toUtc: 17,
+  bands: ["40m"],
+  mode: "ssb",
+  requiredSnrDb: null,
+  referenceBandwidthHz: null,
+  solar: { source: "table" },
+  links: [{ kind: "note", id: "not-here" }],
+};
 
 /** Every entry of a zip, by name, with its text. */
 function readZip(file: string | Buffer): Promise<Map<string, string>> {
@@ -65,6 +99,9 @@ beforeAll(async () => {
     reportReceived: "57",
     notes: "Clear\nall evening",
   });
+  await app.api("POST", "/api/weather/places", { name: "Hut", lat: 56.8, lon: -5.0, region: null });
+  await app.api("POST", "/api/power/plans", newPowerPlan("Shack"));
+  await app.api("POST", "/api/radio/communication-plans", commsPlan);
   await app.api("POST", "/api/board/messages", { author: "Alex", body: "Back by six." }, { remoteAddress: "192.168.1.20" });
   const { payload, headers } = multipart({}, [{ name: "stove.txt", content: "Remember the spare stove jet." }]);
   expect((await app.api("POST", "/api/documents", payload, { headers })).status).toBe(200);
@@ -87,6 +124,9 @@ describe("taking everything out", () => {
     expect(count("radio-log")).toBe(1);
     expect(count("board")).toBe(1);
     expect(count("documents")).toBe(1);
+    expect(count("weather-places")).toBe(1);
+    expect(count("radio-plans")).toBe(1);
+    expect(count("power-plans")).toBe(1);
     expect(body.totalBytes).toBeGreaterThan(0);
   });
 
@@ -113,6 +153,43 @@ describe("taking everything out", () => {
     expect(entries.get("radio-log/contact-log.adi")).toContain("<CALL:5>G4BBB");
     expect(entries.get("board/household board.txt")).toContain("Back by six.");
     expect(entries.get("documents/Uncategorised/stove.txt")).toBe("Remember the spare stove jet.");
+    const places = JSON.parse(entries.get("weather-places/weather-places.geojson")!);
+    expect(places.features[0]).toMatchObject({ geometry: { coordinates: [-5, 56.8] }, properties: { name: "Hut" } });
+    expect(JSON.parse(entries.get("power-plans/Shack.json")!)).toMatchObject({ format: "outpost-power-plan", plan: { name: "Shack" } });
+    expect(JSON.parse(entries.get("radio-plans/Family net.json")!)).toMatchObject({ format: "outpost-communication-plan" });
+
+    // Each reads back in on its own screen, into another Outpost, as it was.
+    const other = await createTestApp({}, undefined, { voacapData: false });
+    try {
+      const read = await other.api<WeatherPlacesImportResult>("POST", "/api/weather/places/import", {
+        text: entries.get("weather-places/weather-places.geojson"),
+      });
+      expect(read.status).toBe(200);
+      expect(read.body.added.map((place) => [place.name, place.lat, place.lon])).toEqual([["Hut", 56.8, -5]]);
+      const twice = await other.api<WeatherPlacesImportResult>("POST", "/api/weather/places/import", {
+        text: entries.get("weather-places/weather-places.geojson"),
+      });
+      expect(twice.body).toMatchObject({ added: [], already: 1 });
+
+      const power = await other.api("POST", "/api/power/plans/import", { text: entries.get("power-plans/Shack.json") });
+      expect(power.status).toBe(200);
+      const { id: _id, createdAt: _c, updatedAt: _u, ...kept } = (await app.api("GET", "/api/power/plans")).body.plans[0];
+      const { id: _id2, createdAt: _c2, updatedAt: _u2, ...back } = power.body.plan;
+      expect(back).toEqual(kept);
+
+      const radio = await other.api("POST", "/api/radio/communication-plans/import", { text: entries.get("radio-plans/Family net.json") });
+      expect(radio.status).toBe(200);
+      expect(radio.body.plan).toMatchObject({ name: "Family net", notes: "Sundays", bands: ["40m"], links: [] });
+      expect(radio.body.plan.stations).toHaveLength(2);
+
+      // The wrong kind of file is refused with words that say so.
+      const wrong = await other.api("POST", "/api/power/plans/import", { text: entries.get("radio-plans/Family net.json") });
+      expect(wrong.status).toBe(400);
+      expect(wrong.body.error.message).toContain("communication plan");
+      expect((await other.api("POST", "/api/weather/places/import", { text: "not json" })).status).toBe(400);
+    } finally {
+      await other.close();
+    }
     const readme = entries.get("README.md")!;
     expect(readme).toContain("### contacts/: Contacts (vCard)");
     expect(readme).toContain("## Left out");

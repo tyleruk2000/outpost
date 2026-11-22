@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/menu";
-import { Checkbox, Skeleton } from "@/components/ui/misc";
+import { Checkbox, Segmented, Skeleton } from "@/components/ui/misc";
 import { KeepTrackButton } from "@/features/kept/keep-controls";
 import { ShareCodeButton } from "@/features/qr/share-code";
 import { errorMessage } from "@/lib/api";
@@ -204,6 +204,22 @@ export function RouteDetail({
               <Download /> Export as GPX
             </a>
           </Button>
+          <Menu>
+            <MenuTrigger asChild>
+              <Button>
+                <Download /> Other formats
+              </Button>
+            </MenuTrigger>
+            <MenuContent>
+              {EXPORT_FORMATS.filter((format) => format.id !== "gpx").map((format) => (
+                <MenuItem key={format.id} asChild>
+                  <a href={`/api/maps/tracks/${track.id}/export.${format.id}`} download>
+                    Export as {format.label}
+                  </a>
+                </MenuItem>
+              ))}
+            </MenuContent>
+          </Menu>
           <KeepTrackButton track={track} />
           <ShareCodeButton
             size="md"
@@ -488,7 +504,7 @@ export function RoutesList({
           </MenuTrigger>
           <MenuContent>
             <MenuItem onSelect={() => setExporting(true)}>
-              <Download /> Export everything as GPX
+              <Download /> Export routes and places
             </MenuItem>
           </MenuContent>
         </Menu>
@@ -546,6 +562,18 @@ export function RoutesList({
 /** The server reads the chosen tracks from the address, which has a length limit. */
 const MAX_EXPORT_QUERY = 3900;
 
+/** The formats routes and places are exported in, and what reads each. */
+const EXPORT_FORMATS = [
+  { id: "gpx", label: "GPX", about: "Any GPS or mapping app reads it. Outlines stay closed lines; GPX has no areas." },
+  {
+    id: "kml",
+    label: "KML",
+    about: "Google Earth and most mapping apps read it. Each route is a folder in its colour, outlines are areas.",
+  },
+  { id: "geojson", label: "GeoJSON", about: "GIS programs and web maps read it. Outlines are areas." },
+] as const;
+type ExportFormatId = (typeof EXPORT_FORMATS)[number]["id"];
+
 function ExportDialog({
   open,
   onOpenChange,
@@ -559,23 +587,33 @@ function ExportDialog({
 }) {
   const placesId = useId();
   const [withPlaces, setWithPlaces] = useState(true);
+  const [format, setFormat] = useState<ExportFormatId>("gpx");
   const [excluded, setExcluded] = useState<string[]>([]);
   const chosen = tracks.filter((track) => !excluded.includes(track.id));
   const includePlaces = withPlaces && markerCount > 0;
   const ids = chosen.map((track) => track.id).join(",");
   const tooMany = ids.length > MAX_EXPORT_QUERY;
   const nothing = chosen.length === 0 && !includePlaces;
-  const href = `/api/maps/export.gpx?${new URLSearchParams({ ...(includePlaces ? { markers: "1" } : {}), ...(ids ? { tracks: ids } : {}) }).toString()}`;
+  const href = `/api/maps/export.${format}?${new URLSearchParams({ ...(includePlaces ? { markers: "1" } : {}), ...(ids ? { tracks: ids } : {}) }).toString()}`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        title="Export as GPX"
-        description="One file with the routes you choose and, if you like, your saved places as waypoints. Any GPS or mapping app can read it."
+        title="Export routes and places"
+        description="One file with the routes you choose and, if you like, your saved places."
         size="sm"
       >
         <DialogBody>
-          <div className="flex items-start gap-3 border-b border-border pb-3">
+          <div className="grid gap-1.5 border-b border-border pb-3">
+            <Segmented
+              label="Format"
+              value={format}
+              onChange={setFormat}
+              options={EXPORT_FORMATS.map((option) => ({ value: option.id, label: option.label }))}
+            />
+            <p className="text-small text-ink-muted">{EXPORT_FORMATS.find((option) => option.id === format)?.about}</p>
+          </div>
+          <div className="flex items-start gap-3 border-b border-border py-3">
             <Checkbox
               id={placesId}
               checked={includePlaces}
@@ -621,12 +659,12 @@ function ExportDialog({
           <Button onClick={() => onOpenChange(false)}>Cancel</Button>
           {nothing || tooMany ? (
             <Button variant="primary" disabled>
-              <Download /> Export
+              <Download /> Export as {EXPORT_FORMATS.find((option) => option.id === format)?.label}
             </Button>
           ) : (
             <Button asChild variant="primary">
               <a href={href} download onClick={() => onOpenChange(false)}>
-                <Download /> Export
+                <Download /> Export as {EXPORT_FORMATS.find((option) => option.id === format)?.label}
               </a>
             </Button>
           )}

@@ -27,13 +27,16 @@ import {
   UPDATE_KINDS,
   type UpdateResponse,
   WEATHER_LIMITS,
+  type WeatherPlacesImportResult,
   type WeatherResponse,
 } from "@outpost/shared";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
+import { badRequest } from "../../core/errors.ts";
 import { createHttpClient } from "../../core/http.ts";
 import { isTimeZone, writeReadingsCsv } from "./csv.ts";
+import { PLACES_FILE_MAX_BYTES, readPlacesFile } from "./places-file.ts";
 import { createWeatherService, type WeatherService } from "./service.ts";
 import { createSourceFetcher, WEATHER_SOURCES } from "./sources.ts";
 
@@ -160,6 +163,47 @@ export async function registerWeather(app: FastifyInstance, ctx: AppContext): Pr
   );
 
   app.post("/api/weather/places", async (request) => ({ place: service.addPlace(placeSchema.parse(request.body)) }));
+  /**
+   * A file of places (weather-places.geojson from an export, or any GeoJSON file of named
+   * points) added to the list. A place already in it, the same name at the same position,
+   * is passed over; so is any for which the list has no room. Nothing in the list changes.
+   */
+  app.post("/api/weather/places/import", async (request): Promise<WeatherPlacesImportResult> => {
+    const { text } = z
+      .object({ text: z.string().min(1, "That file is empty.").max(PLACES_FILE_MAX_BYTES, "That file is larger than 1 MB.") })
+      .strict()
+      .parse(request.body);
+    const { places, notPoints } = readPlacesFile(text);
+    if (places.length === 0) throw badRequest("That file has no points in it to keep forecasts for.");
+    const same = (a: { lat: number; lon: number }, b: { lat: number; lon: number }) =>
+      Math.abs(a.lat - b.lat) < 1e-6 && Math.abs(a.lon - b.lon) < 1e-6;
+    const markers = ctx.services.maps.annotations.listMarkers();
+    const result: WeatherPlacesImportResult = { added: [], already: 0, noRoom: 0, notPoints };
+    for (const candidate of places) {
+      const now = service.places();
+      if (now.some((place) => place.name === candidate.name && same(place, candidate))) {
+        result.already += 1;
+        continue;
+      }
+      if (now.length >= WEATHER_LIMITS.places) {
+        result.noRoom += 1;
+        continue;
+      }
+      // A saved place at the very same position, named the same and not in the list yet, is taken as the one it came from.
+      const marker = markers.find(
+        (each) =>
+          (each.name || "Saved place") === candidate.name && same(each, candidate) && !now.some((place) => place.markerId === each.id),
+      );
+      result.added.push(
+        service.addPlace(
+          marker
+            ? { markerId: marker.id, region: candidate.region }
+            : { name: candidate.name, lat: candidate.lat, lon: candidate.lon, region: candidate.region },
+        ),
+      );
+    }
+    return result;
+  });
   app.patch("/api/weather/places/:id", async (request) => ({
     place: service.updatePlace(idParams.parse(request.params).id, placePatch.parse(request.body)),
   }));

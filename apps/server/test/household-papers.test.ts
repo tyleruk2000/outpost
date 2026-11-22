@@ -199,6 +199,20 @@ describe("the household binder", () => {
     expect(after.stale).toEqual(["comms"]);
   });
 
+  it("is out of date when something in it is deleted", async () => {
+    const sheet = await ok<{ sheet: MedicalSheet }>("POST", "/api/medical-sheets", { name: "Kit", record: {} });
+    const status = await ok<BinderStatus>("GET", "/api/household-binder");
+    const made = await ok<BinderStatus>("POST", "/api/household-binder/made", {
+      parts: ["medical", "supplies"],
+      contentAt: Date.now(),
+      pages: 3,
+      fingerprints: status.fingerprints,
+    });
+    expect(made.stale).toEqual([]);
+    await ok("DELETE", `/api/medical-sheets/${sheet.sheet.id}`);
+    expect((await ok<BinderStatus>("GET", "/api/household-binder")).stale).toEqual(["medical"]);
+  });
+
   it("is counted and erased with everything else", async () => {
     expect(app.ctx.services.householdPapers.kept.count()).toBe(3);
     expect(app.ctx.services.householdPapers.kept.eraseAll()).toBe(3);

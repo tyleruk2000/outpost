@@ -52,7 +52,7 @@ export function PaperPreview({ made, children }: { made: PaperMade; children?: R
               // biome-ignore lint/suspicious/noArrayIndexKey: pages are in order
               key={index}
               sheet={page}
-              pictures={{}}
+              pictures={made.previews}
               label={`Page ${index + 1} of ${made.pages.length} as it prints`}
               className="h-auto w-full rounded-panel border border-border-strong"
             />

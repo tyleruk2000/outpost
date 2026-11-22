@@ -15,6 +15,16 @@ export type MapTileType = "vector" | "terrain";
 
 export const MARKER_COLORS = ["teal", "amber", "red", "green", "blue", "violet", "slate"] as const;
 export type MarkerColor = (typeof MARKER_COLORS)[number];
+/** Each marker and route colour as drawn on the map, and as written into an exported KML or GeoJSON file. */
+export const MARKER_COLOR_HEX: Record<MarkerColor, string> = {
+  teal: "#1f8a8c",
+  amber: "#dc9414",
+  red: "#d24b3e",
+  green: "#3d9150",
+  blue: "#3f7fd6",
+  violet: "#8d62cc",
+  slate: "#6d7c88",
+};
 
 /**
  * The icons a saved place can carry, beside its colour. A small fixed set for what the
@@ -242,6 +252,8 @@ export interface TrackImportResponse {
   markers: MarkerDto[];
   /** Of the track's lines, how many are outlines (a polygon's rings, from a KML or GeoJSON file). */
   outlines?: number;
+  /** The routes after the first, for a KML file whose lines lie in several folders: one route for each folder. */
+  moreTracks?: TrackDto[];
 }
 
 /** The kinds of file a map import reads. */
@@ -262,6 +274,8 @@ export interface MapFilePreview {
   outlines: number;
   /** Points in all the lines and outlines. */
   linePoints: number;
+  /** How many routes it makes: more than one for a KML file whose lines lie in several folders, one for each. */
+  routes?: number;
 }
 
 /**
@@ -820,4 +834,40 @@ export interface PointHeight {
   heightMeters: number | null;
   /** How wide the terrain cell the height was read from is, in metres; null with no height. */
   cellMeters: number | null;
+}
+
+// ── Outlines as areas ──────────────────────────────────────────────────────
+
+type Ring = ReadonlyArray<ArrayLike<number | undefined>>;
+
+/** Whether a point lies inside a ring (even-odd rule, longitude and latitude taken as a plane). */
+function insideRing(lon: number, lat: number, ring: Ring): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i, i += 1) {
+    const [xi, yi] = [ring[i]![0], ring[i]![1]] as [number, number];
+    const [xj, yj] = [ring[j]![0], ring[j]![1]] as [number, number];
+    if (yi > lat !== yj > lat && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+/**
+ * An outline's closed rings, gathered into areas: the rings of a polygon as Outpost keeps
+ * them (outer first, then any holes, then the next polygon's) are kept as lines, so which
+ * is a hole is read back from where they lie. A ring inside an area, and not inside one of
+ * its holes, is a hole of it; any other ring starts a new area (an island in a lake is an
+ * area of its own). Rings of fewer than four positions are not areas and are left out.
+ */
+export function outlineAreas<P extends ArrayLike<number | undefined>>(rings: ReadonlyArray<ReadonlyArray<P>>): P[][][] {
+  const areas: P[][][] = [];
+  for (const ring of rings) {
+    if (ring.length < 4) continue;
+    const [lon, lat] = [ring[0]![0], ring[0]![1]] as [number, number];
+    const home = areas.find(
+      ([outer, ...holes]) => insideRing(lon, lat, outer as Ring) && !holes.some((hole) => insideRing(lon, lat, hole as Ring)),
+    );
+    if (home) home.push([...ring]);
+    else areas.push([[...ring]]);
+  }
+  return areas;
 }

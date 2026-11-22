@@ -8,17 +8,9 @@
  * casing drawn around it (the page colour, read from the tokens) does the rest.
  * "teal" is the verdigris primary and "amber" the lamp, at map-safe lightness.
  */
-import type { MarkerColor } from "@outpost/shared";
+import { MARKER_COLOR_HEX, type MarkerColor } from "@outpost/shared";
 
-export const MARKER_HEX: Record<MarkerColor, string> = {
-  teal: "#1f8a8c",
-  amber: "#dc9414",
-  red: "#d24b3e",
-  green: "#3d9150",
-  blue: "#3f7fd6",
-  violet: "#8d62cc",
-  slate: "#6d7c88",
-};
+export const MARKER_HEX: Record<MarkerColor, string> = MARKER_COLOR_HEX;
 
 /** Magnetic north lines on the map on screen: the blue of the printed sheet's lines, at map-safe lightness. */
 export const MAGNETIC_HEX = "#3a66d1";

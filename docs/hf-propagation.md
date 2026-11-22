@@ -139,6 +139,10 @@ frequency.
    the plan meanwhile, choose **Keep my change** or **Take theirs**.
 4. **Work out the plan.** Each pair is asked both ways on every band.
 
+**Bring in a plan** reads a plan's JSON file from **Take everything out** and adds it as a new
+plan. Links to pages and documents this Outpost does not hold are left off, and the matrix is
+worked out again.
+
 ### The matrix, and how the bands are chosen
 
 Each pair gets distance, bearings, a **primary** and an **alternate** band with their hours, and

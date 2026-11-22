@@ -8,13 +8,23 @@
  * plan's ticks, which are sent as a list of what was done, for the server to apply by
  * its own rule (`plan-copy.ts`), never as a copy.
  */
-import type { MarkerDto, NoteDetail, NoteNodeJson, NoteResponse, NoteTreeResponse, TrackDto, TrackWithGeometryDto } from "@outpost/shared";
+import type {
+  MarkerDto,
+  MedicalSheetsResponse,
+  NoteDetail,
+  NoteNodeJson,
+  NoteResponse,
+  NoteTreeResponse,
+  TrackDto,
+  TrackWithGeometryDto,
+} from "@outpost/shared";
 import { toast } from "sonner";
 import { ApiError, api } from "@/lib/api";
 import { DEVICE } from "./device";
 import { refreshPlan } from "./plan-copy";
 import {
   getKept,
+  type KeptMedical,
   type KeptNote,
   type KeptPage,
   type KeptPlaces,
@@ -239,6 +249,30 @@ export async function keepPlaces(): Promise<KeptPlaces> {
   return item;
 }
 
+export const MEDICAL_ID = "household";
+export const MEDICAL_PATH = "/api/medical-sheets";
+
+/** Keeps every medical sheet on this phone as it is on the server: a locked one stays locked. */
+export async function keepMedical(): Promise<KeptMedical> {
+  const before = await getKept("medical", MEDICAL_ID);
+  const answer = await api.get<MedicalSheetsResponse>(MEDICAL_PATH);
+  const cache = await openKept("medical", MEDICAL_ID);
+  const bytes = await putKeptJson(cache, MEDICAL_PATH, { sheets: answer.sheets });
+  const now = Date.now();
+  const item: KeptMedical = {
+    kind: "medical",
+    id: MEDICAL_ID,
+    title: "Medical sheets",
+    count: answer.sheets.length,
+    locked: answer.sheets.filter((sheet) => sheet.encrypted).length,
+    bytes,
+    keptAt: before?.keptAt ?? now,
+    refreshedAt: now,
+  };
+  await putKept(item);
+  return item;
+}
+
 const isGone = (error: unknown) => error instanceof ApiError && error.status === 404;
 
 async function refreshNote(item: KeptNote, tree: Tree): Promise<boolean> {
@@ -333,6 +367,7 @@ export function refreshKept(): Promise<number> {
       // Small, and with no date of its own to compare: fetched each time.
       await keepPlaces();
     }
+    if (items.some((item) => item.kind === "medical")) await keepMedical();
     return replaced;
   })().finally(() => {
     refreshing = undefined;

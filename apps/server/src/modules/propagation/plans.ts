@@ -28,6 +28,7 @@ import type { AppContext } from "../../core/context.ts";
 import { badRequest, conflict, notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
 import { communicationPlans, documents, notes } from "../../db/schema.ts";
+import { planFileBody, readPlanFile } from "../export-all/plan-file.ts";
 import type { CircuitResult } from "./engine.ts";
 import { EngineRefused } from "./host.ts";
 import { engineProblem, fix, modeLine, type PropagationService, wireRunsMark } from "./service.ts";
@@ -388,6 +389,34 @@ export function registerPlans(app: FastifyInstance, ctx: AppContext, service: Pr
   type IdParams = { Params: { id: string } };
   app.get("/api/radio/communication-plans", async () => ({ plans: plans.list() }));
   app.post("/api/radio/communication-plans", async (request) => ({ plan: plans.create(request.body) }));
+  /**
+   * A plan file from "Take everything out" (or a bare plan), added as a new plan. Links to
+   * pages and documents this Outpost does not have are left off.
+   */
+  app.post("/api/radio/communication-plans/import", async (request) => {
+    const { text } = planFileBody.parse(request.body);
+    const read = readPlanFile("radio", text);
+    if (!read || typeof read !== "object" || Array.isArray(read)) throw badRequest("That file does not hold a communication plan.");
+    const {
+      id: _id,
+      createdAt: _created,
+      updatedAt: _updated,
+      linked: _linked,
+      workedOut: _worked,
+      ...body
+    } = read as Record<string, unknown>;
+    const links = Array.isArray(body.links) ? (body.links as unknown[]) : [];
+    const known = linkedOf(
+      links.filter(
+        (link): link is PlanLink =>
+          !!link &&
+          typeof link === "object" &&
+          ((link as PlanLink).kind === "note" || (link as PlanLink).kind === "document") &&
+          typeof (link as PlanLink).id === "string",
+      ),
+    ).filter((link) => link.title !== null);
+    return { plan: plans.create({ ...body, links: known.map(({ kind, id }) => ({ kind, id })) }) };
+  });
   app.get<IdParams>("/api/radio/communication-plans/:id", async (request) => ({ plan: plans.get(request.params.id) }));
   app.patch<IdParams>("/api/radio/communication-plans/:id", async (request) => ({ plan: plans.update(request.params.id, request.body) }));
   app.delete<IdParams>("/api/radio/communication-plans/:id", async (request) => {

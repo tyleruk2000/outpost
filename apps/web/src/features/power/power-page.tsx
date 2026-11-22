@@ -2,10 +2,11 @@
  * Power and batteries (Tools): quick calculators that keep nothing, and power plans, a
  * person's own battery systems kept on the server to come back to, copy and compare.
  */
-import { MONTHS, type PowerPlan } from "@outpost/shared";
+import { MONTHS, PLAN_FILE_MAX_BYTES, type PowerPlan } from "@outpost/shared";
 import { ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
+import { BringInFile } from "@/components/bring-in-file";
 import { EmptyState, ErrorState, Notice, Page, PageHeader, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
@@ -14,7 +15,7 @@ import { Skeleton } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
 import { plural } from "@/lib/utils";
 import { type PlanAnswers, workOut } from "./calc/plan";
-import { inputOf, useCreatePowerPlan, usePowerPlans } from "./data";
+import { inputOf, useCreatePowerPlan, useImportPowerPlan, usePowerPlans } from "./data";
 import { hoursText } from "./document";
 import { ColourCodeCalculator, CombineCalculator, DividerCalculator, LedCalculator, OhmCalculator } from "./electronics-calculators";
 import {
@@ -125,6 +126,7 @@ function Comparison({ plans }: { plans: Array<{ plan: PowerPlan; answers: PlanAn
 export default function PowerPage() {
   const plans = usePowerPlans();
   const create = useCreatePowerPlan();
+  const bringIn = useImportPowerPlan();
   const navigate = useNavigate();
   const [name, setName] = useState<string | null>(null);
   const [carried, setCarried] = useState<CarriedEnergy | null>(null);
@@ -134,6 +136,16 @@ export default function PowerPage() {
     <Button variant="primary" onClick={() => setName("")}>
       New power plan
     </Button>
+  );
+  const fromFile = (
+    <BringInFile
+      accept=".json,application/json"
+      maxBytes={PLAN_FILE_MAX_BYTES}
+      multiple
+      onFile={async (text) => `${(await bringIn.mutateAsync(text)).name} added.`}
+    >
+      Bring in a plan
+    </BringInFile>
   );
   return (
     <Page width="reading">
@@ -145,7 +157,14 @@ export default function PowerPage() {
       <Section
         title="Power plans"
         description="Kept on this Outpost, to come back to, copy and compare."
-        actions={worked.length > 0 ? start : undefined}
+        actions={
+          worked.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {fromFile}
+              {start}
+            </div>
+          ) : undefined
+        }
       >
         {plans.isPending ? (
           <div className="grid gap-3">
@@ -155,7 +174,16 @@ export default function PowerPage() {
         ) : plans.isError ? (
           <ErrorState error={plans.error} onRetry={() => void plans.refetch()} />
         ) : worked.length === 0 ? (
-          <EmptyState title="No power plans yet" action={start} compact>
+          <EmptyState
+            title="No power plans yet"
+            action={
+              <>
+                {fromFile}
+                {start}
+              </>
+            }
+            compact
+          >
             A plan is a battery bank, what draws from it and what charges it. Outpost works out how long it runs, how much solar it needs in
             the darkest month, and its state of charge hour by hour.
           </EmptyState>

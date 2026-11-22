@@ -64,7 +64,8 @@ describe("what changed since the last book", () => {
 describe("the book's answers", () => {
   it("are the defaults before they are saved, and are kept as a draft", async () => {
     const first = await ok<BookResponse>("GET", "/api/household-book");
-    expect(first).toEqual({ answers: DEFAULT_BOOK_ANSWERS, answersAt: null, made: null });
+    expect(first).toMatchObject({ answers: DEFAULT_BOOK_ANSWERS, answersAt: null, made: null, stale: [] });
+    expect(Object.keys(first.fingerprints).sort()).toEqual(["answers", "comms", "contacts", "medical", "places", "plans", "supplies"]);
     const saved = await ok<BookResponse>("PUT", "/api/household-book", {
       ...DEFAULT_BOOK_ANSWERS,
       householdName: "The Rowans",
@@ -100,7 +101,21 @@ describe("the book's answers", () => {
     });
     expect(made.made).toMatchObject({ pages: 40, summary: { people: ["Ana"] } });
     expect(made.answers.householdName).toBe("The Rowans");
+    expect(made.stale).toEqual([]);
     expect(app.ctx.services.householdPapers.book.count()).toBe(1);
+  });
+
+  it("says what changed since the book was made, a deletion included", async () => {
+    const marker = await ok<{ marker: { id: string } }>("POST", "/api/maps/markers", { name: "Shed", lat: 54, lon: -2 });
+    const before = await ok<BookResponse>("GET", "/api/household-book");
+    expect(before.stale).toContain("places");
+    await ok("POST", "/api/household-book/made", { pages: 41, sections: ["people"], summary: {}, fingerprints: before.fingerprints });
+    expect((await ok<BookResponse>("GET", "/api/household-book")).stale).toEqual([]);
+    await ok("DELETE", `/api/maps/markers/${marker.marker.id}`);
+    expect((await ok<BookResponse>("GET", "/api/household-book")).stale).toEqual(["places"]);
+    const saved = await ok<BookResponse>("GET", "/api/household-book");
+    await ok("PUT", "/api/household-book", { ...saved.answers, days: 5, baseAnswersAt: saved.answersAt });
+    expect((await ok<BookResponse>("GET", "/api/household-book")).stale).toEqual(["answers", "places"]);
   });
 });
 

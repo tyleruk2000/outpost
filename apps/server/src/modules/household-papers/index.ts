@@ -15,6 +15,7 @@ import { type BinderService, createBinderService, madeSchema } from "./binder.ts
 import { type BookService, bookMadeSchema, bookSchema, createBookService } from "./book.ts";
 import { type CommsService, commsSchema, createCommsService } from "./comms.ts";
 import { createBookFacts } from "./facts.ts";
+import { createFingerprints } from "./fingerprints.ts";
 import { createMedicalService, type MedicalService, sheetSchema } from "./medical.ts";
 
 export interface HouseholdPapersService {
@@ -37,8 +38,9 @@ export async function registerHouseholdPapers(app: FastifyInstance, ctx: AppCont
   const changed = () => ctx.events.publish({ type: "household-papers.changed" });
   const medical = createMedicalService(ctx, changed);
   const comms = createCommsService(ctx, changed);
-  const binder = createBinderService(ctx, { medical: medical.changedAt, comms: comms.changedAt }, changed);
-  const book = createBookService(ctx, () => ctx.events.publish({ type: "household-book.changed" }));
+  const fingerprints = createFingerprints(ctx);
+  const binder = createBinderService(ctx, { medical: medical.changedAt, comms: comms.changedAt }, fingerprints, changed);
+  const book = createBookService(ctx, fingerprints, () => ctx.events.publish({ type: "household-book.changed" }));
   const bookFacts = createBookFacts(ctx);
   const service: HouseholdPapersService = {
     medical,

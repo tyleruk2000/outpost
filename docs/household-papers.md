@@ -56,6 +56,16 @@ or close the tab; while locked it cannot go on a grab card or in the binder.
 library** and **Share**. Adding it to the library asks first: there anyone on your network
 can read and search it, and an encrypted sheet is in the clear in that copy.
 
+### On a phone
+
+**Keep on this phone**, under the list, keeps every sheet on the phone as a set, for when
+the server is out of reach. An encrypted sheet travels encrypted, as the message Outpost
+holds, and opens on the phone with its passphrase, in memory only, until you leave the
+screen. A sheet encrypted to a key opens only with the server in reach, on a device that
+holds the key. A sheet that is not encrypted is kept readable, so Outpost asks first:
+anyone who can open that browser can read it. Encrypt a sheet before keeping it to keep it
+locked on the phone.
+
 ## Keeping in touch
 
 **Keeping in touch** is the household's communication plan. For each situation ("Phones
@@ -98,12 +108,18 @@ gives a card with no medical lines, which says so. Make cards again after a chan
 **Household binder** puts a chosen set of printables into one PDF with a contents page:
 the plans' fridge sheets, the emergency contacts sheet, Keeping in touch, the grab cards,
 the medical sheets (encrypted ones only when open, and then in the clear), the
-frequencies the plan uses, home and the meeting points in every grid format, and the
-supplies. A part with nothing in it is left out. Press **Make the binder**, then **Save as
+frequencies the plan uses, home and the meeting points on a map and in every grid format,
+and the supplies.
+
+The map is drawn from the offline map on this device: home and each meeting point that is a
+saved place, numbered as in the list under it, with a scale bar, north and the map's
+credit. Where no offline map covers the area, or the device cannot draw it, the places are
+drawn to scale in an empty frame and the page says why. A part with nothing in it is left out. Press **Make the binder**, then **Save as
 PDF**, **Add to library** or **Share**.
 
-When something in the last binder changes, Home says so with a link to make it again.
-Deletions are not noticed: make it again after taking anything out.
+When something in the last binder changes or is deleted, Home says which part, with a link
+to make it again. A binder made before this was kept notices changes but not deletions until
+it is made again.
 
 Sheets, the communication plan and the record of the binder are kept in the database: in
 backups, copied to a portable drive, and removed by Erase everything. Cards and the binder

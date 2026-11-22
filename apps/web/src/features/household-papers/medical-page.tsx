@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { Skeleton, Switch } from "@/components/ui/misc";
 import { useSupplies } from "@/features/emergency-plans/data";
+import { KeepMedicalRow } from "@/features/kept/keep-controls";
 import { errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { useUpdateSettings } from "@/lib/queries";
@@ -135,6 +136,7 @@ export default function MedicalPage() {
                 )}
               </Rows>
             )}
+            <KeepMedicalRow count={list.length} open={list.filter((sheet) => !sheet.encrypted).length} />
             <form onSubmit={addOther} className="mt-4 flex flex-wrap items-end gap-2">
               <Field
                 label="Someone else"

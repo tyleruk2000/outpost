@@ -141,8 +141,23 @@ icon. Colour and favourite are not part of GPX.
 
 - Before anything is saved, the dialog says what each file would make ("A new route of 2 lines
   and 1 outline · 12 new places"). Importing adds; nothing is replaced.
-- Points become saved places, lines one route, polygons outlines (not filled).
+- Points become saved places, lines one route, polygons outlines, drawn as faintly filled
+  areas in the route's colour. An outline is not counted in the distance, climb or profile.
+- A KML file whose lines lie in more than one folder makes one route for each folder, named
+  after it; what lies in no folder is a route named after the file. A folder of points alone
+  makes no route.
 - Linked files and overlays in KML are not followed.
 - GeoJSON must be in longitude and latitude (WGS 84); one in another coordinate system is
   refused, so export it again as EPSG:4326.
 - Limits as for GPX.
+
+### Exporting as KML or GeoJSON
+
+On a route, **Other formats** exports it as KML or GeoJSON; **Export routes and places**
+(under the routes list's menu) chooses GPX, KML or GeoJSON for several at once.
+
+- **KML** puts each route in a folder in its colour, and the saved places in one more, so
+  Outpost reads the file back as the same routes. Outlines are polygons again.
+- **GeoJSON** has a feature for each line, area and point, with `kind` (`route`, `area`,
+  `waypoint`, `place`), the route's name and its colour.
+- **GPX** has no areas, so an outline stays a closed line.

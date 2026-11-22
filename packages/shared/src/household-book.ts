@@ -199,7 +199,24 @@ export interface BookResponse {
   /** Null until the answers are first saved. */
   answersAt: number | null;
   made: BookMade | null;
+  /** What the book is made from now, each as a short hash that changes with any change to it, a deletion included. */
+  fingerprints: Record<BookSource, string>;
+  /** What has changed since the last book was made; empty when nothing has, or no book was made with fingerprints. */
+  stale: BookSource[];
 }
+
+/** What the book is made from, for saying what has changed since it was made. Facts round home are not among them. */
+export const BOOK_SOURCES = [
+  { id: "answers", label: "answers" },
+  { id: "plans", label: "emergency plans" },
+  { id: "contacts", label: "contacts" },
+  { id: "places", label: "saved places" },
+  { id: "medical", label: "medical sheets" },
+  { id: "comms", label: "keeping in touch" },
+  { id: "supplies", label: "supplies and the household" },
+] as const;
+export type BookSource = (typeof BOOK_SOURCES)[number]["id"];
+export const BOOK_SOURCE_IDS = BOOK_SOURCES.map((source) => source.id) as [BookSource, ...BookSource[]];
 
 /** `PUT /api/household-book`. */
 export type BookInput = BookAnswers & { baseAnswersAt?: number | null };
@@ -211,9 +228,11 @@ export interface BookMade {
   sections: BookSectionId[];
   /** A few lines a section, of the facts that matter: what the next book compares itself with. */
   summary: Record<string, string[]>;
+  /** What it was made from, as `BookResponse.fingerprints` said when it was made; books made before these were kept have none. */
+  fingerprints?: Record<BookSource, string>;
 }
 
-export type BookMadeInput = Omit<BookMade, "madeAt">;
+export type BookMadeInput = Omit<BookMade, "madeAt" | "fingerprints"> & { fingerprints?: Partial<Record<BookSource, string>> };
 
 /** What changed in one section between two books. */
 export interface BookChange {

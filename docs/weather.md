@@ -30,6 +30,11 @@ Your device's position is offered only on a secure page (see Settings → HTTPS 
 network). Give each UK place a **Met Office warning region**; without one, every UK warning
 is listed and none is matched to it.
 
+**Bring in places from a file** reads `weather-places.geojson` from **Take everything out**,
+or any GeoJSON file of named points. Each point is added beside the places already there; one
+of the same name at the same position is passed over, and so is any past twelve. A point at
+exactly the position of a saved place of the same name is linked to it.
+
 ## How old is too old
 
 Outpost's choices, not the publishers':

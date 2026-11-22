@@ -410,3 +410,66 @@ describe("an emergency plan kept on this device", () => {
     expect(Object.keys((await readKeptPlan("p1"))!.pending.ticks)).toEqual(["s1"]);
   });
 });
+
+describe("the medical sheets kept on this device", () => {
+  async function keptSheets() {
+    const { emptyMedicalRecord } = await import("@outpost/shared");
+    const sheets = [
+      {
+        id: "a",
+        memberId: null,
+        name: "Ana",
+        encrypted: false,
+        record: { ...emptyMedicalRecord(), bloodGroup: "O+", allergies: [{ what: "Penicillin", reaction: "rash" }] },
+        armor: null,
+        createdAt: 1,
+        updatedAt: 1,
+      },
+      {
+        id: "b",
+        memberId: null,
+        name: "Ben",
+        encrypted: true,
+        record: null,
+        armor: "-----BEGIN PGP MESSAGE-----",
+        createdAt: 1,
+        updatedAt: 1,
+      },
+    ];
+    await putKeptJson(await caches.open("outpost-kept:medical:household"), "/api/medical-sheets", { sheets });
+    await putKept({
+      kind: "medical",
+      id: "household",
+      title: "Medical sheets",
+      count: 2,
+      locked: 1,
+      bytes: 700,
+      keptAt: 1,
+      refreshedAt: 1,
+    });
+  }
+
+  it("is listed as a set, saying how many are locked", async () => {
+    await keptSheets();
+    showKeptPage();
+    const row = (await screen.findByRole("link", { name: "Medical sheets" })).closest("li")!;
+    expect(within(row).getByRole("link", { name: "Medical sheets" })).toHaveAttribute("href", "/prepare/medical");
+    expect(row).toHaveTextContent("2 sheets, 1 of them locked: they open here with their passphrase");
+  });
+
+  it("shows a sheet that is not locked, and keeps a locked one locked", async () => {
+    await keptSheets();
+    const { default: KeptMedicalScreen } = await import("./kept-medical-screen");
+    render(
+      <MemoryRouter>
+        <KeptMedicalScreen />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole("heading", { level: 1, name: "Medical sheets" })).toBeInTheDocument();
+    const ana = screen.getByRole("region", { name: "Medical sheet: Ana" });
+    expect(ana).toHaveTextContent("Blood group: O+");
+    expect(ana).toHaveTextContent("Penicillin: rash");
+    const ben = screen.getByRole("region", { name: "Medical sheet: Ben" });
+    expect(ben).not.toHaveTextContent("Blood group");
+  });
+});

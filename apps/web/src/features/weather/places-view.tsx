@@ -4,11 +4,19 @@
  * offers it. It offers it only on a secure page; the owner's plain http address is not
  * one, and the screen says so rather than offering a button that cannot work.
  */
-import { homePlaceOf, MET_OFFICE_REGIONS, type MetOfficeRegionId, type WeatherPlace } from "@outpost/shared";
+import {
+  homePlaceOf,
+  MET_OFFICE_REGIONS,
+  type MetOfficeRegionId,
+  WEATHER_LIMITS,
+  type WeatherPlace,
+  type WeatherPlacesImportResult,
+} from "@outpost/shared";
 import { House, LocateFixed, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
+import { BringInFile } from "@/components/bring-in-file";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogBody, DialogContent } from "@/components/ui/dialog";
@@ -17,7 +25,8 @@ import { useMarkers } from "@/features/maps/data";
 import { NoHomePlace } from "@/features/maps/home-place";
 import { errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
-import { useAddPlace, useRemovePlace, useUpdatePlace } from "./data";
+import { plural } from "@/lib/utils";
+import { useAddPlace, useImportPlaces, useRemovePlace, useUpdatePlace } from "./data";
 
 const REGION_OPTIONS = MET_OFFICE_REGIONS.map((region) => ({ value: region.id, label: region.name }));
 
@@ -37,6 +46,7 @@ export function positionAvailable(): { ok: true } | { ok: false; reason: string 
 export function PlacesView({ places }: { places: WeatherPlace[] }) {
   const update = useUpdatePlace();
   const remove = useRemovePlace();
+  const bringIn = useImportPlaces();
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<WeatherPlace | null>(null);
   const markers = useMarkers();
@@ -85,10 +95,22 @@ export function PlacesView({ places }: { places: WeatherPlace[] }) {
           {home.name || "Your home"} has the home icon but is not in this list, so no warnings are matched to it. Add it below.
         </p>
       ) : null}
-      <Button className="mt-4" onClick={() => setAdding(true)}>
-        <Plus />
-        Add a place
-      </Button>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Button onClick={() => setAdding(true)}>
+          <Plus />
+          Add a place
+        </Button>
+        <BringInFile
+          accept=".geojson,.json,application/geo+json,application/json"
+          maxBytes={1024 * 1024}
+          onFile={async (text) => {
+            const result = await bringIn.mutateAsync(text);
+            return placesWords(result);
+          }}
+        >
+          Bring in places from a file
+        </BringInFile>
+      </div>
       {adding ? <AddPlaceDialog chosen={places} onClose={() => setAdding(false)} /> : null}
       <ConfirmDialog
         open={removing !== null}
@@ -103,6 +125,17 @@ export function PlacesView({ places }: { places: WeatherPlace[] }) {
       />
     </div>
   );
+}
+
+/** "2 places added. 1 was in the list already." */
+export function placesWords(result: WeatherPlacesImportResult): string {
+  const said = [result.added.length > 0 ? `${plural(result.added.length, "place")} added.` : "No places added."];
+  if (result.already > 0) said.push(`${result.already} ${result.already === 1 ? "was" : "were"} in the list already.`);
+  if (result.noRoom > 0) said.push(`${plural(result.noRoom, "place")} left out: the list holds ${WEATHER_LIMITS.places}.`);
+  if (result.notPoints > 0)
+    said.push(`${plural(result.notPoints, "line or shape", "lines or shapes")} passed over: only points are places.`);
+  if (result.added.length > 0) said.push("Press Update now to fetch their forecasts.");
+  return said.join(" ");
 }
 
 function AddPlaceDialog({ chosen, onClose }: { chosen: WeatherPlace[]; onClose: () => void }) {

@@ -1,8 +1,9 @@
 /** Communication plans: the list of them, and starting a new one. */
-import { modeById, planHours, utcLabel } from "@outpost/shared";
+import { modeById, PLAN_FILE_MAX_BYTES, planHours, utcLabel } from "@outpost/shared";
 import { ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
+import { BringInFile } from "@/components/bring-in-file";
 import { EmptyState, ErrorState, Notice, Page, PageHeader, Rows } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
@@ -11,11 +12,12 @@ import { Skeleton } from "@/components/ui/misc";
 import { LicenceLine } from "@/features/radio/licence";
 import { errorMessage } from "@/lib/api";
 import { plural } from "@/lib/utils";
-import { useCreatePlan, usePlans } from "./data";
+import { useCreatePlan, useImportPlan, usePlans } from "./data";
 
 export default function PlansPage() {
   const plans = usePlans();
   const create = useCreatePlan();
+  const bringIn = useImportPlan();
   const navigate = useNavigate();
   const [name, setName] = useState<string | null>(null);
 
@@ -24,12 +26,29 @@ export default function PlansPage() {
       New plan
     </Button>
   );
+  const fromFile = (
+    <BringInFile
+      accept=".json,application/json"
+      maxBytes={PLAN_FILE_MAX_BYTES}
+      multiple
+      onFile={async (text) => `${(await bringIn.mutateAsync(text)).name} added.`}
+    >
+      Bring in a plan
+    </BringInFile>
+  );
   return (
     <Page width="reading">
       <PageHeader
         title="Communication plans"
         description="Several stations, and for each pair of them which band is predicted to serve at which hour. Worked out by VOACAP from monthly medians, and written out to print and carry."
-        actions={plans.data && plans.data.length > 0 ? start : undefined}
+        actions={
+          plans.data && plans.data.length > 0 ? (
+            <>
+              {fromFile}
+              {start}
+            </>
+          ) : undefined
+        }
       />
       <LicenceLine use="listen-and-transmit" className="mb-6" />
       {plans.isPending ? (
@@ -40,9 +59,17 @@ export default function PlansPage() {
       ) : plans.isError ? (
         <ErrorState error={plans.error} onRetry={() => void plans.refetch()} />
       ) : plans.data.length === 0 ? (
-        <EmptyState title="No communication plans yet" action={start}>
+        <EmptyState
+          title="No communication plans yet"
+          action={
+            <>
+              {fromFile}
+              {start}
+            </>
+          }
+        >
           A plan names the places you need to reach each other from (home, a shelter, a relative's house) and the equipment at each. Outpost
-          then asks the engine about every pair, both ways.
+          then asks the engine about every pair, both ways. A plan from an export of everything comes back with Bring in a plan.
         </EmptyState>
       ) : (
         <Rows className="border-y border-border">

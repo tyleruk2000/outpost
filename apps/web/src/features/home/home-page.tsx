@@ -21,6 +21,7 @@ import { Contour } from "@/components/contour";
 import { StorageBar } from "@/components/storage-bar";
 import { Progress, Skeleton } from "@/components/ui/misc";
 import { BoardHomeLine } from "@/features/board/elsewhere";
+import { BookHomeLine } from "@/features/household-book/book-line";
 import { BinderHomeLine } from "@/features/household-papers/binder-line";
 import { ChecksHomeLine } from "@/features/readiness/checks-line";
 import { api } from "@/lib/api";
@@ -164,6 +165,7 @@ export default function HomePage() {
           <BoardHomeLine className="mt-2" />
           <PreparedLines className="mt-2" />
           <BinderHomeLine className="mt-1" />
+          <BookHomeLine className="mt-1" />
           <ChecksHomeLine className="mt-1" />
           {/* biome-ignore lint/a11y/useSemanticElements: a form with role="search" is the search landmark every browser and screen reader knows */}
           <form onSubmit={submit} role="search" className="relative mt-6 max-w-[34rem]">

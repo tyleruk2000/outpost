@@ -314,6 +314,33 @@ describe("overlay data", () => {
     ]);
   });
 
+  it("fills an imported outline as areas, each with its own holes, under the lines", () => {
+    const square = (west: number, south: number, size: number) => [
+      [west, south],
+      [west + size, south],
+      [west + size, south + size],
+      [west, south + size],
+      [west, south],
+    ];
+    const geojson = {
+      type: "FeatureCollection" as const,
+      features: [
+        {
+          type: "Feature" as const,
+          properties: { _outline: true },
+          // A field with a pond in it, and a second field beside it: kept as three closed lines.
+          geometry: { type: "MultiLineString" as const, coordinates: [square(0, 0, 1), square(0.4, 0.4, 0.2), square(2, 0, 1)] },
+        },
+      ],
+    };
+    const { lines } = tracksData([{ ...track("t1", "Fields"), geojson }], null);
+    const areas = lines.features.filter((feature) => feature.properties.area);
+    expect(areas.map((feature) => (feature.geometry as { type: string; coordinates: unknown[] }).coordinates.length)).toEqual([2, 1]);
+    expect(areas.every((feature) => feature.geometry.type === "Polygon")).toBe(true);
+    // The rings are still drawn as lines, once.
+    expect(lines.features.filter((feature) => !feature.properties.area)).toHaveLength(1);
+  });
+
   it("labels each measured point after the first with the running total", () => {
     expect(measureData([]).features).toEqual([]);
     const data = measureData([

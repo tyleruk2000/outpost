@@ -191,6 +191,9 @@ reach and keep chosen things ([offline.md](offline.md#a-phone-out-of-reach-of-th
   merged by a rule that cannot undo work done elsewhere and touches only that plan's ticks.
 - Kept copies (pages, routes, places with notes, a plan's people and numbers) are
   unencrypted in the browser profile. **On this phone** lists and removes them.
+- Medical sheets are kept only when asked, after a question naming the sheets that would be
+  readable. An encrypted sheet is kept as its OpenPGP message and opened on the phone with
+  its passphrase in memory only; nothing decrypted is written to the browser.
 - Kept attachments keep their `sandbox` header and are never answered for a page or frame.
 
 ### Files people upload

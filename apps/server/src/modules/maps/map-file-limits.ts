@@ -3,7 +3,7 @@
  * are the GPX reader's (`GPX_LIMITS`), so every map file is held to the same ceiling.
  * docs/maps.md gives them.
  */
-import type { ParsedGpx } from "./gpx.ts";
+import type { ParsedGpx, TrackFeature } from "./gpx.ts";
 import { GPX_LIMITS } from "./gpx-reader.ts";
 import { XML_LIMITS } from "./gpx-xml.ts";
 
@@ -33,6 +33,12 @@ export type MapFileFormat = (typeof MAP_FILE_FORMATS)[number];
 /** What reading any map file gives: GPX's reading, with outlines (closed lines from polygons) counted apart. */
 export interface ParsedMapFile extends ParsedGpx {
   outlines: number;
+  /**
+   * For a KML file whose lines lie in more than one Folder: one route for each, with its
+   * lines and outlines (`collection` still holds them all, and the points). Absent when
+   * the file's lines are one route.
+   */
+  routes?: Array<{ name: string; features: TrackFeature[] }>;
 }
 
 const ENTITIES: Record<string, string> = { nbsp: " ", amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", "#39": "'" };

@@ -5,14 +5,16 @@
  * binder on the shelf is older than what is in it.
  *
  * A part's "changed" time is the newest change among the things it is made from. A
- * thing deleted leaves no time behind, so a binder is not called out of date by a
- * deletion alone; the screen says so.
+ * thing deleted leaves no time behind, so a binder also records what each part was made
+ * from (`fingerprints.ts`) and is out of date when that has changed, a deletion included.
+ * A binder recorded before fingerprints were kept is compared by its time alone.
  */
 import { BINDER_PART_IDS, type BinderMade, type BinderPart, type BinderStatus, staleParts } from "@outpost/shared";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { householdBinder } from "../../db/schema.ts";
+import type { Fingerprints } from "./fingerprints.ts";
 
 const ROW = "household";
 
@@ -21,12 +23,14 @@ export const madeSchema = z
     parts: z.array(z.enum(BINDER_PART_IDS)).min(1, "Choose at least one thing to put in the binder.").max(BINDER_PART_IDS.length),
     contentAt: z.number().int().nonnegative(),
     pages: z.number().int().min(1).max(2000),
+    /** The fingerprints of the status the binder was made from; left out, the server's own now are recorded. */
+    fingerprints: z.partialRecord(z.enum(BINDER_PART_IDS), z.string().max(64)).optional(),
   })
   .strict();
 
 export interface BinderService {
   status(): BinderStatus;
-  made(input: Omit<BinderMade, "madeAt">): BinderStatus;
+  made(input: Omit<BinderMade, "madeAt" | "fingerprints"> & { fingerprints?: Partial<Record<BinderPart, string>> }): BinderStatus;
   count(): number;
   eraseAll(): number;
 }
@@ -34,6 +38,7 @@ export interface BinderService {
 export function createBinderService(
   ctx: AppContext,
   times: { medical(): number | null; comms(): number | null },
+  fingerprints: Fingerprints,
   changed: () => void,
 ): BinderService {
   const { db, sqlite } = ctx;
@@ -74,17 +79,30 @@ export function createBinderService(
   const read = (): BinderMade | null => {
     const row = db.select().from(householdBinder).where(eq(householdBinder.id, ROW)).get();
     if (!row) return null;
-    return { parts: row.parts as BinderPart[], contentAt: row.contentAt, madeAt: row.madeAt, pages: row.pages };
+    return {
+      parts: row.parts as BinderPart[],
+      contentAt: row.contentAt,
+      madeAt: row.madeAt,
+      pages: row.pages,
+      fingerprints: (row.fingerprints as Record<BinderPart, string> | null) ?? null,
+    };
   };
 
   const service: BinderService = {
     status() {
       const made = read();
       const at = changedAt();
-      return { made, changedAt: at, stale: staleParts(made, at) };
+      const now = fingerprints.binder();
+      return { made, changedAt: at, fingerprints: now, stale: staleParts(made, at, now) };
     },
     made(input) {
-      const values = { parts: [...new Set(input.parts)], contentAt: input.contentAt, madeAt: Date.now(), pages: input.pages };
+      const values = {
+        parts: [...new Set(input.parts)],
+        contentAt: input.contentAt,
+        madeAt: Date.now(),
+        pages: input.pages,
+        fingerprints: { ...fingerprints.binder(), ...(input.fingerprints ?? {}) } as Record<string, string>,
+      };
       db.insert(householdBinder)
         .values({ id: ROW, ...values })
         .onConflictDoUpdate({ target: householdBinder.id, set: values })

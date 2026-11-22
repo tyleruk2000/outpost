@@ -87,6 +87,9 @@ deleted, compared side by side, and saved as a PDF with **Save as PDF**, **Add t
 and **Share**. To link a plan from a page in Notes, put the plan's address in the page's
 link field.
 
+**Bring in a plan** reads a plan's JSON file from **Take everything out** and adds it as a
+new plan; nothing already kept changes.
+
 **Add a load** offers the library of devices, your own devices, a radio saved for the HF
 planner (transmit draw estimated at twice its output, receive to be typed), or figures
 typed by hand. A load from the library keeps where its figures came from, shown under it

@@ -180,6 +180,12 @@ export function ImportMapFilesDialog({
                             </Fact>
                           ))}
                           {outcome.result.outlines ? <Fact label="Outlines">{plural(outcome.result.outlines, "outline")}</Fact> : null}
+                          {outcome.result.moreTracks?.length ? (
+                            <Fact label="Also made">
+                              {plural(outcome.result.moreTracks.length, "more route", "more routes")}, one for each folder:{" "}
+                              {outcome.result.moreTracks.map((track) => track.name).join(", ")}
+                            </Fact>
+                          ) : null}
                           {outcome.result.markers.length > 0 ? (
                             <Fact label="Places saved">{plural(outcome.result.markers.length, "place")}</Fact>
                           ) : null}

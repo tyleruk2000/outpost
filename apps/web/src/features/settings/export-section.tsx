@@ -65,7 +65,7 @@ export function ExportSection() {
     <SettingsSection
       id="export"
       title="Take everything out"
-      description="Your own things in one zip, in formats other programs open: notes as Markdown, contacts as vCard, places as GPX and GeoJSON, lists as CSV, and documents as the files you added. A backup is for putting Outpost back; this is for reading them anywhere else."
+      description="Your own things in one zip, in formats other programs open: notes as Markdown, contacts as vCard, places as GPX and GeoJSON, lists as CSV, plans as JSON, and documents as the files you added. A backup is for putting Outpost back; this is for reading them anywhere else."
     >
       {estimate.isPending ? (
         <div className="grid gap-3" aria-busy>

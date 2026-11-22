@@ -39,6 +39,15 @@ export function useCreatePowerPlan() {
   });
 }
 
+/** A plan file from "Take everything out" (or a bare plan) added as a new plan. */
+export function useImportPowerPlan() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (text: string) => api.post<{ plan: PowerPlan }>("/api/power/plans/import", { text }).then((data) => data.plan),
+    onSuccess: () => void client.invalidateQueries({ queryKey: powerKeys.all, exact: true }),
+  });
+}
+
 /** A plan as saved: the whole plan, and the version it was changed from (`updatedAt` when opened or last saved). */
 type PowerPlanSave = PowerPlanInput & { baseUpdatedAt?: number };
 

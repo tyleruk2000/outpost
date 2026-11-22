@@ -684,11 +684,12 @@ server on the internet.
 | `PUT /api/maps/tracks/:id/points` | Redraws the line through `points`; waypoints kept. |
 | `POST /api/maps/tracks/import` | One GPX, ≤20 MB; `name`, `color`, `importWaypointsAsMarkers`. |
 | `POST /api/maps/files/preview` | One GPX, KML, KMZ or GeoJSON, ≤20 MB; reads, saves nothing. |
-| `POST /api/maps/files/import` | The same file: lines to one track (rings as `_outline` lines), points to markers. |
+| `POST /api/maps/files/import` | The same file: lines to one track (rings as `_outline` lines), points to markers; KML with lines in several `Folder`s to one track each (`moreTracks`). |
 | `PUT /api/maps/recordings/:id` | A recorded track: `:id` 26 characters chosen by the device; multipart `name`, `color?` and a GPX of tracks with times, ≤150,000 points. A repeat answers `alreadySaved`. |
 | `GET /api/maps/tracks/:id`, `PATCH`, `DELETE` | GeoJSON; `name`, `description`, `color`. |
 | `GET /api/maps/tracks/:id/export.gpx` | One track. |
 | `GET /api/maps/export.gpx` | `markers=1`, `tracks=<ids>`; icons as Garmin `<sym>`. |
+| `GET /api/maps/tracks/:id/export.kml`, `.geojson`; `GET /api/maps/export.kml`, `.geojson` | The same as KML 2.2 (a `Folder` per route, outlines as `Polygon`) or GeoJSON (`kind`: `route`, `area`, `waypoint`, `place`). |
 
 ### Finding a route
 
@@ -792,6 +793,7 @@ Worked out by VOACAP on the server, offline. Types: `propagation.ts`,
 | `POST /api/radio/propagation/second-model/maps/download` | The ITU's maps (25 files, 137 MB). |
 | `POST /api/radio/propagation/second-model/compare` | The `predict` body, run by both models with isotropic 0 dBi antennas → `SecondModelComparison`. `415 second-model-unavailable`; `400` for power under 1 W or SSN outside 1 to 311. |
 | `GET`, `POST /api/radio/communication-plans`, `GET`, `PATCH`, `DELETE …/:id` | Communication plans: `name`, `notes`, `stations` (≤8), `date`, `fromUtc`, `toUtc`, `bands`, `mode`, `requiredSnrDb`, `referenceBandwidthHz`, `solar`, `links`. `PATCH` with `baseUpdatedAt` → `409 changed-elsewhere`. |
+| `POST /api/radio/communication-plans/import` | `{ text }`: a plan file from an export (`format: outpost-communication-plan`) or a bare plan → a new plan; links to pages and documents not held here are dropped. |
 | `POST …/communication-plans/:id/matrix`, `GET` | Works the plan out (≤56 runs) → `PlanResult`; the last result if the plan is unchanged. |
 | `GET /api/radio/observations` | The contact log: `limit` (≤500), `offset`; `imports`, `importing`, `adif`. |
 | `POST /api/radio/observations`, `DELETE …/:id` | One entry: `at`, `frequencyMhz`, `band`, `mode`, `outcome` (`contact`, `heard`, `failed`), `tx`, `rx`, power, antenna, reports, notes. `409` duplicate. |
@@ -846,6 +848,7 @@ Types: `power.ts`. The server keeps plans and devices and works nothing out; see
 | `GET`, `POST /api/power/plans` | `name`, `notes`, `battery`, `loads` (≤60: `device`, `radio` or `charge`, supplied `dc`, `usb` or `ac`, with `origin`), `usb`, `inverter`, `solar` (with `sunHours` and `sunHoursSource`), `charger`, `cableRatingA`. `400` out of range or past 500 plans. |
 | `GET`, `PUT`, `DELETE /api/power/plans/:id` | `PUT` takes the whole plan and optional `baseUpdatedAt` → `409` with `details.updatedAt` if saved since. |
 | `POST /api/power/plans/:id/copy` | "… (copy)". |
+| `POST /api/power/plans/import` | `{ text }`: a plan file from an export (`format: outpost-power-plan`) or a bare plan → a new plan. `400` for another kind of file. |
 | `GET`, `POST /api/power/devices`, `PUT`, `DELETE …/:id` | Own devices: `name`, `kind` (`run`, `charge`, `radio`), `supply`, `watts`, `wattHours`, `receiveW`, `transmitW`, `standbyW`, `note`. ≤500. |
 
 ## Morse trainer
@@ -972,7 +975,7 @@ How releases work: [development/releases.md](development/releases.md).
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/export-all/estimate` | `ExportEstimate` per part (`notes`, `contacts`, `places`, `supplies`, `barometer`, `radio-log`, `plans`, `papers`, `board`, `documents`). |
+| `GET /api/export-all/estimate` | `ExportEstimate` per part (`notes`, `contacts`, `places`, `supplies`, `barometer`, `radio-log`, `plans`, `weather-places`, `radio-plans`, `power-plans`, `papers`, `board`, `documents`). |
 | `GET /api/export-all` | The latest `export-all.run` job and its `ExportResult`. |
 | `POST /api/export-all` | `{ destination: { kind: download } \| { kind: location, locationId }, include? }`. `409` while one runs. |
 | `GET /api/export-all/:id/download`, `DELETE` | The zip; delete it from the server. |
@@ -1063,6 +1066,7 @@ Types: `weather.ts`, `weather-rivers.ts`. See [weather.md](weather.md). Only
 | --- | --- |
 | `GET /api/weather` | `WeatherResponse`: `places`, `kept` copies by kind (`forecast`, `warnings`, `flood`, `rivers`, `river-readings`, `climate`, `solar`) with what was sent and received, `sources` with licence and credit, options, `now`. Fetches nothing. |
 | `POST /api/weather/places`, `PATCH`, `DELETE …/:id` | `markerId` or `name`, `lat`, `lon`; `region`. ≤12. |
+| `POST /api/weather/places/import` | `{ text }`: GeoJSON points (≤1 MB) → `WeatherPlacesImportResult` (`added`, `already`, `noRoom`, `notPoints`). |
 | `POST /api/weather/update` | **Fetches.** `{ kinds, placeIds? }` → `outcomes`. A failure keeps the previous copy. One at a time. |
 | `POST /api/weather/river-readings` | **Fetches.** `{ placeId, stationId }`: three days of a station's readings. `502` keeps what was held. |
 | `DELETE /api/weather/kept/:id` | |
@@ -1098,8 +1102,8 @@ are searchable only while `medical.inSearch` is on and readable by tools only wh
 | `GET /api/medical-sheets`, `POST` | `{ sheets, inSearch, inTools }`; make one (≤60). |
 | `GET`, `PUT`, `DELETE /api/medical-sheets/:id` | `PUT` with `baseUpdatedAt`; a `record` over an encrypted sheet needs `removeEncryption: true`. |
 | `GET /api/keeping-in-touch`, `PUT` | The communication plan and `resolved` links. `PUT` with `baseUpdatedAt`: `409` if older than the stored plan, or `null` once a plan is kept. |
-| `GET /api/household-binder` | `BinderStatus`: last made, changes since. |
-| `POST /api/household-binder/made` | Records a binder made in the browser. |
+| `GET /api/household-binder` | `BinderStatus`: last made, changes since, and `fingerprints` (a hash per part of what it is made from; `stale` compares them, so a deletion counts). |
+| `POST /api/household-binder/made` | Records a binder made in the browser, with the `fingerprints` of the status it was made from. |
 
 ## Household book
 
@@ -1110,10 +1114,10 @@ Changes publish `household-book.changed`. One record per household: the wizard's
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/household-book` | The answers (the defaults until first saved), `answersAt`, and `made`. |
+| `GET /api/household-book` | The answers (the defaults until first saved), `answersAt`, `made`, `fingerprints` of what the book is made from, and `stale`: which of them changed since the book was made. |
 | `PUT /api/household-book` | Save the answers (`BookInput`). With `baseAnswersAt` older than the answers kept, `409 conflict` and nothing is overwritten. |
 | `GET /api/household-book/facts` | What the book reads round home, for the answers as saved (`BookFacts`): the nearest help and places to keep away from in the reference layers (`held: false` for a layer with nothing in it), the flood and planning zones holding home, the climate kept for home with the wind's direction, and each journey's straight line with the ground along it and a stop for each day's walking. Reads only what is held. |
-| `POST /api/household-book/made` | Record a book made in the browser (`BookMadeInput`). |
+| `POST /api/household-book/made` | Record a book made in the browser (`BookMadeInput`, with the `fingerprints` it was made from). |
 
 ## Readiness
 
