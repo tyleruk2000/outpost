@@ -31,14 +31,15 @@ import {
   type SupplyProduct,
   shoppingSuggestions,
 } from "@outpost/shared";
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
 import { badRequest, notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
 import { supplyHousehold, supplyItems, supplyMembers, supplyProducts, supplyShopping } from "../../db/schema.ts";
 
 export interface SuppliesService {
-  items(): SupplyItem[];
+  /** The current household's stock (modules/households), or another household's when named. */
+  items(householdId?: string): SupplyItem[];
   item(id: string): SupplyItem;
   create(input: SupplyItemInput): SupplyItem;
   update(id: string, input: Partial<SupplyItemInput>): SupplyItem;
@@ -46,7 +47,8 @@ export interface SuppliesService {
   adjust(id: string, by: number): SupplyItem;
   remove(id: string): void;
   locations(): string[];
-  household(): Household;
+  /** The current household's settings and people, or another household's when named. */
+  household(householdId?: string): Household;
   setHousehold(input: HouseholdInput): Household;
   lookup(code: string): BarcodeLookup;
   shopping(): ShoppingList;
@@ -61,10 +63,12 @@ export interface SuppliesService {
   eraseAll(): SuppliesKept;
 }
 
-const HOUSEHOLD_ID = "household";
-
 export function createSuppliesService(ctx: AppContext): SuppliesService {
   const { db, sqlite } = ctx;
+  /** Every row here is for one household: the current one (modules/households). */
+  const hid = () => ctx.services.households.currentId();
+  const mine = (householdId = hid()) => eq(supplyItems.householdId, householdId);
+  const myLines = () => eq(supplyShopping.householdId, hid());
   const changed = () => ctx.events.publish({ type: "supplies.changed" });
 
   const toItem = (row: typeof supplyItems.$inferSelect): SupplyItem => ({
@@ -98,16 +102,19 @@ export function createSuppliesService(ctx: AppContext): SuppliesService {
     note: row.note,
   });
 
-  const householdRow = () => db.select().from(supplyHousehold).where(eq(supplyHousehold.id, HOUSEHOLD_ID)).get();
+  const householdRow = (householdId = hid()) => db.select().from(supplyHousehold).where(eq(supplyHousehold.id, householdId)).get();
 
-  /** Marks the stock as changed since the shopping list was worked out. */
+  /** Marks the stock as changed since the shopping list was worked out. Every change of stock passes here first. */
   const touch = (now = Date.now()) => {
-    const row = householdRow();
-    if (row) db.update(supplyHousehold).set({ stockChangedAt: now }).where(eq(supplyHousehold.id, HOUSEHOLD_ID)).run();
+    // A row keyed to a household: the household is stored first.
+    ctx.services.households.ensure();
+    const id = hid();
+    const row = householdRow(id);
+    if (row) db.update(supplyHousehold).set({ stockChangedAt: now }).where(eq(supplyHousehold.id, id)).run();
     else
       db.insert(supplyHousehold)
         .values({
-          id: HOUSEHOLD_ID,
+          id,
           daysWanted: DEFAULT_HOUSEHOLD.daysWanted,
           drinkingLitres: DEFAULT_HOUSEHOLD.drinkingLitres,
           allUsesLitres: DEFAULT_HOUSEHOLD.allUsesLitres,
@@ -140,8 +147,21 @@ export function createSuppliesService(ctx: AppContext): SuppliesService {
       .run();
   };
 
+  /** A line of the current household's shopping list. */
+  const lineRow = (id: string) =>
+    db
+      .select()
+      .from(supplyShopping)
+      .where(and(eq(supplyShopping.id, id), myLines()))
+      .get();
+
   const get = (id: string) => {
-    const row = db.select().from(supplyItems).where(eq(supplyItems.id, id)).get();
+    // Another household's item is not found here: stock in one household never shows in another.
+    const row = db
+      .select()
+      .from(supplyItems)
+      .where(and(eq(supplyItems.id, id), mine()))
+      .get();
     if (!row) throw notFound("That item");
     return toItem(row);
   };
@@ -171,7 +191,8 @@ export function createSuppliesService(ctx: AppContext): SuppliesService {
   };
 
   const service: SuppliesService = {
-    items: () => db.select().from(supplyItems).orderBy(asc(supplyItems.name), asc(supplyItems.date)).all().map(toItem),
+    items: (householdId) =>
+      db.select().from(supplyItems).where(mine(householdId)).orderBy(asc(supplyItems.name), asc(supplyItems.date)).all().map(toItem),
 
     item: get,
 
@@ -180,12 +201,12 @@ export function createSuppliesService(ctx: AppContext): SuppliesService {
         throw badRequest(`The inventory holds at most ${SUPPLY_LIMITS.items.toLocaleString("en-GB")} rows.`);
       const now = Date.now();
       const id = newId();
+      touch(now);
       db.insert(supplyItems)
-        .values({ id, ...columns(input), createdAt: now, updatedAt: now })
+        .values({ id, householdId: hid(), ...columns(input), createdAt: now, updatedAt: now })
         .run();
       const item = get(id);
       remember(item, now);
-      touch(now);
       changed();
       return item;
     },
@@ -210,8 +231,8 @@ export function createSuppliesService(ctx: AppContext): SuppliesService {
       const now = Date.now();
       // In one statement, so that two presses from two phones both count.
       sqlite
-        .prepare("UPDATE supply_items SET quantity = max(0, min(?, quantity + ?)), updated_at = ? WHERE id = ?")
-        .run(SUPPLY_LIMITS.quantity, by, now, id);
+        .prepare("UPDATE supply_items SET quantity = max(0, min(?, quantity + ?)), updated_at = ? WHERE id = ? AND household_id = ?")
+        .run(SUPPLY_LIMITS.quantity, by, now, id, hid());
       touch(now);
       changed();
       return get(id);
@@ -230,15 +251,17 @@ export function createSuppliesService(ctx: AppContext): SuppliesService {
 
     locations: () =>
       (
-        sqlite.prepare("SELECT DISTINCT location FROM supply_items WHERE location != '' ORDER BY location COLLATE NOCASE").all() as Array<{
+        sqlite
+          .prepare("SELECT DISTINCT location FROM supply_items WHERE household_id = ? AND location != '' ORDER BY location COLLATE NOCASE")
+          .all(hid()) as Array<{
           location: string;
         }>
       ).map((row) => row.location),
 
-    household() {
-      const row = householdRow();
-      // The people of the current household (modules/households), in its order.
-      const order = ctx.services.households.personIds();
+    household(householdId = hid()) {
+      const row = householdRow(householdId);
+      // The people of the household (modules/households), in its order: its needs are theirs.
+      const order = ctx.services.households.personIds(householdId);
       const byId = new Map(
         db
           .select()
@@ -261,8 +284,8 @@ export function createSuppliesService(ctx: AppContext): SuppliesService {
             note: member.note,
           }),
         );
-      // The table a household that has not chosen one takes: by the current household's country (modules/households).
-      const country = ctx.services.households.country();
+      // The table a household that has not chosen one takes: by the household's country (modules/households).
+      const country = ctx.services.households.country(householdId);
       const energyBasis = { table: energyTableFor(country), country };
       if (!row) return { ...DEFAULT_HOUSEHOLD, energyBasis, members };
       return {
@@ -290,7 +313,7 @@ export function createSuppliesService(ctx: AppContext): SuppliesService {
             waterBasis: input.waterBasis,
             updatedAt: now,
           })
-          .where(eq(supplyHousehold.id, HOUSEHOLD_ID))
+          .where(eq(supplyHousehold.id, hid()))
           .run();
         // The people of the current household (modules/households): the ones sent are kept or
         // added, in this order; one left out leaves this household, and goes from the People
@@ -344,7 +367,14 @@ export function createSuppliesService(ctx: AppContext): SuppliesService {
     lookup(code) {
       const key = barcodeKey(code);
       if (!key) throw badRequest("Give a barcode: the number under the bars.");
-      const items = db.select().from(supplyItems).where(eq(supplyItems.barcodeKey, key)).orderBy(asc(supplyItems.date)).all().map(toItem);
+      // What this household holds of it; what a barcode is (`supply_products`) is known to every household.
+      const items = db
+        .select()
+        .from(supplyItems)
+        .where(and(eq(supplyItems.barcodeKey, key), mine()))
+        .orderBy(asc(supplyItems.date))
+        .all()
+        .map(toItem);
       const remembered = db.select().from(supplyProducts).where(eq(supplyProducts.barcodeKey, key)).get();
       const product: SupplyProduct | null = remembered
         ? {
@@ -363,7 +393,7 @@ export function createSuppliesService(ctx: AppContext): SuppliesService {
 
     shopping() {
       const row = householdRow();
-      const lines = db.select().from(supplyShopping).orderBy(asc(supplyShopping.position)).all().map(toLine);
+      const lines = db.select().from(supplyShopping).where(myLines()).orderBy(asc(supplyShopping.position)).all().map(toLine);
       const workedOutAt = row?.shoppingWorkedAt ?? null;
       return { lines, workedOutAt, stale: workedOutAt !== null && row !== undefined && row.stockChangedAt > workedOutAt };
     },
@@ -374,12 +404,15 @@ export function createSuppliesService(ctx: AppContext): SuppliesService {
       sqlite.transaction(() => {
         touch(now);
         // Lines the person added stay; the worked-out ones are worked out afresh.
-        db.delete(supplyShopping).where(eq(supplyShopping.source, "worked")).run();
-        const own = db.select().from(supplyShopping).orderBy(asc(supplyShopping.position)).all();
+        db.delete(supplyShopping)
+          .where(and(eq(supplyShopping.source, "worked"), myLines()))
+          .run();
+        const own = db.select().from(supplyShopping).where(myLines()).orderBy(asc(supplyShopping.position)).all();
         suggestions.forEach((line, position) => {
           db.insert(supplyShopping)
             .values({
               id: newId(),
+              householdId: hid(),
               position,
               source: "worked",
               itemId: line.itemId,
@@ -400,21 +433,28 @@ export function createSuppliesService(ctx: AppContext): SuppliesService {
             .run();
         });
         // Worked out now: what it was worked from has not changed since.
-        db.update(supplyHousehold).set({ shoppingWorkedAt: now, stockChangedAt: now }).where(eq(supplyHousehold.id, HOUSEHOLD_ID)).run();
+        db.update(supplyHousehold).set({ shoppingWorkedAt: now, stockChangedAt: now }).where(eq(supplyHousehold.id, hid())).run();
       })();
       changed();
       return service.shopping();
     },
 
     addShoppingLine(input) {
-      if (count().shopping >= SUPPLY_LIMITS.shoppingLines)
-        throw badRequest(`The shopping list holds at most ${SUPPLY_LIMITS.shoppingLines} lines.`);
+      const household = hid();
+      const lines = (sqlite.prepare("SELECT count(*) AS n FROM supply_shopping WHERE household_id = ?").get(household) as { n: number }).n;
+      if (lines >= SUPPLY_LIMITS.shoppingLines) throw badRequest(`The shopping list holds at most ${SUPPLY_LIMITS.shoppingLines} lines.`);
+      ctx.services.households.ensure();
       const now = Date.now();
       const id = newId();
-      const position = (sqlite.prepare("SELECT coalesce(max(position), -1) + 1 AS n FROM supply_shopping").get() as { n: number }).n;
+      const position = (
+        sqlite.prepare("SELECT coalesce(max(position), -1) + 1 AS n FROM supply_shopping WHERE household_id = ?").get(household) as {
+          n: number;
+        }
+      ).n;
       db.insert(supplyShopping)
         .values({
           id,
+          householdId: household,
           position,
           source: "own",
           itemId: null,
@@ -432,7 +472,7 @@ export function createSuppliesService(ctx: AppContext): SuppliesService {
     },
 
     updateShoppingLine(id, input) {
-      const row = db.select().from(supplyShopping).where(eq(supplyShopping.id, id)).get();
+      const row = lineRow(id);
       if (!row) throw notFound("That line of the shopping list");
       db.update(supplyShopping)
         .set({
@@ -449,16 +489,25 @@ export function createSuppliesService(ctx: AppContext): SuppliesService {
     },
 
     removeShoppingLine(id) {
-      const result = db.delete(supplyShopping).where(eq(supplyShopping.id, id)).run();
+      const result = db
+        .delete(supplyShopping)
+        .where(and(eq(supplyShopping.id, id), myLines()))
+        .run();
       if (result.changes === 0) throw notFound("That line of the shopping list");
       changed();
     },
 
     bought(id, input) {
-      const row = db.select().from(supplyShopping).where(eq(supplyShopping.id, id)).get();
+      const row = lineRow(id);
       if (!row) throw notFound("That line of the shopping list");
       const line = toLine(row);
-      const model = line.itemId ? db.select().from(supplyItems).where(eq(supplyItems.id, line.itemId)).get() : undefined;
+      const model = line.itemId
+        ? db
+            .select()
+            .from(supplyItems)
+            .where(and(eq(supplyItems.id, line.itemId), mine()))
+            .get()
+        : undefined;
       const date = input.date || null;
       const dateKind = date ? (input.dateKind ?? "best-before") : null;
       let item: SupplyItem;
@@ -526,9 +575,14 @@ export function createSuppliesService(ctx: AppContext): SuppliesService {
         throw badRequest(`The inventory holds at most ${SUPPLY_LIMITS.items.toLocaleString("en-GB")} rows; this file would take it over.`);
       const now = Date.now();
       sqlite.transaction(() => {
+        touch(now);
         for (const row of rows) {
           if (row.action === "update" && row.id) {
-            const current = db.select({ id: supplyItems.id }).from(supplyItems).where(eq(supplyItems.id, row.id)).get();
+            const current = db
+              .select({ id: supplyItems.id })
+              .from(supplyItems)
+              .where(and(eq(supplyItems.id, row.id), mine()))
+              .get();
             if (!current) throw notFound(`The item to update (${row.item.name})`);
             db.update(supplyItems)
               .set({ ...columns(row.item), updatedAt: now })
@@ -539,13 +593,12 @@ export function createSuppliesService(ctx: AppContext): SuppliesService {
           } else {
             const id = newId();
             db.insert(supplyItems)
-              .values({ id, ...columns(row.item), createdAt: now, updatedAt: now })
+              .values({ id, householdId: hid(), ...columns(row.item), createdAt: now, updatedAt: now })
               .run();
             remember(get(id), now);
             added += 1;
           }
         }
-        touch(now);
       })();
       changed();
       return { added, updated };

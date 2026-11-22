@@ -2,7 +2,8 @@
  * Rations, under Tools: a day's energy for each person, how long food lasts, what to store
  * for a number of days, and a common stock shared out by need. The sums are the shared
  * package's (`rations.ts`), on the UK figures Supplies uses or the international ones;
- * "Use my household" and "Use my supplies" fill it from Supplies so the two agree.
+ * "Use my household" and "Use my supplies" fill it from Supplies so the two agree: the
+ * current household's people and stock (docs/development/households.md).
  *
  * A planning aid. Reduced rations are where a calculator could do harm, so every reduced
  * figure keeps children, older people, and pregnant, breastfeeding and ill people on their
@@ -39,6 +40,7 @@ import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { Checkbox, Select } from "@/components/ui/misc";
+import { useHousehold } from "@/features/households/use-household";
 import type { PrintPaper } from "@/features/print-kit";
 import { api, errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
@@ -173,6 +175,9 @@ async function readSuppliesFood(data: SuppliesResponse): Promise<SuppliesFood> {
 
 export default function RationsPage() {
   const client = useQueryClient();
+  // With several households, Supplies' people are the current household's: say which.
+  const current = useHousehold().data;
+  const householdName = current?.several ? current.household.name : null;
   const [people, setPeople] = usePeople();
   const bases = [
     { value: "uk", label: "UK figures for each person", description: "Public Health England by age and sex, with SACN's additions" },
@@ -201,10 +206,15 @@ export default function RationsPage() {
     setLoading("household");
     try {
       const found = fromSupplies(await supplyData());
-      if (found.length === 0) notify.error("Supplies has nobody in its household yet. Add people under Supplies, Household, or here.");
+      if (found.length === 0)
+        notify.error(
+          householdName
+            ? `Supplies has nobody in ${householdName} yet. Add people under Supplies, Household, or here.`
+            : "Supplies has nobody in its household yet. Add people under Supplies, Household, or here.",
+        );
       else {
         setPeople(found);
-        toast.success(`${plural(found.length, "person", "people")} from Supplies`);
+        toast.success(`${plural(found.length, "person", "people")} from ${householdName ?? "Supplies"}`);
       }
     } catch (error) {
       notify.error(errorMessage(error));

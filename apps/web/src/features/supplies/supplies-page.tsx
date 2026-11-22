@@ -4,6 +4,8 @@
  *
  * Four views of one set of data, chosen by `?view=` so that each has an address a note
  * can link to: the stock, how long it lasts, the shopping list, and the household.
+ * Everything is the current household's (docs/development/households.md), said under the
+ * title when there are several.
  */
 import type { SupplyItemInput } from "@outpost/shared";
 import { FileDown, FileUp, Link2, Plus, ScanBarcode } from "lucide-react";
@@ -13,6 +15,7 @@ import { toast } from "sonner";
 import { ErrorState, Page, PageHeader } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/misc";
+import { ForHousehold } from "@/features/households/for-household";
 import { copyText } from "@/lib/clipboard";
 import { exportHref, useSupplies } from "./data";
 import { HouseholdView } from "./household-view";
@@ -73,6 +76,7 @@ export default function SuppliesPage() {
           </>
         }
       />
+      <ForHousehold className="-mt-6 mb-8" />
 
       {supplies.isPending ? (
         <div className="grid gap-3" role="status" aria-label="Loading supplies">

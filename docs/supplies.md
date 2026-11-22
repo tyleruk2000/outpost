@@ -18,6 +18,25 @@ store cupboard, not dietary advice.
   you give them, pets, and the days wanted.
 - **The shopping list**, and **barcodes remembered** after an item is used up.
 
+## Several households
+
+Each household keeps its own supplies: its items, its shopping list, its days wanted and
+its people. Supplies shows the current household's, and says which under the title
+("For Caravan · Change") when there is more than one. Choosing another household under
+**Preparedness → Households** changes what Supplies shows on every device; nothing kept
+for one household shows in another.
+
+- **Household** lists the current household's people. Someone in two households (a home
+  and a caravan) is the same person in both, with the same figures; add people to the
+  other households on the Households screen.
+- A **portable** household (a car kit, a pack, a caravan) keeps supplies the same way.
+- A barcode remembered is remembered for every household: scanning it in the caravan
+  fills in the name, but shows only what the caravan holds.
+- **Home** gives the current household's days of food and water, headed by its name, and
+  a short line for each other household that keeps something.
+- **Export everything** takes every household's list, one file each, named after the
+  household. The CSV on the Supplies screen is the current household's.
+
 ## Use-by and best before
 
 Following GOV.UK's "Best before and use-by dates" (use-by is about safety, best before
@@ -65,8 +84,9 @@ Every figure can be changed for the household or one person. The sources are in
 [sources.md](sources.md#planning-figures-for-supplies-read-on-2026-11-16).
 
 **Energy** comes from one of two tables, chosen under **Household → Energy table**. Left
-on **By Home's country**, a household whose Home is in the UK uses the UK's; everywhere
-else, and with no home place, the international one. The screen says which it took.
+on **By Home's country**, a household whose home is in the UK uses the UK's; everywhere
+else, and with no home place, the international one. With several households, each takes
+its own home's country (or the country set for it). The screen says which it took.
 
 The **international** table is UNHCR, UNICEF, WFP and WHO's *Food and Nutrition Needs in
 Emergencies* (2002), annex 1: a figure for each year of age, at light activity, for a

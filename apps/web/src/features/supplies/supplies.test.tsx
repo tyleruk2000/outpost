@@ -4,6 +4,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { energyTableLine } from "./household-view";
 import { draftOf, inputOf } from "./item-form";
 import SuppliesPage from "./supplies-page";
 import { lineWords, quantityWords, shoppingText, whenWords } from "./words";
@@ -48,6 +49,8 @@ function show(
     shopping?: ShoppingList;
     lookup?: unknown;
     view?: string;
+    /** The households, the first current; left out, the one first household. */
+    households?: string[];
   } = {},
 ): Server {
   const server: Server = { posted: [] };
@@ -71,6 +74,11 @@ function show(
         if (options.items === "fails") return json({ error: { code: "internal", message: "The database is busy." } }, 500);
         if (options.items === "never") return new Promise<Response>(() => {});
         return json({ items: options.items ?? [], household: options.household ?? DEFAULT_HOUSEHOLD, locations: ["Pantry"] });
+      }
+      if (pathname === "/api/households") {
+        const names = options.households ?? ["Home"];
+        const households = names.map((name, index) => ({ id: index === 0 ? "household" : `h${index}`, name, home: null, country: null }));
+        return json({ households, currentId: "household" });
       }
       if (pathname === "/api/supplies/shopping") return json(options.shopping ?? { lines: [], workedOutAt: null, stale: false });
       if (pathname.startsWith("/api/supplies/barcodes/"))
@@ -379,6 +387,57 @@ describe("the Supplies screen", () => {
         body: { quantity: 5, dateKind: "best-before", date: "2028-03-01", location: "Pantry" },
       }),
     );
+  });
+});
+
+describe("Supplies with several households", () => {
+  it("says nothing of households when there is only one", async () => {
+    show({ items: [item({})], view: "household" });
+    await screen.findByText(/Add each person/);
+    expect(screen.queryByTestId("for-household")).not.toBeInTheDocument();
+    expect(screen.queryByText(/people\./)).not.toBeInTheDocument();
+  });
+
+  it("names the household whose country the energy table is taken from only when there are several", () => {
+    const basis = { table: "uk" as const, country: "GB" };
+    expect(energyTableLine("home", basis, "United Kingdom")).toMatch(/^Home is in United Kingdom: the UK's figures/);
+    expect(energyTableLine("home", basis, "United Kingdom", "Caravan")).toMatch(/^Caravan is in United Kingdom/);
+    expect(energyTableLine("home", { table: "international", country: null }, undefined, "Caravan")).toMatch(
+      /^Caravan has no home with a country yet/,
+    );
+    expect(energyTableLine("home", { table: "international", country: null })).toMatch(/^No saved place has the home icon/);
+  });
+
+  it("says which household it is for under the title, with the way to change it", async () => {
+    show({ items: [item({})], households: ["Caravan", "Home"] });
+    const line = await screen.findByTestId("for-household");
+    expect(line).toHaveTextContent("For Caravan");
+    expect(within(line).getByRole("link", { name: /Change household/ })).toHaveAttribute("href", "/prepare/households");
+  });
+
+  it("says the people listed are the current household's, and links to the other households", async () => {
+    show({
+      view: "household",
+      households: ["Caravan", "Home"],
+      household: {
+        ...DEFAULT_HOUSEHOLD,
+        members: [
+          {
+            id: "m1",
+            kind: "person",
+            name: "Cat",
+            band: "19-64",
+            sex: "female",
+            kcalPerDay: null,
+            drinkingLitres: null,
+            allUsesLitres: null,
+            note: "",
+          },
+        ],
+      },
+    });
+    expect(await screen.findByText(/These are Caravan.s people/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Add people to other households" })).toHaveAttribute("href", "/prepare/households");
   });
 });
 

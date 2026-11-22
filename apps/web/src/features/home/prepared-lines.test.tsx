@@ -40,15 +40,21 @@ const outlook = (food: number, foodDays: number | null, water: number, waterDays
     },
   }) as unknown as SupplyOutlook;
 
-/** Serves the two lists Home reads, and counts what was asked. */
-function serve(plans: EmergencyPlanSummary[], held: SupplyOutlook) {
+/** Serves the two lists Home reads, and counts what was asked. One outlook: one household; a list: several, the first current. */
+function serve(plans: EmergencyPlanSummary[], held: SupplyOutlook | Array<{ name: string; outlook: SupplyOutlook }>) {
   const asked: string[] = [];
+  const households = (Array.isArray(held) ? held : [{ name: "Home", outlook: held }]).map((entry, index) => ({
+    householdId: index === 0 ? "household" : `h${index}`,
+    name: entry.name,
+    current: index === 0,
+    outlook: entry.outlook,
+  }));
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {
       const url = new URL(String(input), "http://outpost.test");
       asked.push(url.pathname);
-      const body = url.pathname === "/api/emergency-plans" ? { plans } : { outlook: held, missing: [], energy: {} };
+      const body = url.pathname === "/api/emergency-plans" ? { plans } : { households };
       return new Response(JSON.stringify(body), { headers: { "Content-Type": "application/json" } });
     }),
   );
@@ -78,7 +84,9 @@ describe("Home's lines on plans and supplies", () => {
       "/prepare/supplies",
     );
     // Read once each; nothing is asked again on a timer.
-    expect(asked.sort()).toEqual(["/api/emergency-plans", "/api/supplies/outlook"]);
+    expect(asked.sort()).toEqual(["/api/emergency-plans", "/api/supplies/outlooks"]);
+    // One household: not named.
+    expect(screen.getByText(/^Supplies:/)).toBeInTheDocument();
   });
 
   it("offers a plan in use before any other", async () => {
@@ -101,5 +109,40 @@ describe("Home's lines on plans and supplies", () => {
     show();
     expect(await screen.findByRole("link", { name: "add the household to see how long they last" })).toBeInTheDocument();
     expect(screen.queryByText(/Emergency plan/)).not.toBeInTheDocument();
+  });
+
+  it("with several households, heads the current one's line with its name and gives each other a short line", async () => {
+    serve(
+      [],
+      [
+        { name: "Home", outlook: outlook(4, 3.81, 1, 5.33) },
+        { name: "Caravan", outlook: outlook(2, 2, 0, null) },
+        { name: "Grandma's", outlook: outlook(0, null, 0, null) },
+        { name: "Hiking group", outlook: outlook(1, null, 0, null) },
+      ],
+    );
+    show();
+    expect(await screen.findByText("Supplies for Home:")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "food for about 3.8 days, water for about 5.3 days" })).toHaveAttribute(
+      "href",
+      "/prepare/supplies",
+    );
+    expect(screen.getByText("Caravan: food for about 2 days")).toBeInTheDocument();
+    expect(screen.getByText("Hiking group: nobody in it yet to count days for")).toBeInTheDocument();
+    // Nothing stored there: nothing said.
+    expect(screen.queryByText(/Grandma/)).not.toBeInTheDocument();
+  });
+
+  it("gives the other households' lines when the current one keeps nothing", async () => {
+    serve(
+      [],
+      [
+        { name: "Home", outlook: outlook(0, null, 0, null) },
+        { name: "Caravan", outlook: outlook(2, 2, 0, null) },
+      ],
+    );
+    show();
+    expect(await screen.findByText("Caravan: food for about 2 days")).toBeInTheDocument();
+    expect(screen.queryByText(/Supplies/)).not.toBeInTheDocument();
   });
 });
