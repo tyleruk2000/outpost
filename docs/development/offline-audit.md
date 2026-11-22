@@ -23,7 +23,8 @@ off; and fetch nothing from the internet without a press.
 - **Nothing is fetched at start or on a timer for a new purpose.** Two things carry on
   an earlier press with nobody pressing: a job left unfinished at shutdown (a download, a
   layer import, the P.533 build) resumes on start, and a failed job is retried on a
-  back-off. Weather can refresh on opening only if its "also update when I open this
+  back-off. The owner chose to keep this on 22 Nov 2026: it carries on a press already
+  made, so a download finishes after a power cut with nobody there. Weather can refresh on opening only if its "also update when I open this
   screen" box is ticked (off by default).
 
 ## Screens

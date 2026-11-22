@@ -108,8 +108,6 @@ curl.
 - **MeteoAlarm.** Whether a household's kept copy is "operational redistribution", which
   must be within ten minutes of real time.
 - **MET Norway.** It would need contact details in Outpost's client name.
-- **The Bright Star Catalogue.** Whether shipping a subset of its figures needs the
-  authors' permission ([below](#the-night-sky-and-celestial-navigation)).
 - **Kiwix.** Not yet asked about its `robots.txt` (below).
 - Publishers worth asking for permission are listed under
   [Wanted, and not yet possible](#wanted-and-not-yet-possible).
@@ -935,7 +933,7 @@ rest of the world, and works the tides out from them. Read on 21 November 2026.
 | The method | P. Schureman, *Manual of Harmonic Analysis and Prediction of Tides*, Special Publication 98 (1958), [NOAA's scan](https://tidesandcurrents.noaa.gov/publications/SpecialPubNo98.pdf) | Tables 1, 2, 2a and 6; paragraphs 24 and 77; the node-factor formulas (73–80, 141–150, 195–235). |
 | Predictions the tests are held to | NOAA CO-OPS data API, `product=predictions`, MLLW, GMT | High and low waters, 15 to 21 January 2027, at The Battery, San Francisco, Honolulu and Galveston; hourly heights for January 2027 at the first two. Every high and low within 1 minute and 1 mm (2 minutes at Galveston), every hourly height within 2 mm. |
 | TICON-4 constants for 4,838 tide gauges (2,728 kept: lakes dropped, gauges within 2 km of a NOAA station give way) | M. Hart-Davis, D. Dettmering and F. Seitz (2025), *TICON-4: TIdal CONstants based on GESLA-4 sea-level records*, SEANOE, <https://doi.org/10.17882/109129> | CC BY 4.0 (the SEANOE page's licence link, "Open access"); the screen names the dataset, its authors and the licence. Built by `scripts/build-ticon-stations.mjs`; 39 of 50 constituents used. |
-| The gauge records TICON comes from | GESLA-3/4 licence page: records under several licences, some for research use only | Not shipped. Whether those terms reach the derived constants is an open question (about 650 gauges); see the follow-up in the issue tracker. |
+| The gauge records TICON comes from | GESLA-3/4 licence page: records under several licences, some for research use only | Not shipped. Whether those terms reach the derived constants is not settled (about 650 gauges). **Owner's decision, 22 Nov 2026:** keep all 2,728 gauges, with TICON-4 credited under CC BY 4.0. |
 | Predictions the TICON tests are held to | Kartverket, API for water level data, <https://vannstand.kartverket.no/tideapi_en.html>, CC BY 4.0 | Bergen within 14 minutes and 2.5 cm, Narvik 11 minutes and 3.3 cm, Oslo 15 minutes and 7 cm. |
 
 Not shipped: the **Canadian Hydrographic Service** (its [licence](https://tides.gc.ca/en/licence-agreement)
@@ -953,7 +951,7 @@ no open licence found).
 | What | Where it comes from | How it is used |
 | --- | --- | --- |
 | The stars | D. Hoffleit and W. H. Warren Jr, *The Bright Star Catalogue*, 5th revised ed. (Yale; NASA ADC V/50, 1991), <http://tdc-www.harvard.edu/catalogs/bsc5.dat.gz> | The 906 stars of magnitude 4.5 or brighter (position, magnitude, proper motion). |
-| The catalogue's licence | [data.gov](https://catalog.data.gov/dataset/bright-star-catalog): publisher HEASARC, licence "https://www.usa.gov/government-works" | Shipped on that footing, authors and ADC credited. **Not settled:** Debian's [copyright file](https://metadata.ftp-master.debian.org/changelogs/non-free/y/yale/stable_copyright) quotes the ADC allowing distribution with acknowledgement, but adds that the files "must NOT be altered in any way (without permission of the original authors)" and files the package as non-free. Outpost ships a subset of the figures, not the files; see [open questions](#open-questions-for-the-owner). |
+| The catalogue's licence | [data.gov](https://catalog.data.gov/dataset/bright-star-catalog): publisher HEASARC, licence "https://www.usa.gov/government-works" | Shipped on that footing, authors and ADC credited. **Not settled:** Debian's [copyright file](https://metadata.ftp-master.debian.org/changelogs/non-free/y/yale/stable_copyright) quotes the ADC allowing distribution with acknowledgement, but adds that the files "must NOT be altered in any way (without permission of the original authors)" and files the package as non-free. Outpost ships a subset of the figures, not the files. **Owner's decision, 22 Nov 2026:** keep it, credited. |
 | Constellation figures | Outpost's own stick figures of 27 constellations | No source's drawing copied. |
 | Navigational stars | USNO, [Celestial Navigation Data](https://aa.usno.navy.mil/data/celnav) | The 57 stars and Polaris, by name and number. |
 | Sun, Moon and planets | P. Schlyter, [*How to compute planetary positions*](https://stjarnhimlen.se/comp/ppcomp.html), sections 4, 6, 9, 10, 13, 15 | Positions, parallax, semi-diameter, phase, magnitudes; good to one or two minutes of arc. |
