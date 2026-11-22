@@ -117,7 +117,6 @@ describe("whatever Outpost prints or makes a PDF of", () => {
       "features/maps/print/export.ts",
       "features/maps/print/print-dialog.tsx",
       "features/encryption/print-view.tsx",
-      "features/encryption/paper-aids.ts",
       "features/propagation/prediction-export.tsx",
       "features/propagation/coverage-map/coverage-picture.ts",
       "features/propagation/plans/plan-export.tsx",
