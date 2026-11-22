@@ -38,10 +38,9 @@ import {
   sMeter,
   utcLabel,
 } from "@outpost/shared";
-import { writePdfPages } from "@/features/maps/print/pdf";
-import type { Sheet } from "@/features/maps/print/sheet";
 import { appLocale } from "@/lib/region";
-import { type Block, toMarkdown, toSheets, unwritable } from "./plans/document";
+import { type Block, toMarkdown } from "./plans/document";
+import { blockLines, kitUnwritable } from "./print/glyphs";
 
 export type PredictionPaper = "a4" | "letter";
 
@@ -439,18 +438,7 @@ export function predictionDocument(result: PredictionResult): Block[] {
   return blocks;
 }
 
-const footerOf = (result: PredictionResult) =>
-  `${result.request.tx.name} to ${result.request.rx.name}, ${mhz(result.request.frequencyMhz)} · VOACAP monthly median for ${monthYear.format(dateOf(result.request.date))}, not the conditions on the day · Outpost`;
-
-export const predictionSheets = (result: PredictionResult, paper: PredictionPaper = "a4"): Sheet[] =>
-  toSheets(predictionDocument(result), footerOf(result), paper);
-
-export function predictionPdf(result: PredictionResult, paper: PredictionPaper = "a4"): Uint8Array {
-  // Dated by when the engine answered, so that the same answer is the same file (see the top of this file).
-  return writePdfPages({ pages: predictionSheets(result, paper), title: predictionTitle(result), created: new Date(result.computedAt) });
-}
-
 export const predictionMarkdown = (result: PredictionResult): string => toMarkdown(predictionDocument(result));
 
 /** Characters in the prediction that the PDF's typeface cannot write (a place name in another script). They are printed as "?". */
-export const predictionUnwritable = (result: PredictionResult): string[] => unwritable(predictionDocument(result));
+export const predictionUnwritable = (result: PredictionResult): string[] => kitUnwritable(blockLines(predictionDocument(result)));

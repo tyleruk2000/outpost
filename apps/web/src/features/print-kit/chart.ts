@@ -84,8 +84,13 @@ export function chart(input: ChartInput): Drawing {
   );
   const yDomain: [number, number] = input.yDomain ?? [Math.min(0, ...allY), Math.max(1, ...allY)];
   const xDomain: [number, number] = input.xDomain ?? [Math.min(...input.xs), Math.max(...input.xs)];
-  const x = scaleLinear().domain(xDomain).range([left, left + plotWidth]);
-  const y = scaleLinear().domain(yDomain).range([top + plotHeight, top]).nice(input.yTicks ?? 5);
+  const x = scaleLinear()
+    .domain(xDomain)
+    .range([left, left + plotWidth]);
+  const y = scaleLinear()
+    .domain(yDomain)
+    .range([top + plotHeight, top])
+    .nice(input.yTicks ?? 5);
   const [y0, y1] = y.domain() as [number, number];
 
   let body = "";
@@ -95,8 +100,7 @@ export function chart(input: ChartInput): Drawing {
     const to = x(Math.min(span.to, xDomain[1]));
     if (to <= from) continue;
     body += `<rect x="${round(from)}" y="${top}" width="${round(to - from)}" height="${round(plotHeight)}" fill="${span.fill}"/>`;
-    if (span.words && to - from > 24)
-      body += svgText((from + to) / 2, top + 8, span.words, { anchor: "middle", size: 6.5, fill: C.muted });
+    if (span.words && to - from > 24) body += svgText((from + to) / 2, top + 8, span.words, { anchor: "middle", size: 6.5, fill: C.muted });
   }
   // Grid and the y axis.
   for (const tick of y.ticks(input.yTicks ?? 5)) {
@@ -108,9 +112,14 @@ export function chart(input: ChartInput): Drawing {
   for (const tick of input.xTicks ?? x.ticks(8)) {
     const at = round(x(tick));
     body += `<line x1="${at}" y1="${top + plotHeight}" x2="${at}" y2="${top + plotHeight + 3}" stroke="${C.muted}" stroke-width="0.6"/>`;
-    body += svgText(at, top + plotHeight + 11, input.xTick ? input.xTick(tick) : String(tick), { anchor: "middle", size: 6.5, fill: C.muted });
+    body += svgText(at, top + plotHeight + 11, input.xTick ? input.xTick(tick) : String(tick), {
+      anchor: "middle",
+      size: 6.5,
+      fill: C.muted,
+    });
   }
-  if (input.xLabel) body += svgText(left + plotWidth / 2, top + plotHeight + 22, input.xLabel, { anchor: "middle", size: 7, fill: C.muted });
+  if (input.xLabel)
+    body += svgText(left + plotWidth / 2, top + plotHeight + 22, input.xLabel, { anchor: "middle", size: 7, fill: C.muted });
   if (input.yLabel) body += svgText(8, top + plotHeight / 2, input.yLabel, { anchor: "middle", size: 7, fill: C.muted, rotate: -90 });
 
   const points = (values: Array<number | null>) => input.xs.map((at, index) => [at, values[index] ?? null] as const);
@@ -165,7 +174,11 @@ export function chart(input: ChartInput): Drawing {
         keyY,
         series.kind === "line"
           ? { line: true, stroke: series.colour, dash: series.dash }
-          : { fill: series.colour, stroke: series.kind === "band" ? "none" : series.colour },
+          : {
+              fill: series.colour,
+              stroke: series.kind === "band" ? "none" : series.colour,
+              opacity: series.kind === "band" ? (series.opacity ?? 0.25) : 1,
+            },
         series.name,
       );
       body += item.svg;

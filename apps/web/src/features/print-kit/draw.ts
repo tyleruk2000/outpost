@@ -46,12 +46,12 @@ export const svgArrowHead = (x: number, y: number, angle: number, colour: string
 export function svgKeyItem(
   x: number,
   y: number,
-  swatch: { fill?: string; stroke?: string; dash?: string; line?: boolean },
+  swatch: { fill?: string; stroke?: string; dash?: string; line?: boolean; opacity?: number },
   words: string,
 ): { svg: string; width: number } {
   const mark = swatch.line
     ? `<line x1="${x}" y1="${y - 2.6}" x2="${x + 14}" y2="${y - 2.6}" stroke="${swatch.stroke ?? C.ink}" stroke-width="2"${swatch.dash ? ` stroke-dasharray="${swatch.dash}"` : ""}/>`
-    : `<rect x="${x}" y="${y - 7}" width="10" height="8" fill="${swatch.fill ?? "none"}" stroke="${swatch.stroke ?? C.muted}" stroke-width="0.6"/>`;
+    : `<rect x="${x}" y="${y - 7}" width="10" height="8" fill="${swatch.fill ?? "none"}"${swatch.opacity !== undefined && swatch.opacity < 1 ? ` fill-opacity="${swatch.opacity}"` : ""} stroke="${swatch.stroke ?? C.muted}" stroke-width="0.6"/>`;
   const gap = swatch.line ? 18 : 13;
   // Atkinson Hyperlegible Next at 7 pt averages a little over half its size a letter.
   return { svg: mark + svgText(x + gap, y, words, { size: 7 }), width: gap + words.length * 3.9 + 10 };

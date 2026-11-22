@@ -26,11 +26,14 @@ import { render, screen, within } from "@testing-library/react";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { renderPdf } from "@/features/print-kit";
 import { comparisonDocument } from "./comparison-document";
-import { planDocument, planPdf, toMarkdown } from "./plans/document";
+import { planDocument, toMarkdown } from "./plans/document";
 import { Pair } from "./plans/plan-page";
-import { predictionDocument, predictionMarkdown, predictionPdf } from "./prediction-document";
+import { predictionDocument, predictionMarkdown } from "./prediction-document";
 import { cell, prediction, wordsOf } from "./prediction-fixture";
+import { planPrint } from "./print/plan-print";
+import { predictionPrint } from "./print/prediction-print";
 import { Results } from "./results";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -138,7 +141,7 @@ async function pdfText(file: Uint8Array): Promise<string> {
 
 describe("the prediction written out", () => {
   it("is a PDF in which a reader finds ~ beside the approximate figures, n/m for the bands with none, and the key to both", async () => {
-    const text = (await pdfText(predictionPdf(wireResult(14.18)))).replace(/\s+/g, " ");
+    const text = (await pdfText((await renderPdf(predictionPrint(wireResult(14.18)))).bytes)).replace(/\s+/g, " ");
     expect(text).toContain("~37");
     expect(text).toContain("n/m");
     expect(text).toContain("~ before a figure is approximate");
@@ -291,7 +294,7 @@ describe("a plan with an approximate band", () => {
   });
 
   it("is a PDF that says the same", async () => {
-    const text = (await pdfText(planPdf(plan, result, new Date(Date.UTC(2026, 10, 16))))).replace(/\s+/g, " ");
+    const text = (await pdfText((await renderPdf(planPrint(plan, result, new Date(Date.UTC(2026, 10, 16))))).bytes)).replace(/\s+/g, " ");
     expect(text).toContain("15 m, approximate, up to ~70%");
     expect(text).toContain("~70");
     expect(text).toContain("n/m is not modelled");

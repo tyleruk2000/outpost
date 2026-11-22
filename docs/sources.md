@@ -1085,3 +1085,32 @@ For **Settings → Updates** ([updating.md](updating.md)).
   The drawing puts a fuse at the battery end of each cable on that rule. It is the companion
   of 33 CFR 183.425 (Table 5), which Tools, Power and batteries already uses for cable
   current, and is given as guidance in the same way. A US federal regulation, public domain.
+
+## The radio papers' drawings (read 2026-11-22)
+
+- **The ionosphere, ground wave, sky wave, the skip zone and coming back straight down.**
+  Australian Government, Bureau of Meteorology, Space Weather Services, *Introduction to HF
+  radio propagation* (2016),
+  https://sws.bom.gov.au/Category/Educational/Other%20Topics/Radio%20Communication/Intro_HF_Radio.pdf.
+  Used: section 1.1 (the regions' heights, D 50 to 90 km, E 90 to 140 km, F1 140 to 210 km,
+  F2 over 210 km; D, E and F1 all but gone at night; D absorbs, E, F1 and F2 refract; F2
+  present day and night), 2.1 (ground wave up to 100 km over land and 300 km over sea;
+  direct wave; sky wave), 2.2 (the usable range between D-region absorption and the highest
+  frequency returned, moving with the hour, season and solar cycle; absorption greater at
+  lower frequencies), 2.6 and figure 2.8 (at a fixed frequency steeper rays land nearer, the
+  steepest that returns bounds the skip zone, steeper still penetrates; no skip zone when the
+  frequency is returned at vertical incidence; use a lower frequency to reach into a skip
+  zone) and 2.7. © Commonwealth of Australia 2016: facts and figures only are used, and the
+  drawings are Outpost's own. Drawn in `features/propagation/print/radio-diagrams.ts` for the
+  HF prediction and communication plan PDFs.
+- **The radio dial's bands** on the frequencies PDF. ITU Radio Regulations No. 2.1, as given in
+  Recommendation ITU-R V.431-9 (10/2025), https://www.itu.int/dms_pubrec/itu-r/rec/v/R-REC-V.431-9-202510-I!!PDF-E.pdf,
+  and mirrored in 47 CFR 2.101 (https://www.law.cornell.edu/cfr/text/47/2.101): band N runs
+  from 0.3 × 10^N to 3 × 10^N Hz, so LF 30 to 300 kHz, MF 300 kHz to 3 MHz, HF 3 to 30 MHz,
+  VHF 30 to 300 MHz, UHF 300 MHz to 3 GHz.
+- **Day and night on the world** at a paper's hour: Outpost's own grey-line arithmetic
+  (`maps/grey-line/geometry.ts`, after Meeus; see the Solar clock's sources), over the bundled
+  Natural Earth 1:110m land outline (public domain).
+- **Charts** on printed pages are drawn with d3-scale 4.0.2 and d3-shape 3.2.0 (ISC licence,
+  https://github.com/d3/d3-scale, https://github.com/d3/d3-shape), already in the app's
+  dependency tree through Mermaid; no data comes from them.

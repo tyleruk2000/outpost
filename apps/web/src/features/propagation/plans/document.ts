@@ -463,12 +463,6 @@ export function unwritable(blocks: Block[]): string[] {
   return [...found];
 }
 
-export function planPdf(plan: CommunicationPlan, result: PlanResult, written: Date): Uint8Array {
-  const blocks = planDocument(plan, result, written);
-  const footer = `${plan.name} · VOACAP monthly median for ${monthYear.format(dateOf(plan.date))}, not the conditions on the day · Outpost`;
-  return writePdfPages({ pages: toSheets(blocks, footer), title: `Communication plan: ${plan.name}`, created: written });
-}
-
 export const planMarkdown = (plan: CommunicationPlan, result: PlanResult, written: Date): string =>
   toMarkdown(planDocument(plan, result, written));
 
