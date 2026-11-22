@@ -9,6 +9,7 @@ import { Map as MapIcon, PenLine, RefreshCw, WifiOff } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, Outlet, Route, Routes, useLocation } from "react-router";
 import { LogoMark } from "@/components/logo";
+import { useMobileNavHeight } from "@/components/mobile-nav-height";
 import { Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
@@ -77,6 +78,9 @@ function Shell({ checking, onCheck }: { checking: boolean; onCheck: () => void }
   const pages = (kept ?? []).filter((item) => item.kind === "note");
   const { pathname } = useLocation();
   const main = useRef<HTMLElement>(null);
+  // The bar's height for the map, which ends on it (--mobile-nav-height, as the app's own bar says it).
+  const bar = useRef<HTMLElement>(null);
+  useMobileNavHeight(bar);
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs on every path change by design
   useEffect(() => {
     main.current?.scrollTo?.({ top: 0 });
@@ -144,6 +148,7 @@ function Shell({ checking, onCheck }: { checking: boolean; onCheck: () => void }
         </Link>
       </header>
       <nav
+        ref={bar}
         aria-label="Main"
         className="fixed inset-x-0 bottom-0 z-(--z-nav) flex border-t border-border bg-page/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm md:hidden"
       >

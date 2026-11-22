@@ -228,6 +228,26 @@ test.describe("a collection that is a list of documents", () => {
       await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
       expect(errors).toEqual([]);
     });
+
+    test("ends on the bottom bar as measured, with the text larger", async ({ page }) => {
+      await page.addInitScript(() => {
+        const apply = () => document.documentElement.style.setProperty("font-size", "24px", "important");
+        if (document.documentElement) apply();
+        document.addEventListener("DOMContentLoaded", apply);
+      });
+      await page.goto(`/library/read/${id}/`);
+      await expect(page.getByRole("heading", { name: "Documents in this collection", level: 1 })).toBeVisible();
+      // The bar's names grow with the text, so its height is measured (--mobile-nav-height), not guessed.
+      await expect
+        .poll(() =>
+          page.evaluate(() => {
+            const bar = document.querySelector('nav[aria-label="Main"]')!.getBoundingClientRect().height;
+            const screen = document.querySelector("main h1")!.closest(".h-dvh")!;
+            return Math.round(Math.abs(Number.parseFloat(getComputedStyle(screen).paddingBottom) - bar) * 10) / 10;
+          }),
+        )
+        .toBeLessThan(0.5);
+    });
   });
   // The tests from here on add documents in bulk. How that turned out stays on the list for a while,
   // so they come after the tests that read the list as it is before anything was added to it.

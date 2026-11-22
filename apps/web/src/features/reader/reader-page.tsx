@@ -304,7 +304,7 @@ export default function ReaderPage() {
   const TitleTag = (book.data.book.ready && showDocuments) || searchFor ? "p" : "h1";
 
   return (
-    <div className="flex h-dvh flex-col max-md:h-[calc(100dvh-3.25rem)] max-md:pb-[calc(3.5rem+env(safe-area-inset-bottom))]">
+    <div className="flex h-dvh flex-col max-md:h-[calc(100dvh-3.25rem)] max-md:pb-[var(--mobile-nav-height,calc(3.5rem+env(safe-area-inset-bottom)))]">
       <header className="relative z-(--z-sticky) flex flex-wrap items-center gap-x-2 gap-y-2 md:gap-x-3 border-b border-border bg-page px-3 py-2 md:px-5">
         <Tooltip label="Back to your collections">
           <Button asChild variant="ghost" size="icon" aria-label="Back to your collections">

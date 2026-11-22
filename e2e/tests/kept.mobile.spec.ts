@@ -247,6 +247,18 @@ test("keeps a page, a route and a map area on a phone, and opens them with the s
   await expect(page.getByRole("button", { name: /Seathwaite round/ })).toBeVisible();
   await page.getByRole("button", { name: /Styhead Tarn/ }).click();
   await expect(page.getByText("Water here.").first()).toBeVisible();
+  // The map ends on the bottom bar as measured, not on a guess at its height: the bar's names grow with the text.
+  await page.evaluate(() => document.documentElement.style.setProperty("font-size", "24px", "important"));
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const bar = document.querySelector('nav[aria-label="Main"]')!.getBoundingClientRect().height;
+        const screen = document.querySelector(".outpost-map")!.closest(".isolate")!;
+        return Math.round(Math.abs(Number.parseFloat(getComputedStyle(screen).paddingBottom) - bar) * 10) / 10;
+      }),
+    )
+    .toBeLessThan(0.5);
+  await page.evaluate(() => document.documentElement.style.removeProperty("font-size"));
   const tiles = await page.evaluate(async () => {
     const kept = await fetch("/api/maps/tiles/9/251/163.mvt?v=whatever");
     const bytes = new Uint8Array(await kept.arrayBuffer());
