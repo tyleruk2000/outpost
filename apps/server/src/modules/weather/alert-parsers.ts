@@ -245,6 +245,7 @@ export function parseMeteoalarm(
       expires: time(first(entry, "expires")),
       coversHome: home && polygons.length > 0 ? polygons.some((polygon) => insideCapPolygon(polygon, home)) : null,
       link: linkOn(area?.href ?? "https://meteoalarm.org/", /(^|\.)meteoalarm\.org$/),
+      sender: first(entry, "senderName").slice(0, 200),
     });
   }
   const order = { red: 0, orange: 1, yellow: 2 } as const;

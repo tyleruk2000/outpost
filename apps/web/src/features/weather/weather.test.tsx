@@ -216,7 +216,7 @@ describe("alerts worldwide", () => {
     countryName: "the United Kingdom",
     national: "meteoalarm" as const,
   };
-  const meteoalarm: KeptCopy = {
+  const meteoalarm: KeptCopy<"meteoalarm"> = {
     id: "m1",
     kind: "meteoalarm",
     source: "meteoalarm",
@@ -245,6 +245,7 @@ describe("alerts worldwide", () => {
           expires: NOW + 3_600_000,
           coversHome: true,
           link: "https://meteoalarm.org/",
+          sender: "",
         },
       ],
     },
@@ -263,6 +264,61 @@ describe("alerts worldwide", () => {
     expect(await screen.findByRole("heading", { name: "Covering Home (1)" })).toBeInTheDocument();
     expect(screen.getByText(/^Time delays between this website and the www\.meteoalarm\.org website are possible\./)).toBeInTheDocument();
     expect(screen.getByText(/South West England\..*Issued /)).toBeInTheDocument();
+  });
+
+  describe("MeteoAlarm's terms", () => {
+    // A fake clock (Date only, so React Query and the user events keep their timers).
+    const CLOCK = Date.UTC(2026, 10, 22, 12, 0);
+    afterEach(() => vi.useRealTimers());
+    const at = (ageMs: number, sender = ""): KeptCopy<"meteoalarm"> => ({
+      ...meteoalarm,
+      fetchedAt: CLOCK - ageMs,
+      data: { ...meteoalarm.data, items: meteoalarm.data.items.map((item) => ({ ...item, sender })) },
+    });
+
+    it("names the country's national services with its warnings, from MeteoAlarm's list where the feed names none", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(CLOCK);
+      show({ alerts: plan, kept: [at(60_000)] }, "?view=world");
+      expect(
+        await screen.findByText(
+          "Warnings issued by Met Office, Environment Agency, Natural Resources Wales and Scottish Environment Protection Agency, as published through MeteoAlarm.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("prefers the service the warnings themselves name", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(CLOCK);
+      show({ alerts: plan, kept: [at(60_000, "UK Met Office")] }, "?view=world");
+      expect(await screen.findByText("Warnings issued by UK Met Office, as published through MeteoAlarm.")).toBeInTheDocument();
+      expect(screen.getByText(/Issued .* by UK Met Office\./)).toBeInTheDocument();
+    });
+
+    it("shows a copy under ten minutes old as current, and one older as not current, with the time it was fetched", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(CLOCK);
+      show({ alerts: plan, kept: [at(9 * 60_000)] }, "?view=world");
+      expect(await screen.findByRole("heading", { name: "Covering Home (1)" })).toBeInTheDocument();
+      expect(screen.queryByText(/Not current: for reference only/)).not.toBeInTheDocument();
+    });
+
+    it("marks a copy over ten minutes old not current, for reference only, in words, and still shows it", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(CLOCK);
+      show({ alerts: plan, kept: [at(11 * 60_000)] }, "?view=world");
+      const label = await screen.findByText("Not current: for reference only.");
+      expect(label.closest("p")).toHaveTextContent(/Fetched .+, more than ten minutes ago\./);
+      expect(screen.getByRole("heading", { name: "Covering Home (1)" })).toBeInTheDocument();
+    });
+
+    it("says the same in the list of kept copies", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(CLOCK);
+      show({ alerts: plan, kept: [at(11 * 60_000), { ...at(60_000), id: "m2" }] }, "?view=kept");
+      const lines = await screen.findAllByText(/^The United Kingdom: Met Office, Environment Agency/);
+      expect(lines.map((line) => /Not current: for reference only/.test(line.textContent ?? ""))).toEqual([true, false]);
+    });
   });
 
   it("lets a person choose the country for national warnings, and says it is the chosen one", async () => {

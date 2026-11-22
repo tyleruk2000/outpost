@@ -8,7 +8,7 @@ import fs from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import path from "node:path";
-import { hfConditionsWords, type SpaceWeatherData } from "@outpost/shared";
+import { freshness, hfConditionsWords, meteoalarmNotCurrent, meteoalarmServices, type SpaceWeatherData } from "@outpost/shared";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { insideCapPolygon, parseGdacs, parseMeteoalarm, parseSwpcWwv } from "../src/modules/weather/alert-parsers.ts";
 import { SourceFormatError } from "../src/modules/weather/parsers.ts";
@@ -168,6 +168,32 @@ describe("the readers", () => {
     expect(data.items.length).toBe(5);
     expect(data.items.every((item) => item.coversHome === null)).toBe(true);
     expect(data.items.find((item) => item.area === "Stadt Köln")).toMatchObject({ event: "frost", level: "yellow", severity: "Minor" });
+  });
+
+  it("names the national service: the feed's own sender where it gives one, otherwise MeteoAlarm's participant", () => {
+    const germany = parseMeteoalarm(fixture("meteoalarm-germany.xml"), { code: "DE", name: "Germany" }, null).data;
+    expect(germany.items.every((item) => item.sender === "")).toBe(true);
+    expect(meteoalarmServices(germany)).toEqual(["Deutscher Wetterdienst"]);
+    const named = fixture("meteoalarm-germany.xml").replace(
+      "<cap:areaDesc>Stadt Köln</cap:areaDesc>",
+      "<cap:areaDesc>Stadt Köln</cap:areaDesc><cap:senderName>DWD / Nationales Warnzentrum Offenbach</cap:senderName>",
+    );
+    const parsed = parseMeteoalarm(named, { code: "DE", name: "Germany" }, null).data;
+    expect(parsed.items.find((item) => item.area === "Stadt Köln")!.sender).toBe("DWD / Nationales Warnzentrum Offenbach");
+    expect(meteoalarmServices(parsed)).toEqual(["DWD / Nationales Warnzentrum Offenbach"]);
+    expect(meteoalarmServices({ country: "GB", items: [] })).toEqual([
+      "Met Office",
+      "Environment Agency",
+      "Natural Resources Wales",
+      "Scottish Environment Protection Agency",
+    ]);
+  });
+
+  it("holds a MeteoAlarm copy current for ten minutes, and no longer", () => {
+    const fetchedAt = Date.UTC(2026, 10, 22, 12, 0);
+    expect(meteoalarmNotCurrent({ fetchedAt }, fetchedAt + 10 * 60_000)).toBe(false);
+    expect(meteoalarmNotCurrent({ fetchedAt }, fetchedAt + 10 * 60_000 + 1)).toBe(true);
+    expect(freshness({ kind: "meteoalarm", fetchedAt, validUntil: null }, fetchedAt + 11 * 60_000).state).toBe("old");
   });
 
   it("tells a point inside a CAP polygon from one outside", () => {

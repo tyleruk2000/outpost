@@ -14,12 +14,15 @@ import {
   type JmaLevel,
   type KeptCopy,
   METEOALARM_DISCLAIMER,
+  meteoalarmNotCurrent,
+  meteoalarmServices,
   NATIONAL_SERVICE_NAMES,
+  namesInWords,
   type WeatherKind,
   type WeatherSourceInfo,
   WORLD_KINDS,
 } from "@outpost/shared";
-import { RefreshCw } from "lucide-react";
+import { CircleAlert, RefreshCw } from "lucide-react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Badge, Select } from "@/components/ui/misc";
@@ -335,6 +338,7 @@ function MeteoalarmSection({
   const items = copy?.data.items ?? [];
   const here = items.filter((item) => item.coversHome === true);
   const rest = items.filter((item) => item.coversHome !== true);
+  const services = copy ? namesInWords(meteoalarmServices(copy.data)) : "";
   return (
     <section aria-labelledby="meteoalarm-heading">
       <h3 id="meteoalarm-heading" className="text-lead font-semibold text-ink">
@@ -344,7 +348,11 @@ function MeteoalarmSection({
         <NotFetched what="MeteoAlarm's warnings" />
       ) : (
         <>
+          {meteoalarmNotCurrent(copy, now) ? <NotCurrent fetchedAt={copy.fetchedAt} /> : null}
           <AgeLine copy={copy} source={source} now={now} />
+          {services ? (
+            <p className="mb-2 max-w-[70ch] text-small text-ink">Warnings issued by {services}, as published through MeteoAlarm.</p>
+          ) : null}
           <p className="mb-3 max-w-[70ch] text-small text-ink">{METEOALARM_DISCLAIMER}</p>
           {items.length === 0 ? (
             <p className="text-body text-ink">No warning was in the feed for {copy.data.countryName} when it was fetched.</p>
@@ -371,10 +379,34 @@ function MeteoalarmSection({
               ) : null}
             </>
           )}
-          <Credit source={source} />
+          {source ? (
+            <p className="mt-4 text-micro text-ink-muted">
+              {services ? `${services}, through ` : ""}EUMETNET – MeteoAlarm. www.meteoalarm.org.{" "}
+              <a className="text-primary underline underline-offset-2" href={source.liveUrl} target="_blank" rel="noreferrer">
+                {source.publisher}, live
+              </a>
+              .
+            </p>
+          ) : null}
         </>
       )}
     </section>
+  );
+}
+
+/**
+ * MeteoAlarm's terms ask redistributed warnings to be never more than ten minutes behind. A
+ * kept copy older than that is still shown, for use offline, but not as live warnings.
+ */
+function NotCurrent({ fetchedAt }: { fetchedAt: number }) {
+  return (
+    <p data-meteoalarm="not-current" className="mb-3 flex items-start gap-2 rounded-panel bg-warning-soft px-3 py-2 text-small text-ink">
+      <CircleAlert className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
+      <span>
+        <strong className="font-semibold">Not current: for reference only.</strong> Fetched {formatDateTime(fetchedAt)}, more than ten
+        minutes ago. Fetch alerts again, or see meteoalarm.org, for the warnings in force now.
+      </span>
+    </p>
   );
 }
 
@@ -388,7 +420,8 @@ function MeteoalarmList({ items }: { items: NonNullable<KeptCopy<"meteoalarm">["
           <p className="text-small text-ink-muted">
             {item.area}. {item.onset ? `From ${formatDateTime(item.onset)}` : ""}
             {item.expires ? ` until ${formatDateTime(item.expires)}` : ""}. Issued{" "}
-            {item.sent ? formatDateTime(item.sent) : "at a time not given"}.
+            {item.sent ? formatDateTime(item.sent) : "at a time not given"}
+            {item.sender ? ` by ${item.sender}` : ""}.
           </p>
           {item.link ? (
             <a

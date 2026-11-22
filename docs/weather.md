@@ -96,9 +96,17 @@ What each national service gives:
 - **Japan**: the latest headline from each local office, in Japanese as written, highest
   level first. Outpost cannot tell which prefecture Home is in: find its office.
 
-Each is old after an hour (GDACS three) and shows the publisher's words and credit.
-MeteoAlarm asks for warnings to reach people within ten minutes, which an offline copy
-cannot promise.
+Each is old after an hour (GDACS three, MeteoAlarm ten minutes) and shows the publisher's words and credit.
+
+**MeteoAlarm** (Europe) names the national service whose warnings they are: the Met
+Office for the United Kingdom (with the Environment Agency, Natural Resources Wales and
+SEPA, which also take part), Deutscher Wetterdienst for Germany, and so on. Where a
+warning names its own sender, that name is used. MeteoAlarm's terms ask for this, and ask
+that warnings passed on are never more than ten minutes behind. Outpost is for personal
+use and keeps its copy for when the connection is gone, which cannot keep to ten minutes,
+so a MeteoAlarm copy fetched more than ten minutes ago says **Not current: for reference
+only**, with the time it was fetched. It is still shown; press **Fetch alerts**, or see
+meteoalarm.org, for the warnings in force now.
 
 ## River and sea levels
 

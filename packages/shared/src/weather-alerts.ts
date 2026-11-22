@@ -81,47 +81,64 @@ export interface QuakesData {
 
 // ── National warnings ───────────────────────────────────────────────────────
 
-/** MeteoAlarm's country feeds (feeds.meteoalarm.org, read 21 November 2026), by ISO 3166 code. */
-export const METEOALARM_COUNTRIES: Record<string, { slug: string; name: string }> = {
-  AD: { slug: "andorra", name: "Andorra" },
-  AT: { slug: "austria", name: "Austria" },
-  BE: { slug: "belgium", name: "Belgium" },
-  BA: { slug: "bosnia-herzegovina", name: "Bosnia and Herzegovina" },
-  BG: { slug: "bulgaria", name: "Bulgaria" },
-  HR: { slug: "croatia", name: "Croatia" },
-  CY: { slug: "cyprus", name: "Cyprus" },
-  CZ: { slug: "czechia", name: "Czechia" },
-  DK: { slug: "denmark", name: "Denmark" },
-  EE: { slug: "estonia", name: "Estonia" },
-  FI: { slug: "finland", name: "Finland" },
-  FR: { slug: "france", name: "France" },
-  DE: { slug: "germany", name: "Germany" },
-  GR: { slug: "greece", name: "Greece" },
-  HU: { slug: "hungary", name: "Hungary" },
-  IS: { slug: "iceland", name: "Iceland" },
-  IE: { slug: "ireland", name: "Ireland" },
-  IL: { slug: "israel", name: "Israel" },
-  IT: { slug: "italy", name: "Italy" },
-  LV: { slug: "latvia", name: "Latvia" },
-  LT: { slug: "lithuania", name: "Lithuania" },
-  LU: { slug: "luxembourg", name: "Luxembourg" },
-  MT: { slug: "malta", name: "Malta" },
-  MD: { slug: "moldova", name: "Moldova" },
-  ME: { slug: "montenegro", name: "Montenegro" },
-  NL: { slug: "netherlands", name: "the Netherlands" },
-  NO: { slug: "norway", name: "Norway" },
-  PL: { slug: "poland", name: "Poland" },
-  PT: { slug: "portugal", name: "Portugal" },
-  MK: { slug: "republic-of-north-macedonia", name: "North Macedonia" },
-  RO: { slug: "romania", name: "Romania" },
-  RS: { slug: "serbia", name: "Serbia" },
-  SK: { slug: "slovakia", name: "Slovakia" },
-  SI: { slug: "slovenia", name: "Slovenia" },
-  ES: { slug: "spain", name: "Spain" },
-  SE: { slug: "sweden", name: "Sweden" },
-  CH: { slug: "switzerland", name: "Switzerland" },
-  UA: { slug: "ukraine", name: "Ukraine" },
-  GB: { slug: "united-kingdom", name: "the United Kingdom" },
+/**
+ * MeteoAlarm's country feeds (feeds.meteoalarm.org, read 21 November 2026), by ISO 3166 code,
+ * with each country's MeteoAlarm Participants: the national services whose warnings the feed
+ * carries, as MeteoAlarm's members page names them (meteoalarm.org/en/live/page/meteoalarm-members,
+ * read 22 November 2026). Its terms (section 5) ask that one country's warnings always name them.
+ */
+export const METEOALARM_COUNTRIES: Record<string, { slug: string; name: string; services: string[] }> = {
+  AD: { slug: "andorra", name: "Andorra", services: ["Servei Meteorològic Nacional"] },
+  AT: { slug: "austria", name: "Austria", services: ["GeoSphere Austria"] },
+  BE: { slug: "belgium", name: "Belgium", services: ["Institut Royal Météorologique/Koninklijk Meteorologisch Instituut"] },
+  BA: {
+    slug: "bosnia-herzegovina",
+    name: "Bosnia and Herzegovina",
+    services: ["Federalni Hidrometeorološki Zavod BiH", "Republički Hidrometeorološki Zavod Republike Srpske"],
+  },
+  BG: { slug: "bulgaria", name: "Bulgaria", services: ["National Institute of Meteorology and Hydrology"] },
+  HR: { slug: "croatia", name: "Croatia", services: ["Državni Hidrometeorološki Zavod"] },
+  CY: { slug: "cyprus", name: "Cyprus", services: ["Cyprus Department of Meteorology"] },
+  CZ: { slug: "czechia", name: "Czechia", services: ["Czech Hydrometeorological Institute"] },
+  DK: { slug: "denmark", name: "Denmark", services: ["Danmarks Meteorologiske Institut"] },
+  EE: { slug: "estonia", name: "Estonia", services: ["Estonian Environment Agency"] },
+  FI: { slug: "finland", name: "Finland", services: ["Finnish Meteorological Institute"] },
+  FR: { slug: "france", name: "France", services: ["Météo-France"] },
+  DE: { slug: "germany", name: "Germany", services: ["Deutscher Wetterdienst"] },
+  GR: { slug: "greece", name: "Greece", services: ["Hellenic National Meteorological Service"] },
+  HU: { slug: "hungary", name: "Hungary", services: ["HungaroMet"] },
+  IS: { slug: "iceland", name: "Iceland", services: ["Icelandic Meteorological Office"] },
+  IE: { slug: "ireland", name: "Ireland", services: ["Met Éireann"] },
+  IL: { slug: "israel", name: "Israel", services: ["Israel Meteorological Service"] },
+  IT: { slug: "italy", name: "Italy", services: ["Servizio Meteorologico dell'Aeronautica Militare"] },
+  LV: { slug: "latvia", name: "Latvia", services: ["Latvijas Vides, Ģeoloģijas un Meteoroloģijas Centrs"] },
+  LT: { slug: "lithuania", name: "Lithuania", services: ["Lietuvos Hidrometeorologijos Tarnyba"] },
+  LU: { slug: "luxembourg", name: "Luxembourg", services: ["MeteoLux"] },
+  MT: { slug: "malta", name: "Malta", services: ["Malta Meteorological Office"] },
+  MD: { slug: "moldova", name: "Moldova", services: ["Autoritatea de Meteorologie și Monitoring de Mediu"] },
+  ME: { slug: "montenegro", name: "Montenegro", services: ["Zavod za Hidrometeorologiju i Seizmologiju"] },
+  NL: { slug: "netherlands", name: "the Netherlands", services: ["Koninklijk Nederlands Meteorologisch Instituut"] },
+  NO: { slug: "norway", name: "Norway", services: ["Meteorologisk Institutt", "Norges Vassdrags- og Energidirektorat"] },
+  PL: { slug: "poland", name: "Poland", services: ["Instytut Meteorologii i Gospodarki Wodnej - Państwowy Instytut Badawczy"] },
+  PT: { slug: "portugal", name: "Portugal", services: ["Instituto Português do Mar e da Atmosfera"] },
+  MK: {
+    slug: "republic-of-north-macedonia",
+    name: "North Macedonia",
+    services: ["Hydrometeorological Service of Republic of North Macedonia"],
+  },
+  RO: { slug: "romania", name: "Romania", services: ["Administrația Națională de Meteorologie"] },
+  RS: { slug: "serbia", name: "Serbia", services: ["Republički Hidrometeorološki Zavod Srbije"] },
+  SK: { slug: "slovakia", name: "Slovakia", services: ["Slovenský Hydrometeorologický Ústav"] },
+  SI: { slug: "slovenia", name: "Slovenia", services: ["Agencija Republike Slovenije za Okolje"] },
+  ES: { slug: "spain", name: "Spain", services: ["Agencia Estatal de Meteorología"] },
+  SE: { slug: "sweden", name: "Sweden", services: ["Sveriges Meteorologiska och Hydrologiska Institut"] },
+  CH: { slug: "switzerland", name: "Switzerland", services: ["Federal Office of Meteorology and Climatology MeteoSwiss"] },
+  UA: { slug: "ukraine", name: "Ukraine", services: ["Ukrainian Hydrometeorological Center"] },
+  GB: {
+    slug: "united-kingdom",
+    name: "the United Kingdom",
+    services: ["Met Office", "Environment Agency", "Natural Resources Wales", "Scottish Environment Protection Agency"],
+  },
 };
 
 /** Where the US National Weather Service issues alerts: the states and the territories it serves. */
@@ -151,6 +168,8 @@ export interface MeteoalarmItem {
   coversHome: boolean | null;
   /** The area on meteoalarm.org. */
   link: string;
+  /** The national service that issued it, as the feed names it (CAP `senderName`); empty where the feed does not say. */
+  sender: string;
 }
 
 export interface MeteoalarmData {
@@ -159,6 +178,36 @@ export interface MeteoalarmData {
   countryName: string;
   updatedAt: number | null;
   items: MeteoalarmItem[];
+}
+
+/**
+ * How long a MeteoAlarm copy may be shown as current. Its terms (section 5) ask operational
+ * redistribution to be never more than ten minutes behind; a kept copy cannot promise that, so
+ * one older than this is marked "Not current: for reference only".
+ */
+export const METEOALARM_CURRENT_MS = 10 * 60_000;
+
+/** Whether a MeteoAlarm copy is too old to be shown as current warnings. */
+export function meteoalarmNotCurrent(copy: { fetchedAt: number }, now: number): boolean {
+  return now - copy.fetchedAt > METEOALARM_CURRENT_MS;
+}
+
+/**
+ * The national services to name with a country's MeteoAlarm warnings: those the warnings
+ * themselves name where the feed gives a sender, otherwise MeteoAlarm's own list of the
+ * country's participants.
+ */
+export function meteoalarmServices(data: Pick<MeteoalarmData, "country" | "items">): string[] {
+  // A copy kept before senders were read has no `sender` on its items.
+  const named = [...new Set(data.items.map((item) => item.sender ?? "").filter((sender) => sender !== ""))];
+  if (named.length > 0) return named;
+  return Object.hasOwn(METEOALARM_COUNTRIES, data.country) ? METEOALARM_COUNTRIES[data.country]!.services : [];
+}
+
+/** "A", "A and B", "A, B and C". */
+export function namesInWords(names: readonly string[]): string {
+  if (names.length <= 1) return names[0] ?? "";
+  return `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
 }
 
 export interface NwsAlert {

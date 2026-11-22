@@ -151,7 +151,7 @@ export const WEATHER_SOURCES: Record<WeatherSourceId, WeatherSourceInfo> = {
     sends: "The name of the country, as the feed's address; no position.",
     licence: "Terms equivalent to CC BY 4.0, with MeteoAlarm's additional requirements for redistribution",
     licenceUrl: "https://meteoalarm.org/en/live/page/terms-and-conditions",
-    attribution: "EUMETNET – MeteoAlarm, with the warnings of the country's national meteorological service. www.meteoalarm.org",
+    attribution: "EUMETNET – MeteoAlarm, with each country's warnings credited to its national meteorological service. www.meteoalarm.org",
     liveUrl: "https://meteoalarm.org/en/live/",
     termsUrl: "https://meteoalarm.org/en/live/page/terms-and-conditions",
     termsRead: ALERTS_READ,
