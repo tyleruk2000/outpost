@@ -5,7 +5,7 @@
  * trainer's step buttons keep a finger's size. The phone's bottom bar is the shell's, and
  * is left out at 200%, where its five names do not fit.
  */
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { api, expect, test, watchForErrors } from "./fixtures";
 
 test.use({ viewport: { width: 390, height: 844 } });
@@ -82,44 +82,31 @@ for (const size of ["24px", "32px"]) {
       links: [],
     });
     try {
-      await api(page, "POST", `/api/radio/communication-plans/${plan.id}/matrix`);
-      const screens: Array<[string, () => Promise<unknown>]> = [
-        [
-          "/radio/propagation",
-          () =>
-            page
-              .getByRole("button", { name: /choose on the map/ })
-              .first()
-              .waitFor(),
-        ],
-        ["/radio/coverage", () => page.getByRole("link", { name: "One path, in the planner" }).waitFor()],
-        [
-          `/radio/plans/${plan.id}`,
-          () =>
-            page
-              .getByText(/share of days$/)
-              .first()
-              .waitFor(),
-        ],
-        [
-          "/radio/repeaters",
-          () =>
-            page
-              .getByRole("button", { name: /Import the file from/ })
-              .first()
-              .waitFor(),
-        ],
-        ["/radio/morse?tab=receive", () => page.getByRole("group", { name: "Koch lesson" }).waitFor()],
-        ["/radio/morse?tab=send", () => page.getByRole("group", { name: "Keyer speed" }).waitFor()],
+      // Worked out before the screens are walked, with time for a cold start of the engine (a request's own limit is 30 s).
+      const matrix = await page.request.post(`/api/radio/communication-plans/${plan.id}/matrix`, {
+        headers: { "X-Outpost-Request": "1" },
+        timeout: 120_000,
+      });
+      expect(matrix.ok(), await matrix.text()).toBe(true);
+      // What shows each screen is ready. Waited for a while, not for the whole of the test's time: a name changed on a
+      // screen (the On the air callsign field, 21 Nov 2026) once left the wait to run out the test's three minutes,
+      // which read as the plan's matrix taking too long.
+      const screens: Array<[string, () => Locator]> = [
+        ["/radio/propagation", () => page.getByRole("button", { name: /choose on the map/ }).first()],
+        ["/radio/coverage", () => page.getByRole("link", { name: "One path, in the planner" })],
+        [`/radio/plans/${plan.id}`, () => page.getByText(/share of days$/).first()],
+        ["/radio/repeaters", () => page.getByRole("button", { name: /Import the file from/ }).first()],
+        ["/radio/morse?tab=receive", () => page.getByRole("group", { name: "Koch lesson" })],
+        ["/radio/morse?tab=send", () => page.getByRole("group", { name: "Keyer speed" })],
         // With no radio licence set in Settings, the callsign is one to practise with.
-        ["/radio/morse?tab=rbn", () => page.getByLabel("A callsign to practise with").waitFor()],
-        ["/radio/morse?tab=reference", () => page.getByRole("region", { name: "Table of prosigns" }).waitFor()],
-        ["/radio/frequencies", () => page.getByText("Only some of the time, or when activated").first().waitFor()],
+        ["/radio/morse?tab=rbn", () => page.getByLabel("A callsign to practise with")],
+        ["/radio/morse?tab=reference", () => page.getByRole("region", { name: "Table of prosigns" })],
+        ["/radio/frequencies", () => page.getByText("Only some of the time, or when activated").first()],
       ];
       for (const [address, ready] of screens) {
         await page.goto(address);
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-        await ready();
+        await expect(ready(), `what shows ${address} is ready`).toBeVisible({ timeout: 20_000 });
         expect(await tooWide(page), `${address} at ${size}`).toEqual([]);
       }
       // An icon-only step button is a finger's size, not the text's.
