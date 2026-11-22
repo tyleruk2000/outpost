@@ -17,7 +17,6 @@ import {
   type Household,
   type HouseholdMember,
   hazardsWithPlans,
-  homePlaceOf,
   type MarkerDto,
   NO_HOME_PLACE,
   placeName,
@@ -35,6 +34,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { Checkbox, Segmented, Select } from "@/components/ui/misc";
 import { usePlans } from "@/features/emergency-plans/data";
+import { ageWords, usePaperHousehold, whereWasWords } from "@/features/household-papers/paper-household";
 import { useSetHousehold } from "@/features/supplies/data";
 import { api, errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
@@ -320,8 +320,11 @@ function PeopleStep({ answers, set, household, sheets }: StepProps & { household
 
 // ── Home ────────────────────────────────────────────────────────────────────
 
-function HomeStep({ answers, set, markers, country }: StepProps & { markers: MarkerDto[]; country: string | null }) {
-  const home = homePlaceOf(markers);
+function HomeStep({ answers, set, country }: StepProps & { markers: MarkerDto[]; country: string | null }) {
+  // The current household's home (modules/households): its saved place, or where a portable one was last said to be.
+  const { which } = usePaperHousehold();
+  const home = which?.home ?? null;
+  const moving = which?.kind === "portable";
   const client = useQueryClient();
   const [lat, setLat] = useState("");
   const [lon, setLon] = useState("");
@@ -339,6 +342,7 @@ function HomeStep({ answers, set, markers, country }: StepProps & { markers: Mar
     try {
       await api.post("/api/maps/markers", { name: "Home", lat: latitude, lon: longitude, icon: "home" });
       await client.invalidateQueries({ queryKey: ["maps"] });
+      await client.invalidateQueries({ queryKey: ["households"] });
       await client.invalidateQueries({ queryKey: ["household-book"] });
     } catch (error) {
       notify.error(errorMessage(error));
@@ -349,16 +353,51 @@ function HomeStep({ answers, set, markers, country }: StepProps & { markers: Mar
 
   return (
     <div className="grid gap-6">
-      <Lead>
-        Home is the saved place on the map with the home icon. Everything near home in the book is measured from it, and the paper and the
-        emergency number follow the country it is in.
-      </Lead>
-      {home ? (
+      {moving && which ? (
+        <Lead>
+          {which.name} moves, so the book is measured from where it was last said to be, and says when that was. Its cards carry its people
+          and kit rather than an address.
+        </Lead>
+      ) : (
+        <Lead>
+          {which?.several
+            ? `Home is the saved place chosen for ${which.name}. `
+            : "Home is the saved place on the map with the home icon. "}
+          Everything near home in the book is measured from it, and the paper and the emergency number follow the country it is in.
+        </Lead>
+      )}
+      {moving && which ? (
+        home ? (
+          <p className="text-body text-ink">
+            <span className="font-semibold">{whereWasWords(which.name, home)}</span>{" "}
+            <span className="font-mono text-small text-ink-muted">{formatDecimal(home.lat, home.lon, 5)}</span>
+            {home.at != null ? <span className="text-small text-ink-muted"> · set {ageWords(Date.now() - home.at)} ago</span> : null}
+            {" · "}
+            <Link to="/prepare/households" className="text-small text-primary underline underline-offset-2">
+              Set where it is now
+            </Link>
+          </p>
+        ) : (
+          <Notice tone="info" title={`Where ${which.name} is has not been set`}>
+            Set it on the household's page before the book is made.{" "}
+            <Link to="/prepare/households" className="text-primary underline underline-offset-2">
+              Households
+            </Link>
+          </Notice>
+        )
+      ) : home ? (
         <p className="text-body text-ink">
           Home: <span className="font-semibold">{home.name || "Home"}</span>{" "}
           <span className="font-mono text-small text-ink-muted">{formatDecimal(home.lat, home.lon, 5)}</span>
           {country ? <span className="text-small text-ink-muted"> · {placeName(country)}</span> : null}
         </p>
+      ) : which?.several ? (
+        <Notice tone="info" title={`${which.name} has no home place`}>
+          Choose one on the household's page.{" "}
+          <Link to="/prepare/households" className="text-primary underline underline-offset-2">
+            Households
+          </Link>
+        </Notice>
       ) : (
         <div className="grid gap-3">
           <Notice tone="info" title="No home is marked">

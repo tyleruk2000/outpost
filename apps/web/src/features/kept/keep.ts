@@ -252,17 +252,22 @@ export async function keepPlaces(): Promise<KeptPlaces> {
 export const MEDICAL_ID = "household";
 export const MEDICAL_PATH = "/api/medical-sheets";
 
-/** Keeps every medical sheet on this phone as it is on the server: a locked one stays locked. */
+/**
+ * Keeps the current household's medical sheets on this phone as they are on the server: a
+ * locked one stays locked. With several households the copy says whose they are.
+ */
 export async function keepMedical(): Promise<KeptMedical> {
   const before = await getKept("medical", MEDICAL_ID);
   const answer = await api.get<MedicalSheetsResponse>(MEDICAL_PATH);
   const cache = await openKept("medical", MEDICAL_ID);
-  const bytes = await putKeptJson(cache, MEDICAL_PATH, { sheets: answer.sheets });
+  const householdName = answer.household?.several ? answer.household.name : null;
+  const bytes = await putKeptJson(cache, MEDICAL_PATH, { sheets: answer.sheets, householdName });
   const now = Date.now();
   const item: KeptMedical = {
     kind: "medical",
     id: MEDICAL_ID,
-    title: "Medical sheets",
+    title: householdName ? `Medical sheets for ${householdName}` : "Medical sheets",
+    householdName,
     count: answer.sheets.length,
     locked: answer.sheets.filter((sheet) => sheet.encrypted).length,
     bytes,

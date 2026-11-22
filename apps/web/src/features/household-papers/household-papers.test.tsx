@@ -22,9 +22,10 @@ import { type BinderSources, binderPages, partHolds } from "./binder";
 import { partsWords } from "./binder-line";
 import { commsBlocks, frequencyText, stepText } from "./comms-words";
 import { type GrabHousehold, grabCard, grabSheets, gridLines } from "./grab-cards";
-import { grabPerson } from "./household-data";
+import { grabHousehold, grabPerson } from "./household-data";
 import MedicalPage from "./medical-page";
 import { medicalBlocks, medicineLeftWords, recordOf } from "./medical-words";
+import { ageWords, kitWords, whereWasWords } from "./paper-household";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -377,5 +378,105 @@ describe("the medical sheets screen", () => {
     expect(screen.getByRole("link", { name: "Open Sam’s sheet" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Make a sheet for Alex" })).toBeTruthy();
     expect(screen.getByText(/Off: neither Chat nor other programs over MCP can read them/)).toBeTruthy();
+  });
+});
+
+describe("papers for a household that moves", () => {
+  const which = { name: "The van", kind: "portable" as const, home: null };
+
+  it("prints the people and kit on a portable household's card, and no address", () => {
+    const portable = grabHousehold(
+      [],
+      [],
+      {
+        ...which,
+        home: { kind: "here", id: null, name: "Where The van is now", lat: 56.8, lon: -5.1, country: "GB", at: 1, source: "map" },
+      },
+      null,
+      {
+        people: ["Sam", "Alex"],
+        kit: kitWords({ items: [{ location: "Boot" }, { location: "Roof box" }, { location: "Boot" }] as never }),
+      },
+    );
+    expect(portable.home).toBeNull();
+    const person = grabPerson({ memberId: "m1", name: "Sam", sheet: sheet() }, new Map(), {});
+    const card = grabCard(person, portable, { size: "a6", formats: ["decimal"], made: new Date(2026, 10, 20) });
+    const words = card.items.flatMap((item) => (item.kind === "text" ? [item.text] : [])).join(" ");
+    expect(words).toContain("Travelling with The van");
+    expect(words).toContain("Sam, Alex");
+    expect(words).toContain("Kit: 3 things in Supplies, in Boot and Roof box");
+    expect(words).not.toContain("56.80000");
+  });
+
+  it("prints a fixed household's home as before", () => {
+    const fixed = grabHousehold(
+      [],
+      [],
+      {
+        name: "Home",
+        kind: "fixed",
+        home: { kind: "place", id: "h", name: "Cottage", lat: 54.3, lon: -2.2, country: "GB", at: null, source: null },
+      },
+      null,
+    );
+    expect(fixed.home).toEqual({ name: "Cottage", lat: 54.3, lon: -2.2 });
+    expect(fixed.travelling).toBeNull();
+  });
+
+  it("says how old a position is and where it was", () => {
+    expect(ageWords(20 * 60_000)).toBe("less than an hour");
+    expect(ageWords(3 * 3_600_000)).toBe("3 hours");
+    expect(ageWords(3 * 86_400_000)).toBe("3 days");
+    expect(ageWords(21 * 86_400_000)).toBe("3 weeks");
+    expect(whereWasWords("The van", { name: "Where The van is now", at: null })).toBe("Where The van was");
+    expect(whereWasWords("The van", { name: "Glen Nevis campsite", at: null })).toBe("Where The van was (Glen Nevis campsite)");
+    expect(kitWords({ items: [] })).toBeNull();
+  });
+});
+
+const households = (several: boolean) => ({
+  currentId: "f",
+  households: [
+    { id: "household", name: "Home", kind: "fixed", home: null, personIds: [] },
+    ...(several ? [{ id: "f", name: "Family", kind: "fixed", home: null, personIds: [] }] : []),
+  ],
+});
+
+describe("which household the papers are for", () => {
+  const renderMedical = (several: boolean) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const { pathname } = new URL(String(input), "http://outpost.test");
+        const json = (body: unknown) =>
+          new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+        if (pathname === "/api/medical-sheets") return json({ sheets: [sheet()], inSearch: false, inTools: false });
+        if (pathname === "/api/households") return json(households(several));
+        if (pathname === "/api/supplies")
+          return json({ items: [], locations: [], household: { daysWanted: 3, members: [], updatedAt: 1 } });
+        return json({});
+      }),
+    );
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <MedicalPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+  };
+
+  it("says nothing about households when there is only one", async () => {
+    renderMedical(false);
+    expect(await screen.findByRole("link", { name: "Sam" })).toBeTruthy();
+    expect(screen.queryByText(/^For /)).toBeNull();
+    expect(screen.queryByRole("link", { name: "Change" })).toBeNull();
+  });
+
+  it("says which household under the title when there are several, with the way to change it", async () => {
+    renderMedical(true);
+    expect(await screen.findByText(/For Family/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Change" }).getAttribute("href")).toBe("/prepare/households");
   });
 });

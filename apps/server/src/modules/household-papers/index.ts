@@ -1,9 +1,10 @@
 /**
- * The household's papers, under Preparedness: medical sheets (medical.ts), the
+ * Each household's papers, under Preparedness: medical sheets (medical.ts), the
  * communication plan, "Keeping in touch" (comms.ts), the record of the household
  * binder last made (binder.ts), and the household book's answers and the record of the
  * last book made (book.ts), with what the book reads round home (facts.ts). Grab cards and the binder itself are made in the
- * browser from these and from what other modules already answer.
+ * browser from these and from what other modules already answer. Every route is for the
+ * current household (docs/development/households.md).
  *
  * All of it is the person's own: counted and erased with the rest by modules/manage,
  * counted in the database's figures, and in every backup. See docs/household-papers.md.
@@ -61,11 +62,16 @@ export async function registerHouseholdPapers(app: FastifyInstance, ctx: AppCont
 
   const id = (request: { params: unknown }) => idParams.parse(request.params).id;
 
-  app.get("/api/medical-sheets", async () => ({
-    sheets: medical.list(),
-    inSearch: ctx.services.settings.get("medical.inSearch"),
-    inTools: ctx.services.settings.get("tools.medical"),
-  }));
+  // The current household's sheets: its people's, and its own for nobody in particular.
+  app.get("/api/medical-sheets", async () => {
+    const household = ctx.services.households.current();
+    return {
+      sheets: medical.list(household.id),
+      inSearch: ctx.services.settings.get("medical.inSearch"),
+      inTools: ctx.services.settings.get("tools.medical"),
+      household: { id: household.id, name: household.name, several: ctx.services.households.list().length > 1 },
+    };
+  });
   app.post("/api/medical-sheets", async (request) => ({ sheet: medical.create(sheetSchema.parse(request.body)) }));
   app.get("/api/medical-sheets/:id", async (request) => ({ sheet: medical.get(id(request)) }));
   app.put("/api/medical-sheets/:id", async (request) => ({ sheet: medical.update(id(request), sheetSchema.parse(request.body)) }));

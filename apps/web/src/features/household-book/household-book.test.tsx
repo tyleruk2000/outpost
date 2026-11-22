@@ -741,3 +741,61 @@ describe("leaving the questions with answers not saved", () => {
     await vi.waitFor(() => expect(asked()).toBe(false));
   });
 });
+
+describe("the book with several households", () => {
+  const footerOf = (book: MadeBook) => {
+    const sections = book.document.content as unknown as Array<{ footer: ((page: number) => { columns: Array<{ text: string }> }) | null }>;
+    return sections.find((section) => section.footer)!.footer!(2).columns[0]!.text;
+  };
+
+  it("is as it was with one household: no household named but the one typed", () => {
+    const book = makeBook(
+      inputs({ answers: { ...inputs().answers, householdName: "" }, which: { name: "Home", kind: "fixed", several: false } }),
+    );
+    expect(book.document.info?.title).toBe("Our household book");
+    expect(footerOf(book)).toBe("Our household book");
+  });
+
+  it("names the household on the cover and in the footer when no name was typed", () => {
+    const book = makeBook(
+      inputs({ answers: { ...inputs().answers, householdName: "" }, which: { name: "Gran's flat", kind: "fixed", several: true } }),
+    );
+    expect(texts(book)).toContain("Household book Gran's flat Made on 21 November 2026");
+    expect(footerOf(book)).toBe("Gran's flat: household book");
+  });
+
+  it("keeps the typed name and adds the household's when they differ", () => {
+    const book = makeBook(inputs({ which: { name: "Cottage", kind: "fixed", several: true } }));
+    expect(texts(book)).toContain("Household book · Cottage The Rowans");
+    expect(footerOf(book)).toBe("The Rowans: household book (Cottage)");
+  });
+
+  it("says where a portable household was and how old that was, and prints its people and kit, not an address", () => {
+    const setAt = Date.UTC(2026, 10, 20, 12);
+    const book = makeBook(
+      inputs({
+        answers: { ...inputs().answers, householdName: "" },
+        facts: { ...facts, home: { name: "Where The van is now", lat: 56.8, lon: -5.1, country: "GB", kind: "here", at: setAt } },
+        which: { name: "The van", kind: "portable", several: true },
+        travel: { people: ["Ana", "Ben"], kit: "12 things in Supplies, in the boot" },
+      }),
+    );
+    const all = texts(book);
+    expect(all).toContain("Where The van was on 20 November 2026");
+    expect(all).toContain("Set 12 hours before this book was made. It moves: this is not an address.");
+    expect(all).toMatch(/People\s+Ana, Ben/);
+    expect(all).toMatch(/Kit\s+12 things in Supplies, in the boot/);
+    expect(all).not.toMatch(/Home\s+Where The van/);
+    expect(all).toContain("Measured in a straight line from where The van was on 20 November 2026");
+    // The child's card does not give a position as where the child lives.
+    expect(all).toContain("I am travelling with The van.");
+    expect(all).not.toContain("I live at");
+  });
+
+  it("asks for a portable household's position to be set when there is none", () => {
+    const book = makeBook(
+      inputs({ facts: { ...facts, home: null, journeys: [] }, which: { name: "The van", kind: "portable", several: true } }),
+    );
+    expect(texts(book)).toContain("Where The van is has not been set.");
+  });
+});

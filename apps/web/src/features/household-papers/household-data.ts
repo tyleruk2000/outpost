@@ -2,7 +2,8 @@
  * Everything the grab cards and the binder are made from, read once under each owner's
  * own keys: the household (Supplies), medical sheets (and those opened on this device),
  * every emergency plan, the contacts marked for emergencies, the communication plan and
- * the saved places with home among them. And the pure functions that turn it into a
+ * the saved places, and the current household with its home (all of it the current
+ * household's: docs/development/households.md). And the pure functions that turn it into a
  * card's lines.
  */
 import {
@@ -10,8 +11,6 @@ import {
   type ContactDto,
   DEFAULT_EMERGENCY_NUMBER,
   type EmergencyPlanResponse,
-  homePlaceOf,
-  type MarkerDto,
   type MedicalSheet,
   PACE_LEVELS,
   type PaceStep,
@@ -29,6 +28,7 @@ import { useComms, useContactsById, useMedicalSheets } from "./data";
 import type { GrabHousehold, GrabPerson } from "./grab-cards";
 import { useOpenedSheets } from "./medical-crypto";
 import { type ContactsNow, contactIdsOf, reach, recordOf } from "./medical-words";
+import { kitWords, type PaperHousehold, usePaperHousehold } from "./paper-household";
 
 export interface PaperPerson {
   /** The household member, or null for someone with a sheet who is not in the household. */
@@ -45,6 +45,7 @@ export function useHouseholdSources() {
   const markers = useMarkers();
   const emergency = useEmergencyContacts();
   const comms = useComms();
+  const household = usePaperHousehold();
   const details = useQueries({
     queries: (plans.data ?? []).map((plan) => ({
       queryKey: planKeys.one(plan.id),
@@ -70,10 +71,19 @@ export function useHouseholdSources() {
     return [...listed, ...others];
   }, [supplies.data, sheets.data]);
 
+  const travel = useMemo(
+    () => ({
+      people: (supplies.data?.household.members ?? []).map((member) => member.name || "Unnamed"),
+      kit: kitWords(supplies.data ?? null),
+    }),
+    [supplies.data],
+  );
+
   const ids = people.flatMap((person) => contactIdsOf(person.sheet ? recordOf(person.sheet, opened) : null));
   const contacts = useContactsById(ids);
   const pending =
     supplies.isPending ||
+    household.isPending ||
     sheets.isPending ||
     plans.isPending ||
     markers.isPending ||
@@ -82,6 +92,7 @@ export function useHouseholdSources() {
     details.some((query) => query.isPending);
   const error =
     supplies.error ??
+    household.error ??
     sheets.error ??
     plans.error ??
     markers.error ??
@@ -108,6 +119,10 @@ export function useHouseholdSources() {
     emergencyContacts: emergency.data ?? [],
     comms: comms.data ?? null,
     supplies: supplies.data ?? null,
+    /** The household the papers are for. */
+    which: household.which,
+    /** A portable household's people and kit, for where a fixed one's home is printed. */
+    travel,
   };
 }
 
@@ -127,12 +142,17 @@ export function commsLines(comms: CommsResponse | null): string[] {
     .filter(Boolean);
 }
 
-/** The household's part of every card. */
+/**
+ * The household's part of every card. A fixed household's home is printed with its grid
+ * references; a portable household's position would be out of date on a card, so its
+ * people and kit are printed instead.
+ */
 export function grabHousehold(
   plans: EmergencyPlanResponse[],
   emergency: ContactDto[],
-  markers: MarkerDto[],
+  which: Pick<PaperHousehold, "name" | "kind" | "home"> | null,
   comms: CommsResponse | null,
+  travel: { people: string[]; kit: string | null } = { people: [], kit: null },
 ): GrabHousehold {
   const readable = plans.map((data) => readableOf(data.plan, data.resolved));
   const places: string[] = [];
@@ -152,13 +172,15 @@ export function grabHousehold(
   for (const contact of emergency) add(contact.displayName, contact.phones[0]?.value);
   for (const plan of readable)
     for (const contact of plan.contacts.filter((each) => !each.missing)) add(contact.name, contact.numbers[0]?.value);
-  const home = homePlaceOf(markers);
+  const home = which?.home ?? null;
+  const portable = which?.kind === "portable";
   return {
     emergencyNumber: plans[0]?.plan.emergencyNumber || DEFAULT_EMERGENCY_NUMBER,
     contacts,
     places,
     comms: commsLines(comms),
-    home: home ? { name: home.name || "Home", lat: home.lat, lon: home.lon } : null,
+    home: home && !portable ? { name: home.name || "Home", lat: home.lat, lon: home.lon } : null,
+    travelling: portable && which ? { household: which.name, people: travel.people, kit: travel.kit } : null,
   };
 }
 

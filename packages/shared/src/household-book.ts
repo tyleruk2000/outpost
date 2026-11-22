@@ -405,7 +405,11 @@ export interface BookJourney {
 
 /** `GET /api/household-book/facts`: what Outpost holds that the book is made from, read for home now. */
 export interface BookFacts {
-  home: { name: string; lat: number; lon: number; country: string | null } | null;
+  /**
+   * The current household's home. For a portable household (`kind` "here") it is where a
+   * person last said it is, set at `at`: the book says so, and never prints it as an address.
+   */
+  home: { name: string; lat: number; lon: number; country: string | null; kind?: "place" | "here"; at?: number | null } | null;
   help: BookPlaceGroup[];
   keepAway: BookPlaceGroup[];
   /** Null when the layer is not held. */

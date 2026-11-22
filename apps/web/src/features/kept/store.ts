@@ -112,6 +112,8 @@ export interface KeptMedical extends KeptBase {
   count: number;
   /** Of them, how many are locked. */
   locked: number;
+  /** The household they are the sheets of, when there were several; absent or null with one. */
+  householdName?: string | null;
 }
 
 export type KeptItem = KeptNote | KeptTrack | KeptPlaces | KeptArea | KeptPlan | KeptMedical;

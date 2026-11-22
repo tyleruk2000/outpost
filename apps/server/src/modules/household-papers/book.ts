@@ -40,7 +40,6 @@ const BOOK_READS: Record<Exclude<BookSource, "answers">, SourceId[]> = {
 };
 
 const L = BOOK_LIMITS;
-const ROW = "household";
 const itemId = z.string().min(1).max(64);
 const text = (max: number) => z.string().max(max).default("");
 const unique = (list: Array<{ id: string }>) => new Set(list.map((item) => item.id)).size === list.length;
@@ -161,7 +160,9 @@ export function createBookService(
   }),
 ): BookService {
   const { db } = ctx;
-  const row = () => db.select().from(householdBook).where(eq(householdBook.id, ROW)).get();
+  // One book for each household, keyed by its id; every call is for the current household.
+  const rowId = () => ctx.services.households.currentId();
+  const row = () => db.select().from(householdBook).where(eq(householdBook.id, rowId())).get();
   const now = (answersAt: number | null): Record<BookSource, string> => ({
     answers: String(answersAt ?? 0),
     ...(Object.fromEntries(Object.entries(BOOK_READS).map(([id, reads]) => [id, fingerprints.of(reads)])) as Record<
@@ -211,8 +212,9 @@ export function createBookService(
         );
       const { baseAnswersAt: _base, ...answers } = input;
       const answersAt = Math.max(Date.now(), (at ?? 0) + 1);
+      ctx.services.households.ensure();
       db.insert(householdBook)
-        .values({ id: ROW, answers, answersAt, made: before?.made ?? null })
+        .values({ id: rowId(), answers, answersAt, made: before?.made ?? null })
         .onConflictDoUpdate({ target: householdBook.id, set: { answers, answersAt } })
         .run();
       changed();
@@ -225,14 +227,16 @@ export function createBookService(
         fingerprints: { ...now(before?.answersAt ?? null), ...(input.fingerprints ?? {}) },
         madeAt: Date.now(),
       };
+      ctx.services.households.ensure();
       db.insert(householdBook)
-        .values({ id: ROW, answers: before?.answers ?? DEFAULT_BOOK_ANSWERS, answersAt: before?.answersAt ?? null, made })
+        .values({ id: rowId(), answers: before?.answers ?? DEFAULT_BOOK_ANSWERS, answersAt: before?.answersAt ?? null, made })
         .onConflictDoUpdate({ target: householdBook.id, set: { made } })
         .run();
       changed();
       return service.get();
     },
-    count: () => (row() ? 1 : 0),
+    /** Books kept, in every household. */
+    count: () => db.select({ id: householdBook.id }).from(householdBook).all().length,
     eraseAll() {
       const had = service.count();
       db.delete(householdBook).run();

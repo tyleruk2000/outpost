@@ -412,7 +412,7 @@ describe("an emergency plan kept on this device", () => {
 });
 
 describe("the medical sheets kept on this device", () => {
-  async function keptSheets() {
+  async function keptSheets(householdName: string | null = null) {
     const { emptyMedicalRecord } = await import("@outpost/shared");
     const sheets = [
       {
@@ -436,11 +436,12 @@ describe("the medical sheets kept on this device", () => {
         updatedAt: 1,
       },
     ];
-    await putKeptJson(await caches.open("outpost-kept:medical:household"), "/api/medical-sheets", { sheets });
+    await putKeptJson(await caches.open("outpost-kept:medical:household"), "/api/medical-sheets", { sheets, householdName });
     await putKept({
       kind: "medical",
       id: "household",
-      title: "Medical sheets",
+      title: householdName ? `Medical sheets for ${householdName}` : "Medical sheets",
+      householdName,
       count: 2,
       locked: 1,
       bytes: 700,
@@ -471,5 +472,18 @@ describe("the medical sheets kept on this device", () => {
     expect(ana).toHaveTextContent("Penicillin: rash");
     const ben = screen.getByRole("region", { name: "Medical sheet: Ben" });
     expect(ben).not.toHaveTextContent("Blood group");
+    expect(screen.queryByText(/^For /)).not.toBeInTheDocument();
+  });
+
+  it("says which household the sheets are of when there were several", async () => {
+    await keptSheets("Family");
+    const { default: KeptMedicalScreen } = await import("./kept-medical-screen");
+    render(
+      <MemoryRouter>
+        <KeptMedicalScreen />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole("heading", { level: 1, name: "Medical sheets" })).toBeInTheDocument();
+    expect(screen.getByText("For Family")).toBeInTheDocument();
   });
 });

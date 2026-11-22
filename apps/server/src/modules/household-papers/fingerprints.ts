@@ -5,27 +5,50 @@
  * included, which a "newest change" time cannot show.
  *
  * The binder and the book are dated by content, so what is hashed is each row's id and
- * the time it last changed, not things that are not content.
+ * the time it last changed, not things that are not content. Each is for the current
+ * household: its plans, sheets, plan for keeping in touch, people and supplies.
  */
 import crypto from "node:crypto";
 import type { BinderPart } from "@outpost/shared";
 import type { AppContext } from "../../core/context.ts";
+import { MEDICAL_SHEETS_OF_HOUSEHOLD, medicalSheetsParams } from "./medical.ts";
 
 export type SourceId = "plans" | "emergencyContacts" | "contacts" | "places" | "medical" | "comms" | "people" | "supplies";
 
+/** Which household a fingerprint is for: its id, and the first household's (which keeps the sheets of nobody's household). */
+interface Scope {
+  household: string;
+  first: string;
+}
+
+/** A query and its parameters for one household. */
+type Query = (scope: Scope) => [string, ...unknown[]];
+
 // Each row's id and when it was last changed: a change, an addition or a deletion each changes the hash. What is
 // not content (a plan's ticks, when the shopping list was last worked out) is left out, so it does not call a binder old.
-const SOURCES: Record<SourceId, string[]> = {
-  plans: ["SELECT id, updated_at FROM emergency_plans ORDER BY id"],
-  emergencyContacts: ["SELECT id, updated_at FROM contacts WHERE is_emergency = 1 ORDER BY id"],
-  contacts: ["SELECT id, updated_at FROM contacts ORDER BY id"],
-  places: ["SELECT id, updated_at FROM markers ORDER BY id"],
-  medical: ["SELECT id, updated_at FROM medical_sheets ORDER BY id"],
-  comms: ["SELECT id, updated_at FROM comms_plans ORDER BY id"],
-  people: ["SELECT id, updated_at FROM supply_members ORDER BY id"],
+// What is kept for each household is read for the one asked about; contacts and places are everyone's. With one
+// household the rows (and so the fingerprints) are what they were before there were several.
+const SOURCES: Record<SourceId, Query[]> = {
+  plans: [({ household }) => ["SELECT id, updated_at FROM emergency_plans WHERE household_id = ? ORDER BY id", household]],
+  emergencyContacts: [() => ["SELECT id, updated_at FROM contacts WHERE is_emergency = 1 ORDER BY id"]],
+  contacts: [() => ["SELECT id, updated_at FROM contacts ORDER BY id"]],
+  places: [() => ["SELECT id, updated_at FROM markers ORDER BY id"]],
+  medical: [
+    ({ household, first }) => [
+      `SELECT id, updated_at FROM medical_sheets WHERE ${MEDICAL_SHEETS_OF_HOUSEHOLD} ORDER BY id`,
+      ...medicalSheetsParams(household, first),
+    ],
+  ],
+  comms: [({ household }) => ["SELECT id, updated_at FROM comms_plans WHERE id = ? ORDER BY id", household]],
+  people: [
+    ({ household }) => [
+      "SELECT id, updated_at FROM supply_members WHERE id IN (SELECT person_id FROM household_people WHERE household_id = ?) ORDER BY id",
+      household,
+    ],
+  ],
   supplies: [
-    "SELECT id, updated_at, stock_changed_at FROM supply_household ORDER BY id",
-    "SELECT id, updated_at FROM supply_items ORDER BY id",
+    ({ household }) => ["SELECT id, updated_at, stock_changed_at FROM supply_household WHERE id = ? ORDER BY id", household],
+    ({ household }) => ["SELECT id, updated_at FROM supply_items WHERE household_id = ? ORDER BY id", household],
   ],
 };
 
@@ -42,17 +65,19 @@ export const BINDER_SOURCES: Record<BinderPart, SourceId[]> = {
 };
 
 export interface Fingerprints {
-  /** One fingerprint for each source named, in the order given. */
+  /** One fingerprint for each source named, in the order given, for the current household. */
   of(sources: readonly SourceId[]): string;
   binder(): Record<BinderPart, string>;
 }
 
 export function createFingerprints(ctx: AppContext): Fingerprints {
-  const hashOf = (source: SourceId, hash: crypto.Hash) => {
+  const scope = (): Scope => ({ household: ctx.services.households.currentId(), first: ctx.services.households.first().id });
+  const hashOf = (source: SourceId, hash: crypto.Hash, at: Scope) => {
     hash.update(`${source}\n`);
     for (const query of SOURCES[source]) {
       try {
-        for (const row of ctx.sqlite.prepare(query).iterate()) hash.update(`${JSON.stringify(row)}\n`);
+        const [sql, ...params] = query(at);
+        for (const row of ctx.sqlite.prepare(sql).iterate(...params)) hash.update(`${JSON.stringify(row)}\n`);
       } catch {
         // A table this build does not have reads as empty.
       }
@@ -60,7 +85,8 @@ export function createFingerprints(ctx: AppContext): Fingerprints {
   };
   const of = (sources: readonly SourceId[]) => {
     const hash = crypto.createHash("sha256");
-    for (const source of sources) hashOf(source, hash);
+    const at = scope();
+    for (const source of sources) hashOf(source, hash, at);
     return hash.digest("base64url").slice(0, 22);
   };
   return {
