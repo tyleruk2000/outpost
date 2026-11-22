@@ -11,10 +11,12 @@ import {
   type BookAnswers,
   type BookStepId,
   EMERGENCY_NUMBERS,
+  type EmergencyPlanSummary,
   ENERGY_BANDS,
   formatDecimal,
   type Household,
   type HouseholdMember,
+  hazardsWithPlans,
   homePlaceOf,
   type MarkerDto,
   NO_HOME_PLACE,
@@ -24,12 +26,13 @@ import {
 } from "@outpost/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Check, Plus, Trash2 } from "lucide-react";
-import { type ReactNode, useState } from "react";
-import { Link } from "react-router";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router";
 import { Notice, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { Checkbox, Segmented, Select } from "@/components/ui/misc";
+import { usePlans } from "@/features/emergency-plans/data";
 import { useSetHousehold } from "@/features/supplies/data";
 import { api, errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
@@ -56,7 +59,19 @@ export function BookWizard({ answers: initial, household, markers, country, shee
   const [answers, setAnswers] = useState<BookAnswers>(initial);
   const [step, setStep] = useState<BookStepId>(startAt ?? "people");
   const index = BOOK_STEPS.findIndex((each) => each.id === step);
-  const set = (patch: Partial<BookAnswers>) => setAnswers((current) => ({ ...current, ...patch }));
+  const set = useCallback((patch: Partial<BookAnswers>) => setAnswers((current) => ({ ...current, ...patch })), []);
+  const plans = usePlans();
+  const navigate = useNavigate();
+  /** Saves the answers, then goes elsewhere in Outpost (to make a plan), to come back after. */
+  const leaveFor = async (to: string) => {
+    try {
+      await save(answers);
+    } catch (error) {
+      notify.error(errorMessage(error));
+      return;
+    }
+    navigate(to);
+  };
 
   const go = async (to: number | "done") => {
     try {
@@ -104,7 +119,7 @@ export function BookWizard({ answers: initial, household, markers, country, shee
       ) : step === "vehicles" ? (
         <VehiclesStep answers={answers} set={set} />
       ) : step === "readiness" ? (
-        <ReadinessStep answers={answers} set={set} />
+        <ReadinessStep answers={answers} set={set} plans={plans.data} leave={(to) => void leaveFor(to)} />
       ) : (
         <BookStep answers={answers} set={set} country={country} />
       )}
@@ -650,7 +665,21 @@ function VehiclesStep({ answers, set }: StepProps) {
 
 // ── How long, and which hazards ─────────────────────────────────────────────
 
-function ReadinessStep({ answers, set }: StepProps) {
+function ReadinessStep({
+  answers,
+  set,
+  plans,
+  leave,
+}: StepProps & { plans: EmergencyPlanSummary[] | undefined; leave: (to: string) => void }) {
+  const planned = plans ? hazardsWithPlans(plans) : [];
+  // The hazards the household has a plan for start ticked, once the plans are known.
+  const added = useRef(false);
+  useEffect(() => {
+    if (added.current || !plans) return;
+    added.current = true;
+    const missing = hazardsWithPlans(plans).filter((hazard) => !answers.hazards.includes(hazard));
+    if (missing.length > 0) set({ hazards: [...answers.hazards, ...missing] });
+  }, [plans, answers.hazards, set]);
   return (
     <div className="grid gap-8">
       <div className="grid gap-4 sm:grid-cols-2">
@@ -679,24 +708,90 @@ function ReadinessStep({ answers, set }: StepProps) {
           )}
         </Field>
       </div>
-      <Section title="Which hazards matter" description="Each has a page of what to do before, during and after, from official guidance.">
+      <Section
+        title="Which hazards matter"
+        description="A hazard you have an emergency plan for gets your plan, in full. One with no plan gets general advice from official guidance, before, during and after."
+      >
+        {planned.length > 0 ? (
+          <p className="mb-2 text-small text-ink-muted">
+            {planned.length === 1 ? "One hazard is" : `${planned.length} hazards are`} ticked because you have a plan for{" "}
+            {planned.length === 1 ? "it" : "them"}.
+          </p>
+        ) : null}
         <Rows>
-          {BOOK_HAZARDS.map((hazard) => (
-            <li key={hazard.id} className="py-1">
-              <label htmlFor={`hazard-${hazard.id}`} className="flex min-h-11 items-center gap-3 text-ink">
-                <Checkbox
-                  id={`hazard-${hazard.id}`}
-                  checked={answers.hazards.includes(hazard.id)}
-                  onCheckedChange={(on) =>
-                    set({ hazards: on === true ? [...answers.hazards, hazard.id] : answers.hazards.filter((id) => id !== hazard.id) })
-                  }
-                />
-                {hazard.label}
-              </label>
-            </li>
-          ))}
+          {BOOK_HAZARDS.map((hazard) => {
+            const own = (plans ?? []).filter((plan) => plan.templateId === hazard.id);
+            const ticked = answers.hazards.includes(hazard.id);
+            return (
+              <li key={hazard.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-1">
+                <label htmlFor={`hazard-${hazard.id}`} className="flex min-h-11 flex-1 basis-60 items-center gap-3 text-ink">
+                  <Checkbox
+                    id={`hazard-${hazard.id}`}
+                    checked={ticked}
+                    onCheckedChange={(on) =>
+                      set({ hazards: on === true ? [...answers.hazards, hazard.id] : answers.hazards.filter((id) => id !== hazard.id) })
+                    }
+                  />
+                  <span>
+                    <span className="block">{hazard.label}</span>
+                    <span className="block text-small text-ink-muted">
+                      {own.length > 0
+                        ? `Your plan: ${own.map((plan) => plan.name).join(", ")}`
+                        : ticked
+                          ? "No plan yet: general advice goes in"
+                          : "No plan"}
+                    </span>
+                  </span>
+                </label>
+                {ticked && own.length === 0 ? (
+                  <Button size="sm" onClick={() => leave(`/prepare/plans?template=${hazard.id}&from=book`)}>
+                    <Plus /> Make a plan for this
+                  </Button>
+                ) : null}
+              </li>
+            );
+          })}
         </Rows>
       </Section>
+      {plans && plans.length > 0 ? (
+        <Section
+          title="Your emergency plans"
+          description="Each plan goes in the book in full, as you wrote it: its steps, contacts, places, supplies and notes."
+        >
+          <Segmented<"all" | "some">
+            label="Which plans"
+            value={answers.planChoice}
+            onChange={(planChoice) =>
+              set({
+                planChoice,
+                planIds: planChoice === "some" && answers.planIds.length === 0 ? plans.map((plan) => plan.id) : answers.planIds,
+              })
+            }
+            options={[
+              { value: "all", label: `All ${plans.length}` },
+              { value: "some", label: "Only some" },
+            ]}
+          />
+          {answers.planChoice === "some" ? (
+            <Rows className="mt-2">
+              {plans.map((plan) => (
+                <li key={plan.id} className="py-1">
+                  <label htmlFor={`plan-${plan.id}`} className="flex min-h-11 items-center gap-3 text-ink">
+                    <Checkbox
+                      id={`plan-${plan.id}`}
+                      checked={answers.planIds.includes(plan.id)}
+                      onCheckedChange={(on) =>
+                        set({ planIds: on === true ? [...answers.planIds, plan.id] : answers.planIds.filter((id) => id !== plan.id) })
+                      }
+                    />
+                    {plan.name}
+                  </label>
+                </li>
+              ))}
+            </Rows>
+          ) : null}
+        </Section>
+      ) : null}
     </div>
   );
 }

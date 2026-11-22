@@ -7,7 +7,16 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { type BookFacts, type BookResponse, bookChanges, DEFAULT_BOOK_ANSWERS, walkLine, withinDegrees } from "@outpost/shared";
+import {
+  type BookFacts,
+  type BookResponse,
+  bookChanges,
+  DEFAULT_BOOK_ANSWERS,
+  type EmergencyPlanResponse,
+  emptyPlanBody,
+  walkLine,
+  withinDegrees,
+} from "@outpost/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { weatherCache, weatherPlaces } from "../src/db/schema.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
@@ -116,6 +125,45 @@ describe("the book's answers", () => {
     const saved = await ok<BookResponse>("GET", "/api/household-book");
     await ok("PUT", "/api/household-book", { ...saved.answers, days: 5, baseAnswersAt: saved.answersAt });
     expect((await ok<BookResponse>("GET", "/api/household-book")).stale).toEqual(["answers", "places"]);
+  });
+
+  it("says the book is older than the plans when a plan is added, changed or deleted", async () => {
+    const madeNow = async () => {
+      const now = await ok<BookResponse>("GET", "/api/household-book");
+      await ok("POST", "/api/household-book/made", { pages: 41, sections: ["situations"], summary: {}, fingerprints: now.fingerprints });
+      expect((await ok<BookResponse>("GET", "/api/household-book")).stale).toEqual([]);
+    };
+    const plan = {
+      name: "Street party",
+      kind: "other",
+      kindText: "",
+      templateId: null,
+      emergencyNumber: "999",
+      reviewEveryDays: 180,
+      body: emptyPlanBody(),
+    };
+    await madeNow();
+    const added = await ok<EmergencyPlanResponse>("POST", "/api/emergency-plans", plan);
+    expect((await ok<BookResponse>("GET", "/api/household-book")).stale).toEqual(["plans"]);
+    await madeNow();
+    await ok("PUT", `/api/emergency-plans/${added.plan.id}`, { ...plan, name: "Street party, changed" });
+    expect((await ok<BookResponse>("GET", "/api/household-book")).stale).toEqual(["plans"]);
+    await madeNow();
+    await ok("DELETE", `/api/emergency-plans/${added.plan.id}`);
+    expect((await ok<BookResponse>("GET", "/api/household-book")).stale).toEqual(["plans"]);
+  });
+
+  it("keeps which plans go in the book", async () => {
+    const saved = await ok<BookResponse>("GET", "/api/household-book");
+    expect(saved.answers.planChoice).toBe("all");
+    const some = await ok<BookResponse>("PUT", "/api/household-book", {
+      ...saved.answers,
+      planChoice: "some",
+      planIds: ["p1"],
+      baseAnswersAt: saved.answersAt,
+    });
+    expect(some.answers).toMatchObject({ planChoice: "some", planIds: ["p1"] });
+    expect((await app.api("PUT", "/api/household-book", { ...some.answers, planChoice: "most" })).status).toBe(400);
   });
 });
 
@@ -228,5 +276,30 @@ describe("what the book reads round home", () => {
     expect(slow.hours).toBeCloseTo(fit.hours * 2, 6);
     expect(journey.towns.map((town) => town.name)).toContain("Midway");
     expect(facts.notMeasured).toEqual([{ destinationId: "d2", name: "Nowhere", why: expect.stringMatching(/No saved place/) }]);
+  });
+});
+
+describe("the old household binder, now part of the book", () => {
+  it("stands in for the book until one is made, out of date wherever the binder is", async () => {
+    const own = await createTestApp({}, undefined, { voacapData: false });
+    try {
+      const call = async <T>(method: string, url: string, body?: unknown): Promise<T> => {
+        const response = await own.api<T>(method, url, body);
+        if (response.status !== 200) throw new Error(`${method} ${url}: ${response.status} ${JSON.stringify(response.body)}`);
+        return response.body;
+      };
+      await call("POST", "/api/maps/markers", { name: "Shed", lat: 54, lon: -2 });
+      await call("POST", "/api/household-binder/made", { parts: ["places", "supplies"], contentAt: Date.now(), pages: 9 });
+      const before = await call<BookResponse>("GET", "/api/household-book");
+      expect(before.made).toMatchObject({ pages: 9, fromBinder: true });
+      expect(before.stale).toEqual([]);
+      await call("POST", "/api/maps/markers", { name: "Gate", lat: 54.1, lon: -2 });
+      expect((await call<BookResponse>("GET", "/api/household-book")).stale).toEqual(["plans", "places"]);
+      const made = await call<BookResponse>("POST", "/api/household-book/made", { pages: 30, sections: ["places"], summary: {} });
+      expect(made.made?.fromBinder).toBeUndefined();
+      expect(made.stale).toEqual([]);
+    } finally {
+      await own.close();
+    }
   });
 });

@@ -1,6 +1,6 @@
-# Medical sheets, keeping in touch, grab cards and the binder
+# Medical sheets, keeping in touch and grab cards
 
-Four screens under **Preparedness** keep the household's papers, made from what Outpost
+Three screens under **Preparedness** keep the household's papers, made from what Outpost
 already holds, so a change there shows the next time a paper is made.
 
 ## Medical sheets
@@ -45,12 +45,12 @@ of your keys from **Encryption**, and needs HTTPS. Everything but the name is en
 the browser; Outpost keeps only the name and the encrypted message. **Without the
 passphrase or key there is no way back.**
 
-Copies made before stay in the clear: backups, portable drives, printouts, PDFs, a binder
-made earlier, and old versions in the database's unused space until it is compacted
+Copies made before stay in the clear: backups, portable drives, printouts, PDFs, a household
+book made earlier, and old versions in the database's unused space until it is compacted
 (**Storage → Manage and clean up**).
 
 An encrypted sheet stays open in the tab until you press **Lock**, leave it five minutes,
-or close the tab; while locked it cannot go on a grab card or in the binder.
+or close the tab; while locked it cannot go on a grab card or in the household book.
 
 **Print**, at the foot of a sheet, gives one page with **Save as PDF**, **Add to
 library** and **Share**. Adding it to the library asks first: there anyone on your network
@@ -103,24 +103,15 @@ sheet. Print at actual size (100%) and cut along the corner marks. A card that d
 fit is named on screen: try A6 or fewer formats. An encrypted sheet not open in this tab
 gives a card with no medical lines, which says so. Make cards again after a change.
 
-## Household binder
+## On paper together
 
-**Household binder** puts a chosen set of printables into one PDF with a contents page:
-the plans' fridge sheets, the emergency contacts sheet, Keeping in touch, the grab cards,
-the medical sheets (encrypted ones only when open, and then in the clear), the
-frequencies the plan uses, home and the meeting points on a map and in every grid format,
-and the supplies.
+The household binder is part of the household book now: **Preparedness → Household
+book** prints the fridge sheets, the emergency contacts, Keeping in touch with a page for
+each person, the grab cards, the medical sheets, the frequencies, home and the meeting
+points and the supplies, with everything else the book holds, or only the parts you
+choose. The old address of the binder opens the book. A binder made before stands in for
+the book until the book is made, and Home says when it is older than what is in it.
 
-The map is drawn from the offline map on this device: home and each meeting point that is a
-saved place, numbered as in the list under it, with a scale bar, north and the map's
-credit. Where no offline map covers the area, or the device cannot draw it, the places are
-drawn to scale in an empty frame and the page says why. A part with nothing in it is left out. Press **Make the binder**, then **Save as
-PDF**, **Add to library** or **Share**.
-
-When something in the last binder changes or is deleted, Home says which part, with a link
-to make it again. A binder made before this was kept notices changes but not deletions until
-it is made again.
-
-Sheets, the communication plan and the record of the binder are kept in the database: in
-backups, copied to a portable drive, and removed by Erase everything. Cards and the binder
+Sheets, the communication plan and the record of the last book are kept in the database: in
+backups, copied to a portable drive, and removed by Erase everything. Cards and the book
 are not stored unless saved or added to the library.
