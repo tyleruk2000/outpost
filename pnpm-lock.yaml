@@ -340,6 +340,9 @@ importers:
       '@types/node':
         specifier: ^26
         version: 26.6.6
+      pdfjs-dist:
+        specifier: 6.5.438
+        version: 6.5.438
       typescript:
         specifier: ^7.0.2
         version: 7.0.2

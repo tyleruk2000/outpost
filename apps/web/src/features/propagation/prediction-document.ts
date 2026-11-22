@@ -438,4 +438,3 @@ export function predictionDocument(result: PredictionResult): Block[] {
 }
 
 export const predictionMarkdown = (result: PredictionResult): string => toMarkdown(predictionDocument(result));
-

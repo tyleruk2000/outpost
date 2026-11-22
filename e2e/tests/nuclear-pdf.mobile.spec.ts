@@ -41,7 +41,7 @@ test.describe("The nuclear workspace's PDF with maps, on a phone", () => {
 
     const one = await makeAndSave(page, testInfo, "nuclear-phone-one-scenario.pdf");
     expect(one.pdf.images.length).toBeGreaterThanOrEqual(2);
-    expect(pdfWords(one.pdf.text)).toContain("idealised shape for a steady wind");
+    expect(await pdfWords(one.bytes)).toContain("idealised shape for a steady wind");
     // While it was made, the rest of the page was as usable as before: the form still answers.
     await page.getByLabel("Yield", { exact: true }).fill("2");
     await expect(section.getByRole("button", { name: "Make the PDF" })).toBeVisible();

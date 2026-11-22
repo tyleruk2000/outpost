@@ -420,6 +420,14 @@ export function readPdf(bytes: Buffer): ReadPdf {
     const from = match.index + match[0].length;
     return { width: Number(match[1]), height: Number(match[2]), jpeg: bytes.subarray(from, from + Number(match[3])) };
   });
+  // The print kit's files (pdfmake, through pdfkit) write a picture's dictionary a key to a line.
+  if (images.length === 0)
+    for (const match of text.matchAll(/<<\n\/Type \/XObject\n\/Subtype \/Image\n([\s\S]*?)>>\nstream\n/g)) {
+      const entry = (key: string) => Number(new RegExp(`/${key} (\\d+)\\n`).exec(match[1]!)?.[1]);
+      if (!/\/Filter \/DCTDecode/.test(match[1]!)) continue;
+      const from = match.index + match[0].length;
+      images.push({ width: entry("Width"), height: entry("Height"), jpeg: bytes.subarray(from, from + entry("Length")) });
+    }
   const placed = [...text.matchAll(/q ([\d.]+) 0 0 ([\d.]+) ([\d.]+) ([\d.]+) cm \/Im\d+ Do Q/g)].map((match) => ({
     width: Number(match[1]),
     height: Number(match[2]),

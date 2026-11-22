@@ -6,14 +6,7 @@ import { HF_BANDS, type PredictionCell, type PredictionResult } from "@outpost/s
 import { describe, expect, it } from "vitest";
 import { contentText, renderPdf } from "@/features/print-kit";
 import type { Block } from "./plans/document";
-import {
-  bestHourOf,
-  NO_FIGURE,
-  NOT_MODELLED,
-  predictionDocument,
-  predictionMarkdown,
-  predictionTitle,
-} from "./prediction-document";
+import { bestHourOf, NO_FIGURE, NOT_MODELLED, predictionDocument, predictionMarkdown, predictionTitle } from "./prediction-document";
 import { noPath, prediction, wordsOf } from "./prediction-fixture";
 import { predictionPrint } from "./print/prediction-print";
 import { readPdf } from "./print/read-pdf";

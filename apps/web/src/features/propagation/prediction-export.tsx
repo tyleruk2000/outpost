@@ -8,7 +8,7 @@
  */
 import type { CompareResult, PredictionResult } from "@outpost/shared";
 import { FileDown } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/misc";
@@ -92,22 +92,20 @@ export function PredictionExport({
       {made.status === "failed" ? (
         <Failed message={made.error} />
       ) : (
-        <>
-          <PdfActions pdf={kitPdfOf(made)}>
-            <Button
-              onClick={() =>
-                saveFile(
-                  pdfFileName(predictionTitle(result)).replace(/\.pdf$/, ".md"),
-                  "text/markdown;charset=utf-8",
-                  predictionMarkdown(result),
-                )
-              }
-            >
-              <FileDown aria-hidden />
-              Export as Markdown
-            </Button>
-          </PdfActions>
-        </>
+        <PdfActions pdf={kitPdfOf(made)}>
+          <Button
+            onClick={() =>
+              saveFile(
+                pdfFileName(predictionTitle(result)).replace(/\.pdf$/, ".md"),
+                "text/markdown;charset=utf-8",
+                predictionMarkdown(result),
+              )
+            }
+          >
+            <FileDown aria-hidden />
+            Export as Markdown
+          </Button>
+        </PdfActions>
       )}
       <PaperChoice paper={paper} onChange={setPaper} />
     </section>

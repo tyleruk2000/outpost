@@ -6,6 +6,7 @@
 import { api, expect, test, watchForErrors } from "./fixtures";
 import { CENTRE, type InstalledTestMaps, installTestMaps, jpegSize, removeTestMaps } from "./map-fixture";
 import { clearWorkspace, fillScenario, makeAndSave, pdfWords, threeScenarios, WITH_PLUME } from "./nuclear-pdf";
+import { pdfPicturesPlaced } from "./pdf";
 
 test.describe("The nuclear workspace's PDF with maps", () => {
   test.describe.configure({ mode: "serial" });
@@ -26,7 +27,7 @@ test.describe("The nuclear workspace's PDF with maps", () => {
     await fillScenario(page, WITH_PLUME);
     const file = await makeAndSave(page, testInfo, "nuclear-no-map.pdf", { drawing: false });
     expect(file.pdf.images).toHaveLength(0);
-    const words = pdfWords(file.pdf.text);
+    const words = await pdfWords(file.bytes);
     expect(words).toContain("No map of A: no offline map region covers this area.");
     expect(words).toContain("Add a region for this area under Maps, Offline maps");
     await expect(page.getByText("The PDF has no maps")).toBeVisible();
@@ -56,11 +57,10 @@ test.describe("The nuclear workspace's PDF with maps", () => {
     expect(first.pdf.pages).toBeGreaterThanOrEqual(2);
     for (const image of first.pdf.images) expect(jpegSize(image.jpeg)).toEqual({ width: image.width, height: image.height });
     // At 150 to the inch, the picture is no larger than its place on the page asks.
-    for (const [index, image] of first.pdf.images.entries()) {
-      const placed = first.pdf.placed[index]!;
-      expect(image.width / (placed.width / 72)).toBeCloseTo(150, -1);
-    }
-    const words = pdfWords(first.pdf.text);
+    const placed = await pdfPicturesPlaced(first.bytes);
+    expect(placed).toHaveLength(first.pdf.images.length);
+    for (const [index, image] of first.pdf.images.entries()) expect(image.width / (placed[index]!.width / 72)).toBeCloseTo(150, -1);
+    const words = await pdfWords(first.bytes);
     expect(words).toContain("An educational estimate from a published model for an idealised case");
     expect(words).toContain("idealised shape for a steady wind");
     expect(words).toMatch(/framed to reach the contour of 100 rads per hour at one hour/);
@@ -77,7 +77,7 @@ test.describe("The nuclear workspace's PDF with maps", () => {
     // Ticked: the places are drawn, the page says so, and "Add to library" asks first.
     await places.check();
     const withPlaces = await makeAndSave(page, testInfo, "nuclear-with-places.pdf");
-    expect(pdfWords(withPlaces.pdf.text)).toContain("Your saved places are shown");
+    expect(await pdfWords(withPlaces.bytes)).toContain("Your saved places are shown");
     await section.getByRole("button", { name: "Add to library" }).click();
     const asked = page.getByRole("alertdialog", { name: "Add a PDF that shows your saved places?" });
     await expect(asked).toBeVisible();
@@ -95,7 +95,7 @@ test.describe("The nuclear workspace's PDF with maps", () => {
     // The overview, A's rings and pattern, B's rings, C's rings.
     expect(file.pdf.images).toHaveLength(5);
     expect(file.pdf.pages).toBeGreaterThanOrEqual(3);
-    const words = pdfWords(file.pdf.text);
+    const words = await pdfWords(file.bytes);
     expect(words).toMatch(/The 3 scenarios shown, A, B and C, each at its ground zero with its letter/);
     expect(words).toContain("Nothing is added up across them");
     expect(file.bytes.length).toBeLessThan(3_000_000);

@@ -8,6 +8,8 @@ import type { Page, TestInfo } from "@playwright/test";
 import { api, expect } from "./fixtures";
 import { CENTRE, keep, readPdf } from "./map-fixture";
 
+export { pdfWords } from "./pdf";
+
 /** Every scenario and saved place taken away, so that each test starts from an empty workspace. */
 export async function clearWorkspace(page: Page): Promise<void> {
   const headers = { "X-Outpost-Request": "1" };
@@ -67,7 +69,3 @@ export async function makeAndSave(page: Page, testInfo: TestInfo, name: string, 
   testInfo.annotations.push({ type: "made", description: `${name}: ${bytes.length} bytes in ${seconds.toFixed(1)} s` });
   return { bytes, pdf: readPdf(bytes), name: download.suggestedFilename(), seconds };
 }
-
-/** What every page of the file says in words: each line of text the writer put down. */
-export const pdfWords = (text: string) =>
-  [...text.matchAll(/\(((?:\\.|[^\\)])*)\) Tj/g)].map((match) => match[1]!.replace(/\\([\\()])/g, "$1")).join(" ");
