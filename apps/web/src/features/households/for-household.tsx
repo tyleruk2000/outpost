@@ -15,7 +15,6 @@ export function ForHousehold({ className }: { className?: string }) {
       <Link
         to="/prepare/households"
         className="text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2"
-        aria-label={`Change household (now ${data.household.name})`}
       >
         Change
       </Link>

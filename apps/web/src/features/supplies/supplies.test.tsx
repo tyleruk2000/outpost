@@ -412,7 +412,7 @@ describe("Supplies with several households", () => {
     show({ items: [item({})], households: ["Caravan", "Home"] });
     const line = await screen.findByTestId("for-household");
     expect(line).toHaveTextContent("For Caravan");
-    expect(within(line).getByRole("link", { name: /Change household/ })).toHaveAttribute("href", "/prepare/households");
+    expect(within(line).getByRole("link", { name: "Change" })).toHaveAttribute("href", "/prepare/households");
   });
 
   it("says the people listed are the current household's, and links to the other households", async () => {
