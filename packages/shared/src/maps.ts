@@ -389,7 +389,7 @@ export interface PlaceSearchResponse {
 
 // ── Coordinates ─────────────────────────────────────────────────────────────
 
-export type CoordinateFormat = "decimal" | "ddm" | "dms" | "geo" | "osgb" | "maidenhead" | "utm" | "mgrs";
+export type CoordinateFormat = "decimal" | "ddm" | "dms" | "geo" | "osgb" | "irish" | "maidenhead" | "utm" | "mgrs";
 
 export interface ParsedCoordinate {
   lat: number;
@@ -483,17 +483,29 @@ function shiftDatum(latDeg: number, lonDeg: number, from: Ellipsoid, to: Ellipso
   return [lat / DEG, lon / DEG];
 }
 
+/** A Transverse Mercator grid: its ellipsoid, true origin, scale on the central meridian and false origin. */
+interface TmGrid {
+  ellipsoid: Ellipsoid;
+  f0: number;
+  lat0: number;
+  lon0: number;
+  e0: number;
+  n0: number;
+}
+
+const NATIONAL_GRID: TmGrid = { ellipsoid: AIRY_1830, ...GRID };
+
 /** Meridional arc from the grid's true origin to latitude `lat` (radians), in metres. */
-function meridionalArc(lat: number): number {
-  const { a, b } = AIRY_1830;
+function meridionalArc(lat: number, grid: TmGrid): number {
+  const { a, b } = grid.ellipsoid;
   const n = (a - b) / (a + b);
   const n2 = n * n;
   const n3 = n2 * n;
-  const dLat = lat - GRID.lat0;
-  const sLat = lat + GRID.lat0;
+  const dLat = lat - grid.lat0;
+  const sLat = lat + grid.lat0;
   return (
     b *
-    GRID.f0 *
+    grid.f0 *
     ((1 + n + (5 / 4) * n2 + (5 / 4) * n3) * dLat -
       (3 * n + 3 * n2 + (21 / 8) * n3) * Math.sin(dLat) * Math.cos(sLat) +
       ((15 / 8) * n2 + (15 / 8) * n3) * Math.sin(2 * dLat) * Math.cos(2 * sLat) -
@@ -501,21 +513,22 @@ function meridionalArc(lat: number): number {
   );
 }
 
-function osgb36ToGrid(latDeg: number, lonDeg: number): { easting: number; northing: number } {
-  const { a, b } = AIRY_1830;
+/** Latitude and longitude (degrees, on the grid's own ellipsoid) to easting and northing. */
+function toTm(latDeg: number, lonDeg: number, grid: TmGrid): { easting: number; northing: number } {
+  const { a, b } = grid.ellipsoid;
   const lat = latDeg * DEG;
   const lon = lonDeg * DEG;
   const e2 = 1 - (b * b) / (a * a);
   const sinLat = Math.sin(lat);
   const cosLat = Math.cos(lat);
   const tan2 = Math.tan(lat) ** 2;
-  const nu = (a * GRID.f0) / Math.sqrt(1 - e2 * sinLat * sinLat);
-  const rho = (a * GRID.f0 * (1 - e2)) / (1 - e2 * sinLat * sinLat) ** 1.5;
+  const nu = (a * grid.f0) / Math.sqrt(1 - e2 * sinLat * sinLat);
+  const rho = (a * grid.f0 * (1 - e2)) / (1 - e2 * sinLat * sinLat) ** 1.5;
   const eta2 = nu / rho - 1;
-  const m = meridionalArc(lat);
-  const dLon = lon - GRID.lon0;
+  const m = meridionalArc(lat, grid);
+  const dLon = lon - grid.lon0;
 
-  const i = m + GRID.n0;
+  const i = m + grid.n0;
   const ii = (nu / 2) * sinLat * cosLat;
   const iii = (nu / 24) * sinLat * cosLat ** 3 * (5 - tan2 + 9 * eta2);
   const iiia = (nu / 720) * sinLat * cosLat ** 5 * (61 - 58 * tan2 + tan2 * tan2);
@@ -525,28 +538,29 @@ function osgb36ToGrid(latDeg: number, lonDeg: number): { easting: number; northi
 
   return {
     northing: i + ii * dLon ** 2 + iii * dLon ** 4 + iiia * dLon ** 6,
-    easting: GRID.e0 + iv * dLon + v * dLon ** 3 + vi * dLon ** 5,
+    easting: grid.e0 + iv * dLon + v * dLon ** 3 + vi * dLon ** 5,
   };
 }
 
-function gridToOsgb36(easting: number, northing: number): [lat: number, lon: number] {
-  const { a, b } = AIRY_1830;
+/** Easting and northing to latitude and longitude (degrees, on the grid's own ellipsoid). */
+function fromTm(easting: number, northing: number, grid: TmGrid): [lat: number, lon: number] {
+  const { a, b } = grid.ellipsoid;
   const e2 = 1 - (b * b) / (a * a);
-  let lat = GRID.lat0;
+  let lat = grid.lat0;
   let m = 0;
   for (let i = 0; i < 20; i += 1) {
-    lat = (northing - GRID.n0 - m) / (a * GRID.f0) + lat;
-    m = meridionalArc(lat);
-    if (Math.abs(northing - GRID.n0 - m) < 0.00001) break;
+    lat = (northing - grid.n0 - m) / (a * grid.f0) + lat;
+    m = meridionalArc(lat, grid);
+    if (Math.abs(northing - grid.n0 - m) < 0.00001) break;
   }
   const sinLat = Math.sin(lat);
   const cosLat = Math.cos(lat);
   const tan = Math.tan(lat);
   const tan2 = tan * tan;
-  const nu = (a * GRID.f0) / Math.sqrt(1 - e2 * sinLat * sinLat);
-  const rho = (a * GRID.f0 * (1 - e2)) / (1 - e2 * sinLat * sinLat) ** 1.5;
+  const nu = (a * grid.f0) / Math.sqrt(1 - e2 * sinLat * sinLat);
+  const rho = (a * grid.f0 * (1 - e2)) / (1 - e2 * sinLat * sinLat) ** 1.5;
   const eta2 = nu / rho - 1;
-  const dE = easting - GRID.e0;
+  const dE = easting - grid.e0;
 
   const vii = tan / (2 * rho * nu);
   const viii = (tan / (24 * rho * nu ** 3)) * (5 + 3 * tan2 + eta2 - 9 * tan2 * eta2);
@@ -558,7 +572,7 @@ function gridToOsgb36(easting: number, northing: number): [lat: number, lon: num
 
   return [
     (lat - vii * dE ** 2 + viii * dE ** 4 - ix * dE ** 6) / DEG,
-    (GRID.lon0 + x * dE - xi * dE ** 3 + xii * dE ** 5 - xiia * dE ** 7) / DEG,
+    (grid.lon0 + x * dE - xi * dE ** 3 + xii * dE ** 5 - xiia * dE ** 7) / DEG,
   ];
 }
 
@@ -567,7 +581,7 @@ export function toOsGrid(lat: number, lon: number): { easting: number; northing:
   // Far from Britain the projection is meaningless and its series diverge.
   if (!isValidLatLon(lat, lon) || lat < 49 || lat > 62 || lon < -10 || lon > 4) return null;
   const [osLat, osLon] = shiftDatum(lat, lon, WGS84, AIRY_1830, HELMERT_TO_OSGB36);
-  const grid = osgb36ToGrid(osLat, osLon);
+  const grid = toTm(osLat, osLon, NATIONAL_GRID);
   if (grid.easting < 0 || grid.easting >= GRID_WIDTH || grid.northing < 0 || grid.northing >= GRID_HEIGHT) return null;
   return grid;
 }
@@ -575,7 +589,7 @@ export function toOsGrid(lat: number, lon: number): { easting: number; northing:
 /** WGS84 position of a National Grid easting and northing (metres). */
 export function fromOsGrid(easting: number, northing: number): { lat: number; lon: number } | null {
   if (!(easting >= 0 && easting < GRID_WIDTH && northing >= 0 && northing < GRID_HEIGHT)) return null;
-  const [osLat, osLon] = gridToOsgb36(easting, northing);
+  const [osLat, osLon] = fromTm(easting, northing, NATIONAL_GRID);
   const [lat, lon] = shiftDatum(osLat, osLon, AIRY_1830, WGS84, invertHelmert(HELMERT_TO_OSGB36));
   return { lat, lon };
 }
@@ -632,6 +646,114 @@ export function formatOsGridRef(lat: number, lon: number, figures: 2 | 4 | 6 | 8
       .toString()
       .padStart(half, "0");
   return `${GRID_LETTERS[first]}${GRID_LETTERS[second]} ${cut(easting)} ${cut(northing)}`;
+}
+
+// ── Irish Grid and Irish Transverse Mercator ────────────────────────────────
+// Ordnance Survey of Ireland and Ordnance Survey of Northern Ireland, "The Irish Grid: A
+// Description of the Co-ordinate Reference System" (2000), sections 4.2 and 4.3: Transverse
+// Mercator on the Airy Modified ellipsoid of the 1965 datum (TM75, EPSG:29903). The shift
+// from WGS84 is the EPSG dataset's "TM75 to WGS 84 (2)" (EPSG:1954), a position-vector
+// Helmert transformation good to about a metre. Irish Transverse Mercator (EPSG:2157) is on
+// GRS80 in ETRS89, which is taken as WGS84: the two differ by well under a metre in Ireland.
+// Letters as Northern Ireland's statistics agency gives them (NISRA, "Grid square products":
+// Belfast City Hall, 333831 E 374015 N, is in square J): 25 squares of 100 km, A to Z
+// without I, five to a row from the top left, V at the false origin.
+
+const AIRY_MODIFIED: Ellipsoid = { a: 6_377_340.189, b: 6_377_340.189 * Math.sqrt(1 - 0.00667054015) };
+const GRS80: Ellipsoid = { a: 6_378_137, b: 6_378_137 * (1 - 1 / 298.257222101) };
+const IRISH_GRID: TmGrid = { ellipsoid: AIRY_MODIFIED, f0: 1.000035, lat0: 53.5 * DEG, lon0: -8 * DEG, e0: 200_000, n0: 250_000 };
+const ITM_GRID: TmGrid = { ellipsoid: GRS80, f0: 0.99982, lat0: 53.5 * DEG, lon0: -8 * DEG, e0: 600_000, n0: 750_000 };
+/** The Irish Grid's squares: 500 km each way from the false origin. */
+const IRISH_GRID_SIZE = 500_000;
+/** TM75 → WGS84 (EPSG:1954): translations in metres, rotations in arc-seconds, scale in ppm. */
+const HELMERT_TM75_TO_WGS84 = { tx: 482.5, ty: -130.6, tz: 564.6, rx: -1.042, ry: -0.214, rz: -0.631, s: 8.15 };
+
+/** Round Ireland, where the two grids mean something; their series diverge far from it. */
+function nearIreland(lat: number, lon: number): boolean {
+  return isValidLatLon(lat, lon) && lat >= 51 && lat <= 56.5 && lon >= -11.5 && lon <= -4.5;
+}
+
+/** Irish Grid easting and northing (TM75) of a WGS84 position, or null off the grid. */
+export function toIrishGrid(lat: number, lon: number): { easting: number; northing: number } | null {
+  if (!nearIreland(lat, lon)) return null;
+  const [tmLat, tmLon] = shiftDatum(lat, lon, WGS84, AIRY_MODIFIED, invertHelmert(HELMERT_TM75_TO_WGS84));
+  const grid = toTm(tmLat, tmLon, IRISH_GRID);
+  if (!(grid.easting >= 0 && grid.easting < IRISH_GRID_SIZE && grid.northing >= 0 && grid.northing < IRISH_GRID_SIZE)) return null;
+  return grid;
+}
+
+/** WGS84 position of an Irish Grid easting and northing (metres). */
+export function fromIrishGrid(easting: number, northing: number): { lat: number; lon: number } | null {
+  if (!(easting >= 0 && easting < IRISH_GRID_SIZE && northing >= 0 && northing < IRISH_GRID_SIZE)) return null;
+  const [tmLat, tmLon] = fromTm(easting, northing, IRISH_GRID);
+  const [lat, lon] = shiftDatum(tmLat, tmLon, AIRY_MODIFIED, WGS84, HELMERT_TM75_TO_WGS84);
+  return nearIreland(lat, lon) ? { lat, lon } : null;
+}
+
+/** Irish Grid easting and northing on the projection alone, from TM75 latitude and longitude: for checking against OSi's worked examples. */
+export function irishGridProjection(lat: number, lon: number): { easting: number; northing: number } {
+  return toTm(lat, lon, IRISH_GRID);
+}
+
+/** Irish Transverse Mercator easting and northing of a WGS84 position, or null away from Ireland. */
+export function toItm(lat: number, lon: number): { easting: number; northing: number } | null {
+  if (!nearIreland(lat, lon)) return null;
+  return toTm(lat, lon, ITM_GRID);
+}
+
+/** WGS84 position of an ITM easting and northing (metres). */
+export function fromItm(easting: number, northing: number): { lat: number; lon: number } | null {
+  if (!Number.isFinite(easting) || !Number.isFinite(northing)) return null;
+  const [lat, lon] = fromTm(easting, northing, ITM_GRID);
+  return nearIreland(lat, lon) ? { lat, lon } : null;
+}
+
+/**
+ * Formats a position as an Irish Grid reference with `figures` digits in total ("O 154 345"
+ * is 6 figures, 100 m). Digits are cut, not rounded, as for the British grid. Null off the grid.
+ */
+export function formatIrishGridRef(lat: number, lon: number, figures: 2 | 4 | 6 | 8 | 10 = 8): string | null {
+  const grid = toIrishGrid(lat, lon);
+  if (!grid) return null;
+  const easting = Math.floor(grid.easting);
+  const northing = Math.floor(grid.northing);
+  const letter = GRID_LETTERS[(4 - Math.floor(northing / 100_000)) * 5 + Math.floor(easting / 100_000)]!;
+  const half = figures / 2;
+  const cut = (value: number) =>
+    Math.floor((value % 100_000) / 10 ** (5 - half))
+      .toString()
+      .padStart(half, "0");
+  return `${letter} ${cut(easting)} ${cut(northing)}`;
+}
+
+/** "ITM 715830 734697": an ITM easting and northing, to `stepMeters` (cut, as a grid reference is). Null away from Ireland. */
+export function formatItm(lat: number, lon: number, stepMeters = 1): string | null {
+  const grid = toItm(lat, lon);
+  if (!grid) return null;
+  const cut = (value: number) => String(Math.floor(value / stepMeters) * stepMeters);
+  return `ITM ${cut(grid.easting)} ${cut(grid.northing)}`;
+}
+
+/**
+ * Parses an Irish Grid reference such as "J 338 740", "O1534" or "N 12345 67890": one letter,
+ * then an even number of digits. The position is the middle of the square it names.
+ */
+export function parseIrishGridRef(input: string): ParsedCoordinate | null {
+  const match = /^([A-HJ-Z])\s*((?:\d\s*){2,10})$/i.exec(input.trim());
+  if (!match) return null;
+  const digits = match[2]!.replace(/\s+/g, "");
+  if (digits.length % 2 !== 0) return null;
+  const parts = match[2]!.trim().split(/\s+/);
+  if (parts.length > 2 || (parts.length === 2 && parts[0]!.length !== parts[1]!.length)) return null;
+  const index = GRID_LETTERS.indexOf(match[1]!.toUpperCase());
+  const e100 = index % 5;
+  const n100 = 4 - Math.floor(index / 5);
+  const half = digits.length / 2;
+  const square = 10 ** (5 - half);
+  const easting = e100 * 100_000 + Number(digits.slice(0, half)) * square + square / 2;
+  const northing = n100 * 100_000 + Number(digits.slice(half)) * square + square / 2;
+  const position = fromIrishGrid(easting, northing);
+  return position ? { ...position, format: "irish", precisionMeters: square } : null;
 }
 
 // ── Parsing typed positions ─────────────────────────────────────────────────
@@ -772,7 +894,7 @@ export function parseCoordinateReadings(input: string): ParsedCoordinate[] {
   if (text.length < 3 || text.length > 80) return [];
   const grid = parseGridReadings(text);
   if (grid.length > 0) return grid;
-  const first = parseGeoUri(text) ?? parseOsGridRef(text) ?? parseEastingNorthing(text) ?? parseLatLon(text);
+  const first = parseGeoUri(text) ?? parseOsGridRef(text) ?? parseIrishGridRef(text) ?? parseEastingNorthing(text) ?? parseLatLon(text);
   const locator = parseLocator(text);
   return [first, locator].filter((reading) => reading !== null);
 }
@@ -780,7 +902,7 @@ export function parseCoordinateReadings(input: string): ParsedCoordinate[] {
 /**
  * Understands a position typed by hand: decimal degrees ("54.4609, -3.0886"), with
  * hemisphere letters, degrees and decimal minutes, degrees-minutes-seconds, `geo:`
- * links, British National Grid references, Maidenhead locators, UTM and UPS coordinates
+ * links, British National Grid and Irish Grid references, Maidenhead locators, UTM and UPS coordinates
  * and MGRS references. Returns null for
  * anything else, so the caller can treat the text as a place name.
  */

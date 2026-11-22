@@ -8,7 +8,12 @@
  * worked out from the grid, so they bend as the grid does. Pure arithmetic.
  */
 import { type Bbox, fromUps, fromUtm, toGrid, toUps, toUtm } from "@outpost/shared";
+import { MAP_FONTS, type MapTheme } from "../lib/style";
+import type { LayerSpecification } from "../lib/style-types";
 import type { FeatureCollection } from "../map/overlays";
+
+/** The source the map on screen draws the grid from (lib/use-utm-grid.ts). */
+export const UTM_SOURCE = "o-utm";
 
 export interface UtmGrid {
   /** Metres between lines. */
@@ -112,4 +117,49 @@ export function utmGridNote(grid: UtmGrid): string {
   return `The grid is ${name} on WGS 84, a line every ${every}, each marked with its easting or northing in kilometres.${
     grid.crossesZone ? " Part of the page is in the next zone; the lines there carry on in this zone's grid." : ""
   }`;
+}
+
+/**
+ * In the primary colour, as on paper, so that it is told from the Maidenhead grid (in ink) and the magnetic lines (in
+ * blue); thin and see-through, never as strong as a road. The figures follow the lines, haloed in the page colour.
+ */
+export function utmGridLayers(theme: MapTheme): LayerSpecification[] {
+  return [
+    {
+      id: "o-utm-line",
+      type: "line",
+      source: UTM_SOURCE,
+      filter: ["==", ["geometry-type"], "LineString"],
+      paint: { "line-color": theme.primary, "line-width": 1, "line-opacity": 0.6 },
+    },
+    {
+      id: "o-utm-figure",
+      type: "symbol",
+      source: UTM_SOURCE,
+      filter: ["==", ["geometry-type"], "LineString"],
+      layout: {
+        "symbol-placement": "line",
+        "symbol-spacing": 260,
+        "text-field": ["get", "label"],
+        "text-font": [MAP_FONTS.medium] as string[],
+        "text-size": 11,
+        "text-keep-upright": true,
+      },
+      paint: { "text-color": theme.primary, "text-halo-color": theme.page, "text-halo-width": 1.6 },
+    },
+    {
+      id: "o-utm-zone",
+      type: "symbol",
+      source: UTM_SOURCE,
+      filter: ["==", ["get", "kind"], "zone"],
+      layout: {
+        "text-field": ["get", "label"],
+        "text-font": [MAP_FONTS.medium] as string[],
+        "text-size": 12.5,
+        "text-allow-overlap": true,
+        "text-ignore-placement": true,
+      },
+      paint: { "text-color": theme.primary, "text-halo-color": theme.page, "text-halo-width": 1.8 },
+    },
+  ];
 }

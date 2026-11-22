@@ -65,6 +65,36 @@ export interface PointRangeAt {
   position: LatLon;
   /** A saved place's name, when the point is one; otherwise the coordinates say where it is. */
   name?: string;
+  /** The heights to work it out with, when they come with it (a shared link); otherwise the ones remembered here. */
+  heights?: { aerial: number; station: RangeStationId };
+}
+
+/** The address that opens the map at a point with its range drawn, worked out with these heights: what the QR code holds. */
+export function pointRangePath(at: PointRangeAt, heights: { aerial: number; station: RangeStationId }): string {
+  const params = new URLSearchParams({
+    lat: at.position.lat.toFixed(5),
+    lon: at.position.lon.toFixed(5),
+    z: "12",
+    range: String(heights.aerial),
+    station: heights.station,
+  });
+  if (at.name) params.set("name", at.name);
+  return `/maps?${params.toString()}`;
+}
+
+/** The point, name and heights of a range from an address made by `pointRangePath`, or null if it holds none. */
+export function readPointRangePath(params: URLSearchParams): PointRangeAt | null {
+  const aerialText = params.get("range");
+  if (aerialText === null) return null;
+  const lat = Number(params.get("lat"));
+  const lon = Number(params.get("lon"));
+  const aerial = Number(aerialText);
+  const station = params.get("station") ?? "handheld";
+  if (!(params.get("lat") && params.get("lon") && Math.abs(lat) <= 90 && Math.abs(lon) <= 180)) return null;
+  if (!(aerialText !== "" && aerial >= 0 && aerial <= RANGE_MAX_HEIGHT_METERS)) return null;
+  if (!RANGE_STATIONS.some((option) => option.id === station)) return null;
+  const name = params.get("name")?.trim().slice(0, 120);
+  return { position: { lat, lon }, ...(name ? { name } : {}), heights: { aerial, station: station as RangeStationId } };
 }
 
 export interface PointRange {
@@ -105,8 +135,10 @@ export function usePointRange({
     aerial: POINT_AERIAL_DEFAULT_METERS,
     station: "handheld",
   });
-  // A height being typed is asked about once the typing stops.
-  const aerial = useDebounced(prefs.aerial, 600);
+  // A height being typed is asked about once the typing stops; one that came with a shared range, at once.
+  const typed = useDebounced(prefs.aerial, 600);
+  const [given, setGiven] = useState<number | null>(null);
+  const aerial = given !== null && given === prefs.aerial ? given : typed;
   const station = stationOf(prefs.station);
   const range = useSightRange(at?.position ?? null, aerial, station.meters);
 
@@ -228,13 +260,13 @@ export function usePointRange({
           </>
         ) : null}
         <div>
-          {/* The range is worked out again on the phone: the link opens the map at the point, as the line says. */}
+          {/* The link carries the point and the heights; the phone's Outpost works the outline out again and draws it. */}
           <ShareCodeButton
             target={{
               name: name === "Estimated range" ? "this range" : `the range from ${name}`,
-              outpostPath: `/maps?lat=${at.position.lat.toFixed(5)}&lon=${at.position.lon.toFixed(5)}&z=12`,
+              outpostPath: pointRangePath(at, prefs),
               geo: at.position,
-              outpostNote: "It opens the map at the point; there, Estimated radio range from here works the range out again.",
+              outpostNote: `It opens the map at the point with the range drawn, worked out there for your aerial at ${formatHeight(prefs.aerial)} and ${station.name.toLowerCase()} at the other end.`,
             }}
           />
         </div>
@@ -315,7 +347,10 @@ export function usePointRange({
       setDetails(false);
       setWhy(false);
       setFolded(true);
-      setAt(next);
+      const { heights, ...point } = next;
+      setGiven(heights ? heights.aerial : null);
+      if (heights) setPrefs(heights);
+      setAt(point);
     },
     stop() {
       setAt(null);

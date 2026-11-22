@@ -3,6 +3,7 @@ import {
   Compass,
   Crosshair,
   Ellipsis,
+  Grid2x2,
   Grid3x3,
   LocateFixed,
   Magnet,
@@ -159,6 +160,9 @@ export interface MapToolsInput {
   /** Whether lines pointing to magnetic north are drawn across the map; see magnetic/. Left out, there is no button. */
   magneticLines?: boolean;
   onMagneticLinesChange?: (on: boolean) => void;
+  /** Whether the UTM grid is drawn over the map; see lib/use-utm-grid.ts. Left out, there is no button. */
+  utmGrid?: boolean;
+  onUtmGridChange?: (on: boolean) => void;
   /** Recording a track as it is walked; see recording/record-ui.tsx. Null where the browser cannot record at all. */
   record?: MapTool | null;
   /** The map could not be drawn; the controls that act on it have nothing to act on. */
@@ -197,6 +201,8 @@ export function mapTools({
   onRoadNumbersChange,
   magneticLines,
   onMagneticLinesChange,
+  utmGrid,
+  onUtmGridChange,
   record,
   disabled,
 }: MapToolsInput): MapTool[] {
@@ -332,6 +338,18 @@ export function mapTools({
       layer: true,
       pressed: roadNumbers ?? false,
       onPress: () => onRoadNumbersChange(!roadNumbers),
+      disabled,
+    });
+  }
+  if (onUtmGridChange) {
+    tools.push({
+      id: "utm-grid",
+      label: "UTM grid",
+      icon: <Grid2x2 />,
+      group: "tools",
+      layer: true,
+      pressed: utmGrid ?? false,
+      onPress: () => onUtmGridChange(!utmGrid),
       disabled,
     });
   }

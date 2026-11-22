@@ -11,7 +11,7 @@ import { rangeFixture } from "@/features/repeaters/map/range-fixture";
 import { api } from "@/lib/api";
 import type { MapEngine } from "../map/engine";
 import { ContextMenu } from "../map-chrome";
-import { type PointRange, usePointRange } from "./point-range";
+import { type PointRange, pointRangePath, readPointRangePath, usePointRange } from "./point-range";
 
 vi.mock("@/lib/api", () => ({ api: { get: vi.fn() }, errorMessage: (error: unknown) => String(error), ApiError: class extends Error {} }));
 const asked = vi.mocked(api.get);
@@ -159,6 +159,40 @@ describe("an estimated radio range from any point", () => {
     fireEvent.click(screen.getByRole("button", { name: "Stop showing this range" }));
     await waitFor(() => expect(latest.card).toBeNull());
     expect(latest.outline).toBeNull();
+  });
+});
+
+describe("a shared estimated range", () => {
+  it("is an address with the point, the name and both heights, read back as it was", () => {
+    const path = pointRangePath({ position: { lat: 54.4542, lon: -3.2116 }, name: "Scafell Pike" }, { aerial: 10, station: "roof" });
+    expect(path).toBe("/maps?lat=54.45420&lon=-3.21160&z=12&range=10&station=roof&name=Scafell+Pike");
+    expect(readPointRangePath(new URL(path, "http://outpost.local").searchParams)).toEqual({
+      position: { lat: 54.4542, lon: -3.2116 },
+      name: "Scafell Pike",
+      heights: { aerial: 10, station: "roof" },
+    });
+  });
+
+  it("is not read from a plain camera link or from heights that cannot be", () => {
+    const read = (query: string) => readPointRangePath(new URLSearchParams(query));
+    expect(read("lat=54.4&lon=-3.2&z=12")).toBeNull();
+    expect(read("lat=54.4&lon=-3.2&range=-1")).toBeNull();
+    expect(read("lat=54.4&lon=-3.2&range=1.5&station=boat")).toBeNull();
+    expect(read("lon=-3.2&range=1.5")).toBeNull();
+    expect(read("lat=54.4&lon=-3.2&range=1.5")?.heights).toEqual({ aerial: 1.5, station: "handheld" });
+  });
+
+  it("opened, is worked out with the heights it came with, and its QR code holds them", async () => {
+    asked.mockImplementation(answer("terrain"));
+    show();
+    act(() => latest.start({ position: { lat: 54.4542, lon: -3.2116 }, heights: { aerial: 10, station: "car" } }));
+    await screen.findByText(/^\d+% in sight within 10 km/);
+    expect(asked).toHaveBeenCalledWith("/api/maps/sight-range", { at: "54.45420,-3.21160", aerial: "10", station: "2" }, expect.anything());
+    // Not first with the heights remembered here: the phone asks once.
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    expect(asked.mock.calls.filter(([path]) => path === "/api/maps/sight-range")).toHaveLength(1);
+    // Remembered here as the heights now in use, as any change of them is.
+    expect(JSON.parse(localStorage.getItem("outpost.maps.pointRange")!)).toEqual({ aerial: 10, station: "car" });
   });
 });
 

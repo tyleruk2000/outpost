@@ -79,8 +79,10 @@ function CoordinateReadout({
       if (text.current) text.current.textContent = readout.text;
       if (source.current) {
         const where = pointer.current ? "Pointer" : "Centre";
-        // Outside Great Britain there is no grid reference to give; say what is shown instead.
-        source.current.textContent = format === "osgb" && readout.format !== "osgb" ? `${where}, outside the British grid` : where;
+        // Outside the grid chosen there is no grid reference to give; say what is shown instead.
+        const outside =
+          format === "osgb" ? "outside the British grid" : format === "irish" || format === "itm" ? "away from Ireland" : null;
+        source.current.textContent = outside && readout.format !== format ? `${where}, ${outside}` : where;
       }
     };
     update();

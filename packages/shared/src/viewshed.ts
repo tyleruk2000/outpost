@@ -8,7 +8,8 @@
  * The ground is read in four bands, each one call to the sampler, bearing by bearing so
  * that neighbouring positions fall on the same tiles: every 10 m out to 2 km, every 50 m
  * to 25 km, every 100 m to 50 km and every 250 m to 100 km, each from tiles about as
- * fine as its step. Checked against GDAL's gdal_viewshed and a reading every 5 m over the
+ * fine as its step, and the last from tiles as fine as the band before it where the terrain
+ * has them (`RANGE_FAR_READ_METERS`). Checked against GDAL's gdal_viewshed and a reading every 5 m over the
  * finest terrain on real ground (docs/radio.md, "How accurate it is").
  */
 import type { RoutePoint } from "./maps.ts";
@@ -17,6 +18,7 @@ import {
   encodeBits,
   RANGE_BANDS,
   RANGE_BEARINGS,
+  RANGE_FAR_READ_METERS,
   RANGE_MAX_METERS,
   RANGE_SHARE_WITHIN_METERS,
   rangeDistances,
@@ -206,8 +208,9 @@ export async function computeViewshed(
     while (to < samples && distances[to]! <= band.toMeters + 1e-6) to += 1;
     if (to === from) continue;
     const { lons, lats } = positionsAlong(at, RANGE_BEARINGS, distances, from, to);
-    // As for a profile, the sampler is told twice the step, so that its cells are between half a step and a step wide.
-    const read = await sampler.sampleGrid(lons, lats, band.stepMeters * 2);
+    // As for a profile, the sampler is told twice the step, so that its cells are between half a step and a step wide;
+    // the far band is read from tiles no coarser than the band before it, where they are installed.
+    const read = await sampler.sampleGrid(lons, lats, Math.min(band.stepMeters, RANGE_FAR_READ_METERS) * 2);
     const width = to - from;
     for (let b = 0; b < RANGE_BEARINGS; b += 1) heights.set(read.heights.subarray(b * width, (b + 1) * width), b * samples + from);
     if (read.finestCellMeters !== null) finest = Math.min(finest, read.finestCellMeters);

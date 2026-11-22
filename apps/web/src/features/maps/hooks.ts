@@ -1,8 +1,8 @@
 /** Small hooks shared by the maps screen's components. */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useTheme } from "@/lib/theme";
 import { mixOklch, oklchToHex, parseOklch, tokenToHex } from "./lib/color";
-import { FALLBACK_THEME } from "./lib/palette";
+import { FALLBACK_NIGHT, FALLBACK_THEME } from "./lib/palette";
 import type { MapFlavour, MapTheme } from "./lib/style";
 import { readStored, writeStored } from "./lib/view";
 
@@ -83,6 +83,11 @@ export function readMapTheme(): { flavour: MapFlavour; theme: MapTheme } {
       range: hex("--map-range", fallback.range),
       rangeTypical: hex("--map-range-typical", fallback.rangeTypical),
       walk: hex("--map-walk", fallback.walk),
+      night: {
+        range: hex("--map-range-night", FALLBACK_NIGHT.range),
+        rangeTypical: hex("--map-range-typical-night", FALLBACK_NIGHT.rangeTypical),
+        walk: hex("--map-walk-night", FALLBACK_NIGHT.walk),
+      },
       heard: {
         mesh: hex("--chart-1", fallback.primary),
         aprs: hex("--chart-2", fallback.lamp),
@@ -116,19 +121,43 @@ export function useMapTheme(): { flavour: MapFlavour; theme: MapTheme } {
   return value;
 }
 
+/** Whether the map on screen is drawn in the night style, which paints its shading in its own reds. Set by the maps screen. */
+let nightShading = false;
+const nightListeners = new Set<() => void>();
+
+export function setNightShading(night: boolean): void {
+  if (night === nightShading) return;
+  nightShading = night;
+  for (const listener of nightListeners) listener();
+}
+
+const subscribeNight = (listener: () => void) => {
+  nightListeners.add(listener);
+  return () => nightListeners.delete(listener);
+};
+const isNightShading = () => nightShading;
+
+/** A shading colour as the map on screen draws it: the theme's, or the night style's red for it. */
+function shadeColourOf(which: "range" | "walk", night: boolean): string {
+  const { theme } = readMapTheme();
+  return night ? (theme.night ?? FALLBACK_NIGHT)[which] : theme[which];
+}
+
 /**
  * One of the map's shading colours (`--map-range`, `--map-walk`), for what paints a picture in it: read again when the
- * app's theme changes. Needs no theme provider, so a hook used outside the maps screen can use it.
+ * app's theme changes, and in the night style's reds (`--map-range-night`, `--map-walk-night`) while the map is drawn
+ * in that style. Needs no theme provider, so a hook used outside the maps screen can use it.
  */
 export function useShadeColour(which: "range" | "walk"): string {
-  const [value, setValue] = useState(() => readMapTheme().theme[which]);
+  const night = useSyncExternalStore(subscribeNight, isNightShading, isNightShading);
+  const [value, setValue] = useState(() => shadeColourOf(which, night));
   useEffect(() => {
-    const update = () => setValue(readMapTheme().theme[which]);
+    const update = () => setValue(shadeColourOf(which, night));
     update();
     const observer = new MutationObserver(update);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     return () => observer.disconnect();
-  }, [which]);
+  }, [which, night]);
   return value;
 }
 

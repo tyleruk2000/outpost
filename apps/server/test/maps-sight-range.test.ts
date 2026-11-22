@@ -2,6 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   analyseSight,
+  computeViewshed,
+  createTileSampler,
   decodeBits,
   destinationPoint,
   encodeBits,
@@ -10,6 +12,7 @@ import {
   maxSightDistanceMeters,
   RANGE_BANDS,
   RANGE_BEARINGS,
+  RANGE_FAR_READ_METERS,
   RANGE_MAX_METERS,
   RANGE_NEAR_STEP_METERS,
   RANGE_SHADOW_TOLERANCE_METERS,
@@ -200,6 +203,33 @@ describe("how far a station stays in sight", () => {
       expect(haversineMeters(from.lat, from.lon, to.lat, to.lon)).toBeCloseTo(40_000, 3);
       expect(initialBearingDeg(from, to)).toBeCloseTo(bearing, 6);
     }
+  });
+
+  it("reads the ground beyond 50 km from tiles as fine as the band before it, where the terrain has them", async () => {
+    const asked: number[] = [];
+    const zooms = new Set<number>();
+    const flat = { size: 512, heights: new Float32Array(512 * 512).fill(100) };
+    const sampler = createTileSampler({
+      terrain: () => ({ minzoom: 0, maxzoom: 12, bounds: [-180, -85, 180, 85] }),
+      getTile: async (z) => {
+        zooms.add(z);
+        return flat;
+      },
+    });
+    const watched = {
+      ...sampler,
+      sampleGrid: (lons: Float64Array, lats: Float64Array, spacing: number) => {
+        asked.push(spacing);
+        return sampler.sampleGrid(lons, lats, spacing);
+      },
+    };
+    const shed = await computeViewshed(watched, { maxzoom: 12 }, { lat: 55, lon: -4 }, 10, 1.5);
+    // Twice the step for each band, but never more than twice RANGE_FAR_READ_METERS.
+    expect(asked).toEqual([20, 100, 200, 200]);
+    expect(RANGE_FAR_READ_METERS).toBe(100);
+    // At 55° N cells of 100 m and finer are zoom 9; the far band used to read zoom 8.
+    expect([...zooms].sort((a, b) => a - b)).toEqual([9, 10, 12]);
+    expect(shed.range.terrain?.coarsestCellMeters).toBeLessThan(100);
   });
 
   it("works out every bearing at once with the same answers as one bearing at a time, and sends them as bits", () => {

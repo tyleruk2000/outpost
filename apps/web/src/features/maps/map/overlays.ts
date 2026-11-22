@@ -22,6 +22,7 @@ import { trackAreas, trackEnds, trackLines } from "../lib/profile";
 import { midpoints } from "../lib/route-edit";
 import { MAP_FONTS, type MapTheme } from "../lib/style";
 import type { LayerSpecification, SourceSpecification } from "../lib/style-types";
+import { utmGridLayers } from "../print/utm-grid";
 import { gridLayers, relayLayers, sightLayers } from "../radio/layers";
 import { recordingLayers } from "../recording/overlay";
 import { resectionLayers } from "../resection/layers";
@@ -33,6 +34,7 @@ export const OVERLAY_SOURCES = [
   "o-propagation",
   "o-nuclear",
   "o-grid",
+  "o-utm",
   "o-magnetic",
   "o-coverage",
   "o-box",
@@ -144,6 +146,8 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
     ...greyLineLineLayers(theme),
     // The Maidenhead locator grid, when it is switched on.
     ...gridLayers(theme),
+    // The UTM grid, when it is switched on (lib/use-utm-grid.ts).
+    ...utmGridLayers(theme),
     // Magnetic north lines, when they are switched on (magnetic/): thin and blue, as on the printed sheet, cased so they hold on any ground.
     {
       id: "o-magnetic-casing",

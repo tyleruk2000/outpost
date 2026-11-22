@@ -86,9 +86,15 @@ Rules:
   from the edge, 13.7 (23.3) from the rings, 4.3:1 on the land; high contrast 12.5 from
   its darker range green and 10.4 from its blue water; Low ink as the light map on white,
   6.5:1; satellite 12.2 from the wash over dark ground and 12.9 from brown fields, the
-  casing carrying it on dark imagery. The night style keeps only lightness, so there the
-  circle is first made the lightest range line (`#f29be9`, red 2.4:1 on the land where
-  the magenta would be 1.6:1) and is told from the edge and rings by its dashes and label.
+  casing carrying it on dark imagery.
+- The night style keeps every other colour's lightness only, but the range, its typical
+  circle and the walk have reds of their own (`map-range-night` `#c81300`,
+  `map-range-typical-night` `#e61600`, `map-walk-night` `#a00f00`), used for the shading's
+  pictures, their edges and the keys beside the map alike. On the night land: the range's
+  edge 3.2:1 and its wash 1.8:1; the typical circle the lightest red the style draws, 4.0:1,
+  told from the edge and rings by its dashes and label as well; the walk darker than the
+  range (edge 2.3:1). Satellite imagery is made grey and dim there. Worked out from the
+  colours (22 November 2026), not yet looked at in the dark.
 
 ## Typography
 

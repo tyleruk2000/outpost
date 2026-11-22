@@ -16,8 +16,8 @@ The buttons on the map: the **search box** (place names, postcodes in Great Brit
 of the [Coordinate formats](#coordinate-formats)), the **ruler** (measures a path; **Save as
 a route** or **Check line of sight**), **Record a track**, **Hill shading**, **Contour
 lines**, **Map style**, **Find where you are from bearings**, **Print or save as PDF**,
-**Road numbers**, **Magnetic north lines**, **Maidenhead locator grid**, **Grey line (day and
-night)**, **Satellite** and **Line of sight between two points**. On a phone the icons
+**Road numbers**, **Magnetic north lines**, **UTM grid**, **Maidenhead locator grid**, **Grey
+line (day and night)**, **Satellite** and **Line of sight between two points**. On a phone the icons
 under the search box show as many as fit, and **More** under them lists every tool by name.
 A tool taken up on a phone has its card at the foot of the screen in place of the tabs;
 close the card to have the tabs back. Pinch to zoom.
@@ -28,7 +28,9 @@ here**, **How far on foot from here** and **Copy coordinates**.
 
 The readout at the bottom gives the position of the cross at the centre of the map (with a
 mouse, of the pointer, marked "Pointer"). Choose its format: decimal degrees,
-degrees-minutes-seconds, British National Grid, UTM, MGRS or Maidenhead. Press it to copy.
+degrees-minutes-seconds, British National Grid, Irish Grid, Irish Transverse Mercator (ITM),
+UTM, MGRS or Maidenhead. Away from the grid you chose (Great Britain, or Ireland for the two
+Irish ones) it shows decimal degrees and says so. Press it to copy.
 Beside it are the height of the ground and magnetic north's angle ("Magnetic 0.6° W"),
 which opens Tools → Compass ([tools-compass.md](tools-compass.md)). The address bar holds
 the current view, so a link to it can be kept in a note.
@@ -88,12 +90,16 @@ downloaded adds no detail.
 | Road map, UK atlas colours | Motorways blue, primary routes green, A roads red, B roads orange. |
 | Walking | Paths and tracks stronger; switches on hill shading and contours. |
 | High contrast | For bright sun. |
-| Night (red) | Reds only, to keep your eyes for the dark. |
+| Night (red) | Reds only, to keep your eyes for the dark. Satellite imagery is shown grey and dim, and an estimated range or a walk's reach in reds of their own. |
 | Low ink | For printing. |
 
 **Road numbers** writes M6, A591 and the like on main roads from about zoom 7. **Magnetic
 north lines** draws blue lines pointing to magnetic north at the angle for the centre of the
-view; on a large area, zoom in where you are working.
+view; on a large area, zoom in where you are working. **UTM grid** draws lines of equal
+easting and northing every 10 km, 1 km or 100 m as you zoom in, each marked in kilometres,
+with the zone written above the centre ("UTM 30U"); near a zone's edge the lines carry on in
+the zone of the centre of the view. A printed page starts with its UTM grid ticked when the
+map has it on.
 
 ## Contour lines
 
@@ -165,7 +171,9 @@ Where places crowd together an icon gives way to its neighbour until you zoom in
 
 **QR code** on a saved place, a route or a radio range shows a code for a phone to scan:
 
-- **Open in Outpost**: the same thing in Outpost, for a phone on the same network.
+- **Open in Outpost**: the same thing in Outpost, for a phone on the same network. For a
+  range from a point, the map opens at the point with the range drawn, worked out there for
+  the same two heights (which that phone then remembers).
 - **Map apps (geo:)**: opens the point in the phone's own map apps, no network needed.
 - **GPX file**, for a route: downloads it on the same network.
 
@@ -227,6 +235,7 @@ The search box reads these as positions:
 | Degrees and minutes, or minutes and seconds | `54°27.654'N 3°05.316'W` · `54°27'39"N 3°05'19"W` |
 | `geo:` link | `geo:54.4609,-3.0886` |
 | British National Grid | `NY 215 072` · `321540 507210` |
+| Irish Grid | `O 159 346` · `J 338 740` |
 | Maidenhead locator | `IO83QM` |
 | UTM and UPS | `30U 448251 5411932` · `UPS N 2000000 2000000` |
 | MGRS (US National Grid) | `18S UJ 23483 06479` |
@@ -234,7 +243,10 @@ The search box reads these as positions:
 - Latitude comes first unless letters say otherwise.
 - A grid reference or locator names a square; Outpost goes to its middle and says how big it
   is.
-- National Grid conversion is good to about 5 m. The Irish Grid is not read.
+- National Grid conversion is good to about 5 m, Irish Grid to about a metre. An Irish Grid
+  reference is one letter and figures; two letters are a British one.
+- ITM is shown in the readout but not read from the search box: its plain figures look like
+  a British easting and northing.
 - UTM and MGRS are on WGS 84; references from older maps on other datums can be hundreds of
   metres off.
 
@@ -308,7 +320,8 @@ Set your aerial's height and the other station's (handheld, car, roof)
 under **Heights and details**. **Why this shape: look along one direction** shows the
 ground along any bearing. It counts only line of sight: power, aerials, woods and buildings
 are not counted, and radio often reaches less. It works the same way as a repeater's
-[estimated range](radio.md#the-estimated-range).
+[estimated range](radio.md#the-estimated-range). In the **Night (red)** map style the
+shading, its edge and the circles are drawn in reds, the typical-range circle the brightest.
 
 ## How far on foot from a point
 

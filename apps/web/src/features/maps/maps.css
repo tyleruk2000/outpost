@@ -323,3 +323,10 @@
     flex-direction: row;
   }
 }
+
+/* In the night style the keys beside the map show the range and the walk in the reds the map draws them in. */
+[data-map-style="night"] {
+  --map-range: var(--map-range-night);
+  --map-range-typical: var(--map-range-typical-night);
+  --map-walk: var(--map-walk-night);
+}

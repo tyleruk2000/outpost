@@ -25,6 +25,9 @@ export const MARKER_COLOR_NAMES: Record<MarkerColor, string> = {
   slate: "Slate",
 };
 
+/** The night style's range, typical-range circle and walk, when the tokens cannot be read (as `--map-*-night`). */
+export const FALLBACK_NIGHT = { range: "#c81300", rangeTypical: "#e61600", walk: "#a00f00" } as const;
+
 /** Used when the token cannot be read (no stylesheet, as in tests). */
 export const FALLBACK_THEME = {
   light: {

@@ -54,7 +54,7 @@ import { FindRoutePanel } from "./find-route/find-route-panel";
 import { anyFoundRoute, ROUTE_CREDIT } from "./find-route/source-credit";
 import { PREVIEW_TRACK_ID } from "./find-route/words";
 import { useGreyLine } from "./grey-line/grey-line";
-import { useGeolocation, useIsDesktop, useMapTheme, useStoredState } from "./hooks";
+import { setNightShading, useGeolocation, useIsDesktop, useMapTheme, useStoredState } from "./hooks";
 import { useSatellite } from "./imagery/use-satellite";
 import { type ContourReach, contourReach, contoursSupported } from "./lib/contours";
 import { formatPosition, isReadoutFormat, type ReadoutFormat } from "./lib/coords";
@@ -78,6 +78,7 @@ import {
 import type { SearchResult } from "./lib/search";
 import type { StyleInput } from "./lib/style";
 import { regionsCacheKey } from "./lib/tiles";
+import { useUtmGrid } from "./lib/use-utm-grid";
 import {
   type CameraView,
   DEFAULT_VIEW,
@@ -115,7 +116,7 @@ import { RouteDetail, RoutesList } from "./panels/routes";
 import { SunGlance } from "./panels/sun-glance";
 import { SunPanel } from "./panels/sun-panel";
 import { locatorOf } from "./radio/locator";
-import { usePointRange } from "./radio/point-range";
+import { readPointRangePath, usePointRange } from "./radio/point-range";
 import { SightCard } from "./radio/sight-card";
 import { SightPanel } from "./radio/sight-panel";
 import { useLocatorGrid } from "./radio/use-locator-grid";
@@ -234,6 +235,11 @@ export default function MapsPage() {
   /** The map's style and road numbers (lib/map-styles.ts): the standard map without numbers unless chosen. */
   const [mapStyle, setMapStyle] = useStoredState<MapStyleId>(MAP_STYLE_KEY, isMapStyleId, DEFAULT_MAP_STYLE);
   const [roadNumbers, setRoadNumbers] = useStoredState(ROAD_NUMBERS_KEY, isBoolean, false);
+  // The night style paints the shading (the range, the walk) in its own reds; the pictures are painted in the page.
+  useEffect(() => {
+    setNightShading(mapStyle === "night");
+    return () => setNightShading(false);
+  }, [mapStyle]);
   const [hiddenTracks, setHiddenTracks] = useStoredState(STORAGE_KEYS.hiddenTracks, isStringArray, []);
   const [panel, setPanel] = useStoredState<PanelState>(STORAGE_KEYS.panel, isPanelState, { open: true, tab: "places" });
   const [detent, setDetent] = useState<Detent>("peek");
@@ -299,6 +305,7 @@ export default function MapsPage() {
   const [engine, setEngine] = useState<MapEngine | null>(null);
   const [locatorGrid, setLocatorGrid] = useLocatorGrid(engine);
   const [magneticLines, setMagneticLines] = useMagneticLines(engine);
+  const [utmGridOn, setUtmGrid] = useUtmGrid(engine);
   const greyLine = useGreyLine(engine, isDesktop ? "over" : "flow");
   const satellite = useSatellite({ engine, imagery: sources.data?.imagery, onGetImagery: () => openOffline({ type: "imagery" }) });
   const sight = useSight({ engine, active: tool === "sight", markers: markers.data ?? [], start: sightStart });
@@ -390,6 +397,7 @@ export default function MapsPage() {
         const params = new URLSearchParams(window.location.search);
         params.delete("marker");
         params.delete("track");
+        for (const key of ["range", "station", "name"]) params.delete(key);
         window.history.replaceState(window.history.state, "", `${window.location.pathname}?${withView(params, view).toString()}`);
       }, 250);
     });
@@ -1010,6 +1018,15 @@ export default function MapsPage() {
     where: (position) => formatPosition(position.lat, position.lon, format, engine?.getZoom()).text,
     onOpenOffline: () => openOffline({ type: "add" }),
   });
+  // A shared estimated range (/maps?lat=…&lon=…&range=1.5&station=handheld, from its QR code): drawn from the point with
+  // the heights it came with, once for each arrival. The camera link above has already put the map there.
+  const handledRange = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!engine || handledRange.current === location.key) return;
+    handledRange.current = location.key;
+    const shared = readPointRangePath(new URLSearchParams(location.search));
+    if (shared) pointRange.start(shared);
+  }, [engine, location.key, location.search, pointRange.start]);
   // "How far on foot from here", from the same menu.
   const walk = useWalkReach({
     engine,
@@ -1565,6 +1582,8 @@ export default function MapsPage() {
     onRoadNumbersChange: setRoadNumbers,
     magneticLines,
     onMagneticLinesChange: setMagneticLines,
+    utmGrid: utmGridOn,
+    onUtmGridChange: setUtmGrid,
     record: recordTool,
     disabled: !engine,
   };
@@ -1603,7 +1622,10 @@ export default function MapsPage() {
   }, [cardUp, isDesktop]);
 
   return (
-    <div className="outpost-fill relative isolate flex h-dvh overflow-hidden max-md:h-[calc(100dvh-3.25rem)] max-md:pb-[var(--mobile-nav-height,calc(3.5rem+env(safe-area-inset-bottom)))]">
+    <div
+      data-map-style={mapStyle}
+      className="outpost-fill relative isolate flex h-dvh overflow-hidden max-md:h-[calc(100dvh-3.25rem)] max-md:pb-[var(--mobile-nav-height,calc(3.5rem+env(safe-area-inset-bottom)))]"
+    >
       {isDesktop && panel.open ? (
         <DesktopPanel onCollapse={() => setPanel((current) => ({ ...current, open: false }))}>{panelBody}</DesktopPanel>
       ) : null}
