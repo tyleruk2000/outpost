@@ -44,6 +44,13 @@ of what each feature does are in its own guide.
   from inside another are not.
 - **Not tried:** a pass by hand with a screen reader. No one has used the map, the notes
   editor or the reader with VoiceOver from start to finish.
+- **Library, reader, notes, contacts, messages and Kept:** walked full and empty at 1280 by 800,
+  390 by 844 (Chromium and WebKit) and 320 by 568, light and dark, at 150% and 200% text, by
+  keyboard, and with their menus and dialogs open. Not tried: VoiceOver or TalkBack on a real
+  phone, a phone's own text size, the on-screen keyboard over the notes editor and the contact
+  form, a switch or voice control, and a real audiobook played to the end. The notes editor's
+  formatting bar over a selection is reached by its shortcuts, not by Tab; that it is enough has
+  not been tried with anyone who uses only a keyboard.
 
 ## Installing and looking after it
 

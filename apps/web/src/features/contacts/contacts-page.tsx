@@ -299,7 +299,12 @@ function Frame({ pane, filter, setFilter }: { pane?: ReactNode; filter: ListFilt
         />
         <WhoCanSee />
       </div>
-      <div className={cn("grid grid-cols-[minmax(0,1fr)] gap-x-12 lg:mt-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]", !pane && "mt-6")}>
+      <div
+        className={cn(
+          "grid grid-cols-[minmax(0,1fr)] gap-x-12 lg:mt-6 lg:grid-cols-[minmax(0,min(24rem,40%))_minmax(0,1fr)]",
+          !pane && "mt-6",
+        )}
+      >
         <div className={cn("min-w-0", pane && "max-lg:hidden")}>
           <ContactList filter={filter} setFilter={setFilter} />
         </div>

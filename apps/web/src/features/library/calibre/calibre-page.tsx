@@ -76,7 +76,7 @@ function ChooseStep({ onStarted }: { onStarted: (dto: CalibreImportDto) => void 
   const place = folder.path && storage.data ? placeOf(folder.path, storage.data.locations) : null;
 
   return (
-    <div className="grid gap-10 lg:grid-cols-[minmax(0,34rem)_minmax(0,1fr)] lg:gap-x-14">
+    <div className="grid gap-10 lg:grid-cols-[minmax(0,min(34rem,55%))_minmax(0,1fr)] lg:gap-x-14">
       <div className="grid content-start gap-5">
         <div>
           <h2 className="font-title text-heading text-ink">Where is the library?</h2>

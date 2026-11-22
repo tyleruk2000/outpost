@@ -115,14 +115,14 @@ export function AudiobookPlayer({
           </Notice>
         ) : null}
 
-        <div className="mt-3 flex items-center justify-center gap-3">
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
           <Button size="lg" onClick={() => player.skip(-SKIP_SECONDS)} disabled={away} aria-label={`Back ${SKIP_SECONDS} seconds`}>
             <RotateCcw /> <span className="tabular">{SKIP_SECONDS}</span>
           </Button>
           <Button
             size="lg"
             variant="primary"
-            className="min-w-32"
+            className="sm:min-w-32"
             onClick={player.toggle}
             disabled={away || problem?.kind === "unplayable"}
             loading={playing && player.waiting}

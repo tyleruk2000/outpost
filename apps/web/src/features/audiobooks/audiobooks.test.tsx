@@ -93,7 +93,8 @@ describe("the words for time", () => {
   it("speaks a running time to the minute and shows a position as a clock", () => {
     expect(runningTime(4334)).toBe("1 hour 12 minutes");
     expect(runningTime(3600)).toBe("1 hour");
-    expect(runningTime(20)).toBe("1 minute");
+    expect(runningTime(40)).toBe("1 minute");
+    expect(runningTime(20)).toBe("under a minute");
     expect(runningTime(null)).toBeNull();
     expect(clockTime(724)).toBe("12:04");
     expect(clockTime(3729)).toBe("1:02:09");

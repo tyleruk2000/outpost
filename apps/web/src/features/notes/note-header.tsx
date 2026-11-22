@@ -1,6 +1,6 @@
 /** The top of a page: an optional cover picture, the icon, and the title. */
 import { ImagePlus, SmilePlus } from "lucide-react";
-import { type KeyboardEvent, type Ref, useLayoutEffect, useRef } from "react";
+import type { KeyboardEvent, Ref } from "react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/misc";
 import { cn } from "@/lib/utils";
@@ -62,17 +62,6 @@ export function PageTitle({
   onEnter(): void;
   onBlur(): void;
 }) {
-  const local = useRef<HTMLTextAreaElement | null>(null);
-
-  // A title is one line of text that may wrap, so the field grows to fit it.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the height follows the text
-  useLayoutEffect(() => {
-    const field = local.current;
-    if (!field) return;
-    field.style.height = "0";
-    field.style.height = `${field.scrollHeight}px`;
-  }, [value]);
-
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.nativeEvent.isComposing) return;
     const atEnd = event.currentTarget.selectionStart === event.currentTarget.value.length;
@@ -82,25 +71,36 @@ export function PageTitle({
     }
   };
 
+  // The title is a field, so a screen reader would find no heading for the page: the same words are given as one.
+  // A title is one line of text that may wrap, so the field grows to fit it: an unseen copy of the words lies in
+  // the same cell of a grid and sets its height, whatever the width or the size of the text, as either changes.
+  const face = "font-title text-display max-md:text-title [overflow-wrap:break-word] whitespace-pre-wrap";
   return (
-    <textarea
-      ref={(element) => {
-        local.current = element;
-        if (typeof ref === "function") ref(element);
-        else if (ref) ref.current = element;
-      }}
-      rows={1}
-      value={value}
-      readOnly={!editable}
-      onChange={(event) => onChange(event.target.value.replace(/\n/g, " "))}
-      onKeyDown={onKeyDown}
-      onBlur={onBlur}
-      maxLength={300}
-      aria-label="Page title"
-      placeholder="Untitled"
-      enterKeyHint="next"
-      className="block w-full resize-none overflow-hidden bg-transparent font-title text-display text-ink placeholder:text-ink-faint focus:outline-none max-md:text-title"
-    />
+    <>
+      <h1 className="sr-only">{value.trim() || "Untitled"}</h1>
+      <div className="grid *:[grid-area:1/1]">
+        <span aria-hidden className={cn("invisible", face)}>
+          {value || "Untitled"}{" "}
+        </span>
+        <textarea
+          ref={ref}
+          rows={1}
+          value={value}
+          readOnly={!editable}
+          onChange={(event) => onChange(event.target.value.replace(/\n/g, " "))}
+          onKeyDown={onKeyDown}
+          onBlur={onBlur}
+          maxLength={300}
+          aria-label="Page title"
+          placeholder="Untitled"
+          enterKeyHint="next"
+          className={cn(
+            "block size-full resize-none overflow-hidden bg-transparent text-ink placeholder:text-ink-faint focus:outline-none",
+            face,
+          )}
+        />
+      </div>
+    </>
   );
 }
 
