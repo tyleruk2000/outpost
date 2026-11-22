@@ -2,14 +2,17 @@
  * The two things to print and cut out: a horizontal sundial for a latitude, and a
  * nocturnal for a place and its clock. Each is drawn at actual size on A4, inside the
  * part of the page that US Letter also holds, with a 100 mm bar to check the printer
- * did not scale it. Written by the map's own PDF writer (maps/print/pdf.ts) in
- * Helvetica, so the words are real text. Pure: figures in, pages or bytes out.
+ * did not scale it, as pages of drawn items (maps/print/sheet.ts). Pure: figures in,
+ * pages out. templates-kit.ts makes them a PDF with the print kit.
+ *
+ * The same pages in the print kit's colours, with the words that run on moved to a page
+ * of their own, are the `KIT_LOOK` (in templates-kit.ts): the drawing is the
+ * same, item for item, at the same size.
  */
 
 import type { IsoDate } from "@/features/maps/lib/sun";
 import { wrapText } from "@/features/maps/print/helvetica";
 import { PAPERS, PT_PER_MM } from "@/features/maps/print/paper";
-import { writePdfPages } from "@/features/maps/print/pdf";
 import { INK, MUTED, type Rgb, type Sheet, type SheetItem } from "@/features/maps/print/sheet";
 import { appLocale } from "@/lib/region";
 import { plainForPdf } from "../tools/kit/sheet";
@@ -28,13 +31,29 @@ const DEG = Math.PI / 180;
 
 type Items = SheetItem[];
 
+/** How the templates are drawn: the old writer's black and grey, or the print kit's colours with the long words left for a page of their own. */
+export interface TemplateLook {
+  kit: boolean;
+  /** The hour lines and figures; the noon line and midnight; the date disc's months and month ticks; the second tooth. */
+  hour: Rgb;
+  noon: Rgb;
+  strong: Rgb;
+  second: Rgb;
+  /** Behind the gnomon and the arm: a tint, or none. */
+  tint: Rgb | null;
+  /** How many pages the whole template comes to, for its footer. */
+  pages: number;
+}
+
+export const OLD_LOOK: TemplateLook = { kit: false, hour: INK, noon: INK, strong: INK, second: INK, tint: null, pages: 2 };
+
 function text(
   items: Items,
   x: number,
   y: number,
   words: string,
   size: number,
-  options: { bold?: boolean; anchor?: "start" | "middle" | "end"; muted?: boolean } = {},
+  options: { bold?: boolean; anchor?: "start" | "middle" | "end"; muted?: boolean; color?: Rgb } = {},
 ) {
   items.push({
     kind: "text",
@@ -44,7 +63,7 @@ function text(
     size,
     bold: options.bold,
     anchor: options.anchor,
-    color: options.muted ? MUTED : INK,
+    color: options.color ?? (options.muted ? MUTED : INK),
   });
 }
 
@@ -140,7 +159,16 @@ export const sundialTitle = (input: SundialInput) => `Horizontal sundial for ${l
 
 const twelveHour = (hour: number) => String(((hour + 11) % 12) + 1);
 
-export function sundialSheets(input: SundialInput): Sheet[] {
+/** Where the gnomon's foot and tip fall on its page, for a latitude: the drawing, and what goes under it. */
+export function gnomonGeometry(latitude: number) {
+  const lat = Math.abs(latitude);
+  const base = Math.min(mm(80), mm(80) / Math.max(Math.tan(lat * DEG), 0.01));
+  const baseY = mm(36) + base * Math.tan(lat * DEG);
+  /** The top of the first thing under the gnomon and its tab. */
+  return { base, baseY, below: baseY + mm(16) };
+}
+
+export function sundialSheets(input: SundialInput, look: TemplateLook = OLD_LOOK): Sheet[] {
   const north = input.latitude >= 0;
   const lat = Math.abs(input.latitude);
   const pole = north ? "north" : "south";
@@ -148,28 +176,35 @@ export function sundialSheets(input: SundialInput): Sheet[] {
 
   // Page 1: the dial plate.
   const one: Items = [];
-  text(one, LEFT, mm(18), sundialTitle(input), 14, { bold: true });
-  paragraph(
-    one,
-    LEFT,
-    mm(20),
-    WIDTH,
-    `Cut out along the outer line. Glue it to card or board, level, with the noon line pointing true ${pole}. The gnomon is on page 2.`,
-    9,
-  );
+  if (!look.kit) {
+    text(one, LEFT, mm(18), sundialTitle(input), 14, { bold: true });
+    paragraph(
+      one,
+      LEFT,
+      mm(20),
+      WIDTH,
+      `Cut out along the outer line. Glue it to card or board, level, with the noon line pointing true ${pole}. The gnomon is on page 2.`,
+      9,
+    );
+  }
   const box = { left: LEFT + mm(4), top: mm(36), right: LEFT + WIDTH - mm(4), bottom: mm(220) };
   one.push({ kind: "rect", x: box.left, y: box.top, width: box.right - box.left, height: box.bottom - box.top, stroke: INK, lineWidth: 1 });
   // The same layout as the dial drawn on the screen (dialDrawing in sundial.ts).
   const dial = dialDrawing(input.latitude, box, mm(9), mm(5));
   const [rootX, rootY] = dial.root;
   for (const lineAt of dial.hours) {
-    line(one, rootX, rootY, lineAt.end[0], lineAt.end[1], lineAt.fromNoon === 0 ? 1.4 : 0.8);
-    text(one, lineAt.label[0], lineAt.label[1] + 3.5, twelveHour(lineAt.hour), 10, { bold: true, anchor: "middle" });
+    const noon = lineAt.fromNoon === 0;
+    line(one, rootX, rootY, lineAt.end[0], lineAt.end[1], noon ? 1.4 : 0.8, noon ? look.noon : look.hour);
+    text(one, lineAt.label[0], lineAt.label[1] + 3.5, twelveHour(lineAt.hour), 10, {
+      bold: true,
+      anchor: "middle",
+      color: noon ? look.noon : look.hour,
+    });
   }
   // Half hours, shorter, after each hour but the last.
   for (const half of dial.halves) line(one, half.from[0], half.from[1], half.to[0], half.to[1], 0.5, MUTED);
   // The gnomon's foot: its slot along the noon line from the centre mark.
-  const gnomonBase = Math.min(mm(80), mm(80) / Math.max(Math.tan(lat * DEG), 0.01));
+  const gnomonBase = gnomonGeometry(input.latitude).base;
   line(one, rootX - mm(3), rootY, rootX + mm(3), rootY, 1);
   text(one, rootX, rootY + mm(30), "Centre: the gnomon's low corner", 7.5, { muted: true, anchor: "middle" });
   dashed(one, rootX, rootY, rootX, rootY - Math.min(gnomonBase, rootY - box.top - mm(12)), 1);
@@ -180,35 +215,52 @@ export function sundialSheets(input: SundialInput): Sheet[] {
     one,
     LEFT,
     box.bottom + mm(2),
-    WIDTH,
-    `Hour lines: tan(angle from the noon line) = sin(${lat.toFixed(1)}°) × tan(15° × hours from noon). Half hours are the short lines. The dial shows sundial time: page 2 says how to turn it into clock time.`,
+    // The kit's typeface runs a little wider than Helvetica, whose measures wrap these lines.
+    look.kit ? WIDTH * 0.88 : WIDTH,
+    `${look.kit ? "Cut out along the outer line. " : ""}Hour lines: tan(angle from the noon line) = sin(${lat.toFixed(1)}°) × tan(15° × hours from noon). Half hours are the short lines. The dial shows sundial time: page ${look.kit ? 3 : 2} says how to turn it into clock time.`,
     8,
     { muted: true },
   );
   scaleBar(one, mm(255));
-  footer(one, footerWords, 1, 2);
+  footer(one, footerWords, 1, look.pages);
 
   // Page 2: the gnomon, setting up and reading.
   const two: Items = [];
-  text(two, LEFT, mm(18), "The gnomon, setting it up, and reading clock time", 14, { bold: true });
+  if (!look.kit) text(two, LEFT, mm(18), "The gnomon, setting it up, and reading clock time", 14, { bold: true });
   const baseLeft = LEFT + mm(8);
-  const baseY = mm(36) + gnomonBase * Math.tan(lat * DEG);
+  const { baseY } = gnomonGeometry(input.latitude);
   const tipX = baseLeft + gnomonBase;
   const tipY = baseY - gnomonBase * Math.tan(lat * DEG);
+  if (look.tint)
+    two.push({
+      kind: "polygon",
+      points: [
+        [baseLeft, baseY],
+        [tipX, baseY],
+        [tipX, tipY],
+      ],
+      fill: look.tint,
+    });
   line(two, tipX, baseY, tipX, tipY, 1);
-  line(two, baseLeft, baseY, tipX, tipY, 1.4);
+  line(two, baseLeft, baseY, tipX, tipY, 1.4, look.strong);
   // A tab to fold under and glue along the noon line.
   dashed(two, baseLeft, baseY, tipX, baseY, 0.8);
   line(two, baseLeft, baseY, baseLeft, baseY + mm(10), 1);
   line(two, baseLeft, baseY + mm(10), tipX, baseY + mm(10), 1);
   line(two, tipX, baseY, tipX, baseY + mm(10), 1);
   text(two, baseLeft + mm(2), baseY + mm(6.5), "Fold under along the dashed line; glue to the noon line", 7.5, { muted: true });
-  text(two, baseLeft + mm(3), baseY - mm(2), `${lat.toFixed(1)}°`, 9, { bold: true });
+  text(two, baseLeft + mm(3), baseY - mm(2), `${lat.toFixed(1)}°`, 9, { bold: true, color: look.strong });
   text(two, tipX + mm(3), tipY + mm(4), "Cut out along the solid lines.", 8, { muted: true });
   text(two, tipX + mm(3), tipY + mm(9), `The sloping edge rises at ${lat.toFixed(1)}°, your latitude,`, 8, { muted: true });
   text(two, tipX + mm(3), tipY + mm(14), "and points to the true pole of the sky.", 8, { muted: true });
   text(two, tipX + mm(3), tipY + mm(19), "Its low corner stands on the dial's centre mark.", 8, { muted: true });
 
+  if (look.kit) {
+    // The steps and the table are laid out by the kit, under the gnomon and on the page after.
+    scaleBar(two, mm(255));
+    footer(two, footerWords, 2, look.pages);
+    return [sheet(one), sheet(two)];
+  }
   let y = baseY + mm(16);
   const steps = [
     `1. Find true ${pole}, not a compass's: on a sunny day stand a stick upright on level ground and mark the tip of its shadow every 15 minutes through the middle of the day. The line from the foot of the stick to the nearest mark points true ${pole}.`,
@@ -260,10 +312,6 @@ export function sundialSheets(input: SundialInput): Sheet[] {
 /** Whether a horizontal dial can be drawn at all: not on the equator, where every hour line is the noon line. */
 export const canDrawSundial = (latitude: number) => dialFit(latitude) !== "none";
 
-export function sundialPdf(input: SundialInput): Uint8Array {
-  return writePdfPages({ pages: sundialSheets(input), title: sundialTitle(input), created: new Date(Date.UTC(input.year, 0, 1)) });
-}
-
 // ── The nocturnal ───────────────────────────────────────────────────────────
 
 export interface NocturnalInput {
@@ -282,21 +330,22 @@ const daysIn = (year: number, month: number) => new Date(Date.UTC(year, month + 
 const iso = (year: number, month: number, day: number): IsoDate =>
   `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
-export function nocturnalSheets(input: NocturnalInput): Sheet[] {
+export function nocturnalSheets(input: NocturnalInput, look: TemplateLook = OLD_LOOK): Sheet[] {
   const footerWords = `${nocturnalTitle(input)} · Outpost`;
   const angle = (date: IsoDate) => dateRingAngle(date, input.longitude, input.standardOffset);
 
   // Page 1: the date disc and its handle.
   const one: Items = [];
-  text(one, LEFT, mm(18), nocturnalTitle(input), 14, { bold: true });
-  paragraph(
-    one,
-    LEFT,
-    mm(20),
-    WIDTH,
-    `The date disc. Glue to stiff card and cut out along the outer line, handle and all. Make a hole at the centre about 5 mm across: Polaris is seen through it. Made for clocks on ${formatOffset(input.standardOffset)} at ${longitudeWords(input.longitude)}, for ${input.year} (good for some years either side: leap years move it by about 4 minutes).`,
-    9,
-  );
+  if (!look.kit) text(one, LEFT, mm(18), nocturnalTitle(input), 14, { bold: true });
+  if (!look.kit)
+    paragraph(
+      one,
+      LEFT,
+      mm(20),
+      WIDTH,
+      `The date disc. Glue to stiff card and cut out along the outer line, handle and all. Make a hole at the centre about 5 mm across: Polaris is seen through it. Made for clocks on ${formatOffset(input.standardOffset)} at ${longitudeWords(input.longitude)}, for ${input.year} (good for some years either side: leap years move it by about 4 minutes).`,
+      9,
+    );
   const cx = LEFT + WIDTH / 2;
   const cy = mm(130);
   const outer = mm(92);
@@ -327,40 +376,51 @@ export function nocturnalSheets(input: NocturnalInput): Sheet[] {
       const inner = day === 1 ? mm(67) : day % 10 === 0 ? mm(73) : mm(76);
       const [x1, y1] = polar(cx, cy, inner, at);
       const [x2, y2] = polar(cx, cy, mm(80), at);
-      line(one, x1, y1, x2, y2, day === 1 ? 1 : 0.45);
+      line(one, x1, y1, x2, y2, day === 1 ? 1 : 0.45, day === 1 ? look.strong : INK);
       if (day % 10 === 0) {
         const [lx, ly] = polar(cx, cy, mm(70.5), at);
         text(one, lx, ly + 2, String(day), 5.5, { anchor: "middle", muted: true });
       }
     }
     const [mx, my] = polar(cx, cy, mm(86), angle(iso(input.year, month, 15)));
-    text(one, mx, my + 3, MONTHS[month]!, 8.5, { bold: true, anchor: "middle" });
+    text(one, mx, my + 3, MONTHS[month]!, 8.5, { bold: true, anchor: "middle", color: look.strong });
   }
   // The centre.
   circle(one, cx, cy, mm(2.5), 0.8);
   line(one, cx - mm(4), cy, cx + mm(4), cy, 0.4, MUTED);
   line(one, cx, cy - mm(4), cx, cy + mm(4), 0.4, MUTED);
   scaleBar(one, mm(255));
-  footer(one, footerWords, 1, 2);
+  footer(one, footerWords, 1, look.pages);
 
-  // Page 2: the hour disc, the arm, and how to use it.
+  // Page 2: the hour disc, the arm, and how to use it. Lower down the page in the kit's look, under its heading.
   const two: Items = [];
-  text(two, LEFT, mm(18), "The hour disc and the arm", 14, { bold: true });
+  if (!look.kit) text(two, LEFT, mm(18), "The hour disc and the arm", 14, { bold: true });
+  const drop = look.kit ? mm(12) : 0;
   const hx = LEFT + mm(66);
-  const hy = mm(92);
+  const hy = mm(92) + drop;
   const radius = mm(58);
   circle(two, hx, hy, radius, 1);
-  const tooth = (at: number, label: string) => {
+  const tooth = (at: number, label: string, color: Rgb) => {
     const [ax, ay] = polar(hx, hy, radius - mm(0.5), at - 4);
     const [bx, by] = polar(hx, hy, radius + mm(7), at);
     const [qx, qy] = polar(hx, hy, radius - mm(0.5), at + 4);
-    line(two, ax, ay, bx, by, 1);
-    line(two, bx, by, qx, qy, 1);
+    if (look.tint)
+      two.push({
+        kind: "polygon",
+        points: [
+          [ax, ay],
+          [bx, by],
+          [qx, qy],
+        ],
+        fill: color,
+      });
+    line(two, ax, ay, bx, by, 1, color);
+    line(two, bx, by, qx, qy, 1, color);
     const [lx, ly] = polar(hx, hy, radius - mm(20), at);
-    text(two, lx, ly + 2.5, label, 7, { bold: true, anchor: "middle" });
+    text(two, lx, ly + 2.5, label, 7, { bold: true, anchor: "middle", color });
   };
-  tooth(0, "Plough");
-  tooth(kochabTooth(input.year), "Kochab");
+  tooth(0, "Plough", look.noon);
+  tooth(kochabTooth(input.year), "Kochab", look.second);
   // Hours run anticlockwise from the Plough's tooth, which marks midnight; quarter hours between.
   for (let quarter = 0; quarter < 96; quarter += 1) {
     const at = (-quarter * 3.75 + 360) % 360;
@@ -370,18 +430,31 @@ export function nocturnalSheets(input: NocturnalInput): Sheet[] {
     line(two, x1, y1, x2, y2, hour ? 0.8 : 0.4);
     if (hour) {
       const [lx, ly] = polar(hx, hy, radius - mm(9.5), at);
-      text(two, lx, ly + 3, String(quarter / 4), 8, { anchor: "middle", bold: quarter / 4 === 0 });
+      text(two, lx, ly + 3, String(quarter / 4), 8, {
+        anchor: "middle",
+        bold: quarter / 4 === 0,
+        color: quarter / 4 === 0 ? look.noon : look.hour,
+      });
     }
   }
   circle(two, hx, hy, mm(2.5), 0.8);
   text(two, hx, hy + mm(22), "Hours on the clock: 0 is midnight", 7, { anchor: "middle", muted: true });
   // The arm, upright beside the disc.
   const armLeft = LEFT + mm(150);
-  const armTop = mm(30);
+  const armTop = mm(30) + drop;
   const armLength = mm(110);
-  two.push({ kind: "rect", x: armLeft, y: armTop, width: mm(12), height: armLength, stroke: INK, lineWidth: 1 });
+  two.push({
+    kind: "rect",
+    x: armLeft,
+    y: armTop,
+    width: mm(12),
+    height: armLength,
+    stroke: INK,
+    lineWidth: 1,
+    fill: look.tint ?? undefined,
+  });
   circle(two, armLeft + mm(6), armTop + armLength - mm(8), mm(2.5), 0.8);
-  line(two, armLeft + mm(6), armTop, armLeft + mm(6), armTop + armLength - mm(8), 0.4, FAINT);
+  line(two, armLeft + mm(6), armTop, armLeft + mm(6), armTop + armLength - mm(8), look.kit ? 0.7 : 0.4, look.kit ? look.noon : FAINT);
   text(two, armLeft + mm(6), armTop + armLength + mm(5), "The arm", 8, { bold: true, anchor: "middle" });
   paragraph(
     two,
@@ -392,6 +465,11 @@ export function nocturnalSheets(input: NocturnalInput): Sheet[] {
     7,
     { muted: true },
   );
+  if (look.kit) {
+    scaleBar(two, mm(255));
+    footer(two, footerWords, 2, look.pages);
+    return [sheet(one), sheet(two)];
+  }
   let y = hy + radius + mm(26);
   const how = [
     "Assemble: the date disc at the back, the hour disc on it, the arm on top, all three held at the centre by a hollow rivet, an eyelet or a short length of tube, so that Polaris can be seen through the middle and the hour disc and the arm still turn.",
@@ -407,10 +485,6 @@ export function nocturnalSheets(input: NocturnalInput): Sheet[] {
   scaleBar(two, mm(255));
   footer(two, footerWords, 2, 2);
   return [sheet(one), sheet(two)];
-}
-
-export function nocturnalPdf(input: NocturnalInput): Uint8Array {
-  return writePdfPages({ pages: nocturnalSheets(input), title: nocturnalTitle(input), created: new Date(Date.UTC(input.year, 0, 1)) });
 }
 
 /** Every line of text on the pages, for tests and for checking nothing runs off the page. */

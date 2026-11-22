@@ -9,8 +9,6 @@ import { useMemo, useState } from "react";
 import { Notice } from "@/components/page";
 import { Field } from "@/components/ui/input";
 import { Select } from "@/components/ui/misc";
-import { madePdf } from "@/features/library/made/made-pdf";
-import { PdfActions } from "@/features/library/made/pdf-actions";
 import { type IsoDate, isIsoDate } from "@/features/maps/lib/sun";
 import { dateIn, deviceZone } from "@/features/maps/lib/sun-text";
 import { useClockStyle } from "@/lib/clock";
@@ -20,7 +18,9 @@ import { NorthSkyPlate } from "./nocturnal-plate";
 import { type ChosenPlace, NoPlaceYet } from "./place";
 import { dayWords } from "./plates";
 import { SOLAR_SOURCES as S } from "./sources";
-import { nocturnalPdf, nocturnalTitle } from "./templates";
+import { TemplatePdf } from "./template-pdf";
+import { nocturnalTitle } from "./templates";
+import { nocturnalDocument } from "./templates-kit";
 import { TimeResult, timeWords } from "./time-result";
 import { standardOffset, type ZoneChoice } from "./zone";
 
@@ -49,10 +49,7 @@ export function NocturnalTab({ place, zone }: { place: ChosenPlace | null; zone:
       year,
       placeName: place.name,
     };
-    return madePdf(nocturnalPdf(input), nocturnalTitle(input), "Nocturnal template", {
-      what: "the solar clock",
-      path: "/tools/solar-clock?tab=nocturnal",
-    });
+    return { make: () => nocturnalDocument(input), title: nocturnalTitle(input) };
   }, [place, zone, year]);
 
   const outcome = useMemo(
@@ -128,7 +125,11 @@ export function NocturnalTab({ place, zone }: { place: ChosenPlace | null; zone:
         title="A nocturnal to print"
         intro="A date disc with a handle, an hour disc with teeth for the Plough and for Kochab, and an arm. Glue to stiff card, cut out, and join at the centre with a hollow rivet or an eyelet so you can see through it."
       >
-        {pdf ? <PdfActions pdf={pdf} /> : <p className="text-body text-ink-muted">No nocturnal for a place south of the equator.</p>}
+        {pdf ? (
+          <TemplatePdf make={pdf.make} title={pdf.title} kind="Nocturnal template" path="/tools/solar-clock?tab=nocturnal" />
+        ) : (
+          <p className="text-body text-ink-muted">No nocturnal for a place south of the equator.</p>
+        )}
       </Calculator>
 
       <Calculator

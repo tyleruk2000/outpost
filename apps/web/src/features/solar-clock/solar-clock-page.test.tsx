@@ -136,7 +136,9 @@ describe("the solar clock", () => {
     renderScreen(<SolarClockPage />, "/tools/solar-clock?tab=sundial");
     const lines = await screen.findByRole("region", { name: "A horizontal sundial for 51.5° N" });
     expect(within(lines).getByRole("row", { name: /3 pm 38\.0° east/ })).toBeInTheDocument();
-    expect(within(region("A template to print")).getByRole("link", { name: /Save as PDF/ })).toBeInTheDocument();
+    expect(
+      await within(region("A template to print")).findByRole("link", { name: /Save as PDF/ }, { timeout: 15_000 }),
+    ).toBeInTheDocument();
     expect(within(region("Reading clock time from it")).getByRole("row", { name: /1 November/ })).toHaveTextContent("−16 min");
   });
 
@@ -154,7 +156,9 @@ describe("the solar clock", () => {
     const read = await screen.findByRole("region", { name: "Read the star clock now" });
     fireEvent.change(within(read).getByLabelText("The date the night began"), { target: { value: "2026-11-17" } });
     expect(within(read).getByText(/With the hand there, the time is .*give or take 30 minutes/)).toBeInTheDocument();
-    expect(within(region("A nocturnal to print")).getByRole("link", { name: /Save as PDF/ })).toBeInTheDocument();
+    expect(
+      await within(region("A nocturnal to print")).findByRole("link", { name: /Save as PDF/ }, { timeout: 15_000 }),
+    ).toBeInTheDocument();
     unmount();
 
     fakeApi({ "GET /api/maps/markers": { markers: [marker({ lat: -33.87, lon: 151.21 })] } });
