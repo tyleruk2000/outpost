@@ -70,7 +70,9 @@ const checkBody = z
     baseUpdatedAt: z.number().int().optional(),
   })
   .strict();
-const doneBody = z.object({ by: name.default(""), at: time.nullable().optional() }).strict();
+const doneBody = z
+  .object({ by: name.default(""), at: time.nullable().optional(), baseUpdatedAt: z.number().int().optional() })
+  .strict();
 
 const drillBody = z
   .object({

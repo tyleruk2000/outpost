@@ -27,7 +27,7 @@ import { gardenSettings, gardenSowings } from "../../db/schema.ts";
 
 export interface GardenService {
   get(): GardenResponse;
-  saveSettings(input: { lastFrost: string | null }): GardenSettings;
+  saveSettings(input: { lastFrost: string | null; baseUpdatedAt?: number | null }): GardenSettings;
   create(input: GardenSowingInput): GardenSowing;
   update(id: string, input: GardenSowingInput): GardenSowing;
   remove(id: string): void;
@@ -77,6 +77,8 @@ const settingsSchema = z
       .string()
       .refine((value) => parseMonthDay(value) !== null, "Give the last frost as a day of the year, such as 05-12 for 12 May.")
       .nullable(),
+    /** The `updatedAt` the screen showed (null: never saved). A newer stored setting refuses it with 409. */
+    baseUpdatedAt: z.number().int().nullable().optional(),
   })
   .strict();
 
@@ -132,7 +134,13 @@ export async function registerGarden(app: FastifyInstance, ctx: AppContext): Pro
       sowings: db.select().from(gardenSowings).orderBy(desc(gardenSowings.sownOn), asc(gardenSowings.createdAt)).all().map(toSowing),
     }),
     saveSettings(input) {
-      const now = Date.now();
+      const before = settings().updatedAt;
+      if (input.baseUpdatedAt !== undefined && before !== null && (input.baseUpdatedAt === null || before > input.baseUpdatedAt))
+        throw conflict(
+          "The last frost was changed somewhere else after you opened it. Yours was not saved over it; look at it again.",
+          { current: settings() },
+        );
+      const now = before === null ? Date.now() : Math.max(Date.now(), before + 1);
       db.insert(gardenSettings)
         .values({ id: ROW, lastFrost: input.lastFrost, updatedAt: now })
         .onConflictDoUpdate({ target: gardenSettings.id, set: { lastFrost: input.lastFrost, updatedAt: now } })

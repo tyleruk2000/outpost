@@ -11,6 +11,7 @@ import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setDeviceName } from "@/features/board/data";
 import CheckInPage from "./check-in-page";
+import ChecksPage from "./checks-page";
 import DrillPage, { thisDeviceLine } from "./drill-page";
 import { answerStep, drillProgress, setDrillProgress } from "./drill-steps";
 import { logBlocks } from "./log-page";
@@ -220,5 +221,28 @@ describe("the screens", () => {
     // The drill's own steps are answered here, and the result offered once one is.
     fireEvent.click(screen.getByRole("button", { name: "Step 3 worked" }));
     expect(await screen.findByRole("button", { name: "Keep the result" })).toBeTruthy();
+  });
+});
+
+describe("marking a check done", () => {
+  beforeEach(() => setDeviceName("Ana"));
+
+  it("sends the check as the screen showed it, so a newer done on another device is not put back", async () => {
+    const bodies: unknown[] = [];
+    const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const { pathname } = new URL(String(input), "http://outpost.test");
+        if (pathname.endsWith("/done")) {
+          bodies.push(JSON.parse(String(init?.body)));
+          return json({ check: check({ updatedAt: 9, lastDoneAt: Date.now(), overdue: false }) });
+        }
+        return json(pathname === "/api/routine-checks" ? { checks: [check({ updatedAt: 7 })], expiringSupplies: 0 } : {});
+      }),
+    );
+    renderScreen(<ChecksPage />);
+    fireEvent.click(await screen.findByRole("button", { name: /Done today/ }));
+    await vi.waitFor(() => expect(bodies).toEqual([{ by: "Ana", baseUpdatedAt: 7 }]));
   });
 });

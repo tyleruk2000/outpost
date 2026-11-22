@@ -1127,7 +1127,7 @@ Types: `readiness.ts`; see [readiness.md](readiness.md).
 | `POST /api/event-log/to-notes` | Writes the lines to a new page. |
 | `GET /api/routine-checks`, `POST`, `PUT`, `DELETE …/:id` | Checks with `dueAt`, `overdue`; `{ name, everyDays (1 to 3,650), note?, link? }`, ≤60. `PUT` with `baseUpdatedAt`: `409` if saved since. |
 | `POST /api/routine-checks/suggested` | Adds the template's checks. |
-| `POST /api/routine-checks/:id/done` | `{ by, at? }`. |
+| `POST /api/routine-checks/:id/done` | `{ by, at?, baseUpdatedAt? }`; `at: null` clears it. A check changed since `baseUpdatedAt` refuses it with `409`. |
 | `GET /api/offline-drill` | `DrillLine`s (`held`, `missing`, `stale`, `untried`) and the last run. |
 | `POST /api/offline-drill/runs` | `{ by, startedAt, answers, notes? }`. |
 
@@ -1138,7 +1138,7 @@ Types: `garden.ts`; see [garden.md](garden.md). The calendar is worked out in th
 | Method and path | Purpose |
 | --- | --- |
 | `GET /api/garden` | Settings and every sowing. |
-| `PUT /api/garden/settings` | `{ lastFrost: "MM-DD" \| null }` (not 29 February). |
+| `PUT /api/garden/settings` | `{ lastFrost: "MM-DD" \| null, baseUpdatedAt? }` (not 29 February). `baseUpdatedAt` is the `updatedAt` read (`null` if never saved); a newer one refuses it with `409`. |
 | `POST /api/garden/sowings`, `PUT`, `DELETE …/:id` | `cropId` or `name`, `sownOn`, optional place, amount, dates, notes. ≤5,000. `PUT` with `baseUpdatedAt`: `409` if saved since. |
 
 ## Tide times

@@ -121,6 +121,54 @@ describe("a routine check changed on two devices", () => {
   });
 });
 
+describe("a routine check marked done on two devices", () => {
+  it("refuses a late done or undo from a screen that had not seen the newer one", async () => {
+    const { check } = await ok<{ check: RoutineCheck }>("POST", "/api/routine-checks", { name: "Run the generator", everyDays: 30 });
+    const now = Date.now();
+    // Device A marks it done today; device B, still showing it never done, says it was done a week ago.
+    const a = await ok<{ check: RoutineCheck }>("POST", `/api/routine-checks/${check.id}/done`, {
+      by: "Ana",
+      baseUpdatedAt: check.updatedAt,
+    });
+    const late = await app.api("POST", `/api/routine-checks/${check.id}/done`, {
+      by: "Jo",
+      at: now - 7 * 86_400_000,
+      baseUpdatedAt: check.updatedAt,
+    });
+    expect(late.status).toBe(409);
+    const undo = await app.api("POST", `/api/routine-checks/${check.id}/done`, { by: "Jo", at: null, baseUpdatedAt: check.updatedAt });
+    expect(undo.status).toBe(409);
+    const list = (await ok<{ checks: RoutineCheck[] }>("GET", "/api/routine-checks")).checks;
+    expect(list.find((entry) => entry.id === check.id)).toMatchObject({ lastDoneBy: "Ana", lastDoneAt: a.check.lastDoneAt });
+    // From the check as it is now, it goes through.
+    const fresh = await app.api<{ check: RoutineCheck }>("POST", `/api/routine-checks/${check.id}/done`, {
+      by: "Jo",
+      at: null,
+      baseUpdatedAt: a.check.updatedAt,
+    });
+    expect(fresh.status).toBe(200);
+    expect(fresh.body.check.lastDoneAt).toBeNull();
+    expect(fresh.body.check.updatedAt).toBeGreaterThan(a.check.updatedAt);
+  });
+});
+
+describe("the last frost saved on two devices", () => {
+  it("refuses a late save, the first ever and once one is kept, and takes a fresh one", async () => {
+    const opened = (await ok<{ settings: { lastFrost: string | null; updatedAt: number | null } }>("GET", "/api/garden")).settings;
+    expect(opened.updatedAt).toBeNull();
+    const first = await ok<{ settings: { updatedAt: number } }>("PUT", "/api/garden/settings", { lastFrost: "05-12", baseUpdatedAt: null });
+    expect((await app.api("PUT", "/api/garden/settings", { lastFrost: "04-20", baseUpdatedAt: null })).status).toBe(409);
+    const second = await ok<{ settings: { updatedAt: number } }>("PUT", "/api/garden/settings", {
+      lastFrost: "05-01",
+      baseUpdatedAt: first.settings.updatedAt,
+    });
+    expect(second.settings.updatedAt).toBeGreaterThan(first.settings.updatedAt);
+    const stale = await app.api("PUT", "/api/garden/settings", { lastFrost: null, baseUpdatedAt: first.settings.updatedAt });
+    expect(stale.status).toBe(409);
+    expect((await ok<{ settings: { lastFrost: string | null } }>("GET", "/api/garden")).settings.lastFrost).toBe("05-01");
+  });
+});
+
 describe("a garden sowing changed on two devices", () => {
   it("takes the sowing as the screen holds it, refuses the stale change and keeps the first", async () => {
     const { sowing } = await ok<{ sowing: GardenSowing }>("POST", "/api/garden/sowings", { cropId: "carrots", sownOn: "2026-04-12" });

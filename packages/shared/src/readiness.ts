@@ -159,6 +159,8 @@ export interface RoutineCheckDoneInput {
   by: string;
   /** When it was done; now when left out. Null clears it, as if never done. */
   at?: number | null;
+  /** The check's `updatedAt` the screen showed. A newer stored check refuses it with 409. */
+  baseUpdatedAt?: number;
 }
 
 // ── The offline drill ──
