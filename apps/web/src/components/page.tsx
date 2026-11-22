@@ -308,7 +308,7 @@ export function Disclosure({ summary, children, className }: { summary: ReactNod
         <ChevronRight aria-hidden className="size-4 shrink-0 text-ink-muted transition-transform duration-150 group-open:rotate-90" />
         {summary}
       </summary>
-      <div className="grid gap-3 pb-2 pl-6 text-small text-ink">{children}</div>
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-3 pb-2 pl-6 text-small text-ink">{children}</div>
     </details>
   );
 }

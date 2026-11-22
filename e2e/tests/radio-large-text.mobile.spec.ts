@@ -111,7 +111,8 @@ for (const size of ["24px", "32px"]) {
         ],
         ["/radio/morse?tab=receive", () => page.getByRole("group", { name: "Koch lesson" }).waitFor()],
         ["/radio/morse?tab=send", () => page.getByRole("group", { name: "Keyer speed" }).waitFor()],
-        ["/radio/morse?tab=rbn", () => page.getByLabel("Your callsign").waitFor()],
+        // With no radio licence set in Settings, the callsign is one to practise with.
+        ["/radio/morse?tab=rbn", () => page.getByLabel("A callsign to practise with").waitFor()],
         ["/radio/morse?tab=reference", () => page.getByRole("region", { name: "Table of prosigns" }).waitFor()],
         ["/radio/frequencies", () => page.getByText("Only some of the time, or when activated").first().waitFor()],
       ];

@@ -297,10 +297,18 @@ test.describe("saving a place on a phone", () => {
     // A phone's keyboard is told to the page as a resize of the visual viewport; Chromium emulating a phone does not
     // send one when Playwright changes the size, so it is sent here.
     await page.evaluate(() => window.visualViewport?.dispatchEvent(new Event("resize")));
-    await page.waitForTimeout(700);
-    const field = (await name.boundingBox())!;
+    // The sheet rises and then the field is scrolled to: waited for, as on a busy machine that takes longer than it does on a phone.
     const bar = (await page.locator('nav[aria-label="Main"]').boundingBox())!;
-    expect(field.y + field.height, "the Name field above the bottom bar").toBeLessThanOrEqual(bar.y);
+    await expect
+      .poll(
+        async () => {
+          const box = (await name.boundingBox())!;
+          return box.y + box.height;
+        },
+        { message: "the Name field above the bottom bar" },
+      )
+      .toBeLessThanOrEqual(bar.y);
+    const field = (await name.boundingBox())!;
     expect(field.y).toBeGreaterThanOrEqual(0);
 
     await name.fill("Layout check spring");

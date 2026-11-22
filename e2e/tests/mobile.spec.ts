@@ -78,6 +78,8 @@ test.describe("on a phone", () => {
     const groups: Array<[string, string, Array<[string, string]>]> = [
       ["Search", "/search", [["How search works", "/search/how-it-works"]]],
       // A tab, listed again as the heading of the screen under it.
+      ["Library", "/library", [["Import from Calibre", "/library/calibre"]]],
+      // A tab, listed again as the heading of the screen under it.
       ["Notes", "/notes", [["Import", "/import"]]],
       ["Explore", "/explore", []],
       ["Chat", "/chat", []],
@@ -95,6 +97,9 @@ test.describe("on a phone", () => {
           ["Repeaters", "/radio/repeaters"],
           ["Morse trainer", "/radio/morse"],
           ["Frequencies to listen to", "/radio/frequencies"],
+          ["Satellites", "/radio/satellites"],
+          ["Licences and band plans", "/radio/licences"],
+          ["Heard on the radio", "/radio/heard"],
         ],
       ],
       [
@@ -106,11 +111,16 @@ test.describe("on a phone", () => {
           ["Radio calculators", "/tools/radio"],
           ["Building", "/tools/building"],
           ["Cooking", "/tools/cooking"],
+          ["Rations", "/tools/rations"],
           ["Power and batteries", "/tools/power"],
           ["QR codes", "/tools/qr"],
           ["Devices on this network", "/tools/network"],
           ["Solar clock", "/tools/solar-clock"],
           ["Compass", "/tools/compass"],
+          ["Night sky", "/tools/night-sky"],
+          ["Celestial navigation", "/tools/celestial-navigation"],
+          ["Tide times", "/tools/tides"],
+          ["Garden", "/tools/garden"],
         ],
       ],
       [
@@ -121,6 +131,15 @@ test.describe("on a phone", () => {
           ["Supplies", "/prepare/supplies"],
           ["Weather and hazards", "/prepare/weather"],
           ["Nuclear preparedness", "/prepare/nuclear"],
+          ["Medical sheets", "/prepare/medical"],
+          ["Keeping in touch", "/prepare/keeping-in-touch"],
+          ["Grab cards", "/prepare/grab-cards"],
+          ["Household binder", "/prepare/binder"],
+          ["Household book", "/prepare/book"],
+          ["Check-in and roll call", "/prepare/check-in"],
+          ["Log of events", "/prepare/log"],
+          ["Routine checks", "/prepare/checks"],
+          ["Offline drill", "/prepare/offline-drill"],
         ],
       ],
       [
@@ -128,6 +147,7 @@ test.describe("on a phone", () => {
         "/games",
         [
           ["Allotment", "/games/allotment"],
+          ["Steading", "/games/steading"],
           ["Solitaire", "/games/solitaire"],
           ["Peg solitaire", "/games/peg-solitaire"],
           ["Sudoku", "/games/sudoku"],
@@ -135,6 +155,7 @@ test.describe("on a phone", () => {
           ["Chess", "/games/chess"],
           ["Pairs", "/games/pairs"],
           ["Snake", "/games/snake"],
+          ["Skerry", "/games/skerry"],
         ],
       ],
       ["Downloads", "/downloads", []],
@@ -147,7 +168,14 @@ test.describe("on a phone", () => {
         ],
       ],
       ["On this phone", "/kept", []],
-      ["Settings", "/settings", [["Set-up guide", "/help/search-and-answers"]]],
+      [
+        "Settings",
+        "/settings",
+        [
+          ["Server status", "/settings/status"],
+          ["Set-up guide", "/help/search-and-answers"],
+        ],
+      ],
       ["Help", "/help", []],
     ];
     await bar.getByRole("button", { name: "More" }).click();
