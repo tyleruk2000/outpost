@@ -14,6 +14,7 @@ import { MemoryRouter } from "react-router";
 import { Toaster } from "sonner";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import SteadingPage, { LEAVE_IT_WORDS } from "./steading-page";
+import { startView } from "./valley";
 
 const NOW = Date.UTC(2027, 2, 1, 9);
 
@@ -210,6 +211,18 @@ describe("the Steading screen", () => {
     store.focus();
     await user.keyboard("{ArrowDown}");
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Column 5, row 9, meadow" }));
+  });
+
+  it("opens a generated map close enough in on a phone for every square to take a finger, and at 14 across where there is room", () => {
+    const state = newSteading(NOW, { land: "valley", seed: "outpost-tests-1" });
+    // A phone 390 px wide leaves a window of about 358 px: 8 squares of 44 px or more.
+    const phone = startView(state, 358);
+    expect(phone.across).toBe(8);
+    expect(358 / phone.across).toBeGreaterThanOrEqual(44);
+    // The smallest phone still shows the least the zoom allows.
+    expect(startView(state, 288).across).toBe(6);
+    expect(startView(state, 900).across).toBe(14);
+    expect(startView(state).across).toBe(14);
   });
 
   it("offers Start again when the kept settlement cannot be read", async () => {

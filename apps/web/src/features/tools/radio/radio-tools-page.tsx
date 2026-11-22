@@ -543,7 +543,7 @@ function LevelsCalculator() {
           dbm !== null ? { title: "A radio level, written each way", lines: rows.map(([name, value]) => `${name}: ${value}`) } : undefined
         }
       >
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 tabular">
+        <dl className="grid grid-cols-[fit-content(50%)_minmax(0,1fr)] break-words gap-x-4 gap-y-1 tabular">
           {rows.map(([name, value]) => (
             <div key={name} className="contents">
               <dt className="text-ink-muted">{name}</dt>

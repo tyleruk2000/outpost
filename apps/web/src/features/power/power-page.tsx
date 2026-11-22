@@ -85,7 +85,9 @@ function Comparison({ plans }: { plans: Array<{ plan: PowerPlan; answers: PlanAn
     ["Peak current", (a) => `${figure(a.peak.dischargeA, 1)} A`],
   ];
   return (
-    <div className="scroll-quiet overflow-x-auto">
+    // biome-ignore lint/a11y/noNoninteractiveTabindex: the table scrolls sideways when the plans are many, so it is reachable by keyboard
+    // biome-ignore lint/a11y/useSemanticElements: a named group to scroll, not a set of form fields
+    <div tabIndex={0} role="group" aria-label="Your plans side by side" className="scroll-quiet overflow-x-auto">
       <table className="tabular w-full min-w-max text-small">
         <caption className="mb-2 text-left text-ink-muted">
           Your plans side by side. Each is an estimate from the figures typed into it.

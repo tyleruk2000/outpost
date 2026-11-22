@@ -402,7 +402,9 @@ export default function PowerPlanPage() {
 
         <div className="mt-8">
           <h3 className="text-body font-semibold text-ink">Each month, from full</h3>
-          <div className="scroll-quiet mt-2 overflow-x-auto">
+          {/* biome-ignore lint/a11y/noNoninteractiveTabindex: the table scrolls sideways on a phone, so it is reachable by keyboard */}
+          {/* biome-ignore lint/a11y/useSemanticElements: a named group to scroll, not a set of form fields */}
+          <div tabIndex={0} role="group" aria-label="Each month, from full" className="scroll-quiet mt-2 overflow-x-auto">
             <table className="tabular w-full min-w-[30rem] text-small">
               <caption className="sr-only">
                 For each month: peak sun hours, solar a day, the lowest charge in 30 days, and when it runs down

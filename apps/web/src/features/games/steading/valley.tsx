@@ -57,7 +57,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
-import { type KeyboardEvent, memo, type PointerEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type KeyboardEvent, memo, type PointerEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { boardSurface } from "../kit/frame";
@@ -314,11 +314,19 @@ interface View {
 }
 
 const MIN_ACROSS = 6;
+/** The most squares across the window starts with, and the least a square may measure on a phone, in CSS px (DESIGN.md). */
+const START_ACROSS = 14;
+const TOUCH_TARGET = 44;
 
-function startView(state: SteadingState): View {
+/**
+ * The window a settlement opens on, about its storehouse. On a narrow screen it starts closer in, so
+ * that every square is at least a finger's width (44 px); zooming out is still there for a wider look.
+ */
+export function startView(state: SteadingState, boxWidth = 0): View {
   const g = groundOf(state.map);
   if (g.width <= 16) return { x: 0, y: 0, across: g.width };
-  const across = 14;
+  const fits = boxWidth > 0 ? Math.floor(boxWidth / TOUCH_TARGET) : START_ACROSS;
+  const across = Math.max(MIN_ACROSS, Math.min(START_ACROSS, fits));
   const home = state.buildings[0] ?? { x: g.start.x, y: g.start.y };
   return clampView({ x: home.x - across / 2 + 0.5, y: home.y - across / 2 + 1, across }, g.width, g.height);
 }
@@ -363,9 +371,11 @@ export function Valley({
   });
   const mapKey = state.map.legacy ? "ashgill" : `${state.map.land}:${state.map.seed}`;
 
-  // A new settlement (another land or seed) starts with the window on its storehouse.
+  const boxWidth = () => box.current?.getBoundingClientRect().width ?? 0;
+  // A new settlement (another land or seed) starts with the window on its storehouse, close enough
+  // in on a phone for each square to take a finger.
   // biome-ignore lint/correctness/useExhaustiveDependencies: only when the map itself changes
-  useEffect(() => setView(startView(state)), [mapKey]);
+  useLayoutEffect(() => setView(startView(state, boxWidth())), [mapKey]);
 
   const set = (next: View) => setView(clampView(next, width, height, tall));
   const zoom = (factor: number, about?: { x: number; y: number }) => {
@@ -622,7 +632,7 @@ export function Valley({
           <Button size="icon-sm" variant="secondary" aria-label="Zoom out" onClick={() => zoom(1.4)} disabled={view.across >= width}>
             <ZoomOut />
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => setView(startView(state))}>
+          <Button size="sm" variant="ghost" onClick={() => setView(startView(state, boxWidth()))}>
             <LocateFixed aria-hidden />
             Back to the storehouse
           </Button>

@@ -101,7 +101,17 @@ function LetterRow({ label, letters, strong, muted }: { label: string; letters: 
 function Working({ children, caption }: { children: ReactNode; caption?: ReactNode }) {
   return (
     <figure className="mt-3">
-      <div className="scroll-quiet overflow-x-auto rounded-panel border border-border bg-surface px-4 py-3">{children}</div>
+      {/* It may scroll sideways on a phone, so it takes the focus to be scrolled from the keyboard. */}
+      {/* biome-ignore lint/a11y/useSemanticElements: a named group to scroll, not a set of form fields */}
+      <div
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: a region that scrolls must be reachable by keyboard
+        tabIndex={0}
+        role="group"
+        aria-label="Working, scrolls sideways"
+        className="scroll-quiet overflow-x-auto rounded-panel border border-border bg-surface px-4 py-3"
+      >
+        {children}
+      </div>
       {caption ? <figcaption className="mt-1.5 text-small text-ink-muted">{caption}</figcaption> : null}
     </figure>
   );

@@ -1167,7 +1167,7 @@ function Results({ result, letter, onFit }: { result: EffectsResult; letter: Sce
                   </div>
                   {ring.why ? <p className="text-small text-ink-muted">{ring.why}</p> : null}
                   <details className="text-small text-ink-muted">
-                    <summary className="min-h-11 cursor-pointer py-2.5 text-ink-muted hover:text-ink md:min-h-0 md:py-0">
+                    <summary className="min-h-11 cursor-pointer py-2.5 text-ink-muted hover:text-ink md:min-h-6 md:py-0.5">
                       What this means, and its source
                     </summary>
                     <p className="mt-1">{ring.meaning}</p>
@@ -1224,7 +1224,7 @@ function Results({ result, letter, onFit }: { result: EffectsResult; letter: Sce
         </ul>
       ) : null}
       <details className="text-small text-ink-muted">
-        <summary className="min-h-11 cursor-pointer py-2.5 font-medium text-ink md:min-h-0 md:py-0">
+        <summary className="min-h-11 cursor-pointer py-2.5 font-medium text-ink md:min-h-6 md:py-0.5">
           How this is worked out: assumptions, limits and source
         </summary>
         <h4 className="mt-2 font-medium text-ink">Assumptions</h4>

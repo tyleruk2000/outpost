@@ -245,15 +245,15 @@ function Answer({ data, zone }: { data: TidePredictionResponse; zone: ZoneChoice
         {range} {datum}
       </p>
       <TideChart curve={data.curve} turns={data.turns} zone={zone} name={`Height of the tide at ${data.station.name}`} />
-      <div className="mt-6 grid gap-6">
+      <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6">
         {byDay.map(([date, turns]) => (
           <div key={date}>
             <h3 className="mb-1 text-small font-semibold text-ink">{formatDayHeading(date)}</h3>
             <Rows>
               {turns.map((turn) => (
-                <li key={turn.t} className="flex items-baseline justify-between gap-4 py-2 text-body">
-                  <span className="tabular w-24 shrink-0 text-ink">{clockAt(turn.t, zone, style)}</span>
-                  <span className="flex-1 text-ink">{turn.kind === "high" ? "High water" : "Low water"}</span>
+                <li key={turn.t} className="flex flex-wrap items-baseline justify-between gap-x-4 py-2 text-body">
+                  <span className="tabular min-w-24 shrink-0 text-ink">{clockAt(turn.t, zone, style)}</span>
+                  <span className="min-w-0 flex-1 text-ink">{turn.kind === "high" ? "High water" : "Low water"}</span>
                   <span className="tabular text-ink">{formatHeight(turn.h)}</span>
                 </li>
               ))}
