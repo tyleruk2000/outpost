@@ -17,18 +17,20 @@ import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { toast } from "sonner";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { householdOf, householdsAnswer, ONE_HOUSEHOLD } from "@/features/households/test-support";
 import { textWidth } from "@/features/maps/print/helvetica";
 import { type DrawLine, writeLettered } from "@/features/maps/print/lettering";
 import type { Sheet } from "@/features/maps/print/sheet";
 import { fridgeSheets, grabSheets, walletSheets } from "./cards";
 import CardsPage from "./cards-page";
 import { RowTools } from "./list-edit";
+import { householdPeopleToOffer } from "./people-section";
 import PlanPage from "./plan-page";
 import PlansPage from "./plans-page";
 import { readableOf } from "./printable";
 import UsePlanPage from "./use-page";
 import { warningLineOf } from "./warning-line";
-import { guessEmergencyNumber } from "./words";
+import { guessEmergencyNumber, templatesWhereLine } from "./words";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -723,5 +725,142 @@ describe("moving a row", () => {
     expect(up).toHaveFocus();
     await userEvent.click(screen.getByRole("button", { name: "Move down: Fill the bath" }));
     expect(onMove).toHaveBeenCalledWith(1);
+  });
+});
+
+describe("plans for a household", () => {
+  const people = {
+    people: [
+      {
+        id: "maya",
+        kind: "person",
+        name: "Maya Okafor",
+        band: "19-64",
+        sex: "female",
+        kcalPerDay: null,
+        drinkingLitres: null,
+        allUsesLitres: null,
+        note: "",
+        householdIds: ["household", "caravan"],
+        medicalSheets: 0,
+        createdAt: 1,
+        updatedAt: 1,
+      },
+      {
+        id: "tom",
+        kind: "person",
+        name: "Tom",
+        band: "6-11",
+        sex: "male",
+        kcalPerDay: null,
+        drinkingLitres: null,
+        allUsesLitres: null,
+        note: "",
+        householdIds: ["caravan"],
+        medicalSheets: 0,
+        createdAt: 1,
+        updatedAt: 1,
+      },
+      {
+        id: "rex",
+        kind: "pet",
+        name: "Rex",
+        band: null,
+        sex: null,
+        kcalPerDay: null,
+        drinkingLitres: null,
+        allUsesLitres: null,
+        note: "",
+        householdIds: ["caravan"],
+        medicalSheets: 0,
+        createdAt: 1,
+        updatedAt: 1,
+      },
+    ],
+  };
+  const caravan = (personIds: string[]) =>
+    householdsAnswer(
+      [
+        householdOf({ id: "household", name: "Home", country: "GB" }),
+        householdOf({ id: "caravan", name: "Caravan", kind: "portable", country: "DE", personIds }),
+      ],
+      "caravan",
+    );
+  const catalogue = { providers: [], linked: [], countries: [{ code: "DE", name: "Germany", bbox: [5.8, 47.2, 15.1, 55.1] }] };
+  const others = {
+    "/api/supplies": {
+      items: [],
+      household: { daysWanted: 3, drinkingLitres: 3, allUsesLitres: 7.5, waterBasis: "drinking", members: [], updatedAt: 0 },
+      locations: [],
+    },
+    "/api/supplies/outlook": () => new Promise<Response>(() => {}),
+    "/api/power/plans": { plans: [] },
+    "/api/radio/communication-plans": { plans: [] },
+    "/api/maps/markers": { markers: [] },
+  };
+
+  it("offers the household's people by name, not those already in the plan nor pets, and a name can still be typed", () => {
+    const inPlan = [{ id: "a", name: "maya okafor ", remember: "", medical: "", contactId: null }];
+    expect(householdPeopleToOffer(["rex", "tom", "maya", "gone"], people.people, inPlan)).toEqual([{ id: "tom", name: "Tom" }]);
+  });
+
+  it("names the household on the list and words the new plan by its country", async () => {
+    serve({ "/api/emergency-plans": { plans: [] }, "/api/households": caravan([]), "/api/reference/catalogue": catalogue });
+    show("/prepare/plans", <PlansPage />, "/prepare/plans");
+    expect((await screen.findByTestId("for-household")).textContent).toBe("For Caravan · Change");
+    await userEvent.click(await screen.findByRole("button", { name: "New plan" }));
+    expect((await screen.findByTestId("templates-where")).textContent).toMatch(/^Caravan is in Germany: the/);
+    expect(templatesWhereLine({ code: "DE", name: "Germany" }, null)).toMatch(/^Home is in Germany: the/);
+  });
+
+  it("says which household a plan is for, and adds its people with one press", async () => {
+    const theirs = {
+      ...answer({ body: { ...emptyPlanBody(), people: [] } }),
+      household: { id: "caravan", name: "Caravan", several: true },
+    };
+    const server = serve({
+      "/api/emergency-plans/p1": theirs,
+      "POST /api/emergency-plans/p1/opened": theirs,
+      "/api/households": caravan(["maya", "tom", "rex"]),
+      "/api/people": people,
+      ...others,
+    });
+    show("/prepare/plans/p1", <PlanPage />, "/prepare/plans/:id");
+    expect((await screen.findByTestId("plan-household")).textContent).toBe("For Caravan · Change");
+    const offered = await screen.findByTestId("household-people");
+    expect(within(offered).getByText("In Caravan:")).toBeInTheDocument();
+    expect(within(offered).queryByRole("button", { name: "Add Rex" })).toBeNull();
+    await userEvent.click(within(offered).getByRole("button", { name: "Add Tom" }));
+    expect(screen.getByDisplayValue("Tom")).toBeInTheDocument();
+    expect(within(screen.getByTestId("household-people")).queryByRole("button", { name: "Add Tom" })).toBeNull();
+    await waitFor(() => expect(server.posted.some((post) => post.path === "PUT /api/emergency-plans/p1")).toBe(true), { timeout: 3000 });
+    const sent = server.posted.find((post) => post.path === "PUT /api/emergency-plans/p1")!.body as EmergencyPlan;
+    expect(sent.body.people.map((person) => person.name)).toEqual(["Tom"]);
+  });
+
+  it("says when a plan is another household's than the one Outpost is set to", async () => {
+    const home = { ...answer(), household: { id: "household", name: "Home", several: true } };
+    serve({
+      "/api/emergency-plans/p1": home,
+      "POST /api/emergency-plans/p1/opened": home,
+      "/api/households": caravan([]),
+      ...others,
+    });
+    show("/prepare/plans/p1/use", <UsePlanPage />, "/prepare/plans/:id/use");
+    expect(await screen.findByText(/For Home, not Caravan, the household Outpost is set to now/)).toBeInTheDocument();
+  });
+
+  it("says nothing of households with one", async () => {
+    serve({
+      "/api/emergency-plans/p1": { ...answer(), household: { id: "household", name: "Home", several: false } },
+      "POST /api/emergency-plans/p1/opened": answer(),
+      "/api/households": ONE_HOUSEHOLD,
+      "/api/people": { people: [] },
+      ...others,
+    });
+    show("/prepare/plans/p1", <PlanPage />, "/prepare/plans/:id");
+    expect(await screen.findByRole("heading", { level: 1, name: "Power cut" })).toBeInTheDocument();
+    expect(screen.queryByTestId("plan-household")).toBeNull();
+    expect(screen.queryByTestId("for-household")).toBeNull();
   });
 });

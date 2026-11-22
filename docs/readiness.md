@@ -4,6 +4,11 @@ Four screens under **Preparedness**, all working over the home network with no i
 Outpost cannot wake a locked phone or send a notification: anything here is seen when
 someone next opens Outpost.
 
+The log of events, the routine checks and the offline drill are for the household
+Outpost is set to: each household has its own log and checks, and the drill is checked
+against its home. With more than one household, the line under each title says which.
+Check-ins and the roll call are the whole board's, for everyone.
+
 ## Check-in and roll call
 
 - **Check in**: press **I'm safe** or **I need help**, with a few words about where you
@@ -61,8 +66,9 @@ home on the map, a map and terrain covering it, place names, an emergency plan, 
 with an emergency list, supplies, a backup and its age, HTTPS, what this device keeps,
 your own radio channels, anything half-downloaded, and the radio receiver. Each says
 **Held**, **Missing**, **Out of date** or **Not checked**, with a link to the screen that
-puts it right. It fetches nothing. Outpost cannot see inside other phones: open the screen
-on each one.
+puts it right. It fetches nothing. For a caravan or other household that moves, home is
+where it was last said to be, with how long ago; a week or more ago reads **Out of date**.
+Outpost cannot see inside other phones: open the screen on each one.
 
 **The drill** is a list of steps for a phone with the internet unplugged: open the map,
 search a place name, use a plan, check in, listen on the radio, and finally switch the

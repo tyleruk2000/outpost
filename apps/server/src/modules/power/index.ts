@@ -9,13 +9,17 @@
  * person's own data, so it is counted and erased with the rest of it
  * (`ctx.services.power.kept`, used by modules/manage), and is in the database a backup
  * copies.
+ *
+ * A plan is shared by every household (`householdId` null: every plan from before there
+ * were several) or tied to one, such as the caravan's battery. The list is the shared
+ * plans and the current household's; any plan is still answered by its id.
  */
 import { POWER_PLAN_MAX_LOADS, POWER_PLANS_MAX, type PowerPlan, type PowerPlanInput } from "@outpost/shared";
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, isNull, or } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
-import { badRequest, notFound } from "../../core/errors.ts";
+import { AppError, badRequest, notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
 import { powerPlans } from "../../db/schema.ts";
 import { planFileBody, readPlanFile } from "../export-all/plan-file.ts";
@@ -23,7 +27,10 @@ import { registerPowerDevices } from "./devices.ts";
 import { checkBase, nextUpdatedAt, withoutBase } from "./versions.ts";
 
 export interface PowerService {
+  /** The plans shared by every household and the current household's. */
   list(): PowerPlan[];
+  /** Every household's, for Export everything. */
+  listAll(): PowerPlan[];
   get(id: string): PowerPlan;
   create(input: PowerPlanInput): PowerPlan;
   /** `baseUpdatedAt`, when given, is the version the change was made from: an older one than is kept is refused (409). */
@@ -101,6 +108,8 @@ const percent = z.number().min(0).max(100);
 const planInput = z.object({
   name,
   notes: z.string().max(20_000).default(""),
+  // Null: shared by every household. Left out: shared on a new plan, as it was on a change.
+  householdId: z.string().min(1).max(64).nullable().optional(),
   battery: z.object({
     chemistry: z.enum(["lifepo4", "agm", "flooded", "li-ion"]),
     volts: z.number().positive().max(1000),
@@ -177,17 +186,40 @@ export async function registerPower(app: FastifyInstance, ctx: AppContext): Prom
     name: row.name,
     notes: row.notes,
     ...(row.system as unknown as System),
+    householdId: row.householdId,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   });
-  const split = ({ name: planName, notes, ...system }: PowerPlanInput) => ({
+  const split = ({ name: planName, notes, householdId: _householdId, ...system }: PowerPlanInput) => ({
     name: planName,
     notes,
     system: system as unknown as Record<string, unknown>,
   });
+  /** The household a plan is tied to, checked; null for a shared plan. */
+  const householdOf = (householdId: string | null | undefined, before: string | null): string | null => {
+    if (householdId === undefined) return before;
+    if (householdId === null) return null;
+    try {
+      ctx.services.households.get(householdId);
+    } catch (error) {
+      if (error instanceof AppError && error.code === "not_found")
+        throw badRequest("That household is not in Outpost any more. Choose another, or share the plan with every household.");
+      throw error;
+    }
+    ctx.services.households.ensure();
+    return householdId;
+  };
 
   const service: PowerService = {
-    list: () => db.select().from(powerPlans).orderBy(asc(powerPlans.name)).all().map(toPlan),
+    list: () =>
+      db
+        .select()
+        .from(powerPlans)
+        .where(or(isNull(powerPlans.householdId), eq(powerPlans.householdId, ctx.services.households.currentId())))
+        .orderBy(asc(powerPlans.name))
+        .all()
+        .map(toPlan),
+    listAll: () => db.select().from(powerPlans).orderBy(asc(powerPlans.name)).all().map(toPlan),
     get(id) {
       const row = db.select().from(powerPlans).where(eq(powerPlans.id, id)).get();
       if (!row) throw notFound("The power plan");
@@ -198,7 +230,7 @@ export async function registerPower(app: FastifyInstance, ctx: AppContext): Prom
       const now = Date.now();
       const id = newId();
       db.insert(powerPlans)
-        .values({ id, ...split(input), createdAt: now, updatedAt: now })
+        .values({ id, ...split(input), householdId: householdOf(input.householdId, null), createdAt: now, updatedAt: now })
         .run();
       changed();
       return service.get(id);
@@ -207,7 +239,11 @@ export async function registerPower(app: FastifyInstance, ctx: AppContext): Prom
       const current = service.get(id);
       checkBase("plan", current.updatedAt, baseUpdatedAt);
       db.update(powerPlans)
-        .set({ ...split(input), updatedAt: nextUpdatedAt(current.updatedAt) })
+        .set({
+          ...split(input),
+          householdId: householdOf(input.householdId, current.householdId),
+          updatedAt: nextUpdatedAt(current.updatedAt),
+        })
         .where(eq(powerPlans.id, id))
         .run();
       changed();
@@ -246,6 +282,8 @@ export async function registerPower(app: FastifyInstance, ctx: AppContext): Prom
       id: _id,
       createdAt: _created,
       updatedAt: _updated,
+      // A plan brought in is shared: the household it was tied to may not be in this Outpost.
+      householdId: _household,
       ...plan
     } = (readPlanFile("power", text) ?? {}) as Record<string, unknown>;
     return { plan: service.create(planInput.parse(plan)) };

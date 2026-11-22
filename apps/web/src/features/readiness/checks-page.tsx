@@ -15,6 +15,7 @@ import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "
 import { Field, Input } from "@/components/ui/input";
 import { Select, Skeleton } from "@/components/ui/misc";
 import { useDeviceName } from "@/features/board/data";
+import { ForHousehold } from "@/features/households/for-household";
 import { errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { cn, plural } from "@/lib/utils";
@@ -278,6 +279,7 @@ export default function ChecksPage() {
           ) : null
         }
       />
+      <ForHousehold className="-mt-6 mb-6" />
 
       {checks.isPending ? (
         <Skeleton className="h-64" />

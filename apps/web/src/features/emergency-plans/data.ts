@@ -16,6 +16,8 @@ import type {
 } from "@outpost/shared";
 import { localDay } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useHousehold } from "@/features/households/use-household";
+import { useCatalogue } from "@/features/layers/data";
 import { ApiError, api, errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { plural } from "@/lib/utils";
@@ -203,4 +205,20 @@ export function useAddToShopping() {
     },
     onSettled: () => void client.invalidateQueries({ queryKey: ["supplies"] }),
   });
+}
+
+/**
+ * The current household's country, for the first emergency number and the templates'
+ * order: its code and name (null while loading, or with no country), and the
+ * household's name when there are several, to say which one it is.
+ */
+export function useHouseholdCountry(): { country: { code: string; name: string } | null; householdName: string | null } {
+  const current = useHousehold().data;
+  const catalogue = useCatalogue();
+  const code = current?.country ?? null;
+  const name = catalogue.data?.countries.find((country) => country.code === code)?.name;
+  return {
+    country: code && catalogue.data ? { code, name: name ?? code } : null,
+    householdName: current?.several ? current.household.name : null,
+  };
 }

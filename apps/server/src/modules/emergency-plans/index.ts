@@ -18,16 +18,15 @@
  * rest by modules/manage, counted in the database's figures, and in every backup.
  */
 import {
-  countryAt,
   type EmergencyPlan,
   type EmergencyPlanInput,
   type EmergencyPlanResponse,
   type EmergencyPlanSummary,
   emergencyNumberFor,
-  homePlaceOf,
   PLAN_KIND_IDS,
   PLAN_LIMITS,
   type PlanBody,
+  type PlanHousehold,
   type PlanResolved,
   type PlanTickMerge,
   type PlanTickMergeResponse,
@@ -41,9 +40,9 @@ import type { AppContext } from "../../core/context.ts";
 import { AppError, conflict, notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
 import { communicationPlans, documents, emergencyPlans, markers, notes, nuclearScenarios, powerPlans } from "../../db/schema.ts";
-import { COUNTRIES } from "../layers/countries.ts";
 
 export interface EmergencyPlansService {
+  /** The current household's plans. A plan of another household is still answered by `get`, by its id. */
   list(): EmergencyPlanSummary[];
   get(id: string): EmergencyPlanResponse;
   create(input: EmergencyPlanInput): EmergencyPlanResponse;
@@ -313,9 +312,21 @@ export async function registerEmergencyPlans(app: FastifyInstance, ctx: AppConte
     };
   }
 
+  /** The household a plan is for, by name, so that a copy on a phone says so. */
+  const householdOf = (row: Row): PlanHousehold | undefined => {
+    try {
+      const { households } = ctx.services;
+      return { id: row.householdId, name: households.get(row.householdId).name, several: households.list().length > 1 };
+    } catch (error) {
+      if (!(error instanceof AppError) || error.code !== "not_found") throw error;
+      return undefined;
+    }
+  };
+
   const answer = (row: Row): EmergencyPlanResponse => {
     const plan = toPlan(row);
-    return { plan, resolved: resolve(plan.body) };
+    const household = householdOf(row);
+    return { plan, resolved: resolve(plan.body), ...(household ? { household } : {}) };
   };
 
   /** A tick for a step no longer in the plan is let go. */
@@ -346,7 +357,13 @@ export async function registerEmergencyPlans(app: FastifyInstance, ctx: AppConte
 
   const service: EmergencyPlansService = {
     list() {
-      const rows = db.select().from(emergencyPlans).orderBy(asc(emergencyPlans.name)).all().map(toPlan);
+      const rows = db
+        .select()
+        .from(emergencyPlans)
+        .where(eq(emergencyPlans.householdId, ctx.services.households.currentId()))
+        .orderBy(asc(emergencyPlans.name))
+        .all()
+        .map(toPlan);
       const contactIds = existing("contacts", [...new Set(rows.flatMap((plan) => contactIdsOf(plan.body)))]);
       const markerIds = existing("markers", [...new Set(rows.flatMap((plan) => markerIdsOf(plan.body)))]);
       return rows.map((plan) => ({
@@ -374,9 +391,11 @@ export async function registerEmergencyPlans(app: FastifyInstance, ctx: AppConte
       if (count >= L.plans) throw conflict(`Outpost keeps up to ${L.plans} emergency plans. Delete one to make another.`);
       const now = Date.now();
       const id = newId();
+      ctx.services.households.ensure();
       db.insert(emergencyPlans)
         .values({
           id,
+          householdId: ctx.services.households.currentId(),
           ...columns(input),
           use: { startedAt: null, ticks: {} },
           reviewedAt: now,
@@ -500,15 +519,11 @@ export async function registerEmergencyPlans(app: FastifyInstance, ctx: AppConte
   const id = (request: { params: unknown }) => idParams.parse(request.params).id;
   app.get("/api/emergency-plans", async () => ({ plans: service.list() }));
   /**
-   * The number for a new plan that names none: the one listed for Home's country (the
-   * saved place with the home icon, in the smallest Natural Earth box round it), else
-   * 112. The screen offers its own first choice too; this is for anything that asks
-   * without one.
+   * The number for a new plan that names none: the one listed for the current
+   * household's country (its override, else the country its home is in), else 112. The
+   * screen offers its own first choice too; this is for anything that asks without one.
    */
-  const numberHere = () => {
-    const home = homePlaceOf(ctx.services.maps.annotations.listMarkers());
-    return emergencyNumberFor(home ? countryAt(home, COUNTRIES) : null);
-  };
+  const numberHere = () => emergencyNumberFor(ctx.services.households.country());
   app.post("/api/emergency-plans", async (request) => {
     const plan = planSchema.parse(request.body);
     return service.create({ ...plan, emergencyNumber: plan.emergencyNumber ?? numberHere() });

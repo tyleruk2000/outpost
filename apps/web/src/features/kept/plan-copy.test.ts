@@ -117,3 +117,15 @@ describe("a plan kept on the phone", () => {
     expect(item).toMatchObject({ gone: true, pending: 1 });
   });
 });
+
+describe("a plan of one of several households", () => {
+  it("keeps the household's name with the copy and its line, and none with one household", async () => {
+    server.plan = { ...answer(), household: { id: "caravan", name: "Caravan", several: true } };
+    const item = await keepPlan("p1");
+    expect(item.household).toBe("Caravan");
+    expect((await readKeptPlan("p1"))?.answer.household?.name).toBe("Caravan");
+
+    server.plan = { ...answer(), household: { id: "household", name: "Home", several: false } };
+    expect((await keepPlan("p1")).household).toBeUndefined();
+  });
+});

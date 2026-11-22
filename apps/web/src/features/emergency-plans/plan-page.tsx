@@ -29,6 +29,7 @@ import { BookPlansLine } from "@/features/household-book/book-line";
 import { PlanIllustrations } from "@/features/nuclear/plan-illustrations";
 import { formatDate, formatDateTime, timeAgo } from "@/lib/utils";
 import { conflictOf, inputOf, usePlan, usePlanAction, useRemovePlan, useSavePlan } from "./data";
+import { PlanHouseholdLine } from "./household-line";
 import { TemplateLicences } from "./licences";
 import { CommsSection, NotesSection, PlacesSection, PowerSection, WhereSection } from "./more-sections";
 import { ContactsSection, PeopleSection } from "./people-section";
@@ -318,6 +319,7 @@ export default function EmergencyPlanPage() {
           </>
         }
       />
+      <PlanHouseholdLine household={response.data.household} className="-mt-6 mb-6" />
 
       {fromBook ? (
         <Notice tone="info" title="Made for the household book" className="mb-4">
@@ -438,7 +440,12 @@ export default function EmergencyPlanPage() {
         <StepsSection steps={body.steps} templateId={draft.templateId} onChange={(steps) => setBody({ steps })} />
       </Part>
       <Part id="household">
-        <PeopleSection people={body.people} resolved={resolved} onChange={(people) => setBody({ people })} />
+        <PeopleSection
+          people={body.people}
+          resolved={resolved}
+          householdId={response.data.household?.id}
+          onChange={(people) => setBody({ people })}
+        />
       </Part>
       <Part id="plan-contacts">
         <ContactsSection contacts={body.contacts} resolved={resolved} onChange={(contacts) => setBody({ contacts })} />

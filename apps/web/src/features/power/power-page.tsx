@@ -1,6 +1,8 @@
 /**
  * Power and batteries (Tools): quick calculators that keep nothing, and power plans, a
  * person's own battery systems kept on the server to come back to, copy and compare.
+ * A plan is shared by every household or for one (the caravan's battery); the list is
+ * the shared plans and the current household's.
  */
 import { MONTHS, PLAN_FILE_MAX_BYTES, type PowerPlan } from "@outpost/shared";
 import { ChevronRight } from "lucide-react";
@@ -12,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/misc";
+import { useHousehold } from "@/features/households/use-household";
 import { errorMessage } from "@/lib/api";
 import { plural } from "@/lib/utils";
 import { type PlanAnswers, workOut } from "./calc/plan";
@@ -133,6 +136,8 @@ export default function PowerPage() {
   const [name, setName] = useState<string | null>(null);
   const [carried, setCarried] = useState<CarriedEnergy | null>(null);
   const worked = useMemo(() => (plans.data ?? []).map((plan) => ({ plan, answers: workOut(inputOf(plan)) })), [plans.data]);
+  const current = useHousehold().data;
+  const householdName = (id: string) => current?.households.find((entry) => entry.id === id)?.name ?? "another household";
 
   const start = (
     <Button variant="primary" onClick={() => setName("")}>
@@ -158,7 +163,11 @@ export default function PowerPage() {
 
       <Section
         title="Power plans"
-        description="Kept on this Outpost, to come back to, copy and compare."
+        description={
+          current?.several
+            ? `Kept on this Outpost, to come back to, copy and compare: those for every household, and those for ${current.household.name}.`
+            : "Kept on this Outpost, to come back to, copy and compare."
+        }
         actions={
           worked.length > 0 ? (
             <div className="flex flex-wrap gap-2">
@@ -201,6 +210,7 @@ export default function PowerPage() {
                     <span className="min-w-0 flex-1">
                       <span className="block break-words text-lead text-ink group-hover:text-primary">{plan.name}</span>
                       <span className="tabular mt-0.5 block text-small text-ink-muted">
+                        {plan.householdId && current?.several ? `For ${householdName(plan.householdId)}. ` : ""}
                         {plural(plan.loads.length, "load")}. <PlanSummary answers={answers} />
                       </span>
                     </span>

@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Textarea } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/misc";
 import { useDeviceName } from "@/features/board/data";
+import { ForHousehold } from "@/features/households/for-household";
 import { keepingSupported, useKept } from "@/features/kept/store";
 import { errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
@@ -146,6 +147,7 @@ export default function DrillPage() {
         title="Offline drill"
         description="What would stop working if the internet went off now: what this household has kept, against what Outpost can do without it. Then a drill to follow with the internet off."
       />
+      <ForHousehold className="-mt-6 mb-6" />
 
       <Section
         title="What Outpost holds"

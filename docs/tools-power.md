@@ -90,6 +90,12 @@ link field.
 **Bring in a plan** reads a plan's JSON file from **Take everything out** and adds it as a
 new plan; nothing already kept changes.
 
+**Households.** A plan is for every household unless you tie it to one, such as the
+caravan's leisure battery: with more than one household, **For** under the plan's name
+chooses. The list shows the plans for every household and those of the household Outpost
+is set to, each tied one marked "For Caravan". A plan brought in from a file is for every
+household.
+
 **Add a load** offers the library of devices, your own devices, a radio saved for the HF
 planner (transmit draw estimated at twice its output, receive to be typed), or figures
 typed by hand. A load from the library keeps where its figures came from, shown under it

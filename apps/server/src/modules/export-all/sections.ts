@@ -355,7 +355,7 @@ const powerPlans = textSection(
   "Each power plan (Tools, Power and batteries) as a JSON file: the battery, the loads, the solar and the charger as typed in. Power and batteries reads each one back in.",
   (ctx, now) => {
     const name = namer();
-    const plans = ctx.services.power.list();
+    const plans = ctx.services.power.listAll();
     return {
       count: plans.length,
       files: plans.map(({ id: _id, createdAt: _created, updatedAt: _updated, ...plan }) => ({

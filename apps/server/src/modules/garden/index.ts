@@ -3,6 +3,9 @@
  * date. The calendar itself (what to sow, plant and harvest in a month) is pure and lives
  * in `@outpost/shared` (garden.ts), so the screen works it out without asking here.
  *
+ * Each household has its own record and last frost (the settings row is keyed by the
+ * household's id); every call works on the current household's.
+ *
  * All of it is the person's own: counted and erased with the rest by modules/manage,
  * counted in the database's figures, and in every backup. See docs/garden.md.
  */
@@ -17,7 +20,7 @@ import {
   type GardenSowingInput,
   parseMonthDay,
 } from "@outpost/shared";
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
@@ -41,7 +44,6 @@ declare module "../../core/context.ts" {
 }
 
 const L = GARDEN_LIMITS;
-const ROW = "household";
 const day = (message: string) =>
   z
     .string()
@@ -103,9 +105,15 @@ const toSowing = (row: Row): GardenSowing => ({
 export async function registerGarden(app: FastifyInstance, ctx: AppContext): Promise<void> {
   const { db, sqlite } = ctx;
   const changed = () => ctx.events.publish({ type: "garden.changed" });
+  const householdId = () => ctx.services.households.currentId();
+  const ours = () => eq(gardenSowings.householdId, householdId());
 
   const rowOf = (id: string): Row => {
-    const row = db.select().from(gardenSowings).where(eq(gardenSowings.id, id)).get();
+    const row = db
+      .select()
+      .from(gardenSowings)
+      .where(and(eq(gardenSowings.id, id), ours()))
+      .get();
     if (!row) throw notFound("That sowing is no longer in the garden record.");
     return row;
   };
@@ -123,7 +131,7 @@ export async function registerGarden(app: FastifyInstance, ctx: AppContext): Pro
   });
 
   const settings = (): GardenSettings => {
-    const row = db.select().from(gardenSettings).where(eq(gardenSettings.id, ROW)).get();
+    const row = db.select().from(gardenSettings).where(eq(gardenSettings.id, householdId())).get();
     return { lastFrost: row?.lastFrost ?? null, updatedAt: row?.updatedAt ?? null };
   };
   const count = (table: string) => (sqlite.prepare(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n;
@@ -131,7 +139,13 @@ export async function registerGarden(app: FastifyInstance, ctx: AppContext): Pro
   const service: GardenService = {
     get: () => ({
       settings: settings(),
-      sowings: db.select().from(gardenSowings).orderBy(desc(gardenSowings.sownOn), asc(gardenSowings.createdAt)).all().map(toSowing),
+      sowings: db
+        .select()
+        .from(gardenSowings)
+        .where(ours())
+        .orderBy(desc(gardenSowings.sownOn), asc(gardenSowings.createdAt))
+        .all()
+        .map(toSowing),
     }),
     saveSettings(input) {
       const before = settings().updatedAt;
@@ -140,19 +154,22 @@ export async function registerGarden(app: FastifyInstance, ctx: AppContext): Pro
           current: settings(),
         });
       const now = before === null ? Date.now() : Math.max(Date.now(), before + 1);
+      ctx.services.households.ensure();
       db.insert(gardenSettings)
-        .values({ id: ROW, lastFrost: input.lastFrost, updatedAt: now })
+        .values({ id: householdId(), lastFrost: input.lastFrost, updatedAt: now })
         .onConflictDoUpdate({ target: gardenSettings.id, set: { lastFrost: input.lastFrost, updatedAt: now } })
         .run();
       changed();
       return settings();
     },
     create(input) {
-      if (count("garden_sowings") >= L.sowings) throw badRequest(`The garden record holds up to ${L.sowings} sowings.`);
+      const held = sqlite.prepare("SELECT count(*) AS n FROM garden_sowings WHERE household_id = ?").get(householdId()) as { n: number };
+      if (held.n >= L.sowings) throw badRequest(`The garden record holds up to ${L.sowings} sowings.`);
       const now = Date.now();
       const id = newId();
+      ctx.services.households.ensure();
       db.insert(gardenSowings)
-        .values({ id, ...columns(input), createdAt: now, updatedAt: now })
+        .values({ id, householdId: householdId(), ...columns(input), createdAt: now, updatedAt: now })
         .run();
       changed();
       return toSowing(rowOf(id));

@@ -3,23 +3,14 @@ import type { GardenResponse, GardenSowing } from "@outpost/shared";
 import { fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { findPlaces, placeName } from "@/components/find-places";
+import { householdOf, householdsAnswer, ONE_HOUSEHOLD, placeHome } from "../households/test-support";
 import { fakeApi, renderScreen } from "../manage/test-support";
 import GardenPage, { heldBackText, sowingParts } from "./garden-page";
 
 const MAY = Date.UTC(2026, 4, 15, 12);
-const home = (lat: number, lon: number) => ({
-  id: "m1",
-  name: "Home",
-  note: "",
-  lat,
-  lon,
-  color: "teal",
-  icon: "home",
-  isFavorite: false,
-  noteId: null,
-  createdAt: 1,
-  updatedAt: 1,
-});
+/** One household, its home in a country. */
+const withHome = (country: string) =>
+  householdsAnswer([householdOf({ id: "household", name: "Home", home: placeHome("Home", country), country })]);
 const catalogue = {
   providers: [],
   linked: [],
@@ -68,7 +59,7 @@ describe("the month", () => {
   it("lists May's sowing, planting and harvest from the RHS calendar, for the UK", async () => {
     fakeApi({
       "GET /api/garden": garden(),
-      "GET /api/maps/markers": { markers: [home(54.45, -3.21)] },
+      "GET /api/households": withHome("GB"),
       "GET /api/reference/catalogue": catalogue,
     });
     renderScreen(<GardenPage />, "/tools/garden");
@@ -83,7 +74,7 @@ describe("the month", () => {
   it("keeps tender crops back until after a late last frost", async () => {
     fakeApi({
       "GET /api/garden": garden({ settings: { lastFrost: "06-05", updatedAt: 2 } }),
-      "GET /api/maps/markers": { markers: [] },
+      "GET /api/households": ONE_HOUSEHOLD,
       "GET /api/reference/catalogue": catalogue,
     });
     renderScreen(<GardenPage />, "/tools/garden");
@@ -96,17 +87,39 @@ describe("the month", () => {
   it("says plainly when home is outside the UK", async () => {
     fakeApi({
       "GET /api/garden": garden(),
-      "GET /api/maps/markers": { markers: [home(46.0, 4.0)] },
+      "GET /api/households": withHome("FR"),
       "GET /api/reference/catalogue": catalogue,
     });
     renderScreen(<GardenPage />, "/tools/garden");
     expect(await screen.findByText("Home is in France, not the UK")).toBeInTheDocument();
+    expect(screen.queryByTestId("for-household")).toBeNull();
+  });
+
+  it("with several households, is for the current one: its name, its country, its record", async () => {
+    const answer = (country: string | null) =>
+      householdsAnswer(
+        [
+          householdOf({ id: "household", name: "Home", home: placeHome("Home", "GB"), country: "GB" }),
+          householdOf({ id: "gran", name: "Gran's", home: country ? placeHome("Gran's", country) : null, country }),
+        ],
+        "gran",
+      );
+    fakeApi({ "GET /api/garden": garden(), "GET /api/households": answer("FR"), "GET /api/reference/catalogue": catalogue });
+    const first = renderScreen(<GardenPage />, "/tools/garden");
+    expect(await screen.findByText("Gran's is in France, not the UK")).toBeInTheDocument();
+    expect(screen.getByTestId("for-household").textContent).toBe("For Gran's · Change");
+    first.unmount();
+
+    fakeApi({ "GET /api/garden": garden(), "GET /api/households": answer(null), "GET /api/reference/catalogue": catalogue });
+    renderScreen(<GardenPage />, "/tools/garden");
+    expect(await screen.findByText(/Outpost cannot tell which country Gran's is in/)).toBeInTheDocument();
+    expect(screen.queryByText(/No saved place has the home icon/)).toBeNull();
   });
 
   it("saves the last frost the person gives", async () => {
     const api = fakeApi({
       "GET /api/garden": garden(),
-      "GET /api/maps/markers": { markers: [] },
+      "GET /api/households": ONE_HOUSEHOLD,
       "GET /api/reference/catalogue": catalogue,
       "PUT /api/garden/settings": { settings: { lastFrost: "05-12", updatedAt: 3 } },
     });
@@ -120,7 +133,7 @@ describe("the month", () => {
 
 describe("the record", () => {
   it("starts empty, with a first action", async () => {
-    fakeApi({ "GET /api/garden": garden(), "GET /api/maps/markers": { markers: [] }, "GET /api/reference/catalogue": catalogue });
+    fakeApi({ "GET /api/garden": garden(), "GET /api/households": ONE_HOUSEHOLD, "GET /api/reference/catalogue": catalogue });
     renderScreen(<GardenPage />, "/tools/garden");
     expect(await screen.findByRole("heading", { name: "Nothing recorded yet" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Record a sowing" })).toBeInTheDocument();
@@ -129,7 +142,7 @@ describe("the record", () => {
   it("lists what was sown with where, and when the RHS harvests it", async () => {
     fakeApi({
       "GET /api/garden": garden({ sowings: [sowing] }),
-      "GET /api/maps/markers": { markers: [] },
+      "GET /api/households": ONE_HOUSEHOLD,
       "GET /api/reference/catalogue": catalogue,
     });
     renderScreen(<GardenPage />, "/tools/garden");
@@ -142,7 +155,7 @@ describe("the record", () => {
   it("records a sowing on the person's press", async () => {
     const api = fakeApi({
       "GET /api/garden": garden(),
-      "GET /api/maps/markers": { markers: [] },
+      "GET /api/households": ONE_HOUSEHOLD,
       "GET /api/reference/catalogue": catalogue,
       "POST /api/garden/sowings": { sowing },
     });
@@ -158,7 +171,7 @@ describe("the record", () => {
   it("changes a sowing with only its fields, and the time it was read so a change made elsewhere is not overwritten", async () => {
     const api = fakeApi({
       "GET /api/garden": garden({ sowings: [sowing] }),
-      "GET /api/maps/markers": { markers: [] },
+      "GET /api/households": ONE_HOUSEHOLD,
       "GET /api/reference/catalogue": catalogue,
       "PUT /api/garden/sowings/s1": { sowing },
     });
@@ -178,7 +191,7 @@ describe("the record", () => {
   it("says when the record cannot be loaded", async () => {
     fakeApi({
       "GET /api/garden": { status: 500, error: { code: "internal", message: "The database is busy." } },
-      "GET /api/maps/markers": { markers: [] },
+      "GET /api/households": ONE_HOUSEHOLD,
       "GET /api/reference/catalogue": catalogue,
     });
     renderScreen(<GardenPage />, "/tools/garden");

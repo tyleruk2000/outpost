@@ -141,22 +141,36 @@ A portable household's home is wherever a person last said it was, so a place us
   then the screen says its figures are for the earlier place;
 - treats a null home as "set where it is now", with a link to the household's page.
 
+## Per household already
+
+Emergency plans, the log of events, routine checks, the offline drill, the garden and
+power plans work on the current household:
+
+- `emergencyPlans.list()` is the current household's; `get(id)` answers any plan, with
+  `household` (`PlanHousehold`: id, name, `several`) so that a phone's copy says whose it
+  is. A new plan's number is `emergencyNumberFor(households.country())`.
+- The log, checks and sowings are read, changed and removed only in the current
+  household (another's id is 404); their limits are per household; `count()` and
+  `eraseAll()` stay across all.
+- `garden_settings` is keyed by the household's id.
+- `power.list()` is the shared plans (null `household_id`) and the current household's;
+  `get(id)` answers any; `listAll()` is for Export everything. `householdId` on a plan
+  input: left out keeps it (new: shared), null shares it, an id ties it (400 if unknown).
+  A plan brought in from a file is shared.
+- Web: `<ForHousehold />` (`features/households/for-household.tsx`) under the titles;
+  `features/households/test-support.ts` has stand-in `GET /api/households` answers.
+
 ## Still the first household
 
 Hard-coded `"household"` ids and Home lookups the per-household packages replace:
 
-- One-row ids: `garden/index.ts` (`ROW`), `export-all/sections.ts` (the comms query).
-  (Supplies and the household papers are keyed by the current household.)
-- Inserts with `FIRST_HOUSEHOLD_ID`: `readiness/checks.ts`, `readiness/log.ts`. Rows
-  inserted elsewhere take the column default, `'household'`.
-- Unfiltered lists: emergency plans, event log, routine checks, garden sowings, power
-  plans. (Medical sheets: `MEDICAL_SHEETS_OF_HOUSEHOLD` in `household-papers/medical.ts`
-  is the SQL for one household's sheets.)
-- Server Home lookups (`homePlaceOf`): `emergency-plans/index.ts`, `weather/service.ts`
-  (two), `readiness/drill.ts`, `tools/where.ts`, `mesh/service.ts` and
-  `games/allotment.ts` (these two take `first()`).
+- One-row ids: `export-all/sections.ts` (the comms query). (Supplies, the household
+  papers and the garden are keyed by the current household.)
+- Rows inserted elsewhere take the column default, `'household'`.
+- Server Home lookups (`homePlaceOf`): `weather/service.ts` (two), `tools/where.ts`,
+  `mesh/service.ts` and `games/allotment.ts` (these two take `first()`).
 - Web Home lookups (`homePlaceOf` or `useHomeCountry`): maps, layers (food panel, dataset
-  manager), garden, frequencies, satellites (page and map), explore suggestions, solar
-  clock, heard (page, APRS weather), weather places.
+  manager), frequencies, satellites (page and map), explore suggestions, solar clock,
+  heard (page, APRS weather), weather places.
 - Erase everything, the database inspector and the table checks already know the new
   tables; Export everything and the drive screen do not yet say which household.

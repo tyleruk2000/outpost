@@ -16,6 +16,7 @@ import { BoardPlanLine } from "@/features/board/elsewhere";
 import { KeepPlanSection } from "@/features/kept/keep-plan";
 import { plural } from "@/lib/utils";
 import { usePlan, usePlanAction, useTick } from "./data";
+import { PlanHouseholdLine } from "./household-line";
 import { PlanInUse, stateLine } from "./use-view";
 import { HomeWarningLine } from "./warning-line";
 
@@ -68,6 +69,7 @@ export default function UsePlanPage() {
               The whole plan
             </BackLink>
             <h1 className="font-title text-title text-ink">{plan.name}</h1>
+            <PlanHouseholdLine household={response.data.household} className="mt-1" />
             <p className="mt-1 text-body text-ink-muted" aria-live="polite">
               {stateLine(plan, ticks, plan.use.startedAt)}
             </p>

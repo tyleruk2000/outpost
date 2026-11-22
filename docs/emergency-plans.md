@@ -23,7 +23,8 @@ Every part may be empty.
   services** where you are; how often to ask for a review.
 - **Steps** for before, during and after, in order.
 - **The household**: each person, what they need to remember, anything medical for their
-  wallet card, and their number from Contacts.
+  wallet card, and their number from Contacts. The people of the plan's household are
+  offered by name (**Add Maya**); anyone else can be typed in. Pets are not offered.
 - **Who to contact, in order**, one marked as the out-of-area contact.
 - **Where to meet** if the home or the neighbourhood cannot be used.
 - **If the phones fail**: what you will do, a radio channel and when to listen, and a
@@ -39,6 +40,12 @@ dropped silently.
 
 **Review.** A plan shows when it was last opened and last looked over, and after the
 period you chose (3 months, 6 months, a year, or never) asks to be looked over.
+
+**Households.** Each household has its own plans. The list shows the plans of the
+household Outpost is set to; with more than one household, "For Caravan · Change" under
+the title says which. A plan opened from a link that belongs to another household says so.
+A copy of a plan is made in the current household. A plan kept on a phone carries its
+household's name, and says it out of reach too.
 
 ## Templates
 
@@ -98,8 +105,8 @@ spare key and who checks on neighbours.
 
 ### The number for the emergency services
 
-Each plan keeps its own, offered from Home's country (else your device's language) and
-changeable; with neither, 112. 999 or 112 in the UK, 112 across the European Union and in Switzerland and South Africa, 911 in the
+Each plan keeps its own, offered from the household's country (its own choice, else the
+country its home is in, else your device's language) and changeable; with none, 112. 999 or 112 in the UK, 112 across the European Union and in Switzerland and South Africa, 911 in the
 United States, 000 in Australia, 111 in New Zealand.
 
 ## Supplies, beside the inventory

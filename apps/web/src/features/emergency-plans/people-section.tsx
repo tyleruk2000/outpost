@@ -3,16 +3,20 @@
  * contact, in order, chosen from Contacts (linked, not copied) or typed; and the
  * out-of-area contact. A linked contact deleted from Contacts since is shown as missing,
  * by the name it had, and is not dropped.
+ *
+ * The people of the plan's household (Households) are offered by name, one press each;
+ * a name may be typed too. The name is copied into the plan, as a typed one is.
  */
 import type { PlanContact, PlanPerson, PlanResolved } from "@outpost/shared";
 import { CircleAlert, Link2 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Switch } from "@/components/ui/misc";
+import { useHouseholds, usePeople } from "@/features/households/use-household";
 import { errorMessage } from "@/lib/api";
 import { useDebounced } from "@/lib/use-debounced";
 import { localId } from "@/lib/utils";
@@ -248,23 +252,79 @@ export function ContactsSection({
   );
 }
 
+/**
+ * The people of a household not yet in the plan, by name, in the household's order.
+ * Pets are left out: a plan's people each get a wallet card. Pure, for the tests.
+ */
+export function householdPeopleToOffer(
+  personIds: readonly string[],
+  everyone: ReadonlyArray<{ id: string; name: string; kind: string }>,
+  inPlan: readonly PlanPerson[],
+): Array<{ id: string; name: string }> {
+  const taken = new Set(inPlan.map((person) => person.name.trim().toLocaleLowerCase()));
+  const byId = new Map(everyone.map((person) => [person.id, person]));
+  return personIds
+    .map((id) => byId.get(id))
+    .filter((person): person is { id: string; name: string; kind: string } => person !== undefined && person.kind === "person")
+    .filter((person) => person.name.trim() !== "" && !taken.has(person.name.trim().toLocaleLowerCase()))
+    .map((person) => ({ id: person.id, name: person.name.trim() }));
+}
+
+/** The plan's household's people, offered by name. Nothing while they load or when everyone is in. */
+function FromHousehold({
+  householdId,
+  people,
+  onAdd,
+}: {
+  householdId: string | undefined;
+  people: PlanPerson[];
+  onAdd: (name: string) => void;
+}) {
+  const households = useHouseholds();
+  const everyone = usePeople();
+  const household = households.data
+    ? (households.data.households.find((entry) => entry.id === (householdId ?? households.data.currentId)) ?? null)
+    : null;
+  const offered = useMemo(
+    () => (household && everyone.data ? householdPeopleToOffer(household.personIds, everyone.data, people) : []),
+    [household, everyone.data, people],
+  );
+  if (offered.length === 0) return null;
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-2" data-testid="household-people">
+      <span className="text-small text-ink-muted">
+        {households.data && households.data.households.length > 1 ? `In ${household?.name}:` : "In the household:"}
+      </span>
+      {offered.map((person) => (
+        <Button key={person.id} size="sm" onClick={() => onAdd(person.name)}>
+          Add {person.name}
+        </Button>
+      ))}
+    </div>
+  );
+}
+
 export function PeopleSection({
   people,
   resolved,
+  householdId,
   onChange,
 }: {
   people: PlanPerson[];
   resolved: PlanResolved;
+  /** The household the plan is for, whose people are offered; left out, the current one. */
+  householdId?: string;
   onChange: (people: PlanPerson[]) => void;
 }) {
   const [linking, setLinking] = useState<number | null>(null);
-  const add = () => onChange([...people, { id: localId(), name: "", remember: "", medical: "", contactId: null }]);
+  const add = (name = "") => onChange([...people, { id: localId(), name, remember: "", medical: "", contactId: null }]);
   return (
     <Section
       title="The household"
       description="Each person, and what they need to remember. Each gets a wallet card; anything medical goes only on their own card, and only if they choose."
-      actions={<Button onClick={add}>Add a person</Button>}
+      actions={<Button onClick={() => add()}>Add a person</Button>}
     >
+      <FromHousehold householdId={householdId} people={people} onAdd={add} />
       {people.length === 0 ? (
         <p className="text-small text-ink-muted">Nobody yet. Add the people this plan is for.</p>
       ) : (

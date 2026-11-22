@@ -4,6 +4,10 @@
 Horticultural Society's calendar, and keeps a record of what you sowed. The calendar works
 with no internet.
 
+Each household has its own record and last frost, and the calendar is checked against
+its country. With more than one household, the line under the title says which one the
+screen is for.
+
 ## The month
 
 It opens on this month; **Month** shows another.

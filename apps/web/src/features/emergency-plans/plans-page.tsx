@@ -12,11 +12,11 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/misc";
-import { useHomeCountry } from "@/features/frequencies/home-country";
 import { BookPlansLine } from "@/features/household-book/book-line";
+import { ForHousehold } from "@/features/households/for-household";
 import { errorMessage } from "@/lib/api";
 import { formatDate, localId, plural } from "@/lib/utils";
-import { useCreatePlan, usePlans } from "./data";
+import { useCreatePlan, useHouseholdCountry, usePlans } from "./data";
 import { TemplateLicences, templateSources } from "./licences";
 import { HomeWarningLine } from "./warning-line";
 import { blankPlan, guessEmergencyNumber, templatesFor, templatesWhereLine } from "./words";
@@ -82,9 +82,9 @@ function NewPlanDialog({
     }
     onOpenChange(next);
   };
-  const home = useHomeCountry();
+  const { country: home, householdName } = useHouseholdCountry();
   const number = guessEmergencyNumber(undefined, home?.code);
-  const whereLine = templatesWhereLine(home);
+  const whereLine = templatesWhereLine(home, undefined, householdName);
   const make = () => {
     if (!chosen) return;
     const input = chosen === "blank" ? blankPlan(name.trim() || "Our plan", number) : planFromTemplate(chosen, localId, number);
@@ -183,6 +183,7 @@ export default function EmergencyPlansPage() {
         description="What your household will do in a power cut, a flood, a storm or when the phones are down: written ahead, read on the day."
         actions={plans.data && plans.data.length > 0 ? start : undefined}
       />
+      <ForHousehold className="-mt-6 mb-6" />
       <HomeWarningLine className="mb-4 max-w-[65ch]" />
       {plans.data && plans.data.length > 0 ? <BookPlansLine className="mb-4" /> : null}
       {plans.isPending ? (

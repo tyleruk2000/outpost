@@ -40,7 +40,7 @@ function detailOf(item: KeptItem): string {
   if (item.kind === "medical")
     return `${plural(item.count, "sheet")}${item.locked > 0 ? `, ${item.locked} of them locked: they open here with their passphrase` : ""}`;
   if (item.kind === "plan")
-    return `An emergency plan, ${plural(item.steps, "step")}, with its people's names and numbers${item.pending > 0 ? `; ${plural(item.pending, "tick")} made here waiting to be sent` : ""}`;
+    return `An emergency plan${item.household ? ` for ${item.household}` : ""}, ${plural(item.steps, "step")}, with its people's names and numbers${item.pending > 0 ? `; ${plural(item.pending, "tick")} made here waiting to be sent` : ""}`;
   return `${formatBboxSize(item.bbox)}, zoom 0 to ${item.maxZoom}, ${plural(item.tiles, "tile")}${item.terrainMaxZoom !== null ? ", with terrain" : ""}`;
 }
 
