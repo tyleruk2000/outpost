@@ -31,9 +31,14 @@ import { downlink, nodeId, parseTopic, parseUplink } from "../src/modules/mesh/m
 import { createBroker, type MqttBroker } from "../src/modules/mesh/mqtt/broker.ts";
 import { createClient, type MqttClient } from "../src/modules/mesh/mqtt/client.ts";
 import { listDevices, sttyArguments } from "../src/modules/mesh/serial.ts";
+import { freePort } from "./free-port.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
-const BROKER_PORT = 9398;
+/** The port Outpost's own broker is set up on: one the system says is free, not a fixed number. */
+let BROKER_PORT = 0;
+beforeAll(async () => {
+  BROKER_PORT = await freePort();
+});
 const PASSWORD = "kettle-on-at-four-517";
 const CLIENT_PASSWORD = "household-broker-secret-88";
 const ROOT = "msh/EU_868";

@@ -12,6 +12,7 @@ import { markdownToDoc } from "../src/modules/notes/content/index.ts";
 import { LARGE_GPX, LONG_TRACK } from "./fixtures/maps/gpx-large.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 import { tempDir } from "./temp.ts";
+import { threadMs } from "./thread-time.ts";
 
 let app: TestApp | undefined;
 afterEach(async () => {
@@ -149,20 +150,21 @@ describe("restoring a backup someone else made", () => {
 });
 
 describe("hostile files cannot freeze or exhaust the server", () => {
+  // Timed as this thread's work, not by the clock, which runs on while a busy machine runs other things.
   it("scans Markdown made of unclosed code fences in linear time", () => {
     const hostile = "```x\n".repeat(60_000);
-    const started = performance.now();
+    const started = threadMs();
     scanConstructs("markdown", hostile);
     // The old pattern took about nine seconds on a file this size.
-    expect(performance.now() - started).toBeLessThan(500);
+    expect(threadMs() - started).toBeLessThan(500);
   });
 
   it("converts Markdown full of unclosed <summary> tags in linear time", () => {
     const hostile = `<details>${"<summary>".repeat(60_000)}\n\ntext\n\n</details>`;
-    const started = performance.now();
+    const started = threadMs();
     const { doc } = markdownToDoc(hostile);
     expect(doc.type).toBe("doc");
-    expect(performance.now() - started).toBeLessThan(1500);
+    expect(threadMs() - started).toBeLessThan(1500);
   });
 
   it("still reads fenced code and summaries correctly", () => {
