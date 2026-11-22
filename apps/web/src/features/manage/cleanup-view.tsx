@@ -43,7 +43,8 @@ function Rung({
           <p className="mt-1 text-small text-pretty text-ink-muted">{summary}</p>
         </div>
         <div className="@container grid max-w-[44rem] gap-4">
-          <div className="grid gap-x-8 gap-y-3 text-small @xl:grid-cols-2">
+          {/* Two columns only where each gets 18rem (two of them and the 2rem gap): narrower, and they stack. */}
+          <div className="grid gap-x-8 gap-y-3 text-small @[38rem]:grid-cols-2">
             <div>
               <h3 className="font-semibold text-ink">Removes</h3>
               <ul className="mt-1 grid gap-1 text-pretty text-ink">
