@@ -5,7 +5,7 @@
  */
 import { type ClearLeftoversResponse, formatBytes, type Leftover, type LeftoverKind, type LeftoversResponse } from "@outpost/shared";
 import { CircleAlert } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Link } from "react-router";
 import { EmptyState, ErrorState, Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -21,11 +21,13 @@ const sizeOf = (items: Leftover[]) => items.reduce((sum, item) => sum + (item.by
 
 function LeftoverRow({ item, checked, onToggle }: { item: Leftover; checked: boolean; onToggle: (on: boolean) => void }) {
   const cost = item.kind === "cache" && item.what ? cacheCost[item.what] : undefined;
+  const id = useId();
   return (
     <li className="flex items-start gap-3 py-2.5">
-      <span className="grid size-11 shrink-0 place-content-center md:size-9">
-        <Checkbox checked={checked} onCheckedChange={(next) => onToggle(next === true)} aria-label={`Select ${item.title}`} />
-      </span>
+      {/* The whole square is the target, not only the box drawn in it. */}
+      <label htmlFor={id} className="grid size-11 shrink-0 cursor-pointer place-content-center md:size-9">
+        <Checkbox id={id} checked={checked} onCheckedChange={(next) => onToggle(next === true)} aria-label={`Select ${item.title}`} />
+      </label>
       <div className="min-w-0 flex-1 pt-2 md:pt-1.5">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4">
           <span className="min-w-0 font-medium break-words text-ink">{item.title}</span>
@@ -95,13 +97,14 @@ function Group({
       <p className="mt-1 max-w-[62ch] text-small text-pretty text-ink-muted">{words.description}</p>
 
       <div className="mt-3 flex items-center gap-3 border-b border-border pb-1.5">
-        <span className="grid size-11 shrink-0 place-content-center md:size-9">
+        <label htmlFor={`${headingId}-all`} className="grid size-11 shrink-0 cursor-pointer place-content-center md:size-9">
           <Checkbox
+            id={`${headingId}-all`}
             checked={all ? true : chosen.length > 0 ? "indeterminate" : false}
             onCheckedChange={(next) => setSelected(next === true ? new Set(items.map((item) => item.id)) : new Set())}
             aria-label={`Select all: ${words.title}`}
           />
-        </span>
+        </label>
         <p className="tabular flex-1 text-small text-ink-muted" aria-live="polite">
           {chosen.length > 0
             ? `${plural(chosen.length, "item")} selected${sizeOf(chosen) > 0 ? `, ${formatBytes(sizeOf(chosen))}` : ""}`

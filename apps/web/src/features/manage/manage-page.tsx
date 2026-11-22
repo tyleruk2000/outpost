@@ -75,22 +75,22 @@ export default function ManagePage() {
             </TabsTrigger>
           ))}
         </TabsList>
-        <TabsContent value="space" className="focus:outline-none">
+        <TabsContent value="space" className="focus-visible:outline-offset-4">
           <Suspense fallback={fallback}>
             <SpaceView />
           </Suspense>
         </TabsContent>
-        <TabsContent value="installed" className="focus:outline-none">
+        <TabsContent value="installed" className="focus-visible:outline-offset-4">
           <Suspense fallback={fallback}>
             <ItemsView busy={Boolean(cleanup.data?.active)} />
           </Suspense>
         </TabsContent>
-        <TabsContent value="leftovers" className="focus:outline-none">
+        <TabsContent value="leftovers" className="focus-visible:outline-offset-4">
           <Suspense fallback={fallback}>
             <LeftoversView />
           </Suspense>
         </TabsContent>
-        <TabsContent value="clean-up" className="focus:outline-none">
+        <TabsContent value="clean-up" className="focus-visible:outline-offset-4">
           <Suspense fallback={fallback}>
             <CleanupView status={cleanup.data} loading={cleanup.isPending} />
           </Suspense>

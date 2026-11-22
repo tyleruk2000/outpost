@@ -302,7 +302,10 @@ export default function ExplorePage() {
                   ? `Sizes and versions checked ${timeAgo(lastRefreshed)}`
                   : "Sizes are estimates until the catalogue is refreshed"}
               </p>
-              <Link to={manageLink("installed")} className="text-small text-primary underline underline-offset-2">
+              <Link
+                to={manageLink("installed")}
+                className="inline-flex min-h-6 items-center text-small text-primary underline underline-offset-2 max-md:min-h-11"
+              >
                 Manage what is downloaded
               </Link>
             </div>
