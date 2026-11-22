@@ -223,9 +223,13 @@ describe("the household's broker, from Settings", () => {
     // The same broker keeps it; another one with the password typed, or with it cleared, is saved.
     expect((await app.api("PUT", "/api/mesh/meshtastic", { mode: "off", client: { ...base, tls: true } })).status).toBe(200);
     expect(secrets.clientPassword()).toBe(OUTPOST_PASSWORD);
-    expect((await app.api("PUT", "/api/mesh/meshtastic", { mode: "off", client: { ...base, host: "192.0.2.7", password: "" } })).status).toBe(200);
+    expect(
+      (await app.api("PUT", "/api/mesh/meshtastic", { mode: "off", client: { ...base, host: "192.0.2.7", password: "" } })).status,
+    ).toBe(200);
     expect(secrets.clientPassword()).toBeNull();
-    expect((await app.api("PUT", "/api/mesh/meshtastic", { mode: "off", client: { ...base, password: OUTPOST_PASSWORD } })).status).toBe(200);
+    expect((await app.api("PUT", "/api/mesh/meshtastic", { mode: "off", client: { ...base, password: OUTPOST_PASSWORD } })).status).toBe(
+      200,
+    );
     expect(secrets.clientPassword()).toBe(OUTPOST_PASSWORD);
   });
 

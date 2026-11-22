@@ -193,7 +193,9 @@ export function createMeshService(ctx: AppContext, options: { open?: Opener } = 
         .trim()
         .replace(/^\[|\]$/g, "")
         .toLowerCase();
-    return host(client.host) === host(saved.host) && client.port === saved.port && client.userName === saved.userName && (tls || !saved.tls);
+    return (
+      host(client.host) === host(saved.host) && client.port === saved.port && client.userName === saved.userName && (tls || !saved.tls)
+    );
   }
 
   function channels(): MeshChannel[] {

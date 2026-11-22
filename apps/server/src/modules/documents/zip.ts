@@ -6,7 +6,9 @@
  * Reads are counted against a budget so that a small file which inflates to gigabytes
  * (a "zip bomb") is abandoned rather than read.
  */
+import type { FileHandle } from "node:fs/promises";
 import path from "node:path";
+import { Readable } from "node:stream";
 import yauzl from "yauzl";
 import { ExtractionError } from "./extract-types.ts";
 import { isEpubMimetype } from "./file-types.ts";
@@ -139,11 +141,58 @@ async function readerOf(zip: yauzl.ZipFile, totalBudget: number): Promise<ZipRea
   };
 }
 
-/** Whether a zip file is an EPUB: its `mimetype` entry says `application/epub+zip`. */
-export async function isEpubArchive(file: string): Promise<boolean> {
+/** yauzl reading through a file handle already open, which it leaves open. */
+class HandleReader extends yauzl.RandomAccessReader {
+  handle: FileHandle;
+  constructor(handle: FileHandle) {
+    super();
+    this.handle = handle;
+  }
+  override _readStreamForRange(start: number, end: number) {
+    // Read with positioned reads, not handle.createReadStream: yauzl destroys streams it is done
+    // with, and a destroyed FileHandle stream can take the handle with it.
+    const handle = this.handle;
+    let position = start;
+    return new Readable({
+      async read(size) {
+        try {
+          const length = Math.min(size, 64 * 1024, end - position);
+          if (length <= 0) return void this.push(null);
+          const buffer = Buffer.alloc(length);
+          const { bytesRead } = await handle.read(buffer, 0, length, position);
+          if (bytesRead === 0) return void this.push(null);
+          position += bytesRead;
+          this.push(buffer.subarray(0, bytesRead));
+        } catch (error) {
+          this.destroy(error as Error);
+        }
+      },
+    });
+  }
+}
+
+function openHandle(handle: FileHandle, size: number): Promise<yauzl.ZipFile> {
+  return new Promise((resolve, reject) => {
+    yauzl.fromRandomAccessReader(
+      new HandleReader(handle),
+      size,
+      { lazyEntries: true, autoClose: false, decodeStrings: false, validateEntrySizes: true },
+      (error, zip) => {
+        if (error || !zip) reject(new ExtractionError("This file is not a readable zip archive; it may be damaged."));
+        else resolve(zip);
+      },
+    );
+  });
+}
+
+/**
+ * Whether a zip file is an EPUB: its `mimetype` entry says `application/epub+zip`. Given a
+ * handle already open (and its size), it is read through that, and the handle left open.
+ */
+export async function isEpubArchive(file: string | { handle: FileHandle; size: number }): Promise<boolean> {
   let zip: ZipReader;
   try {
-    zip = await openZip(file);
+    zip = typeof file === "string" ? await openZip(file) : await readerOf(await openHandle(file.handle, file.size), MAX_ZIP_TOTAL_BYTES);
   } catch {
     return false;
   }
