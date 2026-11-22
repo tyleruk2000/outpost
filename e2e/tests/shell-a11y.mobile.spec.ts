@@ -51,6 +51,19 @@ test("each screen names the tab and is announced, and focus is never left under 
   expect(errors).toEqual([]);
 });
 
+test("the set-up guide fits a phone with the text at 200%, its long addresses broken", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => {
+    const apply = () => document.documentElement.style.setProperty("font-size", "32px", "important");
+    if (document.documentElement) apply();
+    document.addEventListener("DOMContentLoaded", apply);
+  });
+  await page.goto("/help/search-and-answers");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+});
+
 test("search results with their filter tabs do not scroll the page sideways on a narrow phone", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
   await page.goto("/search?q=water");

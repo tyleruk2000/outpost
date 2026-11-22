@@ -28,7 +28,8 @@ import { SETTINGS_MODEL } from "@/features/chat/chat-data";
 import { CommandLine, RecommendedModels } from "@/features/setup/recommended-models";
 import { api } from "@/lib/api";
 
-const link = "text-primary underline decoration-1 underline-offset-2 hover:decoration-2";
+// A long address ("ollama.com/download") breaks rather than running off a narrow screen with large text.
+const link = "text-primary underline decoration-1 underline-offset-2 [overflow-wrap:anywhere] hover:decoration-2";
 
 /** Text with its three marks drawn: a thing to press, a thing to type, a link that leaves Outpost. */
 export function GuideText({ text }: { text: string }) {

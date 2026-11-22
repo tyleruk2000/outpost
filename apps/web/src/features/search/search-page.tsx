@@ -104,7 +104,7 @@ function ResultRow({ result, heading: Heading = "h2" }: { result: SearchResult; 
 
 function Pager({ page, pages, onPage }: { page: number; pages: number; onPage: (page: number) => void }) {
   return (
-    <nav aria-label="Result pages" className="mt-6 flex items-center gap-3">
+    <nav aria-label="Result pages" className="mt-6 flex flex-wrap items-center gap-3">
       <Button disabled={page <= 1} onClick={() => onPage(page - 1)}>
         Previous
       </Button>
