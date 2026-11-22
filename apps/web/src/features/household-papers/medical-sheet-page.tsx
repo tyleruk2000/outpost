@@ -222,7 +222,7 @@ function Editor({ sheet, record: start, opened }: { sheet: MedicalSheet; record:
         <ul className="grid gap-3">
           {record.allergies.map((line, index) => (
             <li key={line.id} className="flex flex-wrap items-end gap-2">
-              <Field label="Allergy to" className="min-w-[10rem] flex-1">
+              <Field label="Allergy to" className="min-w-[min(100%,10rem)] flex-1">
                 {(ids) => (
                   <Input
                     {...ids}
@@ -232,7 +232,7 @@ function Editor({ sheet, record: start, opened }: { sheet: MedicalSheet; record:
                   />
                 )}
               </Field>
-              <Field label="What happens" optional className="min-w-[12rem] flex-[2]">
+              <Field label="What happens" optional className="min-w-[min(100%,12rem)] flex-[2]">
                 {(ids) => (
                   <Input
                     {...ids}
@@ -274,10 +274,10 @@ function Editor({ sheet, record: start, opened }: { sheet: MedicalSheet; record:
             return (
               <li key={line.id} className="grid gap-3 border-b border-border pb-5 last:border-b-0">
                 <div className="flex flex-wrap items-end gap-2">
-                  <Field label="Medicine" className="min-w-[10rem] flex-1">
+                  <Field label="Medicine" className="min-w-[min(100%,10rem)] flex-1">
                     {(ids) => <Input {...ids} value={line.name} maxLength={120} onChange={(event) => set({ name: event.target.value })} />}
                   </Field>
-                  <Field label="Dose" optional className="min-w-[8rem] flex-1">
+                  <Field label="Dose" optional className="min-w-[min(100%,8rem)] flex-1">
                     {(ids) => (
                       <Input
                         {...ids}
@@ -395,7 +395,7 @@ function Editor({ sheet, record: start, opened }: { sheet: MedicalSheet; record:
         <ul className="grid gap-3">
           {record.conditions.map((line, index) => (
             <li key={line.id} className="flex flex-wrap items-end gap-2">
-              <Field label="Condition" className="min-w-[10rem] flex-1">
+              <Field label="Condition" className="min-w-[min(100%,10rem)] flex-1">
                 {(ids) => (
                   <Input
                     {...ids}
@@ -405,7 +405,7 @@ function Editor({ sheet, record: start, opened }: { sheet: MedicalSheet; record:
                   />
                 )}
               </Field>
-              <Field label="What to know" optional className="min-w-[12rem] flex-[2]">
+              <Field label="What to know" optional className="min-w-[min(100%,12rem)] flex-[2]">
                 {(ids) => (
                   <Input
                     {...ids}
@@ -445,12 +445,12 @@ function Editor({ sheet, record: start, opened }: { sheet: MedicalSheet; record:
             const now = reach(kin, contacts);
             return (
               <li key={kin.id} className="flex flex-wrap items-end gap-2">
-                <p className="min-w-[10rem] flex-1 text-small text-ink">
+                <p className="min-w-[min(100%,10rem)] flex-1 text-small text-ink">
                   {now.name}
                   {now.phone ? <span className="tabular">, {now.phone}</span> : null}
                   {now.missing ? <span className="text-warning">: no longer in Contacts</span> : null}
                 </p>
-                <Field label="Who they are" optional className="min-w-[10rem] flex-1">
+                <Field label="Who they are" optional className="min-w-[min(100%,10rem)] flex-1">
                   {(ids) => (
                     <Input
                       {...ids}

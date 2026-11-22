@@ -28,10 +28,23 @@ export function RowTools({
 }) {
   return (
     <div className="flex shrink-0 items-center">
-      <Button size="icon" variant="ghost" aria-label={`Move up: ${name}`} disabled={first} onClick={() => onMove(-1)}>
+      {/* At either end a move is marked unavailable, not disabled: a row moved there from the keyboard keeps the focus. */}
+      <Button
+        size="icon"
+        variant="ghost"
+        aria-label={`Move up: ${name}`}
+        aria-disabled={first || undefined}
+        onClick={() => !first && onMove(-1)}
+      >
         <ArrowUp />
       </Button>
-      <Button size="icon" variant="ghost" aria-label={`Move down: ${name}`} disabled={last} onClick={() => onMove(1)}>
+      <Button
+        size="icon"
+        variant="ghost"
+        aria-label={`Move down: ${name}`}
+        aria-disabled={last || undefined}
+        onClick={() => !last && onMove(1)}
+      >
         <ArrowDown />
       </Button>
       <Button size="icon" variant="ghost" aria-label={`Remove: ${name}`} onClick={onRemove}>

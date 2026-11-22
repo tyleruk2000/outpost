@@ -94,18 +94,22 @@ function Phase({
       {steps.length === 0 ? <p className="mt-1 text-small text-ink-muted">No steps for {phase.label.toLowerCase()} yet.</p> : null}
       <ol className="mt-2 divide-y divide-border border-y border-border">
         {steps.map(({ step, at }, index) => (
-          <li key={step.id} className="flex gap-2 py-2.5">
-            <span className="tabular w-6 shrink-0 pt-2 text-right text-small text-ink-muted">{index + 1}.</span>
-            <div className="min-w-0 flex-1">
-              <Textarea
-                aria-label={`${phase.label}, step ${index + 1}`}
-                value={step.text}
-                rows={2}
-                className="min-h-0"
-                maxLength={600}
-                onChange={(event) => onChange(replaceAt(all, at, { ...step, text: event.target.value }))}
-              />
-              <Standing step={step} />
+          // With large text on a small phone the step takes the row and its tools go under it, rather than the step
+          // being squeezed to a letter's width beside them.
+          <li key={step.id} className="flex flex-wrap justify-end gap-x-2 gap-y-1 py-2.5">
+            <div className="flex min-w-[min(100%,12rem)] flex-1 gap-2">
+              <span className="tabular w-6 shrink-0 pt-2 text-right text-small text-ink-muted">{index + 1}.</span>
+              <div className="min-w-0 flex-1">
+                <Textarea
+                  aria-label={`${phase.label}, step ${index + 1}`}
+                  value={step.text}
+                  rows={2}
+                  className="min-h-0"
+                  maxLength={600}
+                  onChange={(event) => onChange(replaceAt(all, at, { ...step, text: event.target.value }))}
+                />
+                <Standing step={step} />
+              </div>
             </div>
             <RowTools
               name={step.text.slice(0, 40)}

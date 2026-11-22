@@ -22,6 +22,7 @@ import { type DrawLine, writeLettered } from "@/features/maps/print/lettering";
 import type { Sheet } from "@/features/maps/print/sheet";
 import { fridgeSheets, grabSheets, walletSheets } from "./cards";
 import CardsPage from "./cards-page";
+import { RowTools } from "./list-edit";
 import PlanPage from "./plan-page";
 import PlansPage from "./plans-page";
 import { readableOf } from "./printable";
@@ -676,5 +677,20 @@ describe("the line about warnings held for the home place", () => {
     });
     show("/prepare/plans/p1/use", <UsePlanPage />, "/prepare/plans/:id/use");
     expect(await screen.findByTestId("home-warning-line")).toHaveTextContent(/when Outpost last checked, 1 hour ago/);
+  });
+});
+
+describe("moving a row", () => {
+  it("keeps the focus on Move up when the row reaches the top, and moves nothing further", async () => {
+    const onMove = vi.fn();
+    render(<RowTools name="Fill the bath" first last={false} onMove={onMove} onRemove={() => undefined} />);
+    const up = screen.getByRole("button", { name: "Move up: Fill the bath" });
+    expect(up).toHaveAttribute("aria-disabled", "true");
+    up.focus();
+    await userEvent.keyboard("{Enter}");
+    expect(onMove).not.toHaveBeenCalled();
+    expect(up).toHaveFocus();
+    await userEvent.click(screen.getByRole("button", { name: "Move down: Fill the bath" }));
+    expect(onMove).toHaveBeenCalledWith(1);
   });
 });

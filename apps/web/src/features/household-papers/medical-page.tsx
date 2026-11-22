@@ -146,7 +146,7 @@ export default function MedicalPage() {
               <Field
                 label="Someone else"
                 hint="A relative you look after, a lodger: anyone not counted in the household."
-                className="min-w-[14rem] flex-1"
+                className="min-w-[min(100%,14rem)] flex-1"
               >
                 {(ids) => (
                   <Input

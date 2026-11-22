@@ -130,7 +130,7 @@ function StepEditor({
   return (
     <li className="grid gap-3 py-4">
       <div className="flex flex-wrap items-end gap-3">
-        <Field label={level.label} hint={level.about} className="min-w-[12rem] flex-1">
+        <Field label={level.label} hint={level.about} className="min-w-[min(100%,12rem)] flex-1">
           {(ids) => (
             <Select
               {...ids}
@@ -150,7 +150,7 @@ function StepEditor({
           )}
         </Field>
         {step ? (
-          <Field label="When" optional className="min-w-[10rem] flex-1">
+          <Field label="When" optional className="min-w-[min(100%,10rem)] flex-1">
             {(ids) => (
               <Input
                 {...ids}
@@ -316,7 +316,7 @@ function SituationEditor({
   return (
     <li className="rounded-panel border border-border p-4 md:p-5">
       <div className="flex flex-wrap items-end gap-2">
-        <Field label="Situation" className="min-w-[12rem] flex-1">
+        <Field label="Situation" className="min-w-[min(100%,12rem)] flex-1">
           {(ids) => (
             <Input
               {...ids}
