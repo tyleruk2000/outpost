@@ -521,7 +521,9 @@ export function cutCard(panels: Content[][], size: { width: number; height: numb
       dash: { length: 3, space: 2 },
     });
   return {
+    // The marks first, taking the card's room; the card is laid over them, drawn back up by that room.
     stack: [
+      { canvas: marks },
       {
         table: {
           widths: [width - 2 * inset],
@@ -537,8 +539,8 @@ export function cutCard(panels: Content[][], size: { width: number; height: numb
           paddingTop: () => inset,
           paddingBottom: () => inset,
         },
+        margin: [0, -(total + gap + mark), 0, 0],
       },
-      { canvas: marks, relativePosition: { x: 0, y: -total } },
     ],
     unbreakable: true,
     width,

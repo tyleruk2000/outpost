@@ -167,7 +167,7 @@ export interface BookInputs {
   /** Repeaters near home from Outpost's list, nearest first; null when the list could not be read. */
   repeaters: RepeaterDto[] | null;
   /** The map of home and the meeting points, drawn from the offline map before the book is made; absent, there is none. */
-  placesMap?: { block: Block; pictures: ReadonlyMap<string, PdfPicture> } | null;
+  placesMap?: { block: Block; pictures: ReadonlyMap<string, PdfPicture>; missing?: string | null } | null;
 }
 
 export interface MadeBook {
@@ -439,6 +439,39 @@ function bandLabel(band: string): string | null {
   return labels[band] ?? null;
 }
 
+/**
+ * The places on the map of home and the meeting points, numbered as the map numbers them:
+ * home, then the meeting points from the questions, then each plan's places once each.
+ */
+export function bookMapPlaces(
+  answers: Pick<BookAnswers, "meetingPoints">,
+  markers: MarkerDto[],
+  plans: EmergencyPlanResponse[],
+): ReturnType<typeof binderPlaces> {
+  const { mapped, described } = binderPlaces({ markers, plans });
+  const [home, ...fromPlans] = mapped[0]?.role === "Home" ? mapped : [undefined, ...mapped];
+  const meeting = answers.meetingPoints
+    .map((point) => ({ point, marker: markers.find((marker) => marker.id === point.markerId) }))
+    .filter((entry) => entry.marker)
+    .map((entry) => ({
+      number: 0,
+      role: entry.point.role === "near" ? "Meet near home" : "Meet outside the area",
+      name: entry.marker!.name,
+      lat: entry.marker!.lat,
+      lon: entry.marker!.lon,
+      note: entry.point.note,
+    }));
+  const seen = new Set<string>();
+  const all = [...(home ? [home] : []), ...meeting, ...fromPlans].filter((place): place is NonNullable<typeof place> => {
+    if (!place) return false;
+    const key = `${place.lat.toFixed(5)},${place.lon.toFixed(5)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return { mapped: all.map((place, index) => ({ ...place, number: index + 1 })), described };
+}
+
 /** The plans that go in the book, by the answers. */
 const bookPlans = (c: Context) => {
   const included = new Set(
@@ -573,7 +606,7 @@ const positions = (lat: number, lon: number) =>
 function places(c: Context): Section {
   const content: Content[] = [];
   const summary: string[] = [];
-  const { mapped, described } = binderPlaces({ markers: c.markers, plans: bookPlans(c) });
+  const { mapped, described } = bookMapPlaces(c.answers, c.markers, bookPlans(c));
   if (c.placesMap) {
     const block = c.placesMap.block;
     if (block.kind === "drawing") {
@@ -582,7 +615,7 @@ function places(c: Context): Section {
       content.push(
         figure(sheetItemsToSvg(items, { x: 0, y: 0, width: c.measure, height: block.height }, pictures), {
           width: c.measure,
-          caption: block.words ?? "A map of home and the meeting points, numbered as in the list below.",
+          caption: c.placesMap.missing ?? undefined,
         }),
       );
     }
@@ -1951,7 +1984,11 @@ function sourcesSection(c: Context): Section {
   figures.push("The drawings are Outpost's own, each of the words printed beside it.");
   content.push(label("Figures, places and drawings"), bullets(figures));
   if (c.attributions.size > 0) content.push(label("Licences"), bullets([...c.attributions]));
-  content.push(note("The typeface is Atkinson Hyperlegible Next, by the Braille Institute of America, under the SIL Open Font License."));
+  content.push(
+    note(
+      "The typeface is Atkinson Hyperlegible Next, by the Braille Institute of America, under the SIL Open Font License; letters it lacks are set in Noto Sans, by the Noto Project Authors, under the same licence.",
+    ),
+  );
   return {
     subtitle: "Where every piece of advice in this book comes from, with the date it was read. Pages change: these are as they stood then.",
     content,
@@ -2101,7 +2138,7 @@ export function makeBook(inputs: BookInputs): MadeBook {
     placesBlock && placesBlock.kind === "drawing"
       ? {
           svg: sheetItemsToSvg(
-            placesBlock.draw(0, 0, measure),
+            placesBlock.draw(0, 0, measure).filter((item) => item.kind !== "text"),
             { x: 0, y: 0, width: measure, height: placesBlock.height },
             new Map(
               [...(inputs.placesMap?.pictures ?? new Map())].map(([id, picture]) => [

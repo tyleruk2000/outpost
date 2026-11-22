@@ -49,10 +49,15 @@ text can be found.
 | `figure(svg, { title, caption, width })` | A drawing with its caption, kept on one page. |
 | `card(lines, width)` | A cut-out card with a broken border. |
 | `contents(entries)` | Numbers, names and page numbers found by each header's `id`. |
+| `licenceStatus(kind, notes)`, `licenceKey()` | "No licence", "Listen only", "Licence needed", each with its own mark (ring, half ring, square), and the numbers of the notes behind it. |
+| `NoteList` | Numbered notes at the end of a section: `cite(words)` gives the number, the same words one number; `content()` prints them. Keep legal and source detail here, not in table cells. |
+| `cutCard(panels, { width, height })` | A card at its real size with corner marks to cut along; two panels are a folded wallet card. |
+| `bookCover(input)` | A cover: a band of the accent with `contourArt` in it, the name large, the number to call, facts and a small map. Give its `background` to the cover part. |
 | `cover`, `notesPage`, `para`, `note`, `heading`, `label`, `bullets`, `quote`, `rich` | The rest. |
 
 Footer (book name, page number, date) and the running header on a section's later pages
-come from `printDocument`.
+come from `printDocument`. A part may have a `background` (drawn from the page's corner),
+`orientation: "landscape"` and `margins` of its own.
 
 ## Drawings (`diagrams.ts`)
 
@@ -66,7 +71,9 @@ real text in the PDF. Callout symbols are shapes, not letters, so a search finds
   the kit's look; `sheetItemsToSvg(items, box, pictures)` turns a drawing's `SheetItem`s
   into SVG, with map pictures as data addresses.
 - Then replace blocks with components where they read better.
-- Glyphs: the typeface covers Latin, Latin-1 and Latin Extended-A, but not Greek, Cyrillic
-  or CJK, and not arrows or ⅓. The old writer drew such letters as pictures
-  (`maps/print/lettering.ts`); the kit does not yet, so a paper that may hold such names
-  (the emergency contacts sheet) needs a fallback font or that approach before it moves.
+- Glyphs: the typeface covers Latin, Latin-1 and Latin Extended-A. `renderPdf` sets any
+  word it cannot in Noto Sans (`fallback.ts`): Latin, Greek and Cyrillic in full, Arabic,
+  Hebrew, Devanagari, Thai, Chinese (GB 2312 level 1 and kana) and Korean (KS X 1001
+  syllables), each font loaded only when a document uses it. Text inside SVG drawings is
+  not split, so keep names out of drawings. Arabic and Hebrew are not reordered right to
+  left. `printable()` writes ′ ″ arrows and ⅓ with marks the typeface has.

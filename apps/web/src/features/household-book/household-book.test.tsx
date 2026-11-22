@@ -567,6 +567,9 @@ describe("what the binder held, now in the book", () => {
         const printed = await renderPdf(full.document);
         fs.writeFileSync(path.join(process.env.OUTPOST_PRINT_SAMPLES!, `full-${paper}.pdf`), printed.bytes);
       }
+      // Only the grab cards, at A6.
+      const cards = makeBook(inputs({ answers: { ...inputs().answers, sections: ["grab-cards"], grabCardSize: "a6" } }));
+      fs.writeFileSync(path.join(process.env.OUTPOST_PRINT_SAMPLES!, "cards-a6.pdf"), (await renderPdf(cards.document)).bytes);
     },
     60_000,
   );
