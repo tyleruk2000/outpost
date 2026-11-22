@@ -150,6 +150,11 @@ test.describe("the radio screens on a phone", () => {
       await page.getByRole("button", { name: "Work out coverage" }).click();
       await expect(page.getByRole("heading", { name: "What this map rests on" })).toBeVisible({ timeout: 60_000 });
       expect(await pastTheEdge(page), "coverage at 100%").toEqual([]);
+      // Each choice of paper is a finger's width, short as "A4" is.
+      for (const paper of ["A4", "US Letter"]) {
+        const box = (await page.getByRole("radio", { name: paper }).first().boundingBox())!;
+        expect(box.width, paper).toBeGreaterThanOrEqual(44);
+      }
       await large();
       expect(await pastTheEdge(page), "coverage at 200%").toEqual([]);
 

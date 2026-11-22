@@ -45,7 +45,7 @@ import { formatDateTime, formatNumber } from "@/lib/utils";
 import { AntennaPicker, antennaChoices } from "../antenna-picker";
 import { antennaOf, formOf, rememberForm, useEngines, useHomeAsTransmitter, usePlaces, useProfiles, wireHint } from "../data";
 import { EngineNotReady } from "../engine-data";
-import { CELL_OPACITY, coverageFeatures } from "../map/layers";
+import { coverageFeatures } from "../map/layers";
 import type { PlanMapHandle } from "../map/plan-map";
 import { PlaceInput } from "../place-field";
 import { BasisNotice } from "../results";
@@ -120,7 +120,10 @@ function Legend({ result, quantity, utcHour }: { result: CoverageResult; quantit
           <li key={item.label} className="flex items-center gap-2">
             {/* Over the land colour and as see-through as a cell, so that it is the shade the map shows. */}
             <span aria-hidden className="size-4 shrink-0 overflow-hidden rounded-[3px] border border-border-strong bg-surface-strong">
-              <span className="block size-full" style={{ background: `var(--chart-seq-${index + 1})`, opacity: CELL_OPACITY }} />
+              <span
+                className="block size-full"
+                style={{ background: `var(--map-coverage-${index + 1})`, opacity: "var(--map-coverage-opacity)" }}
+              />
             </span>
             <span className="text-ink">{item.label}</span>
             <span className="tabular ml-auto">{cells(counts.classes[index]!)}</span>

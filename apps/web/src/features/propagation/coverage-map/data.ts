@@ -235,14 +235,14 @@ export function coverageRequestOf(
 const FALLBACK_SHADES = ["#d5ecee", "#a8d4d8", "#6fb2b8", "#3f8a91", "#1f5a61"];
 
 /**
- * The five shades of the sequential ramp (`--chart-seq-1` to `-5`) as the browser has
+ * The five shades of the coverage ramp (`--map-coverage-1` to `-5`) as the browser has
  * resolved them for the theme in use: one hue, light to dark on a light map and dark
  * to light on a dark one, so that "more" always stands further from the ground colour.
  */
 export function readShades(): string[] {
   const styles = getComputedStyle(document.documentElement);
   return FALLBACK_SHADES.map((fallback, index) => {
-    const token = styles.getPropertyValue(`--chart-seq-${index + 1}`);
+    const token = styles.getPropertyValue(`--map-coverage-${index + 1}`).trim();
     return parseOklch(token) ? tokenToHex(token, fallback) : fallback;
   });
 }
