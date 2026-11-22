@@ -209,6 +209,17 @@ on return, and a page changed on both sides asks which to keep.
 
 Browser limits on stored data: [offline.md](offline.md#a-phone-out-of-reach-of-the-server).
 
+### Several households, one current for everyone
+
+People and pets are one global list; a household (`households`) lists who is in it and
+has its own home (a saved place, or for a portable one where a person last said it is),
+supplies, plans and papers. Rows carry `household_id`; one-row tables are keyed by the
+household's id, the first being `"household"`, so the data from before needed no moving.
+Which household is current is one server setting, not per device: a household shares
+one Outpost, and every device, background task and chat tool then agrees on whose
+supplies it is looking at. Changing it resets every screen through the live event
+`households.changed`. See [development/households.md](development/households.md).
+
 ### Security posture
 
 - No accounts: whoever can reach Outpost can use all of it. What is controlled is who

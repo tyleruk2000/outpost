@@ -73,6 +73,8 @@ const GROUPS: Record<Exclude<DatabaseGroupId, "other">, string[]> = {
     "weather_readings",
   ],
 };
+// Households and people (modules/households), on a line of their own so that other additions merge cleanly.
+GROUPS.prepare.push("households", "household_people", "household_positions");
 // Emergency plans (modules/emergency-plans), on a line of their own so that other additions merge cleanly.
 GROUPS.prepare.push("emergency_plans");
 // The household's papers (modules/household-papers), on a line of their own so that other additions merge cleanly.

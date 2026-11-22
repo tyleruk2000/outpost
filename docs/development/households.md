@@ -1,0 +1,162 @@
+# Households
+
+Outpost keeps things for several households: one's own home and the family's, a home and
+a second place with mostly the same people, a caravan or a hiking group. One household is
+current for the whole Outpost, and every per-household screen and background task works
+on it. This page is the contract the per-household modules work to; the code is
+`apps/server/src/modules/households/` and `packages/shared/src/households.ts`.
+
+## The model
+
+| Table | What it holds |
+| --- | --- |
+| `households` | id, name, position, `kind` (`fixed` or `portable`), `home_marker_id`, `base_marker_id`, `country` (an override), `here_lat`, `here_lon`, `here_name`, `here_at`, `here_source`, timestamps. |
+| `supply_members` | The people and pets, global. A person's needs (age band, energy, water) are on the person. |
+| `household_people` | Who is in which household, with `position` for the order. Primary key (household, person). A person may be in several. |
+| `household_positions` | Where a portable household has been: the last 50 a household, newest first. |
+| settings row `households.current` | The current household's id, as JSON. Not a Settings screen setting; Erase everything removes it. |
+
+- **The first household is id `household`.** Every one-row table that was the one
+  household's (`supply_household`, `comms_plans`, `household_book`, `household_binder`,
+  `garden_settings`) already had that id, so those tables are keyed by household id with
+  no data moved. `morse_progress` stays global.
+- **`household_id TEXT NOT NULL DEFAULT 'household'`** is on `supply_items`,
+  `supply_shopping`, `emergency_plans`, `event_log`, `routine_checks` and
+  `garden_sowings`. It is nullable on `power_plans` (null: shared by every household;
+  plans from before stay shared) and on `medical_sheets`.
+- **Medical sheets stay with the person.** A sheet linked to a person (`member_id`) has a
+  null `household_id`; a sheet for nobody in particular has the household it belongs to.
+  A household's sheets are its people's sheets and its own unlinked ones.
+- **Ids are not foreign keys.** A saved place removed leaves a household with no home; a
+  person removed leaves their medical sheets, unlinked, with their first household.
+- **The migration** (`*_households.sql`) makes the first household "Home" with the home
+  place it had (the first saved place with the home icon, by `created_at` then `id`, as
+  `homePlaceOf` takes it), puts everyone in `supply_members` in it in their order, and
+  gives unlinked medical sheets (and sheets of someone since taken out) to it. Old
+  backups migrate forward the same way.
+- **With no household stored** (a new install after Erase everything) every read sees
+  the first household, unsaved, called "Home". The first change stores it
+  (`households.ensure()`), so that a `GET` never writes.
+
+## Where home is
+
+`households.home(id?)` gives a `HouseholdHome` or null:
+
+- **Fixed:** the saved place `home_marker_id`, while it exists. The first household (by
+  position) falls back to `homePlaceOf(markers)` when it has none of its own, so an
+  installation that marks home with the icon keeps working.
+- **Portable:** where a person last said it is (`here_*`), named "Where <household> is
+  now" when it has no name, with `at` (when it was set) and `source`. Never set: null,
+  and the screen asks for it to be set. `base_marker_id` (where it is kept) is shown,
+  never taken as home.
+
+`households.country(id?)` is the override, else the country home is in (`countryAt` on
+the Natural Earth boxes), else null. Changing `kind` keeps both the saved place and the
+position.
+
+## Services
+
+On `ctx.services.households` (registered after maps, before every module that keeps
+things for a household):
+
+| Call | Gives |
+| --- | --- |
+| `current()`, `currentId()` | The current household; the first by position if the one chosen is gone. |
+| `setCurrent(id)` | Makes it current for everyone; publishes `households.changed` with `{ currentChanged: true }`. |
+| `list()`, `get(id)`, `first()` | `HouseholdDto`s in order; `first()` is what the mesh root topic and the allotment game take. |
+| `home(id?)`, `country(id?)` | As above; `id` defaults to the current household. |
+| `personIds(id?)` | Who is in it, in order. |
+| `ensure()` | Stores the first household if none is stored. Call it before inserting a row keyed to a household. |
+| `create`, `update`, `holds`, `remove`, `setPeople`, `setHere`, `positions` | What the routes do. |
+| `people.list/get/create/update/remove` | The People list. |
+| `syncMembers(ids)` | Used by Supplies' household screen (below). |
+| `kept.count()`, `kept.eraseAll()` | For Erase everything (wired in `manage/cleanup.ts`). |
+
+## The API
+
+| Route | Body | Answer |
+| --- | --- | --- |
+| `GET /api/households` | | `HouseholdsResponse` `{ households, currentId }` |
+| `POST /api/households` | `HouseholdCreateInput` `{ name, kind?, homePlaceId?, basePlaceId?, copyPeopleFrom? }` | `{ household }` |
+| `GET /api/households/:id` | | `{ household }` |
+| `PUT /api/households/:id` | `HouseholdUpdateInput` `{ name?, kind?, homePlaceId?, basePlaceId?, countryOverride? }` (only what is named changes) | `{ household }` |
+| `DELETE /api/households/:id?confirm=true` | | `HouseholdsResponse`. Without `confirm`: 409 with `details.holds` (`HouseholdHolds`). The last household: always 409. |
+| `PUT /api/households/:id/people` | `{ personIds }`, in order | `{ household }` |
+| `PUT /api/households/current` | `{ id }` | `HouseholdsResponse` |
+| `PUT /api/households/:id/here` | `HouseholdHereInput` `{ lat, lon, name?, source: "device" \| "map" \| "place" }`; portable only (else 400) | `{ household }` |
+| `GET /api/households/:id/positions` | | `{ positions }`, newest first, at most 50 |
+| `GET /api/people`, `GET /api/people/:id` | | `{ people }` / `{ person }`: `PersonDto` (a `Person` with `householdIds`, `medicalSheets`) |
+| `POST /api/people` | `PersonCreateInput` (a person, `householdIds?`; left out: the current household) | `{ person }` |
+| `PUT /api/people/:id` | `PersonInput` | `{ person }` |
+| `DELETE /api/people/:id?confirm=true` | | Without `confirm`, someone with medical sheets: 409 with `PersonHolds`. The sheets are kept, unlinked. |
+
+Removing a household removes its rows in the tables above, its one-row papers, its
+unlinked medical sheets, its positions and its membership. It never removes a person:
+those in no other household stay on the People list (`peopleOnlyHere`), with their
+sheets (`theirMedicalSheets`). The 409 says all of this before anything goes.
+
+`PUT /api/supplies/household` still takes `members`: they are the current household's
+people. One left out leaves that household, and goes from the People list only if it is
+in no other household.
+
+Types: `HouseholdDto` (named so because `Household` is still the supplies settings type,
+also exported as `SupplyHousehold`), `HouseholdHome`, `HouseholdPosition`, `Person` (the
+old `HouseholdMember`, which stays), `PersonDto`, `HOUSEHOLD_LIMITS`, `FIRST_HOUSEHOLD_ID`.
+
+## The live event and the web app
+
+Every change publishes `households.changed`. The web app's event provider
+(`lib/events.tsx`) refreshes the household, supplies, papers, book and plans queries on
+it; when `data.currentChanged` is set it resets every cached query, so each screen
+fetches its own again and nothing of the other household is shown meanwhile.
+
+`features/households/use-household.ts`: `useHouseholds()` (the list and `currentId`),
+`useHousehold()` (`{ household, home, country, several, households }` for the current
+one), `usePeople()`, `useSetCurrentHousehold()`. Query keys start with `households`.
+
+## How a feature becomes per-household
+
+1. **Rows:** filter by `household_id = ctx.services.households.currentId()`, and include
+   `household_id` on every insert (after `households.ensure()`). Counting and erasing
+   everything stays across all households.
+2. **One-row tables:** key the row by the household's id in place of the constant
+   `"household"`.
+3. **Home and country:** take `households.home()` and `households.country()` (web:
+   `useHousehold()`), never `homePlaceOf` on the markers.
+4. **Background work** (chat tools, scheduled checks, the drill) uses the current
+   household, the same as a request.
+5. **Publish your own `*.changed`** as before; `households.changed` already refreshes
+   screens when the current household changes.
+
+### When home moves
+
+A portable household's home is wherever a person last said it was, so a place user:
+
+- shows the position's age with it ("as of 3 hours ago": `homeAgeMs(home, now)`), and the
+  name it was given;
+- never fetches anything because the position changed. A forecast, tide or pass list for
+  the new place is fetched only when a person presses for it, as everywhere else; until
+  then the screen says its figures are for the earlier place;
+- treats a null home as "set where it is now", with a link to the household's page.
+
+## Still the first household
+
+Hard-coded `"household"` ids and Home lookups the per-household packages replace:
+
+- One-row ids: `supplies/service.ts` (`HOUSEHOLD_ID`), `household-papers/comms.ts`,
+  `household-papers/book.ts`, `household-papers/binder.ts`, `garden/index.ts` (`ROW`),
+  `export-all/sections.ts` (the comms query).
+- Inserts with `FIRST_HOUSEHOLD_ID`: `readiness/checks.ts`, `readiness/log.ts`. Rows
+  inserted elsewhere take the column default, `'household'`.
+- Unfiltered lists: supplies items and shopping, emergency plans, event log, routine
+  checks, garden sowings, power plans, medical sheets.
+- Server Home lookups (`homePlaceOf`): `emergency-plans/index.ts`, `weather/service.ts`
+  (two), `household-papers/facts.ts`, `readiness/drill.ts`, `tools/where.ts`,
+  `mesh/service.ts` and `games/allotment.ts` (these two take `first()`). Supplies' energy
+  table already takes `households.country()`.
+- Web Home lookups (`homePlaceOf` or `useHomeCountry`): maps, layers (food panel, dataset
+  manager), garden, frequencies, satellites (page and map), explore suggestions, solar
+  clock, household papers (binder, binder places, household data), heard (page, APRS
+  weather), weather places, the household book wizard.
+- Erase everything, the database inspector and the table checks already know the new
+  tables; Export everything and the drive screen do not yet say which household.

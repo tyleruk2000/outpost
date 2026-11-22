@@ -12,14 +12,12 @@ import {
   type BarcodeLookup,
   type BoughtInput,
   barcodeKey,
-  countryAt,
   DEFAULT_HOUSEHOLD,
   type EnergyTable,
   energyTableFor,
   type Household,
   type HouseholdInput,
   type HouseholdMember,
-  homePlaceOf,
   productKey,
   type ShoppingLine,
   type ShoppingList,
@@ -33,12 +31,11 @@ import {
   type SupplyProduct,
   shoppingSuggestions,
 } from "@outpost/shared";
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
 import { badRequest, notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
 import { supplyHousehold, supplyItems, supplyMembers, supplyProducts, supplyShopping } from "../../db/schema.ts";
-import { COUNTRIES } from "../layers/countries.ts";
 
 export interface SuppliesService {
   items(): SupplyItem[];
@@ -240,11 +237,17 @@ export function createSuppliesService(ctx: AppContext): SuppliesService {
 
     household() {
       const row = householdRow();
-      const members = db
-        .select()
-        .from(supplyMembers)
-        .orderBy(asc(supplyMembers.position))
-        .all()
+      // The people of the current household (modules/households), in its order.
+      const order = ctx.services.households.personIds();
+      const byId = new Map(
+        db
+          .select()
+          .from(supplyMembers)
+          .all()
+          .map((member) => [member.id, member]),
+      );
+      const members = order
+        .flatMap((id) => byId.get(id) ?? [])
         .map(
           (member): HouseholdMember => ({
             id: member.id,
@@ -258,9 +261,8 @@ export function createSuppliesService(ctx: AppContext): SuppliesService {
             note: member.note,
           }),
         );
-      // The table a household that has not chosen one takes: by Home's country, the way every screen takes it.
-      const home = ctx.services.maps ? homePlaceOf(ctx.services.maps.annotations.listMarkers()) : null;
-      const country = home ? countryAt(home, COUNTRIES) : null;
+      // The table a household that has not chosen one takes: by the current household's country (modules/households).
+      const country = ctx.services.households.country();
       const energyBasis = { table: energyTableFor(country), country };
       if (!row) return { ...DEFAULT_HOUSEHOLD, energyBasis, members };
       return {
@@ -290,25 +292,50 @@ export function createSuppliesService(ctx: AppContext): SuppliesService {
           })
           .where(eq(supplyHousehold.id, HOUSEHOLD_ID))
           .run();
-        db.delete(supplyMembers).run();
-        input.members.forEach((member, position) => {
+        // The people of the current household (modules/households): the ones sent are kept or
+        // added, in this order; one left out leaves this household, and goes from the People
+        // list only if they are in no other household.
+        const households = ctx.services.households;
+        const before = households.personIds();
+        const known = new Set(
+          db
+            .select({ id: supplyMembers.id })
+            .from(supplyMembers)
+            .all()
+            .map((row) => row.id),
+        );
+        let next = (db
+          .select({ n: sql<number>`coalesce(max(${supplyMembers.position}), -1) + 1` })
+          .from(supplyMembers)
+          .get()?.n ?? 0) as number;
+        const ids = input.members.map((member) => {
+          const columns = {
+            kind: member.kind,
+            name: member.name.trim(),
+            band: member.kind === "person" ? member.band : null,
+            sex: member.kind === "person" ? member.sex : null,
+            kcalPerDay: member.kcalPerDay,
+            drinkingLitres: member.drinkingLitres,
+            allUsesLitres: member.allUsesLitres,
+            note: member.note.trim(),
+            updatedAt: now,
+          };
+          if (member.id && known.has(member.id)) {
+            db.update(supplyMembers).set(columns).where(eq(supplyMembers.id, member.id)).run();
+            return member.id;
+          }
+          const id = member.id && /^[a-z0-9-]{1,64}$/.test(member.id) ? member.id : newId();
           db.insert(supplyMembers)
-            .values({
-              id: member.id && /^[a-z0-9-]{1,64}$/.test(member.id) ? member.id : newId(),
-              position,
-              kind: member.kind,
-              name: member.name.trim(),
-              band: member.kind === "person" ? member.band : null,
-              sex: member.kind === "person" ? member.sex : null,
-              kcalPerDay: member.kcalPerDay,
-              drinkingLitres: member.drinkingLitres,
-              allUsesLitres: member.allUsesLitres,
-              note: member.note.trim(),
-              createdAt: now,
-              updatedAt: now,
-            })
+            .values({ id, position: next++, ...columns, createdAt: now })
             .run();
+          known.add(id);
+          return id;
         });
+        households.syncMembers(ids);
+        for (const gone of before.filter((id) => !ids.includes(id))) {
+          const elsewhere = sqlite.prepare("SELECT 1 FROM household_people WHERE person_id = ?").get(gone);
+          if (!elsewhere) db.delete(supplyMembers).where(eq(supplyMembers.id, gone)).run();
+        }
       })();
       changed();
       return service.household();

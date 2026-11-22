@@ -272,6 +272,9 @@ export interface Household {
   updatedAt: number | null;
 }
 
+/** The supplies settings of a household (`Household` is this type's older name; a household itself is `HouseholdDto`). */
+export type SupplyHousehold = Household;
+
 export type HouseholdInput = Omit<Household, "updatedAt" | "members" | "energyBasis"> & {
   members: Array<Omit<HouseholdMember, "id"> & { id?: string }>;
 };

@@ -139,6 +139,24 @@ describe("live events", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
+  it("fetches everything again, from nothing, when the current household changes, and only household lists otherwise", async () => {
+    const supplies = vi.fn(async () => "supplies");
+    const weather = vi.fn(async () => "weather");
+    mountReads([
+      [["weather", "home"], weather],
+      [["supplies"], supplies],
+    ]);
+    await act(() => vi.advanceTimersByTimeAsync(10));
+    act(() => FakeEventSource.all[0]!.emit("households.changed", { data: {} }));
+    await act(() => vi.advanceTimersByTimeAsync(600));
+    expect(supplies).toHaveBeenCalledTimes(2);
+    expect(weather).toHaveBeenCalledTimes(1);
+    act(() => FakeEventSource.all[0]!.emit("households.changed", { data: { currentChanged: true } }));
+    await act(() => vi.advanceTimersByTimeAsync(10));
+    expect(weather).toHaveBeenCalledTimes(2);
+    expect(supplies).toHaveBeenCalledTimes(3);
+  });
+
   it("fetches the lists that depend on a drive only when a drive came or went, not when free space moved", async () => {
     let status = "available";
     let free = 100;

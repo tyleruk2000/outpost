@@ -86,6 +86,9 @@ const invalidations: Record<string, string[][]> = {
   "satellites.changed": [["satellites"]],
   // A receiver connected or went away, or something was heard, pinned or cleared (Heard on the radio).
   "heard.changed": [["heard"]],
+  // A household, who is in it, or where it is changed. When the current household changed
+  // (`data.currentChanged`) every cached query is reset instead (see `onEvent`).
+  "households.changed": [["households"], ["supplies"], ["household-papers"], ["household-book"], ["emergency-plans"], ["manage"]],
   // The background count of what is on disk has finished.
   "manage.changed": [["manage"]],
 };
@@ -171,6 +174,12 @@ export function EventsProvider({ children, enabled }: { children: ReactNode; ena
     };
 
     const onEvent = (type: string, event: MessageEvent<string>) => {
+      // One current household for the whole Outpost: when it changes, nothing cached is for it any more.
+      if (type === "households.changed" && (JSON.parse(event.data) as { data?: { currentChanged?: boolean } }).data?.currentChanged) {
+        void client.resetQueries();
+        tell(type, JSON.parse(event.data) as { id?: string; data?: unknown });
+        return;
+      }
       invalidate(invalidations[type]!);
       if (type === "storage.changed" && !client.getQueryData(STORAGE_LOCATIONS)) invalidate(dependsOnLocations);
       const set = listeners.current.get(type);

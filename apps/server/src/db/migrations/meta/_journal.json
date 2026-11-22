@@ -288,6 +288,13 @@
       "when": 1795365644300,
       "tag": "0040_satellite_about",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "6",
+      "when": 1795372978743,
+      "tag": "0041_households",
+      "breakpoints": true
     }
   ]
 }
