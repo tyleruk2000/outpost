@@ -6,27 +6,21 @@
  * names, numbers and where they will be.
  */
 import { type EmergencyPlan, planKindLabel } from "@outpost/shared";
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 import { ErrorState, Notice, Page, PageHeader } from "@/components/page";
 import { Segmented, Skeleton } from "@/components/ui/misc";
-import { kitCanSetAll } from "@/features/contacts/kit-letters";
 import { AID_PAPER_KEY, isAidPaper, likelyPaper } from "@/features/encryption/paper-aids";
-import { type MadePdf, madePdf } from "@/features/library/made/made-pdf";
 import { PdfActions } from "@/features/library/made/pdf-actions";
 import { readStored, writeStored } from "@/features/maps/lib/view";
-import { type DrawLine, writeLettered } from "@/features/maps/print/lettering";
 import { PAPERS } from "@/features/maps/print/paper";
-import type { Sheet } from "@/features/maps/print/sheet";
-import { SheetView } from "@/features/maps/print/sheet-view";
 import { PdfPagesPreview } from "@/features/print-kit/preview";
 import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
-import { errorMessage } from "@/lib/api";
 import { appLocale } from "@/lib/region";
 import { plural } from "@/lib/utils";
-import { type CardPaper, fridgeSheets, grabSheets, walletSheets } from "./cards";
+import type { CardPaper } from "./cards";
 import { usePlan } from "./data";
-import { fridgeDocument, grabDocument, planTexts, walletDocument } from "./kit-cards";
+import { fridgeDocument, grabDocument, walletDocument } from "./kit-cards";
 import { type Readable, readableOf } from "./printable";
 
 type Kind = "wallet" | "fridge" | "grab";
@@ -47,16 +41,6 @@ const kindAside = (plan: EmergencyPlan) => {
   return plan.name.toLowerCase().includes(kind.toLowerCase()) ? "" : ` (${kind})`;
 };
 
-export function sheetsOf(kind: Kind, readable: Readable, made: Date, paper: CardPaper): { pages: Sheet[]; overflow: string[] } {
-  if (kind === "wallet") {
-    const { pages, cards } = walletSheets(readable, readable.people, { made, paper });
-    return { pages, overflow: cards.filter((card) => card.overflow).map((card) => card.person.name || "a person with no name") };
-  }
-  return { pages: kind === "fridge" ? fridgeSheets(readable, { made, paper }) : grabSheets(readable, { made, paper }), overflow: [] };
-}
-
-type Made = { pdf: MadePdf; pages: Sheet[]; drawn: number; marked: number; overflow: string[] } | { error: string };
-
 export function libraryQuestion(people: number) {
   return {
     title: "Put the household's details in the library?",
@@ -75,20 +59,8 @@ export function libraryQuestion(people: number) {
   };
 }
 
-/**
- * The cards as a PDF. Laid out with the print kit, unless the words hold letters its
- * typeface lacks (a name in Greek, say): then the old writer makes it, drawing such a
- * name as a picture with the words kept for search (maps/print/lettering.ts).
- */
-export function CardsPdf(props: { plan: EmergencyPlan; readable: Readable; kind: Kind; paper: CardPaper; draw?: DrawLine }) {
-  const kit = useMemo(
-    () => kitCanSetAll(planTexts(props.readable, props.kind === "wallet" ? props.readable.people : [])),
-    [props.readable, props.kind],
-  );
-  return kit ? <KitCardsPdf {...props} /> : <LetteredCardsPdf {...props} />;
-}
-
-function KitCardsPdf({ plan, readable, kind, paper }: { plan: EmergencyPlan; readable: Readable; kind: Kind; paper: CardPaper }) {
+/** The cards as a PDF, laid out with the print kit; names in other scripts are set in its fallback typefaces. */
+export function CardsPdf({ plan, readable, kind, paper }: { plan: EmergencyPlan; readable: Readable; kind: Kind; paper: CardPaper }) {
   const at = plan.updatedAt;
   const laid = useMemo(() => {
     const made = new Date(at);
@@ -127,92 +99,6 @@ function KitCardsPdf({ plan, readable, kind, paper }: { plan: EmergencyPlan; rea
       ) : made.status === "making" ? (
         <Skeleton className="aspect-[1/1.41] w-full" />
       ) : null}
-    </div>
-  );
-}
-
-function LetteredCardsPdf({
-  plan,
-  readable,
-  kind,
-  paper,
-  draw,
-}: {
-  plan: EmergencyPlan;
-  readable: Readable;
-  kind: Kind;
-  paper: CardPaper;
-  draw?: DrawLine;
-}) {
-  const [made, setMade] = useState<Made | null>(null);
-  useEffect(() => {
-    let live = true;
-    setMade(null);
-    const at = new Date(plan.updatedAt);
-    const title = cardTitle(kind, plan);
-    const { pages, overflow } = sheetsOf(kind, readable, at, paper);
-    writeLettered(pages, title, at, draw)
-      .then((written) => ({
-        pdf: madePdf(written.bytes, title, KINDS.find((each) => each.value === kind)!.what, {
-          what: `the emergency plan “${plan.name}”`,
-          path: `/prepare/plans/${plan.id}/cards`,
-        }),
-        pages,
-        drawn: written.drawn,
-        marked: written.marked,
-        overflow,
-      }))
-      .catch((error: unknown) => ({ error: errorMessage(error) }))
-      .then((result) => {
-        if (live) setMade(result);
-      });
-    return () => {
-      live = false;
-    };
-  }, [plan, readable, kind, paper, draw]);
-
-  const count = readable.people.length + readable.contacts.length;
-  return (
-    <div className="grid gap-4">
-      {made && "error" in made ? (
-        <Notice tone="danger" title="The PDF could not be made">
-          {made.error}
-        </Notice>
-      ) : (
-        <PdfActions pdf={made && "pdf" in made ? made.pdf : null} confirm={libraryQuestion(count)} />
-      )}
-      {made && "pdf" in made && made.overflow.length > 0 ? (
-        <Notice tone="warning" title="Too much for a card">
-          The card for {made.overflow.join(", ")} does not fit, even in the smallest type: shorten the medical note or the names, or put
-          fewer contacts first.
-        </Notice>
-      ) : null}
-      {made && "pdf" in made && made.marked > 0 ? (
-        <p className="text-small text-ink">
-          This device could not put some letters on the page, so each place they belong is marked [?]. The plan on screen has them in full.
-        </p>
-      ) : made && "pdf" in made && made.drawn > 0 ? (
-        <p className="text-small text-ink-muted">
-          Names in letters the PDF's own typefaces do not have are drawn as pictures, with the words kept in the file so that search finds
-          them.
-        </p>
-      ) : null}
-      {made && "pdf" in made ? (
-        <div className="grid gap-4" data-testid="cards-preview">
-          {made.pages.map((page, index) => (
-            <SheetView
-              // biome-ignore lint/suspicious/noArrayIndexKey: pages are in order
-              key={index}
-              sheet={page}
-              pictures={{}}
-              label={`Page ${index + 1} of ${made.pages.length} as it prints`}
-              className="h-auto w-full rounded-panel border border-border-strong"
-            />
-          ))}
-        </div>
-      ) : made ? null : (
-        <Skeleton className="aspect-[1/1.41] w-full" />
-      )}
     </div>
   );
 }

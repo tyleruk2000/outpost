@@ -13,8 +13,8 @@
  *
  * Words are measured with the old writer's Helvetica widths (contacts/emergency-document),
  * which are a little wider than the kit's typeface, so that what is found to fit does.
- * A paper whose words hold letters the kit's typeface lacks is made the old way instead
- * (cards-page.tsx, contacts/kit-letters.ts). Pure: a plan in, a document out.
+ * Names in other scripts are set in the kit's fallback typefaces (print-kit/fallback.ts),
+ * inside the card drawings too. Pure: a plan in, a document out.
  */
 import { planCaveat } from "@outpost/shared";
 import type { Content, TDocumentDefinitions } from "pdfmake/interfaces";
@@ -39,22 +39,6 @@ import { CARD_HEIGHT, CARD_WIDTH, type CardPaper } from "./cards";
 import type { Readable, ReadContact, ReadPerson } from "./printable";
 
 const shortDate = (date: Date) => new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "short", year: "numeric" }).format(date);
-
-/** Every word a paper of this plan may print, for the check on letters. */
-export function planTexts(plan: Readable, people: ReadPerson[] = plan.people): string[] {
-  return [
-    plan.name,
-    plan.kind,
-    plan.emergencyNumber,
-    ...plan.steps.map((step) => step.text),
-    ...plan.contacts.flatMap((contact) => [contact.name, contact.note, ...contact.numbers.map((number) => number.value)]),
-    ...plan.places.flatMap((place) => [place.role, place.name, place.note, place.coords ?? ""]),
-    ...people.flatMap((person) => [person.name, person.medical, ...person.numbers.map((number) => number.value)]),
-    ...plan.comms,
-    ...plan.supplies.flatMap((supply) => [supply.name, supply.amount]),
-    ...plan.attributions,
-  ];
-}
 
 const footerRight = (made: Date) => `Made ${shortDate(made)} in Outpost · print again after a change`;
 

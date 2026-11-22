@@ -84,10 +84,24 @@ describe("the templates on the print kit", () => {
     const nocturnal = contentText(nocturnalDocument(HOME).content);
     expect(nocturnal).toContain("Merak and Dubhe");
     expect(nocturnal).toContain("Polaris, through the centre hole");
-    // A place named in letters the typeface lacks is called by where it is.
-    expect(contentText(sundialDocument({ ...HOME, placeName: "Αθήνα" }).content)).toContain("51.5° N, 0.1° W");
     const one = await renderPdf(sundialDocument(HOME));
     const two = await renderPdf(sundialDocument(HOME));
     expect(two.bytes).toEqual(one.bytes);
+  }, 60_000);
+
+  it("prints a place named in Greek, Cyrillic or Chinese by its name, as words a reader finds", async () => {
+    for (const [placeName, make, sample] of [
+      ["Αθήνα", sundialDocument, "sundial-names-after"],
+      ["Москва", nocturnalDocument, "nocturnal-names-after"],
+      ["北京", sundialDocument, null],
+    ] as const) {
+      const printed = await renderPdf(make({ ...HOME, placeName }));
+      if (sample) writeSample(sample, printed.bytes);
+      const text = (await placed(printed.bytes))
+        .flat()
+        .map((piece) => piece.text)
+        .join("");
+      expect(text.replace(/\s/g, "")).toContain(placeName);
+    }
   }, 60_000);
 });

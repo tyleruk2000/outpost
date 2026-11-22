@@ -2,11 +2,10 @@
 import { type EmergencyPlan, PLAN_TEMPLATES, type PlanResolved, planFromTemplate } from "@outpost/shared";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { describe, expect, it } from "vitest";
-import { kitCanSetAll } from "@/features/contacts/kit-letters";
 import { contentText, renderPdf } from "@/features/print-kit";
 import { writeSample } from "@/features/print-kit/samples";
 import { CARD_HEIGHT, CARD_WIDTH } from "./cards";
-import { fridgeDocument, grabDocument, planTexts, walletDocument } from "./kit-cards";
+import { fridgeDocument, grabDocument, walletDocument } from "./kit-cards";
 import { readableOf } from "./printable";
 
 const MADE = new Date(2026, 10, 16, 14, 5);
@@ -67,11 +66,24 @@ async function pdfText(bytes: Uint8Array): Promise<{ text: string; pages: number
 describe("the cards with the print kit", () => {
   const read = readableOf(plan(), resolved);
 
-  it("can set this plan's words in the kit's typeface, and not a name in Greek", () => {
-    expect(kitCanSetAll(planTexts(read))).toBe(true);
-    const greek = { ...read, people: [{ ...read.people[0]!, name: "Ελένη Παπαδοπούλου" }] };
-    expect(kitCanSetAll(planTexts(greek))).toBe(false);
-  });
+  it("prints names in Greek, Cyrillic and Chinese as words a reader finds, on the cards and the fridge sheet", async () => {
+    const others = {
+      ...read,
+      people: [
+        { ...read.people[0]!, name: "Ελένη Παπαδοπούλου" },
+        { ...read.people[1]!, name: "Саша Иванова" },
+      ],
+      contacts: [...read.contacts, { ...read.contacts[0]!, name: "王小明", note: "北京" }],
+    };
+    const squash = (text: string) => text.replace(/\s/g, "");
+    const wallet = await renderPdf(walletDocument(others, others.people, { made: MADE, paper: "a4" }).doc);
+    writeSample("emergency-plans-wallet-names-after", wallet.bytes);
+    const cards = squash((await pdfText(wallet.bytes)).text);
+    for (const word of ["Ελένη Παπαδοπούλου", "Саша Иванова", "王小明", "+44 7700 900123"]) expect(cards).toContain(squash(word));
+    const fridge = await renderPdf(fridgeDocument(others, { made: MADE, paper: "a4" }));
+    writeSample("emergency-plans-fridge-names-after", fridge.bytes);
+    expect(squash((await pdfText(fridge.bytes)).text)).toContain("王小明");
+  }, 30_000);
 
   it("draws each wallet card at the size of a bank card, with the numbers whole and medical words only on the person's own", () => {
     const { doc, cards } = walletDocument(read, read.people, { made: MADE, paper: "a4" });

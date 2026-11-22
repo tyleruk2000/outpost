@@ -8,7 +8,6 @@ import { TooltipProvider } from "@/components/ui/misc";
 import { fakeServer, installBrowserStubs, renderScreen } from "../downloads/test-support";
 import { chooseLearner, reloadLearningDevice, setRecording } from "./device";
 import LearningPanel from "./learning-panel";
-import { progressDocument } from "./progress-document";
 import { ReaderLearning } from "./reader-controls";
 import { useLearningTracker, WRITE_EVERY_MS } from "./tracker";
 
@@ -272,15 +271,5 @@ describe("what the reader records", () => {
     expect(hook.result.current.ended("videos/adding-fractions", 0.2)).toBe(false);
     expect(hook.result.current.ended("lessons/halves", 1)).toBe(false);
     hook.unmount();
-  });
-});
-
-describe("on paper", () => {
-  it("names the learner, where they got to, and the topic counts", () => {
-    const blocks = progressDocument([course()], "Sam", new Date(2026, 10, 17).getTime());
-    expect(blocks[0]).toEqual({ kind: "title", text: "Learning progress: Sam" });
-    const table = blocks.find((block) => block.kind === "table") as { rows: string[][] };
-    expect(table.rows[0]).toEqual(["Number school", expect.stringContaining("Quarters"), "4", "2", "about 2 hours"]);
-    expect(blocks.some((block) => block.kind === "list" && block.items[0] === "Number school: 2 of 3 done in Fractions")).toBe(true);
   });
 });

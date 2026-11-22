@@ -2,13 +2,11 @@
 import jsQR from "jsqr";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { describe, expect, it } from "vitest";
-import { kitCanSetAll } from "@/features/contacts/kit-letters";
 import { contentText, renderPdf } from "@/features/print-kit";
 import { writeSample } from "@/features/print-kit/samples";
 import { describe as describeContent } from "./content";
 import { encodeQr } from "./encoder";
-import { codeDrawing, qrDocument, qrTexts } from "./kit-sheet";
-import { PRINTED_WIDTH_MM } from "./sheet";
+import { codeDrawing, PRINTED_WIDTH_MM, qrDocument } from "./kit-sheet";
 
 const MADE = new Date(Date.UTC(2026, 10, 16));
 const FOOTER = "Made in Outpost on 16 Nov 2026.";
@@ -56,10 +54,24 @@ describe("the QR sheet with the print kit", () => {
     expect(contentText(hidden.content)).toContain("Point the phone’s camera at the code.");
     const told = qrDocument(code, describeContent(wifi, { showPassword: true }), "a4", FOOTER, MADE);
     expect(contentText(told.content)).toContain("s3cret");
-    expect(kitCanSetAll(qrTexts(describeContent(wifi, { showPassword: true }), FOOTER))).toBe(true);
-    const greek = { kind: "wifi" as const, wifi: { ...wifi.wifi, ssid: "Καλύβα" } };
-    expect(kitCanSetAll(qrTexts(describeContent(greek, { showPassword: false }), FOOTER))).toBe(false);
   });
+
+  it("prints a network named in Greek, Cyrillic or Chinese as words a reader finds", async () => {
+    for (const [ssid, sample] of [
+      ["Καλύβα", "qr-sheet-names-after"],
+      ["Дача", null],
+      ["北京", null],
+    ] as const) {
+      const described = describeContent({ kind: "wifi", wifi: { ...wifi.wifi, ssid } }, { showPassword: false });
+      const made = await renderPdf(qrDocument(encodeQr(described.payload), described, "a4", FOOTER, MADE));
+      if (sample) writeSample(sample, made.bytes);
+      const loading = getDocument({ data: made.bytes.slice() });
+      const pdf = await loading.promise;
+      const text = ((await (await pdf.getPage(1)).getTextContent()).items as Array<{ str: string }>).map((item) => item.str).join("");
+      await loading.destroy();
+      expect(text.replace(/\s/g, "")).toContain(ssid);
+    }
+  }, 30_000);
 
   it("makes one page whose words a reader finds, the same file each time", async () => {
     const described = describeContent(wifi, { showPassword: true });

@@ -4,13 +4,10 @@
  * record unchanged, made twice in a day, is the same file.
  *
  * `progressKitDocument` lays it out with the print kit, a bar for each course and each
- * topic. The blocks (`progressDocument`, through the old writer) stay for a record with a
- * name or title in letters the kit's typeface lacks: the old writer letters those as
- * pictures (`writeLettered`).
+ * topic. Names and titles in other scripts are set in the kit's fallback typefaces.
  */
 import { aboutTime, type LearningCourse, learnerLabel } from "@outpost/shared";
 import type { Content, TDocumentDefinitions } from "pdfmake/interfaces";
-import { kitCanWrite } from "@/features/maps/lib/sun-kit";
 import {
   PRINT_COLOURS as C,
   callout,
@@ -23,9 +20,7 @@ import {
   printDocument,
   PRINT_TYPE as T,
 } from "@/features/print-kit";
-import { type Block, toSheets } from "@/features/propagation/plans/document";
 import { appLocale } from "@/lib/region";
-import type { Sheet } from "../maps/print/sheet";
 
 const longDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "long", year: "numeric" });
 const shortDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "short", year: "numeric" });
@@ -42,58 +37,11 @@ export function topicsWords(course: LearningCourse): string | null {
   return course.topics.map((topic) => `${topic.done} of ${topic.listed} done in ${topic.title}`).join("; ");
 }
 
-export function progressDocument(courses: LearningCourse[], learner: string | null, now: number): Block[] {
-  const blocks: Block[] = [
-    { kind: "title", text: `Learning progress: ${progressWhose(learner)}` },
-    {
-      kind: "para",
-      text: `Written out on ${longDate.format(now)} from what Outpost's reader recorded: the pages each learner opened in the reference collections, those they marked done or whose video they watched to the end, and the time those pages were on screen. A name is chosen on the device and proves nothing about who was holding it.`,
-    },
-  ];
-  const learners = [...new Set(courses.map((course) => course.learner))];
-  for (const name of learners) {
-    const theirs = courses.filter((course) => course.learner === name);
-    if (learner === null) blocks.push({ kind: "heading", text: learnerLabel(name) });
-    blocks.push({
-      kind: "table",
-      head: ["Course", "Where they got to", "Opened", "Done", "This week"],
-      rows: theirs.map((course) => [
-        course.title,
-        `${course.last.title}, ${shortDate.format(course.last.at)}`,
-        String(course.pagesOpened),
-        String(course.pagesDone),
-        aboutTime(course.secondsThisWeek),
-      ]),
-      right: [2, 3],
-    });
-    const topics = theirs.map((course) => ({ course, words: topicsWords(course) })).filter((entry) => entry.words);
-    if (topics.length > 0) blocks.push({ kind: "list", items: topics.map((entry) => `${entry.course.title}: ${entry.words}`) });
-  }
-  blocks.push({
-    kind: "para",
-    text: "“Done in” counts the pages a topic page links to inside the same collection, leaving out the links every page carries. It is shown only where the reader could read such a list.",
-  });
-  return blocks;
-}
-
-/** The blocks as pages for the old writer, for a record the kit's typeface cannot write. */
-export const progressSheets = (courses: LearningCourse[], learner: string | null, now: number): Sheet[] =>
-  toSheets(progressDocument(courses, learner, now), "Learning progress · Outpost");
-
 /** The day it is dated by: midnight at the start of the day it was written out. */
 export const progressDay = (now: number) => {
   const day = new Date(now);
   return new Date(day.getFullYear(), day.getMonth(), day.getDate());
 };
-
-// ── On the print kit ────────────────────────────────────────────────────────
-
-/** Whether the kit's typeface can write every name and title in the record. */
-export const kitCanWriteProgress = (courses: LearningCourse[], learner: string | null): boolean =>
-  [
-    learner ?? "",
-    ...courses.flatMap((course) => [course.learner, course.title, course.last.title, ...course.topics.map((topic) => topic.title)]),
-  ].every((text) => kitCanWrite(text));
 
 /** A bar of `done` out of `of`, in a colour, on a pale track: `width` by `height` points. */
 export function progressBar(done: number, of: number, width: number, colour: string, height = 9): string {

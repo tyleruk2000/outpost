@@ -2,11 +2,8 @@
  * Sun times on paper, laid out with the print kit: the same times as sun-document.ts
  * (and so as the Sun section, to the minute), with a chart of the light through the span
  * drawn from those times: first light to last light, sunrise to sunset, and solar noon,
- * day by day on the sheet's own clock.
- *
- * The kit's typeface has Latin letters only. A place named in another script keeps the
- * old writer, which draws such names as pictures (`sunSheets` with `writeLettered`):
- * `kitCanWrite` says which.
+ * day by day on the sheet's own clock. A place named in another script is set in the
+ * kit's fallback typefaces.
  */
 import { toMaidenhead } from "@outpost/shared";
 import type { Content, TDocumentDefinitions } from "pdfmake/interfaces";
@@ -39,10 +36,6 @@ const monthName = new Intl.DateTimeFormat(appLocale(), { month: "short", timeZon
 const monthYear = new Intl.DateTimeFormat(appLocale(), { month: "long", year: "numeric", timeZone: "UTC" });
 const rowDate = new Intl.DateTimeFormat(appLocale(), { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
 const at = (date: IsoDate) => new Date(dateToUtc(date));
-
-/** Letters the kit's typeface has: Latin, Latin-1, Latin Extended-A, the usual punctuation, and the marks `printable` stands in for. */
-const KIT_LETTERS = /^[\u0020-\u017f\u2010-\u2027\u2030-\u203a\u2032\u2033\u20ac\u2212]*$/;
-export const kitCanWrite = (text: string | undefined): boolean => KIT_LETTERS.test(text ?? "");
 
 /** Words for the kit: its stand-ins, and a hyphen for the minus sign a zone's offset is written with. */
 const plain = (text: string) => printable(text).replace(/−/g, "-");

@@ -3,14 +3,13 @@
  * a phone is not needed to read it. What is on the screen is what is printed; the
  * browser's own Print prints the sheet and nothing around it (see contacts.css).
  *
- * The same sheet is made as a PDF (kit-emergency.ts, or emergency-document.ts where a
- * name is in letters the print kit's typeface lacks), with the three things every
- * PDF made in Outpost offers: save it, add it to the library, share it. Adding it to
+ * The same sheet is made as a PDF with the print kit (kit-emergency.ts), with the three
+ * things every PDF made in Outpost offers: save it, add it to the library, share it. Adding it to
  * the library asks first, because the sheet is other people's details.
  */
 import { addressLines, type ContactDto } from "@outpost/shared";
 import { Download, Printer } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router";
 import { BackLink, EmptyState, ErrorState, Notice, Page, PageHeader } from "@/components/page";
@@ -18,20 +17,16 @@ import { PrintNotice } from "@/components/print-notice";
 import { Button } from "@/components/ui/button";
 import { Segmented, Skeleton } from "@/components/ui/misc";
 import { AID_PAPER_KEY, isAidPaper, likelyPaper } from "@/features/encryption/paper-aids";
-import { type MadePdf, madePdf } from "@/features/library/made/made-pdf";
 import { PdfActions } from "@/features/library/made/pdf-actions";
 import { readStored, writeStored } from "@/features/maps/lib/view";
-import { cannotDraw, type DrawLine, writeLettered } from "@/features/maps/print/lettering";
 import { PAPERS } from "@/features/maps/print/paper";
 import { useKitPdf } from "@/features/print-kit/use-kit-pdf";
-import { errorMessage } from "@/lib/api";
-import { type ClockStyle, useClockStyle } from "@/lib/clock";
+import { useClockStyle } from "@/lib/clock";
 import { type Printing, usePrinting } from "@/lib/printing";
 import { formatDate, plural } from "@/lib/utils";
 import { exportHref, labelOr, useEmergencyContacts } from "./contacts-data";
-import { emergencySheets, emergencyTitle, entriesWithUnwritable, madeWords, type SheetPaper } from "./emergency-document";
-import { emergencyDocument, emergencyTexts } from "./kit-emergency";
-import { kitCanSetAll } from "./kit-letters";
+import { emergencyTitle, madeWords, type SheetPaper } from "./emergency-document";
+import { emergencyDocument } from "./kit-emergency";
 
 /** The sheet itself. Black on white whatever the theme, and sized in points, because it is paper. */
 export function EmergencySheet({ contacts, printedOn }: { contacts: ContactDto[]; printedOn: number }) {
@@ -142,56 +137,44 @@ export function libraryQuestion(count: number) {
 }
 
 /**
- * The sheet as a PDF: made on this device when the screen opens, and again when the
- * contacts or the paper change. Laid out with the print kit, unless a contact's words
- * hold letters its typeface lacks (a name in Greek, say): then the old writer makes it,
- * drawing such words as pictures with the words kept for search (maps/print/lettering.ts).
+ * The sheet as a PDF, laid out with the print kit: made on this device when the screen
+ * opens, and again when the contacts or the paper change. Names in other scripts are set
+ * in the kit's fallback typefaces, as words a reader can search.
  */
-export function SheetPdf({ contacts, printing, draw }: { contacts: ContactDto[]; printing: Printing; draw?: DrawLine }) {
+export function SheetPdf({ contacts, printing }: { contacts: ContactDto[]; printing: Printing }) {
   const style = useClockStyle();
   const [paper, setPaper] = useState<SheetPaper>(() => readStored(AID_PAPER_KEY, isAidPaper, likelyPaper(navigator.language)));
-  const kit = useMemo(() => kitCanSetAll(emergencyTexts(contacts)), [contacts]);
-  const props = { contacts, printing, style, paper, setPaper };
-  return kit ? <KitSheetPdf {...props} /> : <LetteredSheetPdf {...props} draw={draw} />;
-}
-
-interface SheetPdfProps {
-  contacts: ContactDto[];
-  printing: Printing;
-  style: ClockStyle;
-  paper: SheetPaper;
-  setPaper: (paper: SheetPaper) => void;
-}
-
-/** The block round either kind of PDF: what it is, the three buttons, and the paper. */
-function SheetPdfBlock({
-  contacts,
-  printing,
-  style,
-  paper,
-  setPaper,
-  made,
-  children,
-}: SheetPdfProps & { made: { pdf: MadePdf | null; pages?: number; at?: Date; error?: string }; children?: ReactNode }) {
+  // When it was made: a new moment whenever what it is made from changes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the inputs are what make a new sheet
+  const at = useMemo(() => new Date(), [contacts, style, paper]);
+  const make = useCallback(() => emergencyDocument(contacts, { made: at, style, paper }), [contacts, style, paper, at]);
+  const made = useKitPdf(make, {
+    title: emergencyTitle(contacts, at),
+    kind: "Emergency sheet",
+    from: { what: "the emergency sheet of contacts", path: "/contacts/emergency" },
+  });
   return (
     <section aria-label="The sheet as a PDF" className="mb-5 grid max-w-[65ch] gap-3 border-y border-border py-4" data-testid="sheet-pdf">
       <div>
         <h2 className="text-body font-semibold text-ink">The sheet as a PDF</h2>
         <p className="mt-0.5 text-small text-ink-muted">
-          {made.pdf && made.pages && made.at
-            ? `${plural(made.pages, "page")} of ${PAPERS[paper].label}, made on this device on ${madeWords(made.at, style)}.`
+          {made.status === "made"
+            ? `${plural(made.pages, "page")} of ${PAPERS[paper].label}, made on this device on ${madeWords(at, style)}.`
             : `Being made on this device, on ${PAPERS[paper].label}.`}{" "}
           The file carries the date it was made. Save it to keep it on this device, or add it to the library to print it from anywhere.
         </p>
       </div>
-      {made.error !== undefined ? (
+      {made.status === "failed" ? (
         <Notice tone="danger" title="The PDF could not be made">
           {made.error} The sheet below can still be printed from the browser.
         </Notice>
       ) : (
-        <PdfActions pdf={made.pdf} lead={printing.lead === "print" ? "none" : undefined} confirm={libraryQuestion(contacts.length)} />
+        <PdfActions
+          pdf={made.status === "made" ? made.pdf : null}
+          lead={printing.lead === "print" ? "none" : undefined}
+          confirm={libraryQuestion(contacts.length)}
+        />
       )}
-      {children}
       <Segmented<SheetPaper>
         label="Paper for the PDF"
         value={paper}
@@ -203,86 +186,6 @@ function SheetPdfBlock({
         className="justify-self-start"
       />
     </section>
-  );
-}
-
-function KitSheetPdf(props: SheetPdfProps) {
-  const { contacts, style, paper } = props;
-  // When it was made: a new moment whenever what it is made from changes.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the inputs are what make a new sheet
-  const at = useMemo(() => new Date(), [contacts, style, paper]);
-  const make = useCallback(() => emergencyDocument(contacts, { made: at, style, paper }), [contacts, style, paper, at]);
-  const made = useKitPdf(make, {
-    title: emergencyTitle(contacts, at),
-    kind: "Emergency sheet",
-    from: { what: "the emergency sheet of contacts", path: "/contacts/emergency" },
-  });
-  return (
-    <SheetPdfBlock
-      {...props}
-      made={
-        made.status === "made"
-          ? { pdf: made.pdf, pages: made.pages, at }
-          : made.status === "failed"
-            ? { pdf: null, error: made.error }
-            : { pdf: null }
-      }
-    />
-  );
-}
-
-type Made = { pdf: MadePdf; pages: number; drawn: number; marked: number; at: Date } | { error: string };
-
-function LetteredSheetPdf(props: SheetPdfProps & { draw?: DrawLine }) {
-  const { contacts, style, paper, draw } = props;
-  const [made, setMade] = useState<Made | null>(null);
-
-  useEffect(() => {
-    let live = true;
-    setMade(null);
-    const at = new Date();
-    const title = emergencyTitle(contacts, at);
-    const make = async (): Promise<Made> => {
-      let written = await writeLettered(emergencySheets(contacts, { made: at, style, paper }), title, at, draw);
-      if (written.marked > 0) {
-        // This device would not draw some names: the sheet says so at the top, and says how many entries.
-        const marked = entriesWithUnwritable(contacts);
-        written = await writeLettered(emergencySheets(contacts, { made: at, style, paper, marked }), title, at, cannotDraw);
-        written = { ...written, marked };
-      }
-      const pdf = madePdf(written.bytes, title, "Emergency sheet", {
-        what: "the emergency sheet of contacts",
-        path: "/contacts/emergency",
-      });
-      return { pdf, pages: written.pages, drawn: written.drawn, marked: written.marked, at };
-    };
-    make()
-      .catch((error: unknown) => ({ error: errorMessage(error) }))
-      .then((result) => {
-        if (live) setMade(result);
-      });
-    return () => {
-      live = false;
-    };
-  }, [contacts, style, paper, draw]);
-
-  return (
-    <SheetPdfBlock
-      {...props}
-      made={made && "pdf" in made ? made : made && "error" in made ? { pdf: null, error: made.error } : { pdf: null }}
-    >
-      {made && "pdf" in made && made.marked > 0 ? (
-        <p className="text-small text-ink">
-          This device could not put the letters of {plural(made.marked, "entry", "entries")} on the page, so each place they belong is
-          marked [?] in the PDF, and the PDF says so. The sheet below, printed from the browser, has them in full.
-        </p>
-      ) : made && "pdf" in made && made.drawn > 0 ? (
-        <p className="text-small text-ink-muted">
-          Names and words in letters the PDF’s own typefaces do not have are drawn in the PDF as they are here, as pictures, with the words
-          kept in the file so that search finds them.
-        </p>
-      ) : null}
-    </SheetPdfBlock>
   );
 }
 

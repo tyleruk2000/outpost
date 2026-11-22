@@ -9,7 +9,6 @@
  * A4, as before: every piece also lies inside what US Letter holds.
  */
 import type { Content, TDocumentDefinitions } from "pdfmake/interfaces";
-import { kitCanWrite } from "@/features/maps/lib/sun-kit";
 import type { Rgb, Sheet } from "@/features/maps/print/sheet";
 import {
   PRINT_COLOURS as C,
@@ -31,7 +30,6 @@ import { findNorth, gnomonSide, nocturnalSighting } from "./diagrams";
 import { signedMinutes, sundialToClock, tableDates } from "./sundial";
 import {
   gnomonGeometry,
-  latitudeWords,
   longitudeWords,
   type NocturnalInput,
   nocturnalSheets,
@@ -57,10 +55,6 @@ export const KIT_LOOK: TemplateLook = {
   pages: 3,
 };
 
-/** A place's name as the kit's typeface can write it: the name, or where it is when the name is in letters it lacks. */
-const placeOf = <T extends { placeName: string; latitude: number; longitude: number }>(input: T): T =>
-  kitCanWrite(input.placeName) ? input : { ...input, placeName: `${latitudeWords(input.latitude)}, ${longitudeWords(input.longitude)}` };
-
 const kicker = (words: string): Content => ({ text: words, fontSize: 8, bold: true, color: C.accent, characterSpacing: 0.4 });
 const title = (words: string): Content => ({ text: printable(words), fontSize: 15, bold: true, margin: [0, 1, 0, 0] });
 
@@ -77,8 +71,7 @@ const made = (year: number) => new Date(Date.UTC(year, 0, 1));
 
 // ── The sundial ─────────────────────────────────────────────────────────────
 
-export function sundialDocument(given: SundialInput): TDocumentDefinitions {
-  const input = placeOf(given);
+export function sundialDocument(input: SundialInput): TDocumentDefinitions {
   const [one, two] = sundialSheets(input, KIT_LOOK) as [Sheet, Sheet];
   const north = input.latitude >= 0;
   const pole = north ? "north" : "south";
@@ -172,8 +165,7 @@ export function sundialDocument(given: SundialInput): TDocumentDefinitions {
 
 // ── The nocturnal ───────────────────────────────────────────────────────────
 
-export function nocturnalDocument(given: NocturnalInput): TDocumentDefinitions {
-  const input = placeOf(given);
+export function nocturnalDocument(input: NocturnalInput): TDocumentDefinitions {
   const [one, two] = nocturnalSheets(input, KIT_LOOK) as [Sheet, Sheet];
   const measure = measureOf("a4");
   const name = nocturnalTitle(input);

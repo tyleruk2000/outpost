@@ -4,7 +4,6 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { DrawLine } from "@/features/maps/print/lettering";
 import type { Printing } from "@/lib/printing";
 import { SheetPdf } from "./emergency-sheet";
 
@@ -25,13 +24,6 @@ const contact = (over: Partial<ContactDto>): ContactDto => ({
 const people = [contact({}), contact({ id: "c2", displayName: "Ελένη Παπαδοπούλου", phones: [{ value: "+30 21 0123 4567", label: "" }] })];
 
 const printing: Printing = { canPrint: true, standalone: false, print: () => undefined, unanswered: false, lead: "print" };
-const draws: DrawLine = async (item) => ({
-  picture: { jpeg: Uint8Array.from([0xff, 0xd8, 0xff, 0xd9]), width: 10, height: 4 },
-  width: item.size * item.text.length * 0.5,
-  height: item.size * 1.5,
-  baseline: item.size * 1.1,
-});
-const cannot: DrawLine = () => Promise.reject(new Error("no canvas"));
 
 const sent: FormData[] = [];
 class Upload {
@@ -75,16 +67,15 @@ describe("the emergency sheet as a PDF", () => {
     const user = userEvent.setup();
     render(
       <MemoryRouter>
-        <SheetPdf contacts={people} printing={printing} draw={draws} />
+        <SheetPdf contacts={people} printing={printing} />
       </MemoryRouter>,
     );
     const block = screen.getByRole("region", { name: "The sheet as a PDF" });
-    const save = await within(block).findByRole("link", { name: "Save as PDF" });
+    const save = await within(block).findByRole("link", { name: "Save as PDF" }, { timeout: 10_000 });
     expect(save.getAttribute("download")).toMatch(/^emergency-sheet-2-contacts-made-\d{1,2}-[a-z]{3}-\d{4}\.pdf$/);
     expect((await made.at(-1)!.text()).startsWith("%PDF-1.")).toBe(true);
     expect(block).toHaveTextContent(/1 page of (A4|US Letter), made on this device on \d{1,2} \w+ \d{4} at \d\d:\d\d\./);
     expect(block).toHaveTextContent("The file carries the date it was made.");
-    expect(block).toHaveTextContent("drawn in the PDF as they are here, as pictures");
 
     // Asked first; saying no sends nothing.
     await user.click(within(block).getByRole("button", { name: "Add to library" }));
@@ -106,33 +97,5 @@ describe("the emergency sheet as a PDF", () => {
     expect(sent[0]!.get("source")).toBe("Made in Outpost from the emergency sheet of contacts: /contacts/emergency");
     expect((sent[0]!.get("file") as File).size).toBe(made.at(-1)!.size);
     expect(await within(block).findByTestId("pdf-status")).toHaveTextContent("Added to the library under “Made in Outpost” as");
-  });
-
-  it("lays out a sheet of names in Latin letters with the print kit, and offers the same three things", async () => {
-    render(
-      <MemoryRouter>
-        <SheetPdf contacts={[people[0]!, contact({ id: "c3", displayName: "Zoë Łukasiewicz" })]} printing={printing} draw={cannot} />
-      </MemoryRouter>,
-    );
-    const block = screen.getByRole("region", { name: "The sheet as a PDF" });
-    const save = await within(block).findByRole("link", { name: "Save as PDF" }, { timeout: 10_000 });
-    expect(save.getAttribute("download")).toMatch(/^emergency-sheet-2-contacts-made-\d{1,2}-[a-z]{3}-\d{4}\.pdf$/);
-    expect(new TextDecoder().decode(new Uint8Array(await made.at(-1)!.arrayBuffer()).slice(0, 5))).toBe("%PDF-");
-    expect(block).toHaveTextContent(/1 page of (A4|US Letter), made on this device on \d{1,2} \w+ \d{4} at \d\d:\d\d\./);
-    expect(block).not.toHaveTextContent("as pictures");
-    expect(within(block).getByRole("button", { name: "Add to library" })).toBeEnabled();
   }, 20_000);
-
-  it("says plainly when this device could not draw some names, and how many entries", async () => {
-    render(
-      <MemoryRouter>
-        <SheetPdf contacts={people} printing={printing} draw={cannot} />
-      </MemoryRouter>,
-    );
-    const block = screen.getByRole("region", { name: "The sheet as a PDF" });
-    await within(block).findByRole("link", { name: "Save as PDF" });
-    expect(block).toHaveTextContent(
-      "This device could not put the letters of 1 entry on the page, so each place they belong is marked [?]",
-    );
-  });
 });
