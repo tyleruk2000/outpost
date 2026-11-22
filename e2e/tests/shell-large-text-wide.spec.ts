@@ -22,7 +22,7 @@ for (const [step, root] of [
     const sidebar = await page.locator('aside[aria-label="Main"]').boundingBox();
     expect(sidebar!.width).toBeLessThanOrEqual(Math.ceil(1280 * 0.22));
     const cut = await page
-      .locator('aside[aria-label="Main"] a span.truncate')
+      .locator('aside[aria-label="Main"] nav li > div > a > span, aside[aria-label="Main"] nav a[data-child] > span')
       .evaluateAll((spans) => spans.filter((span) => span.scrollWidth > span.clientWidth + 1).map((span) => span.textContent));
     expect(cut).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);

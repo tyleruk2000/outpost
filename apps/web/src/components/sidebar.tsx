@@ -10,7 +10,7 @@ import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "./ui/me
 import { Tooltip } from "./ui/misc";
 
 const rowClass =
-  "group flex h-9 items-center gap-3 rounded-control px-2.5 text-[0.9375rem] text-spine-ink-muted transition-colors duration-150 hover:bg-spine-raised hover:text-spine-ink focus-visible:outline-spine-ink";
+  "group flex min-h-9 items-center gap-3 rounded-control px-2.5 py-1.5 text-[0.9375rem] text-spine-ink-muted transition-colors duration-150 hover:bg-spine-raised hover:text-spine-ink focus-visible:outline-spine-ink";
 const litClass = "bg-spine-active font-medium text-spine-ink hover:bg-spine-active";
 
 /** What a person opened or closed, by the path of the screen the group is under. Kept on this device. */
@@ -112,7 +112,8 @@ function ParentRow({
           className={cn(rowClass, lit && litClass, children.length > 0 && "pr-10")}
         >
           <item.icon aria-hidden className="size-[18px] shrink-0" strokeWidth={1.6} />
-          <span className="flex-1 truncate">{label}</span>
+          {/* Wraps rather than cutting the name short, when the text is larger than the sidebar allows for. */}
+          <span className="min-w-0 flex-1 break-words">{label}</span>
           {trailing}
         </Link>
         {children.length > 0 ? (
@@ -142,12 +143,12 @@ function ParentRow({
                 className={({ isActive }) =>
                   cn(
                     // Indented so that the name starts under its parent's name.
-                    "flex h-8 items-center rounded-control pr-2.5 pl-10 text-[0.875rem] text-spine-ink-muted transition-colors duration-150 hover:bg-spine-raised hover:text-spine-ink focus-visible:outline-spine-ink",
+                    "flex min-h-8 items-center rounded-control py-1 pr-2.5 pl-10 text-[0.875rem] text-spine-ink-muted transition-colors duration-150 hover:bg-spine-raised hover:text-spine-ink focus-visible:outline-spine-ink",
                     isActive && litClass,
                   )
                 }
               >
-                <span className="truncate">{child.label}</span>
+                <span className="min-w-0 break-words">{child.label}</span>
               </NavLink>
             </li>
           ))}
