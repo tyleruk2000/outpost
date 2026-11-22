@@ -11,6 +11,7 @@ import path from "node:path";
 import type { ImageryEstimate, ImageryOverview, MapSources, SceneSearchResponse } from "@outpost/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createHttpClient } from "../src/core/http.ts";
+import { withReaderLocale } from "../src/core/locale.ts";
 import { Cog } from "../src/modules/maps/imagery/cog.ts";
 import { areaKm2, areaWarning } from "../src/modules/maps/imagery/index.ts";
 import { ImageArchiveWriter } from "../src/modules/maps/imagery/pmtiles-writer.ts";
@@ -347,6 +348,8 @@ describe("area figures", () => {
     expect(passes.map((pass) => pass.date)).toEqual(["2026-08-01", "2026-07-12"]);
     expect(passes[0]!.coveragePercent).toBe(100);
     expect(passes[0]!.dateText).toBe("1 August 2026");
+    // Written the way the reader's browser writes a date.
+    expect(withReaderLocale("en-US", () => passesOf(scenes, AREA)[0]!.dateText)).toBe("August 1, 2026");
   });
 });
 

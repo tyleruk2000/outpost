@@ -417,6 +417,9 @@ describe("aerial photographs through the API", () => {
       // The survey whose file is elsewhere is not offered.
       expect(photos).toHaveLength(1);
       expect(photos[0]).toMatchObject({ title: "NAIP 2023, CO", dateText: "25 September 2023", resolutionMeters: 0.6 });
+      // A browser in the United States reads the day the way it writes one.
+      const asUs = await app.api<SceneSearchResponse>("POST", "/api/maps/imagery/scenes", { bbox: US_AREA }, { headers: { "accept-language": "en-US" } });
+      expect(asUs.body.options.find((option) => option.source === "naip")?.dateText).toBe("September 25, 2023");
       expect(requests.some((entry) => entry.url === "/catalog.json")).toBe(false);
 
       const estimate = await app.api<ImageryEstimate>("POST", "/api/maps/imagery/estimate", { bbox: US_AREA, sceneKey: photos[0]!.key });
