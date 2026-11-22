@@ -21,9 +21,12 @@ the previous copy and lists what could not be updated and why.
 
 ## Places
 
-Choose places from your saved places on the map. The saved place with the **home** icon
-is the home place (if several have it, the one saved first), the same home Emergency
-plans uses. A place in the list is a copy, so moving the saved place does not change it;
+Choose places from your saved places on the map. The home place is the current
+household's: with one household, the saved place with the **home** icon (if several have
+it, the one saved first), the same home Emergency plans uses; with several, the place chosen
+for the household Outpost is set to now. A portable household's home is where it was last
+said to be: **Add a place** offers it, named with how old it is, and its forecast is fetched
+only when you press **Update now**. Nothing is fetched because it moved. A place in the list is a copy, so moving the saved place does not change it;
 removing it removes what was fetched for it.
 
 Your device's position is offered only on a secure page (see Settings → HTTPS on your

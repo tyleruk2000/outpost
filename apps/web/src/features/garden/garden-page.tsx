@@ -6,7 +6,6 @@
  */
 import {
   type CalendarMonth,
-  countryAt,
   GARDEN_CALENDAR_SOURCE,
   GARDEN_CROP_IDS,
   GARDEN_CROPS,
@@ -16,7 +15,6 @@ import {
   type GardenSowing,
   type GardenSowingInput,
   gardenMonth,
-  homePlaceOf,
   LAST_FROST_SOURCE,
   MONTH_NAMES_LONG,
   monthDayText,
@@ -30,9 +28,8 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Select, Skeleton } from "@/components/ui/misc";
+import { NoHome, useHome } from "@/features/households/home";
 import { useCatalogue } from "@/features/layers/data";
-import { useMarkers } from "@/features/maps/data";
-import { NoHomePlace } from "@/features/maps/home-place";
 import { errorMessage } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { SourceList } from "../tools/kit";
@@ -348,13 +345,14 @@ function Record({ sowings }: { sowings: GardenSowing[] }) {
 
 export default function GardenPage() {
   const garden = useGarden();
-  const markers = useMarkers();
+  const current = useHome();
   const catalogue = useCatalogue();
   const [month, setMonth] = useState<CalendarMonth>(() => (new Date().getMonth() + 1) as CalendarMonth);
 
-  const home = markers.data ? homePlaceOf(markers.data) : null;
+  // The current household's home and its country (its own choice, else the country home is in).
+  const home = current.home;
   const countries = catalogue.data?.countries ?? [];
-  const code = home ? countryAt(home, countries) : null;
+  const code = current.country;
   const elsewhere = code !== null && code !== "GB" ? (countries.find((country) => country.code === code)?.name ?? code) : null;
   const lastFrost = garden.data?.settings.lastFrost ?? null;
   const plan = gardenMonth(month, lastFrost);
@@ -386,7 +384,7 @@ export default function GardenPage() {
           </Field>
         }
       >
-        {markers.isSuccess && !home ? <NoHomePlace className="mb-4" /> : null}
+        {!current.isPending && !current.isError && !home ? <NoHome className="mb-4" /> : null}
         {elsewhere ? (
           <Notice tone="warning" className="mb-4" title={`Home is in ${elsewhere}, not the UK`}>
             This calendar is the RHS's, for the UK. Outpost has no published calendar for {elsewhere} yet, so the months below may be wrong

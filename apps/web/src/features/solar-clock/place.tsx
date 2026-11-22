@@ -1,18 +1,19 @@
 /**
- * Where, and on which clock: the place every part of the solar clock works for (the home
- * place, another saved place, or coordinates typed here) and the clock its answers are
+ * Where, and on which clock: the place every part of the solar clock works for (the current
+ * household's home: its saved place, or where a portable household was last said to be, with
+ * its age; another saved place; or coordinates typed here) and the clock its answers are
  * written on (this device's zone, or "UTC+n" said by hand). Both are remembered on this
  * device as a preference, nothing more. Saved places come from the server; if it cannot
  * be reached, typed coordinates still work, because nothing else here needs it.
  */
-import { formatDecimal, homePlaceOf, type MarkerDto, parseCoordinates } from "@outpost/shared";
+import { formatDecimal, homeLabel, type MarkerDto, parseCoordinates } from "@outpost/shared";
 import { useState } from "react";
 import { Link } from "react-router";
 import { Notice } from "@/components/page";
 import { Field } from "@/components/ui/input";
 import { Select, Skeleton } from "@/components/ui/misc";
+import { HomeAsOf, NoHome, useHome } from "@/features/households/home";
 import { useMarkers } from "@/features/maps/data";
-import { NoHomePlace } from "@/features/maps/home-place";
 import { deviceZone } from "@/features/maps/lib/sun-text";
 import { errorMessage } from "@/lib/api";
 import { useText } from "../tools/kit";
@@ -27,6 +28,8 @@ export interface ChosenPlace {
 }
 
 const TYPED = "typed";
+/** A portable household's position: home, but not a saved place. */
+const HERE = "home-here";
 const PLACE_KEY = "solar-clock.place";
 const ZONE_KEY = "solar-clock.zone";
 
@@ -39,6 +42,7 @@ export interface PlaceState {
 /** The place and the clock, and the controls that choose them. */
 export function usePlaceAndZone(): PlaceState {
   const markers = useMarkers();
+  const current = useHome();
   const [key, setKeyState] = useState<string | null>(() => readPref(PLACE_KEY));
   const setKey = (next: string) => {
     setKeyState(next);
@@ -52,20 +56,26 @@ export function usePlaceAndZone(): PlaceState {
   };
 
   const list: MarkerDto[] = markers.data ?? [];
-  const home = homePlaceOf(list);
+  // The current household's home: a saved place, or a portable household's position.
+  const here = current.home?.kind === "here" ? current.home : null;
+  const homeId = current.home?.kind === "place" ? current.home.id : null;
+  const home = homeId ? (list.find((marker) => marker.id === homeId) ?? null) : null;
   const saved = [...list].sort((a, b) => (a.id === home?.id ? -1 : b.id === home?.id ? 1 : a.name.localeCompare(b.name)));
   // What was chosen last time, if it is still there; else home, else the first saved place, else typing.
-  const known = key === TYPED || saved.some((marker) => `marker:${marker.id}` === key);
-  const chosen = known ? (key as string) : home ? `marker:${home.id}` : saved[0] ? `marker:${saved[0].id}` : TYPED;
-  const usingTyped = chosen === TYPED || markers.isError;
+  const known = key === TYPED || (key === HERE && here !== null) || saved.some((marker) => `marker:${marker.id}` === key);
+  const chosen = known ? (key as string) : home ? `marker:${home.id}` : here ? HERE : saved[0] ? `marker:${saved[0].id}` : TYPED;
+  const usingTyped = chosen === TYPED || (markers.isError && chosen !== HERE);
   const typedPoint = typed.trim() ? parseCoordinates(typed) : null;
   const marker = usingTyped ? undefined : saved.find((each) => `marker:${each.id}` === chosen);
+  const usingHere = !usingTyped && chosen === HERE && here !== null;
 
   const place: ChosenPlace | null = marker
     ? { lat: marker.lat, lon: marker.lon, name: marker.name || "Unnamed place" }
-    : usingTyped && typedPoint
-      ? { lat: typedPoint.lat, lon: typedPoint.lon, name: formatDecimal(typedPoint.lat, typedPoint.lon, 4) }
-      : null;
+    : usingHere && here
+      ? { lat: here.lat, lon: here.lon, name: here.name }
+      : usingTyped && typedPoint
+        ? { lat: typedPoint.lat, lon: typedPoint.lon, name: formatDecimal(typedPoint.lat, typedPoint.lon, 4) }
+        : null;
 
   const device = deviceZone();
   const zone: ZoneChoice =
@@ -100,6 +110,7 @@ export function usePlaceAndZone(): PlaceState {
                 value={chosen}
                 onChange={setKey}
                 options={[
+                  ...(here ? [{ value: HERE, label: homeLabel(here, Date.now()) }] : []),
                   ...saved.map((each) => ({
                     value: `marker:${each.id}`,
                     label:
@@ -113,7 +124,8 @@ export function usePlaceAndZone(): PlaceState {
             )}
           </Field>
         )}
-        {!markers.isPending && !markers.isError && !home ? <NoHomePlace /> : null}
+        {!markers.isPending && !markers.isError && !current.isPending && !home && !here ? <NoHome /> : null}
+        {usingHere ? <HomeAsOf home={here} /> : null}
         {usingTyped ? (
           <Field
             label="Coordinates"
@@ -171,7 +183,11 @@ export function NoPlaceYet() {
       <Link to="/maps" className="text-primary underline underline-offset-2">
         Maps
       </Link>{" "}
-      with the home icon.
+      with the home icon, or choose it on the{" "}
+      <Link to="/prepare/households" className="text-primary underline underline-offset-2">
+        Households
+      </Link>{" "}
+      page.
     </p>
   );
 }

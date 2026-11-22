@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/lib/api";
+import { oneHouseholdOf } from "../households/test-support";
 import { FoodFacts } from "./food-facts";
 import { FoodSection } from "./food-panel";
 import { FOOD_GLYPHS, foodImageId, parseFoodImageId } from "./food-symbols";
@@ -168,9 +169,11 @@ describe("under the food and supplies switch", () => {
       .spyOn(api, "get")
       .mockImplementation(
         async (path: string) =>
-          (path.startsWith("/api/maps/markers")
-            ? { markers: [{ id: "h", name: "Home", icon: "home", lat: 54.59, lon: -3.12, createdAt: 1 }] }
-            : NEAREST) as never,
+          (path.startsWith("/api/households")
+            ? oneHouseholdOf([{ id: "h", name: "Home", icon: "home", lat: 54.59, lon: -3.12, createdAt: 1 }])
+            : path.startsWith("/api/maps/markers")
+              ? { markers: [{ id: "h", name: "Home", icon: "home", lat: 54.59, lon: -3.12, createdAt: 1 }] }
+              : NEAREST) as never,
       );
     render(section());
     await screen.findByRole("list", { name: "Nearest to Home" });

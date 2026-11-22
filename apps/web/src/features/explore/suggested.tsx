@@ -10,29 +10,31 @@ import { useMemo } from "react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
+import { HomeAsOf, useHome } from "@/features/households/home";
 import { useCatalogue } from "@/features/layers/data";
-import { useMapOverview, useMapRegions, useMarkers } from "@/features/maps/data";
+import { useMapOverview, useMapRegions } from "@/features/maps/data";
 import { NoHomePlace } from "@/features/maps/home-place";
 import { type Suggestions, suggestionsFor } from "./suggestions";
 
 export function useSuggestions(entries: CatalogEntryDto[]): { suggestions: Suggestions | null; pending: boolean } {
-  const markers = useMarkers();
+  const current = useHome();
   const countries = useCatalogue();
   const presets = useMapRegions(true);
   const overview = useMapOverview();
-  const pending = markers.isPending || countries.isPending || presets.isPending || overview.isPending;
+  const pending = current.isPending || countries.isPending || presets.isPending || overview.isPending;
   const suggestions = useMemo(
     () =>
       pending
         ? null
         : suggestionsFor({
-            markers: markers.data,
+            home: current.home,
+            country: current.country,
             countries: countries.data?.countries,
             presets: presets.data?.groups.flatMap((group) => group.regions),
             overview: overview.data,
             entries,
           }),
-    [pending, markers.data, countries.data, presets.data, overview.data, entries],
+    [pending, current.home, current.country, countries.data, presets.data, overview.data, entries],
   );
   return { suggestions, pending };
 }
@@ -46,6 +48,7 @@ export function SuggestedForHome({
   pending: boolean;
   onDownload: (entry: CatalogEntryDto) => void;
 }) {
+  const { home } = useHome();
   if (pending) return <Skeleton className="mb-6 h-24" />;
   if (!suggestions) return null;
   if (suggestions.state === "no-home")
@@ -80,6 +83,7 @@ export function SuggestedForHome({
         For the country Home is in, by the outline of the country round it; near a border it may be the neighbour. Each opens the screen
         that fetches it, which shows the size first.
       </p>
+      <HomeAsOf home={home} className="mt-1" />
       <Rows rows={base} onDownload={onDownload} label={`Suggested for ${suggestions.country.name}`} />
       {uk.length > 0 ? (
         <>

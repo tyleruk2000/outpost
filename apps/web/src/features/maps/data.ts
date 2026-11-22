@@ -109,6 +109,8 @@ export function useSaveMarker() {
           : current,
       );
       void client.invalidateQueries({ queryKey: ["maps"] });
+      // A household's home is a saved place: its name, place or icon may have changed.
+      void client.invalidateQueries({ queryKey: ["households"] });
     },
     onError: (error) => notify.error(errorMessage(error)),
   });
@@ -123,6 +125,8 @@ export function useDeleteMarker() {
         current ? { markers: current.markers.filter((item) => item.id !== id) } : current,
       );
       void client.invalidateQueries({ queryKey: ["maps"] });
+      // A household's home is a saved place: its name, place or icon may have changed.
+      void client.invalidateQueries({ queryKey: ["households"] });
     },
     onError: (error) => notify.error(errorMessage(error)),
   });
@@ -176,6 +180,8 @@ export function useSaveRoute() {
       // The line itself changed: what is cached for it is wrong, not merely old.
       void client.invalidateQueries({ queryKey: mapsKeys.track(track.id) });
       void client.invalidateQueries({ queryKey: ["maps"] });
+      // A household's home is a saved place: its name, place or icon may have changed.
+      void client.invalidateQueries({ queryKey: ["households"] });
     },
   });
 }
@@ -190,6 +196,8 @@ export function useDeleteTrack() {
       );
       client.removeQueries({ queryKey: mapsKeys.track(id) });
       void client.invalidateQueries({ queryKey: ["maps"] });
+      // A household's home is a saved place: its name, place or icon may have changed.
+      void client.invalidateQueries({ queryKey: ["households"] });
     },
     onError: (error) => notify.error(errorMessage(error)),
   });
@@ -249,6 +257,8 @@ export function useStartRegion() {
     mutationFn: (request: StartRegionRequest) => api.post<{ downloads: DownloadDto[] }>("/api/maps/regions", request),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ["maps"] });
+      // A household's home is a saved place: its name, place or icon may have changed.
+      void client.invalidateQueries({ queryKey: ["households"] });
       void client.invalidateQueries({ queryKey: ["downloads"] });
     },
   });
@@ -261,6 +271,8 @@ export function useRemoveRegion() {
       api.delete<{ ok: true }>(`/api/collections/${id}`, { deleteFiles }),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ["maps"] });
+      // A household's home is a saved place: its name, place or icon may have changed.
+      void client.invalidateQueries({ queryKey: ["households"] });
       void client.invalidateQueries({ queryKey: ["collections"] });
       void client.invalidateQueries({ queryKey: ["storage"] });
     },
@@ -280,6 +292,8 @@ export function useStartPlaces() {
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ["downloads"] });
       void client.invalidateQueries({ queryKey: ["maps"] });
+      // A household's home is a saved place: its name, place or icon may have changed.
+      void client.invalidateQueries({ queryKey: ["households"] });
     },
     onError: (error) => notify.error(errorMessage(error)),
   });

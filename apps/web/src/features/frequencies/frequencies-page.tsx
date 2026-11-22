@@ -43,14 +43,12 @@ import { Dialog, DialogBody, DialogContent } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Badge, Select, Skeleton } from "@/components/ui/misc";
 import { FirstUseGuide } from "@/features/help/first-use";
-import { useCatalogue } from "@/features/layers/data";
+import { useHome } from "@/features/households/home";
 import { PdfActions } from "@/features/library/made/pdf-actions";
-import { useMarkers } from "@/features/maps/data";
 import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
 import { LicenceLine } from "@/features/radio/licence";
 import { cn, plural } from "@/lib/utils";
 import { frequenciesTitle, frequencyLine, scheduleWords, statusWords } from "./document";
-import { homeCountry } from "./home-country";
 import { frequenciesPrint } from "./print";
 
 const ANY = "any";
@@ -337,9 +335,7 @@ function PdfDialog({
 export default function FrequenciesPage() {
   const data = useFrequencies();
   const [params, setParams] = useSearchParams();
-  const markers = useMarkers();
-  const catalogue = useCatalogue();
-  const home = homeCountry(markers.data, catalogue.data?.countries);
+  const home = useHome().country;
   const [pdfOpen, setPdfOpen] = useState(false);
   const today = localDay();
 

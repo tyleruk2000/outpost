@@ -1,6 +1,7 @@
 /** Shared by the manage screen's component tests: a fake server that remembers what it was sent, and sample data. */
 import type { CleanupPlan, CleanupStatus, Leftover, ManagedItem, UsageResponse } from "@outpost/shared";
 import { vi } from "vitest";
+import { oneHouseholdOf } from "../households/test-support";
 
 export { renderScreen } from "../downloads/test-support";
 
@@ -12,6 +13,13 @@ export interface FakeApi {
   bodiesOf(call: string): unknown[];
 }
 
+type MarkerLike = { id: string; name: string; lat: number; lon: number; icon: string; createdAt: number };
+const markersOf = (answer: Answer): MarkerLike[] => {
+  const value = typeof answer === "function" ? (answer as (body: unknown) => unknown)(undefined) : answer;
+  const markers = (value as { markers?: unknown } | undefined)?.markers;
+  return Array.isArray(markers) ? (markers as MarkerLike[]) : [];
+};
+
 /** Replaces `fetch` with answers keyed by "METHOD /path". `{ status, error }` is sent as a failure. */
 export function fakeApi(routes: Record<string, Answer>): FakeApi {
   const requests: FakeApi["requests"] = [];
@@ -22,7 +30,11 @@ export function fakeApi(routes: Record<string, Answer>): FakeApi {
       const call = `${init?.method ?? "GET"} ${url.pathname}`;
       const body = typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
       requests.push({ call, body });
-      const answer = routes[call];
+      // With no households given, one household whose home is the saved place with the home icon, as the server says.
+      const answer =
+        routes[call] === undefined && call === "GET /api/households"
+          ? oneHouseholdOf(markersOf(routes["GET /api/maps/markers"]))
+          : routes[call];
       const value = typeof answer === "function" ? (answer as (body: unknown) => unknown)(body) : answer;
       const failure = value as { status?: number; error?: unknown } | undefined;
       const status = answer === undefined ? 404 : failure && typeof failure.status === "number" && failure.error ? failure.status : 200;

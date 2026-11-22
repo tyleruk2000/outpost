@@ -139,6 +139,31 @@ A portable household's home is wherever a person last said it was, so a place us
   then the screen says its figures are for the earlier place;
 - treats a null home as "set where it is now", with a link to the household's page.
 
+## The place users
+
+These take the current household's home and country already: weather (the national
+warnings' country and position, the Home badge, the places list, its "add where it is now"),
+tides, the solar clock, night sky and celestial navigation (`usePlaceAndZone`), Explore's
+suggestions, frequencies and licences, nuclear planning, heard and APRS weather, satellites
+(page and map layer), repeaters and the compass (`useOrigin`), the propagation transmitter,
+power's sun figures, the layers' region chooser and food panel, the garden's country, the
+map's "near home" (heard, range), and the chat tools (`homePlace`/`noHomeText` in
+`tools/where.ts`: sun, weather, radio, places). The mesh root topic and the allotment take
+`first()`.
+
+- Web: `features/households/home.tsx` has `useHome()` (home, household, country, `several`),
+  `<HomeAsOf home />` (the "as of 3 hours ago" line, nothing for a saved place) and
+  `<NoHome />` (no home: the home icon and Maps for the first household, else a link to
+  /prepare/households). `NoHomePlace` (maps/home-place.tsx) is the same line.
+- Shared: `homeAsOf`, `homeLabel` and `noHomeWords` (`home-place.ts`).
+- The map: `features/households/map.ts` draws every household's home, labelled with its
+  name, a portable one's as a ringed dot with its age (source `o-households`). With one
+  household whose home is a saved place it draws nothing.
+- Marker changes refresh the households query (a home is a saved place).
+- Tests: `useHome` is answered by `GET /api/households`; `fakeApi` answers it, when a test
+  does not, with one household whose home is the home-icon place among the markers it was
+  given (`oneHouseholdOf` in `features/households/test-support.ts`).
+
 ## Still the first household
 
 Hard-coded `"household"` ids and Home lookups the per-household packages replace:
@@ -150,13 +175,9 @@ Hard-coded `"household"` ids and Home lookups the per-household packages replace
   inserted elsewhere take the column default, `'household'`.
 - Unfiltered lists: supplies items and shopping, emergency plans, event log, routine
   checks, garden sowings, power plans, medical sheets.
-- Server Home lookups (`homePlaceOf`): `emergency-plans/index.ts`, `weather/service.ts`
-  (two), `household-papers/facts.ts`, `readiness/drill.ts`, `tools/where.ts`,
-  `mesh/service.ts` and `games/allotment.ts` (these two take `first()`). Supplies' energy
-  table already takes `households.country()`.
-- Web Home lookups (`homePlaceOf` or `useHomeCountry`): maps, layers (food panel, dataset
-  manager), garden, frequencies, satellites (page and map), explore suggestions, solar
-  clock, household papers (binder, binder places, household data), heard (page, APRS
-  weather), weather places, the household book wizard.
+- Server Home lookups (`homePlaceOf`): `emergency-plans/index.ts`,
+  `household-papers/facts.ts`, `readiness/drill.ts`.
+- Web Home lookups (`homePlaceOf`): household papers (binder, binder places, household
+  data), the household book wizard.
 - Erase everything, the database inspector and the table checks already know the new
   tables; Export everything and the drive screen do not yet say which household.

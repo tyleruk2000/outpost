@@ -2,6 +2,7 @@
 import { act, fireEvent, renderHook, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { hereHome, household, households, placeHome } from "../households/test-support";
 import { fakeApi, renderScreen } from "../manage/test-support";
 import { toolScreens } from "../tools/screens";
 import { modelDeclination } from "./model-declination";
@@ -82,6 +83,38 @@ describe("the solar clock", () => {
     expect(screen.getByRole("combobox", { name: "Place" })).toHaveTextContent("Home: Cottage");
     expect(screen.getByText(/Everything on this tab trusts this device's clock/)).toBeInTheDocument();
     expect(screen.getByRole("region", { name: /The sun's height above the horizon through today/ })).toBeInTheDocument();
+  });
+
+  it("with several households uses the current one's home place", async () => {
+    const bothy = marker({ id: "m2", name: "Bothy", icon: "pin", createdAt: 2 });
+    fakeApi({
+      "GET /api/maps/markers": { markers: [marker({}), bothy] },
+      "GET /api/households": households(
+        [
+          household({ home: placeHome(marker({})) }),
+          household({ id: "h2", name: "Hills", position: 1, homePlaceId: "m2", home: placeHome(bothy) }),
+        ],
+        "h2",
+      ),
+    });
+    renderScreen(<SolarClockPage />, "/tools/solar-clock");
+    expect(await screen.findByText("Solar noon today")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Place" })).toHaveTextContent("Home: Bothy");
+  });
+
+  it("with a portable household offers where it was last said to be, with its age", async () => {
+    const at = Date.now() - 3 * 3_600_000;
+    fakeApi({
+      "GET /api/maps/markers": { markers: [marker({ icon: "pin" })] },
+      "GET /api/households": households([
+        household({ kind: "portable", name: "Caravan", home: hereHome("Where Caravan is now", 54.5, -3.1, at) }),
+      ]),
+    });
+    renderScreen(<SolarClockPage />, "/tools/solar-clock");
+    expect(await screen.findByText("Solar noon today")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Place" })).toHaveTextContent("Where Caravan is now, as of 3 hours ago");
+    expect(screen.getByText("Where Caravan is now, as of 3 hours ago.")).toBeInTheDocument();
+    expect(screen.queryByText(/No saved place has the home icon/)).not.toBeInTheDocument();
   });
 
   it("recovers the time from a noon shadow and from a shadow's length, with a range, without the device's clock", async () => {

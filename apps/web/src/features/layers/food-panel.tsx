@@ -1,13 +1,13 @@
 /**
  * Under the food and supplies switch in the Layers tab: the kinds with their marks (each
  * a button that shows that kind alone), what the layer is and how far to trust it, and
- * the nearest of each kind to the home place or the middle of the map, with distance and
+ * the nearest of each kind to the current household's home or the middle of the map, with distance and
  * bearing. The nearest list is worked out by Outpost from what is held; nothing is asked
  * of any source.
  */
-import { FOOD_KINDS, FOOD_WORDS, homePlaceOf, type ReferenceLayerSummary } from "@outpost/shared";
+import { FOOD_KINDS, FOOD_WORDS, homeLabel, type ReferenceLayerSummary } from "@outpost/shared";
 import { Select, Skeleton } from "@/components/ui/misc";
-import { useMarkers } from "@/features/maps/data";
+import { useHome } from "@/features/households/home";
 import { useStoredState } from "@/features/maps/hooks";
 import { formatBearing, formatDistanceWithMiles, type LatLon } from "@/features/maps/lib/geo";
 import { cn, formatNumber } from "@/lib/utils";
@@ -37,12 +37,11 @@ export function FoodSection({
 }) {
   const kinds = [...summary.kinds].sort((a, b) => ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind));
   const alone = kind && kinds.some((entry) => entry.kind === kind) ? kind : null;
-  const markers = useMarkers();
-  const home = homePlaceOf(markers.data ?? []);
+  const home = useHome().home;
   const [stored, setFrom] = useStoredState<From>("outpost.maps.food-nearest-from", isFrom, "home");
   const from: From = stored === "home" && !home ? "map" : stored;
   const origin = from === "home" && home ? { lat: home.lat, lon: home.lon } : centre;
-  const originName = from === "home" && home ? home.name || "home" : "the middle of the map";
+  const originName = from === "home" && home ? homeLabel({ name: home.name || "home", at: home.at }, Date.now()) : "the middle of the map";
   const nearest = useNearest(origin, "food", alone);
   const aloneLabel = kinds.find((entry) => entry.kind === alone)?.label.toLowerCase();
 

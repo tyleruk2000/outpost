@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { oneHouseholdOf } from "@/features/households/test-support";
 import { HeardCard } from "./card";
 import HeardPage from "./heard-page";
 import { meshItem, stationItem } from "./items";
@@ -214,15 +215,17 @@ describe("the screen", () => {
             ? receivers
             : url.pathname === "/api/heard/stations"
               ? { stations: url.searchParams.get("source") === "aprs" ? [station()] : [] }
-              : url.pathname === "/api/maps/markers"
-                ? { markers: [{ id: "h", name: "Home", icon: "home", lat: 51.5, lon: -0.1, createdAt: 1 }] }
-                : url.pathname === "/api/heard/reports"
-                  ? { reports: [], limited: false }
-                  : url.pathname === "/api/heard/range-tests"
-                    ? { tests: [] }
-                    : url.pathname === "/api/settings"
-                      ? { settings: { "heard.aircraftHours": 0 } }
-                      : {};
+              : url.pathname === "/api/households"
+                ? oneHouseholdOf([{ id: "h", name: "Home", icon: "home", lat: 51.5, lon: -0.1, createdAt: 1 }])
+                : url.pathname === "/api/maps/markers"
+                  ? { markers: [{ id: "h", name: "Home", icon: "home", lat: 51.5, lon: -0.1, createdAt: 1 }] }
+                  : url.pathname === "/api/heard/reports"
+                    ? { reports: [], limited: false }
+                    : url.pathname === "/api/heard/range-tests"
+                      ? { tests: [] }
+                      : url.pathname === "/api/settings"
+                        ? { settings: { "heard.aircraftHours": 0 } }
+                        : {};
         return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
       }),
     );

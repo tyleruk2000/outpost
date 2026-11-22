@@ -43,8 +43,8 @@ No rain falls under glass and the butt does not reach the greenhouse: there, onl
 can waters. Whether a day is wet comes from the date, so it is the same on every device:
 30% of days from April to July, rising to 50% in November and December (northern months).
 
-The season is the real month. The hemisphere is northern unless Home (the saved place
-with the home icon) is south of the equator; the switch on the screen overrides it. In
+The season is the real month. The hemisphere is northern unless the first household's home
+is south of the equator (the plot is the whole Outpost's, whichever household is current); the switch on the screen overrides it. In
 the south, the months, the crops' months and the rain move on six.
 
 ### The crops

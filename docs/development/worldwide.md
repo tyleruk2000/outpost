@@ -11,8 +11,9 @@ as if it applied.
 Two things decide a first choice. Each is only a first choice: the screen lets the
 person change it, and keeps what they chose.
 
-- **Home's country**: the country of the saved place with the home icon
-  (`useHomeCountry` in `apps/web/src/features/frequencies/home-country.ts`). Use it for
+- **Home's country**: the current household's country, its own choice or else the country
+  its home is in (`useHomeCountry` in `apps/web/src/features/frequencies/home-country.ts`,
+  `households.country()` on the server). Use it for
   anything about the place: emergency numbers, warnings, which guidance applies,
   frequencies, map suggestions.
 - **The device's region**: the region in the browser's language, "US" from "en-US"

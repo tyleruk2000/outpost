@@ -4,6 +4,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { download, entry, fakeServer, installBrowserStubs, location, renderScreen } from "../downloads/test-support";
+import { oneHouseholdOf } from "../households/test-support";
 import ExplorePage from "./explore-page";
 
 beforeAll(installBrowserStubs);
@@ -48,6 +49,7 @@ function serve(routes: Record<string, unknown> = {}) {
   return fakeServer({
     "GET /api/catalog": catalog(),
     "GET /api/downloads": { downloads: [] },
+    "GET /api/households": oneHouseholdOf([]),
     "GET /api/storage/locations": {
       roots: ["/srv"],
       locations: [

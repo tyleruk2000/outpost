@@ -353,8 +353,9 @@ function MeshtasticPart({ data }: { data: MeshResponse }) {
   const [clientUser, setClientUser] = useState(config.client.userName);
   const [clientPassword, setClientPassword] = useState("");
   const [rootTopic, setRootTopic] = useState(config.client.rootTopic || "msh/EU_868");
-  // Before a household broker is saved, the root topic starts on the one for Home's country (else the device's), until typed in.
-  const home = useHomeCountry();
+  // Before a household broker is saved, the root topic starts on the one for the first household's country (else the
+  // device's), until typed in: the radio is the whole Outpost's, as the server's own suggestion is.
+  const home = useHomeCountry({ first: true });
   const region = deviceRegion();
   const suggested = suggestedRoot(home, region);
   const [rootTyped, setRootTyped] = useState(Boolean(config.client.host));

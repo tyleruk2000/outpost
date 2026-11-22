@@ -6,7 +6,6 @@
  */
 import {
   formatBytes,
-  homePlaceOf,
   type JobDto,
   REFERENCE_LAYER_INFO,
   type ReferenceEstimate,
@@ -26,7 +25,7 @@ import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "
 import { Field, Input } from "@/components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Badge, Checkbox, Select, Skeleton } from "@/components/ui/misc";
-import { useMarkers } from "@/features/maps/data";
+import { useHome } from "@/features/households/home";
 import type { MapEngine } from "@/features/maps/map/engine";
 import { DestinationPicker, useDestination } from "@/features/maps/panels/destination";
 import { PanelHeading } from "@/features/maps/ui";
@@ -244,9 +243,9 @@ export function GetDialog({
     start?.scope.bbox ? "bbox" : start?.scope.regions ? "region" : "country",
   );
   const [regions, setRegions] = useState<string[]>(start?.scope.regions ?? []);
-  const markers = useMarkers();
-  const homePlace = homePlaceOf(markers.data ?? []);
-  const home = homePlace ? { lat: homePlace.lat, lon: homePlace.lon } : null;
+  // The current household's home (its saved place, or where it was last said to be), to offer its region first.
+  const found = useHome().home;
+  const home = useMemo(() => (found ? { lat: found.lat, lon: found.lon } : null), [found]);
   const [country, setCountry] = useState<string>(start?.scope.countries?.[0] ?? "GB");
   const [layers, setLayers] = useState<ReferenceLayerId[]>(start?.layers ?? []);
   const estimate = useEstimate();

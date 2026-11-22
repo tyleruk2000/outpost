@@ -18,9 +18,7 @@ import { Link, useSearchParams } from "react-router";
 import { Disclosure, EmptyState, Notice, Page, PageHeader, Rows, Section } from "@/components/page";
 import { Field } from "@/components/ui/input";
 import { Select } from "@/components/ui/misc";
-import { homeCountry } from "@/features/frequencies/home-country";
-import { useCatalogue } from "@/features/layers/data";
-import { useMarkers } from "@/features/maps/data";
+import { useHome } from "@/features/households/home";
 import { ScrollBox } from "@/features/radio/scroll-box";
 import { LicenceLine, useRadioLicence } from "./licence";
 
@@ -165,9 +163,9 @@ function CountryRules({ rules }: { rules: CountryRadioRules }) {
 
 export default function LicencesPage() {
   const [params, setParams] = useSearchParams();
-  const markers = useMarkers();
-  const catalogue = useCatalogue();
-  const home = homeCountry(markers.data, catalogue.data?.countries);
+  const current = useHome();
+  const home = current.country;
+  const whose = current.several && current.household ? current.household.name : "Home";
   const chosen = params.get("country") ?? (home && rulesFor(home) ? home : null);
   const rules = rulesFor(chosen);
   const notRead = RADIO_RULES_NOT_READ.find((entry) => entry.country === (chosen ?? home));
@@ -195,9 +193,11 @@ export default function LicencesPage() {
       <p className="mb-6 text-small text-ink-muted">
         {home
           ? params.get("country") === null && rules
-            ? `${placeName(home)}, where Home is.`
-            : `Home is in ${placeName(home)}.`
-          : "Mark a saved place with the home icon on the Maps screen and its country is chosen here."}
+            ? `${placeName(home)}, where ${whose} is.`
+            : `${whose} is in ${placeName(home)}.`
+          : current.isPending
+            ? null
+            : "Give the household a home on the Households page, or mark a saved place with the home icon on the Maps screen, and its country is chosen here."}
       </p>
 
       {rules ? (

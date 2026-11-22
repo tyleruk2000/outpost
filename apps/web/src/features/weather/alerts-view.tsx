@@ -11,6 +11,7 @@ import {
   type AlertsPlan,
   GDACS_TYPES,
   haversineMeters,
+  homeLabel,
   type JmaLevel,
   type KeptCopy,
   METEOALARM_DISCLAIMER,
@@ -23,9 +24,9 @@ import {
   WORLD_KINDS,
 } from "@outpost/shared";
 import { CircleAlert, RefreshCw } from "lucide-react";
-import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Badge, Select } from "@/components/ui/misc";
+import { NoHome } from "@/features/households/home";
 import { formatDateTime, formatNumber, plural } from "@/lib/utils";
 import { AgeLine, Credit } from "./age-line";
 import { useSetAlertCountry } from "./data";
@@ -61,6 +62,11 @@ export function AlertsView({
   const source = (kind: WeatherKind) => sources.find((candidate) => candidate.kind === kind);
   const kinds: WeatherKind[] = plan.national ? [...WORLD_KINDS, plan.national] : WORLD_KINDS;
   const nationalName = plan.national ? NATIONAL_SERVICE_NAMES[plan.national] : null;
+  // Whose home: "Home", or the current household's name when there are several; a moving home says how old its position is.
+  const who = plan.household ?? "Home";
+  const homeName = plan.home ? homeLabel({ name: plan.home.name, at: plan.home.at ?? null }, now) : "";
+  const kept = plan.national ? copyOf(plan.national) : null;
+  const movedSince = plan.home?.at != null && kept !== null && kept.fetchedAt < plan.home.at;
 
   return (
     <div className="grid gap-10">
@@ -68,21 +74,23 @@ export function AlertsView({
         <p className="text-body text-ink">
           {plan.home
             ? plan.homeCountryName
-              ? `Home (${plan.home.name}) is taken to be in ${plan.homeCountryName}, from its position on the map. `
-              : `Outpost cannot tell which country Home (${plan.home.name}) is in. `
-            : "No saved place has the home icon. "}
+              ? `${who} (${homeName}) is taken to be in ${plan.homeCountryName}, from its position on the map. `
+              : `Outpost cannot tell which country ${who} (${homeName}) is in. `
+            : ""}
           {plan.chosenCountry ? `National warnings are fetched for ${plan.countryName}, as chosen below. ` : ""}
           {nationalName
             ? `Fetch alerts asks GDACS and the USGS for the whole world, and ${nationalName} for ${plan.countryName}.`
             : plan.country
               ? `Outpost knows no open national warning feed for ${plan.countryName}, so Fetch alerts asks GDACS and the USGS for the whole world.`
-              : "Fetch alerts asks GDACS and the USGS for the whole world."}{" "}
-          {plan.home ? null : (
-            <Link className="text-primary underline underline-offset-2" to="/maps">
-              Mark Home on the map
-            </Link>
-          )}
+              : "Fetch alerts asks GDACS and the USGS for the whole world."}
         </p>
+        {plan.home ? null : <NoHome />}
+        {movedSince ? (
+          <p className="text-small text-ink-muted">
+            The {nationalName} copy kept was fetched before {plan.household ?? "the household"} last moved, so it is for the earlier place.
+            Press Fetch alerts for where it is now.
+          </p>
+        ) : null}
         <CountryChoice plan={plan} />
         <div>
           <Button variant="secondary" loading={fetching} onClick={() => onFetch(kinds)}>
