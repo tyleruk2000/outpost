@@ -59,15 +59,23 @@ test.describe("with the app's largest text", () => {
     await page.addInitScript(() => localStorage.setItem("outpost.textSize", "largest"));
   });
 
-  test("Clean up stacks what each step removes and keeps instead of squeezing them past the screen", async ({ page }) => {
+  test("Clean up puts what each step removes and keeps side by side only where each gets 18rem, and stacks them otherwise", async ({
+    page,
+  }) => {
+    // The rule follows the room the box holding them actually has, not how wide the sidebar happens to be.
     await page.goto("/storage/manage?view=clean-up");
     const step = page.getByRole("region", { name: "Remove all downloaded content" });
     await expect(step.getByRole("heading", { name: "Keeps" })).toBeVisible();
     expect(await sideways(page)).toBe(0);
-    // One under the other: "Keeps" starts below the last line of "Removes".
+    const room = await step.evaluate((section) => {
+      const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
+      const box = section.querySelector("h3")!.parentElement!.parentElement!.parentElement as HTMLElement;
+      return box.getBoundingClientRect().width / rem;
+    });
     const removes = (await step.getByRole("heading", { name: "Removes" }).boundingBox())!;
     const keeps = (await step.getByRole("heading", { name: "Keeps" }).boundingBox())!;
-    expect(keeps.y).toBeGreaterThan(removes.y + removes.height);
+    if (room < 38) expect(keeps.y).toBeGreaterThan(removes.y + removes.height);
+    else expect(keeps.y).toBeCloseTo(removes.y, 0);
   });
 
   test("Bring back changes puts the record of earlier merges below, and the filters of Installed wrap, within the screen", async ({
