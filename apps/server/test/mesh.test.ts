@@ -297,6 +297,33 @@ describe("Meshtastic, with Outpost as the broker", () => {
   });
 });
 
+describe("the root topic offered before a household broker is saved", () => {
+  it("is the one for Home's country, else msh/EU_868, and the one saved once a broker is saved", async () => {
+    const app = await createTestApp({}, undefined, { voacapData: false });
+    try {
+      expect((await mesh(app)).meshtastic.config.client.rootTopic).toBe("msh/EU_868");
+      // Home in Colorado: Meshtastic's table gives US.
+      expect((await app.api("POST", "/api/maps/markers", { name: "Home", lat: 39.7, lon: -105, icon: "home" })).status).toBe(200);
+      expect((await mesh(app)).meshtastic.config.client.rootTopic).toBe("msh/US");
+      // A row saved before, holding the old default with no broker, is not a choice either.
+      const { store } = app.ctx.services.mesh;
+      const old = store.config();
+      old.meshtastic.client.rootTopic = "msh/EU_868";
+      store.saveConfig(old);
+      expect((await mesh(app)).meshtastic.config.client.rootTopic).toBe("msh/US");
+      // A saved broker keeps the root topic it was saved with (left off here, so that nothing is dialled).
+      const saved = await app.api("PUT", "/api/mesh/meshtastic", {
+        mode: "off",
+        client: { host: "127.0.0.1", port: 1, userName: "outpost", password: "a password", rootTopic: "msh/EU_433" },
+      });
+      expect(saved.status, JSON.stringify(saved.body)).toBe(200);
+      expect((await mesh(app)).meshtastic.config.client.rootTopic).toBe("msh/EU_433");
+    } finally {
+      await app.close();
+    }
+  });
+});
+
 describe("who may set it up", () => {
   it("only the computer Outpost runs on; any device may see it", async () => {
     const app = await createTestApp({ OUTPOST_LAN_ACCESS: "true", OUTPOST_HOST: "0.0.0.0" }, undefined, { voacapData: false });
