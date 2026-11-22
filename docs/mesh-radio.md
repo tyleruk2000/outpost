@@ -120,7 +120,9 @@ radio's place is sent to no browser. MeshCore positions are not shown yet.
 Radio messages are the board's, backed up and erased with it. The set-up stays with this
 computer: a restored backup or a portable drive does not carry it. Passwords are kept in a
 file only Outpost can read, outside the database and backups, and are never logged or sent
-back. **Erase everything** removes all of it.
+back. The household broker's password goes only to the address, port and user name it was
+saved with (and only over TLS if it was saved with TLS): change any of them, or turn TLS
+off, and type the password again. **Erase everything** removes all of it.
 
 ## In a container
 

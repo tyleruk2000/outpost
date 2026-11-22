@@ -185,7 +185,7 @@ describe("the household's broker, from Settings", () => {
       // Saved over TLS, tried without: the same address, but the password would cross the network in the clear.
       await app.api<MeshResponse>("PUT", "/api/mesh/meshtastic", {
         mode: "off",
-        client: { host: "127.0.0.1", port: otherPort, userName: "outpost", rootTopic: ROOT, tls: true },
+        client: { host: "127.0.0.1", port: otherPort, userName: "outpost", password: OUTPOST_PASSWORD, rootTopic: ROOT, tls: true },
       });
       const plain = await app.api("POST", "/api/mesh/broker/test", {
         host: "127.0.0.1",
@@ -201,9 +201,32 @@ describe("the household's broker, from Settings", () => {
       await new Promise((resolve) => other.close(resolve));
       await app.api<MeshResponse>("PUT", "/api/mesh/meshtastic", {
         mode: "off",
-        client: { host: "127.0.0.1", port, userName: "outpost", rootTopic: ROOT, tls: false },
+        client: { host: "127.0.0.1", port, userName: "outpost", password: OUTPOST_PASSWORD, rootTopic: ROOT, tls: false },
       });
     }
+  });
+
+  it("keeps the saved password only for the broker it was saved for when the set-up is saved", async () => {
+    const base = { host: "127.0.0.1", port, userName: "outpost", rootTopic: ROOT, tls: false };
+    await app.api<MeshResponse>("PUT", "/api/mesh/meshtastic", { mode: "off", client: { ...base, password: OUTPOST_PASSWORD } });
+    const secrets = app.ctx.services.mesh.secrets;
+    // Another address, port, user name, or TLS dropped, with no password typed: refused, and nothing changed.
+    for (const change of [{ host: "192.0.2.7" }, { port: port + 1 }, { userName: "someone-else" }]) {
+      const refused = await app.api("PUT", "/api/mesh/meshtastic", { mode: "off", client: { ...base, ...change } });
+      expect(refused.status, JSON.stringify(change)).toBe(400);
+      expect(refused.body.error.message).toMatch(/Type the password/);
+    }
+    expect((await app.api<MeshResponse>("GET", "/api/mesh")).body.meshtastic.config.client.host).toBe("127.0.0.1");
+    expect(secrets.clientPassword()).toBe(OUTPOST_PASSWORD);
+    await app.api("PUT", "/api/mesh/meshtastic", { mode: "off", client: { ...base, tls: true } });
+    expect((await app.api("PUT", "/api/mesh/meshtastic", { mode: "off", client: base })).status).toBe(400);
+    // The same broker keeps it; another one with the password typed, or with it cleared, is saved.
+    expect((await app.api("PUT", "/api/mesh/meshtastic", { mode: "off", client: { ...base, tls: true } })).status).toBe(200);
+    expect(secrets.clientPassword()).toBe(OUTPOST_PASSWORD);
+    expect((await app.api("PUT", "/api/mesh/meshtastic", { mode: "off", client: { ...base, host: "192.0.2.7", password: "" } })).status).toBe(200);
+    expect(secrets.clientPassword()).toBeNull();
+    expect((await app.api("PUT", "/api/mesh/meshtastic", { mode: "off", client: { ...base, password: OUTPOST_PASSWORD } })).status).toBe(200);
+    expect(secrets.clientPassword()).toBe(OUTPOST_PASSWORD);
   });
 
   it("says when a broker gives no answer to dynamic security, and that Outpost does not change its files", async () => {

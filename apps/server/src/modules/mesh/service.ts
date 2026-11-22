@@ -182,6 +182,20 @@ export function createMeshService(ctx: AppContext, options: { open?: Opener } = 
     return client;
   }
 
+  /**
+   * Whether a broker is the one the saved password was saved for: the same address, port and user name,
+   * and over TLS if it was saved so. The saved password is used or kept only for that one.
+   */
+  function sameBroker(client: { host: string; port: number; userName: string }, tls: boolean): boolean {
+    const saved = store.config().meshtastic.client;
+    const host = (value: string) =>
+      value
+        .trim()
+        .replace(/^\[|\]$/g, "")
+        .toLowerCase();
+    return host(client.host) === host(saved.host) && client.port === saved.port && client.userName === saved.userName && (tls || !saved.tls);
+  }
+
   function channels(): MeshChannel[] {
     const config = store.config();
     const list: MeshChannel[] = [];
@@ -260,6 +274,11 @@ export function createMeshService(ctx: AppContext, options: { open?: Opener } = 
           ca: input.client.ca !== undefined ? checkCa(input.client.ca) : current.meshtastic.client.ca,
         };
         if (input.client.password !== undefined) clientPassword = input.client.password === "" ? null : input.client.password;
+        // The saved password stays only with the broker it was saved for, as for a test.
+        else if (secrets.clientPassword() !== null && !sameBroker(client, next.meshtastic.client.tls))
+          throw badRequest(
+            "The saved password is only kept for the broker it was saved for. Type the password for this address, user name or connection, or clear it.",
+          );
       }
       if (input.channels) {
         const names = new Set<string>();
@@ -305,17 +324,7 @@ export function createMeshService(ctx: AppContext, options: { open?: Opener } = 
       if (input.password !== undefined) password = input.password || null;
       else {
         password = secrets.clientPassword();
-        const saved = store.config().meshtastic.client;
-        const same =
-          client.host.toLowerCase() ===
-            saved.host
-              .trim()
-              .replace(/^\[|\]$/g, "")
-              .toLowerCase() &&
-          client.port === saved.port &&
-          client.userName === saved.userName &&
-          (input.tls || !saved.tls);
-        if (password !== null && !same)
+        if (password !== null && !sameBroker(client, input.tls))
           throw badRequest(
             "The saved password is only sent to the broker it was saved for. Type the password to try this address, user name or connection.",
           );
