@@ -186,6 +186,21 @@ describe("automatic backups in Settings", () => {
     expect(await within(section).findByText(/They cannot be listed now\. "NAS" is not connected/)).toBeVisible();
   });
 
+  it("says the chosen location is not connected before a backup is missed, not only on hover", async () => {
+    serve({
+      schedule: schedule({ location: { id: "nas", name: "NAS", connected: false } }),
+      stored: { available: false, reason: '"NAS" is not connected. Reconnect it and try again.', backups: [] },
+    });
+    const section = await show()();
+    const notice = await within(section).findByRole("status");
+    expect(within(notice).getByText("“NAS” is not connected")).toBeVisible();
+    expect(notice).toHaveTextContent("Backups wait until it is back.");
+    const button = within(section).getByRole("button", { name: "Back up now" });
+    expect(button).toBeDisabled();
+    expect(button).not.toHaveAttribute("title");
+    expect(within(section).getByText(/^Waits for “NAS” to be connected\./)).toBeVisible();
+  });
+
   it("reports a backup that failed its check", async () => {
     const message =
       'The backup was written to "NAS" but did not read back correctly. It is kept, shown as not verified, and is not counted as a backup.';

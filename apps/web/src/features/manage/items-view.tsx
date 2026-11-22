@@ -34,9 +34,10 @@ function ItemRow({ item, checked, onToggle }: { item: ManagedItem; checked: bool
   const id = `item-${item.key}`;
   return (
     <li className={cn("flex items-start gap-3 py-3 transition-colors", checked && "bg-primary-soft/50")}>
-      <span className="grid size-11 shrink-0 place-content-center md:size-9">
+      {/* The whole square is the target, not only the box drawn in it. */}
+      <label htmlFor={id} className="grid size-11 shrink-0 cursor-pointer place-content-center md:size-9">
         <Checkbox id={id} checked={checked} onCheckedChange={(next) => onToggle(next === true)} aria-label={`Select ${item.title}`} />
-      </span>
+      </label>
       <div className="min-w-0 flex-1 pt-2 md:pt-1.5">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
           <Link to={item.href} className="min-w-0 font-title text-body break-words text-ink underline-offset-2 hover:underline">
@@ -172,7 +173,7 @@ export default function ItemsView({ busy }: { busy: boolean }) {
             }}
           />
         </div>
-        <div className="grid grid-cols-2 gap-2 max-md:w-full md:flex">
+        <div className="grid grid-cols-2 gap-2 max-md:w-full md:flex md:flex-wrap">
           <Select<ManagedKind | "all">
             aria-label="Kind"
             value={filter.kind}
@@ -211,14 +212,15 @@ export default function ItemsView({ busy }: { busy: boolean }) {
       </div>
 
       <div className="mt-4 flex items-center gap-3 border-b border-border pb-2">
-        <span className="grid size-11 shrink-0 place-content-center md:size-9">
+        <label htmlFor="manage-select-all" className="grid size-11 shrink-0 cursor-pointer place-content-center md:size-9">
           <Checkbox
+            id="manage-select-all"
             checked={allVisibleChosen ? true : someVisibleChosen ? "indeterminate" : false}
             onCheckedChange={(next) => toggleVisible(next === true)}
             aria-label={narrowed ? "Select everything shown" : "Select everything"}
             disabled={visible.length === 0}
           />
-        </span>
+        </label>
         <p className="tabular text-small text-ink-muted" aria-live="polite">
           {narrowed ? `${tallyText(tallyOf(visible))} shown of ${plural(all.length, "item")}` : tallyText(tallyOf(all))}
         </p>

@@ -88,119 +88,122 @@ function ChooseStep({ onStarted }: { onStarted: (merge: MergeDto) => void }) {
   const chosen = sources.find((entry) => entry.folder === source) ?? sources.find((entry) => entry.current) ?? sources[0];
 
   return (
-    <div className="grid gap-10 lg:grid-cols-[minmax(0,34rem)_minmax(0,1fr)] lg:gap-x-14">
-      <div className="grid content-start gap-5">
-        <div>
-          <h2 className="font-title text-heading text-ink">Which drive?</h2>
-          <p className="mt-1 text-body text-ink-muted">
-            Plug the drive into this computer and open its Outpost folder, the one that holds “Start Outpost”. If Outpost is running from
-            the drive, stop it first.
-          </p>
-        </div>
-        <FolderPicker label="Folder on the drive" onChange={setFolder} pickOnly />
+    // Side by side only where the room is there in rem: with larger text, the record of earlier merges goes below.
+    <div className="@container">
+      <div className="grid gap-10 @4xl:grid-cols-[minmax(0,34rem)_minmax(0,1fr)] @4xl:gap-x-14">
+        <div className="grid content-start gap-5">
+          <div>
+            <h2 className="font-title text-heading text-ink">Which drive?</h2>
+            <p className="mt-1 text-body text-ink-muted">
+              Plug the drive into this computer and open its Outpost folder, the one that holds “Start Outpost”. If Outpost is running from
+              the drive, stop it first.
+            </p>
+          </div>
+          <FolderPicker label="Folder on the drive" onChange={setFolder} pickOnly />
 
-        <div aria-live="polite" className="grid gap-4">
-          {!folder.path ? null : inspection.isPending ? (
-            <Skeleton className="h-12" />
-          ) : inspection.isError ? (
-            <Notice tone="danger" icon={<CircleAlert />}>
-              {errorMessage(inspection.error)}
-            </Notice>
-          ) : !drive ? (
-            <Notice tone="info">{inspection.data?.problem ?? "This folder is not an Outpost drive."}</Notice>
-          ) : (
-            <>
-              <Notice tone="success" icon={<CircleCheck />} title="This is an Outpost drive">
-                {drive.updatedAt ? `Last written on ${formatDate(Date.parse(drive.updatedAt))}` : "Its date of writing is not recorded"}, by
-                Outpost {drive.appVersion}.
+          <div aria-live="polite" className="grid gap-4">
+            {!folder.path ? null : inspection.isPending ? (
+              <Skeleton className="h-12" />
+            ) : inspection.isError ? (
+              <Notice tone="danger" icon={<CircleAlert />}>
+                {errorMessage(inspection.error)}
               </Notice>
-              {sources.length > 1 ? (
-                <div>
-                  <p id="merge-source" className="text-small font-semibold text-ink">
-                    Which notes to read
-                  </p>
-                  <RadioGroup.Root
-                    value={chosen?.folder}
-                    onValueChange={setSource}
-                    aria-labelledby="merge-source"
-                    className="mt-1.5 divide-y divide-border border-y border-border"
-                  >
-                    {sources.map((entry) => {
-                      const words = sourceWords(entry);
-                      return (
-                        <label
-                          key={entry.folder}
-                          htmlFor={`source-${entry.folder}`}
-                          className="flex cursor-pointer items-start gap-3 py-2.5"
-                        >
-                          <RadioItem id={`source-${entry.folder}`} value={entry.folder} />
-                          <span className="min-w-0">
-                            <span className="block text-small font-medium text-ink">{words.title}</span>
-                            <span className="block text-small break-words text-ink-muted">{words.detail}</span>
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </RadioGroup.Root>
-                </div>
-              ) : null}
-            </>
-          )}
-          {start.isError ? (
-            <Notice tone="danger" icon={<CircleAlert />}>
-              {errorMessage(start.error)}
-            </Notice>
-          ) : null}
+            ) : !drive ? (
+              <Notice tone="info">{inspection.data?.problem ?? "This folder is not an Outpost drive."}</Notice>
+            ) : (
+              <>
+                <Notice tone="success" icon={<CircleCheck />} title="This is an Outpost drive">
+                  {drive.updatedAt ? `Last written on ${formatDate(Date.parse(drive.updatedAt))}` : "Its date of writing is not recorded"},
+                  by Outpost {drive.appVersion}.
+                </Notice>
+                {sources.length > 1 ? (
+                  <div>
+                    <p id="merge-source" className="text-small font-semibold text-ink">
+                      Which notes to read
+                    </p>
+                    <RadioGroup.Root
+                      value={chosen?.folder}
+                      onValueChange={setSource}
+                      aria-labelledby="merge-source"
+                      className="mt-1.5 divide-y divide-border border-y border-border"
+                    >
+                      {sources.map((entry) => {
+                        const words = sourceWords(entry);
+                        return (
+                          <label
+                            key={entry.folder}
+                            htmlFor={`source-${entry.folder}`}
+                            className="flex cursor-pointer items-start gap-3 py-2.5"
+                          >
+                            <RadioItem id={`source-${entry.folder}`} value={entry.folder} />
+                            <span className="min-w-0">
+                              <span className="block text-small font-medium text-ink">{words.title}</span>
+                              <span className="block text-small break-words text-ink-muted">{words.detail}</span>
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </RadioGroup.Root>
+                  </div>
+                ) : null}
+              </>
+            )}
+            {start.isError ? (
+              <Notice tone="danger" icon={<CircleAlert />}>
+                {errorMessage(start.error)}
+              </Notice>
+            ) : null}
+          </div>
+
+          <div>
+            <Button
+              variant="primary"
+              size="lg"
+              disabled={!drive || !chosen}
+              loading={start.isPending}
+              onClick={() => folder.path && start.mutate({ path: folder.path, source: chosen?.folder }, { onSuccess: onStarted })}
+              className="max-sm:w-full"
+            >
+              Look for changes
+            </Button>
+            <p className="mt-3 text-small text-ink-muted">
+              Looking changes nothing. Outpost copies the drive’s notes database to this computer to read it, and never writes to the drive.
+            </p>
+          </div>
         </div>
 
-        <div>
-          <Button
-            variant="primary"
-            size="lg"
-            disabled={!drive || !chosen}
-            loading={start.isPending}
-            onClick={() => folder.path && start.mutate({ path: folder.path, source: chosen?.folder }, { onSuccess: onStarted })}
-            className="max-sm:w-full"
-          >
-            Look for changes
-          </Button>
-          <p className="mt-3 text-small text-ink-muted">
-            Looking changes nothing. Outpost copies the drive’s notes database to this computer to read it, and never writes to the drive.
-          </p>
+        <div className="min-w-0">
+          <Section title="Earlier merges" description="The record of each is kept, and a merge can be undone from its record.">
+            {merges.isPending ? (
+              <div className="grid gap-2" aria-busy>
+                <Skeleton className="h-10" />
+                <Skeleton className="h-10" />
+              </div>
+            ) : merges.isError ? (
+              <ErrorState error={merges.error} onRetry={() => merges.refetch()} />
+            ) : merges.data.length === 0 ? (
+              <EmptyState title="No merges yet" compact level={3} seed={5}>
+                Each time changes are brought back from a drive, its record is kept here.
+              </EmptyState>
+            ) : (
+              <Rows>
+                {merges.data.map((merge) => (
+                  <li key={merge.id}>
+                    <Link
+                      to={`/storage/merge?id=${merge.id}`}
+                      className="flex min-h-11 flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 py-2.5 hover:text-primary"
+                    >
+                      <span className="min-w-0 font-mono text-[0.8125rem] break-all text-ink">{merge.driveLabel}</span>
+                      <span className="text-small text-ink-muted">
+                        {merge.undoneAt ? "Undone" : STATE_WORDS[merge.state]}, {formatDateTime(merge.createdAt)}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </Rows>
+            )}
+          </Section>
         </div>
-      </div>
-
-      <div className="min-w-0">
-        <Section title="Earlier merges" description="The record of each is kept, and a merge can be undone from its record.">
-          {merges.isPending ? (
-            <div className="grid gap-2" aria-busy>
-              <Skeleton className="h-10" />
-              <Skeleton className="h-10" />
-            </div>
-          ) : merges.isError ? (
-            <ErrorState error={merges.error} onRetry={() => merges.refetch()} />
-          ) : merges.data.length === 0 ? (
-            <EmptyState title="No merges yet" compact level={3} seed={5}>
-              Each time changes are brought back from a drive, its record is kept here.
-            </EmptyState>
-          ) : (
-            <Rows>
-              {merges.data.map((merge) => (
-                <li key={merge.id}>
-                  <Link
-                    to={`/storage/merge?id=${merge.id}`}
-                    className="flex min-h-11 flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 py-2.5 hover:text-primary"
-                  >
-                    <span className="min-w-0 font-mono text-[0.8125rem] break-all text-ink">{merge.driveLabel}</span>
-                    <span className="text-small text-ink-muted">
-                      {merge.undoneAt ? "Undone" : STATE_WORDS[merge.state]}, {formatDateTime(merge.createdAt)}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </Rows>
-          )}
-        </Section>
       </div>
     </div>
   );

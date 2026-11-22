@@ -74,6 +74,9 @@ describe("the household PIN", () => {
     await userEvent.type(field, "1111");
     await userEvent.click(screen.getByRole("button", { name: "Unlock" }));
     expect(await screen.findByText("That is not the household PIN.")).toBeInTheDocument();
+    // Tied to the field, so it is heard with it, and the field is marked wrong.
+    expect(screen.getByLabelText("Household PIN")).toHaveAccessibleDescription("That is not the household PIN.");
+    expect(screen.getByLabelText("Household PIN")).toHaveAttribute("aria-invalid", "true");
     await userEvent.type(screen.getByLabelText("Household PIN"), "2468");
     await userEvent.click(screen.getByRole("button", { name: "Unlock" }));
     await waitFor(() => expect(screen.queryByText("This computer can read but not change anything.")).not.toBeInTheDocument());
