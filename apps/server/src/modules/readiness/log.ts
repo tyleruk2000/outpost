@@ -11,6 +11,7 @@ import {
   type EventLogInput,
   type EventLogLine,
   type EventLogResponse,
+  FIRST_HOUSEHOLD_ID,
 } from "@outpost/shared";
 import { asc, count, eq } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
@@ -194,6 +195,8 @@ export function createEventLogService(ctx: AppContext, changed: () => void): Eve
         author,
         text: cleanText(input.text),
         planId: plan?.id ?? null,
+        // Still the first household until readiness is per household (docs/development/households.md).
+        householdId: FIRST_HOUSEHOLD_ID,
         planName: plan?.name ?? null,
         createdAt: now,
         updatedAt: now,

@@ -1025,6 +1025,22 @@ Nothing writes to the drive. Choices: `apply` brings it home, `skip` offers it a
 `both` keeps both, `home` keeps home's and remembers, `drive` replaces home's (kept in
 the record).
 
+## Households and people
+
+Types: `households.ts`. See [development/households.md](development/households.md). One
+household is current for the whole Outpost; every change publishes `households.changed`.
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/households` | `{ households, currentId }`. |
+| `POST /api/households` | `{ name, kind?, homePlaceId?, basePlaceId?, copyPeopleFrom? }`. At most 20. |
+| `GET`, `PUT /api/households/:id` | One household; change `name`, `kind`, `homePlaceId`, `basePlaceId`, `countryOverride` (only what is named). |
+| `DELETE /api/households/:id?confirm=true` | Removes it and what it holds, never a person. Without `confirm`: 409 with `details.holds`. Never the last. |
+| `PUT /api/households/:id/people` | `{ personIds }`, in order. |
+| `PUT /api/households/current` | `{ id }`: the current household, for every device. |
+| `PUT /api/households/:id/here`, `GET …/positions` | A portable household's position `{ lat, lon, name?, source }`; the last 50. |
+| `GET`, `POST /api/people`, `GET`, `PUT`, `DELETE …/:id?confirm=true` | People and pets, with the households each is in. Removing someone with medical sheets asks first (409); the sheets stay. |
+
 ## Supplies
 
 Types: `supplies.ts`, `supplies-energy.ts`. See [supplies.md](supplies.md). Nothing here
@@ -1037,7 +1053,7 @@ reaches out. Dates are `YYYY-MM-DD`; routes about today take `?today=`.
 | `GET /api/supplies/outlook` | For other screens: `SupplyOutlook` (days of food and water, what runs out first, expiring, totals), `missing` (shopping suggestions) and `energy`. |
 | `POST /api/supplies/items`, `GET`, `PATCH`, `DELETE …/:id` | A row: `name`, `category`, `quantity`, optional unit, location, date and kind, energy, litres, minimum, barcode, notes. ≤5,000 rows; figure limits in `SUPPLY_FIGURE_MAX`. |
 | `POST /api/supplies/items/:id/adjust` | `{ by }`, never below nought. |
-| `PUT /api/supplies/household` | `HouseholdInput`: days wanted, water, members. |
+| `PUT /api/supplies/household` | `HouseholdInput`: days wanted, water, members (the current household's people). |
 | `GET /api/supplies/barcodes/:code` | Rows and product for a barcode (matched as GTIN-14). |
 | `GET /api/supplies/shopping`, `POST …/work-out`, `POST`, `PATCH`, `DELETE …/:id` | The shopping list; work it out again (own lines kept); lines. |
 | `POST /api/supplies/shopping/:id/bought` | Adds to stock and takes the line off or lowers it. |

@@ -9,6 +9,7 @@ import {
   CHECK_LIMITS,
   type CheckLink,
   daysBetween,
+  FIRST_HOUSEHOLD_ID,
   localDay,
   ROUTINE_CHECK_TEMPLATE,
   type RoutineCheck,
@@ -103,6 +104,8 @@ export function createRoutineChecksService(ctx: AppContext, changed: () => void)
       const row: Row = {
         id: newId(),
         ...clean(input),
+        // Still the first household until readiness is per household (docs/development/households.md).
+        householdId: FIRST_HOUSEHOLD_ID,
         templateId: null,
         lastDoneAt: null,
         lastDoneBy: null,
@@ -155,6 +158,8 @@ export function createRoutineChecksService(ctx: AppContext, changed: () => void)
           everyDays: template.everyDays,
           note: template.note,
           link: template.link,
+          // Still the first household until readiness is per household (docs/development/households.md).
+          householdId: FIRST_HOUSEHOLD_ID,
           templateId: template.id,
           lastDoneAt: null,
           lastDoneBy: null,

@@ -599,6 +599,8 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
     personal.powerDevices = ctx.services.powerDevices.eraseAll();
     // Stored supplies, the household they are for, the shopping list and the barcodes remembered.
     personal.supplies = ctx.services.supplies.eraseAll();
+    // The households, who is in each and where a portable one has been. The first is made again, empty, when next needed.
+    ctx.services.households.kept.eraseAll();
     // Scenarios saved in the nuclear effects simulator: the places and notes are the person's own.
     personal.nuclearScenarios = ctx.services.nuclear.eraseAll();
     // Devices found on the network, with the names and notes given them: names there can be people's names.

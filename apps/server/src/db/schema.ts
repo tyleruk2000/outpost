@@ -1127,6 +1127,8 @@ export const radioObservations = sqliteTable(
 /** A battery bank, its loads and its charging, as a person typed them (`PowerPlanInput` without the name and notes). */
 export const powerPlans = sqliteTable("power_plans", {
   id: id(),
+  /** The household it is for, or null for a plan shared by every household. */
+  householdId: text("household_id"),
   name: text("name").notNull(),
   notes: text("notes").notNull().default(""),
   system: json<Record<string, unknown>>("system").notNull(),
@@ -1203,6 +1205,8 @@ export const supplyItems = sqliteTable(
   "supply_items",
   {
     id: id(),
+    /** The household it is for (`households.id`; the first is "household"). Not a foreign key. */
+    householdId: text("household_id").notNull().default("household"),
     name: text("name").notNull(),
     category: text("category").notNull(),
     quantity: real("quantity").notNull().default(0),
@@ -1276,9 +1280,68 @@ export const supplyMembers = sqliteTable("supply_members", {
   updatedAt: updatedAt(),
 });
 
+// ── Households (modules/households) ─────────────────────────────────────────
+
+/**
+ * The households Outpost keeps things for: one's own home, the family's, a caravan. The
+ * first is id "household", which is what every table keyed by household held before
+ * there were several (docs/development/households.md). Which one is current is the
+ * setting row "households.current".
+ */
+export const households = sqliteTable("households", {
+  id: id(),
+  name: text("name").notNull(),
+  position: integer("position").notNull(),
+  /** "fixed": home is a saved place. "portable": home is where it is now (`here_*`). */
+  kind: text("kind").notNull().default("fixed"),
+  /** A fixed household's home: a saved place (`markers.id`). Not a foreign key: a place removed leaves no home. */
+  homeMarkerId: text("home_marker_id"),
+  /** A portable household's base (where the caravan is kept): shown, never taken as home. */
+  baseMarkerId: text("base_marker_id"),
+  /** A country the person chose (ISO 3166-1 alpha-2), in place of the one home is in. */
+  country: text("country"),
+  /** A portable household's position, as a person last set it. */
+  hereLat: real("here_lat"),
+  hereLon: real("here_lon"),
+  hereName: text("here_name"),
+  hereAt: integer("here_at"),
+  /** "device", "map" or "place". */
+  hereSource: text("here_source"),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+/** Who is in each household, in order. A person (supply_members) may be in several; their needs are on the person. */
+export const householdPeople = sqliteTable(
+  "household_people",
+  {
+    householdId: text("household_id").notNull(),
+    personId: text("person_id").notNull(),
+    position: integer("position").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.householdId, table.personId] }), index("household_people_person").on(table.personId)],
+);
+
+/** Where a portable household has been, newest kept: the last 50 a household. */
+export const householdPositions = sqliteTable(
+  "household_positions",
+  {
+    id: id(),
+    householdId: text("household_id").notNull(),
+    lat: real("lat").notNull(),
+    lon: real("lon").notNull(),
+    name: text("name"),
+    at: integer("at").notNull(),
+    source: text("source").notNull(),
+  },
+  (table) => [index("household_positions_household_at").on(table.householdId, table.at)],
+);
+
 /** The shopping list: lines worked out from the stock, and lines a person added. */
 export const supplyShopping = sqliteTable("supply_shopping", {
   id: id(),
+  /** The household it is for (`households.id`; the first is "household"). Not a foreign key. */
+  householdId: text("household_id").notNull().default("household"),
   position: integer("position").notNull(),
   source: text("source").notNull(),
   /** The stock row the line buys more of, when there is one. */
@@ -1485,6 +1548,8 @@ export const weatherReadings = sqliteTable(
  */
 export const emergencyPlans = sqliteTable("emergency_plans", {
   id: id(),
+  /** The household it is for (`households.id`; the first is "household"). Not a foreign key. */
+  householdId: text("household_id").notNull().default("household"),
   name: text("name").notNull(),
   kind: text("kind").notNull(),
   kindText: text("kind_text").notNull().default(""),
@@ -1508,6 +1573,8 @@ export const medicalSheets = sqliteTable("medical_sheets", {
   id: id(),
   /** The household member (supply_members) it is for, or null. Not a foreign key: a member taken out leaves the sheet. */
   memberId: text("member_id"),
+  /** For a sheet not linked to a person: the household it belongs to, or null. A linked sheet goes with its person. */
+  householdId: text("household_id"),
   name: text("name").notNull(),
   record: json<Record<string, unknown>>("record"),
   armor: text("armor"),
@@ -1805,6 +1872,8 @@ export const eventLog = sqliteTable(
   "event_log",
   {
     id: id(),
+    /** The household it is for (`households.id`; the first is "household"). Not a foreign key. */
+    householdId: text("household_id").notNull().default("household"),
     /** When it happened, which may be a little before it was written down. */
     happenedAt: integer("happened_at").notNull(),
     author: text("author").notNull(),
@@ -1823,6 +1892,8 @@ export const eventLog = sqliteTable(
 /** A check the household does every so often (rotate the water, run the generator), and when it was last done. */
 export const routineChecks = sqliteTable("routine_checks", {
   id: id(),
+  /** The household it is for (`households.id`; the first is "household"). Not a foreign key. */
+  householdId: text("household_id").notNull().default("household"),
   name: text("name").notNull(),
   everyDays: integer("every_days").notNull(),
   note: text("note").notNull().default(""),
@@ -1856,6 +1927,8 @@ export const gardenSowings = sqliteTable(
   "garden_sowings",
   {
     id: id(),
+    /** The household it is for (`households.id`; the first is "household"). Not a foreign key. */
+    householdId: text("household_id").notNull().default("household"),
     cropId: text("crop_id"),
     name: text("name").notNull(),
     /** "2026-04-12". */

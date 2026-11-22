@@ -27,6 +27,7 @@ import { registerGarden } from "./garden/index.ts";
 import { registerHeard } from "./heard/index.ts";
 import { registerHighlights } from "./highlights/index.ts";
 import { registerHouseholdPapers } from "./household-papers/index.ts";
+import { registerHouseholds } from "./households/index.ts";
 import { registerHttps } from "./https/index.ts";
 import { registerImports } from "./imports/index.ts";
 import { registerKiwix } from "./kiwix/index.ts";
@@ -79,6 +80,8 @@ export const modules: ModuleRegister[] = [
   registerWebPages,
   registerCatalog,
   registerMaps,
+  // Households and people, after the map whose saved places are their homes and before every module that keeps things for a household, on a line of its own.
+  registerHouseholds,
   registerRepeaters,
   registerEncryption,
   registerBackup,

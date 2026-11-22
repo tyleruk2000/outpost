@@ -45,6 +45,8 @@ export * from "./home-place.ts";
 export * from "./household-book.ts";
 // The household's papers (medical sheets, keeping in touch, grab cards, the binder), on a line of their own.
 export * from "./household-papers.ts";
+// Households and people (several households, one current), on a line of its own so that other additions merge cleanly.
+export * from "./households.ts";
 export * from "./https.ts";
 export * from "./imagery.ts";
 export * from "./imports.ts";

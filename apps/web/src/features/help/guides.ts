@@ -498,6 +498,12 @@ export const GUIDES: Guide[] = [
   { slug: "server-modules", file: "development/server-modules.md", group: "developers", about: "Writing a module of the server." },
   { slug: "web-screens", file: "development/web-screens.md", group: "developers", about: "Building a screen of the web app." },
   {
+    slug: "households-development",
+    file: "development/households.md",
+    group: "developers",
+    about: "Several households, the current one, people, and how a feature becomes per household.",
+  },
+  {
     slug: "printed-pages",
     file: "development/printed-pages.md",
     group: "developers",

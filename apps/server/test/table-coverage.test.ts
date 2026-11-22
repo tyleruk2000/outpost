@@ -161,6 +161,10 @@ const TABLES: Record<string, Decision> = {
   supply_household: { group: "prepare", drive: true },
   supply_members: { group: "prepare", drive: true },
   supply_shopping: { group: "prepare", drive: true },
+  // Households (modules/households): a drive carries every household.
+  households: { group: "prepare", drive: true },
+  household_people: { group: "prepare", drive: true },
+  household_positions: { group: "prepare", drive: true },
   weather_places: { group: "prepare", drive: true },
   weather_cache: { group: "prepare", drive: true },
   weather_readings: { group: "prepare", drive: true },
