@@ -59,6 +59,8 @@ test("Help lists the guides from the More sheet, and a guide links to the next w
   await expect(page.getByRole("link", { name: "Help" }).first()).toHaveAttribute("href", "/help");
   await expect(page.getByRole("link", { name: "Open Storage" })).toBeVisible();
   // A table keeps within the screen: it scrolls inside its own box.
+  await page.goto("/help/tools");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   const table = page.locator(".doc-table").first();
   await table.scrollIntoViewIfNeeded();
   expect((await table.boundingBox())!.x + (await table.boundingBox())!.width).toBeLessThanOrEqual(391);

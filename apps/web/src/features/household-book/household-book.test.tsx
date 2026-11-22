@@ -223,6 +223,34 @@ describe("the book's pages", () => {
   const book = makeBook(inputs());
   const all = texts(book);
 
+  it("leads a list with what each place is when none of them has a name on the map, and marks the odd unnamed one with a dash", () => {
+    const tap = { name: "", kindLabel: "Drinking water", lat: 51.46, lon: -0.19, distanceMeters: 350, bearingDegrees: 210 };
+    const unnamed = texts(
+      makeBook(
+        inputs({
+          facts: {
+            ...facts,
+            help: [...facts.help.slice(0, 2), { id: "water", label: "Drinking water points", layer: "food", held: true, places: [tap] }],
+          },
+        }),
+      ),
+    );
+    expect(unnamed).toMatch(/What Distance Direction Position Drinking water 350 m/);
+    expect(unnamed).not.toMatch(/Name What Distance Direction Position Drinking water/);
+    expect(unnamed).not.toContain("No name mapped");
+    const mixed = texts(
+      makeBook(
+        inputs({
+          facts: {
+            ...facts,
+            help: [{ ...facts.help[0]!, places: [...facts.help[0]!.places, { ...tap, kindLabel: "Hospital" }] }, ...facts.help.slice(1)],
+          },
+        }),
+      ),
+    );
+    expect(mixed).toMatch(/Name What Distance Direction Position Town Hospital Hospital .* – Hospital 350 m/);
+  });
+
   it("has a cover with the number to call, a contents page, and the sections numbered in order", () => {
     expect(all).toContain("Household book The Rowans Made on 21 November 2026");
     expect(all).toMatch(/In an emergency, call .{0,80}999/);

@@ -1058,17 +1058,19 @@ function firstAid(c: Context): Section {
 }
 
 function placesTable(group: BookPlaceGroup, wind: number | null): Content {
+  // Most taps and many shelters carry no name on the map: with none named, the list leads with what each is.
+  const named = group.places.some((place) => place.name.trim() !== "");
   return dataTable(
-    ["Name", "What", "Distance", "Direction", "Position", ...(wind !== null ? ["Upwind"] : [])],
+    [...(named ? ["Name"] : []), "What", "Distance", "Direction", "Position", ...(wind !== null ? ["Upwind"] : [])],
     group.places.map((place) => [
-      place.name || "No name mapped",
+      ...(named ? [place.name.trim() || "–"] : []),
       place.kindLabel,
       metresWords(place.distanceMeters),
       direction(place.bearingDegrees),
       at4(place.lat, place.lon),
       ...(wind !== null ? [withinDegrees(place.bearingDegrees, wind) ? "**Yes**" : ""] : []),
     ]),
-    { bold: [0], right: [2] },
+    { bold: [0], right: [named ? 2 : 1] },
   );
 }
 
