@@ -147,6 +147,10 @@ export function fontRuns(text: string): Array<{ text: string; font?: FallbackFon
   return runs;
 }
 
+const decodeXml = (text: string) =>
+  text.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");
+const encodeXml = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
 const needsFallback = (text: string) => {
   for (const character of text) if (!printCovers(character.codePointAt(0)!)) return true;
   return false;
@@ -173,12 +177,22 @@ export function withFallbacks(doc: TDocumentDefinitions): { doc: TDocumentDefini
     }
     return value;
   };
+  // A drawing's words: each run the typeface lacks becomes a tspan in its fallback font, which pdfmake's SVG drawing looks up by family.
+  const svgWords = (svg: string): string =>
+    svg.replace(/(<text\b[^>]*>)([^<]*)(<\/text>)/g, (whole, open: string, words: string, close: string) => {
+      const plain = decodeXml(words);
+      if (!needsFallback(plain)) return whole;
+      const runs = fontRuns(plain);
+      for (const run of runs) if (run.font) fonts.add(run.font);
+      return `${open}${runs.map((run) => (run.font ? `<tspan font-family="${run.font}">${encodeXml(run.text)}</tspan>` : encodeXml(run.text))).join("")}${close}`;
+    });
   const walk = (node: unknown): unknown => {
     if (typeof node === "string") return needsFallback(node) ? { text: split(node) } : node;
     if (typeof node === "function") return (...args: unknown[]) => walk((node as (...a: unknown[]) => unknown)(...args));
     if (Array.isArray(node)) return node.map(walk);
     if (!node || typeof node !== "object") return node;
     const record = { ...(node as Record<string, unknown>) };
+    if (typeof record.svg === "string") record.svg = svgWords(record.svg);
     if ("text" in record) {
       if (typeof record.text === "string") {
         if (needsFallback(record.text)) record.text = split(record.text);

@@ -267,4 +267,21 @@ describe("names in other scripts", () => {
     expect(file).toMatch(/\/FontName \/[A-Z]{6}\+NotoSansSC/);
     if (process.env.OUTPOST_PRINT_SAMPLES) fs.writeFileSync(path.join(process.env.OUTPOST_PRINT_SAMPLES, "names.pdf"), made.bytes);
   }, 60_000);
+
+  it("sets a drawing's words in a fallback font too, run by run", async () => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="40" viewBox="0 0 200 40"><text x="100" y="20" font-family="Atkinson" font-size="9" text-anchor="middle">London to Москва &amp; 北京</text></svg>`;
+    const doc = printDocument({
+      paper: "a4",
+      title: "Drawn names",
+      made: new Date(Date.UTC(2026, 10, 22)),
+      footerName: "Names",
+      footerRight: "",
+      parts: [{ kind: "plain", content: [figure(svg, { width: 200 })] }],
+    });
+    const fallen = withFallbacks(doc);
+    expect(fallen.fonts).toEqual(new Set(["NotoSans", "NotoSansSC"]));
+    expect(JSON.stringify(fallen.doc.content)).toContain('<tspan font-family=\\"NotoSans\\">Москва');
+    const words = (await pdfWords((await renderPdf(doc)).bytes)).join(" ");
+    for (const name of ["London", "Москва", "北京"]) expect(words).toContain(name);
+  }, 60_000);
 });
