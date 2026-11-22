@@ -16,7 +16,7 @@ import {
   type RangeStationId,
   type SightRange,
 } from "@outpost/shared";
-import { ChevronDown, ChevronRight, ChevronUp, CircleAlert, X } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, CircleAlert, Download, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,7 @@ import type { LatLon } from "../lib/geo";
 import type { MapEngine } from "../map/engine";
 import { MapCard } from "../map-chrome";
 import { mapCard } from "../ui";
+import { downloadText, rangeFileName, rangeGpx, rangeKml } from "./range-files";
 import { RangeWhy } from "./range-why";
 import { NumberField } from "./sight-panel";
 
@@ -160,6 +161,19 @@ export function usePointRange({
   const reading = range.data ? readRange(range.data, "here") : null;
   const terrain = range.data ? describeRangeTerrain(range.data) : null;
   const ground = range.data?.groundMeters;
+  // Worked out with the answer, not on each render: the outline has one corner per bearing.
+  const files = useMemo(() => {
+    if (!range.data) return null;
+    const input = {
+      range: range.data,
+      name,
+      aerialMeters: range.data.aerialMeters,
+      station: `${station.name.toLowerCase()}, ${formatHeight(range.data.stationMeters)}`,
+    };
+    const gpx = rangeGpx(input);
+    const kml = rangeKml(input);
+    return gpx && kml ? { gpx, kml } : null;
+  }, [range.data, name, station.name]);
 
   const close = () => {
     setAt(null);
@@ -259,7 +273,7 @@ export function usePointRange({
             ) : null}
           </>
         ) : null}
-        <div>
+        <div className="flex flex-wrap items-center gap-1">
           {/* The link carries the point and the heights; the phone's Outpost works the outline out again and draws it. */}
           <ShareCodeButton
             target={{
@@ -269,6 +283,25 @@ export function usePointRange({
               outpostNote: `It opens the map at the point with the range drawn, worked out there for your aerial at ${formatHeight(prefs.aerial)} and ${station.name.toLowerCase()} at the other end.`,
             }}
           />
+          {/* The outline itself, for other map apps: made here from the answer on screen. */}
+          {files
+            ? (
+                [
+                  ["gpx", "GPX", "application/gpx+xml", files.gpx],
+                  ["kml", "KML", "application/vnd.google-earth.kml+xml", files.kml],
+                ] as const
+              ).map(([extension, label, type, text]) => (
+                <Button
+                  key={extension}
+                  size="sm"
+                  variant="ghost"
+                  aria-label={`Download the outline as ${label}`}
+                  onClick={() => downloadText(rangeFileName(name, extension), text, type)}
+                >
+                  <Download /> {label}
+                </Button>
+              ))
+            : null}
         </div>
 
         <button

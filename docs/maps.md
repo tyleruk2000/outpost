@@ -187,6 +187,12 @@ Where places crowd together an icon gives way to its neighbour until you zoom in
 If Outpost answers this computer only, a phone cannot open the links: share it under
 **Settings → Who can use this library**.
 
+The QR code for a range holds only the point and the heights. For the shape itself in other
+map apps, **GPX** and **KML** beside it download the outline, made on this device: the
+furthest ground in sight on each bearing joined into one closed line, the typical-range
+circle, and the point. Ground inside the outline can still be hidden by nearer ground; only
+Outpost's shading shows which. With no terrain the outline is the smooth-Earth horizon.
+
 ### Moving a saved place
 
 Press and hold a place for half a second and drag it (or right-click → **Move**, or the move

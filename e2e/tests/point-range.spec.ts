@@ -3,6 +3,7 @@
  * repeaters' estimate, said in words in a card and drawn as an outline on the map. The terrain is the two ridges made by
  * tools/terrain-fixture.mjs; the point is between them.
  */
+import fs from "node:fs";
 import { api, expect, test, watchForErrors } from "./fixtures";
 import { idle, outlineBox, ridgesAndRepeater } from "./repeater-range";
 
@@ -27,6 +28,27 @@ test("a radio range from any point: from the right-click menu, said in a card an
     await expect(card.getByText(/Line of sight only\. Your aerial 1\.5 m above the ground here/)).toBeVisible();
     await card.getByRole("button", { name: /^Heights and details/ }).click();
     await expect(card.getByText(/ground \d+ m above sea level/)).toBeVisible();
+
+    // The outline for other map apps, made in the page: a KML polygon, closed, longitude first, round the point.
+    const downloading = page.waitForEvent("download");
+    await card.getByRole("button", { name: "Download the outline as KML" }).click();
+    const download = await downloading;
+    expect(download.suggestedFilename()).toBe("Estimated range.kml");
+    const kml = fs.readFileSync((await download.path())!, "utf8");
+    expect(kml).toContain('<kml xmlns="http://www.opengis.net/kml/2.2">');
+    const ring = /<LinearRing><coordinates>([^<]+)<\/coordinates>/
+      .exec(kml)![1]!
+      .trim()
+      .split(" ")
+      .map((pair) => pair.split(",").map(Number));
+    expect(ring.at(-1)).toEqual(ring[0]);
+    for (const [lon, lat] of ring) {
+      expect(Math.abs(lon! + 3.4)).toBeLessThan(1);
+      expect(Math.abs(lat! - 57)).toBeLessThan(1);
+    }
+    const gpxDownloading = page.waitForEvent("download");
+    await card.getByRole("button", { name: "Download the outline as GPX" }).click();
+    expect((await gpxDownloading).suggestedFilename()).toBe("Estimated range.gpx");
     await idle(page);
 
     // The outline is on the map, large enough to read: found as what changes when the card is closed.
