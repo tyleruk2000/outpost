@@ -19,6 +19,7 @@ export const EXPORT_SECTIONS = [
   "radio-plans",
   "power-plans",
   "papers",
+  "households",
   "board",
   "documents",
 ] as const;

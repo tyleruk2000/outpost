@@ -124,12 +124,12 @@ export default function MedicalPage() {
                 title="No one in the household yet"
                 action={
                   <Button asChild variant="primary">
-                    <Link to="/prepare/supplies?view=household">Add the household</Link>
+                    <Link to="/prepare/households">Add the household</Link>
                   </Button>
                 }
               >
-                The household is kept under Supplies, so that food, water and these sheets count the same people. Or make a sheet for
-                someone by name below.
+                The household's people are kept under Prepare › Households, so that food, water and these sheets count the same people. Or
+                make a sheet for someone by name below.
               </EmptyState>
             ) : (
               <Rows>

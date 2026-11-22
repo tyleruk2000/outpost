@@ -360,7 +360,9 @@ function people(c: Context): Section {
   const pets = members.filter((member) => member.kind === "pet");
   const summary: string[] = [];
   if (persons.length === 0) {
-    content.push(para("No people are listed in Supplies. Add them in the questions or under Supplies, and make the book again."));
+    content.push(
+      para("No people are listed for the household. Add them in the questions or under Prepare, Households, and make the book again."),
+    );
   } else {
     content.push(
       dataTable(
@@ -893,7 +895,7 @@ function grabCards(c: Context): Section {
     c.summary["grab-cards"] = [];
     return {
       subtitle: "A card for each person to carry.",
-      content: [para("No people are listed yet. Add them in the questions or under Supplies.")],
+      content: [para("No people are listed yet. Add them in the questions or under Prepare, Households.")],
     };
   }
   const size = a6 ? 1 : 0.9;
@@ -1506,7 +1508,7 @@ function water(c: Context): Section {
         ],
       ),
     );
-  } else content.push(note("No people are listed in Supplies, so how much water is needed is not worked out."));
+  } else content.push(note("No people are listed for the household, so how much water is needed is not worked out."));
   content.push(
     label("What official bodies plan for"),
     dataTable(

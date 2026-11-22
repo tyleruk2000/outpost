@@ -9,6 +9,7 @@ import {
   formatBytes,
   type GamesKept,
   type GardenKept,
+  type HouseholdsKept,
   type LearningKept,
   type LeftoverKind,
   type ManagedItem,
@@ -277,6 +278,18 @@ export function suppliesWords(supplies: SuppliesKept | undefined): string | null
   return parts.length > 0 ? parts.join(", ") : null;
 }
 
+/** "2 households, 5 places a portable one has been", or null when there is only the one Outpost always keeps. */
+export function householdsWords(households: HouseholdsKept | undefined): string | null {
+  if (!households) return null;
+  const parts = [
+    households.households > 1 ? plural(households.households, "household") : null,
+    households.positions > 0
+      ? plural(households.positions, "place a portable household has been", "places portable households have been")
+      : null,
+  ].filter((part): part is string => part !== null);
+  return parts.length > 0 ? parts.join(", ") : null;
+}
+
 /** "120 Morse practice sessions and the trainer's progress", or null when there is nothing. */
 export function morseWords(morse: MorseKept | undefined): string | null {
   if (!morse || (morse.sessions === 0 && morse.progress === 0)) return null;
@@ -349,6 +362,8 @@ export function personalWords(personal: NonNullable<CleanupPlan["personal"]>): s
   if (weather) parts.push(weather);
   if ((personal.emergencyPlans ?? 0) > 0) parts.push(plural(personal.emergencyPlans ?? 0, "emergency plan"));
   if ((personal.householdPapers ?? 0) > 0) parts.push(plural(personal.householdPapers ?? 0, "household paper"));
+  const households = householdsWords(personal.households);
+  if (households) parts.push(households);
   if ((personal.readiness ?? 0) > 0)
     parts.push(plural(personal.readiness ?? 0, "log entry, check or drill", "log entries, checks and drills"));
   const morse = morseWords(personal.morse);
@@ -416,6 +431,7 @@ export function resultSentences(result: CleanupResult): string[] {
       weatherWords(weather),
       (result.personal.emergencyPlans ?? 0) > 0 ? plural(result.personal.emergencyPlans ?? 0, "emergency plan") : null,
       (result.personal.householdPapers ?? 0) > 0 ? plural(result.personal.householdPapers ?? 0, "household paper") : null,
+      householdsWords(result.personal.households),
       (result.personal.readiness ?? 0) > 0
         ? plural(result.personal.readiness ?? 0, "log entry, check or drill", "log entries, checks and drills")
         : null,

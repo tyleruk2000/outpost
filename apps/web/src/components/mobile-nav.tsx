@@ -2,6 +2,7 @@ import { ChevronRight, Ellipsis, Search, X } from "lucide-react";
 import { Dialog as Sheet } from "radix-ui";
 import { useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router";
+import { HouseholdSwitcher } from "@/features/households/switcher";
 import { cn } from "@/lib/utils";
 import { useFocusClearOfBars } from "./focus-clear";
 import { Lamp } from "./lamp";
@@ -173,6 +174,7 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
               <Sheet.Title className="sr-only">More</Sheet.Title>
               <Sheet.Description className="sr-only">Every other screen, each with the screens under it</Sheet.Description>
               <div aria-hidden className="mx-auto mb-2 h-1 w-9 rounded-full bg-spine-border" />
+              <HouseholdSwitcher onPicked={close} className="mb-2 px-3" />
               <SheetPart items={more} label="Knowledge" close={close} />
               <div className="mt-2 border-t border-spine-border pt-2">
                 <SheetPart items={upkeepNav} label="Upkeep" close={close} />

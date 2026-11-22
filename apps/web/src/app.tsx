@@ -49,6 +49,9 @@ const RadioPage = lazy(() => import("./features/radio/radio-page"));
 const HeardPage = lazy(() => import("./features/heard/heard-page"));
 const ToolsPage = lazy(() => import("./features/tools/tools-page"));
 const PreparePage = lazy(() => import("./features/prepare/prepare-page"));
+// Households and people (Preparedness).
+const HouseholdsPage = lazy(() => import("./features/households/households-page"));
+const HouseholdPage = lazy(() => import("./features/households/household-page"));
 // The household's papers (Preparedness), on lines of their own so that other additions merge cleanly.
 const MedicalPage = lazy(() => import("./features/household-papers/medical-page"));
 const MedicalSheetPage = lazy(() => import("./features/household-papers/medical-sheet-page"));
@@ -200,6 +203,8 @@ export function App() {
           <Route path="tools/building" element={<BuildingToolsPage />} />
           <Route path="tools/cooking" element={<CookingToolsPage />} />
           <Route path="prepare" element={<PreparePage />} />
+          <Route path="prepare/households" element={<HouseholdsPage />} />
+          <Route path="prepare/households/:id" element={<HouseholdPage />} />
           <Route path="tools/power" element={<PowerPage />} />
           <Route path="tools/power/plans/:id" element={<PowerPlanPage />} />
           <Route path="prepare/supplies" element={<SuppliesPage />} />

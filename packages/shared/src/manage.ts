@@ -141,6 +141,8 @@ export interface CleanupPlan {
     emergencyPlans?: number;
     /** Medical sheets, the communication plan and the binder's record (Preparedness). Absent from a plan made before they were counted. */
     householdPapers?: number;
+    /** The households (beyond the first, which is made again) and where portable ones have been. Absent from a plan made before they were counted. */
+    households?: HouseholdsKept;
     /** The log of events, routine checks and offline drills kept (Preparedness). Absent from a plan made before they were counted. */
     readiness?: number;
     /** The Morse trainer's practice sessions and its record of progress. Absent from a plan made before it was counted. */
@@ -179,6 +181,12 @@ export interface RadioKept {
 }
 
 /** The person's own things under Preparedness, Supplies: all of it goes with "erase everything". */
+/** The households kept, and the places portable ones have been (Prepare › Households). */
+export interface HouseholdsKept {
+  households: number;
+  positions: number;
+}
+
 export interface SuppliesKept {
   /** Rows of stock. */
   items: number;
@@ -234,6 +242,7 @@ export interface CleanupResult extends Record<string, unknown> {
     weather?: WeatherKept;
     emergencyPlans?: number;
     householdPapers?: number;
+    households?: HouseholdsKept;
     /** The log of events, routine checks and offline drills kept (Preparedness). Absent from a plan made before they were counted. */
     readiness?: number;
     morse?: MorseKept;

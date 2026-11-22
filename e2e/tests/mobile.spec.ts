@@ -127,6 +127,7 @@ test.describe("on a phone", () => {
         "Preparedness",
         "/prepare",
         [
+          ["Households", "/prepare/households"],
           ["Emergency plans", "/prepare/plans"],
           ["Supplies", "/prepare/supplies"],
           ["Weather and hazards", "/prepare/weather"],

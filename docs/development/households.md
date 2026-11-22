@@ -112,6 +112,13 @@ Every change publishes `households.changed`. The web app's event provider
 it; when `data.currentChanged` is set it resets every cached query, so each screen
 fetches its own again and nothing of the other household is shown meanwhile.
 
+The screens: Prepare › Households (`features/households/households-page.tsx`, the list,
+a new household and the People list) and each household's page (`household-page.tsx`).
+`<ForHousehold />` (`for-household.tsx`) is the "For <name> · Change" line under a
+per-household screen's title, nothing with one household; `HouseholdSwitcher`
+(`switcher.tsx`) is in the sidebar and the More sheet with two or more; the people rows
+are `PeopleEditor` (`people-editor.tsx`), which Supplies' Household tab uses too.
+
 `features/households/use-household.ts`: `useHouseholds()` (the list and `currentId`),
 `useHousehold()` (`{ household, home, country, several, households }` for the current
 one), `usePeople()`, `useSetCurrentHousehold()`. Query keys start with `households`.
@@ -185,12 +192,29 @@ map's "near home" (heard, range), and the chat tools (`homePlace`/`noHomeText` i
   does not, with one household whose home is the home-icon place among the markers it was
   given (`oneHouseholdOf` in `features/households/test-support.ts`).
 
-## Still the first household
+## Housekeeping
 
-Hard-coded `"household"` ids and Home lookups the per-household packages replace:
+- **Export everything** writes a folder per household, named after it, under
+  `supplies/`, `plans/` and `papers/` when there are several (each read through its own
+  service with the household's id: `supplies.items(id)`, the plans' `household_id`, its
+  people's medical sheets and its keeping-in-touch plan). With one household the layout
+  is as it always was. `households/` holds `households.json`, `people.json` and the
+  book's answers (one file per household with several). Power plans stay in one folder.
+- **Erase everything** counts and removes the households, positions and the
+  `households.current` setting; the database inspector and the table checks know the
+  new tables.
+- **The portable drive** carries every household, and its screen names them.
 
-- One-row ids: `export-all/sections.ts` (the comms query).
-- Rows inserted elsewhere take the column default, `'household'`.
-- Web: the layers dataset manager still defaults its country to GB.
-- Erase everything, the database inspector and the table checks already know the new
-  tables; Export everything and the drive screen do not yet say which household.
+## Still the first household, or the whole Outpost's
+
+Each of these is so by choice:
+
+- `morse_progress` (one row, id `household`), the board and the roll call are the whole
+  Outpost's.
+- The mesh root topic and the allotment game take `households.first()`.
+- The first household, when it has no home place of its own, takes the saved place with
+  the home icon (`homePlaceOf`, in `households/service.ts` only).
+- The phone's kept copy of the medical sheets is stored under the one id `household` on
+  the phone, and holds the current household's sheets with its name.
+- An insert that leaves `household_id` out takes the column default, the first
+  household: every per-household service sets it, so a new one must too.

@@ -360,7 +360,7 @@ export default function GardenPage() {
   const code = current.country;
   const elsewhere = code !== null && code !== "GB" ? (countries.find((country) => country.code === code)?.name ?? code) : null;
   // With one household it is "Home", as it always was; with several, the household by name.
-  const who = current.several && current.household ? current.household.name : "Home";
+  const who = (current.several || current.household?.kind === "portable") && current.household ? current.household.name : "Home";
   const lastFrost = garden.data?.settings.lastFrost ?? null;
   const plan = gardenMonth(month, lastFrost);
 
@@ -392,7 +392,20 @@ export default function GardenPage() {
           </Field>
         }
       >
-        {!current.isPending && !current.isError && !home ? <NoHome className="mb-4" /> : null}
+        {/* The calendar needs the country; with several households, or a moving one, say whose is missing. */}
+        {!current.isPending && !current.isError && current.household && code === null ? (
+          home || current.several || current.household.kind === "portable" ? (
+            <p className="mb-4 text-small text-ink-muted">
+              Outpost cannot tell which country {who} is in
+              {home ? "." : ": it has no home place set."}{" "}
+              <Link to="/prepare/households" className="text-primary underline underline-offset-2">
+                Open Households
+              </Link>
+            </p>
+          ) : (
+            <NoHome className="mb-4" />
+          )
+        ) : null}
         {elsewhere ? (
           <Notice tone="warning" className="mb-4" title={`${who} is in ${elsewhere}, not the UK`}>
             This calendar is the RHS's, for the UK. Outpost has no published calendar for {elsewhere} yet, so the months below may be wrong

@@ -12,11 +12,13 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/misc";
+import { useHomeCountry } from "@/features/frequencies/home-country";
 import { BookPlansLine } from "@/features/household-book/book-line";
 import { ForHousehold } from "@/features/households/for-household";
+import { useHome } from "@/features/households/home";
 import { errorMessage } from "@/lib/api";
 import { formatDate, localId, plural } from "@/lib/utils";
-import { useCreatePlan, useHouseholdCountry, usePlans } from "./data";
+import { useCreatePlan, usePlans } from "./data";
 import { TemplateLicences, templateSources } from "./licences";
 import { HomeWarningLine } from "./warning-line";
 import { blankPlan, guessEmergencyNumber, templatesFor, templatesWhereLine } from "./words";
@@ -82,7 +84,10 @@ function NewPlanDialog({
     }
     onOpenChange(next);
   };
-  const { country: home, householdName } = useHouseholdCountry();
+  // The current household's country (households D), and its name when there are several.
+  const home = useHomeCountry();
+  const current = useHome();
+  const householdName = current.several && current.household ? current.household.name : null;
   const number = guessEmergencyNumber(undefined, home?.code);
   const whereLine = templatesWhereLine(home, undefined, householdName);
   const make = () => {

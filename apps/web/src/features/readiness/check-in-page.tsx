@@ -234,11 +234,12 @@ export default function CheckInPage() {
             title="No one to count yet"
             action={
               <Button asChild variant="primary">
-                <Link to="/prepare/supplies?view=household">Add the household</Link>
+                <Link to="/prepare/households">Add the household</Link>
               </Button>
             }
           >
-            The roll call lists the household under Supplies and the people of the emergency plans, and anyone who has checked in.
+            The roll call lists the household's people (Prepare › Households) and the people of the emergency plans, and anyone who has
+            checked in.
           </EmptyState>
         ) : (
           <>
