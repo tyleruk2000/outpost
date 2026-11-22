@@ -167,20 +167,18 @@ describe("the household's broker, from Settings", () => {
     // Something else listening: whatever it is sent is kept, to look for the password in.
     const received: Buffer[] = [];
     const other = net.createServer((socket) => {
-      socket.on("data", (chunk) => received.push(chunk));
+      socket.on("data", (chunk) => received.push(Buffer.from(chunk)));
       socket.on("error", () => {});
     });
     const otherPort = await listen(other);
     try {
-      for (const change of [{ port: otherPort }, { host: "localhost", port: otherPort }, { userName: "someone-else", port: otherPort }]) {
-        const test = await app.api<MeshBrokerTestResult>("POST", "/api/mesh/broker/test", {
-          host: "127.0.0.1",
-          port,
-          userName: "outpost",
-          rootTopic: ROOT,
-          tls: false,
-          ...change,
-        });
+      const changes: Array<{ host: string; port: number; userName: string }> = [
+        { host: "127.0.0.1", port: otherPort, userName: "outpost" },
+        { host: "localhost", port, userName: "outpost" },
+        { host: "127.0.0.1", port, userName: "someone-else" },
+      ];
+      for (const change of changes) {
+        const test = await app.api<MeshBrokerTestResult>("POST", "/api/mesh/broker/test", { ...change, rootTopic: ROOT, tls: false });
         expect(test.status).toBe(400);
         expect((test.body as unknown as { error: { message: string } }).error.message).toMatch(/Type the password/);
       }

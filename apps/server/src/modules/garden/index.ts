@@ -136,10 +136,9 @@ export async function registerGarden(app: FastifyInstance, ctx: AppContext): Pro
     saveSettings(input) {
       const before = settings().updatedAt;
       if (input.baseUpdatedAt !== undefined && before !== null && (input.baseUpdatedAt === null || before > input.baseUpdatedAt))
-        throw conflict(
-          "The last frost was changed somewhere else after you opened it. Yours was not saved over it; look at it again.",
-          { current: settings() },
-        );
+        throw conflict("The last frost was changed somewhere else after you opened it. Yours was not saved over it; look at it again.", {
+          current: settings(),
+        });
       const now = before === null ? Date.now() : Math.max(Date.now(), before + 1);
       db.insert(gardenSettings)
         .values({ id: ROW, lastFrost: input.lastFrost, updatedAt: now })

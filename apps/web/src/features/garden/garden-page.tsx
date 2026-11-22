@@ -154,7 +154,12 @@ function LastFrost({ value, updatedAt, loading }: { value: string | null; update
           Save last frost
         </Button>
         {value ? (
-          <Button type="button" variant="ghost" onClick={() => save.mutate({ lastFrost: null, baseUpdatedAt: updatedAt })} disabled={save.isPending}>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => save.mutate({ lastFrost: null, baseUpdatedAt: updatedAt })}
+            disabled={save.isPending}
+          >
             Clear it
           </Button>
         ) : null}

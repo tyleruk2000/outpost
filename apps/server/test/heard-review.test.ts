@@ -70,7 +70,9 @@ describe("heard on the radio, what is kept", () => {
     heard.flushNow();
     expect(count("SELECT count(*) AS n FROM heard_stations WHERE source = 'mesh'")).toBeLessThanOrEqual(MOST_STATIONS_KEPT);
     const keys = new Set(
-      (app.ctx.sqlite.prepare("SELECT key FROM heard_stations WHERE source = 'mesh'").all() as Array<{ key: string }>).map((row) => row.key),
+      (app.ctx.sqlite.prepare("SELECT key FROM heard_stations WHERE source = 'mesh'").all() as Array<{ key: string }>).map(
+        (row) => row.key,
+      ),
     );
     expect(keys.has("!pinned")).toBe(true);
     expect(keys.has("!s0")).toBe(false);
@@ -88,7 +90,9 @@ describe("heard on the radio, what is kept", () => {
     }
     heard.flushNow();
     const station = heard.stations("mesh").find((entry) => entry.key === "!chatty")!;
-    const rows = app.ctx.sqlite.prepare("SELECT count(*) AS n, min(at) AS first FROM heard_reports WHERE station_id = ?").get(station.id) as {
+    const rows = app.ctx.sqlite
+      .prepare("SELECT count(*) AS n, min(at) AS first FROM heard_reports WHERE station_id = ?")
+      .get(station.id) as {
       n: number;
       first: number;
     };

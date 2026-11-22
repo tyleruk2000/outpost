@@ -307,7 +307,11 @@ export function createMeshService(ctx: AppContext, options: { open?: Opener } = 
         password = secrets.clientPassword();
         const saved = store.config().meshtastic.client;
         const same =
-          client.host.toLowerCase() === saved.host.trim().replace(/^\[|\]$/g, "").toLowerCase() &&
+          client.host.toLowerCase() ===
+            saved.host
+              .trim()
+              .replace(/^\[|\]$/g, "")
+              .toLowerCase() &&
           client.port === saved.port &&
           client.userName === saved.userName &&
           (input.tls || !saved.tls);
