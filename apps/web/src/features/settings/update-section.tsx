@@ -166,8 +166,8 @@ export function UpdateSection() {
 
           {!data.keyed ? (
             <Notice tone="info" icon={<CircleAlert aria-hidden />} title="Releases cannot be checked yet">
-              This build has no release key, so no release can be checked and nothing can be installed from here. Update the way this
-              installation is updated by hand.
+              This build has no release key, so no release can be checked and nothing can be installed from here. Update it by hand, the
+              same way it was installed.
             </Notice>
           ) : (
             <>

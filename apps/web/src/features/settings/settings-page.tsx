@@ -400,7 +400,8 @@ export default function SettingsPage() {
           </div>
         )}
         <p className="text-small text-ink-muted">
-          Outpost sends no telemetry and makes no network requests unless you start a download or refresh the catalogue.
+          Outpost sends no telemetry, and reaches the internet only when you press something that says it will: a download, a refresh of the
+          catalogue or the weather, and the like.
         </p>
         <GuidesLine />
       </SettingsSection>

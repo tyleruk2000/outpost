@@ -197,7 +197,8 @@
 
   mark {
     background: var(--mark);
-    color: inherit;
+    /* Ink, not the muted grey of a snippet around it, so the found word reads at 4.5:1 or more in both themes. */
+    color: var(--ink);
     border-radius: 2px;
     padding: 0 1px;
   }

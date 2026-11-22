@@ -123,7 +123,7 @@ export async function registerUpdate(app: FastifyInstance, ctx: AppContext): Pro
     if (!key)
       throw new AppError(
         "conflict",
-        "This build of Outpost has no release key, so no release can be checked. Releases are not signed yet; update the way your installation is updated by hand.",
+        "This build of Outpost has no release key, so no release can be checked. Releases are not signed yet; update it by hand, the same way it was installed.",
       );
     return key;
   }

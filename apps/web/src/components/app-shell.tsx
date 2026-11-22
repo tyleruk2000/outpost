@@ -7,6 +7,7 @@ import { ReachNotice } from "@/features/kept/reach";
 import { RecordingIndicator } from "@/features/maps/recording/indicator";
 import { notify } from "@/lib/notify";
 import { MobileNav } from "./mobile-nav";
+import { RouteAnnouncer } from "./route-announcer";
 import { allNav } from "./nav";
 import { ScreenErrorBoundary } from "./screen-error";
 import { Sidebar } from "./sidebar";
@@ -183,6 +184,7 @@ export function AppShell({ notesTree, onNewPage }: { notesTree?: ReactNode; onNe
           </Suspense>
         </ScreenErrorBoundary>
       </main>
+      <RouteAnnouncer />
       {paletteWanted ? (
         <PaletteBoundary key={paletteAttempt} onFailed={paletteFailed}>
           <Suspense fallback={null}>

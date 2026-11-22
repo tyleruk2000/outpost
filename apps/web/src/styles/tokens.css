@@ -329,7 +329,7 @@
   --danger: oklch(0.72 0.15 25);
   --danger-hover: oklch(0.78 0.14 25);
   --danger-soft: oklch(0.29 0.055 25);
-  --mark: oklch(0.5 0.1 90);
+  --mark: oklch(0.42 0.09 90);
 
   --chart-1: #1f9aa8;
   --chart-2: #c08026;
