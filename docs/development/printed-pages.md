@@ -96,3 +96,7 @@ real text in the PDF. Callout symbols are shapes, not letters, so a search finds
   lists) and, when a letter is missing, falls back to the lettered writer
   (`maps/print/lettering.ts`); the emergency cards, the contacts sheet, the QR sheet and
   the sun times sheet do this.
+- A cut-out at exact size (the sundial and nocturnal templates): put each drawn page down
+  whole with `{ svg, width: page.width, height: page.height, absolutePosition: { x: 0, y: 0 } }`,
+  so one point of the drawing is one point of paper (see `solar-clock/templates-kit.ts`).
+  The printed map keeps the old writer, which places its picture at an exact size.
