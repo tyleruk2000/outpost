@@ -270,6 +270,8 @@ describe("HTTPS on your network, in Settings", () => {
     serve({ status: running() });
     show(on);
     await screen.findByText("Trust the certificate on each device");
+    // The steps are fetched apart from the section (a lazy part): wait for them too, not only for their heading.
+    await screen.findByText("iPhone and iPad", { selector: "summary" });
     const steps = (name: string) => screen.getByText(name, { selector: "summary" }).closest("details") as HTMLElement;
     expect(steps("iPhone and iPad")).toHaveTextContent("Settings › General › About › Certificate Trust Settings");
     expect(steps("iPhone and iPad")).toHaveTextContent("Enable full trust for root certificates, turn on trust for Outpost on kitchen-pi");
@@ -300,6 +302,8 @@ describe("HTTPS on your network, in Settings", () => {
     serve({ status: running() });
     show(on);
     await screen.findByText("Trust the certificate on each device");
+    // The steps are fetched apart from the section (a lazy part): wait for them too, not only for their heading.
+    await screen.findByText("iPhone and iPad", { selector: "summary" });
     const steps = (name: string) => screen.getByText(name, { selector: "summary" }).closest("details") as HTMLElement;
     expect(steps("Mac")).toHaveTextContent(
       "security add-trusted-cert -r trustRoot -p ssl -k ~/Library/Keychains/login.keychain-db ~/Downloads/outpost-authority.crt",
@@ -350,6 +354,8 @@ describe("HTTPS on your network, in Settings", () => {
     serve({ status: running() });
     show(on);
     await screen.findByText("Trust the certificate on each device");
+    // The steps are fetched apart from the section (a lazy part): wait for them too, not only for their heading.
+    await screen.findByText("iPhone and iPad", { selector: "summary" });
     expect(screen.queryByText(/open this page there first/)).not.toBeInTheDocument();
     const iphone = screen.getByText("iPhone and iPad", { selector: "summary" });
     expect(iphone).toHaveTextContent("This device");

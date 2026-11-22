@@ -12,7 +12,7 @@ const NAMES: Record<TextSize, string> = { smaller: "Smaller", default: "Default"
 export function TextSizeSetting() {
   const { textSize, setTextSize } = useTheme();
   return (
-    <div id="text-size" className="scroll-mt-16 md:scroll-mt-6">
+    <div id="text-size" className="md:scroll-mt-6">
       <SettingRow
         label="Text size"
         hint="All text in Outpost, on this device, on top of the text size the device itself is set to."

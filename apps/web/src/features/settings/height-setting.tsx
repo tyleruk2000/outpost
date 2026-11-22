@@ -10,7 +10,7 @@ import { SettingRow } from "./parts";
 export function HeightSetting() {
   const [unit, setUnit] = useHeightChoice();
   return (
-    <div id="heights" className="scroll-mt-6">
+    <div id="heights" className="md:scroll-mt-6">
       <SettingRow
         label="Heights"
         hint={`How heights are written on the maps: the ground, a route's climb, a line-of-sight check. ${heightText(312, "m")} or ${heightText(312, "ft")}. Distances are always kilometres with miles beside them, and a height you type (an aerial's) is always in metres.`}

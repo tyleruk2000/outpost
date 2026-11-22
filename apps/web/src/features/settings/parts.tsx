@@ -19,8 +19,8 @@ export function SettingsSection({
     <section
       id={id}
       aria-labelledby={`${id}-title`}
-      // Reached at /settings#id: on a phone it comes to rest below the top bar, not under it.
-      className="@container scroll-mt-14 border-t border-border py-8 first:border-t-0 first:pt-0 md:scroll-mt-0"
+      // Reached at /settings#id: on a phone it comes to rest just below the top bar, by the page's scroll padding (base.css).
+      className="@container border-t border-border py-8 first:border-t-0 first:pt-0"
     >
       {/* Two columns by the room the section has, not the window's width: with the text at 200% on a wide window the
           settings were squeezed to a word a line beside a 15rem column of titles (WCAG 1.4.4, 1.4.10). */}
