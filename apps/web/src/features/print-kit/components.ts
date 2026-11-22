@@ -11,8 +11,16 @@
 import type { Content, ContentTable, CustomTableLayout, DynamicContent, TableCell } from "pdfmake/interfaces";
 import { PRINT_COLOURS as C, PRINT_FONT, PRINT_SPACE as S, PRINT_TYPE as T } from "./tokens";
 
+/**
+ * Marks the typeface does not have, written with ones it does: the minutes and seconds of
+ * a position (′ ″), arrows, and fractions beyond the halves and quarters.
+ */
+const STAND_INS: Record<string, string> = { "′": "'", "″": '"', "→": "to", "←": "from", "⅓": "1/3", "⅔": "2/3", "⅛": "1/8", µ: "micro" };
+export const printable = (text: string): string => text.replace(/[′″→←⅓⅔⅛µ]/g, (mark) => STAND_INS[mark] ?? mark);
+
 /** Words with **bold** runs, as a writer marks them: "**Boil it.** Bring water to…". */
-export function rich(text: string): Content {
+export function rich(words: string): Content {
+  const text = printable(words);
   if (!text.includes("**")) return text;
   const parts = text.split("**");
   return parts.filter((part) => part !== "").length === 0
@@ -230,12 +238,29 @@ const ruledLayout: CustomTableLayout = {
   paddingBottom: () => 2.6,
 };
 
-/** Columns' widths from what is in them: a column with long words takes the room, short ones fit their words. */
-export function columnWidths(head: string[], rows: string[][]): Array<"*" | "auto"> {
-  const longest = head.map((title, column) => Math.max(title.length, ...rows.map((row) => (row[column] ?? "").length)));
-  const widths = longest.map((length) => (length > 22 ? "*" : "auto")) as Array<"*" | "auto">;
-  if (!widths.includes("*")) widths[longest.indexOf(Math.max(...longest))] = "*";
-  return widths;
+/**
+ * Columns' widths from what is in them, as shares of the page: each as wide as its longest
+ * line (no less than a short word, no more than a sentence), so that a table spans the
+ * page with its room where the words are.
+ */
+export function columnWidths(head: string[], rows: string[][]): string[] {
+  const longest = head.map((title, column) =>
+    Math.min(
+      40,
+      Math.max(
+        5,
+        title.length,
+        ...rows.flatMap((row) =>
+          (row[column] ?? "")
+            .replace(/\*\*/g, "")
+            .split("\n")
+            .map((line) => line.length),
+        ),
+      ),
+    ),
+  );
+  const total = longest.reduce((sum, length) => sum + length, 0);
+  return longest.map((length) => `${((length / total) * 100).toFixed(2)}%`);
 }
 
 /** A table of facts or figures: a shaded head, hairlines between rows, figures to the right where asked. */

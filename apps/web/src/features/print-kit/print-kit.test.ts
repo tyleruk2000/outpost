@@ -120,6 +120,8 @@ function sample(paper: "a4" | "letter") {
 describe("the print kit's parts", () => {
   it("reads **bold** runs in words", () => {
     expect(rich("plain")).toBe("plain");
+    // Marks the typeface lacks are written with ones it has.
+    expect(rich("51°30′36″N")).toBe("51°30'36\"N");
     expect(rich("**Boil it.** Then cool it.")).toEqual({ text: [{ text: "Boil it.", bold: true }, " Then cool it."] });
   });
 

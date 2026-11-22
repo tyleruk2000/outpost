@@ -10,7 +10,7 @@
 import type { Content } from "pdfmake/interfaces";
 import type { SheetItem } from "@/features/maps/print/sheet";
 import type { Block } from "@/features/propagation/plans/document";
-import { bullets, dataTable, figure, heading, label, para } from "./components";
+import { bullets, dataTable, figure, heading, label, para, printable } from "./components";
 import { PRINT_FONT } from "./tokens";
 
 const hex = (rgb: readonly [number, number, number]) =>
@@ -58,7 +58,7 @@ export function sheetItemsToSvg(
       const anchor = item.anchor ?? "start";
       const rotate = item.upward ? ` transform="rotate(-90 ${item.x} ${item.y})"` : "";
       out.push(
-        `<text x="${item.x}" y="${item.y}" font-family="${PRINT_FONT}" font-size="${item.size}"${item.bold ? ' font-weight="bold"' : ""} fill="${hex(item.color)}" text-anchor="${anchor}"${rotate}>${escapeXml(item.text)}</text>`,
+        `<text x="${item.x}" y="${item.y}" font-family="${PRINT_FONT}" font-size="${item.size}"${item.bold ? ' font-weight="bold"' : ""} fill="${hex(item.color)}" text-anchor="${anchor}"${rotate}>${escapeXml(printable(item.text))}</text>`,
       );
     }
   }
