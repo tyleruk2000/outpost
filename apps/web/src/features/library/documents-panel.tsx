@@ -330,7 +330,9 @@ export default function DocumentsPanel() {
             {savingPage ? (
               <SaveWebPagePanel onClose={() => setSavingPage(false)} opener={toolbarRef} className="mt-1 basis-full md:order-last" />
             ) : null}
-            <div className="scroll-quiet flex items-center gap-2 max-md:-mx-5 max-md:w-screen max-md:overflow-x-auto max-md:px-5 max-md:py-0.5">
+            {/* The filters wrap onto a second line rather than scrolling sideways: Type, Category and Tag together are wider
+                than a 320 px phone once a type is chosen. */}
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               {typeChoices.length > 1 || filters.type ? (
                 <ChoiceMenu<DocumentType>
                   label="Type"

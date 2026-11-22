@@ -160,4 +160,27 @@ describe("the menu at a point on the map", () => {
       "Copy coordinates",
     ]);
   });
+
+  it("keeps the focus on the item moved to when the page draws itself again with a new onClose", async () => {
+    const props = {
+      point: { x: 100, y: 100 },
+      bounds: { width: 800, height: 600 },
+      coordinates: "54.46100, -3.18400",
+      onSave: () => {},
+      onMeasure: () => {},
+      onDraw: () => {},
+      onSun: () => {},
+    };
+    const first = vi.fn();
+    const { rerender } = render(<ContextMenu {...props} onClose={first} />);
+    expect(screen.getByRole("menuitem", { name: "Save a place here" })).toHaveFocus();
+    screen.getByRole("menuitem", { name: "Sun times here" }).focus();
+    const latest = vi.fn();
+    rerender(<ContextMenu {...props} onClose={latest} />);
+    expect(screen.getByRole("menuitem", { name: "Sun times here" })).toHaveFocus();
+    // Escape still closes it, by the onClose it was last given.
+    await userEvent.keyboard("{Escape}");
+    expect(latest).toHaveBeenCalledTimes(1);
+    expect(first).not.toHaveBeenCalled();
+  });
 });

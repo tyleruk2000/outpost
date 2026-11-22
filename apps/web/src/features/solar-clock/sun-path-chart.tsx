@@ -99,10 +99,12 @@ export function SunPathChart({
         onKeyDown={onKey}
         className="rounded-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
+        {/* Never wider than its place, even for the frame before it is measured: a phone's browser widened the whole
+            page to the 640 px it is drawn at until then, and kept it wide after the chart had shrunk. */}
         <svg
           width={width}
           height={height}
-          className="block touch-pan-y select-none"
+          className="block max-w-full touch-pan-y select-none"
           aria-hidden
           onPointerMove={(event) => setAt(indexAt(event))}
           onPointerDown={(event) => setAt(indexAt(event))}
