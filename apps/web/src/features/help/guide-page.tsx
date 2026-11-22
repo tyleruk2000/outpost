@@ -86,7 +86,14 @@ function MarkdownGuide({ guide, entry }: { guide: Guide; entry: GuideIndexEntry 
           <>
             <span className="block">{guide.about}</span>
             <span className="mt-1 block text-small">
-              <Joined parts={[changed ? `Changed ${changed}` : null, <span key="file">In the repository as docs/{guide.file}</span>]} />
+              <Joined
+                parts={[
+                  changed ? `Changed ${changed}` : null,
+                  <span key="file" className="[overflow-wrap:anywhere]">
+                    In the repository as docs/{guide.file}
+                  </span>,
+                ]}
+              />
             </span>
           </>
         }
