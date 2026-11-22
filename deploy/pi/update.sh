@@ -13,6 +13,8 @@
 #      trusted), and the image against the SHA-256 the signed manifest gives;
 #   3. loads the image into Docker and checks it is the one the manifest names;
 #   4. sets OUTPOST_IMAGE in the checkout's .env to it and starts Outpost from it;
+#   0. refuses a release that is not newer than the one installed (Outpost does too, but
+#      the request comes from the container);
 #   5. waits up to three minutes for Outpost to report healthy, and if it does not, puts
 #      OUTPOST_IMAGE back as it was and starts the version before again.
 #
@@ -63,6 +65,37 @@ answer() { # answer OUTCOME WORDS…
 if ! printf '%s' "$release" | grep -Eq '^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}(-[0-9A-Za-z.]{1,40})?$'; then
   release=""
   answer failed "the request did not name a release"
+  exit 0
+fi
+# Never back: a release older than, or the same as, the one running is refused here as well
+# as by Outpost, since the request comes from the container. An old release keeps its valid
+# signature for ever, so without this a container could ask for one with a known flaw. The
+# version running is read from root's own places: the checkout's .env and the record of the
+# last release this script installed.
+newer() { # newer A B: A is a later release than B (as Outpost's compareReleases)
+  awk -v a="$1" -v b="$2" 'BEGIN {
+    xa = ""; xb = ""
+    i = index(a, "-"); if (i) { xa = substr(a, i + 1); a = substr(a, 1, i - 1) }
+    i = index(b, "-"); if (i) { xb = substr(b, i + 1); b = substr(b, 1, i - 1) }
+    split(a, pa, "."); split(b, pb, ".")
+    for (k = 1; k <= 3; k++) {
+      if (pa[k] + 0 > pb[k] + 0) exit 0
+      if (pa[k] + 0 < pb[k] + 0) exit 1
+    }
+    if ((xa "") == (xb "")) exit 1
+    if (xa == "") exit 0
+    if (xb == "") exit 1
+    exit ((xa "") > (xb "")) ? 0 : 1
+  }'
+}
+is_release() { printf '%s' "$1" | grep -Eq '^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}(-[0-9A-Za-z.]{1,40})?$'; }
+running=""
+image_now="$(grep '^OUTPOST_IMAGE=' "$REPO/.env" 2>/dev/null | head -1 | cut -d= -f2- || true)"
+if is_release "${image_now#outpost:}"; then running="${image_now#outpost:}"; fi
+installed="$(head -c 64 "$WORK_ROOT/installed" 2>/dev/null | head -n 1 || true)"
+if is_release "$installed" && { [ -z "$running" ] || newer "$installed" "$running"; }; then running="$installed"; fi
+if [ -n "$running" ] && ! newer "$release" "$running"; then
+  answer failed "Outpost $release is not newer than $running, which is installed; only a newer release is installed"
   exit 0
 fi
 [ -s "$KEY" ] || { answer failed "no release key is installed beside the update service; run deploy/pi/install.sh again"; exit 0; }
@@ -169,6 +202,8 @@ while [ "$waited" -lt "$HEALTH_WAIT" ]; do
 done
 
 if $healthy; then
+  mkdir -p "$WORK_ROOT"
+  printf '%s\n' "$release" >"$WORK_ROOT/installed.tmp" && mv -f "$WORK_ROOT/installed.tmp" "$WORK_ROOT/installed" || true
   answer ok "Outpost $release started healthy"
   exit 0
 fi
