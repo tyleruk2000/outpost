@@ -60,7 +60,7 @@ foot.
 | Water | How much for your people and days, how to make it safe (quoted, with drawings of a layered filter, catching rain and boiling), and drinking water near home |
 | Food, toilet and hygiene | The energy your household needs, food after a power cut or a flood, keeping clean with little water |
 | Warmth, light and the radio | Official guidance on keeping warm and lit |
-| Radio frequencies | The communication plan's channels first, then licence-free channels, emergency broadcasting, distress and calling, broadcasters your sets can hear and repeaters near home, each with whether it needs a licence |
+| Radio frequencies | The communication plan's channels first, then licence-free channels, emergency broadcasting, distress and calling, broadcasters your sets can hear, and repeaters near each of your places with a map of their likely range |
 | Journeys | Each place you would go to, on foot and by car, with a drawing of the route |
 | Checklists | A shopping list for your people and days, the grab bag, the first aid kit and the car, with a box for **Got it** and **To get** |
 | Supplies | What is kept, where and until when, and how long it lasts |
@@ -84,6 +84,35 @@ Each frequency says in two words whether it needs a licence: **No licence**, **L
 only** or **Licence needed**, each with its own mark so it reads on a black-and-white
 copy. The rules behind them, and anything Outpost's list says about listening, are
 numbered notes at the end of the section.
+
+## Repeaters near your places
+
+The book lists amateur radio repeaters from the lists you brought in under **Radio →
+Repeaters**, round every place it covers: home (or, for a household on the move, where it
+last was), each meeting point, the plans' places, the people you would go to, and along
+the straight line of each journey. For each place it takes up to 6 (8 along a journey),
+the nearest first: 2 m repeaters within 50 km, 70 cm within 40 km, 10 m, 6 m and 4 m
+within 80 km, and 23 cm and above within 25 km. FM repeaters come before digital-only
+ones, and those listed as not operational are left out. These distances are Outpost's
+choice of what is worth trying, not a range.
+
+Each repeater is listed once, under the first place it is near; a later place names it
+as also near. The table gives the callsign, the output (listen on it), the input with its
+shift (talk on it), the tone, the mode, where it is, its distance and direction from the
+place (from the line, and how far along, for a journey), and its likely range. Under the
+tables the book names each list the repeaters came from and the date of its data.
+
+A map follows for each place with repeaters of its own and for each journey: the place,
+the repeaters with their callsigns, and a circle round each for its likely range, dashed
+differently for 2 m, 70 cm and other bands so they stay apart on a black-and-white copy.
+Where terrain is installed, the circle is the repeater's typical range worked out from it
+for a handheld, as **Estimated range** on the map gives it. Without terrain it is the
+radio horizon over flat ground between the repeater's aerial (its listed height, or 10 m
+when the list gives none) and a handheld at head height. Either way it is a rough guide,
+not a coverage prediction: hills and buildings block VHF and UHF, and the caption says
+so. The map is drawn from the offline map on the device the book is made on; with none
+installed, the places and repeaters are drawn to scale on a plain grid with a scale bar
+and north. Nothing is fetched from the internet to make it.
 
 ## Names in other scripts
 

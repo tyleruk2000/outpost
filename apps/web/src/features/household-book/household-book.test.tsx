@@ -206,14 +206,20 @@ const inputs = (over: Partial<BookInputs> = {}): BookInputs => ({
   },
   repeaters: [
     {
+      id: "r1",
+      listId: null,
       callsign: "GB3XX",
       outputHz: 145_725_000,
       inputHz: 145_125_000,
+      band: "2m",
+      modes: ["fm"],
+      status: "operational",
+      antennaMeters: null,
       ctcssHz: 77,
       dcsCode: null,
       place: "Hilltop",
-      distanceMeters: 12_000,
-      bearingDegrees: 90,
+      lat: 51.5,
+      lon: -0.8268,
     } as unknown as RepeaterDto,
   ],
   ...over,
@@ -553,8 +559,10 @@ describe("what the binder held, now in the book", () => {
     expect(words).toMatch(/Licence-free channels/);
     expect(words).toMatch(/Licence-free radio: no licence needed, within the power and equipment limits/);
     expect(words).toMatch(/Listening: no licence needed\./);
-    expect(words).toMatch(/GB3XX 145\.7250 MHz 145\.1250 MHz 77 Hz Hilltop 12 km E/);
-    expect(words).toMatch(/GB3XX .* Licence needed/);
+    expect(words).toMatch(
+      /Home Callsign Output Input \(shift\) Tone Mode Where From here Likely range GB3XX 145\.7250 145\.1250 \(−0\.6\) 77 Hz FM Hilltop 12 km E 18 km/,
+    );
+    expect(words).toMatch(/Talking on any of them: Licence needed/);
     expect(words).toMatch(/Notes .*Listening: no licence needed\. Transmitting: needs an amateur licence\./);
     // Short statuses in the tables, the legal words once each in the notes.
     expect(words).toMatch(/No licence Listen only Licence needed/);

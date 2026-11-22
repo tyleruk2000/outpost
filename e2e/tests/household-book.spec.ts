@@ -22,7 +22,12 @@ async function readByLibrary(page: Page, documentId: string) {
 }
 
 test.describe("the household book", () => {
-  const made: { documents: string[]; plans: string[]; markers: string[] } = { documents: [], plans: [], markers: [] };
+  const made: { documents: string[]; plans: string[]; markers: string[]; repeaters: string[] } = {
+    documents: [],
+    plans: [],
+    markers: [],
+    repeaters: [],
+  };
   let maps: InstalledTestMaps | undefined;
   test.afterAll(async ({ browser }) => {
     const page = await browser.newPage();
@@ -30,6 +35,7 @@ test.describe("the household book", () => {
     for (const id of made.markers) await page.request.delete(`/api/maps/markers/${id}`, { headers: { "X-Outpost-Request": "1" } });
     for (const id of made.documents) await page.request.delete(`/api/documents/${id}`, { headers: { "X-Outpost-Request": "1" } });
     for (const id of made.plans) await page.request.delete(`/api/emergency-plans/${id}`, { headers: { "X-Outpost-Request": "1" } });
+    for (const id of made.repeaters) await page.request.delete(`/api/repeaters/${id}`, { headers: { "X-Outpost-Request": "1" } });
     await page.close();
   });
 
@@ -63,6 +69,16 @@ test.describe("the household book", () => {
     const home = await api(page, "POST", "/api/maps/markers", { name: "Book home", lat: CENTRE.lat, lon: CENTRE.lon, icon: "home" });
     const hill = await api(page, "POST", "/api/maps/markers", { name: SUMMIT.name, lat: SUMMIT.lat, lon: SUMMIT.lon });
     made.markers.push(home.marker.id, hill.marker.id);
+    // A repeater on the hill, entered by hand: listed round home with a map of its range.
+    const { repeater } = await api(page, "POST", "/api/repeaters", {
+      callsign: "QZ3BKR",
+      outputHz: 145_650_000,
+      inputHz: 145_050_000,
+      lat: SUMMIT.lat + 0.01,
+      lon: SUMMIT.lon,
+      place: "Book hill",
+    });
+    made.repeaters.push(repeater.id);
 
     // The binder's old address opens the book.
     await page.goto("/prepare/binder");
@@ -111,6 +127,10 @@ test.describe("the household book", () => {
     expect(prose).toContain("Walk Gran home by the back lane.");
     expect(prose).toContain("Got it");
     expect(prose).toContain("Top arm: hand on bicep of bottom arm");
+    // The repeater round home, in the table and on its map, with the map's caveat.
+    expect(prose).toContain("QZ3BKR");
+    expect(prose).toContain("Repeaters: ");
+    expect(prose).toContain("A rough guide, not a coverage prediction.");
     expect(errors).toEqual([]);
   });
 });

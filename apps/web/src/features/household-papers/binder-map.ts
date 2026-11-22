@@ -74,7 +74,7 @@ export function placesBbox(places: readonly BinderPlace[]): Bbox {
 }
 
 /** The map's style: the light basemap, since paper is light, and nothing over it; the places are lettered on the page. */
-function placesStyle(input: BinderMapInput): StyleSpecification {
+export function placesStyle(input: BinderMapInput): StyleSpecification {
   return buildStyle({
     sources: input.sources,
     flavour: "light",
@@ -86,7 +86,7 @@ function placesStyle(input: BinderMapInput): StyleSpecification {
   });
 }
 
-const drawWithMapLibre: DrawMap = async (style, frame, pixels, signal) => {
+export const drawWithMapLibre: DrawMap = async (style, frame, pixels, signal) => {
   const { deviceLimits, drawPage, PrintMap } = await import("@/features/maps/print/export");
   const drawn = await drawPage(
     (first, maxSide) => PrintMap.create(style, first, maxSide),

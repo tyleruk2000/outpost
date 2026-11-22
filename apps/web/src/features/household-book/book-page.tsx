@@ -7,11 +7,11 @@
 import {
   BOOK_STEPS,
   type BookAnswers,
+  type BookFacts,
   type BookStepId,
   bookPlanIds,
   DEFAULT_BOOK_ANSWERS,
   localDay,
-  type RepeaterListResponse,
 } from "@outpost/shared";
 import { RADIO_FREQUENCIES } from "@outpost/shared/radio-frequencies-data";
 import { BookOpen, ListChecks, TriangleAlert } from "lucide-react";
@@ -31,12 +31,12 @@ import { type MadePdf, madePdf } from "@/features/library/made/made-pdf";
 import { PdfActions } from "@/features/library/made/pdf-actions";
 import { useMapOverview, useMapSources } from "@/features/maps/data";
 import { regionsCacheKey } from "@/features/maps/lib/tiles";
-import { renderPdf } from "@/features/print-kit";
+import { measureOf, renderPdf } from "@/features/print-kit";
 import { PdfPagesPreview } from "@/features/print-kit/preview";
-import { api, errorMessage } from "@/lib/api";
+import { errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { formatDate, plural } from "@/lib/utils";
-import { bookMapPlaces, makeBook } from "./book";
+import { bookMapPlaces, bookRepeaterGroups, makeBook } from "./book";
 import { sourcesWords } from "./book-line";
 import { useBook, useBookFacts, useBookMade, useSaveBook } from "./data";
 import { BookWizard } from "./wizard";
@@ -74,6 +74,51 @@ export default function BookPage() {
     setResult(null);
   };
 
+  /** The repeaters, their ranges and their maps, gathered from this Outpost before the book is made. */
+  const gatherBookRepeaters = async (answers: BookAnswers, now: BookFacts) => {
+    const { repeaterLocations } = await import("./book-repeaters");
+    const { gatherMaps, gatherRanges, gatherRepeaters } = await import("./repeater-gather");
+    const first = paperHomePlace(sources.which, now.home);
+    const included = new Set(
+      bookPlanIds(
+        answers,
+        sources.plans.map((each) => each.plan),
+      ),
+    );
+    const plans = sources.plans.filter((each) => included.has(each.plan.id));
+    const locations = repeaterLocations({
+      answers,
+      markers: sources.markers,
+      mapped: bookMapPlaces(answers, sources.markers, plans, first).mapped,
+      first,
+      journeys: now.journeys,
+    });
+    if (locations.length === 0) return { repeaters: [], lists: [], ranges: {}, maps: {}, missing: null };
+    const gathered = await gatherRepeaters(locations);
+    if (!gathered) return { repeaters: null, lists: [], ranges: {}, maps: {}, missing: null };
+    const groups = bookRepeaterGroups({
+      answers,
+      markers: sources.markers,
+      plans: sources.plans,
+      facts: now,
+      which: sources.which,
+      repeaters: gathered.repeaters,
+    });
+    setDrawing(true);
+    try {
+      const ranges = await gatherRanges(groups);
+      const regions = overview.data?.regions ?? [];
+      const drawn = await gatherMaps(
+        groups,
+        { sources: mapSources.data, regions, cacheKey: regionsCacheKey(regions), origin: window.location.origin },
+        measureOf(answers.paper),
+      ).catch(() => ({ maps: {}, missing: "This device could not draw the offline map under the repeaters." }));
+      return { ...gathered, ranges, ...drawn };
+    } finally {
+      setDrawing(false);
+    }
+  };
+
   const make = async () => {
     if (!book.data) return;
     setMaking(true);
@@ -83,14 +128,6 @@ export default function BookPage() {
       const at = new Date();
       const chosen = book.data.answers.sections;
       const home = fresh.data.home;
-      // Repeaters near home, from Outpost's own list (on this Outpost, not the internet).
-      const repeaters =
-        chosen.includes("frequencies") && home
-          ? await api
-              .get<RepeaterListResponse>("/api/repeaters", { near: `${home.lat},${home.lon}`, withinKm: 60, limit: 15 })
-              .then((list) => list.repeaters)
-              .catch(() => null)
-          : [];
       // The map of home and the meeting points is drawn first, from the offline map on this device.
       let placesMap: BinderMap | null = null;
       const included = new Set(
@@ -121,6 +158,9 @@ export default function BookPage() {
           setDrawing(false);
         }
       }
+      // Repeaters round every place the book covers, from Outpost's own list (on this Outpost, not the internet),
+      // with each one's range over the terrain installed and the offline map under each place.
+      const repeaterInputs = chosen.includes("frequencies") ? await gatherBookRepeaters(book.data.answers, fresh.data) : null;
       const out = makeBook({
         answers: book.data.answers,
         facts: fresh.data,
@@ -146,7 +186,11 @@ export default function BookPage() {
         },
         which: sources.which,
         travel: sources.travel,
-        repeaters,
+        repeaters: repeaterInputs ? repeaterInputs.repeaters : [],
+        repeaterLists: repeaterInputs?.lists,
+        repeaterRanges: repeaterInputs?.ranges,
+        repeaterMaps: repeaterInputs?.maps,
+        repeaterMapsMissing: repeaterInputs?.missing,
         placesMap: placesMap ? { block: placesMap.block, pictures: placesMap.pictures, missing: placesMap.missing } : null,
       });
       const printed = await renderPdf(out.document);
