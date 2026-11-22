@@ -10,10 +10,12 @@
  *
  * The Noto files are subsets made for print: Latin, Greek and Cyrillic in full; Chinese
  * to the 3,755 characters of GB 2312 level 1 with kana; Korean to the 2,350 syllables of
- * KS X 1001. A rarer character prints as an empty box. Arabic and Hebrew are set in their
- * letters' order as stored; pdfmake does not reorder right-to-left text.
+ * KS X 1001. A rarer character prints as an empty box. Arabic and Hebrew words are put in
+ * the order they are drawn (order.ts) when the document is given a `RightToLeft`.
  */
+import type { Bidi } from "bidi-js";
 import type { Content, TDocumentDefinitions } from "pdfmake/interfaces";
+import { hasRightToLeft, visualPieces } from "./order";
 
 /** The code points Atkinson Hyperlegible Next Regular has, as ranges (worked out from the font file with fontkit). */
 const PRINT_COVERAGE: ReadonlyArray<readonly [number, number]> = [
@@ -161,14 +163,36 @@ const needsFallback = (text: string) => {
   return false;
 };
 
+/** What puts Arabic and Hebrew in drawn order (render.ts loads it, with rtl.ts, when a document has them). */
+export interface RightToLeft {
+  bidi: Bidi;
+  /**
+   * A drawing's `<text>` holding right-to-left words, given its opening tag and its words,
+   * drawn another way (rtl.ts draws the letters as shapes); null leaves it to `<tspan>`s.
+   */
+  drawText?: (open: string, words: string) => { svg: string; fonts: FallbackFont[] } | null;
+}
+
+/** Words cut into runs for their fonts, Arabic and Hebrew words put in drawn order first when `rtl` is given. */
+export function orderedRuns(text: string, rtl?: RightToLeft): Array<{ text: string; font?: FallbackFont }> {
+  if (!rtl || !hasRightToLeft(text)) return fontRuns(text);
+  return visualPieces(rtl.bidi, text).flatMap((piece) =>
+    piece.rtl ? [{ text: piece.text, font: fallbackFor(piece.text.codePointAt(0)!) }] : fontRuns(piece.text),
+  );
+}
+
+/** Whether a document has right-to-left words: its fallback fonts include Arabic or Hebrew. */
+export const needsRightToLeft = (fonts: ReadonlySet<FallbackFont>): boolean => fonts.has("NotoSansArabic") || fonts.has("NotoSansHebrew");
+
 /**
  * A document with every run of text the typeface cannot set given a fallback font, and
- * which fallback fonts it needs. A document that needs none is given back as it is.
+ * which fallback fonts it needs. A document that needs none is given back as it is. With
+ * `rtl`, Arabic and Hebrew words are put in the order they are drawn.
  */
-export function withFallbacks(doc: TDocumentDefinitions): { doc: TDocumentDefinitions; fonts: Set<FallbackFont> } {
+export function withFallbacks(doc: TDocumentDefinitions, rtl?: RightToLeft): { doc: TDocumentDefinitions; fonts: Set<FallbackFont> } {
   const fonts = new Set<FallbackFont>();
   const split = (text: string): Content => {
-    const runs = fontRuns(text);
+    const runs = orderedRuns(text, rtl);
     for (const run of runs) if (run.font) fonts.add(run.font);
     return runs.map((run) => (run.font ? { text: run.text, font: run.font } : run.text)) as Content;
   };
@@ -187,6 +211,16 @@ export function withFallbacks(doc: TDocumentDefinitions): { doc: TDocumentDefini
     svg.replace(/(<text\b[^>]*>)([^<]*)(<\/text>)/g, (whole, open: string, words: string, close: string) => {
       const plain = decodeXml(words);
       if (!needsFallback(plain)) return whole;
+      if (rtl && hasRightToLeft(plain)) {
+        const drawn = rtl.drawText?.(open, plain);
+        if (drawn) {
+          for (const font of drawn.fonts) fonts.add(font);
+          return drawn.svg;
+        }
+        const runs = orderedRuns(plain.replace(/\s+/g, " ").trim(), rtl);
+        for (const run of runs) if (run.font) fonts.add(run.font);
+        return `${open}${runs.map((run) => (run.font ? `<tspan font-family="${run.font}">${encodeXml(run.text)}</tspan>` : encodeXml(run.text))).join("")}${close}`;
+      }
       // pdfmake's SVG drawing leaves a gap where the font changes next to a letter, so a drawing changes font only at a space:
       // a word holding a letter the typeface lacks is set whole, its punctuation with it, in the fallback.
       const runs: Array<{ text: string; font?: FallbackFont }> = [];

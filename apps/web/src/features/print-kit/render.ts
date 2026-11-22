@@ -5,7 +5,7 @@
  */
 import type { TDocumentDefinitions } from "pdfmake/interfaces";
 import { countingPages } from "./document";
-import { FALLBACK_LOADERS, type FallbackFont, withFallbacks } from "./fallback";
+import { FALLBACK_LOADERS, type FallbackFont, needsRightToLeft, withFallbacks } from "./fallback";
 import { PRINT_FONT } from "./tokens";
 
 type PdfMake = typeof import("pdfmake/build/pdfmake.min.js");
@@ -50,12 +50,32 @@ async function loadFallbacks(pdfMake: PdfMake, fonts: ReadonlySet<FallbackFont>)
   });
 }
 
+type PdfKitFonts = { _fontFamilies?: Record<string, { unicode?: number[][] }> };
+
+/**
+ * A glyph that stands for no letter of its own, such as the dots Noto Sans Arabic draws
+ * as marks of their own, is written by pdfkit with an empty entry in the font's map back
+ * to text, which a reader turns into a stray control character in the middle of the word
+ * (so a search for the word fails). Such glyphs are given the zero width joiner, which
+ * readers leave out. Done after the pages are laid out and before the fonts are written.
+ */
+function textForMarks(pdfKit: PdfKitFonts) {
+  for (const font of Object.values(pdfKit._fontFamilies ?? {}))
+    font.unicode?.forEach((codePoints, glyph) => {
+      if (codePoints?.length === 0) font.unicode![glyph] = [0x200d];
+    });
+}
+
 export async function renderPdf(definition: TDocumentDefinitions): Promise<RenderedPdf> {
   const pdfMake = await loadPdfMake();
   // Letters the typeface lacks are set in a fallback font, loaded only when they are there.
-  const fallen = withFallbacks(definition);
+  let fallen = withFallbacks(definition);
+  // Arabic and Hebrew are put in the order they are drawn; what does it is loaded only for them.
+  if (needsRightToLeft(fallen.fonts)) fallen = withFallbacks(definition, await (await import("./rtl")).loadRightToLeft(fallen.fonts));
   await loadFallbacks(pdfMake, fallen.fonts);
   const { doc, pages } = countingPages(fallen.doc);
-  const buffer = await pdfMake.createPdf(doc).getBuffer();
+  const output = pdfMake.createPdf(doc);
+  textForMarks((await output.getStream()) as unknown as PdfKitFonts);
+  const buffer = await output.getBuffer();
   return { bytes: new Uint8Array(buffer), pages: Math.max(1, pages()) };
 }

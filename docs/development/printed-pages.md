@@ -74,9 +74,24 @@ real text in the PDF. Callout symbols are shapes, not letters, so a search finds
 - Glyphs: the typeface covers Latin, Latin-1 and Latin Extended-A. `renderPdf` sets any
   word it cannot in Noto Sans (`fallback.ts`): Latin, Greek and Cyrillic in full, Arabic,
   Hebrew, Devanagari, Thai, Chinese (GB 2312 level 1 and kana) and Korean (KS X 1001
-  syllables), each font loaded only when a document uses it. Text inside SVG drawings is
-  not split, so keep names out of drawings. Arabic and Hebrew are not reordered right to
-  left. `printable()` writes ′ ″ arrows and ⅓ with marks the typeface has.
+  syllables), each font loaded only when a document uses it, in text and in a drawing's
+  `<text>` alike. The fallbacks have one weight, so bold in them prints regular.
+  `printable()` writes ′ ″ arrows and ⅓ with marks the typeface has.
+- Arabic and Hebrew read right to left. `renderPdf` puts each line in the order it is
+  drawn (the Unicode Bidirectional Algorithm, bidi-js): words from the right, brackets
+  mirrored, figures and Latin left to right inside them. Arabic letters are joined by the
+  font engine inside pdfmake. A line that starts with Arabic or Hebrew is read as a
+  right-to-left line; it is still placed by the paper's alignment (left, unless set).
+  The order is worked out for a passage as one line, so a right-to-left passage that wraps
+  reads its lines in the wrong order: use these scripts for names and short phrases, not
+  paragraphs. This takes bidi-js and fontkit, loaded only when a document has them.
+- In a drawing, a `<text>` holding Arabic or Hebrew is drawn as shapes (pdfmake's drawing
+  leaves out glyphs of no width, and Noto Sans Arabic draws its letters' dots as such),
+  with the same words over it in invisible ink so a search still finds them. It follows
+  `x`, `y`, `font-size`, `font-weight`, `fill`, `text-anchor` and `transform`; one with
+  `dx`, `dy`, `rotate`, `textLength`, `letter-spacing`, `word-spacing`, `style` or `class`
+  is set as text instead, in order but with Arabic dots missing. `svgText` gives only the
+  ones followed.
 
 ## Charts, drawing helpers and making a PDF on a screen
 
@@ -100,7 +115,8 @@ real text in the PDF. Callout symbols are shapes, not letters, so a search finds
 - Names in any script need nothing from a paper: `renderPdf` sets each word the typeface
   lacks in its fallback font, in text and in a drawing's `<text>` alike. In a drawing the
   font changes only at a space (pdfmake's SVG drawing leaves a gap where it changes next to
-  a letter), so a name with its brackets is set whole in the fallback.
+  a letter), so a name with its brackets is set whole in the fallback; Arabic and Hebrew
+  in a drawing are drawn as shapes, as above.
 - A cut-out at exact size (the sundial and nocturnal templates): put each drawn page down
   whole with `{ svg, width: page.width, height: page.height, absolutePosition: { x: 0, y: 0 } }`,
   so one point of the drawing is one point of paper (see `solar-clock/templates-kit.ts`).

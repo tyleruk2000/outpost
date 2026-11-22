@@ -216,6 +216,9 @@ importers:
       '@tiptap/y-tiptap':
         specifier: latest
         version: 3.3.1(prosemirror-model@1.25.13)(prosemirror-state@1.4.4)(prosemirror-view@1.42.9)(y-protocols@1.0.7(yjs@13.6.33))(yjs@13.6.33)
+      bidi-js:
+        specifier: 1.1.0
+        version: 1.1.0
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -231,6 +234,9 @@ importers:
       d3-shape:
         specifier: 3.2.0
         version: 3.2.0
+      fontkit:
+        specifier: 3.0.0
+        version: 3.0.0
       lowlight:
         specifier: ^3.3.0
         version: 3.3.0
