@@ -250,8 +250,8 @@ export function HouseholdView({ household }: { household: Household }) {
               const table = member.kind === "person" ? tableKcal(member.band, member.sex, energyTable) : null;
               return (
                 <li key={member.key} className="grid gap-3 py-4">
-                  <div className="flex items-end gap-2">
-                    <Field label={member.kind === "pet" ? "Pet's name" : "Name"} optional className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-end justify-end gap-2">
+                    <Field label={member.kind === "pet" ? "Pet's name" : "Name"} optional className="min-w-[min(100%,10rem)] flex-1">
                       {(ids) => (
                         <Input
                           {...ids}

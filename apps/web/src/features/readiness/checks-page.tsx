@@ -179,7 +179,8 @@ function CheckRow({
           ) : null}
         </p>
       </div>
-      <div className="flex shrink-0 items-center gap-1">
+      {/* Wraps with large text on a small phone, where "Done today" and the two icons are wider than the screen. */}
+      <div className="flex max-w-full flex-wrap items-center gap-1">
         <Button size="sm" variant={check.overdue ? "primary" : "secondary"} onClick={markDone} loading={done.isPending}>
           <Check aria-hidden /> Done today
         </Button>

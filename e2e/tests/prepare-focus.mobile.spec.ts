@@ -109,3 +109,50 @@ test.describe("Supplies with the text at 200% on a wide screen", () => {
     expect(await sideways(page)).toBeLessThanOrEqual(0);
   });
 });
+
+test.describe("Prepare at 320 with the Largest text", () => {
+  test.use({ viewport: { width: 320, height: 568 } });
+  test("no screen scrolls sideways", async ({ page }) => {
+    test.setTimeout(120_000);
+    await page.addInitScript(() => {
+      localStorage.setItem("outpost.textSize", "largest");
+      localStorage.setItem("outpost.board.name", "Sam");
+    });
+    await page.goto("/");
+    await api(page, "POST", "/api/routine-checks/suggested");
+    await api(page, "POST", "/api/event-log", { author: "Sam", text: "Called the network operator. They expect the power back by six." });
+    await api(page, "POST", "/api/supplies/items", {
+      name: "Tinned tomatoes",
+      category: "food",
+      quantity: 2,
+      unit: "tin",
+      location: "Pantry",
+    });
+    await api(page, "POST", "/api/supplies/shopping/work-out");
+    await api(page, "PUT", "/api/supplies/household", {
+      daysWanted: 3,
+      energyTable: null,
+      drinkingLitres: 3,
+      allUsesLitres: 7.5,
+      waterBasis: "drinking",
+      members: [
+        { kind: "pet", name: "Biscuit", band: null, sex: null, kcalPerDay: 400, drinkingLitres: 0.5, allUsesLitres: null, note: "" },
+      ],
+    });
+    await api(page, "POST", "/api/medical-sheets", { name: "Largest text", record: { allergies: [{ id: "a", what: "Penicillin" }] } });
+    for (const where of [
+      "/prepare/checks",
+      "/prepare/log",
+      "/prepare/medical",
+      "/prepare/keeping-in-touch",
+      "/prepare/supplies",
+      "/prepare/supplies?view=shopping",
+      "/prepare/supplies?view=household",
+    ]) {
+      await page.goto(where);
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+      await page.waitForLoadState("networkidle");
+      expect(await sideways(page), where).toBeLessThanOrEqual(0);
+    }
+  });
+});

@@ -225,7 +225,8 @@ export function ShoppingView({ items }: { items: SupplyItem[] }) {
         ) : (
           <ul className="divide-y divide-border border-y border-border" aria-label="To buy">
             {lines.map((line) => (
-              <li key={line.id} className="flex items-center gap-2 py-2.5">
+              // With large text on a small phone the count and the bin go under the line rather than past the screen's edge.
+              <li key={line.id} className="flex flex-wrap items-center justify-end gap-2 py-2.5">
                 <Button
                   variant="secondary"
                   size="icon"
@@ -235,7 +236,7 @@ export function ShoppingView({ items }: { items: SupplyItem[] }) {
                 >
                   <Check />
                 </Button>
-                <div className="min-w-0 flex-1">
+                <div className="min-w-[min(100%-3.25rem,8rem)] flex-1">
                   <p className="text-body text-ink">{lineWords(line)}</p>
                   <p className="text-small text-ink-muted">{reasonsWords(line.reasons)}</p>
                 </div>

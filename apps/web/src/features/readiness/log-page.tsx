@@ -56,6 +56,9 @@ export function logBlocks(lines: EventLogLine[], now = Date.now()): Block[] {
   return blocks;
 }
 
+/** A line's words cut to a length a button's name can carry: a whole line can be a thousand characters. */
+const short = (text: string) => (text.length > 60 ? `${text.slice(0, 57).trimEnd()}…` : text);
+
 function LineRow({ line, onEdit, onRemove }: { line: EventLogLine; onEdit: () => void; onRemove: () => void }) {
   const icon =
     line.kind === "checkin" ? (
@@ -66,30 +69,33 @@ function LineRow({ line, onEdit, onRemove }: { line: EventLogLine; onEdit: () =>
       <span aria-hidden className="size-4 shrink-0" />
     );
   return (
-    <li className="flex items-start gap-3 py-2.5">
-      <time dateTime={new Date(line.at).toISOString()} className="tabular w-14 shrink-0 pt-px text-small font-medium text-ink">
-        {formatTimeOfDay(line.at)}
-      </time>
-      {icon}
-      <div className="min-w-0 flex-1">
-        <p className="break-words text-ink">{line.text}</p>
-        <p className="text-small text-ink-muted">
-          <Joined
-            parts={[
-              line.author,
-              line.kind === "checkin" ? "on the board" : null,
-              line.planName && line.kind === "tick" ? line.planName : line.planName ? `during ${line.planName}` : null,
-              line.edited ? `changed by ${line.edited.by}, ${formatDate(line.edited.at)} ${formatTimeOfDay(line.edited.at)}` : null,
-            ].filter(Boolean)}
-          />
-        </p>
+    // With large text on a small phone the line takes the row and its two buttons go under it.
+    <li className="flex flex-wrap items-start justify-end gap-x-3 gap-y-1 py-2.5">
+      <div className="flex min-w-[min(100%,14rem)] flex-1 items-start gap-3">
+        <time dateTime={new Date(line.at).toISOString()} className="tabular w-14 shrink-0 pt-px text-small font-medium text-ink">
+          {formatTimeOfDay(line.at)}
+        </time>
+        {icon}
+        <div className="min-w-0 flex-1">
+          <p className="break-words text-ink">{line.text}</p>
+          <p className="text-small text-ink-muted">
+            <Joined
+              parts={[
+                line.author,
+                line.kind === "checkin" ? "on the board" : null,
+                line.planName && line.kind === "tick" ? line.planName : line.planName ? `during ${line.planName}` : null,
+                line.edited ? `changed by ${line.edited.by}, ${formatDate(line.edited.at)} ${formatTimeOfDay(line.edited.at)}` : null,
+              ].filter(Boolean)}
+            />
+          </p>
+        </div>
       </div>
       {line.kind === "entry" ? (
         <div className="flex shrink-0 gap-1">
-          <Button variant="ghost" size="icon" aria-label={`Change “${line.text}”`} onClick={onEdit}>
+          <Button variant="ghost" size="icon" aria-label={`Change “${short(line.text)}”`} onClick={onEdit}>
             <Pencil />
           </Button>
-          <Button variant="ghost" size="icon" aria-label={`Remove “${line.text}”`} onClick={onRemove}>
+          <Button variant="ghost" size="icon" aria-label={`Remove “${short(line.text)}”`} onClick={onRemove}>
             <Trash2 />
           </Button>
         </div>
