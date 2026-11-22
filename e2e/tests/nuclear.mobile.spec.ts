@@ -24,6 +24,8 @@ test.describe("Nuclear preparedness on a phone", () => {
     // The map comes first on a phone, and nothing but its own column lies over it.
     await page.locator('.outpost-map[data-map-idle="true"]').first().waitFor({ timeout: 20_000 });
     const map = page.getByRole("region", { name: "The offline map, with the scenarios' rings and fallout patterns" });
+    // Under the line about working offline, which on a phone puts the map's middle below the fold: brought into view first.
+    await map.scrollIntoViewIfNeeded();
     const box = await map.boundingBox();
     await page.touchscreen.tap(box!.x + box!.width * 0.5, box!.y + box!.height * 0.5);
     await expect(page.getByLabel("Ground zero", { exact: true })).toHaveValue(/^-?\d+\.\d{5}, -?\d+\.\d{5}$/);

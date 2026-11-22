@@ -20,7 +20,7 @@ function GuideRows({ guides }: { guides: Guide[] }) {
             className="group flex items-center gap-4 py-3.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >
             <span className="min-w-0 flex-1">
-              <span className="block font-title text-lead text-ink group-hover:text-primary">
+              <span className="block font-title text-lead text-ink [overflow-wrap:anywhere] group-hover:text-primary">
                 {GUIDE_INDEX[guide.slug]?.title ?? guide.slug}
               </span>
               <span className="mt-0.5 block text-small text-ink-muted">{guide.about}</span>
