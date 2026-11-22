@@ -7,6 +7,7 @@ import { ErrorState } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton, Tooltip } from "@/components/ui/misc";
 import { AskAboutButton } from "@/features/chat/ask-about";
+import { ReadingTextControl } from "@/features/settings/reading-text";
 import { ApiError, api } from "@/lib/api";
 import { useStorage } from "@/lib/queries";
 import { cn } from "@/lib/utils";
@@ -32,16 +33,29 @@ const AudioViewer = lazy(() => import("../audiobooks/audio-viewer"));
 const DETAILS_KEY = "outpost.document.details";
 // Wide enough for the details to sit beside the document and the viewing controls to fit in the top bar.
 // Narrower than this (a phone, or a tablet with the sidebar open) the details cover the document instead.
-const DESKTOP = "(min-width: 1024px)";
+// Both are asked of the room in text, not only in pixels: with the text made large (Settings, Text size; a
+// browser that enlarges text only) the bar would no longer hold the controls, which then go to the foot.
+const DESKTOP_PX = 1024;
+const DESKTOP_REM = 48;
+
+function isDesktop(): boolean {
+  const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  return window.innerWidth >= DESKTOP_PX && window.innerWidth / rem >= DESKTOP_REM;
+}
 
 function useIsDesktop(): boolean {
-  const [matches, setMatches] = useState(() => window.matchMedia(DESKTOP).matches);
+  const [matches, setMatches] = useState(isDesktop);
   useEffect(() => {
-    const query = window.matchMedia(DESKTOP);
-    const onChange = () => setMatches(query.matches);
+    const onChange = () => setMatches(isDesktop());
     onChange();
-    query.addEventListener("change", onChange);
-    return () => query.removeEventListener("change", onChange);
+    window.addEventListener("resize", onChange);
+    // The text size is the root's font size, set on its style attribute (lib/theme).
+    const watch = new MutationObserver(onChange);
+    watch.observe(document.documentElement, { attributes: true, attributeFilter: ["style"] });
+    return () => {
+      window.removeEventListener("resize", onChange);
+      watch.disconnect();
+    };
   }, []);
   return matches;
 }
@@ -352,19 +366,23 @@ export default function DocumentPage() {
     goToPage: (page) => controlsRef.current?.goToPage?.(page),
   };
   const covered = detailsOpen && !desktop;
+  // Text drawn by Outpost itself (not a PDF's pages, a picture or a recording) follows the reading choices.
+  const readable = !["pdf", "image", "audio"].includes(document.type);
   // Passages are marked in a PDF, a Markdown document, and a chapter of an EPUB (not its front page).
   const markable = canHighlight(document.type) && (document.type !== "epub" || epubChapter !== null);
 
   return (
     <Frame>
-      <header className="flex h-12 shrink-0 items-center gap-1.5 border-b border-border bg-page pr-2 pl-1.5 max-md:h-13 md:pr-3 md:pl-2">
+      {/* With large text on a narrow screen the buttons go on to a second line rather than past the edge. */}
+      <header className="flex min-h-12 shrink-0 flex-wrap items-center gap-x-1.5 border-b border-border bg-page pr-2 pl-1.5 max-md:min-h-13 md:pr-3 md:pl-2">
         <BackToLibrary cameFromLibrary={cameFromLibrary} book={book} />
         <span aria-hidden className="h-5 w-px shrink-0 bg-border max-md:hidden" />
-        <h1 className="min-w-0 flex-1 truncate font-title text-lead text-ink md:pl-2" title={title}>
+        <h1 className="min-w-0 flex-1 basis-24 truncate font-title text-lead text-ink md:pl-2" title={title}>
           {title}
         </h1>
         {desktop && viewer ? <ViewerToolbar state={viewer} controls={controls} className="shrink-0" /> : null}
         {desktop && viewer ? <span aria-hidden className="h-5 w-px shrink-0 bg-border" /> : null}
+        {readable ? <ReadingTextControl /> : null}
         <AskAboutButton kind="document" id={document.id} title={document.title} />
         <Tooltip
           label={document.locationAvailable ? "Download original" : "The original cannot be downloaded while its storage is disconnected"}
@@ -419,9 +437,17 @@ export default function DocumentPage() {
             ref={detailsRef}
             tabIndex={-1}
             aria-label="Details"
-            className="scroll-quiet overflow-y-auto bg-page focus:outline-none max-lg:absolute max-lg:inset-0 max-lg:z-(--z-sticky) lg:w-80 lg:shrink-0 lg:border-l lg:border-border"
+            className={cn(
+              "scroll-quiet overflow-y-auto bg-page focus:outline-none",
+              desktop ? "w-80 shrink-0 border-l border-border" : "absolute inset-0 z-(--z-sticky)",
+            )}
           >
-            <div className="sticky top-0 z-(--z-sticky) flex h-12 items-center justify-between border-b border-border bg-page pr-2 pl-5 lg:hidden">
+            <div
+              className={cn(
+                "sticky top-0 z-(--z-sticky) flex h-12 items-center justify-between border-b border-border bg-page pr-2 pl-5",
+                desktop && "hidden",
+              )}
+            >
               <h2 className="text-lead font-semibold text-ink">Details</h2>
               <Button
                 variant="ghost"

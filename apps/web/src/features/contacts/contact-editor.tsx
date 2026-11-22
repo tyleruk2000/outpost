@@ -31,6 +31,7 @@ import { Popover, PopoverContent, PopoverTrigger, Segmented, Select, Switch } fr
 import { api, errorMessage } from "@/lib/api";
 import { BackToList, DetailSkeleton } from "./contact-detail";
 import { useContact, useSaveContact } from "./contacts-data";
+import { usePaneHeading } from "./pane-heading";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -39,8 +40,6 @@ function Part({ title, hint, children }: { title: string; hint?: string; childre
     <fieldset className="mt-8 min-w-0 border-t border-border pt-4">
       <legend className="float-left mb-3 w-full text-lead font-semibold text-ink">{title}</legend>
       {hint ? <p className="clear-both -mt-2 mb-3 max-w-[60ch] text-small text-ink-muted">{hint}</p> : null}
-      {/* One column no wider than the form: an auto column took a text area's natural width, 374 px at 200% text on a
-          320 px phone, and the page and the bar of screens with it ran 12 px and more past the edge. */}
       <div className="clear-both grid grid-cols-[minmax(0,1fr)] gap-3">{children}</div>
     </fieldset>
   );
@@ -150,7 +149,7 @@ function TagInput({ tags, onChange }: { tags: string[]; onChange: (tags: string[
     }
   };
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-1.5">
+    <div className="grid gap-1.5">
       <label htmlFor={id} className="text-small font-medium text-ink">
         Tags
       </label>
@@ -175,8 +174,7 @@ function TagInput({ tags, onChange }: { tags: string[]; onChange: (tags: string[
           onBlur={() => draft.trim() && add(draft)}
           maxLength={CONTACT_LIMITS.label}
           placeholder={tags.length === 0 ? "Family, Neighbours, Has a key" : ""}
-          // No width of its own (an input's is about twenty letters), so that it never makes the form wider than the phone.
-          className="h-7 w-0 min-w-28 flex-1 bg-transparent px-1.5 text-body text-ink placeholder:text-ink-faint focus:outline-none max-md:h-9"
+          className="h-7 w-0 min-w-[min(7rem,100%)] flex-1 bg-transparent px-1.5 text-body text-ink placeholder:text-ink-faint focus:outline-none max-md:h-9"
         />
       </div>
       <p className="text-small text-ink-muted">Press Enter or a comma after each one.</p>
@@ -329,6 +327,7 @@ function BirthdayInput({ value, onChange }: { value: string; onChange: (value: s
 }
 
 function Form({ contact }: { contact?: ContactDto }) {
+  const Heading = usePaneHeading();
   const navigate = useNavigate();
   const initial = (): ContactFields => {
     if (!contact) return emptyContactFields();
@@ -405,9 +404,9 @@ function Form({ contact }: { contact?: ContactDto }) {
     >
       <BackToList />
       {/* A long name ("Featherstonehaugh-Cholmondeley") breaks rather than running the page, and the bar of screens, off a phone. */}
-      <h1 id="editor-title" className="font-title text-title text-ink hyphens-auto break-words">
+      <Heading id="editor-title" className="font-title text-title text-ink hyphens-auto break-words">
         {contact ? `Edit ${contact.displayName}` : "Add a contact"}
-      </h1>
+      </Heading>
 
       <div className="mt-5">
         <Segmented

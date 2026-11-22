@@ -5,7 +5,9 @@
 Notes are **pages** in a tree; any page can have sub-pages. A page has a title, an
 optional icon and cover picture, up to 50 tags (shared with the library; "Water" and
 "water" are one tag) and its content. Search finds pages by title, tags, parent titles
-and text. A page can be duplicated, with or without its sub-pages.
+and text. A page can be duplicated, with or without its sub-pages. A new page left without a
+word typed in it is removed when you leave it, so a **New page** pressed by mistake
+leaves no empty "Untitled" behind; one typed in, even once, stays.
 
 ### Moving pages
 
@@ -31,7 +33,10 @@ link. A page holds up to 5 MB.
   backticks, `---`.
 - Type `[[` or `@` to link to another page. A page link survives renaming and moving,
   and each page lists its **backlinks**.
-- Select text for the formatting bar. The grip beside a block drags it or opens its
+- Select text for the formatting bar; in a table, the table bar (rows, columns, header
+  row) shows above it. **Alt+F10** moves into whichever bar is showing; the arrow keys,
+  Home and End move along it, and Escape or Tab goes back to the text.
+- The grip beside a block drags it or opens its
   menu. In a list the grip moves one item; hold Alt (Option) as you drag, or choose
   **Whole list**, to move the list. Alt+Shift+↑/↓ moves a block; ⌘/Ctrl+Shift+D
   duplicates it.

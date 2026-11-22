@@ -25,7 +25,17 @@ import { MoveDialog } from "./move-dialog";
 import { NoteFooter } from "./note-footer";
 import { PageAdornments, PageCover, PageTitle } from "./note-header";
 import { NoteTopBar } from "./note-top-bar";
-import { noteKeys, refreshNotes, saveNote, TAB_ORIGIN, uploadAttachment, useNoteActions, useNoteTree } from "./notes-data";
+import {
+  madeBlank,
+  noteKeys,
+  refreshNotes,
+  saveNote,
+  showPage,
+  TAB_ORIGIN,
+  uploadAttachment,
+  useNoteActions,
+  useNoteTree,
+} from "./notes-data";
 import { TagEditor } from "./tag-editor";
 import {
   clearDraft,
@@ -207,7 +217,17 @@ function LoadedNote({
     },
   });
 
-  const touch = useCallback((key: keyof PageFields) => saver.current?.touch(key), [saver]);
+  const touch = useCallback(
+    (key: keyof PageFields) => {
+      // Typed in, even once: a page made blank here now stays when it is left.
+      madeBlank.delete(note.id);
+      saver.current?.touch(key);
+    },
+    [saver, note.id],
+  );
+  // A blank page made here and left untouched is removed on the way out (notes-data.ts).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once, when the page is left
+  useEffect(() => showPage(client, note.id), []);
 
   // The phone's changes are held as a conflict at once, and leave the phone once the person has chosen.
   const settling = useRef(false);

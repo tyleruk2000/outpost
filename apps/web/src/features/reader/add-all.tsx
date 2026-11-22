@@ -474,7 +474,17 @@ export function AddAllDialog({
  * Above a collection's list of documents: what "Add to library" does, the one action
  * that adds every document showing, and the adding that is under way or just ended.
  */
-export function AddToLibraryPanel({ collectionId, query }: { collectionId: string; query: string }) {
+/**
+ * Why "Add all" counts something other than the documents listed: it counts files, and only the PDFs and e-books
+ * among them. Null when the two agree.
+ */
+export function whyNotAll(listed: number, keepable: number): string | null {
+  if (listed === keepable) return null;
+  const which = keepable === 1 ? "1 file here is a PDF or an e-book" : `${formatNumber(keepable)} files here are PDFs or e-books`;
+  return `Adding counts files, not documents: ${which}, the kinds the library keeps. Everything else is read here in the collection.`;
+}
+
+export function AddToLibraryPanel({ collectionId, query, listed }: { collectionId: string; query: string; listed?: number }) {
   const [asking, setAsking] = useState(false);
   const addAll = useAddAll(collectionId, "list");
   const scope = useMemo<ArchiveAddScope>(() => (query ? { kind: "list", q: query } : { kind: "list" }), [query]);
@@ -508,6 +518,7 @@ export function AddToLibraryPanel({ collectionId, query }: { collectionId: strin
         ) : (
           "The collection keeps its copy, so the space is used a second time."
         )}
+        {data && listed !== undefined && whyNotAll(listed, count + data.already) ? <> {whyNotAll(listed, count + data.already)}</> : null}
       </p>
       {addAll.job ? <AddAllStatus addAll={addAll} className="mt-3" /> : null}
       {count > 0 && !addAll.active ? (

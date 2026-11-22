@@ -126,7 +126,7 @@ function NameFilter({ value, onChange }: { value: string; onChange: (value: stri
   }, [draft]);
 
   return (
-    <div className="relative min-w-40 flex-1 md:max-w-72">
+    <div className="relative min-w-[min(10rem,100%)] flex-1 md:max-w-72">
       <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-muted" />
       <Input
         ref={inputRef}

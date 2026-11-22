@@ -40,6 +40,7 @@ import { copyText } from "@/lib/clipboard";
 import { notify } from "@/lib/notify";
 import { cn, timeAgo } from "@/lib/utils";
 import { birthdayWords, exportHref, labelOr, mailHref, safeWebHref, useContact, useRemoveContact, useSaveContact } from "./contacts-data";
+import { usePaneHeading } from "./pane-heading";
 
 const action =
   "inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-control px-2.5 text-small font-medium text-primary transition-colors duration-150 hover:bg-primary-soft max-md:size-11 max-md:px-0 [&_svg]:size-[18px]";
@@ -80,7 +81,7 @@ function Line({ label, children, actions }: { label?: string; children: ReactNod
         {label ? <p className="text-small text-ink-muted">{label}</p> : null}
         {children}
       </div>
-      {actions ? <div className="flex shrink-0 items-center gap-0.5">{actions}</div> : null}
+      {actions ? <div className="flex max-w-full flex-wrap items-center gap-0.5">{actions}</div> : null}
     </div>
   );
 }
@@ -174,6 +175,7 @@ export function BackToList() {
 }
 
 function Details({ contact }: { contact: ContactDto }) {
+  const Heading = usePaneHeading();
   const navigate = useNavigate();
   const [removing, setRemoving] = useState(false);
   const save = useSaveContact(contact.id);
@@ -210,14 +212,14 @@ function Details({ contact }: { contact: ContactDto }) {
       <BackToList />
       <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <div className="min-w-0">
-          <h1
+          <Heading
             ref={heading}
             id="contact-name"
             tabIndex={-1}
             className="font-title text-title text-ink [overflow-wrap:anywhere] focus:outline-none"
           >
             {contact.displayName}
-          </h1>
+          </Heading>
           {under.map((line) => (
             <p key={line} className="mt-1 text-body text-ink-muted">
               {line}
@@ -504,6 +506,7 @@ function Details({ contact }: { contact: ContactDto }) {
 }
 
 export function ContactDetail({ id }: { id: string }) {
+  const Heading = usePaneHeading();
   const contact = useContact(id);
   if (contact.isPending) return <DetailSkeleton />;
   if (contact.isError) {
@@ -511,7 +514,7 @@ export function ContactDetail({ id }: { id: string }) {
       return (
         <div>
           <BackToList />
-          <h1 className="font-title text-heading text-ink">This contact is no longer here</h1>
+          <Heading className="font-title text-heading text-ink">This contact is no longer here</Heading>
           <p className="mt-2 text-ink-muted">It may have been deleted from another device. The list has everyone who is here now.</p>
         </div>
       );
