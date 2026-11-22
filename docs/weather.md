@@ -79,7 +79,22 @@ On the **Worldwide** tab:
 - **Earthquakes of magnitude 4.5 and over** in the past week, from the USGS.
 - **National warnings for the country home is in** (the screen names the country taken; a
   border can mislead it): MeteoAlarm in Europe, the National Weather Service in the
-  United States.
+  United States, Environment and Climate Change Canada, MetService in New Zealand and the
+  Japan Meteorological Agency.
+
+**Country for national warnings** chooses another country instead, for a home near a
+border or a household that wants its neighbour's warnings. It is one setting for every
+device; **Home's country** goes back to the position.
+
+What each national service gives:
+
+- **Canada**: the alerts for the forecast area that holds Home, in English, asked for by
+  a small box round Home. Ended alerts are listed apart.
+- **New Zealand**: every outlook, watch and warning in MetService's feed, those whose
+  area holds Home first. An alert whose full text cannot be had is shown from the feed's
+  words, and says so.
+- **Japan**: the latest headline from each local office, in Japanese as written, highest
+  level first. Outpost cannot tell which prefecture Home is in: find its office.
 
 Each is old after an hour (GDACS three) and shows the publisher's words and credit.
 MeteoAlarm asks for warnings to reach people within ten minutes, which an offline copy
@@ -121,14 +136,18 @@ Office's terms: rising or falling slowly (0.1 to 1.5 hPa), rising or falling (1.
 3.5), quickly (3.6 to 6.0), very rapidly (over 6.0), or "now rising" or "now falling" when
 it turned. It is a rule of thumb, not a forecast: act on a forecast or a warning.
 
+**Wind from** is optional with each reading: the point of the compass the wind was
+blowing from. It shows beside the reading, goes in the CSV file, and the forecast below
+starts from the latest reading's wind.
+
 **A forecast from your readings**, in words ("Becoming fine"), by the Zambretti method,
-from the pressure, the tendency and the wind direction you choose. A rule of thumb for
+from the pressure, the tendency and the wind direction. A rule of thumb for
 about twelve hours in the British Isles and similar latitudes; not for the southern
 hemisphere or the tropics.
 
 **Bring in a CSV file** from a logger or weather station shows what it would add, and
 what it cannot read, first. It needs a header naming a time and a pressure column (`hPa`,
-`mb`, `inHg`), optionally `unit` and `height`; at most 50,000 rows and 4 MB. **Clear
+`mb`, `inHg`), optionally `unit`, `height` and `wind` (a point of the compass or degrees); at most 50,000 rows and 4 MB. **Clear
 readings** says how many will go and offers to save them as a CSV first; there is no undo.
 
 ## Under Manage and clean up

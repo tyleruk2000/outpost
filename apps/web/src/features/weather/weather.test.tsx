@@ -72,10 +72,21 @@ const importAnswer: ReadingImportResult = {
       unit: "hPa",
       heightM: 12.5,
       seaLevelHpa: 1014.7,
+      windFrom: null,
       duplicate: false,
       notes: ["“1.013,2” read as 1013.2.", "“12,5” read as 12.5."],
     },
-    { line: 3, takenAt: NOW - 3 * HOUR, value: 1012, unit: "hPa", heightM: 10, seaLevelHpa: 1013.2, duplicate: false, notes: [] },
+    {
+      line: 3,
+      takenAt: NOW - 3 * HOUR,
+      value: 1012,
+      unit: "hPa",
+      heightM: 10,
+      seaLevelHpa: 1013.2,
+      windFrom: null,
+      duplicate: false,
+      notes: [],
+    },
   ],
   problems: [],
   added: 0,
@@ -198,6 +209,9 @@ describe("the Weather and hazards screen", () => {
 describe("alerts worldwide", () => {
   const plan = {
     home: { name: "Home", lat: 50.72, lon: -3.53 },
+    homeCountry: "GB",
+    homeCountryName: "the United Kingdom",
+    chosenCountry: null,
     country: "GB",
     countryName: "the United Kingdom",
     national: "meteoalarm" as const,
@@ -250,6 +264,53 @@ describe("alerts worldwide", () => {
     expect(screen.getByText(/^Time delays between this website and the www\.meteoalarm\.org website are possible\./)).toBeInTheDocument();
     expect(screen.getByText(/South West England\..*Issued /)).toBeInTheDocument();
   });
+
+  it("lets a person choose the country for national warnings, and says it is the chosen one", async () => {
+    const posted = show({ alerts: plan }, "?view=world");
+    await userEvent.click(await screen.findByRole("combobox", { name: "Country for national warnings" }));
+    await userEvent.click(await screen.findByRole("option", { name: "Canada" }));
+    await waitFor(() => expect(posted).toEqual([{ path: "PUT /api/weather/options", body: { alertCountry: "CA" } }]));
+  });
+
+  it("shows JMA's headlines as written, with the office and the level", async () => {
+    const jma: KeptCopy = {
+      id: "j1",
+      kind: "jma",
+      source: "jma-warnings",
+      placeId: null,
+      fetchedAt: NOW,
+      validFrom: null,
+      validUntil: null,
+      bytes: 1000,
+      sent: "www.data.jma.go.jp: no position",
+      data: {
+        updatedAt: NOW,
+        entries: [
+          {
+            id: "a",
+            office: "新潟地方気象台",
+            headline: "【新潟県気象警報・注意報】〈危険警報（土砂災害）〉中越では、土砂災害に厳重に警戒してください。",
+            updated: NOW,
+            level: "危険警報",
+            link: "https://www.data.jma.go.jp/developer/xml/data/x_VPWW53_150000.xml",
+          },
+          {
+            id: "b",
+            office: "富山地方気象台",
+            headline: "【富山県気象警報・注意報】注意報を解除します。",
+            updated: NOW,
+            level: "解除",
+            link: "",
+          },
+        ],
+      },
+    };
+    const tokyo = { ...plan, chosenCountry: "JP", country: "JP", countryName: "Japan", national: "jma" as const };
+    show({ alerts: tokyo, kept: [jma] }, "?view=world");
+    expect(await screen.findByText(/〈危険警報（土砂災害）〉中越では/)).toBeInTheDocument();
+    expect(screen.getByText(/National warnings are fetched for Japan, as chosen below/)).toBeInTheDocument();
+    expect(screen.getByText("Lifted (1)")).toBeInTheDocument();
+  });
 });
 
 describe("clearing barometer readings", () => {
@@ -262,10 +323,17 @@ describe("clearing barometer readings", () => {
     heightM: 0,
     seaLevelHpa,
     note: "",
+    windFrom: null,
     origin: "typed",
     createdAt: 1,
   });
   const three = [reading("r1", 72, 1004), reading("r2", 3, 1008), reading("r3", 0, 1010)];
+
+  it("shows the wind noted with a reading, and the Zambretti forecast starts from the latest one's", async () => {
+    show({}, "?view=barometer", [], [...three.slice(0, 2), { ...three[2]!, windFrom: "N" }]);
+    expect(await screen.findByText(/wind from N\. A rule of thumb/)).toBeInTheDocument();
+    expect(screen.getByText(/, wind from N$/)).toBeInTheDocument();
+  });
 
   it("states the count, offers the CSV first, removes only what it said, and the log goes to its empty state", async () => {
     const posted = show({}, "?view=barometer", [], three);

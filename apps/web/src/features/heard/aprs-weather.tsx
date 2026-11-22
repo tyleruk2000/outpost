@@ -5,7 +5,7 @@
  * internet. Their pressure is offered to the barometer log, and written there only when
  * a person presses the button.
  */
-import { homePlaceOf } from "@outpost/shared";
+import { homePlaceOf, windPointOf } from "@outpost/shared";
 import { useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
@@ -77,6 +77,7 @@ export function AprsWeather() {
                           value: Math.round(pressure * 10) / 10,
                           unit: "hPa",
                           heightM: 0,
+                          windFrom: weather.windDirection !== null ? windPointOf(String(Math.round(weather.windDirection))) : null,
                           note: `APRS weather station ${station.name}, heard on the radio. Taken as at sea level: APRS does not say whether a station reduces its pressure.`,
                         },
                         {

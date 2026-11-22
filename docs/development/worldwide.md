@@ -53,6 +53,6 @@ Rules for new code:
 | Mesh root topic prefilled msh/EU_868 | Settings, Mesh | Fixed | Before a household broker is saved, the root topic starts on msh/ and the region Meshtastic's "LoRa Region by Country" table (read 22 Nov 2026) gives Home's country, else the device's; the hint says which. The server's stored default is still msh/EU_868. |
 | Grid references | Maps, Compass, grab cards | Already worldwide | Decimal degrees is the default readout. The National Grid is only used in Great Britain and dropped elsewhere; Compass picks UTM outside Britain. |
 | Frequencies and band plans | Frequencies, Radio | Already worldwide | ITU regions and IARU Regions 1 to 3, the country filter starts on Home's country. |
-| Weather and warnings | Weather and hazards | Already worldwide | Open-Meteo, GDACS and the USGS worldwide; MeteoAlarm or the US National Weather Service by Home's country; Met Office and Environment Agency as UK extras. |
+| Weather and warnings | Weather and hazards | Already worldwide | Open-Meteo, GDACS and the USGS worldwide; MeteoAlarm, the US National Weather Service, ECCC (Canada), MetService (New Zealand) or JMA (Japan) by Home's country or the one chosen; Met Office and Environment Agency as UK extras. |
 | Garden calendar, map suggestions, radio licences | Garden, Explore, Radio | Already by Home's country | Each says which country it took. |
 | Paper size on household papers, plans, cards, encryption aids, QR, HF predictions | PDFs | Already worldwide | A4 or US Letter, chosen by the device. |

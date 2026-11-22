@@ -18,6 +18,9 @@ const KIND_WORDS = {
   quakes: "Earthquakes worldwide (USGS)",
   meteoalarm: "National warnings (MeteoAlarm)",
   nws: "National alerts (US National Weather Service)",
+  eccc: "National alerts (Environment and Climate Change Canada)",
+  metservice: "National warnings (MetService, New Zealand)",
+  jma: "National warnings (Japan Meteorological Agency)",
   "space-weather": "Space weather today (NOAA)",
 } satisfies Record<WeatherKind, string>;
 

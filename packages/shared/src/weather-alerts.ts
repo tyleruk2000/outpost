@@ -2,7 +2,8 @@
  * Alerts from beyond the UK, fetched on a press like the rest of Weather and hazards:
  * GDACS's disasters worldwide, the USGS's earthquakes worldwide, and the national
  * warnings for where Home is (MeteoAlarm in Europe, the US National Weather Service in
- * the United States). And the Sun's state today for HF radio, from NOAA's Space Weather
+ * the United States, Environment and Climate Change Canada, MetService in New Zealand and
+ * the Japan Meteorological Agency), or for the country a person chooses instead. And the Sun's state today for HF radio, from NOAA's Space Weather
  * Prediction Center, shown beside the HF propagation planner.
  *
  * The publishers' words are kept as they were written. What Outpost reads from them (a
@@ -11,7 +12,7 @@
  */
 
 /** The kinds kept for alerts and space weather. None is for one place: each is one copy for the household. */
-export const ALERT_KINDS = ["gdacs", "quakes", "meteoalarm", "nws", "space-weather"] as const;
+export const ALERT_KINDS = ["gdacs", "quakes", "meteoalarm", "nws", "eccc", "metservice", "jma", "space-weather"] as const;
 export type AlertKind = (typeof ALERT_KINDS)[number];
 
 // ── GDACS ───────────────────────────────────────────────────────────────────
@@ -185,15 +186,152 @@ export interface NwsData {
   alerts: NwsAlert[];
 }
 
+// ── Environment and Climate Change Canada ───────────────────────────────────
+
+/** One alert for one area, as MSC GeoMet's `weather-alerts` collection gives it, in English. */
+export interface EcccAlert {
+  id: string;
+  /** "snowfall warning", as ECCC names it. */
+  name: string;
+  /** "warning", "watch", "advisory" or "statement". */
+  type: string;
+  /** ECCC's risk colour: "yellow", "orange", "red", or null where it gives none. */
+  colour: string | null;
+  /** The alert's text, as written. */
+  text: string;
+  /** "Kapuskasing - Hearst - Smooth Rock Falls". */
+  area: string;
+  province: string;
+  /** "new", "continued", "ended", as ECCC says. */
+  status: string;
+  published: number | null;
+  expires: number | null;
+  eventEnd: number | null;
+  /** Whether the alert's area holds Home, from its outline; null where the answer gave none. */
+  coversHome: boolean | null;
+}
+
+export interface EcccData {
+  updatedAt: number | null;
+  alerts: EcccAlert[];
+}
+
+// ── MetService (New Zealand) ────────────────────────────────────────────────
+
+/** One CAP alert, from the item in MetService's feed and the CAP document it links to. */
+export interface CapAlert {
+  id: string;
+  /** The feed item's title. */
+  title: string;
+  event: string;
+  headline: string;
+  description: string;
+  instruction: string;
+  severity: string;
+  urgency: string;
+  certainty: string;
+  /** MetService's colour code, "Orange", where the CAP document gives one. */
+  colour: string | null;
+  area: string;
+  sent: number | null;
+  onset: number | null;
+  expires: number | null;
+  /** Whether one of the alert's polygons holds Home; null when the CAP document could not be read or gives none. */
+  coversHome: boolean | null;
+  /** The CAP document on alerts.metservice.com. */
+  link: string;
+}
+
+export interface MetserviceData {
+  /** The feed's own title. */
+  title: string;
+  publishedAt: number | null;
+  alerts: CapAlert[];
+  /** How many items' CAP documents could not be had: those are kept from the feed's words only. */
+  unread: number;
+}
+
+// ── The Japan Meteorological Agency ─────────────────────────────────────────
+
+/** The levels read from a headline, in JMA's own words: emergency, danger, warning, advisory, lifted. */
+export const JMA_LEVELS = ["特別警報", "危険警報", "警報", "注意報", "解除"] as const;
+export type JmaLevel = (typeof JMA_LEVELS)[number];
+
+/** The latest weather warnings and advisories from one local office, as the headline in JMA's feed. */
+export interface JmaEntry {
+  id: string;
+  /** The issuing office, "富山地方気象台". */
+  office: string;
+  /** The entry's headline as written, in Japanese: "【富山県気象警報・注意報】注意報を解除します。". */
+  headline: string;
+  updated: number | null;
+  /** The highest level the headline names, for sorting and a badge; the headline is what is shown. */
+  level: JmaLevel | null;
+  /** The full XML message on www.data.jma.go.jp. */
+  link: string;
+}
+
+export interface JmaData {
+  updatedAt: number | null;
+  entries: JmaEntry[];
+}
+
+// ── Which national service ──────────────────────────────────────────────────
+
+export const NATIONAL_SERVICES = ["meteoalarm", "nws", "eccc", "metservice", "jma"] as const;
+export type NationalService = (typeof NATIONAL_SERVICES)[number];
+
+/** Each national service's name in a sentence. */
+export const NATIONAL_SERVICE_NAMES: Record<NationalService, string> = {
+  meteoalarm: "MeteoAlarm",
+  nws: "the US National Weather Service",
+  eccc: "Environment and Climate Change Canada",
+  metservice: "MetService",
+  jma: "the Japan Meteorological Agency",
+};
+
+const OTHER_NATIONAL: Record<string, { name: string; service: NationalService }> = {
+  US: { name: "the United States", service: "nws" },
+  PR: { name: "Puerto Rico", service: "nws" },
+  VI: { name: "the US Virgin Islands", service: "nws" },
+  GU: { name: "Guam", service: "nws" },
+  AS: { name: "American Samoa", service: "nws" },
+  MP: { name: "the Northern Mariana Islands", service: "nws" },
+  CA: { name: "Canada", service: "eccc" },
+  NZ: { name: "New Zealand", service: "metservice" },
+  JP: { name: "Japan", service: "jma" },
+};
+
+/** The national service Outpost asks for a country, or null when it knows none. */
+export function nationalServiceOf(code: string | null): NationalService | null {
+  if (!code) return null;
+  if (Object.hasOwn(METEOALARM_COUNTRIES, code)) return "meteoalarm";
+  return Object.hasOwn(OTHER_NATIONAL, code) ? OTHER_NATIONAL[code]!.service : null;
+}
+
+/** Every country a national service is fetched for, by name, for choosing one by hand. */
+export const ALERT_COUNTRIES: Array<{ code: string; name: string; service: NationalService }> = [
+  ...Object.entries(METEOALARM_COUNTRIES).map(([code, entry]) => ({ code, name: entry.name, service: "meteoalarm" as const })),
+  ...Object.entries(OTHER_NATIONAL).map(([code, entry]) => ({ code, ...entry })),
+].sort((a, b) => a.name.replace(/^the /, "").localeCompare(b.name.replace(/^the /, "")));
+
+/** A country's name in a sentence, where Outpost fetches warnings for it. */
+export const alertCountryName = (code: string): string | null => ALERT_COUNTRIES.find((entry) => entry.code === code)?.name ?? null;
+
 /** What the alerts view needs to know before a press: where Home is taken to be, and which national service covers it. */
 export interface AlertsPlan {
   /** The saved place with the home icon, or null when none has it. */
   home: { name: string; lat: number; lon: number } | null;
   /** The country Home is taken to be in, from the smallest Natural Earth box that holds it (rough near a border). */
+  homeCountry: string | null;
+  homeCountryName: string | null;
+  /** The country a person chose for national warnings instead of Home's, or null to go by Home. */
+  chosenCountry: string | null;
+  /** The country national warnings are fetched for: the one chosen, or else Home's. */
   country: string | null;
   countryName: string | null;
-  /** The national service asked for Home, or null when Outpost knows none for that country. */
-  national: "meteoalarm" | "nws" | null;
+  /** The national service asked, or null when Outpost knows none for that country. */
+  national: NationalService | null;
 }
 
 // ── Space weather ───────────────────────────────────────────────────────────

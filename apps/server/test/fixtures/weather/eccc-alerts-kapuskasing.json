@@ -1,0 +1,81 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "id": "21200932493434677202611210503_fea1-1323",
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-84.00212239, 49.16098349],
+            [-82.62680205, 49.16166608],
+            [-81.44269995, 49.16377825],
+            [-81.44212755, 49.43343883],
+            [-81.44196563, 49.50913571],
+            [-81.443093, 49.50934559],
+            [-81.81230855, 49.57727769],
+            [-84.0149789, 49.94976475],
+            [-84.0210546, 49.94978013],
+            [-84.00212239, 49.16098349]
+          ]
+        ]
+      },
+      "properties": {
+        "alert_code": "SFW",
+        "alert_type": "warning",
+        "alert_name_en": "snowfall warning",
+        "alert_name_fr": "avertissement de neige",
+        "alert_short_name_en": "Snowfall",
+        "alert_short_name_fr": "Neige",
+        "publication_datetime": "2026-11-22T10:00:19.870Z",
+        "expiration_datetime": "2026-11-23T02:00:19.870Z",
+        "validity_datetime": "2026-11-22T14:00:00.000Z",
+        "event_end_datetime": "2026-11-23T10:00:00.000Z",
+        "alert_text_en": "Heavy snowfall expected today.\n\nWhat:\nSnow with total amounts of 15 to 25 cm over western portions of the region including Hearst.\nReduced visibility in heavy snow.\n\nWhen:\nBeginning late this morning or early this afternoon and ending Sunday night.\n\nAdditional information:\nRain across the region will transition to heavy snow late this morning or early this afternoon. During this transition, there is a risk of ice pellets or brief freezing rain. \n\nIn eastern portions of the region, including Kapuskasing and Smooth Rock Falls, the transition to snow will occur later this afternoon or early this evening. Total accumulations here are expected to be on the low end of the range.\n\nTravel will likely be challenging. Visibility will likely be reduced at times. Local utility outages are possible.\n\nPlease continue to monitor alerts and forecasts issued by Environment Canada. To report severe weather, send an email to ONstorm@ec.gc.ca or post reports on social media using #ONStorm.",
+        "alert_text_fr": "Neige forte attendue aujourd'hui.\n\nQuoi :\nNeige avec une accumulation totale de 15 \u00e0 25 cm sur les parties ouest de la r\u00e9gion, y compris Hearst.\nVisibilit\u00e9 r\u00e9duite sous la neige forte.\n\nQuand :\nCommen\u00e7ant tard ce matin ou t\u00f4t cet apr\u00e8s-midi et cessant dimanche soir ou dans la nuit de dimanche \u00e0 lundi.\n\nRenseignements suppl\u00e9mentaires :\nLa pluie sur la r\u00e9gion se changera en neige forte tard ce matin ou t\u00f4t cet apr\u00e8s-midi. Pendant cette transition, il y aura un risque de gr\u00e9sil ou de pluie vergla\u00e7ante de courte dur\u00e9e.\n\nDans les secteurs est de la r\u00e9gion, y compris Kapuskasing et Smooth Rock Falls, les pr\u00e9cipitations se changeront en neige plus tard cet apr\u00e8s-midi ou t\u00f4t ce soir. L'accumulation totale devrait se situer dans le bas de la fourchette.\n\nLes d\u00e9placements seront probablement difficiles. La visibilit\u00e9 sera probablement r\u00e9duite par moments. Des pannes de courant sont possibles par endroits.\n\nVeuillez continuer \u00e0 surveiller les alertes et les pr\u00e9visions \u00e9mises par Environnement Canada. Pour signaler du temps violent, envoyez un courriel \u00e0 meteoON@ec.gc.ca ou publiez un message sur les r\u00e9seaux sociaux en utilisant #ONMeteo.",
+        "risk_colour_en": "yellow",
+        "risk_colour_fr": "jaune",
+        "confidence_en": "High",
+        "confidence_fr": "\u00e9lev\u00e9e",
+        "impact_en": "Moderate",
+        "impact_fr": "mod\u00e9r\u00e9",
+        "feature_name_en": "Kapuskasing - Hearst - Smooth Rock Falls",
+        "feature_name_fr": "Kapuskasing - Hearst - Smooth Rock Falls",
+        "province": "ON",
+        "status_en": "continued",
+        "status_fr": "maintenu",
+        "feature_id": "fea1-1323"
+      }
+    }
+  ],
+  "numberMatched": 1,
+  "numberReturned": 1,
+  "links": [
+    {
+      "type": "application/geo+json",
+      "rel": "self",
+      "title": "This document as GeoJSON",
+      "href": "https://api.weather.gc.ca/collections/weather-alerts/items?f=json&lang=en&bbox=-82.63,49.45,-82.61,49.47&limit=100"
+    },
+    {
+      "rel": "alternate",
+      "type": "application/ld+json",
+      "title": "This document as RDF (JSON-LD)",
+      "href": "https://api.weather.gc.ca/collections/weather-alerts/items?f=jsonld&lang=en&bbox=-82.63,49.45,-82.61,49.47&limit=100"
+    },
+    {
+      "type": "text/html",
+      "rel": "alternate",
+      "title": "This document as HTML",
+      "href": "https://api.weather.gc.ca/collections/weather-alerts/items?f=html&lang=en&bbox=-82.63,49.45,-82.61,49.47&limit=100"
+    },
+    {
+      "type": "application/json",
+      "title": "Weather Alerts",
+      "rel": "collection",
+      "href": "https://api.weather.gc.ca/collections/weather-alerts"
+    }
+  ],
+  "timeStamp": "2026-11-22T14:53:44.021112Z"
+}

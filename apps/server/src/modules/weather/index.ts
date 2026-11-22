@@ -18,6 +18,7 @@ import {
   type HomeWarningsResponse,
   inReadingsRange,
   MET_OFFICE_REGION_IDS,
+  nationalServiceOf,
   PRESSURE_UNITS,
   type ReadingsClearResult,
   type ReadingsRange,
@@ -29,6 +30,7 @@ import {
   WEATHER_LIMITS,
   type WeatherPlacesImportResult,
   type WeatherResponse,
+  WIND_POINTS,
 } from "@outpost/shared";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
@@ -92,6 +94,7 @@ const readingSchema = z
     unit: z.enum(PRESSURE_UNITS),
     heightM: height,
     note: z.string().max(WEATHER_LIMITS.note).default(""),
+    windFrom: z.enum(WIND_POINTS).nullable().default(null),
   })
   .strict();
 const importSchema = z
@@ -146,7 +149,11 @@ export async function registerWeather(app: FastifyInstance, ctx: AppContext): Pr
     const chosen = ctx.services.settings.get("weather.riversKm");
     return (RIVER_DISTANCES_KM as readonly number[]).includes(chosen) ? chosen : DEFAULT_RIVER_KM;
   };
-  const service = createWeatherService(ctx, createSourceFetcher(http, { standIn: ctx.config.weatherStandIn }), { riversKm });
+  const alertCountry = (): string | null => ctx.services.settings.get("weather.alertCountry") || null;
+  const service = createWeatherService(ctx, createSourceFetcher(http, { standIn: ctx.config.weatherStandIn }), {
+    riversKm,
+    alertCountry,
+  });
   ctx.services.weather = service;
 
   app.get(
@@ -239,13 +246,19 @@ export async function registerWeather(app: FastifyInstance, ctx: AppContext): Pr
           .number()
           .refine((km) => (RIVER_DISTANCES_KM as readonly number[]).includes(km), `Choose ${RIVER_DISTANCES_KM.join(", ")} km.`)
           .optional(),
+        /** The country national warnings are fetched for instead of Home's; "" goes back to Home's. */
+        alertCountry: z
+          .string()
+          .refine((code) => code === "" || nationalServiceOf(code) !== null, "Outpost fetches no national warnings for that country.")
+          .optional(),
       })
       .strict()
       .parse(request.body);
+    if (input.alertCountry !== undefined) ctx.services.settings.update({ "weather.alertCountry": input.alertCountry });
     if (input.updateOnOpen !== undefined) ctx.services.settings.update({ "weather.updateOnOpen": input.updateOnOpen });
     if (input.riversKm !== undefined) ctx.services.settings.update({ "weather.riversKm": input.riversKm });
     ctx.events.publish({ type: "weather.changed" });
-    return { updateOnOpen: ctx.services.settings.get("weather.updateOnOpen"), riversKm: riversKm() };
+    return { updateOnOpen: ctx.services.settings.get("weather.updateOnOpen"), riversKm: riversKm(), alertCountry: alertCountry() };
   });
 
   /** For the scenario planner: what was in force for the home place when last fetched. Fetches nothing. */

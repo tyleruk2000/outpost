@@ -70,6 +70,9 @@ const KIND_WORDS: Record<WeatherKind, string> = {
   quakes: "the USGS's earthquakes",
   meteoalarm: "MeteoAlarm's warnings",
   nws: "the National Weather Service's alerts",
+  eccc: "Environment and Climate Change Canada's alerts",
+  metservice: "MetService's warnings",
+  jma: "the Japan Meteorological Agency's warnings",
   "space-weather": "today's space weather",
 };
 
@@ -292,7 +295,17 @@ export default function WeatherPage() {
             </TabsContent>
             <TabsContent value="world">
               <AlertsView
-                plan={weather.data.alerts ?? { home: null, country: null, countryName: null, national: null }}
+                plan={
+                  weather.data.alerts ?? {
+                    home: null,
+                    homeCountry: null,
+                    homeCountryName: null,
+                    chosenCountry: null,
+                    country: null,
+                    countryName: null,
+                    national: null,
+                  }
+                }
                 copyOf={(kind) => copyOf(kind, null)}
                 sources={weather.data.sources}
                 now={now}

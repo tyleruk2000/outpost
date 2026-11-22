@@ -1,0 +1,1 @@
+ALTER TABLE `weather_readings` ADD `wind_from` text;

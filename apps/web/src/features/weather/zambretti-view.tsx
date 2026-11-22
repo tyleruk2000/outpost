@@ -32,9 +32,23 @@ function storedWind(): WindPoint | "none" {
 
 const TREND_WORDS = { rising: "rising", steady: "steady", falling: "falling" } as const;
 
-/** `homeLat` is the home place's latitude when there is one, to say plainly when the dial was not made for it. */
-export function ZambrettiForecast({ tendency, now, homeLat }: { tendency: Tendency; now: number; homeLat: number | null }) {
-  const [wind, setWindState] = useState<WindPoint | "none">(storedWind);
+/**
+ * `homeLat` is the home place's latitude when there is one, to say plainly when the dial
+ * was not made for it. `readingWind` is the wind noted with the latest reading: the dial
+ * starts from it when there is one, and from the last wind chosen here when not.
+ */
+export function ZambrettiForecast({
+  tendency,
+  now,
+  homeLat,
+  readingWind = null,
+}: {
+  tendency: Tendency;
+  now: number;
+  homeLat: number | null;
+  readingWind?: WindPoint | null;
+}) {
+  const [wind, setWindState] = useState<WindPoint | "none">(() => readingWind ?? storedWind());
   const setWind = (next: WindPoint | "none") => {
     setWindState(next);
     try {

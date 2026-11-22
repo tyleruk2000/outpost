@@ -18,6 +18,8 @@ import {
   type MapOverview,
   type MapRegionPresetStatus,
   METEOALARM_COUNTRIES,
+  NATIONAL_SERVICE_NAMES,
+  nationalServiceOf,
   ownValue,
 } from "@outpost/shared";
 
@@ -148,11 +150,18 @@ export function suggestionsFor(input: SuggestionInput): Suggestions {
     done: false,
   });
   const europe = ownValue(METEOALARM_COUNTRIES, country.code) !== undefined;
+  const national = nationalServiceOf(country.code);
   rows.push({
     id: "weather",
     title: "Weather and hazards",
     about: `A forecast for Home from Open-Meteo, worldwide disasters from GDACS and earthquakes from the USGS${
-      europe ? ", and MeteoAlarm's warnings for the country" : country.code === "US" ? ", and the National Weather Service's alerts" : ""
+      europe
+        ? ", and MeteoAlarm's warnings for the country"
+        : country.code === "US"
+          ? ", and the National Weather Service's alerts"
+          : national
+            ? `, and the national warnings of ${NATIONAL_SERVICE_NAMES[national]}`
+            : ""
     }.`,
     to: "/prepare/weather",
     done: false,

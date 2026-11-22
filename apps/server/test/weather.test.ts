@@ -168,6 +168,9 @@ describe("weather and hazards", () => {
       "earthquake.usgs.gov",
       "feeds.meteoalarm.org",
       "api.weather.gov",
+      "api.weather.gc.ca",
+      "alerts.metservice.com",
+      "www.data.jma.go.jp",
       "services.swpc.noaa.gov",
     ]);
     await app.api("GET", "/api/weather/home-warnings");
@@ -374,7 +377,11 @@ describe("river and sea levels", () => {
   it("asks within the distance a person chooses, and refuses one not offered", async () => {
     const place = await lynn();
     expect((await app.api("PUT", "/api/weather/options", { riversKm: 7 })).status).toBe(400);
-    expect((await app.api("PUT", "/api/weather/options", { riversKm: 15 })).body).toEqual({ updateOnOpen: false, riversKm: 15 });
+    expect((await app.api("PUT", "/api/weather/options", { riversKm: 15 })).body).toEqual({
+      updateOnOpen: false,
+      riversKm: 15,
+      alertCountry: null,
+    });
     expect((await app.api("GET", "/api/weather")).body.riversKm).toBe(15);
     expect(asked).toEqual([]);
     await app.api("POST", "/api/weather/update", { kinds: ["rivers"] });
@@ -576,9 +583,9 @@ describe("barometer readings", () => {
     expect(csv.headers["content-type"]).toMatch(/text\/csv/);
     expect(csv.headers["content-disposition"]).toBe('attachment; filename="barometer-readings-2026-11-11-to-2026-11-12.csv"');
     expect(String(csv.body).split("\r\n")).toEqual([
-      "time,pressure,unit,height_m,sea_level_hpa,note,origin",
-      "2026-11-11T09:00:00Z,1021,hPa,0,1021.0,,typed",
-      '2026-11-12T09:00:00Z,1022,hPa,0,1022.0,"\'=1+1, bad run",typed',
+      "time,pressure,unit,height_m,wind_from,sea_level_hpa,note,origin",
+      "2026-11-11T09:00:00Z,1021,hPa,0,,1021.0,,typed",
+      '2026-11-12T09:00:00Z,1022,hPa,0,,1022.0,"\'=1+1, bad run",typed',
       "",
     ]);
     const back = await app.api("POST", "/api/weather/readings/import", { text: csv.body, unit: "inHg", heightM: 300, zone: "Asia/Tokyo" });

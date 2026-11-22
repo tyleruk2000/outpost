@@ -455,14 +455,17 @@ registry is fetched only on a press from the IEEE's host, capped at 20 MB.
 | `environment.data.gov.uk` | The same; **Fetch the last 3 days** on a station | A place's position to two decimals and a distance; then stations' measures |
 | `power.larc.nasa.gov`, `re.jrc.ec.europa.eu` | **Fetch the averages for this place** | A place's position to two decimals |
 | `www.gdacs.org`, `earthquake.usgs.gov` | **Fetch alerts** under Worldwide | Nothing about you: world feeds |
-| `feeds.meteoalarm.org` | The same, when Home is in one of its 38 countries | The country |
-| `api.weather.gov` | The same, when Home is in the US NWS area | Home's position to two decimals, and the generic client name |
+| `feeds.meteoalarm.org` | The same, when the country for national warnings is one of its 38 | The country |
+| `api.weather.gov` | The same, when it is in the US NWS area | Home's position to two decimals, and the generic client name |
+| `api.weather.gc.ca` | The same, when it is Canada | A box 0.02° across round Home's position to two decimals |
+| `alerts.metservice.com` | The same, when it is New Zealand | Nothing about you: the feed, then each alert it lists (at most 40) |
+| `www.data.jma.go.jp` | The same, when it is Japan | Nothing about you: one feed for Japan |
 | `services.swpc.noaa.gov` | **Fetch today's conditions** under HF propagation | Nothing about you |
 
 Only on a press: the routes are `POST`s and nothing runs on a timer. **Also update when I
 open this screen** is off by default; ticked, **every opening on every device sends the
 requests above**. Hosts are built in code and held at every hop; answers are at most 2 MB
-(12 MB for a MeteoAlarm feed) and 30 seconds, every figure checked, feeds read by the strict
+(12 MB for a MeteoAlarm feed, 16 MB for JMA's) and 30 seconds, every figure checked, feeds read by the strict
 XML reader, words shown as text, links kept only on the publisher's host. Home's country is
 worked out on this computer. The device's position is asked only after **Use this device's
 position**, on a secure page. Copies are in the database and backups, cleared by
@@ -831,7 +834,7 @@ server opens:
 | Saving a link or web page | The address's host and its redirects |
 | **Get the list** for a repeater source | The source's host |
 | Weather **Update now**; climate averages | `api.open-meteo.com`, `www.metoffice.gov.uk`, `environment.data.gov.uk`; `power.larc.nasa.gov`, `re.jrc.ec.europa.eu` |
-| **Fetch alerts** | `www.gdacs.org`, `earthquake.usgs.gov`; `feeds.meteoalarm.org` or `api.weather.gov` |
+| **Fetch alerts** | `www.gdacs.org`, `earthquake.usgs.gov`; one of `feeds.meteoalarm.org`, `api.weather.gov`, `api.weather.gc.ca`, `alerts.metservice.com`, `www.data.jma.go.jp` |
 | HF conditions; a newer solar cycle table | `services.swpc.noaa.gov` (`OUTPOST_SOLAR_TABLE_URL`) |
 | VOACAP coefficients; P.533 maps | `raw.githubusercontent.com` |
 | **Build the P.533 engine** | `raw.githubusercontent.com`, `github.com`, `release-assets.githubusercontent.com` |
