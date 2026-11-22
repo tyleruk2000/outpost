@@ -18,7 +18,8 @@
  * layer draws nothing. `roadNumberLayers` draws `ref` instead, when asked for.
  */
 import type { Flavor } from "@protomaps/basemaps";
-import { FALLBACK_THEME } from "./palette";
+import { IMAGERY_SOURCE_PREFIX } from "../imagery/style";
+import { FALLBACK_NIGHT, FALLBACK_THEME } from "./palette";
 import type { MapFlavour, MapTheme } from "./style";
 import type { LayerSpecification } from "./style-types";
 
@@ -416,17 +417,25 @@ function highContrastVariant(theme: MapTheme, tuned: (flavour: MapFlavour, theme
 
 // ── Night ──
 
-/** The typical-range circle before the night style makes it red: light, so that it stays the brightest range line. */
-const NIGHT_RANGE_TYPICAL = "#f29be9";
+/** Satellite imagery in the night style: grey and dim, so that a bright picture does not light the screen. */
+export const NIGHT_IMAGERY_PAINT = { "raster-saturation": -1, "raster-brightness-max": 0.3, "raster-contrast": -0.2 } as const;
 
 function nightVariant(flavour: MapFlavour, theme: MapTheme, tuned: (flavour: MapFlavour, theme: MapTheme) => Flavor): StyleVariant {
   // The dark map, made red. The app's own dark colours when it is in its dark theme, else the dark fallback.
   const dark: MapTheme = flavour === "dark" ? theme : { ...theme, ...FALLBACK_THEME.dark, effects: theme.effects };
-  // Every colour keeps only its lightness, so the typical-range circle is first made the lightest of the range's lines:
-  // in red it is then 2.4:1 on the land, where the dark theme's magenta would be 1.6:1. Dashed and labelled, it is told
-  // from the edge and the rings by form as well. The overlays are drawn in the app's own colours, so those are swapped.
-  const typical = new Set([theme.rangeTypical, dark.rangeTypical].map((colour) => colour.toLowerCase()));
-  const red = (colour: string) => nightRed(typical.has(colour.toLowerCase()) ? NIGHT_RANGE_TYPICAL : colour);
+  // Every other colour keeps only its lightness. The range, its typical-range circle and the walk have reds of their own
+  // (tokens `--map-*-night`), the same as the pictures of their shading are painted in (hooks.ts `useShadeColour`), so
+  // that the wash and its edge agree: the range's edge 3.2:1 on the land, the typical-range circle the lightest of the
+  // range's lines at 4.0:1, the walk darker than the range so that the two are told apart. The overlays are drawn in
+  // the app's own colours, so those are swapped.
+  const night = theme.night ?? FALLBACK_NIGHT;
+  const own = new Map<string, string>();
+  for (const each of [theme, dark]) {
+    own.set(each.range.toLowerCase(), night.range);
+    own.set(each.rangeTypical.toLowerCase(), night.rangeTypical);
+    own.set(each.walk.toLowerCase(), night.walk);
+  }
+  const red = (colour: string) => own.get(colour.toLowerCase()) ?? nightRed(colour);
   // Drawn in the dark colours; `finish` then makes every colour of the map red, hill shading and contours with it.
   return {
     flavour: "dark",
@@ -440,9 +449,12 @@ function nightVariant(flavour: MapFlavour, theme: MapTheme, tuned: (flavour: Map
         return { ...layer, layout };
       }),
     finish: (layers) =>
-      layers.map((layer) =>
-        "paint" in layer && layer.paint ? ({ ...layer, paint: mapStrings(layer.paint, red) } as LayerSpecification) : layer,
-      ),
+      layers.map((layer) => {
+        // Satellite imagery is a picture, which no colour in a style can make red: it is made grey and dim instead.
+        if (layer.type === "raster" && layer.source.startsWith(IMAGERY_SOURCE_PREFIX))
+          return { ...layer, paint: { ...layer.paint, ...NIGHT_IMAGERY_PAINT } } as LayerSpecification;
+        return "paint" in layer && layer.paint ? ({ ...layer, paint: mapStrings(layer.paint, red) } as LayerSpecification) : layer;
+      }),
     shields: false,
   };
 }

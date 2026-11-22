@@ -1,8 +1,9 @@
 import type { MapSources } from "@outpost/shared";
 import { describe, expect, it } from "vitest";
 import { rangeLayers } from "@/features/repeaters/map/range";
-import { MAP_STYLE_IDS, MAP_STYLES, nightRed, parseColour, roadClassColour } from "./map-styles";
-import { FALLBACK_THEME } from "./palette";
+import { walkLayers } from "../walk/walk-map";
+import { MAP_STYLE_IDS, MAP_STYLES, NIGHT_IMAGERY_PAINT, nightRed, parseColour, roadClassColour } from "./map-styles";
+import { FALLBACK_NIGHT, FALLBACK_THEME } from "./palette";
 import { buildStyle, type StyleInput } from "./style";
 import type { LayerSpecification } from "./style-types";
 
@@ -169,6 +170,46 @@ describe("the night map", () => {
     const redness = (colour: string) => parseColour(colour)![0];
     expect(redness(colourOf("o-range-typical"))).toBeGreaterThan(redness(colourOf("o-range-edge")));
     expect(redness(colourOf("o-range-typical"))).toBeGreaterThan(redness(colourOf("o-range-ring")));
+  });
+
+  it("draws the range and the walk in the night reds their shading is painted in, the same in either theme", () => {
+    for (const flavour of ["light", "dark"] as const) {
+      const theme = { ...FALLBACK_THEME[flavour], night: FALLBACK_NIGHT };
+      const overlays = {
+        sources: {
+          "o-range": { type: "geojson", data: { type: "FeatureCollection", features: [] } } as never,
+          "o-walk": { type: "geojson", data: { type: "FeatureCollection", features: [] } } as never,
+        },
+        layers: [...rangeLayers(theme), ...walkLayers(theme)],
+      };
+      const style = buildStyle(input({ mapStyle: "night", flavour, theme, overlays }));
+      const paintOf = (id: string) =>
+        (style.layers.find((layer) => layer.id === id) as unknown as { paint: Record<string, unknown> }).paint;
+      expect(paintOf("o-range-edge")["line-color"], flavour).toBe(FALLBACK_NIGHT.range);
+      expect(paintOf("o-range-typical")["line-color"], flavour).toBe(FALLBACK_NIGHT.rangeTypical);
+      const walkColours = style.layers
+        .filter((layer) => layer.id.startsWith("o-walk"))
+        .flatMap((layer) => Object.values((layer as { paint?: Record<string, unknown> }).paint ?? {}))
+        .filter((value) => value === FALLBACK_NIGHT.walk);
+      expect(walkColours.length, flavour).toBeGreaterThan(0);
+    }
+  });
+
+  it("dims satellite imagery to grey, and leaves it as it is in the other styles", () => {
+    const withImagery: MapSources = {
+      ...installed,
+      imagery: [
+        { id: "world", name: "World", tiles: ["/api/maps/imagery/world/{z}/{x}/{y}"], minzoom: 0, maxzoom: 8, bounds: area },
+      ] as never,
+    };
+    const imageryPaint = (mapStyle: StyleInput["mapStyle"]) =>
+      (
+        buildStyle(input({ sources: withImagery, satellite: true, mapStyle })).layers.find((layer) => layer.id === "imagery-world") as {
+          paint: Record<string, unknown>;
+        }
+      ).paint;
+    expect(imageryPaint("night")).toMatchObject(NIGHT_IMAGERY_PAINT);
+    expect(imageryPaint("standard")["raster-brightness-max"]).toBeUndefined();
   });
 
   it("keeps a colour's lightness as a red", () => {

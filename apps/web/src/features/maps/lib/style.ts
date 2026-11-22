@@ -27,6 +27,12 @@ import { tileTemplate } from "./tiles";
 export type MapFlavour = "light" | "dark";
 
 /** Colours read from the design tokens, as hex. */
+export interface NightShades {
+  range: string;
+  rangeTypical: string;
+  walk: string;
+}
+
 export interface MapTheme {
   land: string;
   water: string;
@@ -51,6 +57,11 @@ export interface MapTheme {
   rangeTypical: string;
   /** The ground a walk reaches in a set time (token `--map-walk`). */
   walk: string;
+  /**
+   * The range, its typical-range circle and the walk as the night style draws them, in its reds (tokens
+   * `--map-range-night`, `--map-range-typical-night`, `--map-walk-night`). Left out, the fallback's.
+   */
+  night?: NightShades;
   /** What the household's receivers heard, one hue per source (the chart tokens `--chart-1` to `--chart-4`); features/heard. */
   heard?: { mesh: string; aprs: string; adsb: string; ais: string };
 }

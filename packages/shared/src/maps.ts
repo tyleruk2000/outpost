@@ -880,8 +880,7 @@ export function parseCoordinateReadings(input: string): ParsedCoordinate[] {
   if (text.length < 3 || text.length > 80) return [];
   const grid = parseGridReadings(text);
   if (grid.length > 0) return grid;
-  const first =
-    parseGeoUri(text) ?? parseOsGridRef(text) ?? parseIrishGridRef(text) ?? parseEastingNorthing(text) ?? parseLatLon(text);
+  const first = parseGeoUri(text) ?? parseOsGridRef(text) ?? parseIrishGridRef(text) ?? parseEastingNorthing(text) ?? parseLatLon(text);
   const locator = parseLocator(text);
   return [first, locator].filter((reading) => reading !== null);
 }

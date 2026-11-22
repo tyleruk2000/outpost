@@ -54,7 +54,7 @@ import { FindRoutePanel } from "./find-route/find-route-panel";
 import { anyFoundRoute, ROUTE_CREDIT } from "./find-route/source-credit";
 import { PREVIEW_TRACK_ID } from "./find-route/words";
 import { useGreyLine } from "./grey-line/grey-line";
-import { useGeolocation, useIsDesktop, useMapTheme, useStoredState } from "./hooks";
+import { setNightShading, useGeolocation, useIsDesktop, useMapTheme, useStoredState } from "./hooks";
 import { useSatellite } from "./imagery/use-satellite";
 import { type ContourReach, contourReach, contoursSupported } from "./lib/contours";
 import { formatPosition, isReadoutFormat, type ReadoutFormat } from "./lib/coords";
@@ -235,6 +235,11 @@ export default function MapsPage() {
   /** The map's style and road numbers (lib/map-styles.ts): the standard map without numbers unless chosen. */
   const [mapStyle, setMapStyle] = useStoredState<MapStyleId>(MAP_STYLE_KEY, isMapStyleId, DEFAULT_MAP_STYLE);
   const [roadNumbers, setRoadNumbers] = useStoredState(ROAD_NUMBERS_KEY, isBoolean, false);
+  // The night style paints the shading (the range, the walk) in its own reds; the pictures are painted in the page.
+  useEffect(() => {
+    setNightShading(mapStyle === "night");
+    return () => setNightShading(false);
+  }, [mapStyle]);
   const [hiddenTracks, setHiddenTracks] = useStoredState(STORAGE_KEYS.hiddenTracks, isStringArray, []);
   const [panel, setPanel] = useStoredState<PanelState>(STORAGE_KEYS.panel, isPanelState, { open: true, tab: "places" });
   const [detent, setDetent] = useState<Detent>("peek");
@@ -1607,7 +1612,10 @@ export default function MapsPage() {
   }, [cardUp, isDesktop]);
 
   return (
-    <div className="outpost-fill relative isolate flex h-dvh overflow-hidden max-md:h-[calc(100dvh-3.25rem)] max-md:pb-[var(--mobile-nav-height,calc(3.5rem+env(safe-area-inset-bottom)))]">
+    <div
+      data-map-style={mapStyle}
+      className="outpost-fill relative isolate flex h-dvh overflow-hidden max-md:h-[calc(100dvh-3.25rem)] max-md:pb-[var(--mobile-nav-height,calc(3.5rem+env(safe-area-inset-bottom)))]"
+    >
       {isDesktop && panel.open ? (
         <DesktopPanel onCollapse={() => setPanel((current) => ({ ...current, open: false }))}>{panelBody}</DesktopPanel>
       ) : null}
