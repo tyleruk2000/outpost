@@ -21,6 +21,7 @@ import {
   HF_BANDS,
   halfWaveRangeMhz,
   hasStatedLength,
+  homeLabel,
   isHorizontalAntenna,
   isSlopingAntenna,
   type MarkerDto,
@@ -38,8 +39,9 @@ import {
   wireOn,
 } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { type Dispatch, type SetStateAction, useEffect, useRef } from "react";
+import { type Dispatch, type SetStateAction, useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
+import { useHome } from "@/features/households/home";
 import { api, errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 
@@ -80,12 +82,14 @@ export const usePlaces = () =>
   });
 
 /**
- * A transmitter not yet given starts at the home place (the saved place with the home
- * icon), once, so that the first thing to say is where the other station is. A position
- * typed, or kept from last time, is left alone.
+ * A transmitter not yet given starts at the current household's home (its saved place, or
+ * where a portable household was last said to be, named with its age), once, so that the
+ * first thing to say is where the other station is. A position typed, or kept from last
+ * time, is left alone. `places` is kept for the callers; home comes from the household.
  */
-export function useHomeAsTransmitter<F extends { tx: PlaceField }>(places: MarkerDto[] | undefined, setForm: Dispatch<SetStateAction<F>>) {
-  const home = places?.find((place) => place.icon === "home");
+export function useHomeAsTransmitter<F extends { tx: PlaceField }>(_places: MarkerDto[] | undefined, setForm: Dispatch<SetStateAction<F>>) {
+  const found = useHome().home;
+  const home = useMemo(() => (found ? { lat: found.lat, lon: found.lon, name: homeLabel(found, Date.now()) } : null), [found]);
   const offered = useRef(false);
   useEffect(() => {
     if (!home || offered.current) return;

@@ -33,9 +33,8 @@ import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Select, Skeleton } from "@/components/ui/misc";
 import { ForHousehold } from "@/features/households/for-household";
-import { useHousehold } from "@/features/households/use-household";
+import { NoHome, useHome } from "@/features/households/home";
 import { useCatalogue } from "@/features/layers/data";
-import { NoHomePlace } from "@/features/maps/home-place";
 import { errorMessage } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { SourceList } from "../tools/kit";
@@ -351,15 +350,17 @@ function Record({ sowings }: { sowings: GardenSowing[] }) {
 
 export default function GardenPage() {
   const garden = useGarden();
-  const current = useHousehold().data;
+  const current = useHome();
   const catalogue = useCatalogue();
   const [month, setMonth] = useState<CalendarMonth>(() => (new Date().getMonth() + 1) as CalendarMonth);
 
+  // The current household's home and its country (its own choice, else the country home is in).
+  const home = current.home;
   const countries = catalogue.data?.countries ?? [];
-  const code = current?.country ?? null;
+  const code = current.country;
   const elsewhere = code !== null && code !== "GB" ? (countries.find((country) => country.code === code)?.name ?? code) : null;
   // With one household it is "Home", as it always was; with several, the household by name.
-  const who = current?.several ? current.household.name : "Home";
+  const who = current.several && current.household ? current.household.name : "Home";
   const lastFrost = garden.data?.settings.lastFrost ?? null;
   const plan = gardenMonth(month, lastFrost);
 
@@ -391,18 +392,7 @@ export default function GardenPage() {
           </Field>
         }
       >
-        {current && code === null ? (
-          current.several || current.household.kind === "portable" ? (
-            <p className="mb-4 text-small text-ink-muted">
-              Outpost cannot tell which country {current.household.name} is in: it has no home place set.{" "}
-              <Link to="/prepare/households" className="text-primary underline underline-offset-2">
-                Open Households
-              </Link>
-            </p>
-          ) : (
-            <NoHomePlace className="mb-4" />
-          )
-        ) : null}
+        {!current.isPending && !current.isError && !home ? <NoHome className="mb-4" /> : null}
         {elsewhere ? (
           <Notice tone="warning" className="mb-4" title={`${who} is in ${elsewhere}, not the UK`}>
             This calendar is the RHS's, for the UK. Outpost has no published calendar for {elsewhere} yet, so the months below may be wrong

@@ -4,6 +4,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { oneHouseholdOf } from "@/features/households/test-support";
 import { positionAvailable } from "./places-view";
 import WeatherPage from "./weather-page";
 import { daySentence, windText } from "./words";
@@ -120,6 +121,7 @@ function show(response: Partial<WeatherResponse> | "fails" | "never", view = "",
       }
       if (pathname === "/api/weather/readings") return json({ readings: [] });
       if (pathname === "/api/maps/markers") return json({ markers });
+      if (pathname === "/api/households") return json(oneHouseholdOf(markers as never));
       return json({});
     }),
   );

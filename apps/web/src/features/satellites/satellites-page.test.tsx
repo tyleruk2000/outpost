@@ -4,6 +4,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
+import { oneHouseholdOf } from "@/features/households/test-support";
 import SatellitesPage from "./satellites-page";
 
 const HEADER =
@@ -18,9 +19,9 @@ const iss = parseCelestrakCsv(
 function show(data: SatellitesResponse, settings: Record<string, unknown> = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } } });
   client.setQueryData(["satellites"], data);
-  client.setQueryData(["maps", "markers"], {
-    markers: [{ id: "h", name: "Home", lat: 51.5074, lon: -0.1278, icon: "home", createdAt: 1 }],
-  });
+  const markers = [{ id: "h", name: "Home", lat: 51.5074, lon: -0.1278, icon: "home", createdAt: 1 }];
+  client.setQueryData(["maps", "markers"], { markers });
+  client.setQueryData(["households", "list"], oneHouseholdOf(markers));
   client.setQueryData(["settings"], { settings: { "radio.licensed": false, ...settings } });
   return render(
     <QueryClientProvider client={client}>

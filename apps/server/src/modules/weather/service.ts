@@ -10,13 +10,11 @@ import {
   type AlertsPlan,
   alertCountryName,
   type CapAlert,
-  countryAt,
   type FloodData,
   freshness,
   HELD_STATION_HISTORIES,
   HOUSEHOLD_KINDS,
   type HomeWarningsResponse,
-  homePlaceOf,
   type KeptCopy,
   type LevelReading,
   MAX_RIVER_STATIONS,
@@ -24,7 +22,9 @@ import {
   type MetOfficeRegionId,
   NATIONAL_SERVICE_NAMES,
   type NationalService,
+  NO_HOME_PLACE,
   nationalServiceOf,
+  noHomeWords,
   type PressureReading,
   type PressureUnit,
   type ReadingImportResult,
@@ -186,14 +186,20 @@ export function createWeatherService(
   const changed = () => ctx.events.publish({ type: "weather.changed" });
   let updating = false;
 
-  /** The saved place with the home icon, the first saved if several (`homePlaceOf`), or null. */
+  /** The current household's home when it is a saved place (`households.home()`), or null. */
   const homeMarker = (): { id: string; name: string } | null => {
     try {
-      const home = homePlaceOf(ctx.services.maps.annotations.listMarkers());
-      return home ? { id: home.id, name: home.name } : null;
+      const home = ctx.services.households.home();
+      return home?.kind === "place" && home.id ? { id: home.id, name: home.name } : null;
     } catch {
       return null;
     }
+  };
+  /** What is said when the current household has no home. */
+  const noHome = (): string => {
+    const households = ctx.services.households;
+    const household = households.current();
+    return noHomeWords(household, household.kind === "fixed" && household.id === households.first().id);
   };
   const homeMarkers = (): Set<string> => {
     const home = homeMarker();
@@ -339,16 +345,25 @@ export function createWeatherService(
     return { bytes };
   }
 
-  /** Where Home is, the country it is taken to be in, the country chosen instead if any, and the national service asked. */
+  /**
+   * Where the current household's home is (`households.home()`: a saved place, or a
+   * portable household's position with when it was set), the country it is taken to be in
+   * (`households.country()`: its override, else home's), the country chosen instead if
+   * any, and the national service asked.
+   */
   function alertsPlan(): AlertsPlan {
-    let marker: { name: string; lat: number; lon: number } | null = null;
+    let marker: AlertsPlan["home"] = null;
+    let homeCountry: string | null = null;
+    let household: string | null = null;
     try {
-      const home = homePlaceOf(ctx.services.maps.annotations.listMarkers());
-      marker = home ? { name: home.name || "Home", lat: home.lat, lon: home.lon } : null;
+      const households = ctx.services.households;
+      const home = households.home();
+      marker = home ? { name: home.name || "Home", lat: home.lat, lon: home.lon, at: home.at } : null;
+      homeCountry = households.country();
+      household = households.list().length > 1 ? households.current().name : null;
     } catch {
       marker = null;
     }
-    const homeCountry = marker ? countryAt(marker, COUNTRIES) : null;
     const nameOf = (code: string | null) =>
       code ? (alertCountryName(code) ?? COUNTRIES.find((entry) => entry.code === code)?.name ?? code) : null;
     const chosen = options.alertCountry();
@@ -356,6 +371,7 @@ export function createWeatherService(
     const country = chosenCountry ?? homeCountry;
     return {
       home: marker,
+      ...(household ? { household } : {}),
       homeCountry,
       homeCountryName: nameOf(homeCountry),
       chosenCountry,
@@ -420,7 +436,9 @@ export function createWeatherService(
         throw badRequest(
           plan.country
             ? `Warnings are fetched for ${plan.countryName}, which ${who} does not cover.`
-            : "No saved place has the home icon and no country is chosen, so Outpost does not know which country's warnings to fetch.",
+            : noHome() === NO_HOME_PLACE
+              ? "No saved place has the home icon and no country is chosen, so Outpost does not know which country's warnings to fetch."
+              : `${noHome()} No country is chosen either, so Outpost does not know which country's warnings to fetch.`,
         );
       if (kind === "meteoalarm") {
         const country = METEOALARM_COUNTRIES[plan.country!]!;
@@ -437,7 +455,12 @@ export function createWeatherService(
         return answer.bytes;
       }
       // The rest are asked about Home's position, or check their areas against it.
-      if (!plan.home) throw badRequest(`No saved place has the home icon, so Outpost cannot ask ${who} about it. Mark Home on the map.`);
+      if (!plan.home)
+        throw badRequest(
+          noHome() === NO_HOME_PLACE
+            ? `No saved place has the home icon, so Outpost cannot ask ${who} about it. Mark Home on the map.`
+            : `${noHome()} Until then Outpost cannot ask ${who} about it.`,
+        );
       if (kind === "metservice") {
         const { data, bytes, read } = await fetchMetservice(plan.home, signal);
         const sent = `alerts.metservice.com: the feed for New Zealand${read > 0 ? `, then ${read === 1 ? "the one alert" : `each of ${read} alerts`} it lists` : ""}; no position`;
@@ -728,7 +751,9 @@ export function createWeatherService(
       const live = `${WEATHER_SOURCES["met-office-warnings"].liveUrl} and ${WEATHER_SOURCES["ea-flood"].liveUrl}`;
       const marked = homeMarker();
       const note = !marked
-        ? "No saved place has the home icon, so Outpost does not know which place is home."
+        ? noHome() === NO_HOME_PLACE
+          ? "No saved place has the home icon, so Outpost does not know which place is home."
+          : `${noHome()} Until then Outpost does not know which place is home.`
         : !home
           ? `${marked.name || "The saved place with the home icon"} is home, but it is not in the weather list, so no warnings are matched to it.`
           : !warningsCopy

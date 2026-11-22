@@ -7,6 +7,7 @@
 import { type Bbox, haversineMeters, type InstalledRegion, type MarkerDto, type TrackWithGeometryDto } from "@outpost/shared";
 import { celnavLayers } from "@/features/celestial-navigation/map-layers";
 import { HEARD_CLUSTER, HEARD_CLUSTERED, heardLayers } from "@/features/heard/heard";
+import { householdLayers } from "@/features/households/map";
 import { floodZoneLayers, populationLayers, referenceLayers } from "@/features/layers/symbols";
 import { nuclearLayers } from "@/features/nuclear/layers";
 import { propagationLayers } from "@/features/propagation/map/layers";
@@ -66,6 +67,8 @@ export const OVERLAY_SOURCES = [
   "o-recording",
   "o-location",
   "o-markers",
+  // Every household's home, labelled (features/households/map.ts).
+  "o-households",
   "o-profile",
 ] as const;
 export type OverlaySource = (typeof OVERLAY_SOURCES)[number];
@@ -361,6 +364,8 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
       },
       paint: halo,
     },
+    // Every household's home, with the household's name (features/households/map.ts).
+    ...householdLayers(theme),
     // The point under the pointer on an elevation profile.
     {
       id: "o-profile-point",

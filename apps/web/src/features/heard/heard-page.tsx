@@ -4,7 +4,7 @@
  * of its last report and which receiver heard it; clearing what is kept; and how to set
  * up each end on a Raspberry Pi, a Mac or Windows.
  */
-import { formatBytes, type HeardSourceId, type HeardStation, homePlaceOf, RECEIVER_KINDS, type ReceiverKind } from "@outpost/shared";
+import { formatBytes, type HeardSourceId, type HeardStation, RECEIVER_KINDS, type ReceiverKind } from "@outpost/shared";
 import { CircleAlert, MapPin, Pin, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
@@ -13,8 +13,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Select, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/misc";
-import { useMarkers } from "@/features/maps/data";
-import { NoHomePlace } from "@/features/maps/home-place";
+import { HomeAsOf, NoHome, useHome } from "@/features/households/home";
 import { useSettings, useUpdateSettings } from "@/lib/queries";
 import { cn, formatNumber, plural, timeAgo } from "@/lib/utils";
 import { useClear, useReceivers, useRemoveStation, useStations } from "./data";
@@ -317,9 +316,10 @@ function Keeping() {
 }
 
 export default function HeardPage() {
-  const markers = useMarkers();
-  const marker = markers.data ? homePlaceOf(markers.data) : null;
-  const home = marker ? { lat: marker.lat, lon: marker.lon, name: marker.name } : null;
+  // Distances are from the current household's home: its saved place, or where it was last said to be.
+  const current = useHome();
+  const found = current.home;
+  const home = useMemo(() => (found ? { lat: found.lat, lon: found.lon, name: found.name } : null), [found]);
   const receivers = useReceivers();
   const counts = receivers.data?.space.bySource;
   return (
@@ -331,7 +331,8 @@ export default function HeardPage() {
       <div className="grid gap-3">
         <ListenOnly />
         <Notice tone="info">{UNTRIED}</Notice>
-        {markers.data && !home ? <NoHomePlace /> : null}
+        {!current.isPending && !current.isError && !home ? <NoHome /> : null}
+        <HomeAsOf home={found} />
       </div>
 
       <Section title="Receivers">

@@ -4,7 +4,7 @@
  * map. Read in the order a person would expect, and the answer says which it was:
  *
  *  1. a latitude and longitude written as two numbers;
- *  2. the household's saved places (and "home", the one with the home icon);
+ *  2. the saved places (and "home": the current household's home, as every screen takes it);
  *  3. the map's own place search (`ctx.services.maps.places.search`): grid references,
  *     locators and postcodes, then the place names installed (GeoNames, and Ordnance
  *     Survey's OS Open Names for Great Britain);
@@ -12,7 +12,7 @@
  *
  * Nothing is asked of anyone: every step reads what is on this computer.
  */
-import { bearingDegrees, compassPoint, countryAt, haversineMeters, homePlaceOf, isValidLatLon, placeName } from "@outpost/shared";
+import { bearingDegrees, compassPoint, countryAt, haversineMeters, homeAsOf, isValidLatLon, noHomeWords, placeName } from "@outpost/shared";
 import type { AppContext } from "../../core/context.ts";
 import { COUNTRIES } from "../layers/countries.ts";
 import { foldName, sameName } from "../layers/store.ts";
@@ -45,18 +45,36 @@ export function distanceFrom(from: { lat: number; lon: number }, to: { lat: numb
 
 const countryOfPoint = (lat: number, lon: number) => countryAt({ lat, lon }, COUNTRIES);
 
-/** The saved place with the home icon, as every screen takes it (`homePlaceOf`). */
-export function homePlace(ctx: AppContext): Where | null {
-  const home = homePlaceOf(ctx.services.maps.annotations.listMarkers());
+/**
+ * The current household's home, as every screen takes it (`households.home()`): its saved
+ * place, or a portable household's position with its age. Null when it has none.
+ */
+export function homePlace(ctx: AppContext, now = Date.now()): Where | null {
+  const households = ctx.services.households;
+  const household = households.current();
+  const home = households.home();
   if (!home) return null;
+  const how =
+    home.kind === "here"
+      ? `where ${household.name} was said to be, ${homeAsOf(home, now)}; it may have moved since`
+      : household.homePlaceId === home.id
+        ? `the home place of ${household.name}`
+        : "the saved place with the home icon";
   return {
     lat: home.lat,
     lon: home.lon,
     name: home.name || "Home",
-    how: "the saved place with the home icon",
-    country: countryOfPoint(home.lat, home.lon),
-    markerId: home.id,
+    how,
+    country: households.country() ?? countryOfPoint(home.lat, home.lon),
+    ...(home.id ? { markerId: home.id } : {}),
   };
+}
+
+/** What a tool says when it needs the current household's home and there is none. */
+export function noHomeText(ctx: AppContext): string {
+  const households = ctx.services.households;
+  const household = households.current();
+  return noHomeWords(household, household.kind === "fixed" && household.id === households.first().id);
 }
 
 /** Where the words point, or null when nothing on this computer knows them. */

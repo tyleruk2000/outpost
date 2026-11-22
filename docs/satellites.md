@@ -30,8 +30,10 @@ satellite whose own elements are old. A wrong clock makes every time wrong: set 
 
 ## Where it is seen from
 
-Passes are for Home, the saved place with the home icon. Under **Seen from**, type coordinates or
-a locator, choose a saved place, or choose a point on the map.
+Passes are for the current household's home: its saved place (with one household, the saved
+place with the home icon), or, for a portable household, where it was last said to be, with
+how old that is. Nothing is worked out again because it moved until you open the screen. Under
+**Seen from**, type coordinates or a locator, choose a saved place, or choose a point on the map.
 
 ## Passes
 

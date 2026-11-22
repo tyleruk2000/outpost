@@ -71,6 +71,7 @@ vi.mock("./document", async (original) => {
   };
 });
 
+import { oneHouseholdOf } from "../households/test-support";
 import FrequenciesPage from "./frequencies-page";
 
 let markers: unknown[] = [];
@@ -80,11 +81,13 @@ beforeEach(() => {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string) => {
-      const body = String(url).includes("/api/maps/markers")
-        ? { markers }
-        : String(url).includes("/api/reference/catalogue")
-          ? { countries: [{ code: "GB", name: "United Kingdom", bbox: [-8.7, 49.8, 1.8, 60.9] }] }
-          : {};
+      const body = String(url).includes("/api/households")
+        ? oneHouseholdOf(markers as never)
+        : String(url).includes("/api/maps/markers")
+          ? { markers }
+          : String(url).includes("/api/reference/catalogue")
+            ? { countries: [{ code: "GB", name: "United Kingdom", bbox: [-8.7, 49.8, 1.8, 60.9] }] }
+            : {};
       return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
     }),
   );

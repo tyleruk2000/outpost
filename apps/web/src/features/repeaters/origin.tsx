@@ -1,20 +1,22 @@
 /**
  * The place distances and bearings are measured from: a saved place, the middle of the
  * map as it was last left, where the device is, or a position or locator typed in. Until
- * one is chosen it is the home place (the saved place with the home icon), if there is
- * one. The choice is remembered in this browser.
+ * one is chosen it is the current household's home (its saved place, or where a portable
+ * household was last said to be, named with its age), if it has one. The choice is
+ * remembered in this browser.
  */
-import { type MarkerDto, parseCoordinateReadings } from "@outpost/shared";
+import { type HouseholdHome, homeLabel, type MarkerDto, parseCoordinateReadings } from "@outpost/shared";
 import { useEffect, useMemo, useState } from "react";
 import { Field, Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/misc";
+import { useHome } from "@/features/households/home";
 import { useMarkers } from "@/features/maps/data";
 import { useStoredState } from "@/features/maps/hooks";
 import { type CameraView, isCameraView, readStored, STORAGE_KEYS } from "@/features/maps/lib/view";
 import { notify } from "@/lib/notify";
 import type { LatLon } from "./data";
 
-/** "none", "map", "here", "typed", "place:" and the id of a saved place, or "home" before anything is chosen. */
+/** "none", "map", "here", "typed", "household-here" (a portable household's position), "place:" and the id of a saved place, or "home" before anything is chosen. */
 type OriginChoice = string;
 
 const KEY = "outpost.repeaters.from";
@@ -33,6 +35,8 @@ export interface Origin {
   /** What is wrong with what was typed, if anything. */
   typedProblem: string | null;
   markers: MarkerDto[];
+  /** The current household's position when it is portable and has one: offered as a choice. */
+  homeHere: HouseholdHome | null;
   /** Set while the device is being asked where it is. */
   locating: boolean;
 }
@@ -52,8 +56,11 @@ export function useOrigin(initial?: LatLon | null, keys: { choice: string; typed
   const [stored, setChoice] = useStoredState<OriginChoice>(keys.choice, isString, "home");
   const [typed, setTyped] = useStoredState(keys.typed, isString, "");
   const list = markers.data ?? [];
-  const home = list.find((item) => item.icon === "home");
-  const choice = stored === "home" ? (home ? `place:${home.id}` : "none") : stored;
+  const current = useHome();
+  const homeHere = current.home?.kind === "here" ? current.home : null;
+  const homeId = current.home?.kind === "place" ? current.home.id : null;
+  const home = homeId ? list.find((item) => item.id === homeId) : undefined;
+  const choice = stored === "home" ? (home ? `place:${home.id}` : homeHere ? "household-here" : "none") : stored;
   const [here, setHere] = useState<LatLon | null>(null);
   const [locating, setLocating] = useState(false);
   /** A place handed in by the address (the map's "open the list" link): it stands until another is chosen. */
@@ -100,6 +107,9 @@ export function useOrigin(initial?: LatLon | null, keys: { choice: string; typed
   } else if (choice === "typed") {
     position = reading ? { lat: reading.lat, lon: reading.lon } : null;
     name = reading?.locator ?? typed.trim();
+  } else if (choice === "household-here" && homeHere) {
+    position = { lat: homeHere.lat, lon: homeHere.lon };
+    name = homeLabel(homeHere, Date.now());
   } else if (marker) {
     position = { lat: marker.lat, lon: marker.lon };
     name = marker.name;
@@ -118,6 +128,7 @@ export function useOrigin(initial?: LatLon | null, keys: { choice: string; typed
     setTyped,
     typedProblem: choice === "typed" && typed.trim() && !reading ? "Not a position or a locator. Try 54.46, -3.09 or IO84KM." : null,
     markers: list,
+    homeHere,
     locating,
   };
 }
@@ -132,6 +143,7 @@ export function OriginPicker({ origin, label = "Distance from" }: { origin: Orig
     { value: "map", label: "The middle of the map" },
     { value: "here", label: origin.locating ? "Where I am (finding it)" : "Where I am" },
     { value: "typed", label: "A position or locator" },
+    ...(origin.homeHere ? [{ value: "household-here", label: homeLabel(origin.homeHere, Date.now()) }] : []),
     ...places.map((place) => ({ value: `place:${place.id}`, label: place.name })),
   ];
   // A saved place that has since been deleted shows as no place rather than as a blank.

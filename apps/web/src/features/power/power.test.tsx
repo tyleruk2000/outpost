@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ONE_HOUSEHOLD, TWO_HOUSEHOLDS } from "@/features/households/test-support";
+import { ONE_HOUSEHOLD, oneHouseholdOf, TWO_HOUSEHOLDS } from "@/features/households/test-support";
 import { toMarkdown } from "@/features/propagation/plans/document";
 import { workOut } from "./calc/plan";
 import { planBlocks } from "./document";
@@ -140,6 +140,7 @@ function show(
         });
       if (pathname === "/api/radio/profiles") return json({ radios: [], antennas: [] });
       if (pathname === "/api/maps/markers") return json({ markers: options.markers ?? [] });
+      if (pathname === "/api/households") return json(oneHouseholdOf(options.markers ?? []));
       if (pathname === "/api/weather/places" && init?.method === "POST") {
         const body = JSON.parse(String(init.body)) as { markerId?: string; name?: string; lat?: number; lon?: number };
         server.weatherAsked.push({ path: pathname, body });

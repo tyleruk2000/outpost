@@ -9,7 +9,6 @@
  * silently replaced; it is answered with an error saying so, and Start again (the
  * existing `DELETE /api/games/allotment`) is the way out.
  */
-import { homePlaceOf } from "@outpost/shared";
 import {
   type AllotmentAction,
   AllotmentRefusal,
@@ -29,12 +28,10 @@ import {
   seasonAt,
   THING_IDS,
 } from "@outpost/shared/games/allotment";
-import { eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError } from "../../core/errors.ts";
-import { markers } from "../../db/schema.ts";
 import type { GameSaves } from "./index.ts";
 
 const bed = z.number().int().min(0).max(MAX_BED_INDEX);
@@ -66,15 +63,10 @@ const damaged = () =>
   );
 
 export async function registerAllotment(app: FastifyInstance, ctx: AppContext, saves: GameSaves): Promise<void> {
-  /** The latitude of the home place (the saved place with the home icon), or null. */
+  /** The latitude of the first household's home (the game is one plot for the whole Outpost), or null. */
   function homeLatitude(): number | null {
-    // Only the places with the home icon are read: a map may hold thousands of others.
-    const rows = ctx.db
-      .select({ id: markers.id, icon: markers.icon, createdAt: markers.createdAt, lat: markers.lat })
-      .from(markers)
-      .where(eq(markers.icon, "home"))
-      .all();
-    return homePlaceOf(rows)?.lat ?? null;
+    const households = ctx.services.households;
+    return households.home(households.first().id)?.lat ?? null;
   }
 
   function answer(plot: AllotmentState, now: number, started: boolean): AllotmentResponse {

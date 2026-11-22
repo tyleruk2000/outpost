@@ -11,6 +11,8 @@
  */
 import {
   ageWords,
+  type HouseholdHome,
+  homeLabel,
   type KeptCopy,
   type MarkerDto,
   type PowerSunSource,
@@ -28,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/misc";
+import { useHome } from "@/features/households/home";
 import { api, errorMessage } from "@/lib/api";
 
 type Tilt = PowerSunSource["tilt"];
@@ -93,8 +96,18 @@ export interface SunChoice {
 /** "Somewhere else": a position typed here. */
 export const ELSEWHERE = "elsewhere";
 
-/** Every place offered, those with figures first, home first among them, then the weather list's order, then saved places. */
-export function choicesOf(weather: WeatherResponse | undefined, markers: MarkerDto[] | undefined): SunChoice[] {
+/**
+ * Every place offered, those with figures first, home first among them, then the weather
+ * list's order, then saved places. `home` is the current household's home (left out: the
+ * saved place with the home icon); a portable household's position is offered as a place
+ * of its own, named with its age.
+ */
+export function choicesOf(
+  weather: WeatherResponse | undefined,
+  markers: MarkerDto[] | undefined,
+  home?: HouseholdHome | null,
+  now = Date.now(),
+): SunChoice[] {
   if (!weather) return [];
   const places: SunChoice[] = weather.places.map((place) => ({
     key: `place:${place.id}`,
@@ -116,9 +129,20 @@ export function choicesOf(weather: WeatherResponse | undefined, markers: MarkerD
       lon: marker.lon,
       placeId: null,
       markerId: marker.id,
-      isHome: marker.icon === "home",
+      isHome: home === undefined ? marker.icon === "home" : home?.kind === "place" && home.id === marker.id,
       copy: null,
     }));
+  if (home?.kind === "here")
+    saved.push({
+      key: "household-here",
+      name: homeLabel(home, now),
+      lat: home.lat,
+      lon: home.lon,
+      placeId: null,
+      markerId: null,
+      isHome: true,
+      copy: null,
+    });
   const rank = (choice: SunChoice) => (choice.copy ? 0 : 2) + (choice.isHome ? 0 : 1);
   return [...places.sort((a, b) => rank(a) - rank(b)), ...saved.sort((a, b) => Number(b.isHome) - Number(a.isHome))];
 }
@@ -135,7 +159,8 @@ export function SunFromWeather({
   const client = useQueryClient();
   const weather = useWeatherCache();
   const markers = useSavedPlaces();
-  const choices = choicesOf(weather.data, markers.data);
+  const current = useHome();
+  const choices = choicesOf(weather.data, markers.data, current.isPending ? undefined : current.home);
   const [chosen, setChosen] = useState<string | undefined>(undefined);
   const [where, setWhere] = useState("");
   const [tilt, setTilt] = useState<Tilt>("optimal");

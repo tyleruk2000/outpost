@@ -5,14 +5,14 @@
  * internet. Their pressure is offered to the barometer log, and written there only when
  * a person presses the button.
  */
-import { homePlaceOf, windPointOf } from "@outpost/shared";
+import { windPointOf } from "@outpost/shared";
 import { useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
 import { EmptyState, ErrorState, Joined, Rows } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
-import { useMarkers } from "@/features/maps/data";
+import { HomeAsOf, useHome } from "@/features/households/home";
 import { useAddReading } from "@/features/weather/data";
 import { formatDateTime, timeAgo } from "@/lib/utils";
 import { useStations } from "./data";
@@ -22,11 +22,10 @@ import { displayName, fromHome, metersFromHome } from "./words";
 
 export function AprsWeather() {
   const stations = useStations("aprs");
-  const markers = useMarkers();
+  const found = useHome().home;
   const add = useAddReading();
   const [added, setAdded] = useState<Set<string>>(new Set());
-  const marker = markers.data ? homePlaceOf(markers.data) : null;
-  const home = marker ? { lat: marker.lat, lon: marker.lon, name: marker.name } : null;
+  const home = found ? { lat: found.lat, lon: found.lon, name: found.name } : null;
   if (stations.isPending) return <Skeleton className="h-24" />;
   if (stations.isError) return <ErrorState error={stations.error} onRetry={() => void stations.refetch()} />;
   const list = stations.data
@@ -39,6 +38,7 @@ export function AprsWeather() {
         a neighbour's thermometer, not an official observation.
       </p>
       <ListenOnly source="aprs" />
+      {list.length > 0 ? <HomeAsOf home={found} /> : null}
       {list.length === 0 ? (
         <EmptyState compact level={3} title="No APRS weather station heard">
           With an APRS receiver set up, weather stations in radio range appear here.{" "}
