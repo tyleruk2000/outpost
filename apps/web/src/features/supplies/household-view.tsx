@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { Segmented, Select } from "@/components/ui/misc";
 import { useHomeCountry } from "@/features/frequencies/home-country";
+import { SAVE_BAR_ROOM } from "@/features/household-papers/save-bar";
 import { errorMessage } from "@/lib/api";
 import { formatNumber, localId, plural } from "@/lib/utils";
 import { useSetHousehold } from "./data";
@@ -169,6 +170,8 @@ export function HouseholdView({ household }: { household: Household }) {
         event.preventDefault();
         submit();
       }}
+      // What Tab reaches is scrolled clear of the bar with Save at the foot (WCAG 2.4.11).
+      className={SAVE_BAR_ROOM}
     >
       <Notice className="mb-8">
         These are planning figures for a store of food and water, from official guidance, and not dietary advice. A baby, someone pregnant,

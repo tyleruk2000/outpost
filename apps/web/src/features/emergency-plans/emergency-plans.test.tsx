@@ -341,6 +341,10 @@ describe("a plan", () => {
     // Nothing in Supplies: each listed thing is missing, and can go on the shopping list.
     await waitFor(() => expect(screen.getAllByTestId("supply-standing")[0]).toHaveTextContent("Missing"));
     expect(screen.getByRole("button", { name: /Add 10 missing or low things to the shopping list/ })).toBeEnabled();
+    // Every row has the same two boxes: each is named with its supply, so a screen reader can tell them apart.
+    const perPerson = screen.getAllByRole("checkbox", { name: /^Each person: / });
+    expect(new Set(perPerson.map((box) => box.getAttribute("aria-label"))).size).toBe(perPerson.length);
+    expect(screen.getAllByRole("checkbox", { name: /^Each day: / })).toHaveLength(perPerson.length);
   });
 
   it("says when the copy was last opened, not the plan it was copied from", async () => {

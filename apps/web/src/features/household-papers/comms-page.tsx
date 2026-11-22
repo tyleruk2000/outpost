@@ -20,7 +20,7 @@ import {
 } from "@outpost/shared";
 import { RADIO_FREQUENCIES } from "@outpost/shared/radio-frequencies-data";
 import { useQuery } from "@tanstack/react-query";
-import { CircleAlert, Plus, Trash2 } from "lucide-react";
+import { CircleAlert, Plus, Undo2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
@@ -42,6 +42,7 @@ import { localId } from "@/lib/utils";
 import { CHECK_IN_PATH, channelKey, commsBlocks, contactLines, stepText, TRANSMIT_KINDS } from "./comms-words";
 import { useComms, useSaveComms } from "./data";
 import { libraryQuestion, PaperPreview } from "./paper-pdf";
+import { SAVE_BAR_ROOM, SaveBar } from "./save-bar";
 import { pdfOf, usePaperPdf } from "./use-paper-pdf";
 
 const NONE = "none";
@@ -469,7 +470,7 @@ export default function CommsPage() {
   });
 
   return (
-    <Page width="reading">
+    <Page width="reading" className={SAVE_BAR_ROOM}>
       <PageHeader
         title="Keeping in touch"
         description="The household's communication plan: for each situation, what to try first and what next, when to check in, and who to contact. A page for each person to print or keep on the phone."
@@ -586,7 +587,7 @@ export default function CommsPage() {
             </Field>
           </Section>
 
-          <div className="sticky bottom-16 z-[10] mt-6 flex flex-wrap items-center gap-3 border-t border-border bg-page py-3 md:bottom-0">
+          <SaveBar>
             <Button variant="primary" loading={save.isPending} disabled={!dirty} onClick={submit}>
               Save
             </Button>
@@ -601,10 +602,10 @@ export default function CommsPage() {
                   setDirty(false);
                 }}
               >
-                <Trash2 /> Undo changes
+                <Undo2 /> Undo changes
               </Button>
             ) : null}
-          </div>
+          </SaveBar>
           {error ? (
             <Notice tone="danger" icon={<CircleAlert />}>
               {error}

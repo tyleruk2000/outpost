@@ -28,6 +28,7 @@ import { holdOpened, lockSheet, type OpenedSheet, sealSheet, touchOpened, useOpe
 import { EncryptSheetDialog, OpenSheet } from "./medical-lock";
 import { type ContactsNow, contactIdsOf, medicalBlocks, medicineLeftWords, reach } from "./medical-words";
 import { libraryQuestion, PaperPreview } from "./paper-pdf";
+import { SAVE_BAR_ROOM, SaveBar } from "./save-bar";
 import { pdfOf, usePaperPdf } from "./use-paper-pdf";
 
 const shortDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "short", year: "numeric" });
@@ -506,7 +507,7 @@ function Editor({ sheet, record: start, opened }: { sheet: MedicalSheet; record:
         </Field>
       </Section>
 
-      <div className="sticky bottom-16 z-[10] mt-6 flex flex-wrap items-center gap-3 border-t border-border bg-page py-3 md:bottom-0">
+      <SaveBar>
         <Button variant="primary" loading={busy} disabled={!dirty || !name.trim()} onClick={() => void send(false)}>
           Save
         </Button>
@@ -514,7 +515,7 @@ function Editor({ sheet, record: start, opened }: { sheet: MedicalSheet; record:
           {dirty ? "Changes not saved yet." : `Saved ${shortDate.format(sheet.updatedAt)}.`}
           {sheet.encrypted ? " Encrypted again in this browser at every save." : ""}
         </span>
-      </div>
+      </SaveBar>
       {error ? (
         <Notice tone="danger" icon={<CircleAlert />}>
           {error}
@@ -609,7 +610,7 @@ export default function MedicalSheetPage() {
   const record = sheet ? (sheet.encrypted ? (open?.record ?? null) : sheet.record) : null;
 
   return (
-    <Page width="reading">
+    <Page width="reading" className={SAVE_BAR_ROOM}>
       <PageHeader
         back={{ to: "/prepare/medical", label: "Medical sheets" }}
         title={sheet ? `Medical sheet: ${sheet.name}` : "Medical sheet"}

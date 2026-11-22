@@ -151,6 +151,20 @@ describe("the Supplies screen", () => {
     await waitFor(() => expect(server.posted).toContainEqual({ path: "POST /api/supplies/items/i1/adjust", body: { by: -1 } }));
   });
 
+  it("says the new count after a press, and keeps minus in the keyboard's reach at nought", async () => {
+    show({ items: [item({}), item({ id: "i2", name: "Matches", unit: "boxes", quantity: 0 })] });
+    await userEvent.click(await screen.findByRole("button", { name: "Use one tin of Baked beans" }));
+    expect(await screen.findByText(/^\d+ tins of Baked beans\.$/)).toBeInTheDocument();
+    // A unit typed in the plural is left out of the name rather than read as "one boxes".
+    const minus = screen.getByRole("button", { name: "Use one of Matches" });
+    expect(minus).toBeEnabled();
+    expect(minus).toHaveAttribute("aria-disabled", "true");
+    minus.focus();
+    await userEvent.keyboard("{Enter}");
+    expect(minus).toHaveFocus();
+    expect(screen.getByText("None of Matches left to use.")).toBeInTheDocument();
+  });
+
   it("names the buttons of an item counted without a unit in plain words", async () => {
     show({ items: [item({ name: "AA batteries", unit: "" })] });
     expect(await screen.findByRole("button", { name: "Use one of AA batteries" })).toBeInTheDocument();
@@ -319,6 +333,29 @@ describe("the Supplies screen", () => {
     expect(screen.getByRole("link", { name: /Save as PDF/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Add to library/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copy as text" })).toBeInTheDocument();
+  });
+
+  it("says a line's new count after plus, and keeps minus in the keyboard's reach at one", async () => {
+    const server = show({
+      view: "shopping",
+      shopping: {
+        lines: [
+          { id: "l1", source: "worked", itemId: "i1", name: "Baked beans", quantity: 5, unit: "tin", reasons: ["energy"], note: "" },
+          { id: "l2", source: "own", itemId: null, name: "Matches", quantity: 1, unit: "box", reasons: [], note: "" },
+        ],
+        workedOutAt: Date.UTC(2026, 10, 16),
+        stale: false,
+      },
+    });
+    await userEvent.click(await screen.findByRole("button", { name: "One more Baked beans" }));
+    await waitFor(() => expect(server.posted).toContainEqual({ path: "PATCH /api/supplies/shopping/l1", body: { quantity: 6 } }));
+    expect(screen.getByText("6 tins of Baked beans")).toBeInTheDocument();
+    const minus = screen.getByRole("button", { name: "One fewer Matches" });
+    expect(minus).toHaveAttribute("aria-disabled", "true");
+    minus.focus();
+    await userEvent.keyboard("{Enter}");
+    expect(minus).toHaveFocus();
+    expect(server.posted.some((post) => post.path === "PATCH /api/supplies/shopping/l2")).toBe(false);
   });
 
   it("asks the date when something on the list is bought", async () => {

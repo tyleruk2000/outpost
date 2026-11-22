@@ -161,7 +161,14 @@ export function ShoppingView({ items }: { items: SupplyItem[] }) {
   const update = useUpdateShoppingLine();
   const remove = useRemoveShoppingLine();
   const [buying, setBuying] = useState<ShoppingLine | null>(null);
+  // The new count, said after plus or minus: the figure is in the line's words, which are not read out again by themselves.
+  const [said, setSaid] = useState("");
   const [now] = useState(() => Date.now());
+  const setCount = (line: ShoppingLine, quantity: number) => {
+    if (quantity < 1) return setSaid(`${lineWords(line)}: the least there can be.`);
+    update.mutate({ id: line.id, input: { quantity } });
+    setSaid(lineWords({ ...line, quantity }));
+  };
   const lines = shopping.data?.lines ?? [];
   const workedOutAt = shopping.data?.workedOutAt ?? null;
   const pdf = useMemo(
@@ -239,8 +246,9 @@ export function ShoppingView({ items }: { items: SupplyItem[] }) {
                       size="icon"
                       className="size-11"
                       aria-label={`One fewer ${line.name}`}
-                      disabled={line.quantity <= 1}
-                      onClick={() => update.mutate({ id: line.id, input: { quantity: line.quantity! - 1 } })}
+                      // Marked, not disabled: a disabled button would drop the keyboard's focus.
+                      aria-disabled={line.quantity <= 1 || undefined}
+                      onClick={() => setCount(line, line.quantity! - 1)}
                     >
                       <Minus />
                     </Button>
@@ -249,7 +257,7 @@ export function ShoppingView({ items }: { items: SupplyItem[] }) {
                       size="icon"
                       className="size-11"
                       aria-label={`One more ${line.name}`}
-                      onClick={() => update.mutate({ id: line.id, input: { quantity: line.quantity! + 1 } })}
+                      onClick={() => setCount(line, line.quantity! + 1)}
                     >
                       <Plus />
                     </Button>
@@ -268,6 +276,9 @@ export function ShoppingView({ items }: { items: SupplyItem[] }) {
             ))}
           </ul>
         )}
+        <span className="sr-only" aria-live="polite">
+          {said}
+        </span>
         <OwnLine />
       </Section>
 
