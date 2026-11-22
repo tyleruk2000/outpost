@@ -6,6 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   dockerShareInstructions,
+  INTERFACE_PLACEHOLDER,
   isValidShareName,
   isValidSharePassword,
   isValidShareUser,
@@ -1409,6 +1410,40 @@ describe("instructions for Docker and Linux", () => {
     expect(nfs.map((step) => step.code ?? "").join("\n")).toContain(
       "192.168.1.20:/volume1/outpost  /mnt/outpost  nfs  rw,nfsvers=4.1,soft,timeo=150,nofail  0  0",
     );
+  });
+
+  it("writes IPv6 addresses the way mount.cifs and Docker each take them (tried with a real NAS)", () => {
+    const smb = { protocol: "smb" as const, share: "docs", userName: "walker" };
+    // A link-local address is reached through one interface, which must be named.
+    expect(shareInstructionProblem({ ...smb, host: "fe80::95c2:14c1:a4b0:ce8b" })).toMatch(/network interface/);
+    expect(shareInstructionProblem({ ...smb, host: "fe80::95c2:14c1:a4b0:ce8b%eth0" })).toBeUndefined();
+    expect(shareHostKind("2a01:4b00::1%eth0")).toBeUndefined(); // only link-local addresses carry an interface
+    expect(shareHostKind("fe80::1%eth0%1")).toBeUndefined();
+    expect(shareHostKind("fe80::1%et h0")).toBeUndefined();
+    expect(parseShareServer("[FE80::1%eth0]:445")).toEqual({ host: "fe80::1%eth0", port: 445 });
+
+    // mount.cifs: unbracketed, the interface by name.
+    const linux = linuxShareInstructions({ ...smb, host: "fe80::95c2:14c1:a4b0:ce8b%eth0" }, { uid: 1000, gid: 1000, mountBase: "/mnt" });
+    expect(linux.map((step) => step.code ?? "").join("\n")).toContain("//fe80::95c2:14c1:a4b0:ce8b%eth0/docs  /mnt/docs  cifs  ");
+    expect(linuxShareInstructions({ ...smb, host: "2a01:4b00::1" }, { uid: 1000, gid: 1000, mountBase: "/mnt" })[1]?.code).toMatch(
+      /^\/\/2a01:4b00::1\/docs /,
+    );
+
+    // Docker: the device is a URL (bracketed, no interface); addr= takes the interface as a number.
+    const named = dockerShareInstructions({ ...smb, host: "fe80::95c2:14c1:a4b0:ce8b%eth0" }, hints);
+    const volume = named.find((step) => step.code?.includes("type: cifs"))!;
+    expect(volume.code).toContain(`o: "addr=fe80::95c2:14c1:a4b0:ce8b%${INTERFACE_PLACEHOLDER},`);
+    expect(volume.code).toContain('device: "//[fe80::95c2:14c1:a4b0:ce8b]/docs"');
+    expect(volume.body).toContain("ip -o link show eth0");
+    const numbered = dockerShareInstructions({ ...smb, host: "fe80::95c2:14c1:a4b0:ce8b%2" }, hints);
+    const numberedVolume = numbered.find((step) => step.code?.includes("type: cifs"))!;
+    expect(numberedVolume.code).toContain('o: "addr=fe80::95c2:14c1:a4b0:ce8b%2,');
+    expect(numberedVolume.body).not.toContain(INTERFACE_PLACEHOLDER);
+    expect(
+      dockerShareInstructions({ ...smb, host: "2a01:4b00::1" }, hints)
+        .map((step) => step.code ?? "")
+        .join("\n"),
+    ).toContain('device: "//[2a01:4b00::1]/docs"');
   });
 
   it("will not write instructions from hostile input", () => {

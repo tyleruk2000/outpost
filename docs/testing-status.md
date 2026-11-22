@@ -66,8 +66,9 @@ of what each feature does are in its own guide.
 
 ### Storage and backups
 
-- Network shares in Docker were tried only with Docker Desktop against a test Samba server. A share
-  mounted by Docker itself, and NFS, are untried against a real NAS.
+- The Linux `/etc/fstab` line and the Compose volume that Storage writes out were followed as written on
+  a Raspberry Pi against a real NAS over SMB, by IPv4 and by link-local IPv6. NFS is untried (that NAS
+  has no NFS), and so is a global IPv6 address.
 - Container detection (Docker, Podman, LXC, Kubernetes) is checked against made-up files, not in real
   containers.
 - The read-back check after a download catches a block written wrongly; a system that caches the right

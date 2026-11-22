@@ -184,12 +184,24 @@ const CONTROL = /[\u0000-\u001f\u007f]/;
 
 export type ShareHostKind = "ipv4" | "ipv6" | "name";
 
+/** An interface name or number after the `%` of a link-local address. */
+const ZONE = /^[a-z0-9_.-]{1,32}$/i;
+
+/** fe80::/10: reached only through one network interface, which must then be named. */
+export const isLinkLocalIpv6 = (address: string) => /^fe[89ab][0-9a-f]?:/i.test(address);
+
 /** Says what kind of host this is, or undefined when it is not a host at all. */
 export function shareHostKind(host: string): ShareHostKind | undefined {
   if (IPV4.test(host)) return "ipv4";
   // Only digits and dots but not an address: "1.2.3", "2130706433" and the like.
   if (/^[\d.]+$/.test(host)) return undefined;
-  if (host.includes(":")) return IPV6.test(host) && host.split(":").length >= 3 ? "ipv6" : undefined;
+  if (host.includes(":")) {
+    // A link-local address carries the network interface it is reached through: fe80::1%eth0.
+    const [address = "", zone, ...rest] = host.split("%");
+    if (!IPV6.test(address) || address.split(":").length < 3 || rest.length > 0) return undefined;
+    if (zone !== undefined && !(ZONE.test(zone) && isLinkLocalIpv6(address))) return undefined;
+    return "ipv6";
+  }
   if (host.length > 253) return undefined;
   return host.split(".").every((label) => HOST_LABEL.test(label)) ? "name" : undefined;
 }
@@ -309,10 +321,35 @@ export function shareInstructionProblem(input: ShareInstructionInput): string | 
   } else if (!isValidExportPath(input.exportPath ?? "")) {
     return "Enter the exported folder as the NAS shows it, starting with a slash, for example /volume1/outpost.";
   }
+  if (isLinkLocalIpv6(input.host) && !input.host.includes("%")) {
+    return "An address starting fe80 works only with the network interface after it, for example fe80::1%eth0 (ip -6 addr shows the name).";
+  }
   return undefined;
 }
 
-const uncHost = (host: string) => (host.includes(":") ? `[${host}]` : host);
+const bracketed = (host: string) => (host.includes(":") ? `[${host}]` : host);
+
+/** Stands in for the interface's number where Docker needs it and the name was typed. */
+export const INTERFACE_PLACEHOLDER = "INTERFACE-NUMBER";
+
+/**
+ * Docker mounts with the kernel's own parser, which takes the interface of a link-local
+ * address only as a number (fe80::1%2), and reads the device as a URL, where an IPv6
+ * address is bracketed and carries no interface. Tried with a real NAS, 22 Nov 2026.
+ */
+function dockerAddress(host: string): { addr: string; urlHost: string; needsNumber: string | undefined } {
+  const [address = host, zone] = host.split("%");
+  if (zone === undefined) return { addr: host, urlHost: bracketed(host), needsNumber: undefined };
+  const numeric = /^\d+$/.test(zone);
+  return {
+    addr: `${address}%${numeric ? zone : INTERFACE_PLACEHOLDER}`,
+    urlHost: `[${address}]`,
+    needsNumber: numeric ? undefined : zone,
+  };
+}
+
+const interfaceNumberSentence = (name: string) =>
+  ` Docker needs the network interface as a number: replace ${INTERFACE_PLACEHOLDER} with the number that ip -o link show ${name} prints first.`;
 
 /**
  * The Compose changes that make Docker mount a share for Outpost. The shapes are the
@@ -325,6 +362,7 @@ export function dockerShareInstructions(input: ShareInstructionInput, hints: Sha
   const uid = hints.uid ?? 1000;
   const gid = hints.gid ?? 1000;
   const steps: InstructionStep[] = [];
+  const docker = dockerAddress(input.host);
 
   let volumeBlock: string;
   if (input.protocol === "smb") {
@@ -335,7 +373,7 @@ export function dockerShareInstructions(input: ShareInstructionInput, hints: Sha
       codeLabel: ".env",
     });
     const options = [
-      `addr=${input.host}`,
+      `addr=${docker.addr}`,
       ...(input.port ? [`port=${input.port}`] : []),
       // biome-ignore lint/suspicious/noTemplateCurlyInString: Compose fills these in from .env; they are meant literally
       "username=${NAS_USER}",
@@ -354,10 +392,10 @@ export function dockerShareInstructions(input: ShareInstructionInput, hints: Sha
       "    driver_opts:",
       "      type: cifs",
       `      o: "${options}"`,
-      `      device: "//${uncHost(input.host)}/${input.share}"`,
+      `      device: "//${docker.urlHost}/${input.share}"`,
     ].join("\n");
   } else {
-    const options = [`addr=${input.host}`, ...(input.port ? [`port=${input.port}`] : []), "rw", "nfsvers=4.1", "soft", "timeo=150"].join(
+    const options = [`addr=${docker.addr}`, ...(input.port ? [`port=${input.port}`] : []), "rw", "nfsvers=4.1", "soft", "timeo=150"].join(
       ",",
     );
     volumeBlock = [
@@ -373,7 +411,7 @@ export function dockerShareInstructions(input: ShareInstructionInput, hints: Sha
 
   steps.push({
     title: "Describe the share as a volume",
-    body: "Add this to compose.yaml. If the file already has a top-level volumes: section, add only the indented lines to it. If Docker cannot find the NAS by name, put its IP address after addr= instead.",
+    body: `Add this to compose.yaml. If the file already has a top-level volumes: section, add only the indented lines to it. If Docker cannot find the NAS by name, put its IP address after addr= instead.${docker.needsNumber ? interfaceNumberSentence(docker.needsNumber) : ""}`,
     code: volumeBlock,
     codeLabel: "compose.yaml",
   });
@@ -431,7 +469,8 @@ export function linuxShareInstructions(input: ShareInstructionInput, hints: Shar
       "nofail",
     ].join(",");
     // fstab separates fields with spaces, so a space in a share name is written \040.
-    const device = `//${uncHost(input.host)}/${(input.share ?? "").replaceAll(" ", "\\040")}`;
+    // mount.cifs takes an IPv6 address unbracketed, with its interface by name.
+    const device = `//${input.host}/${(input.share ?? "").replaceAll(" ", "\\040")}`;
     steps.push({
       title: "Tell Linux about the share",
       body: "Add this line to the end of /etc/fstab (sudo nano /etc/fstab). Mounting SMB shares needs the cifs-utils package.",
@@ -442,7 +481,7 @@ export function linuxShareInstructions(input: ShareInstructionInput, hints: Shar
     steps.push({
       title: "Tell Linux about the share",
       body: "Add this line to the end of /etc/fstab (sudo nano /etc/fstab). Mounting NFS shares needs the nfs-common package (nfs-utils on some systems).",
-      code: `${uncHost(input.host)}:${input.exportPath}  ${folder}  nfs  rw,nfsvers=4.1,soft,timeo=150,nofail${input.port ? `,port=${input.port}` : ""}  0  0`,
+      code: `${bracketed(input.host)}:${input.exportPath}  ${folder}  nfs  rw,nfsvers=4.1,soft,timeo=150,nofail${input.port ? `,port=${input.port}` : ""}  0  0`,
       codeLabel: "/etc/fstab",
     });
   }

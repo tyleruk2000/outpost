@@ -151,6 +151,10 @@ The form asks for the server, share and user name (or the NFS export), **not** t
 password, and writes out the lines to copy, shaped like the examples below. Nothing
 changes until you make the changes.
 
+An IPv6 address starting `fe80` needs the network interface after it, such as
+`fe80::1%eth0` (`ip -6 addr` shows the name). Docker wants the interface's number instead
+of its name, and the Compose lines say where to put it.
+
 ## NAS set-up examples
 
 Outside a Mac, the operating system or Docker mounts the share and keeps the
