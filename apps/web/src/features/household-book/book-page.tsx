@@ -22,7 +22,6 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { useOutlook } from "@/features/emergency-plans/data";
 import type { BinderMap } from "@/features/household-papers/binder-map";
-import { binderPlaces } from "@/features/household-papers/binder-places";
 import { useContactsById } from "@/features/household-papers/data";
 import { grabHousehold, grabPerson, useHouseholdSources } from "@/features/household-papers/household-data";
 import { libraryQuestion } from "@/features/household-papers/paper-pdf";
@@ -35,7 +34,7 @@ import { PdfPagesPreview } from "@/features/print-kit/preview";
 import { api, errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { formatDate, plural } from "@/lib/utils";
-import { makeBook } from "./book";
+import { bookMapPlaces, makeBook } from "./book";
 import { sourcesWords } from "./book-line";
 import { useBook, useBookFacts, useBookMade, useSaveBook } from "./data";
 import { BookWizard } from "./wizard";
@@ -98,7 +97,11 @@ export default function BookPage() {
           sources.plans.map((each) => each.plan),
         ),
       );
-      const mapped = binderPlaces({ markers: sources.markers, plans: sources.plans.filter((each) => included.has(each.plan.id)) }).mapped;
+      const mapped = bookMapPlaces(
+        book.data.answers,
+        sources.markers,
+        sources.plans.filter((each) => included.has(each.plan.id)),
+      ).mapped;
       if (chosen.includes("places") && mapped.length > 0) {
         setDrawing(true);
         try {
@@ -139,7 +142,7 @@ export default function BookPage() {
           household: grabHousehold(sources.plans, sources.emergencyContacts, sources.markers, sources.comms),
         },
         repeaters,
-        placesMap: placesMap && placesMap.missing === null ? { block: placesMap.block, pictures: placesMap.pictures } : null,
+        placesMap: placesMap ? { block: placesMap.block, pictures: placesMap.pictures, missing: placesMap.missing } : null,
       });
       const printed = await renderPdf(out.document);
       setResult({

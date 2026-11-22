@@ -6,6 +6,7 @@
  * Labels are set in the book's typeface. Every shade used also differs in grey, and the
  * parts are told apart by texture and label, not by colour alone.
  */
+import { heightField, traceLevel } from "@/components/contour";
 import { PRINT_COLOURS as C, PRINT_FONT } from "./tokens";
 
 export interface Drawing {
@@ -188,7 +189,7 @@ export function boiling(): Drawing {
  * pictogram, a person lying on their side seen from the front, each part labelled with
  * the source's own words.
  */
-export function recoveryPosition(): Drawing {
+export function recoveryPosition(options: { narrow?: boolean } = {}): Drawing {
   const near = "#d3dde0";
   const far = "#9fb3b8";
   /** A limb: a thick rounded stroke with an ink outline, so that it reads in grey. */
@@ -212,17 +213,36 @@ export function recoveryPosition(): Drawing {
   // Arrows: chin forward, mouth down.
   body += `<path d="M64,122 L50,117" stroke="${C.act}" stroke-width="1.2"/>${arrowHead(46, 115.5, 200, C.act)}`;
   body += `<path d="M72,142 L70,150" stroke="${C.act}" stroke-width="1.2"/>${arrowHead(69.4, 154, 100, C.act)}`;
-  // Labels, in the source's words.
-  const label = (x1: number, y1: number, x2: number, y2: number, words: string, anchor: "start" | "end" = "start") =>
-    leader(x1, y1, x2, y2) + text(anchor === "start" ? x2 + 3 : x2 - 3, y2 + 2.6, words, { anchor });
-  body += label(180, 106, 180, 70, "Body: laid on its side");
-  body += label(286, 113, 300, 86, "Legs: bent slightly");
-  body += label(88, 112, 96, 56, "Head: rests on hand");
-  body += label(44, 115, 30, 92, "Chin: raised forward");
-  body += label(30, 145, 22, 172, "Bottom arm: reached outward");
-  body += label(70, 153, 92, 186, "Mouth: pointed downward");
-  body += label(110, 128, 150, 172, "Top arm: hand on bicep of bottom arm");
-  return svg(380, 194, body);
+  // Labels, in the source's words: where each is on the figure, and where its words go when wide.
+  const parts: Array<{ at: [number, number]; to: [number, number]; words: string }> = [
+    { at: [180, 106], to: [180, 70], words: "Body: laid on its side" },
+    { at: [104, 135], to: [150, 172], words: "Top arm: hand on bicep of bottom arm" },
+    { at: [88, 112], to: [96, 56], words: "Head: rests on hand" },
+    { at: [286, 113], to: [300, 86], words: "Legs: bent slightly" },
+    { at: [44, 115], to: [30, 92], words: "Chin: raised forward" },
+    { at: [70, 153], to: [92, 186], words: "Mouth: pointed downward" },
+    { at: [30, 145], to: [22, 172], words: "Bottom arm: reached outward" },
+  ];
+  if (!options.narrow) {
+    for (const part of parts)
+      body += leader(part.at[0], part.at[1], part.to[0], part.to[1]) + text(part.to[0] + 3, part.to[1] + 2.6, part.words);
+    return svg(380, 194, body);
+  }
+  // Narrow, for a column: the figure smaller with a numbered disc on each part, and the words in a list under it.
+  const scale = 0.66;
+  const top = -52 * scale;
+  let narrow = `<g transform="translate(0 ${top}) scale(${scale})">${body}</g>`;
+  parts.forEach((part, index) => {
+    const x = part.at[0] * scale;
+    const y = part.at[1] * scale + top;
+    narrow += `<circle cx="${x}" cy="${y}" r="5.2" fill="${C.accent}" stroke="#ffffff" stroke-width="0.8"/>${text(x, y + 2.4, String(index + 1), { anchor: "middle", bold: true, size: 6.5, fill: "#ffffff" })}`;
+  });
+  const height = 151 * scale + top + 8;
+  parts.forEach((part, index) => {
+    const y = height + 6 + index * 10.5;
+    narrow += `<circle cx="5.5" cy="${y - 2.5}" r="4.6" fill="${C.accent}"/>${text(5.5, y, String(index + 1), { anchor: "middle", bold: true, size: 6, fill: "#ffffff" })}${text(14, y, part.words, { size: 7.5 })}`;
+  });
+  return svg(250, Math.ceil(height + 6 + parts.length * 10.5), narrow);
 }
 
 /**
@@ -230,7 +250,7 @@ export function recoveryPosition(): Drawing {
  * over the lower third of the breastbone"; for a baby under 1, "the tips of 2 fingers"
  * on the breastbone; "approximately one-third of the chest depth". Two chests, front on.
  */
-export function chestCompressions(): Drawing {
+export function chestCompressions(options: { narrow?: boolean } = {}): Drawing {
   const chest = (x: number, scale: number) => {
     const w = 104 * scale;
     const h = 120 * scale;
@@ -253,6 +273,29 @@ export function chestCompressions(): Drawing {
     out += `<path d="M${cx - 7},${bone + length / 3} L${cx + 7},${bone + length / 3} M${cx - 7},${bone + (length * 2) / 3} L${cx + 7},${bone + (length * 2) / 3}" stroke="${INK}" stroke-width="0.6"/>`;
     return { out, cx, lower: bone + (length * 5) / 6, upper: bone + length / 6, w };
   };
+  if (options.narrow) {
+    // For a column: the child's chest, then the baby's under it, each with its words beside it.
+    const kid = chest(4, 0.9);
+    let out = kid.out;
+    out += `<ellipse cx="${kid.cx}" cy="${kid.lower}" rx="13" ry="9" fill="none" stroke="${C.act}" stroke-width="1.4" stroke-dasharray="3 2"/>`;
+    out +=
+      leader(kid.cx + 13, kid.lower, 112, kid.lower) +
+      text(115, kid.lower - 4, "heel of 1 hand,", { bold: true }) +
+      text(115, kid.lower + 5.5, "lower third of the breastbone");
+    out += leader(kid.cx + 5, kid.upper, 112, kid.upper) + text(115, kid.upper + 2.5, "breastbone");
+    out += text(115, 12, "Child over 1", { bold: true, size: 8.5 }) + text(115, 22, "push down 5 cm");
+    const small = chest(14, 0.62);
+    let lower = `<g transform="translate(0 132)">${small.out}`;
+    lower += `<circle cx="${small.cx - 3.2}" cy="${small.lower}" r="2.9" fill="none" stroke="${C.act}" stroke-width="1.3"/><circle cx="${small.cx + 3.2}" cy="${small.lower}" r="2.9" fill="none" stroke="${C.act}" stroke-width="1.3"/>`;
+    lower +=
+      leader(small.cx + 7, small.lower, 112, small.lower) +
+      text(115, small.lower - 4, "tips of 2 fingers", { bold: true }) +
+      text(115, small.lower + 5.5, "on the breastbone");
+    lower += text(115, 28, "Baby under 1", { bold: true, size: 8.5 }) + text(115, 38, "push down 4 cm");
+    lower += "</g>";
+    out += lower + text(0, 232, "Both: about one-third of the chest depth, 100 to 120 a minute", { fill: C.muted, size: 7 });
+    return svg(250, 236, out);
+  }
   let body = "";
   const child = chest(14, 1.1);
   body += child.out;
@@ -276,3 +319,32 @@ export function chestCompressions(): Drawing {
   body += text(212, 184, "Both: about one-third of the chest depth, 100 to 120 a minute", { anchor: "middle", fill: C.muted });
   return svg(424, 190, body);
 }
+
+// ── Decoration ──────────────────────────────────────────────────────────────
+
+/**
+ * Outpost's contour drawing (components/contour.tsx), for a cover: the same method as a
+ * real map, seeded so that each household's cover has its own ground. `colour` for the
+ * lines; every fourth is an index contour, drawn heavier.
+ */
+export function contourArt(width: number, height: number, options: { seed?: number; colour?: string; levels?: number } = {}): Drawing {
+  const cell = 8;
+  const columns = Math.ceil(width / cell);
+  const rows = Math.ceil(height / cell);
+  const levels = options.levels ?? 12;
+  const field = heightField(columns, rows, options.seed ?? 7);
+  let max = 0;
+  for (const value of field) max = Math.max(max, value);
+  let body = "";
+  for (let index = 0; index < levels; index += 1) {
+    const d = traceLevel(field, columns, rows, ((index + 0.6) / (levels + 0.4)) * max, cell);
+    if (!d) continue;
+    const major = (index + 1) % 4 === 0;
+    body += `<path d="${d}" fill="none" stroke="${options.colour ?? C.rule}" stroke-width="${major ? 1.1 : 0.6}" stroke-linecap="round" opacity="${major ? 0.9 : 0.6}"/>`;
+  }
+  return svg(width, height, body);
+}
+
+/** A number from words, to seed a drawing: the same words, the same drawing. */
+export const seedOf = (words: string): number =>
+  [...words].reduce((hash, character) => (Math.imul(hash, 31) + character.charCodeAt(0)) >>> 0, 7) || 7;

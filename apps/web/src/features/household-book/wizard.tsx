@@ -842,6 +842,21 @@ function BookStep({ answers, set, country }: StepProps & { country: string | nul
           A4 everywhere else.
         </p>
       </div>
+      <div className="grid gap-2">
+        <Segmented<"wallet" | "a6">
+          label="Grab cards"
+          value={answers.grabCardSize}
+          onChange={(grabCardSize) => set({ grabCardSize })}
+          options={[
+            { value: "wallet", label: "Wallet size" },
+            { value: "a6", label: "A6" },
+          ]}
+        />
+        <p className="text-small text-ink-muted">
+          Wallet size folds to a bank card, two to a row. A6 is 105 by 148 mm, two to a sheet. Both print at their real size with marks to
+          cut along.
+        </p>
+      </div>
       <Section title="What goes in it">
         <Rows>
           {BOOK_SECTIONS.map((section) => (

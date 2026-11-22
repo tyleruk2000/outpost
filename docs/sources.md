@@ -1070,3 +1070,7 @@ For **Settings → Updates** ([updating.md](updating.md)).
   License 1.1, static TTFs from https://github.com/googlefonts/atkinson-hyperlegible-next at
   commit 7925f50f649b3813257faf2f4c0b381011f434f1, with `OFL.txt` beside them in
   `apps/web/src/features/print-kit/fonts/`.
+- **Fallback typefaces.** Noto Sans, Noto Sans Arabic, Hebrew, Devanagari, Thai, SC and KR
+  (The Noto Project Authors), SIL Open Font License 1.1, from the variable files in
+  https://github.com/google/fonts (`ofl/notosans*`, read 2026-11-22), instanced and subset
+  with fontTools 4.68 for print; `OFL.txt` in `apps/web/src/features/print-kit/fonts/noto/`.

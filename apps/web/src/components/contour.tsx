@@ -16,7 +16,7 @@ function seeded(seed: number): () => number {
   };
 }
 
-function heightField(columns: number, rows: number, seed: number): Float32Array {
+export function heightField(columns: number, rows: number, seed: number): Float32Array {
   const random = seeded(seed);
   // A ridge line of summits with a few outlying tops reads as terrain; evenly scattered
   // round hills read as ripples.
@@ -49,7 +49,7 @@ function heightField(columns: number, rows: number, seed: number): Float32Array 
 }
 
 /** Marching squares: for one level, the line segments where the field crosses it. */
-function traceLevel(field: Float32Array, columns: number, rows: number, level: number, cell: number): string {
+export function traceLevel(field: Float32Array, columns: number, rows: number, level: number, cell: number): string {
   const at = (x: number, y: number) => field[y * (columns + 1) + x]!;
   const lerp = (a: number, b: number) => (level - a) / (b - a || 1e-6);
   let path = "";
