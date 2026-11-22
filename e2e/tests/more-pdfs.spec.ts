@@ -12,6 +12,7 @@ import fs from "node:fs";
 import type { Page } from "@playwright/test";
 import { api, expect, test, watchForErrors } from "./fixtures";
 import { keep } from "./map-fixture";
+import { pdfWords } from "./pdf";
 
 test.use({ timezoneId: "Europe/London" });
 
@@ -83,10 +84,12 @@ test.describe("more PDFs made in Outpost, in the library", () => {
     contacts.push(...(await addEmergencyContacts(page)));
     await page.goto("/contacts/emergency");
     const block = page.getByRole("region", { name: "The sheet as a PDF" });
-    await expect(block).toContainText(/1 page of (A4|US Letter), made on this device on \d{1,2} \w+ \d{4} at \d\d:\d\d\./);
+    await expect(block).toContainText(/\d pages? of (A4|US Letter), made on this device on \d{1,2} \w+ \d{4} at \d\d:\d\d\./, {
+      timeout: 30_000,
+    });
     await block.getByRole("radio", { name: "A4" }).click();
-    await expect(block).toContainText("1 page of A4");
-    await expect(block).toContainText("drawn in the PDF as they are here, as pictures");
+    await expect(block).toContainText(/\d pages? of A4/, { timeout: 30_000 });
+    const pages = Number(/(\d) pages? of A4/.exec((await block.textContent()) ?? "")![1]);
 
     const downloading = page.waitForEvent("download");
     await block.getByRole("link", { name: "Save as PDF" }).click();
@@ -96,12 +99,13 @@ test.describe("more PDFs made in Outpost, in the library", () => {
     await keep(testInfo, "emergency-sheet.pdf", bytes, "application/pdf");
     const file = bytes.toString("latin1");
     expect(file.startsWith("%PDF-1.")).toBe(true);
-    expect(file).toContain("/MediaBox [0 0 595.28 841.89]");
-    // The names the typefaces lack are pictures, and their words are in a font that draws nothing.
-    expect(file).toContain("/Subtype /Image");
-    expect(file).toContain("/Subtype /Type3");
-    expect(file).toContain("(+44 7700 900987) Tj");
-    expect(file).not.toMatch(/\([^)]*\?[^)]*\) Tj/);
+    expect(file).toMatch(/\/MediaBox \[0 0 595\.2\d* 841\.89\d*\]/);
+    // A name the book's typeface lacks is set in a fallback font, as words: no pictures, no question marks.
+    expect(file).not.toContain("/Subtype /Image");
+    expect(file).toMatch(/\/FontName \/[A-Z]{6}\+NotoSans-Regular/);
+    const words = await pdfWords(bytes);
+    for (const shown of ["+44 7700 900987", "Ελένη Παπαδοπούλου", "Bożena Wiśniewska"]) expect(words, shown).toContain(shown);
+    expect(words).not.toContain("?");
 
     // Asked first; Cancel sends nothing.
     await block.getByRole("button", { name: "Add to library" }).click();
@@ -127,11 +131,11 @@ test.describe("more PDFs made in Outpost, in the library", () => {
       tags: ["Emergency sheet"],
       source: "Made in Outpost from the emergency sheet of contacts: /contacts/emergency",
       type: "pdf",
-      pageCount: 1,
+      pageCount: pages,
       sizeBytes: bytes.length,
     });
     expect(Buffer.from(await (await page.request.get(document.fileUrl)).body()).equals(bytes)).toBe(true);
-    // What the server read: the numbers exactly, and the names it cannot see drawn as pictures.
+    // What the server read: the numbers exactly, and the names in other scripts as words.
     for (const words of [
       "In an emergency",
       "Dr. Ngozi Eze",
@@ -146,7 +150,7 @@ test.describe("more PDFs made in Outpost, in the library", () => {
     ])
       expect(prose, words).toContain(words);
 
-    // Found by search for a name only the pictures show, and opened in the reader.
+    // Found by search for a name in Greek, and opened in the reader.
     await page.goto(`/search?q=${encodeURIComponent("Παπαδοπούλου")}`);
     const result = page.getByRole("link", { name: title }).first();
     await expect(result).toBeVisible();
@@ -178,7 +182,9 @@ test.describe("more PDFs made in Outpost, in the library", () => {
     await page.getByRole("button", { name: "A PDF of sun times, day by day" }).click();
     const block = page.getByRole("region", { name: "Sun times as a PDF" });
     await block.getByRole("radio", { name: "A4" }).click();
-    await expect(block).toContainText("14 days from 21 Jun 2026, a day to a line, on the clock shown above: 1 page of A4.");
+    await expect(block).toContainText(/14 days from 21 Jun 2026, a day to a line, on the clock shown above: \d pages? of A4\./, {
+      timeout: 30_000,
+    });
     const downloading = page.waitForEvent("download");
     await block.getByRole("link", { name: "Save as PDF" }).click();
     const download = await downloading;
@@ -189,7 +195,7 @@ test.describe("more PDFs made in Outpost, in the library", () => {
 
     // A year, too, for the picture of it.
     await block.getByRole("radio", { name: "Year" }).click();
-    await expect(block).toContainText(/2026, a day to a line, on the clock shown above: \d pages of A4\./);
+    await expect(block).toContainText(/2026, a day to a line, on the clock shown above: \d+ pages of A4\./, { timeout: 30_000 });
     const year = page.waitForEvent("download");
     await block.getByRole("link", { name: "Save as PDF" }).click();
     await keep(testInfo, "sun-times-year.pdf", fs.readFileSync(await (await year).path()), "application/pdf");
@@ -208,7 +214,6 @@ test.describe("more PDFs made in Outpost, in the library", () => {
       tags: ["Sun times"],
       source: "Made in Outpost from the map: /maps?lat=51.4800&lon=0.0000&z=12.0",
       type: "pdf",
-      pageCount: 1,
     });
     // The first day's row: the times the Sun tab shows, to the minute.
     expect(text).toMatch(/Sun 21 Jun +03:55 +04:43 +13:02 +21:21 +22:09 +16 h 38 min/);

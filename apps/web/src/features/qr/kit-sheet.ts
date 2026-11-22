@@ -6,9 +6,8 @@
  * placed at its own size: the modules come to exactly PRINTED_WIDTH_MM across, with the
  * quiet zone the standard asks for round them in white. Black on white, as readers expect.
  * Only the words are in the file as text: the code's own text is not added unseen, because
- * for a Wi-Fi code it holds the password. A sheet whose words hold letters the kit's
- * typeface lacks is made the old way instead (sheet.ts). Pure: a code and words in, a
- * document out.
+ * for a Wi-Fi code it holds the password. Words in other scripts are set in the kit's
+ * fallback typefaces. Pure: a code and words in, a document out.
  */
 import type { Content, TDocumentDefinitions } from "pdfmake/interfaces";
 import type { AidPaper } from "@/features/encryption/paper-aids";
@@ -26,19 +25,13 @@ import {
 import type { Described } from "./content";
 import type { QrCode } from "./encoder";
 import { darkRuns, QUIET_ZONE } from "./render";
-import { PRINTED_WIDTH_MM } from "./sheet";
 
 const PT_PER_MM = 72 / 25.4;
 /** White beyond the quiet zone, to the broken line to cut along. */
 const CUT_MARGIN = 4 * PT_PER_MM;
 
-/** Every word the sheet prints, for the check on letters. */
-export const qrTexts = (described: Described, footer: string): string[] => [
-  described.heading,
-  described.action,
-  footer,
-  ...described.lines.flatMap((line) => [line.label, line.value]),
-];
+/** How wide the code is printed, without its margin: well over the 5 cm that arm's length asks for. */
+export const PRINTED_WIDTH_MM = 80;
 
 /** The code at its printed size, its quiet zone, and a broken line round them to cut along. */
 export function codeDrawing(code: QrCode): Drawing & { module: number; codeLeft: number } {

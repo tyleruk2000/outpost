@@ -9,14 +9,11 @@ import { createPortal } from "react-dom";
 import { Notice } from "@/components/page";
 import { PrintNotice } from "@/components/print-notice";
 import { Button } from "@/components/ui/button";
-import { kitCanSetAll } from "@/features/contacts/kit-letters";
 import { AID_PAPER_KEY, isAidPaper, likelyPaper } from "@/features/encryption/paper-aids";
-import { type MadePdf, madePdf } from "@/features/library/made/made-pdf";
 import { PdfActions } from "@/features/library/made/pdf-actions";
 import { readStored } from "@/features/maps/lib/view";
-import { type DrawLine, writeLettered } from "@/features/maps/print/lettering";
 import { PAPERS } from "@/features/maps/print/paper";
-import { useKitPdf } from "@/features/print-kit/use-kit-pdf";
+import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
 import { errorMessage } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
 import { notify } from "@/lib/notify";
@@ -24,10 +21,9 @@ import { usePrinting } from "@/lib/printing";
 import { cn, formatDate, plural } from "@/lib/utils";
 import { type Described, printAdvice, type QrKind, sensitive } from "./content";
 import type { QrCode } from "./encoder";
-import { qrDocument, qrTexts } from "./kit-sheet";
+import { PRINTED_WIDTH_MM, qrDocument } from "./kit-sheet";
 import { CheckLine } from "./qr-forms";
 import { codeFileName, extentOf, modulePath, pngBlob, svgFile } from "./render";
-import { PRINTED_WIDTH_MM, qrSheet } from "./sheet";
 
 /** Copying a picture needs the asynchronous clipboard, which a browser gives only to a secure (https) page. */
 export function canCopyPicture(): boolean {
@@ -110,8 +106,6 @@ const QUESTIONS: Record<"secret" | "people", { title: string; description: React
   },
 };
 
-type Made = { pdf: MadePdf } | { error: string };
-
 /** How long typing must pause before the sheet is made again: each one is drawn and written whole. */
 const SHEET_AFTER_MS = 400;
 
@@ -120,19 +114,16 @@ interface Settled {
   described: Described;
   day: Date;
   footer: string;
-  /** The print kit's typeface has every letter of its words; otherwise the old writer makes it, drawing such words as pictures. */
-  kit: boolean;
 }
 
 /**
- * The sheet as a PDF, made on this device once the code or its words have stopped
- * changing: laid out with the print kit (kit-sheet.ts), or by the old writer (sheet.ts)
- * where its words hold letters the kit's typeface lacks.
+ * The sheet as a PDF, laid out with the print kit (kit-sheet.ts), made on this device once
+ * the code or its words have stopped changing. Words in other scripts are set in the kit's
+ * fallback typefaces.
  */
-function SheetPdf({ code, described, kind, draw }: { code: QrCode; described: Described; kind: QrKind; draw?: DrawLine }) {
+function SheetPdf({ code, described, kind }: { code: QrCode; described: Described; kind: QrKind }) {
   const [paper] = useState(() => readStored(AID_PAPER_KEY, isAidPaper, likelyPaper(navigator.language)));
   const [settled, setSettled] = useState<Settled | null>(null);
-  const [lettered, setLettered] = useState<Made | null>(null);
 
   useEffect(() => {
     setSettled(null);
@@ -141,44 +132,17 @@ function SheetPdf({ code, described, kind, draw }: { code: QrCode; described: De
       const today = new Date();
       const day = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
       const footer = `Made in Outpost on ${formatDate(day.getTime())}.`;
-      setSettled({ code, described, day, footer, kit: kitCanSetAll(qrTexts(described, footer)) });
+      setSettled({ code, described, day, footer });
     }, SHEET_AFTER_MS);
     return () => clearTimeout(timer);
   }, [code, described]);
 
   const make = useCallback(() => qrDocument(settled!.code, settled!.described, paper, settled!.footer, settled!.day), [settled, paper]);
-  const kitMade = useKitPdf(settled?.kit ? make : null, {
+  const made = useKitPdf(settled ? make : null, {
     title: settled?.described.title ?? described.title,
     kind: "QR code",
     from: { what: "the QR code maker", path: "/tools/qr" },
   });
-
-  useEffect(() => {
-    let live = true;
-    setLettered(null);
-    if (!settled || settled.kit) return;
-    writeLettered([qrSheet(settled.code, settled.described, paper, settled.footer)], settled.described.title, settled.day, draw)
-      .then((written) => ({
-        pdf: madePdf(written.bytes, settled.described.title, "QR code", { what: "the QR code maker", path: "/tools/qr" }),
-      }))
-      .catch((error: unknown) => ({ error: errorMessage(error) }))
-      .then((result) => {
-        if (live) setLettered(result);
-      });
-    return () => {
-      live = false;
-    };
-  }, [settled, paper, draw]);
-
-  const made: Made | null = !settled
-    ? null
-    : settled.kit
-      ? kitMade.status === "made"
-        ? { pdf: kitMade.pdf }
-        : kitMade.status === "failed"
-          ? { error: kitMade.error }
-          : null
-      : lettered;
 
   const asks = sensitive(kind);
   return (
@@ -190,12 +154,12 @@ function SheetPdf({ code, described, kind, draw }: { code: QrCode; described: De
           device.
         </p>
       </div>
-      {made && "error" in made ? (
+      {made.status === "failed" ? (
         <Notice tone="danger" title="The PDF could not be made">
           {made.error} The code can still be saved as a picture or printed from the browser.
         </Notice>
       ) : (
-        <PdfActions pdf={made && "pdf" in made ? made.pdf : null} lead="save" confirm={asks ? QUESTIONS[asks] : undefined} />
+        <PdfActions pdf={kitPdfOf(made)} lead="save" confirm={asks ? QUESTIONS[asks] : undefined} />
       )}
     </section>
   );
@@ -207,14 +171,12 @@ export function QrOutput({
   kind,
   passwordInWords,
   onPasswordInWords,
-  draw,
 }: {
   code: QrCode;
   described: Described;
   kind: QrKind;
   passwordInWords: boolean;
   onPasswordInWords: (value: boolean) => void;
-  draw?: DrawLine;
 }) {
   const printing = usePrinting();
   const [copied, setCopied] = useState<"picture" | "text" | null>(null);
@@ -295,7 +257,7 @@ export function QrOutput({
       )}
       <PrintNotice printing={printing} instead="Save the PDF below and print that, or save the code as a PNG." />
 
-      <SheetPdf code={code} described={described} kind={kind} draw={draw} />
+      <SheetPdf code={code} described={described} kind={kind} />
 
       {/* For the printer: the sheet alone, a child of the body. */}
       {createPortal(

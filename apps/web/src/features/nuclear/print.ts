@@ -69,8 +69,6 @@ function ringsBesideKey({ letter, result }: Written, measure: number): Content {
   const block = diagramBlock(letter, result);
   if (block.kind !== "drawing") return blocksToContent([block], measure)[0]!;
   const size = block.height - FURNITURE;
-  const key = colourKey(result);
-  const keyItems = key.kind === "drawing" ? key.draw(0, 0, 160) : [];
   return twoColumns(
     [
       figure(sheetItemsToSvg(block.draw(0, 0, size), { x: 0, y: 0, width: size, height: block.height }), {
@@ -78,18 +76,20 @@ function ringsBesideKey({ letter, result }: Written, measure: number): Content {
         caption: block.words,
       }),
     ],
-    [
-      label("Key"),
-      {
-        svg: sheetItemsToSvg(keyItems, { x: 0, y: 0, width: 160, height: key.kind === "drawing" ? key.height : 0 }),
-        width: 160,
-      } as Content,
-    ],
+    keyColumn(result),
     { widths: [size, "*"] },
   );
 }
 
-function scenarioSection(item: Written, index: number, several: boolean, measure: number, maps: Content[] | null): Content[] {
+/** A scenario's maps with the key: beside the first map where it is narrow enough to leave room, under the maps otherwise. */
+function mapsWithKey(maps: MapFigure[], result: Written["result"], measure: number): Content[] {
+  const [first, ...rest] = maps;
+  if (first && first.width < measure - 170)
+    return [twoColumns([first.content], keyColumn(result), { widths: [first.width, "*"] }), ...rest.map((map) => map.content)];
+  return [...maps.map((map) => map.content), ...keyColumn(result)];
+}
+
+function scenarioSection(item: Written, index: number, several: boolean, measure: number, maps: MapFigure[] | null): Content[] {
   const { letter, scenario, result } = item;
   const content: Content[] = [
     sectionHeader(
@@ -102,7 +102,7 @@ function scenarioSection(item: Written, index: number, several: boolean, measure
       measure,
     ),
     callout("warn", "An educational estimate, not a forecast", para(EFFECTS_CAVEAT, 0)),
-    ...(maps ? [...maps, ...blocksToContent([colourKey(result)], measure)] : [ringsBesideKey(item, measure)]),
+    ...(maps ? mapsWithKey(maps, result, measure) : [ringsBesideKey(item, measure)]),
   ];
   if (scenario.notes.trim()) content.push(para(`**Notes:** ${scenario.notes.trim()}`));
   content.push(
@@ -236,7 +236,7 @@ export function scenarioPrint({ written, dated, paper, figures, pictures }: Scen
           measure,
         ),
         apart,
-        ...overview,
+        ...overview.map((map) => map.content),
       ],
     });
   written.forEach((item, index) => {
@@ -283,9 +283,9 @@ export function scenarioPrint({ written, dated, paper, figures, pictures }: Scen
  * writer's measure) as the figure's caption in the book's type. Other blocks as the kit
  * prints them.
  */
-function mapContent(blocks: Block[], measure: number, pictures: ReadonlyMap<string, string> = new Map()): Content[] {
-  return blocks.flatMap((block) => {
-    if (block.kind !== "drawing") return blocksToContent([block], measure);
+function mapContent(blocks: Block[], measure: number, pictures: ReadonlyMap<string, string> = new Map()): MapFigure[] {
+  return blocks.flatMap((block): MapFigure[] => {
+    if (block.kind !== "drawing") return blocksToContent([block], measure).map((content) => ({ content, width: measure }));
     const items = block.draw(0, 0, measure);
     // A map's frame: the one rectangle round the picture, at the top. Without one (the rings to scale), the drawing is whole.
     const frame = items.some((item) => item.kind === "image")
@@ -293,13 +293,32 @@ function mapContent(blocks: Block[], measure: number, pictures: ReadonlyMap<stri
       : undefined;
     const height = frame ? frame.height + FURNITURE - 4 : block.height;
     const kept = frame ? items.filter((item) => item.kind !== "text" || item.y < height) : items;
+    // A map narrower than the page (the rings, framed square) is cut to its frame, so the key can stand beside it. One point of
+    // the drawing is still one point of paper, so its scale bar stays true.
+    const width = frame && frame.x + frame.width < measure * 0.7 ? Math.ceil(frame.x + frame.width + 1) : measure;
     return [
-      figure(sheetItemsToSvg(kept, { x: 0, y: 0, width: measure, height }, pictures), {
-        width: measure,
-        caption: block.words,
-      }),
+      {
+        content: figure(sheetItemsToSvg(kept, { x: 0, y: 0, width, height }, pictures), { width, caption: block.words }),
+        width,
+      },
     ];
   });
+}
+
+interface MapFigure {
+  content: Content;
+  /** Its width on the page, in points. */
+  width: number;
+}
+
+/** The key to a scenario's colours, as a column beside a map. */
+function keyColumn(result: Written["result"]): Content[] {
+  const key = colourKey(result);
+  const keyItems = key.kind === "drawing" ? key.draw(0, 0, 160) : [];
+  return [
+    label("Key"),
+    { svg: sheetItemsToSvg(keyItems, { x: 0, y: 0, width: 160, height: key.kind === "drawing" ? key.height : 0 }), width: 160 } as Content,
+  ];
 }
 
 /** The scenarios as a PDF. */

@@ -1,23 +1,9 @@
 /** Sun times on paper: the same times as the Sun section, to the minute, and what the page says about them. */
 import { describe, expect, it } from "vitest";
-import type { Block } from "@/features/propagation/plans/document";
 import { moonPhase } from "./moon";
 import { dayLengthChange, sunDay } from "./sun";
-import { dayCells, type SunSheetInput, spanDays, spanWords, sunDocument, sunSheets, sunTitle } from "./sun-document";
+import { dayCells, type SunSheetInput, spanDays, spanWords, sunTitle } from "./sun-document";
 import { type ClockWriting, sunRows } from "./sun-text";
-
-const words = (blocks: Block[]) =>
-  blocks
-    .flatMap((block) =>
-      block.kind === "table"
-        ? [block.head.join(" | "), ...block.rows.map((row) => row.join(" | "))]
-        : block.kind === "list"
-          ? block.items
-          : block.kind === "drawing"
-            ? []
-            : [block.text],
-    )
-    .join("\n");
 
 const london: SunSheetInput = {
   place: { lat: 51.5074, lon: -0.1278, coordinates: "51°30′27″N 0°07′40″W" },
@@ -89,54 +75,16 @@ describe("sun times on paper", () => {
     expect(december[5]).toBe("none");
     // Far enough north that the sun stays more than 6° down at midwinter.
     expect(dayCells(sunDay(78.2232, 15.6267, "2026-12-21"), "UTC", { style: "24" })[0]).toBe("none");
-    const text = words(sunDocument({ ...london, place: { lat: 69.6492, lon: 18.9553 }, date: "2026-06-21" }));
-    for (const word of ['"up all day"', '"no sunset"', '"none"', '"all night"']) expect(text).toContain(word);
   });
 
-  it("names the place, its position, the days and the clock, and has a line for every day in order", () => {
-    const blocks = sunDocument(london);
-    const text = words(blocks);
-    expect(blocks[0]).toEqual({ kind: "title", text: "Sun times: 51°30'27\"N 0°07'40\"W" });
-    expect(text).toContain(
-      "At 51°30'27\"N 0°07'40\"W (51.50740, -0.12780), Maidenhead locator IO91WM. 14 days, 16 November 2026 to 29 November 2026.",
-    );
-    expect(text).toContain(
-      "Times are on the clock of the device that made this sheet: time zone Europe/London, UTC+0, on the 24-hour clock.",
-    );
-    const rows = blocks.flatMap((block) => (block.kind === "table" ? block.rows : []));
-    expect(rows.map((row) => row[0])).toEqual(
-      spanDays("2026-11-16", "fortnight").map((date) =>
-        new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(
-          new Date(`${date}T00:00:00Z`),
-        ),
-      ),
-    );
-    expect(rows[0]![0]).toBe("Mon 16 Nov");
-    // The screen's own words about what the times assume.
-    expect(text).toContain(
-      "For a flat horizon at sea level, to about a minute; hills make sunrise later and sunset earlier. In the far north and south it can be several minutes out.",
-    );
-    expect(text).toContain("0.833°");
-    expect(text).toContain("Made in Outpost on 16 November 2026.");
+  it("names the sheet by its place, or its position, and its span", () => {
     expect(sunTitle(london)).toBe("Sun times, 51°30'27\"N 0°07'40\"W, 14 days from 16 Nov 2026");
     expect(sunTitle({ ...london, place: { ...london.place, name: "Helvellyn" }, span: "month" })).toBe(
       "Sun times, Helvellyn, November 2026",
     );
   });
 
-  it("says where the clock changes, writes UTC as UTC, and warns when the place keeps another zone's time", () => {
-    const march = words(sunDocument({ ...london, date: "2026-03-10", span: "month" }));
-    expect(march).toContain("time zone Europe/London, UTC+0, then UTC+1 from 29 Mar 2026, on the 24-hour clock.");
-    const utc = words(sunDocument({ ...london, utc: true, style: "12" }));
-    expect(utc).toContain("Times are in UTC, on the 24-hour clock.");
-    expect(utc).not.toMatch(/\d (am|pm)\b/);
-    const twelve = words(sunDocument({ ...london, style: "12" }));
-    expect(twelve).toMatch(/\| \d{1,2}:\d\d am \|/);
-    const far = words(sunDocument({ ...london, place: { lat: -41.2865, lon: 174.7762 } }));
-    expect(far).toContain("By the sun, this place runs about 12 hours ahead of that time zone");
-  });
-
-  it("covers two weeks, the month or the year, a table to each month, on a page or a few", () => {
+  it("covers two weeks, the month or the year", () => {
     expect(spanDays("2026-11-16", "fortnight")).toHaveLength(14);
     expect(spanDays("2026-11-16", "month")[0]).toBe("2026-11-01");
     expect(spanDays("2026-11-16", "month")).toHaveLength(30);
@@ -144,14 +92,5 @@ describe("sun times on paper", () => {
     expect(spanDays("2026-11-16", "year")).toHaveLength(365);
     expect(spanDays("2028-11-16", "year")).toHaveLength(366);
     expect(spanWords("2026-11-16", "year")).toBe("2026");
-    expect(sunSheets(london)).toHaveLength(1);
-    expect(sunSheets({ ...london, span: "month" })).toHaveLength(1);
-    const year = sunSheets({ ...london, span: "year" }, "letter");
-    expect(year.length).toBeGreaterThan(3);
-    expect(year.length).toBeLessThanOrEqual(8);
-    const headings = (input: SunSheetInput) =>
-      sunDocument(input).flatMap((block) => (block.kind === "heading" && /\d{4}$/.test(block.text) ? [block.text] : []));
-    expect(headings({ ...london, span: "year" })).toEqual(["2026"]);
-    expect(headings({ ...london, date: "2026-11-25" })).toEqual(["November 2026", "December 2026"]);
   });
 });

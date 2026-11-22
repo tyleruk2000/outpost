@@ -5,17 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeApi, renderScreen } from "../manage/test-support";
 import QrPage from "./qr-page";
 
-const lettering = vi.hoisted(() => ({ calls: 0 }));
-vi.mock("@/features/maps/print/lettering", async (original) => {
-  const real = await original<typeof import("@/features/maps/print/lettering")>();
-  return {
-    ...real,
-    writeLettered: (...args: Parameters<typeof real.writeLettered>) => {
-      lettering.calls += 1;
-      return real.writeLettered(...args);
-    },
-  };
-});
 const kit = vi.hoisted(() => ({ calls: 0 }));
 vi.mock("@/features/print-kit/render", async (original) => {
   const real = await original<typeof import("@/features/print-kit/render")>();
@@ -29,7 +18,6 @@ vi.mock("@/features/print-kit/render", async (original) => {
 });
 
 beforeEach(() => {
-  lettering.calls = 0;
   kit.calls = 0;
   URL.createObjectURL = vi.fn(() => "blob:qr");
   URL.revokeObjectURL = vi.fn();
@@ -48,12 +36,11 @@ describe("the QR sheet as a PDF", () => {
     await screen.findByTestId("qr-code");
     const add = await screen.findByRole("button", { name: /Add to library/ });
     await waitFor(() => expect(add).toBeEnabled());
-    // Laid out with the print kit, once: its words are all in the kit's typeface.
+    // Laid out with the print kit, once.
     expect(kit.calls).toBe(1);
-    expect(lettering.calls).toBe(0);
   }, 20_000);
 
-  it("is made the old way, once, when its words hold letters the kit's typeface lacks", async () => {
+  it("is made with the print kit, once, when its words are in another script", async () => {
     fakeApi({});
     const user = userEvent.setup();
     renderScreen(<QrPage />, "/tools/qr");
@@ -61,7 +48,6 @@ describe("the QR sheet as a PDF", () => {
     await screen.findByTestId("qr-code");
     const add = await screen.findByRole("button", { name: /Add to library/ });
     await waitFor(() => expect(add).toBeEnabled());
-    expect(lettering.calls).toBe(1);
-    expect(kit.calls).toBe(0);
+    expect(kit.calls).toBe(1);
   }, 20_000);
 });

@@ -24,7 +24,6 @@ import {
 import { appLocale } from "@/lib/region";
 import { comparisonDocument, comparisonTitle } from "../comparison-document";
 import { NO_FIGURE, NOT_MODELLED, type PredictionPaper } from "../prediction-document";
-import { kitWritable, writableBlocks } from "./glyphs";
 import { groupsOf } from "./prediction-print";
 import { darkSpans, heatGrid, heatKey, kept, shareLevel } from "./radio-parts";
 
@@ -44,7 +43,7 @@ const isNumber = (value: unknown): value is number => typeof value === "number" 
 
 export function comparisonPrint(result: PredictionResult, comparison: CompareResult, paper: PredictionPaper = "a4"): TDocumentDefinitions {
   const measure = measureOf(paper);
-  const groups = groupsOf(writableBlocks(comparisonDocument(result, comparison)));
+  const groups = groupsOf(comparisonDocument(result, comparison));
   const opening = groups.get("") ?? [];
   const title = opening[0]?.kind === "title" ? opening[0].text.replace(/^HF comparison: /, "") : "";
   const content: Content[] = [
@@ -70,7 +69,7 @@ export function comparisonPrint(result: PredictionResult, comparison: CompareRes
   const byRatio = comparison.mode.requiredSnrDbHz === null;
   const lines: ChartLine[] = comparison.series.map((series, index) => ({
     kind: "line",
-    name: kitWritable(series.label),
+    name: series.label,
     values: xs.map((_, hour) => {
       if (series.notModelled) return null;
       const value = (byRatio ? series.snrDbHz : series.reliability)?.[hour];
@@ -152,7 +151,7 @@ export function comparisonPrint(result: PredictionResult, comparison: CompareRes
     paper,
     title: comparisonTitle(result, comparison),
     made: new Date(result.computedAt),
-    footerName: `HF comparison · ${kitWritable(result.request.tx.name)} to ${kitWritable(result.request.rx.name)}`,
+    footerName: `HF comparison · ${result.request.tx.name} to ${result.request.rx.name}`,
     footerRight: `VOACAP medians about ${monthYear.format(new Date(`${result.request.date}T00:00:00Z`))}`,
     parts: [{ kind: "section", running: `1 · ${title}`, content }],
   });

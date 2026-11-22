@@ -28,7 +28,6 @@ import {
 import { appLocale } from "@/lib/region";
 import type { Block } from "../plans/document";
 import { bestHourOf, NO_FIGURE, NOT_MODELLED, type PredictionPaper, predictionDocument, predictionTitle } from "../prediction-document";
-import { kitWritable, writableBlocks } from "./glyphs";
 import { type LandShapes, pathSection } from "./radio-diagrams";
 import {
   bandsUnder,
@@ -73,14 +72,9 @@ export function predictionPrint(
   options: PredictionPrintOptions = {},
 ): TDocumentDefinitions {
   const measure = measureOf(paper);
-  const blocks = writableBlocks(predictionDocument(result));
+  const blocks = predictionDocument(result);
   const groups = groupsOf(blocks);
-  const { path } = result;
-  const request = {
-    ...result.request,
-    tx: { ...result.request.tx, name: kitWritable(result.request.tx.name) },
-    rx: { ...result.request.rx, name: kitWritable(result.request.rx.name) },
-  };
+  const { request, path } = result;
   const best = bestHourOf(result);
   const band = bandOf(request.frequencyMhz);
   const frequency = band ? band.label : `${request.frequencyMhz} MHz`;

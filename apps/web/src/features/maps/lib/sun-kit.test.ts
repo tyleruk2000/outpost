@@ -5,7 +5,7 @@ import { contentText, renderPdf } from "@/features/print-kit";
 import { writeSample } from "@/features/print-kit/samples";
 import { sunDay } from "./sun";
 import { dayCells, type SunSheetInput } from "./sun-document";
-import { kitCanWrite, lightChart, sunKitDocument } from "./sun-kit";
+import { lightChart, sunKitDocument } from "./sun-kit";
 
 const observatory: SunSheetInput = {
   place: { name: "Royal Observatory", lat: 51.4769, lon: -0.0005, coordinates: "51°28′37″N 0°00′02″W" },
@@ -45,13 +45,29 @@ describe("sun times sheet on the print kit", () => {
     expect(lightChart({ ...observatory, style: "12" }, 500)).toContain(">6:00 am<");
   });
 
-  it("knows which names the typeface can write", () => {
-    expect(kitCanWrite("Tromsø")).toBe(true);
-    expect(kitCanWrite("Łódź")).toBe(true);
-    expect(kitCanWrite(undefined)).toBe(true);
-    expect(kitCanWrite("Αθήνα")).toBe(false);
-    expect(kitCanWrite("東京")).toBe(false);
+  it("says where the clock changes, writes UTC as UTC, warns when the place keeps another zone's time, and explains the words", () => {
+    const words = (input: Partial<SunSheetInput>) => contentText(sunKitDocument({ ...observatory, ...input }, "a4").content);
+    expect(words({ date: "2026-03-10" })).toContain("time zone Europe/London, UTC+0, then UTC+1 from 29 Mar 2026, on the 24-hour clock.");
+    const utc = words({ utc: true, style: "12" });
+    expect(utc).toContain("Times are in UTC, on the 24-hour clock.");
+    expect(utc).not.toMatch(/\d (am|pm)\b/);
+    expect(words({ place: { lat: -41.2865, lon: 174.7762 } })).toContain(
+      "By the sun, this place runs about 12 hours ahead of that time zone",
+    );
+    expect(words({})).toContain("0.833°");
   });
+
+  it("prints a place named in Greek, Cyrillic or Chinese as words a reader finds", async () => {
+    for (const [name, sample] of [
+      ["Αθήνα", "sun-names-after"],
+      ["Москва", null],
+      ["北京", null],
+    ] as const) {
+      const printed = await renderPdf(sunKitDocument({ ...observatory, span: "fortnight", place: { ...observatory.place, name } }, "a4"));
+      if (sample) writeSample(sample, printed.bytes);
+      expect((await pdfText(printed.bytes)).replace(/\s/g, "")).toContain(name);
+    }
+  }, 60_000);
 
   it("is a PDF whose words can be found, the same each time it is made", async () => {
     for (const span of ["month", "year", "fortnight"] as const) {

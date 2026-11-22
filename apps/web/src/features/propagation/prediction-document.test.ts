@@ -6,15 +6,7 @@ import { HF_BANDS, type PredictionCell, type PredictionResult } from "@outpost/s
 import { describe, expect, it } from "vitest";
 import { contentText, renderPdf } from "@/features/print-kit";
 import type { Block } from "./plans/document";
-import {
-  bestHourOf,
-  NO_FIGURE,
-  NOT_MODELLED,
-  predictionDocument,
-  predictionMarkdown,
-  predictionTitle,
-  predictionUnwritable,
-} from "./prediction-document";
+import { bestHourOf, NO_FIGURE, NOT_MODELLED, predictionDocument, predictionMarkdown, predictionTitle } from "./prediction-document";
 import { noPath, prediction, wordsOf } from "./prediction-fixture";
 import { predictionPrint } from "./print/prediction-print";
 import { readPdf } from "./print/read-pdf";
@@ -295,14 +287,12 @@ describe("the prediction as a PDF", () => {
     expect((await make(prediction({ computedAt: Date.UTC(2026, 10, 17) }))).equals(first)).toBe(false);
   });
 
-  it("says which characters the PDF's typeface cannot write, and prints them as ?", () => {
+  it("prints a place in another script in its own letters, in the drawings too", async () => {
     const result = prediction();
-    // Latin Extended-A is in the typeface; Cyrillic is not.
-    result.request.rx.name = "Łódź";
-    expect(predictionUnwritable(result)).toEqual([]);
     result.request.rx.name = "Москва";
-    expect(predictionUnwritable(result).sort()).toEqual(["М", "а", "в", "к", "о", "с"].sort());
-    expect(contentText(predictionPrint(result).content)).toContain("London to ??????");
-    expect(predictionUnwritable(prediction())).toEqual([]);
-  });
+    const { text } = await readPdf((await renderPdf(predictionPrint(result, "a4", { land: null }))).bytes);
+    expect(text).toContain("London to Москва");
+    // The path drawn at its best hour names both ends.
+    expect(text.split("Москва").length).toBeGreaterThan(3);
+  }, 60_000);
 });

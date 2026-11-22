@@ -8,7 +8,7 @@
  */
 import type { CompareResult, PredictionResult } from "@outpost/shared";
 import { FileDown } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/misc";
@@ -21,7 +21,7 @@ import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
 import { plural } from "@/lib/utils";
 import { comparisonMarkdown, comparisonTitle } from "./comparison-document";
 import { saveFile } from "./plans/document";
-import { type PredictionPaper, predictionMarkdown, predictionTitle, predictionUnwritable } from "./prediction-document";
+import { type PredictionPaper, predictionMarkdown, predictionTitle } from "./prediction-document";
 import { comparisonPrint } from "./print/comparison-print";
 import { predictionPrint } from "./print/prediction-print";
 import { useLand } from "./print/use-land";
@@ -77,7 +77,6 @@ export function PredictionExport({
     kind: "HF prediction",
     from: { what: savedName ? `the saved HF prediction “${savedName}”` : "the HF propagation planner", path: PLANNER },
   });
-  const lost = useMemo(() => predictionUnwritable(result), [result]);
 
   return (
     <section aria-label="This prediction as a PDF" className="mb-6 grid gap-3 border-y border-border py-4" data-testid="prediction-export">
@@ -93,27 +92,20 @@ export function PredictionExport({
       {made.status === "failed" ? (
         <Failed message={made.error} />
       ) : (
-        <>
-          <PdfActions pdf={kitPdfOf(made)}>
-            <Button
-              onClick={() =>
-                saveFile(
-                  pdfFileName(predictionTitle(result)).replace(/\.pdf$/, ".md"),
-                  "text/markdown;charset=utf-8",
-                  predictionMarkdown(result),
-                )
-              }
-            >
-              <FileDown aria-hidden />
-              Export as Markdown
-            </Button>
-          </PdfActions>
-          {lost.length > 0 ? (
-            <p className="text-small text-ink-muted">
-              The PDF’s typeface cannot write {lost.slice(0, 8).join(" ")}; they are printed as “?”. The Markdown export keeps them.
-            </p>
-          ) : null}
-        </>
+        <PdfActions pdf={kitPdfOf(made)}>
+          <Button
+            onClick={() =>
+              saveFile(
+                pdfFileName(predictionTitle(result)).replace(/\.pdf$/, ".md"),
+                "text/markdown;charset=utf-8",
+                predictionMarkdown(result),
+              )
+            }
+          >
+            <FileDown aria-hidden />
+            Export as Markdown
+          </Button>
+        </PdfActions>
       )}
       <PaperChoice paper={paper} onChange={setPaper} />
     </section>

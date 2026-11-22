@@ -6,8 +6,8 @@
  * Phone numbers and callsigns are large, bold, shaded and never broken: one too long for
  * its column is set smaller instead.
  *
- * A sheet whose words hold letters the kit's typeface lacks is made the old way instead
- * (emergency-sheet.tsx, kit-letters.ts). Pure: contacts in, a document out.
+ * Names in other scripts are set in the kit's fallback typefaces (print-kit/fallback.ts).
+ * Pure: contacts in, a document out.
  */
 import type { ContactDto } from "@outpost/shared";
 import type { Content, TDocumentDefinitions } from "pdfmake/interfaces";
@@ -15,13 +15,6 @@ import { PRINT_COLOURS as C, callout, measureOf, para, printable, printDocument 
 import type { ClockStyle } from "@/lib/clock";
 import { plural } from "@/lib/utils";
 import { type Entry, entryOf, madeWords, measure, type SheetPaper } from "./emergency-document";
-
-/** Every word the sheet prints for these contacts, for the check on letters. */
-export const emergencyTexts = (contacts: ContactDto[]): string[] =>
-  contacts.flatMap((contact) => {
-    const entry = entryOf(contact);
-    return [entry.name, ...entry.lines, ...entry.rows.flatMap((row) => [row.label, row.lead ?? "", row.value, row.quiet ?? ""])];
-  });
 
 const LABEL = 92;
 const NUMBER = 14;

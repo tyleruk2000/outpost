@@ -35,16 +35,16 @@ import { ContactPicker } from "@/features/emergency-plans/people-section";
 import { PdfActions } from "@/features/library/made/pdf-actions";
 import { useMesh } from "@/features/mesh/data";
 import { prepareScreens } from "@/features/prepare/screens";
-import { toSheets } from "@/features/propagation/plans/document";
+import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
 import { api, errorMessage } from "@/lib/api";
 import { appLocale } from "@/lib/region";
 import { useDebounced } from "@/lib/use-debounced";
 import { localId } from "@/lib/utils";
-import { CHECK_IN_PATH, channelKey, commsBlocks, contactLines, stepText, TRANSMIT_KINDS } from "./comms-words";
+import { CHECK_IN_PATH, channelKey, contactLines, stepText, TRANSMIT_KINDS } from "./comms-words";
 import { useComms, useSaveComms } from "./data";
+import { commsDocument } from "./kit-papers";
 import { libraryQuestion, PaperPreview } from "./paper-pdf";
 import { SAVE_BAR_ROOM, SaveBar } from "./save-bar";
-import { pdfOf, usePaperPdf } from "./use-paper-pdf";
 
 const NONE = "none";
 const shortDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "short", year: "numeric" });
@@ -454,20 +454,20 @@ export default function CommsPage() {
     const others = saved.plan.people.filter((person) => !members.some((member) => member.id === person.memberId));
     return [...listed, ...others];
   }, [saved, members]);
-  const pages = useMemo(() => {
-    if (!saved || saved.plan.updatedAt === null) return null;
-    const footer = "Keeping in touch · our household's own plan · Outpost";
-    const of = (person: (typeof people)[number] | null) =>
-      toSheets(commsBlocks(saved.plan, saved.resolved, person, ENTRIES, { checkIn }), footer);
-    return people.length > 0 ? people.flatMap(of) : of(null);
-  }, [saved, people, checkIn]);
-  const from = useMemo(() => ({ what: "the household's communication plan", path: "/prepare/keeping-in-touch" }), []);
   const created = useMemo(() => new Date(saved?.plan.updatedAt ?? 0), [saved?.plan.updatedAt]);
-  const printed = usePaperPdf(pages, {
+  // Nothing to print until the plan is saved; dated by its saving, so the same plan made twice is the same file.
+  const make = useMemo(
+    () =>
+      saved && saved.plan.updatedAt !== null
+        ? () => commsDocument({ plan: saved.plan, resolved: saved.resolved, people, entries: ENTRIES, checkIn, made: created })
+        : null,
+    [saved, people, checkIn, created],
+  );
+  const from = useMemo(() => ({ what: "the household's communication plan", path: "/prepare/keeping-in-touch" }), []);
+  const printed = useKitPdf(make, {
     title: `Keeping in touch, ${shortDate.format(created)}`,
     kind: "Communication plan",
     from,
-    created,
   });
 
   return (
@@ -615,9 +615,9 @@ export default function CommsPage() {
           ) : null}
 
           <Section title="Print" description="As saved, a page for each person. A printed copy does not change when the plan does.">
-            {pages ? (
+            {make ? (
               <div className="grid gap-4">
-                <PdfActions pdf={pdfOf(printed)} lead="save" confirm={libraryQuestion(false)} />
+                <PdfActions pdf={kitPdfOf(printed)} lead="save" confirm={libraryQuestion(false)} />
                 <PaperPreview made={printed} />
               </div>
             ) : (

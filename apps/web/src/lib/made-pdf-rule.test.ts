@@ -113,7 +113,6 @@ describe("whatever Outpost prints or makes a PDF of", () => {
   it("is found by this guard: the places known to print or make a PDF are among those it checks", () => {
     for (const known of [
       "features/contacts/emergency-sheet.tsx",
-      "features/maps/lib/sun-document.ts",
       "features/maps/print/export.ts",
       "features/maps/print/print-dialog.tsx",
       "features/encryption/print-view.tsx",

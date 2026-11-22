@@ -2,10 +2,9 @@
 
 The household book is laid out with the print kit, `apps/web/src/features/print-kit/`:
 pdfmake (MIT) in its browser build, Atkinson Hyperlegible Next (OFL) in four styles, and a
-small set of components. pdfmake and the fonts load only when a PDF is made. So are the
-other papers, except printed map pages, the household papers, and papers holding a name
-the typeface cannot set, which keep the hand-written writer in
-`features/maps/print/pdf.ts`.
+small set of components. pdfmake and the fonts load only when a PDF is made. So is every
+other paper Outpost makes, except the printed map page, which keeps the hand-written
+writer in `features/maps/print/pdf.ts` to place its picture at exact scale.
 
 ## Making a document
 
@@ -97,15 +96,11 @@ real text in the PDF. Callout symbols are shapes, not letters, so a search finds
   by `OUTPOST_PRINT_SAMPLES`, to look at.
 - Radio papers keep their drawings in `features/propagation/print/`: the ionosphere's
   regions, sky wave and skip zone, near-vertical sky wave, a path in section, and day and
-  night on the world (`greyLineSketch`, over `public/world/land.json`). Their letters
-  outside Latin Extended-A still print as "?" (`print/glyphs.ts`) and the screen names them,
-  until they move to the kit's fallback fonts.
-- A paper that may hold a person's or a place's name in another script checks its words
-  with `kitCanSetAll` (`contacts/kit-letters.ts`, built from the typeface's own character
-  lists) and, when a letter is missing, falls back to the lettered writer
-  (`maps/print/lettering.ts`); the emergency cards, the contacts sheet, the QR sheet and
-  the sun times sheet do this. Both checks predate the fallback fonts above and are to be
-  replaced by them.
+  night on the world (`greyLineSketch`, over `public/world/land.json`).
+- Names in any script need nothing from a paper: `renderPdf` sets each word the typeface
+  lacks in its fallback font, in text and in a drawing's `<text>` alike. In a drawing the
+  font changes only at a space (pdfmake's SVG drawing leaves a gap where it changes next to
+  a letter), so a name with its brackets is set whole in the fallback.
 - A cut-out at exact size (the sundial and nocturnal templates): put each drawn page down
   whole with `{ svg, width: page.width, height: page.height, absolutePosition: { x: 0, y: 0 } }`,
   so one point of the drawing is one point of paper (see `solar-clock/templates-kit.ts`).

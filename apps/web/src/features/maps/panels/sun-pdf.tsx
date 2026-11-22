@@ -6,27 +6,24 @@
  * Folded away to one button until asked for, so that on a phone it takes one line
  * under the times. Once open, the file is made on this device whenever the place, the
  * day, the clock or the span changes, laid out with the print kit with a chart of the
- * light through the days. A place named in letters the kit's typeface lacks (Greek,
- * Cyrillic, CJK) keeps the old writer, which draws the name as a picture.
+ * light through the days. A place named in another script is set in the kit's fallback
+ * typefaces.
  */
 import { FileText } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/misc";
 import { AID_PAPER_KEY, type AidPaper, isAidPaper, likelyPaper } from "@/features/encryption/paper-aids";
-import { type MadePdf, madePdf } from "@/features/library/made/made-pdf";
 import { PdfActions } from "@/features/library/made/pdf-actions";
-import { renderPdf } from "@/features/print-kit/render";
-import { errorMessage } from "@/lib/api";
+import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
 import type { ClockStyle } from "@/lib/clock";
 import { plural } from "@/lib/utils";
 import type { IsoDate } from "../lib/sun";
-import { isSunSpan, type SunSheetPlace, type SunSpan, spanWords, sunSheets, sunTitle } from "../lib/sun-document";
-import { kitCanWrite, sunKitDocument } from "../lib/sun-kit";
+import { isSunSpan, type SunSheetInput, type SunSheetPlace, type SunSpan, spanWords, sunTitle } from "../lib/sun-document";
+import { sunKitDocument } from "../lib/sun-kit";
 import { dateIn } from "../lib/sun-text";
 import { readStored, writeStored } from "../lib/view";
-import { writeLettered } from "../print/lettering";
 import { PAPERS } from "../print/paper";
 
 const SPAN_KEY = "outpost.maps.sun.span";
@@ -34,8 +31,6 @@ const SPAN_LABEL: Record<SunSpan, string> = { fortnight: "2 weeks", month: "Mont
 
 /** Where the sheet leads back to: the same ground on the map. */
 const mapPath = (place: Pick<SunSheetPlace, "lat" | "lon">) => `/maps?lat=${place.lat.toFixed(4)}&lon=${place.lon.toFixed(4)}&z=12.0`;
-
-type Made = { pdf: MadePdf; pages: number } | { error: string };
 
 export function SunPdf({
   place,
@@ -83,36 +78,19 @@ function SunPdfOpen({
 }) {
   const [span, setSpan] = useState<SunSpan>(() => readStored(SPAN_KEY, isSunSpan, "fortnight"));
   const [paper, setPaper] = useState<AidPaper>(() => readStored(AID_PAPER_KEY, isAidPaper, likelyPaper(navigator.language)));
-  const [made, setMade] = useState<Made | null>(null);
   const { name, lat, lon, coordinates } = place;
-
-  useEffect(() => {
-    let live = true;
-    const madeOn = dateIn(zone, Date.now());
-    const input = { place: { name, lat, lon, coordinates }, date, span, zone, utc, style, made: madeOn };
-    const title = sunTitle(input);
-    // Dated by the day it is made, so the same sheet made twice in a day is the same file, and the library knows it has it.
-    const written = kitCanWrite(name)
-      ? renderPdf(sunKitDocument(input, paper))
-      : writeLettered(sunSheets(input, paper), title, new Date(`${madeOn}T00:00:00Z`));
-    written
-      .then(
-        (written): Made => ({
-          pdf: madePdf(written.bytes, title, "Sun times", {
-            what: name ? `the saved place “${name}” on the map` : "the map",
-            path: mapPath({ lat, lon }),
-          }),
-          pages: written.pages,
-        }),
-      )
-      .catch((error: unknown): Made => ({ error: errorMessage(error) }))
-      .then((result) => {
-        if (live) setMade(result);
-      });
-    return () => {
-      live = false;
-    };
-  }, [name, lat, lon, coordinates, date, span, zone, utc, style, paper]);
+  // Dated by the day it is made, so the same sheet made twice in a day is the same file, and the library knows it has it.
+  const madeOn = dateIn(zone, Date.now());
+  const input = useMemo<SunSheetInput>(
+    () => ({ place: { name, lat, lon, coordinates }, date, span, zone, utc, style, made: madeOn }),
+    [name, lat, lon, coordinates, date, span, zone, utc, style, madeOn],
+  );
+  const make = useCallback(() => sunKitDocument(input, paper), [input, paper]);
+  const made = useKitPdf(make, {
+    title: sunTitle(input),
+    kind: "Sun times",
+    from: { what: name ? `the saved place “${name}” on the map` : "the map", path: mapPath({ lat, lon }) },
+  });
 
   return (
     <section aria-label="Sun times as a PDF" className="grid gap-3 border-t border-border pt-3" data-testid="sun-pdf">
@@ -120,7 +98,7 @@ function SunPdfOpen({
         <h4 className="text-small font-medium text-ink">Sun times on paper</h4>
         <p className="mt-0.5 text-small text-ink-muted">
           {spanWords(date, span)}, a day to a line, on the clock shown above
-          {made && "pdf" in made ? `: ${plural(made.pages, "page")} of ${PAPERS[paper].label}` : ""}. Made on this device.
+          {made.status === "made" ? `: ${plural(made.pages, "page")} of ${PAPERS[paper].label}` : ""}. Made on this device.
         </p>
       </div>
       <Segmented<SunSpan>
@@ -133,12 +111,12 @@ function SunPdfOpen({
         options={(["fortnight", "month", "year"] as const).map((id) => ({ value: id, label: SPAN_LABEL[id] }))}
         className="justify-self-start"
       />
-      {made && "error" in made ? (
+      {made.status === "failed" ? (
         <Notice tone="danger" title="The PDF could not be made">
           {made.error}
         </Notice>
       ) : (
-        <PdfActions pdf={made && "pdf" in made ? made.pdf : null} />
+        <PdfActions pdf={kitPdfOf(made)} />
       )}
       <Segmented<AidPaper>
         label="Paper for the PDF"

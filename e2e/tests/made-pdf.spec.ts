@@ -12,6 +12,7 @@ import fs from "node:fs";
 import type { Page } from "@playwright/test";
 import { api, expect, test, watchForErrors } from "./fixtures";
 import { keep } from "./map-fixture";
+import { pdfWords } from "./pdf";
 
 /** Waits until the server has read a document's text, and returns the document and that text. */
 export async function readByLibrary(page: Page, documentId: string) {
@@ -45,11 +46,12 @@ test.describe("PDFs made in Outpost, in the library", () => {
     await expect(page.getByText(/Monthly median for November 2026 at smoothed sunspot number 83/)).toBeVisible();
 
     const block = page.getByRole("region", { name: "This prediction as a PDF" });
-    await expect(block).toContainText(/2 pages of (A4|US Letter), made on this device/);
+    await expect(block).toContainText(/\d+ pages of (A4|US Letter), made on this device/, { timeout: 30_000 });
     await block.getByRole("radio", { name: "A4" }).click();
-    await expect(block).toContainText("2 pages of A4");
+    await expect(block).toContainText(/\d+ pages of A4/, { timeout: 30_000 });
+    const pages = Number(/(\d+) pages of A4/.exec((await block.textContent()) ?? "")![1]);
 
-    // Saved to the device: a file of two A4 pages, with its tables in Courier and nothing in it but text.
+    // Saved to the device: A4 pages laid out with the print kit, its charts and drawings drawn as lines, not pictures.
     const downloading = page.waitForEvent("download");
     await block.getByRole("link", { name: "Save as PDF" }).click();
     const download = await downloading;
@@ -58,11 +60,13 @@ test.describe("PDFs made in Outpost, in the library", () => {
     await keep(testInfo, "prediction.pdf", bytes, "application/pdf");
     const file = bytes.toString("latin1");
     expect(file.startsWith("%PDF-1.")).toBe(true);
-    expect((file.match(/\/Type \/Page\b/g) ?? []).length).toBe(2);
-    expect(file).toContain("/MediaBox [0 0 595.28 841.89]");
-    expect(file).toContain("(HF prediction: London to Birmingham, 7.10 MHz \\(40 m\\))");
-    expect(file).toContain("/BaseFont /Courier");
+    expect((file.match(/\/Type \/Page\b/g) ?? []).length).toBe(pages);
+    expect(file).toMatch(/\/MediaBox \[0 0 595\.2\d* 841\.89\d*\]/);
+    expect(file).toMatch(/\/FontName \/[A-Z]{6}\+AtkinsonHyperlegibleNext/);
     expect(file).not.toContain("/Subtype /Image");
+    const words = await pdfWords(bytes);
+    for (const shown of ["London to Birmingham, 7.10 MHz (40 m)", "Usable frequencies through the day", "How HF gets there", "skip zone"])
+      expect(words, shown).toContain(shown);
 
     // Added to the library: the same bytes, by the library's own upload.
     await block.getByRole("button", { name: "Add to library" }).click();
@@ -79,7 +83,7 @@ test.describe("PDFs made in Outpost, in the library", () => {
       tags: ["HF prediction"],
       source: "Made in Outpost from the HF propagation planner: /radio/propagation",
       type: "pdf",
-      pageCount: 2,
+      pageCount: pages,
       sizeBytes: bytes.length,
       scanPages: 0,
     });
@@ -87,7 +91,7 @@ test.describe("PDFs made in Outpost, in the library", () => {
     expect(stored.equals(bytes)).toBe(true);
 
     // What the server read out of it, with neither typeface in the file: the prose, and the tables row by row.
-    expect(prose).toContain("HF prediction: London to Birmingham, 7.10 MHz (40 m)");
+    expect(prose).toContain("London to Birmingham, 7.10 MHz (40 m)");
     expect(prose).toContain("Path: 162 km, bearing 313° out and 131° back.");
     expect(prose).toContain("Transmitter: London, 51.51, -0.13 (IO91WM). 5 W.");
     expect(prose).toMatch(/Transmitting antenna: Horizontal half-wave dipole \(VOACAP type 23\), 5 m above average ground/);
@@ -106,12 +110,12 @@ test.describe("PDFs made in Outpost, in the library", () => {
     await page.goto(`/search?q=${encodeURIComponent('"bearing 313° out and 131° back"')}`);
     const result = page.getByRole("link", { name: /HF prediction, London to Birmingham, 40 m, for 16 Nov 2026/ }).first();
     await expect(result).toBeVisible();
-    await expect(page.getByText(/Page 1/).first()).toBeVisible();
+    await expect(page.getByText(/Page \d/).first()).toBeVisible();
     await result.click();
     await expect(page).toHaveURL(new RegExp(`/library/documents/${documentId}`));
-    // Opened in Outpost's own viewer, both pages of it.
+    // Opened in Outpost's own viewer, every page of it.
     await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator("label", { hasText: "of 2" }).locator("input")).toBeVisible();
+    await expect(page.locator("label", { hasText: `of ${pages}` }).locator("input")).toBeVisible();
     await keep(testInfo, "prediction in the reader.png", await page.screenshot(), "image/png");
     // The document says Outpost made it, and leads back to the planner.
     await page.getByRole("link", { name: "Open the HF propagation planner" }).click();
@@ -148,7 +152,7 @@ test.describe("PDFs made in Outpost, in the library", () => {
     added.push(documentId);
     const { document, text, prose } = await readByLibrary(page, documentId);
     expect(document).toMatchObject({ category: "Made in Outpost", tags: ["HF comparison"], type: "pdf" });
-    expect(prose).toContain("HF comparison: London to Birmingham, 7.10 MHz (40 m), months of the year");
+    expect(prose).toContain("London to Birmingham, 7.10 MHz (40 m), months of the year");
     expect(prose).toContain(
       "The same path in each month, all at the sunspot number of the month asked about, so that only the season changes.",
     );
@@ -182,7 +186,7 @@ test.describe("PDFs made in Outpost, in the library", () => {
     const file = bytes.toString("latin1");
     // The map is in the file as a picture, and the rest of the page as text.
     expect((file.match(/\/Subtype \/Image/g) ?? []).length).toBeGreaterThanOrEqual(1);
-    expect(file).toContain("(The same grid in figures)");
+    expect(await pdfWords(bytes)).toContain("The same grid, cell by cell");
 
     await block.getByRole("button", { name: "Add to library" }).click();
     const link = block.getByTestId("pdf-status").getByRole("link", { name: /^HF coverage, London, 40 m, reliability at 12:00 UTC/ });
@@ -196,7 +200,7 @@ test.describe("PDFs made in Outpost, in the library", () => {
       source: "Made in Outpost from the HF coverage map screen: /radio/coverage",
       sizeBytes: bytes.length,
     });
-    expect(prose).toContain("HF coverage: London, 7.10 MHz (40 m)");
+    expect(prose).toContain("London, 7.10 MHz (40 m)");
     expect(prose).toMatch(/Reliability at 12:00 UTC, for \d+ \w+ \d{4}\./);
     expect(text).toMatch(/50 to 69% +\d+ cells?/);
     expect(prose).toMatch(/The grid is \d+ × \d+ cells of .* Each cell is one answer from the engine/);

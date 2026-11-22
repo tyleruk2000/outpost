@@ -3,18 +3,21 @@
  * overdue, the log as it prints, the drill's answers kept on the device, and the roll
  * call and drill screens as a person sees them.
  */
-import type { DrillLine, RollCallLine, RollCallResponse, RoutineCheck } from "@outpost/shared";
+import type { DrillLine, EventLogLine, RollCallLine, RollCallResponse, RoutineCheck } from "@outpost/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setDeviceName } from "@/features/board/data";
+import { contentText, renderPdf } from "@/features/print-kit";
+import { writeSample } from "@/features/print-kit/samples";
 import CheckInPage from "./check-in-page";
 import ChecksPage from "./checks-page";
 import DrillPage, { thisDeviceLine } from "./drill-page";
 import { answerStep, drillProgress, setDrillProgress } from "./drill-steps";
-import { logBlocks } from "./log-page";
+import { logDocument } from "./log-document";
 import { checkDueWords, everyWords, overdueLine, rollCallWords } from "./words";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -82,43 +85,59 @@ describe("what the screens say", () => {
     );
   });
 
-  it("prints the log as a table for each day", () => {
-    const blocks = logBlocks(
-      [
-        {
-          kind: "entry",
-          id: "a",
-          at: NOW - DAY,
-          author: "Ana",
-          text: "Power went off",
-          planId: null,
-          planName: null,
-          createdAt: 1,
-          updatedAt: 1,
-          edited: null,
-        },
-        {
-          kind: "tick",
-          id: "p:s",
-          at: NOW,
-          author: "",
-          text: "Done: Switch off the oven",
-          planId: "p",
-          planName: "Power cut",
-          createdAt: 1,
-          updatedAt: 1,
-          edited: null,
-        },
-      ],
-      NOW,
-    );
-    expect(blocks.filter((block) => block.kind === "heading").map((block) => (block as { text: string }).text)).toEqual([
-      "20 Nov 2026",
-      "21 Nov 2026",
-    ]);
-    const tables = blocks.filter((block) => block.kind === "table") as Array<{ rows: string[][] }>;
-    expect(tables[0]!.rows).toEqual([["15:00", "Ana", "Power went off"]]);
-    expect(tables[1]!.rows).toEqual([["15:00", "", "Done: Switch off the oven (Power cut)"]]);
+  it("prints the log as a table for each day, with check-ins and ticked steps marked, and its names found", async () => {
+    const lines: EventLogLine[] = [
+      {
+        kind: "entry",
+        id: "a",
+        at: NOW - DAY,
+        author: "Ana",
+        text: "Power went off",
+        planId: null,
+        planName: null,
+        createdAt: 1,
+        updatedAt: 1,
+        edited: null,
+      },
+      {
+        kind: "checkin",
+        id: "b",
+        at: NOW - 60_000,
+        author: "Ελένη",
+        text: "Checked in: OK",
+        planId: null,
+        planName: null,
+        createdAt: 1,
+        updatedAt: 1,
+        edited: null,
+      },
+      {
+        kind: "tick",
+        id: "p:s",
+        at: NOW,
+        author: "",
+        text: "Done: Switch off the oven",
+        planId: "p",
+        planName: "Power cut",
+        createdAt: 1,
+        updatedAt: 1,
+        edited: null,
+      },
+    ];
+    const doc = logDocument(lines, { now: NOW, made: new Date(NOW) });
+    const words = contentText(doc.content);
+    expect(words).toContain("20 Nov 2026 to 21 Nov 2026");
+    expect(words).toContain("3 lines, among them 1 check-in and 1 ticked step");
+    expect(words.indexOf("20 Nov 2026")).toBeLessThan(words.indexOf("Power went off"));
+    expect(words).toContain("Done: Switch off the oven (Power cut)");
+    expect(words).toContain("Plan step");
+    const printed = await renderPdf(doc);
+    writeSample("readiness-log-after", printed.bytes);
+    const loading = getDocument({ data: printed.bytes.slice() });
+    const page = await (await loading.promise).getPage(1);
+    const text = ((await page.getTextContent()).items as Array<{ str: string }>).map((item) => item.str).join(" ");
+    await loading.destroy();
+    for (const expected of ["Ελένη", "Power went off", "Check-in", "Plan step ticked", "15:00"]) expect(text).toContain(expected);
   });
 });
 

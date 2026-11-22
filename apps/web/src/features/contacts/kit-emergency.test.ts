@@ -4,8 +4,7 @@ import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { describe, expect, it } from "vitest";
 import { contentText, renderPdf } from "@/features/print-kit";
 import { writeSample } from "@/features/print-kit/samples";
-import { emergencyDocument, emergencyTexts } from "./kit-emergency";
-import { kitCanSet, kitCanSetAll } from "./kit-letters";
+import { emergencyDocument } from "./kit-emergency";
 
 const contact = (over: Partial<ContactDto>): ContactDto => ({
   ...emptyContactFields(),
@@ -66,14 +65,15 @@ async function pdfText(bytes: Uint8Array): Promise<{ text: string; pages: number
 }
 
 describe("the emergency sheet with the print kit", () => {
-  it("knows which names the kit's typeface can set", () => {
-    expect(kitCanSet("Zoë Łukasiewicz, Ærøskøbing, São Tomé, Şükrü, “quoted” – dashed…")).toBe(true);
-    expect(kitCanSet("Ελένη")).toBe(false);
-    expect(kitCanSet("王小明")).toBe(false);
-    expect(kitCanSet("Ĉu")).toBe(false);
-    expect(kitCanSetAll(emergencyTexts([maya, zoe, council]))).toBe(true);
-    expect(kitCanSetAll(emergencyTexts([maya, eleni]))).toBe(false);
-  });
+  it("prints names in Greek, Cyrillic and Chinese as words a reader finds", async () => {
+    const sasha = contact({ id: "c5", displayName: "Саша Иванова", phones: [{ value: "+7 495 123 45 67", label: "" }] });
+    const wang = contact({ id: "c6", displayName: "王小明", department: "北京", phones: [{ value: "+86 10 1234 5678", label: "" }] });
+    const made = await renderPdf(emergencyDocument([maya, eleni, sasha, wang], { made: MADE, style: "24", paper: "a4" }));
+    writeSample("contacts-emergency-names-after", made.bytes);
+    const read = (await pdfText(made.bytes)).text;
+    for (const word of ["Ελένη Παπαδοπούλου", "κινητό", "Саша Иванова", "王小明", "+30 21 0123 4567", "Dr. Maya Okafor"])
+      expect(read.replace(/\s/g, "")).toContain(word.replace(/\s/g, ""));
+  }, 30_000);
 
   it("has every entry's rows in order, each value exactly as kept", () => {
     const words = contentText(emergencyDocument([maya, zoe, council], { made: MADE, style: "24", paper: "a4" }).content);

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import type { Page } from "@playwright/test";
 import { api, expect, test, watchForErrors } from "./fixtures";
+import { pdfWords } from "./pdf";
 
 async function addStation(page: Page, name: string, where: string, watts: string) {
   await page.getByRole("button", { name: "Add a station" }).click();
@@ -101,10 +102,15 @@ test.describe("Communication plans", () => {
     const file = pdf.bytes.toString("latin1");
     expect(file.startsWith("%PDF-1.")).toBe(true);
     expect(file.trimEnd().endsWith("%%EOF")).toBe(true);
-    expect(file).toContain("(Communication plan: Family net)");
-    expect(file).toContain("(Home base and Remote shelter)");
-    expect(file).toContain("(How the bands were chosen)");
-    expect(file).toContain("/BaseFont /Courier");
+    const said = await pdfWords(pdf.bytes);
+    for (const shown of [
+      "Family net",
+      "Which band for each pair",
+      "Home base and Remote shelter",
+      "How the bands were chosen",
+      "How HF gets there",
+    ])
+      expect(said, shown).toContain(shown);
     expect((file.match(/\/Type \/Page\b/g) ?? []).length).toBeGreaterThanOrEqual(2);
 
     // The same file goes into the library, which reads its text for search and records where it came from.

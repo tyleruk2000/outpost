@@ -15,10 +15,8 @@ import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
 import { appLocale } from "@/lib/region";
 import { cn } from "@/lib/utils";
 import { usePaper } from "../prediction-export";
-import { blockLines, kitUnwritable } from "../print/glyphs";
 import { planPrint } from "../print/plan-print";
 import { useLand } from "../print/use-land";
-import { planDocument } from "./document";
 
 const shortDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
@@ -28,8 +26,6 @@ export const planTitle = (plan: CommunicationPlan): string =>
 
 export interface PlanPdf {
   made: MadePdfHandle;
-  /** Characters of the plan that the PDF's typeface cannot write; they are printed as "?". */
-  lost: string[];
   /** Why the file could not be made, when it could not. */
   problem: string | null;
 }
@@ -56,11 +52,7 @@ export function usePlanPdf(plan: CommunicationPlan | null | undefined, result: P
     },
   });
   const made = useMadePdf(kitPdfOf(kit));
-  const lost = useMemo(
-    () => (plan && result ? kitUnwritable(blockLines(planDocument(plan, result, new Date(today)))) : []),
-    [plan, result, today],
-  );
-  return { made, lost, problem: kit.status === "failed" ? kit.error : null };
+  return { made, problem: kit.status === "failed" ? kit.error : null };
 }
 
 /** Under the plan's heading: what became of the PDF, and what it could not write. */
@@ -76,11 +68,6 @@ export function PlanPdfStatus({ file, className }: { file: PlanPdf; className?: 
   return (
     <div className={cn("grid gap-2", className)}>
       <PdfStatus made={file.made} />
-      {file.lost.length > 0 ? (
-        <p className="text-small text-ink-muted">
-          The PDF’s typeface cannot write {file.lost.slice(0, 8).join(" ")}; they are printed as “?”. The Markdown export keeps them.
-        </p>
-      ) : null}
     </div>
   );
 }

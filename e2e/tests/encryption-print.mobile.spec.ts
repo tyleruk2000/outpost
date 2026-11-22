@@ -9,6 +9,7 @@
 import fs from "node:fs";
 import type { Locator, Page } from "@playwright/test";
 import { expect, test, watchForErrors } from "./fixtures";
+import { pdfPages } from "./pdf";
 
 /** The letters of each copy of each pad in a sheet on screen, by its heading. */
 async function lettersOnScreen(sheet: Locator): Promise<Record<string, string>> {
@@ -24,17 +25,15 @@ async function lettersOnScreen(sheet: Locator): Promise<Record<string, string>> 
     );
 }
 
-/** The same from a PDF file: the app's writer leaves the page's instructions as plain text, each line of lettering a string. */
-function lettersInPdf(bytes: Buffer): Record<string, string> {
+/** The same from a PDF file, read by pdf.js: under each pad's heading, every run of capital letters, in the order drawn. */
+async function lettersInPdf(bytes: Buffer): Promise<Record<string, string>> {
   const found: Record<string, string> = {};
   let heading: string | undefined;
-  for (const match of bytes.toString("latin1").matchAll(/\/(F\d) [\d.]+ Tf [^\n]*?\(((?:[^()\\]|\\.)*)\) Tj/g)) {
-    const face = match[1]!;
-    const words = match[2]!;
+  for (const words of (await pdfPages(bytes)).flatMap((page) => page.items)) {
     if (words.startsWith("One-time pad ")) {
-      heading = words;
+      heading = words.trim();
       found[heading] = "";
-    } else if (heading && face === "F3" && /^[A-Z ]+$/.test(words)) found[heading] += words.replace(/ /g, "");
+    } else if (heading && /^[A-Z ]+$/.test(words)) found[heading] += words.replace(/ /g, "");
   }
   return found;
 }
@@ -129,26 +128,26 @@ test.describe("printing paper aids from a phone", () => {
     expect(await lettersOnScreen(paper)).toEqual(made);
     await expect(view.getByText("A saved PDF is another copy of the pads")).toBeVisible();
 
-    // The PDF: A4 for a device set to British English, lettered in Courier, and letter for letter the pads on the screen.
+    // The PDF: A4 for a device set to British English, laid out with the print kit, and letter for letter the pads on the screen.
     const a4 = await savePdf(page, view);
     expect(a4.name).toBe("one-time-pads.pdf");
     const a4Text = a4.bytes.toString("latin1");
-    expect(a4Text.startsWith("%PDF-1.6\n")).toBe(true);
-    expect(a4Text).toContain("/MediaBox [0 0 595.28 841.89]");
-    expect(a4Text).toContain("/Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding");
-    expect(a4Text).not.toMatch(/\/FontFile|\/FontDescriptor/);
-    expect(a4Text).toContain("/Kids [3 0 R] /Count 1");
-    expect(lettersInPdf(a4.bytes)).toEqual(made);
-    expect(a4Text.split("(For the sender) Tj").length - 1).toBe(2);
-    expect(a4Text.split("(For the receiver) Tj").length - 1).toBe(2);
+    expect(a4Text.startsWith("%PDF-1.")).toBe(true);
+    const a4Pages = await pdfPages(a4.bytes);
+    expect(a4Pages).toHaveLength(1);
+    expect(a4Pages[0]).toMatchObject({ width: 595.28, height: 841.89 });
+    expect(await lettersInPdf(a4.bytes)).toEqual(made);
+    const said = a4Pages[0]!.items.join(" ");
+    expect(said.split("For the sender").length - 1).toBe(2);
+    expect(said.split("For the receiver").length - 1).toBe(2);
 
     // The other paper.
     await expect(view.getByTestId("pdf-summary")).toHaveText("The PDF is 1 page of A4.");
     await view.getByRole("radio", { name: "US Letter" }).tap();
     await expect(view.getByTestId("pdf-summary")).toHaveText("The PDF is 1 page of US Letter.");
     const letter = await savePdf(page, view);
-    expect(letter.bytes.toString("latin1")).toContain("/MediaBox [0 0 612 792]");
-    expect(lettersInPdf(letter.bytes)).toEqual(made);
+    expect((await pdfPages(letter.bytes))[0]).toMatchObject({ width: 612, height: 792 });
+    expect(await lettersInPdf(letter.bytes)).toEqual(made);
 
     // Print is asked of the browser once. This one does nothing, and the screen says what to do instead.
     await expect(view.getByText(/If no print dialogue opened/)).toBeHidden();
@@ -192,7 +191,7 @@ test.describe("printing paper aids from a phone", () => {
     const paper = view.getByTestId("print-paper");
     await expect(paper.locator("[data-pad]")).toHaveCount(4);
     const saved = await savePdf(page, view);
-    expect(lettersInPdf(saved.bytes)).toEqual(await lettersOnScreen(paper));
+    expect(await lettersInPdf(saved.bytes)).toEqual(await lettersOnScreen(paper));
     expect(errors).toEqual([]);
   });
 
@@ -237,14 +236,13 @@ test.describe("printing paper aids from a phone", () => {
     expect(table.x + table.width).toBeLessThanOrEqual(viewport.width);
     const saved = await savePdf(page, square);
     expect(saved.name).toBe("vigenere-square.pdf");
-    const text = saved.bytes.toString("latin1");
-    expect(text).toContain("(Vigen\\350re square) Tj");
-    expect(text).toContain("/MediaBox [0 0 595.28 841.89]");
-    expect(text).toContain("/BaseFont /Courier-Bold");
-    // The last row of the square, letter by letter: Z, then Z to Y.
-    const letters = [...text.matchAll(/\/F[34] 9 Tf [^\n]*?\(([A-Z])\) Tj/g)].map((match) => match[1]);
-    expect(letters).toHaveLength(26 + 26 * 27);
-    expect(letters.slice(-27).join("")).toBe("ZZABCDEFGHIJKLMNOPQRSTUVWXY");
+    const [first] = await pdfPages(saved.bytes);
+    expect(first).toMatchObject({ width: 595.28, height: 841.89 });
+    expect(first!.items.join(" ")).toContain("Vigenère square");
+    // Every row of the square, letter by letter, the last of them Z, then Z to Y.
+    const letters = first!.items.filter((words) => /^[A-Z]$/.test(words)).join("");
+    expect(letters).toContain("ZZABCDEFGHIJKLMNOPQRSTUVWXY");
+    expect(letters).toContain("AABCDEFGHIJKLMNOPQRSTUVWXYZ");
     expect(errors).toEqual([]);
   });
 });

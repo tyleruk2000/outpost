@@ -86,7 +86,7 @@ describe("the prediction's PDF on the planner", () => {
     expect(saved[0]!.content).toContain("# HF prediction: London to Edinburgh, 14.2 MHz (20 m)");
   });
 
-  it("says which saved prediction it was made from, and which letters the PDF cannot write", async () => {
+  it("says which saved prediction it was made from", async () => {
     const sent: FormData[] = [];
     class Upload {
       upload = {};
@@ -111,9 +111,6 @@ describe("the prediction's PDF on the planner", () => {
         <PredictionExport result={result} savedName="Evening sked" />
       </MemoryRouter>,
     );
-    expect(
-      screen.getByText(/The PDF’s typeface cannot write М о с к в а; they are printed as “\?”\. The Markdown export keeps them\./),
-    ).toBeInTheDocument();
     await screen.findByRole("link", { name: "Save as PDF" }, { timeout: 15_000 });
     fireEvent.click(screen.getByRole("button", { name: "Add to library" }));
     expect(sent[0]!.get("source")).toBe("Made in Outpost from the saved HF prediction “Evening sked”: /radio/propagation");

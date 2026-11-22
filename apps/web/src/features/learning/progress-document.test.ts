@@ -3,7 +3,7 @@ import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { describe, expect, it } from "vitest";
 import { contentText, renderPdf } from "@/features/print-kit";
 import { writeSample } from "@/features/print-kit/samples";
-import { kitCanWriteProgress, progressBar, progressKitDocument, progressTitle } from "./progress-document";
+import { progressBar, progressKitDocument, progressTitle } from "./progress-document";
 
 const NOW = new Date(2026, 10, 17, 15).getTime();
 const course = (over: Partial<LearningCourse> = {}): LearningCourse => ({
@@ -65,11 +65,21 @@ describe("learning progress on paper", () => {
     expect(contentText(progressKitDocument([COURSES[0]!], "Sam", NOW, "a4").content)).not.toContain("Robin");
   });
 
-  it("leaves a record with a name in another script to the old writer", () => {
-    expect(kitCanWriteProgress(COURSES, null)).toBe(true);
-    expect(kitCanWriteProgress([course({ learner: "Саша" })], null)).toBe(false);
-    expect(kitCanWriteProgress([course({ title: "数学" })], "Sam")).toBe(false);
-  });
+  it("prints learners and courses named in Greek, Cyrillic and Chinese as words a reader finds", async () => {
+    const others = [
+      course({ learner: "Саша" }),
+      course({ learner: "Ελένη", title: "Πρώτες βοήθειες" }),
+      course({ learner: "王小明", title: "北京", archive: "c3" }),
+    ];
+    const printed = await renderPdf(progressKitDocument(others, null, NOW, "a4"));
+    writeSample("progress-names-after", printed.bytes);
+    const pdf = await getDocument({ data: printed.bytes.slice() }).promise;
+    let text = "";
+    for (let page = 1; page <= pdf.numPages; page += 1)
+      text += (await (await pdf.getPage(page)).getTextContent()).items.map((item) => ("str" in item ? item.str : "")).join("");
+    for (const word of ["Саша", "Ελένη", "Πρώτες βοήθειες", "王小明", "北京"])
+      expect(text.replace(/\s/g, "")).toContain(word.replace(/\s/g, ""));
+  }, 60_000);
 
   it("is a PDF whose words can be found, the same when made twice", async () => {
     const printed = await renderPdf(progressKitDocument(COURSES, null, NOW, "a4"));
