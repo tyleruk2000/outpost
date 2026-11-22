@@ -6,7 +6,7 @@ import { MemoryRouter } from "react-router";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { EventsProvider } from "@/lib/events";
 import { fakeServer, installBrowserStubs, renderScreen } from "../downloads/test-support";
-import { addOutcome, planSize, whichOnes } from "./add-all";
+import { addOutcome, planSize, whichOnes, whyNotAll } from "./add-all";
 import { DocumentList } from "./document-list";
 import { LinkedFiles } from "./linked-files";
 
@@ -483,6 +483,15 @@ describe("the words for how an add turned out", () => {
     expect(whichOnes(14, 3, false)).toBe("the other 14");
     expect(whichOnes(1, 16, true)).toBe("the other one");
     expect(whichOnes(1200, 0, false)).toBe("all 1,200");
+  });
+
+  it("says why adding counts other than the documents listed", () => {
+    expect(whyNotAll(10, 10)).toBeNull();
+    expect(whyNotAll(10, 8)).toBe(
+      "Adding counts files, not documents: 8 files here are PDFs or e-books, the kinds the library keeps. Everything else is read here in the collection.",
+    );
+    expect(whyNotAll(3, 1)).toMatch(/: 1 file here is a PDF or an e-book,/);
+    expect(whyNotAll(2, 5)).toMatch(/^Adding counts files, not documents: 5 files/);
   });
 
   it("gives a size only as far as it is known", () => {

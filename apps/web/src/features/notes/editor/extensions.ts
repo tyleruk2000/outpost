@@ -21,6 +21,7 @@ import { duplicateListItem, listItemDrop, moveListItem, selectedListItem } from 
 import { PageLink } from "./page-link";
 import { PageLinkMenu } from "./page-link-menu";
 import { SlashMenu } from "./slash-menu";
+import { focusToolbar } from "./toolbar-keys";
 import { Uploads } from "./uploads";
 
 /** The model keeps `start` on a numbered list and nothing else. */
@@ -70,6 +71,8 @@ const BlockShortcuts = Extension.create({
       return block ? moveBlock(this.editor, block, direction) : false;
     };
     return {
+      // Into the bar over the selection or the table, when one is showing (toolbar-keys.ts).
+      "Alt-F10": () => focusToolbar(),
       "Alt-Shift-ArrowUp": move(-1),
       "Alt-Shift-ArrowDown": move(1),
       "Mod-Shift-d": () => {

@@ -47,6 +47,23 @@ describe("notes API", () => {
       expect((await app.api("POST", "/api/notes", { clientId: "has/a/slash/in/it" })).status).toBe(400);
     });
 
+    it("discards a page only while it holds nothing, and for good", async () => {
+      const blank = await create();
+      expect((await app.api("POST", `/api/notes/${blank.id}/discard`)).body).toEqual({ discarded: true });
+      expect((await app.api("GET", `/api/notes/${blank.id}`)).status).toBe(404);
+      expect((await app.api("GET", "/api/notes/trash")).body.notes ?? []).not.toContainEqual(expect.objectContaining({ id: blank.id }));
+
+      const titled = await create({ title: "Kept" });
+      const written = await create({ content: doc(p(text("x"))) });
+      const parent = await create();
+      await create({ parentId: parent.id });
+      for (const page of [titled, written, parent]) {
+        expect((await app.api("POST", `/api/notes/${page.id}/discard`)).body).toEqual({ discarded: false });
+        expect((await get(page.id)).trashedAt).toBeNull();
+      }
+      expect((await app.api("POST", "/api/notes/nothing-here/discard")).status).toBe(404);
+    });
+
     it("creates an empty page with sensible defaults", async () => {
       const note = await create();
       expect(note).toMatchObject({

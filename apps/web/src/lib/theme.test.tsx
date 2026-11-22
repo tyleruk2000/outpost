@@ -21,6 +21,7 @@ beforeEach(() => {
   root.removeAttribute("style");
   delete root.dataset.theme;
   delete root.dataset.reading;
+  delete root.dataset.spacing;
 });
 afterEach(() => root.removeAttribute("style"));
 
@@ -55,6 +56,16 @@ describe("the appearance choices before the first paint", () => {
     localStorage.setItem("outpost.theme", "light");
     runPrePaint();
     expect(root.dataset.theme).toBe("light");
+  });
+
+  it("puts wide reading spacing on the page, and nothing for normal", () => {
+    localStorage.setItem("outpost.spacing", "wide");
+    runPrePaint();
+    expect(root.dataset.spacing).toBe("wide");
+    delete root.dataset.spacing;
+    localStorage.setItem("outpost.spacing", "normal");
+    runPrePaint();
+    expect(root.dataset.spacing).toBeUndefined();
   });
 
   it("knows the same text sizes as the setting", () => {

@@ -4,6 +4,7 @@
  * and shapes the answer.
  */
 import fs from "node:fs";
+import { isEmptyNote } from "@outpost/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
@@ -120,6 +121,18 @@ export async function registerNotes(app: FastifyInstance, ctx: AppContext): Prom
   app.patch("/api/notes/:id", async (request) => {
     const params = idParams.parse(request.params);
     return { note: notes.update(params.id, { ...updateBody.parse(request.body ?? {}), guardEncryption: true }) };
+  });
+
+  /**
+   * Removes a page that holds nothing at all, for good: what the app asks when a page made by "New page" is left
+   * without a word typed in it. A page with anything in it is left exactly as it is, and the answer says so.
+   */
+  app.post("/api/notes/:id/discard", async (request) => {
+    const params = idParams.parse(request.params);
+    if (!isEmptyNote(notes.get(params.id))) return { discarded: false };
+    notes.trash(params.id);
+    await notes.deletePermanently(params.id);
+    return { discarded: true };
   });
 
   app.post("/api/notes/:id/move", async (request) => {

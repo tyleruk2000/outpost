@@ -9,6 +9,7 @@ import { floating, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } fro
 import { Tooltip } from "@/components/ui/misc";
 import { cn } from "@/lib/utils";
 import { toolButton } from "./link-field";
+import { EDITOR_TOOLBAR, toolbarKeyDown } from "./toolbar-keys";
 
 const appendToBody = () => document.body;
 const MENU_KEY = new PluginKey("tableMenu");
@@ -128,7 +129,16 @@ export function TableMenu({ editor }: { editor: Editor }) {
         return table ? { getBoundingClientRect: () => table.getBoundingClientRect() } : null;
       }}
     >
-      <div ref={bar} role="toolbar" aria-label="Table" data-editor-popup className={cn(floating, "flex min-w-0 items-center gap-0.5 p-1")}>
+      <div
+        ref={bar}
+        role="toolbar"
+        aria-label="Table"
+        aria-orientation="horizontal"
+        data-editor-popup
+        {...{ [EDITOR_TOOLBAR]: "" }}
+        onKeyDown={toolbarKeyDown(editor)}
+        className={cn(floating, "flex min-w-0 items-center gap-0.5 p-1")}
+      >
         <TableSubmenu label="Row">
           <MenuItem onSelect={run((chain) => chain.addRowBefore())}>
             <ArrowUpToLine /> Add row above

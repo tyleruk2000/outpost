@@ -6,6 +6,14 @@ the same bytes, read for search, and included in backups and on portable drives.
 files are kept is in [storage.md](storage.md); how search reads them in
 [search.md](search.md).
 
+## Reading
+
+A document Outpost draws as text (an EPUB, Markdown, text or a web page) has **Text** in
+its top bar: the typeface (serif or sans), the size and the spacing (normal or wide, with
+more room between lines, words and paragraphs). They are the same choices as under
+Settings, **Appearance**, kept on this device; the size is for all of Outpost. A PDF keeps
+its own pages, and is made larger with its zoom.
+
 ## Suggested for where you live
 
 At the top of **Explore**, Outpost suggests downloads for the country Home is in (Home is

@@ -16,6 +16,7 @@
   const dark = choice === "dark" || (choice !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
   root.dataset.theme = dark ? "dark" : "light";
   if (read("outpost.reading") === "sans") root.dataset.reading = "sans";
+  if (read("outpost.spacing") === "wide") root.dataset.spacing = "wide";
   const scale = { smaller: "87.5%", larger: "125%", largest: "150%" }[read("outpost.textSize")];
   if (scale) root.style.fontSize = scale;
 })();

@@ -143,14 +143,14 @@ export function AudiobookPlayer({
           ) : (
             <span />
           )}
-          <div className="flex items-center gap-2 text-small text-ink-muted">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 text-small text-ink-muted">
             <span aria-hidden>Speed</span>
             <Select
               aria-label="Playing speed"
               value={String(player.speed)}
               onChange={(value) => player.setSpeed(Number(value))}
               options={SPEEDS.map((speed) => ({ value: String(speed), label: speedLabel(speed) }))}
-              className="w-24"
+              className="w-[min(6rem,100%)]"
             />
           </div>
           {many ? (
@@ -200,7 +200,7 @@ export function AudiobookPlayer({
                       {item.title}
                       {current ? <span className="sr-only"> (the chapter in the player)</span> : null}
                     </span>
-                    {time ? <span className="tabular shrink-0 text-small text-ink-muted">{time}</span> : null}
+                    {time ? <span className="tabular max-w-[40%] text-right text-small text-ink-muted">{time}</span> : null}
                   </button>
                 </li>
               );

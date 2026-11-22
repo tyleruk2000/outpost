@@ -20,6 +20,7 @@ import { blockKinds, canTurnInto, selectedTopBlock } from "./blocks";
 import { markButtons, useFormatState } from "./format-state";
 import { EDIT_LINK_EVENT } from "./link";
 import { LinkField, toolButton } from "./link-field";
+import { EDITOR_TOOLBAR, toolbarKeyDown } from "./toolbar-keys";
 
 export const SELECTION_TOOLBAR = "selectionToolbar";
 
@@ -87,7 +88,10 @@ export function SelectionToolbar({ editor, touch = false }: { editor: Editor; to
       <div
         role="toolbar"
         aria-label="Format the selection"
+        aria-orientation="horizontal"
         data-editor-popup
+        {...{ [EDITOR_TOOLBAR]: "" }}
+        onKeyDown={toolbarKeyDown(editor)}
         className={cn(floating, "flex min-w-0 items-center gap-0.5 p-1")}
       >
         {linkMode ? (

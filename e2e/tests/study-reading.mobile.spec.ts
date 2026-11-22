@@ -22,6 +22,10 @@ for (const size of [
       for (const [name, address] of screens(seeded)) reports.push(await walk(page, name, address, label, 24));
       writeReport(`${label}.json`, reports);
       expect(reports.flatMap((report) => report.axe)).toEqual([]);
+      // Settings, Text size: Largest (150%) never makes a screen scroll sideways.
+      expect(reports.filter((report) => report.wide150 > 0).map((report) => report.path)).toEqual([]);
+      // And neither does text at 200% on a 390 px phone (a 320 px screen at 200% is left to the study report).
+      if (size.width >= 375) expect(reports.filter((report) => report.wide200 > 0).map((report) => report.path)).toEqual([]);
       expect(
         reports.filter((report) => report.layout.some((finding) => finding.kind === "sideways-scroll")).map((report) => report.path),
       ).toEqual([]);

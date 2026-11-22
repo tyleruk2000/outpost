@@ -56,14 +56,14 @@ for (const viewport of [
         {
           name: "contact menu",
           address: `/contacts/${seeded.contact}`,
-          opener: (p) => p.getByRole("button", { name: "More to do with Adaeze Okafor" }),
+          opener: (p) => p.getByRole("button", { name: "More to do with Morwenna Trelawny" }),
         },
         {
           name: "delete a contact",
           address: `/contacts/${seeded.contact}`,
-          opener: (p) => p.getByRole("button", { name: "More to do with Adaeze Okafor" }),
+          opener: (p) => p.getByRole("button", { name: "More to do with Morwenna Trelawny" }),
           choose: (p) => p.getByRole("menuitem", { name: "Delete contact" }).click(),
-          backTo: (p) => p.getByRole("button", { name: "More to do with Adaeze Okafor" }),
+          backTo: (p) => p.getByRole("button", { name: "More to do with Morwenna Trelawny" }),
         },
         {
           name: "contacts menu",

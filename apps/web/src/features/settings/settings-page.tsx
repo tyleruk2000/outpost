@@ -23,6 +23,7 @@ import { ExportSection } from "./export-section";
 import { HeightSetting } from "./height-setting";
 import { HttpsSection } from "./https-section";
 import { NumberSetting, SettingRow, SettingsSection, TextSetting } from "./parts";
+import { FACE_OPTIONS, SPACING_OPTIONS } from "./reading-text";
 import { SemanticSection } from "./semantic-section";
 import { TextSizeSetting } from "./text-size-setting";
 import { ToolsSection } from "./tools-section";
@@ -73,7 +74,7 @@ export default function SettingsPage() {
   const system = useSystem();
   const access = useAccess();
   const update = useUpdateSettings();
-  const { theme, setTheme, reading, setReading } = useTheme();
+  const { theme, setTheme, reading, setReading, spacing, setSpacing } = useTheme();
   // Read here so that the whole screen, the backups and their times included, is drawn again when the clock is changed.
   useClockStyle();
   const disabled = update.isPending;
@@ -127,19 +128,14 @@ export default function SettingsPage() {
         <SettingRow
           label="Reading typeface"
           hint="Used for pages and document text."
-          control={
-            <Segmented
-              label="Reading typeface"
-              value={reading}
-              onChange={setReading}
-              options={[
-                { value: "serif", label: <span className="font-serif">Serif</span> },
-                { value: "sans", label: "Sans" },
-              ]}
-            />
-          }
+          control={<Segmented label="Reading typeface" value={reading} onChange={setReading} options={FACE_OPTIONS} />}
         />
         <TextSizeSetting />
+        <SettingRow
+          label="Reading spacing"
+          hint="Room between lines, words and paragraphs in pages and document text. Also under Text in a reader."
+          control={<Segmented label="Reading spacing" value={spacing} onChange={setSpacing} options={SPACING_OPTIONS} />}
+        />
         <ClockSetting />
         <HeightSetting />
       </SettingsSection>

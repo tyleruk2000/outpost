@@ -22,6 +22,7 @@ import { cn, formatNumber, plural } from "@/lib/utils";
 import { ContactDetail } from "./contact-detail";
 import { ContactEditor } from "./contact-editor";
 import { exportHref, LIST_STEP, type ListFilter, useContactList, usePhoneStatus } from "./contacts-data";
+import { PaneHeading, useSideBySide } from "./pane-heading";
 
 const ImportPage = lazy(() => import("./import-page"));
 const PhonesPage = lazy(() => import("./phones-page"));
@@ -213,9 +214,9 @@ function ContactList({ filter, setFilter }: { filter: ListFilter; setFilter: (ne
         <div data-contact-list className={cn("mt-2", list.isPlaceholderData && "opacity-70")}>
           {groups.map((group) => (
             <section key={group.key} aria-label={group.emergency ? "In an emergency" : `Names under ${group.title}`}>
-              <h2 className="sticky top-13 z-(--z-sticky) flex items-center gap-2 border-b border-border bg-page px-2.5 pt-4 pb-1.5 text-small font-semibold text-ink-muted md:top-0">
+              <h2 className="sticky top-13 z-(--z-sticky) flex flex-wrap items-center gap-2 border-b border-border bg-page px-2.5 pt-4 pb-1.5 text-small font-semibold text-ink-muted md:top-0">
                 {group.emergency ? <LifeBuoy aria-hidden className="size-4 text-primary" strokeWidth={1.8} /> : null}
-                <span className="flex-1">{group.title}</span>
+                <span className="min-w-0 flex-1">{group.title}</span>
                 {group.emergency ? (
                   <Link
                     to="/contacts/emergency"
@@ -250,69 +251,72 @@ function ContactList({ filter, setFilter }: { filter: ListFilter; setFilter: (ne
 
 /** The list, with whatever is open beside it. On a phone the two take turns. */
 function Frame({ pane, filter, setFilter }: { pane?: ReactNode; filter: ListFilter; setFilter: (next: ListFilter) => void }) {
+  const beside = useSideBySide();
   return (
-    <Page>
-      <div className={cn(pane && "max-lg:hidden")}>
-        <PageHeader
-          title="Contacts"
-          description="People and places to reach when the phone network and the internet are down."
-          className="mb-4"
-          actions={
-            <>
-              <Button asChild variant="primary">
-                <Link to="/contacts/new">
-                  <Plus /> Add contact
-                </Link>
-              </Button>
-              <Menu>
-                <MenuTrigger asChild>
-                  <Button variant="ghost" size="icon" aria-label="More to do with contacts">
-                    <Ellipsis />
-                  </Button>
-                </MenuTrigger>
-                <MenuContent>
-                  <MenuItem asChild>
-                    <Link to="/contacts/import">
-                      <FileUp /> Bring in from a phone or a file
-                    </Link>
-                  </MenuItem>
-                  <MenuItem asChild>
-                    <Link to="/contacts/phones">
-                      <Smartphone /> Keep a copy on a phone
-                    </Link>
-                  </MenuItem>
-                  <MenuItem asChild>
-                    <Link to="/contacts/emergency">
-                      <Printer /> Print the emergency sheet
-                    </Link>
-                  </MenuItem>
-                  <MenuSeparator />
-                  <MenuItem asChild>
-                    <a href={exportHref()} download>
-                      <Download /> Export all as a vCard file
-                    </a>
-                  </MenuItem>
-                </MenuContent>
-              </Menu>
-            </>
-          }
-        />
-        <WhoCanSee />
-      </div>
-      <div
-        className={cn(
-          "grid grid-cols-[minmax(0,1fr)] gap-x-12 lg:mt-6 lg:grid-cols-[minmax(0,min(24rem,40%))_minmax(0,1fr)]",
-          !pane && "mt-6",
-        )}
-      >
-        <div className={cn("min-w-0", pane && "max-lg:hidden")}>
-          <ContactList filter={filter} setFilter={setFilter} />
+    <PaneHeading.Provider value={beside ? "h2" : "h1"}>
+      <Page>
+        <div className={cn(pane && "max-lg:hidden")}>
+          <PageHeader
+            title="Contacts"
+            description="People and places to reach when the phone network and the internet are down."
+            className="mb-4"
+            actions={
+              <>
+                <Button asChild variant="primary">
+                  <Link to="/contacts/new">
+                    <Plus /> Add contact
+                  </Link>
+                </Button>
+                <Menu>
+                  <MenuTrigger asChild>
+                    <Button variant="ghost" size="icon" aria-label="More to do with contacts">
+                      <Ellipsis />
+                    </Button>
+                  </MenuTrigger>
+                  <MenuContent>
+                    <MenuItem asChild>
+                      <Link to="/contacts/import">
+                        <FileUp /> Bring in from a phone or a file
+                      </Link>
+                    </MenuItem>
+                    <MenuItem asChild>
+                      <Link to="/contacts/phones">
+                        <Smartphone /> Keep a copy on a phone
+                      </Link>
+                    </MenuItem>
+                    <MenuItem asChild>
+                      <Link to="/contacts/emergency">
+                        <Printer /> Print the emergency sheet
+                      </Link>
+                    </MenuItem>
+                    <MenuSeparator />
+                    <MenuItem asChild>
+                      <a href={exportHref()} download>
+                        <Download /> Export all as a vCard file
+                      </a>
+                    </MenuItem>
+                  </MenuContent>
+                </Menu>
+              </>
+            }
+          />
+          <WhoCanSee />
         </div>
-        <div className={cn("min-w-0", !pane && "max-lg:hidden")}>
-          {pane ?? <p className="pt-16 text-small text-ink-muted">Choose a contact to see how to reach them.</p>}
+        <div
+          className={cn(
+            "grid grid-cols-[minmax(0,1fr)] gap-x-12 lg:mt-6 lg:grid-cols-[minmax(0,min(24rem,40%))_minmax(0,1fr)]",
+            !pane && "mt-6",
+          )}
+        >
+          <div className={cn("min-w-0", pane && "max-lg:hidden")}>
+            <ContactList filter={filter} setFilter={setFilter} />
+          </div>
+          <div className={cn("min-w-0", !pane && "max-lg:hidden")}>
+            {pane ?? <p className="pt-16 text-small text-ink-muted">Choose a contact to see how to reach them.</p>}
+          </div>
         </div>
-      </div>
-    </Page>
+      </Page>
+    </PaneHeading.Provider>
   );
 }
 
