@@ -16,9 +16,21 @@ vi.mock("@/features/maps/print/lettering", async (original) => {
     },
   };
 });
+const kit = vi.hoisted(() => ({ calls: 0 }));
+vi.mock("@/features/print-kit/render", async (original) => {
+  const real = await original<typeof import("@/features/print-kit/render")>();
+  return {
+    ...real,
+    renderPdf: (...args: Parameters<typeof real.renderPdf>) => {
+      kit.calls += 1;
+      return real.renderPdf(...args);
+    },
+  };
+});
 
 beforeEach(() => {
   lettering.calls = 0;
+  kit.calls = 0;
   URL.createObjectURL = vi.fn(() => "blob:qr");
   URL.revokeObjectURL = vi.fn();
 });
@@ -36,6 +48,20 @@ describe("the QR sheet as a PDF", () => {
     await screen.findByTestId("qr-code");
     const add = await screen.findByRole("button", { name: /Add to library/ });
     await waitFor(() => expect(add).toBeEnabled());
+    // Laid out with the print kit, once: its words are all in the kit's typeface.
+    expect(kit.calls).toBe(1);
+    expect(lettering.calls).toBe(0);
+  }, 20_000);
+
+  it("is made the old way, once, when its words hold letters the kit's typeface lacks", async () => {
+    fakeApi({});
+    const user = userEvent.setup();
+    renderScreen(<QrPage />, "/tools/qr");
+    await user.type(screen.getByLabelText("Text or web address"), "Νερό 3");
+    await screen.findByTestId("qr-code");
+    const add = await screen.findByRole("button", { name: /Add to library/ });
+    await waitFor(() => expect(add).toBeEnabled());
     expect(lettering.calls).toBe(1);
-  });
+    expect(kit.calls).toBe(0);
+  }, 20_000);
 });

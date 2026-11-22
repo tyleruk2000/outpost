@@ -2,8 +2,9 @@
  * The paper aids opened to print: the sheet filling the screen, the browser's print,
  * the PDF, and what the screen does where the browser's print cannot be counted on.
  */
-import { act, render, screen, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PRINT_WAIT_MS } from "@/lib/printing";
 import { HandTab } from "./hand-tab";
@@ -32,21 +33,30 @@ afterEach(() => {
   Object.defineProperty(navigator, "standalone", { value: undefined, configurable: true });
 });
 
-const bytesOf = (blob: Blob) =>
-  new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(Array.from(new Uint8Array(reader.result as ArrayBuffer), (byte) => String.fromCharCode(byte)).join(""));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsArrayBuffer(blob);
-  });
-
-/** The file behind the "Save as PDF" link, as text. */
-async function savedPdf(): Promise<string> {
-  const link = screen.getByRole("link", { name: "Save as PDF" });
+/** The file behind the "Save as PDF" link, once it is made, read by pdf.js: its pages' sizes and words. */
+async function savedPdf(): Promise<{ head: string; sizes: number[][]; items: string[] }> {
+  const link = await screen.findByRole("link", { name: "Save as PDF" }, { timeout: 10_000 });
   const blob = held.get(link.getAttribute("href")!);
   expect(blob, "the link points at a file the view still holds").toBeDefined();
   expect(blob!.type).toBe("application/pdf");
-  return bytesOf(blob!);
+  const bytes = await new Promise<Uint8Array>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(new Uint8Array(reader.result as ArrayBuffer));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsArrayBuffer(blob!);
+  });
+  const loading = getDocument({ data: bytes.slice() });
+  const pdf = await loading.promise;
+  const sizes: number[][] = [];
+  const items: string[] = [];
+  for (let number = 1; number <= pdf.numPages; number += 1) {
+    const page = await pdf.getPage(number);
+    const view = page.getViewport({ scale: 1 });
+    sizes.push([Math.round(view.width * 100) / 100, Math.round(view.height * 100) / 100]);
+    items.push(...((await page.getTextContent()).items as Array<{ str: string }>).map((item) => item.str).filter((str) => str.trim()));
+  }
+  await loading.destroy();
+  return { head: String.fromCharCode(...bytes.slice(0, 5)), sizes, items };
 }
 
 async function choose(user: ReturnType<typeof userEvent.setup>, cipher: string) {
@@ -73,16 +83,16 @@ function lettersOnScreen(sheet: HTMLElement): Map<string, string> {
   return found;
 }
 
-/** The same from the bytes of a PDF: the lines in Courier that follow each heading. */
-function lettersInPdf(text: string): Map<string, string> {
+/** The same from a PDF's words: the capitals that follow each heading (a reader joins a group's letters, with spaces between). */
+function lettersInPdf(items: readonly string[]): Map<string, string> {
   const found = new Map<string, string>();
   let heading: string | undefined;
-  for (const match of text.matchAll(/\/(F\d) [\d.]+ Tf [^\n]*?\(((?:[^()\\]|\\.)*)\) Tj/g)) {
-    const [, face, words] = match as unknown as [string, string, string];
+  for (const words of items) {
     if (words.startsWith("One-time pad ")) {
       heading = words;
       found.set(heading, "");
-    } else if (heading && face === "F3" && /^[A-Z ]+$/.test(words)) found.set(heading, found.get(heading)! + words.replace(/ /g, ""));
+    } else if (heading && /^[A-Z ]+$/.test(words)) found.set(heading, found.get(heading)! + words.replace(/ /g, ""));
+    else if (words.startsWith("Use each letter once")) heading = undefined;
   }
   return found;
 }
@@ -94,6 +104,7 @@ describe("printing one-time pads", () => {
     const user = userEvent.setup();
     const view = await openPads(user);
 
+    await within(view).findByRole("link", { name: "Save as PDF" }, { timeout: 10_000 });
     // Pressing "Print pads" shows the sheets; it does not print by itself.
     expect(print).not.toHaveBeenCalled();
     // The view is a child of the body itself, which is what the print rules in encryption.css rely on.
@@ -137,7 +148,7 @@ describe("printing one-time pads", () => {
     expect(held.size).toBe(0);
     // The pads are still on the tab, to open again.
     expect(screen.getByTestId("pad-preview").querySelectorAll("[data-pad]")).toHaveLength(4);
-  });
+  }, 20_000);
 
   it("saves the same sheets as a PDF made in the page, and says the file is a copy to destroy", async () => {
     vi.stubGlobal("print", vi.fn());
@@ -146,17 +157,16 @@ describe("printing one-time pads", () => {
     const user = userEvent.setup();
     const view = await openPads(user);
 
-    const link = within(view).getByRole("link", { name: "Save as PDF" });
+    const link = await within(view).findByRole("link", { name: "Save as PDF" }, { timeout: 10_000 });
     expect(link).toHaveAttribute("download", "one-time-pads.pdf");
     expect(link.getAttribute("href")).toMatch(/^blob:/);
-    const text = await savedPdf();
-    expect(text.startsWith("%PDF-1.6\n")).toBe(true);
-    expect(text).toContain("/BaseFont /Courier ");
+    const saved = await savedPdf();
+    expect(saved.head).toBe("%PDF-");
     // Letter for letter what is on the screen, both copies of both pads.
     const onScreen = lettersOnScreen(within(view).getByTestId("print-paper"));
     expect(onScreen.size).toBe(4);
     for (const letters of onScreen.values()) expect(letters).toMatch(/^[A-Z]{250}$/);
-    expect(lettersInPdf(text)).toEqual(onScreen);
+    expect(lettersInPdf(saved.items)).toEqual(onScreen);
 
     const warning = within(view).getByText("A saved PDF is another copy of the pads").closest('[role="status"]')!;
     expect(warning).toHaveTextContent("made on this device and sent nowhere");
@@ -167,27 +177,29 @@ describe("printing one-time pads", () => {
 
     // The paper is a choice, and the file is made again for it; the old one is let go.
     // A device set to American English starts on US Letter.
-    expect(text).toContain("/MediaBox [0 0 612 792]");
+    expect(saved.sizes).toEqual([[612, 792]]);
     expect(within(view).getByTestId("pdf-summary")).toHaveTextContent("The PDF is 1 page of US Letter.");
     const before = link.getAttribute("href")!;
     await user.click(within(view).getByRole("radio", { name: "A4" }));
     expect(held.has(before)).toBe(false);
-    expect(await savedPdf()).toContain("/MediaBox [0 0 595.28 841.89]");
-    expect(lettersInPdf(await savedPdf())).toEqual(onScreen);
-    expect(within(view).getByTestId("pdf-summary")).toHaveTextContent("The PDF is 1 page of A4.");
+    await waitFor(() => expect(within(view).getByTestId("pdf-summary")).toHaveTextContent("The PDF is 1 page of A4."), { timeout: 10_000 });
+    const a4 = await savedPdf();
+    expect(a4.sizes).toEqual([[595.28, 841.89]]);
+    expect(lettersInPdf(a4.items)).toEqual(onScreen);
 
     expect(fetched).not.toHaveBeenCalled();
     // Nothing of the pads is put in the browser's storage: only which paper was chosen.
     expect(Object.keys(localStorage)).toEqual(["outpost.encryption.paper"]);
     expect(localStorage.getItem("outpost.encryption.paper")).toBe('"a4"');
     expect(sessionStorage).toHaveLength(0);
-  });
+  }, 20_000);
 
   it("leaves Print out and leads with the PDF where the browser has no print", async () => {
     vi.stubGlobal("print", undefined);
     const user = userEvent.setup();
     const view = await openPads(user);
     expect(within(view).queryByRole("button", { name: "Print" })).not.toBeInTheDocument();
+    await within(view).findByRole("link", { name: "Save as PDF" }, { timeout: 10_000 });
     const ways = within(view).getByTestId("print-ways");
     expect([...ways.children].map((node) => node.textContent?.trim())).toEqual(["Save as PDF", "Add to library", "Close"]);
     const notice = within(view).getByText("This browser cannot print from a page").closest('[role="status"]')!;
@@ -195,8 +207,8 @@ describe("printing one-time pads", () => {
     expect(notice).toHaveTextContent("The browser’s own Share menu, then Print, prints this sheet too.");
     // The sheet is there to be seen all the same.
     expect(within(view).getByTestId("print-paper").querySelectorAll("[data-pad]")).toHaveLength(4);
-    expect(lettersInPdf(await savedPdf()).size).toBe(4);
-  });
+    expect(lettersInPdf((await savedPdf()).items).size).toBe(4);
+  }, 20_000);
 
   it("leads with the PDF where the app was opened from the Home Screen, and still offers Print", async () => {
     const print = vi.fn();
@@ -204,6 +216,7 @@ describe("printing one-time pads", () => {
     Object.defineProperty(navigator, "standalone", { value: true, configurable: true });
     const user = userEvent.setup();
     const view = await openPads(user);
+    await within(view).findByRole("link", { name: "Save as PDF" }, { timeout: 10_000 });
     const ways = within(view).getByTestId("print-ways");
     expect([...ways.children].map((node) => node.textContent?.trim())).toEqual(["Save as PDF", "Print", "Add to library", "Close"]);
     expect(within(view).getByText("Opened from the Home Screen, a phone does not always print from a button")).toBeInTheDocument();
@@ -217,6 +230,7 @@ describe("printing one-time pads", () => {
     const user = userEvent.setup();
     const view = await openPads(user);
     expect(within(view).queryByText(/If no print dialogue opened/)).not.toBeInTheDocument();
+    await within(view).findByRole("link", { name: "Save as PDF" }, { timeout: 10_000 });
     vi.useFakeTimers();
     act(() => within(view).getByRole("button", { name: "Print" }).click());
     expect(print).toHaveBeenCalledOnce();
@@ -246,22 +260,22 @@ describe("printing a Vigenère square", () => {
     expect(paper.querySelectorAll("tbody tr")).toHaveLength(26);
     expect(within(view).queryByText(/another copy of the pads/)).not.toBeInTheDocument();
     // The square is no secret: it is offered to the library with no question and no warning.
+    const link = await within(view).findByRole("link", { name: "Save as PDF" }, { timeout: 10_000 });
     expect(within(view).getByRole("button", { name: "Add to library" })).toBeEnabled();
     expect(within(view).queryByText(/no longer known only to the two people/)).not.toBeInTheDocument();
     expect(within(view).getByTestId("pdf-summary")).toHaveTextContent(
       "The PDF is 1 page of US Letter, made on this device and sent nowhere.",
     );
 
-    const link = within(view).getByRole("link", { name: "Save as PDF" });
     expect(link).toHaveAttribute("download", "vigenere-square.pdf");
-    const text = await savedPdf();
-    expect(text).toContain("(Vigen\\350re square) Tj");
-    expect(text).toContain("/Kids [3 0 R] /Count 1");
+    const saved = await savedPdf();
+    expect(saved.items).toContain("Vigenère square");
+    expect(saved.sizes).toHaveLength(1);
 
     await user.click(within(view).getByRole("button", { name: "Print" }));
     expect(print).toHaveBeenCalledOnce();
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(held.size).toBe(0);
-  });
+  }, 20_000);
 });

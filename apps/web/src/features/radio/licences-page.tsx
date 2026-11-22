@@ -21,6 +21,7 @@ import { Select } from "@/components/ui/misc";
 import { homeCountry } from "@/features/frequencies/home-country";
 import { useCatalogue } from "@/features/layers/data";
 import { useMarkers } from "@/features/maps/data";
+import { ScrollBox } from "@/features/radio/scroll-box";
 import { LicenceLine, useRadioLicence } from "./licence";
 
 const linkClass = "text-primary underline underline-offset-2";
@@ -114,7 +115,7 @@ function CountryRules({ rules }: { rules: CountryRadioRules }) {
         {rules.classes.map((item) => (
           <Disclosure key={item.id} summary={`${item.name}: ${item.privileges.length} bands`} className="border-b border-border py-2">
             {item.how ? <p className="text-small text-ink">{item.how}</p> : null}
-            <div className="mt-2 overflow-x-auto">
+            <ScrollBox label={`Bands and power for the ${item.name} licence`} className="mt-2 overflow-x-auto">
               <table className="w-full min-w-[32rem] text-left text-small">
                 <caption className="sr-only">Bands and power for the {item.name} licence</caption>
                 <thead className="text-ink-muted">
@@ -136,9 +137,9 @@ function CountryRules({ rules }: { rules: CountryRadioRules }) {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </ScrollBox>
             {item.notes?.length ? (
-              <ul className="mt-2 grid list-disc gap-1 pl-5 text-small text-ink-muted">
+              <ul className="mt-2 grid list-disc gap-1 pl-5 text-small text-ink-muted wrap-anywhere">
                 {item.notes.map((note) => (
                   <li key={note}>{note}</li>
                 ))}
@@ -151,7 +152,7 @@ function CountryRules({ rules }: { rules: CountryRadioRules }) {
 
       {rules.notRead?.length ? (
         <Section title="Not read" description="What Outpost could not confirm from the regulator's own documents." className="mt-8">
-          <ul className="grid list-disc gap-1 pl-5 text-small text-ink-muted">
+          <ul className="grid list-disc gap-1 pl-5 text-small text-ink-muted wrap-anywhere">
             {rules.notRead.map((line) => (
               <li key={line}>{line}</li>
             ))}
@@ -220,7 +221,7 @@ export default function LicencesPage() {
 
       <Section title="Countries not read yet" description="Ask these regulators directly." className="mt-10">
         <Notice className="mb-3">Only the countries in the list above have been read from their regulators' documents.</Notice>
-        <ul className="grid gap-1 text-small sm:grid-cols-2">
+        <ul className="grid grid-cols-[minmax(0,1fr)] gap-1 text-small wrap-anywhere sm:grid-cols-2">
           {RADIO_RULES_NOT_READ.map((entry) => (
             <li key={entry.country}>
               {placeName(entry.country)}:{" "}

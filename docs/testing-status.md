@@ -80,6 +80,11 @@ of what each feature does are in its own guide.
   stay under the 44 px the design asks of touch controls. They meet WCAG 2.5.8 (24 px), each is a
   separate square with no other control inside it, and every board can also be played from the
   keyboard.
+- **Radio screens, not tried:** VoiceOver or TalkBack on a real phone reading the
+  propagation charts, the coverage map's legend and a plan's tables; a real iPhone or
+  Android phone's on-screen keyboard over the forms (the phone sizes were browsers set to
+  that size, and WebKit); Morse sent with a real key or paddle while a screen reader runs;
+  the app's own large-text setting with the phone's text size raised as well.
 
 ## Installing and looking after it
 

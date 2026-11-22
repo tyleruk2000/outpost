@@ -108,6 +108,21 @@ describe("the emergency sheet as a PDF", () => {
     expect(await within(block).findByTestId("pdf-status")).toHaveTextContent("Added to the library under “Made in Outpost” as");
   });
 
+  it("lays out a sheet of names in Latin letters with the print kit, and offers the same three things", async () => {
+    render(
+      <MemoryRouter>
+        <SheetPdf contacts={[people[0]!, contact({ id: "c3", displayName: "Zoë Łukasiewicz" })]} printing={printing} draw={cannot} />
+      </MemoryRouter>,
+    );
+    const block = screen.getByRole("region", { name: "The sheet as a PDF" });
+    const save = await within(block).findByRole("link", { name: "Save as PDF" }, { timeout: 10_000 });
+    expect(save.getAttribute("download")).toMatch(/^emergency-sheet-2-contacts-made-\d{1,2}-[a-z]{3}-\d{4}\.pdf$/);
+    expect(new TextDecoder().decode(new Uint8Array(await made.at(-1)!.arrayBuffer()).slice(0, 5))).toBe("%PDF-");
+    expect(block).toHaveTextContent(/1 page of (A4|US Letter), made on this device on \d{1,2} \w+ \d{4} at \d\d:\d\d\./);
+    expect(block).not.toHaveTextContent("as pictures");
+    expect(within(block).getByRole("button", { name: "Add to library" })).toBeEnabled();
+  }, 20_000);
+
   it("says plainly when this device could not draw some names, and how many entries", async () => {
     render(
       <MemoryRouter>

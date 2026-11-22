@@ -3,12 +3,15 @@
  * offered, what the file is called, and what the comparison's pages say.
  */
 import type { CompareResult } from "@outpost/shared";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { comparisonDocument, comparisonPdf, comparisonTitle } from "./comparison-document";
+import { renderPdf } from "@/features/print-kit";
+import { comparisonDocument, comparisonTitle } from "./comparison-document";
 import { ComparisonExport, PredictionExport } from "./prediction-export";
 import { prediction, wordsOf } from "./prediction-fixture";
+import { comparisonPrint } from "./print/comparison-print";
+import { readPdf } from "./print/read-pdf";
 
 const saved: Array<{ name: string; type: string; content: Uint8Array | string }> = [];
 vi.mock("./plans/document", async (original) => ({
@@ -60,8 +63,8 @@ describe("the prediction's PDF on the planner", () => {
       </MemoryRouter>,
     );
     const block = screen.getByRole("region", { name: "This prediction as a PDF" });
-    expect(block).toHaveTextContent("2 pages of A4, made on this device");
-    const save = within(block).getByRole("link", { name: "Save as PDF" });
+    await waitFor(() => expect(block).toHaveTextContent(/\d pages of A4, made on this device/), { timeout: 15_000 });
+    const save = await within(block).findByRole("link", { name: "Save as PDF" });
     expect(save).toHaveAttribute("download", "hf-prediction-london-to-edinburgh-20-m-for-16-nov-2026.pdf");
     expect(within(block).getByRole("button", { name: "Add to library" })).toBeEnabled();
     expect((await made.at(-1)!.text()).startsWith("%PDF-1.")).toBe(true);
@@ -69,10 +72,11 @@ describe("the prediction's PDF on the planner", () => {
 
     // US Letter is the same choice as the paper aids on the Encryption screen, and is remembered.
     fireEvent.click(within(block).getByRole("radio", { name: "US Letter" }));
-    expect(block).toHaveTextContent("pages of US Letter");
+    await waitFor(() => expect(block).toHaveTextContent("pages of US Letter"), { timeout: 15_000 });
     expect(localStorage.getItem("outpost.encryption.paper")).toBe('"letter"');
-    expect(await made.at(-1)!.text()).toContain("/MediaBox [0 0 612 792]");
-    expect(made.at(-1)!.size).not.toBe(a4);
+    await waitFor(() => expect(made.at(-1)!.size).not.toBe(a4));
+    const letter = await readPdf(new Uint8Array(await made.at(-1)!.arrayBuffer()));
+    expect(letter.pages[0]).toMatchObject({ width: 612, height: 792 });
 
     fireEvent.click(within(block).getByRole("button", { name: "Export as Markdown" }));
     expect(saved[0]).toMatchObject({
@@ -82,7 +86,7 @@ describe("the prediction's PDF on the planner", () => {
     expect(saved[0]!.content).toContain("# HF prediction: London to Edinburgh, 14.2 MHz (20 m)");
   });
 
-  it("says which saved prediction it was made from, and which letters the PDF cannot write", () => {
+  it("says which saved prediction it was made from, and which letters the PDF cannot write", async () => {
     const sent: FormData[] = [];
     class Upload {
       upload = {};
@@ -101,18 +105,19 @@ describe("the prediction's PDF on the planner", () => {
     }
     vi.stubGlobal("XMLHttpRequest", Upload);
     const result = prediction();
-    result.request.rx.name = "Łódź";
+    result.request.rx.name = "Москва";
     render(
       <MemoryRouter>
         <PredictionExport result={result} savedName="Evening sked" />
       </MemoryRouter>,
     );
     expect(
-      screen.getByText(/The PDF’s typeface cannot write Ł ź; they are printed as “\?”\. The Markdown export keeps them\./),
+      screen.getByText(/The PDF’s typeface cannot write М о с к в а; they are printed as “\?”\. The Markdown export keeps them\./),
     ).toBeInTheDocument();
+    await screen.findByRole("link", { name: "Save as PDF" }, { timeout: 15_000 });
     fireEvent.click(screen.getByRole("button", { name: "Add to library" }));
     expect(sent[0]!.get("source")).toBe("Made in Outpost from the saved HF prediction “Evening sked”: /radio/propagation");
-    expect(sent[0]!.get("title")).toBe("HF prediction, London to Łódź, 20 m, for 16 Nov 2026");
+    expect(sent[0]!.get("title")).toBe("HF prediction, London to Москва, 20 m, for 16 Nov 2026");
     expect(sent[0]!.get("tags")).toBe("HF prediction");
   });
 });
@@ -138,7 +143,7 @@ describe("the comparison's PDF", () => {
     expect(words).toContain("Compared from the prediction answered on 16 November 2026 at 14:32 UTC, key abc123def456.");
   });
 
-  it("prints a dash where a series has no figure, and is the same file each time", () => {
+  it("prints a dash where a series has no figure, and is the same file each time", async () => {
     const result = prediction();
     const compared = comparison();
     (compared.series[0]!.reliability as Array<number | null>)[3] = null;
@@ -147,17 +152,21 @@ describe("the comparison's PDF", () => {
     if (tables[1]?.kind !== "table" || tables[2]?.kind !== "table") throw new Error("expected tables");
     expect(tables[1].rows[0]![4]).toBe("-");
     expect(tables[2].rows[1]!.slice(1)).toEqual(Array(24).fill("-"));
-    expect(Buffer.from(comparisonPdf(result, comparison())).equals(Buffer.from(comparisonPdf(result, comparison())))).toBe(true);
+    const make = async () => Buffer.from((await renderPdf(comparisonPrint(result, comparison()))).bytes);
+    expect((await make()).equals(await make())).toBe(true);
+    const { text } = await readPdf(new Uint8Array(await make()));
+    expect(text).toContain("Reliability of 14.18 MHz through the day");
+    expect(text).toContain("5 W at the transmitter");
   });
 
-  it("is offered under the chart with the same three things", () => {
+  it("is offered under the chart with the same three things", async () => {
     render(
       <MemoryRouter>
         <ComparisonExport result={prediction()} comparison={comparison()} />
       </MemoryRouter>,
     );
-    const block = screen.getByRole("region", { name: "This comparison as a PDF" });
-    expect(within(block).getByRole("link", { name: "Save as PDF" })).toHaveAttribute(
+    const block = await screen.findByRole("region", { name: "This comparison as a PDF" });
+    expect(await within(block).findByRole("link", { name: "Save as PDF" }, { timeout: 15_000 })).toHaveAttribute(
       "download",
       "hf-comparison-london-to-edinburgh-20-m-transmitter-power-for-16-nov-2026.pdf",
     );

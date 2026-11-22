@@ -38,6 +38,7 @@ import { Field, Input, Textarea } from "@/components/ui/input";
 import { Checkbox, Select, Skeleton } from "@/components/ui/misc";
 import { PdfButtons } from "@/features/library/made/pdf-actions";
 import { pdfFileName } from "@/features/maps/print/pdf";
+import { ScrollBox } from "@/features/radio/scroll-box";
 import { errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { formatDateTime } from "@/lib/utils";
@@ -126,7 +127,7 @@ export function Pair({ pair, plan, result }: { pair: PlanPair; plan: Communicati
         </p>
       ) : null}
       {byRatio ? (
-        <div className="scroll-quiet mt-4 overflow-x-auto">
+        <ScrollBox label="Two-way signal-to-noise ratio at each hour" className="scroll-quiet mt-4 overflow-x-auto">
           <table className="tabular w-full min-w-max text-small">
             <caption className="mb-1 text-left text-ink-muted">
               Two-way median signal-to-noise ratio in 1 Hz, dB, at each hour of the window (UTC)
@@ -168,7 +169,7 @@ export function Pair({ pair, plan, result }: { pair: PlanPair; plan: Communicati
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollBox>
       ) : (
         <div className="mt-4">
           <HourGrid
@@ -189,7 +190,7 @@ export function Pair({ pair, plan, result }: { pair: PlanPair; plan: Communicati
             All 24 hours are shown; the plan's window is {utcLabel(plan.fromUtc)} to {utcLabel(plan.toUtc)} UTC. Press an hour to read each
             direction.
           </p>
-          <div className="scroll-quiet mt-3 max-w-xl overflow-x-auto">
+          <ScrollBox label={`At ${utcLabel(hour)} UTC, share of days`} className="scroll-quiet mt-3 max-w-xl overflow-x-auto">
             <table className="tabular w-full text-small">
               <caption className="mb-1 text-left font-medium text-ink">At {utcLabel(hour)} UTC, share of days</caption>
               <thead>
@@ -228,7 +229,7 @@ export function Pair({ pair, plan, result }: { pair: PlanPair; plan: Communicati
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollBox>
         </div>
       )}
       {byRatio ? (
@@ -487,7 +488,7 @@ export default function PlanPage() {
                     {NOISE_ENVIRONMENTS.find((item) => item.id === station.noise)?.label.toLowerCase()} noise
                   </span>
                 </span>
-                <span className="flex gap-2">
+                <span className="flex flex-wrap gap-2">
                   <Button size="sm" onClick={() => setEditing(station)} aria-label={`Change ${station.name}`}>
                     Change
                   </Button>

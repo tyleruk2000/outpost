@@ -7,8 +7,6 @@
  */
 import { useMemo } from "react";
 import { Notice } from "@/components/page";
-import { madePdf } from "@/features/library/made/made-pdf";
-import { PdfActions } from "@/features/library/made/pdf-actions";
 import { dateIn, deviceZone } from "@/features/maps/lib/sun-text";
 import { useClockStyle } from "@/lib/clock";
 import { appLocale } from "@/lib/region";
@@ -18,7 +16,9 @@ import { ShadowPlan } from "./shadow-plates";
 import { SOLAR_SOURCES as S } from "./sources";
 import { dialFit, hourLines, signedMinutes, sundialToClock, tableDates } from "./sundial";
 import { DialPlate, GnomonSide } from "./sundial-plates";
-import { canDrawSundial, latitudeWords, longitudeWords, sundialPdf, sundialTitle } from "./templates";
+import { TemplatePdf } from "./template-pdf";
+import { canDrawSundial, latitudeWords, longitudeWords, sundialTitle } from "./templates";
+import { sundialDocument } from "./templates-kit";
 import { formatOffset, offsetAt, standardOffset, type ZoneChoice } from "./zone";
 
 const twelve = (hour: number) => `${((hour + 11) % 12) + 1} ${hour < 12 ? "am" : "pm"}`.replace("12 pm", "noon");
@@ -35,12 +35,7 @@ export function SundialTab({ place, zone }: { place: ChosenPlace | null; zone: Z
     if (!place) return null;
     const standard = standardOffset(zone, Date.UTC(year, 0, 1));
     const input = { latitude: place.lat, longitude: place.lon, standardOffset: standard, year, placeName: place.name };
-    const pdf = canDrawSundial(place.lat)
-      ? madePdf(sundialPdf(input), sundialTitle(input), "Sundial template", {
-          what: "the solar clock",
-          path: "/tools/solar-clock?tab=sundial",
-        })
-      : null;
+    const pdf = canDrawSundial(place.lat) ? { make: () => sundialDocument(input), title: sundialTitle(input) } : null;
     return { standard, pdf, lines: hourLines(place.lat), fit: dialFit(place.lat) };
   }, [place, zone, year]);
 
@@ -191,10 +186,10 @@ export function SundialTab({ place, zone }: { place: ChosenPlace | null; zone: Z
       <Calculator
         id="sundial-template"
         title="A template to print"
-        intro="The dial plate with every hour and half hour drawn, the gnomon to cut out, how to set it up, and the correction table for this place. Print it at actual size."
+        intro="The dial plate with every hour and half hour drawn, the gnomon to cut out with the correction table for this place, and a page on finding true north, setting it up and reading it. Print it at actual size."
       >
         {pdf ? (
-          <PdfActions pdf={pdf} />
+          <TemplatePdf make={pdf.make} title={pdf.title} kind="Sundial template" path="/tools/solar-clock?tab=sundial" />
         ) : (
           <p className="text-body text-ink-muted">No template on the equator: make the card-and-pencil dial below.</p>
         )}

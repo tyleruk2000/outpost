@@ -33,7 +33,8 @@ function CodeGrid({ title, entries }: { title: string; entries: readonly MorseEn
       <h3 id={id} className="text-body font-semibold text-ink">
         {title}
       </h3>
-      <dl className="mt-2 grid grid-cols-2 gap-x-6 border-t border-border sm:grid-cols-3 lg:grid-cols-4">
+      {/* Two columns on a phone, one when the text is so large that a code would not fit in half the width. */}
+      <dl className="mt-2 grid grid-cols-[repeat(auto-fill,minmax(min(100%,8rem),1fr))] gap-x-6 border-t border-border sm:grid-cols-3 lg:grid-cols-4">
         {entries.map((entry) => (
           <div key={entry.char} className="flex items-baseline justify-between gap-3 border-b border-border py-1.5">
             <dt className="font-mono text-body font-semibold text-ink">{entry.char}</dt>

@@ -330,10 +330,11 @@ describe("the Supplies screen", () => {
     });
     expect(await screen.findByText("5 tins of Baked beans")).toBeInTheDocument();
     expect(screen.getByText(/has changed since this list was worked out/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Save as PDF/ })).toBeInTheDocument();
+    // The PDF is made on the device with the print kit, which takes a moment.
+    expect(await screen.findByRole("link", { name: /Save as PDF/ }, { timeout: 20_000 })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Add to library/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copy as text" })).toBeInTheDocument();
-  });
+  }, 30_000);
 
   it("says a line's new count after plus, and keeps minus in the keyboard's reach at one", async () => {
     const server = show({

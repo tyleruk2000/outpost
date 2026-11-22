@@ -68,10 +68,10 @@ describe("the Learning view", () => {
       "href",
       "/library/read/c1/lessons/quarters",
     );
-    expect(screen.getByRole("link", { name: /Save as PDF/ })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: /Save as PDF/ }, { timeout: 15_000 })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Add to library/ })).toBeInTheDocument();
     expect(server.calls).toContain("GET /api/learning/progress?learner=Sam");
-  });
+  }, 30_000);
 
   it("says a course no longer installed is kept, and offers no way into it", async () => {
     chooseLearner("Sam");

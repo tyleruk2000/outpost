@@ -14,22 +14,23 @@ import {
   type SupplyItem,
 } from "@outpost/shared";
 import { Check, ClipboardCopy, Minus, Plus, RefreshCw, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { EmptyState, ErrorState, Notice, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Segmented, Select, Skeleton } from "@/components/ui/misc";
-import { madePdf } from "@/features/library/made/made-pdf";
 import { PdfActions } from "@/features/library/made/pdf-actions";
+import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
 import { errorMessage } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
 import { notify } from "@/lib/notify";
+import { deviceRegion, likelyPaperFor } from "@/lib/region";
 import { formatDate } from "@/lib/utils";
 import { useAddShoppingLine, useBought, useRemoveShoppingLine, useShopping, useUpdateShoppingLine, useWorkOutShopping } from "./data";
 import { Stepper } from "./item-form";
-import { shoppingPdf, shoppingTitle } from "./shopping-document";
+import { shoppingDocument, shoppingTitle } from "./shopping-document";
 import { amount, lineWords, reasonsWords, shoppingText } from "./words";
 
 function BoughtDialog({ line, model, onClose }: { line: ShoppingLine; model: SupplyItem | undefined; onClose: () => void }) {
@@ -171,16 +172,16 @@ export function ShoppingView({ items }: { items: SupplyItem[] }) {
   };
   const lines = shopping.data?.lines ?? [];
   const workedOutAt = shopping.data?.workedOutAt ?? null;
-  const pdf = useMemo(
-    () =>
-      lines.length > 0
-        ? madePdf(shoppingPdf(lines, workedOutAt, now), shoppingTitle(workedOutAt, now), "Shopping list", {
-            what: "the supplies' shopping list",
-            path: "/prepare/supplies?view=shopping",
-          })
-        : null,
-    [lines, workedOutAt, now],
+  const make = useCallback(
+    () => shoppingDocument({ lines, items, workedOutAt, now, paper: likelyPaperFor(deviceRegion()) }),
+    [lines, items, workedOutAt, now],
   );
+  const made = useKitPdf(lines.length > 0 ? make : null, {
+    title: shoppingTitle(workedOutAt, now),
+    kind: "Shopping list",
+    from: { what: "the supplies' shopping list", path: "/prepare/supplies?view=shopping" },
+  });
+  const pdf = kitPdfOf(made);
 
   if (shopping.isPending)
     return (
@@ -285,6 +286,12 @@ export function ShoppingView({ items }: { items: SupplyItem[] }) {
 
       {lines.length > 0 ? (
         <Section title="Take it with you" description="As a PDF to print or keep, or as text to paste into a message.">
+          {made.status === "making" ? <p className="mb-3 text-small text-ink-muted">Making the PDF…</p> : null}
+          {made.status === "failed" ? (
+            <Notice tone="danger" className="mb-3">
+              The PDF could not be made: {made.error}
+            </Notice>
+          ) : null}
           <PdfActions pdf={pdf}>
             <Button
               onClick={async () => {

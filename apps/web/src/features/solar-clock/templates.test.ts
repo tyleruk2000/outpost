@@ -2,8 +2,15 @@
 import { describe, expect, it } from "vitest";
 import { writable } from "@/features/maps/print/lettering";
 import { PT_PER_MM } from "@/features/maps/print/paper";
+import { writePdfPages } from "@/features/maps/print/pdf";
 import type { Sheet } from "@/features/maps/print/sheet";
-import { canDrawSundial, nocturnalPdf, nocturnalSheets, sheetText, sundialPdf, sundialSheets } from "./templates";
+import { canDrawSundial, nocturnalSheets, sheetText, sundialSheets } from "./templates";
+
+/** The pages through the old writer, as the templates were made before the print kit. */
+const sundialPdf = (input: Parameters<typeof sundialSheets>[0]) =>
+  writePdfPages({ pages: sundialSheets(input), title: "Sundial", created: new Date(Date.UTC(input.year, 0, 1)) });
+const nocturnalPdf = (input: Parameters<typeof nocturnalSheets>[0]) =>
+  writePdfPages({ pages: nocturnalSheets(input), title: "Nocturnal", created: new Date(Date.UTC(input.year, 0, 1)) });
 
 const LETTER = { width: 216 * PT_PER_MM, height: 279 * PT_PER_MM };
 

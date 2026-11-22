@@ -30,6 +30,7 @@ import {
   vigenere,
   vigenereSquare,
 } from "./ciphers";
+import { padsDocument, squareDocument } from "./kit-aids";
 import {
   type AidPaper,
   lineNumber,
@@ -39,10 +40,8 @@ import {
   padHeading,
   padHolder,
   padLines,
-  padPages,
   SQUARE_HOW,
   SQUARE_TITLE,
-  squarePages,
 } from "./paper-aids";
 import { CopyButton, Panel } from "./parts";
 import { PrintView } from "./print-view";
@@ -209,10 +208,13 @@ type Aid = { kind: "square" } | { kind: "pads"; pads: Pad[] };
 /** A paper aid opened to print: the sheet filling the screen, with Print and Save as PDF. */
 function AidView({ aid, onClose }: { aid: Aid; onClose(): void }) {
   // Kept the same from one render to the next: the PDF is made again only when the paper or the aid changes.
-  const pages = useCallback((paper: AidPaper) => (aid.kind === "square" ? squarePages(paper) : padPages(aid.pads, paper)), [aid]);
+  const pages = useCallback(
+    (paper: AidPaper, made: Date) => (aid.kind === "square" ? squareDocument(paper, made) : padsDocument(aid.pads, paper, made)),
+    [aid],
+  );
   if (aid.kind === "square") {
     return (
-      <PrintView title={SQUARE_TITLE} summary="One sheet, to keep beside you." pages={pages} onClose={onClose}>
+      <PrintView title={SQUARE_TITLE} summary="One sheet, to keep beside you." document={pages} onClose={onClose}>
         <VigenereSquareSheet />
       </PrintView>
     );
@@ -223,7 +225,7 @@ function AidView({ aid, onClose }: { aid: Aid; onClose(): void }) {
       title="One-time pads"
       summary={`${aid.pads.length === 1 ? "1 pad" : `${aid.pads.length} pads`} of ${letters} letters, two copies of each.`}
       secret
-      pages={pages}
+      document={pages}
       onClose={onClose}
     >
       <PadSheets pads={aid.pads} />

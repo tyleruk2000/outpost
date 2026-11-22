@@ -510,6 +510,28 @@ describe("the cards to print", () => {
       "/prepare/plans/p1#household",
     );
   });
+
+  it("makes the cards with the print kit, and the old way when a name is in letters the kit lacks", async () => {
+    URL.createObjectURL = vi.fn(() => "blob:cards");
+    URL.revokeObjectURL = vi.fn();
+    const latin = answer();
+    latin.plan.body.people = latin.plan.body.people.filter((person) => person.name === "Maya Okafor");
+    latin.plan.body.contacts = latin.plan.body.contacts.filter((contact) => contact.name !== "王小明");
+    serve({ "/api/emergency-plans/p1": latin });
+    show("/prepare/plans/p1/cards", <CardsPage />, "/prepare/plans/:id/cards");
+    const save = await screen.findByRole("link", { name: /Save as PDF/ }, { timeout: 10_000 });
+    expect(save.getAttribute("download")).toMatch(/^wallet-cards/i);
+    expect(screen.queryByText(/drawn as pictures/)).toBeNull();
+  }, 20_000);
+
+  it("draws a name in other letters as a picture, the old way", async () => {
+    URL.createObjectURL = vi.fn(() => "blob:cards");
+    URL.revokeObjectURL = vi.fn();
+    serve({ "/api/emergency-plans/p1": answer() });
+    show("/prepare/plans/p1/cards", <CardsPage />, "/prepare/plans/:id/cards");
+    expect(await screen.findByRole("link", { name: /Save as PDF/ }, { timeout: 10_000 })).toBeInTheDocument();
+    expect(await screen.findByText(/drawn as pictures|could not put some letters/)).toBeInTheDocument();
+  }, 20_000);
 });
 
 describe("a plan in use", () => {

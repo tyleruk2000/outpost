@@ -327,7 +327,13 @@ export function QsoTab() {
   return (
     <div className="grid items-start gap-x-10 gap-y-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <div className="min-w-0 space-y-5">
-        <ol ref={logRef} aria-label="The contact so far" className="max-h-96 divide-y divide-border overflow-y-auto border-y border-border">
+        <ol
+          ref={logRef}
+          aria-label="The contact so far"
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: the contact scrolls in its own box, and the keyboard must be able to scroll it
+          tabIndex={0}
+          className="max-h-96 divide-y divide-border overflow-y-auto border-y border-border"
+        >
           {overs.map((over) => (
             <li key={over.id} className="grid gap-x-4 gap-y-0.5 py-2.5 sm:grid-cols-[6rem_minmax(0,1fr)]">
               <span className={cn("text-small", over.from === "you" ? "font-semibold text-ink" : "font-mono text-ink-muted")}>

@@ -19,10 +19,24 @@ export const PROPAGATION_SOURCE = "o-propagation";
 
 /**
  * How solid a shaded cell is. Low enough that roads, coasts and names show through it,
- * high enough that the five shades stay apart. The legend's swatches are drawn the same
- * way, so that a shade in the legend is the shade on the map.
+ * high enough that the five shades stay apart; on the dark map higher, so that the lowest
+ * class stands 3:1 from the land. The same as `--map-coverage-opacity` in tokens.css, which
+ * the legend's swatches use, so that a shade in the legend is the shade on the map.
  */
 export const CELL_OPACITY = 0.62;
+export const CELL_OPACITY_DARK = 0.8;
+
+/** Whether a theme is the dark one, from its page colour. */
+function isDark(theme: MapTheme): boolean {
+  const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i.exec(theme.page);
+  if (!match) return false;
+  const [r, g, b] = [match[1], match[2], match[3]].map((part) => Number.parseInt(part!, 16) / 255) as [number, number, number];
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b < 0.5;
+}
+
+export function cellOpacity(theme: MapTheme): number {
+  return isDark(theme) ? CELL_OPACITY_DARK : CELL_OPACITY;
+}
 
 /**
  * Cells first, beneath every other thing drawn over the map; then the marks for cells
@@ -37,7 +51,7 @@ export function propagationLayers(theme: MapTheme): LayerSpecification[] {
       type: "fill",
       source: PROPAGATION_SOURCE,
       filter: kind("cell"),
-      paint: { "fill-color": ["get", "fill"], "fill-opacity": CELL_OPACITY, "fill-antialias": false },
+      paint: { "fill-color": ["get", "fill"], "fill-opacity": cellOpacity(theme), "fill-antialias": false },
     },
     {
       // A hairline between cells in the page colour: it shows the grid for what it is, and

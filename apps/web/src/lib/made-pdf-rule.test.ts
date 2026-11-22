@@ -7,7 +7,7 @@
  *
  * What counts as printing or making a PDF: asking the browser to print (`usePrinting`,
  * `window.print`), and writing pages as a PDF (`writePdfPages`, `writePdf`, `toSheets`,
- * `writeLettered`). A screen (a .tsx file) that does so must use the shared actions
+ * `writeLettered`, and the print kit's `renderPdf` and `useKitPdf`). A screen (a .tsx file) that does so must use the shared actions
  * itself (`useMadePdf`, `<PdfActions>`, `<PdfButtons>`). A module (.ts) that does so must
  * be imported, directly or through other modules, by a screen that uses them.
  */
@@ -29,9 +29,11 @@ const ALLOWED: Record<string, string> = {
   "features/maps/print/pdf.ts": "the PDF writer",
   // Draws lines as pictures and hands the pages to the writer; the screens that call it are checked themselves.
   "features/maps/print/lettering.ts": "the writer's lettering",
+  // Hands a print-kit PDF to a screen; the screens that call it are checked themselves.
+  "features/print-kit/use-kit-pdf.ts": "the print kit's hook; the screens that call it are checked themselves",
 };
 
-const MAKES = /(?<!function\s+)\b(usePrinting|writePdfPages|writePdf|toSheets|writeLettered)\s*\(|\bwindow\.print\s*\(/;
+const MAKES = /(?<!function\s+)\b(usePrinting|writePdfPages|writePdf|toSheets|writeLettered|renderPdf|useKitPdf)\s*\(|\bwindow\.print\s*\(/;
 const OFFERS = /\buseMadePdf\s*\(|<PdfActions\b|<PdfButtons\b/;
 
 function sources(dir: string): string[] {
@@ -115,13 +117,12 @@ describe("whatever Outpost prints or makes a PDF of", () => {
       "features/maps/print/export.ts",
       "features/maps/print/print-dialog.tsx",
       "features/encryption/print-view.tsx",
-      "features/encryption/paper-aids.ts",
-      "features/propagation/prediction-document.ts",
-      "features/propagation/comparison-document.ts",
+      "features/propagation/prediction-export.tsx",
       "features/propagation/coverage-map/coverage-picture.ts",
-      "features/propagation/plans/document.ts",
-      // The nuclear workspace's scenarios, with or without their maps (print-maps.ts hands its pages to this one).
-      "features/nuclear/document.ts",
+      "features/propagation/plans/plan-export.tsx",
+      "features/frequencies/frequencies-page.tsx",
+      // The nuclear workspace's scenarios, with or without their maps (print-maps.ts hands its pages to this one, laid out with the print kit).
+      "features/nuclear/print.ts",
     ])
       expect(makers).toContain(known);
   });

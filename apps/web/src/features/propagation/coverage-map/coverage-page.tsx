@@ -45,7 +45,7 @@ import { formatDateTime, formatNumber } from "@/lib/utils";
 import { AntennaPicker, antennaChoices } from "../antenna-picker";
 import { antennaOf, formOf, rememberForm, useEngines, useHomeAsTransmitter, usePlaces, useProfiles, wireHint } from "../data";
 import { EngineNotReady } from "../engine-data";
-import { CELL_OPACITY, coverageFeatures } from "../map/layers";
+import { coverageFeatures } from "../map/layers";
 import type { PlanMapHandle } from "../map/plan-map";
 import { PlaceInput } from "../place-field";
 import { BasisNotice } from "../results";
@@ -120,7 +120,10 @@ function Legend({ result, quantity, utcHour }: { result: CoverageResult; quantit
           <li key={item.label} className="flex items-center gap-2">
             {/* Over the land colour and as see-through as a cell, so that it is the shade the map shows. */}
             <span aria-hidden className="size-4 shrink-0 overflow-hidden rounded-[3px] border border-border-strong bg-surface-strong">
-              <span className="block size-full" style={{ background: `var(--chart-seq-${index + 1})`, opacity: CELL_OPACITY }} />
+              <span
+                className="block size-full"
+                style={{ background: `var(--map-coverage-${index + 1})`, opacity: "var(--map-coverage-opacity)" }}
+              />
             </span>
             <span className="text-ink">{item.label}</span>
             <span className="tabular ml-auto">{cells(counts.classes[index]!)}</span>
@@ -656,7 +659,8 @@ export default function CoveragePage() {
                   Signal strength only: {result.mode.label} has no stated requirement, so there is no reliability to show.
                 </p>
               )}
-              <div className="flex items-center gap-1">
+              {/* With large text on a phone the hour wraps above its slider rather than pushing the row off the screen. */}
+              <div className="flex min-w-0 max-w-full items-center gap-1">
                 <Button
                   size="icon"
                   variant="ghost"
@@ -665,8 +669,8 @@ export default function CoveragePage() {
                 >
                   <ChevronLeft />
                 </Button>
-                <label className="flex h-11 items-center gap-2 text-small text-ink">
-                  <span className="tabular w-[5.5rem] font-medium">{utcLabel(utcHour)} UTC</span>
+                <label className="flex min-h-11 min-w-0 flex-wrap items-center gap-x-2 text-small text-ink">
+                  <span className="tabular min-w-[5.5rem] font-medium">{utcLabel(utcHour)} UTC</span>
                   <input
                     type="range"
                     min={1}
@@ -676,7 +680,7 @@ export default function CoveragePage() {
                     onChange={(event) => setUtcHour(Number(event.target.value))}
                     aria-label="Hour, UTC"
                     aria-valuetext={`${utcLabel(utcHour)} UTC`}
-                    className="h-11 w-36 accent-primary sm:w-48"
+                    className="h-11 w-36 min-w-0 max-w-full accent-primary sm:w-48"
                   />
                 </label>
                 <Button

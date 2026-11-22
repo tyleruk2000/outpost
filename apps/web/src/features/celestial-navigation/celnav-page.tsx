@@ -22,16 +22,15 @@ import { Notice, Page, PageHeader, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { Segmented, Select, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/misc";
-import { madePdf } from "@/features/library/made/made-pdf";
-import { PdfActions } from "@/features/library/made/pdf-actions";
 import { ALMANAC_ACCURACY, SKY_SOURCES as S } from "../night-sky/sources";
 import { useMinuteClock } from "../solar-clock/now-tab";
 import { NoPlaceYet, usePlaceAndZone } from "../solar-clock/place";
 import { HowWorkedOut } from "../tools/kit";
 import { readPref, writePref } from "../tools/kit/device-pref";
-import { guidanceSheetPdf } from "../tools/kit/sheet";
-import { EXAMPLE, FORM_TITLE, formBlocks, workedExample } from "./form";
+import { SheetPdfActions, useSheetPdf } from "../tools/kit/sheet-pdf";
+import { EXAMPLE, FORM_TITLE, workedExample } from "./form";
 import { PlotPlate } from "./plot-plate";
+import { formDocument } from "./print";
 import {
   BODY_OPTIONS,
   formatAngle,
@@ -151,16 +150,11 @@ function SightsTab({ dr }: { dr: { lat: number; lon: number; name: string } }) {
   };
   const now = useMinuteClock();
   const toShoot = useMemo(() => starsToShoot(STARS, now, dr.lat, dr.lon), [now, dr.lat, dr.lon]);
-  const pdf = useMemo(
-    () =>
-      madePdf(
-        guidanceSheetPdf(formBlocks(), FORM_TITLE, "Celestial navigation · Outpost", new Date("2026-11-21T00:00:00Z")),
-        FORM_TITLE,
-        "Form",
-        { what: "Celestial navigation", path: "/tools/celestial-navigation" },
-      ),
-    [],
-  );
+  const pdf = useSheetPdf(formDocument, {
+    title: FORM_TITLE,
+    kind: "Form",
+    from: { what: "Celestial navigation", path: "/tools/celestial-navigation" },
+  });
   const fix = result.fix;
   const fixWords = fix ? `${formatLatLon(fix.position.lat, "lat")}, ${formatLatLon(fix.position.lon, "lon")}` : null;
   const fromDr = fix ? Math.hypot(fix.position.lat - dr.lat, (fix.position.lon - dr.lon) * Math.cos((dr.lat * Math.PI) / 180)) * 60 : 0;
@@ -304,7 +298,7 @@ function SightsTab({ dr }: { dr: { lat: number; lon: number; name: string } }) {
         description="A form to fill in by hand, with every step, and a worked example to check the arithmetic against."
       >
         <WorkedExample />
-        <PdfActions pdf={pdf} className="mt-4" />
+        <SheetPdfActions made={pdf} className="mt-4" />
       </Section>
     </div>
   );

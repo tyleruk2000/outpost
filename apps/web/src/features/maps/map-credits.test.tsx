@@ -55,7 +55,7 @@ describe("the credits under a map", () => {
     expect(line()).toHaveAttribute("data-credits", "folded");
     expect(line()).toHaveTextContent("Protomaps © OpenStreetMap · 4 more");
     expect(within(line()).getByRole("link", { name: "OpenStreetMap" })).toHaveAttribute("href", "https://www.openstreetmap.org/copyright");
-    const more = screen.getByRole("button", { name: "Show all 5 map credits" });
+    const more = screen.getByRole("button", { name: "4 more: show all 5 map credits" });
     expect(more).toHaveAttribute("aria-expanded", "false");
 
     await userEvent.click(more);
@@ -63,7 +63,7 @@ describe("the credits under a map", () => {
     expect(line()).toHaveTextContent(
       "© Mapterhorn · Protomaps © OpenStreetMap · Place names: GeoNames (CC BY 4.0) · Contains OS data © Crown Copyright and database rights 2026 (OGL v3.0) · Outlines: Natural Earth · Fewer",
     );
-    const fewer = screen.getByRole("button", { name: "Show fewer map credits" });
+    const fewer = screen.getByRole("button", { name: "Fewer map credits" });
     expect(fewer).toHaveAttribute("aria-expanded", "true");
     await userEvent.click(fewer);
     expect(line()).toHaveTextContent("Protomaps © OpenStreetMap · 4 more");

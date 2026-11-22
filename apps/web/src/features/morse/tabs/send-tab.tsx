@@ -257,7 +257,7 @@ export function SendTab() {
         </section>
       </div>
 
-      <div className="order-1 grid min-w-0 content-start gap-5 lg:order-2">
+      <div className="order-1 grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-5 lg:order-2">
         <KeyPad
           keyType={prefs.keyType}
           keyDown={keyer.keyDown}
