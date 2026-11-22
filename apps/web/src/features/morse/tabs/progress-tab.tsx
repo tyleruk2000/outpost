@@ -12,6 +12,7 @@ import { EmptyState, ErrorState, Notice, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Progress, Skeleton } from "@/components/ui/misc";
+import { ScrollBox } from "@/features/radio/scroll-box";
 import { errorMessage } from "@/lib/api";
 import { formatDateTime, plural } from "@/lib/utils";
 import { useClearMorse, useKochLesson, useMorse } from "../data";
@@ -171,7 +172,7 @@ export function ProgressTab() {
         <summary className="min-h-11 cursor-pointer py-2 text-body font-medium text-ink md:min-h-0">
           The {sessions.length > TABLE_ROWS ? `${TABLE_ROWS} most recent sessions` : "sessions"} as a table
         </summary>
-        <div className="mt-2 overflow-x-auto">
+        <ScrollBox label="Sessions as a table" className="mt-2 overflow-x-auto">
           <table className="tabular w-full text-left text-small">
             <thead>
               <tr className="border-b border-border-strong text-ink-muted">
@@ -202,7 +203,7 @@ export function ProgressTab() {
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollBox>
       </details>
 
       {startAgain}

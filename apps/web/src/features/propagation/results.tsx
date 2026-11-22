@@ -319,7 +319,7 @@ function Listing({ result }: { result: PredictionResult }) {
           // biome-ignore lint/a11y/noNoninteractiveTabindex: a box that scrolls must be reachable to be scrolled with the keyboard
           tabIndex={0}
         >
-          <pre className="p-3 font-mono text-[0.75rem] leading-snug text-ink">{listing.data.listing}</pre>
+          <pre className="p-3 font-mono text-micro leading-snug text-ink">{listing.data.listing}</pre>
         </section>
       ) : (
         <Button variant="secondary" size="sm" loading={listing.isPending} onClick={() => listing.mutate(result.request)}>

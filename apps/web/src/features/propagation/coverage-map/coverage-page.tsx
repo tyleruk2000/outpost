@@ -656,7 +656,8 @@ export default function CoveragePage() {
                   Signal strength only: {result.mode.label} has no stated requirement, so there is no reliability to show.
                 </p>
               )}
-              <div className="flex items-center gap-1">
+              {/* With large text on a phone the hour wraps above its slider rather than pushing the row off the screen. */}
+              <div className="flex min-w-0 max-w-full items-center gap-1">
                 <Button
                   size="icon"
                   variant="ghost"
@@ -665,8 +666,8 @@ export default function CoveragePage() {
                 >
                   <ChevronLeft />
                 </Button>
-                <label className="flex h-11 items-center gap-2 text-small text-ink">
-                  <span className="tabular w-[5.5rem] font-medium">{utcLabel(utcHour)} UTC</span>
+                <label className="flex min-h-11 min-w-0 flex-wrap items-center gap-x-2 text-small text-ink">
+                  <span className="tabular min-w-[5.5rem] font-medium">{utcLabel(utcHour)} UTC</span>
                   <input
                     type="range"
                     min={1}
@@ -676,7 +677,7 @@ export default function CoveragePage() {
                     onChange={(event) => setUtcHour(Number(event.target.value))}
                     aria-label="Hour, UTC"
                     aria-valuetext={`${utcLabel(utcHour)} UTC`}
-                    className="h-11 w-36 accent-primary sm:w-48"
+                    className="h-11 w-36 min-w-0 max-w-full accent-primary sm:w-48"
                   />
                 </label>
                 <Button

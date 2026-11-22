@@ -34,6 +34,7 @@ import { useShades } from "@/features/maps/map/use-shades";
 import { RangeWhy } from "@/features/maps/radio/range-why";
 import { NumberField } from "@/features/maps/radio/sight-panel";
 import { mapCard } from "@/features/maps/ui";
+import { ScrollBox } from "@/features/radio/scroll-box";
 import { ApiError, api, errorMessage } from "@/lib/api";
 import { useDebounced } from "@/lib/use-debounced";
 import { cn } from "@/lib/utils";
@@ -448,7 +449,10 @@ function RangeControl({
               What this is, and is not
             </summary>
             {/* The long account scrolls inside the card rather than growing it over the map. */}
-            <div className="scroll-quiet grid max-h-56 gap-1.5 overflow-y-auto pb-1 pl-6 text-small text-ink-muted">
+            <ScrollBox
+              label="What this is, and is not"
+              className="scroll-quiet grid max-h-56 gap-1.5 overflow-y-auto pb-1 pl-6 text-small text-ink-muted"
+            >
               {reading?.sentences.map((sentence) => (
                 <p key={sentence}>{sentence}</p>
               ))}
@@ -471,7 +475,7 @@ function RangeControl({
               </p>
               {terrain ? <p>{terrain}</p> : null}
               {range.data && range.data.coverage !== "none" ? <p>{RANGE_ACCURACY}</p> : null}
-            </div>
+            </ScrollBox>
           </details>
           {range.data && range.data.coverage !== "none" ? (
             <details className="group/why">

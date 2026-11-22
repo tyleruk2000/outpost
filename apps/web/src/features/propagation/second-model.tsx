@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { Notice, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Progress, Select, Skeleton } from "@/components/ui/misc";
+import { ScrollBox } from "@/features/radio/scroll-box";
 import { api, errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { useStorage } from "@/lib/queries";
@@ -150,7 +151,7 @@ function HourTable({ comparison, hour }: { comparison: SecondModelComparison; ho
         At {utcLabel(hour)} UTC, each model's own figures (V: VOACAP, P: P.533). The difference is P.533's signal less VOACAP's, given only
         where both have the path open.
       </p>
-      <div className="scroll-quiet overflow-x-auto">
+      <ScrollBox label={`At ${utcLabel(hour)} UTC, each model's own figures`} className="scroll-quiet overflow-x-auto">
         <table className="tabular w-full min-w-max text-small">
           <caption className="sr-only">At {utcLabel(hour)} UTC, each model's own figures</caption>
           <thead>
@@ -220,7 +221,7 @@ function HourTable({ comparison, hour }: { comparison: SecondModelComparison; ho
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollBox>
     </div>
   );
 }

@@ -12,6 +12,7 @@ import {
   REPEATER_STATUS_NAMES,
   type RepeaterDuplicateSide,
 } from "@outpost/shared";
+import { ScrollBox } from "@/features/radio/scroll-box";
 import { cn } from "@/lib/utils";
 import { sideLabel } from "./words";
 
@@ -67,7 +68,7 @@ export function SideBySide({
   const agreed = rows.filter((row) => new Set(row.values).size === 1 && row.values[0] !== NOTHING && row.label !== "Callsign");
   return (
     <div className="grid gap-1.5">
-      <div className="scroll-quiet overflow-x-auto border-y border-border">
+      <ScrollBox label={caption} className="scroll-quiet overflow-x-auto border-y border-border">
         <table className="w-full text-small" style={{ minWidth: `${7 + entries.length * 9.5}rem` }}>
           <caption className="sr-only">{caption}</caption>
           <thead>
@@ -131,7 +132,7 @@ export function SideBySide({
             )}
           </tbody>
         </table>
-      </div>
+      </ScrollBox>
       {agreed.length > 0 ? (
         <p className="tabular text-small text-ink-muted">
           They agree on {agreed.map((row) => `${inSentence(row.label)} ${row.values[0]}`).join("; ")}.

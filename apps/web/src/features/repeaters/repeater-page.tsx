@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/misc";
 import { formatBearing, formatDistance } from "@/features/maps/lib/geo";
+import { ScrollBox } from "@/features/radio/scroll-box";
 import { formatDate } from "@/lib/utils";
 import { useRemoveRepeater, useRepeater, useRevertRepeater, useSeparate } from "./data";
 import { OriginPicker, useOrigin } from "./origin";
@@ -286,7 +287,7 @@ export default function RepeaterPage() {
           <p className="text-small text-ink-muted">
             Bringing the list up to date leaves this entry as you have it. This is where it differs from what the list says now.
           </p>
-          <div className="scroll-quiet overflow-x-auto border-y border-border">
+          <ScrollBox label="Where this entry differs from the list" className="scroll-quiet overflow-x-auto border-y border-border">
             <table className="w-full min-w-[26rem] text-small">
               <thead>
                 <tr className="text-left text-ink-muted">
@@ -313,7 +314,7 @@ export default function RepeaterPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollBox>
           <div>
             <Button
               onClick={() =>

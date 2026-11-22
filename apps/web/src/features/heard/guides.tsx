@@ -98,7 +98,7 @@ function OutpostEnd({ host, port, note }: { host: string; port: number; note?: s
   return (
     <Step title="In Outpost">
       <p>
-        Settings, Receivers: add one with the address <span className="font-mono">{host}</span> and port{" "}
+        Settings, Receivers: add one with the address <span className="font-mono break-all">{host}</span> and port{" "}
         <span className="font-mono tabular">{port}</span>. It says Connected, and when the last packet came.{note ? ` ${note}` : ""}
       </p>
     </Step>
