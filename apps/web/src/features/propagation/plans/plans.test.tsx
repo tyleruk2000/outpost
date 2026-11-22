@@ -3,8 +3,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { contentText, renderPdf } from "@/features/print-kit";
+import { blockLines, kitUnwritable } from "../print/glyphs";
+import { planPrint } from "../print/plan-print";
+import { readPdf } from "../print/read-pdf";
 import { newPlan } from "./data";
-import { planDocument, planMarkdown, planPdf, toMarkdown, toSheets, unwritable } from "./document";
+import { planDocument, planMarkdown, toMarkdown, toSheets, unwritable } from "./document";
 import PlanPage from "./plan-page";
 import PlansPage from "./plans-page";
 
@@ -194,19 +198,34 @@ describe("the plan written out", () => {
     // Twenty-four hours across: the table is set smaller to fit, and no smaller than can be read.
     expect(row!.size).toBeGreaterThanOrEqual(5.6);
     expect(row!.size).toBeLessThanOrEqual(7.6);
+  });
 
-    const bytes = planPdf(planOf(), matrixOf(), written);
-    const file = new TextDecoder("latin1").decode(bytes);
-    expect(file.startsWith("%PDF-1.")).toBe(true);
-    expect(file).toContain("(Communication plan: Family net)");
-    expect(file).toContain("/BaseFont /Courier");
-    expect(file).toContain("(Page 1 of ");
+  it("is laid out with the print kit: the band for each pair first, each pair's hours shaded, the world, a log and how HF travels", async () => {
+    const doc = planPrint(planOf(), matrixOf(), written);
+    const words = contentText(doc.content);
+    for (const expected of [
+      "Family net",
+      "Which band for each pair",
+      "40 m, up to 60% of days",
+      "Home base and Remote shelter",
+      "Share of days:",
+      "The stations at 08:00 UTC on 16 November 2026, the start of the window",
+      "Calls made",
+      "How HF gets there",
+      "skip zone",
+      "Call on the hour.",
+    ])
+      expect(words, expected).toContain(expected);
+    const { text, info } = await readPdf((await renderPdf(doc)).bytes);
+    expect(info.Title).toBe("Communication plan: Family net");
+    expect(text.replace(/\s+/g, " ")).toContain("Primary: 40 m (7.1 MHz), 08:00 to 12:00 UTC.");
   });
 
   it("names the letters the PDF's typeface cannot write", () => {
     const plan = planOf({ stations: [station("home", "Дом", 51.51, -0.13), station("shelter", "Remote shelter", 54.46, -3.09)] });
+    expect(kitUnwritable(blockLines(planDocument(plan, matrixOf(), written)))).toEqual(["Д", "о", "м"]);
+    expect(kitUnwritable(blockLines(planDocument(planOf(), matrixOf(), written)))).toEqual([]);
     expect(unwritable(planDocument(plan, matrixOf(), written))).toEqual(["Д", "о", "м"]);
-    expect(unwritable(planDocument(planOf(), matrixOf(), written))).toEqual([]);
   });
 });
 

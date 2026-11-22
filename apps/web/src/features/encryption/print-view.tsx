@@ -4,7 +4,7 @@
  *
  * There are two ways, because no one of them works on every phone. "Print" asks the
  * browser, which prints the sheet and nothing round it (encryption.css). "Save as PDF"
- * makes the same sheet as a file on this device, which any phone can open, share and
+ * makes the same sheet, laid out with the print kit (kit-aids.ts), as a file on this device, which any phone can open, share and
  * print; it is made here, in the page, and is never sent anywhere. Where the browser's
  * print cannot be counted on, the file is put first and the screen says why
  * (lib/printing.ts). The sheet being on the screen is itself a third way: the
@@ -19,23 +19,21 @@
  * says exactly that. The cipher square is no secret and is added without a question.
  */
 import { Download, LibraryBig, Printer, Share2, TriangleAlert, X } from "lucide-react";
+import type { TDocumentDefinitions } from "pdfmake/interfaces";
 import { Dialog as DialogPrimitive } from "radix-ui";
-import { type CSSProperties, type ReactNode, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { type CSSProperties, type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { Notice } from "@/components/page";
 import { PrintNotice } from "@/components/print-notice";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Segmented } from "@/components/ui/misc";
-import { madePdf } from "@/features/library/made/made-pdf";
 import { PdfStatus, useMadePdf } from "@/features/library/made/pdf-actions";
 import { readStored, writeStored } from "@/features/maps/lib/view";
 import { PAPERS } from "@/features/maps/print/paper";
-import { pdfFileName } from "@/features/maps/print/pdf";
-import type { Sheet } from "@/features/maps/print/sheet";
-import { errorMessage } from "@/lib/api";
+import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
 import { usePrinting } from "@/lib/printing";
 import { plural } from "@/lib/utils";
-import { AID_PAPER_KEY, AID_PAPERS, type AidPaper, aidPdf, isAidPaper, likelyPaper } from "./paper-aids";
+import { AID_PAPER_KEY, AID_PAPERS, type AidPaper, isAidPaper, likelyPaper } from "./paper-aids";
 import "./encryption.css";
 import { notify } from "@/lib/notify";
 
@@ -45,13 +43,11 @@ const PAPER_KEY = AID_PAPER_KEY;
 /** The paper on screen is as wide as A4, and drawn smaller where the screen is narrower than that. */
 const PAPER_WIDTH_PX = (210 / 25.4) * 96;
 
-type Made = { file: File; pages: number } | { error: string };
-
 export function PrintView({
   title,
   summary,
   secret,
-  pages,
+  document: makeDocument,
   onClose,
   children,
 }: {
@@ -61,8 +57,8 @@ export function PrintView({
   summary: string;
   /** The sheet is a secret (a one-time pad), so a saved file is a copy that has to be destroyed like the paper. */
   secret?: boolean;
-  /** The sheet as pages for the PDF (paper-aids.ts). The file is made again whenever this function is a new one, so it has to keep its identity between renders. */
-  pages: (paper: AidPaper) => Sheet[];
+  /** The sheet as a document for the print kit (kit-aids.ts). The file is made again whenever this function is a new one, so it has to keep its identity between renders. */
+  document: (paper: AidPaper, made: Date) => TDocumentDefinitions;
   onClose: () => void;
   /** The sheet itself, as the browser prints it. */
   children: ReactNode;
@@ -74,24 +70,18 @@ export function PrintView({
     writeStored(PAPER_KEY, next);
   };
 
-  // The file is a few thousand bytes of text, so it is made as the view opens and "Save as PDF" is a plain link to it.
-  const made = useMemo<Made>(() => {
-    try {
-      const sheets = pages(paper);
-      const bytes = aidPdf(sheets, title);
-      return { file: new File([bytes as BlobPart], pdfFileName(title), { type: "application/pdf" }), pages: sheets.length };
-    } catch (error) {
-      return { error: errorMessage(error) };
-    }
-  }, [pages, paper, title]);
-  const file = "file" in made ? made.file : null;
-
+  // The file is made as the view opens, on this device, and again when the paper changes; "Save as PDF" is then a plain link to it.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new moment for each new sheet
+  const at = useMemo(() => new Date(), [makeDocument]);
+  const make = useCallback(() => makeDocument(paper, at), [makeDocument, paper, at]);
+  const kit = useKitPdf(make, {
+    title,
+    kind: secret ? "One-time pads" : "Cipher aid",
+    from: { what: "the Encryption page", path: "/encryption" },
+  });
   // The same file, as the library takes it: through the library's own upload, like every PDF Outpost makes.
-  const forLibrary = useMemo(
-    () =>
-      file ? madePdf(file, title, secret ? "One-time pads" : "Cipher aid", { what: "the Encryption page", path: "/encryption" }) : null,
-    [file, title, secret],
-  );
+  const forLibrary = kitPdfOf(kit);
+  const file = forLibrary?.file ?? null;
   const library = useMadePdf(forLibrary);
   const [asking, setAsking] = useState(false);
   const adding = library.state.status === "adding";
@@ -188,9 +178,9 @@ export function PrintView({
                 printing={printing}
                 instead="Save the PDF and print that. The browser’s own Share menu, then Print, prints this sheet too."
               />
-              {"error" in made ? (
+              {kit.status === "failed" ? (
                 <Notice tone="danger" title="The PDF could not be made">
-                  {made.error}
+                  {kit.error}
                 </Notice>
               ) : (
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
@@ -201,8 +191,9 @@ export function PrintView({
                     options={AID_PAPERS.map((id) => ({ value: id, label: PAPERS[id].label }))}
                   />
                   <p className="text-small text-ink-muted" data-testid="pdf-summary">
-                    The PDF is {plural(made.pages, "page")} of {PAPERS[paper].label}
-                    {secret ? "." : ", made on this device and sent nowhere."}
+                    {kit.status === "made"
+                      ? `The PDF is ${plural(kit.pages, "page")} of ${PAPERS[paper].label}${secret ? "." : ", made on this device and sent nowhere."}`
+                      : `The PDF is being made on this device, on ${PAPERS[paper].label}.`}
                   </p>
                 </div>
               )}

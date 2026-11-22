@@ -202,7 +202,11 @@ function Skerry({ levels }: { levels: Level[] }) {
             <TerminalLine key={at} line={line} />
           ))}
         </div>
-        <form onSubmit={submit} className="flex items-center gap-2 px-3 pt-1 pb-3 md:px-4">
+        {/* The line being typed shows a ring while it has the focus: the caret alone is too faint a mark (WCAG 2.4.7). */}
+        <form
+          onSubmit={submit}
+          className="flex items-center gap-2 rounded-b-panel px-3 pt-1 pb-3 focus-within:outline-2 focus-within:outline-offset-[-2px] focus-within:outline-game-term-prompt md:px-4"
+        >
           <span aria-hidden className="shrink-0 text-game-term-prompt">
             tarrow:{shortPath(session.cwd, level.home)}$
           </span>
@@ -229,7 +233,11 @@ function Skerry({ levels }: { levels: Level[] }) {
       </div>
       <div className="mt-2 flex flex-wrap gap-2">
         <Button {...keyProps(finish)}>Tab</Button>
-        <Button {...keyProps(() => setTyped((current) => `${current.replace(/\s+$/, "")} | `))} aria-label="Type a pipe, |">
+        <Button
+          {...keyProps(() => setTyped((current) => `${current.replace(/\s+$/, "")} | `))}
+          aria-label="Type a pipe, |"
+          className="min-w-11 md:min-w-8"
+        >
           |
         </Button>
         <Button size="icon" aria-label="Previous command" {...keyProps(() => recall(-1))}>

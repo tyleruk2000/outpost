@@ -3,16 +3,17 @@
  * press, and starting a new one from a template drawn from official guidance or from
  * blank.
  */
-import { type EmergencyPlanSummary, type PlanTemplate, planFromTemplate, planKindLabel, reviewDue } from "@outpost/shared";
+import { type EmergencyPlanSummary, type PlanTemplate, planFromTemplate, planKindLabel, reviewDue, templateById } from "@outpost/shared";
 import { ListChecks } from "lucide-react";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { EmptyState, ErrorState, Joined, Page, PageHeader, Rows } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/misc";
 import { useHomeCountry } from "@/features/frequencies/home-country";
+import { BookPlansLine } from "@/features/household-book/book-line";
 import { errorMessage } from "@/lib/api";
 import { formatDate, localId, plural } from "@/lib/utils";
 import { useCreatePlan, usePlans } from "./data";
@@ -57,9 +58,20 @@ function PlanRow({ plan }: { plan: EmergencyPlanSummary }) {
   );
 }
 
-function NewPlanDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
-  const [chosen, setChosen] = useState<PlanTemplate | "blank" | null>(null);
-  const [name, setName] = useState("");
+function NewPlanDialog({
+  open,
+  onOpenChange,
+  start,
+  fromBook,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** A template to start with chosen: the household book's "Make a plan for this". */
+  start?: PlanTemplate | null;
+  fromBook?: boolean;
+}) {
+  const [chosen, setChosen] = useState<PlanTemplate | "blank" | null>(start ?? null);
+  const [name, setName] = useState(start?.name ?? "");
   const create = useCreatePlan();
   const navigate = useNavigate();
   const close = (next: boolean) => {
@@ -77,7 +89,7 @@ function NewPlanDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
     if (!chosen) return;
     const input = chosen === "blank" ? blankPlan(name.trim() || "Our plan", number) : planFromTemplate(chosen, localId, number);
     if (name.trim()) input.name = name.trim();
-    create.mutate(input, { onSuccess: (response) => navigate(`/prepare/plans/${response.plan.id}`) });
+    create.mutate(input, { onSuccess: (response) => navigate(`/prepare/plans/${response.plan.id}${fromBook ? "?from=book" : ""}`) });
   };
   return (
     <Dialog open={open} onOpenChange={close}>
@@ -154,7 +166,11 @@ function NewPlanDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
 
 export default function EmergencyPlansPage() {
   const plans = usePlans();
-  const [starting, setStarting] = useState(false);
+  // The household book sends a person here to make a plan for a hazard: ?template=flooding&from=book.
+  const [params] = useSearchParams();
+  const asked = templateById(params.get("template"));
+  const fromBook = params.get("from") === "book";
+  const [starting, setStarting] = useState(asked !== undefined);
   const start = (
     <Button variant="primary" onClick={() => setStarting(true)}>
       New plan
@@ -168,6 +184,7 @@ export default function EmergencyPlansPage() {
         actions={plans.data && plans.data.length > 0 ? start : undefined}
       />
       <HomeWarningLine className="mb-4 max-w-[65ch]" />
+      {plans.data && plans.data.length > 0 ? <BookPlansLine className="mb-4" /> : null}
       {plans.isPending ? (
         <div className="grid gap-3" aria-busy>
           <Skeleton className="h-16" />
@@ -190,7 +207,7 @@ export default function EmergencyPlansPage() {
       <p className="mt-6 max-w-[65ch] text-small text-ink-muted">
         These are your household's own plans, made in advance. In a real emergency, follow the emergency services and official warnings.
       </p>
-      <NewPlanDialog open={starting} onOpenChange={setStarting} />
+      <NewPlanDialog open={starting} onOpenChange={setStarting} start={asked ?? null} fromBook={fromBook} />
     </Page>
   );
 }

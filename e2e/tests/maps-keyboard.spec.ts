@@ -193,7 +193,7 @@ test.describe("map credits", () => {
       await open(page);
       const more = page.locator(".outpost-credits-more");
       const shows = ((await more.textContent()) ?? "").trim();
-      await expect(more).toHaveAccessibleName(new RegExp(`^${shows} map credits?: show all \\d+$`));
+      await expect(more).toHaveAccessibleName(new RegExp(`^${shows}: show all \\d+ map credits$`));
     } finally {
       await removeTestMaps(page, maps);
     }

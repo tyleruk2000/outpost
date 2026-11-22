@@ -43,7 +43,7 @@ describe("the Satellites screen", () => {
     expect(screen.getByRole("button", { name: "Get orbital elements" })).toBeInTheDocument();
   });
 
-  it("lists passes over Home, and opens one satellite with its transmitters and sky track", { timeout: 20_000 }, async () => {
+  it("lists passes over Home, and opens one satellite with its transmitters and sky track", { timeout: 40_000 }, async () => {
     const user = userEvent.setup();
     show({
       satellites: iss,
@@ -76,6 +76,8 @@ describe("the Satellites screen", () => {
     expect(screen.getByText("FM voice repeater")).toBeInTheDocument();
     expect(screen.getByText(/Sending to a satellite needs an amateur licence/)).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /Sky track/ })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "This pass as a PDF" }));
+    expect(await screen.findByRole("link", { name: /Save as PDF/ }, { timeout: 15_000 })).toBeInTheDocument();
   });
 
   it("warns when the elements are old", () => {

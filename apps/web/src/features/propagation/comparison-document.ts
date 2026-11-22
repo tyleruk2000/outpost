@@ -9,14 +9,12 @@
  * out twice is the same file.
  */
 import { bandOf, COMPARISONS, type CompareResult, type PredictionResult } from "@outpost/shared";
-import { writePdfPages } from "@/features/maps/print/pdf";
 import { appLocale } from "@/lib/region";
-import { type Block, toMarkdown, toSheets } from "./plans/document";
-import { APPROXIMATE, APPROXIMATE_KEY, NO_FIGURE, NOT_MODELLED, type PredictionPaper } from "./prediction-document";
+import { type Block, toMarkdown } from "./plans/document";
+import { APPROXIMATE, APPROXIMATE_KEY, NO_FIGURE, NOT_MODELLED } from "./prediction-document";
 
 const longDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 const shortDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
-const monthYear = new Intl.DateTimeFormat(appLocale(), { month: "long", year: "numeric", timeZone: "UTC" });
 const dateOf = (iso: string) => new Date(`${iso}T00:00:00Z`);
 const mhz = (value: number) => `${value.toFixed(value >= 10 ? 1 : 2)} MHz`;
 const isNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
@@ -124,15 +122,6 @@ export function comparisonDocument(result: PredictionResult, comparison: Compare
       text: `Worked out by ${comparison.engine.model}, run by ${comparison.engine.implementation} (checksum ${comparison.engine.sha256.slice(0, 16)}). Compared from the prediction answered on ${longDate.format(new Date(result.computedAt))} at ${new Date(result.computedAt).toISOString().slice(11, 16)} UTC, key ${result.key}.`,
     },
   ];
-}
-
-export function comparisonPdf(result: PredictionResult, comparison: CompareResult, paper: PredictionPaper = "a4"): Uint8Array {
-  const footer = `${result.request.tx.name} to ${result.request.rx.name}, ${mhz(comparison.frequencyMhz)} · VOACAP monthly medians about ${monthYear.format(dateOf(result.request.date))}, not the conditions on the day · Outpost`;
-  return writePdfPages({
-    pages: toSheets(comparisonDocument(result, comparison), footer, paper),
-    title: comparisonTitle(result, comparison),
-    created: new Date(result.computedAt),
-  });
 }
 
 export const comparisonMarkdown = (result: PredictionResult, comparison: CompareResult): string =>

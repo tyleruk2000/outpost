@@ -28,6 +28,7 @@ import { holdOpened, lockSheet, type OpenedSheet, sealSheet, touchOpened, useOpe
 import { EncryptSheetDialog, OpenSheet } from "./medical-lock";
 import { type ContactsNow, contactIdsOf, medicalBlocks, medicineLeftWords, reach } from "./medical-words";
 import { libraryQuestion, PaperPreview } from "./paper-pdf";
+import { SAVE_BAR_ROOM, SaveBar } from "./save-bar";
 import { pdfOf, usePaperPdf } from "./use-paper-pdf";
 
 const shortDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "short", year: "numeric" });
@@ -221,7 +222,7 @@ function Editor({ sheet, record: start, opened }: { sheet: MedicalSheet; record:
         <ul className="grid gap-3">
           {record.allergies.map((line, index) => (
             <li key={line.id} className="flex flex-wrap items-end gap-2">
-              <Field label="Allergy to" className="min-w-[10rem] flex-1">
+              <Field label="Allergy to" className="min-w-[min(100%,10rem)] flex-1">
                 {(ids) => (
                   <Input
                     {...ids}
@@ -231,7 +232,7 @@ function Editor({ sheet, record: start, opened }: { sheet: MedicalSheet; record:
                   />
                 )}
               </Field>
-              <Field label="What happens" optional className="min-w-[12rem] flex-[2]">
+              <Field label="What happens" optional className="min-w-[min(100%,12rem)] flex-[2]">
                 {(ids) => (
                   <Input
                     {...ids}
@@ -273,10 +274,10 @@ function Editor({ sheet, record: start, opened }: { sheet: MedicalSheet; record:
             return (
               <li key={line.id} className="grid gap-3 border-b border-border pb-5 last:border-b-0">
                 <div className="flex flex-wrap items-end gap-2">
-                  <Field label="Medicine" className="min-w-[10rem] flex-1">
+                  <Field label="Medicine" className="min-w-[min(100%,10rem)] flex-1">
                     {(ids) => <Input {...ids} value={line.name} maxLength={120} onChange={(event) => set({ name: event.target.value })} />}
                   </Field>
-                  <Field label="Dose" optional className="min-w-[8rem] flex-1">
+                  <Field label="Dose" optional className="min-w-[min(100%,8rem)] flex-1">
                     {(ids) => (
                       <Input
                         {...ids}
@@ -394,7 +395,7 @@ function Editor({ sheet, record: start, opened }: { sheet: MedicalSheet; record:
         <ul className="grid gap-3">
           {record.conditions.map((line, index) => (
             <li key={line.id} className="flex flex-wrap items-end gap-2">
-              <Field label="Condition" className="min-w-[10rem] flex-1">
+              <Field label="Condition" className="min-w-[min(100%,10rem)] flex-1">
                 {(ids) => (
                   <Input
                     {...ids}
@@ -404,7 +405,7 @@ function Editor({ sheet, record: start, opened }: { sheet: MedicalSheet; record:
                   />
                 )}
               </Field>
-              <Field label="What to know" optional className="min-w-[12rem] flex-[2]">
+              <Field label="What to know" optional className="min-w-[min(100%,12rem)] flex-[2]">
                 {(ids) => (
                   <Input
                     {...ids}
@@ -444,12 +445,12 @@ function Editor({ sheet, record: start, opened }: { sheet: MedicalSheet; record:
             const now = reach(kin, contacts);
             return (
               <li key={kin.id} className="flex flex-wrap items-end gap-2">
-                <p className="min-w-[10rem] flex-1 text-small text-ink">
+                <p className="min-w-[min(100%,10rem)] flex-1 text-small text-ink">
                   {now.name}
                   {now.phone ? <span className="tabular">, {now.phone}</span> : null}
                   {now.missing ? <span className="text-warning">: no longer in Contacts</span> : null}
                 </p>
-                <Field label="Who they are" optional className="min-w-[10rem] flex-1">
+                <Field label="Who they are" optional className="min-w-[min(100%,10rem)] flex-1">
                   {(ids) => (
                     <Input
                       {...ids}
@@ -506,7 +507,7 @@ function Editor({ sheet, record: start, opened }: { sheet: MedicalSheet; record:
         </Field>
       </Section>
 
-      <div className="sticky bottom-16 z-[10] mt-6 flex flex-wrap items-center gap-3 border-t border-border bg-page py-3 md:bottom-0">
+      <SaveBar>
         <Button variant="primary" loading={busy} disabled={!dirty || !name.trim()} onClick={() => void send(false)}>
           Save
         </Button>
@@ -514,7 +515,7 @@ function Editor({ sheet, record: start, opened }: { sheet: MedicalSheet; record:
           {dirty ? "Changes not saved yet." : `Saved ${shortDate.format(sheet.updatedAt)}.`}
           {sheet.encrypted ? " Encrypted again in this browser at every save." : ""}
         </span>
-      </div>
+      </SaveBar>
       {error ? (
         <Notice tone="danger" icon={<CircleAlert />}>
           {error}
@@ -609,7 +610,7 @@ export default function MedicalSheetPage() {
   const record = sheet ? (sheet.encrypted ? (open?.record ?? null) : sheet.record) : null;
 
   return (
-    <Page width="reading">
+    <Page width="reading" className={SAVE_BAR_ROOM}>
       <PageHeader
         back={{ to: "/prepare/medical", label: "Medical sheets" }}
         title={sheet ? `Medical sheet: ${sheet.name}` : "Medical sheet"}

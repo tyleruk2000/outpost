@@ -1,7 +1,7 @@
 /**
  * A scenario (or two side by side) written out: every figure, what each level means,
- * every assumption and limitation, and the source of each. The same blocks become
- * Markdown and the pages of a PDF (with the writer the HF planner's documents use).
+ * every assumption and limitation, and the source of each, as blocks that become the
+ * Markdown. The PDF is laid out with the print kit from the same words (print.ts).
  *
  * The file is dated by the scenario, not by the clock: the same scenario written out
  * twice is the same file, so the library can tell it already has it.
@@ -18,9 +18,8 @@ import {
   type ScenarioLetter,
 } from "@outpost/shared";
 import { FALLBACK_THEME } from "@/features/maps/lib/palette";
-import { type PdfPicture, writePdfPages } from "@/features/maps/print/pdf";
 import type { Rgb, SheetItem } from "@/features/maps/print/sheet";
-import { type Block, toMarkdown, toSheets } from "@/features/propagation/plans/document";
+import { type Block, toMarkdown } from "@/features/propagation/plans/document";
 import { FAMILY_HUE, FAMILY_LINES } from "./layers";
 import { burstText, distanceText, listText, windText, yieldText } from "./words";
 
@@ -63,7 +62,7 @@ export function familiesOf(result: EffectsResult): Array<EffectFamily | "fallout
 }
 
 /** The key to the colours on paper: a line in each kind's hue and dashes, and its name. Black-and-white copies keep the dashes and names. */
-function colourKey(result: EffectsResult): Block {
+export function colourKey(result: EffectsResult): Block {
   const families = familiesOf(result);
   const ROW = 14;
   return {
@@ -191,20 +190,4 @@ export const MARKDOWN_HAS_NO_MAPS =
 export function scenarioMarkdown(written: Written[]): string {
   const [title, ...rest] = scenarioDocument(written);
   return toMarkdown([title!, { kind: "para", text: MARKDOWN_HAS_NO_MAPS }, ...rest]);
-}
-
-/**
- * `dated` is the scenarios' own last change (or, for one not saved, when it was last edited), so the same scenario makes the same file.
- * With `figures` and their `pictures`, the PDF has the maps (print-maps.ts); without, words only.
- */
-export function scenarioPdf(
-  written: Written[],
-  dated: number,
-  paper: "a4" | "letter" = "a4",
-  figures?: ScenarioFigures,
-  pictures?: ReadonlyMap<string, PdfPicture>,
-): { bytes: Uint8Array; pages: number } {
-  const title = scenarioTitle(written);
-  const pages = toSheets(scenarioDocument(written, figures), title, paper);
-  return { bytes: writePdfPages({ pages, pictures, title, created: new Date(dated) }), pages: pages.length };
 }

@@ -85,7 +85,7 @@ test.describe("satellite imagery on a phone", () => {
     await takeUp(page, "Satellite imagery");
     await page.waitForTimeout(600);
     // The picture's credit is with the others, which on a phone are one line and a press: "N more".
-    await page.getByRole("button", { name: /^\d more map credits?: show all \d$/ }).tap();
+    await page.getByRole("button", { name: /^\d more: show all \d map credits$/ }).tap();
     await expect(page.getByRole("link", { name: "Contains modified Copernicus Sentinel data 2026" })).toBeVisible();
     expect(await wrong(page), "the picture on the map").toEqual([]);
     expect(errors).toEqual([]);

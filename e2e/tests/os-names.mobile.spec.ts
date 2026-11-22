@@ -57,7 +57,7 @@ test.describe("place names for Great Britain from a phone", () => {
     // rest a press away; here no map region is installed, so Ordnance Survey's is the one in sight.
     const credits = page.locator(".outpost-credits").first();
     await expect(credits).toContainText(/Contains OS data .* · 1 more/, { timeout: 10_000 });
-    await credits.getByRole("button", { name: "1 more map credit: show all 2" }).tap();
+    await credits.getByRole("button", { name: "1 more: show all 2 map credits" }).tap();
     await expect(credits).toContainText(/Contains OS data .* · Natural Earth · Fewer/);
     expect(errors).toEqual([]);
   });

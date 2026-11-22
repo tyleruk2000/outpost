@@ -13,17 +13,14 @@ import { FALLBACK_THEME } from "@/features/maps/lib/palette";
 import { buildStyle } from "@/features/maps/lib/style";
 import { overlayLayers, overlaySources } from "@/features/maps/map/overlays";
 import { deviceLimits, drawPage, PrintMap } from "@/features/maps/print/export";
-import { MAP_PX_STEP, PAPERS, PT_PER_MAP_PX } from "@/features/maps/print/paper";
-import { type PdfPicture, writePdfPages } from "@/features/maps/print/pdf";
+import { MAP_PX_STEP, PT_PER_MAP_PX } from "@/features/maps/print/paper";
 import { frameOfBox } from "@/features/maps/print/scale";
+import { measureOf, renderPdf } from "@/features/print-kit";
 import { errorMessage } from "@/lib/api";
 import { coverageFeatures, PROPAGATION_SOURCE } from "../map/layers";
-import { toSheets } from "../plans/document";
 import type { PredictionPaper } from "../prediction-document";
-import { coverageDocument, coverageFooter, coverageTitle, gridBox, type MapPictureBox, mapBox, PAPER_SHADES } from "./coverage-document";
-
-/** The margin `toSheets` leaves on each side of the page, in points. */
-const PAGE_MARGIN = 42;
+import { coveragePrint, jpegAddress } from "../print/coverage-print";
+import { gridBox, type MapPictureBox, mapBox, PAPER_SHADES } from "./coverage-document";
 
 export interface CoveragePdf {
   bytes: Uint8Array;
@@ -43,8 +40,8 @@ export async function makeCoveragePdf(input: {
   signal?: AbortSignal;
 }): Promise<CoveragePdf> {
   const { result, quantity, utcHour, paper } = input;
-  const box = mapBox(result, PAPERS[paper].width - 2 * PAGE_MARGIN);
-  const held = new Map<string, PdfPicture>();
+  const box = mapBox(result, measureOf(paper));
+  const held = new Map<string, string>();
   let picture: MapPictureBox | null = null;
   let pictureProblem: string | null = null;
   try {
@@ -80,7 +77,7 @@ export async function makeCoveragePdf(input: {
     const scale = { x: box.width / pixels.width, y: box.height / pixels.height };
     picture = { ...box, pieces: [] };
     for (const piece of drawn.pictures) {
-      held.set(piece.id, { jpeg: new Uint8Array(await piece.blob.arrayBuffer()), width: piece.pixels.width, height: piece.pixels.height });
+      held.set(piece.id, jpegAddress(new Uint8Array(await piece.blob.arrayBuffer())));
       picture.pieces.push({
         id: piece.id,
         x: piece.x * scale.x,
@@ -96,11 +93,7 @@ export async function makeCoveragePdf(input: {
     held.clear();
     pictureProblem = errorMessage(error);
   }
-  const pages = toSheets(coverageDocument(result, quantity, utcHour, picture), coverageFooter(result), paper);
-  return {
-    // Dated by when the engine answered, as the prediction's pages are.
-    bytes: writePdfPages({ pages, pictures: held, title: coverageTitle(result, quantity, utcHour), created: new Date(result.computedAt) }),
-    pages: pages.length,
-    pictureProblem,
-  };
+  // Dated by when the engine answered, as the prediction's pages are.
+  const printed = await renderPdf(coveragePrint({ result, quantity, utcHour, paper, picture, pictures: held }));
+  return { bytes: printed.bytes, pages: printed.pages, pictureProblem };
 }

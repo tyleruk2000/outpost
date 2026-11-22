@@ -44,13 +44,14 @@ import { Field, Input } from "@/components/ui/input";
 import { Badge, Select, Skeleton } from "@/components/ui/misc";
 import { FirstUseGuide } from "@/features/help/first-use";
 import { useCatalogue } from "@/features/layers/data";
-import { madePdf } from "@/features/library/made/made-pdf";
 import { PdfActions } from "@/features/library/made/pdf-actions";
 import { useMarkers } from "@/features/maps/data";
+import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
 import { LicenceLine } from "@/features/radio/licence";
 import { cn, plural } from "@/lib/utils";
-import { frequenciesPdf, frequenciesTitle, frequencyLine, scheduleWords, statusWords } from "./document";
+import { frequenciesTitle, frequencyLine, scheduleWords, statusWords } from "./document";
 import { homeCountry } from "./home-country";
+import { frequenciesPrint } from "./print";
 
 const ANY = "any";
 const NONE: FrequencyEntry[] = [];
@@ -303,23 +304,30 @@ function PdfDialog({
   today: string;
 }) {
   // Made when the dialog opens, from the list as it is then.
-  const pdf = useMemo(() => {
-    if (!open || entries.length === 0) return null;
-    const written = new Date();
-    return madePdf(frequenciesPdf({ entries, chosen, today, written }), frequenciesTitle(chosen, written), "Frequencies", {
-      what: "the list of frequencies to listen to",
-      path: PATH,
-    });
-  }, [open, entries, chosen, today]);
+  const written = useMemo(() => (open ? new Date() : null), [open]);
+  const make = useMemo(
+    () => (written && entries.length > 0 ? () => frequenciesPrint({ entries, chosen, today, written }) : null),
+    [written, entries, chosen, today],
+  );
+  const made = useKitPdf(make, {
+    title: frequenciesTitle(chosen, written ?? new Date()),
+    kind: "Frequencies",
+    from: { what: "the list of frequencies to listen to", path: PATH },
+  });
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent title="This list as a PDF" description={`${plural(entries.length, "entry", "entries")}: ${chosen}.`}>
         <DialogBody className="grid gap-4">
           <p className="text-small text-ink-muted">
-            A paper copy to keep by the radio: each entry's frequencies, mode, hours and place, how each time signal goes, and where each
-            came from and when it was checked. Made on this device.
+            A paper copy to keep by the radio: where each entry lies on the dial, each entry's frequencies, mode, hours and place, how each
+            time signal goes, and where each came from and when it was checked. Made on this device.
           </p>
-          <PdfActions pdf={pdf} />
+          {made.status === "failed" ? (
+            <Notice tone="danger" title="The PDF could not be made">
+              {made.error}
+            </Notice>
+          ) : null}
+          <PdfActions pdf={kitPdfOf(made)} />
         </DialogBody>
       </DialogContent>
     </Dialog>

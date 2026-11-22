@@ -54,13 +54,17 @@ function Lever({ side, label, keyLabel, held }: { side: "dit" | "dah"; label: st
       data-side={side}
       aria-hidden
       className={cn(
-        "flex min-h-40 min-w-0 flex-1 flex-col items-center justify-between rounded-panel border px-3 py-4 transition-[transform,background-color,border-color] duration-75",
+        "flex min-h-40 min-w-0 flex-1 flex-col items-center justify-between rounded-panel border px-1.5 py-4 sm:px-3 transition-[transform,background-color,border-color] duration-75",
         held ? "translate-y-1 border-primary bg-primary-soft" : "border-border-strong bg-page",
       )}
     >
       <span className="font-mono text-display leading-none text-ink">{label === "Dit" ? "·" : "−"}</span>
       <span className="text-body font-medium text-ink">{label}</span>
-      {keyLabel ? <span className="rounded-control bg-surface-strong px-1.5 py-0.5 text-micro text-ink-muted">{keyLabel}</span> : null}
+      {keyLabel ? (
+        <span className="max-w-full rounded-control bg-surface-strong px-1.5 py-0.5 text-center text-micro text-ink-muted wrap-anywhere">
+          {keyLabel}
+        </span>
+      ) : null}
     </div>
   );
 }

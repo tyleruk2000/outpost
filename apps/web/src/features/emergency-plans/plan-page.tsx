@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Select, Skeleton } from "@/components/ui/misc";
+import { BookPlansLine } from "@/features/household-book/book-line";
 import { PlanIllustrations } from "@/features/nuclear/plan-illustrations";
 import { formatDate, formatDateTime, timeAgo } from "@/lib/utils";
 import { conflictOf, inputOf, usePlan, usePlanAction, useRemovePlan, useSavePlan } from "./data";
@@ -224,7 +225,8 @@ export default function EmergencyPlanPage() {
     if (response.isSuccess) openedMutate();
   }, [response.isSuccess, openedMutate]);
   // A link to a part of the plan (from the cards: "#household") is followed once the plan is on the page.
-  const { hash } = useLocation();
+  const { hash, search } = useLocation();
+  const fromBook = new URLSearchParams(search).get("from") === "book";
   const shown = draft !== null;
   useEffect(() => {
     if (shown && hash) document.getElementById(hash.slice(1))?.scrollIntoView?.();
@@ -287,6 +289,17 @@ export default function EmergencyPlanPage() {
         }
       />
 
+      {fromBook ? (
+        <Notice tone="info" title="Made for the household book" className="mb-4">
+          <p>Change it to fit your household. It goes in the book in full.</p>
+          <Button asChild size="sm" className="mt-3">
+            <Link to="/prepare/book?step=readiness" onClick={() => void flush()}>
+              Back to the household book
+            </Link>
+          </Button>
+        </Notice>
+      ) : null}
+      <BookPlansLine planId={id} className="mb-4" />
       {conflict ? (
         <Notice tone="warning" icon={<TriangleAlert />} title="This plan was changed somewhere else" className="mb-6">
           <p>

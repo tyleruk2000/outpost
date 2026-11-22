@@ -14,8 +14,9 @@
  * rules exist to prevent (docs/nuclear-preparedness.md). The style is built from the
  * nuclear layers and the places' layers alone, so nothing else can be in it.
  *
- * Where a map cannot be drawn (no offline region covers the area, or the device cannot
- * draw it), the PDF is made all the same: the rings to scale with no map under them, and
+ * The pages are laid out with the print kit (print.ts), each picture carried into it as
+ * a data address. Where a map cannot be drawn (no offline region covers the area, or the
+ * device cannot draw it), the PDF is made all the same: the rings to scale with no map under them, and
  * a line saying why there is no map and how to get one.
  */
 import type { Bbox, InstalledRegion, MapSources, MarkerDto, ScenarioLetter } from "@outpost/shared";
@@ -29,11 +30,13 @@ import { printedCredits } from "@/features/maps/print/credits";
 import type { PdfPicture } from "@/features/maps/print/pdf";
 import type { RasterLimits } from "@/features/maps/print/pieces";
 import type { Frame, PixelSize } from "@/features/maps/print/scale";
+import { measureOf } from "@/features/print-kit";
 import type { Block } from "@/features/propagation/plans/document";
 import { errorMessage } from "@/lib/api";
 import { appLocale } from "@/lib/region";
-import { type ScenarioFigures, scenarioPdf, type Written } from "./document";
+import type { ScenarioFigures, Written } from "./document";
 import { ALL_VISIBLE, NUCLEAR_SOURCE, nuclearData, nuclearLayers } from "./layers";
+import { pictureAddresses, scenarioKitPdf } from "./print";
 import { diagramBlock, GET_A_MAP, type MapFigure, mapCaptions, mapFigureBlock } from "./print-figures";
 import {
   frameFor,
@@ -45,9 +48,6 @@ import {
   scenarioFrames,
 } from "./print-frames";
 
-/** The margin `toSheets` leaves on each side of the page, in points. */
-const PAGE_MARGIN = 42;
-const PAPER_WIDTH = { a4: 595.28, letter: 612 } as const;
 /** Device pixels to the inch: the coverage PDF's. The map's own lines and names are drawn at 1.25 device pixels to each of its pixels. */
 export const PRINT_DPI = 150;
 const MARKERS_SOURCE = "o-markers";
@@ -178,7 +178,8 @@ function missingLine(missing: Missing, what: string): string {
 export async function makeScenarioPdf(input: ScenarioPdfInput): Promise<ScenarioPdfFile> {
   const { written, signal } = input;
   const draw = input.draw ?? drawWithMapLibre(input.limits);
-  const inner = PAPER_WIDTH[input.paper] - 2 * PAGE_MARGIN;
+  // The print kit's measure: each map as wide as the text.
+  const inner = measureOf(input.paper);
   const attributions = input.sources?.attributions ?? [];
   const hasTiles = input.sources?.hasTiles ?? false;
   const credits = printedCredits(creditsFor(attributions, { hasTiles, terrain: false }), attributions);
@@ -321,6 +322,6 @@ export async function makeScenarioPdf(input: ScenarioPdfInput): Promise<Scenario
 
   if (signal?.aborted) throw new DOMException("Stopped", "AbortError");
   input.onProgress?.("Putting the PDF together", total, total);
-  const file = scenarioPdf(written, input.dated, input.paper, figures, pictures);
+  const file = await scenarioKitPdf({ written, dated: input.dated, paper: input.paper, figures, pictures: pictureAddresses(pictures) });
   return { bytes: file.bytes, pages: file.pages, maps, pieces, reduced, missing, figures };
 }

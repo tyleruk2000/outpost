@@ -185,7 +185,7 @@ export function NoteVersionsScreen({ id }: { id: string }) {
     return (
       <Page aria-busy>
         {header}
-        <div className="grid gap-8 md:grid-cols-[15rem_minmax(0,1fr)]">
+        <div className="grid gap-8 md:grid-cols-[minmax(0,min(15rem,35%))_minmax(0,1fr)]">
           <Skeleton className="h-48" />
           <div className="space-y-3">
             <Skeleton className="h-8 w-1/2" />
@@ -218,7 +218,7 @@ export function NoteVersionsScreen({ id }: { id: string }) {
   return (
     <Page width="full" className="max-w-[90rem]">
       {header}
-      <div className="grid gap-8 md:grid-cols-[15rem_minmax(0,1fr)]">
+      <div className="grid gap-8 md:grid-cols-[minmax(0,min(15rem,35%))_minmax(0,1fr)]">
         <nav aria-label="Versions">
           <ul className="divide-y divide-border border-y border-border">
             {versions.map((entry) => (

@@ -77,8 +77,8 @@ export function usePlaceAndZone(): PlaceState {
     typed.trim() && !typedPoint ? "Not a position Outpost reads. Try 51.4779, -0.0015, or TQ 38900 77400, or IO91xl." : undefined;
 
   const picker = (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <div className="grid gap-3">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
+      <div className="grid min-w-0 gap-3">
         {markers.isPending ? (
           <div className="grid gap-1.5">
             <span className="text-small font-medium text-ink">Place</span>

@@ -101,7 +101,7 @@ export function PassphraseInput({
         onClick={toggle}
         aria-label={visible ? "Hide passphrase" : "Show passphrase"}
         aria-pressed={visible}
-        className="absolute inset-y-0 right-0 grid w-10 place-items-center rounded-control text-ink-muted hover:text-ink"
+        className="absolute inset-y-0 right-0 grid w-10 place-items-center rounded-control text-ink-muted max-md:w-11 hover:text-ink"
       >
         {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
       </button>

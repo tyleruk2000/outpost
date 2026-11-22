@@ -37,6 +37,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Checkbox, Select, Skeleton } from "@/components/ui/misc";
+import { ScrollBox } from "@/features/radio/scroll-box";
 import { errorMessage } from "@/lib/api";
 import { formatDate, formatDateTime, formatNumber, plural } from "@/lib/utils";
 import { discardFetched, type ImportChoices, previewFetched, previewImport, useImportFetched, useImportRepeaters } from "./data";
@@ -95,7 +96,7 @@ function ColumnsEditor({
 /** The first rows as they would be kept: enough to see whether the columns were read the right way round. */
 function Sample({ preview }: { preview: RepeaterImportPreview }) {
   return (
-    <div className="scroll-quiet overflow-x-auto border-y border-border">
+    <ScrollBox label="The first rows of the file as they would be kept" className="scroll-quiet overflow-x-auto border-y border-border">
       <table className="w-full min-w-[34rem] text-small">
         <caption className="sr-only">The first rows of the file as they would be kept</caption>
         <thead>
@@ -125,7 +126,7 @@ function Sample({ preview }: { preview: RepeaterImportPreview }) {
           ))}
         </tbody>
       </table>
-    </div>
+    </ScrollBox>
   );
 }
 
@@ -544,14 +545,18 @@ export function ImportDialog({
                         {plural(preview.skippedCount, "row")} cannot be kept
                         {preview.skippedCount > preview.skipped.length ? ` (the first ${preview.skipped.length} are shown)` : ""}
                       </h3>
-                      <ul className="scroll-quiet max-h-40 divide-y divide-border overflow-y-auto border-y border-border">
+                      <ScrollBox
+                        label="Rows that cannot be kept"
+                        as="ul"
+                        className="scroll-quiet max-h-40 divide-y divide-border overflow-y-auto border-y border-border"
+                      >
                         {preview.skipped.map((row) => (
                           <li key={row.line} className="py-1.5 text-small">
                             <span className="tabular text-ink-muted">Line {row.line}.</span> <span className="text-ink">{row.reason}</span>
-                            <span className="block truncate font-mono text-[0.75rem] text-ink-muted">{row.text}</span>
+                            <span className="block truncate font-mono text-micro text-ink-muted">{row.text}</span>
                           </li>
                         ))}
-                      </ul>
+                      </ScrollBox>
                     </section>
                   ) : null}
 

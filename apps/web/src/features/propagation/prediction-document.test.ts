@@ -3,9 +3,8 @@
  * can search, and that no figure appears where the engine gave none.
  */
 import { HF_BANDS, type PredictionCell, type PredictionResult } from "@outpost/shared";
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { describe, expect, it } from "vitest";
-import { PAPERS } from "@/features/maps/print/paper";
+import { contentText, renderPdf } from "@/features/print-kit";
 import type { Block } from "./plans/document";
 import {
   bestHourOf,
@@ -13,12 +12,12 @@ import {
   NOT_MODELLED,
   predictionDocument,
   predictionMarkdown,
-  predictionPdf,
-  predictionSheets,
   predictionTitle,
   predictionUnwritable,
 } from "./prediction-document";
 import { noPath, prediction, wordsOf } from "./prediction-fixture";
+import { predictionPrint } from "./print/prediction-print";
+import { readPdf } from "./print/read-pdf";
 
 const tableAfter = (blocks: Block[], heading: string) => {
   const at = blocks.findIndex((block) => block.kind === "heading" && block.text === heading);
@@ -26,34 +25,6 @@ const tableAfter = (blocks: Block[], heading: string) => {
   if (at < 0 || table?.kind !== "table") throw new Error(`No table under "${heading}"`);
   return table;
 };
-
-/** The text a reader finds on each page, joined the way the library's own reader of PDFs joins it. */
-async function read(file: Uint8Array) {
-  const reading = getDocument({
-    data: file.slice(),
-    useSystemFonts: false,
-    disableFontFace: true,
-    standardFontDataUrl: `${process.cwd()}/node_modules/pdfjs-dist/standard_fonts/`,
-  });
-  const document = await reading.promise;
-  const pages: Array<{ width: number; height: number; text: string; fonts: string[] }> = [];
-  for (let number = 1; number <= document.numPages; number += 1) {
-    const page = await document.getPage(number);
-    const view = page.getViewport({ scale: 1 });
-    const content = await page.getTextContent();
-    const items = content.items as Array<{ str: string; hasEOL: boolean; fontName: string }>;
-    pages.push({
-      width: view.width,
-      height: view.height,
-      // `apps/server/src/modules/documents/extract-pdf.ts` does exactly this with each page.
-      text: items.map((item) => item.str + (item.hasEOL ? "\n" : "")).join(""),
-      fonts: [...new Set(items.map((item) => content.styles[item.fontName]?.fontFamily ?? ""))],
-    });
-  }
-  const info = (await document.getMetadata()).info as { Title?: string; CreationDate?: string };
-  await reading.destroy();
-  return { pages, info };
-}
 
 describe("what the prediction says", () => {
   it("is named for what it is and for when", () => {
@@ -253,76 +224,85 @@ describe("what the prediction says", () => {
 });
 
 describe("the prediction as a PDF", () => {
-  it("is one or two pages of the paper asked for, with nothing off the page", () => {
-    for (const paper of ["a4", "letter"] as const) {
-      const sheets = predictionSheets(prediction(), paper);
-      expect(sheets.length).toBeGreaterThanOrEqual(1);
-      expect(sheets.length).toBeLessThanOrEqual(2);
-      for (const sheet of sheets) {
-        expect(sheet).toMatchObject({ width: PAPERS[paper].width, height: PAPERS[paper].height });
-        for (const item of sheet.items) {
-          if (item.kind !== "text") continue;
-          expect(item.y).toBeLessThan(sheet.height - 20);
-          expect(item.x).toBeGreaterThanOrEqual(40);
-        }
-      }
-    }
+  it("lays out the prediction's own words, with the chart, the path, the world and the page on how HF travels", () => {
+    const doc = predictionPrint(prediction(), "a4", { land: null });
+    const text = contentText(doc.content);
+    for (const words of [
+      "London to Edinburgh, 14.2 MHz (20 m)",
+      "534 km",
+      "13:00",
+      "91%",
+      "A monthly median, not the day",
+      "Usable frequencies through the day",
+      "MUF: open half the days",
+      "14.18 MHz asked",
+      "The path at 13:00 UTC: 1F2",
+      "F2 at 300 km (virtual height)",
+      "Day and night at 13:00 UTC on 16 November 2026",
+      "Bands by hour",
+      "Share of days:",
+      "How HF gets there",
+      "skip zone",
+      "D, 50 to 90 km: absorbs, by day only",
+      "comes down all round: no skip zone",
+      "A prediction, not a promise",
+      "Key abc123def456",
+    ])
+      expect(text, words).toContain(words);
+    // The bands' cells carry their figures, and a band with no path has dashes, never a nought.
+    expect(text).toMatch(/10 m( -){24}/);
   });
 
-  it("holds its words as text a reader finds, in reading order, in typefaces every reader has", async () => {
+  it("holds its words as text a reader finds, in reading order, on A4 and US Letter", async () => {
     const result = prediction();
-    const { pages, info } = await read(predictionPdf(result));
-    expect(pages.length).toBeLessThanOrEqual(2);
+    const { pages, info, text } = await readPdf((await renderPdf(predictionPrint(result, "a4"))).bytes);
     expect(pages[0]).toMatchObject({ width: 595.28, height: 841.89 });
     expect(info.Title).toBe("HF prediction, London to Edinburgh, 20 m, for 16 Nov 2026");
-    const text = pages.map((page) => page.text).join("\n");
-    // In the order they are read.
     const order = [
-      "HF prediction: London to Edinburgh",
+      "London to Edinburgh, 14.2 MHz (20 m)",
       "For 16 November 2026",
       "smoothed sunspot number of 87",
-      "The path and the stations",
-      "Transmitter: London",
-      "Receiving antenna: An end-fed half-wave",
       "The best of it",
       "does best at 13:00 UTC",
+      "The path and the stations",
+      "Transmitter: London",
       "14.2 MHz hour by hour",
-      "13:00",
       "Bands by hour",
-      "80 m",
-      "10 m",
       "Before relying on it",
       "Where these figures come from",
       "Key abc123def456",
+      "How HF gets there",
     ];
     let from = 0;
+    const flat = text.replace(/\s+/g, " ");
     for (const words of order) {
-      const at = text.indexOf(words, from);
+      const at = flat.indexOf(words, from);
       expect(at, `"${words}" after position ${from}`).toBeGreaterThanOrEqual(0);
       from = at + words.length;
     }
-    // Words at the end of one line and the start of the next are not run together, so a search finds each.
-    expect(text).not.toMatch(/[a-z]{3}\.[A-Z][a-z]{3}/);
-    expect(text.replace(/\s+/g, " ")).toContain("Every figure is a monthly median: what a month like this one usually does.");
-    // A row of the table reads across as the figures of one hour.
-    expect(text).toMatch(/13:00\s+91\s+46\s+47\s+38\s+54\s+-80\s+S8\s+15\.3\s+12\.3\s+1F2\s+22°/);
-    expect(pages.flatMap((page) => page.fonts).every((font) => font === "sans-serif" || font === "monospace")).toBe(true);
+    expect(flat).toContain("Every figure is a monthly median: what a month like this one usually does.");
+    const letter = await readPdf((await renderPdf(predictionPrint(result, "letter"))).bytes);
+    expect(letter.pages[0]).toMatchObject({ width: 612, height: 792 });
   });
 
-  it("is the same file each time it is written out for the same answer", () => {
-    const first = predictionPdf(prediction());
-    const second = predictionPdf(prediction());
-    expect(Buffer.from(first).equals(Buffer.from(second))).toBe(true);
+  it("is the same file each time it is made for the same answer", async () => {
+    const make = async (result: PredictionResult) => Buffer.from((await renderPdf(predictionPrint(result))).bytes);
+    const first = await make(prediction());
+    expect((await make(prediction())).equals(first)).toBe(true);
     // The answer's `cached` mark changes when it is asked for again; the file does not.
-    expect(Buffer.from(predictionPdf(prediction({ cached: true }))).equals(Buffer.from(first))).toBe(true);
+    expect((await make(prediction({ cached: true }))).equals(first)).toBe(true);
     // A later answer is another file.
-    expect(Buffer.from(predictionPdf(prediction({ computedAt: Date.UTC(2026, 10, 17) }))).equals(Buffer.from(first))).toBe(false);
+    expect((await make(prediction({ computedAt: Date.UTC(2026, 10, 17) }))).equals(first)).toBe(false);
   });
 
-  it("says which characters the PDF's typeface cannot write", () => {
+  it("says which characters the PDF's typeface cannot write, and prints them as ?", () => {
     const result = prediction();
+    // Latin Extended-A is in the typeface; Cyrillic is not.
     result.request.rx.name = "Łódź";
-    expect(predictionUnwritable(result).sort()).toEqual(["Ł", "ź"]);
+    expect(predictionUnwritable(result)).toEqual([]);
+    result.request.rx.name = "Москва";
+    expect(predictionUnwritable(result).sort()).toEqual(["М", "а", "в", "к", "о", "с"].sort());
+    expect(contentText(predictionPrint(result).content)).toContain("London to ??????");
     expect(predictionUnwritable(prediction())).toEqual([]);
   });
 });

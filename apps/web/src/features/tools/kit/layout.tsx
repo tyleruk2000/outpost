@@ -39,7 +39,8 @@ export function ToolScreen({
           document.getElementById(`${id}-title`)?.focus({ preventScroll: true });
         }}
       />
-      <div className="grid">{children}</div>
+      {/* One column that may shrink below its widest content, so that large text wraps rather than scrolling sideways. */}
+      <div className="grid grid-cols-[minmax(0,1fr)]">{children}</div>
       {footer ? <div className="mt-10 border-t border-border pt-4 text-small text-ink-muted">{footer}</div> : null}
     </Page>
   );

@@ -76,7 +76,7 @@ export const TabsContent = TabsPrimitive.Content;
 
 /**
  * A row of tab names that wraps on to a second line rather than scrolling sideways out of
- * sight, on a phone or with large text. Each name is 44 px tall on a phone.
+ * sight, on a phone or with large text. Each name is at least 44 px each way on a phone.
  */
 export function TabsList({ className, ...props }: ComponentProps<typeof TabsPrimitive.List>) {
   return <TabsPrimitive.List className={cn("flex flex-wrap gap-x-5 gap-y-1 border-b border-border", className)} {...props} />;
@@ -86,7 +86,7 @@ export function TabsTrigger({ className, ...props }: ComponentProps<typeof TabsP
   return (
     <TabsPrimitive.Trigger
       className={cn(
-        "-mb-px flex items-center gap-2 border-b-2 border-transparent pt-1 pb-2.5 text-small max-md:min-h-11 font-medium whitespace-nowrap text-ink-muted transition-colors hover:text-ink data-[state=active]:border-primary data-[state=active]:text-ink",
+        "-mb-px flex items-center justify-center gap-2 border-b-2 border-transparent pt-1 pb-2.5 text-small max-md:min-h-11 max-md:min-w-11 font-medium whitespace-nowrap text-ink-muted transition-colors hover:text-ink data-[state=active]:border-primary data-[state=active]:text-ink",
         className,
       )}
       {...props}
@@ -123,7 +123,7 @@ export function Segmented<T extends string>({
           key={option.value}
           value={option.value}
           // Grows to fill its line once the choices wrap, so a choice left alone on a line is not a stray box.
-          className="flex h-8 grow items-center justify-center gap-1.5 rounded-[3px] px-3 text-small font-medium text-ink-muted transition-colors hover:text-ink data-[state=on]:bg-page data-[state=on]:text-ink data-[state=on]:shadow-[0_0_0_1px_var(--border-strong)] max-md:h-11 [&_svg]:size-4"
+          className="flex h-8 grow items-center justify-center gap-1.5 rounded-[3px] px-3 text-small font-medium text-ink-muted transition-colors hover:text-ink data-[state=on]:bg-page data-[state=on]:text-ink data-[state=on]:shadow-[0_0_0_1px_var(--border-strong)] max-md:h-11 max-md:min-w-11 [&_svg]:size-4"
         >
           {option.icon}
           {option.label}
@@ -230,11 +230,19 @@ export function Select<T extends string>({
 
 // ── Switch and checkbox ────────────────────────────────────────────────────
 
+/**
+ * A finger-sized pressable area (44 by 44 px) around a small control on a touch screen, drawn by an empty
+ * pseudo-element centred on it: the control looks the same and takes no more room.
+ */
+const touchArea =
+  "pointer-coarse:before:absolute pointer-coarse:before:top-1/2 pointer-coarse:before:left-1/2 pointer-coarse:before:size-11 pointer-coarse:before:-translate-x-1/2 pointer-coarse:before:-translate-y-1/2 pointer-coarse:before:content-['']";
+
 export function Switch({ className, ...props }: ComponentProps<typeof SwitchPrimitive.Root>) {
   return (
     <SwitchPrimitive.Root
       className={cn(
         "relative inline-flex h-6 w-10 shrink-0 items-center rounded-full border border-border-strong bg-surface-strong transition-colors duration-150 data-[state=checked]:border-primary data-[state=checked]:bg-primary disabled:opacity-50",
+        touchArea,
         className,
       )}
       {...props}
@@ -248,7 +256,8 @@ export function Checkbox({ className, ...props }: ComponentProps<typeof Checkbox
   return (
     <CheckboxPrimitive.Root
       className={cn(
-        "grid size-[18px] shrink-0 place-content-center rounded-[4px] border-[1.5px] border-border-strong bg-page transition-colors data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary disabled:opacity-50",
+        "relative grid size-[18px] shrink-0 place-content-center rounded-[4px] border-[1.5px] border-border-strong bg-page transition-colors data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary disabled:opacity-50",
+        touchArea,
         className,
       )}
       {...props}

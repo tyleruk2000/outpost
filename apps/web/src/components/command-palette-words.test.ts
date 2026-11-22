@@ -56,7 +56,7 @@ const lands: Array<[string, string | null]> = [
   ["shopping list", "Preparedness: Supplies"],
   ["allergies", "Preparedness: Medical sheets"],
   ["wallet card", "Preparedness: Grab cards"],
-  ["binder", "Preparedness: Household binder"],
+  ["binder", "Preparedness: Household book"],
   ["emergency book", "Preparedness: Household book"],
   ["roll call", "Preparedness: Check-in and roll call"],
   ["insurance", "Preparedness: Log of events"],

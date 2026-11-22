@@ -121,7 +121,7 @@
    */
   /* Cards (Solitaire, Pairs) */
   --game-felt: oklch(0.4 0.05 192);
-  --game-felt-line: oklch(0.56 0.045 192);
+  --game-felt-line: oklch(0.68 0.045 192); /* 3.2:1 on the felt: an empty pile is a control (WCAG 1.4.11) */
   --game-felt-ink: oklch(0.93 0.02 192);
   --game-card: oklch(0.99 0.004 95);
   --game-card-edge: oklch(0.78 0.012 95);
@@ -133,6 +133,9 @@
   /* Draughts */
   --game-board-light: oklch(0.93 0.025 85);
   --game-board-dark: oklch(0.55 0.05 195);
+  /* The coordinate marks in the board's edge squares: 4.5:1 or more on the square they sit on (WCAG 1.4.3). */
+  --game-board-mark-on-light: oklch(0.42 0.05 195);
+  --game-board-mark-on-dark: oklch(0.995 0.008 85);
   --game-piece-light: oklch(0.98 0.008 90);
   --game-piece-light-edge: oklch(0.62 0.02 90);
   --game-piece-dark: oklch(0.3 0.03 30);
@@ -359,7 +362,7 @@
 
   /* The games (features/games): see the light theme above. */
   --game-felt: oklch(0.27 0.035 192);
-  --game-felt-line: oklch(0.4 0.035 192);
+  --game-felt-line: oklch(0.55 0.035 192); /* 3.1:1 on the felt */
   --game-felt-ink: oklch(0.85 0.02 192);
   --game-card: oklch(0.9 0.008 95);
   --game-card-edge: oklch(0.6 0.01 95);
@@ -370,6 +373,8 @@
   --game-card-picked: oklch(0.82 0.14 78);
   --game-board-light: oklch(0.72 0.03 85);
   --game-board-dark: oklch(0.38 0.04 195);
+  --game-board-mark-on-light: oklch(0.25 0.03 195);
+  --game-board-mark-on-dark: oklch(0.95 0.02 85);
   --game-piece-light: oklch(0.95 0.008 90);
   --game-piece-light-edge: oklch(0.55 0.02 90);
   --game-piece-dark: oklch(0.25 0.03 30);

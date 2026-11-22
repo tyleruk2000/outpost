@@ -41,4 +41,11 @@ export const WAIVERS: Waiver[] = [
     reason:
       "Each stage of the drawing is a link whose visible words are its title and one or two lines cut to fit the box. Its name is the title followed by the whole statement in words, and the table beside the drawing holds the same.",
   },
+  {
+    rule: "aria-hidden-focus",
+    // A check made with a menu or a short list open names it in brackets after the address: "/contacts (contacts menu)".
+    where: /\((?:[a-z ]+ menu|[a-z ]+ filter)\)$/,
+    reason:
+      "An open menu (Radix's DropdownMenu, components/ui/menu.tsx) marks the rest of the page aria-hidden, and while it is open keeps focus inside itself and refuses the pointer outside it; Escape or a choice closes it and the marks go. What is behind cannot be reached by Tab, by a screen reader's cursor or by touch, so it is hidden as axe asks, only not by `inert`. study-reading-dialogs.spec.ts checks that each menu takes focus, closes with Escape and gives focus back.",
+  },
 ];

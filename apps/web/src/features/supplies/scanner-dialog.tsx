@@ -134,7 +134,10 @@ export function ScannerDialog({ onClose, onNew }: { onClose: () => void; onNew: 
         description="Find something already in your supplies, or start a new item with its barcode filled in."
         onOpenAutoFocus={(event) => {
           event.preventDefault();
+          // On a touch screen the dialog itself takes the focus, so that no keyboard rises over the camera, but the
+          // focus still moves into the dialog rather than staying on the screen behind it.
           if (!touch()) field.current?.focus();
+          else (event.target as HTMLElement | null)?.focus();
         }}
       >
         <DialogBody className="grid gap-5">

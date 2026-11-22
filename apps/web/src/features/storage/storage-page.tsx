@@ -40,6 +40,16 @@ export const kindLabels: Record<StorageKind, { label: string; icon: typeof HardD
 
 type Location = StorageLocation & { usage: StorageUsage };
 
+const GB = 1_000_000_000;
+
+/** Under 2 GB, or under 2% of the drive, is left: said in words, not only by a bar that is nearly full. */
+export function nearlyFull(location: Pick<StorageLocation, "freeBytes" | "totalBytes">): boolean {
+  const free = location.freeBytes;
+  const total = location.totalBytes;
+  if (free === null || free === undefined || !total) return false;
+  return free < 2 * GB || free / total < 0.02;
+}
+
 function UsageLegend({ usage, holdsBackups }: { usage: StorageUsage; holdsBackups: boolean }) {
   const present = usageKinds.filter((entry) => (usage.byKind[entry.kind]?.bytes ?? 0) > 0);
   if (present.length === 0)
@@ -185,6 +195,15 @@ function LocationRow({
                 <span className="font-semibold text-ink">{formatBytes(location.freeBytes)}</span> free of {formatBytes(location.totalBytes)}
               </p>
             </div>
+            {nearlyFull(location) ? (
+              <Notice tone="warning" icon={<CircleAlert />} title="Almost full" className="mt-3">
+                Only {formatBytes(location.freeBytes)} is left here. A download that does not fit is refused, so free up space or choose
+                another location for it.{" "}
+                <Link to={manageLink()} className="text-primary underline underline-offset-2">
+                  Free up space
+                </Link>
+              </Notice>
+            ) : null}
           </>
         ) : (
           <Notice tone="warning" icon={<CircleAlert />} title="This location cannot be reached">
@@ -384,7 +403,10 @@ export default function StoragePage() {
             title="What is taking the space"
             description="Across every location, by kind of content."
             actions={
-              <Link to={manageLink()} className="text-small text-primary underline underline-offset-2">
+              <Link
+                to={manageLink()}
+                className="inline-flex min-h-6 items-center text-small text-primary underline underline-offset-2 max-md:min-h-11"
+              >
                 Free up space
               </Link>
             }

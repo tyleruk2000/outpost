@@ -15,6 +15,9 @@ const fallback = (
   </div>
 );
 
+/** A tab's panel takes focus after the tab names (the tabs pattern), so it shows a ring when it has it. */
+const PANEL = "rounded-control focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus";
+
 export default function LibraryPage() {
   const [params, setParams] = useSearchParams();
   const asked = params.get("tab");
@@ -42,17 +45,17 @@ export default function LibraryPage() {
           <TabsTrigger value="collections">Collections</TabsTrigger>
           <TabsTrigger value="learning">Learning</TabsTrigger>
         </TabsList>
-        <TabsContent value="documents" className="focus:outline-none">
+        <TabsContent value="documents" className={PANEL}>
           <Suspense fallback={fallback}>
             <DocumentsPanel />
           </Suspense>
         </TabsContent>
-        <TabsContent value="collections" className="focus:outline-none">
+        <TabsContent value="collections" className={PANEL}>
           <Suspense fallback={fallback}>
             <CollectionsPanel />
           </Suspense>
         </TabsContent>
-        <TabsContent value="learning" className="focus:outline-none">
+        <TabsContent value="learning" className={PANEL}>
           <Suspense fallback={fallback}>
             <LearningPanel />
           </Suspense>

@@ -4,24 +4,37 @@
  * the library or shared like every PDF Outpost makes. Outpost keeps the answers as a draft
  * and a record of the last book made, so the next book says what changed since.
  */
-import { type BookAnswers, type BookStepId, DEFAULT_BOOK_ANSWERS, localDay } from "@outpost/shared";
+import {
+  BOOK_STEPS,
+  type BookAnswers,
+  type BookStepId,
+  bookPlanIds,
+  DEFAULT_BOOK_ANSWERS,
+  localDay,
+  type RepeaterListResponse,
+} from "@outpost/shared";
 import { RADIO_FREQUENCIES } from "@outpost/shared/radio-frequencies-data";
 import { BookOpen, ListChecks, TriangleAlert } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router";
 import { EmptyState, ErrorState, Notice, Page, PageHeader, Rows } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { useOutlook } from "@/features/emergency-plans/data";
+import type { BinderMap } from "@/features/household-papers/binder-map";
 import { useContactsById } from "@/features/household-papers/data";
-import { useHouseholdSources } from "@/features/household-papers/household-data";
-import { libraryQuestion, PaperPreview } from "@/features/household-papers/paper-pdf";
-import { pdfOf, usePaperPdf } from "@/features/household-papers/use-paper-pdf";
+import { grabHousehold, grabPerson, useHouseholdSources } from "@/features/household-papers/household-data";
+import { libraryQuestion } from "@/features/household-papers/paper-pdf";
+import { type MadePdf, madePdf } from "@/features/library/made/made-pdf";
 import { PdfActions } from "@/features/library/made/pdf-actions";
-import type { Sheet } from "@/features/maps/print/sheet";
-import { errorMessage } from "@/lib/api";
+import { useMapOverview, useMapSources } from "@/features/maps/data";
+import { regionsCacheKey } from "@/features/maps/lib/tiles";
+import { renderPdf } from "@/features/print-kit";
+import { PdfPagesPreview } from "@/features/print-kit/preview";
+import { api, errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { formatDate, plural } from "@/lib/utils";
-import { makeBook } from "./book";
+import { bookMapPlaces, makeBook } from "./book";
 import { sourcesWords } from "./book-line";
 import { useBook, useBookFacts, useBookMade, useSaveBook } from "./data";
 import { BookWizard } from "./wizard";
@@ -37,25 +50,20 @@ export default function BookPage() {
   const facts = useBookFacts(true);
   const save = useSaveBook();
   const made = useBookMade();
-  const [asking, setAsking] = useState<BookStepId | null>(null);
-  const [result, setResult] = useState<{ pages: Sheet[]; made: Date; medical: boolean } | null>(null);
+  // "?step=readiness": back from making a plan for a hazard, to the question it was made from.
+  const [params] = useSearchParams();
+  const [asking, setAsking] = useState<BookStepId | null>(() => BOOK_STEPS.find((each) => each.id === params.get("step"))?.id ?? null);
+  const [result, setResult] = useState<{ pdf: MadePdf; bytes: Uint8Array; pages: number; medical: boolean } | null>(null);
   const [making, setMaking] = useState(false);
+  const [drawing, setDrawing] = useState(false);
+  const mapSources = useMapSources();
+  const overview = useMapOverview();
 
   const answers = book.data?.answers ?? DEFAULT_BOOK_ANSWERS;
   const destinationContacts = useContactsById(answers.destinations.map((destination) => destination.contactId ?? "").filter(Boolean));
   const country = facts.data?.home?.country ?? null;
 
   const from = useMemo(() => ({ what: "the household book", path: "/prepare/book" }), []);
-  const printed = usePaperPdf(result?.pages ?? null, {
-    title: `Household book, ${formatDate((result?.made ?? new Date(0)).getTime())}`,
-    kind: "Household book",
-    from,
-    created: result?.made ?? new Date(0),
-  });
-  const preview = useMemo(
-    () => (printed && "pdf" in printed ? { ...printed, pages: printed.pages.slice(0, PREVIEW_PAGES) } : printed),
-    [printed],
-  );
 
   const saveAnswers = async (next: BookAnswers) => {
     // The first save takes the paper from the country home is in, where the person has not chosen one.
@@ -71,6 +79,45 @@ export default function BookPage() {
       const fresh = await facts.refetch();
       if (!fresh.data) throw fresh.error ?? new Error("What the book reads round home could not be read.");
       const at = new Date();
+      const chosen = book.data.answers.sections;
+      const home = fresh.data.home;
+      // Repeaters near home, from Outpost's own list (on this Outpost, not the internet).
+      const repeaters =
+        chosen.includes("frequencies") && home
+          ? await api
+              .get<RepeaterListResponse>("/api/repeaters", { near: `${home.lat},${home.lon}`, withinKm: 60, limit: 15 })
+              .then((list) => list.repeaters)
+              .catch(() => null)
+          : [];
+      // The map of home and the meeting points is drawn first, from the offline map on this device.
+      let placesMap: BinderMap | null = null;
+      const included = new Set(
+        bookPlanIds(
+          book.data.answers,
+          sources.plans.map((each) => each.plan),
+        ),
+      );
+      const mapped = bookMapPlaces(
+        book.data.answers,
+        sources.markers,
+        sources.plans.filter((each) => included.has(each.plan.id)),
+      ).mapped;
+      if (chosen.includes("places") && mapped.length > 0) {
+        setDrawing(true);
+        try {
+          const { binderMap } = await import("@/features/household-papers/binder-map");
+          const regions = overview.data?.regions ?? [];
+          placesMap = await binderMap(
+            mapped,
+            { sources: mapSources.data, regions, cacheKey: regionsCacheKey(regions), origin: window.location.origin },
+            book.data.answers.paper,
+          );
+        } catch {
+          placesMap = null;
+        } finally {
+          setDrawing(false);
+        }
+      }
       const out = makeBook({
         answers: book.data.answers,
         facts: fresh.data,
@@ -89,10 +136,23 @@ export default function BookPage() {
         made: at,
         today: localDay(),
         previous: book.data.made,
+        supplies: sources.supplies,
+        grab: {
+          people: sources.people.map((person) => grabPerson(person, sources.opened, sources.contacts)),
+          household: grabHousehold(sources.plans, sources.emergencyContacts, sources.markers, sources.comms),
+        },
+        repeaters,
+        placesMap: placesMap ? { block: placesMap.block, pictures: placesMap.pictures, missing: placesMap.missing } : null,
       });
-      setResult({ pages: out.pages, made: at, medical: book.data.answers.sections.includes("people") });
+      const printed = await renderPdf(out.document);
+      setResult({
+        pdf: madePdf(printed.bytes, `Household book, ${formatDate(at.getTime())}`, "Household book", from),
+        bytes: printed.bytes,
+        pages: printed.pages,
+        medical: book.data.answers.sections.includes("people"),
+      });
       made.mutate(
-        { pages: out.pages.length, sections: out.sections, summary: out.summary, fingerprints: book.data.fingerprints },
+        { pages: printed.pages, sections: out.sections, summary: out.summary, fingerprints: book.data.fingerprints },
         { onError: (error) => notify.error(errorMessage(error)) },
       );
     } catch (error) {
@@ -151,7 +211,15 @@ export default function BookPage() {
       ) : (
         <div className="grid gap-6">
           {book.data?.made && book.data.stale.length > 0 ? (
-            <Notice tone="warning" icon={<TriangleAlert />} title="The book last made is older than what is in it">
+            <Notice
+              tone="warning"
+              icon={<TriangleAlert />}
+              title={
+                book.data.made.fromBinder
+                  ? "The household binder last made is older than what is in it"
+                  : "The book last made is older than what is in it"
+              }
+            >
               Made on {formatDate(book.data.made.madeAt)}. Since then its {sourcesWords(book.data.stale)} changed. Make it again and replace
               the printed copy.
             </Notice>
@@ -159,7 +227,7 @@ export default function BookPage() {
           <Summary answers={answers} madeAt={book.data?.made?.madeAt ?? null} pages={book.data?.made?.pages ?? null} />
           <div className="flex flex-wrap items-center gap-3">
             <Button variant="primary" loading={making} onClick={() => void make()}>
-              <BookOpen /> Make the book
+              <BookOpen /> {drawing ? "Drawing the map" : "Make the book"}
             </Button>
             <Button onClick={() => setAsking("people")}>
               <ListChecks /> Change the answers
@@ -172,11 +240,15 @@ export default function BookPage() {
           ) : null}
           {result ? (
             <div className="grid gap-4">
-              <PdfActions pdf={pdfOf(printed)} lead="save" confirm={libraryQuestion(result.medical)} />
+              <PdfActions pdf={result.pdf} lead="save" confirm={libraryQuestion(result.medical)} />
               <p className="text-small text-ink-muted">
-                {plural(result.pages.length, "page")}. The first {Math.min(PREVIEW_PAGES, result.pages.length)} as they print:
+                {plural(result.pages, "page")}. The first {Math.min(PREVIEW_PAGES, result.pages)} as they print:
               </p>
-              <PaperPreview made={preview} />
+              <PdfPagesPreview
+                bytes={result.bytes}
+                pages={PREVIEW_PAGES}
+                label={(page) => `Page ${page} of ${result.pages} as it prints`}
+              />
             </div>
           ) : null}
         </div>

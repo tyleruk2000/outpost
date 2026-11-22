@@ -21,7 +21,14 @@ const item =
 export function MenuContent({ className, sideOffset = 6, align = "end", ...props }: ComponentProps<typeof Primitive.Content>) {
   return (
     <Primitive.Portal>
-      <Primitive.Content sideOffset={sideOffset} align={align} collisionPadding={8} className={cn(floating, className)} {...props} />
+      <Primitive.Content
+        sideOffset={sideOffset}
+        align={align}
+        collisionPadding={8}
+        // On a short screen (a phone on its side, a window zoomed to 200%) the menu scrolls rather than running off the edge.
+        className={cn(floating, "max-h-(--radix-dropdown-menu-content-available-height) overflow-y-auto", className)}
+        {...props}
+      />
     </Primitive.Portal>
   );
 }

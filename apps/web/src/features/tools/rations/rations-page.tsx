@@ -33,14 +33,13 @@ import {
 } from "@outpost/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, Users, Warehouse } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { Checkbox, Select } from "@/components/ui/misc";
-import { madePdf } from "@/features/library/made/made-pdf";
-import { PdfActions } from "@/features/library/made/pdf-actions";
+import type { PrintPaper } from "@/features/print-kit";
 import { api, errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { deviceRegion, isUkRegion } from "@/lib/region";
@@ -61,8 +60,8 @@ import {
   useNumber,
 } from "../kit";
 import { readPref, writePref } from "../kit/device-pref";
-import { guidanceSheetPdf } from "../kit/sheet";
-import { rationBlocks } from "./sheet";
+import { SheetPdfActions, useSheetPdf } from "../kit/sheet-pdf";
+import { rationDocument } from "./sheet";
 
 const CALCULATORS = [
   { id: "need", title: "A day's energy" },
@@ -621,29 +620,46 @@ function LastsCalculator({
       >
         {levels ? (
           <>
-            <table className="mt-2 w-full text-left text-small tabular">
-              <caption className="sr-only">Days at each level</caption>
-              <thead>
-                <tr className="text-ink-muted">
-                  <th className="py-1 pr-3 font-normal">Eaten at</th>
-                  <th className="py-1 pr-3 font-normal">A day</th>
-                  <th className="py-1 pr-3 font-normal">Lasts</th>
-                  <th className="py-1 font-normal">Last day covered</th>
-                </tr>
-              </thead>
-              <tbody>
-                {levels.map((level) => (
-                  <tr key={level.id} className="border-t border-border">
-                    <th scope="row" className="py-1 pr-3 font-medium">
-                      {level.id === "full" ? "Full need" : level.id === "half" ? "Half" : "Three quarters"}
+            {/* biome-ignore lint/a11y/useSemanticElements: a named group to scroll, not a set of form fields */}
+            <div
+              // biome-ignore lint/a11y/noNoninteractiveTabindex: with large text the table scrolls sideways, so it is reachable by keyboard
+              tabIndex={0}
+              role="group"
+              aria-label="Days at each level"
+              className="scroll-quiet mt-2 overflow-x-auto"
+            >
+              <table className="w-full text-left text-small tabular">
+                <caption className="sr-only">Days at each level</caption>
+                <thead>
+                  <tr className="text-ink-muted">
+                    <th className="py-1 pr-3 font-normal" scope="col">
+                      Eaten at
                     </th>
-                    <td className="py-1 pr-3">{kcal(level.perDay)}</td>
-                    <td className="py-1 pr-3">{level.days === null ? "—" : days(level.days)}</td>
-                    <td className="py-1">{level.days === null ? "—" : dayWords(runsOutOn(today, level.days))}</td>
+                    <th className="py-1 pr-3 font-normal" scope="col">
+                      A day
+                    </th>
+                    <th className="py-1 pr-3 font-normal" scope="col">
+                      Lasts
+                    </th>
+                    <th className="py-1 font-normal" scope="col">
+                      Last day covered
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {levels.map((level) => (
+                    <tr key={level.id} className="border-t border-border">
+                      <th scope="row" className="py-1 pr-3 font-medium">
+                        {level.id === "full" ? "Full need" : level.id === "half" ? "Half" : "Three quarters"}
+                      </th>
+                      <td className="py-1 pr-3">{kcal(level.perDay)}</td>
+                      <td className="py-1 pr-3">{level.days === null ? "—" : days(level.days)}</td>
+                      <td className="py-1">{level.days === null ? "—" : dayWords(runsOutOn(today, level.days))}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             <p className="mt-2">
               {nobodyReduced
                 ? "Everyone in the household is kept on a full ration, so the reduced rows are the same as the full one."
@@ -849,21 +865,29 @@ function ShareCalculator({
   const length = useNumber(shareDays);
   const shared = store.total !== null && length.value !== null ? shareByNeed(store.total, length.value, needs) : null;
   const short = shared ? shared.lines.some((line) => line.ofNeed < 1) : false;
-  const pdf = useMemo(() => {
-    if (!shared || needs.length === 0) return null;
-    const title = `Rations: sharing ${kcal(store.total ?? 0)} over ${plural(length.value ?? 0, "day")}`;
-    return madePdf(
-      guidanceSheetPdf(
-        rationBlocks({ title, needs, shared, whoNot: WHO_NOT_REDUCED }),
+  const total = store.total;
+  const days = length.value;
+  const title = `Rations: sharing ${kcal(total ?? 0)} over ${plural(days ?? 0, "day")}`;
+  const make = useCallback(
+    (paper: PrintPaper) =>
+      rationDocument({
         title,
-        "Rations · a planning aid · Outpost",
-        new Date(`${S.sphere.read}T00:00:00Z`),
-      ),
-      title,
-      "Rations",
-      { what: "the ration calculator", path: "/tools/rations#share" },
-    );
-  }, [shared, needs, store.total, length.value]);
+        needs,
+        shared: shareByNeed(total ?? 0, days ?? 0, needs),
+        whoNot: WHO_NOT_REDUCED,
+        days: days ?? 0,
+        storeKcal: total ?? 0,
+        made: new Date(`${S.sphere.read}T00:00:00Z`),
+        paper,
+      }),
+    [title, needs, total, days],
+  );
+  const canMake = total !== null && days !== null && needs.length > 0 && (shared?.lines.length ?? 0) > 0;
+  const pdf = useSheetPdf(canMake ? make : null, {
+    title,
+    kind: "Rations",
+    from: { what: "the ration calculator", path: "/tools/rations#share" },
+  });
   return (
     <Calculator
       id="share"
@@ -914,7 +938,7 @@ function ShareCalculator({
           </>
         ) : null}
       </Result>
-      <PdfActions pdf={pdf} />
+      <SheetPdfActions made={canMake ? pdf : null} />
       <HowWorkedOut
         formula={
           <>

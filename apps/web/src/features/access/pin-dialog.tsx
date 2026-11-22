@@ -103,7 +103,8 @@ export function UnlockDialog({ open, onOpenChange }: { open: boolean; onOpenChan
         submitLabel="Unlock"
         pending={unlock.isPending}
         disabled={pin.length < PIN_MIN_DIGITS}
-        error={unlock.error ? errorMessage(unlock.error) : null}
+        // Said under the field and tied to it, so a screen reader hears it with the field.
+        error={null}
         onSubmit={() =>
           unlock.mutate(
             { pin },
@@ -117,7 +118,9 @@ export function UnlockDialog({ open, onOpenChange }: { open: boolean; onOpenChan
           )
         }
       >
-        <Field label="Household PIN">{(ids) => <PinInput ids={ids} value={pin} onChange={setPin} autoFocus />}</Field>
+        <Field label="Household PIN" error={unlock.error ? errorMessage(unlock.error) : undefined}>
+          {(ids) => <PinInput ids={ids} value={pin} onChange={setPin} autoFocus />}
+        </Field>
       </PinForm>
     </Dialog>
   );

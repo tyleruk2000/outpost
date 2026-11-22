@@ -16,8 +16,7 @@ import {
   scheduleState,
   setChecked,
 } from "@outpost/shared";
-import { writePdfPages } from "@/features/maps/print/pdf";
-import { type Block, toSheets } from "@/features/propagation/plans/document";
+import type { Block } from "@/features/propagation/plans/document";
 import { appLocale } from "@/lib/region";
 
 const longDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "long", year: "numeric" });
@@ -112,12 +111,3 @@ export function frequencyBlocks({ entries, chosen, today, written }: Written): B
 }
 
 export const frequenciesTitle = (chosen: string, written: Date) => `Frequencies to listen to: ${chosen}, ${longDate.format(written)}`;
-
-export function frequenciesPdf(input: Written): Uint8Array {
-  const footer = `Frequencies to listen to · ${input.chosen} · stations close and schedules change · Outpost`;
-  return writePdfPages({
-    pages: toSheets(frequencyBlocks(input), footer),
-    title: frequenciesTitle(input.chosen, input.written),
-    created: input.written,
-  });
-}

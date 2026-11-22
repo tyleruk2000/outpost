@@ -137,6 +137,11 @@ export function AutomaticBackups() {
               {data.waiting.message}
               {data.waiting.reason === "failed" ? ` ${retryText(data.waiting)}` : ""}
             </Notice>
+          ) : on && data.location && !data.location.connected ? (
+            // Said before a backup is missed, not only once one is overdue.
+            <Notice tone="warning" icon={<CircleAlert aria-hidden />} title={`“${data.location.name}” is not connected`}>
+              Backups wait until it is back. Plug the drive in or reconnect the share, or choose another location below.
+            </Notice>
           ) : data.lastFailure && !data.active ? (
             <Notice tone="danger" icon={<CircleAlert aria-hidden />} title={`A backup failed on ${formatDateTime(data.lastFailure.at)}`}>
               {data.lastFailure.message}
@@ -237,14 +242,13 @@ export function AutomaticBackups() {
               />
               <SettingRow
                 label="Make one now"
-                hint="Does not change when the next scheduled one is made."
+                hint={
+                  data.location?.connected === false
+                    ? `Waits for “${data.location.name}” to be connected. Does not change when the next scheduled one is made.`
+                    : "Does not change when the next scheduled one is made."
+                }
                 control={
-                  <Button
-                    onClick={() => run.mutate()}
-                    loading={run.isPending}
-                    disabled={Boolean(data.active) || !data.location?.connected}
-                    title={data.location?.connected ? undefined : "The location is not connected"}
-                  >
+                  <Button onClick={() => run.mutate()} loading={run.isPending} disabled={Boolean(data.active) || !data.location?.connected}>
                     <DatabaseBackup /> Back up now
                   </Button>
                 }

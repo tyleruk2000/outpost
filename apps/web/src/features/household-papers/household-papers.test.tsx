@@ -369,7 +369,13 @@ describe("the medical sheets screen", () => {
     expect(await screen.findByText(/Anyone who can reach it on your network can open a sheet that is not encrypted/)).toBeTruthy();
     expect(await screen.findByRole("link", { name: "Sam" })).toBeTruthy();
     expect(screen.getByText("Alex")).toBeTruthy();
-    expect(screen.getByRole("switch", { name: /Find them in search/ }).getAttribute("aria-checked")).toBe("false");
+    // The switch is named by its title alone, with the long explanation as its description.
+    const inSearch = screen.getByRole("switch", { name: "Find them in search" });
+    expect(inSearch.getAttribute("aria-checked")).toBe("false");
+    expect(inSearch).toHaveAccessibleDescription(/Medicines, allergies and conditions of sheets/);
+    // Each row's button says whose it is.
+    expect(screen.getByRole("link", { name: "Open Sam’s sheet" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Make a sheet for Alex" })).toBeTruthy();
     expect(screen.getByText(/Off: neither Chat nor other programs over MCP can read them/)).toBeTruthy();
   });
 });

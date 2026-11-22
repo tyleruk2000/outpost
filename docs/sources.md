@@ -1040,3 +1040,81 @@ For **Settings → Updates** ([updating.md](updating.md)).
 - **Not held, and said so in the book:** major hazard (COMAH) sites and their public
   information zones, and industrial sites other than nuclear ones. No openly licensed copy
   Outpost could fetch was found.
+
+## The household book's printed pages: words, drawings and typeface (read 2026-11-22)
+
+- **Recovery position.** FEMA, *CERT Basic Training Instructor Guide* (August 2019), unit 3,
+  "Disaster Medical Operations – Part 1", page 3-12,
+  https://www.ready.gov/sites/default/files/2019.CERT_.Basic_.IG_.FINAL_.508c.pdf. FEMA's
+  website information page (updated 1 May 2023, https://www.fema.gov/about/website-information)
+  says most of its material is free of copyright; licensed photos and graphics are excluded,
+  and only FEMA's words are used (the drawing is Outpost's). Quoted unchanged, with the
+  caution about the spine. It describes the position, not how to roll someone into it.
+- **Clearing cloudy water.** CDC, "How to Make Water Safe in an Emergency" (19 September 2024),
+  https://www.cdc.gov/water-emergency/about/index.html. Public domain
+  (https://www.cdc.gov/other/agencymaterials.html); the CDC asks to be named and not to be
+  shown as endorsing the use, and the book's sources page says both.
+- **A layered filter, catching rain.** US Army FM 21-76, *Survival* (1992), chapter 6, and
+  figure 6-1. A US federal work with no copyright (17 U.S.C. 105). No official copy could be
+  opened (globalsecurity.org refused, archive.org did not load); it was read from a reprint,
+  https://www.sjsu.edu/people/michelle.hager/docs/fm_21-76_us_army_survival_manual_2006.pdf,
+  pages 61–62. Open: check the quoted sentences against an official copy. FM 21-76 is
+  superseded (FM 3-05.70, then ATP 3-50.21). It names the filter's materials but no order;
+  the drawing's caption says so.
+- **Chest compressions for a child and a baby.** The NHS website lines the book already
+  quotes ("How to resuscitate a child", read 21 November 2026); the drawing shows only them.
+- **Not used:** NHS recovery position pages (now redirect to St John Ambulance); HSE INDG347
+  (OGL, but says only "place in the recovery position"); MedlinePlus (A.D.A.M. content,
+  copyrighted); US Army TC 4-02.1 (one sentence, read from a third-party copy).
+- **Typeface.** Atkinson Hyperlegible Next (Braille Institute of America), SIL Open Font
+  License 1.1, static TTFs from https://github.com/googlefonts/atkinson-hyperlegible-next at
+  commit 7925f50f649b3813257faf2f4c0b381011f434f1, with `OFL.txt` beside them in
+  `apps/web/src/features/print-kit/fonts/`.
+- **Fallback typefaces.** Noto Sans, Noto Sans Arabic, Hebrew, Devanagari, Thai, SC and KR
+  (The Noto Project Authors), SIL Open Font License 1.1, from the variable files in
+  https://github.com/google/fonts (`ofl/notosans*`, read 2026-11-22), instanced and subset
+  with fontTools 4.68 for print; `OFL.txt` in `apps/web/src/features/print-kit/fonts/noto/`.
+
+## Printed power plan: where the fuses go (read 2026-11-22)
+
+- **33 CFR 183.455, Overcurrent protection: General** (United States Coast Guard rules for
+  the electrical systems of boats), read 22 November 2026 from
+  https://www.law.cornell.edu/cfr/text/33/183.455 (ecfr.gov sent the request to a check
+  page). Quoted on the printed power plan beside its wiring drawing: (a) "Each ungrounded
+  current-carrying conductor must be protected by a manually reset, tripfree circuit
+  breaker or fuse"; (b) one "must be placed at the source of power for each circuit or
+  conductor", or "within seven inches of the source of power" where that is physically
+  impractical, measured along the conductor; (c)(1) under 50 volts, a rating no more than
+  "150% of the value of the amperage in Table 5 for the conductor size it is protecting".
+  The drawing puts a fuse at the battery end of each cable on that rule. It is the companion
+  of 33 CFR 183.425 (Table 5), which Tools, Power and batteries already uses for cable
+  current, and is given as guidance in the same way. A US federal regulation, public domain.
+
+## The radio papers' drawings (read 2026-11-22)
+
+- **The ionosphere, ground wave, sky wave, the skip zone and coming back straight down.**
+  Australian Government, Bureau of Meteorology, Space Weather Services, *Introduction to HF
+  radio propagation* (2016),
+  https://sws.bom.gov.au/Category/Educational/Other%20Topics/Radio%20Communication/Intro_HF_Radio.pdf.
+  Used: section 1.1 (the regions' heights, D 50 to 90 km, E 90 to 140 km, F1 140 to 210 km,
+  F2 over 210 km; D, E and F1 all but gone at night; D absorbs, E, F1 and F2 refract; F2
+  present day and night), 2.1 (ground wave up to 100 km over land and 300 km over sea;
+  direct wave; sky wave), 2.2 (the usable range between D-region absorption and the highest
+  frequency returned, moving with the hour, season and solar cycle; absorption greater at
+  lower frequencies), 2.6 and figure 2.8 (at a fixed frequency steeper rays land nearer, the
+  steepest that returns bounds the skip zone, steeper still penetrates; no skip zone when the
+  frequency is returned at vertical incidence; use a lower frequency to reach into a skip
+  zone) and 2.7. © Commonwealth of Australia 2016: facts and figures only are used, and the
+  drawings are Outpost's own. Drawn in `features/propagation/print/radio-diagrams.ts` for the
+  HF prediction and communication plan PDFs.
+- **The radio dial's bands** on the frequencies PDF. ITU Radio Regulations No. 2.1, as given in
+  Recommendation ITU-R V.431-9 (10/2025), https://www.itu.int/dms_pubrec/itu-r/rec/v/R-REC-V.431-9-202510-I!!PDF-E.pdf,
+  and mirrored in 47 CFR 2.101 (https://www.law.cornell.edu/cfr/text/47/2.101): band N runs
+  from 0.3 × 10^N to 3 × 10^N Hz, so LF 30 to 300 kHz, MF 300 kHz to 3 MHz, HF 3 to 30 MHz,
+  VHF 30 to 300 MHz, UHF 300 MHz to 3 GHz.
+- **Day and night on the world** at a paper's hour: Outpost's own grey-line arithmetic
+  (`maps/grey-line/geometry.ts`, after Meeus; see the Solar clock's sources), over the bundled
+  Natural Earth 1:110m land outline (public domain).
+- **Charts** on printed pages are drawn with d3-scale 4.0.2 and d3-shape 3.2.0 (ISC licence,
+  https://github.com/d3/d3-scale, https://github.com/d3/d3-shape), already in the app's
+  dependency tree through Mermaid; no data comes from them.
