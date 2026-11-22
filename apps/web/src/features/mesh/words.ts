@@ -21,6 +21,9 @@ import { timeAgo } from "@/lib/utils";
 export const INTRO =
   "The household's board can reach beyond the Wi-Fi through a LoRa radio. Outpost works with radios running Meshtastic or MeshCore firmware: what is written on a radio channel under Messages goes out by radio, and what the radio hears there shows on that channel.";
 export const UNTRIED = "Not tried with a real radio yet.";
+/** Why this section has Save buttons when every other setting saves itself. */
+export const SAVE_ON_PURPOSE =
+  "Unlike the other settings, these are kept only when you press Save: each connects Outpost to a radio or to a broker over the network, so it is checked and saved on purpose, not as you type.";
 
 /** Said on the screen, short. The longer reasons are behind the disclosure. */
 export const WARNINGS = {

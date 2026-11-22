@@ -62,6 +62,7 @@ import {
   REGION_URL,
   REMOTE,
   radiosWords,
+  SAVE_ON_PURPOSE,
   switchWords,
   TRADEMARK,
   UNTRIED,
@@ -143,6 +144,7 @@ export function MeshSettingsSection() {
           ) : (
             <NotFromThisDevice id={WHY_ID} right={data.right} what={REMOTE.what} because={REMOTE.because} scope={REMOTE_SETTINGS_SCOPE} />
           )}
+          <p className="text-small text-ink-muted">{SAVE_ON_PURPOSE}</p>
           <MeshtasticPart key={JSON.stringify(data.meshtastic.config)} data={data} />
           <MeshCorePart key={JSON.stringify(data.meshcore.config)} data={data} />
           <TestMessages channels={data.channels} />
