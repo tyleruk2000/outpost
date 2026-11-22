@@ -44,6 +44,12 @@ of what each feature does are in its own guide.
   from inside another are not.
 - **Not tried:** a pass by hand with a screen reader. No one has used the map, the notes
   editor or the reader with VoiceOver from start to finish.
+- **Home, Search, Help, Settings and the app's bars:** walked in Chromium at 1280 by 800,
+  390 by 844 and 320 by 568, in WebKit at an iPhone's size, light and dark, with the text at
+  200% and at Largest, by keyboard alone, with axe-core and Playwright's reading of the
+  accessibility tree. Not tried: VoiceOver, TalkBack or NVDA reading the screen names and the
+  setting hints aloud; a real phone or tablet with a keyboard, switch access or the
+  on-screen keyboard over a setting's field; Windows high contrast.
 
 ## Installing and looking after it
 

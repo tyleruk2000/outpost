@@ -247,9 +247,11 @@ function QuestionBox({
 function Glossary() {
   const [open, setOpen] = useState(() => window.matchMedia("(min-width: 768px)").matches);
   return (
-    <details open={open} onToggle={(event) => setOpen(event.currentTarget.open)} className="mt-8 border-y border-border py-3">
-      <summary className="cursor-pointer rounded-control text-small font-semibold text-ink">The words used on this page</summary>
-      <dl className="mt-3 grid gap-x-10 gap-y-2.5 pb-1 text-small md:grid-cols-2">
+    <details open={open} onToggle={(event) => setOpen(event.currentTarget.open)} className="mt-8 border-y border-border md:py-3">
+      <summary className="cursor-pointer rounded-control py-3 text-small font-semibold text-ink md:py-0.5">
+        The words used on this page
+      </summary>
+      <dl className="mt-3 grid gap-x-10 gap-y-2.5 pb-3 text-small md:grid-cols-2 md:pb-1">
         {GLOSSARY.map((entry) => (
           <div key={entry.term}>
             <dt className="inline font-semibold text-ink">
