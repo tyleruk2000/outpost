@@ -68,6 +68,12 @@ of what each feature does are in its own guide.
   pulled out, a real NAS switched off and a really full disk (each was stood in for by a removed
   folder or a changed answer from the server); the Mac Keychain prompt and real SMB mounts from
   the Connect a network share dialog; Docker's and Linux's mount lines typed into a real system.
+- **Game boards on small phones, accepted:** Sudoku's cells are 40 px on a phone 390 px wide,
+  and the squares of Chess and Draughts, the holes of Peg solitaire, Solitaire's cards and
+  Allotment's stall are 36 to 41 px at 320 px wide. A whole board has to fit the screen, so they
+  stay under the 44 px the design asks of touch controls. They meet WCAG 2.5.8 (24 px), each is a
+  separate square with no other control inside it, and every board can also be played from the
+  keyboard.
 
 ## Installing and looking after it
 

@@ -1,7 +1,8 @@
 /**
  * The tools on a phone with the text at 200% (a root font size of 32 px): none scrolls sideways. Tabbing
  * through a long calculator never leaves the focus under the top bar or the bar of screens (WCAG 2.4.11).
- * The unit switches and tab names are at least 44 px each way.
+ * The unit switches and tab names are at least 44 px each way, and a checkbox or a switch can be pressed
+ * anywhere in the 44 px square around it on a touch screen, though it is drawn smaller.
  */
 import { expect, test, watchForErrors } from "./fixtures";
 
@@ -88,5 +89,39 @@ test.describe("tools with large text, on a phone", () => {
     const now = page.getByRole("tab", { name: "Now", exact: true });
     const tab = (await now.boundingBox())!;
     expect(Math.min(tab.width, tab.height)).toBeGreaterThanOrEqual(44);
+  });
+
+  test("a checkbox and a switch take a press anywhere in the 44 px square around them", async ({ page }) => {
+    /** For each point 20 px out from the control's centre, whether a press there lands on the control. */
+    const reach = (selector: string) =>
+      page
+        .locator(selector)
+        .first()
+        .evaluate((control) => {
+          control.scrollIntoView({ block: "center" });
+          const box = control.getBoundingClientRect();
+          const [x, y] = [box.left + box.width / 2, box.top + box.height / 2];
+          return [
+            [0, -20],
+            [0, 20],
+            [-20, 0],
+            [20, 0],
+          ].map(([dx, dy]) => {
+            const at = document.elementFromPoint(x + (dx ?? 0), y + (dy ?? 0));
+            const label = at?.closest("label");
+            return { dx, dy, hits: at === control || control.contains(at) || (!!label && label.htmlFor === control.id) };
+          });
+        });
+
+    await page.goto("/tools/rations");
+    const checkbox = "main button[role=checkbox]";
+    await expect(page.locator(checkbox).first()).toBeVisible();
+    expect((await reach(checkbox)).filter((point) => !point.hits)).toEqual([]);
+
+    await page.goto("/prepare/nuclear");
+    await page.getByRole("tab", { name: "Layers", exact: true }).click();
+    const toggle = "main button[role=switch]";
+    await expect(page.locator(toggle).first()).toBeVisible();
+    expect((await reach(toggle)).filter((point) => !point.hits)).toEqual([]);
   });
 });
