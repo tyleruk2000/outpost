@@ -141,7 +141,9 @@ describe("Settings, Mesh radio", () => {
     expect(region).toHaveAttribute("target", "_blank");
     await screen.findByRole("region", { name: "Meshtastic, by MQTT" });
     // Why this one section has Save buttons when every other setting saves itself.
-    expect(screen.getByText(/kept only when you press Save: each connects Outpost to a radio or to a broker over the network/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/kept only when you press Save: each connects Outpost to a radio or to a broker over the network/),
+    ).toBeInTheDocument();
     expect(within(part("Meshtastic, by MQTT")).getByRole("status")).toHaveTextContent(/^Off$/);
     expect(within(part("MeshCore")).getByRole("status")).toHaveTextContent(/^Off$/);
     expect(screen.queryByText(/On the radio/)).not.toBeInTheDocument();

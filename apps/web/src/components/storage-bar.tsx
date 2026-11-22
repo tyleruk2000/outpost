@@ -14,29 +14,50 @@ export const usageKinds: Array<{ kind: string; label: string; color: string }> =
   { kind: "dataset", label: "Radio data", color: "var(--chart-other)" },
 ];
 
+type BarLocation = Pick<StorageLocation, "totalBytes" | "freeBytes" | "name">;
+
+/** The parts of a location's bar, in order: what Outpost holds by kind, then what else is on the drive. */
+export function storageSegments(location: BarLocation, usage?: StorageUsage) {
+  const total = location.totalBytes ?? 0;
+  const free = location.freeBytes ?? 0;
+  const other = Math.max(0, total - free - (usage?.totalBytes ?? 0));
+  return [
+    ...usageKinds.map((entry) => ({ ...entry, bytes: usage?.byKind[entry.kind]?.bytes ?? 0 })).filter((entry) => entry.bytes > 0),
+    { kind: "other", label: "Other files on this drive", color: "var(--border-strong)", bytes: other },
+  ].filter((segment) => segment.bytes > 0);
+}
+
+/**
+ * The key to a location's bar, in words: each part's name and size, so that what the colours mean does not
+ * depend on pointing at them (the parts' names were only in hover titles). Free space is said beside the bar.
+ */
+export function StorageKey({ location, usage, className }: { location: BarLocation; usage?: StorageUsage; className?: string }) {
+  if ((location.totalBytes ?? 0) <= 0) return null;
+  const segments = storageSegments(location, usage);
+  if (segments.length === 0) return null;
+  return (
+    <ul aria-label={`What is on ${location.name}`} className={cn("flex flex-wrap gap-x-4 gap-y-0.5 text-micro text-ink-muted", className)}>
+      {segments.map((segment) => (
+        <li key={segment.kind} className="flex items-center gap-1.5">
+          <span aria-hidden className="size-2 shrink-0 rounded-[2px]" style={{ background: segment.color }} />
+          <span>{segment.label}</span>
+          <span className="tabular text-ink">{formatBytes(segment.bytes)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /**
  * Capacity of a location as one bar: what Outpost holds (by kind), what else is on the
  * drive, and what is free. Widths are true proportions; a sliver gets a 2px minimum so
  * it stays visible.
  */
-export function StorageBar({
-  location,
-  usage,
-  className,
-}: {
-  location: Pick<StorageLocation, "totalBytes" | "freeBytes" | "name">;
-  usage?: StorageUsage;
-  className?: string;
-}) {
+export function StorageBar({ location, usage, className }: { location: BarLocation; usage?: StorageUsage; className?: string }) {
   const total = location.totalBytes ?? 0;
   const free = location.freeBytes ?? 0;
   if (total <= 0) return <div className={cn("h-2 rounded-full bg-surface-strong", className)} aria-hidden />;
-  const ours = usage?.totalBytes ?? 0;
-  const other = Math.max(0, total - free - ours);
-  const segments = [
-    ...usageKinds.map((entry) => ({ ...entry, bytes: usage?.byKind[entry.kind]?.bytes ?? 0 })).filter((entry) => entry.bytes > 0),
-    { kind: "other", label: "Other files on this drive", color: "var(--border-strong)", bytes: other },
-  ].filter((segment) => segment.bytes > 0);
+  const segments = storageSegments(location, usage);
 
   const summary = `${location.name}: ${formatBytes(total - free)} used of ${formatBytes(total)}, ${formatBytes(free)} free`;
   return (

@@ -18,7 +18,7 @@ import { ArrowRight, BookOpen, Compass, FileText, Map as MapIcon, NotebookText, 
 import { type FormEvent, type ReactNode, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Contour } from "@/components/contour";
-import { StorageBar } from "@/components/storage-bar";
+import { StorageBar, StorageKey } from "@/components/storage-bar";
 import { Progress, Skeleton } from "@/components/ui/misc";
 import { BoardHomeLine } from "@/features/board/elsewhere";
 import { BookHomeLine } from "@/features/household-book/book-line";
@@ -335,6 +335,9 @@ export default function HomePage() {
                         </span>
                       </div>
                       <StorageBar location={location} usage={location.usage} />
+                      {location.status === "available" ? (
+                        <StorageKey location={location} usage={location.usage} className="mt-1.5" />
+                      ) : null}
                     </li>
                   ))}
                 </ul>

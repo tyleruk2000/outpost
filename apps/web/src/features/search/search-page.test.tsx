@@ -85,6 +85,9 @@ describe("what can be opened now, and what would have to be downloaded", () => {
     // The count is not run into the name ("Available to download2"); jsdom drops the space a browser keeps.
     expect(toDownload).toHaveAccessibleName(/^Available to download, ?2$/);
     expect(everything).toHaveAttribute("tabindex", "0");
+    // What "% match" means is on the screen, for touch and the keyboard, not only in a hover title.
+    expect(screen.getByText(/The match beside each result is how close it comes to the best one for this search/)).toBeInTheDocument();
+    expect(document.querySelector("[title]")).toBeNull();
     expect(toDownload).toHaveAttribute("tabindex", "-1");
     everything.focus();
     await user.keyboard("{ArrowRight}");

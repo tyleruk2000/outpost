@@ -73,9 +73,8 @@ function ResultRow({ result, heading: Heading = "h2" }: { result: SearchResult; 
             </span>
           ))}
         </p>
-        <span className="tabular shrink-0 text-micro text-ink-faint" title="Relevance, relative to the best match for this search">
-          {Math.round(result.score * 100)}% match
-        </span>
+        {/* What "match" means is said once above the results, where touch and the keyboard reach it too, not in a hover title. */}
+        <span className="tabular shrink-0 text-micro text-ink-faint">{Math.round(result.score * 100)}% match</span>
       </div>
       <Heading className="mt-1 font-title text-lead hyphens-auto break-words">
         <Link to={resultHref(result)} className="text-ink decoration-primary decoration-1 underline-offset-[0.22em] hover:underline">
@@ -389,6 +388,7 @@ export default function SearchPage() {
                     {reference.status === "searching" ? " so far." : "."}
                   </p>
                   <ReferenceTrouble reference={reference} />
+                  <p className="text-small text-ink-muted">The match beside each is how close it comes to the best one.</p>
                   <ol className="mt-1 divide-y divide-border">
                     {reference.results.slice((referencePage - 1) * PAGE_SIZE, referencePage * PAGE_SIZE).map((result) => (
                       <ResultRow key={`${result.kind}:${result.entityId}`} result={result} />
@@ -455,6 +455,11 @@ export default function SearchPage() {
                     </Link>
                   </p>
                 )}
+                {data.results.length > 0 ? (
+                  <p className="mt-1 text-small text-ink-muted">
+                    The match beside each result is how close it comes to the best one for this search.
+                  </p>
+                ) : null}
                 {referenceBelow ? <ReferenceLine reference={reference} onShow={() => setParam("kind", "reference")} /> : null}
                 {data.warnings.map((warning) => (
                   <Notice
