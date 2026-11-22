@@ -66,7 +66,7 @@ export const BOOK_SECTIONS = [
     id: "frequencies",
     label: "Radio frequencies",
     about:
-      "The communication plan's channels first, then licence-free channels, emergency and calling frequencies, broadcasters and repeaters near home, each with whether it needs a licence.",
+      "The communication plan's channels first, then licence-free channels, emergency and calling frequencies, broadcasters and repeaters near our places with maps of their range, each with whether it needs a licence.",
   },
   {
     id: "journeys",

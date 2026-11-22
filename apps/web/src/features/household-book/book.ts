@@ -51,6 +51,7 @@ import {
   medicineLeft,
   memberNeeds,
   metresWords,
+  modeName,
   NO_HOME_PLACE,
   NO_RADIO_LICENCE,
   PLAN_PHASES,
@@ -61,6 +62,7 @@ import {
   REFERENCE_LAYER_INFO,
   type ReferenceLayerId,
   type RepeaterDto,
+  type RepeaterListDto,
   type ResolvedContact,
   type ShoppingSuggestion,
   type SuppliesResponse,
@@ -135,7 +137,19 @@ import {
 import type { Block } from "@/features/propagation/plans/document";
 import { BLEACH_STEPS, METHODS, PLANNING_FIGURES, WATER_SOURCES } from "@/features/tools/water/guidance";
 import { purificationBlocks } from "@/features/tools/water/purification-sheet";
+import {
+  type BookRepeaterRange,
+  type ChosenRepeater,
+  chooseRepeaters,
+  horizonRange,
+  mappedGroups,
+  placeLabel,
+  type RepeaterGroup,
+  repeaterLocations,
+  SEARCH_WORDS,
+} from "./book-repeaters";
 import { CDC_HYGIENE, FIRST_AID_PAGES, FIRST_AID_POINTERS, KIT_FROM_PAGES, NHS_CREDIT, NHS_READ, RECOVERY_POSITION } from "./first-aid";
+import { type BookRepeaterMap, repeaterFigure } from "./repeater-figure";
 import { routeDrawing } from "./route-drawing";
 import { CDC_SAFE_WATER, FM_21_76 } from "./water-words";
 
@@ -165,8 +179,19 @@ export interface BookInputs {
   supplies: SuppliesResponse | null;
   /** Each person's grab card and what every card carries; null when not worked out. */
   grab: { people: GrabPerson[]; household: GrabHousehold } | null;
-  /** Repeaters near home from Outpost's list, nearest first; null when the list could not be read. */
+  /**
+   * Repeaters from Outpost's list round every place the book covers (`repeaterQueries`), in any order: the book
+   * chooses from them (`chooseRepeaters`). Null when the list could not be read.
+   */
   repeaters: RepeaterDto[] | null;
+  /** The lists the repeaters came from, for their names and dates. */
+  repeaterLists?: RepeaterListDto[];
+  /** Each chosen repeater's likely range by its id, from the terrain installed; one not here is drawn at its radio horizon. */
+  repeaterRanges?: Record<string, BookRepeaterRange>;
+  /** The offline map under each place's repeaters, by the place's key; one not here is drawn on a plain grid. */
+  repeaterMaps?: Record<string, BookRepeaterMap>;
+  /** Why no offline map is under the repeaters' maps, when none could be drawn. */
+  repeaterMapsMissing?: string | null;
   /** The map of home and the meeting points, drawn from the offline map before the book is made; absent, there is none. */
   placesMap?: { block: Block; pictures: ReadonlyMap<string, PdfPicture>; missing?: string | null } | null;
   /** The household the book is for: named on the cover and in the footer when there are several. Absent: the only one. */
@@ -804,33 +829,7 @@ function frequencies(c: Context): Section {
       summary.push(...entries.map((entry) => entry.name));
     }
   }
-  content.push(label("Repeaters near home"));
-  if (!c.facts.home) content.push(note(c.noHome));
-  else if (c.repeaters === null) content.push(note("Outpost's repeater list could not be read when the book was made."));
-  else if (c.repeaters.length === 0)
-    content.push(note("No repeater in Outpost's repeater list is near home. Bring a list in under Radio › Repeaters."));
-  else {
-    const cited = notes.cite(licenceLine("listen-and-transmit", NO_RADIO_LICENCE)?.text ?? "");
-    content.push(
-      dataTable(
-        ["Callsign", "Listen on", "Talk on", "Tone", "Where", "From home", "Licence"],
-        c.repeaters.map((repeater) => [
-          `**${repeater.callsign}**`,
-          `${(repeater.outputHz / 1e6).toFixed(4)} MHz`,
-          repeater.inputHz === null ? "" : `${(repeater.inputHz / 1e6).toFixed(4)} MHz`,
-          repeater.ctcssHz ? `${repeater.ctcssHz} Hz` : repeater.dcsCode ? `DCS ${repeater.dcsCode}` : "",
-          repeater.place,
-          repeater.distanceMeters !== undefined
-            ? `${metresWords(repeater.distanceMeters)}${repeater.bearingDegrees !== undefined ? ` ${compassPoint(repeater.bearingDegrees)}` : ""}`
-            : "",
-          licenceStatus("licence", [cited]),
-        ]),
-        { right: [1, 2] },
-      ),
-      note("Amateur radio repeaters, from Outpost's repeater list as brought in."),
-    );
-    summary.push(...c.repeaters.map((repeater) => `Repeater: ${repeater.callsign}`));
-  }
+  content.push(...repeaterContent(c, notes, summary));
   content.push(
     label("Notes"),
     ...notes.content(),
@@ -840,9 +839,145 @@ function frequencies(c: Context): Section {
   );
   c.summary.frequencies = summary;
   return {
-    subtitle: "The communication plan's channels first, then what home's country has, each with whether it needs a licence.",
+    subtitle:
+      "The communication plan's channels first, then what home's country has, each with whether it needs a licence, and the repeaters near our places with maps of their range.",
     content,
   };
+}
+
+/** The places the book lists repeaters round, and the repeaters chosen for each. */
+export function bookRepeaterGroups(
+  inputs: Pick<BookInputs, "answers" | "markers" | "plans" | "facts" | "which" | "repeaters">,
+): RepeaterGroup[] {
+  const included = new Set(
+    bookPlanIds(
+      inputs.answers,
+      inputs.plans.map((each) => each.plan),
+    ),
+  );
+  const first = paperHomePlace(inputs.which ?? null, inputs.facts.home);
+  const locations = repeaterLocations({
+    answers: inputs.answers,
+    markers: inputs.markers,
+    mapped: bookMapPlaces(
+      inputs.answers,
+      inputs.markers,
+      inputs.plans.filter((each) => included.has(each.plan.id)),
+      first,
+    ).mapped,
+    first,
+    journeys: inputs.facts.journeys,
+  });
+  return chooseRepeaters(locations, inputs.repeaters ?? []);
+}
+
+const mhz = (hz: number) => (hz / 1e6).toFixed(4);
+
+/** The input, with the shift from the output: "145.1250 (−0.6)". */
+function inputCell(repeater: RepeaterDto): string {
+  if (repeater.inputHz === null) return "";
+  if (repeater.inputHz === repeater.outputHz) return "Simplex";
+  const shift = (repeater.inputHz - repeater.outputHz) / 1e6;
+  return `${mhz(repeater.inputHz)} (${shift > 0 ? "+" : "−"}${formatDecimalShift(Math.abs(shift))})`;
+}
+const formatDecimalShift = (value: number) => String(Number(value.toFixed(4)));
+
+function repeaterRow(c: Context, each: ChosenRepeater, journey: boolean): string[] {
+  const { repeater } = each;
+  const range = c.repeaterRanges?.[repeater.id] ?? horizonRange(repeater);
+  const where = journey
+    ? `${metresWords(each.distanceMeters)} ${compassPoint(each.bearingDegrees)} of the line, ${metresWords(each.alongMeters ?? 0)} along`
+    : `${metresWords(each.distanceMeters)} ${compassPoint(each.bearingDegrees)}`;
+  return [
+    `**${repeater.callsign}**`,
+    mhz(repeater.outputHz),
+    inputCell(repeater),
+    repeater.ctcssHz ? `${repeater.ctcssHz} Hz` : repeater.dcsCode ? `DCS ${repeater.dcsCode}` : "None listed",
+    repeater.modes.length > 0 ? repeater.modes.map(modeName).join(", ") : "FM",
+    repeater.place,
+    where,
+    `${metresWords(range.meters)}${range.basis === "terrain" ? " (terrain)" : ""}`,
+  ];
+}
+
+/** Repeaters round every place, grouped by place, with a map of each; the lists they came from and their dates. */
+function repeaterContent(c: Context, notes: NoteList, summary: string[]): Content[] {
+  const content: Content[] = [label("Repeaters near our places")];
+  const groups = bookRepeaterGroups(c);
+  if (groups.length === 0) return [...content, note(c.noHome)];
+  if (c.repeaters === null) return [...content, note("Outpost's repeater list could not be read when the book was made.")];
+  if (groups.every((group) => group.chosen.length === 0))
+    return [
+      ...content,
+      note("No repeater in Outpost's repeater list is near any of the book's places. Bring a list in under Radio › Repeaters."),
+    ];
+  const cited = notes.cite(licenceLine("listen-and-transmit", NO_RADIO_LICENCE)?.text ?? "");
+  content.push(
+    para(
+      `The nearest useful repeaters round each place in this book, each listed once, under the first place it is near. ${SEARCH_WORDS} Listen on the output; talk on the input, sending the tone where one is listed.`,
+    ),
+    {
+      columns: [
+        { text: "Talking on any of them:", fontSize: PRINT_TYPE.small, width: "auto", margin: [0, 1, 4, 0] },
+        licenceStatus("licence", [cited]),
+      ],
+      margin: [0, 0, 0, 4],
+    } as Content,
+  );
+  for (const group of groups) {
+    const journey = Boolean(group.location.to);
+    const title = placeLabel(group.location);
+    content.push(heading(title));
+    if (group.chosen.length > 0)
+      content.push(
+        dataTable(
+          ["Callsign", "Output", "Input (shift)", "Tone", "Mode", "Where", journey ? "From the line" : "From here", "Likely range"],
+          group.chosen.map((each) => repeaterRow(c, each, journey)),
+          { right: [1, 2] },
+        ),
+      );
+    if (group.also.length > 0) {
+      // Grouped by the place each is listed under: "Also near: GB3AA 4 km N, GB3BB 7 km E (listed under Home)."
+      const under = [...new Set(group.also.map((each) => each.listedUnder))];
+      const runs = under.map(
+        (place) =>
+          `${group.also
+            .filter((each) => each.listedUnder === place)
+            .map(
+              (each) =>
+                `${each.repeater.callsign} ${metresWords(each.distanceMeters)} ${compassPoint(each.bearingDegrees)}${journey ? ` of the line, ${metresWords(each.alongMeters ?? 0)} along` : ""}`,
+            )
+            .join(", ")} (listed under ${place})`,
+      );
+      content.push(note(`${group.chosen.length > 0 ? "Also near" : "Near"}: ${runs.join("; ")}.`));
+    }
+    if (group.chosen.length === 0 && group.also.length === 0) content.push(note("No repeater in the list is near it."));
+    summary.push(...group.chosen.map((each) => `Repeater: ${each.repeater.callsign}`));
+  }
+  // Where the repeaters come from, and how old the list is.
+  const used = new Set(groups.flatMap((group) => group.chosen.map((each) => each.repeater.listId)));
+  const lists = (c.repeaterLists ?? []).filter((list) => used.has(list.id));
+  const from = [
+    ...lists.map((list) => `${list.name}${list.source ? ` (${list.source})` : ""}, data of ${longDate.format(new Date(list.dataDate))}`),
+    ...(used.has(null) ? ["entries made by hand on this Outpost"] : []),
+  ];
+  content.push(
+    note(
+      `Amateur radio repeaters from Outpost's repeater list${from.length > 0 ? `: ${from.join("; ")}` : ""}. A list says what was listed on its date, not what is on the air now.`,
+    ),
+  );
+  for (const group of mappedGroups(groups))
+    content.push(
+      repeaterFigure({
+        group,
+        locations: groups.map((each) => each.location),
+        ranges: c.repeaterRanges ?? {},
+        map: c.repeaterMaps?.[group.location.key] ?? null,
+        missing: c.repeaterMapsMissing ?? null,
+        measure: c.measure,
+      }),
+    );
+  return content;
 }
 
 function supplies(c: Context): Section {
