@@ -51,8 +51,11 @@ pnpm e2e                               # the packaged app, internet blocked
 ```
 
 One server test file: `cd apps/server && pnpm exec vitest run test/search.test.ts`. The
-browser tests use ports 8471 and 8472; `OUTPOST_E2E_SOURCE=1` runs them against the
-source after `pnpm build`. If you could not run a check, say so in the pull request.
+browser tests use ports 8471 and 8473 to 8478; `OUTPOST_E2E_SOURCE=1` runs them against the
+source after `pnpm build`. To run two suites at once, give the second ports of its own
+(`OUTPOST_E2E_PORT=8910 OUTPOST_E2E_FILES_PORT=8912`): it then writes its traces and
+screenshots to `e2e/test-results-8910` rather than `e2e/test-results`, which each run
+empties when it starts. `OUTPOST_E2E_OUTPUT` names another folder. If you could not run a check, say so in the pull request.
 
 Tests must not reach the internet: use a local `http.createServer` fixture,
 `createTestApp()` from `apps/server/test/helpers.ts`, and `tempDir()` from
