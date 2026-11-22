@@ -397,10 +397,16 @@ export interface PowerPlanInput {
   charger: PowerCharger;
   /** The cable from the battery: its rated current, amps, from the maker's data or the wiring regulations. Null: not given. */
   cableRatingA: number | null;
+  /**
+   * The household the plan is for (the caravan's battery), or null: shared by every
+   * household. Left out of a change, the plan keeps the one it had; of a new plan, shared.
+   */
+  householdId?: string | null;
 }
 
 export interface PowerPlan extends PowerPlanInput {
   id: string;
+  householdId: string | null;
   createdAt: number;
   updatedAt: number;
 }

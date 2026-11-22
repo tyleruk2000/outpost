@@ -3,6 +3,10 @@
  * wrote it down, from any device, linked to the emergency plan in use. Check-ins from the
  * board and steps ticked in plans are read beside it, never copied into it, so that the
  * log is the household's own words and the rest is what those screens already hold.
+ *
+ * Each household has its own log: entries are the current household's, and the plans
+ * read beside them are its plans. The board is the whole Outpost's, so check-ins are
+ * read for every household.
  */
 import {
   BOARD_CHANNEL,
@@ -11,9 +15,8 @@ import {
   type EventLogInput,
   type EventLogLine,
   type EventLogResponse,
-  FIRST_HOUSEHOLD_ID,
 } from "@outpost/shared";
-import { asc, count, eq } from "drizzle-orm";
+import { and, asc, count, eq } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
 import { badRequest, conflict, notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
@@ -156,8 +159,15 @@ export function createEventLogService(ctx: AppContext, changed: () => void): Eve
     return lines;
   }
 
+  const householdId = () => ctx.services.households.currentId();
+
   function lines(query: { from?: number; others?: boolean }): { lines: EventLogLine[]; entries: number } {
-    const rows = db.select().from(eventLog).orderBy(asc(eventLog.happenedAt), asc(eventLog.createdAt)).all();
+    const rows = db
+      .select()
+      .from(eventLog)
+      .where(eq(eventLog.householdId, householdId()))
+      .orderBy(asc(eventLog.happenedAt), asc(eventLog.createdAt))
+      .all();
     const shown = rows.filter((row) => query.from === undefined || row.happenedAt >= query.from).map(entryLine);
     if (query.others) {
       // From the time asked for; with none, from the first entry or a week back, whichever is earlier.
@@ -169,7 +179,11 @@ export function createEventLogService(ctx: AppContext, changed: () => void): Eve
   }
 
   const get = (id: string): Row => {
-    const row = db.select().from(eventLog).where(eq(eventLog.id, id)).get();
+    const row = db
+      .select()
+      .from(eventLog)
+      .where(and(eq(eventLog.id, id), eq(eventLog.householdId, householdId())))
+      .get();
     if (!row) throw notFound("That entry");
     return row;
   };
@@ -183,6 +197,7 @@ export function createEventLogService(ctx: AppContext, changed: () => void): Eve
       const author = cleanName(input.author);
       if (!author) throw badRequest("Choose the name you write under first.");
       const now = Date.now();
+      ctx.services.households.ensure();
       let plan: { id: string; name: string } | null = null;
       if (input.planId) {
         const found = ctx.services.emergencyPlans.list().find((entry) => entry.id === input.planId);
@@ -195,8 +210,7 @@ export function createEventLogService(ctx: AppContext, changed: () => void): Eve
         author,
         text: cleanText(input.text),
         planId: plan?.id ?? null,
-        // Still the first household until readiness is per household (docs/development/households.md).
-        householdId: FIRST_HOUSEHOLD_ID,
+        householdId: householdId(),
         planName: plan?.name ?? null,
         createdAt: now,
         updatedAt: now,

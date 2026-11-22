@@ -4,19 +4,20 @@
  * and the date it was last done. Started from a suggested list the household edits.
  * Nothing here wakes anyone: Outpost cannot reach a phone that is not looking, so Home
  * shows what is overdue, and that is all.
+ *
+ * Each household has its own checks; every call works on the current household's.
  */
 import {
   CHECK_LIMITS,
   type CheckLink,
   daysBetween,
-  FIRST_HOUSEHOLD_ID,
   localDay,
   ROUTINE_CHECK_TEMPLATE,
   type RoutineCheck,
   type RoutineCheckInput,
   type RoutineChecksResponse,
 } from "@outpost/shared";
-import { asc, count, eq, max } from "drizzle-orm";
+import { and, asc, count, eq, max } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
 import { badRequest, conflict, notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
@@ -61,16 +62,25 @@ export function checkDto(row: Row, now = Date.now()): RoutineCheck {
 
 export function createRoutineChecksService(ctx: AppContext, changed: () => void): RoutineChecksService {
   const { db } = ctx;
+  const householdId = () => ctx.services.households.currentId();
+  const ours = () => eq(routineChecks.householdId, householdId());
   const get = (id: string): Row => {
-    const row = db.select().from(routineChecks).where(eq(routineChecks.id, id)).get();
+    const row = db
+      .select()
+      .from(routineChecks)
+      .where(and(eq(routineChecks.id, id), ours()))
+      .get();
     if (!row) throw notFound("That check");
     return row;
   };
+  /** Every household's, for Erase everything and what is stored. */
   const total = () => db.select({ n: count() }).from(routineChecks).get()?.n ?? 0;
+  const inHousehold = () => db.select({ n: count() }).from(routineChecks).where(ours()).get()?.n ?? 0;
   const nextPosition = () =>
     (db
       .select({ n: max(routineChecks.position) })
       .from(routineChecks)
+      .where(ours())
       .get()?.n ?? -1) + 1;
 
   function clean(input: RoutineCheckInput) {
@@ -94,18 +104,18 @@ export function createRoutineChecksService(ctx: AppContext, changed: () => void)
 
   return {
     list(now = Date.now()) {
-      const rows = db.select().from(routineChecks).orderBy(asc(routineChecks.position), asc(routineChecks.createdAt)).all();
+      const rows = db.select().from(routineChecks).where(ours()).orderBy(asc(routineChecks.position), asc(routineChecks.createdAt)).all();
       return { checks: rows.map((row) => checkDto(row, now)), expiringSupplies: expiringSupplies() };
     },
 
     create(input) {
-      if (total() >= CHECK_LIMITS.checks) throw badRequest(`A household can keep up to ${CHECK_LIMITS.checks} checks.`);
+      if (inHousehold() >= CHECK_LIMITS.checks) throw badRequest(`A household can keep up to ${CHECK_LIMITS.checks} checks.`);
       const now = Date.now();
+      ctx.services.households.ensure();
       const row: Row = {
         id: newId(),
         ...clean(input),
-        // Still the first household until readiness is per household (docs/development/households.md).
-        householdId: FIRST_HOUSEHOLD_ID,
+        householdId: householdId(),
         templateId: null,
         lastDoneAt: null,
         lastDoneBy: null,
@@ -144,10 +154,13 @@ export function createRoutineChecksService(ctx: AppContext, changed: () => void)
         db
           .select({ templateId: routineChecks.templateId })
           .from(routineChecks)
+          .where(ours())
           .all()
           .map((row) => row.templateId),
       );
       const now = Date.now();
+      ctx.services.households.ensure();
+      const household = householdId();
       let position = nextPosition();
       const added: Row[] = [];
       for (const template of ROUTINE_CHECK_TEMPLATE) {
@@ -158,8 +171,7 @@ export function createRoutineChecksService(ctx: AppContext, changed: () => void)
           everyDays: template.everyDays,
           note: template.note,
           link: template.link,
-          // Still the first household until readiness is per household (docs/development/households.md).
-          householdId: FIRST_HOUSEHOLD_ID,
+          householdId: household,
           templateId: template.id,
           lastDoneAt: null,
           lastDoneBy: null,

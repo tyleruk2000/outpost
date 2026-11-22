@@ -11,6 +11,7 @@ import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setDeviceName } from "@/features/board/data";
+import { ONE_HOUSEHOLD, TWO_HOUSEHOLDS } from "@/features/households/test-support";
 import { contentText, renderPdf } from "@/features/print-kit";
 import { writeSample } from "@/features/print-kit/samples";
 import CheckInPage from "./check-in-page";
@@ -163,7 +164,7 @@ function serve(routes: Record<string, unknown>) {
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {
       const { pathname } = new URL(String(input), "http://outpost.test");
-      const body = routes[pathname] ?? {};
+      const body = routes[pathname] ?? (pathname === "/api/households" ? ONE_HOUSEHOLD : {});
       return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
     }),
   );
@@ -257,7 +258,7 @@ describe("marking a check done", () => {
           bodies.push(JSON.parse(String(init?.body)));
           return json({ check: check({ updatedAt: 9, lastDoneAt: Date.now(), overdue: false }) });
         }
-        return json(pathname === "/api/routine-checks" ? { checks: [check({ updatedAt: 7 })], expiringSupplies: 0 } : {});
+        return json(pathname === "/api/routine-checks" ? { checks: [check({ updatedAt: 7 })], expiringSupplies: 0 } : ONE_HOUSEHOLD);
       }),
     );
     renderScreen(<ChecksPage />);
@@ -285,7 +286,7 @@ describe("undoing a check marked done", () => {
             : check({ ...current, ...body, updatedAt: current.updatedAt + 1 });
           return json({ check: current });
         }
-        return json(pathname === "/api/routine-checks" ? { checks: [current], expiringSupplies: 0 } : {});
+        return json(pathname === "/api/routine-checks" ? { checks: [current], expiringSupplies: 0 } : ONE_HOUSEHOLD);
       }),
     );
     return bodies;
@@ -315,5 +316,20 @@ describe("undoing a check marked done", () => {
     await vi.waitFor(() =>
       expect(bodies.at(-1)).toEqual({ path: "POST /api/routine-checks/c1/done", body: { by: "", at: null, baseUpdatedAt: 8 } }),
     );
+  });
+});
+
+describe("with several households", () => {
+  it("says under each title which household the screen is for, and nothing with one", async () => {
+    serve({ "/api/households": TWO_HOUSEHOLDS, "/api/routine-checks": { checks: [], expiringSupplies: 0 } });
+    const several = renderScreen(<ChecksPage />);
+    expect((await screen.findByTestId("for-household")).textContent).toBe("For Caravan · Change");
+    expect(screen.getByRole("link", { name: "Change" }).getAttribute("href")).toBe("/prepare/households");
+    several.unmount();
+
+    serve({ "/api/routine-checks": { checks: [], expiringSupplies: 0 } });
+    renderScreen(<ChecksPage />);
+    expect(await screen.findByRole("heading", { level: 1, name: "Routine checks" })).toBeTruthy();
+    await vi.waitFor(() => expect(screen.queryByTestId("for-household")).toBeNull());
   });
 });

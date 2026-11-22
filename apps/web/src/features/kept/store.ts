@@ -100,6 +100,8 @@ export interface KeptPlan extends KeptBase {
   steps: number;
   /** Ticks and unticks made on this device and not yet sent. */
   pending: number;
+  /** The household's name, when there were several as the copy was made; absent with one. */
+  household?: string;
 }
 
 /**

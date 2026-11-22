@@ -3,10 +3,12 @@
  * calendar, with tender crops kept back until after the household's last frost; and the
  * household's record of what it sowed. The calendar is worked out here (`gardenMonth` in
  * `@outpost/shared`); the server keeps the record and the last-frost date. See docs/garden.md.
+ *
+ * The record, the last frost and the country the calendar is checked against are the
+ * current household's (`useHousehold`).
  */
 import {
   type CalendarMonth,
-  countryAt,
   GARDEN_CALENDAR_SOURCE,
   GARDEN_CROP_IDS,
   GARDEN_CROPS,
@@ -16,7 +18,6 @@ import {
   type GardenSowing,
   type GardenSowingInput,
   gardenMonth,
-  homePlaceOf,
   LAST_FROST_SOURCE,
   MONTH_NAMES_LONG,
   monthDayText,
@@ -25,13 +26,15 @@ import {
 } from "@outpost/shared";
 import { Plus } from "lucide-react";
 import { type FormEvent, useState } from "react";
+import { Link } from "react-router";
 import { Disclosure, EmptyState, ErrorState, Joined, Notice, Page, PageHeader, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Select, Skeleton } from "@/components/ui/misc";
+import { ForHousehold } from "@/features/households/for-household";
+import { useHousehold } from "@/features/households/use-household";
 import { useCatalogue } from "@/features/layers/data";
-import { useMarkers } from "@/features/maps/data";
 import { NoHomePlace } from "@/features/maps/home-place";
 import { errorMessage } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
@@ -348,14 +351,15 @@ function Record({ sowings }: { sowings: GardenSowing[] }) {
 
 export default function GardenPage() {
   const garden = useGarden();
-  const markers = useMarkers();
+  const current = useHousehold().data;
   const catalogue = useCatalogue();
   const [month, setMonth] = useState<CalendarMonth>(() => (new Date().getMonth() + 1) as CalendarMonth);
 
-  const home = markers.data ? homePlaceOf(markers.data) : null;
   const countries = catalogue.data?.countries ?? [];
-  const code = home ? countryAt(home, countries) : null;
+  const code = current?.country ?? null;
   const elsewhere = code !== null && code !== "GB" ? (countries.find((country) => country.code === code)?.name ?? code) : null;
+  // With one household it is "Home", as it always was; with several, the household by name.
+  const who = current?.several ? current.household.name : "Home";
   const lastFrost = garden.data?.settings.lastFrost ?? null;
   const plan = gardenMonth(month, lastFrost);
 
@@ -365,6 +369,7 @@ export default function GardenPage() {
         title="Garden"
         description="What to sow, plant and harvest this month in the UK, from the Royal Horticultural Society's calendar, and a record of what you sowed."
       />
+      <ForHousehold className="-mt-6 mb-6" />
 
       <Section
         title={`In ${MONTH_NAMES_LONG[month - 1]}`}
@@ -386,9 +391,20 @@ export default function GardenPage() {
           </Field>
         }
       >
-        {markers.isSuccess && !home ? <NoHomePlace className="mb-4" /> : null}
+        {current && code === null ? (
+          current.several || current.household.kind === "portable" ? (
+            <p className="mb-4 text-small text-ink-muted">
+              Outpost cannot tell which country {current.household.name} is in: it has no home place set.{" "}
+              <Link to="/prepare/households" className="text-primary underline underline-offset-2">
+                Open Households
+              </Link>
+            </p>
+          ) : (
+            <NoHomePlace className="mb-4" />
+          )
+        ) : null}
         {elsewhere ? (
-          <Notice tone="warning" className="mb-4" title={`Home is in ${elsewhere}, not the UK`}>
+          <Notice tone="warning" className="mb-4" title={`${who} is in ${elsewhere}, not the UK`}>
             This calendar is the RHS's, for the UK. Outpost has no published calendar for {elsewhere} yet, so the months below may be wrong
             there. Ask a local growers' society or agricultural service for one.
           </Notice>

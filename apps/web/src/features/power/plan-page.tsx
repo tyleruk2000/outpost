@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Skeleton, Switch } from "@/components/ui/misc";
+import { useHouseholds } from "@/features/households/use-household";
 import { PdfButtons, PdfStatus, useMadePdf } from "@/features/library/made/pdf-actions";
 import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
 import { errorMessage } from "@/lib/api";
@@ -800,6 +801,7 @@ export default function PowerPlanPage() {
           <Field label="Name">
             {(ids) => <Input {...ids} value={draft.name} maxLength={120} onChange={(event) => set({ name: event.target.value })} />}
           </Field>
+          <PlanHouseholdField value={draft.householdId ?? null} onChange={(householdId) => set({ householdId })} />
           <Field label="Notes" optional hint="Printed with the plan.">
             {(ids) => <Textarea {...ids} value={draft.notes} maxLength={20_000} onChange={(event) => set({ notes: event.target.value })} />}
           </Field>
@@ -856,5 +858,33 @@ function LoadOrigin({ load }: { load: PowerLoad }) {
       {words ? `, ${words}` : ""}.
       <FigureSources load={load} />
     </div>
+  );
+}
+
+/**
+ * Which household the plan is for: every household (shared, as every plan was before
+ * there were several), or one, such as the caravan's battery. Shown only with several
+ * households, or for a plan still tied to one when only one is left.
+ */
+/** The choice that stands for "shared by every household" (a select cannot hold an empty value). */
+const SHARED = "every-household";
+
+function PlanHouseholdField({ value, onChange }: { value: string | null; onChange: (householdId: string | null) => void }) {
+  const households = useHouseholds();
+  const list = households.data?.households ?? [];
+  if (!households.data || (list.length < 2 && value === null)) return null;
+  const options = [
+    { value: SHARED, label: "Every household" },
+    ...list.map((household) => ({ value: household.id, label: household.name })),
+    ...(value !== null && !list.some((household) => household.id === value) ? [{ value, label: "A household no longer in Outpost" }] : []),
+  ];
+  return (
+    <ChoiceField
+      label="For"
+      hint="A plan for one household is listed only while that household is the one Outpost is set to."
+      value={value ?? SHARED}
+      onChange={(next) => onChange(next === SHARED ? null : next)}
+      options={options}
+    />
   );
 }

@@ -17,6 +17,7 @@ import { Checkbox, Segmented, Skeleton, Switch } from "@/components/ui/misc";
 import { ChooseName } from "@/features/board/compose";
 import { useBoardSummary, useDeviceName } from "@/features/board/data";
 import { libraryQuestion } from "@/features/household-papers/paper-pdf";
+import { ForHousehold } from "@/features/households/for-household";
 import { PdfActions } from "@/features/library/made/pdf-actions";
 import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
 import { errorMessage } from "@/lib/api";
@@ -261,6 +262,7 @@ export default function LogPage() {
         title="Log of events"
         description="What happened when, written down as it happens: power off 14:10, called the network operator 14:30, river at the step 16:00. From any device, for afterwards and for an insurer."
       />
+      <ForHousehold className="-mt-6 mb-6" />
 
       {name === null ? (
         <Section

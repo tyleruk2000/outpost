@@ -22,6 +22,7 @@ afterEach(() => {
 
 const planWithOrigin = (): PowerPlan => ({
   ...newPowerPlan("Power cut"),
+  householdId: null,
   usb: { efficiency: 0.71 },
   loads: [
     {

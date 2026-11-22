@@ -10,6 +10,7 @@ import { Link, useParams } from "react-router";
 import { Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
+import { KeptPlanHouseholdLine } from "@/features/emergency-plans/household-line";
 import { PlanInUse, stateLine } from "@/features/emergency-plans/use-view";
 import { notify } from "@/lib/notify";
 import { formatDateTime, plural, timeAgo } from "@/lib/utils";
@@ -83,6 +84,7 @@ export default function KeptPlanScreen() {
               What is kept on this {DEVICE}
             </Link>
             <h1 className="font-title text-title text-ink">{answer.plan.name}</h1>
+            <KeptPlanHouseholdLine household={answer.household} className="mt-1" />
             <p className="mt-1 text-body text-ink-muted" aria-live="polite">
               {stateLine(answer.plan, ticks, startedAt)}
             </p>

@@ -6,8 +6,21 @@
  *
  * Overlaps the status screen (modules/device), which is about the machine; this is about
  * the household's content. The backup line is the status screen's own rule.
+ *
+ * Home is the current household's (`households.home()`): its saved place, or where a
+ * portable household last said it was, with how long ago that was.
  */
-import { DRILL_STEPS, type DrillLine, type DrillRun, type DrillRunInput, homePlaceOf, localDay, pastUseBy } from "@outpost/shared";
+import {
+  DRILL_STEPS,
+  type DrillLine,
+  type DrillRun,
+  type DrillRunInput,
+  type HouseholdDto,
+  type HouseholdHome,
+  homeAgeMs,
+  localDay,
+  pastUseBy,
+} from "@outpost/shared";
 import { count, desc, eq, max } from "drizzle-orm";
 import type { FastifyRequest } from "fastify";
 import type { AppContext } from "../../core/context.ts";
@@ -57,13 +70,14 @@ export function createOfflineDrillService(ctx: AppContext, changed: () => void):
     async lines(request) {
       const now = Date.now();
       const s = ctx.services;
-      const home = (() => {
+      const { household, several } = (() => {
         try {
-          return homePlaceOf(s.maps.annotations.listMarkers());
+          return { household: s.households.current() as HouseholdDto | null, several: s.households.list().length > 1 };
         } catch {
-          return null;
+          return { household: null, several: false };
         }
       })();
+      const home: HouseholdHome | null = household?.home ?? null;
       const overview = (() => {
         try {
           return s.maps.overview();
@@ -73,25 +87,7 @@ export function createOfflineDrillService(ctx: AppContext, changed: () => void):
       })();
       const lines: DrillLine[] = [];
 
-      lines.push(
-        safely("home", "Home on the map", () =>
-          home
-            ? {
-                id: "home",
-                title: "Home on the map",
-                state: "held",
-                summary: `${home.name} is the home place.`,
-                link: { to: "/maps", label: "Maps" },
-              }
-            : {
-                id: "home",
-                title: "Home on the map",
-                state: "missing",
-                summary: "No saved place has the home icon, so nothing below can be checked against where you live.",
-                link: { to: "/maps", label: "Maps" },
-              },
-        ),
-      );
+      lines.push(safely("home", "Home on the map", () => homeLine(household, home, several, now)));
 
       for (const [id, type, title, what] of [
         ["map", "vector", "A map of home", "map"],
@@ -383,6 +379,57 @@ export function createOfflineDrillService(ctx: AppContext, changed: () => void):
       return n;
     },
   };
+}
+
+/**
+ * The drill's first line: the current household's home. With one fixed household it reads
+ * as it always has; with several it names the household; a portable one says how long
+ * ago it was last placed, and asks for it to be set when it never was.
+ */
+function homeLine(household: HouseholdDto | null, home: HouseholdHome | null, several: boolean, now: number): DrillLine {
+  const title = "Home on the map";
+  const households = { to: "/prepare/households", label: "Households" };
+  if (household?.kind === "portable") {
+    if (!home)
+      return {
+        id: "home",
+        title,
+        state: "missing",
+        summary: `Nobody has said where ${household.name} is now, so nothing below can be checked against where it is.`,
+        link: households,
+      };
+    const age = homeAgeMs(home, now);
+    return {
+      id: "home",
+      title,
+      state: age !== null && age > 7 * DAY_MS ? "stale" : "held",
+      summary: `${home.name}, as of ${age === null ? "an unknown time" : agoWords(age)}.`,
+      link: households,
+    };
+  }
+  if (home)
+    return {
+      id: "home",
+      title,
+      state: "held",
+      summary: several ? `${home.name} is the home place of ${household?.name ?? "this household"}.` : `${home.name} is the home place.`,
+      link: { to: "/maps", label: "Maps" },
+    };
+  return several && household
+    ? {
+        id: "home",
+        title,
+        state: "missing",
+        summary: `${household.name} has no home place chosen, so nothing below can be checked against where it is.`,
+        link: households,
+      }
+    : {
+        id: "home",
+        title,
+        state: "missing",
+        summary: "No saved place has the home icon, so nothing below can be checked against where you live.",
+        link: { to: "/maps", label: "Maps" },
+      };
 }
 
 /** How long ago, in words: "12 minutes ago", "5 hours ago", "3 days ago". The server's clock zone does not matter. */

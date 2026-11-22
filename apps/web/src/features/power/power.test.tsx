@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { ONE_HOUSEHOLD, TWO_HOUSEHOLDS } from "@/features/households/test-support";
 import { toMarkdown } from "@/features/propagation/plans/document";
 import { workOut } from "./calc/plan";
 import { planBlocks } from "./document";
@@ -18,6 +19,7 @@ afterEach(() => {
 function planOf(patch: Partial<PowerPlan> = {}): PowerPlan {
   return {
     ...newPowerPlan("Shack"),
+    householdId: null,
     loads: [
       { id: "pi", kind: "device", name: "Raspberry Pi", supply: "dc", quantity: 1, startHour: 0, watts: 15, hoursPerDay: 24 },
       {
@@ -70,6 +72,8 @@ function show(
     pvgisFails?: string;
     /** How long the server takes over each save. */
     putDelayMs?: number;
+    /** GET /api/households; left out, it is not found and nothing is said of households. */
+    households?: unknown;
   } = {},
 ): Server {
   let plan = options.plan ?? planOf();
@@ -165,6 +169,7 @@ function show(
         return json({ outcomes: [{ kind: "solar", placeId, placeName: "x", source: "pvgis", ok: true, message: null, bytes: 3000 }] });
       }
       if (pathname === "/api/weather") return json(weather);
+      if (pathname === "/api/households" && options.households) return json(options.households);
       return json({ error: { code: "not_found", message: "Not here." } }, 404);
     }),
   );
@@ -496,5 +501,29 @@ describe("telling a save made over another from another refusal", () => {
     expect(isConflict(new ApiError(409, "conflict", "This plan was changed somewhere else.", { updatedAt: 5 }))).toBe(true);
     // The server's answer while the database is busy: nobody else saved, so "keep mine" would only be refused again.
     expect(isConflict(new ApiError(409, "conflict", "Outpost's database is busy with other work."))).toBe(false);
+  });
+});
+
+describe("power plans and households", () => {
+  it("says which household a plan is for, and lets it be shared again", async () => {
+    const tied = planOf({ householdId: "caravan", name: "Leisure battery" });
+    show("/tools/power", { plans: [tied, planOf({ id: "p2", name: "House battery" })], households: TWO_HOUSEHOLDS });
+    expect(await screen.findByText(/For Caravan\./)).toBeInTheDocument();
+    expect(screen.getByText(/those for every household, and those for Caravan/)).toBeInTheDocument();
+  });
+
+  it("asks nothing of households with one", async () => {
+    show("/tools/power/plans/p1", { households: ONE_HOUSEHOLD });
+    expect(await screen.findByLabelText("Name")).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "For" })).toBeNull();
+  });
+
+  it("ties a plan to a household from the plan, or shares it with every household", async () => {
+    const server = show("/tools/power/plans/p1", { plan: planOf({ householdId: "caravan" }), households: TWO_HOUSEHOLDS });
+    const field = await screen.findByRole("combobox", { name: "For" });
+    expect(field).toHaveTextContent("Caravan");
+    fireEvent.click(field);
+    fireEvent.click(await screen.findByRole("option", { name: "Every household" }));
+    await waitFor(() => expect(server.put.at(-1)?.householdId).toBeNull(), { timeout: 3000 });
   });
 });

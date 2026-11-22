@@ -259,10 +259,23 @@ export interface PlanResolved {
   links: Array<EmergencyPlanLink & { title: string | null; lat?: number; lon?: number }>;
 }
 
+/**
+ * The household a plan is for, as the server answers it, so that a copy kept on a phone
+ * can say so out of reach. `several`: there was more than one household when it was
+ * answered (with one, nothing is said).
+ */
+export interface PlanHousehold {
+  id: string;
+  name: string;
+  several: boolean;
+}
+
 /** `GET /api/emergency-plans/:id` and every change. */
 export interface EmergencyPlanResponse {
   plan: EmergencyPlan;
   resolved: PlanResolved;
+  /** Absent from copies kept on a phone before there were several households. */
+  household?: PlanHousehold;
 }
 
 export interface EmergencyPlanSummary {

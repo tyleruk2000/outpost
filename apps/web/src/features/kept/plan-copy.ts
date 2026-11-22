@@ -10,6 +10,9 @@
  * (`PlanTickMerge` in `@outpost/shared`): the union of ticks with the earliest time; an
  * untick only takes away the very tick the phone saw; a reset on the server since the
  * copy wins over what the phone did before it.
+ *
+ * With several households, the copy and its line in the list carry the household's
+ * name (`EmergencyPlanResponse.household`), so that the phone says whose plan it is.
  */
 import type { EmergencyPlanResponse, PlanTickMerge, PlanTickMergeResponse } from "@outpost/shared";
 import { ApiError, api } from "@/lib/api";
@@ -38,6 +41,7 @@ async function store(answer: EmergencyPlanResponse, before: KeptPlan | undefined
     updatedAt: plan.updatedAt,
     steps: plan.body.steps.length,
     pending,
+    ...(answer.household?.several ? { household: answer.household.name } : {}),
     bytes,
     keptAt: before?.keptAt ?? now,
     refreshedAt: now,
@@ -128,7 +132,7 @@ export async function refreshPlan(item: KeptPlan): Promise<SentTicks | null> {
       // The server has them now: the list is emptied before the copy is replaced, so nothing is sent twice.
       const cache = await openKept("plan", item.id);
       await cache.delete(keptKey(pendingPath(item.id), window.location.origin));
-      await store({ plan: merged.plan, resolved: merged.resolved }, item, 0);
+      await store({ plan: merged.plan, resolved: merged.resolved, household: merged.household }, item, 0);
       return { title: merged.plan.name, applied: merged.applied, dropped: merged.dropped };
     }
     const answer = await api.get<EmergencyPlanResponse>(planPath(item.id));
