@@ -10,11 +10,13 @@ import {
   BOOK_HAZARD_IDS,
   BOOK_LIMITS,
   BOOK_SECTION_IDS,
+  BOOK_SOURCE_IDS,
   type BookAnswers,
   type BookInput,
   type BookMade,
   type BookMadeInput,
   type BookResponse,
+  type BookSource,
   DEFAULT_BOOK_ANSWERS,
 } from "@outpost/shared";
 import { eq } from "drizzle-orm";
@@ -22,6 +24,17 @@ import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { conflict } from "../../core/errors.ts";
 import { householdBook } from "../../db/schema.ts";
+import type { Fingerprints, SourceId } from "./fingerprints.ts";
+
+/** What each thing the book is made from reads; its answers are fingerprinted by when they were saved. */
+const BOOK_READS: Record<Exclude<BookSource, "answers">, SourceId[]> = {
+  plans: ["plans"],
+  contacts: ["contacts"],
+  places: ["places"],
+  medical: ["medical", "people"],
+  comms: ["comms"],
+  supplies: ["supplies", "people"],
+};
 
 const L = BOOK_LIMITS;
 const ROW = "household";
@@ -97,6 +110,8 @@ export const bookMadeSchema = z
     pages: z.number().int().min(1).max(5000),
     sections: z.array(z.enum(BOOK_SECTION_IDS)).max(BOOK_SECTION_IDS.length),
     summary: z.record(z.string().max(60), z.array(z.string().max(400)).max(200)),
+    /** The fingerprints of the answer the book was made from; left out, the server's own now are recorded. */
+    fingerprints: z.partialRecord(z.enum(BOOK_SOURCE_IDS), z.string().max(64)).optional(),
   })
   .strict()
   .refine((made) => Object.keys(made.summary).length <= 40, "The summary has too many sections.");
@@ -118,15 +133,26 @@ function withDefaults(stored: unknown): BookAnswers {
   return answers;
 }
 
-export function createBookService(ctx: AppContext, changed: () => void): BookService {
+export function createBookService(ctx: AppContext, fingerprints: Fingerprints, changed: () => void): BookService {
   const { db } = ctx;
   const row = () => db.select().from(householdBook).where(eq(householdBook.id, ROW)).get();
+  const now = (answersAt: number | null): Record<BookSource, string> => ({
+    answers: String(answersAt ?? 0),
+    ...(Object.fromEntries(Object.entries(BOOK_READS).map(([id, reads]) => [id, fingerprints.of(reads)])) as Record<
+      Exclude<BookSource, "answers">,
+      string
+    >),
+  });
+  const staleOf = (made: BookMade | null, at: Record<BookSource, string>): BookSource[] =>
+    made?.fingerprints ? BOOK_SOURCE_IDS.filter((id) => made.fingerprints![id] !== undefined && made.fingerprints![id] !== at[id]) : [];
 
   const service: BookService = {
     get() {
       const stored = row();
-      if (!stored) return { answers: { ...DEFAULT_BOOK_ANSWERS }, answersAt: null, made: null };
-      return { answers: withDefaults(stored.answers), answersAt: stored.answersAt, made: (stored.made as BookMade | null) ?? null };
+      if (!stored) return { answers: { ...DEFAULT_BOOK_ANSWERS }, answersAt: null, made: null, fingerprints: now(null), stale: [] };
+      const made = (stored.made as BookMade | null) ?? null;
+      const at = now(stored.answersAt);
+      return { answers: withDefaults(stored.answers), answersAt: stored.answersAt, made, fingerprints: at, stale: staleOf(made, at) };
     },
     answers: () => service.get().answers,
     save(input) {
@@ -147,8 +173,12 @@ export function createBookService(ctx: AppContext, changed: () => void): BookSer
       return service.get();
     },
     made(input) {
-      const made: BookMade = { ...input, madeAt: Date.now() };
       const before = row();
+      const made: BookMade = {
+        ...input,
+        fingerprints: { ...now(before?.answersAt ?? null), ...(input.fingerprints ?? {}) },
+        madeAt: Date.now(),
+      };
       db.insert(householdBook)
         .values({ id: ROW, answers: before?.answers ?? DEFAULT_BOOK_ANSWERS, answersAt: before?.answersAt ?? null, made })
         .onConflictDoUpdate({ target: householdBook.id, set: { made } })

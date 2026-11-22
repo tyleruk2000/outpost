@@ -100,7 +100,7 @@ export default function BinderPage() {
       }
       setBinder({ ...result, made: at });
       made.mutate(
-        { parts: result.parts, contentAt, pages: result.pages.length },
+        { parts: result.parts, contentAt, pages: result.pages.length, fingerprints: status.data.fingerprints },
         { onError: (error) => notify.error(errorMessage(error)) },
       );
     } catch (error) {
@@ -135,7 +135,9 @@ export default function BinderPage() {
             ) : (
               <p className="text-small text-ink-muted">
                 Last made on {formatDate(status.data.made.madeAt)}, {status.data.made.pages} pages, and nothing in it has changed since.
-                Something deleted since is not noticed: make it again after taking anything out.
+                {status.data.made.fingerprints
+                  ? ""
+                  : " Something deleted before this binder was made again is not noticed: make it again after taking anything out."}
               </p>
             )
           ) : null}

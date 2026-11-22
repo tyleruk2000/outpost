@@ -1102,8 +1102,8 @@ are searchable only while `medical.inSearch` is on and readable by tools only wh
 | `GET /api/medical-sheets`, `POST` | `{ sheets, inSearch, inTools }`; make one (≤60). |
 | `GET`, `PUT`, `DELETE /api/medical-sheets/:id` | `PUT` with `baseUpdatedAt`; a `record` over an encrypted sheet needs `removeEncryption: true`. |
 | `GET /api/keeping-in-touch`, `PUT` | The communication plan and `resolved` links. `PUT` with `baseUpdatedAt`: `409` if older than the stored plan, or `null` once a plan is kept. |
-| `GET /api/household-binder` | `BinderStatus`: last made, changes since. |
-| `POST /api/household-binder/made` | Records a binder made in the browser. |
+| `GET /api/household-binder` | `BinderStatus`: last made, changes since, and `fingerprints` (a hash per part of what it is made from; `stale` compares them, so a deletion counts). |
+| `POST /api/household-binder/made` | Records a binder made in the browser, with the `fingerprints` of the status it was made from. |
 
 ## Household book
 
@@ -1114,10 +1114,10 @@ Changes publish `household-book.changed`. One record per household: the wizard's
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/household-book` | The answers (the defaults until first saved), `answersAt`, and `made`. |
+| `GET /api/household-book` | The answers (the defaults until first saved), `answersAt`, `made`, `fingerprints` of what the book is made from, and `stale`: which of them changed since the book was made. |
 | `PUT /api/household-book` | Save the answers (`BookInput`). With `baseAnswersAt` older than the answers kept, `409 conflict` and nothing is overwritten. |
 | `GET /api/household-book/facts` | What the book reads round home, for the answers as saved (`BookFacts`): the nearest help and places to keep away from in the reference layers (`held: false` for a layer with nothing in it), the flood and planning zones holding home, the climate kept for home with the wind's direction, and each journey's straight line with the ground along it and a stop for each day's walking. Reads only what is held. |
-| `POST /api/household-book/made` | Record a book made in the browser (`BookMadeInput`). |
+| `POST /api/household-book/made` | Record a book made in the browser (`BookMadeInput`, with the `fingerprints` it was made from). |
 
 ## Readiness
 

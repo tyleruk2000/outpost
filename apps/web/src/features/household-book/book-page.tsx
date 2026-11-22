@@ -6,7 +6,7 @@
  */
 import { type BookAnswers, type BookStepId, DEFAULT_BOOK_ANSWERS, localDay } from "@outpost/shared";
 import { RADIO_FREQUENCIES } from "@outpost/shared/radio-frequencies-data";
-import { BookOpen, ListChecks } from "lucide-react";
+import { BookOpen, ListChecks, TriangleAlert } from "lucide-react";
 import { useMemo, useState } from "react";
 import { EmptyState, ErrorState, Notice, Page, PageHeader, Rows } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import { errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { formatDate, plural } from "@/lib/utils";
 import { makeBook } from "./book";
+import { sourcesWords } from "./book-line";
 import { useBook, useBookFacts, useBookMade, useSaveBook } from "./data";
 import { BookWizard } from "./wizard";
 
@@ -91,7 +92,7 @@ export default function BookPage() {
       });
       setResult({ pages: out.pages, made: at, medical: book.data.answers.sections.includes("people") });
       made.mutate(
-        { pages: out.pages.length, sections: out.sections, summary: out.summary },
+        { pages: out.pages.length, sections: out.sections, summary: out.summary, fingerprints: book.data.fingerprints },
         { onError: (error) => notify.error(errorMessage(error)) },
       );
     } catch (error) {
@@ -149,6 +150,12 @@ export default function BookPage() {
         </EmptyState>
       ) : (
         <div className="grid gap-6">
+          {book.data?.made && book.data.stale.length > 0 ? (
+            <Notice tone="warning" icon={<TriangleAlert />} title="The book last made is older than what is in it">
+              Made on {formatDate(book.data.made.madeAt)}. Since then its {sourcesWords(book.data.stale)} changed. Make it again and replace
+              the printed copy.
+            </Notice>
+          ) : null}
           <Summary answers={answers} madeAt={book.data?.made?.madeAt ?? null} pages={book.data?.made?.pages ?? null} />
           <div className="flex flex-wrap items-center gap-3">
             <Button variant="primary" loading={making} onClick={() => void make()}>

@@ -69,7 +69,7 @@ export const useBinderStatus = () =>
 export function useBinderMade() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (made: { parts: BinderPart[]; contentAt: number; pages: number }) =>
+    mutationFn: (made: { parts: BinderPart[]; contentAt: number; pages: number; fingerprints?: BinderStatus["fingerprints"] }) =>
       api.post<BinderStatus>("/api/household-binder/made", made),
     onSuccess: (data) => client.setQueryData(paperKeys.binder, data),
   });

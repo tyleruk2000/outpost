@@ -92,6 +92,11 @@ Outpost keeps a few lines about each book it makes. The next book's cover lists 
 added or taken out in each section since. Make the book again whenever the household, its
 plans or its places change, and replace the printed copy.
 
+When anything the last book was made from has changed or been deleted since (the answers,
+emergency plans, contacts, saved places, medical sheets, Keeping in touch, supplies and the
+household), Home and the book's screen say which, with a link to make it again. Facts read
+round home (help nearby, the wind, terrain) are not watched.
+
 ## What it does not do
 
 - It does not know whether a place listed is open, stocked or still there.

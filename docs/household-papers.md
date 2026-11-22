@@ -102,8 +102,9 @@ frequencies the plan uses, home and the meeting points in every grid format, and
 supplies. A part with nothing in it is left out. Press **Make the binder**, then **Save as
 PDF**, **Add to library** or **Share**.
 
-When something in the last binder changes, Home says so with a link to make it again.
-Deletions are not noticed: make it again after taking anything out.
+When something in the last binder changes or is deleted, Home says which part, with a link
+to make it again. A binder made before this was kept notices changes but not deletions until
+it is made again.
 
 Sheets, the communication plan and the record of the binder are kept in the database: in
 backups, copied to a portable drive, and removed by Erase everything. Cards and the binder

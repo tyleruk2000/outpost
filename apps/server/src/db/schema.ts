@@ -1526,6 +1526,8 @@ export const householdBinder = sqliteTable("household_binder", {
   contentAt: integer("content_at").notNull(),
   madeAt: integer("made_at").notNull(),
   pages: integer("pages").notNull(),
+  /** What each part was made from (household-papers/fingerprints.ts); null for a binder made before these were kept. */
+  fingerprints: json<Record<string, string>>("fingerprints"),
 });
 
 /**

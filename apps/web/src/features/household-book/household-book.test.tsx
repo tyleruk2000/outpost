@@ -13,6 +13,7 @@ import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Sheet } from "@/features/maps/print/sheet";
 import { type BookInputs, emergencyNumberFor, makeBook } from "./book";
+import { BookHomeLine } from "./book-line";
 import BookPage from "./book-page";
 import { FIRST_AID_PAGES, NHS_CREDIT } from "./first-aid";
 
@@ -298,5 +299,34 @@ describe("the household book screen", () => {
     screen.getByRole("button", { name: /Start the questions/ }).click();
     expect(await screen.findByText(/Step 1 of 6: People and pets/)).toBeTruthy();
     expect(screen.getByText("Kit")).toBeTruthy();
+  });
+});
+
+describe("Home's line about the book", () => {
+  it("says what the book last made is older than, and nothing when it is not", () => {
+    const show = (stale: string[]) => {
+      const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } } });
+      client.setQueryData(["household-book", "answers"], {
+        answers: DEFAULT_BOOK_ANSWERS,
+        answersAt: 1,
+        made: { madeAt: Date.UTC(2026, 10, 17, 12), pages: 30, sections: [], summary: {} },
+        fingerprints: {},
+        stale,
+      });
+      return render(
+        <QueryClientProvider client={client}>
+          <MemoryRouter>
+            <BookHomeLine />
+          </MemoryRouter>
+        </QueryClientProvider>,
+      );
+    };
+    const { container, unmount } = show(["answers", "places", "medical"]);
+    expect(container.textContent).toContain(
+      "The household book made on 17 Nov 2026 is older than its answers, saved places and medical sheets: make it again",
+    );
+    expect(screen.getByRole("link", { name: "make it again" }).getAttribute("href")).toBe("/prepare/book");
+    unmount();
+    expect(show([]).container.textContent).toBe("");
   });
 });
