@@ -14,8 +14,9 @@ Six steps. Your answers are saved each time you move on (**Save and go on**), so
 stop (**Save and stop here**) and come back on any device. **Change the answers** takes
 you through them again.
 
-1. **People and pets.** Everyone at home, from **Supplies → Household**. A person added
-   here is added there, since that is where the food and water they need is worked out.
+1. **People and pets.** Everyone in the household, from **Preparedness → Households**
+   ([Households](households.md)). A person added here is added there, since that is
+   where the food and water they need is worked out.
    For each person you can say what they need ("uses a wheelchair") and carry ("inhaler
    in coat pocket"), and tick **A card of their own** for a child's card. Medical sheets
    are made under **Medical sheets**.

@@ -22,6 +22,7 @@ import { StorageBar, StorageKey } from "@/components/storage-bar";
 import { Progress, Skeleton } from "@/components/ui/misc";
 import { BoardHomeLine } from "@/features/board/elsewhere";
 import { BookHomeLine } from "@/features/household-book/book-line";
+import { HouseholdHomeLine } from "@/features/households/home-line";
 import { ChecksHomeLine } from "@/features/readiness/checks-line";
 import { api } from "@/lib/api";
 import { useActiveJobs, useStorage } from "@/lib/queries";
@@ -164,6 +165,7 @@ export default function HomePage() {
           <h1 className="font-title text-display text-ink">Your library</h1>
           <div className="mt-3 max-w-[56ch] text-lead text-ink-muted">{summary ?? <Skeleton className="h-6 w-96 max-w-full" />}</div>
           <BoardHomeLine className="mt-2" />
+          <HouseholdHomeLine className="mt-2" />
           <PreparedLines className="mt-2" />
           <BookHomeLine className="mt-1" />
           <ChecksHomeLine className="mt-1" />

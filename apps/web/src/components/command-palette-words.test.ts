@@ -115,6 +115,8 @@ const lands: Array<[string, string | null]> = [
   ["city builder", "Games: Steading"],
   ["mesh", "Settings: Mesh radio"],
   ["calories", "Preparedness: Supplies"],
+  ["caravan", "Preparedness: Households"],
+  ["family members", "Preparedness: Households"],
   ["text size", "Settings: Text size"],
   ["heights", "Settings: Heights in metres or feet"],
   ["supermarket", "Maps: Layers"],

@@ -34,7 +34,8 @@ export interface CurrentHousehold {
 /** The current household, its home and its country; undefined while loading. */
 export function useHousehold(): { data: CurrentHousehold | undefined; isPending: boolean; isError: boolean; error: unknown } {
   const query = useHouseholds();
-  const data = query.data;
+  // An answer with no list (a test's stand-in server that knows nothing of households) is taken as none yet.
+  const data = Array.isArray(query.data?.households) ? query.data : undefined;
   const household = data ? (data.households.find((entry) => entry.id === data.currentId) ?? data.households[0]) : undefined;
   return {
     data:

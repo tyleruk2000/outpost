@@ -405,6 +405,14 @@ export const GUIDES: Guide[] = [
     opens: { to: "/tools/qr", label: "Open QR codes" },
   },
   {
+    slug: "households",
+    file: "households.md",
+    group: "using",
+    about: "Households and the people in each: fixed and portable homes, someone in several, and which household is current.",
+    keywords: "household people family members pets caravan second home portable current switch",
+    opens: { to: "/prepare/households", label: "Open Households" },
+  },
+  {
     slug: "supplies",
     file: "supplies.md",
     group: "using",

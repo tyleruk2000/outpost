@@ -5,7 +5,7 @@ already holds, so a change there shows the next time a paper is made.
 
 ## Medical sheets
 
-**Medical sheets** lists each person under **Supplies → Household**, with **Make a
+**Medical sheets** lists each person of the household ([Households](households.md)), with **Make a
 sheet** beside anyone who has none; **Someone else** makes one for anyone else. A sheet
 holds what a relative or a paramedic needs to be told:
 

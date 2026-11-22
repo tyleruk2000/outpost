@@ -10,8 +10,8 @@ someone next opens Outpost.
   are if you like. **Words of my own…** adds a longer message and, on an HTTPS page, the
   device's position. A check-in is a message on the household board, under the name this
   device uses on **Messages**.
-- **Roll call**: everyone in the household (the people under Supplies and in the
-  emergency plans) and anyone else who has checked in, with their latest check-in and its
+- **Roll call**: everyone in the household (the people of the current household, under
+  [Households](households.md), and in its emergency plans) and anyone else who has checked in, with their latest check-in and its
   age. Choose the time to count from: the last time someone asked, an hour ago, midnight,
   or a time you give. The line above says who has not checked in since.
 - **Ask everyone to check in** posts "Roll call: please check in" on the board, and the

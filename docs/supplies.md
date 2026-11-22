@@ -15,7 +15,10 @@ store cupboard, not dietary advice.
   the date and whether it is a **use-by** or **best before**, energy (kcal a pack, or per
   100 g with the pack's weight), litres for water, a minimum to keep, a barcode and notes.
 - **The household**: each person's age band and sex (or "not said"), their own figures if
-  you give them, pets, and the days wanted.
+  you give them, pets, and the days wanted. The people are kept under
+  [Households](households.md), where someone can be in more than one household; the
+  **Household** tab here edits the current household's, and links there. With several
+  households, Supplies shows the current one's.
 - **The shopping list**, and **barcodes remembered** after an item is used up.
 
 ## Use-by and best before

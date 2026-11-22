@@ -22,7 +22,7 @@ installed and no internet needed.
 - **Always copied:** notes with attachments and tags, map markers and tracks, settings,
   the search index (with vectors for search by meaning, if built), and your other
   records: repeaters and the radio planner's plans, log, profiles and predictions, Morse
-  progress, power plans, supplies, weather places and barometer readings, emergency
+  progress, power plans, every household with its people (the drive screen names them), supplies, weather places and barometer readings, emergency
   plans, nuclear scenarios, reference layers, network devices, games, and PGP keys (a
   private key only in its passphrase-protected form).
 - **Your choice:** all documents or none, contacts (on by default), and the collections

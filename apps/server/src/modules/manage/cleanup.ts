@@ -274,6 +274,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
         weather: ctx.services.weather.count(),
         emergencyPlans: ctx.services.emergencyPlans.kept.count(),
         householdPapers: ctx.services.householdPapers.kept.count(),
+        households: ctx.services.households.kept.count(),
         readiness: ctx.services.readiness.kept.count(),
         morse: ctx.services.morse.kept.count(),
         games: ctx.services.games.kept.count(),
@@ -545,6 +546,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
       weather: { places: 0, readings: 0, copies: 0, copyBytes: 0 },
       emergencyPlans: 0,
       householdPapers: 0,
+      households: { households: 0, positions: 0 },
       readiness: 0,
       morse: { sessions: 0, progress: 0 },
       games: { saves: 0 },
@@ -600,7 +602,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
     // Stored supplies, the household they are for, the shopping list and the barcodes remembered.
     personal.supplies = ctx.services.supplies.eraseAll();
     // The households, who is in each and where a portable one has been. The first is made again, empty, when next needed.
-    ctx.services.households.kept.eraseAll();
+    personal.households = ctx.services.households.kept.eraseAll();
     // Scenarios saved in the nuclear effects simulator: the places and notes are the person's own.
     personal.nuclearScenarios = ctx.services.nuclear.eraseAll();
     // Devices found on the network, with the names and notes given them: names there can be people's names.

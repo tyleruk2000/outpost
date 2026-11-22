@@ -4,64 +4,34 @@
  * is an official planning figure that the person can change, and says whose it is.
  */
 import {
-  type AgeBand,
   DEFAULT_HOUSEHOLD,
-  ENERGY_BANDS,
   ENERGY_SOURCE,
   type EnergyTable,
   FNNE_SOURCE,
   type Household,
   type HouseholdInput,
-  type HouseholdMember,
-  type MemberSex,
   memberNeeds,
-  tableKcal,
   WATER_FIGURES,
   type WaterBasis,
 } from "@outpost/shared";
-import { PawPrint, Trash2, UserPlus } from "lucide-react";
+import { UsersRound } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router";
 import { toast } from "sonner";
 import { LeaveGuard } from "@/components/leave-guard";
 import { Notice, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
-import { Segmented, Select } from "@/components/ui/misc";
+import { Segmented } from "@/components/ui/misc";
 import { useHomeCountry } from "@/features/frequencies/home-country";
 import { SAVE_BAR_ROOM } from "@/features/household-papers/save-bar";
+import { draftToPerson, type MemberDraft, PeopleEditor, readFigure, toDraft } from "@/features/households/people-editor";
 import { errorMessage } from "@/lib/api";
-import { formatNumber, localId, plural } from "@/lib/utils";
+import { formatNumber, plural } from "@/lib/utils";
 import { useSetHousehold } from "./data";
 import { Stepper } from "./item-form";
 import { amount } from "./words";
 
-/** A member as the form holds it: numbers as typed. */
-interface MemberDraft {
-  key: string;
-  id?: string;
-  kind: "person" | "pet";
-  name: string;
-  band: AgeBand;
-  sex: MemberSex;
-  kcal: string;
-  drinking: string;
-  allUses: string;
-  note: string;
-}
-
-const typed = (value: number | null) => (value === null ? "" : String(value));
-const toDraft = (member: HouseholdMember): MemberDraft => ({
-  key: member.id,
-  id: member.id,
-  kind: member.kind,
-  name: member.name,
-  band: member.band ?? "19-64",
-  sex: member.sex ?? "unstated",
-  kcal: typed(member.kcalPerDay),
-  drinking: typed(member.drinkingLitres),
-  allUses: typed(member.allUsesLitres),
-  note: member.note,
-});
 /** Which table the household's energy comes from, and why: said under the choice. */
 export function energyTableLine(choice: TableChoice, basis: Household["energyBasis"], countryName?: string): string {
   if (choice === "uk") return "The UK's figures, from Public Health England, for everyone without a figure of their own.";
@@ -74,12 +44,7 @@ export function energyTableLine(choice: TableChoice, basis: Household["energyBas
   return `Home is in ${countryName ?? basis.country}: ${words} are used.`;
 }
 
-const read = (value: string): number | null | undefined => {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  const parsed = Number(trimmed);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
-};
+const read = readFigure;
 
 /** The energy table as the form holds it: "home" for none chosen, by Home's country. */
 type TableChoice = EnergyTable | "home";
@@ -102,14 +67,6 @@ export function HouseholdView({ household }: { household: Household }) {
   const [saved] = useState(form);
   const dirty = form !== saved;
 
-  const change = (key: string, patch: Partial<MemberDraft>) =>
-    setMembers((list) => list.map((member) => (member.key === key ? { ...member, ...patch } : member)));
-  const addMember = (kind: "person" | "pet") =>
-    setMembers((list) => [
-      ...list,
-      { key: localId(), kind, name: "", band: "19-64", sex: "unstated", kcal: "", drinking: "", allUses: "", note: "" },
-    ]);
-
   const input = (): HouseholdInput | string => {
     const daysWanted = Number(days);
     if (!Number.isInteger(daysWanted) || daysWanted < 1 || daysWanted > 3650) return "Give the days wanted as a whole number, from 1.";
@@ -119,22 +76,9 @@ export function HouseholdView({ household }: { household: Household }) {
     if (!all || all < 0.5) return "Give the water for all uses a day in litres: 0.5 or more.";
     const list: HouseholdInput["members"] = [];
     for (const member of members) {
-      const kcal = read(member.kcal);
-      const ownDrinking = read(member.drinking);
-      const ownAll = read(member.allUses);
-      const who = member.name.trim() || (member.kind === "pet" ? "a pet" : "a person");
-      if (kcal === undefined || ownDrinking === undefined || ownAll === undefined) return `A figure for ${who} is not a number.`;
-      list.push({
-        id: member.id,
-        kind: member.kind,
-        name: member.name.trim(),
-        band: member.kind === "person" ? member.band : null,
-        sex: member.kind === "person" ? member.sex : null,
-        kcalPerDay: kcal,
-        drinkingLitres: ownDrinking,
-        allUsesLitres: ownAll,
-        note: member.note.trim(),
-      });
+      const person = draftToPerson(member);
+      if (typeof person === "string") return person;
+      list.push(person);
     }
     return {
       daysWanted,
@@ -224,140 +168,26 @@ export function HouseholdView({ household }: { household: Household }) {
         </div>
       </Section>
 
-      <Section
-        title="Who it is for"
+      <PeopleEditor
+        members={members}
+        onChange={setMembers}
+        energyTable={energyTable}
+        drinking={read(drinking) ?? 0}
+        allUses={read(allUses) ?? 0}
         description={
           needs && needs.length > 0
             ? `A day: ${formatNumber(kcalTotal)} kcal for ${plural(needs.filter((need) => need.kind === "person").length, "person", "people")}, ${amount(waterTotal)} litres of water ${basis === "all" ? "for all uses" : "to drink"}.`
             : "Add each person, and any pets."
         }
         actions={
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={() => addMember("person")}>
-              <UserPlus />
-              Add a person
-            </Button>
-            <Button onClick={() => addMember("pet")}>
-              <PawPrint />
-              Add a pet
-            </Button>
-          </div>
+          <Button asChild variant="ghost">
+            <Link to="/prepare/households">
+              <UsersRound />
+              Households and people
+            </Link>
+          </Button>
         }
-      >
-        {members.length === 0 ? (
-          <p className="border-y border-border py-4 text-body text-ink-muted">
-            Nobody yet. The days of food and water are worked out once someone is added.
-          </p>
-        ) : (
-          <ul className="divide-y divide-border border-y border-border" aria-label="Household">
-            {members.map((member, index) => {
-              const label = member.name.trim() || (member.kind === "pet" ? `Pet ${index + 1}` : `Person ${index + 1}`);
-              const table = member.kind === "person" ? tableKcal(member.band, member.sex, energyTable) : null;
-              return (
-                <li key={member.key} className="grid gap-3 py-4">
-                  <div className="flex flex-wrap items-end justify-end gap-2">
-                    <Field label={member.kind === "pet" ? "Pet's name" : "Name"} optional className="min-w-[min(100%,10rem)] flex-1">
-                      {(ids) => (
-                        <Input
-                          {...ids}
-                          value={member.name}
-                          onChange={(event) => change(member.key, { name: event.target.value })}
-                          maxLength={80}
-                        />
-                      )}
-                    </Field>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-11"
-                      aria-label={`Remove ${label}`}
-                      onClick={() => setMembers((list) => list.filter((entry) => entry.key !== member.key))}
-                    >
-                      <Trash2 />
-                    </Button>
-                  </div>
-                  {member.kind === "person" ? (
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <Field label="Age">
-                        {(ids) => (
-                          <Select<AgeBand>
-                            {...ids}
-                            value={member.band}
-                            onChange={(band) => change(member.key, { band })}
-                            options={ENERGY_BANDS.map((band) => ({ value: band.id, label: band.label }))}
-                          />
-                        )}
-                      </Field>
-                      <div className="grid gap-1.5">
-                        <span className="text-small font-medium text-ink">Sex, for the energy table</span>
-                        <Segmented<MemberSex>
-                          label={`Sex of ${label}`}
-                          value={member.sex}
-                          onChange={(sex) => change(member.key, { sex })}
-                          options={[
-                            { value: "female", label: "Female" },
-                            { value: "male", label: "Male" },
-                            { value: "unstated", label: "Not said" },
-                          ]}
-                          className="justify-self-start"
-                        />
-                      </div>
-                    </div>
-                  ) : null}
-                  <div className="grid grid-cols-3 gap-3">
-                    <Field
-                      label="kcal a day"
-                      hint={
-                        member.kind === "pet"
-                          ? "From the food or your vet"
-                          : table === null
-                            ? "None in the table: give one"
-                            : `Table: ${formatNumber(table)}`
-                      }
-                    >
-                      {(ids) => (
-                        <Input
-                          {...ids}
-                          value={member.kcal}
-                          onChange={(event) => change(member.key, { kcal: event.target.value })}
-                          inputMode="decimal"
-                          placeholder={table === null ? "" : String(table)}
-                          className="tabular"
-                        />
-                      )}
-                    </Field>
-                    <Field label="Litres to drink" hint={member.kind === "pet" ? "From your vet" : `Usual: ${amount(read(drinking) ?? 0)}`}>
-                      {(ids) => (
-                        <Input
-                          {...ids}
-                          value={member.drinking}
-                          onChange={(event) => change(member.key, { drinking: event.target.value })}
-                          inputMode="decimal"
-                          className="tabular"
-                        />
-                      )}
-                    </Field>
-                    <Field
-                      label="Litres, all uses"
-                      hint={member.kind === "pet" ? "Same as drinking if empty" : `Usual: ${amount(read(allUses) ?? 0)}`}
-                    >
-                      {(ids) => (
-                        <Input
-                          {...ids}
-                          value={member.allUses}
-                          onChange={(event) => change(member.key, { allUses: event.target.value })}
-                          inputMode="decimal"
-                          className="tabular"
-                        />
-                      )}
-                    </Field>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </Section>
+      />
 
       <Section title="Water for everyone without a figure of their own">
         <div className="grid gap-4 sm:grid-cols-2">
