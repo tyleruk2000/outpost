@@ -23,8 +23,8 @@ import { mercatorX, mercatorY } from "@/features/maps/print/scale";
 import { INK, type SheetItem } from "@/features/maps/print/sheet";
 import { GET_A_MAP, type MapFigure, mapFigureBlock } from "@/features/nuclear/print-figures";
 import { frameFor, type PictureSize, pictureSize } from "@/features/nuclear/print-frames";
-import { measureOf } from "@/features/print-kit/tokens";
 import type { DrawMap } from "@/features/nuclear/print-maps";
+import { measureOf } from "@/features/print-kit/tokens";
 import type { Block } from "@/features/propagation/plans/document";
 import { errorMessage } from "@/lib/api";
 import type { BinderPlace } from "./binder-places";
@@ -55,7 +55,10 @@ const PRINT_DPI = 150;
  * either side instead (the frame fits the places in the height and centres them).
  */
 function fullWidth(size: PictureSize, inner: number): PictureSize {
-  const pixels = { width: Math.max(MAP_PX_STEP, Math.floor(inner / PT_PER_MAP_PX / MAP_PX_STEP) * MAP_PX_STEP), height: size.pixels.height };
+  const pixels = {
+    width: Math.max(MAP_PX_STEP, Math.floor(inner / PT_PER_MAP_PX / MAP_PX_STEP) * MAP_PX_STEP),
+    height: size.pixels.height,
+  };
   return { width: pixels.width * PT_PER_MAP_PX, height: size.height, pixels };
 }
 
