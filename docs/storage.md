@@ -436,6 +436,8 @@ programs read:
 | `supplies/`, `barometer/` | Supplies list, barometer log | CSV |
 | `radio-log/` | The contact log | ADIF 3.1.8 and CSV |
 | `plans/` | Emergency plans | JSON |
+| `weather-places/` | The places Weather keeps forecasts for | GeoJSON |
+| `radio-plans/`, `power-plans/` | Communication plans, power plans | JSON |
 | `papers/` | Medical sheets and the keeping-in-touch plan (locked sheets stay locked) | JSON, OpenPGP |
 | `board/` | The household board, with files sent | Plain text |
 | `documents/` | Every document as added, a folder per category | The original files |
@@ -445,3 +447,7 @@ locations, the bin, removed board messages, collections, maps, settings). The se
 shows the sizes first. **Download to this device** keeps only the newest on the server;
 **a storage location** writes to `outpost-exports`, which Outpost never deletes from.
 The zip is not encrypted.
+
+Weather places, communication plans and power plans go back in from their own screens
+(**Bring in places from a file**, **Bring in a plan**), added beside what is there. The rest
+opens in other programs; to put a whole Outpost back, use a backup.

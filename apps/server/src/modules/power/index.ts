@@ -18,6 +18,7 @@ import type { AppContext } from "../../core/context.ts";
 import { badRequest, notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
 import { powerPlans } from "../../db/schema.ts";
+import { planFileBody, readPlanFile } from "../export-all/plan-file.ts";
 import { registerPowerDevices } from "./devices.ts";
 import { checkBase, nextUpdatedAt, withoutBase } from "./versions.ts";
 
@@ -237,6 +238,18 @@ export async function registerPower(app: FastifyInstance, ctx: AppContext): Prom
   type IdParams = { Params: { id: string } };
   app.get("/api/power/plans", async () => ({ plans: service.list() }));
   app.post("/api/power/plans", async (request) => ({ plan: service.create(planInput.parse(request.body)) }));
+  /** A plan file from "Take everything out" (or a bare plan), added as a new plan beside the others. */
+  app.post("/api/power/plans/import", async (request) => {
+    const { text } = planFileBody.parse(request.body);
+    const {
+      baseUpdatedAt: _base,
+      id: _id,
+      createdAt: _created,
+      updatedAt: _updated,
+      ...plan
+    } = (readPlanFile("power", text) ?? {}) as Record<string, unknown>;
+    return { plan: service.create(planInput.parse(plan)) };
+  });
   app.get<IdParams>("/api/power/plans/:id", async (request) => ({ plan: service.get(request.params.id) }));
   app.put<IdParams>("/api/power/plans/:id", async (request) => {
     const { body, baseUpdatedAt } = withoutBase(request.body);

@@ -792,6 +792,7 @@ Worked out by VOACAP on the server, offline. Types: `propagation.ts`,
 | `POST /api/radio/propagation/second-model/maps/download` | The ITU's maps (25 files, 137 MB). |
 | `POST /api/radio/propagation/second-model/compare` | The `predict` body, run by both models with isotropic 0 dBi antennas → `SecondModelComparison`. `415 second-model-unavailable`; `400` for power under 1 W or SSN outside 1 to 311. |
 | `GET`, `POST /api/radio/communication-plans`, `GET`, `PATCH`, `DELETE …/:id` | Communication plans: `name`, `notes`, `stations` (≤8), `date`, `fromUtc`, `toUtc`, `bands`, `mode`, `requiredSnrDb`, `referenceBandwidthHz`, `solar`, `links`. `PATCH` with `baseUpdatedAt` → `409 changed-elsewhere`. |
+| `POST /api/radio/communication-plans/import` | `{ text }`: a plan file from an export (`format: outpost-communication-plan`) or a bare plan → a new plan; links to pages and documents not held here are dropped. |
 | `POST …/communication-plans/:id/matrix`, `GET` | Works the plan out (≤56 runs) → `PlanResult`; the last result if the plan is unchanged. |
 | `GET /api/radio/observations` | The contact log: `limit` (≤500), `offset`; `imports`, `importing`, `adif`. |
 | `POST /api/radio/observations`, `DELETE …/:id` | One entry: `at`, `frequencyMhz`, `band`, `mode`, `outcome` (`contact`, `heard`, `failed`), `tx`, `rx`, power, antenna, reports, notes. `409` duplicate. |
@@ -846,6 +847,7 @@ Types: `power.ts`. The server keeps plans and devices and works nothing out; see
 | `GET`, `POST /api/power/plans` | `name`, `notes`, `battery`, `loads` (≤60: `device`, `radio` or `charge`, supplied `dc`, `usb` or `ac`, with `origin`), `usb`, `inverter`, `solar` (with `sunHours` and `sunHoursSource`), `charger`, `cableRatingA`. `400` out of range or past 500 plans. |
 | `GET`, `PUT`, `DELETE /api/power/plans/:id` | `PUT` takes the whole plan and optional `baseUpdatedAt` → `409` with `details.updatedAt` if saved since. |
 | `POST /api/power/plans/:id/copy` | "… (copy)". |
+| `POST /api/power/plans/import` | `{ text }`: a plan file from an export (`format: outpost-power-plan`) or a bare plan → a new plan. `400` for another kind of file. |
 | `GET`, `POST /api/power/devices`, `PUT`, `DELETE …/:id` | Own devices: `name`, `kind` (`run`, `charge`, `radio`), `supply`, `watts`, `wattHours`, `receiveW`, `transmitW`, `standbyW`, `note`. ≤500. |
 
 ## Morse trainer
@@ -972,7 +974,7 @@ How releases work: [development/releases.md](development/releases.md).
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/export-all/estimate` | `ExportEstimate` per part (`notes`, `contacts`, `places`, `supplies`, `barometer`, `radio-log`, `plans`, `papers`, `board`, `documents`). |
+| `GET /api/export-all/estimate` | `ExportEstimate` per part (`notes`, `contacts`, `places`, `supplies`, `barometer`, `radio-log`, `plans`, `weather-places`, `radio-plans`, `power-plans`, `papers`, `board`, `documents`). |
 | `GET /api/export-all` | The latest `export-all.run` job and its `ExportResult`. |
 | `POST /api/export-all` | `{ destination: { kind: download } \| { kind: location, locationId }, include? }`. `409` while one runs. |
 | `GET /api/export-all/:id/download`, `DELETE` | The zip; delete it from the server. |
@@ -1063,6 +1065,7 @@ Types: `weather.ts`, `weather-rivers.ts`. See [weather.md](weather.md). Only
 | --- | --- |
 | `GET /api/weather` | `WeatherResponse`: `places`, `kept` copies by kind (`forecast`, `warnings`, `flood`, `rivers`, `river-readings`, `climate`, `solar`) with what was sent and received, `sources` with licence and credit, options, `now`. Fetches nothing. |
 | `POST /api/weather/places`, `PATCH`, `DELETE …/:id` | `markerId` or `name`, `lat`, `lon`; `region`. ≤12. |
+| `POST /api/weather/places/import` | `{ text }`: GeoJSON points (≤1 MB) → `WeatherPlacesImportResult` (`added`, `already`, `noRoom`, `notPoints`). |
 | `POST /api/weather/update` | **Fetches.** `{ kinds, placeIds? }` → `outcomes`. A failure keeps the previous copy. One at a time. |
 | `POST /api/weather/river-readings` | **Fetches.** `{ placeId, stationId }`: three days of a station's readings. `502` keeps what was held. |
 | `DELETE /api/weather/kept/:id` | |

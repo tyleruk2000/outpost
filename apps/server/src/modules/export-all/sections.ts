@@ -14,7 +14,9 @@ import { VERSION } from "../../core/version.ts";
 import { addEntry } from "../notes/export.ts";
 import { toCsv as suppliesCsv } from "../supplies/csv.ts";
 import { writeReadingsCsv } from "../weather/csv.ts";
+import { placesGeoJson } from "../weather/places-file.ts";
 import { type LogRow, writeAdif } from "./adif.ts";
+import { planFile } from "./plan-file.ts";
 
 export interface Written {
   count: number;
@@ -298,6 +300,59 @@ const plans = textSection(
   },
 );
 
+// ── Weather places ──
+
+const weatherPlaces = textSection(
+  "weather-places",
+  "Weather places",
+  "GeoJSON",
+  "The places Weather and hazards keeps forecasts for, as `weather-places.geojson` (GeoJSON points, WGS 84 longitude and latitude, each with its name and Met Office region). Weather and hazards reads it back in, as do GIS programs.",
+  (ctx) => {
+    const places = ctx.services.weather.places();
+    return { count: places.length, files: places.length ? [{ name: "weather-places.geojson", text: placesGeoJson(places) }] : [] };
+  },
+);
+
+// ── Communication plans ──
+
+const radioPlans = textSection(
+  "radio-plans",
+  "Communication plans",
+  "JSON",
+  "Each communication plan (Radio, Communication plans) as a JSON file: its stations, hours, bands, mode and notes. Communication plans reads each one back in. The worked-out matrix is not included: it is worked out again from the plan.",
+  (ctx, now) => {
+    const name = namer();
+    const plans = ctx.services.propagation.plans.list();
+    return {
+      count: plans.length,
+      files: plans.map(({ id: _id, createdAt: _created, updatedAt: _updated, linked: _linked, workedOut: _worked, ...plan }) => ({
+        name: name(plan.name, ".json"),
+        text: json(planFile("radio", plan, now)),
+      })),
+    };
+  },
+);
+
+// ── Power plans ──
+
+const powerPlans = textSection(
+  "power-plans",
+  "Power plans",
+  "JSON",
+  "Each power plan (Tools, Power and batteries) as a JSON file: the battery, the loads, the solar and the charger as typed in. Power and batteries reads each one back in.",
+  (ctx, now) => {
+    const name = namer();
+    const plans = ctx.services.power.list();
+    return {
+      count: plans.length,
+      files: plans.map(({ id: _id, createdAt: _created, updatedAt: _updated, ...plan }) => ({
+        name: name(plan.name, ".json"),
+        text: json(planFile("power", plan, now)),
+      })),
+    };
+  },
+);
+
 // ── Household papers ──
 
 const papers = textSection(
@@ -490,4 +545,18 @@ const documents: Section = {
   },
 };
 
-export const SECTIONS: Section[] = [notes, contacts, places, supplies, barometer, radioLog, plans, papers, board, documents];
+export const SECTIONS: Section[] = [
+  notes,
+  contacts,
+  places,
+  supplies,
+  barometer,
+  radioLog,
+  plans,
+  weatherPlaces,
+  radioPlans,
+  powerPlans,
+  papers,
+  board,
+  documents,
+];

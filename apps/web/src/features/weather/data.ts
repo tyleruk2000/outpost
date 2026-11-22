@@ -11,6 +11,7 @@ import type {
   UpdateResponse,
   WeatherKind,
   WeatherPlace,
+  WeatherPlacesImportResult,
   WeatherResponse,
 } from "@outpost/shared";
 import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -47,6 +48,9 @@ export const useAddPlace = () =>
       api.post<{ place: WeatherPlace }>("/api/weather/places", input).then((data) => data.place),
     { quiet: true },
   );
+/** A file of places (from an export, or any GeoJSON of named points) added to the list. */
+export const useImportPlaces = () =>
+  useChange((text: string) => api.post<WeatherPlacesImportResult>("/api/weather/places/import", { text }), { quiet: true });
 export const useUpdatePlace = () =>
   useChange(({ id, ...patch }: { id: string; name?: string; region?: MetOfficeRegionId | null }) =>
     api.patch<{ place: WeatherPlace }>(`/api/weather/places/${encodeURIComponent(id)}`, patch),

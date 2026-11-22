@@ -144,6 +144,17 @@ export interface WeatherPlace {
   createdAt: number;
 }
 
+/** What reading a file of places into Weather and hazards did. */
+export interface WeatherPlacesImportResult {
+  added: WeatherPlace[];
+  /** Places already in the list (the same name at the same position), passed over. */
+  already: number;
+  /** Places left out because the list was full. */
+  noRoom: number;
+  /** Features of the file that are not points. */
+  notPoints: number;
+}
+
 export const WEATHER_LIMITS = { places: 12, name: 120, readings: 50_000, csvBytes: 4 * 1024 * 1024, note: 400 } as const;
 
 // ── What is kept ────────────────────────────────────────────────────────────

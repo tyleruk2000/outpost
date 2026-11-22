@@ -101,6 +101,16 @@ export function useCreatePlan() {
   });
 }
 
+/** A plan file from "Take everything out" (or a bare plan) added as a new plan. */
+export function useImportPlan() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (text: string) =>
+      api.post<{ plan: CommunicationPlan }>("/api/radio/communication-plans/import", { text }).then((data) => data.plan),
+    onSuccess: () => void client.invalidateQueries({ queryKey: planKeys.all, exact: true }),
+  });
+}
+
 export function useRemovePlan() {
   const client = useQueryClient();
   return useMutation({
