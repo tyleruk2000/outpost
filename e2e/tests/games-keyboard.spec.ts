@@ -4,7 +4,7 @@
  * page's polite live region. Skerry's command line shows a ring while it has the focus.
  */
 import type { Page } from "@playwright/test";
-import { expect, test, watchForErrors } from "./fixtures";
+import { api, expect, test, watchForErrors } from "./fixtures";
 
 /** Presses Tab until the focus is on something matching the test, or gives up. */
 async function tabTo(page: Page, matches: (el: { label: string; role: string }) => boolean, most = 60): Promise<void> {
@@ -29,6 +29,10 @@ test.describe("games from the keyboard", () => {
   test("chess: e2 to e4 with the arrow keys and Enter, said aloud", async ({ page }) => {
     const errors = watchForErrors(page);
     await page.goto("/games/chess");
+    // A fresh game, whatever another test left kept on the server.
+    await api(page, "DELETE", "/api/games/chess");
+    await page.reload();
+    await expect(page.locator('[aria-label^="e2, your pawn"]')).toBeVisible();
     // The board is one stop on the way with Tab; the arrow keys move within it.
     await tabTo(page, ({ label }) => /^[a-h][1-8],/.test(label));
     await page.locator('[aria-label^="e2, your pawn"]').focus();
