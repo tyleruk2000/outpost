@@ -11,6 +11,7 @@ import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { MenuItem } from "@/components/ui/menu";
 import { Checkbox, Progress, Select } from "@/components/ui/misc";
@@ -24,7 +25,7 @@ import { notify } from "@/lib/notify";
 import { formatNumber, plural } from "@/lib/utils";
 import { areaRefusal, dismissAreaWork, measureArea, roomLeft, startArea, stopArea, useAreaWork } from "./area";
 import { DEVICE, DeviceIcon, KEEP_ON_THIS_DEVICE } from "./device";
-import { keepNote, keepPlaces, keepTrack, PLACES_ID } from "./keep";
+import { keepMedical, keepNote, keepPlaces, keepTrack, MEDICAL_ID, PLACES_ID } from "./keep";
 import { keepingSupported, outOfRoomMessage, removeKept, useKept } from "./store";
 
 const KEPT_PATH = "/kept";
@@ -164,6 +165,54 @@ export function KeepPlacesRow({ count }: { count: number }) {
           <DeviceIcon /> {KEEP_ON_THIS_DEVICE}
         </Button>
       )}
+    </div>
+  );
+}
+
+/**
+ * Under the list of medical sheets: kept as a set, only when asked, and after saying what
+ * that means. A locked sheet travels locked and opens on the phone with its passphrase;
+ * one that is not locked is readable by anyone who can open this browser.
+ */
+export function KeepMedicalRow({ count, open }: { count: number; open: number }) {
+  const kept = useKept();
+  const [asking, setAsking] = useState(false);
+  const keep = useKeeping(keepMedical, (done) => toast.success(`${plural(done.count, "medical sheet")} kept on this ${DEVICE}.`));
+  const item = kept?.find((entry) => entry.kind === "medical");
+  if ((count === 0 && !item) || !keepingSupported()) return null;
+  return (
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-border pt-3">
+      <p className="min-w-0 text-small text-ink-muted">
+        {item
+          ? `${plural(item.count, "sheet")} kept on this ${DEVICE}, for when the server is out of reach`
+          : `The sheets can be kept on this ${DEVICE}, for when the server is out of reach`}
+      </p>
+      {item ? (
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() =>
+            void removeKept("medical", MEDICAL_ID).then(() => toast(`The medical sheets are no longer kept on this ${DEVICE}.`), failed)
+          }
+        >
+          Remove from this {DEVICE}
+        </Button>
+      ) : (
+        <Button size="sm" loading={keep.busy} onClick={() => (open > 0 ? setAsking(true) : keep.run())}>
+          <DeviceIcon /> {KEEP_ON_THIS_DEVICE}
+        </Button>
+      )}
+      <ConfirmDialog
+        open={asking}
+        onOpenChange={setAsking}
+        title={`Keep the medical sheets on this ${DEVICE}?`}
+        description={`${plural(open, "sheet is", "sheets are")} not locked, so ${open === 1 ? "it is" : "they are"} kept readable: anyone who can open this browser on this ${DEVICE} can read ${open === 1 ? "it" : "them"}. A locked sheet stays locked here and opens with its passphrase. Lock a sheet first to keep it locked.`}
+        confirmLabel={KEEP_ON_THIS_DEVICE}
+        onConfirm={() => {
+          setAsking(false);
+          keep.run();
+        }}
+      />
     </div>
   );
 }

@@ -93,6 +93,7 @@ you ask:
 | A route or track | Its panel on the map, **Keep on this phone** | Line, heights, waypoints |
 | Saved places | Under the list of places, **Keep on this phone** | All of them |
 | An emergency plan | Foot of its **Use now**, **Keep on this phone** | Steps, emergency number, people and their numbers, meeting places, ticks |
+| Medical sheets | Under their list, **Keep on this phone** | Every sheet; an encrypted one stays encrypted and opens with its passphrase |
 | An area of the map | **Offline maps**, "Map areas on this phone" | The map tiles, lettering, icons, and terrain if ticked |
 
 On a tablet the button reads "Keep on this tablet", on a laptop "Keep on this computer".

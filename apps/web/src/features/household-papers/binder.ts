@@ -30,6 +30,7 @@ import { INK, MUTED, type Sheet, type SheetItem } from "@/features/maps/print/sh
 import { type Block, toSheets } from "@/features/propagation/plans/document";
 import type { ClockStyle } from "@/lib/clock";
 import { appLocale } from "@/lib/region";
+import { binderPlaces } from "./binder-places";
 import { commsBlocks, usedEntries } from "./comms-words";
 import { type GrabHousehold, type GrabPerson, grabSheets, gridLines } from "./grab-cards";
 import type { PaperPerson } from "./household-data";
@@ -49,6 +50,8 @@ export interface BinderSources {
   markers: MarkerDto[];
   supplies: SuppliesResponse | null;
   outlook: SupplyOutlook | null;
+  /** The map of home and the meeting points (binder-map.ts), drawn before the pages are made; absent, the page has none. */
+  placesMap?: Block | null;
 }
 
 export interface BinderOptions {
@@ -89,28 +92,17 @@ export function partHolds(part: BinderPart, sources: BinderSources): string | nu
 function placesBlocks(sources: BinderSources): Block[] {
   const formats = GRID_FORMATS.map((format) => format.id);
   const blocks: Block[] = [{ kind: "title", text: "Home and meeting points" }];
-  const home = homePlaceOf(sources.markers);
-  if (home) {
-    blocks.push({ kind: "heading", text: `Home: ${home.name || "Home"}` });
-    blocks.push({ kind: "list", items: gridLines(home.lat, home.lon, formats) });
+  const { mapped, described } = binderPlaces(sources);
+  if (sources.placesMap) blocks.push(sources.placesMap);
+  for (const place of mapped) {
+    blocks.push({ kind: "heading", text: `${place.number}. ${place.role}: ${place.name}` });
+    blocks.push({ kind: "list", items: [...gridLines(place.lat, place.lon, formats), place.note].filter(Boolean) });
   }
-  const seen = new Set<string>();
-  for (const data of sources.plans) {
-    for (const place of readableOf(data.plan, data.resolved).places) {
-      const key = `${place.name}|${place.coords}`;
-      if (seen.has(key) || place.missing) continue;
-      seen.add(key);
-      blocks.push({ kind: "heading", text: `${place.role}: ${place.name}` });
-      const marker = data.plan.body.places.find((each) => each.name === place.name)?.markerId;
-      const now = marker ? data.resolved.places[marker] : null;
-      blocks.push(
-        now
-          ? { kind: "list", items: [...gridLines(now.lat, now.lon, formats), place.note].filter(Boolean) }
-          : { kind: "para", text: place.note || "Described only: no saved place on the map." },
-      );
-    }
+  for (const place of described) {
+    blocks.push({ kind: "heading", text: `${place.role}: ${place.name}` });
+    blocks.push({ kind: "para", text: place.note || "Described only: no saved place on the map." });
   }
-  blocks.push({ kind: "para", text: "A map page of the area is printed on Maps, with Print or save as PDF." });
+  if (!sources.placesMap) blocks.push({ kind: "para", text: "A map page of the area is printed on Maps, with Print or save as PDF." });
   return blocks;
 }
 

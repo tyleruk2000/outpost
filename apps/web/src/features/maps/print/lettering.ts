@@ -164,10 +164,13 @@ export async function writeLettered(
   title: string,
   created: Date,
   draw: DrawLine = canvasLine,
+  /** Pictures the pages already hold (a map), by the ids their image items give. */
+  pictures?: ReadonlyMap<string, PdfPicture>,
 ): Promise<{ bytes: Uint8Array; pages: number; drawn: number; marked: number }> {
   const lettered = await letterPages(pages, draw);
+  const all = new Map([...(pictures ?? []), ...lettered.pictures]);
   return {
-    bytes: writePdfPages({ pages: lettered.pages, pictures: lettered.pictures, title, created }),
+    bytes: writePdfPages({ pages: lettered.pages, pictures: all, title, created }),
     pages: lettered.pages.length,
     drawn: lettered.drawn,
     marked: lettered.marked,

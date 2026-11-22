@@ -23,6 +23,7 @@ import { useKept } from "./store";
 
 const KeptMapScreen = lazy(() => import("./kept-map-screen"));
 const KeptPlanScreen = lazy(() => import("./kept-plan-screen"));
+const KeptMedicalScreen = lazy(() => import("./kept-medical-screen"));
 const WriteScreen = lazy(() => import("./write-screen"));
 const KeptDrillScreen = lazy(() => import("./kept-drill-screen"));
 
@@ -227,6 +228,7 @@ export default function OutOfReachApp({ onReachable }: { onReachable: () => void
           <Route path="notes/:id" element={<KeptNoteScreen />} />
           <Route path="maps" element={<KeptMapScreen />} />
           <Route path="prepare/plans/:id/use" element={<KeptPlanScreen />} />
+          <Route path="prepare/medical" element={<KeptMedicalScreen />} />
           <Route path="kept/write" element={<WriteScreen />} />
           <Route path="prepare/offline-drill" element={<KeptDrillScreen />} />
           <Route path="*" element={<NeedsServer />} />

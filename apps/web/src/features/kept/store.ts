@@ -102,7 +102,19 @@ export interface KeptPlan extends KeptBase {
   pending: number;
 }
 
-export type KeptItem = KeptNote | KeptTrack | KeptPlaces | KeptArea | KeptPlan;
+/**
+ * The household's medical sheets, kept as a set only when a person asks. A sheet locked
+ * with a passphrase or key is kept as the locked message it is on the server, and opened
+ * on the phone in memory only; a sheet not locked is kept readable.
+ */
+export interface KeptMedical extends KeptBase {
+  kind: "medical";
+  count: number;
+  /** Of them, how many are locked. */
+  locked: number;
+}
+
+export type KeptItem = KeptNote | KeptTrack | KeptPlaces | KeptArea | KeptPlan | KeptMedical;
 export type KeptKind = KeptItem["kind"];
 
 /**

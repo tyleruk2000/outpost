@@ -4,7 +4,7 @@
  * home of the app while the server is out of reach.
  */
 import { formatBytes } from "@outpost/shared";
-import { CircleAlert, CircleCheck, ListChecks, Map as MapIcon, MapPin, NotebookText, Route, Trash2 } from "lucide-react";
+import { CircleAlert, CircleCheck, HeartPulse, ListChecks, Map as MapIcon, MapPin, NotebookText, Route, Trash2 } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
@@ -37,6 +37,8 @@ function detailOf(item: KeptItem): string {
   }
   if (item.kind === "track") return formatDistance(item.distanceMeters);
   if (item.kind === "places") return `${plural(item.count, "place")}, as a set`;
+  if (item.kind === "medical")
+    return `${plural(item.count, "sheet")}${item.locked > 0 ? `, ${item.locked} of them locked: they open here with their passphrase` : ""}`;
   if (item.kind === "plan")
     return `An emergency plan, ${plural(item.steps, "step")}, with its people's names and numbers${item.pending > 0 ? `; ${plural(item.pending, "tick")} made here waiting to be sent` : ""}`;
   return `${formatBboxSize(item.bbox)}, zoom 0 to ${item.maxZoom}, ${plural(item.tiles, "tile")}${item.terrainMaxZoom !== null ? ", with terrain" : ""}`;
@@ -49,7 +51,9 @@ const linkOf = (item: KeptItem): string =>
       ? `/maps?track=${item.id}`
       : item.kind === "plan"
         ? `/prepare/plans/${item.id}/use`
-        : "/maps";
+        : item.kind === "medical"
+          ? "/prepare/medical"
+          : "/maps";
 
 const KINDS: Array<{ kind: KeptItem["kind"]; heading: string; icon: ReactNode }> = [
   { kind: "note", heading: "Pages", icon: <NotebookText aria-hidden strokeWidth={1.6} /> },
@@ -57,6 +61,7 @@ const KINDS: Array<{ kind: KeptItem["kind"]; heading: string; icon: ReactNode }>
   { kind: "places", heading: "Saved places", icon: <MapPin aria-hidden strokeWidth={1.6} /> },
   { kind: "area", heading: "Map areas", icon: <MapIcon aria-hidden strokeWidth={1.6} /> },
   { kind: "plan", heading: "Emergency plans", icon: <ListChecks aria-hidden strokeWidth={1.6} /> },
+  { kind: "medical", heading: "Medical sheets", icon: <HeartPulse aria-hidden strokeWidth={1.6} /> },
 ];
 
 function KeptRow({ item, outOfReach, onRemove }: { item: KeptItem; outOfReach: boolean; onRemove: () => void }) {
@@ -313,7 +318,7 @@ export default function KeptPage({ outOfReach = false }: { outOfReach?: boolean 
     <Page width="wide">
       <PageHeader
         title={ON_THIS_DEVICE}
-        description={`Pages, routes, saved places, map areas and emergency plans kept in this browser, so they still open when this ${DEVICE} cannot reach the Outpost server.`}
+        description={`Pages, routes, saved places, map areas, emergency plans and medical sheets kept in this browser, so they still open when this ${DEVICE} cannot reach the Outpost server.`}
       />
 
       {!supported ? (
@@ -349,7 +354,8 @@ export default function KeptPage({ outOfReach = false }: { outOfReach?: boolean 
                 <li>a route, from its panel on the map;</li>
                 <li>your saved places, as a set, under their list;</li>
                 <li>an area of the map, from “Offline maps” on the map;</li>
-                <li>an emergency plan, at the foot of its “Use now”.</li>
+                <li>an emergency plan, at the foot of its “Use now”;</li>
+                <li>the medical sheets, as a set, under their list (a locked sheet stays locked).</li>
               </ul>
             </>
           )}

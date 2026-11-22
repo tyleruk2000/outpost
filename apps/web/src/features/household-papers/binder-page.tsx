@@ -17,8 +17,11 @@ import type { CardPaper } from "@/features/emergency-plans/cards";
 import { useOutlook } from "@/features/emergency-plans/data";
 import { AID_PAPER_KEY, isAidPaper, likelyPaper } from "@/features/encryption/paper-aids";
 import { PdfActions } from "@/features/library/made/pdf-actions";
+import { useMapOverview, useMapSources } from "@/features/maps/data";
+import { regionsCacheKey } from "@/features/maps/lib/tiles";
 import { readStored, writeStored } from "@/features/maps/lib/view";
 import { PAPERS } from "@/features/maps/print/paper";
+import type { PdfPicture } from "@/features/maps/print/pdf";
 import type { Sheet } from "@/features/maps/print/sheet";
 import { errorMessage } from "@/lib/api";
 import { useClockStyle } from "@/lib/clock";
@@ -26,6 +29,8 @@ import { notify } from "@/lib/notify";
 import { formatDate } from "@/lib/utils";
 import { type BinderSources, binderPages, partHolds } from "./binder";
 import { partsWords } from "./binder-line";
+import type { BinderMap } from "./binder-map";
+import { binderPlaces } from "./binder-places";
 import { useBinderMade, useBinderStatus } from "./data";
 import { grabHousehold, grabPerson, useHouseholdSources } from "./household-data";
 import { libraryQuestion, PaperPreview } from "./paper-pdf";
@@ -50,7 +55,16 @@ export default function BinderPage() {
       BINDER_PARTS.map((part) => part.id),
     ),
   );
-  const [binder, setBinder] = useState<{ pages: Sheet[]; parts: BinderPart[]; made: Date } | null>(null);
+  const [binder, setBinder] = useState<{
+    pages: Sheet[];
+    parts: BinderPart[];
+    made: Date;
+    pictures: ReadonlyMap<string, PdfPicture>;
+    mapMissing: string | null;
+  } | null>(null);
+  const [drawing, setDrawing] = useState(false);
+  const mapSources = useMapSources();
+  const overview = useMapOverview();
 
   const household = useMemo(
     () => grabHousehold(sources.plans, sources.emergencyContacts, sources.markers, sources.comms),
@@ -77,6 +91,7 @@ export default function BinderPage() {
     kind: "Household binder",
     from,
     created: binder?.made ?? EPOCH,
+    pictures: binder?.pictures,
   });
 
   const toggle = (part: BinderPart, on: boolean) => {
@@ -86,21 +101,43 @@ export default function BinderPage() {
     setBinder(null);
   };
 
-  const make = () => {
+  const make = async () => {
     if (!status.data) return;
+    const fingerprints = status.data.fingerprints;
     // Dated by the newest change among what goes in, so the same binder made twice is the same file.
     const times = chosen.map((part) => status.data.changedAt[part]).filter((at): at is number => at !== null);
     const contentAt = times.length > 0 ? Math.max(...times) : Date.now();
     const at = new Date(contentAt);
     try {
-      const result = binderPages(chosen, binderSources, { paper, made: at, today: localDay(), style });
+      // The map of home and the meeting points is drawn first, from the offline map on this device.
+      let map: BinderMap | null = null;
+      const places = binderPlaces(binderSources).mapped;
+      if (chosen.includes("places") && places.length > 0) {
+        setDrawing(true);
+        try {
+          const { binderMap } = await import("./binder-map");
+          const regions = overview.data?.regions ?? [];
+          map = await binderMap(
+            places,
+            { sources: mapSources.data, regions, cacheKey: regionsCacheKey(regions), origin: window.location.origin },
+            paper,
+          );
+        } finally {
+          setDrawing(false);
+        }
+      }
+      const result = binderPages(
+        chosen,
+        { ...binderSources, placesMap: map?.block ?? null },
+        { paper, made: at, today: localDay(), style },
+      );
       if (result.parts.length === 0) {
         notify.error("None of the chosen parts has anything in it yet.");
         return;
       }
-      setBinder({ ...result, made: at });
+      setBinder({ ...result, made: at, pictures: map?.pictures ?? new Map(), mapMissing: map?.missing ?? null });
       made.mutate(
-        { parts: result.parts, contentAt, pages: result.pages.length, fingerprints: status.data.fingerprints },
+        { parts: result.parts, contentAt, pages: result.pages.length, fingerprints },
         { onError: (error) => notify.error(errorMessage(error)) },
       );
     } catch (error) {
@@ -187,8 +224,8 @@ export default function BinderPage() {
           </Section>
 
           <div className="flex flex-wrap items-center gap-3">
-            <Button variant="primary" disabled={chosen.length === 0} loading={made.isPending} onClick={make}>
-              <BookCopy /> Make the binder
+            <Button variant="primary" disabled={chosen.length === 0} loading={made.isPending || drawing} onClick={() => void make()}>
+              <BookCopy /> {drawing ? "Drawing the map" : "Make the binder"}
             </Button>
             <Segmented<CardPaper>
               label="Paper"
@@ -209,7 +246,9 @@ export default function BinderPage() {
                 lead="save"
                 confirm={libraryQuestion(binder.parts.includes("medical") || binder.parts.includes("grab-cards"))}
               />
-              <PaperPreview made={printed} />
+              <PaperPreview made={printed}>
+                {binder.mapMissing && binder.parts.includes("places") ? <p className="text-small text-ink">{binder.mapMissing}</p> : null}
+              </PaperPreview>
             </div>
           ) : null}
         </div>
