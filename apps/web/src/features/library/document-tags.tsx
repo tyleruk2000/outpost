@@ -66,7 +66,7 @@ export function TagEditor({
   return (
     <div className="grid gap-1.5">
       <FieldLabel htmlFor={id} label="Tags" status={save.status} />
-      <div className="flex flex-wrap items-center gap-1.5 rounded-control border border-border-strong bg-page p-1.5 transition-[border-color,box-shadow] duration-150 focus-within:border-focus focus-within:ring-2 focus-within:ring-focus/30 hover:border-ink-faint">
+      <div className="flex flex-wrap items-center gap-1.5 rounded-control border border-border-strong bg-page p-1.5 transition-[border-color,box-shadow] duration-150 focus-within:border-focus focus-within:ring-2 focus-within:ring-focus hover:border-ink-faint">
         {shown.length > 0 ? (
           <ul className="contents" aria-label="Tags on this document">
             {shown.map((tag) => (

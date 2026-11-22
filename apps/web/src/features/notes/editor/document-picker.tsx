@@ -6,6 +6,7 @@ import { FileText, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { searchRowFocus } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
 import { pickerItemClass } from "../move-dialog";
@@ -34,7 +35,7 @@ export function DocumentPicker({ onPick, onClose }: { onPick(document: DocumentD
         data-editor-popup
       >
         <Command shouldFilter={false} loop label="Embed a document">
-          <div className="flex items-center gap-3 border-b border-border px-5">
+          <div className={`flex items-center gap-3 border-b border-border px-5 ${searchRowFocus}`}>
             <Search aria-hidden className="size-4 shrink-0 text-ink-muted" />
             <Command.Input
               autoFocus

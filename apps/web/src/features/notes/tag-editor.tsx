@@ -119,7 +119,7 @@ export function TagEditor({
             aria-label="Add a tag"
             aria-describedby={hintId}
             placeholder={full ? "No more tags fit" : tags.length === 0 ? "Add tags" : "Add tag"}
-            className="h-6 min-w-24 flex-1 rounded-control bg-transparent text-small text-ink placeholder:text-ink-faint focus:outline-none max-md:h-8 max-md:text-body"
+            className="h-6 min-w-24 flex-1 rounded-control bg-transparent text-small text-ink placeholder:text-ink-faint max-md:h-8 max-md:text-body"
           />
           <span id={hintId} className="sr-only">
             Press Enter or a comma to add the tag. Backspace removes the last one.

@@ -38,6 +38,33 @@ test.describe("the shell", () => {
     await expect(page.getByRole("heading", { name: "Settings", level: 1 })).toBeVisible();
   });
 
+  test("shows the focus on quick search's field as a ring, not only the caret", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await page.keyboard.press("ControlOrMeta+k");
+    const palette = page.getByRole("dialog", { name: "Search and go to" });
+    const field = palette.getByRole("combobox");
+    // The row round the field draws the ring: the field's own outline is off.
+    const row = field.locator("xpath=..");
+    const ring = () => row.evaluate((element) => getComputedStyle(element).boxShadow);
+    const focus = await page.evaluate(() => {
+      const probe = document.createElement("i");
+      probe.style.color = "var(--focus)";
+      document.body.append(probe);
+      const colour = getComputedStyle(probe).color;
+      probe.remove();
+      return colour;
+    });
+
+    // With a fine pointer the field is the only stop in the dialog, so Tab keeps the keyboard on it.
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
+    await expect(field).toBeFocused();
+    expect(await field.evaluate((element) => getComputedStyle(element).outlineStyle)).toBe("none");
+    await expect.poll(ring).toContain("inset");
+    expect(await ring()).toContain(`${focus} 0px 0px 0px 2px`);
+  });
+
   test("goes from quick search to a place inside a screen: a section of Settings, the map's Layers tab", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();

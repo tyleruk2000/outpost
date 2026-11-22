@@ -412,7 +412,7 @@ function UValueCalculator() {
                   value={row.name}
                   onChange={(event) => setRows(rows.map((item, at) => (at === index ? { ...item, name: event.target.value } : item)))}
                   placeholder="What it is"
-                  className="h-9 w-full rounded-control border border-border-strong bg-page px-3 text-body text-ink focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus/30 max-md:h-11"
+                  className="h-9 w-full rounded-control border border-border-strong bg-page px-3 text-body text-ink focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus max-md:h-11"
                 />
               )}
             </Field>
@@ -423,7 +423,7 @@ function UValueCalculator() {
                   inputMode="decimal"
                   value={row.mm}
                   onChange={(event) => setRows(rows.map((item, at) => (at === index ? { ...item, mm: event.target.value } : item)))}
-                  className="h-9 w-full rounded-control border border-border-strong bg-page px-3 text-body text-ink tabular focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus/30 aria-invalid:border-danger max-md:h-11"
+                  className="h-9 w-full rounded-control border border-border-strong bg-page px-3 text-body text-ink tabular focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus aria-invalid:border-danger max-md:h-11"
                 />
               )}
             </Field>
@@ -436,7 +436,7 @@ function UValueCalculator() {
                   onChange={(event) =>
                     setRows(rows.map((item, at) => (at === index ? { ...item, conductivity: event.target.value } : item)))
                   }
-                  className="h-9 w-full rounded-control border border-border-strong bg-page px-3 text-body text-ink tabular focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus/30 aria-invalid:border-danger max-md:h-11"
+                  className="h-9 w-full rounded-control border border-border-strong bg-page px-3 text-body text-ink tabular focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus aria-invalid:border-danger max-md:h-11"
                 />
               )}
             </Field>

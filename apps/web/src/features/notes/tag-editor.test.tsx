@@ -115,4 +115,9 @@ describe("TagEditor", () => {
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
+
+  it("keeps the app's focus outline on the field, so more than the caret shows where the keyboard is", () => {
+    render(<Harness />);
+    expect(screen.getByRole("textbox", { name: "Add a tag" }).className).not.toMatch(/outline-none/);
+  });
 });

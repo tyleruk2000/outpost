@@ -72,7 +72,7 @@ export function LinkField({
             }
           }}
           placeholder="Paste or type an address"
-          className="h-8 min-w-0 flex-1 rounded-[4px] bg-transparent px-2 text-small text-ink placeholder:text-ink-faint focus:outline-none max-md:h-10 max-md:text-body"
+          className="h-8 min-w-0 flex-1 rounded-[4px] bg-transparent px-2 text-small text-ink placeholder:text-ink-faint focus-visible:outline-offset-0 max-md:h-10 max-md:text-body"
         />
         <Tooltip label="Apply link">
           <button type="submit" aria-label="Apply link" className={toolButton}>

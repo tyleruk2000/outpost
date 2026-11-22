@@ -6,6 +6,7 @@
 import type { MarkerDto, TrackDto } from "@outpost/shared";
 import { Crosshair, MapPin, Route, Search, X } from "lucide-react";
 import { type KeyboardEvent, type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
+import { searchRowFocus } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
 import { useDebounced } from "@/lib/use-debounced";
@@ -108,7 +109,13 @@ export function SearchBox({
     <div className={cn("relative", className)}>
       {/* Tall enough that the field inside its border is the 44 px a finger needs. */}
       <div
-        className={cn(mapSurface, "flex h-11 items-center gap-1 max-md:h-[46px]", trailing ? "pr-0" : "pr-1", leading ? "pl-1" : "pl-3")}
+        className={cn(
+          mapSurface,
+          searchRowFocus,
+          "flex h-11 items-center gap-1 max-md:h-[46px]",
+          trailing ? "pr-0" : "pr-1",
+          leading ? "pl-1" : "pl-3",
+        )}
       >
         {leading}
         <Search aria-hidden className={cn("size-4 shrink-0 text-ink-muted", leading && "ml-1")} />

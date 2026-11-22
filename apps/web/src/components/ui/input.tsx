@@ -5,6 +5,14 @@ import { cn } from "@/lib/utils";
 const control =
   "w-full rounded-control border border-border-strong bg-page px-3 text-body text-ink placeholder:text-ink-faint transition-[border-color,box-shadow] duration-150 hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:bg-surface disabled:opacity-60 aria-invalid:border-danger aria-invalid:ring-danger";
 
+/**
+ * For a row that holds a borderless search field and its icon (in a popover, a dialog, the command palette):
+ * the field draws no outline of its own, so the row takes the fields' full-strength 2 px focus ring, inside its
+ * edges so a rounded or clipped container does not cut it off. Only the field lights the row: a button beside it
+ * (clear, close) shows its own ring. Never drop the field's outline without this.
+ */
+export const searchRowFocus = "has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-focus has-[input:focus-visible]:ring-inset";
+
 export function Input({ className, ref, ...props }: InputHTMLAttributes<HTMLInputElement> & { ref?: Ref<HTMLInputElement> }) {
   return <input ref={ref} className={cn(control, "h-9 max-md:h-11", className)} {...props} />;
 }

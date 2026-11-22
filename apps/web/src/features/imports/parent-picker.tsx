@@ -4,6 +4,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Command } from "cmdk";
 import { Check, ChevronsUpDown, CornerLeftUp, FileText, Search } from "lucide-react";
 import { useState } from "react";
+import { searchRowFocus } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
 import { useDebounced } from "@/lib/use-debounced";
@@ -64,7 +65,7 @@ export function ParentPicker({
       <PopoverContent className="w-(--radix-popover-trigger-width) min-w-64 p-0">
         <Command shouldFilter={false} loop label="Put the pages under">
           {/* The search field draws no outline of its own: the row around it, icon and all, takes the fields' 2 px focus ring. */}
-          <div className="flex items-center gap-2.5 rounded-t-[inherit] border-b border-border px-3 focus-within:ring-2 focus-within:ring-focus focus-within:ring-inset">
+          <div className={cn("flex items-center gap-2.5 rounded-t-[inherit] border-b border-border px-3", searchRowFocus)}>
             <Search aria-hidden className="size-4 shrink-0 text-ink-muted" />
             <Command.Input
               autoFocus

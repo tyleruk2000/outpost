@@ -100,7 +100,7 @@ export function NumberField({ input, className }: { input: NumberInput; classNam
             spellCheck={false}
             value={input.text}
             onChange={(event) => input.setText(event.target.value)}
-            className="h-9 w-full min-w-[5rem] flex-1 rounded-control border border-border-strong bg-page px-3 text-body text-ink tabular transition-[border-color,box-shadow] duration-150 placeholder:text-ink-faint hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus/30 aria-invalid:border-danger aria-invalid:ring-danger/25 max-md:h-11"
+            className="h-9 w-full min-w-[5rem] flex-1 rounded-control border border-border-strong bg-page px-3 text-body text-ink tabular transition-[border-color,box-shadow] duration-150 placeholder:text-ink-faint hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus aria-invalid:border-danger aria-invalid:ring-danger/25 max-md:h-11"
           />
           {units.length > 2 ? (
             <Select

@@ -231,7 +231,7 @@ export function TimerPanel() {
                   setRanOut(false);
                 }}
                 aria-invalid={!valid || undefined}
-                className="h-9 w-24 rounded-control border border-border-strong bg-page px-3 text-body text-ink tabular focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus/30 aria-invalid:border-danger max-md:h-11"
+                className="h-9 w-24 rounded-control border border-border-strong bg-page px-3 text-body text-ink tabular focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus aria-invalid:border-danger max-md:h-11"
               />
             </label>
             <Button variant="primary" disabled={!valid} onClick={() => start(minutes, "")}>

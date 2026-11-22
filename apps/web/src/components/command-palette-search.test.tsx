@@ -117,3 +117,13 @@ describe("the palette on a touch screen", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });
+
+describe("the palette's search field", () => {
+  it("lights the row around it with the full focus ring, so more than the caret shows the focus", () => {
+    serveSearch(() => ownAnswer(OWN));
+    show();
+    const row = screen.getByPlaceholderText(/Search your library/).parentElement!;
+    expect(row.className).toContain("has-[input:focus-visible]:ring-2");
+    expect(row.className).toContain("has-[input:focus-visible]:ring-focus");
+  });
+});

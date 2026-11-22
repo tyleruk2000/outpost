@@ -12,6 +12,7 @@ import { CornerDownLeft, Eraser, FolderInput, Globe, ListChecks, type LucideIcon
 import { Dialog } from "radix-ui";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
+import { searchRowFocus } from "@/components/ui/input";
 import { findGuides, useGuideIndex } from "@/features/help/guide-places";
 import { api } from "@/lib/api";
 import { referenceProgress, useReferenceSearch } from "@/lib/reference-search";
@@ -146,7 +147,7 @@ export function CommandPalette({
           <Dialog.Title className="sr-only">Search and go to</Dialog.Title>
           {/* Nothing is left to cmdk's fuzzy filter: places and actions are matched here by word, the library by the server. */}
           <Command shouldFilter={false} loop label="Search and go to">
-            <div className="flex items-center gap-3 border-b border-border px-4">
+            <div className={`flex items-center gap-3 border-b border-border px-4 ${searchRowFocus}`}>
               <Search aria-hidden className="size-[18px] shrink-0 text-ink-muted" />
               <Command.Input
                 value={query}
