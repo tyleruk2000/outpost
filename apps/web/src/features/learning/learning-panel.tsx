@@ -5,18 +5,22 @@
  * paper. See docs/learning.md.
  */
 import { aboutTime, type LearningCourse, learnerLabel } from "@outpost/shared";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { EmptyState, ErrorState, Joined, Rows, Section } from "@/components/page";
+import { EmptyState, ErrorState, Joined, Notice, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
-import { madePdf } from "@/features/library/made/made-pdf";
+import { type MadePdf, madePdf } from "@/features/library/made/made-pdf";
 import { PdfActions } from "@/features/library/made/pdf-actions";
+import { writeLettered } from "@/features/maps/print/lettering";
+import { renderPdf } from "@/features/print-kit/render";
+import { errorMessage } from "@/lib/api";
+import { deviceRegion, likelyPaperFor } from "@/lib/region";
 import { plural, timeAgo } from "@/lib/utils";
 import { readerAt, useProgress } from "./data";
 import { useLearningDevice } from "./device";
 import { WhoseSwitch } from "./learner-switch";
-import { progressPdf, progressTitle, topicsWords } from "./progress-document";
+import { kitCanWriteProgress, progressDay, progressKitDocument, progressSheets, progressTitle, topicsWords } from "./progress-document";
 import { choose } from "./reader-controls";
 
 function Facts({ parts }: { parts: ReactNode[] }) {
@@ -91,16 +95,29 @@ export default function LearningPanel() {
   const progress = useProgress(whose === null ? { everyone: true } : { learner: whose });
   const [now] = useState(() => Date.now());
   const courses = progress.data?.courses ?? [];
-  const pdf = useMemo(
-    () =>
-      courses.length > 0
-        ? madePdf(progressPdf(courses, whose, now), progressTitle(whose, now), "Learning progress", {
-            what: "the Library's learning progress",
-            path: "/library?tab=learning",
-          })
-        : null,
-    [courses, whose, now],
-  );
+  // Made on this device with the print kit; a record with a name the kit's typeface cannot write keeps the old writer, which letters it.
+  const [made, setMade] = useState<{ pdf: MadePdf } | { error: string } | null>(null);
+  useEffect(() => {
+    let live = true;
+    setMade(null);
+    if (courses.length === 0) return;
+    const title = progressTitle(whose, now);
+    const written = kitCanWriteProgress(courses, whose)
+      ? renderPdf(progressKitDocument(courses, whose, now, likelyPaperFor(deviceRegion())))
+      : writeLettered(progressSheets(courses, whose, now), title, progressDay(now));
+    written
+      .then((result) => ({
+        pdf: madePdf(result.bytes, title, "Learning progress", { what: "the Library's learning progress", path: "/library?tab=learning" }),
+      }))
+      .catch((error: unknown) => ({ error: errorMessage(error) }))
+      .then((result) => {
+        if (live) setMade(result);
+      });
+    return () => {
+      live = false;
+    };
+  }, [courses, whose, now]);
+  const pdf = made && "pdf" in made ? made.pdf : null;
   const byCourse = useMemo(() => {
     const groups = new Map<string, LearningCourse[]>();
     for (const course of courses) groups.set(course.archive, [...(groups.get(course.archive) ?? []), course]);
@@ -168,6 +185,12 @@ export default function LearningPanel() {
 
       {courses.length > 0 ? (
         <Section className="mt-8" title="On paper" description="A record of what has been covered, as a PDF to print or keep.">
+          {made === null ? <p className="mb-3 text-small text-ink-muted">Making the PDF…</p> : null}
+          {made && "error" in made ? (
+            <Notice tone="danger" className="mb-3">
+              The PDF could not be made: {made.error}
+            </Notice>
+          ) : null}
           <PdfActions
             pdf={pdf}
             confirm={{
