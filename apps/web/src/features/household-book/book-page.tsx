@@ -14,10 +14,11 @@ import { Skeleton } from "@/components/ui/misc";
 import { useOutlook } from "@/features/emergency-plans/data";
 import { useContactsById } from "@/features/household-papers/data";
 import { useHouseholdSources } from "@/features/household-papers/household-data";
-import { libraryQuestion, PaperPreview } from "@/features/household-papers/paper-pdf";
-import { pdfOf, usePaperPdf } from "@/features/household-papers/use-paper-pdf";
+import { libraryQuestion } from "@/features/household-papers/paper-pdf";
+import { type MadePdf, madePdf } from "@/features/library/made/made-pdf";
 import { PdfActions } from "@/features/library/made/pdf-actions";
-import type { Sheet } from "@/features/maps/print/sheet";
+import { renderPdf } from "@/features/print-kit";
+import { PdfPagesPreview } from "@/features/print-kit/preview";
 import { errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { formatDate, plural } from "@/lib/utils";
@@ -38,7 +39,7 @@ export default function BookPage() {
   const save = useSaveBook();
   const made = useBookMade();
   const [asking, setAsking] = useState<BookStepId | null>(null);
-  const [result, setResult] = useState<{ pages: Sheet[]; made: Date; medical: boolean } | null>(null);
+  const [result, setResult] = useState<{ pdf: MadePdf; bytes: Uint8Array; pages: number; medical: boolean } | null>(null);
   const [making, setMaking] = useState(false);
 
   const answers = book.data?.answers ?? DEFAULT_BOOK_ANSWERS;
@@ -46,16 +47,6 @@ export default function BookPage() {
   const country = facts.data?.home?.country ?? null;
 
   const from = useMemo(() => ({ what: "the household book", path: "/prepare/book" }), []);
-  const printed = usePaperPdf(result?.pages ?? null, {
-    title: `Household book, ${formatDate((result?.made ?? new Date(0)).getTime())}`,
-    kind: "Household book",
-    from,
-    created: result?.made ?? new Date(0),
-  });
-  const preview = useMemo(
-    () => (printed && "pdf" in printed ? { ...printed, pages: printed.pages.slice(0, PREVIEW_PAGES) } : printed),
-    [printed],
-  );
 
   const saveAnswers = async (next: BookAnswers) => {
     // The first save takes the paper from the country home is in, where the person has not chosen one.
@@ -90,9 +81,15 @@ export default function BookPage() {
         today: localDay(),
         previous: book.data.made,
       });
-      setResult({ pages: out.pages, made: at, medical: book.data.answers.sections.includes("people") });
+      const printed = await renderPdf(out.document);
+      setResult({
+        pdf: madePdf(printed.bytes, `Household book, ${formatDate(at.getTime())}`, "Household book", from),
+        bytes: printed.bytes,
+        pages: printed.pages,
+        medical: book.data.answers.sections.includes("people"),
+      });
       made.mutate(
-        { pages: out.pages.length, sections: out.sections, summary: out.summary, fingerprints: book.data.fingerprints },
+        { pages: printed.pages, sections: out.sections, summary: out.summary, fingerprints: book.data.fingerprints },
         { onError: (error) => notify.error(errorMessage(error)) },
       );
     } catch (error) {
@@ -172,11 +169,15 @@ export default function BookPage() {
           ) : null}
           {result ? (
             <div className="grid gap-4">
-              <PdfActions pdf={pdfOf(printed)} lead="save" confirm={libraryQuestion(result.medical)} />
+              <PdfActions pdf={result.pdf} lead="save" confirm={libraryQuestion(result.medical)} />
               <p className="text-small text-ink-muted">
-                {plural(result.pages.length, "page")}. The first {Math.min(PREVIEW_PAGES, result.pages.length)} as they print:
+                {plural(result.pages, "page")}. The first {Math.min(PREVIEW_PAGES, result.pages)} as they print:
               </p>
-              <PaperPreview made={preview} />
+              <PdfPagesPreview
+                bytes={result.bytes}
+                pages={PREVIEW_PAGES}
+                label={(page) => `Page ${page} of ${result.pages} as it prints`}
+              />
             </div>
           ) : null}
         </div>

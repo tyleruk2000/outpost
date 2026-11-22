@@ -163,6 +163,10 @@ export interface BookAnswers {
   notesPages: number;
   /** Put each medical sheet in full, as the binder does; otherwise only the summary in "Our household". */
   medicalInFull: boolean;
+  /** Which emergency plans go in the book: every one the household has, or only those in `planIds`. */
+  planChoice: "all" | "some";
+  /** The plans chosen when `planChoice` is "some". */
+  planIds: string[];
 }
 
 export const DEFAULT_BOOK_ANSWERS: BookAnswers = {
@@ -180,7 +184,21 @@ export const DEFAULT_BOOK_ANSWERS: BookAnswers = {
   sections: [...BOOK_SECTION_IDS],
   notesPages: 2,
   medicalInFull: false,
+  planChoice: "all",
+  planIds: [],
 };
+
+/** The plans that go in the book, by the answers: all of them, or those chosen that still exist. */
+export function bookPlanIds(answers: Pick<BookAnswers, "planChoice" | "planIds">, plans: ReadonlyArray<{ id: string }>): string[] {
+  return answers.planChoice === "all"
+    ? plans.map((plan) => plan.id)
+    : plans.filter((plan) => answers.planIds.includes(plan.id)).map((plan) => plan.id);
+}
+
+/** The hazards the household has a plan for, by the template each plan was started from. */
+export function hazardsWithPlans(plans: ReadonlyArray<{ templateId: string | null }>): BookHazardId[] {
+  return BOOK_HAZARD_IDS.filter((hazard) => plans.some((plan) => plan.templateId === hazard));
+}
 
 /** The steps of the wizard, in order. */
 export const BOOK_STEPS = [

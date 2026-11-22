@@ -101,6 +101,8 @@ export const bookSchema = z
       .default([...BOOK_SECTION_IDS]),
     notesPages: z.number().int().min(0).max(L.notesPages).default(DEFAULT_BOOK_ANSWERS.notesPages),
     medicalInFull: z.boolean().default(false),
+    planChoice: z.enum(["all", "some"]).default("all"),
+    planIds: z.array(itemId).max(200).default([]),
     baseAnswersAt: z.number().int().nonnegative().nullable().optional(),
   })
   .strict();

@@ -5,24 +5,28 @@
  * out for the days), what it says when something is not held, what changed since the last
  * book, and the screen's first state.
  */
+
+import fs from "node:fs";
+import path from "node:path";
 import { type BookFacts, DEFAULT_BOOK_ANSWERS, emptyMedicalRecord, type Household, type MedicalSheet } from "@outpost/shared";
 import { RADIO_FREQUENCIES } from "@outpost/shared/radio-frequencies-data";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
+import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Sheet } from "@/features/maps/print/sheet";
-import { type BookInputs, emergencyNumberFor, makeBook } from "./book";
+import { contentText, renderPdf } from "@/features/print-kit";
+import { type BookInputs, emergencyNumberFor, type MadeBook, makeBook } from "./book";
 import { BookHomeLine } from "./book-line";
 import BookPage from "./book-page";
-import { FIRST_AID_PAGES, NHS_CREDIT } from "./first-aid";
+import { FIRST_AID_PAGES, NHS_CREDIT, RECOVERY_POSITION } from "./first-aid";
+import { FM_21_76 } from "./water-words";
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const texts = (pages: Sheet[]) =>
-  pages.flatMap((page) => page.items.flatMap((item) => (item.kind === "text" && !item.hidden ? [item.text] : []))).join(" ");
+const texts = (book: MadeBook) => contentText(book.document.content);
 
 const household: Household = {
   daysWanted: 3,
@@ -174,22 +178,51 @@ const inputs = (over: Partial<BookInputs> = {}): BookInputs => ({
 
 describe("the book's pages", () => {
   const book = makeBook(inputs());
-  const all = texts(book.pages);
+  const all = texts(book);
 
-  it("has a cover with the number to call, a contents page, and every page numbered", () => {
+  it("has a cover with the number to call, a contents page, and the sections numbered in order", () => {
     expect(all).toContain("The Rowans: household book");
-    expect(all).toContain("999");
+    expect(all).toMatch(/In an emergency, call .{0,80}999/);
     expect(all).toContain("Contents");
     expect(book.contents.map((entry) => entry.label)).toContain("First aid");
+    expect(book.contents.map((entry) => entry.number)).toEqual(book.contents.map((_, index) => index + 1));
+    expect(book.contents.at(-2)?.label).toBe("Sources");
     expect(book.contents.at(-1)?.label).toBe("Pages for notes");
-    // Numbered from the cover to the last notes page.
-    const last = book.pages
-      .at(-1)!
-      .items.filter((item) => item.kind === "text")
-      .at(-1);
-    expect(last && last.kind === "text" ? last.text : "").toBe(String(book.pages.length));
+    expect(all).toMatch(/1 The first few minutes What to do at once/);
     expect(all).toContain("This is the first book made");
   });
+
+  it("draws what its sources say: the filter, the rain catch, boiling, the recovery position and where to press", () => {
+    expect(all).toContain("crushed rock");
+    expect(all).toContain(FM_21_76.rain);
+    expect(all).toContain("Rolling boil");
+    expect(all).toContain("Top arm: hand on bicep of bottom arm");
+    expect(all).toContain(`“${RECOVERY_POSITION.parts[2]}”`);
+    expect(all).toContain("lower third of the breastbone");
+  });
+
+  it("has checklists with a box to tick for what you have and what to get", () => {
+    expect(all).toMatch(/What How much Got it To get Water and food Drinking water 28 litres/);
+  });
+
+  it("is a PDF a reader can search, on A4 and US Letter", async () => {
+    for (const paper of ["a4", "letter"] as const) {
+      const made = makeBook(inputs({ answers: { ...inputs().answers, paper } }));
+      const printed = await renderPdf(made.document);
+      const pdf = await getDocument({ data: printed.bytes.slice() }).promise;
+      expect(pdf.numPages).toBe(printed.pages);
+      const first = await (await pdf.getPage(1)).getViewport({ scale: 1 });
+      expect(Math.round(first.width)).toBe(paper === "a4" ? 595 : 612);
+      let words = "";
+      for (let number = 1; number <= pdf.numPages; number += 1)
+        words += `${(await (await pdf.getPage(number)).getTextContent()).items.map((item) => ("str" in item ? item.str : "")).join(" ")}\n`;
+      expect(words).toContain("The Rowans: household book");
+      expect(words).toContain("Salbutamol");
+      expect(words).toContain("Got it");
+      if (process.env.OUTPOST_PRINT_SAMPLES)
+        fs.writeFileSync(path.join(process.env.OUTPOST_PRINT_SAMPLES, `book-${paper}.pdf`), printed.bytes);
+    }
+  }, 60_000);
 
   it("puts each person with their needs and medicines, and the pets", () => {
     expect(all).toContain("Hard of hearing");
@@ -252,7 +285,7 @@ describe("the book's pages", () => {
         },
       }),
     );
-    const words = texts(next.pages);
+    const words = texts(next);
     expect(words).toMatch(/Changed since the book of 1 November 2026/);
     expect(words).toMatch(/Our household: new .*Kit: Hard of hearing.* gone Sam/);
   });
@@ -263,7 +296,7 @@ describe("the book's pages", () => {
   });
 
   it("says plainly what it cannot do without a home", () => {
-    const homeless = texts(makeBook(inputs({ facts: { ...facts, home: null, journeys: [] } })).pages);
+    const homeless = texts(makeBook(inputs({ facts: { ...facts, home: null, journeys: [] } })));
     expect(homeless).toMatch(/No saved place has the home icon/);
   });
 });
