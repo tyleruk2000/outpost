@@ -2,7 +2,6 @@
  * The places of the binder's page of home and meeting points, numbered as the map
  * (binder-map.ts) and the list under it number them.
  */
-import { homePlaceOf } from "@outpost/shared";
 import { readableOf } from "@/features/emergency-plans/printable";
 import type { BinderSources } from "./binder";
 
@@ -24,12 +23,17 @@ export interface DescribedPlace {
   note: string;
 }
 
-/** Home first, then each plan's places once each, in the plans' order. */
-export function binderPlaces(sources: Pick<BinderSources, "markers" | "plans">): { mapped: BinderPlace[]; described: DescribedPlace[] } {
+/**
+ * Home first (or where a portable household was last said to be: `paperHomePlace`), then
+ * each plan's places once each, in the plans' order.
+ */
+export function binderPlaces(
+  sources: Pick<BinderSources, "plans"> & { home: { role: string; name: string; lat: number; lon: number } | null },
+): { mapped: BinderPlace[]; described: DescribedPlace[] } {
   const mapped: BinderPlace[] = [];
   const described: DescribedPlace[] = [];
-  const home = homePlaceOf(sources.markers);
-  if (home) mapped.push({ number: 1, role: "Home", name: home.name || "Home", lat: home.lat, lon: home.lon, note: "" });
+  const home = sources.home;
+  if (home) mapped.push({ number: 1, role: home.role, name: home.name, lat: home.lat, lon: home.lon, note: "" });
   const seen = new Set<string>();
   for (const data of sources.plans) {
     for (const place of readableOf(data.plan, data.resolved).places) {

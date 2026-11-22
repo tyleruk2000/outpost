@@ -143,20 +143,20 @@ A portable household's home is wherever a person last said it was, so a place us
 
 Hard-coded `"household"` ids and Home lookups the per-household packages replace:
 
-- One-row ids: `supplies/service.ts` (`HOUSEHOLD_ID`), `household-papers/comms.ts`,
-  `household-papers/book.ts`, `household-papers/binder.ts`, `garden/index.ts` (`ROW`),
-  `export-all/sections.ts` (the comms query).
+- One-row ids: `supplies/service.ts` (`HOUSEHOLD_ID`), `garden/index.ts` (`ROW`),
+  `export-all/sections.ts` (the comms query). (The household papers are keyed by the
+  current household.)
 - Inserts with `FIRST_HOUSEHOLD_ID`: `readiness/checks.ts`, `readiness/log.ts`. Rows
   inserted elsewhere take the column default, `'household'`.
 - Unfiltered lists: supplies items and shopping, emergency plans, event log, routine
-  checks, garden sowings, power plans, medical sheets.
+  checks, garden sowings, power plans. (Medical sheets: `MEDICAL_SHEETS_OF_HOUSEHOLD` in
+  `household-papers/medical.ts` is the SQL for one household's sheets.)
 - Server Home lookups (`homePlaceOf`): `emergency-plans/index.ts`, `weather/service.ts`
-  (two), `household-papers/facts.ts`, `readiness/drill.ts`, `tools/where.ts`,
+  (two), `readiness/drill.ts`, `tools/where.ts`,
   `mesh/service.ts` and `games/allotment.ts` (these two take `first()`). Supplies' energy
   table already takes `households.country()`.
 - Web Home lookups (`homePlaceOf` or `useHomeCountry`): maps, layers (food panel, dataset
   manager), garden, frequencies, satellites (page and map), explore suggestions, solar
-  clock, household papers (binder, binder places, household data), heard (page, APRS
-  weather), weather places, the household book wizard.
+  clock, heard (page, APRS weather), weather places.
 - Erase everything, the database inspector and the table checks already know the new
   tables; Export everything and the drive screen do not yet say which household.

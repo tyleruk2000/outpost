@@ -85,6 +85,7 @@ import { type GrabHousehold, type GrabPerson, gridLines } from "@/features/house
 import type { PaperPerson } from "@/features/household-papers/household-data";
 import type { OpenedSheet } from "@/features/household-papers/medical-crypto";
 import { type ContactsNow, medicalBlocks, recordOf } from "@/features/household-papers/medical-words";
+import { ageWords, type PaperHousehold, paperHomePlace, whereWasWords } from "@/features/household-papers/paper-household";
 import type { PdfPicture } from "@/features/maps/print/pdf";
 import {
   blocksToContent,
@@ -168,6 +169,10 @@ export interface BookInputs {
   repeaters: RepeaterDto[] | null;
   /** The map of home and the meeting points, drawn from the offline map before the book is made; absent, there is none. */
   placesMap?: { block: Block; pictures: ReadonlyMap<string, PdfPicture>; missing?: string | null } | null;
+  /** The household the book is for: named on the cover and in the footer when there are several. Absent: the only one. */
+  which?: Pick<PaperHousehold, "name" | "kind" | "several"> | null;
+  /** A portable household's people and kit, printed on the cover in place of an address. */
+  travel?: { people: string[]; kit: string | null };
 }
 
 export interface MadeBook {
@@ -242,6 +247,10 @@ interface Context extends BookInputs {
   /** The width of the page's text, and of one of two columns. */
   measure: number;
   half: number;
+  /** How home is named in a sentence: "Cottage", or "where The van was on 20 November 2026" for a household that moves. */
+  homeWords: string;
+  /** What to say when there is no home to measure from. */
+  noHome: string;
 }
 
 interface Section {
@@ -447,9 +456,11 @@ export function bookMapPlaces(
   answers: Pick<BookAnswers, "meetingPoints">,
   markers: MarkerDto[],
   plans: EmergencyPlanResponse[],
+  /** Home, or where a portable household was (`paperHomePlace`): the first place. */
+  first: { role: string; name: string; lat: number; lon: number } | null,
 ): ReturnType<typeof binderPlaces> {
-  const { mapped, described } = binderPlaces({ markers, plans });
-  const [home, ...fromPlans] = mapped[0]?.role === "Home" ? mapped : [undefined, ...mapped];
+  const { mapped, described } = binderPlaces({ plans, home: first });
+  const [home, ...fromPlans] = first ? mapped : [undefined, ...mapped];
   const meeting = answers.meetingPoints
     .map((point) => ({ point, marker: markers.find((marker) => marker.id === point.markerId) }))
     .filter((entry) => entry.marker)
@@ -606,7 +617,7 @@ const positions = (lat: number, lon: number) =>
 function places(c: Context): Section {
   const content: Content[] = [];
   const summary: string[] = [];
-  const { mapped, described } = bookMapPlaces(c.answers, c.markers, bookPlans(c));
+  const { mapped, described } = bookMapPlaces(c.answers, c.markers, bookPlans(c), paperHomePlace(c.which ?? null, c.facts.home));
   if (c.placesMap) {
     const block = c.placesMap.block;
     if (block.kind === "drawing") {
@@ -792,7 +803,7 @@ function frequencies(c: Context): Section {
     }
   }
   content.push(label("Repeaters near home"));
-  if (!c.facts.home) content.push(note(NO_HOME_PLACE));
+  if (!c.facts.home) content.push(note(c.noHome));
   else if (c.repeaters === null) content.push(note("Outpost's repeater list could not be read when the book was made."));
   else if (c.repeaters.length === 0)
     content.push(note("No repeater in Outpost's repeater list is near home. Bring a list in under Radio › Repeaters."));
@@ -1083,10 +1094,10 @@ function notHeld(group: BookPlaceGroup, country: string | null): string {
 
 function helpNearHome(c: Context): Section {
   const subtitle = "Hospitals, pharmacies and other help, measured in a straight line from home.";
-  if (!c.facts.home) return { subtitle, content: [para(NO_HOME_PLACE)] };
+  if (!c.facts.home) return { subtitle, content: [para(c.noHome)] };
   const content: Content[] = [
     note(
-      `Measured in a straight line from ${c.facts.home.name} (${at4(c.facts.home.lat, c.facts.home.lon)}), from the reference layers installed on this Outpost. ${FOOD_WORDS.emergency} A place listed may have closed or moved: check before you need it.`,
+      `Measured in a straight line from ${c.homeWords} (${at4(c.facts.home.lat, c.facts.home.lon)}), from the reference layers installed on this Outpost. ${FOOD_WORDS.emergency} A place listed may have closed or moved: check before you need it.`,
     ),
   ];
   const summary: string[] = [];
@@ -1108,7 +1119,7 @@ function helpNearHome(c: Context): Section {
 
 function keepAway(c: Context): Section {
   const subtitle = "Sites near home to keep away from, and which way the wind usually blows.";
-  if (!c.facts.home) return { subtitle, content: [para(NO_HOME_PLACE)] };
+  if (!c.facts.home) return { subtitle, content: [para(c.noHome)] };
   const content: Content[] = [];
   const wind = c.facts.climate?.wind ?? null;
   const summary: string[] = [];
@@ -1513,7 +1524,7 @@ function water(c: Context): Section {
   content.push(...fromBlocks(c, purificationBlocks()));
   const points = c.facts.help.find((group) => group.id === "water");
   content.push(heading("Drinking water near home"));
-  if (!c.facts.home) content.push(note(NO_HOME_PLACE));
+  if (!c.facts.home) content.push(note(c.noHome));
   else if (!points?.held) content.push(note(points ? notHeld(points, c.country) : "Not held."));
   else if (points.places.length === 0) content.push(note("No drinking water point is mapped near home in the layer held."));
   else {
@@ -1627,7 +1638,7 @@ function journeys(c: Context): Section {
   const subtitle = "To each place you would go: on foot, a stop for each day, and by car.";
   const content: Content[] = [];
   const summary: string[] = [];
-  if (!c.facts.home) return { subtitle, content: [para(NO_HOME_PLACE)] };
+  if (!c.facts.home) return { subtitle, content: [para(c.noHome)] };
   if (c.answers.destinations.length === 0) return { subtitle, content: [para("No place to go to was given in the questions.")] };
   c.used.tobler = true;
   content.push(
@@ -1811,7 +1822,7 @@ function checklists(c: Context): Section {
 
 function localRisks(c: Context): Section {
   const subtitle = "Flood zones at home where a layer is held, and the climate's extremes.";
-  if (!c.facts.home) return { subtitle, content: [para(NO_HOME_PLACE)] };
+  if (!c.facts.home) return { subtitle, content: [para(c.noHome)] };
   const content: Content[] = [];
   const summary: string[] = [];
   content.push(heading("Flood zones"));
@@ -1897,7 +1908,11 @@ function childCards(c: Context): Section {
   const cards = children.map((child) => {
     const lines: Content[] = [
       `My name is ${child.name}.`,
-      ...(c.facts.home ? [`I live at ${c.facts.home.name}.`] : []),
+      ...(c.which?.kind === "portable"
+        ? [`I am travelling with ${c.which.name}.`]
+        : c.facts.home
+          ? [`I live at ${c.facts.home.name}.`]
+          : []),
       {
         text: [
           `If I am lost or someone is hurt, I call `,
@@ -2078,6 +2093,46 @@ function contentsPage(_c: Context, entries: Array<{ number: number; label: strin
   return [{ text: "Contents", fontSize: 19, bold: true, margin: [0, 0, 0, 10] } as Content, contentsTable(entries)];
 }
 
+/** How home is named in a sentence, by the kind of household. */
+function homeWordsOf(inputs: BookInputs): string {
+  const home = inputs.facts.home;
+  if (!home) return "home";
+  if (inputs.which?.kind !== "portable") return home.name;
+  const words = whereWasWords(inputs.which.name, { name: home.name, at: home.at ?? null });
+  return words.charAt(0).toLowerCase() + words.slice(1);
+}
+
+/** What the book says when there is no home to measure from. */
+function noHomeOf(which: BookInputs["which"] | null): string {
+  if (which?.kind === "portable")
+    return `Where ${which.name} is has not been set. Set it on the household's page under Preparedness › Households, and make the book again.`;
+  if (which?.several)
+    return `${which.name} has no home place. Choose one on the household's page under Preparedness › Households, and make the book again.`;
+  return NO_HOME_PLACE;
+}
+
+/**
+ * The cover's lines for a household that moves: where it was when the position was last
+ * set and how old that was when the book was made, then its people and its kit. Never an
+ * address: by the time the book is read the household may be somewhere else.
+ */
+function portableFacts(inputs: BookInputs): Array<[string, string]> {
+  const which = inputs.which!;
+  const home = inputs.facts.home;
+  const lines: Array<[string, string]> = [];
+  if (home) {
+    const age = home.at == null ? null : ageWords(Math.max(0, inputs.made.getTime() - home.at));
+    lines.push([
+      "Last position",
+      `**${whereWasWords(which.name, { name: home.name, at: home.at ?? null })}**\n${at4(home.lat, home.lon)}${age ? `\nSet ${age} before this book was made. It moves: this is not an address.` : ""}`,
+    ]);
+  } else lines.push(["Last position", "Not set when this book was made."]);
+  const people = inputs.travel?.people ?? [];
+  if (people.length > 0) lines.push(["People", people.join(", ")]);
+  if (inputs.travel?.kit) lines.push(["Kit", inputs.travel.kit]);
+  return lines;
+}
+
 /** The whole book. */
 export function makeBook(inputs: BookInputs): MadeBook {
   const country = inputs.facts.home?.country ?? null;
@@ -2092,8 +2147,14 @@ export function makeBook(inputs: BookInputs): MadeBook {
     attributions: new Set(),
     measure,
     half: (measure - PRINT_SPACE.gutter) / 2,
+    homeWords: homeWordsOf(inputs),
+    noHome: noHomeOf(inputs.which ?? null),
   };
-  const name = inputs.answers.householdName.trim();
+  const which = inputs.which ?? null;
+  // With several households the book names the one it is for, as typed in the questions or as the household is called.
+  const typed = inputs.answers.householdName.trim();
+  const name = typed || (which?.several ? which.name : "");
+  const alsoNamed = which?.several && typed && typed.toLocaleLowerCase() !== which.name.toLocaleLowerCase() ? which.name : null;
   const parts: PrintPart[] = [];
   const entries: Array<{ number: number; label: string; id: string; about?: string }> = [];
   const sections: BookSectionId[] = [];
@@ -2131,7 +2192,7 @@ export function makeBook(inputs: BookInputs): MadeBook {
     });
   }
 
-  const title = name ? `${name}: household book` : "Our household book";
+  const title = name ? `${name}: household book${alsoNamed ? ` (${alsoNamed})` : ""}` : "Our household book";
   const made = longDate.format(inputs.made);
   const home = inputs.facts.home;
   // A small map of where home is, from the map of home and the meeting points when one was drawn.
@@ -2152,8 +2213,9 @@ export function makeBook(inputs: BookInputs): MadeBook {
           caption: "Home and the meeting points. The full map is under Home and meeting points.",
         }
       : undefined;
+  const moving = which?.kind === "portable";
   const coverPage = bookCover({
-    kicker: "Household book",
+    kicker: alsoNamed ? `Household book · ${alsoNamed}` : "Household book",
     title: name || "Our household",
     subtitle: `Made on ${made} from what Outpost held then.`,
     call: {
@@ -2162,7 +2224,8 @@ export function makeBook(inputs: BookInputs): MadeBook {
       note: inputs.answers.sections.includes("first-minutes") ? "Then turn to section 1, The first few minutes." : undefined,
     },
     facts: [
-      ...(home
+      ...(moving ? portableFacts(inputs) : []),
+      ...(home && !moving
         ? ([
             [
               "Home",

@@ -103,6 +103,22 @@ sheet. Print at actual size (100%) and cut along the corner marks. A card that d
 fit is named on screen: try A6 or fewer formats. An encrypted sheet not open in this tab
 gives a card with no medical lines, which says so. Make cards again after a change.
 
+## Several households
+
+With more than one household (**Preparedness → Households**), each paper is for the
+current one, and its screen says which under the title, with **Change**.
+
+- **Medical sheets** stay with the person. A household lists the sheets of its people and
+  the sheets for someone else made in it. Someone in two households has one sheet, shown
+  in both; a change shows in both.
+- **Keeping in touch**, the **household book** and the record of the last book made are
+  each household's own. A new household starts with none.
+- **Grab cards** are for the people in the current household. A household that moves (a
+  caravan, a car, a hiking group) has no address on its cards: they say who it is
+  travelling with and what kit Supplies holds for it.
+- **Keep on this phone** keeps the current household's sheets, and the phone says whose
+  they are.
+
 ## On paper together
 
 The household binder is part of the household book now: **Preparedness → Household

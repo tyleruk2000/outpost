@@ -1,6 +1,7 @@
 /**
  * The household's medical sheets from the copy kept on this phone, while the server is
- * out of reach. A sheet that is not locked is shown as it was kept. A sheet locked with a
+ * out of reach. With several households the copy is of the one current when it was kept,
+ * and says which. A sheet that is not locked is shown as it was kept. A sheet locked with a
  * passphrase was kept as the locked message it is on the server, and is opened here with
  * that passphrase, in memory only: nothing opened is written anywhere, and it closes when
  * the screen does. A sheet locked to a key opens only where that key is.
@@ -24,7 +25,10 @@ import { DEVICE } from "./device";
 import { MEDICAL_ID, MEDICAL_PATH } from "./keep";
 import { getKept, type KeptMedical, readKeptJson } from "./store";
 
-type Found = { state: "loading" } | { state: "not-kept" } | { state: "kept"; item: KeptMedical; sheets: MedicalSheet[] };
+type Found =
+  | { state: "loading" }
+  | { state: "not-kept" }
+  | { state: "kept"; item: KeptMedical; sheets: MedicalSheet[]; householdName: string | null };
 
 /** A sheet's words, as its printed page has them. */
 function SheetBlocks({ blocks }: { blocks: Block[] }) {
@@ -172,8 +176,15 @@ export default function KeptMedicalScreen() {
     let live = true;
     void (async () => {
       const item = await getKept("medical", MEDICAL_ID);
-      const copy = item ? await readKeptJson<{ sheets: MedicalSheet[] }>("medical", MEDICAL_ID, MEDICAL_PATH) : undefined;
-      if (live) setFound(item && copy ? { state: "kept", item, sheets: copy.sheets } : { state: "not-kept" });
+      const copy = item
+        ? await readKeptJson<{ sheets: MedicalSheet[]; householdName?: string | null }>("medical", MEDICAL_ID, MEDICAL_PATH)
+        : undefined;
+      if (live)
+        setFound(
+          item && copy
+            ? { state: "kept", item, sheets: copy.sheets, householdName: copy.householdName ?? item.householdName ?? null }
+            : { state: "not-kept" },
+        );
     })().catch(() => live && setFound({ state: "not-kept" }));
     return () => {
       live = false;
@@ -205,6 +216,7 @@ export default function KeptMedicalScreen() {
   return (
     <Page width="reading">
       <h1 className="font-title text-title text-ink">Medical sheets</h1>
+      {found.householdName ? <p className="mt-1 text-small text-ink-muted">For {found.householdName}</p> : null}
       <p className="mt-2 max-w-[60ch] text-small text-ink-muted">
         The copy kept on this {DEVICE}, from {formatDateTime(found.item.refreshedAt)}. A change made since on the server is not in it.
       </p>

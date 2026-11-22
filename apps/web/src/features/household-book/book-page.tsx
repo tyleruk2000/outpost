@@ -24,7 +24,9 @@ import { useOutlook } from "@/features/emergency-plans/data";
 import type { BinderMap } from "@/features/household-papers/binder-map";
 import { useContactsById } from "@/features/household-papers/data";
 import { grabHousehold, grabPerson, useHouseholdSources } from "@/features/household-papers/household-data";
+import { paperHomePlace } from "@/features/household-papers/paper-household";
 import { libraryQuestion } from "@/features/household-papers/paper-pdf";
+import { ForHousehold } from "@/features/households/for-household";
 import { type MadePdf, madePdf } from "@/features/library/made/made-pdf";
 import { PdfActions } from "@/features/library/made/pdf-actions";
 import { useMapOverview, useMapSources } from "@/features/maps/data";
@@ -101,6 +103,7 @@ export default function BookPage() {
         book.data.answers,
         sources.markers,
         sources.plans.filter((each) => included.has(each.plan.id)),
+        paperHomePlace(sources.which, home),
       ).mapped;
       if (chosen.includes("places") && mapped.length > 0) {
         setDrawing(true);
@@ -139,14 +142,21 @@ export default function BookPage() {
         supplies: sources.supplies,
         grab: {
           people: sources.people.map((person) => grabPerson(person, sources.opened, sources.contacts)),
-          household: grabHousehold(sources.plans, sources.emergencyContacts, sources.markers, sources.comms),
+          household: grabHousehold(sources.plans, sources.emergencyContacts, sources.which, sources.comms, sources.travel),
         },
+        which: sources.which,
+        travel: sources.travel,
         repeaters,
         placesMap: placesMap ? { block: placesMap.block, pictures: placesMap.pictures, missing: placesMap.missing } : null,
       });
       const printed = await renderPdf(out.document);
       setResult({
-        pdf: madePdf(printed.bytes, `Household book, ${formatDate(at.getTime())}`, "Household book", from),
+        pdf: madePdf(
+          printed.bytes,
+          `Household book${sources.which?.several ? `: ${sources.which.name}` : ""}, ${formatDate(at.getTime())}`,
+          "Household book",
+          from,
+        ),
         bytes: printed.bytes,
         pages: printed.pages,
         medical: book.data.answers.sections.includes("people"),
@@ -171,6 +181,7 @@ export default function BookPage() {
         title="Household book"
         description="A few questions about your household, and a printable book made from the answers and from what Outpost holds: what to do first, your people and places, help near home, first aid, water, journeys on foot, checklists. Every piece of advice in it is quoted from a named source."
       />
+      <ForHousehold className="-mt-6 mb-8" />
       {loading ? (
         <div className="grid gap-4">
           <Skeleton className="h-8 w-2/3" />

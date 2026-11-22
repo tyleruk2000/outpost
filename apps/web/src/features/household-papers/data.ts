@@ -30,6 +30,22 @@ export const paperKeys = {
 export const useMedicalSheets = () =>
   useQuery({ queryKey: paperKeys.medical, queryFn: () => api.get<MedicalSheetsResponse>("/api/medical-sheets") });
 
+/** One sheet by itself, whichever household it is kept with: null once it is gone. */
+export const useMedicalSheet = (id: string, enabled: boolean) =>
+  useQuery({
+    queryKey: [...paperKeys.medical, "one", id],
+    queryFn: () =>
+      api
+        .get<{ sheet: MedicalSheet }>(`/api/medical-sheets/${id}`)
+        .then((data) => data.sheet)
+        .catch((error: unknown) => {
+          if (error instanceof ApiError && error.status === 404) return null;
+          throw error;
+        }),
+    enabled,
+    retry: false,
+  });
+
 export function useSaveSheet() {
   const client = useQueryClient();
   return useMutation({

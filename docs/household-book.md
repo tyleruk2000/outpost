@@ -139,6 +139,19 @@ household), Home and the book's screen say which, with a link to make it again. 
 round home (help nearby, the wind, terrain) are not watched. A household binder made
 before the binder became part of the book stands in for the book until the book is made.
 
+## Several households
+
+Each household has its own answers and its own book, made for the current household. With
+more than one, the cover and the foot of each page name the household: the name typed in
+the questions, or the household's name when none was typed.
+
+A household that moves is measured from where it was last said to be, set on its page
+under **Preparedness → Households**. The book says where that was and when ("Where the van
+was on 20 November 2026"), and how long before the book was made. On the cover it lists the
+household's people and kit rather than an address, and a child's card says who the child is
+travelling with. Set where it is, then make the book again, before relying on what it says
+is near.
+
 ## What it does not do
 
 - It does not know whether a place listed is open, stocked or still there.

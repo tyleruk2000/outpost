@@ -32,6 +32,7 @@ import { Select, Skeleton } from "@/components/ui/misc";
 import { useMarkers, useSupplies } from "@/features/emergency-plans/data";
 import { move, RowTools, removeAt, replaceAt } from "@/features/emergency-plans/list-edit";
 import { ContactPicker } from "@/features/emergency-plans/people-section";
+import { ForHousehold } from "@/features/households/for-household";
 import { PdfActions } from "@/features/library/made/pdf-actions";
 import { useMesh } from "@/features/mesh/data";
 import { prepareScreens } from "@/features/prepare/screens";
@@ -476,6 +477,7 @@ export default function CommsPage() {
         title="Keeping in touch"
         description="The household's communication plan: for each situation, what to try first and what next, when to check in, and who to contact. A page for each person to print or keep on the phone."
       />
+      <ForHousehold className="-mt-6 mb-8" />
       {!data || !draft ? (
         comms.isError ? (
           <ErrorState error={comms.error} onRetry={() => void comms.refetch()} />

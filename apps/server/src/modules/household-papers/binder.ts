@@ -8,6 +8,8 @@
  * thing deleted leaves no time behind, so a binder also records what each part was made
  * from (`fingerprints.ts`) and is out of date when that has changed, a deletion included.
  * A binder recorded before fingerprints were kept is compared by its time alone.
+ *
+ * Each household has its own record, keyed by its id; every call is for the current one.
  */
 import { BINDER_PART_IDS, type BinderMade, type BinderPart, type BinderStatus, staleParts } from "@outpost/shared";
 import { eq } from "drizzle-orm";
@@ -15,8 +17,6 @@ import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { householdBinder } from "../../db/schema.ts";
 import type { Fingerprints } from "./fingerprints.ts";
-
-const ROW = "household";
 
 export const madeSchema = z
   .object({
@@ -42,9 +42,10 @@ export function createBinderService(
   changed: () => void,
 ): BinderService {
   const { db, sqlite } = ctx;
-  const newest = (sql: string): number | null => {
+  const rowId = () => ctx.services.households.currentId();
+  const newest = (sql: string, ...params: unknown[]): number | null => {
     try {
-      return (sqlite.prepare(sql).get() as { at: number | null } | undefined)?.at ?? null;
+      return (sqlite.prepare(sql).get(...params) as { at: number | null } | undefined)?.at ?? null;
     } catch {
       return null;
     }
@@ -55,7 +56,8 @@ export function createBinderService(
   };
 
   function changedAt(): Record<BinderPart, number | null> {
-    const plans = newest("SELECT max(updated_at) AS at FROM emergency_plans");
+    const household = rowId();
+    const plans = newest("SELECT max(updated_at) AS at FROM emergency_plans WHERE household_id = ?", household);
     const contacts = newest("SELECT max(updated_at) AS at FROM contacts WHERE is_emergency = 1");
     const places = newest("SELECT max(updated_at) AS at FROM markers");
     const medical = times.medical();
@@ -69,15 +71,15 @@ export function createBinderService(
       frequencies: comms,
       places,
       supplies: max(
-        newest("SELECT max(stock_changed_at) AS at FROM supply_household"),
-        newest("SELECT max(updated_at) AS at FROM supply_household"),
-        newest("SELECT max(updated_at) AS at FROM supply_items"),
+        newest("SELECT max(stock_changed_at) AS at FROM supply_household WHERE id = ?", household),
+        newest("SELECT max(updated_at) AS at FROM supply_household WHERE id = ?", household),
+        newest("SELECT max(updated_at) AS at FROM supply_items WHERE household_id = ?", household),
       ),
     };
   }
 
   const read = (): BinderMade | null => {
-    const row = db.select().from(householdBinder).where(eq(householdBinder.id, ROW)).get();
+    const row = db.select().from(householdBinder).where(eq(householdBinder.id, rowId())).get();
     if (!row) return null;
     return {
       parts: row.parts as BinderPart[],
@@ -103,14 +105,16 @@ export function createBinderService(
         pages: input.pages,
         fingerprints: { ...fingerprints.binder(), ...(input.fingerprints ?? {}) } as Record<string, string>,
       };
+      ctx.services.households.ensure();
       db.insert(householdBinder)
-        .values({ id: ROW, ...values })
+        .values({ id: rowId(), ...values })
         .onConflictDoUpdate({ target: householdBinder.id, set: values })
         .run();
       changed();
       return service.status();
     },
-    count: () => (read() ? 1 : 0),
+    /** Records kept, in every household. */
+    count: () => db.select({ id: householdBinder.id }).from(householdBinder).all().length,
     eraseAll() {
       const had = service.count();
       db.delete(householdBinder).run();

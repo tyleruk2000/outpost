@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { Skeleton, Switch } from "@/components/ui/misc";
 import { useSupplies } from "@/features/emergency-plans/data";
+import { ForHousehold } from "@/features/households/for-household";
 import { KeepMedicalRow } from "@/features/kept/keep-controls";
 import { errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
@@ -100,6 +101,7 @@ export default function MedicalPage() {
         title="Medical sheets"
         description="What a relative or a paramedic needs to be told about each person: medicines, allergies, conditions, blood group, the doctor and pharmacy, and next of kin. One sheet each, to print and for the grab card."
       />
+      <ForHousehold className="-mt-6 mb-8" />
       <Notice tone="warning" icon={<ShieldAlert />} title="The most private thing Outpost holds">
         Outpost has no accounts. Anyone who can reach it on your network can open a sheet that is not encrypted. Encrypt a sheet to need a
         passphrase or a key to read it; it is then opened only in the browser, on a device that has them. Outpost records what you type and

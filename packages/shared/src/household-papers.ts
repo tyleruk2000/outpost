@@ -141,6 +141,8 @@ export interface MedicalSheetsResponse {
   inSearch: boolean;
   /** Whether a language model may read plain sheets, in Chat and over MCP (`tools.medical`). */
   inTools: boolean;
+  /** The household the sheets are for (the current one), and whether there are several to tell apart. */
+  household?: { id: string; name: string; several: boolean };
 }
 
 /** What is inside an encrypted sheet's message. `gpg --decrypt` prints it. */

@@ -25,7 +25,7 @@ import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
 import { errorMessage } from "@/lib/api";
 import { appLocale } from "@/lib/region";
 import { localId } from "@/lib/utils";
-import { useContactsById, useMedicalSheets, useRemoveSheet, useSaveSheet } from "./data";
+import { useContactsById, useMedicalSheet, useMedicalSheets, useRemoveSheet, useSaveSheet } from "./data";
 import { medicalSheetDocument } from "./kit-papers";
 import { holdOpened, lockSheet, type OpenedSheet, sealSheet, touchOpened, useOpenedSheets } from "./medical-crypto";
 import { EncryptSheetDialog, OpenSheet } from "./medical-lock";
@@ -607,7 +607,10 @@ export default function MedicalSheetPage() {
   const { id = "" } = useParams();
   const sheets = useMedicalSheets();
   const opened = useOpenedSheets();
-  const sheet = sheets.data?.sheets.find((entry) => entry.id === id);
+  const listed = sheets.data?.sheets.find((entry) => entry.id === id);
+  // A sheet kept with another household (opened from search, say) is not in this household's list: it is read by itself.
+  const alone = useMedicalSheet(id, Boolean(sheets.data) && !listed);
+  const sheet = listed ?? alone.data ?? undefined;
   const held = sheet ? opened.get(sheet.id) : undefined;
   // A sheet saved elsewhere since it was opened here is a different message: it has to be opened again.
   const open = held && sheet && held.armor === sheet.armor ? held : null;
@@ -619,7 +622,7 @@ export default function MedicalSheetPage() {
         back={{ to: "/prepare/medical", label: "Medical sheets" }}
         title={sheet ? `Medical sheet: ${sheet.name}` : "Medical sheet"}
       />
-      {sheets.isPending ? (
+      {sheets.isPending || (!listed && alone.isLoading) ? (
         <Skeleton className="h-64" />
       ) : sheets.isError ? (
         <ErrorState error={sheets.error} onRetry={() => void sheets.refetch()} />

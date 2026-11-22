@@ -1,7 +1,7 @@
 /**
  * What the household book is made from that Outpost holds about the ground round home:
  * the nearest help and the places to keep away from in the installed reference layers,
- * the flood and planning zones that hold home, the climate kept for home (with the wind's
+ * the flood and planning zones that hold the current household's home, the climate kept for home (with the wind's
  * average direction), and, for each place the household would go to, the straight line
  * there with the ground along it from installed terrain and where each day's walking ends.
  *
@@ -19,10 +19,8 @@ import {
   type BookPlaceGroup,
   type BookWalk,
   type ClimateData,
-  countryAt,
   greatCirclePoint,
   haversineMeters,
-  homePlaceOf,
   initialBearingDeg,
   MAX_SIGHT_PATH_METERS,
   type NearestHit,
@@ -32,7 +30,6 @@ import {
 } from "@outpost/shared";
 import type { AppContext } from "../../core/context.ts";
 import { AppError } from "../../core/errors.ts";
-import { COUNTRIES } from "../layers/countries.ts";
 
 interface GroupSpec {
   id: string;
@@ -276,10 +273,11 @@ export function createBookFacts(ctx: AppContext) {
 
   return async function facts(answers: BookAnswers): Promise<BookFacts> {
     const markers = ctx.services.maps.annotations.listMarkers();
-    const homeMarker = homePlaceOf(markers);
+    // The current household's home (modules/households): its saved place, or where a portable one was last said to be.
+    const where = ctx.services.households.home();
     const terrain =
       ctx.services.maps.tiles.sources().sources.terrain !== null && ctx.services.maps.tiles.sources().sources.terrain !== undefined;
-    if (!homeMarker)
+    if (!where)
       return {
         home: null,
         help: [],
@@ -291,7 +289,7 @@ export function createBookFacts(ctx: AppContext) {
         journeys: [],
         notMeasured: [],
       };
-    const home = { name: homeMarker.name || "Home", lat: homeMarker.lat, lon: homeMarker.lon, country: countryAt(homeMarker, COUNTRIES) };
+    const home = { name: where.name, lat: where.lat, lon: where.lon, country: where.country, kind: where.kind, at: where.at };
     const held = heldLayers();
     const journeys: BookJourney[] = [];
     const notMeasured: BookFacts["notMeasured"] = [];

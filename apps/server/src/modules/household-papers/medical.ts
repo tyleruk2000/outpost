@@ -7,6 +7,11 @@
  * tools a language model may call unless `tools.medical` is on (modules/tools/medical.ts).
  * An encrypted sheet is one armoured message the server cannot read: it is never in
  * search and never given to a tool, whatever the switches say.
+ *
+ * A sheet stays with its person (docs/development/households.md): a household's sheets are
+ * the sheets of the people in it and the sheets for nobody in particular kept with it
+ * (`household_id`). A person in two households has one sheet, in both lists. A sheet whose
+ * person is in no household is kept with the household it names, or the first.
  */
 import {
   isArmoredMessage,
@@ -109,15 +114,26 @@ export const sheetSchema = z
 
 type Row = typeof medicalSheets.$inferSelect;
 
+/**
+ * The sheets of one household, as SQL on `medical_sheets` (with `medicalSheetsParams`):
+ * linked to someone in it, or for nobody in a household and kept with it (null: the first).
+ */
+export const MEDICAL_SHEETS_OF_HOUSEHOLD =
+  "(member_id IN (SELECT person_id FROM household_people WHERE household_id = ?) OR ((member_id IS NULL OR member_id NOT IN (SELECT person_id FROM household_people)) AND coalesce(household_id, ?) = ?))";
+export const medicalSheetsParams = (household: string, first: string): string[] => [household, first, household];
+
 export interface MedicalService {
-  list(): MedicalSheet[];
+  /** The current household's sheets (or the household named). */
+  list(householdId?: string): MedicalSheet[];
+  /** Every sheet, in every household. */
+  listAll(): MedicalSheet[];
   get(id: string): MedicalSheet;
   create(input: MedicalSheetInput): MedicalSheet;
   update(id: string, input: MedicalSheetInput): MedicalSheet;
   remove(id: string): void;
   /** Whether plain sheets are in search now. */
   inSearch(): boolean;
-  /** When any sheet last changed; null with none. */
+  /** When any of the current household's sheets last changed; null with none. */
   changedAt(): number | null;
   count(): number;
   eraseAll(): number;
@@ -188,8 +204,20 @@ export function createMedicalService(ctx: AppContext, changed: () => void): Medi
   };
 
   const reindexAll = () => {
-    for (const sheet of service.list()) index(sheet);
+    for (const sheet of service.listAll()) index(sheet);
   };
+
+  const households = () => ctx.services.households;
+  const idsOf = (householdId: string): string[] =>
+    sqlite
+      .prepare(`SELECT id FROM medical_sheets WHERE ${MEDICAL_SHEETS_OF_HOUSEHOLD}`)
+      .pluck()
+      .all(...medicalSheetsParams(householdId, households().first().id)) as string[];
+  const inSomeHousehold = (memberId: string | null) =>
+    memberId !== null && Boolean(sqlite.prepare("SELECT 1 FROM household_people WHERE person_id = ?").get(memberId));
+  // A sheet linked to someone in a household goes with them; any other is kept with a household.
+  const householdOf = (memberId: string | null, kept: string | null): string | null =>
+    inSomeHousehold(memberId) ? null : (kept ?? households().currentId());
 
   let searchWas = inSearch();
   ctx.services.settings.onChange((settings) => {
@@ -207,14 +235,19 @@ export function createMedicalService(ctx: AppContext, changed: () => void): Medi
   });
 
   const service: MedicalService = {
-    list: () => db.select().from(medicalSheets).orderBy(asc(medicalSheets.name), asc(medicalSheets.createdAt)).all().map(toSheet),
+    listAll: () => db.select().from(medicalSheets).orderBy(asc(medicalSheets.name), asc(medicalSheets.createdAt)).all().map(toSheet),
+    list(householdId) {
+      const ids = new Set(idsOf(householdId ?? households().currentId()));
+      return service.listAll().filter((sheet) => ids.has(sheet.id));
+    },
     get: (id) => toSheet(rowOf(id)),
     create(input) {
       if (service.count() >= L.sheets) throw badRequest(`Outpost holds up to ${L.sheets} medical sheets.`);
       const now = Date.now();
       const id = newId();
+      households().ensure();
       db.insert(medicalSheets)
-        .values({ id, ...columns(input), createdAt: now, updatedAt: now })
+        .values({ id, ...columns(input), householdId: householdOf(input.memberId, null), createdAt: now, updatedAt: now })
         .run();
       const sheet = service.get(id);
       index(sheet);
@@ -231,7 +264,11 @@ export function createMedicalService(ctx: AppContext, changed: () => void): Medi
       if (row.armor !== null && input.record !== undefined && !input.removeEncryption)
         throw badRequest("This sheet is encrypted. Saving it unencrypted would take the encryption off, so it was not saved.");
       db.update(medicalSheets)
-        .set({ ...columns(input), updatedAt: Math.max(Date.now(), row.updatedAt + 1) })
+        .set({
+          ...columns(input),
+          householdId: householdOf(input.memberId, row.householdId),
+          updatedAt: Math.max(Date.now(), row.updatedAt + 1),
+        })
         .where(eq(medicalSheets.id, id))
         .run();
       const sheet = service.get(id);
@@ -246,10 +283,15 @@ export function createMedicalService(ctx: AppContext, changed: () => void): Medi
       changed();
     },
     inSearch,
-    changedAt: () => (sqlite.prepare("SELECT max(updated_at) AS at FROM medical_sheets").get() as { at: number | null }).at,
+    changedAt: () =>
+      (
+        sqlite
+          .prepare(`SELECT max(updated_at) AS at FROM medical_sheets WHERE ${MEDICAL_SHEETS_OF_HOUSEHOLD}`)
+          .get(...medicalSheetsParams(households().currentId(), households().first().id)) as { at: number | null }
+      ).at,
     count: () => (sqlite.prepare("SELECT count(*) AS n FROM medical_sheets").get() as { n: number }).n,
     eraseAll() {
-      const sheets = service.list();
+      const sheets = service.listAll();
       for (const sheet of sheets) search().remove("medical", sheet.id);
       sqlite.prepare("DELETE FROM medical_sheets").run();
       changed();

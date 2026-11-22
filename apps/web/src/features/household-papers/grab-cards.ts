@@ -44,7 +44,10 @@ export interface GrabHousehold {
   places: string[];
   /** The first steps of the communication plan: "Phones down: phone, then mesh, then PMR446 channel 3 on the hour". */
   comms: string[];
+  /** A fixed household's home. A portable household has none on its cards: `travelling` says who and what instead. */
   home: { name: string; lat: number; lon: number } | null;
+  /** A household that moves: its name, its people and its kit, printed where a fixed household's home would be. */
+  travelling?: { household: string; people: string[]; kit: string | null } | null;
 }
 
 /** Home's position in each chosen format; a grid that does not reach it (British National Grid abroad) is left out. */
@@ -115,6 +118,11 @@ function write(
   if (household.home) {
     back.text(`Home: ${household.home.name}`, size * 0.85, { color: MUTED, gap: 2 });
     for (const line of gridLines(household.home.lat, household.home.lon, formats)) back.text(line, size, { bold: false });
+  }
+  if (household.travelling) {
+    back.text(`Travelling with ${household.travelling.household}`, size * 0.85, { color: MUTED, gap: 2 });
+    if (household.travelling.people.length > 0) back.text(household.travelling.people.join(", "), size);
+    if (household.travelling.kit) back.text(`Kit: ${household.travelling.kit}`, size);
   }
   back.text(`Made ${shortDate(made)} in Outpost. Our own plan: follow official warnings.`, size * 0.7, { color: MUTED, gap: 2 });
 }

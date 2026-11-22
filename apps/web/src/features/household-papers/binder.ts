@@ -16,7 +16,6 @@ import {
   type EmergencyPlanResponse,
   type FrequencyEntry,
   GRID_FORMATS,
-  homePlaceOf,
   type MarkerDto,
   type SuppliesResponse,
   type SupplyOutlook,
@@ -52,7 +51,17 @@ export interface BinderSources {
   outlook: SupplyOutlook | null;
   /** The map of home and the meeting points (binder-map.ts), drawn before the pages are made; absent, the page has none. */
   placesMap?: Block | null;
+  /** The first place on the page of places (`paperHomePlace`); left out, the household's home on the cards. */
+  home?: { role: string; name: string; lat: number; lon: number } | null;
 }
+
+/** The first place on the page of places. */
+const homeOf = (sources: BinderSources) =>
+  sources.home !== undefined
+    ? sources.home
+    : sources.household.home
+      ? { role: "Home", name: sources.household.home.name, lat: sources.household.home.lat, lon: sources.household.home.lon }
+      : null;
 
 export interface BinderOptions {
   paper: CardPaper;
@@ -83,7 +92,7 @@ export function partHolds(part: BinderPart, sources: BinderSources): string | nu
       return used > 0 ? `${used} from the communication plan` : null;
     }
     case "places":
-      return homePlaceOf(sources.markers) || sources.household.places.length > 0 ? "home and the meeting points" : null;
+      return homeOf(sources) || sources.household.places.length > 0 ? "home and the meeting points" : null;
     case "supplies":
       return sources.supplies && sources.supplies.items.length > 0 ? `${sources.supplies.items.length} items` : null;
   }
@@ -92,7 +101,7 @@ export function partHolds(part: BinderPart, sources: BinderSources): string | nu
 function placesBlocks(sources: BinderSources): Block[] {
   const formats = GRID_FORMATS.map((format) => format.id);
   const blocks: Block[] = [{ kind: "title", text: "Home and meeting points" }];
-  const { mapped, described } = binderPlaces(sources);
+  const { mapped, described } = binderPlaces({ plans: sources.plans, home: homeOf(sources) });
   if (sources.placesMap) blocks.push(sources.placesMap);
   for (const place of mapped) {
     blocks.push({ kind: "heading", text: `${place.number}. ${place.role}: ${place.name}` });

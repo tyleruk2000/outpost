@@ -1,7 +1,8 @@
 /**
  * Keeping in touch: the household's communication plan. For each situation, the order
  * to try things in (primary, alternate, contingency, emergency), when to check in, and
- * who to contact. One plan per household, printed as a page for each person.
+ * who to contact. One plan for each household (the current one's is read and saved),
+ * printed as a page for each person.
  *
  * It is built from what Outpost already holds, linked by id: contacts, saved places,
  * repeaters, mesh channels, and channels from the list of frequencies (which is part of
@@ -25,7 +26,6 @@ import { AppError, conflict } from "../../core/errors.ts";
 import { commsPlans, markers } from "../../db/schema.ts";
 
 const L = COMMS_LIMITS;
-const ROW = "household";
 const itemId = z.string().min(1).max(64);
 const ref = z.string().min(1).max(120).nullable().default(null);
 const text = (max: number) => z.string().max(max).default("");
@@ -102,9 +102,11 @@ export interface CommsService {
 
 export function createCommsService(ctx: AppContext, changed: () => void): CommsService {
   const { db } = ctx;
+  // One plan for each household, keyed by its id; every call is for the current household.
+  const rowId = () => ctx.services.households.currentId();
 
   const read = (): CommsPlan => {
-    const row = db.select().from(commsPlans).where(eq(commsPlans.id, ROW)).get();
+    const row = db.select().from(commsPlans).where(eq(commsPlans.id, rowId())).get();
     if (!row) return emptyCommsPlan();
     return { ...(row.body as unknown as Omit<CommsPlan, "updatedAt">), updatedAt: row.updatedAt };
   };
@@ -177,15 +179,17 @@ export function createCommsService(ctx: AppContext, changed: () => void): CommsS
         );
       const { baseUpdatedAt: _base, ...body } = input;
       const updatedAt = Math.max(Date.now(), (before.updatedAt ?? 0) + 1);
+      ctx.services.households.ensure();
       db.insert(commsPlans)
-        .values({ id: ROW, body: body as unknown as Record<string, unknown>, updatedAt })
+        .values({ id: rowId(), body: body as unknown as Record<string, unknown>, updatedAt })
         .onConflictDoUpdate({ target: commsPlans.id, set: { body: body as unknown as Record<string, unknown>, updatedAt } })
         .run();
       changed();
       return service.get();
     },
     changedAt: () => read().updatedAt,
-    count: () => (db.select().from(commsPlans).all().length > 0 ? 1 : 0),
+    /** Plans kept, in every household. */
+    count: () => db.select({ id: commsPlans.id }).from(commsPlans).all().length,
     eraseAll() {
       const had = service.count();
       db.delete(commsPlans).run();
