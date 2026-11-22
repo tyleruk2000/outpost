@@ -14,13 +14,17 @@ type HashOptions = {
  * hashed so far.
  */
 export async function hashFile<Algorithm extends string>(
-  file: string,
+  file: string | fs.promises.FileHandle,
   algorithms: readonly Algorithm[],
   options: HashOptions = {},
 ): Promise<Record<Algorithm, string>> {
   const hashes = algorithms.map((algorithm) => createHash(algorithm));
   let seen = 0;
-  const stream = fs.createReadStream(file, { highWaterMark: 1024 * 1024, signal: options.signal });
+  // A handle already open is read from its start and left open for whoever opened it.
+  const stream =
+    typeof file === "string"
+      ? fs.createReadStream(file, { highWaterMark: 1024 * 1024, signal: options.signal })
+      : file.createReadStream({ start: 0, highWaterMark: 1024 * 1024, signal: options.signal, autoClose: false });
   for await (const chunk of stream) {
     for (const hash of hashes) hash.update(chunk as Buffer);
     options.onChunk?.(chunk as Buffer);
@@ -31,6 +35,6 @@ export async function hashFile<Algorithm extends string>(
 }
 
 /** SHA-256 of a file. */
-export async function sha256File(file: string, options: HashOptions = {}): Promise<string> {
+export async function sha256File(file: string | fs.promises.FileHandle, options: HashOptions = {}): Promise<string> {
   return (await hashFile(file, ["sha256"], options)).sha256;
 }

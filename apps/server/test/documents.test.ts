@@ -851,6 +851,40 @@ describe("the service, as other modules use it", () => {
     expect(() => documents.get("nope")).toThrowError(/not found/);
   });
 
+  it("never ingests a file through a link, copied, moved or kept where it is", async () => {
+    const { documents, storage } = app.ctx.services;
+    const secret = path.join(app.dir, "private-notes.txt");
+    fs.writeFileSync(secret, "The private notes of someone else.");
+    const location = storage.getDefault();
+    const link = path.join(location.path, "notes.txt");
+    fs.symlinkSync(secret, link);
+    for (const options of [{}, { move: true }, { inPlace: true }]) {
+      await expect(documents.ingestFile({ sourcePath: link, originalName: "notes.txt", ...options })).rejects.toMatchObject({
+        code: "bad_request",
+        message: expect.stringContaining("is a link"),
+      });
+    }
+    expect(fs.lstatSync(link).isSymbolicLink()).toBe(true);
+    expect(fs.readFileSync(secret, "utf8")).toBe("The private notes of someone else.");
+    expect(documents.list().total).toBe(0);
+  });
+
+  it("checks an EPUB whose mimetype is not first through the file it opened", async () => {
+    const { documents } = app.ctx.services;
+    const epub = await buildZip([
+      { name: "META-INF/container.xml", content: "<container/>" },
+      { name: "mimetype", content: "application/epub+zip", store: true },
+    ]);
+    const added = await documents.ingestFile({ sourcePath: scratch("late-mimetype.epub", epub), originalName: "Late.epub" });
+    expect(added.status).toBe("created");
+    await expect(
+      documents.ingestFile({
+        sourcePath: scratch("not.epub", await buildZip([{ name: "a.txt", content: "x" }])),
+        originalName: "Not.epub",
+      }),
+    ).rejects.toMatchObject({ code: "unsupported" });
+  });
+
   it("follows a file that another module moved", async () => {
     const { documents, storage } = app.ctx.services;
     const created = await add({ name: "atlas.txt", content: "maps of the valley" });

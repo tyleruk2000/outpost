@@ -12,6 +12,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { pipeline } from "node:stream/promises";
 import type {
   DocumentDto,
   DocumentFacets,
@@ -502,22 +503,69 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
     const format = formatForName(originalName);
     const location = uploadLocation(input.locationId);
     const source = path.resolve(input.sourcePath);
-    const stat = await fs.promises.stat(source).catch(() => undefined);
-    if (!stat?.isFile()) throw badRequest(`"${originalName}" could not be found, so it was not added to the library.`);
-    if (stat.size > ctx.config.maxUploadBytes) throw tooLarge(originalName, ctx.config.maxUploadBytes);
+    // Opened once, never through a link, and everything below is read through this handle: a file
+    // swapped for another (or for a link) part of the way through cannot be checked as one and kept as another.
+    const handle = await fs.promises.open(source, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0)).catch((error: unknown) => {
+      if ((error as NodeJS.ErrnoException).code === "ELOOP")
+        throw badRequest(`"${originalName}" is a link to somewhere else, so it was not added to the library.`);
+      throw badRequest(`"${originalName}" could not be found, so it was not added to the library.`);
+    });
+    let stat: fs.Stats;
+    let head: Buffer;
+    let sha256: string;
+    let partPath: string | null = null;
+    let sameDrive = false;
+    try {
+      stat = await handle.stat();
+      if (!stat.isFile()) throw badRequest(`"${originalName}" could not be found, so it was not added to the library.`);
+      if (stat.size > ctx.config.maxUploadBytes) throw tooLarge(originalName, ctx.config.maxUploadBytes);
 
-    const head = await readHead(source);
-    assertContentMatches(format, head, stat.size <= head.length, originalName);
-    if (format.type === "epub" && !isEpubHead(head) && !(await isEpubArchive(source))) throw notAnEpub(originalName);
+      head = await readHead(handle);
+      assertContentMatches(format, head, stat.size <= head.length, originalName);
+      if (format.type === "epub" && !isEpubHead(head) && !(await isEpubArchive({ handle, size: stat.size }))) throw notAnEpub(originalName);
 
-    const sha256 = await sha256File(source);
-    if (!input.allowDuplicate) {
-      // Checked before copying so that re-importing a folder does not copy it all again.
-      const existing = findBySha(sha256);
-      if (existing) return { status: "duplicate", document: toDto(existing) };
+      sha256 = await sha256File(handle);
+      if (!input.allowDuplicate) {
+        // Checked before copying so that re-importing a folder does not copy it all again.
+        const existing = findBySha(sha256);
+        if (existing) return { status: "duplicate", document: toDto(existing) };
+      }
+
+      if (!input.inPlace) {
+        const incoming = path.join(location.path, INCOMING_DIR);
+        await fs.promises.mkdir(incoming, { recursive: true });
+        sameDrive = (await fs.promises.stat(incoming)).dev === stat.dev;
+        if (!(input.move && sameDrive)) {
+          await storage.assertSpace(location.id, stat.size);
+          partPath = await newPartPath(location.path);
+          try {
+            await pipeline(handle.createReadStream({ start: 0, autoClose: false }), fs.createWriteStream(partPath));
+            if ((await fs.promises.stat(partPath)).size !== stat.size) {
+              throw new AppError(
+                "conflict",
+                `"${originalName}" changed while it was being copied. Try again once it is no longer being written.`,
+              );
+            }
+          } catch (error) {
+            await discardPart(partPath);
+            throw describeWriteError(error, location.name);
+          }
+        }
+      }
+    } finally {
+      await handle.close();
     }
 
     const facts = { locationId: location.id, originalName, format, sha256, sizeBytes: stat.size, head };
+    if (partPath) {
+      const outcome = await oneAtATime(() => commit({ ...facts, partPath: partPath!, owned: true }, input));
+      if (input.move && outcome.status === "created") await fs.promises.rm(source, { force: true });
+      return outcome;
+    }
+    // Kept where it is, or moved by a rename: by its name, so the name must still be the file read.
+    const now = await fs.promises.lstat(source).catch(() => undefined);
+    if (!now?.isFile() || now.ino !== stat.ino || now.dev !== stat.dev)
+      throw new AppError("conflict", `"${originalName}" changed while it was being read. Try again once it is no longer being written.`);
     if (input.inPlace) {
       const keepAt = path
         .relative(location.path, resolveInside(location.path, path.relative(location.path, source)))
@@ -526,32 +574,8 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
       if (!keepAt) throw badRequest(`"${originalName}" is not a file inside "${location.name}", so it cannot be recorded where it is.`);
       return oneAtATime(() => commit({ ...facts, partPath: source, owned: false, keepAt }, input));
     }
-    const incoming = path.join(location.path, INCOMING_DIR);
-    await fs.promises.mkdir(incoming, { recursive: true });
-    const sameDrive = (await fs.promises.stat(incoming)).dev === stat.dev;
-
-    if (input.move && sameDrive) {
-      // A rename is instant and cannot half-finish, so the original goes straight in.
-      return oneAtATime(() => commit({ ...facts, partPath: source, owned: false }, input));
-    }
-
-    await storage.assertSpace(location.id, stat.size);
-    const partPath = await newPartPath(location.path);
-    try {
-      await fs.promises.copyFile(source, partPath);
-      if ((await fs.promises.stat(partPath)).size !== stat.size) {
-        throw new AppError(
-          "conflict",
-          `"${originalName}" changed while it was being copied. Try again once it is no longer being written.`,
-        );
-      }
-    } catch (error) {
-      await discardPart(partPath);
-      throw describeWriteError(error, location.name);
-    }
-    const outcome = await oneAtATime(() => commit({ ...facts, partPath, owned: true }, input));
-    if (input.move && outcome.status === "created") await fs.promises.rm(source, { force: true });
-    return outcome;
+    // A rename is instant and cannot half-finish, so the original goes straight in.
+    return oneAtATime(() => commit({ ...facts, partPath: source, owned: false }, input));
   }
 
   // ── Text extraction ──

@@ -1114,7 +1114,7 @@ function MoreAbout() {
         </p>
         <p>
           Outpost keeps the broker's password outside its database and outside backups, and never shows it again once saved. To change it,
-          type a new one.
+          type a new one. It goes only to the address, port and user name it was saved with: change any of them and type it again.
         </p>
         <p>
           Nothing is passed between Home and a radio channel by itself: a message written on Home stays on the home network, and one heard

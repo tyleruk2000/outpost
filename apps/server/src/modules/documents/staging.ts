@@ -130,9 +130,9 @@ export async function stageStream(source: AsyncIterable<Buffer>, options: StageO
   }
 }
 
-/** Reads up to `length` bytes from the start of a file. */
-export async function readHead(file: string, length = SNIFF_BYTES): Promise<Buffer> {
-  const handle = await fs.promises.open(file, "r");
+/** Reads up to `length` bytes from the start of a file, by its path or through a handle already open (left open). */
+export async function readHead(file: string | fs.promises.FileHandle, length = SNIFF_BYTES): Promise<Buffer> {
+  const handle = typeof file === "string" ? await fs.promises.open(file, "r") : file;
   try {
     const buffer = Buffer.alloc(length);
     let read = 0;
@@ -143,7 +143,7 @@ export async function readHead(file: string, length = SNIFF_BYTES): Promise<Buff
     }
     return buffer.subarray(0, read);
   } finally {
-    await handle.close();
+    if (typeof file === "string") await handle.close();
   }
 }
 
