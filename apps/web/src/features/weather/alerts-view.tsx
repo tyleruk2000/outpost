@@ -1,15 +1,20 @@
 /**
  * Alerts beyond the UK: GDACS's disasters and the USGS's earthquakes worldwide, and the
- * national warnings for the country Home is in (MeteoAlarm in Europe, the National
- * Weather Service in the US). Fetched on this view's own press, kept, and shown with their
- * age and each publisher's words as written.
+ * national warnings for the country Home is in, or the one a person chooses near a
+ * border (MeteoAlarm in Europe, the US National Weather Service, Environment and Climate
+ * Change Canada, MetService in New Zealand, the Japan Meteorological Agency). Fetched on
+ * this view's own press, kept, and shown with their age and each publisher's words as
+ * written.
  */
 import {
+  ALERT_COUNTRIES,
   type AlertsPlan,
   GDACS_TYPES,
   haversineMeters,
+  type JmaLevel,
   type KeptCopy,
   METEOALARM_DISCLAIMER,
+  NATIONAL_SERVICE_NAMES,
   type WeatherKind,
   type WeatherSourceInfo,
   WORLD_KINDS,
@@ -17,13 +22,21 @@ import {
 import { RefreshCw } from "lucide-react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/misc";
+import { Badge, Select } from "@/components/ui/misc";
 import { formatDateTime, formatNumber, plural } from "@/lib/utils";
 import { AgeLine, Credit } from "./age-line";
+import { useSetAlertCountry } from "./data";
 
 /** How near an earthquake must be to Home to be listed first, km. Outpost's choice. */
 const NEAR_KM = 1000;
 const LEVEL_TONE = { Green: "neutral", Orange: "warning", Red: "danger", yellow: "warning", orange: "warning", red: "danger" } as const;
+const JMA_TONE: Record<JmaLevel, "danger" | "warning" | "neutral"> = {
+  特別警報: "danger",
+  危険警報: "danger",
+  警報: "warning",
+  注意報: "neutral",
+  解除: "neutral",
+};
 
 const title = (words: string) => words[0]!.toUpperCase() + words.slice(1);
 
@@ -44,21 +57,22 @@ export function AlertsView({
 }) {
   const source = (kind: WeatherKind) => sources.find((candidate) => candidate.kind === kind);
   const kinds: WeatherKind[] = plan.national ? [...WORLD_KINDS, plan.national] : WORLD_KINDS;
-  const nationalName = plan.national === "meteoalarm" ? "MeteoAlarm" : plan.national === "nws" ? "the US National Weather Service" : null;
+  const nationalName = plan.national ? NATIONAL_SERVICE_NAMES[plan.national] : null;
 
   return (
     <div className="grid gap-10">
       <div className="grid max-w-[70ch] gap-3">
         <p className="text-body text-ink">
           {plan.home
-            ? plan.countryName
-              ? `Home (${plan.home.name}) is taken to be in ${plan.countryName}, from its position on the map. `
+            ? plan.homeCountryName
+              ? `Home (${plan.home.name}) is taken to be in ${plan.homeCountryName}, from its position on the map. `
               : `Outpost cannot tell which country Home (${plan.home.name}) is in. `
-            : "No saved place has the home icon, so only the worldwide feeds are fetched. "}
+            : "No saved place has the home icon. "}
+          {plan.chosenCountry ? `National warnings are fetched for ${plan.countryName}, as chosen below. ` : ""}
           {nationalName
             ? `Fetch alerts asks GDACS and the USGS for the whole world, and ${nationalName} for ${plan.countryName}.`
-            : plan.home
-              ? `Outpost knows no open national warning feed for ${plan.countryName ?? "it"}, so Fetch alerts asks GDACS and the USGS for the whole world.`
+            : plan.country
+              ? `Outpost knows no open national warning feed for ${plan.countryName}, so Fetch alerts asks GDACS and the USGS for the whole world.`
               : "Fetch alerts asks GDACS and the USGS for the whole world."}{" "}
           {plan.home ? null : (
             <Link className="text-primary underline underline-offset-2" to="/maps">
@@ -66,6 +80,7 @@ export function AlertsView({
             </Link>
           )}
         </p>
+        <CountryChoice plan={plan} />
         <div>
           <Button variant="secondary" loading={fetching} onClick={() => onFetch(kinds)}>
             <RefreshCw />
@@ -79,14 +94,233 @@ export function AlertsView({
 
       {plan.national === "meteoalarm" ? <MeteoalarmSection copy={copyOf("meteoalarm")} source={source("meteoalarm")} now={now} /> : null}
       {plan.national === "nws" ? <NwsSection copy={copyOf("nws")} source={source("nws")} now={now} /> : null}
+      {plan.national === "eccc" ? <EcccSection copy={copyOf("eccc")} source={source("eccc")} now={now} /> : null}
+      {plan.national === "metservice" ? <MetserviceSection copy={copyOf("metservice")} source={source("metservice")} now={now} /> : null}
+      {plan.national === "jma" ? <JmaSection copy={copyOf("jma")} source={source("jma")} now={now} /> : null}
       <GdacsSection copy={copyOf("gdacs")} source={source("gdacs")} now={now} />
       <QuakesSection copy={copyOf("quakes")} source={source("quakes")} now={now} home={plan.home} />
     </div>
   );
 }
 
+/** Near a border, Home's position can fall in the wrong country's box, or the household may want the neighbour's warnings. */
+function CountryChoice({ plan }: { plan: AlertsPlan }) {
+  const set = useSetAlertCountry();
+  return (
+    <div className="grid max-w-sm gap-1.5">
+      <span className="text-small font-medium text-ink">Country for national warnings</span>
+      <Select
+        aria-label="Country for national warnings"
+        value={plan.chosenCountry ?? "home"}
+        onChange={(code) => set.mutate(code === "home" ? "" : code)}
+        disabled={set.isPending}
+        options={[
+          { value: "home", label: plan.homeCountryName ? `Home's country (${plan.homeCountryName})` : "Home's country" },
+          ...ALERT_COUNTRIES.map((country) => ({ value: country.code, label: title(country.name.replace(/^the /, "")) })),
+        ]}
+      />
+      <span className="text-small text-ink-muted">Choose one near a border, where Home's position may be read as the wrong country.</span>
+    </div>
+  );
+}
+
 function NotFetched({ what }: { what: string }) {
   return <p className="mt-1 text-body text-ink-muted">{what} have not been fetched yet. Press Fetch alerts when there is a connection.</p>;
+}
+
+function EcccSection({ copy, source, now }: { copy: KeptCopy<"eccc"> | null; source: WeatherSourceInfo | undefined; now: number }) {
+  const alerts = copy?.data.alerts ?? [];
+  const inForce = alerts.filter((alert) => alert.status !== "ended");
+  const ended = alerts.filter((alert) => alert.status === "ended");
+  return (
+    <section aria-labelledby="eccc-heading">
+      <h3 id="eccc-heading" className="text-lead font-semibold text-ink">
+        Alerts for the area that holds Home
+      </h3>
+      {!copy ? (
+        <NotFetched what="Environment and Climate Change Canada's alerts" />
+      ) : (
+        <>
+          <AgeLine copy={copy} source={source} now={now} />
+          {inForce.length === 0 ? (
+            <p className="text-body text-ink">No warning, watch, advisory or statement was in force at Home when this was fetched.</p>
+          ) : (
+            <EcccList alerts={inForce} />
+          )}
+          {ended.length > 0 ? (
+            <details className="mt-4">
+              <summary className="min-h-11 cursor-pointer py-2 text-small font-medium text-primary">
+                Ended ({formatNumber(ended.length)})
+              </summary>
+              <EcccList alerts={ended} />
+            </details>
+          ) : null}
+          <Credit source={source} />
+        </>
+      )}
+    </section>
+  );
+}
+
+function EcccList({ alerts }: { alerts: NonNullable<KeptCopy<"eccc">["data"]>["alerts"] }) {
+  return (
+    <ul className="mt-1 divide-y divide-border border-y border-border">
+      {alerts.map((alert) => (
+        <li key={alert.id} className="py-3">
+          <div className="flex flex-wrap gap-2">
+            {alert.colour === "red" || alert.colour === "orange" || alert.colour === "yellow" ? (
+              <Badge tone={LEVEL_TONE[alert.colour]}>{title(alert.colour)}</Badge>
+            ) : null}
+            <Badge tone="neutral">{alert.status ? title(alert.status) : "Status not given"}</Badge>
+          </div>
+          <p className="mt-1.5 font-semibold text-ink">{title(alert.name || alert.type || "Alert")}</p>
+          <p className="mt-1 text-body whitespace-pre-line text-ink">{alert.text}</p>
+          <p className="mt-1 text-small text-ink-muted">
+            {alert.area}
+            {alert.province ? `, ${alert.province}` : ""}.{alert.coversHome === false ? " Its area is next to Home's, not over it." : ""}{" "}
+            Issued {alert.published ? formatDateTime(alert.published) : "at a time not given"}
+            {alert.eventEnd ? `; expected to end ${formatDateTime(alert.eventEnd)}` : ""}.
+          </p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function MetserviceSection({
+  copy,
+  source,
+  now,
+}: {
+  copy: KeptCopy<"metservice"> | null;
+  source: WeatherSourceInfo | undefined;
+  now: number;
+}) {
+  const alerts = copy?.data.alerts ?? [];
+  const here = alerts.filter((alert) => alert.coversHome === true);
+  const rest = alerts.filter((alert) => alert.coversHome !== true);
+  return (
+    <section aria-labelledby="metservice-heading">
+      <h3 id="metservice-heading" className="text-lead font-semibold text-ink">
+        National warnings for New Zealand
+      </h3>
+      {!copy ? (
+        <NotFetched what="MetService's warnings" />
+      ) : (
+        <>
+          <AgeLine copy={copy} source={source} now={now} />
+          {copy.data.unread > 0 ? (
+            <p className="mb-3 text-small text-warning">
+              {plural(copy.data.unread, "alert")} could not be read in full, so {copy.data.unread === 1 ? "it is" : "they are"} shown from
+              the feed's words only, and whether {copy.data.unread === 1 ? "it covers" : "they cover"} Home is not known.
+            </p>
+          ) : null}
+          {alerts.length === 0 ? (
+            <p className="text-body text-ink">No outlook, watch or warning was in MetService's feed when it was fetched.</p>
+          ) : (
+            <>
+              {here.length > 0 ? (
+                <>
+                  <h4 className="mt-2 text-body font-semibold text-ink">Covering Home ({here.length})</h4>
+                  <CapList alerts={here} />
+                </>
+              ) : (
+                <p className="text-body text-ink">No alert in the feed draws an area that holds Home. Check the areas named below.</p>
+              )}
+              {rest.length > 0 ? (
+                <details className="mt-4" open={here.length === 0}>
+                  <summary className="min-h-11 cursor-pointer py-2 text-small font-medium text-primary">
+                    Elsewhere in New Zealand ({formatNumber(rest.length)})
+                  </summary>
+                  <CapList alerts={rest} />
+                </details>
+              ) : null}
+            </>
+          )}
+          <Credit source={source} />
+        </>
+      )}
+    </section>
+  );
+}
+
+function CapList({ alerts }: { alerts: NonNullable<KeptCopy<"metservice">["data"]>["alerts"] }) {
+  const tone = (colour: string | null) => {
+    const word = colour?.toLowerCase();
+    return word === "red" ? "danger" : word === "orange" || word === "yellow" ? "warning" : "neutral";
+  };
+  return (
+    <ul className="mt-1 divide-y divide-border border-y border-border">
+      {alerts.map((alert) => (
+        <li key={alert.id} className="py-3">
+          {alert.colour ? <Badge tone={tone(alert.colour)}>{alert.colour}</Badge> : null}
+          <p className="mt-1.5 font-semibold text-ink">{alert.headline || alert.title}</p>
+          {alert.description ? <p className="mt-1 text-body whitespace-pre-line text-ink">{alert.description}</p> : null}
+          {alert.instruction ? <p className="mt-1 text-body whitespace-pre-line text-ink">{alert.instruction}</p> : null}
+          <p className="mt-1 text-small text-ink-muted">
+            {alert.area ? `${alert.area}. ` : ""}
+            {alert.onset ? `From ${formatDateTime(alert.onset)}` : ""}
+            {alert.expires ? ` until ${formatDateTime(alert.expires)}` : ""}
+            {alert.onset || alert.expires ? ". " : ""}Issued {alert.sent ? formatDateTime(alert.sent) : "at a time not given"}.
+          </p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function JmaSection({ copy, source, now }: { copy: KeptCopy<"jma"> | null; source: WeatherSourceInfo | undefined; now: number }) {
+  const entries = copy?.data.entries ?? [];
+  const inForce = entries.filter((entry) => entry.level !== "解除");
+  const lifted = entries.filter((entry) => entry.level === "解除");
+  return (
+    <section aria-labelledby="jma-heading">
+      <h3 id="jma-heading" className="text-lead font-semibold text-ink">
+        Weather warnings and advisories in Japan
+      </h3>
+      {!copy ? (
+        <NotFetched what="The Japan Meteorological Agency's warnings" />
+      ) : (
+        <>
+          <AgeLine copy={copy} source={source} now={now} />
+          <p className="mb-3 max-w-[70ch] text-small text-ink-muted">
+            The latest headline from each local office, in Japanese as JMA wrote it, highest level first. Outpost cannot tell which
+            prefecture Home is in: find its office below. 特別警報 is an emergency warning, 警報 a warning, 注意報 an advisory, 解除 lifted.
+          </p>
+          {inForce.length === 0 ? (
+            <p className="text-body text-ink">No office's latest message had a warning or advisory in force when this was fetched.</p>
+          ) : (
+            <JmaList entries={inForce} />
+          )}
+          {lifted.length > 0 ? (
+            <details className="mt-4">
+              <summary className="min-h-11 cursor-pointer py-2 text-small font-medium text-primary">
+                Lifted ({formatNumber(lifted.length)})
+              </summary>
+              <JmaList entries={lifted} />
+            </details>
+          ) : null}
+          <Credit source={source} />
+        </>
+      )}
+    </section>
+  );
+}
+
+function JmaList({ entries }: { entries: NonNullable<KeptCopy<"jma">["data"]>["entries"] }) {
+  return (
+    <ul className="mt-1 divide-y divide-border border-y border-border">
+      {entries.map((entry) => (
+        <li key={entry.id} className="py-3" lang="ja">
+          {entry.level ? <Badge tone={JMA_TONE[entry.level]}>{entry.level}</Badge> : null}
+          <p className="mt-1.5 text-body text-ink">{entry.headline}</p>
+          <p className="mt-1 text-small text-ink-muted">
+            {entry.office}. <span lang="en-GB">Issued {entry.updated ? formatDateTime(entry.updated) : "at a time not given"}.</span>
+          </p>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 function MeteoalarmSection({

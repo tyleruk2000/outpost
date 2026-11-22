@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0">
+  <channel>
+    <title>Metservice Public CAP Alerts</title>
+    <link>https://www.metservice.com</link>
+    <description>Current Watches, Warnings and Advisories for New Zealand issued by MetService</description>
+    <copyright>Copyright Meteorological Service of New Zealand Limited, 2026. Licensed under Creative Commons BY 4.0.</copyright>
+    <pubDate>Thu, 15 Oct 2026 10:24:01 +1300</pubDate>
+    <item>
+      <title>Road Snowfall Warning - Arthur's Pass (SH73)</title>
+      <link>https://alerts.metservice.com/cap/alert?id=2.49.0.0.554.0.roadsnow.arthurspass.20261014212322775.0</link>
+      <description>Snow showers may affect the road this evening and 1 cm may accumulate above 800 metres.</description>
+      <pubDate>Thu, 15 Oct 2026 10:23:22 +1300</pubDate>
+      <guid>2.49.0.0.554.0.roadsnow.arthurspass.20261014212322775.0</guid>
+    </item>
+    <item>
+      <title>Heavy Rain Watch - Westland</title>
+      <link>https://alerts.metservice.com/cap/alert?id=2.49.0.0.554.0.missing.0</link>
+      <description>Periods of heavy rain.</description>
+      <pubDate>Thu, 15 Oct 2026 09:00:00 +1300</pubDate>
+      <guid>2.49.0.0.554.0.missing.0</guid>
+    </item>
+  </channel>
+</rss>

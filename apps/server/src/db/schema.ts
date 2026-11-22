@@ -1467,6 +1467,8 @@ export const weatherReadings = sqliteTable(
     /** Reduced to sea level by the formula in @outpost/shared weather.ts. */
     seaLevelHpa: real("sea_level_hpa").notNull(),
     note: text("note").notNull().default(""),
+    /** The point of the compass the wind was blowing from when the reading was taken ("SW"), or null when not given. */
+    windFrom: text("wind_from"),
     origin: text("origin").notNull(),
     createdAt: createdAt(),
   },

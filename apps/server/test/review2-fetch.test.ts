@@ -19,12 +19,17 @@ const offline = fs.readFileSync(path.join(root, "docs/offline.md"), "utf8");
  * pages, shown as links the browser follows.
  */
 const LINKS_ONLY = new Set([
+  "about.metservice.com",
   "check-for-flooding.service.gov.uk",
   "creativecommons.org",
   "discovery.nationalarchives.gov.uk",
+  "eccc-msc.github.io",
   "fas.org",
   "hub.worldpop.org",
   "joint-research-centre.ec.europa.eu",
+  "www.jma.go.jp",
+  "www.metservice.com",
+  "xml.kishou.go.jp",
   "map.geo.admin.ch",
   "mapterhorn.com",
   "nsarchive2.gwu.edu",

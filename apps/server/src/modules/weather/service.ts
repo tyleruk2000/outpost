@@ -8,6 +8,8 @@
  */
 import {
   type AlertsPlan,
+  alertCountryName,
+  type CapAlert,
   countryAt,
   type FloodData,
   freshness,
@@ -20,7 +22,9 @@ import {
   MAX_RIVER_STATIONS,
   METEOALARM_COUNTRIES,
   type MetOfficeRegionId,
-  NWS_COUNTRIES,
+  NATIONAL_SERVICE_NAMES,
+  type NationalService,
+  nationalServiceOf,
   type PressureReading,
   type PressureUnit,
   type ReadingImportResult,
@@ -43,6 +47,7 @@ import {
   type WeatherKind,
   type WeatherPlace,
   type WeatherSourceId,
+  type WindPoint,
   warningState,
 } from "@outpost/shared";
 import { and, asc, eq, gte, lt, sql } from "drizzle-orm";
@@ -56,8 +61,13 @@ import { newId } from "../../core/ids.ts";
 import { weatherCache, weatherPlaces, weatherReadings } from "../../db/schema.ts";
 import { COUNTRIES } from "../layers/countries.ts";
 import {
+  capAlertOf,
+  parseCapDocument,
+  parseEcccAlerts,
   parseGdacs,
+  parseJmaFeed,
   parseMeteoalarm,
+  parseMetserviceFeed,
   parseNwsAlerts,
   parseSwpcFlux,
   parseSwpcKp,
@@ -79,7 +89,15 @@ import {
   parsePvgis,
   SourceFormatError,
 } from "./parsers.ts";
-import { FLOOD_WARNINGS_KM, type SourceFetcher, SWPC_FILES, sentWords, sourceUrls, WEATHER_SOURCES } from "./sources.ts";
+import {
+  FLOOD_WARNINGS_KM,
+  MAX_METSERVICE_ALERTS,
+  type SourceFetcher,
+  SWPC_FILES,
+  sentWords,
+  sourceUrls,
+  WEATHER_SOURCES,
+} from "./sources.ts";
 
 /** Readings asked for with each station's latest, enough for three hours at the usual 15 minutes and a margin. */
 const LATEST_COUNT = 16;
@@ -98,6 +116,7 @@ export interface ReadingInput {
   unit: PressureUnit;
   heightM: number;
   note: string;
+  windFrom: WindPoint | null;
 }
 
 export interface WeatherService {
@@ -143,10 +162,19 @@ const SOURCE_OF: Record<WeatherKind, WeatherSourceId> = {
   quakes: "usgs-quakes",
   meteoalarm: "meteoalarm",
   nws: "nws-alerts",
+  eccc: "eccc-alerts",
+  metservice: "metservice-alerts",
+  jma: "jma-warnings",
   "space-weather": "swpc",
 };
 
-export function createWeatherService(ctx: AppContext, fetcher: SourceFetcher, options: { riversKm: () => number }): WeatherService {
+const NATIONAL_KINDS: readonly WeatherKind[] = ["meteoalarm", "nws", "eccc", "metservice", "jma"] satisfies NationalService[];
+
+export function createWeatherService(
+  ctx: AppContext,
+  fetcher: SourceFetcher,
+  options: { riversKm: () => number; alertCountry: () => string | null },
+): WeatherService {
   const { db, sqlite } = ctx;
   // Copies kept for places that are no longer in the list (an update an earlier version
   // finished after the place was removed) are counted as fetched with nowhere to show
@@ -311,7 +339,7 @@ export function createWeatherService(ctx: AppContext, fetcher: SourceFetcher, op
     return { bytes };
   }
 
-  /** Where Home is, the country it is taken to be in, and the national service that covers it. */
+  /** Where Home is, the country it is taken to be in, the country chosen instead if any, and the national service asked. */
   function alertsPlan(): AlertsPlan {
     let marker: { name: string; lat: number; lon: number } | null = null;
     try {
@@ -320,17 +348,55 @@ export function createWeatherService(ctx: AppContext, fetcher: SourceFetcher, op
     } catch {
       marker = null;
     }
-    const country = marker ? countryAt(marker, COUNTRIES) : null;
-    const national =
-      country && METEOALARM_COUNTRIES[country]
-        ? "meteoalarm"
-        : country && (NWS_COUNTRIES as readonly string[]).includes(country)
-          ? "nws"
-          : null;
-    const countryName = country
-      ? (METEOALARM_COUNTRIES[country]?.name ?? COUNTRIES.find((entry) => entry.code === country)?.name ?? country)
-      : null;
-    return { home: marker, country, countryName, national };
+    const homeCountry = marker ? countryAt(marker, COUNTRIES) : null;
+    const nameOf = (code: string | null) =>
+      code ? (alertCountryName(code) ?? COUNTRIES.find((entry) => entry.code === code)?.name ?? code) : null;
+    const chosen = options.alertCountry();
+    const chosenCountry = chosen && nationalServiceOf(chosen) ? chosen : null;
+    const country = chosenCountry ?? homeCountry;
+    return {
+      home: marker,
+      homeCountry,
+      homeCountryName: nameOf(homeCountry),
+      chosenCountry,
+      country,
+      countryName: nameOf(country),
+      national: nationalServiceOf(country),
+    };
+  }
+
+  /** MetService's feed, then each alert's CAP document on the same host; an alert whose document cannot be had keeps the feed's words. */
+  async function fetchMetservice(
+    home: { lat: number; lon: number },
+    signal?: AbortSignal,
+  ): Promise<{ data: unknown; bytes: number; read: number }> {
+    const feed = await fetcher.get("metservice-alerts", sourceUrls.metservice(), signal);
+    const parsed = parseMetserviceFeed(feed.text);
+    let bytes = feed.bytes;
+    let unread = 0;
+    let read = 0;
+    const alerts: CapAlert[] = [];
+    for (const item of parsed.items.slice(0, MAX_METSERVICE_ALERTS)) {
+      if (signal?.aborted) throw Object.assign(new Error("Stopped"), { name: "AbortError" });
+      let cap = null;
+      if (item.link) {
+        try {
+          const answer = await fetcher.get("metservice-alerts", item.link, signal);
+          bytes += answer.bytes;
+          cap = parseCapDocument(answer.text, home);
+          read += 1;
+        } catch (error) {
+          if ((error as Error).name === "AbortError") throw error;
+        }
+      }
+      if (!cap) unread += 1;
+      if (cap?.status && cap.status !== "Actual") continue;
+      alerts.push(capAlertOf(item, cap));
+    }
+    unread += Math.max(0, parsed.items.length - MAX_METSERVICE_ALERTS);
+    const rank = (alert: CapAlert) => (alert.coversHome ? 0 : 1);
+    alerts.sort((a, b) => rank(a) - rank(b) || (a.onset ?? a.sent ?? 0) - (b.onset ?? b.sent ?? 0));
+    return { data: { title: parsed.title, publishedAt: parsed.publishedAt, alerts, unread }, bytes, read };
   }
 
   /** Fetches and keeps one of the kinds that are one copy for the household. Returns the bytes received. */
@@ -347,12 +413,14 @@ export function createWeatherService(ctx: AppContext, fetcher: SourceFetcher, op
       keep(kind, null, kind === "gdacs" ? parseGdacs(answer.text) : parseUsgsQuakes(answer.text), answer.bytes, sentWords(url));
       return answer.bytes;
     }
-    if (kind === "meteoalarm" || kind === "nws") {
+    if (NATIONAL_KINDS.includes(kind)) {
       const plan = alertsPlan();
-      if (!plan.home) throw badRequest("No saved place has the home icon, so Outpost does not know which country's warnings to fetch.");
+      const who = NATIONAL_SERVICE_NAMES[kind as NationalService];
       if (plan.national !== kind)
         throw badRequest(
-          `Home is taken to be in ${plan.countryName ?? "no country Outpost can name"}, which ${kind === "meteoalarm" ? "MeteoAlarm" : "the US National Weather Service"} does not cover.`,
+          plan.country
+            ? `Warnings are fetched for ${plan.countryName}, which ${who} does not cover.`
+            : "No saved place has the home icon and no country is chosen, so Outpost does not know which country's warnings to fetch.",
         );
       if (kind === "meteoalarm") {
         const country = METEOALARM_COUNTRIES[plan.country!]!;
@@ -360,6 +428,33 @@ export function createWeatherService(ctx: AppContext, fetcher: SourceFetcher, op
         const answer = await fetcher.get("meteoalarm", url, signal);
         const parsed = parseMeteoalarm(answer.text, { code: plan.country!, name: country.name }, plan.home);
         keep(kind, null, parsed, answer.bytes, `feeds.meteoalarm.org: the feed for ${country.name}; no position`);
+        return answer.bytes;
+      }
+      if (kind === "jma") {
+        const url = sourceUrls.jma();
+        const answer = await fetcher.get("jma-warnings", url, signal);
+        keep(kind, null, parseJmaFeed(answer.text), answer.bytes, sentWords(url));
+        return answer.bytes;
+      }
+      // The rest are asked about Home's position, or check their areas against it.
+      if (!plan.home) throw badRequest(`No saved place has the home icon, so Outpost cannot ask ${who} about it. Mark Home on the map.`);
+      if (kind === "metservice") {
+        const { data, bytes, read } = await fetchMetservice(plan.home, signal);
+        const sent = `alerts.metservice.com: the feed for New Zealand${read > 0 ? `, then ${read === 1 ? "the one alert" : `each of ${read} alerts`} it lists` : ""}; no position`;
+        keep(kind, null, { data, validFrom: null, validUntil: null }, bytes, sent);
+        return bytes;
+      }
+      if (kind === "eccc") {
+        const url = sourceUrls.eccc(plan.home.lat, plan.home.lon);
+        const answer = await fetcher.get("eccc-alerts", url, signal);
+        const box = new URL(url).searchParams.get("bbox");
+        keep(
+          kind,
+          null,
+          parseEcccAlerts(answer.text, plan.home),
+          answer.bytes,
+          `api.weather.gc.ca: the box ${box} (west, south, east, north)`,
+        );
         return answer.bytes;
       }
       const url = sourceUrls.nws(plan.home.lat, plan.home.lon);
@@ -415,7 +510,12 @@ export function createWeatherService(ctx: AppContext, fetcher: SourceFetcher, op
       .from(weatherReadings)
       .orderBy(asc(weatherReadings.takenAt))
       .all()
-      .map((row) => ({ ...row, unit: row.unit as PressureUnit, origin: row.origin as PressureReading["origin"] }));
+      .map((row) => ({
+        ...row,
+        unit: row.unit as PressureUnit,
+        windFrom: (row.windFrom as WindPoint | null) ?? null,
+        origin: row.origin as PressureReading["origin"],
+      }));
   }
 
   function readingValues(input: ReadingInput) {
@@ -662,6 +762,7 @@ export function createWeatherService(ctx: AppContext, fetcher: SourceFetcher, op
         heightM: input.heightM,
         seaLevelHpa,
         note: input.note.slice(0, WEATHER_LIMITS.note),
+        windFrom: input.windFrom,
         origin: "typed" as const,
         createdAt: Date.now(),
       };
@@ -716,6 +817,7 @@ export function createWeatherService(ctx: AppContext, fetcher: SourceFetcher, op
               heightM: row.heightM,
               seaLevelHpa: row.seaLevelHpa,
               note: "",
+              windFrom: row.windFrom,
               origin: "file",
               createdAt: now,
             })

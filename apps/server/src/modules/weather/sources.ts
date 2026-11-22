@@ -14,6 +14,7 @@ import { NASA_POWER_PARAMETERS, OPEN_METEO_DAILY, OPEN_METEO_HOURLY, OPEN_METEO_
 
 const TERMS_READ = "2026-11-16";
 const ALERTS_READ = "2026-11-21";
+const NATIONAL_READ = "2026-11-22";
 
 export const WEATHER_SOURCES: Record<WeatherSourceId, WeatherSourceInfo> = {
   "open-meteo": {
@@ -133,21 +134,21 @@ export const WEATHER_SOURCES: Record<WeatherSourceId, WeatherSourceInfo> = {
     covers: "The whole world.",
     host: "earthquake.usgs.gov",
     sends: "Nothing about you or your places: the one feed for the whole world is fetched.",
-    licence: "Work of the US Government, not under copyright in the US (the USGS's own copyright page could not be read from here)",
+    licence: "U.S. Public Domain (USGS-authored or produced data and information)",
     licenceUrl: "https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits",
-    attribution: "Earthquake data: U.S. Geological Survey",
+    attribution: "Credit: U.S. Geological Survey",
     liveUrl: "https://earthquake.usgs.gov/earthquakes/map/",
     termsUrl: "https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits",
-    termsRead: ALERTS_READ,
+    termsRead: NATIONAL_READ,
   },
   meteoalarm: {
     id: "meteoalarm",
     kind: "meteoalarm",
     publisher: "EUMETNET – MeteoAlarm",
     name: "National weather warnings in Europe",
-    covers: "38 European countries, one country's feed at a time: the one Home is in.",
+    covers: "38 European countries, one country's feed at a time: the one Home is in, or the one chosen.",
     host: "feeds.meteoalarm.org",
-    sends: "The name of the country Home is in, as the feed's address; no position.",
+    sends: "The name of the country, as the feed's address; no position.",
     licence: "Terms equivalent to CC BY 4.0, with MeteoAlarm's additional requirements for redistribution",
     licenceUrl: "https://meteoalarm.org/en/live/page/terms-and-conditions",
     attribution: "EUMETNET – MeteoAlarm, with the warnings of the country's national meteorological service. www.meteoalarm.org",
@@ -170,6 +171,54 @@ export const WEATHER_SOURCES: Record<WeatherSourceId, WeatherSourceInfo> = {
     liveUrl: "https://www.weather.gov/",
     termsUrl: "https://www.weather.gov/documentation/services-web-api",
     termsRead: ALERTS_READ,
+  },
+  "eccc-alerts": {
+    id: "eccc-alerts",
+    kind: "eccc",
+    publisher: "Environment and Climate Change Canada",
+    name: "Warnings, watches, advisories and statements for the area that holds Home",
+    covers: "Canada.",
+    host: "api.weather.gc.ca",
+    sends: "A box about two kilometres across round Home's latitude and longitude, rounded to two decimal places.",
+    licence: "Environment and Climate Change Canada Data Servers End-use Licence",
+    licenceUrl: "https://eccc-msc.github.io/open-data/licence/readme_en/",
+    attribution:
+      "Data Source: Environment and Climate Change Canada. Contains information licenced under the Data Server End-use Licence of Environment and Climate Change Canada",
+    liveUrl: "https://weather.gc.ca/warnings/index_e.html",
+    termsUrl: "https://eccc-msc.github.io/open-data/usage-policy/readme_en/",
+    termsRead: NATIONAL_READ,
+  },
+  "metservice-alerts": {
+    id: "metservice-alerts",
+    kind: "metservice",
+    publisher: "MetService (Meteorological Service of New Zealand)",
+    name: "Severe weather outlooks, watches and warnings for New Zealand",
+    covers: "New Zealand.",
+    host: "alerts.metservice.com",
+    sends: "Nothing about you or your places: the one feed for New Zealand is fetched, then each alert it lists.",
+    licence: "Creative Commons BY 4.0, as the feed states",
+    licenceUrl: "https://creativecommons.org/licenses/by/4.0/",
+    attribution:
+      "Copyright Meteorological Service of New Zealand Limited, 2026. Licensed under Creative Commons BY 4.0. This information is made freely available by MetService. Despite this, MetService is not associated with, and does not endorse, Outpost or have involvement in how this information is presented",
+    liveUrl: "https://www.metservice.com/warnings/home",
+    termsUrl: "https://about.metservice.com/our-data-access-policy",
+    termsRead: NATIONAL_READ,
+  },
+  "jma-warnings": {
+    id: "jma-warnings",
+    kind: "jma",
+    publisher: "Japan Meteorological Agency",
+    name: "Weather warnings and advisories, the latest from each local office (in Japanese)",
+    covers: "Japan.",
+    host: "www.data.jma.go.jp",
+    sends: "Nothing about you or your places: the one feed for the whole of Japan is fetched.",
+    licence: "Public Data License (Version 1.0), compatible with CC BY 4.0",
+    licenceUrl: "https://www.jma.go.jp/jma/en/copyright.html",
+    attribution:
+      "Source: Japan Meteorological Agency website (https://www.data.jma.go.jp/developer/xml/feed/extra_l.xml). Edited: the latest headline from each office is kept",
+    liveUrl: "https://www.jma.go.jp/bosai/warning/",
+    termsUrl: "https://xml.kishou.go.jp/xmlpull.html",
+    termsRead: NATIONAL_READ,
   },
   swpc: {
     id: "swpc",
@@ -198,7 +247,15 @@ export const SWPC_FILES = {
 } as const;
 
 /** How large an answer may be, by source, when it is more than `MAX_ANSWER_BYTES`: a large country's MeteoAlarm feed is about 3 MB. */
-export const MAX_BYTES_OF: Partial<Record<WeatherSourceId, number>> = { meteoalarm: 12 * 1024 * 1024, gdacs: 4 * 1024 * 1024 };
+export const MAX_BYTES_OF: Partial<Record<WeatherSourceId, number>> = {
+  meteoalarm: 12 * 1024 * 1024,
+  gdacs: 4 * 1024 * 1024,
+  // JMA's long feed lists every message of the past few days: about 4 MB on 22 November 2026.
+  "jma-warnings": 16 * 1024 * 1024,
+};
+
+/** The most CAP documents fetched from MetService's feed on one press. */
+export const MAX_METSERVICE_ALERTS = 40;
 
 /** How far round a place flood warnings are asked for, km. River and sea levels use the distance a person chooses (`weather.riversKm`). */
 export const FLOOD_WARNINGS_KM = 15;
@@ -267,6 +324,19 @@ export const sourceUrls = {
   nws(lat: number, lon: number): string {
     const at = position(lat, lon);
     return `https://api.weather.gov/alerts/active?point=${at.lat},${at.lon}`;
+  },
+  /** The alerts whose areas meet a box 0.02° across round Home, in English, from MSC GeoMet's OGC API. */
+  eccc(lat: number, lon: number): string {
+    const at = { lat: roundForSending(lat), lon: roundForSending(lon) };
+    const box = [at.lon - 0.01, at.lat - 0.01, at.lon + 0.01, at.lat + 0.01].map((value) => value.toFixed(2)).join(",");
+    return `https://api.weather.gc.ca/collections/weather-alerts/items?f=json&lang=en&limit=200&bbox=${box}`;
+  },
+  metservice(): string {
+    return "https://alerts.metservice.com/cap/rss";
+  },
+  /** JMA's long feed of messages issued at any time ("随時"), updated hourly with the past few days. */
+  jma(): string {
+    return "https://www.data.jma.go.jp/developer/xml/feed/extra_l.xml";
   },
   solar(lat: number, lon: number): string {
     const at = position(lat, lon);

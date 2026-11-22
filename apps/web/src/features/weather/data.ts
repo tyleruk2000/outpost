@@ -13,6 +13,7 @@ import type {
   WeatherPlace,
   WeatherPlacesImportResult,
   WeatherResponse,
+  WindPoint,
 } from "@outpost/shared";
 import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, errorMessage } from "@/lib/api";
@@ -60,6 +61,8 @@ export const useRemoveCopy = () => useChange((id: string) => api.delete(`/api/we
 export const useSetUpdateOnOpen = () => useChange((updateOnOpen: boolean) => api.put("/api/weather/options", { updateOnOpen }));
 /** How far round a place river and sea levels are asked for: kept on the server, for every device. Fetches nothing. */
 export const useSetRiversKm = () => useChange((riversKm: number) => api.put("/api/weather/options", { riversKm }));
+/** The country national warnings are fetched for instead of Home's ("" goes by Home). Fetches nothing. */
+export const useSetAlertCountry = () => useChange((alertCountry: string) => api.put("/api/weather/options", { alertCountry }));
 /** A station's last few days of readings, on a press on its own view: it makes Outpost contact the Environment Agency. */
 export const useStationReadings = () =>
   useChange(
@@ -76,7 +79,7 @@ export const useUpdate = () =>
 
 export const useAddReading = () =>
   useChange(
-    (input: { takenAt: number; value: number; unit: PressureUnit; heightM: number; note: string }) =>
+    (input: { takenAt: number; value: number; unit: PressureUnit; heightM: number; note: string; windFrom: WindPoint | null }) =>
       api.post<{ reading: PressureReading }>("/api/weather/readings", input).then((data) => data.reading),
     { quiet: true },
   );

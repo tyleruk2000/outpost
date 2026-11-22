@@ -6,7 +6,8 @@
  * A header row names the columns, matched loosely: a time ("time", "date", "datetime",
  * "timestamp", or a "date" and a "time" column), a pressure ("pressure", "hpa", "mb",
  * "mbar", "inhg", "value"), and optionally its unit ("unit") and the barometer's height
- * above sea level in metres ("height", "altitude", "elevation"). What a row leaves out
+ * above sea level in metres ("height", "altitude", "elevation") and the wind direction
+ * ("wind", "wind_from", "wind_direction": a point of the compass or degrees). What a row leaves out
  * comes from what the person chose beside the file. A time with no zone (as a logger
  * writes it) is read in the zone the person's device is in.
  */
@@ -20,6 +21,7 @@ import {
   seaLevelPressure,
   toHpa,
   WEATHER_LIMITS,
+  windPointOf,
 } from "@outpost/shared";
 import { parse } from "csv-parse/sync";
 import { badRequest } from "../../core/errors.ts";
@@ -44,6 +46,7 @@ const PRESSURE = [
 ];
 const UNIT = ["unit", "units", "pressureunit"];
 const HEIGHT = ["height", "heightm", "altitude", "altitudem", "elevation", "elevationm"];
+const WIND = ["wind", "windfrom", "winddirection", "winddir", "direction"];
 
 /** Minutes ahead of UTC that a zone is at a moment. */
 function zoneOffsetMinutes(at: number, zone: string): number {
@@ -150,6 +153,7 @@ export function readReadingsCsv(text: string, options: ReadCsvOptions): ReadingI
   const pressureColumn = find(PRESSURE);
   const unitColumn = find(UNIT);
   const heightColumn = find(HEIGHT);
+  const windColumn = find(WIND);
   if (pressureColumn === -1) throw badRequest('That file has no column of pressures. Name it "pressure", "hPa", "mb" or "inHg".');
   if (timeColumn === -1 && !separateDateAndTime)
     throw badRequest('That file has no column of times. Name it "time", or have a "date" and a "time" column.');
@@ -217,8 +221,11 @@ export function readReadingsCsv(text: string, options: ReadCsvOptions): ReadingI
       continue;
     }
     seen.add(takenAt);
-    const notes = [pressure.note, height?.note ?? null].filter((note): note is string => note !== null);
-    rows.push({ line, takenAt, value, unit, heightM, seaLevelHpa, duplicate: options.existing.has(takenAt), notes });
+    const windText = cell(windColumn);
+    const windFrom = windText ? windPointOf(windText) : null;
+    const windNote = windText && !windFrom ? `“${windText.slice(0, 20)}” is not a wind direction; it was left out.` : null;
+    const notes = [pressure.note, height?.note ?? null, windNote].filter((note): note is string => note !== null);
+    rows.push({ line, takenAt, value, unit, heightM, seaLevelHpa, windFrom, duplicate: options.existing.has(takenAt), notes });
   }
   return { rows, problems, added: 0 };
 }
@@ -232,11 +239,11 @@ function cell(value: string | number): string {
 
 /**
  * Readings as a CSV file that `readReadingsCsv` reads back as they were: the time in UTC,
- * the figure as the barometer showed it, its unit and height; then the sea-level figure,
+ * the figure as the barometer showed it, its unit, height and the wind; then the sea-level figure,
  * the note and where it came from, for a person's own use (they are not read back).
  */
 export function writeReadingsCsv(readings: PressureReading[]): string {
-  const lines = [["time", "pressure", "unit", "height_m", "sea_level_hpa", "note", "origin"].join(",")];
+  const lines = [["time", "pressure", "unit", "height_m", "wind_from", "sea_level_hpa", "note", "origin"].join(",")];
   for (const reading of readings) {
     lines.push(
       [
@@ -244,6 +251,7 @@ export function writeReadingsCsv(readings: PressureReading[]): string {
         reading.value,
         reading.unit,
         reading.heightM,
+        reading.windFrom ?? "",
         reading.seaLevelHpa.toFixed(1),
         reading.note,
         reading.origin,

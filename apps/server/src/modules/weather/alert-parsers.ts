@@ -4,17 +4,24 @@
  * Each reads what it needs and checks it; an answer that is not the publisher's format
  * is refused whole, and what was kept before stays.
  */
-import type {
-  GdacsData,
-  GdacsEvent,
-  MeteoalarmData,
-  MeteoalarmItem,
-  NwsAlert,
-  NwsData,
-  QuakeItem,
-  QuakesData,
-  ScaleNow,
-  SpaceWeatherData,
+import {
+  type CapAlert,
+  type EcccAlert,
+  type EcccData,
+  type GdacsData,
+  type GdacsEvent,
+  JMA_LEVELS,
+  type JmaData,
+  type JmaEntry,
+  type JmaLevel,
+  type MeteoalarmData,
+  type MeteoalarmItem,
+  type NwsAlert,
+  type NwsData,
+  type QuakeItem,
+  type QuakesData,
+  type ScaleNow,
+  type SpaceWeatherData,
 } from "@outpost/shared";
 import { XML_CLOSE, XML_END, XML_OPEN, XML_TEXT, XmlTokenizer } from "../maps/gpx-xml.ts";
 import { type Parsed, SourceFormatError } from "./parsers.ts";
@@ -100,7 +107,8 @@ function readXmlRecords(text: string, root: string, record: string, who: string,
             });
         }
       } else if (event === XML_TEXT) {
-        if (child !== null && reader.depth === childDepth && buffer.length < 200_000) buffer += reader.text();
+        // An Atom `author` holds its name one deeper; that name is the author's text here.
+        if (child !== null && (reader.depth === childDepth || child === "author") && buffer.length < 200_000) buffer += reader.text();
       } else if (event === XML_CLOSE) {
         if (current && reader.depth === recordDepth - 1) {
           records.push(current);
@@ -346,4 +354,252 @@ export function parseSwpcSunspots(text: string): SpaceWeatherData["sunspots"] {
   const value = num(Number(cells[4]), 0, 1000);
   if (value === null) throw new SourceFormatError("NOAA's daily solar data has no sunspot number for its last day.");
   return { value, day: `${cells[0]}-${cells[1]}-${cells[2]}` };
+}
+
+// ── Environment and Climate Change Canada ───────────────────────────────────
+
+/** Whether a point is inside a GeoJSON ring of `[lon, lat]` pairs (even-odd rule). */
+function insideRing(ring: unknown, point: { lat: number; lon: number }): boolean {
+  if (!Array.isArray(ring) || ring.length < 3) return false;
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const a = ring[i] as unknown;
+    const b = ring[j] as unknown;
+    if (!Array.isArray(a) || !Array.isArray(b)) return false;
+    const [lonI, latI] = a as number[];
+    const [lonJ, latJ] = b as number[];
+    if (![lonI, latI, lonJ, latJ].every((value) => typeof value === "number" && Number.isFinite(value))) return false;
+    if (latI! > point.lat !== latJ! > point.lat && point.lon < ((lonJ! - lonI!) * (point.lat - latI!)) / (latJ! - latI!) + lonI!)
+      inside = !inside;
+  }
+  return inside;
+}
+
+/** Whether a GeoJSON Polygon or MultiPolygon holds a point: inside an outer ring and outside its holes. */
+export function insideGeoJson(geometry: unknown, point: { lat: number; lon: number }): boolean | null {
+  if (!isRecord(geometry) || !Array.isArray(geometry.coordinates)) return null;
+  const polygons: unknown[] | null =
+    geometry.type === "Polygon" ? [geometry.coordinates] : geometry.type === "MultiPolygon" ? geometry.coordinates : null;
+  if (!polygons) return null;
+  return polygons.some((rings) => {
+    if (!Array.isArray(rings) || rings.length === 0) return false;
+    return insideRing(rings[0], point) && !rings.slice(1).some((hole) => insideRing(hole, point));
+  });
+}
+
+const ECCC_STATUS_ORDER: Record<string, number> = { new: 0, continued: 1, updated: 1, ended: 3 };
+const COLOUR_ORDER: Record<string, number> = { red: 0, orange: 1, yellow: 2 };
+
+export function parseEcccAlerts(text: string, home: { lat: number; lon: number }): Parsed<EcccData> {
+  const answer = json(text, "Environment and Climate Change Canada");
+  if (!isRecord(answer) || answer.type !== "FeatureCollection" || !Array.isArray(answer.features))
+    throw new SourceFormatError("Environment and Climate Change Canada's answer is not its list of alerts.");
+  const alerts: EcccAlert[] = [];
+  for (const feature of answer.features.slice(0, 500)) {
+    if (!isRecord(feature) || !isRecord(feature.properties)) continue;
+    const p = feature.properties;
+    const colour = str(p.risk_colour_en, 20).toLowerCase();
+    alerts.push({
+      id: str(feature.id, 120),
+      name: str(p.alert_name_en, 200),
+      type: str(p.alert_type, 40),
+      colour: colour === "" ? null : colour,
+      text: str(p.alert_text_en, 8000),
+      area: str(p.feature_name_en, 300),
+      province: str(p.province, 10),
+      status: str(p.status_en, 40),
+      published: time(p.publication_datetime),
+      expires: time(p.expiration_datetime),
+      eventEnd: time(p.event_end_datetime),
+      coversHome: insideGeoJson(feature.geometry, home),
+    });
+  }
+  const colourRank = (colour: string | null) => (colour ? (COLOUR_ORDER[colour] ?? 3) : 3);
+  alerts.sort(
+    (a, b) =>
+      (ECCC_STATUS_ORDER[a.status] ?? 2) - (ECCC_STATUS_ORDER[b.status] ?? 2) ||
+      colourRank(a.colour) - colourRank(b.colour) ||
+      (b.published ?? 0) - (a.published ?? 0),
+  );
+  return { data: { updatedAt: time(answer.timeStamp), alerts }, validFrom: null, validUntil: null };
+}
+
+// ── MetService (New Zealand) ────────────────────────────────────────────────
+
+export interface MetserviceItem {
+  title: string;
+  description: string;
+  link: string;
+  guid: string;
+  published: number | null;
+}
+
+/** MetService's RSS feed of CAP alerts: each item links to its CAP document. */
+export function parseMetserviceFeed(text: string): { title: string; publishedAt: number | null; items: MetserviceItem[] } {
+  const { records } = readXmlRecords(text, "rss", "item", "MetService", 2000);
+  const head = text.slice(0, 4000);
+  if (!/<channel[\s>]/.test(head)) throw new SourceFormatError("MetService's answer is not its feed.");
+  return {
+    title: (/<channel>\s*<title>([^<]*)<\/title>/.exec(head)?.[1] ?? "").trim().slice(0, 200),
+    publishedAt: time(/<pubDate>([^<]+)<\/pubDate>/.exec(head)?.[1] ?? ""),
+    items: records.map((item) => ({
+      title: first(item, "title").slice(0, 400),
+      description: first(item, "description").slice(0, 4000),
+      link: linkOn(first(item, "link"), /^alerts\.metservice\.com$/),
+      guid: first(item, "guid").slice(0, 200),
+      published: time(first(item, "pubDate")),
+    })),
+  };
+}
+
+export interface CapDocument {
+  identifier: string;
+  status: string;
+  sent: number | null;
+  event: string;
+  headline: string;
+  description: string;
+  instruction: string;
+  severity: string;
+  urgency: string;
+  certainty: string;
+  onset: number | null;
+  expires: number | null;
+  colour: string | null;
+  area: string;
+  coversHome: boolean | null;
+}
+
+/** One CAP 1.2 document: its first `info`, every area's description and polygons, and its parameters. */
+export function parseCapDocument(text: string, home: { lat: number; lon: number } | null): CapDocument {
+  const notCap = () => new SourceFormatError("MetService's answer is not a CAP alert.");
+  const reader = new XmlTokenizer(text);
+  const top = new Map<string, string>();
+  const info = new Map<string, string>();
+  const areas: string[] = [];
+  const polygons: string[] = [];
+  const names: string[] = [];
+  const values: string[] = [];
+  const path: string[] = [];
+  let infos = 0;
+  let buffer = "";
+  try {
+    for (let event = reader.next(); event !== XML_END; event = reader.next()) {
+      if (event === XML_OPEN) {
+        if (reader.depth === 1 && !reader.is("alert")) throw notCap();
+        path.length = reader.depth - 1;
+        path.push(reader.local);
+        if (reader.depth === 2 && reader.is("info")) infos += 1;
+        buffer = "";
+      } else if (event === XML_TEXT) {
+        if (buffer.length < 200_000) buffer += reader.text();
+      } else if (event === XML_CLOSE) {
+        // After a close, `depth` no longer counts the element just closed: its name is at that index.
+        const name = path[reader.depth];
+        const value = buffer.trim();
+        if (reader.depth === 1 && name) top.set(name, value);
+        else if (infos === 1 && path[1] === "info") {
+          if (reader.depth === 2 && name) info.set(name, value);
+          else if (path[2] === "area" && name === "areaDesc") areas.push(value);
+          else if (path[2] === "area" && name === "polygon") polygons.push(value);
+          else if (path[2] === "parameter" && name === "valueName") names.push(value);
+          else if (path[2] === "parameter" && name === "value") values.push(value);
+        }
+        path.length = reader.depth;
+        buffer = "";
+      }
+    }
+  } catch (error) {
+    if (error instanceof SourceFormatError) throw error;
+    throw notCap();
+  }
+  if (!top.has("identifier")) throw notCap();
+  const colourAt = names.indexOf("ColourCode");
+  const field = (name: string, max: number) => (info.get(name) ?? "").slice(0, max);
+  return {
+    identifier: (top.get("identifier") ?? "").slice(0, 200),
+    status: top.get("status") ?? "",
+    sent: time(top.get("sent")),
+    event: field("event", 200),
+    headline: field("headline", 600),
+    description: field("description", 8000),
+    instruction: field("instruction", 4000),
+    severity: field("severity", 40),
+    urgency: field("urgency", 40),
+    certainty: field("certainty", 40),
+    onset: time(info.get("onset")),
+    expires: time(info.get("expires")),
+    colour: colourAt >= 0 ? (values[colourAt] ?? "").slice(0, 20) || null : null,
+    area: areas.join("; ").slice(0, 2000),
+    coversHome: home && polygons.length > 0 ? polygons.some((polygon) => insideCapPolygon(polygon, home)) : null,
+  };
+}
+
+/** A feed item with its CAP document where one was read, or the item's own words where not. */
+export function capAlertOf(item: MetserviceItem, cap: CapDocument | null): CapAlert {
+  return {
+    id: cap?.identifier || item.guid || item.link || item.title,
+    title: item.title,
+    event: cap?.event ?? "",
+    headline: cap?.headline || item.title,
+    description: cap?.description || item.description,
+    instruction: cap?.instruction ?? "",
+    severity: cap?.severity ?? "",
+    urgency: cap?.urgency ?? "",
+    certainty: cap?.certainty ?? "",
+    colour: cap?.colour ?? null,
+    area: cap?.area ?? "",
+    sent: cap?.sent ?? item.published,
+    onset: cap?.onset ?? null,
+    expires: cap?.expires ?? null,
+    coversHome: cap?.coversHome ?? null,
+    link: item.link,
+  };
+}
+
+// ── The Japan Meteorological Agency ─────────────────────────────────────────
+
+/** The title of the warnings-and-advisories message (VPWW53), one for each prefecture's office. */
+const JMA_WARNINGS_TITLE = "気象特別警報・警報・注意報";
+
+/**
+ * The highest level a headline names, after its bracketed title: 特別警報 (emergency),
+ * 危険警報 (danger, from JMA's 2026 levels), 警報 (warning), 注意報 (advisory), or 解除
+ * when all it says is that what was in force is lifted.
+ */
+export function jmaLevel(headline: string): JmaLevel | null {
+  const body = headline.replace(/^【[^】]*】/, "");
+  if (body.includes("特別警報")) return "特別警報";
+  if (body.includes("危険警報")) return "危険警報";
+  if (body.replace(/注意報/g, "").includes("警報") && !/警報を解除/.test(body)) return "警報";
+  if (body.includes("解除") && !body.includes("注意してください") && !body.includes("警戒してください")) return "解除";
+  if (body.includes("注意")) return "注意報";
+  return null;
+}
+
+/** JMA's Atom feed: the latest warnings-and-advisories entry from each office, highest level first. */
+export function parseJmaFeed(text: string): Parsed<JmaData> {
+  const { root, records } = readXmlRecords(text, "feed", "entry", "The Japan Meteorological Agency", 50_000);
+  const latest = new Map<string, JmaEntry>();
+  for (const entry of records) {
+    if (first(entry, "title") !== JMA_WARNINGS_TITLE) continue;
+    const link = linkOn(entry.links[0]?.href || first(entry, "id"), /^www\.data\.jma\.go\.jp$/);
+    const office = first(entry, "author").slice(0, 100);
+    // The office's code ends the message's name: "…_VPWW53_160000.xml".
+    const key = /_VPWW53_(\d{6})\.xml$/.exec(link)?.[1] ?? office;
+    const headline = first(entry, "content").slice(0, 2000);
+    const candidate: JmaEntry = {
+      id: link || first(entry, "id").slice(0, 200),
+      office,
+      headline,
+      updated: time(first(entry, "updated")),
+      level: jmaLevel(headline),
+      link,
+    };
+    const held = latest.get(key);
+    if (!held || (candidate.updated ?? 0) > (held.updated ?? 0)) latest.set(key, candidate);
+  }
+  const rank = (level: JmaLevel | null) => (level ? JMA_LEVELS.indexOf(level) : JMA_LEVELS.length);
+  const entries = [...latest.values()].sort((a, b) => rank(a.level) - rank(b.level) || (b.updated ?? 0) - (a.updated ?? 0));
+  return { data: { updatedAt: time(first(root, "updated")), entries }, validFrom: null, validUntil: null };
 }

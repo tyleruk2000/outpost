@@ -77,7 +77,15 @@ const kept = async (kind: string) =>
 
 describe("alerts worldwide", () => {
   it("says where Home is taken to be, and asks nobody anything until pressed", async () => {
-    expect((await app.api("GET", "/api/weather")).body.alerts).toEqual({ home: null, country: null, countryName: null, national: null });
+    expect((await app.api("GET", "/api/weather")).body.alerts).toEqual({
+      home: null,
+      homeCountry: null,
+      homeCountryName: null,
+      chosenCountry: null,
+      country: null,
+      countryName: null,
+      national: null,
+    });
     await home(50.72, -3.53);
     expect((await app.api("GET", "/api/weather")).body.alerts).toMatchObject({
       home: { name: "Home", lat: 50.72, lon: -3.53 },
@@ -128,7 +136,7 @@ describe("alerts worldwide", () => {
       ["meteoalarm", false],
       ["nws", true],
     ]);
-    expect(body.outcomes[0].message).toMatch(/MeteoAlarm does not cover/);
+    expect(body.outcomes[0].message).toMatch(/the United States, which MeteoAlarm does not cover/);
     expect(asked).toEqual([{ path: "/nws-alerts/alerts/active?point=37.96,-121.29", agent: expect.stringMatching(/^Outpost/) }]);
     const alerts = ((await kept("nws"))!.data as { alerts: Array<{ event: string; sender: string; instruction: string }> }).alerts;
     expect(alerts).toEqual([expect.objectContaining({ event: "Dense Fog Advisory", sender: "NWS Sacramento CA" })]);
@@ -136,7 +144,10 @@ describe("alerts worldwide", () => {
 
   it("says why there is nothing national to fetch when no saved place is home", async () => {
     const { body } = await app.api("POST", "/api/weather/update", { kinds: ["nws"] });
-    expect(body.outcomes[0]).toMatchObject({ ok: false, message: expect.stringMatching(/No saved place has the home icon/) });
+    expect(body.outcomes[0]).toMatchObject({
+      ok: false,
+      message: expect.stringMatching(/No saved place has the home icon and no country is chosen/),
+    });
     expect(asked).toEqual([]);
   });
 

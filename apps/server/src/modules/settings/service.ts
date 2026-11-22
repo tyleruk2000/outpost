@@ -123,6 +123,14 @@ export const settingsSchema = z.object({
   "weather.updateOnOpen": z.boolean().default(false),
   /** How far round a weather place river and sea levels are asked for, km (one of RIVER_DISTANCES_KM in @outpost/shared). */
   "weather.riversKm": z.number().int().min(1).max(50).default(8),
+  /**
+   * The country (ISO 3166 code) national weather warnings are fetched for instead of the
+   * one Home's position falls in, for a household near a border; "" goes by Home.
+   */
+  "weather.alertCountry": z
+    .string()
+    .regex(/^([A-Z]{2})?$/)
+    .default(""),
   /** Days a file sent on the household board is kept before it is removed by itself; 0 keeps it until someone removes it. */
   "board.fileDays": z.number().int().min(0).max(BOARD_FILE_DAYS_MAX).default(BOARD_FILE_DAYS_DEFAULT),
   /** Aircraft heard on the radio are many: keep only the last so many hours of them; 0 keeps them until cleared. */

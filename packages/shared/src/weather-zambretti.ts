@@ -110,6 +110,20 @@ export const ZAMBRETTI_SOURCE = {
 /** The sixteen points of the compass a wind is given in, and where each sits in degrees. */
 export const WIND_POINTS = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"] as const;
 export type WindPoint = (typeof WIND_POINTS)[number];
+
+/**
+ * A wind direction as a person or a logger writes it: a point of the compass ("sw",
+ * "SSW") or degrees from north (0 to 360), the nearest of the sixteen points. Null when
+ * it is neither.
+ */
+export function windPointOf(text: string): WindPoint | null {
+  const word = text.trim().toUpperCase();
+  if ((WIND_POINTS as readonly string[]).includes(word)) return word as WindPoint;
+  const degrees = /^\d{1,3}(\.\d+)?$/.test(word) ? Number(word) : Number.NaN;
+  if (!Number.isFinite(degrees) || degrees > 360) return null;
+  return WIND_POINTS[Math.round(degrees / 22.5) % 16]!;
+}
+
 const NORTHERLY: readonly WindPoint[] = ["NW", "NNW", "N", "NNE", "NE"];
 const SOUTHERLY: readonly WindPoint[] = ["SE", "SSE", "S", "SSW", "SW"];
 

@@ -2,7 +2,8 @@
  * The barometer: pressure readings a person types (or brings in from a logger's file),
  * reduced to sea level, drawn over the last days, and the three-hour tendency in the
  * Met Office's words, with what a tendency is conventionally taken to suggest, quoted and
- * labelled as a rule of thumb.
+ * labelled as a rule of thumb. Each reading can carry the wind direction at the time,
+ * which the Zambretti forecast starts from.
  */
 import {
   HEIGHT_RANGE,
@@ -12,6 +13,8 @@ import {
   pressureTendency,
   type ReadingImportResult,
   TENDENCY_SOURCE,
+  WIND_POINTS,
+  type WindPoint,
 } from "@outpost/shared";
 import { Eraser, FileUp, Trash2 } from "lucide-react";
 import { type FormEvent, useState } from "react";
@@ -20,7 +23,7 @@ import { EmptyState, ErrorState, Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
-import { Segmented, Skeleton } from "@/components/ui/misc";
+import { Segmented, Select, Skeleton } from "@/components/ui/misc";
 import { ChartFrame } from "@/features/propagation/charts";
 import { errorMessage } from "@/lib/api";
 import { formatDateTime, plural } from "@/lib/utils";
@@ -56,6 +59,7 @@ export function BarometerView({ homeLat = null }: { homeLat?: number | null }) {
   const [height, setHeight] = useState(storedHeight);
   const [when, setWhen] = useState(() => localInput(Date.now()));
   const [note, setNote] = useState("");
+  const [wind, setWind] = useState<WindPoint | "none">("none");
   const [error, setError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [clearing, setClearing] = useState(false);
@@ -76,11 +80,12 @@ export function BarometerView({ homeLat = null }: { homeLat?: number | null }) {
       // Remembering the height is a convenience; without it the field starts at nought.
     }
     add.mutate(
-      { takenAt, value: number, unit, heightM: metres, note },
+      { takenAt, value: number, unit, heightM: metres, note, windFrom: wind === "none" ? null : wind },
       {
         onSuccess: () => {
           setValue("");
           setNote("");
+          setWind("none");
           setWhen(localInput(Date.now()));
           toast.success("Reading kept.");
         },
@@ -120,9 +125,25 @@ export function BarometerView({ homeLat = null }: { homeLat?: number | null }) {
             {(ids) => <Input {...ids} type="datetime-local" value={when} onChange={(event) => setWhen(event.target.value)} />}
           </Field>
         </div>
-        <Field label="Note" optional>
-          {(ids) => <Input {...ids} value={note} maxLength={400} onChange={(event) => setNote(event.target.value)} />}
-        </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-1.5">
+            <span className="text-small font-medium text-ink">
+              Wind from <span className="font-normal text-ink-muted">(optional)</span>
+            </span>
+            <Select
+              aria-label="Wind from"
+              value={wind}
+              onChange={setWind}
+              options={[
+                { value: "none" as const, label: "Not noted, or calm" },
+                ...WIND_POINTS.map((point) => ({ value: point, label: point })),
+              ]}
+            />
+          </div>
+          <Field label="Note" optional>
+            {(ids) => <Input {...ids} value={note} maxLength={400} onChange={(event) => setNote(event.target.value)} />}
+          </Field>
+        </div>
         {error ? (
           <Notice tone="danger" className="max-w-xl">
             {error}
@@ -208,7 +229,15 @@ export function BarometerView({ homeLat = null }: { homeLat?: number | null }) {
             </details>
           </section>
 
-          {tendency.ok ? <ZambrettiForecast tendency={tendency.tendency} now={Date.now()} homeLat={homeLat} /> : null}
+          {tendency.ok ? (
+            <ZambrettiForecast
+              key={list[list.length - 1]!.id}
+              tendency={tendency.tendency}
+              now={Date.now()}
+              homeLat={homeLat}
+              readingWind={list[list.length - 1]!.windFrom}
+            />
+          ) : null}
 
           <ChartFrame title="Pressure at sea level over the last three days of readings" reading={`${plural(recent.length, "reading")}.`}>
             <TimeLine
@@ -244,6 +273,7 @@ export function BarometerView({ homeLat = null }: { homeLat?: number | null }) {
                       </p>
                       <p className="text-small text-ink-muted">
                         {formatDateTime(reading.takenAt)}
+                        {reading.windFrom ? `, wind from ${reading.windFrom}` : ""}
                         {reading.origin === "file" ? ", from a file" : ""}
                         {reading.note ? `. ${reading.note}` : ""}
                       </p>
@@ -317,7 +347,7 @@ function ImportDialog({ defaultUnit, defaultHeight, onClose }: { defaultUnit: Pr
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         title="Bring in readings from a CSV file"
-        description="A row for each reading, with a header naming a time column and a pressure column. A unit and a height column are read where there are any."
+        description="A row for each reading, with a header naming a time column and a pressure column. A unit, a height and a wind column (a point of the compass or degrees) are read where there are any."
       >
         <DialogBody className="grid gap-4">
           <Field label="File">

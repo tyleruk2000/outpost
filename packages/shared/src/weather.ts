@@ -11,8 +11,19 @@
  * fetched, and `freshness` is the one place that decides what may be said about it.
  */
 
-import type { AlertsPlan, GdacsData, MeteoalarmData, NwsData, QuakesData, SpaceWeatherData } from "./weather-alerts.ts";
+import type {
+  AlertsPlan,
+  EcccData,
+  GdacsData,
+  JmaData,
+  MeteoalarmData,
+  MetserviceData,
+  NwsData,
+  QuakesData,
+  SpaceWeatherData,
+} from "./weather-alerts.ts";
 import type { RiverReadingsData, RiversData } from "./weather-rivers.ts";
+import type { WindPoint } from "./weather-zambretti.ts";
 
 // ── What is fetched, and from whom ──────────────────────────────────────────
 
@@ -29,6 +40,9 @@ export const WEATHER_KINDS = [
   "quakes",
   "meteoalarm",
   "nws",
+  "eccc",
+  "metservice",
+  "jma",
   "space-weather",
 ] as const;
 export type WeatherKind = (typeof WEATHER_KINDS)[number];
@@ -45,6 +59,9 @@ export const UPDATE_KINDS = [
   "quakes",
   "meteoalarm",
   "nws",
+  "eccc",
+  "metservice",
+  "jma",
   "space-weather",
 ] as const satisfies readonly WeatherKind[];
 
@@ -62,10 +79,23 @@ export type WeatherSourceId =
   | "usgs-quakes"
   | "meteoalarm"
   | "nws-alerts"
+  | "eccc-alerts"
+  | "metservice-alerts"
+  | "jma-warnings"
   | "swpc";
 
 /** The kinds that are one copy for the household, not one for each place. */
-export const HOUSEHOLD_KINDS: WeatherKind[] = ["warnings", "gdacs", "quakes", "meteoalarm", "nws", "space-weather"];
+export const HOUSEHOLD_KINDS: WeatherKind[] = [
+  "warnings",
+  "gdacs",
+  "quakes",
+  "meteoalarm",
+  "nws",
+  "eccc",
+  "metservice",
+  "jma",
+  "space-weather",
+];
 
 /** The kinds the alerts view fetches on its own press: worldwide ones always, and the national service for Home. */
 export const WORLD_KINDS: WeatherKind[] = ["gdacs", "quakes"];
@@ -306,6 +336,9 @@ export interface WeatherDataByKind {
   quakes: QuakesData;
   meteoalarm: MeteoalarmData;
   nws: NwsData;
+  eccc: EcccData;
+  metservice: MetserviceData;
+  jma: JmaData;
   "space-weather": SpaceWeatherData;
 }
 
@@ -396,6 +429,9 @@ export const FRESH_FOR: Record<WeatherKind, number> = {
   quakes: 1 * HOUR,
   meteoalarm: 1 * HOUR,
   nws: 1 * HOUR,
+  eccc: 1 * HOUR,
+  metservice: 1 * HOUR,
+  jma: 1 * HOUR,
   "space-weather": 3 * HOUR,
 };
 
@@ -431,6 +467,9 @@ const KIND_WORDS: Record<WeatherKind, string> = {
   quakes: "list of earthquakes",
   meteoalarm: "list of warnings",
   nws: "list of alerts",
+  eccc: "list of alerts",
+  metservice: "list of warnings",
+  jma: "list of warnings",
   "space-weather": "set of space weather figures",
 };
 
@@ -566,6 +605,8 @@ export interface PressureReading {
   heightM: number;
   seaLevelHpa: number;
   note: string;
+  /** The point of the compass the wind was from when the reading was taken, or null when not given. */
+  windFrom: WindPoint | null;
   origin: "typed" | "file";
   createdAt: number;
 }
@@ -685,6 +726,8 @@ export interface ReadingImportRow {
   unit: PressureUnit;
   heightM: number;
   seaLevelHpa: number;
+  /** From a wind column, where the file has one and the cell names a direction. */
+  windFrom: WindPoint | null;
   /** A reading at the same time is already kept; it is not added again. */
   duplicate: boolean;
   /** How the pressure or the height was read where the cell was not a plain number ("“1.013,2” read as 1013.2."). */
