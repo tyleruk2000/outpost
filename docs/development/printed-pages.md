@@ -91,3 +91,8 @@ real text in the PDF. Callout symbols are shapes, not letters, so a search finds
   regions, sky wave and skip zone, near-vertical sky wave, a path in section, and day and
   night on the world (`greyLineSketch`, over `public/world/land.json`). Their letters
   outside Latin Extended-A print as "?" (`print/glyphs.ts`) and the screen names them.
+- A paper that may hold a person's or a place's name in another script checks its words
+  with `kitCanSetAll` (`contacts/kit-letters.ts`, built from the typeface's own character
+  lists) and, when a letter is missing, falls back to the lettered writer
+  (`maps/print/lettering.ts`); the emergency cards, the contacts sheet, the QR sheet and
+  the sun times sheet do this.
