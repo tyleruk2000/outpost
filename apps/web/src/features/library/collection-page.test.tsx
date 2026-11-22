@@ -205,7 +205,7 @@ describe("one collection", () => {
     });
     page();
     await userEvent.click(await screen.findByRole("button", { name: "Check files" }));
-    expect(await screen.findByText("The file is damaged", undefined, { timeout: 4000 })).toBeInTheDocument();
+    expect(await screen.findByText("The file is damaged")).toBeInTheDocument();
     expect(screen.getByText("The file no longer matches the checksum recorded when it was installed.")).toBeInTheDocument();
     expect(server.calls).toContain("POST /api/collections/c1/verify");
   });

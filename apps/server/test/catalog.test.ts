@@ -18,7 +18,7 @@ import { type LoadedEntry, loadCatalog, manifestJsonSchema, parseManifest } from
 import { resolveEntries } from "../src/modules/catalog/resolve.ts";
 import { compareVersions, createCatalogService } from "../src/modules/catalog/service.ts";
 import { serveKiwixLibrary, sha256Of } from "./fixtures/catalog/kiwix-library.ts";
-import { type FileServer, startFileServer, testBytes, unusedPort, waitFor } from "./fixtures/downloads/file-server.ts";
+import { type FileServer, partFileHolds, startFileServer, testBytes, unusedPort, waitFor } from "./fixtures/downloads/file-server.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
 const fixture = (name: string) => fs.readFileSync(path.join(import.meta.dirname, "fixtures/catalog", name), "utf8");
@@ -844,7 +844,7 @@ describe("downloading from the catalogue", () => {
     app.ctx.services.settings.update({ "downloads.maxAttempts": 1 });
     const server = await fileServer();
     const body = testBytes(200_000, 13);
-    server.routes.set("/flaky.pdf", { body, dropAfterBytes: 80_000 });
+    server.routes.set("/flaky.pdf", { body, dropAfterBytes: 80_000, beforeDrop: partFileHolds(app, 80_000) });
     ship(
       app,
       "http.json",

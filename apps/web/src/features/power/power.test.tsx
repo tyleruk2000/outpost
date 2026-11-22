@@ -252,7 +252,7 @@ describe("a power plan", () => {
     const dialog = screen.getByRole("dialog", { name: "Add a load" });
     expect(within(dialog).getByText(/From the library: Raspberry Pi 5, the maker's typical figure/)).toBeInTheDocument();
     fireEvent.click(within(dialog).getByRole("button", { name: "Add load" }));
-    await waitFor(() => expect(server.put).toHaveLength(1), { timeout: 3000 });
+    await waitFor(() => expect(server.put).toHaveLength(1));
     expect(server.put[0]!.loads).toHaveLength(3);
     // 800 mA at 5.1 V, around the clock, over USB.
     expect(server.put[0]!.loads[2]).toMatchObject({
@@ -285,21 +285,21 @@ describe("a power plan", () => {
     const server = show("/tools/power/plans/p1", { putDelayMs: 1200 });
     const name = await screen.findByLabelText("Name");
     fireEvent.change(name, { target: { value: "Shack A" } });
-    await waitFor(() => expect(server.put).toHaveLength(1), { timeout: 2000 });
+    await waitFor(() => expect(server.put).toHaveLength(1));
     fireEvent.change(name, { target: { value: "Shack AB" } });
-    await waitFor(() => expect(server.put).toHaveLength(2), { timeout: 4000 });
+    await waitFor(() => expect(server.put).toHaveLength(2));
     expect(server.mostAtOnce).toBe(1);
     expect(server.put.map((put) => put.name)).toEqual(["Shack A", "Shack AB"]);
-    await waitFor(() => expect(screen.getByText("Saved.")).toBeInTheDocument(), { timeout: 3000 });
+    await waitFor(() => expect(screen.getByText("Saved.")).toBeInTheDocument());
   }, 10_000);
 
   it("saves each change from the version it last saved, so that one save never refuses the next", async () => {
     const server = show("/tools/power/plans/p1");
     const name = await screen.findByLabelText("Name");
     fireEvent.change(name, { target: { value: "Shack A" } });
-    await waitFor(() => expect(server.put).toHaveLength(1), { timeout: 2000 });
+    await waitFor(() => expect(server.put).toHaveLength(1));
     fireEvent.change(name, { target: { value: "Shack AB" } });
-    await waitFor(() => expect(server.put).toHaveLength(2), { timeout: 2000 });
+    await waitFor(() => expect(server.put).toHaveLength(2));
     expect(server.put.map((put) => put.baseUpdatedAt)).toEqual([Date.UTC(2026, 10, 16), Date.UTC(2026, 10, 16) + 1]);
     await waitFor(() => expect(screen.getByText("Saved.")).toBeInTheDocument());
   });
@@ -309,7 +309,7 @@ describe("a power plan", () => {
     const name = await screen.findByLabelText("Name");
     const elsewhere = server.saveElsewhere({ name: "Shack, theirs", cableRatingA: 25 });
     fireEvent.change(name, { target: { value: "Shack, mine" } });
-    const notice = await screen.findByText("This plan was changed somewhere else", {}, { timeout: 2000 });
+    const notice = await screen.findByText("This plan was changed somewhere else");
     expect(screen.getByText(/Your version is still here, unsaved, and nothing has been overwritten/)).toBeInTheDocument();
     expect(screen.getByText("Not saved: changed somewhere else.")).toBeInTheDocument();
     expect(server.put).toHaveLength(1);
@@ -331,13 +331,13 @@ describe("a power plan", () => {
     const name = await screen.findByLabelText("Name");
     server.saveElsewhere({ name: "Shack, theirs" });
     fireEvent.change(name, { target: { value: "Shack, mine" } });
-    fireEvent.click(await screen.findByRole("button", { name: "Load the other version" }, { timeout: 2000 }));
+    fireEvent.click(await screen.findByRole("button", { name: "Load the other version" }));
     await waitFor(() => expect(screen.getByLabelText("Name")).toHaveValue("Shack, theirs"));
     expect(screen.queryByText("This plan was changed somewhere else")).not.toBeInTheDocument();
     expect(server.put).toHaveLength(1);
     // And saving carries on from their version.
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Shack, theirs, changed" } });
-    await waitFor(() => expect(server.put).toHaveLength(2), { timeout: 2000 });
+    await waitFor(() => expect(server.put).toHaveLength(2));
     await waitFor(() => expect(screen.getByText("Saved.")).toBeInTheDocument());
   });
 
@@ -414,7 +414,7 @@ describe("peak sun hours from Weather and hazards", () => {
     // Nothing went into the plan by itself.
     expect(server.put).toHaveLength(0);
     fireEvent.click(fill);
-    await waitFor(() => expect(server.put).toHaveLength(1), { timeout: 3000 });
+    await waitFor(() => expect(server.put).toHaveLength(1));
     expect(server.put[0]!.solar.sunHoursSource).toMatchObject({ kind: "pvgis", place: "Home", lat: 52.13, lon: -0.46 });
   });
 
@@ -452,13 +452,13 @@ describe("peak sun hours from Weather and hazards", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/fetched by Weather and hazards 3 days ago/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Fill in from Weather and hazards" }));
-    await waitFor(() => expect(server.put).toHaveLength(1), { timeout: 3000 });
+    await waitFor(() => expect(server.put).toHaveLength(1));
     expect(server.put[0]!.solar.sunHours[0]).toBe(1.23);
     expect(server.put[0]!.solar.sunHoursSource).toMatchObject({ kind: "pvgis", place: "Home", tilt: "optimal", slope: 38, edited: false });
     expect(screen.getByText(/^Peak sun hours from PVGIS .* for Home \(52.13, -0.46\), on a panel facing south at 38°/)).toBeInTheDocument();
     // Typed over afterwards: the record says so.
     fireEvent.change(screen.getByLabelText("March"), { target: { value: "3" } });
-    await waitFor(() => expect(server.put.at(-1)!.solar.sunHoursSource?.edited).toBe(true), { timeout: 3000 });
+    await waitFor(() => expect(server.put.at(-1)!.solar.sunHoursSource?.edited).toBe(true));
   });
 
   it("asks before replacing figures the person typed", async () => {

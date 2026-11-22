@@ -1,11 +1,19 @@
 import "@testing-library/jest-dom/vitest";
 import net from "node:net";
-import { cleanup } from "@testing-library/react";
+import { cleanup, configure } from "@testing-library/react";
 import { afterEach, beforeEach, expect } from "vitest";
 import { setClockChoice, setDeviceClockStyle } from "@/lib/clock";
 import { setDeviceRegion } from "@/lib/region";
 
 afterEach(() => cleanup());
+
+// How long findBy… and waitFor wait for what they wait for. Testing Library's own 1 s is a
+// guess at how fast a screen comes up, and on a busy machine (every suite at once, a build
+// beside them) it is not: a screen loaded when a button is pressed is compiled first, and
+// one render of a large screen can take seconds. A wait that comes true is not slowed by
+// this; one that never does fails a little before the test's own limit (20 s), saying
+// what it was waiting for.
+configure({ asyncUtilTimeout: 15_000 });
 
 // A machine that runs these tests may have a real Ollama on it, and no test may depend on that. A
 // connection to the port Ollama listens on is refused before it is made, as if nothing were there,

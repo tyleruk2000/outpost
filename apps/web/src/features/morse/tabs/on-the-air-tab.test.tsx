@@ -114,7 +114,7 @@ describe("On the air", () => {
     await new Promise((r) => setTimeout(r, 200));
     press("keyup");
     const check = screen.getByRole("button", { name: "Check my call" });
-    await waitFor(() => expect(check).not.toBeDisabled(), { timeout: 3000 });
+    await waitFor(() => expect(check).not.toBeDisabled());
     fireEvent.click(check);
     fireEvent.click(check);
     const result = screen.getByTestId("rbn-result");
@@ -164,7 +164,7 @@ describe("On the air", () => {
     await new Promise((r) => setTimeout(r, 200));
     press("keyup");
     const check = screen.getByRole("button", { name: "Check my call" });
-    await waitFor(() => expect(check).not.toBeDisabled(), { timeout: 3000 });
+    await waitFor(() => expect(check).not.toBeDisabled());
     fireEvent.click(check);
     await waitFor(() => expect(sessions()).toHaveLength(1));
     expect(requests.length).toBeGreaterThan(0);

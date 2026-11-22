@@ -32,7 +32,10 @@ async function startStandIn(options: StandInOptions = {}): Promise<StandIn> {
   return server;
 }
 
-const QUICK = { firstTokenMs: 400, idleMs: 300, totalMs: 5_000, probeMs: 400 };
+// Short, so that a test of a model that is slow to start or goes quiet is quick; but well
+// apart from the stand-ins' own pauses, and the whole of an answer is let take as long as a
+// busy machine needs to write it (a long one is hundreds of pieces).
+const QUICK = { firstTokenMs: 1500, idleMs: 1500, totalMs: 120_000, probeMs: 1500 };
 const SOURCES =
   "===== SOURCES test =====\n[1] Water treatment, Boiling, page 1\nBring the water to a rolling boil for one minute. Let it cool.\n\n[2] Knots\nThe bowline makes a fixed loop.\n===== END OF SOURCES test =====\n\nQuestion: how long";
 

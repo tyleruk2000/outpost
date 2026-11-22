@@ -13,6 +13,7 @@ import { converterRunning, convertPageApart } from "../src/modules/imports/conve
 import { docToText, htmlToDoc, markdownToDoc } from "../src/modules/notes/content/index.ts";
 import { analyse, commit, findNote } from "./fixtures/imports/builders.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { threadMs } from "./thread-time.ts";
 
 let app: TestApp | undefined;
 afterEach(async () => {
@@ -21,10 +22,11 @@ afterEach(async () => {
 });
 
 const page = (body: string) => `<html><head><title>Rain</title></head><body>${body}</body></html>`;
+/** The work's time on this thread, not the clock's, which runs on while a busy machine runs other things. */
 const timed = <T>(work: () => T): { ms: number; value: T } => {
-  const started = performance.now();
+  const started = threadMs();
   const value = work();
-  return { ms: performance.now() - started, value };
+  return { ms: threadMs() - started, value };
 };
 
 describe("HTML the converter is slow at", () => {

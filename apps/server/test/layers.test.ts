@@ -18,6 +18,7 @@ import { createQueryFetcher } from "../src/modules/layers/query-fetcher.ts";
 import type { ReferenceMeta } from "../src/modules/layers/types.ts";
 import { buildPbf, buildTiff } from "./fixtures/layers/builders.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { threadMs } from "./thread-time.ts";
 
 let app: TestApp;
 let storageRoot: string;
@@ -897,10 +898,12 @@ describe("a few hundred thousand features", () => {
     await sink.flush();
     const inserted = performance.now() - started;
     // The rows count as a pack's once they are not pending; this test owns them directly.
+    // Working time of this thread, where the queries run, and not the clock: beside other
+    // suites the clock runs on while the process waits its turn.
     const time = async (query: string) => {
-      const t = performance.now();
+      const t = threadMs();
       const body = await overlay(query);
-      return { ms: Math.round(performance.now() - t), body };
+      return { ms: Math.round(threadMs() - t), body };
     };
     const layers = "layers=military,hospitals,emergency,shelters";
     const world = await time(`bbox=-180,-85,180,85&zoom=2&${layers}`);
@@ -918,7 +921,6 @@ describe("a few hundred thousand features", () => {
     expect(world.body.points).toHaveLength(0);
     expect(world.body.cells.reduce((sum, cell) => sum + cell.count, 0)).toBe(world.body.total);
     expect(town.body.points.length).toBeGreaterThan(0);
-    // Generous bounds: this runs beside other suites.
     expect(world.ms).toBeLessThan(5_000);
     expect(town.ms).toBeLessThan(1_000);
     await app.ctx.services.layers.store.removeRows("perf-pack");

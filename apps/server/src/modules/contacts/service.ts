@@ -409,9 +409,20 @@ export function createContactsService(ctx: AppContext): ContactsService {
   function write(
     id: string,
     fields: ContactFields,
-    more: { uid: string; extra: string[]; source: ContactSource; markerId: string | null; createdAt: number; isNew: boolean },
+    more: {
+      uid: string;
+      extra: string[];
+      source: ContactSource;
+      markerId: string | null;
+      createdAt: number;
+      isNew: boolean;
+      /** The changed contact's time until now. */
+      updatedAt?: number;
+    },
   ): Row {
-    const now = Date.now();
+    // Always later than the last change, even two changes in one millisecond or after the
+    // clock was set back: a change sent from an older copy is told apart by this time.
+    const now = Math.max(Date.now(), (more.updatedAt ?? 0) + 1);
     const derived = derive(fields);
     const { tags, ...data } = fields;
     const values = {
@@ -670,6 +681,7 @@ export function createContactsService(ctx: AppContext): ContactsService {
           markerId: markerId === undefined ? current.markerId : markerId,
           createdAt: current.createdAt,
           isNew: false,
+          updatedAt: current.updatedAt,
         });
         if (pageIds) setPages(id, pageIds);
         return next;
@@ -825,6 +837,7 @@ export function createContactsService(ctx: AppContext): ContactsService {
                 markerId: existing.markerId,
                 createdAt: existing.createdAt,
                 isNew: false,
+                updatedAt: existing.updatedAt,
               });
               if (choice === "merge") result.merged += 1;
               else result.replaced += 1;

@@ -539,15 +539,13 @@ describe("Nuclear preparedness", () => {
     fireEvent.click(screen.getByRole("button", { name: "press the map" }));
     fireEvent.click(screen.getByRole("button", { name: "Add another scenario" }));
     fireEvent.click(screen.getByRole("button", { name: "press the map" }));
-    await waitFor(
-      () =>
-        expect(
-          screen
-            .getAllByTestId("ring-people")
-            .map((row) => row.textContent)
-            .join("|"),
-        ).toMatch(/people live inside this ring, by WorldPop's 2020 estimate\. This is who lives there, not a prediction of harm\./),
-      { timeout: 3000 },
+    await waitFor(() =>
+      expect(
+        screen
+          .getAllByTestId("ring-people")
+          .map((row) => row.textContent)
+          .join("|"),
+      ).toMatch(/people live inside this ring, by WorldPop's 2020 estimate\. This is who lives there, not a prediction of harm\./),
     );
     // The smallest rings are too small for the grid's cells, and say so.
     expect(

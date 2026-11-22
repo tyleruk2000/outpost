@@ -33,7 +33,7 @@ describe("the sentence at the top of Home", () => {
       },
     });
     renderScreen(<HomePage />);
-    const sentence = await screen.findByText(/all on this device/, {}, { timeout: 3000 });
+    const sentence = await screen.findByText(/all on this device/);
     expect(sentence.textContent).toMatch(/^3 documents, 1 page and 4 collections, all on this device/);
   });
 
@@ -60,7 +60,7 @@ describe("the sentence at the top of Home", () => {
       "GET /api/collections": { collections: [collection({ id: "map", kind: "map", title: "United Kingdom" })] },
     });
     renderScreen(<HomePage />);
-    const sentence = await screen.findByText(/is not connected/, {}, { timeout: 3000 });
+    const sentence = await screen.findByText(/is not connected/);
     expect(sentence.textContent).toBe(
       "130 documents, 1 page and 1 collection. “docs on 192.168.1.100” is not connected, so what is kept there cannot be opened until it is back; everything else is on this device and readable with no connection. 1.00 GB free.",
     );

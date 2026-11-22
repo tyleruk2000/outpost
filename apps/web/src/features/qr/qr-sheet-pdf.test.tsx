@@ -35,7 +35,7 @@ describe("the QR sheet as a PDF", () => {
     await user.type(screen.getByLabelText("Text or web address"), "Water point 3, by the gate");
     await screen.findByTestId("qr-code");
     const add = await screen.findByRole("button", { name: /Add to library/ });
-    await waitFor(() => expect(add).toBeEnabled(), { timeout: 3000 });
+    await waitFor(() => expect(add).toBeEnabled());
     expect(lettering.calls).toBe(1);
   });
 });

@@ -374,9 +374,7 @@ describe("the coverage screen", () => {
     fireEvent.click(screen.getByRole("button", { name: "Stop" }));
     await waitFor(() => expect(server.posted.map((item) => item.path)).toContain("/api/jobs/job-1/cancel"));
     state = "cancelled";
-    expect(
-      await screen.findByText(/stopped before it finished\. Nothing of it was kept/, undefined, { timeout: 3000 }),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/stopped before it finished\. Nothing of it was kept/)).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "What this map rests on" })).not.toBeInTheDocument();
   });
 

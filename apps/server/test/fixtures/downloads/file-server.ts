@@ -2,8 +2,11 @@
  * A local HTTP server for download tests: serves buffers with or without Range
  * support, slowly if asked, and can drop the connection part-way through a response.
  */
+import fs from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
+import { PART_SUFFIX } from "../../../src/modules/downloads/service.ts";
+import type { TestApp } from "../../helpers.ts";
 
 export interface FileRoute {
   body: Buffer;
@@ -15,6 +18,13 @@ export interface FileRoute {
   /** Destroy the connection after this many body bytes, for the first `drops` requests. */
   dropAfterBytes?: number;
   drops?: number;
+  /**
+   * Held before the connection is dropped, so a test can wait until the client has
+   * written every byte to its file. Without it the line is cut after a short pause, and
+   * on a busy machine some of the bytes may still be inside the client (they are lost,
+   * and the client rightly asks again from what reached its disk).
+   */
+  beforeDrop?: () => Promise<unknown>;
   /** Answer with this status and no body instead of the file. */
   status?: number;
   /** Answer HEAD requests with this status, while GET still serves the file. */
@@ -63,7 +73,8 @@ async function send(res: http.ServerResponse, route: FileRoute, data: Buffer): P
     }
     if (dropping && sent >= route.dropAfterBytes!) {
       // Let the bytes reach the client, then cut the line mid-response.
-      await sleep(30);
+      if (route.beforeDrop) await route.beforeDrop().catch(() => undefined);
+      else await sleep(30);
       res.destroy();
       return;
     }
@@ -184,4 +195,22 @@ export async function waitFor<T>(
     if (Date.now() - started > timeoutMs) throw new Error(`Timed out waiting for ${what}`);
     await sleep(15);
   }
+}
+
+/**
+ * For a route's `beforeDrop`: waits until the newest download's partial file holds this
+ * many bytes, so the request that continues it asks for exactly the rest.
+ */
+export function partFileHolds(app: TestApp, bytes: number): () => Promise<unknown> {
+  return () =>
+    waitFor(() => {
+      const row = app.ctx.services.downloads.list()[0];
+      if (!row) return false;
+      const part = `${app.ctx.services.storage.resolve(row.locationId, row.relPath)}${PART_SUFFIX}`;
+      try {
+        return fs.statSync(part).size >= bytes;
+      } catch {
+        return false;
+      }
+    }, `${bytes} bytes in the partial file`);
 }

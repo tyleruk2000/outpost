@@ -92,6 +92,8 @@ export class JobQueue {
   private readonly handlers = new Map<string, JobHandler<never>>();
   private readonly limits = new Map<string, number>();
   private readonly running = new Map<string, { controller: AbortController; queue: string }>();
+  /** `onSettled` hooks under way: a job's work is not over until its hook has finished too. */
+  private settling = 0;
   /** Set only while a queued job is waiting for a time in the future: its `runAfter`. */
   private timer: { at: number; handle: NodeJS.Timeout } | undefined;
   private started = false;
@@ -245,7 +247,7 @@ export class JobQueue {
   }
 
   private isIdle(): boolean {
-    if (this.running.size > 0) return false;
+    if (this.running.size > 0 || this.settling > 0) return false;
     if (this.closing) return true;
     const waiting = this.db
       .select({ n: sql<number>`count(*)` })
@@ -456,10 +458,14 @@ export class JobQueue {
   }
 
   private async settle(job: JobRow): Promise<void> {
+    this.settling += 1;
     try {
       await this.handlers.get(job.type)?.onSettled?.(job);
     } catch (error) {
       this.log.error({ job: job.id, err: error }, "job onSettled failed");
+    } finally {
+      this.settling -= 1;
+      this.wakeIfIdle();
     }
   }
 }

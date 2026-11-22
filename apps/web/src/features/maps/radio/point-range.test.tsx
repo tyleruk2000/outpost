@@ -110,14 +110,12 @@ describe("an estimated radio range from any point", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Heights and details/ }));
     fireEvent.change(screen.getByLabelText("Your aerial"), { target: { value: "10" } });
     fireEvent.click(screen.getByRole("radio", { name: "Roof aerial" }));
-    await waitFor(
-      () =>
-        expect(asked).toHaveBeenLastCalledWith(
-          "/api/maps/sight-range",
-          { at: "54.45420,-3.21160", aerial: "10", station: "8" },
-          expect.anything(),
-        ),
-      { timeout: 2000 },
+    await waitFor(() =>
+      expect(asked).toHaveBeenLastCalledWith(
+        "/api/maps/sight-range",
+        { at: "54.45420,-3.21160", aerial: "10", station: "8" },
+        expect.anything(),
+      ),
     );
     expect(JSON.parse(localStorage.getItem("outpost.maps.pointRange")!)).toEqual({ aerial: 10, station: "roof" });
   });

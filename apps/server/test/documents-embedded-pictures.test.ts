@@ -8,6 +8,7 @@ import { savedFromOf, savedPageFrontMatter } from "../src/modules/documents/save
 import { png } from "./fixtures/webpages/pages.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 import { tempDir } from "./temp.ts";
+import { threadMs } from "./thread-time.ts";
 
 const dirs: string[] = [];
 let app: TestApp | undefined;
@@ -143,10 +144,11 @@ describe("pictures carried inside a Markdown file", () => {
 
   it("is not slowed by a file that ends in a great many empty lines", async () => {
     const file = fileWith(`${text}${"\n".repeat(2_000_000)}`);
-    const started = performance.now();
+    const started = threadMs();
     const index = await pictureIndex(file);
     expect(index.pictures.size).toBe(0);
-    expect(performance.now() - started).toBeLessThan(3000);
+    // Working time, not the clock, which runs on while a busy machine runs other things.
+    expect(threadMs() - started).toBeLessThan(3000);
   });
 
   it("shows the pictures of a Markdown file a person uploads, through the same checked route", async () => {

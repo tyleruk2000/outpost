@@ -254,13 +254,13 @@ describe("losing the server while the app is open", () => {
     // The live connection drops and the server does not answer a plain question either.
     serverIs(false);
     events.set(false);
-    const notice = await screen.findByRole("status", {}, { timeout: 4000 });
+    const notice = await screen.findByRole("status");
     expect(notice).toHaveTextContent("The server is out of reach. This screen stays as it is.");
     expect(screen.getByRole("heading", { name: "The library at home" })).toBeInTheDocument();
 
     // Moving on: the kept page opens from the copy, for reading only.
     await user.click(screen.getByRole("link", { name: "Open the plan" }));
-    expect(await screen.findByText("Leave the car at Seathwaite.", {}, { timeout: 4000 })).toBeInTheDocument();
+    expect(await screen.findByText("Leave the car at Seathwaite.")).toBeInTheDocument();
     expect(screen.getByText(/Showing what is kept on this \w+\. What is written or changed here is sent/)).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Page content" })).toHaveAttribute("contenteditable", "false");
     expect(screen.queryByRole("heading", { name: "The page, from the server" })).not.toBeInTheDocument();
@@ -279,9 +279,9 @@ describe("losing the server while the app is open", () => {
     serverIs(false);
     events.connected = false;
     await showApp();
-    await screen.findByRole("status", {}, { timeout: 4000 });
+    await screen.findByRole("status");
     await user.click(screen.getByRole("link", { name: "Open another page" }));
-    expect(await screen.findByRole("heading", { name: /This page is not kept on this/ }, { timeout: 4000 })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /This page is not kept on this/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "See what is kept" })).toHaveAttribute("href", "/kept");
   }, 20_000);
 
@@ -300,7 +300,7 @@ describe("losing the server while the app is open", () => {
       await new Promise((resolve) => setTimeout(resolve, 1600));
       expect(fetch).not.toHaveBeenCalled();
       pageIs("visible");
-      expect(await screen.findByRole("status", {}, { timeout: 4000 })).toHaveTextContent("The server is out of reach.");
+      expect(await screen.findByRole("status")).toHaveTextContent("The server is out of reach.");
       expect(fetch).toHaveBeenCalledWith("/api/health", expect.anything());
     } finally {
       pageIs("visible");

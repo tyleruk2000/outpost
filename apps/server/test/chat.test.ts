@@ -27,8 +27,10 @@ afterEach(async () => {
   for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
 });
 
-const QUICK = { firstTokenMs: 600, idleMs: 400, totalMs: 8_000, probeMs: 600 };
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+// Short, so that a test of a model that is slow to start or goes quiet is quick; but well
+// apart from the stand-ins' own pauses, and the whole of a reply is let take as long as a
+// busy machine needs to write it (a long one is hundreds of pieces).
+const QUICK = { firstTokenMs: 1500, idleMs: 1500, totalMs: 120_000, probeMs: 1500 };
 
 interface Station {
   app: TestApp;
@@ -354,7 +356,13 @@ describe("a reply as it is written", () => {
     await send(id, "Tell me about stoves");
     const first = new AbortController();
     const gone = watch(id, first.signal).catch(() => []);
-    await sleep(60);
+    // The first browser is watching, and has been sent some of the reply, before it goes.
+    await expect
+      .poll(() => {
+        const run = app.ctx.services.chat.runner.of(id);
+        return run !== undefined && run.listeners.size === 1 && run.blocks.length > 0;
+      })
+      .toBe(true);
     first.abort();
     await gone;
     expect(app.ctx.services.chat.runner.of(id)).toBeDefined();
@@ -372,7 +380,9 @@ describe("a reply as it is written", () => {
     const { send, watch, open, app, detail } = await station("stand-in-long", { longChunkDelayMs: 3 });
     const id = await open();
     await send(id, "Tell me about stoves");
-    await sleep(120);
+    // Waits for the first sentence whole, not for a set time: on a busy machine the model
+    // may not have begun by then. The other 23 paragraphs are still to come.
+    await expect.poll(() => JSON.stringify(app.ctx.services.chat.runner.of(id)?.blocks ?? []), { timeout: 4000 }).toContain("Paragraph 1.");
     const run = app.ctx.services.chat.runner.of(id);
     expect(run?.listeners.size).toBe(0);
     // The conversation as it stands, asked for while nobody watches, holds the reply so far.
@@ -835,7 +845,7 @@ describe("the model server", () => {
   });
 
   it("reports a model that is slow to start, that goes quiet, that is cut off, and that writes nothing", async () => {
-    const slow = await station("stand-in-slow-start", { slowMs: 2000 });
+    const slow = await station("stand-in-slow-start", { slowMs: 4000 });
     const late = await slow.exchange(await slow.open(), "Hello");
     expect(late).toMatchObject({ state: "failed", failure: "too-slow" });
     expect(late.notice).toMatch(/had not started writing/);
