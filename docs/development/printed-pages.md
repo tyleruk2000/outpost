@@ -70,3 +70,24 @@ real text in the PDF. Callout symbols are shapes, not letters, so a search finds
   or CJK, and not arrows or ⅓. The old writer drew such letters as pictures
   (`maps/print/lettering.ts`); the kit does not yet, so a paper that may hold such names
   (the emergency contacts sheet) needs a fallback font or that approach before it moves.
+
+## Charts, drawing helpers and making a PDF on a screen
+
+- `chart(input)` (`chart.ts`) draws lines, bands between two lines and bars over a numeric
+  x axis, with shaded spans (night, say), rules across at a value, and a key. It uses
+  d3-scale and d3-shape (ISC) and returns a `Drawing` for `figure`. A null is a gap, never
+  joined across. Give every series its own dash as well as its colour.
+- `drawing`, `svgText`, `svgLeader`, `svgArrowHead`, `svgKeyItem` (`draw.ts`) are the
+  helpers `diagrams.ts` uses, exported for drawings kept beside their feature. pdfmake draws
+  paths, shapes, text, dashes, clip paths and fill opacity; not filters, masks or CSS.
+- `useKitPdf(make, { title, kind, from })` (`use-kit-pdf.ts`, not in the index) renders a
+  maker's document on a screen and answers `making`, `made` (with `pdf`, `bytes`, `pages`)
+  or `failed`; `kitPdfOf(made)` is what `PdfActions` takes. Give `make` with `useCallback`
+  or `useMemo` (null makes nothing). The made-PDF guard (`lib/made-pdf-rule.test.ts`) counts
+  `renderPdf` and `useKitPdf` as making a PDF.
+- `writeSample(name, bytes)` (`samples.ts`, tests only) writes a made PDF to the folder named
+  by `OUTPOST_PRINT_SAMPLES`, to look at.
+- Radio papers keep their drawings in `features/propagation/print/`: the ionosphere's
+  regions, sky wave and skip zone, near-vertical sky wave, a path in section, and day and
+  night on the world (`greyLineSketch`, over `public/world/land.json`). Their letters
+  outside Latin Extended-A print as "?" (`print/glyphs.ts`) and the screen names them.
