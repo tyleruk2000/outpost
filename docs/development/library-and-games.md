@@ -15,7 +15,17 @@ Routes are in [api.md](../api.md). This page holds what the guides leave out.
   many small ones. A wet UTC day is a hash of the day number against the month's chance.
   The server applies actions with its own clock, clamped so time never runs back; `GET`
   works the plot out without writing. Plot `v: 1` is read into `v: 2` on load.
-- Steading: flows are steady between events, so state is worked out from time exactly.
+- Steading: flows are steady between events (a store or yard fills, batteries fill or
+  reach their floor, a tank runs dry, sunrise or sunset, the month turns, a household
+  moves in), so state is worked out from time exactly; within a month whole days are
+  carried forward at once. A battery loses √(round trip) each way; a generator burns
+  0.0331 L/h per kW of size plus 0.2729 L per kWh made. A version 1 save is read as
+  version 2 on Ashgill (10 by 14 squares), with no belts and empty batteries. A map is
+  never stored; it is drawn again from its seed in a few milliseconds.
+- Steading size: 111 KB of script (38 KB compressed), loaded with the screen. In
+  Chromium at 390 by 844 with the processor slowed six times: open in 1.1 s, dragging at
+  60 frames a second, zooming out to the whole map one frame of about 0.2 s, a square's
+  panel in under 0.2 s, a year away worked out in well under a second.
 - Draughts searches 6 plies alpha-beta (man 100, king 160); chess 1 to 4 plies with
   quiescence. Both run in a Web Worker started per reply.
 - Sudoku: full grid by randomised search, cells emptied while the answer stays unique.
