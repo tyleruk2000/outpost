@@ -800,7 +800,8 @@ function situations(c: Context): Section {
     content.push(...planContent(c, own, index === 0));
     summary.push(`Plan: ${own.plan.name}`);
   });
-  const planned = new Set(c.plans.map((each) => each.plan.templateId).filter(Boolean));
+  // A hazard whose plan is in the book gets the plan; one with no plan in the book gets general advice.
+  const planned = new Set(plans.map((each) => each.plan.templateId).filter(Boolean));
   const general = c.answers.hazards.filter((hazard) => !planned.has(hazard));
   if (plans.length === 0 && general.length === 0)
     content.push(para("No emergency plan is in the book, and no hazard was chosen in the questions."));

@@ -47,7 +47,7 @@ export const BOOK_SECTIONS = [
   {
     id: "situations",
     label: "What to do, by situation",
-    about: "For each hazard chosen: before, during and after, from official guidance.",
+    about: "Your emergency plans in full, as you wrote them, and official guidance for a hazard with no plan yet.",
   },
   { id: "water", label: "Water", about: "How much to keep, how to make water safe, and drinking water near home." },
   { id: "food-hygiene", label: "Food, toilet and hygiene", about: "Food in a power cut or a flood, and keeping clean with little water." },

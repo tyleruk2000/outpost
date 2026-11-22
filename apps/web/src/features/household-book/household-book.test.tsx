@@ -8,7 +8,18 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { type BookFacts, DEFAULT_BOOK_ANSWERS, emptyMedicalRecord, type Household, type MedicalSheet } from "@outpost/shared";
+import {
+  type BookFacts,
+  DEFAULT_BOOK_ANSWERS,
+  type EmergencyPlan,
+  type EmergencyPlanResponse,
+  emptyMedicalRecord,
+  emptyPlanBody,
+  type Household,
+  type MedicalSheet,
+  planFromTemplate,
+  templateById,
+} from "@outpost/shared";
 import { RADIO_FREQUENCIES } from "@outpost/shared/radio-frequencies-data";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
@@ -17,10 +28,11 @@ import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { contentText, renderPdf } from "@/features/print-kit";
 import { type BookInputs, emergencyNumberFor, type MadeBook, makeBook } from "./book";
-import { BookHomeLine } from "./book-line";
+import { BookHomeLine, BookPlansLine } from "./book-line";
 import BookPage from "./book-page";
 import { FIRST_AID_PAGES, NHS_CREDIT, RECOVERY_POSITION } from "./first-aid";
 import { FM_21_76 } from "./water-words";
+import { BookWizard } from "./wizard";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -298,6 +310,155 @@ describe("the book's pages", () => {
   it("says plainly what it cannot do without a home", () => {
     const homeless = texts(makeBook(inputs({ facts: { ...facts, home: null, journeys: [] } })));
     expect(homeless).toMatch(/No saved place has the home icon/);
+  });
+});
+
+const flooding = templateById("flooding")!;
+function planOf(id: string, over: Partial<EmergencyPlan>): EmergencyPlanResponse {
+  let n = 0;
+  const input = planFromTemplate(flooding, () => `${id}-${++n}`, "999");
+  return {
+    plan: {
+      ...input,
+      id,
+      use: { startedAt: null, ticks: {} },
+      reviewedAt: 1,
+      openedAt: null,
+      createdAt: 1,
+      updatedAt: 1,
+      ...over,
+      body: { ...input.body, ...over.body },
+    },
+    resolved: { contacts: {}, places: {}, commPlan: undefined, powerPlan: undefined, links: [] },
+  };
+}
+const ownFlood = planOf("p1", { name: "Our flood plan" });
+const street = planOf("p2", {
+  name: "Street party gone wrong",
+  templateId: null,
+  kind: "other",
+  kindText: "Street event",
+  body: {
+    ...emptyPlanBody(),
+    steps: [{ id: "x1", phase: "during", text: "Walk Gran home by the back lane.", origin: null }],
+    contacts: [{ id: "c1", contactId: null, name: "Jo next door", phone: "01632 960001", note: "Has a ladder", outOfArea: false }],
+    supplies: [{ id: "s1", name: "Head torch", quantity: 2, unit: "", perPerson: false, perDay: false, origin: null, category: null }],
+    notes: "Meet by the post box.",
+  },
+});
+
+describe("the household's emergency plans in the book", () => {
+  it("puts every plan in, in full and as written, as their plan, with general advice only for a hazard with no plan", () => {
+    const words = texts(
+      makeBook(inputs({ plans: [ownFlood, street], answers: { ...inputs().answers, hazards: ["flooding", "power-cut"] } })),
+    );
+    expect(words).toContain("Your plan Our flood plan");
+    expect(words).toContain("Your plan Street party gone wrong");
+    expect(words).toContain("Walk Gran home by the back lane.");
+    expect(words).toMatch(/Jo next door 01632 960001 \(phone\) Has a ladder/);
+    expect(words).toMatch(/Head torch 2/);
+    expect(words).toContain("Meet by the post box.");
+    expect(words).toMatch(/General advice Power cut General advice; you have no plan for this yet/);
+    expect(words).not.toMatch(/General advice Flooding/);
+  });
+
+  it("puts in only the plans chosen, and general advice for a hazard whose plan is left out", () => {
+    const words = texts(
+      makeBook(
+        inputs({ plans: [ownFlood, street], answers: { ...inputs().answers, hazards: ["flooding"], planChoice: "some", planIds: ["p2"] } }),
+      ),
+    );
+    expect(words).not.toContain("Our flood plan");
+    expect(words).toContain("Street party gone wrong");
+    expect(words).toMatch(/General advice Flooding General advice; you have no plan for this yet/);
+  });
+
+  it("ticks the hazards that have a plan, says so, and offers to make a plan for one that has none", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const { pathname } = new URL(String(input), "http://outpost.test");
+        const body =
+          pathname === "/api/emergency-plans"
+            ? { plans: [{ id: "p1", name: "Our flood plan", templateId: "flooding", kind: "flooding", kindText: "" }] }
+            : {};
+        return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+      }),
+    );
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <BookWizard
+            answers={{ ...DEFAULT_BOOK_ANSWERS, hazards: ["power-cut"] }}
+            household={household}
+            markers={[]}
+            country="GB"
+            sheets={new Set()}
+            saving={false}
+            save={async () => {}}
+            onDone={() => {}}
+            startAt="readiness"
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByText(/One hazard is ticked because you have a plan for it/)).toBeTruthy();
+    expect((screen.getByRole("checkbox", { name: /Flooding/ }) as HTMLElement).getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByText("Your plan: Our flood plan")).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: /Make a plan for this/ })).toHaveLength(1);
+    expect(screen.getByRole("radio", { name: "All 1" })).toBeTruthy();
+  });
+
+  it("offers to put a plan in the book from the plan, when the book takes only some", async () => {
+    const sent: unknown[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        if (init?.method === "PUT") sent.push(JSON.parse(String(init.body)));
+        return new Response(JSON.stringify(response), { status: 200, headers: { "content-type": "application/json" } });
+      }),
+    );
+    const response = {
+      answers: { ...DEFAULT_BOOK_ANSWERS, planChoice: "some", planIds: [] },
+      answersAt: 5,
+      made: { madeAt: 1, pages: 30, sections: [], summary: {} },
+      fingerprints: {},
+      stale: ["plans"],
+    };
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } } });
+    client.setQueryData(["household-book", "answers"], response);
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <BookPlansLine planId="p2" />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(screen.getByText("This plan is not in the household book.")).toBeTruthy();
+    screen.getByRole("button", { name: "Put in the household book" }).click();
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0]).toMatchObject({ planChoice: "some", planIds: ["p2"], baseAnswersAt: 5 });
+  });
+
+  it("says a plan is in the book and the book is older than the plans", () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } } });
+    client.setQueryData(["household-book", "answers"], {
+      answers: DEFAULT_BOOK_ANSWERS,
+      answersAt: 5,
+      made: { madeAt: Date.UTC(2026, 10, 17, 12), pages: 30, sections: [], summary: {} },
+      fingerprints: {},
+      stale: ["plans"],
+    });
+    const { container } = render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <BookPlansLine />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(container.textContent).toContain("Every plan goes in the household book, made on 17 Nov 2026, before the plans last changed.");
+    expect(screen.getByRole("link", { name: "Make the book again" }).getAttribute("href")).toBe("/prepare/book");
   });
 });
 

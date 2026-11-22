@@ -4,10 +4,11 @@
  * the library or shared like every PDF Outpost makes. Outpost keeps the answers as a draft
  * and a record of the last book made, so the next book says what changed since.
  */
-import { type BookAnswers, type BookStepId, DEFAULT_BOOK_ANSWERS, localDay } from "@outpost/shared";
+import { BOOK_STEPS, type BookAnswers, type BookStepId, DEFAULT_BOOK_ANSWERS, localDay } from "@outpost/shared";
 import { RADIO_FREQUENCIES } from "@outpost/shared/radio-frequencies-data";
 import { BookOpen, ListChecks, TriangleAlert } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router";
 import { EmptyState, ErrorState, Notice, Page, PageHeader, Rows } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
@@ -38,7 +39,9 @@ export default function BookPage() {
   const facts = useBookFacts(true);
   const save = useSaveBook();
   const made = useBookMade();
-  const [asking, setAsking] = useState<BookStepId | null>(null);
+  // "?step=readiness": back from making a plan for a hazard, to the question it was made from.
+  const [params] = useSearchParams();
+  const [asking, setAsking] = useState<BookStepId | null>(() => BOOK_STEPS.find((each) => each.id === params.get("step"))?.id ?? null);
   const [result, setResult] = useState<{ pdf: MadePdf; bytes: Uint8Array; pages: number; medical: boolean } | null>(null);
   const [making, setMaking] = useState(false);
 

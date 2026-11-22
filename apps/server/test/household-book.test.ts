@@ -7,7 +7,16 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { type BookFacts, type BookResponse, bookChanges, DEFAULT_BOOK_ANSWERS, walkLine, withinDegrees } from "@outpost/shared";
+import {
+  type BookFacts,
+  type BookResponse,
+  bookChanges,
+  DEFAULT_BOOK_ANSWERS,
+  type EmergencyPlanResponse,
+  emptyPlanBody,
+  walkLine,
+  withinDegrees,
+} from "@outpost/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { weatherCache, weatherPlaces } from "../src/db/schema.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
@@ -116,6 +125,45 @@ describe("the book's answers", () => {
     const saved = await ok<BookResponse>("GET", "/api/household-book");
     await ok("PUT", "/api/household-book", { ...saved.answers, days: 5, baseAnswersAt: saved.answersAt });
     expect((await ok<BookResponse>("GET", "/api/household-book")).stale).toEqual(["answers", "places"]);
+  });
+
+  it("says the book is older than the plans when a plan is added, changed or deleted", async () => {
+    const madeNow = async () => {
+      const now = await ok<BookResponse>("GET", "/api/household-book");
+      await ok("POST", "/api/household-book/made", { pages: 41, sections: ["situations"], summary: {}, fingerprints: now.fingerprints });
+      expect((await ok<BookResponse>("GET", "/api/household-book")).stale).toEqual([]);
+    };
+    const plan = {
+      name: "Street party",
+      kind: "other",
+      kindText: "",
+      templateId: null,
+      emergencyNumber: "999",
+      reviewEveryDays: 180,
+      body: emptyPlanBody(),
+    };
+    await madeNow();
+    const added = await ok<EmergencyPlanResponse>("POST", "/api/emergency-plans", plan);
+    expect((await ok<BookResponse>("GET", "/api/household-book")).stale).toEqual(["plans"]);
+    await madeNow();
+    await ok("PUT", `/api/emergency-plans/${added.plan.id}`, { ...plan, name: "Street party, changed" });
+    expect((await ok<BookResponse>("GET", "/api/household-book")).stale).toEqual(["plans"]);
+    await madeNow();
+    await ok("DELETE", `/api/emergency-plans/${added.plan.id}`);
+    expect((await ok<BookResponse>("GET", "/api/household-book")).stale).toEqual(["plans"]);
+  });
+
+  it("keeps which plans go in the book", async () => {
+    const saved = await ok<BookResponse>("GET", "/api/household-book");
+    expect(saved.answers.planChoice).toBe("all");
+    const some = await ok<BookResponse>("PUT", "/api/household-book", {
+      ...saved.answers,
+      planChoice: "some",
+      planIds: ["p1"],
+      baseAnswersAt: saved.answersAt,
+    });
+    expect(some.answers).toMatchObject({ planChoice: "some", planIds: ["p1"] });
+    expect((await app.api("PUT", "/api/household-book", { ...some.answers, planChoice: "most" })).status).toBe(400);
   });
 });
 

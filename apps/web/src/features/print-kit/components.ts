@@ -130,13 +130,14 @@ const CALLOUT: Record<CalloutKind, { border: string; soft: string; ink: string; 
 /** The callout's symbol, drawn: 11 points square. */
 export function calloutSymbol(kind: CalloutKind): string {
   const { border } = CALLOUT[kind];
-  const glyph = (fill: string, text: string, y: number) =>
-    `<text x="6" y="${y}" font-family="${PRINT_FONT}" font-weight="bold" font-size="8.5" text-anchor="middle" fill="${fill}">${text}</text>`;
+  // Drawn, not lettered: the marks are shapes, so that a search of the file finds only the words.
+  const bang = (fill: string, top: number) =>
+    `<rect x="5.15" y="${top}" width="1.7" height="4.6" rx="0.8" fill="${fill}"/><circle cx="6" cy="${top + 6.3}" r="0.95" fill="${fill}"/>`;
   if (kind === "act")
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5.6" fill="${border}"/>${glyph("#ffffff", "!", 9.2)}</svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5.6" fill="${border}"/>${bang("#ffffff", 2.4)}</svg>`;
   if (kind === "know")
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="#ffffff" stroke="${border}" stroke-width="1.3"/>${glyph(border, "i", 9)}</svg>`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><path d="M6 0.8 L11.4 11 L0.6 11 Z" fill="${C.warn}" stroke="${C.warnInk}" stroke-width="0.6" stroke-linejoin="round"/>${glyph("#ffffff", "!", 10.2)}</svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="#ffffff" stroke="${border}" stroke-width="1.3"/><circle cx="6" cy="3.7" r="0.95" fill="${border}"/><rect x="5.2" y="5.2" width="1.6" height="4" rx="0.7" fill="${border}"/></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><path d="M6 0.8 L11.4 11 L0.6 11 Z" fill="${C.warn}" stroke="${C.warnInk}" stroke-width="0.6" stroke-linejoin="round"/>${bang("#ffffff", 3.6)}</svg>`;
 }
 
 function boxLayout(border: string, width: number, dash: boolean, fill: string, inset: number = S.inset): CustomTableLayout {
