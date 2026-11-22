@@ -2,7 +2,17 @@ import type { MapSources } from "@outpost/shared";
 import { describe, expect, it } from "vitest";
 import { rangeLayers } from "@/features/repeaters/map/range";
 import { walkLayers } from "../walk/walk-map";
-import { MAP_STYLE_IDS, MAP_STYLES, NIGHT_IMAGERY_PAINT, nightRed, parseColour, roadClassColour } from "./map-styles";
+import {
+  contrastRatio,
+  MAP_STYLE_IDS,
+  MAP_STYLES,
+  NIGHT_IMAGERY_PAINT,
+  NIGHT_STYLE_NOTE,
+  nightRed,
+  parseColour,
+  readableAgainst,
+  roadClassColour,
+} from "./map-styles";
 import { FALLBACK_NIGHT, FALLBACK_THEME } from "./palette";
 import { buildStyle, type StyleInput } from "./style";
 import type { LayerSpecification } from "./style-types";
@@ -136,36 +146,49 @@ describe("the high-contrast map", () => {
   });
 });
 
-describe("the names on the high-contrast map", () => {
-  const luminance = (colour: string) => {
-    const [r, g, b] = parseColour(colour)!
-      .slice(0, 3)
-      .map((value) => {
-        const s = value / 255;
-        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-      });
-    return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
-  };
-  const ratio = (a: string, b: string) => {
-    const [x, y] = [luminance(a), luminance(b)];
-    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
-  };
+describe("the names on the map", () => {
   const coloursIn = (value: unknown): string[] =>
     typeof value === "string" ? (parseColour(value) ? [value] : []) : Array.isArray(value) ? value.flatMap(coloursIn) : [];
 
-  it("are all at least 4.5:1 against their halo (WCAG 1.4.3)", () => {
-    for (const flavour of ["light", "dark"] as const) {
-      const style = buildStyle(input({ mapStyle: "high-contrast", flavour, theme: FALLBACK_THEME[flavour] }));
-      for (const each of style.layers) {
-        if (each.type !== "symbol") continue;
-        const paint = paintOf(style, each.id);
-        const halo = coloursIn(paint["text-halo-color"])[0];
-        if (!halo) continue;
-        // A name drawn in its halo's own colour is not a name that shows (a case colour in the Protomaps styles).
-        for (const text of coloursIn(paint["text-color"]).filter((colour) => colour.toLowerCase() !== halo.toLowerCase()))
-          expect(ratio(text, halo), `${each.id} ${text} on ${halo}`).toBeGreaterThanOrEqual(4.5);
+  it("are all at least 4.5:1 against their halo in every style but the night one, light and dark (WCAG 1.4.3)", () => {
+    let checked = 0;
+    for (const mapStyle of MAP_STYLE_IDS.filter((id) => id !== "night"))
+      for (const flavour of ["light", "dark"] as const) {
+        const style = buildStyle(input({ mapStyle, flavour, theme: FALLBACK_THEME[flavour], roadNumbers: true }));
+        for (const each of style.layers) {
+          if (each.type !== "symbol") continue;
+          const paint = paintOf(style, each.id);
+          const halo = coloursIn(paint["text-halo-color"])[0];
+          if (!halo) continue;
+          // A name drawn in its halo's own colour is not a name that shows (a case colour in the Protomaps styles).
+          for (const text of coloursIn(paint["text-color"]).filter((colour) => colour.toLowerCase() !== halo.toLowerCase())) {
+            expect(contrastRatio(text, halo), `${mapStyle} ${flavour} ${each.id} ${text} on ${halo}`).toBeGreaterThanOrEqual(4.5);
+            checked += 1;
+          }
+        }
       }
-    }
+    expect(checked).toBeGreaterThan(100);
+  });
+
+  it("keep their hue where they are darkened: water's names stay blue", () => {
+    const style = buildStyle(input({ mapStyle: "standard" }));
+    const [r, g, b] = parseColour(coloursIn(paintOf(style, "water_label_lakes")["text-color"])[0]!)!;
+    expect(b).toBeGreaterThan(r!);
+    expect(b).toBeGreaterThan(g!);
+  });
+
+  it("are left dim in the night style, which says so when chosen", () => {
+    const style = buildStyle(input({ mapStyle: "night" }));
+    const paint = paintOf(style, "water_label_lakes");
+    expect(contrastRatio(coloursIn(paint["text-color"])[0]!, coloursIn(paint["text-halo-color"])[0]!)).toBeLessThan(4.5);
+    expect(NIGHT_STYLE_NOTE).toMatch(/High contrast/);
+    expect(MAP_STYLES.night.hint).toMatch(/dim on purpose/);
+  });
+
+  it("are mixed towards black on a light ground and white on a dark one, untouched when they already read", () => {
+    expect(readableAgainst("#000000", "#ffffff")).toBe("#000000");
+    expect(contrastRatio(readableAgainst("#728dd4", "#c5dcdf"), "#c5dcdf")).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(readableAgainst("#2B5CEA", "#1c2224"), "#1c2224")).toBeGreaterThanOrEqual(4.5);
   });
 });
 

@@ -5,8 +5,9 @@
  *
  * Night is a tint, never a blanket: at its darkest the ground under it is still read. It
  * is drawn under the map's own names, which keep their contrast (see docs/maps.md).
- * Day and night are not told apart by the tint alone: the line, the broken lines and the
- * legend say where each is.
+ * Day and night are not told apart by the tint alone: the whole night is also hatched with
+ * fine diagonal lines, which read in either theme and in greyscale (on the dark map a tint
+ * alone hardly showed), and the line, the broken lines and the legend say where each is.
  *
  * The shades go beneath the map's names and every overlay, the coverage cells of an HF
  * map among them, so that a cell's colour is not changed by the night over it; the lines
@@ -36,6 +37,49 @@ export function shadeOpacity(theme: MapTheme): number {
 
 const kind = (name: string) => ["==", ["get", "kind"], name] as never;
 
+/** The name of the hatching's picture: the colour it is drawn in is part of the name, so each theme has its own. */
+const HATCH_PREFIX = "grey-line-hatch-";
+
+export function hatchImageId(theme: MapTheme): string {
+  return `${HATCH_PREFIX}${theme.ink.replace("#", "").toLowerCase()}`;
+}
+
+/** The side of the hatching's tile, in the map's pixels: a line every 6 px, at 45°. */
+const HATCH_TILE = 6;
+
+/**
+ * Draws the tile of the night's hatching that `id` names, at `ratio` device pixels to each of the map's: a diagonal line
+ * in the theme's ink, half seen, that meets the next tile's at every edge. Null when `id` is not the hatching's, or the
+ * browser gives no canvas to draw on.
+ */
+export function drawHatchImage(id: string, ratio: number): ImageData | null {
+  if (!id.startsWith(HATCH_PREFIX)) return null;
+  const hex = id.slice(HATCH_PREFIX.length);
+  if (!/^[0-9a-f]{6}$/.test(hex)) return null;
+  const side = Math.round(HATCH_TILE * ratio);
+  const canvas = typeof OffscreenCanvas === "undefined" ? document.createElement("canvas") : new OffscreenCanvas(side, side);
+  canvas.width = side;
+  canvas.height = side;
+  const context = canvas.getContext("2d") as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
+  if (!context) return null;
+  context.strokeStyle = `#${hex}`;
+  context.globalAlpha = 0.5;
+  context.lineWidth = ratio;
+  context.lineCap = "square";
+  // The diagonal, and its two ends again at the far corners, so the lines run on unbroken from tile to tile.
+  for (const [x0, y0, x1, y1] of [
+    [0, side, side, 0],
+    [-side, side, side, -side],
+    [0, 2 * side, 2 * side, 0],
+  ] as const) {
+    context.beginPath();
+    context.moveTo(x0, y0);
+    context.lineTo(x1, y1);
+    context.stroke();
+  }
+  return context.getImageData(0, 0, side, side);
+}
+
 /** The night and the twilights, beneath every other overlay. */
 export function greyLineShadeLayers(theme: MapTheme): LayerSpecification[] {
   return [
@@ -48,6 +92,15 @@ export function greyLineShadeLayers(theme: MapTheme): LayerSpecification[] {
       metadata: UNDER_LABELS,
       // No outline: the pieces of a shade meet at the 180° meridian, and an outline would draw a seam there.
       paint: { "fill-color": isDark(theme) ? "#000000" : theme.ink, "fill-opacity": shadeOpacity(theme), "fill-antialias": false },
+    },
+    // The whole night (from the Sun set) hatched once, over the tint: the pattern, not only the darkness, says night.
+    {
+      id: "o-grey-line-hatch",
+      type: "fill",
+      source: GREY_LINE_SOURCE,
+      filter: ["all", kind("shade"), ["==", ["get", "step"], 0]] as never,
+      metadata: UNDER_LABELS,
+      paint: { "fill-pattern": hatchImageId(theme), "fill-antialias": false },
     },
   ];
 }

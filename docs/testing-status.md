@@ -44,6 +44,11 @@ of what each feature does are in its own guide.
   from inside another are not.
 - **Not tried:** a pass by hand with a screen reader. No one has used the map, the notes
   editor or the reader with VoiceOver from start to finish.
+- **Maps, accepted:** the names on the map in the Night (red) style are 1.1 to 3.5:1 against their
+  halos, under WCAG 1.4.3's 4.5:1. The style is for eyes used to the dark, and red bright enough
+  to reach 4.5:1 spoils that, so it is kept dim; choosing it says so on screen and offers High
+  contrast, the style to read. Every other style's names reach 4.5:1 in light and dark, worked out
+  from the style by a unit test.
 - **Maps, not tried:** VoiceOver, TalkBack or a switch on a real phone; Safari on a real
   iPhone with its bars and on-screen keyboard (WebKit in a test is not that); a real
   compass, GPS fix or long press on glass. The keyboard routes (Shift F10 for the

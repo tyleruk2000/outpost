@@ -32,7 +32,8 @@ async function sunAndMagneticApart(page: Page) {
 }
 
 test.describe("maps from the keyboard", () => {
-  test.use({ viewport: { width: 1280, height: 800 } });
+  // Tall enough for the whole column of tools beside the map; shorter, the map takes the phone's layout (below).
+  test.use({ viewport: { width: 1360, height: 900 } });
   let maps: Awaited<ReturnType<typeof installTestMaps>> | undefined;
   test.beforeEach(async ({ page }) => {
     maps = await installTestMaps(page);
@@ -156,32 +157,71 @@ test.describe("maps from the keyboard", () => {
       await api(page, "DELETE", `/api/maps/markers/${marker.id}`);
     }
   });
+});
 
-  test("with the largest text, the column of tools keeps its width beside the search box", async ({ page }) => {
+test.describe("the map's layout on a wide screen", () => {
+  test.use({ viewport: { width: 1360, height: 900 } });
+  let maps: Awaited<ReturnType<typeof installTestMaps>> | undefined;
+  test.beforeEach(async ({ page }) => {
+    maps = await installTestMaps(page);
+  });
+  test.afterEach(async ({ page }) => {
+    await removeTestMaps(page, maps);
+  });
+
+  test("with room, the whole column of tools; and messages come up clear of it", async ({ page }) => {
+    await open(page);
+    await expect(page.locator(".outpost-touch")).not.toHaveAttribute("data-compact");
+    await expect(page.getByRole("button", { name: "More map tools" })).toHaveCount(0);
+    const last = page.getByRole("button", { name: "Line of sight between two points" });
+    await expect(last).toBeInViewport({ ratio: 1 });
+    // Satellite with nothing downloaded says what to get, in a message: to the left of the column, not over it.
+    await page.getByRole("button", { name: /^Satellite/ }).click();
+    const toast = page.locator("[data-sonner-toast]").first();
+    await expect(toast).toBeVisible();
+    const column = (await page.getByRole("button", { name: "Zoom in" }).boundingBox())!;
+    const message = (await toast.boundingBox())!;
+    expect(message.x + message.width).toBeLessThanOrEqual(column.x);
+  });
+
+  test("too short for the column, the phone's layout: tools under More, the card in hand docked at the foot", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 640 });
+    await open(page);
+    await expect(page.locator(".outpost-touch")).toHaveAttribute("data-compact", "");
+    const more = page.getByRole("button", { name: "More map tools" });
+    await expect(more).toBeInViewport({ ratio: 1 });
+    await more.click();
+    await page.getByRole("menuitemcheckbox", { name: "Line of sight between two points" }).click();
+    const card = page.locator(".outpost-furniture-dock > .outpost-map-card");
+    await expect(card.getByRole("heading", { name: "Line of sight" })).toBeVisible();
+    // Docked: on the map's foot, across its width.
+    const area = (await page.locator(".outpost-touch").boundingBox())!;
+    const box = (await card.boundingBox())!;
+    expect(Math.abs(box.y + box.height - (area.y + area.height))).toBeLessThanOrEqual(1);
+    expect(box.width).toBeGreaterThan(area.width - 2);
+  });
+
+  test("with the largest text, the map too narrow for the wide layout takes the phone's", async ({ page }) => {
     await page.addInitScript(() => {
       const apply = () => document.documentElement.style.setProperty("font-size", "24px", "important");
       if (document.documentElement) apply();
       document.addEventListener("DOMContentLoaded", apply);
     });
     await open(page);
-    const zoom = page.getByRole("button", { name: "Zoom in" });
-    await expect(zoom).toBeInViewport({ ratio: 1 });
-    // 2.25rem, at 24 px to the rem.
-    expect((await zoom.boundingBox())!.width).toBeGreaterThanOrEqual(53);
+    await expect(page.locator(".outpost-touch")).toHaveAttribute("data-compact", "");
+    await expect(page.getByRole("button", { name: "More map tools" })).toBeInViewport({ ratio: 1 });
+    await expect(page.getByLabel("Search the map")).toBeInViewport({ ratio: 1 });
     await sunAndMagneticApart(page);
   });
 
-  test("on a short window every tool in the column can still be reached by the pointer", async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 640 });
+  test("choosing the night style says it is dim on purpose, and offers the readable one", async ({ page }) => {
     await open(page);
-    const last = page.getByRole("button", { name: "Line of sight between two points" });
-    await last.scrollIntoViewIfNeeded();
-    await expect(last).toBeInViewport({ ratio: 1 });
-    // The column scrolled, not the screen: the search box is where it was.
-    await expect(page.getByLabel("Search the map")).toBeInViewport({ ratio: 1 });
-    const credits = (await page.locator(".outpost-credits").boundingBox())!;
-    const box = (await last.boundingBox())!;
-    expect(box.y + box.height).toBeLessThanOrEqual(credits.y);
+    await page.getByRole("button", { name: /^Map style/ }).click();
+    await page.getByRole("menuitemradio", { name: "Night (red)" }).click();
+    const toast = page.locator("[data-sonner-toast]").filter({ hasText: "dim on purpose" });
+    await expect(toast).toContainText("High contrast");
+    await toast.getByRole("button", { name: "Use High contrast" }).click();
+    await expect(page.getByRole("button", { name: "Map style: High contrast" })).toBeVisible();
   });
 });
 

@@ -20,7 +20,7 @@ import {
   CONTOUR_SOURCE_LAYER,
   contourTemplate,
 } from "./contours";
-import { type MapStyleId, roadNumberLayers, styleVariant } from "./map-styles";
+import { type MapStyleId, readableNames, roadNumberLayers, styleVariant } from "./map-styles";
 import type { LayerSpecification, SourceSpecification, StyleSpecification } from "./style-types";
 import { tileTemplate } from "./tiles";
 
@@ -276,7 +276,9 @@ export function buildStyle(input: StyleInput): StyleSpecification {
       const firstLabel = detailed.findIndex((layer) => layer.type === "symbol");
       detailed.splice(firstLabel === -1 ? detailed.length : firstLabel, 0, contour.labels);
     }
-    layers.push(...detailed);
+    // Every name at least 4.5:1 against its halo (contours' heights and road numbers too), in light and dark, with its
+    // hue kept. Not the night style, which is dim on purpose for eyes used to the dark, and says so when it is chosen.
+    layers.push(...(input.mapStyle === "night" ? detailed : readableNames(detailed)));
   } else {
     // Terrain without a detailed map (an imported archive, say): the lines still have the outline map to sit on.
     if (contour) layers.push(...contour.lines, contour.labels);

@@ -60,4 +60,15 @@ describe("Button while loading", () => {
     );
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
   });
+
+  it("is never narrower than its size when it is an icon, whatever margin pulls it into a corner", () => {
+    render(
+      <Button size="icon-sm" aria-label="Close" className="-mr-1.5">
+        x
+      </Button>,
+    );
+    const button = screen.getByRole("button", { name: "Close" });
+    expect(button).toHaveClass("max-w-none");
+    expect(button).not.toHaveClass("max-w-full");
+  });
 });
