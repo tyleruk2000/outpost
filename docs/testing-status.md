@@ -234,7 +234,7 @@ of what each feature does are in its own guide.
   source is bare ground or surface is not checked.
 - **Radio range beyond 50 km**: now read from finer tiles where they are installed; not compared again
   with `gdal_viewshed` or a 5 m walk, and its time on a Raspberry Pi not measured.
-- **Irish Grid and ITM**: checked against OSi's worked examples, one NISRA reference and PROJ; not
+- **Irish Grid and ITM**: checked against OSi's worked examples, OSi's published GPS station coordinates (ITM), one NISRA reference and PROJ; not
   against a printed OSi or OSNI map or a GPS on the ground.
 - **Night style**: its reds for a range and a walk, and the dimmed satellite imagery, are worked out from
   contrast figures; not looked at in the dark with eyes adapted to it.

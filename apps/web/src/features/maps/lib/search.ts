@@ -71,6 +71,7 @@ const COORDINATE_KINDS: Record<ParsedCoordinate["format"], string> = {
   geo: "Coordinates",
   osgb: "Grid reference",
   irish: "Irish Grid reference",
+  itm: "ITM coordinates",
   maidenhead: "Maidenhead locator",
   utm: "UTM coordinates",
   mgrs: "MGRS reference",
@@ -113,7 +114,7 @@ function locatorDetail(coordinate: ParsedCoordinate): string {
 
 export function coordinateDetail(coordinate: ParsedCoordinate): string {
   if (coordinate.format === "maidenhead") return locatorDetail(coordinate);
-  if (coordinate.format === "utm" || coordinate.format === "mgrs") return gridDetail(coordinate);
+  if (coordinate.format === "utm" || coordinate.format === "mgrs" || coordinate.format === "itm") return gridDetail(coordinate);
   if (coordinate.format !== "osgb" && coordinate.format !== "irish") {
     const grid = formatOsGridRef(coordinate.lat, coordinate.lon, 8);
     return grid ? `Coordinates · grid reference ${grid}` : COORDINATE_KINDS[coordinate.format];

@@ -23,7 +23,17 @@ import { Fact, PanelHeading } from "@/features/maps/ui";
 import { errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { formatNumber, plural } from "@/lib/utils";
-import { areaRefusal, dismissAreaWork, measureArea, roomLeft, startArea, stopArea, useAreaWork } from "./area";
+import {
+  areaRefusal,
+  dismissAreaWork,
+  measureArea,
+  roomLeft,
+  startArea,
+  stopArea,
+  tooManyTiles,
+  tooManyTilesRefusal,
+  useAreaWork,
+} from "./area";
 import { DEVICE, DeviceIcon, KEEP_ON_THIS_DEVICE } from "./device";
 import { keepMedical, keepNote, keepPlaces, keepTrack, MEDICAL_ID, PLACES_ID } from "./keep";
 import { keepingSupported, outOfRoomMessage, removeKept, useKept } from "./store";
@@ -258,8 +268,12 @@ export function KeepAreaSection({ engine }: { engine: MapEngine | null }) {
   const basemap = sources.data?.sources.basemap;
   const hasTerrain = Boolean(sources.data?.hasTerrain);
   const deepest = basemap?.maxzoom ?? 0;
-  const choices = [...new Set([...ZOOM_CHOICES.filter((zoom) => zoom < deepest), deepest])].filter((zoom) => zoom > 0);
   const [maxZoom, setMaxZoom] = useState<number>();
+  // A detail the server said the area fits to, offered with the usual ones until another is chosen.
+  const [fitted, setFitted] = useState<number>();
+  const choices = [...new Set([...ZOOM_CHOICES.filter((zoom) => zoom < deepest), deepest, ...(fitted === undefined ? [] : [fitted])])]
+    .filter((zoom) => zoom > 0)
+    .sort((a, b) => a - b);
   const [terrain, setTerrain] = useState(true);
   const [title, setTitle] = useState("");
   const [box, setBox] = useState<Bbox>();
@@ -267,11 +281,11 @@ export function KeepAreaSection({ engine }: { engine: MapEngine | null }) {
   const zoom = maxZoom ?? Math.min(14, deepest);
 
   const measure = useMutation({
-    mutationFn: async (bbox: Bbox): Promise<{ size: MapAreaSize; room: number | null }> => ({
-      size: await measureArea(bbox, zoom, terrain && hasTerrain),
+    mutationFn: async ({ bbox, detail }: { bbox: Bbox; detail: number }): Promise<{ size: MapAreaSize; room: number | null }> => ({
+      size: await measureArea(bbox, detail, terrain && hasTerrain),
       room: await roomLeft(),
     }),
-    onSuccess: ({ size, room }) => setRefusal(areaRefusal(size, room)),
+    onSuccess: ({ size, room }) => setRefusal(areaRefusal(size, room, region?.name)),
   });
   const start = useMutation({ mutationFn: startArea });
   const resetMeasure = measure.reset;
@@ -295,7 +309,7 @@ export function KeepAreaSection({ engine }: { engine: MapEngine | null }) {
       setBox(bbox);
       setRefusal(undefined);
       engine?.fitBounds(bbox, { maxZoom: 12 });
-      measure.mutate(bbox);
+      measure.mutate({ bbox, detail: zoom });
       return;
     }
     if (!engine) return;
@@ -307,10 +321,20 @@ export function KeepAreaSection({ engine }: { engine: MapEngine | null }) {
     }
     setBox(bbox);
     setRefusal(undefined);
-    measure.mutate(bbox);
+    measure.mutate({ bbox, detail: zoom });
+  };
+
+  // Measured again at the detail the server said the same box fits to.
+  const measureAt = (detail: number) => {
+    if (!box) return;
+    setFitted(detail);
+    setMaxZoom(detail);
+    setRefusal(undefined);
+    measure.mutate({ bbox: box, detail });
   };
 
   const size = measure.data?.size;
+  const tooMany = measure.isError ? tooManyTiles(measure.error) : null;
 
   return (
     <section aria-label={`Map areas on this ${DEVICE}`}>
@@ -382,6 +406,7 @@ export function KeepAreaSection({ engine }: { engine: MapEngine | null }) {
               value={part}
               onChange={(value) => {
                 setPart(value as AreaChoice);
+                setFitted(undefined);
                 forget();
               }}
               options={[
@@ -419,6 +444,19 @@ export function KeepAreaSection({ engine }: { engine: MapEngine | null }) {
             <p className="text-small text-ink-muted" aria-busy>
               Measuring {region ? region.name : "the area in view"}
             </p>
+          ) : tooMany ? (
+            <Notice
+              tone="warning"
+              action={
+                tooMany.fitsZoom !== null ? (
+                  <Button size="sm" variant="ghost" onClick={() => measureAt(tooMany.fitsZoom!)}>
+                    Measure at zoom {tooMany.fitsZoom}
+                  </Button>
+                ) : undefined
+              }
+            >
+              {tooManyTilesRefusal(tooMany, region?.name)}
+            </Notice>
           ) : measure.isError ? (
             <Notice tone="danger">{errorMessage(measure.error)}</Notice>
           ) : size && box ? (

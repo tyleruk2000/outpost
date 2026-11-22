@@ -187,6 +187,12 @@ Where places crowd together an icon gives way to its neighbour until you zoom in
 If Outpost answers this computer only, a phone cannot open the links: share it under
 **Settings → Who can use this library**.
 
+The QR code for a range holds only the point and the heights. For the shape itself in other
+map apps, **GPX** and **KML** beside it download the outline, made on this device: the
+furthest ground in sight on each bearing joined into one closed line, the typical-range
+circle, and the point. Ground inside the outline can still be hidden by nearer ground; only
+Outpost's shading shows which. With no terrain the outline is the smooth-Earth horizon.
+
 ### Moving a saved place
 
 Press and hold a place for half a second and drag it (or right-click → **Move**, or the move
@@ -243,6 +249,7 @@ The search box reads these as positions:
 | `geo:` link | `geo:54.4609,-3.0886` |
 | British National Grid | `NY 215 072` · `321540 507210` |
 | Irish Grid | `O 159 346` · `J 338 740` |
+| Irish Transverse Mercator (ITM) | `ITM 715830 734697` · `itm 715830, 734697` |
 | Maidenhead locator | `IO83QM` |
 | UTM and UPS | `30U 448251 5411932` · `UPS N 2000000 2000000` |
 | MGRS (US National Grid) | `18S UJ 23483 06479` |
@@ -252,8 +259,9 @@ The search box reads these as positions:
   is.
 - National Grid conversion is good to about 5 m, Irish Grid to about a metre. An Irish Grid
   reference is one letter and figures; two letters are a British one.
-- ITM is shown in the readout but not read from the search box: its plain figures look like
-  a British easting and northing.
+- ITM needs `ITM` before or after the figures, in any case: plain six-figure pairs are read
+  as a British easting and northing, which they look like. Easting first, then northing, in
+  metres; decimals are kept. ITM figures name a point, not a square.
 - UTM and MGRS are on WGS 84; references from older maps on other datums can be hundreds of
   metres off.
 

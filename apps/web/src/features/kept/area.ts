@@ -23,6 +23,7 @@ import {
   countRectTiles,
   formatBytes,
   MAX_KEPT_AREA_BYTES,
+  MAX_KEPT_AREA_TILES,
   type MapAreaSize,
   type MapOverview,
   type MapSources,
@@ -32,9 +33,9 @@ import {
 import { useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { regionsCacheKey } from "@/features/maps/lib/tiles";
-import { api } from "@/lib/api";
+import { ApiError, api } from "@/lib/api";
 import { notify } from "@/lib/notify";
-import { localId } from "@/lib/utils";
+import { formatNumber, localId } from "@/lib/utils";
 import { TILE_ENCODING_HEADER } from "@/sw/rules";
 import { DEVICE } from "./device";
 import { BASE_GLYPH_RANGES, collectGlyphRanges, GLYPH_FONTS, glyphPath, spritePaths } from "./glyphs";
@@ -63,16 +64,49 @@ export async function roomLeft(): Promise<number | null> {
   }
 }
 
-/** Why an area of this size cannot be kept, or undefined when it can. */
-export function areaRefusal(size: MapAreaSize, room: number | null): string | undefined {
+/**
+ * What else to choose, for an area that is too large: the same at less detail, or less of the map. For the part in
+ * view, less of the map is zooming the map in; a whole region cannot be made smaller, so it is the part of it in view.
+ */
+function smallerArea(region: string | undefined): string {
+  return region ? `or keep the part of ${region} in view instead` : "or zoom the map in so that less of it is in view";
+}
+
+/** Why an area of this size cannot be kept, or undefined when it can. `region` names a whole region being kept. */
+export function areaRefusal(size: MapAreaSize, room: number | null, region?: string): string | undefined {
   if (!size.map || size.map.tiles === 0)
     return "No detailed map is installed for this area, so there is nothing to keep. Download a region that covers it first.";
   if (size.totalBytes > MAX_KEPT_AREA_BYTES)
-    return "That is more than one kept area may hold. Zoom in to a smaller area, or choose less detail.";
+    return `At this detail that is ${formatBytes(size.totalBytes)}, more than one kept area may hold. Choose less detail, ${smallerArea(region)}.`;
   // Lettering and icons come on top of the tiles.
   if (room !== null && size.totalBytes + 3 * 1024 * 1024 > room)
     return "This browser does not have that much room left for Outpost. Remove something that is kept, or choose a smaller area.";
   return undefined;
+}
+
+/** What the server says of a box with more tiles than one kept area may hold (`kept-area.ts`). */
+export interface TooManyTiles {
+  layer: "map" | "terrain";
+  zoom: number;
+  /** The deepest zoom the same box fits to, or null when it is too large even at the least detail. */
+  fitsZoom: number | null;
+}
+
+/** The server's refusal of a box with too many tiles, read from the error, or null for any other error. */
+export function tooManyTiles(error: unknown): TooManyTiles | null {
+  if (!(error instanceof ApiError) || error.code !== "too_large" || !error.details) return null;
+  const { layer, zoom, fitsZoom } = error.details as Partial<TooManyTiles>;
+  if ((layer !== "map" && layer !== "terrain") || typeof zoom !== "number") return null;
+  return { layer, zoom, fitsZoom: typeof fitsZoom === "number" ? fitsZoom : null };
+}
+
+/** The same refusal in words for this screen: what fits, and the other way to make it fit. */
+export function tooManyTilesRefusal(refusal: TooManyTiles, region?: string): string {
+  const what = region ? `All of ${region}` : "The area in view";
+  const layer = refusal.layer === "terrain" ? " with terrain" : "";
+  if (refusal.fitsZoom === null)
+    return `${what}${layer} is too large to keep even at the least detail: more than ${formatNumber(MAX_KEPT_AREA_TILES)} tiles. ${region ? `Keep the part of ${region} in view instead.` : "Zoom the map in so that less of it is in view."}`;
+  return `${what}${layer} is more than ${formatNumber(MAX_KEPT_AREA_TILES)} tiles at zoom ${refusal.zoom}, more than one kept area may hold. It fits to zoom ${refusal.fitsZoom}: choose that detail or less, ${smallerArea(region)}${refusal.layer === "terrain" ? ", or keep it without terrain" : ""}.`;
 }
 
 interface Position {

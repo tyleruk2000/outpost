@@ -389,7 +389,7 @@ export interface PlaceSearchResponse {
 
 // ── Coordinates ─────────────────────────────────────────────────────────────
 
-export type CoordinateFormat = "decimal" | "ddm" | "dms" | "geo" | "osgb" | "irish" | "maidenhead" | "utm" | "mgrs";
+export type CoordinateFormat = "decimal" | "ddm" | "dms" | "geo" | "osgb" | "irish" | "itm" | "maidenhead" | "utm" | "mgrs";
 
 export interface ParsedCoordinate {
   lat: number;
@@ -399,7 +399,7 @@ export interface ParsedCoordinate {
   precisionMeters?: number;
   /** For Maidenhead locators: the locator as it is written, in upper case. The position is the middle of its cell. */
   locator?: string;
-  /** For UTM, UPS and MGRS: the reference written out in the usual way, upper case and spaced ("33U XP 04542 31236"). */
+  /** For UTM, UPS, MGRS and ITM: the reference written out in the usual way, upper case and spaced ("33U XP 04542 31236", "ITM 715830 734697"). */
   reference?: string;
 }
 
@@ -756,6 +756,27 @@ export function parseIrishGridRef(input: string): ParsedCoordinate | null {
   return position ? { ...position, format: "irish", precisionMeters: square } : null;
 }
 
+/**
+ * Parses Irish Transverse Mercator coordinates written with "ITM" before or after them: "ITM 715830 734697",
+ * "itm 715830, 734697", "ITM E 709885.081 N 736167.699", "715830 734697 ITM". Easting first, then northing, in
+ * metres, as OSi and OSNI give them. Without the prefix six-figure pairs are read as a British easting and northing,
+ * which they also look like, so the prefix is what says these are Irish. The position is the point named, not the
+ * middle of a square: ITM figures are coordinates, not a grid reference. Null away from Ireland.
+ */
+export function parseItm(input: string): ParsedCoordinate | null {
+  const text = input.trim().replace(/\s+/g, " ");
+  const number = String.raw`(\d{6}(?:\.\d{1,3})?)`;
+  const pair = String.raw`(?:E\s*)?${number}(?:\s*(?:m\b|E\b))?\s*[,;]?\s*(?:N\s*)?${number}(?:\s*(?:m\b|N\b))?`;
+  const match =
+    new RegExp(String.raw`^ITM\s*:?\s*${pair}$`, "i").exec(text) ?? new RegExp(String.raw`^${pair}\s*,?\s*ITM$`, "i").exec(text);
+  if (!match) return null;
+  const easting = Number(match[1]);
+  const northing = Number(match[2]);
+  const position = fromItm(easting, northing);
+  if (!position) return null;
+  return { ...position, format: "itm", precisionMeters: 1, reference: `ITM ${match[1]} ${match[2]}` };
+}
+
 // ── Parsing typed positions ─────────────────────────────────────────────────
 
 interface AngleGroup {
@@ -892,6 +913,8 @@ function parseGridReadings(text: string): ParsedCoordinate[] {
 export function parseCoordinateReadings(input: string): ParsedCoordinate[] {
   const text = input.trim();
   if (text.length < 3 || text.length > 80) return [];
+  const itm = parseItm(text);
+  if (itm) return [itm];
   const grid = parseGridReadings(text);
   if (grid.length > 0) return grid;
   const first = parseGeoUri(text) ?? parseOsGridRef(text) ?? parseIrishGridRef(text) ?? parseEastingNorthing(text) ?? parseLatLon(text);
@@ -902,8 +925,8 @@ export function parseCoordinateReadings(input: string): ParsedCoordinate[] {
 /**
  * Understands a position typed by hand: decimal degrees ("54.4609, -3.0886"), with
  * hemisphere letters, degrees and decimal minutes, degrees-minutes-seconds, `geo:`
- * links, British National Grid and Irish Grid references, Maidenhead locators, UTM and UPS coordinates
- * and MGRS references. Returns null for
+ * links, British National Grid and Irish Grid references, ITM coordinates written with "ITM", Maidenhead
+ * locators, UTM and UPS coordinates and MGRS references. Returns null for
  * anything else, so the caller can treat the text as a place name.
  */
 export function parseCoordinates(input: string): ParsedCoordinate | null {
