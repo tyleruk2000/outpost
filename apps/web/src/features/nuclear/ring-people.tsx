@@ -126,7 +126,7 @@ export function RingPeople({ at, result, onGetData }: { at: { lat: number; lon: 
           counted inside a ring.
         </p>
         <details className="text-small text-ink-muted">
-          <summary className="min-h-11 cursor-pointer py-2.5 text-ink-muted hover:text-ink md:min-h-0 md:py-0">
+          <summary className="min-h-11 cursor-pointer py-2.5 text-ink-muted hover:text-ink md:min-h-6 md:py-0.5">
             The population grid and its credit
           </summary>
           {used.map((set) => (

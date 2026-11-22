@@ -106,16 +106,16 @@ export default function EncryptionPage() {
           <TabsTrigger value="files">Files</TabsTrigger>
           <TabsTrigger value="hand">By hand</TabsTrigger>
         </TabsList>
-        <TabsContent value="keys" className="pt-6 focus:outline-none">
+        <TabsContent value="keys" className="mt-6 focus-visible:outline-offset-4">
           <ShelfTab>{(shelf) => <KeysTab shelf={shelf} />}</ShelfTab>
         </TabsContent>
-        <TabsContent value="text" className="pt-6 focus:outline-none">
+        <TabsContent value="text" className="mt-6 focus-visible:outline-offset-4">
           <ShelfTab>{(shelf) => <TextTab shelf={shelf} />}</ShelfTab>
         </TabsContent>
-        <TabsContent value="files" className="pt-6 focus:outline-none">
+        <TabsContent value="files" className="mt-6 focus-visible:outline-offset-4">
           <ShelfTab>{(shelf) => <FilesTab shelf={shelf} />}</ShelfTab>
         </TabsContent>
-        <TabsContent value="hand" className="pt-6 focus:outline-none">
+        <TabsContent value="hand" className="mt-6 focus-visible:outline-offset-4">
           <HandTab />
         </TabsContent>
       </Tabs>

@@ -475,7 +475,9 @@ function WorkedExample() {
   const ex = useMemo(() => workedExample(), []);
   return (
     <details className="rounded-panel border border-border p-4">
-      <summary className="cursor-default text-small font-medium text-ink">Worked example: a Sun sight on 21 June 2026</summary>
+      <summary className="min-h-11 cursor-default py-2.5 text-small font-medium text-ink">
+        Worked example: a Sun sight on 21 June 2026
+      </summary>
       <div className="mt-3 grid gap-2 text-small text-ink">
         <p>
           The Sun's lower limb at 14:30:00 UT, sextant altitude {formatAngle(ex.hs)}, index error {EXAMPLE.indexError}′ on the arc, height
