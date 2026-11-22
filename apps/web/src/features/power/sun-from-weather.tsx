@@ -282,7 +282,10 @@ export function SunFromWeather({
             <Button disabled={!target} loading={fetchFigures.isPending} onClick={() => target && fetchFigures.mutate(target)}>
               <Download aria-hidden /> Fetch sun hours for {called}
             </Button>
-            <Link to="/prepare/weather?view=climate" className="text-small text-primary underline underline-offset-2">
+            <Link
+              to="/prepare/weather?view=climate"
+              className="inline-flex min-h-11 items-center text-small text-primary underline underline-offset-2 md:min-h-6"
+            >
               Open Weather and hazards
             </Link>
           </div>

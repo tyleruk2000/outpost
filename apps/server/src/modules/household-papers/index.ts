@@ -40,7 +40,12 @@ export async function registerHouseholdPapers(app: FastifyInstance, ctx: AppCont
   const comms = createCommsService(ctx, changed);
   const fingerprints = createFingerprints(ctx);
   const binder = createBinderService(ctx, { medical: medical.changedAt, comms: comms.changedAt }, fingerprints, changed);
-  const book = createBookService(ctx, fingerprints, () => ctx.events.publish({ type: "household-book.changed" }));
+  const book = createBookService(
+    ctx,
+    fingerprints,
+    () => ctx.events.publish({ type: "household-book.changed" }),
+    () => binder.status(),
+  );
   const bookFacts = createBookFacts(ctx);
   const service: HouseholdPapersService = {
     medical,

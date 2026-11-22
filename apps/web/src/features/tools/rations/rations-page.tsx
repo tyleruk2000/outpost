@@ -621,29 +621,46 @@ function LastsCalculator({
       >
         {levels ? (
           <>
-            <table className="mt-2 w-full text-left text-small tabular">
-              <caption className="sr-only">Days at each level</caption>
-              <thead>
-                <tr className="text-ink-muted">
-                  <th className="py-1 pr-3 font-normal">Eaten at</th>
-                  <th className="py-1 pr-3 font-normal">A day</th>
-                  <th className="py-1 pr-3 font-normal">Lasts</th>
-                  <th className="py-1 font-normal">Last day covered</th>
-                </tr>
-              </thead>
-              <tbody>
-                {levels.map((level) => (
-                  <tr key={level.id} className="border-t border-border">
-                    <th scope="row" className="py-1 pr-3 font-medium">
-                      {level.id === "full" ? "Full need" : level.id === "half" ? "Half" : "Three quarters"}
+            {/* biome-ignore lint/a11y/useSemanticElements: a named group to scroll, not a set of form fields */}
+            <div
+              // biome-ignore lint/a11y/noNoninteractiveTabindex: with large text the table scrolls sideways, so it is reachable by keyboard
+              tabIndex={0}
+              role="group"
+              aria-label="Days at each level"
+              className="scroll-quiet mt-2 overflow-x-auto"
+            >
+              <table className="w-full text-left text-small tabular">
+                <caption className="sr-only">Days at each level</caption>
+                <thead>
+                  <tr className="text-ink-muted">
+                    <th className="py-1 pr-3 font-normal" scope="col">
+                      Eaten at
                     </th>
-                    <td className="py-1 pr-3">{kcal(level.perDay)}</td>
-                    <td className="py-1 pr-3">{level.days === null ? "—" : days(level.days)}</td>
-                    <td className="py-1">{level.days === null ? "—" : dayWords(runsOutOn(today, level.days))}</td>
+                    <th className="py-1 pr-3 font-normal" scope="col">
+                      A day
+                    </th>
+                    <th className="py-1 pr-3 font-normal" scope="col">
+                      Lasts
+                    </th>
+                    <th className="py-1 font-normal" scope="col">
+                      Last day covered
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {levels.map((level) => (
+                    <tr key={level.id} className="border-t border-border">
+                      <th scope="row" className="py-1 pr-3 font-medium">
+                        {level.id === "full" ? "Full need" : level.id === "half" ? "Half" : "Three quarters"}
+                      </th>
+                      <td className="py-1 pr-3">{kcal(level.perDay)}</td>
+                      <td className="py-1 pr-3">{level.days === null ? "—" : days(level.days)}</td>
+                      <td className="py-1">{level.days === null ? "—" : dayWords(runsOutOn(today, level.days))}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             <p className="mt-2">
               {nobodyReduced
                 ? "Everyone in the household is kept on a full ration, so the reduced rows are the same as the full one."

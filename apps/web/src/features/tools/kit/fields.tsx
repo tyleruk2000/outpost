@@ -178,7 +178,7 @@ export function ChoiceField<T extends string>({
   const id = useId();
   const short = value !== undefined && options.length <= 3 && options.every((option) => option.label.length <= 14 && !option.description);
   return (
-    <div className={cn("grid gap-1.5", className)}>
+    <div className={cn("grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1.5", className)}>
       <span id={`${id}-label`} className="text-small font-medium text-ink">
         {label}
       </span>
@@ -198,9 +198,12 @@ export function ChoiceField<T extends string>({
   );
 }
 
-/** Inputs side by side where there is room, one above another on a phone. */
+/**
+ * Inputs side by side where there is room, one above another on a phone. The columns may shrink below
+ * their widest content (a long choice in a drop-down), so that large text wraps rather than scrolling sideways.
+ */
 export function Inputs({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("grid gap-4 sm:grid-cols-2", className)}>{children}</div>;
+  return <div className={cn("grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2", className)}>{children}</div>;
 }
 
 /** The figures of several inputs, or null if any is not usable yet. */

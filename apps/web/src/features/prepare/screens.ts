@@ -5,7 +5,6 @@
  * that two people adding screens at once meet only here.
  */
 import {
-  BookCopy,
   BookOpen,
   CalendarClock,
   ClipboardList,
@@ -79,21 +78,15 @@ export const prepareScreens: SectionScreen[] = [
     about:
       "A card for each person to carry, wallet size or A6: medical needs, who to contact, where to meet, and where home is in several grid formats.",
   },
-  {
-    to: "/prepare/binder",
-    label: "Household binder",
-    icon: BookCopy,
-    keywords: "binder folder print everything pdf paper copy household binder",
-    about: "Everything that matters on paper, as one PDF with a contents page. Home says when it is older than what is in it.",
-  },
-  // The household book (features/household-book), on its own lines.
+  // The household book (features/household-book), on its own lines. The household binder is part of it now.
   {
     to: "/prepare/book",
     label: "Household book",
     icon: BookOpen,
-    keywords: "household book emergency book wizard questions printable pack family plan walk home pdf",
+    keywords:
+      "household book binder folder print everything emergency book wizard questions printable pack family plan fridge sheet grab cards frequencies walk home pdf paper copy",
     about:
-      "A few questions about your household, and a printable book made from the answers and from what Outpost holds: first minutes, people, help near home, first aid, water, journeys on foot, checklists.",
+      "Everything that matters on paper, as one printed book made from a few questions and from what Outpost holds: plans and fridge sheets, contacts, first aid, water, frequencies, journeys on foot, checklists, grab cards. Print all of it or only some. Home says when it is older than what is in it.",
   },
   // Readiness (features/readiness), one entry each.
   {

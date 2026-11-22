@@ -326,7 +326,7 @@ export const FIRST_AID_PAGES: readonly FirstAidPage[] = [
 /** Where the NHS website sends readers for what it no longer holds, and the others whose words may not be reprinted. */
 export const FIRST_AID_POINTERS = [
   {
-    what: "CPR for an adult, the recovery position, choking and severe bleeding",
+    what: "CPR for an adult, choking and severe bleeding",
     who: "St John Ambulance, where the NHS website now sends readers for first aid",
     url: "https://www.sja.org.uk/first-aid-advice/",
   },
@@ -374,5 +374,34 @@ export const CDC_HYGIENE = {
     "If you do not have soap and water, use an alcohol-based hand sanitizer that contains at least 60% alcohol.",
     "Hand sanitizers are not as effective when hands are visibly dirty or greasy.",
     "Follow local guidance on water that is safe for bathing.",
+  ],
+} as const;
+
+/**
+ * The recovery position, from FEMA's "CERT Basic Training Instructor Guide" (August 2019),
+ * unit 3, "Disaster Medical Operations – Part 1", page 3-12, read on 22 November 2026.
+ * FEMA's website information page (updated 1 May 2023) says "Most material on FEMA.gov
+ * is free of copyright and may be copied and distributed without permission"; this is
+ * FEMA's own text, quoted unchanged. It describes the position, not how to roll someone
+ * into it, and the book says no more than it does.
+ */
+export const RECOVERY_POSITION = {
+  title: "FEMA, CERT Basic Training Instructor Guide (August 2019), unit 3, page 3-12",
+  url: "https://www.ready.gov/sites/default/files/2019.CERT_.Basic_.IG_.FINAL_.508c.pdf",
+  read: "22 November 2026",
+  terms: "Free of copyright: https://www.fema.gov/about/website-information (updated 1 May 2023).",
+  parts: [
+    "Body: Laid on its side",
+    "Bottom Arm: Reached outward",
+    "Top Arm: Rest hand on bicep of bottom arm",
+    "Head: Rest on hand",
+    "Legs: Bent slightly",
+    "Chin: Raised forward",
+    "Mouth: Pointed downward",
+  ],
+  caution: [
+    "Although the risk is very small, it is possible that moving someone into the recovery position could cause harm to the person's spine. To prevent this:",
+    "Try to support the head and neck when rolling them onto their side; and",
+    "Do not move them more than necessary.",
   ],
 } as const;
