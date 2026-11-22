@@ -95,11 +95,12 @@ export default function GrabCardsPage() {
           title="No one to make a card for yet"
           action={
             <Button asChild variant="primary">
-              <Link to="/prepare/supplies?view=household">Add the household</Link>
+              <Link to="/prepare/households">Add the household</Link>
             </Button>
           }
         >
-          The household is kept under Supplies. Each person in it gets a card, and so does anyone else with a medical sheet.
+          The household's people are kept under Prepare › Households. Each person in it gets a card, and so does anyone else with a medical
+          sheet.
         </EmptyState>
       ) : (
         <div className="grid gap-4">

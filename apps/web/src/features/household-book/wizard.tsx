@@ -275,7 +275,7 @@ function PeopleStep({ answers, set, household, sheets }: StepProps & { household
           })}
         </Rows>
       )}
-      <Section level={3} title="Add someone" description="Change or take anyone out under Supplies → Household.">
+      <Section level={3} title="Add someone" description="Change or take anyone out under Prepare › Households.">
         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
           <Field label="Name">
             {(ids) => <Input {...ids} value={name} maxLength={80} onChange={(event) => setName(event.target.value)} />}

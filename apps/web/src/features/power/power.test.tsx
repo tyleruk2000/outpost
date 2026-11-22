@@ -72,7 +72,7 @@ function show(
     pvgisFails?: string;
     /** How long the server takes over each save. */
     putDelayMs?: number;
-    /** GET /api/households; left out, it is not found and nothing is said of households. */
+    /** GET /api/households; left out, one household with the home-icon place among the markers as its home. */
     households?: unknown;
   } = {},
 ): Server {
@@ -140,7 +140,8 @@ function show(
         });
       if (pathname === "/api/radio/profiles") return json({ radios: [], antennas: [] });
       if (pathname === "/api/maps/markers") return json({ markers: options.markers ?? [] });
-      if (pathname === "/api/households") return json(oneHouseholdOf(options.markers ?? []));
+      // A test's own households answer, else one household whose home is the home-icon place among the markers.
+      if (pathname === "/api/households") return json(options.households ?? oneHouseholdOf(options.markers ?? []));
       if (pathname === "/api/weather/places" && init?.method === "POST") {
         const body = JSON.parse(String(init.body)) as { markerId?: string; name?: string; lat?: number; lon?: number };
         server.weatherAsked.push({ path: pathname, body });
@@ -170,7 +171,6 @@ function show(
         return json({ outcomes: [{ kind: "solar", placeId, placeName: "x", source: "pvgis", ok: true, message: null, bytes: 3000 }] });
       }
       if (pathname === "/api/weather") return json(weather);
-      if (pathname === "/api/households" && options.households) return json(options.households);
       return json({ error: { code: "not_found", message: "Not here." } }, 404);
     }),
   );

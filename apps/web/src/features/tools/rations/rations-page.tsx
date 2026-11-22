@@ -209,8 +209,8 @@ export default function RationsPage() {
       if (found.length === 0)
         notify.error(
           householdName
-            ? `Supplies has nobody in ${householdName} yet. Add people under Supplies, Household, or here.`
-            : "Supplies has nobody in its household yet. Add people under Supplies, Household, or here.",
+            ? `Supplies has nobody in ${householdName} yet. Add people under Prepare › Households, or here.`
+            : "Supplies has nobody in its household yet. Add people under Prepare › Households, or here.",
         );
       else {
         setPeople(found);

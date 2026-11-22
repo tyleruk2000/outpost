@@ -334,19 +334,19 @@ const plans = textSection(
         const name = names.get(prefix) ?? namer();
         names.set(prefix, name);
         return {
-        name: `${prefix}${name(row.name, ".json")}`,
-        text: json({
-          name: row.name,
-          kind: row.kindText || row.kind,
-          emergencyNumber: row.emergencyNumber,
-          reviewEveryDays: row.reviewEveryDays,
-          reviewed: iso(row.reviewedAt as number),
-          created: iso(row.createdAt as number),
-          updated: iso(row.updatedAt as number),
-          plan: JSON.parse(row.body),
-          inUse: JSON.parse(row.use),
-        }),
-      };
+          name: `${prefix}${name(row.name, ".json")}`,
+          text: json({
+            name: row.name,
+            kind: row.kindText || row.kind,
+            emergencyNumber: row.emergencyNumber,
+            reviewEveryDays: row.reviewEveryDays,
+            reviewed: iso(row.reviewedAt as number),
+            created: iso(row.createdAt as number),
+            updated: iso(row.updatedAt as number),
+            plan: JSON.parse(row.body),
+            inUse: JSON.parse(row.use),
+          }),
+        };
       }),
     };
   },

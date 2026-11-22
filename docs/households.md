@@ -82,8 +82,8 @@ one cannot be deleted; rename it instead.
 
 ## Taking it with you
 
-- **Export everything** gives each household a folder of its own under Supplies and
-  under Medical sheets and keeping in touch, and writes the households, the People list
+- **Export everything** gives each household a folder of its own under Supplies,
+  Emergency plans, and Medical sheets and keeping in touch, and writes the households, the People list
   and the household book's answers under Households and people.
 - **A portable drive** carries every household, with its people, supplies, plans and
   papers, and the drive screen names them.

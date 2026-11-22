@@ -25,6 +25,7 @@ import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "
 import { Field, Input } from "@/components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Badge, Checkbox, Select, Skeleton } from "@/components/ui/misc";
+import { useHomeCountry } from "@/features/frequencies/home-country";
 import { useHome } from "@/features/households/home";
 import type { MapEngine } from "@/features/maps/map/engine";
 import { DestinationPicker, useDestination } from "@/features/maps/panels/destination";
@@ -246,7 +247,10 @@ export function GetDialog({
   // The current household's home (its saved place, or where it was last said to be), to offer its region first.
   const found = useHome().home;
   const home = useMemo(() => (found ? { lat: found.lat, lon: found.lon } : null), [found]);
-  const [country, setCountry] = useState<string>(start?.scope.countries?.[0] ?? "GB");
+  // A whole country starts at the current household's (its own choice, else where home is), else the UK.
+  const homeCountry = useHomeCountry()?.code ?? null;
+  const [chosenCountry, setCountry] = useState<string | null>(start?.scope.countries?.[0] ?? null);
+  const country = chosenCountry ?? homeCountry ?? "GB";
   const [layers, setLayers] = useState<ReferenceLayerId[]>(start?.layers ?? []);
   const estimate = useEstimate();
   const provider: ReferenceProviderDto | undefined = providers.find((entry) => entry.id === providerId);

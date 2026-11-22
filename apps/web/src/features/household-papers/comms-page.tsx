@@ -550,9 +550,9 @@ export default function CommsPage() {
           <Section title="Each person" description="What is theirs alone goes at the top of their page: “Wait at the school office”.">
             {members.length === 0 ? (
               <p className="text-small text-ink-muted">
-                The household is kept under{" "}
-                <Link to="/prepare/supplies?view=household" className="text-primary underline underline-offset-2">
-                  Supplies
+                The household's people are kept under{" "}
+                <Link to="/prepare/households" className="text-primary underline underline-offset-2">
+                  Prepare › Households
                 </Link>
                 . Add its people there for a page each; until then one page is printed for everyone.
               </p>
