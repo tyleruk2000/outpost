@@ -313,8 +313,8 @@ export function HttpsSection({
           ) : null}
 
           {data.authority && !usingOwn ? (
-            <div className="grid gap-3 border-t border-border pt-5">
-              <h3 className="text-body font-semibold text-ink">Trust the certificate on each device</h3>
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-3 border-t border-border pt-5">
+              <h3 className="text-body font-semibold break-words text-ink">Trust the certificate on each device</h3>
               <p className="text-small text-ink-muted">
                 Until a phone or computer has been told to trust this server’s certificate, its browser warns that the connection is not
                 private. It is done once on each device, on the device itself: download the certificate there, then follow the steps for
@@ -422,7 +422,7 @@ export function HttpsSection({
           {!data.unavailable && !usingOwn ? <OwnCertificateChoice data={data} secure={secure} refresh={refresh} /> : null}
 
           {data.authority && !usingOwn ? (
-            <div className="grid gap-3 border-t border-border pt-5">
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-3 border-t border-border pt-5">
               <h3 className="text-small font-medium text-ink">Start again with a new certificate authority</h3>
               {data.authorityRight.allowed ? (
                 <>
