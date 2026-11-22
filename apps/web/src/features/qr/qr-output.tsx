@@ -4,17 +4,19 @@
  * to the library or share.
  */
 import { Check, Copy, FileImage, FileType, Printer } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Notice } from "@/components/page";
 import { PrintNotice } from "@/components/print-notice";
 import { Button } from "@/components/ui/button";
+import { kitCanSetAll } from "@/features/contacts/kit-letters";
 import { AID_PAPER_KEY, isAidPaper, likelyPaper } from "@/features/encryption/paper-aids";
 import { type MadePdf, madePdf } from "@/features/library/made/made-pdf";
 import { PdfActions } from "@/features/library/made/pdf-actions";
 import { readStored } from "@/features/maps/lib/view";
 import { type DrawLine, writeLettered } from "@/features/maps/print/lettering";
 import { PAPERS } from "@/features/maps/print/paper";
+import { useKitPdf } from "@/features/print-kit/use-kit-pdf";
 import { errorMessage } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
 import { notify } from "@/lib/notify";
@@ -22,6 +24,7 @@ import { usePrinting } from "@/lib/printing";
 import { cn, formatDate, plural } from "@/lib/utils";
 import { type Described, printAdvice, type QrKind, sensitive } from "./content";
 import type { QrCode } from "./encoder";
+import { qrDocument, qrTexts } from "./kit-sheet";
 import { CheckLine } from "./qr-forms";
 import { codeFileName, extentOf, modulePath, pngBlob, svgFile } from "./render";
 import { PRINTED_WIDTH_MM, qrSheet } from "./sheet";
@@ -112,31 +115,70 @@ type Made = { pdf: MadePdf } | { error: string };
 /** How long typing must pause before the sheet is made again: each one is drawn and written whole. */
 const SHEET_AFTER_MS = 400;
 
-/** The sheet as a PDF, made on this device once the code or its words have stopped changing. */
+interface Settled {
+  code: QrCode;
+  described: Described;
+  day: Date;
+  footer: string;
+  /** The print kit's typeface has every letter of its words; otherwise the old writer makes it, drawing such words as pictures. */
+  kit: boolean;
+}
+
+/**
+ * The sheet as a PDF, made on this device once the code or its words have stopped
+ * changing: laid out with the print kit (kit-sheet.ts), or by the old writer (sheet.ts)
+ * where its words hold letters the kit's typeface lacks.
+ */
 function SheetPdf({ code, described, kind, draw }: { code: QrCode; described: Described; kind: QrKind; draw?: DrawLine }) {
-  const [made, setMade] = useState<Made | null>(null);
   const [paper] = useState(() => readStored(AID_PAPER_KEY, isAidPaper, likelyPaper(navigator.language)));
+  const [settled, setSettled] = useState<Settled | null>(null);
+  const [lettered, setLettered] = useState<Made | null>(null);
 
   useEffect(() => {
-    let live = true;
-    setMade(null);
+    setSettled(null);
     const timer = setTimeout(() => {
       // Dated by the day, not the moment: the same code made twice in a day is the same file, and the library says it has it.
       const today = new Date();
       const day = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
       const footer = `Made in Outpost on ${formatDate(day.getTime())}.`;
-      writeLettered([qrSheet(code, described, paper, footer)], described.title, day, draw)
-        .then((written) => ({ pdf: madePdf(written.bytes, described.title, "QR code", { what: "the QR code maker", path: "/tools/qr" }) }))
-        .catch((error: unknown) => ({ error: errorMessage(error) }))
-        .then((result) => {
-          if (live) setMade(result);
-        });
+      setSettled({ code, described, day, footer, kit: kitCanSetAll(qrTexts(described, footer)) });
     }, SHEET_AFTER_MS);
+    return () => clearTimeout(timer);
+  }, [code, described]);
+
+  const make = useCallback(() => qrDocument(settled!.code, settled!.described, paper, settled!.footer, settled!.day), [settled, paper]);
+  const kitMade = useKitPdf(settled?.kit ? make : null, {
+    title: settled?.described.title ?? described.title,
+    kind: "QR code",
+    from: { what: "the QR code maker", path: "/tools/qr" },
+  });
+
+  useEffect(() => {
+    let live = true;
+    setLettered(null);
+    if (!settled || settled.kit) return;
+    writeLettered([qrSheet(settled.code, settled.described, paper, settled.footer)], settled.described.title, settled.day, draw)
+      .then((written) => ({
+        pdf: madePdf(written.bytes, settled.described.title, "QR code", { what: "the QR code maker", path: "/tools/qr" }),
+      }))
+      .catch((error: unknown) => ({ error: errorMessage(error) }))
+      .then((result) => {
+        if (live) setLettered(result);
+      });
     return () => {
       live = false;
-      clearTimeout(timer);
     };
-  }, [code, described, paper, draw]);
+  }, [settled, paper, draw]);
+
+  const made: Made | null = !settled
+    ? null
+    : settled.kit
+      ? kitMade.status === "made"
+        ? { pdf: kitMade.pdf }
+        : kitMade.status === "failed"
+          ? { error: kitMade.error }
+          : null
+      : lettered;
 
   const asks = sensitive(kind);
   return (
