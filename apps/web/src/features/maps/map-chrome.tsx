@@ -423,9 +423,10 @@ export function MapControls({
   };
   return (
     // On a short window (a laptop's 768 px, less the browser's bars) the column is taller than the map: it scrolls, so that
-    // its last tools are not off the foot of the screen where no pointer can reach them. Its padding keeps the shadows.
+    // its last tools are not off the foot of the screen where no pointer can reach them. Its padding keeps the shadows. It
+    // never gives its width to the search box: a box that scrolls may otherwise shrink to nothing (the largest text).
     <div
-      className={cn("scroll-quiet relative -mx-2 flex max-h-full flex-col gap-2 overflow-y-auto overscroll-contain px-2 pb-1", className)}
+      className={cn("scroll-quiet relative -mx-2 flex max-h-full shrink-0 flex-col gap-2 overflow-y-auto overscroll-contain px-2 pb-1", className)}
     >
       <ControlGroup className="shrink-0">
         <ControlButton label="Zoom in" onClick={onZoomIn} disabled={disabled}>

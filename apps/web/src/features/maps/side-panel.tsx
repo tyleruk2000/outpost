@@ -59,6 +59,8 @@ export function PanelTabs({
           value={item}
           className="flex min-h-0 flex-1 flex-col focus-visible:-outline-offset-2 data-[state=inactive]:hidden"
         >
+          {/* The tab's name as a heading a screen reader can find, between the screen's h1 and the tab's own h3s. */}
+          <h2 className="sr-only">{TAB_LABELS[item]}</h2>
           {children[item]}
         </TabsContent>
       ))}

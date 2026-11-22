@@ -18,6 +18,19 @@ async function open(page: Page) {
 
 const focusOnMap = (page: Page) => page.locator(".maplibregl-canvas").focus();
 
+/** The sun's times under the readout and the magnetic line beside them do not lie over each other, and no word is cut. */
+async function sunAndMagneticApart(page: Page) {
+  const sun = page.locator("[data-sun-glance]");
+  const magnetic = page.getByRole("link", { name: /^Magnetic / });
+  await expect(sun).toBeVisible();
+  const [a, b] = [(await sun.boundingBox())!, (await magnetic.boundingBox())!];
+  expect(a.x + a.width).toBeLessThanOrEqual(b.x + 0.5);
+  for (const piece of await sun.locator("span.whitespace-nowrap").all()) {
+    const box = (await piece.boundingBox())!;
+    expect(box.x + box.width, "a sun time runs under the magnetic line").toBeLessThanOrEqual(b.x + 0.5);
+  }
+}
+
 test.describe("maps from the keyboard", () => {
   test.use({ viewport: { width: 1280, height: 800 } });
   let maps: Awaited<ReturnType<typeof installTestMaps>> | undefined;
@@ -144,6 +157,20 @@ test.describe("maps from the keyboard", () => {
     }
   });
 
+  test("with the largest text, the column of tools keeps its width beside the search box", async ({ page }) => {
+    await page.addInitScript(() => {
+      const apply = () => document.documentElement.style.setProperty("font-size", "24px", "important");
+      if (document.documentElement) apply();
+      document.addEventListener("DOMContentLoaded", apply);
+    });
+    await open(page);
+    const zoom = page.getByRole("button", { name: "Zoom in" });
+    await expect(zoom).toBeInViewport({ ratio: 1 });
+    // 2.25rem, at 24 px to the rem.
+    expect((await zoom.boundingBox())!.width).toBeGreaterThanOrEqual(53);
+    await sunAndMagneticApart(page);
+  });
+
   test("on a short window every tool in the column can still be reached by the pointer", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 640 });
     await open(page);
@@ -179,6 +206,7 @@ test.describe("the menu of every tool on the narrowest phone", () => {
     const maps = await installTestMaps(page);
     try {
       await open(page);
+      await sunAndMagneticApart(page);
       await page.getByRole("button", { name: "More map tools" }).click();
       const menu = page.getByRole("menu", { name: "More map tools" });
       await expect(menu).toBeVisible();

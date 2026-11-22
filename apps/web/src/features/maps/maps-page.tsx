@@ -1723,7 +1723,7 @@ export default function MapsPage() {
           onClear={onClear}
           search={
             <SearchBox
-              className="pointer-events-auto w-full md:max-w-[24rem]"
+              className="pointer-events-auto w-full min-w-0 md:max-w-[24rem]"
               markers={markers.data ?? []}
               tracks={allTracks}
               placesInstalled={(overview.data?.places.length ?? 0) > 0}
