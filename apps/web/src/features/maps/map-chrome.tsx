@@ -569,11 +569,13 @@ export function MapMenu({ tools }: { tools: MapTool[] }) {
           <span aria-hidden>More</span>
         </button>
       </MenuTrigger>
-      {/* As wide as the room to the left of the button, at most: on a 320 px phone a fixed width ran 33 px off the screen. */}
+      {/* As wide as the room to the left of the button at most (the screen less the button, its inset and the gap): on a
+          320 px phone a fixed width ran 33 px off the screen. Worked out from the screen, not from the room the menu
+          library measures, which changed with the width it set and looped. */}
       <MenuContent
         side="left"
         align="end"
-        className="scroll-quiet max-h-(--radix-dropdown-menu-content-available-height) w-[min(19rem,var(--radix-dropdown-menu-content-available-width))] overflow-y-auto"
+        className="scroll-quiet max-h-(--radix-dropdown-menu-content-available-height) w-[min(19rem,calc(100vw-76px))] overflow-y-auto"
       >
         <MenuLabel className="text-ink-muted">Tools</MenuLabel>
         {tools.filter((tool) => !tool.layer && !tool.choices).map(entry)}
