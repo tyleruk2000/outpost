@@ -299,7 +299,9 @@ export function Sidebar({
       aria-label="Main"
       className={cn(
         "sticky top-0 z-(--z-nav) hidden h-dvh shrink-0 flex-col bg-spine text-spine-ink transition-[width] duration-200 ease-out md:flex",
-        collapsed ? "w-[60px]" : "w-64",
+        // 16rem, but at larger text no more than 22% of the window (still 256 px at least): at Largest on a 1280 px
+        // window it took 384 px, and 512 px at 200%, from the screen beside it.
+        collapsed ? "w-[60px]" : "w-[min(16rem,max(256px,22vw))]",
       )}
     >
       <div className={cn("flex h-14 shrink-0 items-center gap-2 px-3", collapsed && "justify-center px-0")}>
