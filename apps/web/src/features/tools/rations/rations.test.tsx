@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/lib/api";
 import RationsPage from "./rations-page";
@@ -97,11 +98,59 @@ describe("Rations", () => {
         ],
       },
     };
-    vi.spyOn(api, "get").mockResolvedValue(data as never);
+    const households = (names: string[]) => ({
+      households: names.map((name, index) => ({ id: index === 0 ? "household" : `h${index}`, name, home: null, country: null })),
+      currentId: "household",
+    });
+    const serve = (names: string[]) =>
+      vi.spyOn(api, "get").mockImplementation((async (path: string) => (path === "/api/households" ? households(names) : data)) as never);
+    const success = vi.spyOn(toast, "success");
+    serve(["Home"]);
     show();
     await userEvent.click(screen.getByRole("button", { name: /Use my household from Supplies/ }));
     expect(await within(section("A day's energy")).findByText("2,000 kcal", { selector: "p" })).toBeTruthy();
     expect(screen.getByDisplayValue("Ada")).toBeTruthy();
     expect(screen.queryByDisplayValue("Rex")).toBeNull();
+    expect(success).toHaveBeenLastCalledWith("1 person from Supplies");
+  });
+
+  it("with several households, says the people are the current household's", async () => {
+    const data: SuppliesResponse = {
+      items: [],
+      locations: [],
+      household: {
+        ...DEFAULT_HOUSEHOLD,
+        members: [
+          {
+            id: "1",
+            kind: "person",
+            name: "Cat",
+            band: "19-64",
+            sex: "female",
+            kcalPerDay: null,
+            drinkingLitres: null,
+            allUsesLitres: null,
+            note: "",
+          },
+        ],
+      },
+    };
+    vi.spyOn(api, "get").mockImplementation((async (path: string) =>
+      path === "/api/households"
+        ? {
+            households: [
+              { id: "household", name: "Caravan", home: null, country: null },
+              { id: "h1", name: "Home", home: null, country: null },
+            ],
+            currentId: "household",
+          }
+        : data) as never);
+    const success = vi.spyOn(toast, "success");
+    show();
+    // The households are read before the press.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await userEvent.click(screen.getByRole("button", { name: /Use my household from Supplies/ }));
+    expect(await screen.findByDisplayValue("Cat")).toBeTruthy();
+    expect(success).toHaveBeenLastCalledWith("1 person from Caravan");
   });
 });

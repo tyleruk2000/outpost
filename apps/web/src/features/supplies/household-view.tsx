@@ -21,14 +21,16 @@ import {
 } from "@outpost/shared";
 import { PawPrint, Trash2, UserPlus } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router";
 import { toast } from "sonner";
 import { LeaveGuard } from "@/components/leave-guard";
 import { Notice, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { Segmented, Select } from "@/components/ui/misc";
-import { useHomeCountry } from "@/features/frequencies/home-country";
 import { SAVE_BAR_ROOM } from "@/features/household-papers/save-bar";
+import { useHousehold } from "@/features/households/use-household";
+import { useCatalogue } from "@/features/layers/data";
 import { errorMessage } from "@/lib/api";
 import { formatNumber, localId, plural } from "@/lib/utils";
 import { useSetHousehold } from "./data";
@@ -63,15 +65,24 @@ const toDraft = (member: HouseholdMember): MemberDraft => ({
   note: member.note,
 });
 /** Which table the household's energy comes from, and why: said under the choice. */
-export function energyTableLine(choice: TableChoice, basis: Household["energyBasis"], countryName?: string): string {
+export function energyTableLine(
+  choice: TableChoice,
+  basis: Household["energyBasis"],
+  countryName?: string,
+  /** Given when there are several households: the line names the one it is for. */
+  householdName?: string,
+): string {
   if (choice === "uk") return "The UK's figures, from Public Health England, for everyone without a figure of their own.";
   if (choice === "international")
     return "The international figures (UNHCR, UNICEF, WFP and WHO), for everyone without a figure of their own.";
   const table = basis?.table ?? "international";
   const words = table === "uk" ? "the UK's figures (Public Health England)" : "the international figures (UNHCR, UNICEF, WFP and WHO)";
-  if (!basis?.country)
+  if (!basis?.country) {
+    if (householdName)
+      return `${householdName} has no home with a country yet, so ${words} are used. Set its home under Households, or choose here.`;
     return `No saved place has the home icon, so ${words} are used. Give a place the home icon on the map, or choose here.`;
-  return `Home is in ${countryName ?? basis.country}: ${words} are used.`;
+  }
+  return `${householdName ?? "Home"} is in ${countryName ?? basis.country}: ${words} are used.`;
 }
 
 const read = (value: string): number | null | undefined => {
@@ -89,8 +100,12 @@ export function HouseholdView({ household }: { household: Household }) {
   const [tableChoice, setTableChoice] = useState<TableChoice>(household.energyTable ?? "home");
   const homeTable: EnergyTable = household.energyBasis?.table ?? "international";
   const energyTable: EnergyTable = tableChoice === "home" ? homeTable : tableChoice;
-  const home = useHomeCountry();
-  const homeName = home && home.code === household.energyBasis?.country ? home.name : undefined;
+  // The current household's country (modules/households), named as the reference catalogue names it.
+  const current = useHousehold().data;
+  const countries = useCatalogue().data?.countries;
+  const code = household.energyBasis?.country;
+  const homeName = code ? countries?.find((country) => country.code === code)?.name : undefined;
+  const several = current?.several ? current.household.name : undefined;
   const [basis, setBasis] = useState<WaterBasis>(household.waterBasis);
   const [drinking, setDrinking] = useState(String(household.drinkingLitres));
   const [allUses, setAllUses] = useState(String(household.allUsesLitres));
@@ -219,7 +234,7 @@ export function HouseholdView({ household }: { household: Household }) {
             className="justify-self-start"
           />
           <p className="max-w-[65ch] text-small text-ink-muted" data-testid="energy-table-line">
-            {energyTableLine(tableChoice, household.energyBasis, homeName)}
+            {energyTableLine(tableChoice, household.energyBasis, homeName, several)}
           </p>
         </div>
       </Section>
@@ -227,9 +242,21 @@ export function HouseholdView({ household }: { household: Household }) {
       <Section
         title="Who it is for"
         description={
-          needs && needs.length > 0
-            ? `A day: ${formatNumber(kcalTotal)} kcal for ${plural(needs.filter((need) => need.kind === "person").length, "person", "people")}, ${amount(waterTotal)} litres of water ${basis === "all" ? "for all uses" : "to drink"}.`
-            : "Add each person, and any pets."
+          <>
+            {needs && needs.length > 0
+              ? `A day: ${formatNumber(kcalTotal)} kcal for ${plural(needs.filter((need) => need.kind === "person").length, "person", "people")}, ${amount(waterTotal)} litres of water ${basis === "all" ? "for all uses" : "to drink"}.`
+              : "Add each person, and any pets."}
+            {several ? (
+              <>
+                {" "}
+                These are {several}&rsquo;s people.{" "}
+                <Link to="/prepare/households" className="text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2">
+                  Add people to other households
+                </Link>
+                .
+              </>
+            ) : null}
+          </>
         }
         actions={
           <div className="flex flex-wrap gap-2">

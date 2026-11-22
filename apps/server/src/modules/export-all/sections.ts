@@ -174,10 +174,23 @@ const supplies = textSection(
   "supplies",
   "Supplies",
   "CSV",
-  "The supplies list as `supplies.csv`, the same columns Supplies reads back in. Opens in any spreadsheet.",
+  "The supplies list as `supplies.csv`, the same columns Supplies reads back in. Opens in any spreadsheet. With several households, each household has its own file, named after the household (`Home.csv`).",
   (ctx) => {
-    const items = ctx.services.supplies.items();
-    return { count: items.length, files: items.length ? [{ name: "supplies.csv", text: suppliesCsv(items) }] : [] };
+    const households = ctx.services.households.list();
+    if (households.length === 1) {
+      const items = ctx.services.supplies.items(households[0]!.id);
+      return { count: items.length, files: items.length ? [{ name: "supplies.csv", text: suppliesCsv(items) }] : [] };
+    }
+    // Every household's own list, not only the current one's: this is everything taken out.
+    const name = namer();
+    let count = 0;
+    const files: Array<{ name: string; text: string }> = [];
+    for (const household of households) {
+      const items = ctx.services.supplies.items(household.id);
+      count += items.length;
+      if (items.length) files.push({ name: name(household.name, ".csv"), text: suppliesCsv(items) });
+    }
+    return { count, files };
   },
 );
 

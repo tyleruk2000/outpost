@@ -3,7 +3,9 @@
  * long they last, and what to buy. The rules are in `service.ts`, the arithmetic in
  * `@outpost/shared` (supplies.ts), and the CSV file in `csv.ts`.
  *
- * `GET /api/supplies/outlook` is the one other screens ask: how many days of food and
+ * Everything is for the current household (modules/households): its stock, its shopping
+ * list, its settings and its people. `GET /api/supplies/outlook` is the one other screens
+ * ask: how many days of food and
  * water there are for the household, and what is missing to reach the days wanted.
  *
  * `GET /api/supplies/foods?q=` finds a food's energy per 100 g in USDA FoodData Central's
@@ -24,6 +26,7 @@ import {
   SUPPLY_LIMITS,
   type SuppliesResponse,
   type SupplyOutlookResponse,
+  type SupplyOutlooksResponse,
   shoppingSuggestions,
   supplyOutlook,
 } from "@outpost/shared";
@@ -161,6 +164,23 @@ export async function registerSupplies(app: FastifyInstance, ctx: AppContext): P
     const household = service.household();
     const outlook = supplyOutlook(items, household, today);
     return { outlook, missing: shoppingSuggestions(items, household, today), energy: energySummary(outlook, household) };
+  });
+
+  /** Every household's days of food and water, the current one first: Home's line for each. */
+  app.get("/api/supplies/outlooks", async (request): Promise<SupplyOutlooksResponse> => {
+    const today = todayOf(request.query);
+    const households = ctx.services.households;
+    const currentId = households.currentId();
+    const list = households.list();
+    const ordered = [...list.filter((entry) => entry.id === currentId), ...list.filter((entry) => entry.id !== currentId)];
+    return {
+      households: ordered.map((entry) => ({
+        householdId: entry.id,
+        name: entry.name,
+        current: entry.id === currentId,
+        outlook: supplyOutlook(service.items(entry.id), service.household(entry.id), today),
+      })),
+    };
   });
 
   /** Foods in USDA FoodData Central's table that match a name typed, best first, with energy per 100 g. Local; nothing is fetched. */

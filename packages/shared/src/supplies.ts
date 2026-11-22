@@ -826,6 +826,11 @@ export interface SupplyOutlookResponse {
   energy: EnergySummary;
 }
 
+/** `GET /api/supplies/outlooks`: how long each household's supplies last, the current household first. */
+export interface SupplyOutlooksResponse {
+  households: Array<{ householdId: string; name: string; current: boolean; outlook: SupplyOutlook }>;
+}
+
 // ── CSV ─────────────────────────────────────────────────────────────────────
 
 /** The columns of Outpost's supplies CSV, in order. A file from elsewhere needs a `name` column; the rest may be missing. */
