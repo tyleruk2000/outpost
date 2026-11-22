@@ -18,7 +18,7 @@ import { bboxRing, circleRing, formatDistance, type LatLon, metersPerPixel } fro
 import { measure } from "../lib/measure";
 import { MAGNETIC_HEX, MARKER_HEX } from "../lib/palette";
 import { BADGE, iconOf, isDrawn, PLACE_IMAGE_PREFIX, pageKey } from "../lib/place-icons";
-import { trackEnds, trackLines } from "../lib/profile";
+import { trackAreas, trackEnds, trackLines } from "../lib/profile";
 import { midpoints } from "../lib/route-edit";
 import { MAP_FONTS, type MapTheme } from "../lib/style";
 import type { LayerSpecification, SourceSpecification } from "../lib/style-types";
@@ -171,11 +171,20 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
     // The area being chosen for download.
     { id: "o-box-fill", type: "fill", source: "o-box", paint: { "fill-color": theme.primary, "fill-opacity": 0.1 } },
     { id: "o-box-line", type: "line", source: "o-box", paint: { "line-color": theme.primary, "line-width": 2 } },
+    // An imported outline's area, faintly in the route's colour, under the lines; its rings are drawn as lines below.
+    {
+      id: "o-tracks-area",
+      type: "fill",
+      source: "o-tracks",
+      filter: ["has", "area"],
+      paint: { "fill-color": ["get", "color"], "fill-opacity": ["case", ["get", "selected"], 0.24, 0.14] },
+    },
     // Tracks: a casing in the page colour keeps the line readable on any ground.
     {
       id: "o-tracks-casing",
       type: "line",
       source: "o-tracks",
+      filter: ["!", ["has", "area"]],
       layout: { "line-cap": "round", "line-join": "round", "line-sort-key": ["case", ["get", "selected"], 1, 0] },
       paint: { "line-color": theme.page, "line-width": ["case", ["get", "selected"], 8, 6], "line-opacity": 0.9 },
     },
@@ -183,6 +192,7 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
       id: OVERLAY_LAYERS.tracks,
       type: "line",
       source: "o-tracks",
+      filter: ["!", ["has", "area"]],
       layout: { "line-cap": "round", "line-join": "round", "line-sort-key": ["case", ["get", "selected"], 1, 0] },
       paint: { "line-color": ["get", "color"], "line-width": ["case", ["get", "selected"], 4.5, 3] },
     },
@@ -191,6 +201,7 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
       id: OVERLAY_LAYERS.tracksHit,
       type: "line",
       source: "o-tracks",
+      filter: ["!", ["has", "area"]],
       paint: { "line-color": theme.page, "line-width": 18, "line-opacity": 0 },
     },
     {
@@ -465,6 +476,14 @@ export function tracksData(
       properties: { id: track.id, color, selected },
       geometry: { type: "MultiLineString", coordinates: drawn.map((line) => line.map(([lon, lat]) => [lon, lat])) },
     });
+    // Each area its own polygon, so that its holes are its own.
+    for (const area of trackAreas(track.geojson)) {
+      lines.features.push({
+        type: "Feature",
+        properties: { id: track.id, color, selected, area: true },
+        geometry: { type: "Polygon", coordinates: area.map((ring) => ring.map(([lon, lat]) => [lon, lat])) },
+      });
+    }
     const tips = trackEnds(parts);
     if (!tips) continue;
     ends.features.push({

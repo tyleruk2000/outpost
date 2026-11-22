@@ -25,6 +25,7 @@ describe("words for what a file would make", () => {
   it("names the route's lines and outlines, and the places", () => {
     expect(previewParts(kml, false)).toEqual(["A new route of 2 lines and 1 outline, 14 points", "3 new places"]);
     expect(previewParts({ ...kml, lines: 0, outlines: 0, linePoints: 0, points: 1 }, false)).toEqual(["1 new place"]);
+    expect(previewParts({ ...kml, routes: 3 }, false)[0]).toBe("3 new routes, one for each folder, of 2 lines and 1 outline, 14 points");
   });
 
   it("keeps a GPX file's waypoints on the route unless asked", () => {

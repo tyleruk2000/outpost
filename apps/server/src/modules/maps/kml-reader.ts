@@ -13,6 +13,12 @@
  *   Placemark > LinearRing > coordinates                  an outline
  *   Placemark > MultiGeometry / gx:MultiTrack > …         any of these, nested
  *   kml > Document (or Folder) > name, description        the file's own name
+ *   Folder > name                                         a route's name, when lines are in more than one folder
+ *
+ * A file's lines and outlines are one route, as a GPX file's are, unless they lie in
+ * more than one Folder: then each Folder that holds any is a route of its own, named
+ * after it, holding what lies in it and not in a Folder inside it. What lies outside
+ * every Folder is a route too, named after the file. Points are places either way.
  *
  * Elements are matched by their local name, whatever namespace they are in, so files
  * written to KML 2.0, 2.1 and 2.2, with or without the Google extensions, are read the
@@ -53,6 +59,8 @@ const BOUNDARY = 8;
 const MULTI = 9;
 const TRACK = 10;
 const FIELD = 11;
+/** The owner of a name being gathered that is a Folder's. */
+const FOLDER_NAME = 12;
 
 type Field = "name" | "description" | "coordinates" | "coord";
 
@@ -71,6 +79,16 @@ export function readKml(source: string): ParsedMapFile {
   let fileName: string | undefined;
   let fileDescription: string | undefined;
   let containerDepth = 0;
+  // The containers open, innermost last: a Folder's group, or -1 for a Document. Group 0 is what lies in no Folder.
+  const containers: number[] = [];
+  const groupNames: Array<string | undefined> = [undefined];
+  const group = () => {
+    for (let index = containers.length - 1; index >= 0; index -= 1) if (containers[index]! > 0) return containers[index]!;
+    return 0;
+  };
+  // Which group each line and outline belongs to, in the order they are kept.
+  const lineGroups: number[] = [];
+  const outlineGroups: number[] = [];
 
   const places: TrackFeature[] = [];
   const lines: TrackFeature[] = [];
@@ -146,7 +164,10 @@ export function readKml(source: string): ParsedMapFile {
       case "name":
       case "description": {
         const value = plainText(text);
-        if (captureFor === PLACEMARK) {
+        if (captureFor === FOLDER_NAME) {
+          groupNames[group()] ??= value || undefined;
+          if (containerDepth <= 1) fileName ??= value;
+        } else if (captureFor === PLACEMARK) {
           if (placemark[captureField] === undefined) placemark[captureField] = value;
         } else if (captureField === "name") fileName ??= value;
         else fileDescription ??= value;
@@ -195,6 +216,8 @@ export function readKml(source: string): ParsedMapFile {
     for (const coordinates of placemarkPoints) {
       places.push({ type: "Feature", properties: describe(), geometry: { type: "Point", coordinates } });
     }
+    if (placemarkLines.length > 0) lineGroups.push(group());
+    if (placemarkRings.length > 0) outlineGroups.push(group());
     if (placemarkLines.length === 1) {
       lines.push({ type: "Feature", properties: describe(), geometry: { type: "LineString", coordinates: placemarkLines[0]! } });
     } else if (placemarkLines.length > 1) {
@@ -230,6 +253,10 @@ export function readKml(source: string): ParsedMapFile {
       case CONTAINER:
         if (xml.is("Document") || xml.is("Folder")) {
           containerDepth += 1;
+          if (xml.is("Folder")) {
+            containers.push(groupNames.length);
+            groupNames.push(undefined);
+          } else containers.push(-1);
           return CONTAINER;
         }
         if (xml.is("Placemark")) {
@@ -239,7 +266,8 @@ export function readKml(source: string): ParsedMapFile {
           placemarkRings = [];
           return PLACEMARK;
         }
-        // The file's own name is the first container's, or one written straight under <kml>.
+        // A Folder's own name; the file's own name is the first container's, or one written straight under <kml>.
+        if (parent === CONTAINER && xml.is("name") && containers.at(-1)! > 0) return capture("name", FOLDER_NAME);
         if (containerDepth <= 1 && xml.is("name")) return capture("name", ROOT);
         if (containerDepth <= 1 && xml.is("description")) return capture("description", ROOT);
         return OTHER;
@@ -286,8 +314,10 @@ export function readKml(source: string): ParsedMapFile {
         kinds[xml.depth + 1] = OTHER;
         if (kind === FIELD) endCapture();
         else if (kind === PLACEMARK) endPlacemark();
-        else if (kind === CONTAINER) containerDepth -= 1;
-        else if (kind === TRACK && track.length >= 2) {
+        else if (kind === CONTAINER) {
+          containerDepth -= 1;
+          containers.pop();
+        } else if (kind === TRACK && track.length >= 2) {
           countLine(track.length);
           placemarkLines.push(track);
           track = [];
@@ -305,12 +335,23 @@ export function readKml(source: string): ParsedMapFile {
 
   const features = [...lines, ...outlines, ...places];
   if (features.length === 0) throw badRequest("That KML file has no points, lines or outlines in it.");
+  const name = fileName || lines[0]?.properties.name || outlines[0]?.properties.name || null;
+  const used = [...new Set([...lineGroups, ...outlineGroups])].sort((a, b) => a - b);
+  const routes =
+    used.length > 1
+      ? used.map((index, order) => ({
+          // What lies in no Folder takes the file's name; a Folder with none is numbered.
+          name: (index === 0 ? name : groupNames[index]) || `${name ?? "Folder"} (${order + 1})`,
+          features: [...lines.filter((_, at) => lineGroups[at] === index), ...outlines.filter((_, at) => outlineGroups[at] === index)],
+        }))
+      : undefined;
   return {
     collection: { type: "FeatureCollection", features },
-    name: fileName || lines[0]?.properties.name || outlines[0]?.properties.name || null,
+    name,
     description: fileDescription || null,
     lines: lines.length,
     outlines: outlines.length,
     waypoints: places.length,
+    ...(routes ? { routes } : {}),
   };
 }

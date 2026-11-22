@@ -684,11 +684,12 @@ server on the internet.
 | `PUT /api/maps/tracks/:id/points` | Redraws the line through `points`; waypoints kept. |
 | `POST /api/maps/tracks/import` | One GPX, ≤20 MB; `name`, `color`, `importWaypointsAsMarkers`. |
 | `POST /api/maps/files/preview` | One GPX, KML, KMZ or GeoJSON, ≤20 MB; reads, saves nothing. |
-| `POST /api/maps/files/import` | The same file: lines to one track (rings as `_outline` lines), points to markers. |
+| `POST /api/maps/files/import` | The same file: lines to one track (rings as `_outline` lines), points to markers; KML with lines in several `Folder`s to one track each (`moreTracks`). |
 | `PUT /api/maps/recordings/:id` | A recorded track: `:id` 26 characters chosen by the device; multipart `name`, `color?` and a GPX of tracks with times, ≤150,000 points. A repeat answers `alreadySaved`. |
 | `GET /api/maps/tracks/:id`, `PATCH`, `DELETE` | GeoJSON; `name`, `description`, `color`. |
 | `GET /api/maps/tracks/:id/export.gpx` | One track. |
 | `GET /api/maps/export.gpx` | `markers=1`, `tracks=<ids>`; icons as Garmin `<sym>`. |
+| `GET /api/maps/tracks/:id/export.kml`, `.geojson`; `GET /api/maps/export.kml`, `.geojson` | The same as KML 2.2 (a `Folder` per route, outlines as `Polygon`) or GeoJSON (`kind`: `route`, `area`, `waypoint`, `place`). |
 
 ### Finding a route
 

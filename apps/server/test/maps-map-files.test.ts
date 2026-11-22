@@ -159,6 +159,46 @@ describe("reading KML", () => {
   });
 });
 
+const FOLDERS = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Three walks</name>
+    <Placemark><name>Loose line</name><LineString><coordinates>-3,54 -3.01,54.01</coordinates></LineString></Placemark>
+    <Folder>
+      <name>Monday</name>
+      <Placemark><name>Out</name><LineString><coordinates>-3,54 -3.1,54.1</coordinates></LineString></Placemark>
+      <Placemark><name>Back</name><LineString><coordinates>-3.1,54.1 -3,54</coordinates></LineString></Placemark>
+      <Placemark><name>Lunch</name><Point><coordinates>-3.05,54.05</coordinates></Point></Placemark>
+      <Folder>
+        <name>Detour</name>
+        <Placemark><name>Wood</name><Polygon><outerBoundaryIs><LinearRing><coordinates>-3,54 -3.02,54 -3.02,54.02 -3,54</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark>
+      </Folder>
+    </Folder>
+    <Folder>
+      <name>Only places</name>
+      <Placemark><name>Pub</name><Point><coordinates>-3.2,54.2</coordinates></Point></Placemark>
+    </Folder>
+  </Document>
+</kml>`;
+
+describe("reading KML in folders", () => {
+  it("makes one route for each folder that holds lines, and one of what lies in none", () => {
+    const parsed = readKml(FOLDERS);
+    expect(parsed.name).toBe("Three walks");
+    expect(parsed.routes?.map((route) => [route.name, route.features.map((feature) => feature.properties.name)])).toEqual([
+      ["Three walks", ["Loose line"]],
+      ["Monday", ["Out", "Back"]],
+      ["Detour", ["Wood"]],
+    ]);
+    // Points are places, whichever folder they are in.
+    expect(parsed.waypoints).toBe(2);
+  });
+
+  it("keeps a file whose lines are all in one folder as one route", () => {
+    expect(readKml(KML).routes).toBeUndefined();
+  });
+});
+
 describe("reading GeoJSON", () => {
   it("reads every kind of geometry, and names from the usual properties", () => {
     const parsed = readGeoJson(GEOJSON);
@@ -285,6 +325,61 @@ describe("importing map files", () => {
     await send("/api/maps/files/import", "lakes.kml", KML);
     expect((await app.api("GET", "/api/maps/tracks")).body.tracks).toHaveLength(2);
     expect((await app.api("GET", "/api/maps/markers")).body.markers).toHaveLength(7);
+  });
+
+  it("imports a KML file with lines in several folders as a route for each", async () => {
+    const preview = await send("/api/maps/files/preview", "walks.kml", FOLDERS);
+    expect(preview.body).toMatchObject({ routes: 3, lines: 3, outlines: 1, points: 2 });
+    const done = await send("/api/maps/files/import", "walks.kml", FOLDERS, { color: "blue" });
+    expect(done.status).toBe(200);
+    expect([done.body.track, ...(done.body.moreTracks ?? [])].map((track) => [track?.name, track?.color])).toEqual([
+      ["Three walks", "blue"],
+      ["Monday", "blue"],
+      ["Detour", "blue"],
+    ]);
+    expect(done.body.markers.map((marker) => marker.name)).toEqual(["Lunch", "Pub"]);
+    expect((await app.api("GET", "/api/maps/tracks")).body.tracks).toHaveLength(3);
+  });
+
+  it("exports routes as KML and GeoJSON, outlines as areas, and reads its own KML back as the same routes", async () => {
+    const lakes = (await send("/api/maps/files/import", "lakes.kml", KML, { color: "violet" })).body.track!;
+    const walks = await send("/api/maps/files/import", "walks.kml", FOLDERS);
+    const ids = [walks.body.track!.id, ...walks.body.moreTracks!.map((track) => track.id)];
+
+    const one = await app.api("GET", `/api/maps/tracks/${lakes.id}/export.kml`);
+    expect(one.status).toBe(200);
+    expect(one.headers["content-type"]).toContain("application/vnd.google-earth.kml+xml");
+    expect(one.headers["content-disposition"]).toContain("Lakes weekend.kml");
+    expect(one.headers["content-security-policy"]).toContain("sandbox");
+    const kml = one.body as unknown as string;
+    expect(kml).toContain("<name>Lakes weekend</name>");
+    // The outline is a polygon again, with its hole.
+    expect(kml).toMatch(/<Polygon><outerBoundaryIs>.*<innerBoundaryIs>/);
+    expect(kml).toContain("<color>ffcc628d</color>");
+
+    const geo = await app.api("GET", `/api/maps/tracks/${lakes.id}/export.geojson`);
+    expect(geo.headers["content-type"]).toContain("application/geo+json");
+    const collection = geo.body as unknown as {
+      features: Array<{ geometry: { type: string; coordinates: unknown[] }; properties: { kind: string; route: string } }>;
+    };
+    const area = collection.features.find((feature) => feature.properties.kind === "area")!;
+    expect(area.geometry.type).toBe("Polygon");
+    expect(area.geometry.coordinates).toHaveLength(2);
+    expect(collection.features.filter((feature) => feature.properties.kind === "route")).toHaveLength(2);
+
+    // Everything chosen, with the places, as one KML file: a folder for each route and one for the places.
+    const all = await app.api("GET", `/api/maps/export.kml?markers=1&tracks=${ids.join(",")}`);
+    expect(all.status).toBe(200);
+    const text = all.body as unknown as string;
+    expect(text.match(/<Folder>/g)).toHaveLength(4);
+    expect(text).toContain("<name>Saved places</name>");
+    const back = await send("/api/maps/files/preview", "back.kml", text);
+    expect(back.body).toMatchObject({ routes: 3 });
+
+    expect((await app.api("GET", "/api/maps/export.geojson")).status).toBe(400);
+    expect((await app.api("GET", `/api/maps/tracks/${lakes.id}/export.shp`)).status).toBe(400);
+    // GPX is as it was.
+    expect((await app.api("GET", `/api/maps/tracks/${lakes.id}/export.gpx`)).headers["content-type"]).toContain("gpx");
   });
 
   it("opens a KMZ and reads its doc.kml", async () => {

@@ -24,7 +24,9 @@ export function previewParts(preview: MapFilePreview, gpxWaypointsAsPlaces: bool
   ]
     .filter((part) => part !== null)
     .join(" and ");
-  if (shapes) parts.push(`A new route of ${shapes}, ${plural(preview.linePoints, "point")}`);
+  if (shapes && (preview.routes ?? 1) > 1) {
+    parts.push(`${formatNumber(preview.routes!)} new routes, one for each folder, of ${shapes}, ${plural(preview.linePoints, "point")}`);
+  } else if (shapes) parts.push(`A new route of ${shapes}, ${plural(preview.linePoints, "point")}`);
   if (preview.points > 0) {
     if (preview.format === "gpx" && !gpxWaypointsAsPlaces) {
       parts.push(`${plural(preview.points, "waypoint")} kept on the route`);

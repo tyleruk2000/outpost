@@ -42,6 +42,8 @@ import {
   trackStats,
 } from "./gpx.ts";
 import { GPX_LIMITS } from "./gpx-reader.ts";
+import { EXPORT_TYPES, type ExportBundle, type ExportFormat } from "./map-export.ts";
+import type { ParsedMapFile } from "./map-file-limits.ts";
 import { readMapFile } from "./map-files.ts";
 import { gpxCredit } from "./route-finder/credit.ts";
 import { iconForSymbol, symbolForPlace } from "./waypoint-symbols.ts";
@@ -194,6 +196,11 @@ export interface AnnotationsService {
   removeTrack(id: string): void;
   exportTrack(id: string): { filename: string; gpx: string };
   exportSelection(selection: { markers: boolean; trackIds: string[] }): { filename: string; gpx: string };
+  /** The same as the GPX exports, as KML or GeoJSON: each route in its own folder or features, outlines as areas. */
+  exportAs(
+    format: ExportFormat,
+    selection: { markers: boolean; trackIds: string[] },
+  ): { filename: string; contentType: string; body: string };
   counts(): { markers: number; tracks: number };
 }
 
@@ -386,7 +393,7 @@ export function createAnnotationsService(ctx: AppContext, deps: { elevation: Ele
    * places or kept on the track. All or nothing; nothing already saved is touched.
    */
   async function saveImported(
-    parsed: ParsedGpx,
+    parsed: ParsedGpx & Pick<ParsedMapFile, "routes">,
     input: Omit<TrackImportInput, "source" | "importWaypointsAsMarkers">,
     asMarkers: boolean,
   ): Promise<TrackImportResponse> {
@@ -430,34 +437,47 @@ export function createAnnotationsService(ctx: AppContext, deps: { elevation: Ele
         search.remove("marker", row.id);
       }
     });
-    const storeTrack = sqlite.transaction((): TrackRow | null => {
-      if (features.length === 0) return null;
-      const collection: TrackCollection = { type: "FeatureCollection", features };
-      const stats = trackStats(collection);
-      const now = Date.now();
-      const id = newId();
-      db.insert(tracks)
-        .values({
-          id,
-          name,
-          description: parsed.description ?? "",
-          color: input.color ?? "teal",
-          geojson: collection as unknown as Record<string, unknown>,
-          sourceFilename: input.filename?.slice(0, 255) ?? null,
-          distanceMeters: stats.distanceMeters,
-          ascentMeters: stats.ascentMeters,
-          pointCount: stats.pointCount,
-          bounds: stats.bounds,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .run();
-      const row = trackRow(id);
-      indexTrack(row);
-      return row;
+    // One route, or for a KML file with lines in several folders one for each (and the name asked for, if any, goes to the first).
+    const routes =
+      parsed.routes && parsed.routes.length > 1
+        ? parsed.routes.map((route, index) => ({
+            name: ((index === 0 && input.name?.trim()) || route.name).slice(0, 200),
+            description: "",
+            features: route.features,
+          }))
+        : [{ name, description: parsed.description ?? "", features }];
+    const storeTracks = sqlite.transaction((): TrackRow[] => {
+      const stored: TrackRow[] = [];
+      for (const route of routes) {
+        if (route.features.length === 0) continue;
+        const collection: TrackCollection = { type: "FeatureCollection", features: route.features };
+        const stats = trackStats(collection);
+        const now = Date.now();
+        const id = newId();
+        db.insert(tracks)
+          .values({
+            id,
+            name: route.name,
+            description: route.description,
+            color: input.color ?? "teal",
+            geojson: collection as unknown as Record<string, unknown>,
+            sourceFilename: input.filename?.slice(0, 255) ?? null,
+            distanceMeters: stats.distanceMeters,
+            ascentMeters: stats.ascentMeters,
+            pointCount: stats.pointCount,
+            bounds: stats.bounds,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .run();
+        const row = trackRow(id);
+        indexTrack(row);
+        stored.push(row);
+      }
+      return stored;
     });
 
-    let track: TrackRow | null;
+    let stored: TrackRow[];
     try {
       if (asMarkers) {
         for (let start = 0; start < waypoints.length; start += MARKER_WRITE_BATCH) {
@@ -465,7 +485,7 @@ export function createAnnotationsService(ctx: AppContext, deps: { elevation: Ele
           created.push(...writeMarkers(waypoints.slice(start, start + MARKER_WRITE_BATCH)));
         }
       }
-      track = storeTrack();
+      stored = storeTracks();
     } catch (error) {
       for (let start = 0; start < created.length; start += MARKER_WRITE_BATCH) {
         takeOut(created.slice(start, start + MARKER_WRITE_BATCH));
@@ -474,10 +494,14 @@ export function createAnnotationsService(ctx: AppContext, deps: { elevation: Ele
       if (created.length > 0) changed();
       throw error;
     }
-    const result = { track, created };
 
     changed();
-    return { track: result.track ? toTrackDto(result.track) : null, markers: result.created.map(toMarkerDto) };
+    const [first, ...more] = stored;
+    return {
+      track: first ? toTrackDto(first) : null,
+      markers: created.map(toMarkerDto),
+      ...(more.length > 0 ? { moreTracks: more.map(toTrackDto) } : {}),
+    };
   }
 
   return {
@@ -552,6 +576,7 @@ export function createAnnotationsService(ctx: AppContext, deps: { elevation: Ele
         lines: parsed.lines,
         outlines: parsed.outlines,
         linePoints: stats.pointCount,
+        ...(parsed.routes && parsed.routes.length > 1 ? { routes: parsed.routes.length } : {}),
       };
     },
 
@@ -777,6 +802,33 @@ export function createAnnotationsService(ctx: AppContext, deps: { elevation: Ele
       return {
         filename: fileNameOf(rows.length === 1 && !selection.markers ? rows[0]!.name : "outpost-map-export"),
         gpx: buildGpx(document),
+      };
+    },
+
+    exportAs(format, selection) {
+      if (!selection.markers && selection.trackIds.length === 0) {
+        throw badRequest("Choose what to export: places, routes or both.");
+      }
+      const rows = selection.trackIds.length > 0 ? db.select().from(tracks).where(inArray(tracks.id, selection.trackIds)).all() : [];
+      if (selection.trackIds.some((id) => !rows.some((row) => row.id === id))) throw notFound("One of those routes");
+      // In the order asked for, which is the order of the list.
+      rows.sort((a, b) => selection.trackIds.indexOf(a.id) - selection.trackIds.indexOf(b.id));
+      const sources = rows.map((row) => readTrackSource(row.geojson));
+      const found = sources.find((source) => source !== null);
+      const single = rows.length === 1 && !selection.markers ? rows[0]! : null;
+      const bundle: ExportBundle = {
+        name: single?.name ?? "Outpost export",
+        description: found
+          ? `${sources.every((source) => source !== null) && !selection.markers ? "This file contains" : "Some of the routes in this file contain"} information from OpenStreetMap, which is made available under the ${found.license}: ${found.creditUrl}. Each says so in its own description.`
+          : single?.description || undefined,
+        routes: rows.map((row) => ({ name: row.name, description: row.description, color: asColor(row.color), ...credited(row) })),
+        places: selection.markers ? markerWaypoints() : [],
+      };
+      const type = EXPORT_TYPES[format];
+      return {
+        filename: fileNameOf(single?.name ?? "outpost-map-export").replace(/\.gpx$/, `.${type.extension}`),
+        contentType: type.contentType,
+        body: type.build(bundle),
       };
     },
 

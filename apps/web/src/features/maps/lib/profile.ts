@@ -2,7 +2,7 @@
  * Elevation profiles: turning a track's stored geometry into distance-against-height
  * samples, and those samples into the path an SVG draws.
  */
-import { haversineMeters, type RouteElevation, type TrackWithGeometryDto } from "@outpost/shared";
+import { haversineMeters, outlineAreas, type RouteElevation, type TrackWithGeometryDto } from "@outpost/shared";
 
 export interface ProfileSample {
   /** Metres from the start of the track. */
@@ -50,6 +50,20 @@ export function trackLines(geojson: TrackWithGeometryDto["geojson"], outlines = 
     }
   }
   return lines;
+}
+
+/**
+ * A track's outlines as areas to fill: each outline's rings gathered by `outlineAreas`.
+ * The rings of one outline came from one placemark or feature, so they are gathered
+ * together and never with another's.
+ */
+export function trackAreas(geojson: TrackWithGeometryDto["geojson"]): Position[][][] {
+  const areas: Position[][][] = [];
+  for (const feature of geojson.features) {
+    if (!(feature as { properties?: { _outline?: unknown } | null } | null)?.properties?._outline) continue;
+    areas.push(...outlineAreas(trackLines({ ...geojson, features: [feature] }, true)));
+  }
+  return areas;
 }
 
 interface LineFeature {
