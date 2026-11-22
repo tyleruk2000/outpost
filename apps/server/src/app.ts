@@ -15,6 +15,7 @@ import { AppError } from "./core/errors.ts";
 import { EventBus } from "./core/events.ts";
 import { registerRequestGuard } from "./core/guard.ts";
 import { JobQueue } from "./core/jobs.ts";
+import { registerReaderLocale } from "./core/locale.ts";
 import { isBundled } from "./core/paths.ts";
 import { openDatabase } from "./db/client.ts";
 import { registerAccess } from "./modules/access/index.ts";
@@ -137,6 +138,7 @@ export async function buildApp(config: Config): Promise<BuiltApp> {
 
   ctx.services.settings = createSettingsService(ctx);
   registerJsonCompression(app);
+  registerReaderLocale(app);
   await registerRequestGuard(app, ctx);
   // The household PIN, if one is set: its check follows the guard's, for every route.
   await registerAccess(app, ctx);

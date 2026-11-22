@@ -18,6 +18,7 @@
 import type { ToolArea } from "@outpost/shared";
 import type { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
+import { dateInWords } from "../../core/locale.ts";
 
 export interface ToolRun {
   ctx: AppContext;
@@ -60,9 +61,8 @@ export const MAX_ANSWER_CHARS = 3000;
 /** Items in one page of a list. */
 export const PAGE_SIZE = 10;
 
-/** "12 Nov 2026", in UK English. */
-export const dayOf = (ms: number) =>
-  new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+/** "12 Nov 2026" ("Nov 12, 2026" for a reader in the United States). */
+export const dayOf = (ms: number) => dateInWords(ms, { timeZone: "UTC" });
 
 /** How long ago, in words: "3 hours ago", "2 days ago". */
 export function ageOf(ms: number, now: number): string {

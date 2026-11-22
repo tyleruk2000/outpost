@@ -260,6 +260,13 @@
       "when": 1795273509874,
       "tag": "0036_household_book",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "6",
+      "when": 1795307109959,
+      "tag": "0037_worldwide_defaults",
+      "breakpoints": true
     }
   ]
 }

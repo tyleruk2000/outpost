@@ -249,6 +249,7 @@ describe("the Supplies screen", () => {
       household: {
         ...DEFAULT_HOUSEHOLD,
         daysWanted: 7,
+        energyTable: "uk",
         members: [
           {
             id: "m",
@@ -277,6 +278,7 @@ describe("the Supplies screen", () => {
       household: {
         ...DEFAULT_HOUSEHOLD,
         daysWanted: 7,
+        energyTable: "uk",
         members: [
           {
             id: "m",

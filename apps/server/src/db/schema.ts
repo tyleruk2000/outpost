@@ -1251,6 +1251,8 @@ export const supplyHousehold = sqliteTable("supply_household", {
   allUsesLitres: real("all_uses_litres").notNull(),
   /** Which of the two water figures the days and the shopping list are worked to. */
   waterBasis: text("water_basis").notNull(),
+  /** The energy table chosen ("uk", "international"); null to take it from Home's country. */
+  energyTable: text("energy_table"),
   /** When the shopping list was last worked out, and when anything it is worked from last changed. */
   shoppingWorkedAt: integer("shopping_worked_at"),
   stockChangedAt: integer("stock_changed_at").notNull(),
@@ -1485,7 +1487,7 @@ export const emergencyPlans = sqliteTable("emergency_plans", {
   kind: text("kind").notNull(),
   kindText: text("kind_text").notNull().default(""),
   templateId: text("template_id"),
-  emergencyNumber: text("emergency_number").notNull().default("999"),
+  emergencyNumber: text("emergency_number").notNull().default("112"),
   reviewEveryDays: integer("review_every_days"),
   body: json<Record<string, unknown>>("body").notNull(),
   use: json<Record<string, unknown>>("use").notNull(),

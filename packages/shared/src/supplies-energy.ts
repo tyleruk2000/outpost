@@ -9,7 +9,7 @@
  * tested on its own. Energy, not nutrition: a day's kcal says nothing about protein,
  * vitamins or a diet anyone could live on for long.
  */
-import { daysWords, type Household, type LeftOut, memberNeeds, type SupplyOutlook } from "./supplies.ts";
+import { daysWords, type EnergyTable, energyTableOf, type Household, type LeftOut, memberNeeds, type SupplyOutlook } from "./supplies.ts";
 
 // ── The table ───────────────────────────────────────────────────────────────
 
@@ -374,8 +374,11 @@ const count = (value: number, one: string, many: string) => `${value} ${value ==
 const listed = (names: string[], most = 6) =>
   names.length <= most ? names.join(", ") : `${names.slice(0, most).join(", ")} and ${names.length - most} more`;
 
-/** Whose daily figures the table under Household is: the same table as ENERGY_SOURCE, said shortly. */
+/** Whose daily figures the UK table under Household is: the same table as ENERGY_SOURCE, said shortly. */
 export const DAILY_ENERGY_SOURCE = "Public Health England, Government Dietary Recommendations (August 2016)";
+/** The same for the international table (FNNE_SOURCE). */
+export const DAILY_ENERGY_SOURCE_INTERNATIONAL = "UNHCR, UNICEF, WFP and WHO, Food and Nutrition Needs in Emergencies (2002)";
+export const dailyEnergySource = (table: EnergyTable): string => (table === "uk" ? DAILY_ENERGY_SOURCE : DAILY_ENERGY_SOURCE_INTERNATIONAL);
 
 export const ENERGY_CAVEAT =
   "This is energy only: it says nothing about protein, vitamins or a diet to live on for long, and the figures are averages, not your packets.";
@@ -400,7 +403,7 @@ export function energySummary(outlook: SupplyOutlook, household: Household): Ene
   const whose: string[] = [];
   if (fromTable > 0)
     whose.push(
-      `${fromTable === people.length ? "each person's" : count(fromTable, "person's", "people's")} figure for their age and sex from ${DAILY_ENERGY_SOURCE}`,
+      `${fromTable === people.length ? "each person's" : count(fromTable, "person's", "people's")} figure for their age and sex from ${dailyEnergySource(energyTableOf(household))}`,
     );
   if (stated > 0) whose.push(`${count(stated, "figure", "figures")} you gave under Household`);
   const basis =

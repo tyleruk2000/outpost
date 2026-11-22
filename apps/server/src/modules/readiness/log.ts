@@ -16,6 +16,7 @@ import { asc, count, eq } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
 import { badRequest, conflict, notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
+import { dateInWords, readerLocale } from "../../core/locale.ts";
 import { eventLog } from "../../db/schema.ts";
 import { cleanBody, cleanName } from "../board/service.ts";
 import { markdownToDoc } from "../notes/content/from-markdown.ts";
@@ -23,8 +24,7 @@ import { markdownToDoc } from "../notes/content/from-markdown.ts";
 type Row = typeof eventLog.$inferSelect;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const dayWords = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
-const formatDate = (at: number) => dayWords.format(at);
+const formatDate = (at: number) => dateInWords(at);
 
 const STATUS_WORDS = { safe: "checked in: safe", help: "checked in: needs help", other: "checked in" } as const;
 
@@ -77,7 +77,7 @@ function cleanText(value: string): string {
 
 /** "14:10 · Sam · Power went off" lines as Markdown, a day heading for each day. Times are the server's own clock. */
 export function logMarkdown(lines: EventLogLine[], timeZone?: string): string {
-  const day = new Intl.DateTimeFormat("en-GB", { timeZone, day: "numeric", month: "short", year: "numeric" });
+  const day = new Intl.DateTimeFormat(readerLocale(), { timeZone, day: "numeric", month: "short", year: "numeric" });
   const time = new Intl.DateTimeFormat("en-GB", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
   const out: string[] = [];
   let current = "";

@@ -23,6 +23,7 @@ import { AppError, badRequest, messageOf } from "../../core/errors.ts";
 import { safeFileName } from "../../core/fs-safe.ts";
 import { sha256File } from "../../core/hashing.ts";
 import { newId } from "../../core/ids.ts";
+import { dateInWords } from "../../core/locale.ts";
 import { driveMergeActions, type driveMerges } from "../../db/schema.ts";
 import { buildGpx, splitCollection, type TrackCollection, type TrackFeature } from "../maps/gpx.ts";
 import { GONE, type MemoryEntry } from "./diff.ts";
@@ -62,7 +63,7 @@ const MAX_ATTACHMENT_BYTES = 50 * 1024 * 1024;
 const PREFIX = { note: "/notes/", document: "/library/documents/", attachment: "/api/attachments/" } as const;
 const SUPPORTED_COLLECTIONS = ["zim", "map", "terrain"] as const;
 
-const dateWords = (time: number) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(time);
+const dateWords = (time: number) => dateInWords(time);
 
 /** Tags the notes and documents services will accept: theirs refuse a whole save for one bad tag. */
 export function safeTags(tags: readonly string[]): string[] {

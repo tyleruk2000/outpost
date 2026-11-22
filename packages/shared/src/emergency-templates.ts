@@ -18,6 +18,7 @@ import type { EmergencyPlanInput, PlanKind, PlanPhase, PlanStep } from "./emerge
 import { DEFAULT_EMERGENCY_NUMBER, DEFAULT_REVIEW_DAYS, emptyPlanBody } from "./emergency-plans.ts";
 import { EMERGENCY_NUMBERS_DATA, PLAN_SOURCES_DATA, PLAN_TEMPLATES_DATA, SOURCE_TERMS_DATA } from "./emergency-templates-data.ts";
 import { RADIATION_SOURCE_TERMS, RADIATION_SOURCES, RADIATION_TEMPLATE } from "./emergency-templates-radiation.ts";
+import { WORLD_SOURCE_TERMS, WORLD_SOURCES, WORLD_TEMPLATES } from "./emergency-templates-world.ts";
 import type { SupplyCategory } from "./supplies.ts";
 
 export interface PlanSource {
@@ -29,7 +30,8 @@ export interface PlanSource {
   pageDate: string;
   /** The day it was read for this template. */
   checked: string;
-  country: "UK" | "US" | "International";
+  /** Whose guidance: the UK's, the United States', Australia's (Queensland), the Netherlands', or a body for many countries. */
+  country: "UK" | "US" | "AU" | "NL" | "International";
   /** The publisher's terms for reusing its words: an id of `SOURCE_TERMS`. */
   terms: string;
 }
@@ -106,6 +108,10 @@ export interface PlanTemplate {
   name: string;
   /** One sentence on what it covers. */
   about: string;
+  /** The country whose government's guidance it is (ISO 3166 code); absent for the UK's. */
+  country?: string;
+  /** That government, as a sentence names it: "the Queensland Government, Australia". Absent for the UK's. */
+  government?: string;
   steps: TemplateStep[];
   supplies: TemplateSupply[];
   where: TemplateWhere[];
@@ -125,11 +131,45 @@ export interface EmergencyNumber {
   quote: string;
 }
 
-// The radiation emergency template (nuclear preparedness) keeps its words and sources in a file of its own.
-export const SOURCE_TERMS: SourceTerms[] = [...SOURCE_TERMS_DATA, ...RADIATION_SOURCE_TERMS];
-export const PLAN_SOURCES: PlanSource[] = [...PLAN_SOURCES_DATA, ...RADIATION_SOURCES];
+// The radiation emergency template (nuclear preparedness), and the templates from governments outside the
+// UK, keep their words and sources in files of their own.
+export const SOURCE_TERMS: SourceTerms[] = [...SOURCE_TERMS_DATA, ...RADIATION_SOURCE_TERMS, ...WORLD_SOURCE_TERMS];
+export const PLAN_SOURCES: PlanSource[] = [...PLAN_SOURCES_DATA, ...RADIATION_SOURCES, ...WORLD_SOURCES];
 export const EMERGENCY_NUMBERS: EmergencyNumber[] = EMERGENCY_NUMBERS_DATA;
-export const PLAN_TEMPLATES: PlanTemplate[] = [...PLAN_TEMPLATES_DATA, RADIATION_TEMPLATE];
+export const PLAN_TEMPLATES: PlanTemplate[] = [...PLAN_TEMPLATES_DATA, RADIATION_TEMPLATE, ...WORLD_TEMPLATES];
+
+/** The country a template's guidance is from: its own, or the UK's. */
+export const templateCountry = (template: Pick<PlanTemplate, "country">): string => template.country ?? "GB";
+
+/**
+ * The templates in the order the new-plan dialog lists them: those from the government
+ * of the country given (Home's, else the device's region) first, then the UK's, then
+ * the rest. The order within each is kept.
+ */
+export function templatesInOrder(country: string | null | undefined): PlanTemplate[] {
+  const code = country?.toUpperCase() === "UK" ? "GB" : (country?.toUpperCase() ?? null);
+  const rank = (template: PlanTemplate) => {
+    const from = templateCountry(template);
+    return from === code ? 0 : from === "GB" ? 1 : 2;
+  };
+  return PLAN_TEMPLATES.map((template, index) => ({ template, index }))
+    .sort((a, b) => rank(a.template) - rank(b.template) || a.index - b.index)
+    .map((entry) => entry.template);
+}
+
+/**
+ * The number for the emergency services in the first of the regions given (ISO 3166
+ * codes: Home's country, then the device's region) that has one listed, else 112
+ * (`DEFAULT_EMERGENCY_NUMBER`). Where a country has two, the first listed is its own.
+ */
+export function emergencyNumberFor(...regions: Array<string | null | undefined>): string {
+  for (const region of regions) {
+    const code = region?.toUpperCase();
+    const found = code ? EMERGENCY_NUMBERS.find((entry) => entry.regions.includes(code)) : undefined;
+    if (found) return found.number;
+  }
+  return DEFAULT_EMERGENCY_NUMBER;
+}
 
 export const sourceById = (id: string | null | undefined): PlanSource | undefined =>
   id ? PLAN_SOURCES.find((source) => source.id === id) : undefined;

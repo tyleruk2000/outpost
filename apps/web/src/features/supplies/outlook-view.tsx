@@ -7,7 +7,9 @@
 import {
   categoryLabel,
   type DatedRow,
+  dailyEnergySource,
   daysWords,
+  energyTableOf,
   type Household,
   type LeftOut,
   localDay,
@@ -170,10 +172,10 @@ export function OutlookView({ items, household, onHousehold }: { items: SupplyIt
                   use-by dates, June 2026).
                 </li>
                 <li>
-                  The daily need is the sum of each person's energy figure (Public Health England, Government Dietary Recommendations, 2016)
-                  or the figure you gave, and each person's water: 3 litres to drink (UK government, Be ready) or 7.5 litres for drinking,
-                  cooking and washing (the low end of WHO's 7.5 to 15, technical note 9), unless you gave another. Pets count only with
-                  figures you give.
+                  The daily need is the sum of each person's energy figure ({dailyEnergySource(energyTableOf(household))}, as chosen under
+                  Household) or the figure you gave, and each person's water: 3 litres to drink (UK government, Be ready) or 7.5 litres for
+                  drinking, cooking and washing (the low end of WHO's 7.5 to 15, technical note 9), unless you gave another. Pets count only
+                  with figures you give.
                 </li>
                 <li>
                   Days are rounded down, to a tenth under ten days and to whole days above. Hot weather, illness, hard work, pregnancy and

@@ -57,6 +57,23 @@ usable official source covers something, the template asks you under **For you t
 decide**. The radiation emergency template is in
 [nuclear-preparedness.md](nuclear-preparedness.md#the-radiation-emergency-template).
 
+### Templates from other governments
+
+Where Home is in a country Outpost has templates from (else where your device is set to),
+those come first in the list, and the dialog says whose they are:
+
+- **Australia**: *Leaving home* and *Storm or cyclone*, from the Queensland Government's
+  disaster pages, CC BY 4.0. Queensland is one state: check your own state's emergency
+  service as well.
+- **The Netherlands**: *The first 72 hours at home*, from the government's Denk vooruit
+  pages (in English) and Rijksoverheid.nl, CC0. A few lines are put into English from the
+  Dutch; the Dutch words are shown beside them. The kit list, with its water figure, is an
+  infographic whose words may not be copied: read it on Denk vooruit.
+
+Elsewhere the dialog says the templates are mostly UK guidance, and to check every step
+against your own government's advice. Germany's BBK allows no copying without permission;
+the New Zealand, Irish, Canadian and Australian federal guidance could not be read.
+
 ### Whose words are used
 
 Only the words of publishers whose terms allow copying are shipped. Their terms, quoted,
@@ -81,8 +98,8 @@ spare key and who checks on neighbours.
 
 ### The number for the emergency services
 
-Each plan keeps its own, offered from your device's language and changeable: 999 or 112
-in the UK, 112 across the European Union and in Switzerland and South Africa, 911 in the
+Each plan keeps its own, offered from Home's country (else your device's language) and
+changeable; with neither, 112. 999 or 112 in the UK, 112 across the European Union and in Switzerland and South Africa, 911 in the
 United States, 000 in Australia, 111 in New Zealand.
 
 ## Supplies, beside the inventory

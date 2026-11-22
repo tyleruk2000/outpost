@@ -41,6 +41,7 @@ import {
 import { eq, sql } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest } from "../../core/errors.ts";
+import { dateInWords } from "../../core/locale.ts";
 import { propagationResults } from "../../db/schema.ts";
 import { type CircuitRequest, EngineUnavailable } from "./engine.ts";
 import { type EngineHost, EngineRefused } from "./host.ts";
@@ -68,11 +69,8 @@ const RESULT_VERSION = 1;
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const monthName = (month: string) => `${MONTHS[Number(month.slice(5, 7)) - 1]} ${month.slice(0, 4)}`;
-/** "16 Nov 2026": a day written as everywhere else in Outpost, from "2026-11-16". */
-const dayName = (day: string) =>
-  new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(
-    Date.parse(`${day}T00:00:00Z`),
-  );
+/** "16 Nov 2026" ("Nov 16, 2026" in the United States): a day written as everywhere else in Outpost, from "2026-11-16". */
+const dayName = (day: string) => dateInWords(Date.parse(`${day}T00:00:00Z`), { timeZone: "UTC" });
 
 /**
  * What a key gains when a level wire longer than a half-wave is among the antennas and

@@ -13,13 +13,17 @@
  * source, and handed to the map's credits.
  */
 import type { FoundRouteRef, TrackSource } from "@outpost/shared";
+import { dateInWords } from "../../../core/locale.ts";
 import { OSM_CREDIT } from "./sources.ts";
 
-/** "2026-11-16T10:20:30.000Z" as "16 November 2026", in UTC so the words do not depend on the server's time zone. */
+/**
+ * "2026-11-16T10:20:30.000Z" as "16 November 2026" ("November 16, 2026" for a reader in
+ * the United States), in UTC so the words do not depend on the server's time zone.
+ */
 export function longDate(iso: string): string {
   const time = Date.parse(iso);
   if (Number.isNaN(time)) return iso;
-  return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(time);
+  return dateInWords(time, { month: "long", timeZone: "UTC" });
 }
 
 export function buildTrackSource(input: {

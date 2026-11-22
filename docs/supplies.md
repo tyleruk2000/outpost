@@ -64,7 +64,17 @@ with Outpost, so this works with no internet.
 Every figure can be changed for the household or one person. The sources are in
 [sources.md](sources.md#planning-figures-for-supplies-read-on-2026-11-16).
 
-**Energy**, from Public Health England's *Government Dietary Recommendations* (August
+**Energy** comes from one of two tables, chosen under **Household → Energy table**. Left
+on **By Home's country**, a household whose Home is in the UK uses the UK's; everywhere
+else, and with no home place, the international one. The screen says which it took.
+
+The **international** table is UNHCR, UNICEF, WFP and WHO's *Food and Nutrition Needs in
+Emergencies* (2002), annex 1: a figure for each year of age, at light activity, for a
+developing-country profile. Each age group here takes the mean of the years it covers;
+"Not said" uses the table's figure for both sexes; a baby under one has a figure (820
+kcal a day). Adults 19 to 64: 2,416 kcal (males), 1,970 (females).
+
+The **UK** table is Public Health England's *Government Dietary Recommendations* (August
 2016), Open Government Licence:
 
 | Age | Males, kcal a day | Females, kcal a day |

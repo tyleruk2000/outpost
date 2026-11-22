@@ -12,10 +12,14 @@ import {
   type BarcodeLookup,
   type BoughtInput,
   barcodeKey,
+  countryAt,
   DEFAULT_HOUSEHOLD,
+  type EnergyTable,
+  energyTableFor,
   type Household,
   type HouseholdInput,
   type HouseholdMember,
+  homePlaceOf,
   productKey,
   type ShoppingLine,
   type ShoppingList,
@@ -34,6 +38,7 @@ import type { AppContext } from "../../core/context.ts";
 import { badRequest, notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
 import { supplyHousehold, supplyItems, supplyMembers, supplyProducts, supplyShopping } from "../../db/schema.ts";
+import { COUNTRIES } from "../layers/countries.ts";
 
 export interface SuppliesService {
   items(): SupplyItem[];
@@ -253,9 +258,15 @@ export function createSuppliesService(ctx: AppContext): SuppliesService {
             note: member.note,
           }),
         );
-      if (!row) return { ...DEFAULT_HOUSEHOLD, members };
+      // The table a household that has not chosen one takes: by Home's country, the way every screen takes it.
+      const home = ctx.services.maps ? homePlaceOf(ctx.services.maps.annotations.listMarkers()) : null;
+      const country = home ? countryAt(home, COUNTRIES) : null;
+      const energyBasis = { table: energyTableFor(country), country };
+      if (!row) return { ...DEFAULT_HOUSEHOLD, energyBasis, members };
       return {
         daysWanted: row.daysWanted,
+        energyTable: (row.energyTable as EnergyTable | null) ?? null,
+        energyBasis,
         drinkingLitres: row.drinkingLitres,
         allUsesLitres: row.allUsesLitres,
         waterBasis: row.waterBasis as Household["waterBasis"],
@@ -271,6 +282,7 @@ export function createSuppliesService(ctx: AppContext): SuppliesService {
         db.update(supplyHousehold)
           .set({
             daysWanted: input.daysWanted,
+            energyTable: input.energyTable,
             drinkingLitres: input.drinkingLitres,
             allUsesLitres: input.allUsesLitres,
             waterBasis: input.waterBasis,

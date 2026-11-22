@@ -13,6 +13,7 @@ import type { AnswerSource, NoteDoc } from "@outpost/shared";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
+import { dateInWords } from "../../core/locale.ts";
 import { type MdNode, mdastToBlocks } from "../notes/content/from-mdast.ts";
 import { sanitizeDoc } from "../notes/content/sanitize.ts";
 import type { PMNode } from "../notes/content/schema.ts";
@@ -86,7 +87,7 @@ export interface ReplyNote {
   unfinished: boolean;
 }
 
-const dateWords = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric" });
+const dateWords = { format: (time: number | Date) => dateInWords(time, { month: "long" }) };
 
 export function replyAsNote(input: ReplyNote): NoteDoc {
   let blocks: PMNode[];

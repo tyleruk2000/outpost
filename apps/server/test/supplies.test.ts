@@ -88,6 +88,7 @@ describe("supplies", () => {
   it("works out days and what is missing for the planner", async () => {
     await ok("PUT", "/api/supplies/household", {
       daysWanted: 7,
+      energyTable: "uk",
       drinkingLitres: 3,
       allUsesLitres: 7.5,
       waterBasis: "drinking",
@@ -112,6 +113,7 @@ describe("supplies", () => {
   it("refuses a person with neither an age nor a figure", async () => {
     const response = await app.api("PUT", "/api/supplies/household", {
       daysWanted: 3,
+      energyTable: "uk",
       drinkingLitres: 3,
       allUsesLitres: 7.5,
       waterBasis: "drinking",
@@ -125,6 +127,7 @@ describe("the shopping list", () => {
   it("is worked out, kept, edited, and ticked off into stock with the date asked for", async () => {
     await ok("PUT", "/api/supplies/household", {
       daysWanted: 7,
+      energyTable: "uk",
       drinkingLitres: 3,
       allUsesLitres: 7.5,
       waterBasis: "drinking",
@@ -276,6 +279,7 @@ describe("a person's own data", () => {
     await add({ name: "Candles", category: "equipment", quantity: 6, barcode: "96385074" });
     await ok("PUT", "/api/supplies/household", {
       daysWanted: 14,
+      energyTable: "uk",
       drinkingLitres: 3,
       allUsesLitres: 7.5,
       waterBasis: "all",

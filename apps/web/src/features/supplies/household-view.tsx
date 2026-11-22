@@ -8,6 +8,8 @@ import {
   DEFAULT_HOUSEHOLD,
   ENERGY_BANDS,
   ENERGY_SOURCE,
+  type EnergyTable,
+  FNNE_SOURCE,
   type Household,
   type HouseholdInput,
   type HouseholdMember,
@@ -24,6 +26,7 @@ import { Notice, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { Segmented, Select } from "@/components/ui/misc";
+import { useHomeCountry } from "@/features/frequencies/home-country";
 import { errorMessage } from "@/lib/api";
 import { formatNumber, localId, plural } from "@/lib/utils";
 import { useSetHousehold } from "./data";
@@ -57,6 +60,18 @@ const toDraft = (member: HouseholdMember): MemberDraft => ({
   allUses: typed(member.allUsesLitres),
   note: member.note,
 });
+/** Which table the household's energy comes from, and why: said under the choice. */
+export function energyTableLine(choice: TableChoice, basis: Household["energyBasis"], countryName?: string): string {
+  if (choice === "uk") return "The UK's figures, from Public Health England, for everyone without a figure of their own.";
+  if (choice === "international")
+    return "The international figures (UNHCR, UNICEF, WFP and WHO), for everyone without a figure of their own.";
+  const table = basis?.table ?? "international";
+  const words = table === "uk" ? "the UK's figures (Public Health England)" : "the international figures (UNHCR, UNICEF, WFP and WHO)";
+  if (!basis?.country)
+    return `No saved place has the home icon, so ${words} are used. Give a place the home icon on the map, or choose here.`;
+  return `Home is in ${countryName ?? basis.country}: ${words} are used.`;
+}
+
 const read = (value: string): number | null | undefined => {
   const trimmed = value.trim();
   if (!trimmed) return null;
@@ -64,8 +79,16 @@ const read = (value: string): number | null | undefined => {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
 };
 
+/** The energy table as the form holds it: "home" for none chosen, by Home's country. */
+type TableChoice = EnergyTable | "home";
+
 export function HouseholdView({ household }: { household: Household }) {
   const [days, setDays] = useState(String(household.daysWanted));
+  const [tableChoice, setTableChoice] = useState<TableChoice>(household.energyTable ?? "home");
+  const homeTable: EnergyTable = household.energyBasis?.table ?? "international";
+  const energyTable: EnergyTable = tableChoice === "home" ? homeTable : tableChoice;
+  const home = useHomeCountry();
+  const homeName = home && home.code === household.energyBasis?.country ? home.name : undefined;
   const [basis, setBasis] = useState<WaterBasis>(household.waterBasis);
   const [drinking, setDrinking] = useState(String(household.drinkingLitres));
   const [allUses, setAllUses] = useState(String(household.allUsesLitres));
@@ -107,14 +130,26 @@ export function HouseholdView({ household }: { household: Household }) {
         note: member.note.trim(),
       });
     }
-    return { daysWanted, waterBasis: basis, drinkingLitres: drink, allUsesLitres: all, members: list };
+    return {
+      daysWanted,
+      energyTable: tableChoice === "home" ? null : tableChoice,
+      waterBasis: basis,
+      drinkingLitres: drink,
+      allUsesLitres: all,
+      members: list,
+    };
   };
 
   const preview = input();
   const needs =
     typeof preview === "string"
       ? null
-      : memberNeeds({ ...preview, members: preview.members.map((member, index) => ({ ...member, id: String(index) })), updatedAt: null });
+      : memberNeeds({
+          ...preview,
+          energyBasis: household.energyBasis,
+          members: preview.members.map((member, index) => ({ ...member, id: String(index) })),
+          updatedAt: null,
+        });
   const kcalTotal = needs ? needs.filter((need) => need.kind === "person").reduce((sum, need) => sum + (need.kcal ?? 0), 0) : 0;
   const waterTotal = needs ? needs.reduce((sum, need) => sum + ((basis === "all" ? need.allUses : need.drinking) ?? 0), 0) : 0;
 
@@ -161,6 +196,26 @@ export function HouseholdView({ household }: { household: Household }) {
         </div>
       </Section>
 
+      <Section title="Energy table">
+        <div className="grid gap-1.5">
+          <span className="text-small font-medium text-ink">Each person's energy a day comes from</span>
+          <Segmented<TableChoice>
+            label="Energy table"
+            value={tableChoice}
+            onChange={setTableChoice}
+            options={[
+              { value: "home", label: "By Home's country" },
+              { value: "international", label: "International" },
+              { value: "uk", label: "UK" },
+            ]}
+            className="justify-self-start"
+          />
+          <p className="max-w-[65ch] text-small text-ink-muted" data-testid="energy-table-line">
+            {energyTableLine(tableChoice, household.energyBasis, homeName)}
+          </p>
+        </div>
+      </Section>
+
       <Section
         title="Who it is for"
         description={
@@ -189,7 +244,7 @@ export function HouseholdView({ household }: { household: Household }) {
           <ul className="divide-y divide-border border-y border-border" aria-label="Household">
             {members.map((member, index) => {
               const label = member.name.trim() || (member.kind === "pet" ? `Pet ${index + 1}` : `Person ${index + 1}`);
-              const table = member.kind === "person" ? tableKcal(member.band, member.sex) : null;
+              const table = member.kind === "person" ? tableKcal(member.band, member.sex, energyTable) : null;
               return (
                 <li key={member.key} className="grid gap-3 py-4">
                   <div className="flex items-end gap-2">
@@ -331,8 +386,13 @@ export function HouseholdView({ household }: { household: Household }) {
           <summary className="cursor-pointer text-ink select-none">Where the figures come from</summary>
           <ul className="mt-2 grid list-disc gap-1.5 pl-5">
             <li>
-              Energy: {ENERGY_SOURCE}. Estimated average requirements, averaged over each age group; for ages 11 to 64 capped at 2,500 kcal
-              (males) and 2,000 kcal (females). There is no figure for a baby under one. “Not said” uses the mean of the two.
+              International energy: {FNNE_SOURCE}. Energy requirements for each year of age, for a developing-country profile at light
+              activity; each age group here is the mean of the figures for the years it covers. “Not said” uses the table's own figure for
+              both sexes. It is meant for anywhere, and gives a baby under one a figure.
+            </li>
+            <li>
+              UK energy: {ENERGY_SOURCE}. Estimated average requirements, averaged over each age group; for ages 11 to 64 capped at 2,500
+              kcal (males) and 2,000 kcal (females). There is no figure for a baby under one. “Not said” uses the mean of the two.
             </li>
             <li>
               Water to drink: UK government, “Be ready: get prepared for emergencies”: 3 litres per person per day for drinking, more for

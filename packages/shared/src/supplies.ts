@@ -153,6 +153,59 @@ export const ENERGY_SOURCE =
   "Public Health England, Government Dietary Recommendations (2016), tables 1 and 2, from SACN Dietary Reference Values for Energy (2011)";
 
 /**
+ * FNNE annex 1 (UNHCR, UNICEF, WFP and WHO, Food and Nutrition Needs in Emergencies,
+ * 2002): energy requirements per caput, kcal a day, male, female and both, for a
+ * developing-country profile at a "light" activity level (adult weights 60 kg and 52 kg).
+ * Ages 1 to 4 are years of their own. The ration calculator uses the same rows.
+ */
+export const FNNE_ROWS: ReadonlyArray<{ from: number; to: number; male: number; female: number; both: number }> = [
+  { from: 0, to: 0, male: 850, female: 780, both: 820 },
+  { from: 1, to: 1, male: 1250, female: 1190, both: 1220 },
+  { from: 2, to: 2, male: 1430, female: 1330, both: 1380 },
+  { from: 3, to: 3, male: 1560, female: 1440, both: 1500 },
+  { from: 4, to: 4, male: 1690, female: 1540, both: 1620 },
+  { from: 5, to: 9, male: 1980, female: 1730, both: 1860 },
+  { from: 10, to: 14, male: 2370, female: 2040, both: 2210 },
+  { from: 15, to: 19, male: 2700, female: 2120, both: 2420 },
+  { from: 20, to: 59, male: 2460, female: 1990, both: 2230 },
+  { from: 60, to: 200, male: 2010, female: 1780, both: 1890 },
+];
+export const FNNE_SOURCE = "UNHCR, UNICEF, WFP and WHO, Food and Nutrition Needs in Emergencies (2002), annex 1, light activity";
+
+/**
+ * Which table a household's energy comes from: the UK's (Public Health England, by the
+ * age bands Supplies asks for) or the international one (FNNE annex 1), which is meant
+ * for anywhere. A household that has not chosen takes the UK's where Home is in the
+ * UK, the international one everywhere else.
+ */
+export type EnergyTable = "uk" | "international";
+export const ENERGY_TABLES: ReadonlyArray<{ id: EnergyTable; label: string; source: string }> = [
+  { id: "international", label: "International (UNHCR, UNICEF, WFP, WHO)", source: FNNE_SOURCE },
+  { id: "uk", label: "UK (Public Health England)", source: ENERGY_SOURCE },
+];
+export const energyTableSource = (table: EnergyTable): string => (table === "uk" ? ENERGY_SOURCE : FNNE_SOURCE);
+
+/** The table for a household that has not chosen one, by Home's country (ISO 3166 code). */
+export function energyTableFor(country: string | null | undefined): EnergyTable {
+  const code = country?.toUpperCase();
+  return code === "GB" || code === "UK" || code === "IM" || code === "JE" || code === "GG" ? "uk" : "international";
+}
+
+/** The whole years each UK band covers, to read the international table by year. The last band is read at 75. */
+const BAND_YEARS: Record<string, readonly [number, number]> = {
+  "under-1": [0, 0],
+  "1": [1, 1],
+  "2-3": [2, 3],
+  "4-6": [4, 6],
+  "7-10": [7, 10],
+  "11-14": [11, 14],
+  "15-18": [15, 18],
+  "19-64": [19, 64],
+  "65-74": [65, 74],
+  "75+": [75, 75],
+};
+
+/**
  * Water a person needs a day, in litres. Two figures, because official bodies plan for
  * two different things:
  *
@@ -203,6 +256,14 @@ export interface HouseholdMember {
 
 export interface Household {
   daysWanted: number;
+  /** The energy table the household chose; null to take it from Home's country (`energyTableFor`). */
+  energyTable: EnergyTable | null;
+  /**
+   * What a null choice comes to, as the server works it out from Home's country. Left
+   * out of what is saved; absent on a household made on the screen, which then takes the
+   * international table.
+   */
+  energyBasis?: { table: EnergyTable; country: string | null };
   /** For everyone without a figure of their own. */
   drinkingLitres: number;
   allUsesLitres: number;
@@ -211,10 +272,13 @@ export interface Household {
   updatedAt: number | null;
 }
 
-export type HouseholdInput = Omit<Household, "updatedAt" | "members"> & { members: Array<Omit<HouseholdMember, "id"> & { id?: string }> };
+export type HouseholdInput = Omit<Household, "updatedAt" | "members" | "energyBasis"> & {
+  members: Array<Omit<HouseholdMember, "id"> & { id?: string }>;
+};
 
 export const DEFAULT_HOUSEHOLD: Household = {
   daysWanted: 3,
+  energyTable: null,
   drinkingLitres: WATER_FIGURES.drinking.litres,
   allUsesLitres: WATER_FIGURES.allUses.litres,
   waterBasis: "drinking",
@@ -222,8 +286,33 @@ export const DEFAULT_HOUSEHOLD: Household = {
   updatedAt: null,
 };
 
-/** A person's energy a day from the table: the average of the two figures when sex is not stated. */
-export function tableKcal(band: AgeBand | null, sex: MemberSex | null): number | null {
+/** The table a household's energy is worked to: its choice, else what Home's country gives, else the international one. */
+export const energyTableOf = (household: Pick<Household, "energyTable" | "energyBasis">): EnergyTable =>
+  household.energyTable ?? household.energyBasis?.table ?? "international";
+
+/**
+ * A person's energy a day from the international table for a UK age band: the mean of
+ * the FNNE figures over each whole year the band covers, so that "2 to 3 years" is the
+ * mean of the figures at 2 and at 3. Rounded to the kcal.
+ */
+export function internationalKcal(band: AgeBand | null, sex: MemberSex | null): number | null {
+  const years = band ? BAND_YEARS[band] : undefined;
+  if (!years) return null;
+  let total = 0;
+  for (let age = years[0]; age <= years[1]; age++) {
+    const row = FNNE_ROWS.find((entry) => age >= entry.from && age <= entry.to) ?? FNNE_ROWS.at(-1)!;
+    total += sex === "male" ? row.male : sex === "female" ? row.female : row.both;
+  }
+  return Math.round(total / (years[1] - years[0] + 1));
+}
+
+/**
+ * A person's energy a day from a table (the UK's unless another is named): on the UK
+ * table the average of the two figures when sex is not stated, and nothing for a baby
+ * under one.
+ */
+export function tableKcal(band: AgeBand | null, sex: MemberSex | null, table: EnergyTable = "uk"): number | null {
+  if (table === "international") return internationalKcal(band, sex);
   const row = ENERGY_BANDS.find((entry) => entry.id === band);
   if (!row || row.male === null || row.female === null) return null;
   if (sex === "male") return row.male;
@@ -255,7 +344,7 @@ export function memberNeeds(household: Household): MemberNeed[] {
         allUses: member.allUsesLitres ?? member.drinkingLitres,
       };
     }
-    const fromTable = tableKcal(member.band, member.sex);
+    const fromTable = tableKcal(member.band, member.sex, energyTableOf(household));
     return {
       id: member.id,
       name: member.name,

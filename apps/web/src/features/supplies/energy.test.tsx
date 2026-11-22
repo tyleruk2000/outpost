@@ -62,6 +62,7 @@ const item = (patch: Partial<SupplyItem>): SupplyItem => ({
 const adult: Household = {
   ...DEFAULT_HOUSEHOLD,
   daysWanted: 7,
+  energyTable: "uk",
   members: [
     {
       id: "m",
