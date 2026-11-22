@@ -7,7 +7,7 @@
  */
 import { BLOOD_GROUPS, type CareContact, localDay, MEDICAL_CAVEAT, type MedicalRecord, type MedicalSheet } from "@outpost/shared";
 import { CircleAlert, LockKeyhole, LockKeyholeOpen, Plus, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import { EmptyState, ErrorState, Notice, Page, PageHeader, Section } from "@/components/page";
@@ -19,17 +19,17 @@ import { move, RowTools, removeAt, replaceAt } from "@/features/emergency-plans/
 import { ContactPicker } from "@/features/emergency-plans/people-section";
 import { getEngine } from "@/features/encryption/engine";
 import { PdfActions } from "@/features/library/made/pdf-actions";
-import { toSheets } from "@/features/propagation/plans/document";
+import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
 import { errorMessage } from "@/lib/api";
 import { appLocale } from "@/lib/region";
 import { localId } from "@/lib/utils";
 import { useContactsById, useMedicalSheets, useRemoveSheet, useSaveSheet } from "./data";
+import { medicalSheetDocument } from "./kit-papers";
 import { holdOpened, lockSheet, type OpenedSheet, sealSheet, touchOpened, useOpenedSheets } from "./medical-crypto";
 import { EncryptSheetDialog, OpenSheet } from "./medical-lock";
-import { type ContactsNow, contactIdsOf, medicalBlocks, medicineLeftWords, reach } from "./medical-words";
+import { type ContactsNow, contactIdsOf, medicineLeftWords, reach } from "./medical-words";
 import { libraryQuestion, PaperPreview } from "./paper-pdf";
 import { SAVE_BAR_ROOM, SaveBar } from "./save-bar";
-import { pdfOf, usePaperPdf } from "./use-paper-pdf";
 
 const shortDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "short", year: "numeric" });
 
@@ -151,20 +151,19 @@ function Editor({ sheet, record: start, opened }: { sheet: MedicalSheet; record:
     }
   };
 
-  const pages = useMemo(
-    () => toSheets(medicalBlocks(sheet.name, start, contacts, today), `Medical sheet: ${sheet.name} · Outpost`),
-    [sheet.name, start, contacts, today],
+  // Dated by when the sheet was saved, so that the same sheet made twice is the same file.
+  const make = useCallback(
+    () => medicalSheetDocument({ name: sheet.name, record: start, contacts, today, made: new Date(sheet.updatedAt) }),
+    [sheet.name, start, contacts, today, sheet.updatedAt],
   );
   const from = useMemo(
     () => ({ what: `the medical sheet of ${sheet.name}`, path: `/prepare/medical/${sheet.id}` }),
     [sheet.name, sheet.id],
   );
-  const created = useMemo(() => new Date(sheet.updatedAt), [sheet.updatedAt]);
-  const printed = usePaperPdf(pages, {
+  const printed = useKitPdf(make, {
     title: `Medical sheet, ${sheet.name}, ${shortDate.format(sheet.updatedAt)}`,
     kind: "Medical sheet",
     from,
-    created,
   });
 
   return (
@@ -554,7 +553,7 @@ function Editor({ sheet, record: start, opened }: { sheet: MedicalSheet; record:
         description="As saved. Black on white, so a grey copy reads the same. A printed copy does not change when the sheet does."
       >
         <div className="grid gap-4">
-          <PdfActions pdf={pdfOf(printed)} lead="save" confirm={libraryQuestion(true)} />
+          <PdfActions pdf={kitPdfOf(printed)} lead="save" confirm={libraryQuestion(true)} />
           <PaperPreview made={printed} />
         </div>
       </Section>

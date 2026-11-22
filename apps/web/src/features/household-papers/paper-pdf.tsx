@@ -1,15 +1,15 @@
 /**
- * One of the household's papers as a PDF: made on this device from its pages
- * (`usePaperPdf`) and shown as it will print (`PaperPreview`). Each screen offers it with
- * the shared `PdfActions` (Save as PDF, Add to library, Share). Adding it to the library
- * asks first (`libraryQuestion`): these papers hold people's names, numbers, where they
- * will be and, for some, their medicines.
+ * One of the household's papers as a PDF: laid out with the print kit (kit-papers.ts),
+ * made on this device (`useKitPdf`) and shown as it prints (`PaperPreview`). Each screen
+ * offers it with the shared `PdfActions` (Save as PDF, Add to library, Share). Adding it
+ * to the library asks first (`libraryQuestion`): these papers hold people's names,
+ * numbers, where they will be and, for some, their medicines.
  */
 import type { ReactNode } from "react";
 import { Notice } from "@/components/page";
 import { Skeleton } from "@/components/ui/misc";
-import { SheetView } from "@/features/maps/print/sheet-view";
-import type { PaperMade } from "./use-paper-pdf";
+import { PdfPagesPreview } from "@/features/print-kit/preview";
+import type { KitPdf } from "@/features/print-kit/use-kit-pdf";
 
 export function libraryQuestion(medical: boolean) {
   return {
@@ -30,37 +30,21 @@ export function libraryQuestion(medical: boolean) {
   };
 }
 
-/** What went wrong, what could not be lettered, and the pages as they print. */
-export function PaperPreview({ made, children }: { made: PaperMade; children?: ReactNode }) {
+/** What went wrong, anything the screen adds, and the pages as they print. */
+export function PaperPreview({ made, children }: { made: KitPdf; children?: ReactNode }) {
   return (
     <div className="grid gap-4">
-      {made && "error" in made ? (
+      {made.status === "failed" ? (
         <Notice tone="danger" title="The PDF could not be made">
           {made.error}
         </Notice>
       ) : null}
       {children}
-      {made && "pdf" in made && made.marked > 0 ? (
-        <p className="text-small text-ink">
-          This device could not put some letters on the page, so each place they belong is marked [?]. The screen has them in full.
-        </p>
-      ) : null}
-      {made && "pdf" in made ? (
-        <div className="grid gap-4" data-testid="paper-preview">
-          {made.pages.map((page, index) => (
-            <SheetView
-              // biome-ignore lint/suspicious/noArrayIndexKey: pages are in order
-              key={index}
-              sheet={page}
-              pictures={made.previews}
-              label={`Page ${index + 1} of ${made.pages.length} as it prints`}
-              className="h-auto w-full rounded-panel border border-border-strong"
-            />
-          ))}
-        </div>
-      ) : made ? null : (
+      {made.status === "made" ? (
+        <PdfPagesPreview bytes={made.bytes} pages={made.pages} label={(page, of) => `Page ${page} of ${of} as it prints`} />
+      ) : made.status === "making" ? (
         <Skeleton className="aspect-[1/1.41] w-full" />
-      )}
+      ) : null}
     </div>
   );
 }

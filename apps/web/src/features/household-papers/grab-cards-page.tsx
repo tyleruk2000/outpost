@@ -7,7 +7,7 @@
  */
 import { GRID_FORMATS, type GridFormat, NO_HOME_PLACE } from "@outpost/shared";
 import { LockKeyhole } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { EmptyState, ErrorState, Notice, Page, PageHeader } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -17,11 +17,12 @@ import { AID_PAPER_KEY, isAidPaper, likelyPaper } from "@/features/encryption/pa
 import { PdfActions } from "@/features/library/made/pdf-actions";
 import { readStored, writeStored } from "@/features/maps/lib/view";
 import { PAPERS } from "@/features/maps/print/paper";
+import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
 import { appLocale } from "@/lib/region";
-import { type GrabCardSize, grabSheets } from "./grab-cards";
+import type { GrabCardSize } from "./grab-cards";
 import { grabHousehold, grabPerson, useHouseholdSources } from "./household-data";
+import { grabCardsDocument, grabOverflow } from "./kit-papers";
 import { libraryQuestion, PaperPreview } from "./paper-pdf";
-import { pdfOf, usePaperPdf } from "./use-paper-pdf";
 
 const FORMATS_KEY = "outpost.grabCards.formats";
 const SIZE_KEY = "outpost.grabCards.size";
@@ -53,21 +54,23 @@ export default function GrabCardsPage() {
     ...sources.emergencyContacts.map((contact) => contact.updatedAt),
   );
   const made = useMemo(() => new Date(contentAt || Date.now()), [contentAt]);
-  const laid = useMemo(
-    () => grabSheets(cardPeople, household, { size, formats, made, paper }),
+  const make = useCallback(
+    () => grabCardsDocument(cardPeople, household, { size, formats, made, paper }),
     [cardPeople, household, size, formats, made, paper],
   );
   const from = useMemo(() => ({ what: "the household's grab cards", path: "/prepare/grab-cards" }), []);
-  const printed = usePaperPdf(laid.pages, {
+  const printed = useKitPdf(make, {
     title: `Grab cards, ${size === "wallet" ? "wallet size" : "A6"}, ${shortDate.format(made)}`,
     kind: "Grab cards",
     from,
-    created: made,
   });
   const locked = sources.people.filter(
     (person) => person.sheet?.encrypted && cardPeople.find((card) => card.name === person.name)?.sheetLocked,
   );
-  const overflow = laid.cards.filter((card) => card.overflow).map((card) => card.person.name);
+  const overflow = useMemo(
+    () => grabOverflow(cardPeople, household, { size, formats, made }),
+    [cardPeople, household, size, formats, made],
+  );
 
   const toggle = (format: GridFormat, on: boolean) => {
     const next = GRID_FORMATS.map((each) => each.id).filter((id) => (id === format ? on : formats.includes(id)));
@@ -170,7 +173,7 @@ export default function GrabCardsPage() {
               {locked.map((person) => person.name).join(", ")}: open the sheet on this device and come back here to put it on the card.
             </Notice>
           ) : null}
-          <PdfActions pdf={pdfOf(printed)} lead="save" confirm={libraryQuestion(true)} />
+          <PdfActions pdf={kitPdfOf(printed)} lead="save" confirm={libraryQuestion(true)} />
           <PaperPreview made={printed}>
             {overflow.length > 0 ? (
               <Notice tone="warning" title="Too much for a card">

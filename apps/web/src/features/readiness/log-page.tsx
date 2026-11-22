@@ -6,7 +6,7 @@
  */
 import type { EventLogLine } from "@outpost/shared";
 import { ClipboardList, NotebookPen, Pencil, ShieldCheck, Trash2 } from "lucide-react";
-import { type FormEvent, useMemo, useState } from "react";
+import { type FormEvent, useCallback, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
 import { EmptyState, ErrorState, Joined, Page, PageHeader, Section } from "@/components/page";
@@ -17,44 +17,18 @@ import { Checkbox, Segmented, Skeleton, Switch } from "@/components/ui/misc";
 import { ChooseName } from "@/features/board/compose";
 import { useBoardSummary, useDeviceName } from "@/features/board/data";
 import { libraryQuestion } from "@/features/household-papers/paper-pdf";
-import { pdfOf, usePaperPdf } from "@/features/household-papers/use-paper-pdf";
 import { PdfActions } from "@/features/library/made/pdf-actions";
-import { type Block, toSheets } from "@/features/propagation/plans/document";
+import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
 import { errorMessage } from "@/lib/api";
 import { formatTimeOfDay, useClockStyle } from "@/lib/clock";
 import { notify } from "@/lib/notify";
 import { formatDate, plural } from "@/lib/utils";
 import { useAddLine, useEditLine, useEventLog, useLogToNotes, useRemoveLine } from "./data";
+import { logDocument } from "./log-document";
 import { fromLocalInput, localInput, logDay } from "./words";
 
 type Span = "all" | "day" | "week";
 const SPAN_MS: Record<Exclude<Span, "all">, number> = { day: 24 * 60 * 60 * 1000, week: 7 * 24 * 60 * 60 * 1000 };
-
-/** The log as pages to print: a heading for each day, and a table of time, who and what. */
-export function logBlocks(lines: EventLogLine[], now = Date.now()): Block[] {
-  const blocks: Block[] = [
-    { kind: "title", text: "Log of events" },
-    { kind: "para", text: `Written down as it happened, in Outpost. Printed ${formatDate(now)}, ${formatTimeOfDay(now)}.` },
-  ];
-  let day = "";
-  let rows: string[][] = [];
-  const flush = () => {
-    if (rows.length > 0) blocks.push({ kind: "table", head: ["Time", "Who", "What"], rows });
-    rows = [];
-  };
-  for (const line of lines) {
-    const heading = formatDate(line.at);
-    if (heading !== day) {
-      flush();
-      blocks.push({ kind: "heading", text: heading });
-      day = heading;
-    }
-    const what = line.kind === "tick" && line.planName ? `${line.text} (${line.planName})` : line.text;
-    rows.push([formatTimeOfDay(line.at), line.author || "", what]);
-  }
-  flush();
-  return blocks;
-}
 
 /** A line's words cut to a length a button's name can carry: a whole line can be a thousand characters. */
 const short = (text: string) => (text.length > 60 ? `${text.slice(0, 57).trimEnd()}…` : text);
@@ -259,14 +233,14 @@ export default function LogPage() {
     return groups;
   }, [lines]);
 
-  const pages = useMemo(() => (lines.length > 0 ? toSheets(logBlocks(lines), "Log of events · Outpost") : null), [lines]);
-  const created = useMemo(() => new Date(lines.at(-1)?.updatedAt ?? 0), [lines]);
+  // Dated by the newest change, so that the same log made twice is dated the same.
+  const made = useMemo(() => new Date(Math.max(0, ...lines.map((line) => line.updatedAt))), [lines]);
+  const make = useCallback(() => logDocument(lines, { now: Date.now(), made }), [lines, made]);
   const fromPage = useMemo(() => ({ what: "the household's log of events", path: "/prepare/log" }), []);
-  const printed = usePaperPdf(pages, {
+  const printed = useKitPdf(lines.length > 0 ? make : null, {
     title: `Log of events, ${lines[0] ? formatDate(lines[0].at) : ""}`,
     kind: "Log of events",
     from: fromPage,
-    created,
   });
 
   const writeToNotes = () =>
@@ -361,11 +335,16 @@ export default function LogPage() {
 
       {lines.length > 0 ? (
         <Section title="Keep it" description="What is shown above, oldest first.">
-          <PdfActions pdf={pdfOf(printed)} lead="save" confirm={libraryQuestion(false)}>
+          <PdfActions pdf={kitPdfOf(printed)} lead="save" confirm={libraryQuestion(false)}>
             <Button onClick={writeToNotes} loading={toNotes.isPending}>
               <NotebookPen aria-hidden /> Write to a page of Notes
             </Button>
           </PdfActions>
+          {printed.status === "failed" ? (
+            <p role="alert" className="mt-3 text-small text-danger">
+              The PDF could not be made: {printed.error}
+            </p>
+          ) : null}
           <p className="mt-3 text-small text-ink-muted">
             A line is stamped with Outpost's clock when it is added, unless you gave an earlier time. See also{" "}
             <Link to="/prepare/check-in" className="text-primary underline underline-offset-2">
