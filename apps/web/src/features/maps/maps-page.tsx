@@ -116,7 +116,7 @@ import { RouteDetail, RoutesList } from "./panels/routes";
 import { SunGlance } from "./panels/sun-glance";
 import { SunPanel } from "./panels/sun-panel";
 import { locatorOf } from "./radio/locator";
-import { usePointRange } from "./radio/point-range";
+import { readPointRangePath, usePointRange } from "./radio/point-range";
 import { SightCard } from "./radio/sight-card";
 import { SightPanel } from "./radio/sight-panel";
 import { useLocatorGrid } from "./radio/use-locator-grid";
@@ -397,6 +397,7 @@ export default function MapsPage() {
         const params = new URLSearchParams(window.location.search);
         params.delete("marker");
         params.delete("track");
+        for (const key of ["range", "station", "name"]) params.delete(key);
         window.history.replaceState(window.history.state, "", `${window.location.pathname}?${withView(params, view).toString()}`);
       }, 250);
     });
@@ -1017,6 +1018,15 @@ export default function MapsPage() {
     where: (position) => formatPosition(position.lat, position.lon, format, engine?.getZoom()).text,
     onOpenOffline: () => openOffline({ type: "add" }),
   });
+  // A shared estimated range (/maps?lat=…&lon=…&range=1.5&station=handheld, from its QR code): drawn from the point with
+  // the heights it came with, once for each arrival. The camera link above has already put the map there.
+  const handledRange = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!engine || handledRange.current === location.key) return;
+    handledRange.current = location.key;
+    const shared = readPointRangePath(new URLSearchParams(location.search));
+    if (shared) pointRange.start(shared);
+  }, [engine, location.key, location.search, pointRange.start]);
   // "How far on foot from here", from the same menu.
   const walk = useWalkReach({
     engine,
