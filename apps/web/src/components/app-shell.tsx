@@ -8,6 +8,7 @@ import { RecordingIndicator } from "@/features/maps/recording/indicator";
 import { notify } from "@/lib/notify";
 import { MobileNav } from "./mobile-nav";
 import { allNav } from "./nav";
+import { RouteAnnouncer } from "./route-announcer";
 import { ScreenErrorBoundary } from "./screen-error";
 import { Sidebar } from "./sidebar";
 import { Skeleton } from "./ui/misc";
@@ -183,6 +184,7 @@ export function AppShell({ notesTree, onNewPage }: { notesTree?: ReactNode; onNe
           </Suspense>
         </ScreenErrorBoundary>
       </main>
+      <RouteAnnouncer />
       {paletteWanted ? (
         <PaletteBoundary key={paletteAttempt} onFailed={paletteFailed}>
           <Suspense fallback={null}>

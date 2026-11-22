@@ -1,8 +1,9 @@
-import { ChevronRight, Ellipsis, Search } from "lucide-react";
+import { ChevronRight, Ellipsis, Search, X } from "lucide-react";
 import { Dialog as Sheet } from "radix-ui";
 import { useLayoutEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router";
 import { cn } from "@/lib/utils";
+import { useFocusClearOfBars } from "./focus-clear";
 import { Lamp } from "./lamp";
 import { LogoMark } from "./logo";
 import { isInGroup, isOwnScreen, knowledgeNav, type NavItem, upkeepNav } from "./nav";
@@ -130,6 +131,8 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
   // How tall the bar is, said to the page as --mobile-nav-height: its names grow with the text, so a screen that ends
   // on it (the map, whose sheet sits on it) is not left to guess. 9.5 px went under the bar at 125% text.
   const bar = useRef<HTMLElement>(null);
+  const header = useRef<HTMLElement>(null);
+  useFocusClearOfBars(header, bar);
   useLayoutEffect(() => {
     const element = bar.current;
     if (!element || typeof ResizeObserver === "undefined") return;
@@ -149,8 +152,8 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
 
   return (
     <>
-      <header className="sticky top-0 z-(--z-nav) flex h-13 items-center gap-2 bg-spine px-4 text-spine-ink md:hidden">
-        <Link to="/" className="flex flex-1 items-center gap-2.5">
+      <header ref={header} className="sticky top-0 z-(--z-nav) flex h-13 items-center gap-2 bg-spine px-4 text-spine-ink md:hidden">
+        <Link to="/" className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5">
           <LogoMark />
           <span className="font-title text-lead">Outpost</span>
         </Link>
@@ -158,7 +161,7 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
           type="button"
           onClick={onOpenSearch}
           aria-label="Quick search"
-          className="grid size-11 place-content-center rounded-control text-spine-ink-muted hover:text-spine-ink"
+          className="grid size-11 shrink-0 place-content-center rounded-control text-spine-ink-muted hover:text-spine-ink"
         >
           <Search className="size-5" strokeWidth={1.6} />
         </button>
@@ -193,6 +196,12 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
               <div className="mt-2 border-t border-spine-border pt-2">
                 <Lamp />
               </div>
+              {/* A way out a screen reader can reach on a phone: VoiceOver's and TalkBack's gestures for Escape do not reach
+                  every browser, and the dimmed page behind cannot be reached while the sheet is open. */}
+              <Sheet.Close className={cn(rowClass, "mt-2 w-full border-t border-spine-border")}>
+                <X aria-hidden className="size-5 shrink-0" strokeWidth={1.6} />
+                Close
+              </Sheet.Close>
             </Sheet.Content>
           </Sheet.Portal>
         </Sheet.Root>

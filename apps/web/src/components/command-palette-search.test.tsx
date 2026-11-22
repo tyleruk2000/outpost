@@ -97,3 +97,23 @@ describe("the palette, with reference collections answering later", () => {
     expect(server.reference.at(-1)!.signal?.aborted).toBe(false);
   });
 });
+
+describe("the palette on a touch screen", () => {
+  it("has a Close button, for a phone with no Escape key and a screen reader that cannot reach the page behind", async () => {
+    const user = userEvent.setup();
+    serveSearch(() => ownAnswer(OWN));
+    const onOpenChange = vi.fn();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <ThemeProvider>
+          <MemoryRouter>
+            <CommandPalette open onOpenChange={onOpenChange} onNewPage={() => {}} />
+          </MemoryRouter>
+        </ThemeProvider>
+      </QueryClientProvider>,
+    );
+    await user.click(screen.getByRole("button", { name: "Close quick search" }));
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+});

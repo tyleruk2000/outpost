@@ -6,7 +6,7 @@
  */
 import { type HeardReceiver, type HeardReceiverInput, RECEIVER_FORMATS, RECEIVER_KINDS, type ReceiverKind } from "@outpost/shared";
 import { CircleAlert, Pencil, Plus, Trash2 } from "lucide-react";
-import { type FormEvent, useId, useState } from "react";
+import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router";
 import { Notice } from "@/components/page";
 import { NotFromThisDevice, rightReason } from "@/components/setting-right";
@@ -79,6 +79,8 @@ function ReceiverForm({
             value={value.name}
             maxLength={60}
             disabled={disabled}
+            // The button that opened the form is gone: focus comes here, not to the page (WCAG 2.4.3).
+            autoFocus
             onChange={(event) => setValue({ ...value, name: event.target.value })}
           />
         )}
@@ -166,7 +168,19 @@ function ReceiverRow({ receiver, disabled }: { receiver: HeardReceiver; disabled
   const [removing, setRemoving] = useState(false);
   const remove = useRemoveReceiver();
   const trouble = receiver.status.state === "away";
-  if (editing) return <ReceiverForm id={receiver.id} initial={receiver} disabled={disabled} onDone={() => setEditing(false)} />;
+  // Back to Change when the form closes, rather than to the top of the page.
+  const change = useRef<HTMLButtonElement>(null);
+  const wasEditing = useRef(false);
+  useEffect(() => {
+    if (wasEditing.current && !editing) change.current?.focus();
+    wasEditing.current = editing;
+  }, [editing]);
+  if (editing)
+    return (
+      <li className="py-3">
+        <ReceiverForm id={receiver.id} initial={receiver} disabled={disabled} onDone={() => setEditing(false)} />
+      </li>
+    );
   return (
     <li className="flex flex-wrap items-start gap-3 py-3">
       <div className="min-w-0 flex-1">
@@ -180,7 +194,14 @@ function ReceiverRow({ receiver, disabled }: { receiver: HeardReceiver; disabled
         <p className="text-small text-ink-muted">{lastPacketWords(receiver)}</p>
       </div>
       <div className="flex gap-1">
-        <Button size="sm" variant="ghost" disabled={disabled} onClick={() => setEditing(true)} aria-label={`Change ${receiver.name}`}>
+        <Button
+          ref={change}
+          size="sm"
+          variant="ghost"
+          disabled={disabled}
+          onClick={() => setEditing(true)}
+          aria-label={`Change ${receiver.name}`}
+        >
           <Pencil aria-hidden /> Change
         </Button>
         <Button
@@ -209,6 +230,16 @@ function ReceiverRow({ receiver, disabled }: { receiver: HeardReceiver; disabled
 export function ReceiversSettingsSection() {
   const receivers = useReceivers();
   const [adding, setAdding] = useState<ReceiverKind | null>(null);
+  // Back to the Add button that opened the form when it closes, rather than to the top of the page.
+  const addButtons = useRef(new Map<ReceiverKind, HTMLButtonElement | null>());
+  const lastAdded = useRef<ReceiverKind | null>(null);
+  useEffect(() => {
+    if (adding) lastAdded.current = adding;
+    else if (lastAdded.current) {
+      addButtons.current.get(lastAdded.current)?.focus();
+      lastAdded.current = null;
+    }
+  }, [adding]);
   const data = receivers.data;
   const disabled = !data?.right.allowed;
   return (
@@ -273,7 +304,14 @@ export function ReceiversSettingsSection() {
           ) : (
             <div className="flex flex-wrap gap-2">
               {RECEIVER_KINDS.map((kind) => (
-                <Button key={kind} disabled={disabled} onClick={() => setAdding(kind)}>
+                <Button
+                  key={kind}
+                  ref={(button) => {
+                    addButtons.current.set(kind, button);
+                  }}
+                  disabled={disabled}
+                  onClick={() => setAdding(kind)}
+                >
                   <Plus aria-hidden /> {ADD[kind]}
                 </Button>
               ))}

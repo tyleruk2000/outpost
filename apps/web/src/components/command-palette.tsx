@@ -8,7 +8,7 @@
 import type { SearchResponse, SearchResult } from "@outpost/shared";
 import { useQuery } from "@tanstack/react-query";
 import { Command } from "cmdk";
-import { CornerDownLeft, Eraser, FolderInput, Globe, ListChecks, type LucideIcon, Moon, Plus, Search, Sun, Upload } from "lucide-react";
+import { CornerDownLeft, Eraser, FolderInput, Globe, ListChecks, type LucideIcon, Moon, Plus, Search, Sun, Upload, X } from "lucide-react";
 import { Dialog } from "radix-ui";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
@@ -155,6 +155,13 @@ export function CommandPalette({
                 className="h-13 flex-1 bg-transparent text-body text-ink placeholder:text-ink-faint focus:outline-none"
               />
               {(results.isFetching || stillSearching) && searching ? <Spinner label="Searching" /> : null}
+              {/* On a touch screen, where there is no Escape key: a way out a screen reader can reach too. */}
+              <Dialog.Close
+                aria-label="Close quick search"
+                className="-mr-2 grid size-11 shrink-0 place-content-center rounded-control text-ink-muted hover:text-ink pointer-fine:hidden"
+              >
+                <X aria-hidden className="size-5" strokeWidth={1.6} />
+              </Dialog.Close>
             </div>
             <Command.List className="scroll-quiet max-h-[min(60dvh,26rem)] overflow-y-auto p-1.5">
               {/* Places come first, so typing the name of a screen and pressing Enter always goes there. */}

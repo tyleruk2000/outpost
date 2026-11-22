@@ -157,7 +157,10 @@ function StageList({ active, query, empty }: { active: StageId; query: string; e
 function StagePicker({ active }: { active: StageId }) {
   const index = STAGES.findIndex((stage) => stage.id === active);
   return (
-    <div className="understand-picker sticky z-(--z-sticky) -mx-5 mb-8 border-b border-border bg-page px-5 py-2 md:-mx-10 md:px-10 xl:hidden">
+    <div
+      data-sticky-top
+      className="understand-picker sticky z-(--z-sticky) -mx-5 mb-8 border-b border-border bg-page px-5 py-2 md:-mx-10 md:px-10 xl:hidden"
+    >
       <Select
         aria-label="Jump to a stage"
         value={active}
@@ -224,7 +227,7 @@ function QuestionBox({
               key={example.query}
               type="button"
               onClick={() => onTrace(example.query)}
-              className="rounded-full border border-border-strong bg-page px-3 py-0.5 text-ink transition-colors hover:border-ink-faint hover:bg-surface-strong max-md:py-1.5"
+              className="rounded-full border border-border-strong bg-page px-3 py-0.5 text-ink transition-colors hover:border-ink-faint hover:bg-surface-strong max-md:min-h-11 max-md:py-1.5"
             >
               {example.label}
             </button>
@@ -247,9 +250,11 @@ function QuestionBox({
 function Glossary() {
   const [open, setOpen] = useState(() => window.matchMedia("(min-width: 768px)").matches);
   return (
-    <details open={open} onToggle={(event) => setOpen(event.currentTarget.open)} className="mt-8 border-y border-border py-3">
-      <summary className="cursor-pointer rounded-control text-small font-semibold text-ink">The words used on this page</summary>
-      <dl className="mt-3 grid gap-x-10 gap-y-2.5 pb-1 text-small md:grid-cols-2">
+    <details open={open} onToggle={(event) => setOpen(event.currentTarget.open)} className="mt-8 border-y border-border md:py-3">
+      <summary className="cursor-pointer rounded-control py-3 text-small font-semibold text-ink md:py-0.5">
+        The words used on this page
+      </summary>
+      <dl className="mt-3 grid gap-x-10 gap-y-2.5 pb-3 text-small md:grid-cols-2 md:pb-1">
         {GLOSSARY.map((entry) => (
           <div key={entry.term}>
             <dt className="inline font-semibold text-ink">

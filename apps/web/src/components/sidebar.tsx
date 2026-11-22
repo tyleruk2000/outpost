@@ -10,7 +10,7 @@ import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "./ui/me
 import { Tooltip } from "./ui/misc";
 
 const rowClass =
-  "group flex h-9 items-center gap-3 rounded-control px-2.5 text-[0.9375rem] text-spine-ink-muted transition-colors duration-150 hover:bg-spine-raised hover:text-spine-ink focus-visible:outline-spine-ink";
+  "group flex min-h-9 items-center gap-3 rounded-control px-2.5 py-1.5 text-[0.9375rem] text-spine-ink-muted transition-colors duration-150 hover:bg-spine-raised hover:text-spine-ink focus-visible:outline-spine-ink";
 const litClass = "bg-spine-active font-medium text-spine-ink hover:bg-spine-active";
 
 /** What a person opened or closed, by the path of the screen the group is under. Kept on this device. */
@@ -112,7 +112,8 @@ function ParentRow({
           className={cn(rowClass, lit && litClass, children.length > 0 && "pr-10")}
         >
           <item.icon aria-hidden className="size-[18px] shrink-0" strokeWidth={1.6} />
-          <span className="flex-1 truncate">{label}</span>
+          {/* Wraps rather than cutting the name short, when the text is larger than the sidebar allows for. */}
+          <span className="min-w-0 flex-1 break-words">{label}</span>
           {trailing}
         </Link>
         {children.length > 0 ? (
@@ -142,12 +143,12 @@ function ParentRow({
                 className={({ isActive }) =>
                   cn(
                     // Indented so that the name starts under its parent's name.
-                    "flex h-8 items-center rounded-control pr-2.5 pl-10 text-[0.875rem] text-spine-ink-muted transition-colors duration-150 hover:bg-spine-raised hover:text-spine-ink focus-visible:outline-spine-ink",
+                    "flex min-h-8 items-center rounded-control py-1 pr-2.5 pl-10 text-[0.875rem] text-spine-ink-muted transition-colors duration-150 hover:bg-spine-raised hover:text-spine-ink focus-visible:outline-spine-ink",
                     isActive && litClass,
                   )
                 }
               >
-                <span className="truncate">{child.label}</span>
+                <span className="min-w-0 break-words">{child.label}</span>
               </NavLink>
             </li>
           ))}
@@ -299,7 +300,9 @@ export function Sidebar({
       aria-label="Main"
       className={cn(
         "sticky top-0 z-(--z-nav) hidden h-dvh shrink-0 flex-col bg-spine text-spine-ink transition-[width] duration-200 ease-out md:flex",
-        collapsed ? "w-[60px]" : "w-64",
+        // 16rem, but at larger text no more than 22% of the window (still 256 px at least): at Largest on a 1280 px
+        // window it took 384 px, and 512 px at 200%, from the screen beside it.
+        collapsed ? "w-[60px]" : "w-[min(16rem,max(256px,22vw))]",
       )}
     >
       <div className={cn("flex h-14 shrink-0 items-center gap-2 px-3", collapsed && "justify-center px-0")}>

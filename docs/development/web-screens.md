@@ -113,7 +113,13 @@ the quick search's "Go to" and the "g then a letter" shortcuts are drawn from it
 - **A screen reached from another** is one of that entry's `children`. The parent links
   to it near its top: `PageHeader under="/radio"` draws `ScreensUnder`.
 - **A screen of one thing** (a document, a plan) needs no entry.
-- **Its `label` is its `h1`**, word for word (`every-screen.spec.ts` checks).
+- **Its `label` is its `h1`**, word for word (`every-screen.spec.ts` checks). The `h1` also
+  names the browser tab ("Settings / Outpost") and is said aloud when a person moves to the
+  screen (`components/route-announcer.tsx`), so every screen has exactly one, even if only
+  for a screen reader (`sr-only`). A screen of one thing may set `document.title` itself.
+- **A bar of the screen's own that sticks under the phone's top bar** has `data-sticky-top`,
+  so that a control reached with Tab is scrolled out from under it as from under the app's
+  bars (`components/focus-clear.ts`).
 - **Give it `keywords`** people use ("food" for Supplies), and add a line to the table
   in `components/command-palette-words.test.ts`.
 - **A Settings section** is an entry of `settingsSections`, opened as

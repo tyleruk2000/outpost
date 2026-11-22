@@ -51,6 +51,12 @@ of what each feature does are in its own guide.
   the keyboard) were checked in Chromium only; whether a screen reader in browse mode
   passes Shift F10 and Enter through to the map is not known. Contrast of names drawn on
   the map was worked out from the style's colours, not measured on screen.
+- **Home, Search, Help, Settings and the app's bars:** walked in Chromium at 1280 by 800,
+  390 by 844 and 320 by 568, in WebKit at an iPhone's size, light and dark, with the text at
+  200% and at Largest, by keyboard alone, with axe-core and Playwright's reading of the
+  accessibility tree. Not tried: VoiceOver, TalkBack or NVDA reading the screen names and the
+  setting hints aloud; a real phone or tablet with a keyboard, switch access or the
+  on-screen keyboard over a setting's field; Windows high contrast.
 - **Library, reader, notes, contacts, messages and Kept:** walked full and empty at 1280 by 800,
   390 by 844 (Chromium and WebKit) and 320 by 568, light and dark, at 150% and 200% text, by
   keyboard, and with their menus and dialogs open. Not tried: VoiceOver or TalkBack on a real
