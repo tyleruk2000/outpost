@@ -347,7 +347,7 @@ export default function SearchPage() {
                   tabIndex={kind === key ? 0 : -1}
                   onClick={() => setParam("kind", key || undefined)}
                   className={cn(
-                    "flex items-center gap-1.5 border-b-2 border-transparent pt-1 pb-2.5 text-small font-medium whitespace-nowrap text-ink-muted hover:text-ink max-md:min-h-11",
+                    "relative flex items-center gap-1.5 border-b-2 border-transparent pt-1 pb-2.5 text-small font-medium whitespace-nowrap text-ink-muted hover:text-ink max-md:min-h-11",
                     kind === key && "border-primary text-ink",
                   )}
                 >

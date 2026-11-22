@@ -31,7 +31,14 @@ export function useFocusClearOfBars(top: RefObject<HTMLElement | null>, bottom: 
       // After the browser's own scroll to the control.
       requestAnimationFrame(() => {
         if (document.activeElement !== target) return;
-        const by = clearance(target.getBoundingClientRect(), header.getBoundingClientRect().bottom, bar.getBoundingClientRect().top);
+        // A screen's own bar that stays under the top one (How search works' stage picker) is marked data-sticky-top.
+        let clearBelow = header.getBoundingClientRect().bottom;
+        for (const stuck of document.querySelectorAll<HTMLElement>("[data-sticky-top]")) {
+          if (stuck.contains(target) || stuck.offsetParent === null) continue;
+          const box = stuck.getBoundingClientRect();
+          if (box.top <= clearBelow + 1) clearBelow = Math.max(clearBelow, box.bottom);
+        }
+        const by = clearance(target.getBoundingClientRect(), clearBelow, bar.getBoundingClientRect().top);
         if (by !== 0) window.scrollBy({ top: by, behavior: "instant" });
       });
     };

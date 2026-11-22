@@ -157,7 +157,10 @@ function StageList({ active, query, empty }: { active: StageId; query: string; e
 function StagePicker({ active }: { active: StageId }) {
   const index = STAGES.findIndex((stage) => stage.id === active);
   return (
-    <div className="understand-picker sticky z-(--z-sticky) -mx-5 mb-8 border-b border-border bg-page px-5 py-2 md:-mx-10 md:px-10 xl:hidden">
+    <div
+      data-sticky-top
+      className="understand-picker sticky z-(--z-sticky) -mx-5 mb-8 border-b border-border bg-page px-5 py-2 md:-mx-10 md:px-10 xl:hidden"
+    >
       <Select
         aria-label="Jump to a stage"
         value={active}

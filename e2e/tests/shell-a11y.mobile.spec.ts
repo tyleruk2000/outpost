@@ -50,3 +50,11 @@ test("each screen names the tab and is announced, and focus is never left under 
   await expect(page.locator("[data-route-announcer]")).toHaveText("Your library");
   expect(errors).toEqual([]);
 });
+
+test("search results with their filter tabs do not scroll the page sideways on a narrow phone", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto("/search?q=water");
+  await expect(page.getByRole("tablist", { name: "Filter results" }).getByRole("tab").nth(1)).toBeVisible();
+  // The words read out with a tab's count are kept inside the strip of tabs that scrolls, not past the screen's edge.
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+});

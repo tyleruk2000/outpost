@@ -20,15 +20,19 @@ export function SettingsSection({
       id={id}
       aria-labelledby={`${id}-title`}
       // Reached at /settings#id: on a phone it comes to rest below the top bar, not under it.
-      className="grid scroll-mt-14 grid-cols-[minmax(0,1fr)] gap-x-10 gap-y-4 border-t border-border py-8 first:border-t-0 first:pt-0 md:scroll-mt-0 lg:grid-cols-[15rem_minmax(0,1fr)]"
+      className="@container scroll-mt-14 border-t border-border py-8 first:border-t-0 first:pt-0 md:scroll-mt-0"
     >
-      <div>
-        <h2 id={`${id}-title`} className="text-lead font-semibold text-ink">
-          {title}
-        </h2>
-        {description ? <p className="mt-1 text-small text-ink-muted">{description}</p> : null}
+      {/* Two columns by the room the section has, not the window's width: with the text at 200% on a wide window the
+          settings were squeezed to a word a line beside a 15rem column of titles (WCAG 1.4.4, 1.4.10). */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-x-10 gap-y-4 @2xl:grid-cols-[15rem_minmax(0,1fr)]">
+        <div>
+          <h2 id={`${id}-title`} className="text-lead font-semibold text-ink">
+            {title}
+          </h2>
+          {description ? <p className="mt-1 text-small text-ink-muted">{description}</p> : null}
+        </div>
+        <div className="grid max-w-[40rem] grid-cols-[minmax(0,1fr)] gap-5">{children}</div>
       </div>
-      <div className="grid max-w-[40rem] grid-cols-[minmax(0,1fr)] gap-5">{children}</div>
     </section>
   );
 }

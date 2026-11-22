@@ -182,179 +182,182 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div className="mx-auto grid w-full max-w-[70rem] gap-x-16 gap-y-10 px-5 pt-9 pb-24 md:px-10 md:pb-16 lg:grid-cols-[minmax(0,1fr)_19rem]">
-        <div className="min-w-0">
-          {(downloads.data?.length ?? 0) > 0 || otherWork.length > 0 ? (
-            <Block title="Happening now" more={{ to: "/downloads", label: "All downloads" }}>
-              <ul className="divide-y divide-border border-y border-border">
-                {downloads.data?.map((download) => (
-                  <li key={download.id} className="py-3">
-                    <div className="mb-1.5 flex items-baseline justify-between gap-4">
-                      <span className="min-w-0 truncate text-small font-medium text-ink">{download.title}</span>
-                      <span className="tabular shrink-0 text-small text-ink-muted">
-                        {download.state === "paused"
-                          ? "Paused"
-                          : download.state === "verifying"
-                            ? "Checking the file"
-                            : download.totalBytes
-                              ? `${formatBytes(download.receivedBytes)} of ${formatBytes(download.totalBytes)}${download.etaSeconds ? `, ${formatDuration(download.etaSeconds)} left` : ""}`
-                              : (download.message ?? "Waiting")}
-                      </span>
-                    </div>
-                    <Progress
-                      value={download.totalBytes ? download.receivedBytes / download.totalBytes : undefined}
-                      tone={download.state === "paused" ? "muted" : "lamp"}
-                      label={`Downloading ${download.title}`}
-                    />
-                  </li>
-                ))}
-                {otherWork.map((job) => (
-                  <li key={job.id} className="py-3">
-                    <div className="mb-1.5 flex items-baseline justify-between gap-4">
-                      <span className="min-w-0 truncate text-small font-medium text-ink">{job.title}</span>
-                      <span className="shrink-0 text-small text-ink-muted">{job.progress.message}</span>
-                    </div>
-                    <Progress
-                      value={job.progress.total ? job.progress.current / job.progress.total : undefined}
-                      tone="lamp"
-                      label={job.title}
-                    />
-                  </li>
-                ))}
-              </ul>
-            </Block>
-          ) : null}
-
-          {empty ? (
-            <Block title="Start here">
-              <ol className="divide-y divide-border border-y border-border">
-                {firstSteps.map((step) => (
-                  <li key={step.to}>
-                    <Link to={step.to} className="group flex items-start gap-4 py-4">
-                      <step.icon aria-hidden className="mt-0.5 size-5 shrink-0 text-primary" strokeWidth={1.6} />
-                      <span className="min-w-0 flex-1">
-                        <span className="block font-title text-lead text-ink decoration-primary decoration-1 underline-offset-[0.22em] group-hover:underline">
-                          {step.title}
+      {/* Two columns by the room there is, not the window's width, so that text at 200% on a wide window does not run off it. */}
+      <div className="@container">
+        <div className="mx-auto grid w-full max-w-[70rem] gap-x-16 gap-y-10 px-5 pt-9 pb-24 md:px-10 md:pb-16 @3xl:grid-cols-[minmax(0,1fr)_19rem]">
+          <div className="min-w-0">
+            {(downloads.data?.length ?? 0) > 0 || otherWork.length > 0 ? (
+              <Block title="Happening now" more={{ to: "/downloads", label: "All downloads" }}>
+                <ul className="divide-y divide-border border-y border-border">
+                  {downloads.data?.map((download) => (
+                    <li key={download.id} className="py-3">
+                      <div className="mb-1.5 flex items-baseline justify-between gap-4">
+                        <span className="min-w-0 truncate text-small font-medium text-ink">{download.title}</span>
+                        <span className="tabular shrink-0 text-small text-ink-muted">
+                          {download.state === "paused"
+                            ? "Paused"
+                            : download.state === "verifying"
+                              ? "Checking the file"
+                              : download.totalBytes
+                                ? `${formatBytes(download.receivedBytes)} of ${formatBytes(download.totalBytes)}${download.etaSeconds ? `, ${formatDuration(download.etaSeconds)} left` : ""}`
+                                : (download.message ?? "Waiting")}
                         </span>
-                        <span className="mt-0.5 block max-w-[60ch] text-small text-ink-muted">{step.text}</span>
-                      </span>
-                      <ArrowRight
-                        aria-hidden
-                        className="mt-1 size-4 shrink-0 text-ink-faint transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-primary"
+                      </div>
+                      <Progress
+                        value={download.totalBytes ? download.receivedBytes / download.totalBytes : undefined}
+                        tone={download.state === "paused" ? "muted" : "lamp"}
+                        label={`Downloading ${download.title}`}
                       />
-                    </Link>
-                  </li>
-                ))}
-              </ol>
-            </Block>
-          ) : (
-            <>
-              {recent.data && recent.data.length > 0 ? (
-                <Block title="Pick up where you left off" more={{ to: "/notes", label: "All pages" }}>
-                  <ul className="divide-y divide-border border-y border-border">
-                    {recent.data.map((note) => (
-                      <RowLink
-                        key={note.id}
-                        to={`/notes/${note.id}`}
-                        icon={note.icon ? <span className="text-[1.0625rem] leading-none">{note.icon}</span> : <NotebookText />}
-                        title={note.title || <span className="text-ink-muted">Untitled</span>}
-                        meta={timeAgo(note.lastViewedAt ?? note.updatedAt)}
+                    </li>
+                  ))}
+                  {otherWork.map((job) => (
+                    <li key={job.id} className="py-3">
+                      <div className="mb-1.5 flex items-baseline justify-between gap-4">
+                        <span className="min-w-0 truncate text-small font-medium text-ink">{job.title}</span>
+                        <span className="shrink-0 text-small text-ink-muted">{job.progress.message}</span>
+                      </div>
+                      <Progress
+                        value={job.progress.total ? job.progress.current / job.progress.total : undefined}
+                        tone="lamp"
+                        label={job.title}
                       />
-                    ))}
-                  </ul>
-                </Block>
-              ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </Block>
+            ) : null}
 
-              {documents.data && documents.data.length > 0 ? (
-                <Block title="Recently added documents" more={{ to: "/library", label: "All documents" }}>
-                  <ul className="divide-y divide-border border-y border-border">
-                    {documents.data.map((document) => (
-                      <RowLink
-                        key={document.id}
-                        to={`/library/documents/${document.id}`}
-                        icon={<FileText />}
-                        title={document.title}
-                        meta={
-                          document.extraction === "pending" || document.extraction === "running"
-                            ? "Reading text"
-                            : timeAgo(document.createdAt)
-                        }
-                      />
-                    ))}
-                  </ul>
-                </Block>
-              ) : null}
-
-              {collections.data && collections.data.length > 0 ? (
-                <Block title="Collections" more={{ to: "/explore", label: "Find more" }}>
-                  <ul className="divide-y divide-border border-y border-border">
-                    {collections.data.slice(0, 6).map((collection) => (
-                      <RowLink
-                        key={collection.id}
-                        to={
-                          collection.kind === "zim"
-                            ? `/library/read/${collection.id}/`
-                            : collection.kind === "map" || collection.kind === "terrain"
-                              ? "/maps"
-                              : `/library/collections/${collection.id}`
-                        }
-                        icon={collection.kind === "map" || collection.kind === "terrain" ? <MapIcon /> : <BookOpen />}
-                        title={collection.title}
-                        meta={collection.locationAvailable ? formatBytes(collection.sizeBytes) : "Drive disconnected"}
-                      />
-                    ))}
-                  </ul>
-                  {collections.data.length > 6 ? (
-                    <p className="mt-2 text-small">
-                      <Link to="/library?tab=collections" className="text-primary hover:underline">
-                        See all {collections.data.length}
+            {empty ? (
+              <Block title="Start here">
+                <ol className="divide-y divide-border border-y border-border">
+                  {firstSteps.map((step) => (
+                    <li key={step.to}>
+                      <Link to={step.to} className="group flex items-start gap-4 py-4">
+                        <step.icon aria-hidden className="mt-0.5 size-5 shrink-0 text-primary" strokeWidth={1.6} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-title text-lead text-ink decoration-primary decoration-1 underline-offset-[0.22em] group-hover:underline">
+                            {step.title}
+                          </span>
+                          <span className="mt-0.5 block max-w-[60ch] text-small text-ink-muted">{step.text}</span>
+                        </span>
+                        <ArrowRight
+                          aria-hidden
+                          className="mt-1 size-4 shrink-0 text-ink-faint transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-primary"
+                        />
                       </Link>
-                    </p>
-                  ) : null}
-                </Block>
-              ) : null}
-            </>
-          )}
-        </div>
-
-        <aside aria-label="Storage" className="min-w-0">
-          <Block title="Storage" more={{ to: "/storage", label: "Manage" }}>
-            {storage.isPending ? (
-              <div className="grid gap-4" aria-busy>
-                <Skeleton className="h-8" />
-                <Skeleton className="h-8" />
-              </div>
+                    </li>
+                  ))}
+                </ol>
+              </Block>
             ) : (
-              <ul className="grid gap-5">
-                {locations.map((location) => (
-                  <li key={location.id}>
-                    <div className="mb-1.5 flex items-baseline justify-between gap-4 text-small">
-                      <span className="min-w-0 truncate font-medium text-ink">{location.name}</span>
-                      <span className="tabular shrink-0 text-ink-muted">
-                        {location.status === "available" ? `${formatBytes(location.freeBytes)} free` : "Disconnected"}
-                      </span>
-                    </div>
-                    <StorageBar location={location} usage={location.usage} />
-                  </li>
-                ))}
-              </ul>
+              <>
+                {recent.data && recent.data.length > 0 ? (
+                  <Block title="Pick up where you left off" more={{ to: "/notes", label: "All pages" }}>
+                    <ul className="divide-y divide-border border-y border-border">
+                      {recent.data.map((note) => (
+                        <RowLink
+                          key={note.id}
+                          to={`/notes/${note.id}`}
+                          icon={note.icon ? <span className="text-[1.0625rem] leading-none">{note.icon}</span> : <NotebookText />}
+                          title={note.title || <span className="text-ink-muted">Untitled</span>}
+                          meta={timeAgo(note.lastViewedAt ?? note.updatedAt)}
+                        />
+                      ))}
+                    </ul>
+                  </Block>
+                ) : null}
+
+                {documents.data && documents.data.length > 0 ? (
+                  <Block title="Recently added documents" more={{ to: "/library", label: "All documents" }}>
+                    <ul className="divide-y divide-border border-y border-border">
+                      {documents.data.map((document) => (
+                        <RowLink
+                          key={document.id}
+                          to={`/library/documents/${document.id}`}
+                          icon={<FileText />}
+                          title={document.title}
+                          meta={
+                            document.extraction === "pending" || document.extraction === "running"
+                              ? "Reading text"
+                              : timeAgo(document.createdAt)
+                          }
+                        />
+                      ))}
+                    </ul>
+                  </Block>
+                ) : null}
+
+                {collections.data && collections.data.length > 0 ? (
+                  <Block title="Collections" more={{ to: "/explore", label: "Find more" }}>
+                    <ul className="divide-y divide-border border-y border-border">
+                      {collections.data.slice(0, 6).map((collection) => (
+                        <RowLink
+                          key={collection.id}
+                          to={
+                            collection.kind === "zim"
+                              ? `/library/read/${collection.id}/`
+                              : collection.kind === "map" || collection.kind === "terrain"
+                                ? "/maps"
+                                : `/library/collections/${collection.id}`
+                          }
+                          icon={collection.kind === "map" || collection.kind === "terrain" ? <MapIcon /> : <BookOpen />}
+                          title={collection.title}
+                          meta={collection.locationAvailable ? formatBytes(collection.sizeBytes) : "Drive disconnected"}
+                        />
+                      ))}
+                    </ul>
+                    {collections.data.length > 6 ? (
+                      <p className="mt-2 text-small">
+                        <Link to="/library?tab=collections" className="text-primary hover:underline">
+                          See all {collections.data.length}
+                        </Link>
+                      </p>
+                    ) : null}
+                  </Block>
+                ) : null}
+              </>
             )}
-          </Block>
-          {!empty && loaded ? (
-            <Block title="Add to it">
-              <ul className="grid gap-1 text-small">
-                {firstSteps.map((step) => (
-                  <li key={step.to}>
-                    <Link to={step.to} className="flex items-center gap-2.5 py-1 text-ink hover:text-primary max-md:min-h-11">
-                      <step.icon aria-hidden className="size-4 text-ink-muted" strokeWidth={1.6} />
-                      {step.title}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+          </div>
+
+          <aside aria-label="Storage" className="min-w-0">
+            <Block title="Storage" more={{ to: "/storage", label: "Manage" }}>
+              {storage.isPending ? (
+                <div className="grid gap-4" aria-busy>
+                  <Skeleton className="h-8" />
+                  <Skeleton className="h-8" />
+                </div>
+              ) : (
+                <ul className="grid gap-5">
+                  {locations.map((location) => (
+                    <li key={location.id}>
+                      <div className="mb-1.5 flex items-baseline justify-between gap-4 text-small">
+                        <span className="min-w-0 truncate font-medium text-ink">{location.name}</span>
+                        <span className="tabular shrink-0 text-ink-muted">
+                          {location.status === "available" ? `${formatBytes(location.freeBytes)} free` : "Disconnected"}
+                        </span>
+                      </div>
+                      <StorageBar location={location} usage={location.usage} />
+                    </li>
+                  ))}
+                </ul>
+              )}
             </Block>
-          ) : null}
-        </aside>
+            {!empty && loaded ? (
+              <Block title="Add to it">
+                <ul className="grid gap-1 text-small">
+                  {firstSteps.map((step) => (
+                    <li key={step.to}>
+                      <Link to={step.to} className="flex items-center gap-2.5 py-1 text-ink hover:text-primary max-md:min-h-11">
+                        <step.icon aria-hidden className="size-4 text-ink-muted" strokeWidth={1.6} />
+                        {step.title}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </Block>
+            ) : null}
+          </aside>
+        </div>
       </div>
     </>
   );
