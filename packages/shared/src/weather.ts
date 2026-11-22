@@ -22,6 +22,7 @@ import type {
   QuakesData,
   SpaceWeatherData,
 } from "./weather-alerts.ts";
+import { METEOALARM_CURRENT_MS } from "./weather-alerts.ts";
 import type { RiverReadingsData, RiversData } from "./weather-rivers.ts";
 import type { WindPoint } from "./weather-zambretti.ts";
 
@@ -427,7 +428,8 @@ export const FRESH_FOR: Record<WeatherKind, number> = {
   solar: Number.POSITIVE_INFINITY,
   gdacs: 3 * HOUR,
   quakes: 1 * HOUR,
-  meteoalarm: 1 * HOUR,
+  /** MeteoAlarm's terms (section 5): never more than ten minutes behind. */
+  meteoalarm: METEOALARM_CURRENT_MS,
   nws: 1 * HOUR,
   eccc: 1 * HOUR,
   metservice: 1 * HOUR,

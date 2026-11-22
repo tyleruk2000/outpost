@@ -1,5 +1,15 @@
 /** What is kept on the server from each publisher, with its size, and the publishers themselves: what is sent to each, and their terms. */
-import { formatBytes, freshness, type KeptCopy, type WeatherKind, type WeatherPlace, type WeatherSourceInfo } from "@outpost/shared";
+import {
+  formatBytes,
+  freshness,
+  type KeptCopy,
+  meteoalarmNotCurrent,
+  meteoalarmServices,
+  namesInWords,
+  type WeatherKind,
+  type WeatherPlace,
+  type WeatherSourceInfo,
+} from "@outpost/shared";
 import { Trash2 } from "lucide-react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
@@ -23,6 +33,25 @@ const KIND_WORDS = {
   jma: "National warnings (Japan Meteorological Agency)",
   "space-weather": "Space weather today (NOAA)",
 } satisfies Record<WeatherKind, string>;
+
+/** Whose warnings a kept MeteoAlarm copy holds, and, past MeteoAlarm's ten minutes, that it is not current. */
+function MeteoalarmLine({ copy, now }: { copy: KeptCopy<"meteoalarm">; now: number }) {
+  const services = namesInWords(meteoalarmServices(copy.data));
+  return (
+    <p className="text-small text-ink-muted">
+      {copy.data.countryName ? title(copy.data.countryName) : "Warnings"}
+      {services ? `: ${services}` : ""}.
+      {meteoalarmNotCurrent(copy, now) ? (
+        <>
+          {" "}
+          <strong className="font-semibold text-ink">Not current: for reference only</strong> (fetched {formatDateTime(copy.fetchedAt)}).
+        </>
+      ) : null}
+    </p>
+  );
+}
+
+const title = (words: string) => words[0]!.toUpperCase() + words.slice(1);
 
 export function KeptView({
   kept,
@@ -61,6 +90,7 @@ export function KeptView({
                     <p className="tabular text-small text-ink-muted">
                       {formatBytes(copy.bytes)}, fetched {formatDateTime(copy.fetchedAt)} ({freshness(copy, now).age}). Sent to {copy.sent}.
                     </p>
+                    {copy.kind === "meteoalarm" ? <MeteoalarmLine copy={copy as KeptCopy<"meteoalarm">} now={now} /> : null}
                   </div>
                   <Button variant="ghost" size="icon" aria-label={`Remove the kept copy: ${what}`} onClick={() => remove.mutate(copy.id)}>
                     <Trash2 />
@@ -107,8 +137,9 @@ export function KeptView({
           ))}
         </ul>
         <p className="mt-3 max-w-[70ch] text-small text-ink-muted">
-          Not used: the Met Office's DataHub (it needs an account and a key), MeteoAlarm (its terms ask redistributors to stay within ten
-          minutes of it), and the Met Office's Fire Severity Index (published as maps only). Wildfire risk for England and Wales is at{" "}
+          MeteoAlarm's terms ask redistributed warnings to be never more than ten minutes behind, which a kept copy cannot promise, so a
+          copy older than that is marked not current. Not used: the Met Office's DataHub (it needs an account and a key) and the Met
+          Office's Fire Severity Index (published as maps only). Wildfire risk for England and Wales is at{" "}
           <a
             className="text-primary underline underline-offset-2"
             href="https://openaccess.naturalengland.org.uk/"
