@@ -20,11 +20,17 @@ import {
   contents,
   contentText,
   cover,
+  cutCard,
   dataTable,
+  fallbackFor,
   figure,
+  fontRuns,
   heading,
+  licenceStatus,
   measureOf,
+  NoteList,
   para,
+  printCovers,
   printDocument,
   rainCatch,
   recoveryPosition,
@@ -34,6 +40,7 @@ import {
   stepMark,
   steps,
   twoColumns,
+  withFallbacks,
 } from ".";
 
 async function pdfWords(bytes: Uint8Array): Promise<string[]> {
@@ -194,4 +201,70 @@ describe("a printed document", () => {
         fs.writeFileSync(path.join(process.env.OUTPOST_PRINT_SAMPLES, `print-kit-${paper}.pdf`), made.bytes);
     });
   }
+});
+
+describe("licence statuses and numbered notes", () => {
+  it("gives the same words one number, and a status its words and the notes it cites", () => {
+    const notes = new NoteList();
+    expect(notes.cite("Listening: no licence needed.")).toBe(1);
+    expect(notes.cite("Transmitting: needs an amateur licence.")).toBe(2);
+    expect(notes.cite("Listening: no licence needed.")).toBe(1);
+    expect(notes.cite("  ")).toBe(0);
+    expect(contentText(notes.content())).toBe("Listening: no licence needed. Transmitting: needs an amateur licence.");
+    expect(contentText(licenceStatus("listen", [1, 1, 2]))).toBe("Listen only 1,2");
+    expect(contentText(licenceStatus("free"))).toBe("No licence");
+  });
+
+  it("makes a card at its size, with the panels' words", () => {
+    expect(contentText(cutCard([["Front"], ["Back"]], { width: 242, height: 153 }))).toBe("Front Back");
+  });
+});
+
+describe("names in other scripts", () => {
+  it("cuts words into runs for the fonts that have their letters", () => {
+    expect(fontRuns("Ana")).toEqual([{ text: "Ana", font: undefined }]);
+    expect(fontRuns("Ελένη Παπαδοπούλου, mum")).toEqual([
+      { text: "Ελένη Παπαδοπούλου, ", font: "NotoSans" },
+      { text: "mum", font: undefined },
+    ]);
+    expect(fontRuns("王小明").map((run) => run.font)).toEqual(["NotoSansSC"]);
+    expect(fontRuns("김민수").map((run) => run.font)).toEqual(["NotoSansKR"]);
+    expect(printCovers("Ł".codePointAt(0)!)).toBe(true);
+    expect(fallbackFor("Ж".codePointAt(0)!)).toBe("NotoSans");
+  });
+
+  it("prints them in a fallback font, as words a reader can find", async () => {
+    const doc = printDocument({
+      paper: "a4",
+      title: "Names",
+      made: new Date(Date.UTC(2026, 10, 22)),
+      footerName: "Names",
+      footerRight: "",
+      parts: [
+        {
+          kind: "plain",
+          content: [
+            dataTable(
+              ["Name", "Phone"],
+              [
+                ["Ελένη Παπαδοπούλου", "+30 21 0123 4567"],
+                ["Иван Петров", "+7 495 000 0000"],
+                ["王小明", "+44 7700 900123"],
+                ["김민수", "+82 2 000 0000"],
+              ],
+            ),
+            para("Bożena Wiśniewska and Ĉiu"),
+          ],
+        },
+      ],
+    });
+    expect(withFallbacks(doc).fonts).toEqual(new Set(["NotoSans", "NotoSansSC", "NotoSansKR"]));
+    const made = await renderPdf(doc);
+    const words = (await pdfWords(made.bytes)).join(" ");
+    for (const name of ["Ελένη Παπαδοπούλου", "Иван Петров", "王小明", "김민수", "Bożena Wiśniewska"]) expect(words).toContain(name);
+    const file = new TextDecoder("latin1").decode(made.bytes);
+    expect(file).toMatch(/\/FontName \/[A-Z]{6}\+NotoSans-Regular/);
+    expect(file).toMatch(/\/FontName \/[A-Z]{6}\+NotoSansSC/);
+    if (process.env.OUTPOST_PRINT_SAMPLES) fs.writeFileSync(path.join(process.env.OUTPOST_PRINT_SAMPLES, "names.pdf"), made.bytes);
+  }, 60_000);
 });

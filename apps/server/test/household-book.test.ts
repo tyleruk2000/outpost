@@ -18,7 +18,7 @@ import {
   withinDegrees,
 } from "@outpost/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { weatherCache, weatherPlaces } from "../src/db/schema.ts";
+import { householdBook, weatherCache, weatherPlaces } from "../src/db/schema.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
 let app: TestApp;
@@ -276,6 +276,32 @@ describe("what the book reads round home", () => {
     expect(slow.hours).toBeCloseTo(fit.hours * 2, 6);
     expect(journey.towns.map((town) => town.name)).toContain("Midway");
     expect(facts.notMeasured).toEqual([{ destinationId: "d2", name: "Nowhere", why: expect.stringMatching(/No saved place/) }]);
+  });
+});
+
+describe("answers saved before the binder became part of the book", () => {
+  it("gain the binder's sections, and keep the sections the household left out", async () => {
+    const own = await createTestApp({}, undefined, { voacapData: false });
+    try {
+      const old = { ...DEFAULT_BOOK_ANSWERS, sections: ["first-minutes", "water"] } as Record<string, unknown>;
+      delete old.planChoice;
+      delete old.planIds;
+      delete old.grabCardSize;
+      own.ctx.db.insert(householdBook).values({ id: "household", answers: old, answersAt: 1, made: null }).run();
+      const response = await own.api<BookResponse>("GET", "/api/household-book");
+      expect(response.body.answers.sections).toEqual([
+        "first-minutes",
+        "fridge-sheets",
+        "places",
+        "water",
+        "frequencies",
+        "supplies",
+        "grab-cards",
+      ]);
+      expect(response.body.answers).toMatchObject({ planChoice: "all", grabCardSize: "wallet" });
+    } finally {
+      await own.close();
+    }
   });
 });
 

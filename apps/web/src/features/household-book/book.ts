@@ -41,6 +41,7 @@ import {
   type FrequencyEntry,
   filterFrequencies,
   formatDecimal,
+  formatFrequency,
   GRID_FORMATS,
   type Household,
   licenceLine,
@@ -69,13 +70,15 @@ import {
   templateById,
   templateStep,
   termsOf,
+  toMaidenhead,
   WALK_PACES,
   WATER_FIGURES,
   withinDegrees,
 } from "@outpost/shared";
 import type { Content, TDocumentDefinitions } from "pdfmake/interfaces";
+import { CARD_HEIGHT, CARD_WIDTH } from "@/features/emergency-plans/cards";
 import { readableOf } from "@/features/emergency-plans/printable";
-import { frequencyBlocks, frequencyLine } from "@/features/frequencies/document";
+import { frequencyBlocks } from "@/features/frequencies/document";
 import { binderPlaces } from "@/features/household-papers/binder-places";
 import { commsBlocks, usedEntries } from "@/features/household-papers/comms-words";
 import { type GrabHousehold, type GrabPerson, gridLines } from "@/features/household-papers/grab-cards";
@@ -86,34 +89,44 @@ import type { PdfPicture } from "@/features/maps/print/pdf";
 import {
   blocksToContent,
   boiling,
+  bookCover,
   bottleFilter,
   bullets,
   type CalloutKind,
   type ChecklistGroup,
+  COVER_BAND,
   callout,
   card,
   checklist,
   chestCompressions,
   contents as contentsTable,
-  cover,
+  contourArt,
+  cutCard,
   dataTable,
   figure,
   heading,
+  type LicenceStatusKind,
   label,
+  licenceKey,
+  licenceStatus,
   measureOf,
+  NoteList,
   note,
   notesPage,
   PRINT_COLOURS,
   PRINT_MARGINS,
   PRINT_PAPERS,
   PRINT_SPACE,
+  PRINT_TYPE,
   type PrintPart,
   para,
+  printable,
   printDocument,
   quote,
   rainCatch,
   recoveryPosition,
   sectionHeader,
+  seedOf,
   sheetItemsToSvg,
   steps as stepList,
   twoColumns,
@@ -235,6 +248,8 @@ interface Section {
   /** The grey line under the section's title. */
   subtitle: string;
   content: Content[];
+  /** Laid across the page: A6 grab cards, two to a sheet. */
+  orientation?: "landscape";
 }
 
 /**
@@ -628,44 +643,79 @@ function base64Of(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-/**
- * Whether a frequency needs a licence, in the one plain line every radio screen uses
- * (`licenceLine`, from the regulators' statements listed under Help › What needs a radio
- * licence), with what Outpost's list says of listening to it where it says anything.
- */
-function licenceWords(entry: FrequencyEntry): string {
-  const use: RadioUse =
-    entry.kind === "licence-free"
-      ? "licence-free"
-      : entry.kind === "amateur"
-        ? "listen-and-transmit"
-        : entry.kind === "distress"
-          ? "listen-restricted"
-          : "listen";
-  return [licenceLine(use, NO_RADIO_LICENCE)?.text, entry.listening].filter(Boolean).join(" ");
+/** What each kind of frequency needs, as the radio screens' own licence lines say (`licenceLine`). */
+function radioUseOf(entry: FrequencyEntry): RadioUse {
+  return entry.kind === "licence-free"
+    ? "licence-free"
+    : entry.kind === "amateur"
+      ? "listen-and-transmit"
+      : entry.kind === "distress"
+        ? "listen-restricted"
+        : "listen";
 }
 
-const frequencyRow = (entry: FrequencyEntry, first = false) => [
-  `${first ? "Our plan: " : ""}**${entry.name}**`,
-  entry.frequencies.length > 6
-    ? `${entry.frequencies
-        .slice(0, 4)
-        .map((frequency) => frequencyLine(frequency))
-        .join("; ")}; and ${entry.frequencies.length - 4} more, all under Radio › Frequencies in Outpost`
-    : entry.frequencies.map((frequency) => frequencyLine(frequency)).join("; "),
-  licenceWords(entry),
-];
+const STATUS_OF: Record<RadioUse, LicenceStatusKind> = {
+  "licence-free": "free",
+  listen: "listen",
+  "listen-restricted": "listen",
+  transmit: "licence",
+  "listen-and-transmit": "licence",
+};
+
+/**
+ * A frequency's values, run together: values that share a note are listed together
+ * with the note once ("92 to 95 MHz, 103 to 105 MHz: BBC Radio 4 on FM"). A long note goes
+ * to the section's notes and is cited by its number.
+ */
+function frequencyCell(entry: FrequencyEntry, notes: NoteList): Content {
+  const groups: Array<{ note: string; values: string[] }> = [];
+  for (const frequency of entry.frequencies) {
+    const value = [formatFrequency(frequency), frequency.channel ? `ch ${frequency.channel}` : ""].filter(Boolean).join(" ");
+    const about = [frequency.power, frequency.hours, frequency.note].filter(Boolean).join(", ");
+    const group = groups.find((each) => each.note === about);
+    if (group) group.values.push(value);
+    else groups.push({ note: about, values: [value] });
+  }
+  const runs: Content[] = [];
+  groups.forEach((group, index) => {
+    const values = group.values.length > 8 ? [...group.values.slice(0, 6), `and ${group.values.length - 6} more`] : group.values;
+    if (index > 0) runs.push("; ");
+    runs.push(values.join(", "));
+    if (!group.note) return;
+    if (group.note.length <= 28) runs.push(` (${group.note})`);
+    else runs.push({ text: `${notes.cite(group.note)}`, sup: true, color: PRINT_COLOURS.muted });
+  });
+  return { text: runs, fontSize: PRINT_TYPE.table } as Content;
+}
+
+/** One row: the name, the frequencies, and whether it needs a licence, with the note that says why. */
+function frequencyRow(entry: FrequencyEntry, notes: NoteList, ours: boolean): Content[] {
+  const use = radioUseOf(entry);
+  const cited = [notes.cite(licenceLine(use, NO_RADIO_LICENCE)?.text ?? ""), ...(entry.listening ? [notes.cite(entry.listening)] : [])];
+  return [
+    {
+      text: [...(ours ? [{ text: "Our plan: ", color: PRINT_COLOURS.act }] : []), { text: printable(entry.name), bold: true }],
+      fontSize: PRINT_TYPE.table,
+    } as Content,
+    frequencyCell(entry, notes),
+    licenceStatus(STATUS_OF[use], cited),
+  ];
+}
 
 function frequencies(c: Context): Section {
   const content: Content[] = [];
   const summary: string[] = [];
+  const notes = new NoteList();
+  const head = ["Name", "Frequency", "Licence"];
+  const widths = ["30%", "48%", "22%"];
   const planned = c.comms?.plan.updatedAt ? usedEntries(c.comms.plan, c.entries) : [];
   if (planned.length > 0) {
     content.push(
       callout("act", "Our communication plan's channels", [
         dataTable(
-          ["Channel", "Frequency", "Licence"],
-          planned.map((entry) => frequencyRow(entry, true)),
+          head,
+          planned.map((entry) => frequencyRow(entry, notes, true)),
+          { widths },
         ),
         note("Marked “Our plan” wherever they appear below."),
       ]),
@@ -673,6 +723,7 @@ function frequencies(c: Context): Section {
     summary.push(...planned.map((entry) => `Plan: ${entry.name}`));
   }
   const ours = new Set(planned.map((entry) => entry.id));
+  content.push(licenceKey());
   if (!c.country)
     content.push(
       note(
@@ -699,25 +750,24 @@ function frequencies(c: Context): Section {
       content.push(
         label(group.title),
         dataTable(
-          ["Name", "Frequency", "Licence"],
-          entries.map((entry) => frequencyRow(entry, ours.has(entry.id))),
+          head,
+          entries.map((entry) => frequencyRow(entry, notes, ours.has(entry.id))),
+          { widths },
         ),
       );
       summary.push(...entries.map((entry) => entry.name));
     }
-    content.push(
-      note(`From Outpost's list of frequencies for ${placeName(c.country)}. Check a set's own rules before talking on anything.`),
-    );
   }
-  content.push(heading("Repeaters near home"));
+  content.push(label("Repeaters near home"));
   if (!c.facts.home) content.push(note(NO_HOME_PLACE));
   else if (c.repeaters === null) content.push(note("Outpost's repeater list could not be read when the book was made."));
   else if (c.repeaters.length === 0)
     content.push(note("No repeater in Outpost's repeater list is near home. Bring a list in under Radio › Repeaters."));
   else {
+    const cited = notes.cite(licenceLine("listen-and-transmit", NO_RADIO_LICENCE)?.text ?? "");
     content.push(
       dataTable(
-        ["Callsign", "Listen on", "Talk on", "Tone", "Where", "From home"],
+        ["Callsign", "Listen on", "Talk on", "Tone", "Where", "From home", "Licence"],
         c.repeaters.map((repeater) => [
           `**${repeater.callsign}**`,
           `${(repeater.outputHz / 1e6).toFixed(4)} MHz`,
@@ -727,15 +777,21 @@ function frequencies(c: Context): Section {
           repeater.distanceMeters !== undefined
             ? `${metresWords(repeater.distanceMeters)}${repeater.bearingDegrees !== undefined ? ` ${compassPoint(repeater.bearingDegrees)}` : ""}`
             : "",
+          licenceStatus("licence", [cited]),
         ]),
         { right: [1, 2] },
       ),
-      note(
-        `Amateur radio repeaters. ${licenceLine("listen-and-transmit", NO_RADIO_LICENCE)?.text ?? ""} From Outpost's repeater list, as brought in.`,
-      ),
+      note("Amateur radio repeaters, from Outpost's repeater list as brought in."),
     );
     summary.push(...c.repeaters.map((repeater) => `Repeater: ${repeater.callsign}`));
   }
+  content.push(
+    label("Notes"),
+    ...notes.content(),
+    note(
+      `From Outpost's list of frequencies${c.country ? ` for ${placeName(c.country)}` : ""}. The licence lines are the radio screens' own; the regulators' words behind them are under Help › What needs a radio licence. Check a set's own rules before talking on anything.`,
+    ),
+  );
   c.summary.frequencies = summary;
   return {
     subtitle: "The communication plan's channels first, then what home's country has, each with whether it needs a licence.",
@@ -777,10 +833,18 @@ function supplies(c: Context): Section {
   return { subtitle: "What is kept, where and until when.", content };
 }
 
+/** A6, in points: 105 by 148 mm. */
+const A6 = { width: (105 / 25.4) * 72, height: (148 / 25.4) * 72 };
+
+/**
+ * A card for each person, at its real size, with marks to cut along: wallet size (front
+ * and back, folded along the broken line) two across, or A6 two to a sheet laid across.
+ */
 function grabCards(c: Context): Section {
   const content: Content[] = [];
   const people = c.grab?.people ?? [];
   const household = c.grab?.household;
+  const a6 = c.answers.grabCardSize === "a6";
   if (!household || people.length === 0) {
     c.summary["grab-cards"] = [];
     return {
@@ -788,56 +852,61 @@ function grabCards(c: Context): Section {
       content: [para("No people are listed yet. Add them in the questions or under Supplies.")],
     };
   }
-  const width = c.half - 24;
-  const small = (text: string): Content => ({ text, fontSize: 7.5, color: PRINT_COLOURS.muted, margin: [0, 3, 0, 1] });
+  const size = a6 ? 1 : 0.9;
+  const small = (text: string): Content => ({ text, fontSize: 6.5 * size + 0.5, color: PRINT_COLOURS.muted, margin: [0, 2.5, 0, 0.5] });
+  const line = (text: Content, bold = false): Content => ({ text: text as never, fontSize: 8 * size, bold, lineHeight: 1.1 });
   const cards = people.map((person) => {
-    const lines: Content[] = [
-      { text: "In an emergency", fontSize: 8, bold: true, color: PRINT_COLOURS.act },
-      { text: person.name || "Name not given", fontSize: 13, bold: true, margin: [0, 1, 0, 2] },
+    const front: Content[] = [
+      { text: "In an emergency", fontSize: 7.5, bold: true, color: PRINT_COLOURS.act },
+      { text: printable(person.name || "Name not given"), fontSize: 11 * size + 1, bold: true, margin: [0, 0.5, 0, 1] },
       {
-        text: [`Call `, { text: household.emergencyNumber || c.number || "the emergency services", bold: true, color: PRINT_COLOURS.act }],
-        fontSize: 10.5,
+        text: ["Call ", { text: household.emergencyNumber || c.number || "the emergency services", bold: true, color: PRINT_COLOURS.act }],
+        fontSize: 10 * size,
       },
     ];
-    if (person.sheetLocked) lines.push(small("Medical sheet kept encrypted: not on this card."));
+    if (person.sheetLocked) front.push(small("Medical sheet kept encrypted: not on this card."));
     else {
-      lines.push({ text: `Blood group: ${person.bloodGroup || "not known"}`, fontSize: 9, margin: [0, 2, 0, 0] });
-      if (person.allergies.length > 0) lines.push(small("Allergies"), { text: person.allergies.join("; "), bold: true, fontSize: 9 });
-      if (person.needs.length > 0) lines.push(small("Medical"), { text: person.needs.join("; "), fontSize: 9 });
-      if (person.medicines.length > 0) lines.push(small("Medicines"), { text: person.medicines.join("; "), fontSize: 9 });
+      front.push(line(`Blood group: ${person.bloodGroup || "not known"}`));
+      if (person.allergies.length > 0) front.push(small("Allergies"), line(printable(person.allergies.join("; ")), true));
+      if (person.needs.length > 0) front.push(small("Medical"), line(printable(person.needs.join("; "))));
+      if (person.medicines.length > 0) front.push(small("Medicines"), line(printable(person.medicines.join("; "))));
     }
+    const back: Content[] = [];
     const calls = [...person.contacts, ...household.contacts].filter((entry) => entry.phone).slice(0, 4);
     if (calls.length > 0)
-      lines.push(
-        small("Who to contact"),
-        ...calls.map((entry) => ({ text: [`${entry.label}: `, { text: entry.phone, bold: true }], fontSize: 9 }) as Content),
-      );
+      back.push(small("Who to contact"), ...calls.map((entry) => line([`${printable(entry.label)}: `, { text: entry.phone, bold: true }])));
     if (household.places.length > 0)
-      lines.push(small("Where we meet"), ...household.places.slice(0, 3).map((place) => ({ text: place, fontSize: 9 }) as Content));
+      back.push(small("Where we meet"), ...household.places.slice(0, 3).map((place) => line(printable(place))));
     if (household.comms.length > 0)
-      lines.push(small("Keeping in touch"), ...household.comms.slice(0, 2).map((line) => ({ text: line, fontSize: 9 }) as Content));
+      back.push(small("Keeping in touch"), ...household.comms.slice(0, 2).map((text) => line(printable(text))));
     if (household.home)
-      lines.push(small(`Home: ${household.home.name}`), {
-        text: gridLines(household.home.lat, household.home.lon, ["decimal", "osgb", "maidenhead"]).join("\n"),
-        fontSize: 8.5,
-      });
-    lines.push({
+      back.push(
+        small(`Home: ${printable(household.home.name)}`),
+        line(printable(gridLines(household.home.lat, household.home.lon, ["decimal", "osgb", "maidenhead"]).join("\n"))),
+      );
+    back.push({
       text: `Made ${longDate.format(c.made)} in Outpost. Our own plan: follow official warnings.`,
-      fontSize: 6.5,
+      fontSize: 6,
       color: PRINT_COLOURS.muted,
-      margin: [0, 4, 0, 0],
+      margin: [0, 3, 0, 0],
     });
-    return card(lines, width);
+    return a6
+      ? cutCard([[...front, ...back]], { width: A6.width, height: A6.height, inset: 12 })
+      : cutCard([front, back], { width: CARD_WIDTH, height: CARD_HEIGHT, inset: 8 });
   });
   for (let index = 0; index < cards.length; index += 2)
-    content.push(twoColumns([cards[index]!], cards[index + 1] ? [cards[index + 1]!] : []));
+    content.push({ columns: [cards[index]!, cards[index + 1] ?? { text: "" }], columnGap: 20 } as Content);
   content.push(
     note(
-      "A card holds medical lines from each person's medical sheet; a sheet kept encrypted and not open on this device leaves them off.",
+      `${a6 ? "A6, 105 by 148 mm, two to a sheet laid across" : "Wallet size, 85.6 by 54 mm: fold along the broken line, front and back"}. Print at actual size (100%) and cut along the corner marks. A card holds medical lines from each person's medical sheet; a sheet kept encrypted and not open on this device leaves them off.`,
     ),
   );
   c.summary["grab-cards"] = people.map((person) => person.name);
-  return { subtitle: "A card for each person to carry. Cut along the broken line and fold.", content };
+  return {
+    subtitle: "A card for each person to carry, at its real size. Cut along the corner marks.",
+    content,
+    ...(a6 ? { orientation: "landscape" as const } : {}),
+  };
 }
 
 /** How each NHS page is set: those that say to call at once in red, those that warn in amber, the rest in blue. */
@@ -850,77 +919,97 @@ const FIRST_AID_KIND: Record<string, CalloutKind> = {
   poisoning: "warn",
 };
 
-function firstAidPage(c: Context, page: (typeof FIRST_AID_PAGES)[number]): Content {
+type FirstAidPart = (typeof FIRST_AID_PAGES)[number]["parts"][number];
+
+/**
+ * A callout of an NHS page's lines, under the page's own headings, with the credit its
+ * terms ask for; the page's address is a numbered note at the end of the section.
+ */
+function firstAidCallout(
+  c: Context,
+  page: (typeof FIRST_AID_PAGES)[number],
+  title: string,
+  parts: readonly FirstAidPart[],
+  notes: NoteList,
+): Content {
   const body: Content[] = [];
-  for (const part of page.parts) {
+  for (const part of parts) {
     if (part.heading) body.push({ text: part.heading, bold: true, margin: [0, 2, 0, 1] });
     body.push(bullets(part.lines));
   }
-  body.push(note(`${NHS_CREDIT} ${breakLong(page.url)} (page last reviewed ${page.reviewed}).`));
+  const cited = notes.cite(`${page.title}: ${page.url} (page last reviewed ${page.reviewed}).`);
+  body.push({ text: [NHS_CREDIT, { text: ` ${cited}`, sup: true }], fontSize: PRINT_TYPE.small, color: PRINT_COLOURS.muted } as Content);
   c.used.nhs.add(page.id);
-  return callout(FIRST_AID_KIND[page.id] ?? "know", page.title, body, { keep: page.id !== "child-cpr" });
+  return callout(FIRST_AID_KIND[page.id] ?? "know", title, body);
 }
 
+/** About how tall an NHS page's lines stand, to share them between two columns. */
+const firstAidSize = (parts: readonly FirstAidPart[]) => parts.reduce((total, part) => total + part.lines.join(" ").length + 70, 140);
+
 function firstAid(c: Context): Section {
+  const notes = new NoteList();
   const content: Content[] = [
     note(
-      `Lines quoted unchanged from the NHS website's pages, read on ${NHS_READ}. They are written for the UK: where they say 999 or NHS 111, ${
+      `Lines quoted unchanged from the NHS website's pages, read on ${NHS_READ}, each under its page's own title and headings. They are written for the UK: where they say 999 or NHS 111, ${
         c.country === "GB" ? "that is the number to call" : `call ${c.number || "your emergency number"}`
       }. A course teaches what words cannot.`,
     ),
   ];
-  const [cpr, ...rest] = FIRST_AID_PAGES;
-  if (cpr) {
-    content.push(firstAidPage(c, cpr));
-    content.push(
-      figure(chestCompressions().svg, {
-        title: "Where to press, from the lines above",
-        width: Math.min(c.measure, 424),
-        caption: "Outpost's drawing of the lines above on chest compressions. It adds nothing to them.",
-      }),
-    );
-  }
-  // The rest in two columns, each page kept whole, the columns about as long as each other.
-  const size = (page: (typeof FIRST_AID_PAGES)[number]) =>
-    page.parts.reduce((total, part) => total + part.lines.join(" ").length + 60, 120);
   const left: Content[] = [];
   const right: Content[] = [];
   let leftSize = 0;
   let rightSize = 0;
+  const [cpr, ...rest] = FIRST_AID_PAGES;
+  if (cpr) {
+    // Resuscitation in two callouts, the second with the drawing of where to press beside it.
+    const split = cpr.parts.findIndex((part) => part.heading.startsWith("7."));
+    const before = split > 0 ? cpr.parts.slice(0, split) : cpr.parts;
+    const after = split > 0 ? cpr.parts.slice(split) : [];
+    left.push(firstAidCallout(c, cpr, cpr.title, before, notes));
+    if (after.length > 0) left.push(firstAidCallout(c, cpr, `${cpr.title}: chest compressions`, after, notes));
+    left.push(
+      figure(chestCompressions({ narrow: true }).svg, {
+        title: "Where to press",
+        width: c.half,
+        caption: "Outpost's drawing of the lines above on chest compressions. It adds nothing to them.",
+      }),
+    );
+    leftSize += firstAidSize(cpr.parts) + 900;
+  }
+  // The recovery position, in FEMA's words, with its drawing.
+  c.used.fema = true;
+  const fema = notes.cite(`${RECOVERY_POSITION.title}, ${RECOVERY_POSITION.url}. ${RECOVERY_POSITION.terms}`);
+  right.push(
+    callout("know", "The recovery position", [
+      bullets(RECOVERY_POSITION.parts.map((part) => `“${part}”`)),
+      {
+        text: ["FEMA's words, unchanged.", { text: ` ${fema}`, sup: true }],
+        fontSize: PRINT_TYPE.small,
+        color: PRINT_COLOURS.muted,
+      } as Content,
+    ]),
+    figure(recoveryPosition({ narrow: true }).svg, {
+      width: c.half,
+      caption: "Outpost's drawing of FEMA's words, numbered as they are. It shows the position, not how to roll someone into it.",
+    }),
+    callout("warn", "Moving someone", [
+      para(`“${RECOVERY_POSITION.caution[0]}”`),
+      bullets(RECOVERY_POSITION.caution.slice(1).map((line) => `“${line}”`)),
+    ]),
+  );
+  rightSize += 1500;
+  // Every other page, one callout each, into the shorter column.
   for (const page of rest) {
+    const made = firstAidCallout(c, page, page.title, page.parts, notes);
     if (leftSize <= rightSize) {
-      left.push(firstAidPage(c, page));
-      leftSize += size(page);
+      left.push(made);
+      leftSize += firstAidSize(page.parts);
     } else {
-      right.push(firstAidPage(c, page));
-      rightSize += size(page);
+      right.push(made);
+      rightSize += firstAidSize(page.parts);
     }
   }
   content.push(twoColumns(left, right));
-
-  c.used.fema = true;
-  content.push(
-    heading("The recovery position"),
-    figure(recoveryPosition().svg, {
-      width: Math.min(c.measure, 400),
-      caption:
-        "Outpost's drawing of FEMA's words below, each part labelled with them. It shows the position, not how to roll someone into it, as the words do.",
-    }),
-    twoColumns(
-      [
-        callout("know", "The recovery position, in FEMA's words", [
-          bullets(RECOVERY_POSITION.parts.map((part) => `“${part}”`)),
-          note(`${RECOVERY_POSITION.title}. ${RECOVERY_POSITION.terms}`),
-        ]),
-      ],
-      [
-        callout("warn", "Moving someone", [
-          para(`“${RECOVERY_POSITION.caution[0]}”`),
-          bullets(RECOVERY_POSITION.caution.slice(1).map((line) => `“${line}”`)),
-        ]),
-      ],
-    ),
-  );
   content.push(
     callout("warn", "What this section cannot hold", [
       para(
@@ -928,6 +1017,8 @@ function firstAid(c: Context): Section {
       ),
       bullets(FIRST_AID_POINTERS.map((pointer) => `**${pointer.what}:** ${pointer.who}, ${pointer.url}`)),
     ]),
+    label("Notes"),
+    ...notes.content(),
   );
   c.summary["first-aid"] = FIRST_AID_PAGES.map((page) => `${page.title} (reviewed ${page.reviewed})`);
   return { subtitle: `Call ${c.number || "the emergency services"} first if you can. Then the words below, quoted unchanged.`, content };
@@ -1970,10 +2061,15 @@ export function makeBook(inputs: BookInputs): MadeBook {
   const numbered = (id: string, title: string, about: string, made: Section) => {
     const number = entries.length + 1;
     entries.push({ number, label: title, id: `section-${id}`, about });
+    const across = made.orientation === "landscape";
+    // Laid across, with narrower margins, so that two A6 cards fit side by side.
+    const margins: [number, number, number, number] = [30, 34, 30, 40];
+    const width = across ? PRINT_PAPERS[paper].height - margins[0] - margins[2] : measure;
     parts.push({
       kind: "section",
       running: `${number} · ${title}`,
-      content: [sectionHeader({ number, title, subtitle: made.subtitle, id: `section-${id}` }, measure), ...made.content],
+      content: [sectionHeader({ number, title, subtitle: made.subtitle, id: `section-${id}` }, width), ...made.content],
+      ...(across ? { orientation: "landscape" as const, margins } : {}),
     });
   };
   for (const section of BOOK_SECTIONS) {
@@ -1998,32 +2094,54 @@ export function makeBook(inputs: BookInputs): MadeBook {
 
   const title = name ? `${name}: household book` : "Our household book";
   const made = longDate.format(inputs.made);
-  const front: PrintPart[] = [
-    {
-      kind: "cover",
-      content: [
-        ...cover({
-          kicker: "Household book",
-          title,
-          subtitle: `Made on ${made} from what Outpost held then.`,
-          call: {
-            label: "In an emergency, call",
-            number: c.number || "not given",
-            note: inputs.answers.sections.includes("first-minutes") ? "Then turn to section 1, The first few minutes." : undefined,
-          },
-          facts: [
-            ...(inputs.facts.home
-              ? ([["Home", `${inputs.facts.home.name}, ${at4(inputs.facts.home.lat, inputs.facts.home.lon)}`]] as Array<[string, string]>)
-              : []),
-            ["Made", made],
-            ["In it", `${entries.length} sections; contents overleaf`],
-          ],
-          measure,
-        }),
-        ...frontContent(c),
-      ],
+  const home = inputs.facts.home;
+  // A small map of where home is, from the map of home and the meeting points when one was drawn.
+  const placesBlock = inputs.placesMap?.block;
+  const locator =
+    placesBlock && placesBlock.kind === "drawing"
+      ? {
+          svg: sheetItemsToSvg(
+            placesBlock.draw(0, 0, measure),
+            { x: 0, y: 0, width: measure, height: placesBlock.height },
+            new Map(
+              [...(inputs.placesMap?.pictures ?? new Map())].map(([id, picture]) => [
+                id,
+                `data:image/jpeg;base64,${base64Of(picture.jpeg)}`,
+              ]),
+            ),
+          ),
+          caption: "Home and the meeting points. The full map is under Home and meeting points.",
+        }
+      : undefined;
+  const coverPage = bookCover({
+    kicker: "Household book",
+    title: name || "Our household",
+    subtitle: `Made on ${made} from what Outpost held then.`,
+    call: {
+      label: "In an emergency, call",
+      number: c.number || "not given",
+      note: inputs.answers.sections.includes("first-minutes") ? "Then turn to section 1, The first few minutes." : undefined,
     },
-    { kind: "plain", content: contentsPage(c, entries) },
+    facts: [
+      ...(home
+        ? ([
+            [
+              "Home",
+              `**${home.name}**\n${at4(home.lat, home.lon)}${toMaidenhead(home.lat, home.lon, 6) ? `  ·  ${toMaidenhead(home.lat, home.lon, 6)}` : ""}`,
+            ],
+          ] as Array<[string, string]>)
+        : []),
+      ["Made", made],
+      ["In it", `${entries.length} sections; contents overleaf`],
+    ],
+    art: contourArt(PRINT_PAPERS[paper].width, COVER_BAND, { seed: seedOf(name || "household"), colour: "#5f98a2" }).svg,
+    locator,
+    footnote: "Our household's own book, made in advance. In a real emergency, follow the emergency services and official warnings.",
+    paper,
+  });
+  const front: PrintPart[] = [
+    { kind: "cover", content: coverPage.content, background: coverPage.background },
+    { kind: "plain", content: [...contentsPage(c, entries), ...frontContent(c)] },
   ];
   const document = printDocument({
     paper,

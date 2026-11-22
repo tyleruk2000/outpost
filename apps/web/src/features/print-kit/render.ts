@@ -5,6 +5,7 @@
  */
 import type { TDocumentDefinitions } from "pdfmake/interfaces";
 import { countingPages } from "./document";
+import { FALLBACK_LOADERS, type FallbackFont, withFallbacks } from "./fallback";
 import { PRINT_FONT } from "./tokens";
 
 type PdfMake = typeof import("pdfmake/build/pdfmake.min.js");
@@ -33,9 +34,28 @@ export interface RenderedPdf {
   pages: number;
 }
 
+const loadedFallbacks = new Set<FallbackFont>();
+
+/** The fallback fonts a document needs and has not had yet, into pdfmake. */
+async function loadFallbacks(pdfMake: PdfMake, fonts: ReadonlySet<FallbackFont>) {
+  const wanted = [...fonts].filter((font) => !loadedFallbacks.has(font));
+  const files = await Promise.all(wanted.map((font) => FALLBACK_LOADERS[font]()));
+  wanted.forEach((font, index) => {
+    const { regular, bold } = files[index]!;
+    pdfMake.addVirtualFileSystem({ [`${font}-Regular.ttf`]: regular, [`${font}-Bold.ttf`]: bold });
+    pdfMake.addFonts({
+      [font]: { normal: `${font}-Regular.ttf`, bold: `${font}-Bold.ttf`, italics: `${font}-Regular.ttf`, bolditalics: `${font}-Bold.ttf` },
+    });
+    loadedFallbacks.add(font);
+  });
+}
+
 export async function renderPdf(definition: TDocumentDefinitions): Promise<RenderedPdf> {
   const pdfMake = await loadPdfMake();
-  const { doc, pages } = countingPages(definition);
+  // Letters the typeface lacks are set in a fallback font, loaded only when they are there.
+  const fallen = withFallbacks(definition);
+  await loadFallbacks(pdfMake, fallen.fonts);
+  const { doc, pages } = countingPages(fallen.doc);
   const buffer = await pdfMake.createPdf(doc).getBuffer();
   return { bytes: new Uint8Array(buffer), pages: Math.max(1, pages()) };
 }
