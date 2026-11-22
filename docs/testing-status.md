@@ -178,6 +178,13 @@ of what each feature does are in its own guide.
 - **Height of the ground, line of sight, radio range**: not checked with a real Mapterhorn download (what
   tiles hold over the sea, decode time); speed measured with made-up terrain; whether each terrain
   source is bare ground or surface is not checked.
+- **Radio range beyond 50 km**: now read from finer tiles where they are installed; not compared again
+  with `gdal_viewshed` or a 5 m walk, and its time on a Raspberry Pi not measured.
+- **Irish Grid and ITM**: checked against OSi's worked examples, one NISRA reference and PROJ; not
+  against a printed OSi or OSNI map or a GPS on the ground.
+- **Night style**: its reds for a range and a walk, and the dimmed satellite imagery, are worked out from
+  contrast figures; not looked at in the dark with eyes adapted to it.
+- **UTM grid on the map**: not checked against a printed map's grid on paper.
 - **Icons**: speed not measured on a phone; exported symbols not opened in Garmin software or units.
 - **GPX**: exported files have not been opened in another program (BaseCamp, OsmAnd, Organic Maps, Gaia
   GPS, Komoot, QGIS, GPXSee, gpx.studio, Google Earth, JOSM). No long national trail has been fetched to

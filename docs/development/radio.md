@@ -78,6 +78,12 @@ meta)` (at most 4 KB; announces `board.changed` with `delivery`). Messages live 
 
 The viewshed reads 720 bearings, half a degree apart: every 10 m to 2 km (from the finest
 terrain), 50 m to 25 km, 100 m to 50 km and 250 m to 100 km. The answer is about 190 kB.
+Beyond 50 km the ground is read from the same tiles as from 25 to 50 km (cells of about
+90 m at 55° N, zoom 9) where they are installed, not from tiles about as wide as the step
+(about 180 m, zoom 8); where only coarser tiles are held, those are read
+(`RANGE_FAR_READ_METERS` in `radio-range.ts`). The check below was made before this change
+and has not been made again; how long the finer far band takes on a Raspberry Pi has not
+been timed.
 
 *How it was checked* (21 November 2026). The same terrain tiles were read at four places:
 a hillside near the A9 (56.8866, −4.1454, 750 m), Ben Nevis summit (56.7969, −5.0036,
@@ -94,7 +100,8 @@ skipped a summit's crown, and on Ben Nevis gave 15.9% of the ground within 2 km 
 where the 5 m walk gives 8.8%. The first 2 km are now read every 10 m from the finest
 terrain, which gives 8.9%. The largest remaining difference is far out from a high
 summit: from Ben Nevis with a 10 m mast, 10.6% of the ground within 100 km against 9.2%,
-because beyond 50 km the ground is read every 250 m from cells of about 170 m. Over the
+because beyond 50 km the ground was read every 250 m from cells of about 170 m (now from
+cells of about 90 m where installed, not yet compared). Over the
 sea the terrain holds 0 m, so a station there is taken as at sea level; tides are not
 counted.
 

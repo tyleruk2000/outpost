@@ -138,7 +138,8 @@ On the map:
   phone works it out the same way from terrain it kept.
 
 The same rings and circle appear in the disc of **Why this shape** (which reaches only as
-far as the last ring) and, with **Estimated radio range** ticked, on a printed map.
+far as the last ring) and, with **Estimated radio range** ticked, on a printed map, in the
+light map's colours.
 
 The aerial height is as listed, or an assumed **10 m** (changeable; low so the estimate
 errs small). The other station is **Handheld 1.5 m**, **Car 2 m** or **Roof aerial 8 m**.

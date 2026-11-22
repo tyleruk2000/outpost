@@ -34,6 +34,8 @@ const TOOLS = [
   "Hill shading",
   "Contour lines",
   "Maidenhead locator grid",
+  "Find where you are from bearings",
+  "UTM grid",
   // Offered before any imagery is installed, named for what it needs.
   "Satellite: none downloaded yet",
 ];
@@ -218,6 +220,26 @@ for (const setUp of SET_UPS) {
       expect(await wrong(page), "line of sight, choosing a point").toEqual([]);
       await expectInSheetsPlace(page, centre);
       await page.getByRole("button", { name: "Stop checking line of sight" }).tap();
+
+      // Finding where you are from bearings: its card has the sheet's place, with a landmark chosen and its bearing given.
+      await takeUp(page, "Find where you are from bearings");
+      const resection = page
+        .locator(".outpost-map-card")
+        .filter({ has: page.getByRole("heading", { name: "Find where you are from bearings" }) });
+      await expect(resection).toBeVisible();
+      await atRest(page);
+      expect(await wrong(page), "finding where you are, choosing the first landmark").toEqual([]);
+      await expectInSheetsPlace(page, centre);
+      const useCentre = resection.getByRole("button", { name: "Use the centre of the map" });
+      if ((await useCentre.count()) === 0) await resection.getByRole("button", { name: "Choose on the map" }).first().tap();
+      await resection.getByRole("button", { name: "Use the centre of the map" }).tap();
+      await resection.getByLabel("Bearing to A").fill("45");
+      await page.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur());
+      await atRest(page);
+      expect(await wrong(page), "finding where you are, one landmark with its bearing").toEqual([]);
+      await expectInSheetsPlace(page, centre);
+      await page.getByRole("button", { name: "Stop finding where you are" }).tap();
+      await expect(resection).toBeHidden();
 
       // The sheet half raised, with the list of places in it.
       await page.getByRole("tab", { name: /^Places/ }).tap();

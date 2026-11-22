@@ -14,7 +14,8 @@ device from the installed maps; nothing is sent anywhere until you choose **Add 
    tick what to show: names, contour lines, hill shading, road numbers, routes, saved places,
    **Magnetic north**, latitude and longitude lines, UTM grid lines, Maidenhead squares, the
    grey line. The preview warns when the installed maps or terrain do not cover the page in
-   enough detail (1:25,000 needs zoom 13).
+   enough detail (1:25,000 needs zoom 13). An estimated radio range is printed in the light
+   map's green whatever the screen shows (the dark theme, the night style).
 4. **Make the PDF**, then **Save as PDF**, **Add to library**, **Share** or **Print**.
 
 **Magnetic north** adds an arrow, the declination for the middle of the sheet that day with
