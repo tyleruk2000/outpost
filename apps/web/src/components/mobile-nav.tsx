@@ -1,4 +1,4 @@
-import { ChevronRight, Ellipsis, Search } from "lucide-react";
+import { ChevronRight, Ellipsis, Search, X } from "lucide-react";
 import { Dialog as Sheet } from "radix-ui";
 import { useLayoutEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router";
@@ -196,6 +196,12 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
               <div className="mt-2 border-t border-spine-border pt-2">
                 <Lamp />
               </div>
+              {/* A way out a screen reader can reach on a phone: VoiceOver's and TalkBack's gestures for Escape do not reach
+                  every browser, and the dimmed page behind cannot be reached while the sheet is open. */}
+              <Sheet.Close className={cn(rowClass, "mt-2 w-full border-t border-spine-border")}>
+                <X aria-hidden className="size-5 shrink-0" strokeWidth={1.6} />
+                Close
+              </Sheet.Close>
             </Sheet.Content>
           </Sheet.Portal>
         </Sheet.Root>

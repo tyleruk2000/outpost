@@ -138,6 +138,17 @@ describe("the phone's bottom bar", () => {
     expect(within(under).getByRole("link", { name: "Manage and clean up" })).toHaveAttribute("aria-current", "page");
   });
 
+  it("has a Close button at the end of the More sheet, which a screen reader on a phone can reach, and focus goes back to More", async () => {
+    const user = userEvent.setup();
+    const nav = bar("/");
+    const more = within(nav).getByRole("button", { name: "More" });
+    await user.click(more);
+    const sheet = screen.getByRole("dialog", { name: "More" });
+    await user.click(within(sheet).getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog", { name: "More" })).toBeNull();
+    expect(more).toHaveFocus();
+  });
+
   it("marks the tab, not More, for a screen a tab holds", () => {
     const nav = bar("/library/documents/abc");
     expect(within(nav).getByRole("link", { name: "Library" })).toHaveAttribute("aria-current", "page");
