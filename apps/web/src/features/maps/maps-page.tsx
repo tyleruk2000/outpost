@@ -1661,6 +1661,9 @@ export default function MapsPage() {
       return;
     }
     const measure = () => {
+      // Out of sight (the browser's own Print shows only the sheet being printed): nothing to measure, and a layout
+      // changed now would put away the print dialog that is printing.
+      if (element.clientWidth === 0 || element.clientHeight === 0) return;
       const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
       const narrow = element.clientWidth < 30 * rem;
       const short = element.clientHeight - 3 * rem < toolCount * 2.17 * rem;
