@@ -207,7 +207,8 @@ export function demandByHour(plan: PowerPlanInput): number[] {
   return hours;
 }
 
-function chargerByHour(plan: PowerPlanInput): number[] {
+/** Watts the charger puts into the battery in each hour of the day. */
+export function chargerByHour(plan: PowerPlanInput): number[] {
   const hours = new Array<number>(24).fill(0);
   if (!plan.charger.enabled || plan.charger.watts <= 0) return hours;
   let left = Math.min(24, plan.charger.hoursPerDay);

@@ -23,16 +23,16 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Skeleton, Switch } from "@/components/ui/misc";
-import { madePdf } from "@/features/library/made/made-pdf";
 import { PdfButtons, PdfStatus, useMadePdf } from "@/features/library/made/pdf-actions";
+import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
 import { errorMessage } from "@/lib/api";
-import { appLocale } from "@/lib/region";
+import { appLocale, deviceRegion, likelyPaperFor } from "@/lib/region";
 import { formatDateTime, plural } from "@/lib/utils";
 import { assumptions, loadDailyWh, radioDuty, simulate, usbEfficiency, workOut } from "./calc/plan";
 import { inputOf, isConflict, useCopyPowerPlan, usePowerPlan, useRemovePowerPlan, useSavePowerPlan } from "./data";
 import { FigureSources } from "./device-rows";
 import { kindWords } from "./device-text";
-import { chartMonth, ESTIMATE, hoursText, planPdf } from "./document";
+import { chartMonth, ESTIMATE, hoursText, planDocument } from "./document";
 import { LossFields, PVGIS_URL } from "./energy-calculators";
 import { Answer, Answers, Basis, ChoiceField, Fields, figure, NumberField, PercentField } from "./inputs";
 import { LoadDialog } from "./load-dialog";
@@ -192,14 +192,22 @@ export default function PowerPlanPage() {
 
   // The PDF is made from the plan as saved, so that the file and the library's copy say what is kept.
   const saved = plan.data;
-  const pdf = useMemo(() => {
-    if (!saved) return null;
+  const make = useCallback(() => {
+    if (!saved) throw new Error("The plan is not loaded yet.");
     const input = inputOf(saved);
-    return madePdf(planPdf(input, workOut(input), new Date(saved.updatedAt)), powerPlanTitle(saved), "Power plan", {
-      what: `the power plan “${saved.name}”`,
-      path: `/tools/power/plans/${saved.id}`,
+    return planDocument({
+      plan: input,
+      answers: workOut(input),
+      written: new Date(saved.updatedAt),
+      paper: likelyPaperFor(deviceRegion()),
     });
   }, [saved]);
+  const kit = useKitPdf(saved ? make : null, {
+    title: saved ? powerPlanTitle(saved) : "Power plan",
+    kind: "Power plan",
+    from: { what: `the power plan “${saved?.name ?? ""}”`, path: `/tools/power/plans/${saved?.id ?? id}` },
+  });
+  const pdf = kitPdfOf(kit);
   const made = useMadePdf(pdf);
 
   if (plan.isPending || (plan.data && !draft)) {
@@ -283,6 +291,15 @@ export default function PowerPlanPage() {
           </>
         }
       />
+      {kit.status === "making" ? (
+        <p className="-mt-4 mb-6 text-small text-ink-muted" role="status">
+          Making the PDF…
+        </p>
+      ) : kit.status === "failed" ? (
+        <Notice tone="warning" title="The PDF could not be made" className="-mt-4 mb-6">
+          {kit.error}
+        </Notice>
+      ) : null}
       <PdfStatus made={made} className="-mt-4 mb-6" />
       {conflict ? (
         <Notice tone="warning" icon={<TriangleAlert />} title="This plan was changed somewhere else" className="mb-6">

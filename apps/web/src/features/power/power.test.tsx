@@ -5,7 +5,7 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { toMarkdown } from "@/features/propagation/plans/document";
 import { workOut } from "./calc/plan";
-import { planBlocks, planPdf } from "./document";
+import { planBlocks } from "./document";
 import PowerPlanPage from "./plan-page";
 import PowerPage from "./power-page";
 
@@ -477,7 +477,7 @@ describe("peak sun hours from Weather and hazards", () => {
 });
 
 describe("the plan written out", () => {
-  it("has the answers, every assumption and the estimate warning, and makes a PDF", () => {
+  it("has the answers, every assumption and the estimate warning", () => {
     const plan = planOf({ notes: "Check the fuses." });
     const text = toMarkdown(planBlocks(plan, workOut(plan), new Date(Date.UTC(2026, 10, 16))));
     expect(text.startsWith("# Power plan: Shack\n")).toBe(true);
@@ -486,8 +486,6 @@ describe("the plan written out", () => {
     expect(text).toContain("HF radio: 20 W transmitting");
     expect(text).toContain("## Notes\n\nCheck the fuses.");
     expect(text).toContain("Peak sun hours typed in.");
-    const bytes = planPdf(plan, workOut(plan), new Date(Date.UTC(2026, 10, 16)));
-    expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe("%PDF-");
   });
 });
 

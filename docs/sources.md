@@ -1070,3 +1070,18 @@ For **Settings → Updates** ([updating.md](updating.md)).
   License 1.1, static TTFs from https://github.com/googlefonts/atkinson-hyperlegible-next at
   commit 7925f50f649b3813257faf2f4c0b381011f434f1, with `OFL.txt` beside them in
   `apps/web/src/features/print-kit/fonts/`.
+
+## Printed power plan: where the fuses go (read 2026-11-22)
+
+- **33 CFR 183.455, Overcurrent protection: General** (United States Coast Guard rules for
+  the electrical systems of boats), read 22 November 2026 from
+  https://www.law.cornell.edu/cfr/text/33/183.455 (ecfr.gov sent the request to a check
+  page). Quoted on the printed power plan beside its wiring drawing: (a) "Each ungrounded
+  current-carrying conductor must be protected by a manually reset, tripfree circuit
+  breaker or fuse"; (b) one "must be placed at the source of power for each circuit or
+  conductor", or "within seven inches of the source of power" where that is physically
+  impractical, measured along the conductor; (c)(1) under 50 volts, a rating no more than
+  "150% of the value of the amperage in Table 5 for the conductor size it is protecting".
+  The drawing puts a fuse at the battery end of each cable on that rule. It is the companion
+  of 33 CFR 183.425 (Table 5), which Tools, Power and batteries already uses for cable
+  current, and is given as guidance in the same way. A US federal regulation, public domain.
