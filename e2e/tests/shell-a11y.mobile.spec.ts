@@ -4,7 +4,7 @@
  * the bar of screens (WCAG 2.4.2, 2.4.11, 4.1.3). Chromium with a phone's screen, not a real phone.
  */
 import type { Page } from "@playwright/test";
-import { expect, test, watchForErrors } from "./fixtures";
+import { api, expect, test, watchForErrors } from "./fixtures";
 
 /** What lies over the focused control's middle, if it is not the control: a bar, or nothing. */
 const coveredBy = (page: Page) =>
@@ -51,6 +51,22 @@ test("each screen names the tab and is announced, and focus is never left under 
   expect(errors).toEqual([]);
 });
 
+test("a link to a place in Settings lands right under the phone's top bar", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const id of ["backup", "https", "mesh"]) {
+    await page.goto(`/settings#${id}`);
+    const heading = page.locator(`#${id}-title`);
+    await expect(heading).toBeVisible();
+    // The screen holds the place for a moment while the sections above it fill in.
+    await page.waitForTimeout(1200);
+    const bar = await page.locator("header.sticky").boundingBox();
+    const box = await page.locator(`section#${id}`).boundingBox();
+    const gap = box!.y - (bar!.y + bar!.height);
+    expect(gap, `#${id}`).toBeGreaterThanOrEqual(0);
+    expect(gap, `#${id}`).toBeLessThanOrEqual(16);
+  }
+});
+
 test("the set-up guide fits a phone with the text at 200%, its long addresses broken", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => {
@@ -91,4 +107,25 @@ test("search results with their filter tabs do not scroll the page sideways on a
   await expect(page.getByRole("tablist", { name: "Filter results" }).getByRole("tab").nth(1)).toBeVisible();
   // The words read out with a tab's count are kept inside the strip of tabs that scrolls, not past the screen's edge.
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+});
+
+test("the bar of screens overhangs nothing when a contact is changed on a narrow phone with the text at 200%", async ({ page }) => {
+  // The bar is as wide as the page: it overhung only because the page was wider than the phone, by the editor's title (a
+  // long name that did not break) and by its form's column, sized to a text area's natural width.
+  const made = await api(page, "POST", "/api/contacts", {
+    name: { prefix: "", given: "Margaret", additional: "", family: "Featherstonehaugh-Cholmondeley", suffix: "" },
+    phones: [{ value: "+44 7700 900123", label: "mobile" }],
+  });
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.addInitScript(() => {
+    const apply = () => document.documentElement.style.setProperty("font-size", "32px", "important");
+    if (document.documentElement) apply();
+    document.addEventListener("DOMContentLoaded", apply);
+  });
+  await page.goto(`/contacts/${made.contact.id}/edit`);
+  await expect(page.getByRole("textbox", { name: "Note" })).toBeAttached();
+  await page.waitForLoadState("networkidle");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+  const bar = await page.getByRole("navigation", { name: "Main" }).boundingBox();
+  expect(bar!.x + bar!.width).toBeLessThanOrEqual(320);
 });

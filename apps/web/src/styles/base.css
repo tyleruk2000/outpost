@@ -166,10 +166,12 @@
   }
 
   /* On a phone the top bar and the bar of screens stay put over the page. A control reached with Tab is
-     scrolled clear of both, not left under them (WCAG 2.4.11). */
+     scrolled clear of the bar of screens here, and of the top bar (and a screen's own bar under it) by
+     components/focus-clear.ts (WCAG 2.4.11). Not by a padding at the top: a link to a place on a screen
+     (/settings#backup) already lands under the top bar by that place's own scroll margin, and the two
+     together left it 3.75rem lower. */
   @media (width < 48rem) {
     html {
-      scroll-padding-top: calc(3.25rem + 0.5rem);
       scroll-padding-bottom: calc(var(--mobile-nav-height, 4rem) + 0.5rem);
     }
   }
