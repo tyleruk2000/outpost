@@ -12,10 +12,7 @@ export function ForHousehold({ className }: { className?: string }) {
   return (
     <p className={cn("text-small text-ink-muted", className)} data-testid="for-household">
       For {data.household.name} ·{" "}
-      <Link
-        to="/prepare/households"
-        className="text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2"
-      >
+      <Link to="/prepare/households" className="text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2">
         Change
       </Link>
     </p>
