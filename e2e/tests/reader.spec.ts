@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { APIRequestContext } from "@playwright/test";
+import type { APIRequestContext, Page } from "@playwright/test";
 import { api, expect, test, watchForErrors } from "./fixtures";
 
 /**
@@ -12,6 +12,9 @@ import { api, expect, test, watchForErrors } from "./fixtures";
 const BOOK = "field-library_en_2026-11";
 const UUID = "5d1c0b6e-2f3a-4c7d-9e8f-0a1b2c3d4e5f";
 const headers = { "X-Outpost-Request": "1" };
+/** The list's count, said as it changes. The screen's own status, not the app's announcement of the screen's name (outside main). */
+const listStatus = (page: Page) => page.getByRole("main").getByRole("status");
+
 /** The stand-in archive itself, for making its files slow to arrive or one of them absent. */
 const ARCHIVE = process.env.OUTPOST_E2E_KIWIX_URL!;
 const archiveAs = (how = "") => fetch(`${ARCHIVE}/control${how}`);
@@ -82,7 +85,7 @@ test.describe("a collection that is a list of documents", () => {
     const errors = watchForErrors(page);
     await page.goto(`/library/read/${id}/`);
     await expect(page.getByRole("heading", { name: "Documents in this collection", level: 1 })).toBeVisible();
-    await expect(page.getByRole("status")).toHaveText("10 documents");
+    await expect(listStatus(page)).toHaveText("10 documents");
     // The collection's own page is not loaded at all.
     await expect(page.locator("iframe")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Sütterlin für Anfänger — 初級" })).toBeVisible();
@@ -94,15 +97,15 @@ test.describe("a collection that is a list of documents", () => {
     const search = page.getByRole("searchbox", { name: "Search the documents in Field library" });
     await search.fill("water");
     await expect(page.getByRole("heading", { name: "Documents matching “water”", level: 1 })).toBeVisible();
-    await expect(page.getByRole("status")).toHaveText("2 of 10 documents");
+    await expect(listStatus(page)).toHaveText("2 of 10 documents");
     await expect(page.getByRole("list", { name: "Documents" }).getByRole("heading", { level: 2 })).toHaveText([
       "Boiling water to make it safe",
       "Purifying water with bleach",
     ]);
     await search.fill("zebra");
-    await expect(page.getByRole("status")).toContainText("None of the 10 documents has those words");
+    await expect(listStatus(page)).toContainText("None of the 10 documents has those words");
     await search.fill("rocket");
-    await expect(page.getByRole("status")).toHaveText("1 of 10 documents");
+    await expect(listStatus(page)).toHaveText("1 of 10 documents");
 
     // A PDF opens in Outpost's own viewer, read straight out of the collection.
     await page.getByRole("button", { name: "A camper's rocket stove", exact: true }).click();
@@ -122,7 +125,7 @@ test.describe("a collection that is a list of documents", () => {
     await page.getByRole("button", { name: "Back to the list" }).click();
     await expect(page.getByRole("link", { name: "In your library: A camper's rocket stove" })).toBeVisible();
     await search.fill("");
-    await expect(page.getByRole("status")).toHaveText("10 documents");
+    await expect(listStatus(page)).toHaveText("10 documents");
 
     // A document can be added from the list as well.
     await page.getByRole("button", { name: "Add to library: Splinting a forearm" }).click();
@@ -217,7 +220,7 @@ test.describe("a collection that is a list of documents", () => {
         expect(box!.height, name).toBeGreaterThanOrEqual(40);
       }
       await page.getByRole("searchbox").fill("grain");
-      await expect(page.getByRole("status")).toHaveText("1 of 10 documents");
+      await expect(listStatus(page)).toHaveText("1 of 10 documents");
       // Pressing the description opens the document, not only its title.
       const words = (await page.getByText('Food: "dry, dark and cool"').boundingBox())!;
       await page.touchscreen.tap(words.x + words.width / 2, words.y + words.height / 2);
@@ -278,7 +281,7 @@ test.describe("a collection that is a list of documents", () => {
 
       await page.goto(`/library/read/${id}/`);
       // How it turned out: how many were added, and which one was not, and why.
-      const outcome = page.getByRole("status").filter({ hasText: "could not be added" });
+      const outcome = listStatus(page).filter({ hasText: "could not be added" });
       await expect(outcome).toContainText("Added 6 documents to your library; 1 could not be added", { timeout: 30_000 });
       await expect(outcome).toContainText("They are on “Internal storage”");
       await expect(outcome).toContainText("stay there if this collection is removed");
@@ -322,7 +325,7 @@ test.describe("a collection that is a list of documents", () => {
         .getByRole("dialog", { name: "Add these 2 documents to your library?" })
         .getByRole("button", { name: "Add 2 documents" })
         .click();
-      await expect(page.getByRole("status").filter({ hasText: "Added 2 documents to your library" })).toBeVisible({ timeout: 20_000 });
+      await expect(listStatus(page).filter({ hasText: "Added 2 documents to your library" })).toBeVisible({ timeout: 20_000 });
       await expect(page.getByRole("link", { name: /^In your library: / })).toHaveCount(2);
 
       // The rest, slowly, and stopped before the end.
@@ -333,7 +336,7 @@ test.describe("a collection that is a list of documents", () => {
       const going = page.getByRole("region", { name: "Adding to your library" });
       await expect(going).toContainText(/[1-4] of 6/, { timeout: 20_000 });
       await going.getByRole("button", { name: "Stop" }).click();
-      const stopped = page.getByRole("status").filter({ hasText: "Stopped after" });
+      const stopped = listStatus(page).filter({ hasText: "Stopped after" });
       await expect(stopped).toContainText(/Stopped after [1-5] of 6 documents/, { timeout: 15_000 });
       await expect(stopped).toContainText(/[1-5] documents? (was|were) not reached\./);
       // What was added stays, and what is left is offered again.
@@ -416,7 +419,7 @@ test.describe("a collection that is a list of documents", () => {
         ).toBeGreaterThanOrEqual(44);
         expect(await fits()).toBe(true);
         await archiveAs();
-        await expect(page.getByRole("status").filter({ hasText: "Added 8 documents to your library" })).toBeVisible({ timeout: 30_000 });
+        await expect(listStatus(page).filter({ hasText: "Added 8 documents to your library" })).toBeVisible({ timeout: 30_000 });
         expect(await fits()).toBe(true);
         expect(errors).toEqual([]);
       });

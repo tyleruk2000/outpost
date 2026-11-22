@@ -13,7 +13,7 @@ import type { JobDto, SavedCopy, SaveWebPageResult, WebPagePreview } from "@outp
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, CircleAlert, CircleCheck, Info } from "lucide-react";
 import { RadioGroup } from "radix-ui";
-import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { type FormEvent, type ReactNode, type RefObject, useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -485,16 +485,40 @@ export function SaveWebPage({ className, autoFocus }: { className?: string; auto
 }
 
 /** The panel as the Library shows it: framed, with a name and a way to put it away. */
-export function SaveWebPagePanel({ onClose, className }: { onClose: () => void; className?: string }) {
+export function SaveWebPagePanel({
+  onClose,
+  className,
+  opener,
+}: {
+  onClose: () => void;
+  className?: string;
+  /** The button that opened it: the screen is scrolled to start there, so that both are in view. */
+  opener?: RefObject<HTMLElement | null>;
+}) {
+  // Opened, the panel is brought into view with what opened it, clear of a phone's top bar, and the cursor goes
+  // into the address without the browser's own scroll: that put the address at the foot of a small screen and
+  // the button that opened the panel under the top bar.
+  const panel = useRef<HTMLElement>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once, as the panel opens
+  useEffect(() => {
+    const section = panel.current;
+    if (!section) return;
+    (opener?.current ?? section).scrollIntoView?.({ block: opener?.current ? "start" : "nearest" });
+    section.querySelector("input")?.focus({ preventScroll: true });
+  }, []);
   return (
-    <section aria-label="Save a web page" className={cn("overflow-hidden rounded-panel border border-border", className)}>
+    <section
+      ref={panel}
+      aria-label="Save a web page"
+      className={cn("scroll-mt-20 scroll-mb-24 overflow-hidden rounded-panel border border-border md:scroll-mb-4", className)}
+    >
       <header className="flex min-h-11 items-center justify-between gap-3 border-b border-border bg-surface py-1 pr-2 pl-4">
         <h2 className="text-small font-medium text-ink">Save a web page</h2>
         <Button variant="ghost" size="sm" onClick={onClose}>
           Close
         </Button>
       </header>
-      <SaveWebPage autoFocus className="px-4 py-4" />
+      <SaveWebPage className="px-4 py-4" />
     </section>
   );
 }

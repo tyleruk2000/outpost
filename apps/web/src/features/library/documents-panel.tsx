@@ -291,6 +291,10 @@ export default function DocumentsPanel() {
       },
       { replace: true },
     );
+  // The row of the filter and the buttons: opened from there, the panel lies straight under the buttons (above the
+  // Type and Sort rows, so that on a small phone the button and the address are in view together) and the screen
+  // is scrolled to start at the row.
+  const toolbarRef = useRef<HTMLDivElement>(null);
   const savePageButton = (
     <Button aria-expanded={savingPage} onClick={() => setSavingPage(!savingPage)}>
       <Globe /> Save a web page
@@ -317,12 +321,15 @@ export default function DocumentsPanel() {
 
       {libraryEmpty ? null : (
         <>
-          <div className="flex flex-wrap items-center gap-2">
+          <div ref={toolbarRef} className="flex flex-wrap items-center gap-2 md:scroll-mt-4">
             <NameFilter value={filters.q} onChange={(q) => setFilters({ q }, true)} />
             <div className="flex flex-wrap gap-2 md:order-last md:ml-auto">
               {savePageButton}
               {addButton}
             </div>
+            {savingPage ? (
+              <SaveWebPagePanel onClose={() => setSavingPage(false)} opener={toolbarRef} className="mt-1 basis-full md:order-last" />
+            ) : null}
             <div className="scroll-quiet flex items-center gap-2 max-md:-mx-5 max-md:w-screen max-md:overflow-x-auto max-md:px-5 max-md:py-0.5">
               {typeChoices.length > 1 || filters.type ? (
                 <ChoiceMenu<DocumentType>
@@ -379,7 +386,7 @@ export default function DocumentsPanel() {
         </>
       )}
 
-      {savingPage ? <SaveWebPagePanel onClose={() => setSavingPage(false)} className={libraryEmpty ? "mb-6" : "mt-3"} /> : null}
+      {savingPage && libraryEmpty ? <SaveWebPagePanel onClose={() => setSavingPage(false)} className="mb-6" /> : null}
 
       <UploadTray
         items={uploads}
