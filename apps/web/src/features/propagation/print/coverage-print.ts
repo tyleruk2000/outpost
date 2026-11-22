@@ -34,7 +34,6 @@ import {
   PAPER_SHADES,
 } from "../coverage-map/coverage-document";
 import type { PredictionPaper } from "../prediction-document";
-import { kitWritable, writableBlocks } from "./glyphs";
 import { groupsOf } from "./prediction-print";
 import { kept } from "./radio-parts";
 
@@ -94,7 +93,7 @@ export interface CoveragePrintInput {
 export function coveragePrint(input: CoveragePrintInput): TDocumentDefinitions {
   const { result, quantity, utcHour, paper, picture } = input;
   const measure = measureOf(paper);
-  const blocks = writableBlocks(coverageDocument(result, quantity, utcHour, picture));
+  const blocks = coverageDocument(result, quantity, utcHour, picture);
   const groups = groupsOf(blocks);
   const opening = groups.get("") ?? [];
   const title = opening[0]?.kind === "title" ? opening[0].text.replace(/^HF coverage: /, "") : "";
@@ -159,7 +158,7 @@ export function coveragePrint(input: CoveragePrintInput): TDocumentDefinitions {
     paper,
     title: coverageTitle(result, quantity, utcHour),
     made: new Date(result.computedAt),
-    footerName: `HF coverage · ${kitWritable(result.request.tx.name)}`,
+    footerName: `HF coverage · ${result.request.tx.name}`,
     footerRight: `VOACAP median for ${monthYear.format(new Date(`${result.request.date}T00:00:00Z`))}`,
     parts: [{ kind: "section", running: `1 · ${title}`, content }],
   });

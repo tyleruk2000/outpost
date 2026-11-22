@@ -4,7 +4,6 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { contentText, renderPdf } from "@/features/print-kit";
-import { blockLines, kitUnwritable } from "../print/glyphs";
 import { planPrint } from "../print/plan-print";
 import { readPdf } from "../print/read-pdf";
 import { newPlan } from "./data";
@@ -221,12 +220,16 @@ describe("the plan written out", () => {
     expect(text.replace(/\s+/g, " ")).toContain("Primary: 40 m (7.1 MHz), 08:00 to 12:00 UTC.");
   });
 
-  it("names the letters the PDF's typeface cannot write", () => {
+  it("names the letters the old writer's typeface cannot write", () => {
     const plan = planOf({ stations: [station("home", "Дом", 51.51, -0.13), station("shelter", "Remote shelter", 54.46, -3.09)] });
-    expect(kitUnwritable(blockLines(planDocument(plan, matrixOf(), written)))).toEqual(["Д", "о", "м"]);
-    expect(kitUnwritable(blockLines(planDocument(planOf(), matrixOf(), written)))).toEqual([]);
     expect(unwritable(planDocument(plan, matrixOf(), written))).toEqual(["Д", "о", "м"]);
   });
+
+  it("prints a station's name in another script in its own letters", async () => {
+    const plan = planOf({ stations: [station("home", "Дом", 51.51, -0.13), station("shelter", "Remote shelter", 54.46, -3.09)] });
+    const { text } = await readPdf((await renderPdf(planPrint(plan, matrixOf(), written))).bytes);
+    expect(text).toContain("Дом and Remote shelter");
+  }, 60_000);
 });
 
 interface Server {

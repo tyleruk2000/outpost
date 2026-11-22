@@ -24,7 +24,6 @@ import {
 } from "@/features/print-kit";
 import { appLocale } from "@/lib/region";
 import { type Block, planDocument } from "../plans/document";
-import { kitWritable, writableBlocks } from "./glyphs";
 import { groupsOf } from "./prediction-print";
 import type { LandShapes } from "./radio-diagrams";
 import { greyLineFigure, heatGrid, heatKey, howHfTravels, kept, shareLevel } from "./radio-parts";
@@ -71,13 +70,13 @@ export function planPrint(
 ): TDocumentDefinitions {
   const paper = options.paper ?? "a4";
   const measure = measureOf(paper);
-  const blocks = writableBlocks(planDocument(plan, result, written));
+  const blocks = planDocument(plan, result, written);
   const groups = groupsOf(blocks);
   const opening = groups.get("") ?? [];
-  const name = kitWritable(plan.name);
+  const name = plan.name;
   const byRatio = result.mode.requiredSnrDbHz === null;
   const hours = planHours(plan.fromUtc, plan.toUtc);
-  const stationName = (id: string) => kitWritable(plan.stations.find((station) => station.id === id)?.name ?? id);
+  const stationName = (id: string) => plan.stations.find((station) => station.id === id)?.name ?? id;
 
   const first: Content[] = [
     sectionHeader(
@@ -172,7 +171,7 @@ export function planPrint(
 
   // The stations on the world at the start of the window.
   const at = Date.parse(`${plan.date}T00:00:00Z`) + plan.fromUtc * 3_600_000;
-  const places = plan.stations.map((station) => ({ name: kitWritable(station.name), lat: station.lat, lon: station.lon }));
+  const places = plan.stations.map((station) => ({ name: station.name, lat: station.lat, lon: station.lon }));
   if (places.length > 0)
     first.push(
       ...greyLineFigure(measure, at, places, options.land ?? null, {

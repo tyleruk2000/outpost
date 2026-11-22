@@ -40,7 +40,6 @@ import {
 } from "@outpost/shared";
 import { appLocale } from "@/lib/region";
 import { type Block, toMarkdown } from "./plans/document";
-import { blockLines, kitUnwritable } from "./print/glyphs";
 
 export type PredictionPaper = "a4" | "letter";
 
@@ -440,5 +439,3 @@ export function predictionDocument(result: PredictionResult): Block[] {
 
 export const predictionMarkdown = (result: PredictionResult): string => toMarkdown(predictionDocument(result));
 
-/** Characters in the prediction that the PDF's typeface cannot write (a place name in another script). They are printed as "?". */
-export const predictionUnwritable = (result: PredictionResult): string[] => kitUnwritable(blockLines(predictionDocument(result)));

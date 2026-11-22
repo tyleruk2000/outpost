@@ -21,7 +21,7 @@ import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
 import { plural } from "@/lib/utils";
 import { comparisonMarkdown, comparisonTitle } from "./comparison-document";
 import { saveFile } from "./plans/document";
-import { type PredictionPaper, predictionMarkdown, predictionTitle, predictionUnwritable } from "./prediction-document";
+import { type PredictionPaper, predictionMarkdown, predictionTitle } from "./prediction-document";
 import { comparisonPrint } from "./print/comparison-print";
 import { predictionPrint } from "./print/prediction-print";
 import { useLand } from "./print/use-land";
@@ -77,7 +77,6 @@ export function PredictionExport({
     kind: "HF prediction",
     from: { what: savedName ? `the saved HF prediction “${savedName}”` : "the HF propagation planner", path: PLANNER },
   });
-  const lost = useMemo(() => predictionUnwritable(result), [result]);
 
   return (
     <section aria-label="This prediction as a PDF" className="mb-6 grid gap-3 border-y border-border py-4" data-testid="prediction-export">
@@ -108,11 +107,6 @@ export function PredictionExport({
               Export as Markdown
             </Button>
           </PdfActions>
-          {lost.length > 0 ? (
-            <p className="text-small text-ink-muted">
-              The PDF’s typeface cannot write {lost.slice(0, 8).join(" ")}; they are printed as “?”. The Markdown export keeps them.
-            </p>
-          ) : null}
         </>
       )}
       <PaperChoice paper={paper} onChange={setPaper} />

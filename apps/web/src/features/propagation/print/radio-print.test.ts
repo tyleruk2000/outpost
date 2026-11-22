@@ -15,7 +15,6 @@ import { writeSample } from "@/features/print-kit/samples";
 import { comparisonOf, dayOfPrediction, mapOf, matrixOf, planOf } from "../print-fixtures";
 import { comparisonPrint } from "./comparison-print";
 import { coveragePrint, gridDrawing } from "./coverage-print";
-import { kitUnwritable, kitWritable } from "./glyphs";
 import { planPrint } from "./plan-print";
 import { predictionPrint } from "./prediction-print";
 import { greatCircle, greyLineSketch, nvisDiagram, pathSection, REGIONS, skyWaveDiagram } from "./radio-diagrams";
@@ -99,10 +98,21 @@ describe("the usable frequencies chart", () => {
 });
 
 describe("the radio papers", () => {
-  it("print a place in another script as ? and say which letters", () => {
-    expect(kitUnwritable(["Łódź", "Москва"]).sort()).toEqual(["М", "а", "в", "к", "о", "с"].sort());
-    expect(kitWritable("Ærøskøbing → Москва")).toBe("Ærøskøbing to ??????");
-  });
+  it("print a place in another script in its own letters, on the world too", async () => {
+    const sketch = greyLineSketch(
+      500,
+      Date.UTC(2026, 10, 16, 13),
+      [
+        { name: "Αθήνα", lat: 37.98, lon: 23.73 },
+        { name: "北京", lat: 39.9, lon: 116.4 },
+      ],
+      null,
+    );
+    const doc = { content: [{ svg: sketch.svg, width: 500 }], defaultStyle: { font: "Atkinson" } };
+    const { text } = await readPdf((await renderPdf(doc as never)).bytes);
+    expect(text).toContain("Αθήνα");
+    expect(text).toContain("北京");
+  }, 60_000);
 
   it("lay the coverage grid out cell by cell, with each cell's class written in it", () => {
     const said = words(gridDrawing(mapOf(), "reliability", 12, 500).svg);

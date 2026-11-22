@@ -27,7 +27,6 @@ import {
   sectionHeader,
   svgText,
 } from "@/features/print-kit";
-import { kitWritable, writableBlocks } from "@/features/propagation/print/glyphs";
 import { groupsOf } from "@/features/propagation/print/prediction-print";
 import { kept } from "@/features/propagation/print/radio-parts";
 import { frequenciesTitle, frequencyBlocks, type Written } from "./document";
@@ -104,9 +103,9 @@ const partOf = (paragraph: string): [string, string] => {
 
 export function frequenciesPrint(input: Written, paper: "a4" | "letter" = "a4"): TDocumentDefinitions {
   const measure = measureOf(paper);
-  const groups = groupsOf(writableBlocks(frequencyBlocks(input)));
+  const groups = groupsOf(frequencyBlocks(input));
   const opening = groups.get("") ?? [];
-  const chosen = kitWritable(input.chosen);
+  const chosen = input.chosen;
 
   const first: Content[] = [
     sectionHeader(
@@ -150,11 +149,11 @@ export function frequenciesPrint(input: Written, paper: "a4" | "letter" = "a4"):
     // Each time signal of this kind, set out part by part.
     const kindId = FREQUENCY_KINDS.find((kind) => kindLabel(kind.id) === name)?.id;
     for (const entry of input.entries.filter((each) => each.kind === kindId)) {
-      const layout = groups.get(`${kitWritable(entry.name)}: setting a clock by it`);
+      const layout = groups.get(`${entry.name}: setting a clock by it`);
       if (!layout) continue;
       content.push(
         kept(
-          label(`${kitWritable(entry.name)}: setting a clock by it`),
+          label(`${entry.name}: setting a clock by it`),
           dataTable(
             ["", ""],
             layout
