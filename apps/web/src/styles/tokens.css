@@ -121,7 +121,7 @@
    */
   /* Cards (Solitaire, Pairs) */
   --game-felt: oklch(0.4 0.05 192);
-  --game-felt-line: oklch(0.56 0.045 192);
+  --game-felt-line: oklch(0.68 0.045 192); /* 3.2:1 on the felt: an empty pile is a control (WCAG 1.4.11) */
   --game-felt-ink: oklch(0.93 0.02 192);
   --game-card: oklch(0.99 0.004 95);
   --game-card-edge: oklch(0.78 0.012 95);
@@ -359,7 +359,7 @@
 
   /* The games (features/games): see the light theme above. */
   --game-felt: oklch(0.27 0.035 192);
-  --game-felt-line: oklch(0.4 0.035 192);
+  --game-felt-line: oklch(0.55 0.035 192); /* 3.1:1 on the felt */
   --game-felt-ink: oklch(0.85 0.02 192);
   --game-card: oklch(0.9 0.008 95);
   --game-card-edge: oklch(0.6 0.01 95);
