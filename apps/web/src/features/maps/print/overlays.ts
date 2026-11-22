@@ -24,6 +24,7 @@
  * the installed terrain, which the page then credits). Nothing else needs to change:
  * the dialog, the preview and the PDF all work from this list.
  */
+
 import type { Bbox, ImageryStyleSource, InstalledRegion, MapSources, MarkerDto, TrackDto, TrackWithGeometryDto } from "@outpost/shared";
 import { heardSnapshot } from "@/features/heard/heard";
 import { rangesData, rangesShown } from "@/features/repeaters/map/range";
@@ -36,6 +37,7 @@ import { CONTOUR_MIN_ZOOM, contourInterval, contourReach } from "../lib/contours
 import type { MapStyleId } from "../lib/map-styles";
 import { buildStyle, MAP_FONTS, type MapTheme, SOURCE_IDS } from "../lib/style";
 import type { LayerSpecification, SourceSpecification, StyleSpecification } from "../lib/style-types";
+import { utmGridShown } from "../lib/use-utm-grid";
 import { type FeatureCollection, markersData, type OverlaySource, overlayLayers, overlaySources, tracksData } from "../map/overlays";
 import { shadeStyle, shadesShowing } from "../map/shades";
 import { locatorGrid, locatorLengthAt } from "../radio/locator-grid";
@@ -243,7 +245,8 @@ export const PRINT_OVERLAYS: PrintOverlay[] = [
       return `Every ${every} in ${name}, for UTM positions and MGRS references off the paper.`;
     },
     unavailable: (context) => (utmGrid(context.bbox, context.zoom) ? undefined : "There is no UTM grid for this area."),
-    initially: () => false,
+    // Ticked when the map on screen has its grid on.
+    initially: () => utmGridShown(),
     apply: (draft, context) => {
       const grid = utmGrid(context.bbox, context.zoom);
       if (!grid) return;

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { gridLabel, utmGrid, utmGridNote, utmSpacing } from "../print/utm-grid";
 import { formatPosition, isReadoutFormat, READOUT_FORMATS, READOUT_LABELS } from "./coords";
 import { buildSearchResults } from "./search";
+import { utmGridData, utmGridShown } from "./use-utm-grid";
 
 describe("the Irish readouts", () => {
   it("gives an Irish Grid reference and ITM in Ireland, at the precision the view can tell apart", () => {
@@ -26,6 +27,22 @@ describe("the Irish readouts", () => {
     const [result] = buildSearchResults({ query: "O 159 346", coordinate: reading!, places: [], markers: [], tracks: [], center: null });
     expect(result!.title).toBe("O 159 346");
     expect(result!.detail).toMatch(/^Irish Grid reference, the middle of a 100 m square · 53\.349/);
+  });
+});
+
+describe("the UTM grid on the map on screen", () => {
+  it("draws the view's lines with their figures and names the zone once", () => {
+    const data = utmGridData([-3.3, 54.35, -3.1, 54.5], 13);
+    const lines = data.features.filter((feature) => feature.geometry.type === "LineString");
+    const zones = data.features.filter((feature) => feature.properties.kind === "zone");
+    expect(lines.length).toBeGreaterThan(10);
+    expect(lines.every((feature) => typeof feature.properties.label === "string")).toBe(true);
+    expect(zones.map((feature) => feature.properties.label)).toEqual(["UTM 30U"]);
+  });
+
+  it("is switched off at first", () => {
+    localStorage.removeItem("outpost.maps.utmGrid");
+    expect(utmGridShown()).toBe(false);
   });
 });
 

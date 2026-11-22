@@ -78,6 +78,7 @@ import {
 import type { SearchResult } from "./lib/search";
 import type { StyleInput } from "./lib/style";
 import { regionsCacheKey } from "./lib/tiles";
+import { useUtmGrid } from "./lib/use-utm-grid";
 import {
   type CameraView,
   DEFAULT_VIEW,
@@ -299,6 +300,7 @@ export default function MapsPage() {
   const [engine, setEngine] = useState<MapEngine | null>(null);
   const [locatorGrid, setLocatorGrid] = useLocatorGrid(engine);
   const [magneticLines, setMagneticLines] = useMagneticLines(engine);
+  const [utmGridOn, setUtmGrid] = useUtmGrid(engine);
   const greyLine = useGreyLine(engine, isDesktop ? "over" : "flow");
   const satellite = useSatellite({ engine, imagery: sources.data?.imagery, onGetImagery: () => openOffline({ type: "imagery" }) });
   const sight = useSight({ engine, active: tool === "sight", markers: markers.data ?? [], start: sightStart });
@@ -1565,6 +1567,8 @@ export default function MapsPage() {
     onRoadNumbersChange: setRoadNumbers,
     magneticLines,
     onMagneticLinesChange: setMagneticLines,
+    utmGrid: utmGridOn,
+    onUtmGridChange: setUtmGrid,
     record: recordTool,
     disabled: !engine,
   };
