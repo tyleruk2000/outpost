@@ -1,6 +1,5 @@
 import { elementsAge, hasValidTleChecksum, parseCelestrakCsv } from "@outpost/shared";
 import { describe, expect, it } from "vitest";
-import { passBlocks } from "./document";
 import {
   dopplerShiftHz,
   dopplerTuning,
@@ -141,41 +140,5 @@ describe("the sky track", () => {
     expect(ny).toBeLessThan(120);
     expect(ex).toBeGreaterThan(120);
     expect([cx, cy]).toEqual([120, 120]);
-  });
-});
-
-describe("the pass on paper", () => {
-  it("draws the sky track above the table, inside the box it is given", () => {
-    const [pass] = predictPasses(ISS!, LONDON, EPOCH, 24, 1);
-    const path = passSkyPath(ISS!, LONDON, pass!, 10);
-    const blocks = passBlocks({
-      name: "ISS",
-      noradId: 25544,
-      epoch: EPOCH.getTime(),
-      place: "London",
-      pass: pass!,
-      path,
-      transmitters: [],
-      written: EPOCH,
-      licensed: false,
-    });
-    const at = blocks.findIndex((block) => block.kind === "drawing");
-    expect(at).toBeGreaterThan(0);
-    expect(blocks[at + 1]?.kind).toBe("table");
-    const drawing = blocks[at]!;
-    if (drawing.kind !== "drawing") throw new Error("not a drawing");
-    expect(drawing.words).toMatch(/^Sky track.*Rises in the .* UTC, highest \d+°/);
-    const items = drawing.draw(50, 100, 495);
-    const words = items.flatMap((item) => (item.kind === "text" ? [item.text] : []));
-    expect(words).toEqual(expect.arrayContaining(["N", "E", "S", "W", "30°", "60°"]));
-    expect(items.some((item) => item.kind === "polygon")).toBe(true);
-    for (const item of items) {
-      if (item.kind !== "line") continue;
-      for (const x of [item.x1, item.x2]) expect(x).toBeGreaterThanOrEqual(49);
-      for (const y of [item.y1, item.y2]) {
-        expect(y).toBeGreaterThanOrEqual(100);
-        expect(y).toBeLessThanOrEqual(100 + drawing.height);
-      }
-    }
   });
 });

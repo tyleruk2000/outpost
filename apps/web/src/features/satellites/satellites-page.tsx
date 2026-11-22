@@ -27,24 +27,25 @@ import {
   type SatelliteTransmitter,
 } from "@outpost/shared";
 import { Download, Map as MapIcon, RefreshCw } from "lucide-react";
-import { type ReactNode, useEffect, useId, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Disclosure, EmptyState, ErrorState, Joined, Notice, Page, PageHeader, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Checkbox, Segmented, Select, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/misc";
-import { madePdf } from "@/features/library/made/made-pdf";
 import { PdfActions } from "@/features/library/made/pdf-actions";
 import { useMarkers } from "@/features/maps/data";
+import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
 import type { PlaceField } from "@/features/propagation/data";
 import { PlaceInput } from "@/features/propagation/place-field";
 import { LicenceLine, useRadioLicence } from "@/features/radio/licence";
 import { useClockStyle } from "@/lib/clock";
 import { usePageVisible } from "@/lib/page-visible";
+import { deviceRegion, likelyPaperFor } from "@/lib/region";
 import { cn, formatDate, plural, timeAgo } from "@/lib/utils";
 import { ISS, inGroup, liveTransmitters, useFetchElements, useSatellites } from "./data";
-import { passPdf, passTitle } from "./document";
+import { type PassSheet, passDocument, passTitle } from "./document";
 import {
   dopplerTuning,
   FLOOR_ELEVATION_DEG,
@@ -599,21 +600,35 @@ function PasteDialog({
 function PassPdfDialog({
   open,
   onOpenChange,
-  make,
+  sheetOf,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  make: () => ReturnType<typeof madePdf> | null;
+  sheetOf: () => PassSheet | null;
 }) {
-  const pdf = useMemo(() => (open ? make() : null), [open, make]);
+  // The pass as it was when the dialog opened: the screen's clock moves on, the paper does not.
+  const latest = useRef(sheetOf);
+  latest.current = sheetOf;
+  const [sheet, setSheet] = useState<PassSheet | null>(null);
+  useEffect(() => {
+    setSheet(open ? latest.current() : null);
+  }, [open]);
+  const make = useCallback(() => passDocument(sheet as PassSheet, likelyPaperFor(deviceRegion())), [sheet]);
+  const made = useKitPdf(sheet ? make : null, {
+    title: sheet ? passTitle(sheet) : "Satellite pass",
+    kind: "Satellite pass",
+    from: { what: "Satellites", path: PATH },
+  });
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         title="This pass as a PDF"
-        description="Where to point minute by minute and what to tune to, to take outside. Made on this device."
+        description="Where it crosses the sky, where to point minute by minute and what to tune to, to take outside. Made on this device."
       >
-        <DialogBody>
-          <PdfActions pdf={pdf} />
+        <DialogBody className="grid gap-3">
+          {made.status === "making" ? <p className="text-small text-ink-muted">Making the PDF…</p> : null}
+          {made.status === "failed" ? <Notice tone="danger">The PDF could not be made: {made.error}</Notice> : null}
+          <PdfActions pdf={kitPdfOf(made)} />
         </DialogBody>
       </DialogContent>
     </Dialog>
@@ -675,23 +690,19 @@ function OneSatellite({
   }
   const own = selected && !selected.manual ? liveTransmitters(transmitters, selected.noradId) : [];
   const warning = selected ? elementsAgeWarning(selected.epoch, now.getTime()) : null;
-  const make = () =>
+  const sheetOf = (): PassSheet | null =>
     selected && pass && observer
-      ? (() => {
-          const written = new Date();
-          const sheet = {
-            name: selected.name,
-            noradId: selected.noradId,
-            epoch: selected.epoch,
-            place: placeName,
-            pass,
-            path: passSkyPath(selected.orbit, observer, pass, Math.max(2, Math.round(pass.durationSeconds / 60))),
-            transmitters: own,
-            written,
-            licensed: licence.licensed,
-          };
-          return madePdf(passPdf(sheet), passTitle(sheet), "Satellite pass", { what: "Satellites", path: PATH });
-        })()
+      ? {
+          name: selected.name,
+          noradId: selected.noradId,
+          epoch: selected.epoch,
+          place: placeName,
+          pass,
+          path: passSkyPath(selected.orbit, observer, pass, Math.max(2, Math.round(pass.durationSeconds / 60))),
+          transmitters: own,
+          written: new Date(),
+          licensed: licence.licensed,
+        }
       : null;
 
   return (
@@ -849,7 +860,7 @@ function OneSatellite({
             )}
             {pass && path.length > 0 ? <DopplerThroughPass path={path} transmitters={own} licensed={licence.licensed} /> : null}
           </Section>
-          <PassPdfDialog open={printing} onOpenChange={setPrinting} make={make} />
+          <PassPdfDialog open={printing} onOpenChange={setPrinting} sheetOf={sheetOf} />
         </>
       )}
     </>
