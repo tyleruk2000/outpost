@@ -5,6 +5,30 @@ import { gridLabel, utmGrid, utmGridNote, utmSpacing } from "../print/utm-grid";
 import { formatPosition, isReadoutFormat, READOUT_FORMATS, READOUT_LABELS } from "./coords";
 import { buildSearchResults } from "./search";
 
+describe("the Irish readouts", () => {
+  it("gives an Irish Grid reference and ITM in Ireland, at the precision the view can tell apart", () => {
+    expect(READOUT_LABELS.irish).toBe("Irish Grid");
+    expect(isReadoutFormat("itm")).toBe(true);
+    // Dublin's Spire.
+    expect(formatPosition(53.3498, -6.2603, "irish")).toEqual({ text: "O 1590 3467", format: "irish" });
+    expect(formatPosition(53.3498, -6.2603, "irish", 9).text).toBe("O 159 346");
+    expect(formatPosition(53.3498, -6.2603, "itm")).toEqual({ text: "ITM 715826 734697", format: "itm" });
+    expect(formatPosition(53.3498, -6.2603, "itm", 9).text).toBe("ITM 715800 734600");
+  });
+
+  it("falls back to decimal degrees away from Ireland", () => {
+    expect(formatPosition(48.85, 2.35, "irish").format).toBe("decimal");
+    expect(formatPosition(48.85, 2.35, "itm").format).toBe("decimal");
+  });
+
+  it("lists a typed Irish Grid reference as one, with the size of its square", () => {
+    const [reading] = parseCoordinateReadings("O 159 346");
+    const [result] = buildSearchResults({ query: "O 159 346", coordinate: reading!, places: [], markers: [], tracks: [], center: null });
+    expect(result!.title).toBe("O 159 346");
+    expect(result!.detail).toMatch(/^Irish Grid reference, the middle of a 100 m square · 53\.349/);
+  });
+});
+
 describe("the readout", () => {
   it("offers UTM and MGRS beside the other formats", () => {
     expect(READOUT_FORMATS).toEqual(expect.arrayContaining(["utm", "mgrs"]));

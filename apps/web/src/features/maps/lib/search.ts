@@ -70,6 +70,7 @@ const COORDINATE_KINDS: Record<ParsedCoordinate["format"], string> = {
   dms: "Coordinates",
   geo: "Coordinates",
   osgb: "Grid reference",
+  irish: "Irish Grid reference",
   maidenhead: "Maidenhead locator",
   utm: "UTM coordinates",
   mgrs: "MGRS reference",
@@ -113,14 +114,14 @@ function locatorDetail(coordinate: ParsedCoordinate): string {
 export function coordinateDetail(coordinate: ParsedCoordinate): string {
   if (coordinate.format === "maidenhead") return locatorDetail(coordinate);
   if (coordinate.format === "utm" || coordinate.format === "mgrs") return gridDetail(coordinate);
-  if (coordinate.format !== "osgb") {
+  if (coordinate.format !== "osgb" && coordinate.format !== "irish") {
     const grid = formatOsGridRef(coordinate.lat, coordinate.lon, 8);
     return grid ? `Coordinates · grid reference ${grid}` : COORDINATE_KINDS[coordinate.format];
   }
   const square = coordinate.precisionMeters;
   const size =
     square === undefined ? "" : square >= 1000 ? `, the middle of a ${square / 1000} km square` : `, the middle of a ${square} m square`;
-  return `Grid reference${size} · ${formatDecimal(coordinate.lat, coordinate.lon, 5)}`;
+  return `${COORDINATE_KINDS[coordinate.format]}${size} · ${formatDecimal(coordinate.lat, coordinate.lon, 5)}`;
 }
 
 export interface SearchInput {
@@ -162,7 +163,7 @@ export function buildSearchResults(input: SearchInput): SearchResult[] {
       kind: "coordinate",
       key: index === 0 ? "coordinate" : `coordinate-${index}`,
       title:
-        coordinate.format === "osgb"
+        coordinate.format === "osgb" || coordinate.format === "irish"
           ? input.query.trim().toUpperCase()
           : (coordinate.locator ?? coordinate.reference ?? formatDecimal(position.lat, position.lon, 5)),
       detail: coordinateDetail(coordinate),

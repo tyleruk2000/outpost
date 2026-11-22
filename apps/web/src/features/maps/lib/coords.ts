@@ -2,6 +2,8 @@
 import {
   formatDecimal,
   formatDms,
+  formatIrishGridRef,
+  formatItm,
   formatMgrs,
   formatOsGridRef,
   formatUtm,
@@ -11,13 +13,15 @@ import {
 } from "@outpost/shared";
 import { metersPerPixel } from "./geo";
 
-export const READOUT_FORMATS = ["decimal", "dms", "osgb", "utm", "mgrs", "maidenhead"] as const;
+export const READOUT_FORMATS = ["decimal", "dms", "osgb", "irish", "itm", "utm", "mgrs", "maidenhead"] as const;
 export type ReadoutFormat = (typeof READOUT_FORMATS)[number];
 
 export const READOUT_LABELS: Record<ReadoutFormat, string> = {
   decimal: "Decimal degrees",
   dms: "Degrees, minutes, seconds",
   osgb: "British National Grid",
+  irish: "Irish Grid",
+  itm: "Irish Transverse Mercator (ITM)",
   utm: "UTM",
   mgrs: "MGRS (US National Grid)",
   maidenhead: "Maidenhead locator",
@@ -29,7 +33,7 @@ export interface Readout {
   text: string;
   /**
    * The format actually used: a British grid reference falls back to decimal degrees outside
-   * Great Britain. UTM and MGRS cover the whole Earth, with UPS over the poles.
+   * Great Britain, an Irish one (Irish Grid or ITM) away from Ireland. UTM and MGRS cover the whole Earth, with UPS over the poles.
    */
   format: ReadoutFormat;
 }
@@ -64,6 +68,15 @@ export function formatPosition(lat: number, lon: number, format: ReadoutFormat, 
   if (format === "osgb") {
     const reference = formatOsGridRef(lat, lon, zoom === undefined ? 8 : gridFiguresFor(perPixel));
     if (reference) return { text: reference, format: "osgb" };
+  }
+  if (format === "irish") {
+    const reference = formatIrishGridRef(lat, lon, zoom === undefined ? 8 : gridFiguresFor(perPixel));
+    if (reference) return { text: reference, format: "irish" };
+  }
+  if (format === "itm") {
+    const step = zoom === undefined ? 1 : 10 ** (5 - gridFiguresFor(perPixel) / 2);
+    const text = formatItm(lat, lon, step);
+    if (text) return { text, format: "itm" };
   }
   if (format === "utm" || format === "mgrs") {
     const figures = zoom === undefined ? 10 : gridFiguresFor(perPixel);
