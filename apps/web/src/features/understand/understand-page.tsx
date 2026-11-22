@@ -224,7 +224,7 @@ function QuestionBox({
               key={example.query}
               type="button"
               onClick={() => onTrace(example.query)}
-              className="rounded-full border border-border-strong bg-page px-3 py-0.5 text-ink transition-colors hover:border-ink-faint hover:bg-surface-strong max-md:py-1.5"
+              className="rounded-full border border-border-strong bg-page px-3 py-0.5 text-ink transition-colors hover:border-ink-faint hover:bg-surface-strong max-md:min-h-11 max-md:py-1.5"
             >
               {example.label}
             </button>

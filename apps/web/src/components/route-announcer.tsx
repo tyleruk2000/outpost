@@ -22,6 +22,7 @@ export function RouteAnnouncer({ within = "content" }: { within?: string }) {
   const firstScreen = useRef(true);
   const setHere = useRef<string | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs again for each screen, which is what the address names
   useEffect(() => {
     const area = document.getElementById(within);
     if (!area) return;

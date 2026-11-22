@@ -14,7 +14,9 @@ describe("a row of Settings", () => {
         control={<NumberSetting id="pages" value={5000} min={0} max={100000} disabled={false} onSave={() => {}} unit="pages" />}
       />,
     );
-    expect(screen.getByRole("spinbutton", { name: "Most pages read from one PDF" })).toHaveAccessibleDescription("Use 0 for no limit. pages");
+    expect(screen.getByRole("spinbutton", { name: "Most pages read from one PDF" })).toHaveAccessibleDescription(
+      "Use 0 for no limit. pages",
+    );
   });
 
   it("describes a switch by its hint too", () => {

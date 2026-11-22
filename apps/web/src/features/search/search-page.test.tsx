@@ -75,6 +75,24 @@ describe("what can be opened now, and what would have to be downloaded", () => {
     expect(screen.queryByRole("heading", { name: "Available to download" })).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Go to" })).not.toBeInTheDocument();
   });
+
+  it("is one stop for Tab, whose arrow keys move along the kinds, each named with its count", async () => {
+    const user = userEvent.setup();
+    serveSearch(() => ownAnswer(CATALOG, { referenceToCome: false }));
+    show("/search?q=water");
+    const everything = await screen.findByRole("tab", { name: "Everything" });
+    const toDownload = await screen.findByRole("tab", { name: /^Available to download/ });
+    // The count is not run into the name ("Available to download2"); jsdom drops the space a browser keeps.
+    expect(toDownload).toHaveAccessibleName(/^Available to download, ?2$/);
+    expect(everything).toHaveAttribute("tabindex", "0");
+    expect(toDownload).toHaveAttribute("tabindex", "-1");
+    everything.focus();
+    await user.keyboard("{ArrowRight}");
+    expect(toDownload).toHaveFocus();
+    expect(toDownload).toHaveAttribute("aria-selected", "true");
+    await user.keyboard("{Home}");
+    expect(screen.getByRole("tab", { name: "Everything" })).toHaveAttribute("aria-selected", "true");
+  });
 });
 
 describe("the search page, with reference collections answering later", () => {

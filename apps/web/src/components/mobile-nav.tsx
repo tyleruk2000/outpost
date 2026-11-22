@@ -3,6 +3,7 @@ import { Dialog as Sheet } from "radix-ui";
 import { useLayoutEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router";
 import { cn } from "@/lib/utils";
+import { useFocusClearOfBars } from "./focus-clear";
 import { Lamp } from "./lamp";
 import { LogoMark } from "./logo";
 import { isInGroup, isOwnScreen, knowledgeNav, type NavItem, upkeepNav } from "./nav";
@@ -130,6 +131,8 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
   // How tall the bar is, said to the page as --mobile-nav-height: its names grow with the text, so a screen that ends
   // on it (the map, whose sheet sits on it) is not left to guess. 9.5 px went under the bar at 125% text.
   const bar = useRef<HTMLElement>(null);
+  const header = useRef<HTMLElement>(null);
+  useFocusClearOfBars(header, bar);
   useLayoutEffect(() => {
     const element = bar.current;
     if (!element || typeof ResizeObserver === "undefined") return;
@@ -149,8 +152,8 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
 
   return (
     <>
-      <header className="sticky top-0 z-(--z-nav) flex h-13 items-center gap-2 bg-spine px-4 text-spine-ink md:hidden">
-        <Link to="/" className="flex flex-1 items-center gap-2.5">
+      <header ref={header} className="sticky top-0 z-(--z-nav) flex h-13 items-center gap-2 bg-spine px-4 text-spine-ink md:hidden">
+        <Link to="/" className="flex min-h-11 flex-1 items-center gap-2.5">
           <LogoMark />
           <span className="font-title text-lead">Outpost</span>
         </Link>

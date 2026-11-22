@@ -36,7 +36,7 @@ function Block({ title, more, children }: { title: string; more?: { to: string; 
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="text-lead font-semibold text-ink">{title}</h2>
         {more ? (
-          <Link to={more.to} className="flex items-center gap-1 text-small text-primary hover:underline">
+          <Link to={more.to} className="flex min-h-11 items-center gap-1 text-small text-primary hover:underline md:min-h-6">
             {more.label}
           </Link>
         ) : null}
@@ -345,7 +345,7 @@ export default function HomePage() {
               <ul className="grid gap-1 text-small">
                 {firstSteps.map((step) => (
                   <li key={step.to}>
-                    <Link to={step.to} className="flex items-center gap-2.5 py-1 text-ink hover:text-primary">
+                    <Link to={step.to} className="flex items-center gap-2.5 py-1 text-ink hover:text-primary max-md:min-h-11">
                       <step.icon aria-hidden className="size-4 text-ink-muted" strokeWidth={1.6} />
                       {step.title}
                     </Link>

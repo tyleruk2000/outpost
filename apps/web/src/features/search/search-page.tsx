@@ -317,7 +317,23 @@ export default function SearchPage() {
       ) : (
         <>
           <div className="mt-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-b border-border">
-            <div role="tablist" aria-label="Filter results" className="scroll-quiet -mb-px flex gap-5 overflow-x-auto">
+            <div
+              role="tablist"
+              aria-label="Filter results"
+              // One stop for Tab, and the arrow keys move along it, as tabs do everywhere else (WAI-ARIA tabs).
+              onKeyDown={(event) => {
+                const tabs = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+                const at = tabs.indexOf(event.target as HTMLButtonElement);
+                if (at < 0) return;
+                const to = { ArrowRight: at + 1, ArrowLeft: at - 1, Home: 0, End: tabs.length - 1 }[event.key];
+                if (to === undefined) return;
+                event.preventDefault();
+                const next = tabs[(to + tabs.length) % tabs.length];
+                next?.focus();
+                next?.click();
+              }}
+              className="scroll-quiet -mb-px flex gap-5 overflow-x-auto"
+            >
               {[
                 ["", "Everything", undefined] as const,
                 ...facets.map(([key, count]) => [key, kindMeta[key]?.plural ?? key, count] as const),
@@ -328,14 +344,20 @@ export default function SearchPage() {
                   type="button"
                   role="tab"
                   aria-selected={kind === key}
+                  tabIndex={kind === key ? 0 : -1}
                   onClick={() => setParam("kind", key || undefined)}
                   className={cn(
-                    "flex items-center gap-1.5 border-b-2 border-transparent pt-1 pb-2.5 text-small font-medium whitespace-nowrap text-ink-muted hover:text-ink",
+                    "flex items-center gap-1.5 border-b-2 border-transparent pt-1 pb-2.5 text-small font-medium whitespace-nowrap text-ink-muted hover:text-ink max-md:min-h-11",
                     kind === key && "border-primary text-ink",
                   )}
                 >
                   {label}
-                  {count !== undefined ? <span className="tabular text-micro text-ink-faint">{count}</span> : null}
+                  {count !== undefined ? (
+                    <span className="tabular text-micro text-ink-faint">
+                      <span className="sr-only">, </span>
+                      {count}
+                    </span>
+                  ) : null}
                   {key === "reference" && reference.status === "searching" ? (
                     <LoaderCircle aria-hidden className="size-3 animate-spin text-ink-faint" />
                   ) : null}
