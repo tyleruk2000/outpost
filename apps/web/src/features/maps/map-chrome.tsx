@@ -969,16 +969,21 @@ export function ContextMenu({
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  // The latest `onClose`, read when it is called: the page passes a new one each time it draws itself, and the effect
+  // below runs once, when the menu opens. Run again on each drawing, it took the focus back to the first item from
+  // whichever item the person had moved to (and Enter then saved a place).
+  const close = useRef(onClose);
+  close.current = onClose;
   useEffect(() => {
     ref.current?.querySelector("button")?.focus();
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.stopPropagation();
-        onClose();
+        close.current();
       }
     };
     const onPointer = (event: PointerEvent) => {
-      if (!ref.current?.contains(event.target as Node)) onClose();
+      if (!ref.current?.contains(event.target as Node)) close.current();
     };
     window.addEventListener("keydown", onKey, true);
     // Registered a moment later, so the press that opened the menu does not close it.
@@ -988,7 +993,7 @@ export function ContextMenu({
       window.removeEventListener("keydown", onKey, true);
       window.removeEventListener("pointerdown", onPointer, true);
     };
-  }, [onClose]);
+  }, []);
 
   const width = 232;
   const height = (place ? 254 : 218) + (locator ? 18 : 0) + (onRange ? 36 : 0) + (onWalk ? 36 : 0);

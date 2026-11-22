@@ -93,7 +93,9 @@ test.describe("Supplies on a phone", () => {
 
     // The shopping list: 14,476 kcal short is 44 tins; 15 litres short is 8 bottles.
     await page.getByRole("tab", { name: "Shopping list" }).tap();
-    await page.getByRole("button", { name: "Work out the list" }).tap();
+    // "Work it out again" when a list was worked out before on this server (prepare-focus.mobile.spec.ts works one
+    // out): clear() takes away its lines, but when it was last worked out is kept.
+    await page.getByRole("button", { name: /^(Work out the list|Work it out again)$/ }).tap();
     await expect(page.getByText("44 tins of Baked beans")).toBeVisible();
     await expect(page.getByText("8 bottles of Bottled water")).toBeVisible();
     await expect(page.getByRole("link", { name: /Save as PDF/ })).toBeVisible();

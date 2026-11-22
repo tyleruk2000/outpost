@@ -48,12 +48,14 @@ function Block({ title, more, children }: { title: string; more?: { to: string; 
 function RowLink({ to, icon, title, meta }: { to: string; icon: ReactNode; title: ReactNode; meta?: ReactNode }) {
   return (
     <li>
-      <Link to={to} className="group flex items-center gap-3 py-2.5 text-ink">
+      {/* Where the title and "21 minutes ago" do not both fit (text at 200% on a 320 px phone), the time goes under the
+          title, to the right, rather than past the edge of the screen. */}
+      <Link to={to} className="group flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 text-ink">
         <span className="grid w-5 shrink-0 place-content-center text-ink-muted [&_svg]:size-[17px]">{icon}</span>
-        <span className="min-w-0 flex-1 truncate font-title text-body decoration-primary decoration-1 underline-offset-[0.22em] group-hover:underline">
+        <span className="min-w-0 flex-[1_1_6ch] truncate font-title text-body decoration-primary decoration-1 underline-offset-[0.22em] group-hover:underline">
           {title}
         </span>
-        {meta ? <span className="tabular shrink-0 text-small text-ink-muted">{meta}</span> : null}
+        {meta ? <span className="tabular ml-auto text-right text-small text-ink-muted">{meta}</span> : null}
       </Link>
     </li>
   );
