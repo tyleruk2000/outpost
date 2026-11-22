@@ -1,6 +1,7 @@
 import { type Bbox, computeEffects, type EffectsInput, type InstalledRegion, type MapSources, type MarkerDto } from "@outpost/shared";
 import { describe, expect, it } from "vitest";
 import type { StyleSpecification } from "@/features/maps/lib/style-types";
+import { writeSample } from "@/features/print-kit/samples";
 import type { Block } from "@/features/propagation/plans/document";
 import type { Written } from "./document";
 import { type DrawMap, makeScenarioPdf, mapDataDate } from "./print-maps";
@@ -67,12 +68,25 @@ const plume = scenario("A", 51.5, -0.12, { yieldKt: 300, burst: { kind: "surface
 const rings = scenario("B", 51.45, -0.3, { yieldKt: 15, burst: { kind: "optimum", psi: 5 }, wind: null });
 const far = scenario("C", 53.48, -2.24, { yieldKt: 100, burst: { kind: "optimum", psi: 5 }, wind: null });
 
+/** A real JPEG of 2 by 2 pixels, for the PDF to hold. */
+const TINY_JPEG = Uint8Array.from(
+  atob(
+    "/9j/4AAQSkZJRgABAQAARgBGAAD/4QCARXhpZgAATU0AKgAAAAgABAEaAAUAAAABAAAAPgEbAAUAAAABAAAARgEoAAMAAAABAAIAAIdpAAQAAAABAAAATgAAAAAAAABGAAAAAQAAAEYAAAABAAOgAQADAAAAAQABAACgAgAEAAAAAQAAAAKgAwAEAAAAAQAAAAIAAAAA/+0AOFBob3Rvc2hvcCAzLjAAOEJJTQQEAAAAAAAAOEJJTQQlAAAAAAAQ1B2M2Y8AsgTpgAmY7PhCfv/AABEIAAIAAgMBIgACEQEDEQH/xAAfAAABBQEBAQEBAQAAAAAAAAAAAQIDBAUGBwgJCgv/xAC1EAACAQMDAgQDBQUEBAAAAX0BAgMABBEFEiExQQYTUWEHInEUMoGRoQgjQrHBFVLR8CQzYnKCCQoWFxgZGiUmJygpKjQ1Njc4OTpDREVGR0hJSlNUVVZXWFlaY2RlZmdoaWpzdHV2d3h5eoOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4eLj5OXm5+jp6vHy8/T19vf4+fr/xAAfAQADAQEBAQEBAQEBAAAAAAAAAQIDBAUGBwgJCgv/xAC1EQACAQIEBAMEBwUEBAABAncAAQIDEQQFITEGEkFRB2FxEyIygQgUQpGhscEJIzNS8BVictEKFiQ04SXxFxgZGiYnKCkqNTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqCg4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2dri4+Tl5ufo6ery8/T19vf4+fr/2wBDAA8PDw8PDxoPDxokGhoaJDEkJCQkMT4xMTExMT5LPj4+Pj4+S0tLS0tLS0taWlpaWlppaWlpaXZ2dnZ2dnZ2dnb/2wBDARITEx4cHjQcHDR7VEVUe3t7e3t7e3t7e3t7e3t7e3t7e3t7e3t7e3t7e3t7e3t7e3t7e3t7e3t7e3t7e3t7e3v/3QAEAAH/2gAMAwEAAhEDEQA/APQ6KKKAP//Z",
+  ),
+  (char) => char.charCodeAt(0),
+);
+/** The tiny JPEG with a comment of its own after its start, so that each map's picture is a picture of its own in the PDF. */
+const jpegNumbered = (number: number) => {
+  const words = new TextEncoder().encode(`map ${number}`);
+  return Uint8Array.from([0xff, 0xd8, 0xff, 0xfe, 0, words.length + 2, ...words, ...TINY_JPEG.subarray(2)]);
+};
+
 /** A stand-in for the off-screen map: each map one piece, and every style it was asked to draw kept for looking at. */
 function standIn() {
   const styles: StyleSpecification[] = [];
   const draw: DrawMap = async (style, _frame, pixels) => {
     styles.push(style);
-    return { pieces: [{ x: 0, y: 0, ...pixels, pixels, jpeg: new Uint8Array([0xff, 0xd8, 0xff, 0xd9]) }], reduced: false };
+    return { pieces: [{ x: 0, y: 0, ...pixels, pixels, jpeg: jpegNumbered(styles.length) }], reduced: false };
   };
   return { styles, draw };
 }
@@ -107,6 +121,7 @@ describe("the maps of a scenario's PDF", () => {
     const text = pdfText(file.bytes);
     expect(text.match(/\/Subtype \/Image/g)).toHaveLength(2);
     expect(text).toMatch(/Nuclear effects scenario: Scenario A/);
+    writeSample("nuclear-maps", file.bytes);
     expect(file.pages).toBeGreaterThanOrEqual(2);
   });
 

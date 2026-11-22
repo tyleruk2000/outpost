@@ -6,7 +6,8 @@
  * under its rings, and several scenarios an overview first. Drawing them takes a few
  * seconds on a computer and longer on a phone, so nothing is drawn until "Make the PDF"
  * is pressed; the page stays usable meanwhile, says in words which map is being drawn,
- * and can be stopped. Without maps the PDF is the words-only one, made at once.
+ * and can be stopped. Without maps the PDF is the words-only one (the rings to scale
+ * with no map under them), made at once. Both are laid out with the print kit (print.ts).
  *
  * The household's saved places are on the maps only if ticked here: the PDF may be
  * shared, and a place called Home is not something to put on a shared page by default.
@@ -14,7 +15,7 @@
  */
 import { formatBytes, type InstalledRegion, type MapSources, type MarkerDto } from "@outpost/shared";
 import { FileDown, FileText } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Checkbox, Switch } from "@/components/ui/misc";
@@ -23,11 +24,13 @@ import { PdfActions } from "@/features/library/made/pdf-actions";
 import { regionsCacheKey } from "@/features/maps/lib/tiles";
 import { PAPERS } from "@/features/maps/print/paper";
 import { pdfFileName } from "@/features/maps/print/pdf";
+import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
 import { saveFile } from "@/features/propagation/plans/document";
 import { PaperChoice, usePaper } from "@/features/propagation/prediction-export";
 import { errorMessage } from "@/lib/api";
 import { cn, plural } from "@/lib/utils";
-import { scenarioMarkdown, scenarioPdf, scenarioTitle, type Written } from "./document";
+import { scenarioMarkdown, scenarioTitle, type Written } from "./document";
+import { scenarioPrint } from "./print";
 
 const PATH = "/prepare/nuclear";
 const KIND = "Nuclear effects scenario";
@@ -97,15 +100,8 @@ export function ScenarioExport({
   }, [written, dated, paper, maps, withPlaces, places]);
 
   // Words only: quick, so made as soon as the scenarios are, as before there were maps.
-  const wordsOnly = useMemo(() => {
-    if (maps) return null;
-    try {
-      const file = scenarioPdf(written, dated, paper);
-      return { pdf: madePdf(file.bytes, title, KIND, FROM), pages: file.pages };
-    } catch (error) {
-      return { error: errorMessage(error) };
-    }
-  }, [maps, written, dated, paper, title]);
+  const makeWords = useCallback(() => scenarioPrint({ written, dated, paper }), [written, dated, paper]);
+  const wordsOnly = useKitPdf(maps ? null : makeWords, { title, kind: KIND, from: FROM });
 
   const make = async () => {
     const stop = new AbortController();
@@ -235,16 +231,20 @@ export function ScenarioExport({
       <PaperChoice paper={paper} onChange={setPaper} />
 
       {!maps ? (
-        wordsOnly && "error" in wordsOnly ? (
+        wordsOnly.status === "failed" ? (
           <Notice tone="danger" title="The PDF could not be made">
             {wordsOnly.error}
           </Notice>
-        ) : wordsOnly ? (
+        ) : wordsOnly.status === "made" ? (
           <>
             <p className="text-small text-ink-muted">{describe(wordsOnly.pages, wordsOnly.pdf.file.size, null)}</p>
-            <PdfActions pdf={wordsOnly.pdf}>{markdown}</PdfActions>
+            <PdfActions pdf={kitPdfOf(wordsOnly)}>{markdown}</PdfActions>
           </>
-        ) : null
+        ) : (
+          <p role="status" className="text-small text-ink-muted">
+            Making the PDF…
+          </p>
+        )
       ) : made.status === "ready" ? (
         <>
           {made.missing.length > 0 ? (

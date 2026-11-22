@@ -121,8 +121,8 @@ describe("whatever Outpost prints or makes a PDF of", () => {
       "features/propagation/coverage-map/coverage-picture.ts",
       "features/propagation/plans/plan-export.tsx",
       "features/frequencies/frequencies-page.tsx",
-      // The nuclear workspace's scenarios, with or without their maps (print-maps.ts hands its pages to this one).
-      "features/nuclear/document.ts",
+      // The nuclear workspace's scenarios, with or without their maps (print-maps.ts hands its pages to this one, laid out with the print kit).
+      "features/nuclear/print.ts",
     ])
       expect(makers).toContain(known);
   });

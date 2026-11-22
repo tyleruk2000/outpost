@@ -27,7 +27,7 @@ export const GET_A_MAP = "Add a region for this area under Maps, Offline maps, a
 const CAPTION = 7;
 const CAPTION_LEADING = 8.6;
 /** Room under the picture for the scale bar and north, in points: the miles' figures end about 30 below its top. */
-const FURNITURE = 42;
+export const FURNITURE = 42;
 
 /** A piece of a map's picture: its id among the PDF's pictures and its place in the box, in points. */
 export interface PicturePiece {
