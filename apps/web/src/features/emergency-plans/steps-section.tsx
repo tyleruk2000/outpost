@@ -14,6 +14,7 @@ import {
   type TemplateStep,
   termsOf,
 } from "@outpost/shared";
+import { ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -65,14 +66,19 @@ function Phase({
   phase,
   steps,
   all,
+  first,
   onChange,
 }: {
   phase: { id: PlanPhase; label: string };
   steps: Array<{ step: PlanStep; at: number }>;
   all: PlanStep[];
+  first: boolean;
   onChange: (steps: PlanStep[]) => void;
 }) {
   const [draft, setDraft] = useState("");
+  // Each phase folds, with its count: a plan's steps run to a long page on a phone. The first starts open there, and
+  // every one on a wider screen.
+  const [open, setOpen] = useState(() => first || !window.matchMedia?.("(width < 48rem)").matches);
   const add = () => {
     if (!draft.trim()) return;
     onChange([...all, { id: localId(), phase: phase.id, text: draft.trim(), origin: null }]);
@@ -89,8 +95,15 @@ function Phase({
     onChange(next);
   };
   return (
-    <div className="mt-6 first:mt-0">
-      <h3 className="text-body font-semibold text-ink">{phase.label}</h3>
+    <details className="group mt-6 first:mt-0" open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
+      <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 select-none md:min-h-8 [&::-webkit-details-marker]:hidden">
+        <ChevronRight
+          aria-hidden
+          className="size-4 shrink-0 text-ink-muted transition-transform duration-150 group-open:rotate-90 motion-reduce:transition-none"
+        />
+        <h3 className="text-body font-semibold text-ink">{phase.label}</h3>
+        <span className="text-small text-ink-muted">{plural(steps.length, "step")}</span>
+      </summary>
       {steps.length === 0 ? <p className="mt-1 text-small text-ink-muted">No steps for {phase.label.toLowerCase()} yet.</p> : null}
       <ol className="mt-2 divide-y divide-border border-y border-border">
         {steps.map(({ step, at }, index) => (
@@ -141,7 +154,7 @@ function Phase({
           Add step
         </Button>
       </form>
-    </div>
+    </details>
   );
 }
 
@@ -184,10 +197,11 @@ export function StepsSection({
       title="Steps"
       description="Short, in order, in plain words: someone who did not write this may be reading it by torchlight. Tick them when the plan is in use."
     >
-      {PLAN_PHASES.map((phase) => (
+      {PLAN_PHASES.map((phase, index) => (
         <Phase
           key={phase.id}
           phase={phase}
+          first={index === 0}
           all={steps}
           onChange={onChange}
           steps={steps.map((step, at) => ({ step, at })).filter(({ step }) => step.phase === phase.id)}

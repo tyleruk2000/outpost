@@ -78,8 +78,23 @@ export const TabsContent = TabsPrimitive.Content;
  * A row of tab names that wraps on to a second line rather than scrolling sideways out of
  * sight, on a phone or with large text. Each name is at least 44 px each way on a phone.
  */
-export function TabsList({ className, ...props }: ComponentProps<typeof TabsPrimitive.List>) {
-  return <TabsPrimitive.List className={cn("flex flex-wrap gap-x-5 gap-y-1 border-b border-border", className)} {...props} />;
+export function TabsList({ className, onFocus, ...props }: ComponentProps<typeof TabsPrimitive.List>) {
+  return (
+    <TabsPrimitive.List
+      className={cn("flex flex-wrap gap-x-5 gap-y-1 border-b border-border", className)}
+      {...props}
+      // The row itself is a stop for Tab that hands the focus to the chosen tab. After a tab was pressed with the mouse
+      // and the screen drew itself again (a tab chosen by ?view=), Radix could leave the focus on the row, with no ring
+      // and nothing to say: hand it on here whatever Radix thinks.
+      onFocus={(event) => {
+        onFocus?.(event);
+        if (event.target !== event.currentTarget) return;
+        const tabs = event.currentTarget.querySelectorAll<HTMLElement>('[role="tab"]:not([disabled])');
+        const chosen = [...tabs].find((tab) => tab.getAttribute("data-state") === "active") ?? tabs[0];
+        chosen?.focus();
+      }}
+    />
+  );
 }
 
 export function TabsTrigger({ className, ...props }: ComponentProps<typeof TabsPrimitive.Trigger>) {
@@ -183,7 +198,7 @@ export function Select<T extends string>({
         aria-label={props["aria-label"]}
         aria-describedby={props["aria-describedby"]}
         className={cn(
-          "flex h-9 w-full items-center justify-between gap-2 rounded-control border border-border-strong bg-page px-3 text-left text-small text-ink transition-colors hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus/30 disabled:opacity-60 data-placeholder:text-ink-faint max-md:h-11",
+          "flex h-9 w-full items-center justify-between gap-2 rounded-control border border-border-strong bg-page px-3 text-left text-small text-ink transition-colors hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-60 data-placeholder:text-ink-faint max-md:h-11",
           className,
         )}
       >

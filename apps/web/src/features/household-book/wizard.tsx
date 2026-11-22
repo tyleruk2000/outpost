@@ -27,7 +27,9 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Check, Plus, Trash2 } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { Link, useNavigate } from "react-router";
+import { LeaveGuard } from "@/components/leave-guard";
 import { Notice, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
@@ -57,6 +59,9 @@ const NONE = "__none__";
 
 export function BookWizard({ answers: initial, household, markers, country, sheets, saving, save, onDone, startAt }: WizardProps) {
   const [answers, setAnswers] = useState<BookAnswers>(initial);
+  // The answers as last saved: leaving with others asks first (another screen, a reload, closing the tab).
+  const [saved, setSaved] = useState<BookAnswers>(initial);
+  const dirty = JSON.stringify(answers) !== JSON.stringify(saved);
   const [step, setStep] = useState<BookStepId>(startAt ?? "people");
   const index = BOOK_STEPS.findIndex((each) => each.id === step);
   const set = useCallback((patch: Partial<BookAnswers>) => setAnswers((current) => ({ ...current, ...patch })), []);
@@ -70,6 +75,8 @@ export function BookWizard({ answers: initial, household, markers, country, shee
       notify.error(errorMessage(error));
       return;
     }
+    // Saved: the move that follows has nothing to ask about.
+    flushSync(() => setSaved(answers));
     navigate(to);
   };
 
@@ -80,6 +87,7 @@ export function BookWizard({ answers: initial, household, markers, country, shee
       notify.error(errorMessage(error));
       return;
     }
+    setSaved(answers);
     if (to === "done") onDone();
     else setStep(BOOK_STEPS[to]!.id);
   };
@@ -96,8 +104,8 @@ export function BookWizard({ answers: initial, household, markers, country, shee
                 aria-current={each.id === step ? "step" : undefined}
                 className={
                   each.id === step
-                    ? "min-h-11 font-semibold text-ink underline underline-offset-4 md:min-h-0"
-                    : "min-h-11 text-ink-muted hover:text-ink md:min-h-0"
+                    ? "min-h-11 text-left font-semibold text-ink underline underline-offset-4 md:min-h-6"
+                    : "min-h-11 text-left text-ink-muted hover:text-ink md:min-h-6"
                 }
               >
                 {at + 1}. {each.label}
@@ -124,6 +132,7 @@ export function BookWizard({ answers: initial, household, markers, country, shee
         <BookStep answers={answers} set={set} country={country} />
       )}
 
+      <LeaveGuard when={dirty && !saving} what="the answers on this step" />
       <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
         {index < BOOK_STEPS.length - 1 ? (
           <Button variant="primary" loading={saving} onClick={() => void go(index + 1)}>
@@ -266,7 +275,7 @@ function PeopleStep({ answers, set, household, sheets }: StepProps & { household
           })}
         </Rows>
       )}
-      <Section title="Add someone" description="Change or take anyone out under Supplies → Household.">
+      <Section level={3} title="Add someone" description="Change or take anyone out under Supplies → Household.">
         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
           <Field label="Name">
             {(ids) => <Input {...ids} value={name} maxLength={80} onChange={(event) => setName(event.target.value)} />}
@@ -297,7 +306,10 @@ function PeopleStep({ answers, set, household, sheets }: StepProps & { household
           <Button onClick={add} disabled={!household || !name.trim()} loading={setHousehold.isPending}>
             <Plus /> Add to the household
           </Button>
-          <Link to="/prepare/medical" className="text-small text-primary underline underline-offset-2">
+          <Link
+            to="/prepare/medical"
+            className="inline-flex min-h-11 items-center text-small text-primary underline underline-offset-2 md:min-h-6"
+          >
             Medical sheets
           </Link>
         </div>
@@ -426,7 +438,7 @@ function PlacesStep({ answers, set, markers }: StepProps & { markers: MarkerDto[
         </Notice>
       ) : null}
 
-      <Section title="Meeting points">
+      <Section level={3} title="Meeting points">
         <Rows>
           {answers.meetingPoints.map((point) => (
             <li key={point.id} className="grid gap-3 py-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto] sm:items-end">
@@ -497,7 +509,7 @@ function PlacesStep({ answers, set, markers }: StepProps & { markers: MarkerDto[
         </Button>
       </Section>
 
-      <Section title="The people you would go to">
+      <Section level={3} title="The people you would go to">
         <Rows>
           {answers.destinations.map((destination) => {
             const change = (patch: Partial<typeof destination>) =>
@@ -576,7 +588,7 @@ function VehiclesStep({ answers, set }: StepProps) {
   const number = (text: string) => (text.trim() === "" || !Number.isFinite(Number(text)) ? null : Number(text));
   return (
     <div className="grid gap-8">
-      <Section title="Vehicles" description="The book compares each one's range with the journeys.">
+      <Section level={3} title="Vehicles" description="The book compares each one's range with the journeys.">
         <Rows>
           {answers.vehicles.map((vehicle) => {
             const change = (patch: Partial<typeof vehicle>) =>
@@ -633,6 +645,7 @@ function VehiclesStep({ answers, set }: StepProps) {
         </Button>
       </Section>
       <Section
+        level={3}
         title="Radios"
         description="The book lists the stations these can receive where home is, from Outpost's list of frequencies."
       >
@@ -709,6 +722,7 @@ function ReadinessStep({
         </Field>
       </div>
       <Section
+        level={3}
         title="Which hazards matter"
         description="A hazard you have an emergency plan for gets your plan, in full. One with no plan gets general advice from official guidance, before, during and after."
       >
@@ -755,6 +769,7 @@ function ReadinessStep({
       </Section>
       {plans && plans.length > 0 ? (
         <Section
+          level={3}
           title="Your emergency plans"
           description="Each plan goes in the book in full, as you wrote it: its steps, contacts, places, supplies and notes."
         >
@@ -857,7 +872,7 @@ function BookStep({ answers, set, country }: StepProps & { country: string | nul
           cut along.
         </p>
       </div>
-      <Section title="What goes in it">
+      <Section level={3} title="What goes in it">
         <Rows>
           {BOOK_SECTIONS.map((section) => (
             <li key={section.id} className="py-2">

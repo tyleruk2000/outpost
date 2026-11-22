@@ -24,7 +24,7 @@ import {
 } from "@outpost/shared";
 import { RADIO_FREQUENCIES } from "@outpost/shared/radio-frequencies-data";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -672,5 +672,44 @@ describe("Home's line about the book", () => {
     expect(screen.getByRole("link", { name: "make it again" }).getAttribute("href")).toBe("/prepare/book");
     unmount();
     expect(show([]).container.textContent).toBe("");
+  });
+});
+
+describe("leaving the questions with answers not saved", () => {
+  it("asks on reload or close until the answers are saved", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({}), { status: 200, headers: { "content-type": "application/json" } })),
+    );
+    const asked = () => {
+      const event = new Event("beforeunload", { cancelable: true });
+      window.dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <BookWizard
+            answers={{ ...DEFAULT_BOOK_ANSWERS, hazards: [] }}
+            household={household}
+            markers={[]}
+            country="GB"
+            sheets={new Set()}
+            saving={false}
+            save={async () => {}}
+            onDone={() => {}}
+            startAt="readiness"
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(asked()).toBe(false);
+    // The parts of a step are headed under the step's own heading.
+    expect(await screen.findByRole("heading", { level: 3, name: "Which hazards matter" })).toBeTruthy();
+    fireEvent.click(await screen.findByRole("checkbox", { name: /Flooding/ }));
+    expect(asked()).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Save and stop here" }));
+    await vi.waitFor(() => expect(asked()).toBe(false));
   });
 });

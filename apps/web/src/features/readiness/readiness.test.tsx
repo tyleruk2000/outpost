@@ -246,3 +246,55 @@ describe("marking a check done", () => {
     await vi.waitFor(() => expect(bodies).toEqual([{ by: "Ana", baseUpdatedAt: 7 }]));
   });
 });
+
+describe("undoing a check marked done", () => {
+  beforeEach(() => setDeviceName("Ana"));
+
+  function serveChecks(first: RoutineCheck) {
+    const bodies: Array<{ path: string; body: unknown }> = [];
+    let current = first;
+    const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const { pathname } = new URL(String(input), "http://outpost.test");
+        if (init?.method && init.method !== "GET") {
+          const body = JSON.parse(String(init.body));
+          bodies.push({ path: `${init.method} ${pathname}`, body });
+          current = pathname.endsWith("/done")
+            ? check({ ...current, lastDoneAt: body.at === undefined ? Date.now() : body.at, updatedAt: current.updatedAt + 1 })
+            : check({ ...current, ...body, updatedAt: current.updatedAt + 1 });
+          return json({ check: current });
+        }
+        return json(pathname === "/api/routine-checks" ? { checks: [current], expiringSupplies: 0 } : {});
+      }),
+    );
+    return bodies;
+  }
+
+  it("keeps Undo on the row after the toast has gone, and puts the last time back", async () => {
+    const bodies = serveChecks(check({ lastDoneAt: Date.UTC(2026, 9, 1), lastDoneBy: "Sam", updatedAt: 7 }));
+    renderScreen(<ChecksPage />);
+    fireEvent.click(await screen.findByRole("button", { name: /Done today/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Undo “Done today”" }));
+    await vi.waitFor(() =>
+      expect(bodies.at(-1)).toEqual({
+        path: "POST /api/routine-checks/c1/done",
+        body: { by: "Sam", at: Date.UTC(2026, 9, 1), baseUpdatedAt: 8 },
+      }),
+    );
+    await vi.waitFor(() => expect(screen.queryByRole("button", { name: "Undo “Done today”" })).toBeNull());
+  });
+
+  it("clears the last time from Change, for a check marked done by mistake", async () => {
+    const bodies = serveChecks(check({ lastDoneAt: Date.now() - 60_000, lastDoneBy: "Ana", updatedAt: 7 }));
+    renderScreen(<ChecksPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Change “Run the generator”" }));
+    const field = await screen.findByLabelText(/Last done/);
+    fireEvent.change(field, { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await vi.waitFor(() =>
+      expect(bodies.at(-1)).toEqual({ path: "POST /api/routine-checks/c1/done", body: { by: "", at: null, baseUpdatedAt: 8 } }),
+    );
+  });
+});

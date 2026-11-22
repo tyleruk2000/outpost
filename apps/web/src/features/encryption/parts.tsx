@@ -160,7 +160,7 @@ export function NewPassphrase({
           <div className="flex flex-wrap gap-2">
             <PassphraseInput
               {...ids}
-              className="min-w-[14rem] flex-1"
+              className="min-w-[min(100%,14rem)] flex-1"
               value={state.passphrase}
               shown={shown}
               onShownChange={setShown}
@@ -310,7 +310,7 @@ export function UnlockForm({
           <div className="flex flex-wrap gap-2">
             <PassphraseInput
               {...ids}
-              className="min-w-[14rem] flex-1"
+              className="min-w-[min(100%,14rem)] flex-1"
               value={passphrase}
               autoFocus={autoFocus}
               onChange={(event) => setPassphrase(event.target.value)}

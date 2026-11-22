@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter } from "react-router";
+import { createBrowserRouter, RouterProvider } from "react-router";
 import { Toaster } from "sonner";
 import { App } from "./app";
 import { TooltipProvider } from "./components/ui/misc";
@@ -61,6 +61,11 @@ function ThemedToaster() {
   );
 }
 
+// A data router, so that a screen with changes not saved can ask before it is left (components/leave-guard.tsx).
+// It has one route that matches every address and draws the app, whose own <Routes> (app.tsx) choose the screen
+// exactly as they did under BrowserRouter: no route, lazy load or address changed.
+const router = createBrowserRouter([{ path: "*", element: <App /> }]);
+
 // Keeps the app itself on this device, so it opens when the server is out of reach (HTTPS and the packaged app only).
 registerServiceWorker();
 
@@ -69,9 +74,7 @@ createRoot(document.getElementById("root")!).render(
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <TooltipProvider delayDuration={350} skipDelayDuration={150}>
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
+          <RouterProvider router={router} />
           <ThemedToaster />
           <ErrorAnnouncer />
         </TooltipProvider>

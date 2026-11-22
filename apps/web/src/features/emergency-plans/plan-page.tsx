@@ -16,9 +16,11 @@ import {
   templateById,
 } from "@outpost/shared";
 import { Copy, ListChecks, Printer, TriangleAlert } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
-import { ErrorState, Notice, Page, PageHeader, Section } from "@/components/page";
+import { LeaveGuard } from "@/components/leave-guard";
+import { ErrorState, JumpLinks, Notice, Page, PageHeader, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
@@ -156,6 +158,32 @@ function useDraft(response: EmergencyPlanResponse | undefined, reload: () => Pro
   return { draft, change, state, flush, conflict, choosing, keepMine, takeTheirs };
 }
 
+/** The parts of a plan, in the order they are on the page, for the list at its top. */
+const PARTS = [
+  { id: "plan-what", label: "What it is for" },
+  { id: "plan-steps", label: "Steps" },
+  { id: "household", label: "The household" },
+  { id: "plan-contacts", label: "Who to contact" },
+  { id: "plan-places", label: "Where to meet" },
+  { id: "plan-phones", label: "If the phones fail" },
+  { id: "plan-supplies", label: "Supplies" },
+  { id: "plan-power", label: "Power" },
+  { id: "plan-where", label: "Where things are" },
+  { id: "plan-notes", label: "Notes and links" },
+] as const;
+
+/** One part of the plan, with an address to jump to; it keeps the space a section has above it. */
+function Part({ id, children }: { id: string; children: ReactNode }) {
+  return (
+    <div id={id} className="mt-10 scroll-mt-16 first:mt-0 md:scroll-mt-6 [&>section]:mt-0">
+      {children}
+    </div>
+  );
+}
+
+/** The states in which leaving would lose what was typed: it cannot be sent as it is. */
+const UNSENT = ["conflict", "unnamed", "no-number", "failed"];
+
 const STATE_WORDS: Record<string, string> = {
   unnamed: "Give the plan a name to save it.",
   "no-number": "Give the emergency number to save the plan.",
@@ -214,6 +242,8 @@ export default function EmergencyPlanPage() {
   const remove = useRemovePlan();
   const navigate = useNavigate();
   const [deleting, setDeleting] = useState(false);
+  // Deleted: what was typed went with it, so leaving asks nothing.
+  const [gone, setGone] = useState(false);
   const opened = usePlanAction(id, "opened");
   // When it was last opened before this time, said once for each plan shown (a copy is shown in the same page);
   // opening it now is recorded by this press, not by reading it.
@@ -333,90 +363,111 @@ export default function EmergencyPlanPage() {
         </Notice>
       ) : null}
 
-      <Section title="What it is for">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Name" className="sm:col-span-2" error={draft.name.trim() ? undefined : "Give the plan a name."}>
-            {(ids) => (
-              <Input {...ids} value={draft.name} maxLength={120} onChange={(event) => change({ ...draft, name: event.target.value })} />
-            )}
-          </Field>
-          <Field label="Kind">
-            {(ids) => (
-              <Select<PlanKind>
-                {...ids}
-                value={draft.kind}
-                onChange={(kind) => change({ ...draft, kind })}
-                options={PLAN_KINDS.map((kind) => ({ value: kind.id, label: kind.label }))}
-              />
-            )}
-          </Field>
-          <Field label="In your words" optional hint="Such as “Storm” or “Chemical works alarm”.">
-            {(ids) => (
-              <Input
-                {...ids}
-                value={draft.kindText}
-                maxLength={80}
-                onChange={(event) => change({ ...draft, kindText: event.target.value })}
-              />
-            )}
-          </Field>
-          <Field
-            label="Emergency services number"
-            hint={`It differs by country: ${EMERGENCY_NUMBERS.map((entry) => `${entry.number} ${entry.where}`).join("; ")}.`}
-            error={draft.emergencyNumber.trim() ? undefined : "Give the number."}
-          >
-            {(ids) => (
-              <Input
-                {...ids}
-                className="tabular"
-                inputMode="tel"
-                value={draft.emergencyNumber}
-                maxLength={20}
-                onChange={(event) => change({ ...draft, emergencyNumber: event.target.value })}
-              />
-            )}
-          </Field>
-          <Field label="Ask to look it over" hint={`Last looked over on ${formatDate(plan.reviewedAt)}.`}>
-            {(ids) => (
-              <Select<string>
-                {...ids}
-                value={draft.reviewEveryDays === null ? "never" : String(draft.reviewEveryDays)}
-                onChange={(value) => change({ ...draft, reviewEveryDays: value === "never" ? null : Number(value) })}
-                options={[
-                  ...REVIEW_CHOICES,
-                  ...(draft.reviewEveryDays !== null && !REVIEW_CHOICES.some((choice) => choice.value === String(draft.reviewEveryDays))
-                    ? [{ value: String(draft.reviewEveryDays), label: `Every ${draft.reviewEveryDays} days` }]
-                    : []),
-                ]}
-              />
-            )}
-          </Field>
-        </div>
-        {!review.due ? (
-          <Button variant="ghost" className="mt-2" loading={reviewed.isPending} onClick={() => reviewed.mutate()}>
-            Mark as looked over today
-          </Button>
-        ) : null}
-      </Section>
+      {/* The parts of the plan as links, at its top: on a phone the plan is long, and a part is a press away. */}
+      <JumpLinks label="Parts of this plan" items={[...PARTS]} className="mt-0" />
 
-      <StepsSection steps={body.steps} templateId={draft.templateId} onChange={(steps) => setBody({ steps })} />
-      <div id="household" className="scroll-mt-4">
+      <Part id="plan-what">
+        <Section title="What it is for">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Name" className="sm:col-span-2" error={draft.name.trim() ? undefined : "Give the plan a name."}>
+              {(ids) => (
+                <Input {...ids} value={draft.name} maxLength={120} onChange={(event) => change({ ...draft, name: event.target.value })} />
+              )}
+            </Field>
+            <Field label="Kind">
+              {(ids) => (
+                <Select<PlanKind>
+                  {...ids}
+                  value={draft.kind}
+                  onChange={(kind) => change({ ...draft, kind })}
+                  options={PLAN_KINDS.map((kind) => ({ value: kind.id, label: kind.label }))}
+                />
+              )}
+            </Field>
+            <Field label="In your words" optional hint="Such as “Storm” or “Chemical works alarm”.">
+              {(ids) => (
+                <Input
+                  {...ids}
+                  value={draft.kindText}
+                  maxLength={80}
+                  onChange={(event) => change({ ...draft, kindText: event.target.value })}
+                />
+              )}
+            </Field>
+            <Field
+              label="Emergency services number"
+              hint={`It differs by country: ${EMERGENCY_NUMBERS.map((entry) => `${entry.number} ${entry.where}`).join("; ")}.`}
+              error={draft.emergencyNumber.trim() ? undefined : "Give the number."}
+            >
+              {(ids) => (
+                <Input
+                  {...ids}
+                  className="tabular"
+                  inputMode="tel"
+                  value={draft.emergencyNumber}
+                  maxLength={20}
+                  onChange={(event) => change({ ...draft, emergencyNumber: event.target.value })}
+                />
+              )}
+            </Field>
+            <Field label="Ask to look it over" hint={`Last looked over on ${formatDate(plan.reviewedAt)}.`}>
+              {(ids) => (
+                <Select<string>
+                  {...ids}
+                  value={draft.reviewEveryDays === null ? "never" : String(draft.reviewEveryDays)}
+                  onChange={(value) => change({ ...draft, reviewEveryDays: value === "never" ? null : Number(value) })}
+                  options={[
+                    ...REVIEW_CHOICES,
+                    ...(draft.reviewEveryDays !== null && !REVIEW_CHOICES.some((choice) => choice.value === String(draft.reviewEveryDays))
+                      ? [{ value: String(draft.reviewEveryDays), label: `Every ${draft.reviewEveryDays} days` }]
+                      : []),
+                  ]}
+                />
+              )}
+            </Field>
+          </div>
+          {!review.due ? (
+            <Button variant="ghost" className="mt-2" loading={reviewed.isPending} onClick={() => reviewed.mutate()}>
+              Mark as looked over today
+            </Button>
+          ) : null}
+        </Section>
+      </Part>
+
+      <Part id="plan-steps">
+        <StepsSection steps={body.steps} templateId={draft.templateId} onChange={(steps) => setBody({ steps })} />
+      </Part>
+      <Part id="household">
         <PeopleSection people={body.people} resolved={resolved} onChange={(people) => setBody({ people })} />
-      </div>
-      <ContactsSection contacts={body.contacts} resolved={resolved} onChange={(contacts) => setBody({ contacts })} />
-      <PlacesSection places={body.places} resolved={resolved} onChange={(places) => setBody({ places })} />
-      <CommsSection comms={body.comms} resolved={resolved} onChange={(comms) => setBody({ comms })} />
-      <SuppliesSection
-        supplies={body.supplies}
-        days={body.days}
-        people={body.people.length}
-        templateId={draft.templateId}
-        planName={draft.name}
-        onChange={(patch) => setBody(patch)}
-      />
-      <PowerSection powerPlanId={body.powerPlanId} onChange={(powerPlanId) => setBody({ powerPlanId })} />
-      <WhereSection where={body.where} templateId={draft.templateId} onChange={(where) => setBody({ where })} />
-      <NotesSection body={body} resolved={resolved} onChange={(patch) => setBody(patch)} />
+      </Part>
+      <Part id="plan-contacts">
+        <ContactsSection contacts={body.contacts} resolved={resolved} onChange={(contacts) => setBody({ contacts })} />
+      </Part>
+      <Part id="plan-places">
+        <PlacesSection places={body.places} resolved={resolved} onChange={(places) => setBody({ places })} />
+      </Part>
+      <Part id="plan-phones">
+        <CommsSection comms={body.comms} resolved={resolved} onChange={(comms) => setBody({ comms })} />
+      </Part>
+      <Part id="plan-supplies">
+        <SuppliesSection
+          supplies={body.supplies}
+          days={body.days}
+          people={body.people.length}
+          templateId={draft.templateId}
+          planName={draft.name}
+          onChange={(patch) => setBody(patch)}
+        />
+      </Part>
+      <Part id="plan-power">
+        <PowerSection powerPlanId={body.powerPlanId} onChange={(powerPlanId) => setBody({ powerPlanId })} />
+      </Part>
+      <Part id="plan-where">
+        <WhereSection where={body.where} templateId={draft.templateId} onChange={(where) => setBody({ where })} />
+      </Part>
+      <Part id="plan-notes">
+        <NotesSection body={body} resolved={resolved} onChange={(patch) => setBody(patch)} />
+      </Part>
       <PlanIllustrations links={body.links} resolved={resolved} onChange={(links) => setBody({ links })} />
       <Sources templateId={draft.templateId} />
 
@@ -443,8 +494,18 @@ export default function EmergencyPlanPage() {
         description={`“${plan.name}” will be deleted, with its steps, people, places and supplies list. Contacts, saved places and the supplies themselves are not touched.`}
         confirmLabel="Delete plan"
         loading={remove.isPending}
-        onConfirm={() => remove.mutate(id, { onSuccess: () => navigate("/prepare/plans") })}
+        onConfirm={() =>
+          remove.mutate(id, {
+            onSuccess: () => {
+              flushSync(() => setGone(true));
+              navigate("/prepare/plans");
+            },
+          })
+        }
       />
+      {/* A change waiting to be saved is sent on leaving; one that cannot be (no name, a newer version elsewhere, a failed
+          save) is asked about. Reloading or closing the tab asks while anything at all is unsent. */}
+      <LeaveGuard when={!gone && UNSENT.includes(state)} beforeUnload={!gone && state !== "saved"} what="the changes to this plan" />
     </Page>
   );
 }

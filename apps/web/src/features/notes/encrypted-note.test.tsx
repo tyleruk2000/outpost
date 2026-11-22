@@ -402,7 +402,7 @@ describe("typing while a save is under way", () => {
     await pass(SAVE_DELAY_MS + SLOW_MS / 2);
     type("one two");
     // “Done” waits for the save under way, as its spinner shows.
-    expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Done" })).toHaveAttribute("aria-disabled", "true");
     await pass(2 * SLOW_MS - SLOW_MS / 2 + 250);
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
     await pass(SLOW_MS);
