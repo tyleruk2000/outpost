@@ -475,7 +475,7 @@ function Purification() {
         {METHODS.map((method) => (
           <li key={method.id} className="py-3">
             <p className="font-semibold text-ink">{method.name}</p>
-            <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-small">
+            <dl className="mt-1 grid grid-cols-[fit-content(50%)_minmax(0,1fr)] break-words gap-x-3 gap-y-0.5 text-small">
               {(
                 [
                   ["Bacteria", method.bacteria],

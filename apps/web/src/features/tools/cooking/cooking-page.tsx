@@ -366,7 +366,7 @@ function ConversionCalculator() {
         }
       >
         {rows ? (
-          <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 text-small tabular">
+          <dl className="mt-1 grid grid-cols-[fit-content(50%)_minmax(0,1fr)] break-words gap-x-4 gap-y-0.5 text-small tabular">
             {rows.slice(1).map(([unit, value]) => (
               <div key={unit.id} className="contents">
                 <dt className="text-ink-muted">{unit.name}</dt>

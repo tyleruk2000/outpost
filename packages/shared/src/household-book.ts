@@ -27,11 +27,21 @@ export const BOOK_SECTIONS = [
     label: "The first few minutes",
     about: "What to do at once, on one page: the number to call, go in or get out, who to tell.",
   },
+  {
+    id: "fridge-sheets",
+    label: "Fridge sheets",
+    about: "One page for each emergency plan, to put on the fridge: the number, what to do, who to call and where to meet.",
+  },
   { id: "people", label: "Our household", about: "Each person and pet, their needs and medicines, and the medical sheets." },
   {
     id: "keeping-in-touch",
-    label: "Keeping in touch and meeting",
-    about: "Who to contact, the communication plan and the places to meet.",
+    label: "Keeping in touch",
+    about: "The emergency contacts with their numbers, and the communication plan with a page for each person.",
+  },
+  {
+    id: "places",
+    label: "Home and meeting points",
+    about: "A map of home and every meeting point, each in several grid formats, and the people you would go to.",
   },
   { id: "first-aid", label: "First aid", about: "Quoted from the NHS website, unchanged, with what the book cannot hold." },
   {
@@ -47,11 +57,17 @@ export const BOOK_SECTIONS = [
   {
     id: "situations",
     label: "What to do, by situation",
-    about: "For each hazard chosen: before, during and after, from official guidance.",
+    about: "Your emergency plans in full, as you wrote them, and official guidance for a hazard with no plan yet.",
   },
   { id: "water", label: "Water", about: "How much to keep, how to make water safe, and drinking water near home." },
   { id: "food-hygiene", label: "Food, toilet and hygiene", about: "Food in a power cut or a flood, and keeping clean with little water." },
   { id: "warmth-radio", label: "Warmth, light and the radio", about: "Keeping warm and lit, and the stations your radios can hear." },
+  {
+    id: "frequencies",
+    label: "Radio frequencies",
+    about:
+      "The communication plan's channels first, then licence-free channels, emergency and calling frequencies, broadcasters and repeaters near home, each with whether it needs a licence.",
+  },
   {
     id: "journeys",
     label: "Journeys",
@@ -62,7 +78,13 @@ export const BOOK_SECTIONS = [
     label: "Checklists",
     about: "A shopping list worked out for your people and days, the grab bag, the first aid kit and the car.",
   },
+  { id: "supplies", label: "Supplies", about: "What is kept, where and until when, and how long it lasts." },
   { id: "local-risks", label: "Local risks", about: "Flood and planning zones at home where a layer is held, and the climate's extremes." },
+  {
+    id: "grab-cards",
+    label: "Grab cards",
+    about: "A card for each person to carry, to cut out: medical lines, who to call, where to meet, home's position.",
+  },
   {
     id: "children",
     label: "Cards for the children",
@@ -163,6 +185,10 @@ export interface BookAnswers {
   notesPages: number;
   /** Put each medical sheet in full, as the binder does; otherwise only the summary in "Our household". */
   medicalInFull: boolean;
+  /** Which emergency plans go in the book: every one the household has, or only those in `planIds`. */
+  planChoice: "all" | "some";
+  /** The plans chosen when `planChoice` is "some". */
+  planIds: string[];
 }
 
 export const DEFAULT_BOOK_ANSWERS: BookAnswers = {
@@ -180,7 +206,21 @@ export const DEFAULT_BOOK_ANSWERS: BookAnswers = {
   sections: [...BOOK_SECTION_IDS],
   notesPages: 2,
   medicalInFull: false,
+  planChoice: "all",
+  planIds: [],
 };
+
+/** The plans that go in the book, by the answers: all of them, or those chosen that still exist. */
+export function bookPlanIds(answers: Pick<BookAnswers, "planChoice" | "planIds">, plans: ReadonlyArray<{ id: string }>): string[] {
+  return answers.planChoice === "all"
+    ? plans.map((plan) => plan.id)
+    : plans.filter((plan) => answers.planIds.includes(plan.id)).map((plan) => plan.id);
+}
+
+/** The hazards the household has a plan for, by the template each plan was started from. */
+export function hazardsWithPlans(plans: ReadonlyArray<{ templateId: string | null }>): BookHazardId[] {
+  return BOOK_HAZARD_IDS.filter((hazard) => plans.some((plan) => plan.templateId === hazard));
+}
 
 /** The steps of the wizard, in order. */
 export const BOOK_STEPS = [
@@ -230,9 +270,25 @@ export interface BookMade {
   summary: Record<string, string[]>;
   /** What it was made from, as `BookResponse.fingerprints` said when it was made; books made before these were kept have none. */
   fingerprints?: Record<BookSource, string>;
+  /** A household binder made before the binder became part of the book, standing in for the book until one is made. */
+  fromBinder?: boolean;
 }
 
-export type BookMadeInput = Omit<BookMade, "madeAt" | "fingerprints"> & { fingerprints?: Partial<Record<BookSource, string>> };
+export type BookMadeInput = Omit<BookMade, "madeAt" | "fingerprints" | "fromBinder"> & {
+  fingerprints?: Partial<Record<BookSource, string>>;
+};
+
+/** What a part of the old binder was made from, as the book's sources: a binder out of date in a part is a book out of date in these. */
+export const BINDER_PART_SOURCES: Record<string, BookSource[]> = {
+  plans: ["plans"],
+  contacts: ["contacts"],
+  comms: ["comms", "contacts"],
+  "grab-cards": ["medical", "contacts", "plans", "places"],
+  medical: ["medical"],
+  frequencies: ["comms"],
+  places: ["places", "plans"],
+  supplies: ["supplies"],
+};
 
 /** What changed in one section between two books. */
 export interface BookChange {

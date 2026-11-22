@@ -50,6 +50,11 @@ of what each feature does are in its own guide.
   accessibility tree. Not tried: VoiceOver, TalkBack or NVDA reading the screen names and the
   setting hints aloud; a real phone or tablet with a keyboard, switch access or the
   on-screen keyboard over a setting's field; Windows high contrast.
+- **Tools and Games, not tried:** VoiceOver or TalkBack playing any game or working any
+  calculator (the move and state announcements were read from the page, not heard); a real
+  phone's touch, on-screen keyboard and safe areas (only Chromium and WebKit with touch at
+  phone sizes); the live compass, the phone's motion sensors and the camera on a real device;
+  Windows High Contrast and forced colours; a switch device or voice control.
 
 ## Installing and looking after it
 

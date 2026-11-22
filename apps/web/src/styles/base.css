@@ -163,6 +163,15 @@
     -webkit-text-size-adjust: 100%;
   }
 
+  /* On a phone the top bar and the bar of screens stay put over the page. A control reached with Tab is
+     scrolled clear of both, not left under them (WCAG 2.4.11). */
+  @media (width < 48rem) {
+    html {
+      scroll-padding-top: calc(3.25rem + 0.5rem);
+      scroll-padding-bottom: calc(var(--mobile-nav-height, 4rem) + 0.5rem);
+    }
+  }
+
   body {
     min-height: 100dvh;
     background: var(--page);
