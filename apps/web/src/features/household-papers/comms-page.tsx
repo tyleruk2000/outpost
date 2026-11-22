@@ -24,6 +24,7 @@ import { CircleAlert, Plus, Undo2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
+import { LeaveGuard } from "@/components/leave-guard";
 import { ErrorState, Notice, Page, PageHeader, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/input";
@@ -587,6 +588,7 @@ export default function CommsPage() {
             </Field>
           </Section>
 
+          <LeaveGuard when={dirty} what="the changes to the plan" />
           <SaveBar>
             <Button variant="primary" loading={save.isPending} disabled={!dirty} onClick={submit}>
               Save

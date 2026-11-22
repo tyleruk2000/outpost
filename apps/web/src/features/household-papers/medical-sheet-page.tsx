@@ -8,8 +8,10 @@
 import { BLOOD_GROUPS, type CareContact, localDay, MEDICAL_CAVEAT, type MedicalRecord, type MedicalSheet } from "@outpost/shared";
 import { CircleAlert, LockKeyhole, LockKeyholeOpen, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
+import { LeaveGuard } from "@/components/leave-guard";
 import { EmptyState, ErrorState, Notice, Page, PageHeader, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
@@ -507,6 +509,7 @@ function Editor({ sheet, record: start, opened }: { sheet: MedicalSheet; record:
         </Field>
       </Section>
 
+      <LeaveGuard when={dirty} what="the changes to this sheet" />
       <SaveBar>
         <Button variant="primary" loading={busy} disabled={!dirty || !name.trim()} onClick={() => void send(false)}>
           Save
@@ -590,6 +593,8 @@ function Editor({ sheet, record: start, opened }: { sheet: MedicalSheet; record:
           remove.mutate(sheet.id, {
             onSuccess: () => {
               lockSheet(sheet.id);
+              // Deleted: nothing is left to save, so leaving asks nothing.
+              flushSync(() => setDirty(false));
               navigate("/prepare/medical");
             },
           })

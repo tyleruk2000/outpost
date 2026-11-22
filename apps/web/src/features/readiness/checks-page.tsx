@@ -5,7 +5,7 @@
  * overdue, in one line. No notifications: Outpost cannot wake a phone, and says so.
  */
 import { CHECK_LINK_IDS, CHECK_LINKS, type CheckLink, ROUTINE_CHECK_TEMPLATE, type RoutineCheck } from "@outpost/shared";
-import { Check, Pencil, Plus, Trash2 } from "lucide-react";
+import { Check, Pencil, Plus, Trash2, Undo2 } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
@@ -23,6 +23,18 @@ import { checkDueWords, everyWords } from "./words";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** A time as the day a date field holds, in this device's time zone: "2026-11-22". */
+function dayOf(at: number): string {
+  const date = new Date(at);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+/** A day from a date field as a time: midday there, or now if that is still to come today. */
+function atOf(day: string): number {
+  const [year, month, date] = day.split("-").map(Number);
+  return Math.min(new Date(year!, month! - 1, date!, 12).getTime(), Date.now());
+}
+
 function CheckDialog({ check, onClose }: { check: RoutineCheck | "new"; onClose: () => void }) {
   const save = useSaveCheck();
   const editing = check === "new" ? null : check;
@@ -30,6 +42,11 @@ function CheckDialog({ check, onClose }: { check: RoutineCheck | "new"; onClose:
   const [every, setEvery] = useState(String(editing?.everyDays ?? 30));
   const [note, setNote] = useState(editing?.note ?? "");
   const [link, setLink] = useState<CheckLink | "none">(editing?.link ?? "none");
+  const deviceName = useDeviceName();
+  const done = useCheckDone();
+  // The day it was last done, as the date field holds it; empty for never.
+  const [lastDone, setLastDone] = useState(editing?.lastDoneAt ? dayOf(editing.lastDoneAt) : "");
+  const lastDoneChanged = editing !== null && lastDone !== (editing.lastDoneAt ? dayOf(editing.lastDoneAt) : "");
   const days = Number(every);
   const valid = name.trim() && Number.isInteger(days) && days >= 1 && days <= 3650;
 
@@ -47,7 +64,21 @@ function CheckDialog({ check, onClose }: { check: RoutineCheck | "new"; onClose:
           ...(editing ? { baseUpdatedAt: editing.updatedAt } : {}),
         },
       },
-      { onSuccess: onClose, onError: (error) => notify.error(errorMessage(error)) },
+      {
+        onSuccess: (saved) => {
+          if (!editing || !lastDoneChanged) return onClose();
+          done.mutate(
+            {
+              id: editing.id,
+              by: lastDone ? (editing.lastDoneBy ?? deviceName ?? "") : "",
+              at: lastDone ? atOf(lastDone) : null,
+              baseUpdatedAt: saved.updatedAt,
+            },
+            { onSuccess: onClose, onError: (error) => notify.error(errorMessage(error)) },
+          );
+        },
+        onError: (error) => notify.error(errorMessage(error)),
+      },
     );
   };
 
@@ -75,6 +106,19 @@ function CheckDialog({ check, onClose }: { check: RoutineCheck | "new"; onClose:
             <Field label="A note" optional>
               {(ids) => <Input {...ids} value={note} maxLength={1000} onChange={(event) => setNote(event.target.value)} />}
             </Field>
+            {editing ? (
+              <Field label="Last done" optional hint="Set it back if it was marked done by mistake, or clear it for never.">
+                {(ids) => (
+                  <Input
+                    {...ids}
+                    type="date"
+                    max={dayOf(Date.now())}
+                    value={lastDone}
+                    onChange={(event) => setLastDone(event.target.value)}
+                  />
+                )}
+              </Field>
+            ) : null}
             <Field label="The screen it belongs to" optional>
               {(ids) => (
                 <Select
@@ -93,7 +137,7 @@ function CheckDialog({ check, onClose }: { check: RoutineCheck | "new"; onClose:
             <Button variant="secondary" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" disabled={!valid} loading={save.isPending}>
+            <Button type="submit" variant="primary" disabled={!valid} loading={save.isPending || done.isPending}>
               Save
             </Button>
           </DialogFooter>
@@ -121,21 +165,29 @@ function CheckRow({
   const template = check.templateId ? ROUTINE_CHECK_TEMPLATE.find((entry) => entry.id === check.templateId) : undefined;
   const source = template?.source && template.everyDays === check.everyDays ? template.source : null;
 
+  // What it was before "Done today" was pressed here: Undo stays on the row until the screen is left, not only for
+  // the toast's few seconds. The date can also be set back, or cleared, under Change.
+  const [before, setBefore] = useState<{ at: number | null; by: string | null } | null>(null);
+  const undo = (previous: { at: number | null; by: string | null }, baseUpdatedAt: number) =>
+    done.mutate(
+      { id: check.id, by: previous.by ?? "", at: previous.at, baseUpdatedAt },
+      {
+        onSuccess: () => {
+          setBefore(null);
+          toast(`“${check.name}” is back as it was.`);
+        },
+        onError: (error) => notify.error(errorMessage(error)),
+      },
+    );
   const markDone = () =>
     done.mutate(
       { id: check.id, by: name ?? "", baseUpdatedAt: check.updatedAt },
       {
         onSuccess: (result) => {
-          const before = { lastDoneAt: check.lastDoneAt };
+          const previous = { at: check.lastDoneAt, by: check.lastDoneBy };
+          setBefore(previous);
           toast.success(`Done: ${check.name}.`, {
-            action: {
-              label: "Undo",
-              onClick: () =>
-                done.mutate(
-                  { id: check.id, by: check.lastDoneBy ?? "", at: before.lastDoneAt, baseUpdatedAt: result.check.updatedAt },
-                  { onError: (error) => notify.error(errorMessage(error)) },
-                ),
-            },
+            action: { label: "Undo", onClick: () => undo(previous, result.check.updatedAt) },
           });
           return result;
         },
@@ -190,6 +242,11 @@ function CheckRow({
         <Button variant="ghost" size="icon" aria-label={`Remove “${check.name}”`} onClick={onRemove}>
           <Trash2 />
         </Button>
+        {before ? (
+          <Button variant="link" size="sm" className="ml-2" onClick={() => undo(before, check.updatedAt)}>
+            <Undo2 aria-hidden /> Undo “Done today”
+          </Button>
+        ) : null}
       </div>
     </li>
   );

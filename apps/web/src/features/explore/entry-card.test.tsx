@@ -115,7 +115,10 @@ describe("a catalogue entry", () => {
 
   it("shows the add as busy while the sheet is being copied", () => {
     show(sheet, { adding: true });
-    expect(screen.getByRole("button", { name: "Add to library: Amateur radio bands in the United Kingdom" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Add to library: Amateur radio bands in the United Kingdom" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
   });
 
   it("opens an added sheet as the document it became", () => {

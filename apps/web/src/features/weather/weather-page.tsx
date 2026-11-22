@@ -77,6 +77,19 @@ function outcomeSentence(outcome: UpdateOutcome): string {
   return `${KIND_WORDS[outcome.kind][0]!.toUpperCase()}${KIND_WORDS[outcome.kind].slice(1)}${outcome.placeName ? ` for ${outcome.placeName}` : ""}: ${outcome.message}`;
 }
 
+/** What a tab that needs a place shows before one is chosen: a panel with nothing in it is a stop for Tab and says nothing. */
+function NeedsPlace({ onChoose }: { onChoose: () => void }) {
+  return (
+    <p className="text-body text-ink-muted">
+      This needs a place.{" "}
+      <Button variant="link" onClick={onChoose}>
+        Choose one under Places
+      </Button>
+      .
+    </p>
+  );
+}
+
 export default function WeatherPage() {
   const [params, setParams] = useSearchParams();
   const asked = params.get("view");
@@ -270,7 +283,9 @@ export default function WeatherPage() {
                     No forecast has been fetched for {place.name} yet. Press Update now when there is a connection.
                   </p>
                 )
-              ) : null}
+              ) : (
+                <NeedsPlace onChoose={() => setView("places")} />
+              )}
             </TabsContent>
             <TabsContent value="warnings">
               <WarningsView copy={copyOf("warnings", null)} place={place} source={source("warnings")} now={now} />
@@ -286,7 +301,11 @@ export default function WeatherPage() {
               />
             </TabsContent>
             <TabsContent value="flood">
-              {place ? <FloodView copy={copyOf("flood", place.id)} source={source("flood")} now={now} /> : null}
+              {place ? (
+                <FloodView copy={copyOf("flood", place.id)} source={source("flood")} now={now} />
+              ) : (
+                <NeedsPlace onChoose={() => setView("places")} />
+              )}
             </TabsContent>
             <TabsContent value="rivers">
               {place ? (
@@ -301,7 +320,9 @@ export default function WeatherPage() {
                   onFetch={() => runUpdate(["rivers"], [place.id])}
                   stationId={params.get("station")}
                 />
-              ) : null}
+              ) : (
+                <NeedsPlace onChoose={() => setView("places")} />
+              )}
             </TabsContent>
             <TabsContent value="climate">
               {place ? (
@@ -314,7 +335,9 @@ export default function WeatherPage() {
                   fetching={update.isPending}
                   onFetch={() => runUpdate(["climate", "solar"], [place.id])}
                 />
-              ) : null}
+              ) : (
+                <NeedsPlace onChoose={() => setView("places")} />
+              )}
             </TabsContent>
             <TabsContent value="barometer">
               <BarometerView homeLat={places.find((candidate) => candidate.isHome)?.lat ?? null} />

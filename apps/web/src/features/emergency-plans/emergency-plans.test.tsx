@@ -413,6 +413,20 @@ describe("a plan", () => {
     expect(await screen.findByText("Time to look this plan over")).toBeInTheDocument();
   });
 
+  it("on a phone, lists its parts at the top and folds each phase of steps but the first, with a count", async () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.includes("48rem"), addEventListener() {}, removeEventListener() {} }));
+    serve({ "/api/emergency-plans/p1": answer(), "POST /api/emergency-plans/p1/opened": answer(), ...others });
+    show("/prepare/plans/p1", <PlanPage />, "/prepare/plans/:id");
+    const parts = await screen.findByRole("navigation", { name: "Parts of this plan" });
+    expect(within(parts).getByRole("link", { name: "Steps" })).toHaveAttribute("href", "#plan-steps");
+    expect(within(parts).getByRole("link", { name: "Supplies" })).toHaveAttribute("href", "#plan-supplies");
+    expect(document.getElementById("plan-steps")).not.toBeNull();
+    const phases = [...document.querySelectorAll("#plan-steps details")].filter((each) => each.querySelector(":scope > summary h3"));
+    expect(phases.length).toBe(3);
+    expect(phases.map((phase) => (phase as HTMLDetailsElement).open)).toEqual([true, false, false]);
+    expect(phases[0]!.querySelector("summary")).toHaveTextContent(/^Before\d+ steps?$/);
+  });
+
   describe("changed on another device while open here", { timeout: 30_000 }, () => {
     const THEIRS = MADE.getTime() + 60_000;
     /** The plan as another device left it, and a server that refuses the first change made from the older copy. */

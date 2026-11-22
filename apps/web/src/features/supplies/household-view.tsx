@@ -22,6 +22,7 @@ import {
 import { PawPrint, Trash2, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { LeaveGuard } from "@/components/leave-guard";
 import { Notice, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
@@ -96,6 +97,10 @@ export function HouseholdView({ household }: { household: Household }) {
   const [members, setMembers] = useState<MemberDraft[]>(() => household.members.map(toDraft));
   const [problem, setProblem] = useState<string | null>(null);
   const save = useSetHousehold();
+  // Changed since it was saved: the form as it is against the form as it came. The view is drawn again after a save.
+  const form = JSON.stringify({ days, tableChoice, basis, drinking, allUses, members });
+  const [saved] = useState(form);
+  const dirty = form !== saved;
 
   const change = (key: string, patch: Partial<MemberDraft>) =>
     setMembers((list) => list.map((member) => (member.key === key ? { ...member, ...patch } : member)));
@@ -414,7 +419,8 @@ export function HouseholdView({ household }: { household: Household }) {
         </details>
       </Section>
 
-      <div className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-(--z-sticky) mt-8 flex flex-wrap items-center gap-3 border-t border-border bg-page py-3 md:bottom-0">
+      <LeaveGuard when={dirty && !save.isPending} what="the changes to the household" query />
+      <div className="sticky bottom-[var(--mobile-nav-height,calc(3.5rem+env(safe-area-inset-bottom)))] z-(--z-sticky) mt-8 flex flex-wrap items-center gap-3 border-t border-border bg-page py-3 md:bottom-0">
         <Button type="submit" variant="primary" loading={save.isPending}>
           Save household
         </Button>

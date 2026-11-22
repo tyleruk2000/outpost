@@ -1,7 +1,7 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import { LoaderCircle } from "lucide-react";
 import { Slot } from "radix-ui";
-import type { ButtonHTMLAttributes, Ref } from "react";
+import type { ButtonHTMLAttributes, MouseEvent, Ref } from "react";
 import { cn } from "@/lib/utils";
 
 // A label stays on one line while it fits, and wraps, with the button growing taller, only when it is wider than
@@ -38,15 +38,30 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>, Va
   ref?: Ref<HTMLButtonElement>;
 }
 
-export function Button({ className, variant, size, asChild, loading, disabled, children, type, ...props }: ButtonProps) {
+/**
+ * While `loading`, the button is marked unavailable (`aria-disabled`) and its presses are stopped here, but it is not
+ * `disabled`: a disabled button drops the keyboard's focus to the top of the page, just after it was pressed from the
+ * keyboard (WCAG 2.4.3). A submit button stops the form being sent again the same way.
+ */
+export function Button({ className, variant, size, asChild, loading, disabled, children, type, onClick, ...props }: ButtonProps) {
   const Component = asChild ? Slot.Root : "button";
+  const busy = Boolean(loading) && !disabled;
   return (
     <Component
       className={cn(button({ variant, size }), className)}
-      disabled={asChild ? undefined : disabled || loading}
+      disabled={asChild ? undefined : disabled}
       aria-busy={loading || undefined}
       type={asChild ? undefined : (type ?? "button")}
       {...props}
+      aria-disabled={busy || props["aria-disabled"] || undefined}
+      onClick={(event: MouseEvent<HTMLButtonElement>) => {
+        if (busy) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+        onClick?.(event);
+      }}
     >
       {/* With asChild the single child is the element itself, so nothing may sit beside it. */}
       {asChild ? (

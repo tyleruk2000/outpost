@@ -464,7 +464,9 @@ export default function NuclearPage() {
   const atLimit = slots.length >= MAX_SCENARIOS_SHOWN;
 
   return (
-    <Page width="full">
+    // The map and the panel sit side by side only when the page has room for both at the text size in use: a container
+    // query is measured in the root font size, which a media query is not, so 200% text stacks them as a phone does.
+    <Page width="full" className="@container">
       <PageHeader
         title="Nuclear preparedness"
         description="An educational workspace over the offline map: what a published model says a nuclear detonation of a stated size does at a distance, published reference data, historical records, and your household's own plans. Nothing here is a forecast or an instruction."
@@ -474,25 +476,31 @@ export default function NuclearPage() {
       <div
         className={cn(
           "grid grid-cols-[minmax(0,1fr)] gap-x-8 gap-y-6",
-          panel ? "lg:grid-cols-[minmax(0,1fr)_25rem]" : "lg:grid-cols-[minmax(0,1fr)]",
+          panel ? "@min-[42rem]:grid-cols-[minmax(0,1fr)_25rem]" : "@min-[42rem]:grid-cols-[minmax(0,1fr)]",
         )}
       >
-        <div className="grid grid-cols-[minmax(0,1fr)] content-start gap-2 lg:sticky lg:top-4 lg:self-start">
+        <div className="grid grid-cols-[minmax(0,1fr)] content-start gap-2 @min-[42rem]:sticky @min-[42rem]:top-4 @min-[42rem]:self-start">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-small text-ink-muted">
               {tab === "scenario"
                 ? `Press the map to ${checked.at ? "move" : "put"} ground zero ${slot.letter} there.`
                 : "Press a mark on the map to open its record. Ground zero moves only from the Scenario tab."}
             </p>
-            <Button variant="ghost" size="sm" className="max-lg:hidden" onClick={() => setPanel((shown) => !shown)} aria-expanded={panel}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="@max-[42rem]:hidden"
+              onClick={() => setPanel((shown) => !shown)}
+              aria-expanded={panel}
+            >
               {panel ? <PanelRightClose aria-hidden /> : <PanelRightOpen aria-hidden />}
               {panel ? "Hide the panel" : "Show the panel"}
             </Button>
           </div>
-          <Suspense fallback={<Skeleton className="h-[min(52dvh,40rem)] w-full lg:h-[min(76dvh,52rem)]" />}>
+          <Suspense fallback={<Skeleton className="h-[min(52dvh,40rem)] w-full @min-[42rem]:h-[min(76dvh,52rem)]" />}>
             <PlanMap
               label="The offline map, with the scenarios' rings and fallout patterns"
-              className="h-[min(52dvh,40rem)] lg:h-[min(76dvh,52rem)]"
+              className="h-[min(52dvh,40rem)] @min-[42rem]:h-[min(76dvh,52rem)]"
               nuclear={mapData}
               places={showPlaces ? places : undefined}
               satellite={satellite && imagery}
@@ -508,7 +516,7 @@ export default function NuclearPage() {
             />
           </Suspense>
           {slots.length > 1 ? (
-            <div className="lg:hidden">
+            <div className="@min-[42rem]:hidden">
               <Segmented
                 label="Scenario being edited"
                 value={slot.letter}
@@ -529,7 +537,7 @@ export default function NuclearPage() {
         </div>
 
         <aside
-          className={cn("grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-4", !panel && "lg:hidden")}
+          className={cn("grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-4", !panel && "@min-[42rem]:hidden")}
           aria-label="Scenarios, layers, records and plans"
         >
           <Tabs value={tab} onValueChange={setTab}>

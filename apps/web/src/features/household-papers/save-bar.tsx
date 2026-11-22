@@ -16,7 +16,7 @@ export function SaveBar({ children }: { children: ReactNode }) {
   return (
     <div
       data-save-bar
-      className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-(--z-sticky) mt-6 flex flex-wrap items-center gap-3 border-t border-border bg-page py-3 md:bottom-0"
+      className="sticky bottom-[var(--mobile-nav-height,calc(3.5rem+env(safe-area-inset-bottom)))] z-(--z-sticky) mt-6 flex flex-wrap items-center gap-3 border-t border-border bg-page py-3 md:bottom-0"
     >
       {children}
     </div>

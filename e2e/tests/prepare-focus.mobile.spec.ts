@@ -156,3 +156,83 @@ test.describe("Prepare at 320 with the Largest text", () => {
     }
   });
 });
+
+test.describe("Tabs, fields and leaving with changes not saved", () => {
+  test("Tab goes from the units to the chosen weather tab after a tab was pressed, never to the row of tabs", async ({ page }) => {
+    await page.goto("/prepare/weather");
+    await page.getByRole("tab", { name: "Warnings" }).click();
+    await page.getByRole("radio", { name: "°F" }).focus();
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("tab", { name: "Warnings" })).toBeFocused();
+  });
+
+  test("a text field's focus is a 2 px ring in the focus colour, in light and dark", async ({ page }) => {
+    for (const scheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.goto("/prepare/log");
+      const field = page.getByRole("textbox").first();
+      await field.focus();
+      await page.keyboard.press("Shift+Tab");
+      await page.keyboard.press("Tab");
+      await expect(field).toBeFocused();
+      const read = () =>
+        field.evaluate((element) => {
+          const probe = document.createElement("span");
+          probe.style.color = "var(--focus)";
+          document.body.append(probe);
+          const focusColour = getComputedStyle(probe).color;
+          probe.remove();
+          const ring = getComputedStyle(element).boxShadow;
+          return ring.includes("0px 0px 0px 2px") && ring.includes(focusColour) ? "ring" : ring;
+        });
+      // The ring comes in over 150 ms.
+      await expect.poll(read, { message: scheme }).toBe("ring");
+    }
+  });
+
+  test("asks before leaving a medical sheet with changes not saved", async ({ page }) => {
+    await page.goto("/");
+    const { sheet } = await api(page, "POST", "/api/medical-sheets", { name: "Leaving test", record: {} });
+    await page.goto(`/prepare/medical/${sheet.id}`);
+    await page.getByRole("textbox", { name: "Anything else to know (optional)" }).fill("Wears glasses.");
+    await page.getByRole("link", { name: "Medical sheets" }).first().tap();
+    const ask = page.getByRole("alertdialog", { name: "Leave without saving?" });
+    await expect(ask).toBeVisible();
+    await ask.getByRole("button", { name: "Stay here" }).tap();
+    await expect(page.getByRole("heading", { level: 1, name: "Medical sheet: Leaving test" })).toBeVisible();
+    await page.getByRole("button", { name: "Save", exact: true }).tap();
+    await expect(page.getByText(/^Saved /)).toBeVisible();
+    await page.getByRole("link", { name: "Medical sheets" }).first().tap();
+    await expect(page.getByRole("heading", { level: 1, name: "Medical sheets" })).toBeVisible();
+  });
+});
+
+test.describe("Large text on a wide screen and the smallest phone", () => {
+  test("Nuclear preparedness at 200% on a wide screen puts the map above the panel, its zoom in reach", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.addInitScript(() => {
+      const apply = () => document.documentElement.style.setProperty("font-size", "32px", "important");
+      if (document.documentElement) apply();
+      document.addEventListener("DOMContentLoaded", apply);
+    });
+    await page.goto("/prepare/nuclear");
+    const zoom = page.getByRole("button", { name: "Zoom in" });
+    await expect(zoom).toBeVisible({ timeout: 20_000 });
+    const box = (await zoom.boundingBox())!;
+    expect(box.x + box.width).toBeLessThanOrEqual(1280);
+    expect(await sideways(page)).toBeLessThanOrEqual(0);
+  });
+
+  test("the passphrase's Show button is inside the encrypt dialog at 320 with the Largest text", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.addInitScript(() => localStorage.setItem("outpost.textSize", "largest"));
+    await page.goto("/");
+    const { sheet } = await api(page, "POST", "/api/medical-sheets", { name: "Passphrase test", record: {} });
+    await page.goto(`/prepare/medical/${sheet.id}`);
+    await page.getByRole("button", { name: "Encrypt this sheet" }).tap();
+    const show = page.getByRole("dialog").getByRole("button", { name: "Show passphrase" }).first();
+    await show.scrollIntoViewIfNeeded();
+    const box = (await show.boundingBox())!;
+    expect(box.x + box.width).toBeLessThanOrEqual(320);
+  });
+});
