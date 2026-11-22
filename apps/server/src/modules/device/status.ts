@@ -99,12 +99,19 @@ export function databaseCheck(database: DatabaseStatus): DeviceCheck {
       summary: `${size}. It was last opened by a newer version of Outpost.`,
       advice: "Update Outpost to the version that wrote it, or some things may not show.",
     };
-  const checked = check ? `Last checked ${ageWords(Date.now() - check.at)} ago: no damage found.` : "Not checked yet.";
+  // Never "Fine" for a file nobody has checked: it is said to be not checked yet, with the check offered.
+  if (!check)
+    return {
+      ...base,
+      state: "unchecked",
+      summary: `${size}. Not checked for damage yet.`,
+      advice: "A check reads the whole file and takes a moment; everything carries on as usual while it runs.",
+    };
   return {
     ...base,
     state: "good",
-    summary: `${size}. ${checked}`,
-    advice: check ? null : "A check takes a moment and reads the whole file: Storage, Database, Check.",
+    summary: `${size}. Last checked ${ageWords(Date.now() - check.at)} ago: no damage found.`,
+    advice: null,
   };
 }
 
@@ -259,6 +266,13 @@ export function memoryCheck(memory: Memory): DeviceCheck {
       };
     return { ...base, state: "good", summary, advice: null };
   }
+  if (!memory.availableKnown)
+    return {
+      ...base,
+      state: "unknown",
+      summary: `${outpost}, of the ${formatBytes(memory.totalBytes)} the computer has. This system does not say how much more programs could be given: it counts files it keeps in memory, which it gives back when asked, as used.`,
+      advice: null,
+    };
   const summary = `${outpost}. ${formatBytes(memory.availableBytes)} of ${formatBytes(memory.totalBytes)} is free for programs.`;
   if (memory.availableBytes / memory.totalBytes < 0.1)
     return {

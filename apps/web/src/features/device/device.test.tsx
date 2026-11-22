@@ -152,5 +152,33 @@ describe("the status screen", () => {
     expect(overallSentence([{ state: "problem" }, { state: "attention" }, { state: "attention" }])).toBe(
       "1 problem, 2 things need attention.",
     );
+    // What has not been checked is never called fine.
+    expect(overallSentence([{ state: "good" }, { state: "unchecked" }])).toBe("Nothing needs attention. 1 thing is not checked yet.");
+    expect(overallSentence([{ state: "attention" }, { state: "unchecked" }])).toBe("1 thing needs attention. 1 thing is not checked yet.");
+  });
+
+  it("says the database is not checked yet, and checks it at a press", async () => {
+    const user = userEvent.setup();
+    const sent = serve(clockAnswer(0, true));
+    STATUS.checks.push({
+      id: "database",
+      group: "data",
+      title: "Database",
+      state: "unchecked",
+      summary: "5.64 MB. Not checked for damage yet.",
+      advice: "A check reads the whole file and takes a moment.",
+      link: { to: "/storage", label: "Storage" },
+    });
+    try {
+      show(<StatusPage />);
+      expect(await screen.findByText("Not checked for damage yet.", { exact: false })).toBeInTheDocument();
+      const row = screen.getByRole("heading", { name: "Database" }).closest("li") as HTMLElement;
+      expect(row).toHaveTextContent("Not checked yet");
+      expect(row).not.toHaveTextContent("Fine");
+      await user.click(screen.getByRole("button", { name: "Check now" }));
+      expect(sent.some((request) => request.url.includes("/api/database/check") && request.method === "POST")).toBe(true);
+    } finally {
+      STATUS.checks.pop();
+    }
   });
 });

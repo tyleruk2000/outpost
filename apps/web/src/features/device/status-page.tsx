@@ -1,7 +1,7 @@
 import type { DeviceCheck, DeviceCheckGroup, DeviceCheckState, DeviceStatus, EventLoopDelay } from "@outpost/shared";
-import { useQuery } from "@tanstack/react-query";
-import { CircleAlert, CircleCheck, CircleHelp, CircleX, RefreshCw } from "lucide-react";
-import type { ReactNode } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { CircleAlert, CircleCheck, CircleDashed, CircleHelp, CircleX, RefreshCw } from "lucide-react";
+import { type ReactNode, useState } from "react";
 import { Link } from "react-router";
 import { Disclosure, ErrorState, Page, PageHeader, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ const STATES: Record<
   attention: { word: "Needs attention", tone: "warning", icon: CircleAlert, colour: "text-warning" },
   problem: { word: "Problem", tone: "danger", icon: CircleX, colour: "text-danger" },
   unknown: { word: "Not reported", tone: "neutral", icon: CircleHelp, colour: "text-ink-muted" },
+  unchecked: { word: "Not checked yet", tone: "neutral", icon: CircleDashed, colour: "text-ink-muted" },
 };
 
 const GROUPS: Array<{ id: DeviceCheckGroup; title: string; description: string }> = [
@@ -37,12 +38,15 @@ const GROUPS: Array<{ id: DeviceCheckGroup; title: string; description: string }
 export function overallSentence(checks: Array<Pick<DeviceCheck, "state">>): string {
   const problems = checks.filter((check) => check.state === "problem").length;
   const attention = checks.filter((check) => check.state === "attention").length;
-  if (problems === 0 && attention === 0) return "Everything is fine.";
+  const unchecked = checks.filter((check) => check.state === "unchecked").length;
+  // Something not checked yet is not called fine.
+  const notChecked = unchecked > 0 ? ` ${unchecked === 1 ? "1 thing is" : `${unchecked} things are`} not checked yet.` : "";
+  if (problems === 0 && attention === 0) return unchecked > 0 ? `Nothing needs attention.${notChecked}` : "Everything is fine.";
   const parts = [
     problems > 0 ? `${plural(problems, "problem")}` : null,
     attention > 0 ? `${attention} ${attention === 1 ? "thing needs" : "things need"} attention` : null,
   ].filter(Boolean);
-  return `${parts.join(", ")}.`.replace(/^./, (first) => first.toUpperCase());
+  return `${parts.join(", ")}.${notChecked}`.replace(/^./, (first) => first.toUpperCase());
 }
 
 /** The line for the clock, worked out here: only the browser knows the time it should be. */
@@ -125,11 +129,30 @@ function DelayTable({ eventLoop }: { eventLoop: EventLoopDelay }) {
   );
 }
 
+/** How long the screen asks again, every two seconds, for the database check it started to be over. */
+const CHECK_WAIT_MS = 120_000;
+
 export default function StatusPage() {
+  // Set while a database check started here is running: the screen asks again until the line is no longer unchecked.
+  const [checkingSince, setCheckingSince] = useState<number | null>(null);
   const status = useQuery({
     queryKey: ["device", "status"],
     queryFn: () => api.get<DeviceStatus>("/api/device/status"),
+    refetchInterval: (query) => {
+      if (checkingSince === null || Date.now() - checkingSince > CHECK_WAIT_MS) return false;
+      const database = query.state.data?.checks.find((check) => check.id === "database");
+      return database?.state === "unchecked" ? 2000 : false;
+    },
   });
+  const checkDatabase = useMutation({
+    mutationFn: () => api.post("/api/database/check", { kind: "quick" }),
+    onSuccess: () => setCheckingSince(Date.now()),
+  });
+  const databaseChecking =
+    checkDatabase.isPending ||
+    (checkingSince !== null &&
+      Date.now() - checkingSince <= CHECK_WAIT_MS &&
+      status.data?.checks.find((check) => check.id === "database")?.state === "unchecked");
   const clock = useServerClock();
   const setClock = useSetClock();
 
@@ -176,6 +199,10 @@ export default function StatusPage() {
                         check.id === "clock" && check.state !== "good" && clock.data?.server.setting.allowed ? (
                           <Button size="sm" variant="primary" onClick={() => setClock.mutate()} disabled={setClock.isPending}>
                             {SET_CLOCK}
+                          </Button>
+                        ) : check.id === "database" && check.state === "unchecked" ? (
+                          <Button size="sm" onClick={() => checkDatabase.mutate()} loading={Boolean(databaseChecking)}>
+                            {databaseChecking ? "Checking" : "Check now"}
                           </Button>
                         ) : undefined
                       }

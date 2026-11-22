@@ -3,18 +3,19 @@
 ## Server status
 
 **Settings → Server status** says how each thing stands, and what to do when it needs
-something. Each line is **Fine**, **Needs attention**, **Problem**, or **Not reported**
-where the system does not say (not a fault). **Check again** reads everything afresh;
-nothing here changes anything.
+something. Each line is **Fine**, **Needs attention**, **Problem**, **Not reported**
+where the system does not say (not a fault), or **Not checked yet** where it can be checked
+and has not been. **Check again** reads everything afresh; nothing here changes anything
+except **Check now** on the database line, which runs the quick check.
 
 | Line | What it tells you |
 | --- | --- |
 | Each storage location | Connected or not (a NAS: answering or not), and free space. Outpost stops writing at 268 MB left. |
-| Database | Its size and the last check's result. Checks run from Storage. |
+| Database | Its size and the last check's result; **Not checked yet**, with **Check now**, until one has run. The full check is under Storage. |
 | Last backup | Its age and place; with automatic backups, how many are kept and whether one was missed because the location was away. Old means over two days with nightly backups, eight with weekly, a week with none. |
 | Restore tested | When a backup was last opened with **Test a restore**. Needs attention if never or over 90 days ago; a problem if it failed. |
 | SD card | SD cards do not report wear, so it says so; eMMC does. |
-| Memory | What Outpost uses and the computer has free; in Docker with a limit, against it. |
+| Memory | What Outpost uses and the computer has free; in Docker with a limit, against it. On a Mac it is **Not reported**: macOS counts the files it keeps in memory as used, so a Mac that is doing well looks nearly full. |
 | Temperature | The processor's. A Raspberry Pi slows itself between 80 and 85 °C. |
 | Power supply | Raspberry Pi only: whether the power has dipped too low. |
 | Clock | Whether the server agrees with your device (below). |

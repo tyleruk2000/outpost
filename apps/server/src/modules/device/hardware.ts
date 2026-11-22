@@ -49,6 +49,12 @@ export interface Memory {
   totalBytes: number;
   /** What programs could still be given without the system swapping: MemAvailable on Linux. */
   availableBytes: number;
+  /**
+   * Whether `availableBytes` means that. Linux says so (MemAvailable), and so does Windows. macOS does not: the free
+   * memory Node is told leaves out what the system keeps of files it has read and gives back at once when asked, so
+   * a Mac that is doing well looks nearly full.
+   */
+  availableKnown: boolean;
   /** A limit put on Outpost's own container, when there is one and it is lower than the computer's memory. */
   limitBytes: number | null;
   /** What Outpost's container uses against that limit. */
@@ -56,21 +62,23 @@ export interface Memory {
   processBytes: number;
 }
 
-export function readMemory(read: ReadFile = readSystemFile): Memory {
+export function readMemory(read: ReadFile = readSystemFile, platform: NodeJS.Platform = process.platform): Memory {
   const info = read("/proc/meminfo");
   const field = (name: string) => {
     const match = info ? new RegExp(`^${name}:\\s+(\\d+) kB`, "m").exec(info) : null;
     return match ? Number(match[1]) * 1024 : null;
   };
   const totalBytes = field("MemTotal") ?? os.totalmem();
-  const availableBytes = field("MemAvailable") ?? os.freemem();
+  const memAvailable = field("MemAvailable");
+  const availableBytes = memAvailable ?? os.freemem();
+  const availableKnown = memAvailable !== null || platform === "win32";
   // cgroup v2 first, then v1. "max" (or a v1 figure near 2^63) is no limit.
   const limitText = (read("/sys/fs/cgroup/memory.max") ?? read("/sys/fs/cgroup/memory/memory.limit_in_bytes"))?.trim();
   const limit = limitText && /^\d+$/.test(limitText) ? Number(limitText) : null;
   const limitBytes = limit !== null && limit < totalBytes ? limit : null;
   const usedText = (read("/sys/fs/cgroup/memory.current") ?? read("/sys/fs/cgroup/memory/memory.usage_in_bytes"))?.trim();
   const usedInLimitBytes = limitBytes !== null && usedText && /^\d+$/.test(usedText) ? Number(usedText) : null;
-  return { totalBytes, availableBytes, limitBytes, usedInLimitBytes, processBytes: process.memoryUsage.rss() };
+  return { totalBytes, availableBytes, availableKnown, limitBytes, usedInLimitBytes, processBytes: process.memoryUsage.rss() };
 }
 
 export interface Temperature {

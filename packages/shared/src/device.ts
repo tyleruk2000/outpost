@@ -2,8 +2,11 @@
  * The device Outpost runs on: how it is doing (the status screen), and its clock.
  */
 
-/** How one thing on the status screen stands. `unknown`: the system does not say, which is not a fault. */
-export type DeviceCheckState = "good" | "attention" | "problem" | "unknown";
+/**
+ * How one thing on the status screen stands. `unknown`: the system does not say, which is not a fault. `unchecked`: it can
+ * be checked, and has not been yet; it is never called fine before it is.
+ */
+export type DeviceCheckState = "good" | "attention" | "problem" | "unknown" | "unchecked";
 
 export type DeviceCheckGroup = "storage" | "data" | "device" | "work";
 

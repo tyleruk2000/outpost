@@ -9,6 +9,7 @@ import type { DeviceStatus, ServerClock } from "@outpost/shared";
 import { afterEach, describe, expect, it } from "vitest";
 import { readCardWear, readMemory, readTemperature, readThrottling } from "../src/modules/device/hardware.ts";
 import { isPrivateAddress } from "../src/modules/device/index.ts";
+import { memoryCheck } from "../src/modules/device/status.ts";
 import { createVitals } from "../src/modules/device/vitals.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
@@ -58,6 +59,24 @@ describe("what the system says", () => {
     const limited = fakeRead({ ...PI_FILES, "/sys/fs/cgroup/memory.max": "1073741824\n", "/sys/fs/cgroup/memory.current": "1000000000\n" });
     expect(readMemory(limited)).toMatchObject({ limitBytes: 1073741824, usedInLimitBytes: 1000000000 });
     expect(readMemory(fakeRead({ ...PI_FILES, "/sys/fs/cgroup/memory.max": "max\n" })).limitBytes).toBeNull();
+    expect(readMemory(read).availableKnown).toBe(true);
+    // A Mac: no /proc/meminfo, and the free memory the system reports leaves out what it would give back.
+    expect(readMemory(fakeRead({}), "darwin").availableKnown).toBe(false);
+    expect(readMemory(fakeRead({}), "win32").availableKnown).toBe(true);
+    // Where it cannot be told, no warning: a Mac that is doing well looked nearly full.
+    const mac = {
+      totalBytes: 34e9,
+      availableBytes: 4e8,
+      availableKnown: false,
+      limitBytes: null,
+      usedInLimitBytes: null,
+      processBytes: 2e8,
+    };
+    expect(memoryCheck(mac)).toMatchObject({
+      state: "unknown",
+      advice: null,
+      summary: expect.stringMatching(/does not say how much more/),
+    });
     // Nothing at all: a Mac.
     expect(readTemperature(fakeRead({}), fakeList({}))).toBeNull();
     expect(readThrottling(fakeRead({}))).toBeNull();
@@ -93,7 +112,8 @@ describe("the status screen", () => {
     const check = (id: string) => body.checks.find((entry) => entry.id === id);
     const storage = body.checks.find((entry) => entry.group === "storage");
     expect(storage).toMatchObject({ state: "good", summary: expect.stringMatching(/^Connected\. .* free of /) });
-    expect(check("database")).toMatchObject({ state: "good", summary: expect.stringMatching(/Not checked yet/) });
+    // Not "Fine" before it has been checked.
+    expect(check("database")).toMatchObject({ state: "unchecked", summary: expect.stringMatching(/Not checked for damage yet/) });
     expect(check("backup")).toMatchObject({ state: "attention", summary: "No backup has been made." });
     expect(check("backup")?.advice).toMatch(/Automatic backups/);
     expect(check("card:mmcblk0")).toMatchObject({ state: "unknown", title: "SD card", summary: expect.stringMatching(/do not report/) });
