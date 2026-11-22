@@ -430,7 +430,7 @@ function SunCalculator() {
         }
       >
         {rows ? (
-          <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-small tabular">
+          <dl className="mt-1 grid grid-cols-[fit-content(50%)_minmax(0,1fr)] break-words gap-x-4 gap-y-1 text-small tabular">
             {rows.map((row) => (
               <div key={row.key} className="contents">
                 <dt className="text-ink-muted">{row.label}</dt>

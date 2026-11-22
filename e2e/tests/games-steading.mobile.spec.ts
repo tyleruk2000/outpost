@@ -44,6 +44,9 @@ test.describe("Steading on a phone", () => {
     // A meadow square with woods beside it, read from the squares' own names: one well inside the
     // view, its every neighbour in view too, so that it is not cut off at the edge.
     const land = page.getByRole("group", { name: /^The land, 48 squares by 48/ });
+    // Each square takes a finger: the window opens close enough in for 44 px squares.
+    const square = (await land.getByRole("button").first().boundingBox())!;
+    expect(Math.min(square.width, square.height)).toBeGreaterThanOrEqual(44);
     const names = await land.getByRole("button").evaluateAll((squares) => squares.map((square) => square.getAttribute("aria-label") ?? ""));
     const ground = new Map<string, string>();
     for (const name of names) {

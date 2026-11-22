@@ -114,7 +114,7 @@ export function NowTab({ place, zone }: { place: ChosenPlace | null; zone: ZoneC
   ];
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
-      <dl className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] gap-x-4 gap-y-2 text-small">
+      <dl className="grid grid-cols-[fit-content(50%)_minmax(0,1fr)] break-words gap-x-4 gap-y-2 text-small">
         {rows.map(([label, value, detail]) => (
           <div key={label} className="contents">
             <dt className="text-ink-muted">{label}</dt>

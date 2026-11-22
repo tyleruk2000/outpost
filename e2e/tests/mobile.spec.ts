@@ -134,7 +134,6 @@ test.describe("on a phone", () => {
           ["Medical sheets", "/prepare/medical"],
           ["Keeping in touch", "/prepare/keeping-in-touch"],
           ["Grab cards", "/prepare/grab-cards"],
-          ["Household binder", "/prepare/binder"],
           ["Household book", "/prepare/book"],
           ["Check-in and roll call", "/prepare/check-in"],
           ["Log of events", "/prepare/log"],

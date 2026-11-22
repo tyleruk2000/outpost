@@ -197,8 +197,8 @@ export default function MedicalPage() {
                 grab cards
               </Link>
               , or in the{" "}
-              <Link to="/prepare/binder" className="text-primary underline underline-offset-2">
-                household binder
+              <Link to="/prepare/book" className="text-primary underline underline-offset-2">
+                household book
               </Link>
               .
             </p>

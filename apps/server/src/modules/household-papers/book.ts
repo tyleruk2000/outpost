@@ -7,6 +7,8 @@
  * climate kept for home and the installed terrain is answered by `facts.ts`.
  */
 import {
+  BINDER_PART_SOURCES,
+  type BinderStatus,
   BOOK_HAZARD_IDS,
   BOOK_LIMITS,
   BOOK_SECTION_IDS,
@@ -101,6 +103,8 @@ export const bookSchema = z
       .default([...BOOK_SECTION_IDS]),
     notesPages: z.number().int().min(0).max(L.notesPages).default(DEFAULT_BOOK_ANSWERS.notesPages),
     medicalInFull: z.boolean().default(false),
+    planChoice: z.enum(["all", "some"]).default("all"),
+    planIds: z.array(itemId).max(200).default([]),
     baseAnswersAt: z.number().int().nonnegative().nullable().optional(),
   })
   .strict();
@@ -133,7 +137,18 @@ function withDefaults(stored: unknown): BookAnswers {
   return answers;
 }
 
-export function createBookService(ctx: AppContext, fingerprints: Fingerprints, changed: () => void): BookService {
+export function createBookService(
+  ctx: AppContext,
+  fingerprints: Fingerprints,
+  changed: () => void,
+  /** The old household binder's record, which stands in for the book until a book is made. */
+  binder: () => BinderStatus = () => ({
+    made: null,
+    changedAt: {} as BinderStatus["changedAt"],
+    fingerprints: {} as BinderStatus["fingerprints"],
+    stale: [],
+  }),
+): BookService {
   const { db } = ctx;
   const row = () => db.select().from(householdBook).where(eq(householdBook.id, ROW)).get();
   const now = (answersAt: number | null): Record<BookSource, string> => ({
@@ -146,13 +161,33 @@ export function createBookService(ctx: AppContext, fingerprints: Fingerprints, c
   const staleOf = (made: BookMade | null, at: Record<BookSource, string>): BookSource[] =>
     made?.fingerprints ? BOOK_SOURCE_IDS.filter((id) => made.fingerprints![id] !== undefined && made.fingerprints![id] !== at[id]) : [];
 
+  /**
+   * The binder is part of the book now. Until a book is made, the last binder made stands
+   * in for it: dated as the binder was, and out of date in whatever the binder is.
+   */
+  const fromBinder = (): { made: BookMade; stale: BookSource[] } | null => {
+    const status = binder();
+    if (!status.made) return null;
+    const stale = new Set<BookSource>(status.stale.flatMap((part) => BINDER_PART_SOURCES[part] ?? []));
+    return {
+      made: { madeAt: status.made.madeAt, pages: status.made.pages, sections: [], summary: {}, fromBinder: true },
+      stale: BOOK_SOURCE_IDS.filter((id) => stale.has(id)),
+    };
+  };
+
   const service: BookService = {
     get() {
       const stored = row();
-      if (!stored) return { answers: { ...DEFAULT_BOOK_ANSWERS }, answersAt: null, made: null, fingerprints: now(null), stale: [] };
-      const made = (stored.made as BookMade | null) ?? null;
-      const at = now(stored.answersAt);
-      return { answers: withDefaults(stored.answers), answersAt: stored.answersAt, made, fingerprints: at, stale: staleOf(made, at) };
+      const made = (stored?.made as BookMade | null | undefined) ?? null;
+      const at = now(stored?.answersAt ?? null);
+      const binderMade = made ? null : fromBinder();
+      return {
+        answers: stored ? withDefaults(stored.answers) : { ...DEFAULT_BOOK_ANSWERS },
+        answersAt: stored?.answersAt ?? null,
+        made: made ?? binderMade?.made ?? null,
+        fingerprints: at,
+        stale: made ? staleOf(made, at) : (binderMade?.stale ?? []),
+      };
     },
     answers: () => service.get().answers,
     save(input) {

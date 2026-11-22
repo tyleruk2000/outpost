@@ -22,7 +22,6 @@ import { StorageBar } from "@/components/storage-bar";
 import { Progress, Skeleton } from "@/components/ui/misc";
 import { BoardHomeLine } from "@/features/board/elsewhere";
 import { BookHomeLine } from "@/features/household-book/book-line";
-import { BinderHomeLine } from "@/features/household-papers/binder-line";
 import { ChecksHomeLine } from "@/features/readiness/checks-line";
 import { api } from "@/lib/api";
 import { useActiveJobs, useStorage } from "@/lib/queries";
@@ -164,7 +163,6 @@ export default function HomePage() {
           <div className="mt-3 max-w-[56ch] text-lead text-ink-muted">{summary ?? <Skeleton className="h-6 w-96 max-w-full" />}</div>
           <BoardHomeLine className="mt-2" />
           <PreparedLines className="mt-2" />
-          <BinderHomeLine className="mt-1" />
           <BookHomeLine className="mt-1" />
           <ChecksHomeLine className="mt-1" />
           {/* biome-ignore lint/a11y/useSemanticElements: a form with role="search" is the search landmark every browser and screen reader knows */}

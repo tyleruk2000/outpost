@@ -39,7 +39,7 @@ export const AT_LEAST: Array<[string, string]> = [
   ["Offline drill", "/prepare/offline-drill"],
   ["Medical sheets", "/prepare/medical"],
   ["Grab cards", "/prepare/grab-cards"],
-  ["Binder", "/prepare/binder"],
+  ["Household book", "/prepare/book"],
   ["Games", "/games"],
   ["Allotment", "/games/allotment"],
   ["Solitaire", "/games/solitaire"],

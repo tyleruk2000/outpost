@@ -44,6 +44,11 @@ of what each feature does are in its own guide.
   from inside another are not.
 - **Not tried:** a pass by hand with a screen reader. No one has used the map, the notes
   editor or the reader with VoiceOver from start to finish.
+- **Tools and Games, not tried:** VoiceOver or TalkBack playing any game or working any
+  calculator (the move and state announcements were read from the page, not heard); a real
+  phone's touch, on-screen keyboard and safe areas (only Chromium and WebKit with touch at
+  phone sizes); the live compass, the phone's motion sensors and the camera on a real device;
+  Windows High Contrast and forced colours; a switch device or voice control.
 
 ## Installing and looking after it
 

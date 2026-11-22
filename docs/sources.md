@@ -1040,3 +1040,33 @@ For **Settings → Updates** ([updating.md](updating.md)).
 - **Not held, and said so in the book:** major hazard (COMAH) sites and their public
   information zones, and industrial sites other than nuclear ones. No openly licensed copy
   Outpost could fetch was found.
+
+## The household book's printed pages: words, drawings and typeface (read 2026-11-22)
+
+- **Recovery position.** FEMA, *CERT Basic Training Instructor Guide* (August 2019), unit 3,
+  "Disaster Medical Operations – Part 1", page 3-12,
+  https://www.ready.gov/sites/default/files/2019.CERT_.Basic_.IG_.FINAL_.508c.pdf. FEMA's
+  website information page (updated 1 May 2023, https://www.fema.gov/about/website-information)
+  says most of its material is free of copyright; licensed photos and graphics are excluded,
+  and only FEMA's words are used (the drawing is Outpost's). Quoted unchanged, with the
+  caution about the spine. It describes the position, not how to roll someone into it.
+- **Clearing cloudy water.** CDC, "How to Make Water Safe in an Emergency" (19 September 2024),
+  https://www.cdc.gov/water-emergency/about/index.html. Public domain
+  (https://www.cdc.gov/other/agencymaterials.html); the CDC asks to be named and not to be
+  shown as endorsing the use, and the book's sources page says both.
+- **A layered filter, catching rain.** US Army FM 21-76, *Survival* (1992), chapter 6, and
+  figure 6-1. A US federal work with no copyright (17 U.S.C. 105). No official copy could be
+  opened (globalsecurity.org refused, archive.org did not load); it was read from a reprint,
+  https://www.sjsu.edu/people/michelle.hager/docs/fm_21-76_us_army_survival_manual_2006.pdf,
+  pages 61–62. Open: check the quoted sentences against an official copy. FM 21-76 is
+  superseded (FM 3-05.70, then ATP 3-50.21). It names the filter's materials but no order;
+  the drawing's caption says so.
+- **Chest compressions for a child and a baby.** The NHS website lines the book already
+  quotes ("How to resuscitate a child", read 21 November 2026); the drawing shows only them.
+- **Not used:** NHS recovery position pages (now redirect to St John Ambulance); HSE INDG347
+  (OGL, but says only "place in the recovery position"); MedlinePlus (A.D.A.M. content,
+  copyrighted); US Army TC 4-02.1 (one sentence, read from a third-party copy).
+- **Typeface.** Atkinson Hyperlegible Next (Braille Institute of America), SIL Open Font
+  License 1.1, static TTFs from https://github.com/googlefonts/atkinson-hyperlegible-next at
+  commit 7925f50f649b3813257faf2f4c0b381011f434f1, with `OFL.txt` beside them in
+  `apps/web/src/features/print-kit/fonts/`.
