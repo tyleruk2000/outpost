@@ -432,7 +432,7 @@ export const GUIDES: Guide[] = [
     slug: "household-papers",
     file: "household-papers.md",
     group: "using",
-    about: "Medical sheets, the communication plan, grab cards and the household binder: the household's papers, kept current and printed.",
+    about: "Medical sheets, the communication plan and grab cards: the household's papers, kept current and printed in the household book.",
     keywords: "medical medicines allergies pace communication plan grab card wallet card binder",
     opens: { to: "/prepare/medical", label: "Open Medical sheets" },
   },
@@ -497,6 +497,12 @@ export const GUIDES: Guide[] = [
   { slug: "api", file: "api.md", group: "developers", about: "Every route the server answers, with what it takes and gives." },
   { slug: "server-modules", file: "development/server-modules.md", group: "developers", about: "Writing a module of the server." },
   { slug: "web-screens", file: "development/web-screens.md", group: "developers", about: "Building a screen of the web app." },
+  {
+    slug: "printed-pages",
+    file: "development/printed-pages.md",
+    group: "developers",
+    about: "Laying out a printed PDF with the print kit.",
+  },
   {
     slug: "maps-on-a-phone",
     file: "development/maps-on-a-phone.md",

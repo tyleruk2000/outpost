@@ -335,7 +335,10 @@ package with its licence text, written by `scripts/build-app.mjs`.
 | Atkinson Hyperlegible, Literata, Noto Sans | OFL-1.1 | Bundled fonts. |
 | Protomaps basemap styles | BSD-3-Clause (design CC0) | Bundled. |
 | Helvetica character widths (`features/maps/print/helvetica.ts`) | Adobe's Core 14 AFM notice: free to use and distribute with the notice | 448 numbers for laying out printed maps; the typeface is not bundled. |
-| jsPDF, pdf-lib, pdfkit | MIT | Not used; printed maps use Outpost's PDF writer (`features/maps/print/pdf.ts`). |
+| pdfmake 0.3.15 (with pdfkit 0.21, fontkit, linebreak, xmldoc, `@pdfmake/svg-to-pdfkit`, `@noble/hashes`) | MIT | Bundled, as the package's own browser build, loaded only when a PDF is made with the print kit (`features/print-kit/`, 308 kB gzipped). Lays out the household book: flowing text, columns, tables, tinted boxes, SVG drawings, embedded fonts. Printed maps and the other papers still use Outpost's own PDF writer (`features/maps/print/pdf.ts`). |
+| `sax` (inside pdfmake's build, through xmldoc, for reading SVG) | **Not one of the four.** BlueOak-1.0.0, a permissive licence | Bundled inside pdfmake's prebuilt file, which cannot be built without it short of rebuilding pdfmake. The owner may prefer a pdfmake built from source with `sax` held at 1.2.4 (ISC), as `xml-js` is. |
+| Atkinson Hyperlegible Next, static Regular, Bold, Italic and Bold Italic (`features/print-kit/fonts/`) | OFL-1.1 | Bundled in the print kit's lazy part (170 kB gzipped); from googlefonts/atkinson-hyperlegible-next at commit 7925f50, licence beside the files. |
+| jsPDF, pdf-lib | MIT | Not used. |
 | maplibre-contour | BSD-3-Clause (with d3-contour, ISC, and vt-pbf, MIT) | Bundled; traces contours in the browser. |
 | `@jsquash/webp` 1.5.0 (libwebp 1.0.2 in WebAssembly) | Apache-2.0 (libwebp BSD-3-Clause) | Bundled in the server, pinned; encodes imagery tiles. Copied to `server/imagery/` with its licence. Chosen over `sharp` (LGPL-3.0 libvips) and JPEG (edges must be transparent). GeoTIFF reading, reprojection and the PMTiles writer are Outpost's own (not `geotiff.js`, whose `xml-utils` is CC0). |
 | Map data | ODbL (OpenStreetMap) | Downloaded by the user; credited on the map. |

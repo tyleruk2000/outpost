@@ -25,6 +25,8 @@ function routes(): string[] {
 const NOT_SCREENS = new Set([
   // The page for an address that is nothing.
   "*",
+  // The household binder's old address, which opens the household book.
+  "prepare/binder",
 ]);
 
 describe("the navigation's description of every screen", () => {

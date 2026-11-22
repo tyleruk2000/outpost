@@ -18,6 +18,8 @@ import {
   type Household,
   type MedicalSheet,
   planFromTemplate,
+  type RepeaterDto,
+  type SuppliesResponse,
   templateById,
 } from "@outpost/shared";
 import { RADIO_FREQUENCIES } from "@outpost/shared/radio-frequencies-data";
@@ -185,6 +187,35 @@ const inputs = (over: Partial<BookInputs> = {}): BookInputs => ({
   made: new Date(Date.UTC(2026, 10, 21)),
   today: "2026-11-21",
   previous: null,
+  supplies: {
+    items: [{ id: "i1", name: "Bottled water", category: "water", quantity: 24, unit: "litres", location: "Cellar", date: "2027-05-01" }],
+    locations: [],
+    household,
+  } as unknown as SuppliesResponse,
+  grab: {
+    people: [
+      { name: "Ana", bloodGroup: "O+", allergies: ["Penicillin"], needs: [], medicines: ["Salbutamol"], contacts: [], sheetLocked: false },
+    ],
+    household: {
+      emergencyNumber: "999",
+      contacts: [{ label: "Gran", phone: "01632 960002" }],
+      places: ["Village hall"],
+      comms: [],
+      home: { name: "Home", lat: 51.5, lon: -1 },
+    },
+  },
+  repeaters: [
+    {
+      callsign: "GB3XX",
+      outputHz: 145_725_000,
+      inputHz: 145_125_000,
+      ctcssHz: 77,
+      dcsCode: null,
+      place: "Hilltop",
+      distanceMeters: 12_000,
+      bearingDegrees: 90,
+    } as unknown as RepeaterDto,
+  ],
   ...over,
 });
 
@@ -459,6 +490,117 @@ describe("the household's emergency plans in the book", () => {
     );
     expect(container.textContent).toContain("Every plan goes in the household book, made on 17 Nov 2026, before the plans last changed.");
     expect(screen.getByRole("link", { name: "Make the book again" }).getAttribute("href")).toBe("/prepare/book");
+  });
+});
+
+describe("what the binder held, now in the book", () => {
+  const book = makeBook(
+    inputs({
+      plans: [street],
+      markers: [{ id: "g", name: "Village hall", lat: 54.3, lon: -2.2, icon: "pin" } as never],
+      answers: { ...inputs().answers, meetingPoints: [{ id: "m", markerId: "g", role: "near", note: "Side door" }] },
+    }),
+  );
+  const words = texts(book);
+
+  it("has the binder's parts as sections, in one contents", () => {
+    const labels = book.contents.map((entry) => entry.label);
+    for (const part of ["Fridge sheets", "Keeping in touch", "Home and meeting points", "Radio frequencies", "Supplies", "Grab cards"])
+      expect(labels).toContain(part);
+    expect(labels.indexOf("Fridge sheets")).toBeLessThan(labels.indexOf("Our household"));
+  });
+
+  it("gives each plan a fridge sheet with the number, what to do and who to call", () => {
+    expect(words).toMatch(/Fridge sheet · Street event Street party gone wrong In an emergency, call 999/);
+    expect(words).toMatch(/What we do 1 Walk Gran home by the back lane\./);
+    expect(words).toMatch(/Who to call Jo next door: 01632 960001/);
+  });
+
+  it("puts each meeting point in several grid formats", () => {
+    expect(words).toMatch(/Village hall 54\.30000, -2\.20000/);
+    expect(words).toMatch(/Locator IO84/);
+  });
+
+  it("lists frequencies for home's country with whether each needs a licence, and repeaters near home", () => {
+    expect(words).toMatch(/Licence-free channels/);
+    expect(words).toMatch(/Licence-free radio: no licence needed, within the power and equipment limits/);
+    expect(words).toMatch(/Listening: no licence needed\./);
+    expect(words).toMatch(/GB3XX 145\.7250 MHz 145\.1250 MHz 77 Hz Hilltop 12 km E/);
+    expect(words).toMatch(/Amateur radio repeaters\. Listening: no licence needed\. Transmitting: needs an amateur licence\./);
+  });
+
+  it("lists the supplies kept, and a grab card for each person", () => {
+    expect(words).toMatch(/Bottled water \(Water\) 24 litres Cellar 2027-05-01/);
+    expect(words).toMatch(/In an emergency Ana Call 999 Blood group: O\+ Allergies Penicillin/);
+    expect(words).toMatch(/Gran: 01632 960002/);
+  });
+
+  it.runIf(process.env.OUTPOST_PRINT_SAMPLES)(
+    "writes a full sample book to look at, in colour, on A4 and US Letter",
+    async () => {
+      for (const paper of ["a4", "letter"] as const) {
+        const full = makeBook(
+          inputs({
+            plans: [ownFlood, street],
+            markers: [{ id: "g", name: "Village hall", lat: 51.51, lon: -1.01, icon: "pin" } as never],
+            answers: {
+              ...inputs().answers,
+              paper,
+              hazards: ["flooding", "power-cut"],
+              meetingPoints: [{ id: "m", markerId: "g", role: "near", note: "Side door" }],
+            },
+            emergencyContacts: [
+              {
+                id: "k",
+                displayName: "Gran Rowan",
+                phones: [{ value: "01632 960002", label: "home" }],
+                emergencyNote: "Has a key",
+                callsign: "",
+              } as never,
+            ],
+          }),
+        );
+        const printed = await renderPdf(full.document);
+        fs.writeFileSync(path.join(process.env.OUTPOST_PRINT_SAMPLES!, `full-${paper}.pdf`), printed.bytes);
+      }
+    },
+    60_000,
+  );
+
+  it("marks the communication plan's own channels first", () => {
+    const comms = {
+      plan: {
+        situations: [
+          {
+            id: "s",
+            name: "Phones down",
+            checkIn: "",
+            contactIds: [],
+            steps: [
+              {
+                id: "x",
+                level: "primary",
+                means: "radio",
+                contactId: null,
+                frequency: { entryId: "lf-pmr446-analogue", channel: "3" },
+                repeaterId: null,
+                meshChannel: null,
+                markerId: null,
+                when: "on the hour",
+                text: "",
+              },
+            ],
+          },
+        ],
+        checkIns: "",
+        people: [],
+        notes: "",
+        updatedAt: 1,
+      },
+      resolved: { contacts: {}, places: {}, repeaters: {}, mesh: {} },
+    } as unknown as BookInputs["comms"];
+    const withPlan = texts(makeBook(inputs({ comms })));
+    expect(withPlan).toMatch(/Our communication plan's channels Channel Frequency Licence Our plan: PMR446/);
   });
 });
 

@@ -4,7 +4,15 @@
  * the library or shared like every PDF Outpost makes. Outpost keeps the answers as a draft
  * and a record of the last book made, so the next book says what changed since.
  */
-import { BOOK_STEPS, type BookAnswers, type BookStepId, DEFAULT_BOOK_ANSWERS, localDay } from "@outpost/shared";
+import {
+  BOOK_STEPS,
+  type BookAnswers,
+  type BookStepId,
+  bookPlanIds,
+  DEFAULT_BOOK_ANSWERS,
+  localDay,
+  type RepeaterListResponse,
+} from "@outpost/shared";
 import { RADIO_FREQUENCIES } from "@outpost/shared/radio-frequencies-data";
 import { BookOpen, ListChecks, TriangleAlert } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -13,14 +21,18 @@ import { EmptyState, ErrorState, Notice, Page, PageHeader, Rows } from "@/compon
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { useOutlook } from "@/features/emergency-plans/data";
+import type { BinderMap } from "@/features/household-papers/binder-map";
+import { binderPlaces } from "@/features/household-papers/binder-places";
 import { useContactsById } from "@/features/household-papers/data";
-import { useHouseholdSources } from "@/features/household-papers/household-data";
+import { grabHousehold, grabPerson, useHouseholdSources } from "@/features/household-papers/household-data";
 import { libraryQuestion } from "@/features/household-papers/paper-pdf";
 import { type MadePdf, madePdf } from "@/features/library/made/made-pdf";
 import { PdfActions } from "@/features/library/made/pdf-actions";
+import { useMapOverview, useMapSources } from "@/features/maps/data";
+import { regionsCacheKey } from "@/features/maps/lib/tiles";
 import { renderPdf } from "@/features/print-kit";
 import { PdfPagesPreview } from "@/features/print-kit/preview";
-import { errorMessage } from "@/lib/api";
+import { api, errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { formatDate, plural } from "@/lib/utils";
 import { makeBook } from "./book";
@@ -44,6 +56,9 @@ export default function BookPage() {
   const [asking, setAsking] = useState<BookStepId | null>(() => BOOK_STEPS.find((each) => each.id === params.get("step"))?.id ?? null);
   const [result, setResult] = useState<{ pdf: MadePdf; bytes: Uint8Array; pages: number; medical: boolean } | null>(null);
   const [making, setMaking] = useState(false);
+  const [drawing, setDrawing] = useState(false);
+  const mapSources = useMapSources();
+  const overview = useMapOverview();
 
   const answers = book.data?.answers ?? DEFAULT_BOOK_ANSWERS;
   const destinationContacts = useContactsById(answers.destinations.map((destination) => destination.contactId ?? "").filter(Boolean));
@@ -65,6 +80,41 @@ export default function BookPage() {
       const fresh = await facts.refetch();
       if (!fresh.data) throw fresh.error ?? new Error("What the book reads round home could not be read.");
       const at = new Date();
+      const chosen = book.data.answers.sections;
+      const home = fresh.data.home;
+      // Repeaters near home, from Outpost's own list (on this Outpost, not the internet).
+      const repeaters =
+        chosen.includes("frequencies") && home
+          ? await api
+              .get<RepeaterListResponse>("/api/repeaters", { near: `${home.lat},${home.lon}`, withinKm: 60, limit: 15 })
+              .then((list) => list.repeaters)
+              .catch(() => null)
+          : [];
+      // The map of home and the meeting points is drawn first, from the offline map on this device.
+      let placesMap: BinderMap | null = null;
+      const included = new Set(
+        bookPlanIds(
+          book.data.answers,
+          sources.plans.map((each) => each.plan),
+        ),
+      );
+      const mapped = binderPlaces({ markers: sources.markers, plans: sources.plans.filter((each) => included.has(each.plan.id)) }).mapped;
+      if (chosen.includes("places") && mapped.length > 0) {
+        setDrawing(true);
+        try {
+          const { binderMap } = await import("@/features/household-papers/binder-map");
+          const regions = overview.data?.regions ?? [];
+          placesMap = await binderMap(
+            mapped,
+            { sources: mapSources.data, regions, cacheKey: regionsCacheKey(regions), origin: window.location.origin },
+            book.data.answers.paper,
+          );
+        } catch {
+          placesMap = null;
+        } finally {
+          setDrawing(false);
+        }
+      }
       const out = makeBook({
         answers: book.data.answers,
         facts: fresh.data,
@@ -83,6 +133,13 @@ export default function BookPage() {
         made: at,
         today: localDay(),
         previous: book.data.made,
+        supplies: sources.supplies,
+        grab: {
+          people: sources.people.map((person) => grabPerson(person, sources.opened, sources.contacts)),
+          household: grabHousehold(sources.plans, sources.emergencyContacts, sources.markers, sources.comms),
+        },
+        repeaters,
+        placesMap: placesMap && placesMap.missing === null ? { block: placesMap.block, pictures: placesMap.pictures } : null,
       });
       const printed = await renderPdf(out.document);
       setResult({
@@ -151,7 +208,15 @@ export default function BookPage() {
       ) : (
         <div className="grid gap-6">
           {book.data?.made && book.data.stale.length > 0 ? (
-            <Notice tone="warning" icon={<TriangleAlert />} title="The book last made is older than what is in it">
+            <Notice
+              tone="warning"
+              icon={<TriangleAlert />}
+              title={
+                book.data.made.fromBinder
+                  ? "The household binder last made is older than what is in it"
+                  : "The book last made is older than what is in it"
+              }
+            >
               Made on {formatDate(book.data.made.madeAt)}. Since then its {sourcesWords(book.data.stale)} changed. Make it again and replace
               the printed copy.
             </Notice>
@@ -159,7 +224,7 @@ export default function BookPage() {
           <Summary answers={answers} madeAt={book.data?.made?.madeAt ?? null} pages={book.data?.made?.pages ?? null} />
           <div className="flex flex-wrap items-center gap-3">
             <Button variant="primary" loading={making} onClick={() => void make()}>
-              <BookOpen /> Make the book
+              <BookOpen /> {drawing ? "Drawing the map" : "Make the book"}
             </Button>
             <Button onClick={() => setAsking("people")}>
               <ListChecks /> Change the answers

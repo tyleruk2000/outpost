@@ -10,6 +10,19 @@ const decode = (text: string) =>
     .replace(/&quot;/g, '"')
     .replace(/&amp;/g, "&");
 
+const inline = (runs: unknown[]): string =>
+  runs
+    .map((run) =>
+      typeof run === "string" || typeof run === "number"
+        ? String(run)
+        : run && typeof run === "object" && "text" in run
+          ? Array.isArray((run as { text: unknown }).text)
+            ? inline((run as { text: unknown[] }).text)
+            : String((run as { text: unknown }).text)
+          : "",
+    )
+    .join("");
+
 export function contentText(content: unknown): string {
   const out: string[] = [];
   const walk = (node: unknown): void => {
@@ -28,7 +41,10 @@ export function contentText(content: unknown): string {
       for (const match of record.svg.matchAll(/<text[^>]*>([^<]*)<\/text>/g)) out.push(decode(match[1] ?? ""));
       return;
     }
-    for (const key of ["text", "stack", "columns", "ul", "ol", "section", "content"]) if (key in record) walk(record[key]);
+    // Runs of one paragraph ("**Bold.** Then plain") are one line of words, run together as printed.
+    if (Array.isArray(record.text)) out.push(inline(record.text));
+    else if ("text" in record) walk(record.text);
+    for (const key of ["stack", "columns", "ul", "ol", "section", "content"]) if (key in record) walk(record[key]);
     if (record.table && typeof record.table === "object") walk((record.table as { body?: unknown }).body);
   };
   walk(content);

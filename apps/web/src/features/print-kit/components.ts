@@ -381,6 +381,9 @@ export interface ContentsEntry {
   about?: string;
 }
 
+/** Up to this many sections, each has its line of what is in it; more, and the names alone keep the contents to one page. */
+const CONTENTS_WITH_ABOUT = 16;
+
 /** Each section with its number, a line of what is in it, and the page it starts on. */
 export function contents(entries: ContentsEntry[]): Content {
   return {
@@ -388,22 +391,24 @@ export function contents(entries: ContentsEntry[]): Content {
       widths: [26, "*", 40],
       dontBreakRows: true,
       body: entries.map((entry) => [
-        { text: String(entry.number), bold: true, color: C.accent, fontSize: 12 },
+        { text: String(entry.number), bold: true, color: C.accent, fontSize: 11 },
         {
           stack: [
-            { text: entry.label, bold: true, fontSize: 10.5 },
-            ...(entry.about ? [{ text: entry.about, fontSize: T.small, color: C.muted, margin: [0, 1, 0, 0] }] : []),
+            { text: entry.label, bold: true, fontSize: 10 },
+            ...(entry.about && entries.length <= CONTENTS_WITH_ABOUT
+              ? [{ text: entry.about, fontSize: T.small, color: C.muted, margin: [0, 1, 0, 0] }]
+              : []),
           ],
         },
-        { pageReference: entry.id, alignment: "right", fontSize: 10.5, bold: true, noWrap: true },
+        { pageReference: entry.id, alignment: "right", fontSize: 10, bold: true, noWrap: true },
       ]),
     },
     layout: {
       hLineWidth: (index: number, node: ContentTable) => (index === 0 || index === node.table.body.length ? 0 : 0.4),
       vLineWidth: () => 0,
       hLineColor: () => C.rule,
-      paddingTop: () => 4,
-      paddingBottom: () => 4,
+      paddingTop: () => 2.6,
+      paddingBottom: () => 2.6,
       paddingLeft: () => 0,
       paddingRight: () => 0,
     },

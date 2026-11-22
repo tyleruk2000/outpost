@@ -24,11 +24,25 @@ const hex = (rgb: readonly [number, number, number]) =>
 
 const escapeXml = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-/** What a sheet draws, as SVG, in the box from (x, y) that is `width` by `height` points. Pictures and hidden words are left out. */
-export function sheetItemsToSvg(items: SheetItem[], box: { x: number; y: number; width: number; height: number }): string {
+/**
+ * What a sheet draws, as SVG, in the box from (x, y) that is `width` by `height` points.
+ * A picture is drawn from `pictures` (its id to a data address); one not given, and
+ * hidden words, are left out.
+ */
+export function sheetItemsToSvg(
+  items: SheetItem[],
+  box: { x: number; y: number; width: number; height: number },
+  pictures: ReadonlyMap<string, string> = new Map(),
+): string {
   const out: string[] = [];
   for (const item of items) {
-    if (item.kind === "rect")
+    if (item.kind === "image") {
+      const href = pictures.get(item.id);
+      if (href)
+        out.push(
+          `<image x="${item.x}" y="${item.y}" width="${item.width}" height="${item.height}" preserveAspectRatio="none" href="${href}" xlink:href="${href}"/>`,
+        );
+    } else if (item.kind === "rect")
       out.push(
         `<rect x="${item.x}" y="${item.y}" width="${item.width}" height="${item.height}" fill="${item.fill ? hex(item.fill) : "none"}"${
           item.stroke ? ` stroke="${hex(item.stroke)}" stroke-width="${item.lineWidth ?? 1}"` : ""
@@ -48,7 +62,7 @@ export function sheetItemsToSvg(items: SheetItem[], box: { x: number; y: number;
       );
     }
   }
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${box.width}" height="${box.height}" viewBox="${box.x} ${box.y} ${box.width} ${box.height}">${out.join("")}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${box.width}" height="${box.height}" viewBox="${box.x} ${box.y} ${box.width} ${box.height}">${out.join("")}</svg>`;
 }
 
 /** Blocks as the kit's content, `measure` points wide. */

@@ -28,6 +28,7 @@ import {
   bookSectionLabel,
   type CommsResponse,
   type ContactDto,
+  categoryLabel,
   compassPoint,
   daysWords,
   EMERGENCY_NUMBERS,
@@ -40,39 +41,48 @@ import {
   type FrequencyEntry,
   filterFrequencies,
   formatDecimal,
+  GRID_FORMATS,
   type Household,
+  licenceLine,
+  type MarkerDto,
   MEDICAL_CAVEAT,
   MONTH_NAMES,
   medicineLeft,
   memberNeeds,
   metresWords,
   NO_HOME_PLACE,
+  NO_RADIO_LICENCE,
   PLAN_PHASES,
   type PlanSource,
   placeName,
+  type RadioUse,
   RECEIVER_PROFILES,
   REFERENCE_LAYER_INFO,
   type ReferenceLayerId,
+  type RepeaterDto,
   type ResolvedContact,
   type ShoppingSuggestion,
+  type SuppliesResponse,
   type SupplyOutlook,
   sourceById,
   type TemplateStep,
   templateById,
   templateStep,
   termsOf,
-  toMaidenhead,
   WALK_PACES,
   WATER_FIGURES,
   withinDegrees,
 } from "@outpost/shared";
 import type { Content, TDocumentDefinitions } from "pdfmake/interfaces";
 import { readableOf } from "@/features/emergency-plans/printable";
-import { frequencyBlocks } from "@/features/frequencies/document";
-import { commsBlocks } from "@/features/household-papers/comms-words";
+import { frequencyBlocks, frequencyLine } from "@/features/frequencies/document";
+import { binderPlaces } from "@/features/household-papers/binder-places";
+import { commsBlocks, usedEntries } from "@/features/household-papers/comms-words";
+import { type GrabHousehold, type GrabPerson, gridLines } from "@/features/household-papers/grab-cards";
 import type { PaperPerson } from "@/features/household-papers/household-data";
 import type { OpenedSheet } from "@/features/household-papers/medical-crypto";
 import { type ContactsNow, medicalBlocks, recordOf } from "@/features/household-papers/medical-words";
+import type { PdfPicture } from "@/features/maps/print/pdf";
 import {
   blocksToContent,
   boiling,
@@ -129,7 +139,7 @@ export interface BookInputs {
   plans: EmergencyPlanResponse[];
   emergencyContacts: ContactDto[];
   comms: CommsResponse | null;
-  markers: Array<{ id: string; name: string; lat: number; lon: number }>;
+  markers: MarkerDto[];
   /** The contacts the places the household would go to link to. */
   destinationContacts: Record<string, ResolvedContact | null | undefined>;
   entries: readonly FrequencyEntry[];
@@ -137,6 +147,14 @@ export interface BookInputs {
   made: Date;
   today: string;
   previous: BookMade | null;
+  /** What is kept, from Supplies. */
+  supplies: SuppliesResponse | null;
+  /** Each person's grab card and what every card carries; null when not worked out. */
+  grab: { people: GrabPerson[]; household: GrabHousehold } | null;
+  /** Repeaters near home from Outpost's list, nearest first; null when the list could not be read. */
+  repeaters: RepeaterDto[] | null;
+  /** The map of home and the meeting points, drawn from the offline map before the book is made; absent, there is none. */
+  placesMap?: { block: Block; pictures: ReadonlyMap<string, PdfPicture> } | null;
 }
 
 export interface MadeBook {
@@ -406,55 +424,116 @@ function bandLabel(band: string): string | null {
   return labels[band] ?? null;
 }
 
+/** The plans that go in the book, by the answers. */
+const bookPlans = (c: Context) => {
+  const included = new Set(
+    bookPlanIds(
+      c.answers,
+      c.plans.map((each) => each.plan),
+    ),
+  );
+  return c.plans.filter((each) => included.has(each.plan.id));
+};
+
+/** One page for each plan, to put on the fridge: the number, what to do, who to call, where to meet. */
+function fridgeSheets(c: Context): Section {
+  const plans = bookPlans(c);
+  const content: Content[] = [];
+  plans.forEach((own, index) => {
+    const readable = readableOf(own.plan, own.resolved);
+    const during = readable.steps.filter((step) => step.phase === "during").map((step) => step.text);
+    const shown = during.length > 0 ? during : readable.steps.map((step) => step.text);
+    content.push(
+      {
+        stack: [
+          { text: `Fridge sheet · ${readable.kind}`, fontSize: 8, bold: true, color: PRINT_COLOURS.accent, characterSpacing: 0.4 },
+          { text: readable.name, fontSize: 22, bold: true, margin: [0, 2, 0, 8] },
+        ],
+        pageBreak: index > 0 ? "before" : undefined,
+        headlineLevel: 2,
+      } as Content,
+      callout(
+        "act",
+        "In an emergency, call",
+        { text: readable.emergencyNumber || c.number || "not given", fontSize: 26, bold: true, color: PRINT_COLOURS.act },
+        { keep: true },
+      ),
+      twoColumns(
+        [
+          label(during.length > 0 ? "What we do" : "Our steps"),
+          stepList(shown.slice(0, 14)),
+          ...(shown.length > 14
+            ? [note(`And ${shown.length - 14} more steps: the plan in full is under “What to do, by situation”.`)]
+            : []),
+        ],
+        [
+          ...(readable.contacts.length > 0
+            ? [
+                callout(
+                  "know",
+                  "Who to call",
+                  bullets(
+                    readable.contacts.map(
+                      (contact) =>
+                        `**${contact.name}**${contact.outOfArea ? " (out of the area)" : ""}: ${contact.numbers.map((number) => number.value).join(", ") || "no number"}`,
+                    ),
+                  ),
+                ),
+              ]
+            : []),
+          ...(readable.places.length > 0
+            ? [
+                callout(
+                  "know",
+                  "Where we meet",
+                  bullets(readable.places.map((place) => `**${place.role}:** ${place.name}${place.coords ? ` (${place.coords})` : ""}`)),
+                ),
+              ]
+            : []),
+          ...(readable.comms.length > 0 ? [callout("know", "Keeping in touch", bullets(readable.comms))] : []),
+        ],
+      ),
+      note("Our household's own plan, made in advance. In a real emergency, follow the emergency services and official warnings."),
+    );
+  });
+  if (plans.length === 0) content.push(para("No emergency plan is in the book. Make one under Preparedness › Emergency plans."));
+  c.summary["fridge-sheets"] = plans.map((own) => own.plan.name);
+  return { subtitle: "One page for each emergency plan. Cut it out and put it where everyone will see it.", content };
+}
+
 function keepingInTouch(c: Context): Section {
   const content: Content[] = [];
   const summary: string[] = [];
   content.push(callout("act", "Emergency services", para(`Call **${c.number || "not given"}**.`, 0), { keep: true }));
-  const pointRows = c.answers.meetingPoints.map((point) => {
-    const marker = c.markers.find((each) => each.id === point.markerId);
-    summary.push(`Meet: ${marker?.name ?? "a place no longer saved"}`);
-    return [
-      point.role === "near" ? "Near home" : "Outside the area",
-      marker?.name ?? "No longer on the map",
-      marker ? `${at4(marker.lat, marker.lon)}  ${toMaidenhead(marker.lat, marker.lon, 6) ?? ""}` : "",
-      point.note,
-    ];
-  });
-  if (pointRows.length > 0)
-    content.push(heading("Where we meet"), dataTable(["When", "Where", "Position and locator", "Note"], pointRows, { bold: [1] }));
-  const home = c.facts.home;
-  const destinations = c.answers.destinations.map((destination) => {
-    const contact = destination.contactId ? c.destinationContacts[destination.contactId] : null;
-    const journey = c.facts.journeys.find((each) => each.destinationId === destination.id);
-    summary.push(`Go to: ${destination.name}`);
-    return [
-      destination.name,
-      contact ? `${contact.displayName}${contact.phones[0] ? `, ${contact.phones[0].value}` : ""}` : "",
-      journey && home ? `${metresWords(journey.distanceMeters)} ${compassPoint(journey.bearingDegrees)}` : "",
-      destination.note,
-    ];
-  });
-  if (destinations.length > 0)
-    content.push(heading("The people we would go to"), dataTable(["Who", "Contact", "From home", "Note"], destinations, { bold: [0] }));
   if (c.emergencyContacts.length > 0) {
     content.push(
       heading("Contacts marked for emergencies"),
       dataTable(
-        ["Name", "Phone", "Note"],
+        ["Name", "Phone", "Callsign", "Note"],
         c.emergencyContacts.map((contact) => [
-          contact.displayName,
-          contact.phones.map((phone) => phone.value).join(", "),
+          `**${contact.displayName}**`,
+          contact.phones.map((phone) => `${phone.value}${phone.label ? ` (${phone.label})` : ""}`).join("\n"),
+          contact.callsign,
           contact.emergencyNote,
         ]),
-        { bold: [0] },
       ),
     );
     summary.push(...c.emergencyContacts.map((contact) => `Contact: ${contact.displayName}`));
-  }
+  } else content.push(note("No contact is marked for emergencies. Mark them under Contacts, and make the book again."));
   if (c.comms?.plan.updatedAt) {
+    const { plan, resolved } = c.comms;
     content.push(heading("When the phones are down"));
-    content.push(...fromBlocks(c, commsBlocks(c.comms.plan, c.comms.resolved, null, c.entries, { checkIn: false, title: false })));
-    summary.push(...c.comms.plan.situations.map((situation) => `Situation: ${situation.name}`));
+    content.push(...fromBlocks(c, commsBlocks(plan, resolved, null, c.entries, { checkIn: false, title: false })));
+    // A page for each person, with their own part of the plan, as the binder had.
+    const people = c.people
+      .map((person) => plan.people.find((entry) => entry.memberId === person.memberId && person.memberId) ?? null)
+      .filter((person): person is NonNullable<typeof person> => person !== null);
+    for (const person of people)
+      content.push(
+        { ...(heading(`For ${person.name}`) as object), pageBreak: "before" } as Content,
+        ...fromBlocks(c, commsBlocks(plan, resolved, person, c.entries, { checkIn: false, title: false })),
+      );
+    summary.push(...plan.situations.map((situation) => `Situation: ${situation.name}`));
   } else {
     content.push(
       callout(
@@ -465,7 +544,300 @@ function keepingInTouch(c: Context): Section {
     );
   }
   c.summary["keeping-in-touch"] = summary;
-  return { subtitle: "Who to call, where to meet, and what to try when the phones are down.", content };
+  return { subtitle: "Who to call, and what to try when the phones are down.", content };
+}
+
+/** A place's position in every grid format Outpost writes, one to a line; a grid that does not reach it is left out. */
+const positions = (lat: number, lon: number) =>
+  gridLines(
+    lat,
+    lon,
+    GRID_FORMATS.map((format) => format.id),
+  ).join("\n");
+
+function places(c: Context): Section {
+  const content: Content[] = [];
+  const summary: string[] = [];
+  const { mapped, described } = binderPlaces({ markers: c.markers, plans: bookPlans(c) });
+  if (c.placesMap) {
+    const block = c.placesMap.block;
+    if (block.kind === "drawing") {
+      const pictures = new Map([...c.placesMap.pictures].map(([id, picture]) => [id, `data:image/jpeg;base64,${base64Of(picture.jpeg)}`]));
+      const items = block.draw(0, 0, c.measure);
+      content.push(
+        figure(sheetItemsToSvg(items, { x: 0, y: 0, width: c.measure, height: block.height }, pictures), {
+          width: c.measure,
+          caption: block.words ?? "A map of home and the meeting points, numbered as in the list below.",
+        }),
+      );
+    }
+  } else if (mapped.length > 0)
+    content.push(
+      note("The map of these places is drawn from the offline map on the device the book is made on; none was drawn for this one."),
+    );
+  if (mapped.length > 0)
+    content.push(
+      heading("Where each place is"),
+      dataTable(
+        ["", "What for", "Where", "Position", "Note"],
+        mapped.map((place) => [String(place.number), place.role, `**${place.name}**`, positions(place.lat, place.lon), place.note]),
+      ),
+    );
+  summary.push(...mapped.map((place) => `${place.role}: ${place.name}`));
+  const pointRows = c.answers.meetingPoints.map((point) => {
+    const marker = c.markers.find((each) => each.id === point.markerId);
+    summary.push(`Meet: ${marker?.name ?? "a place no longer saved"}`);
+    return [
+      point.role === "near" ? "Near home" : "Outside the area",
+      `**${marker?.name ?? "No longer on the map"}**`,
+      marker ? positions(marker.lat, marker.lon) : "",
+      point.note,
+    ];
+  });
+  if (pointRows.length > 0) content.push(heading("Where we meet"), dataTable(["When", "Where", "Position", "Note"], pointRows));
+  if (described.length > 0)
+    content.push(
+      label("Described in a plan, not on the map"),
+      bullets(described.map((place) => `**${place.role}: ${place.name}.** ${place.note || "Described only: no saved place on the map."}`)),
+    );
+  const home = c.facts.home;
+  const destinations = c.answers.destinations.map((destination) => {
+    const contact = destination.contactId ? c.destinationContacts[destination.contactId] : null;
+    const journey = c.facts.journeys.find((each) => each.destinationId === destination.id);
+    summary.push(`Go to: ${destination.name}`);
+    return [
+      `**${destination.name}**`,
+      contact ? `${contact.displayName}${contact.phones[0] ? `, ${contact.phones[0].value}` : ""}` : "",
+      journey && home ? `${metresWords(journey.distanceMeters)} ${compassPoint(journey.bearingDegrees)}` : "",
+      destination.note,
+    ];
+  });
+  if (destinations.length > 0)
+    content.push(heading("The people we would go to"), dataTable(["Who", "Contact", "From home", "Note"], destinations));
+  if (content.length === 0)
+    content.push(
+      para("No home or meeting point is saved yet. Mark home on the map, and add meeting points in the questions or in a plan."),
+    );
+  c.summary.places = summary;
+  return { subtitle: "Where home and every meeting point is, in several grid formats, and who you would go to.", content };
+}
+
+function base64Of(bytes: Uint8Array): string {
+  let binary = "";
+  for (let index = 0; index < bytes.length; index += 0x8000) binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
+  return btoa(binary);
+}
+
+/**
+ * Whether a frequency needs a licence, in the one plain line every radio screen uses
+ * (`licenceLine`, from the regulators' statements listed under Help › What needs a radio
+ * licence), with what Outpost's list says of listening to it where it says anything.
+ */
+function licenceWords(entry: FrequencyEntry): string {
+  const use: RadioUse =
+    entry.kind === "licence-free"
+      ? "licence-free"
+      : entry.kind === "amateur"
+        ? "listen-and-transmit"
+        : entry.kind === "distress"
+          ? "listen-restricted"
+          : "listen";
+  return [licenceLine(use, NO_RADIO_LICENCE)?.text, entry.listening].filter(Boolean).join(" ");
+}
+
+const frequencyRow = (entry: FrequencyEntry, first = false) => [
+  `${first ? "Our plan: " : ""}**${entry.name}**`,
+  entry.frequencies.length > 6
+    ? `${entry.frequencies
+        .slice(0, 4)
+        .map((frequency) => frequencyLine(frequency))
+        .join("; ")}; and ${entry.frequencies.length - 4} more, all under Radio › Frequencies in Outpost`
+    : entry.frequencies.map((frequency) => frequencyLine(frequency)).join("; "),
+  licenceWords(entry),
+];
+
+function frequencies(c: Context): Section {
+  const content: Content[] = [];
+  const summary: string[] = [];
+  const planned = c.comms?.plan.updatedAt ? usedEntries(c.comms.plan, c.entries) : [];
+  if (planned.length > 0) {
+    content.push(
+      callout("act", "Our communication plan's channels", [
+        dataTable(
+          ["Channel", "Frequency", "Licence"],
+          planned.map((entry) => frequencyRow(entry, true)),
+        ),
+        note("Marked “Our plan” wherever they appear below."),
+      ]),
+    );
+    summary.push(...planned.map((entry) => `Plan: ${entry.name}`));
+  }
+  const ours = new Set(planned.map((entry) => entry.id));
+  if (!c.country)
+    content.push(
+      note(
+        "Which country home is in is not known (no home is marked, or no reference layers are installed), so only the plan's channels are listed.",
+      ),
+    );
+  else {
+    const groups: Array<{ kind: "licence-free" | "emergency" | "distress" | "broadcasters" | "weather"; title: string }> = [
+      { kind: "licence-free", title: "Licence-free channels" },
+      { kind: "emergency", title: "Emergency broadcasting" },
+      { kind: "distress", title: "Distress and calling" },
+      { kind: "broadcasters", title: "Broadcasters to listen to" },
+      { kind: "weather", title: "Weather" },
+    ];
+    for (const group of groups) {
+      // Broadcasts are the ones the household's own sets can receive, where it named them.
+      const listen = group.kind === "broadcasters" || group.kind === "weather";
+      const receivers = listen ? c.answers.receivers : [];
+      const seen = new Set<string>();
+      const entries = (receivers.length > 0 ? receivers : [undefined])
+        .flatMap((receiver) => filterFrequencies(c.entries, { kind: group.kind, place: c.country ?? undefined, receiver }))
+        .filter((entry) => entry.status !== "closed" && !seen.has(entry.id) && seen.add(entry.id) !== undefined);
+      if (entries.length === 0) continue;
+      content.push(
+        label(group.title),
+        dataTable(
+          ["Name", "Frequency", "Licence"],
+          entries.map((entry) => frequencyRow(entry, ours.has(entry.id))),
+        ),
+      );
+      summary.push(...entries.map((entry) => entry.name));
+    }
+    content.push(
+      note(`From Outpost's list of frequencies for ${placeName(c.country)}. Check a set's own rules before talking on anything.`),
+    );
+  }
+  content.push(heading("Repeaters near home"));
+  if (!c.facts.home) content.push(note(NO_HOME_PLACE));
+  else if (c.repeaters === null) content.push(note("Outpost's repeater list could not be read when the book was made."));
+  else if (c.repeaters.length === 0)
+    content.push(note("No repeater in Outpost's repeater list is near home. Bring a list in under Radio › Repeaters."));
+  else {
+    content.push(
+      dataTable(
+        ["Callsign", "Listen on", "Talk on", "Tone", "Where", "From home"],
+        c.repeaters.map((repeater) => [
+          `**${repeater.callsign}**`,
+          `${(repeater.outputHz / 1e6).toFixed(4)} MHz`,
+          repeater.inputHz === null ? "" : `${(repeater.inputHz / 1e6).toFixed(4)} MHz`,
+          repeater.ctcssHz ? `${repeater.ctcssHz} Hz` : repeater.dcsCode ? `DCS ${repeater.dcsCode}` : "",
+          repeater.place,
+          repeater.distanceMeters !== undefined
+            ? `${metresWords(repeater.distanceMeters)}${repeater.bearingDegrees !== undefined ? ` ${compassPoint(repeater.bearingDegrees)}` : ""}`
+            : "",
+        ]),
+        { right: [1, 2] },
+      ),
+      note(
+        `Amateur radio repeaters. ${licenceLine("listen-and-transmit", NO_RADIO_LICENCE)?.text ?? ""} From Outpost's repeater list, as brought in.`,
+      ),
+    );
+    summary.push(...c.repeaters.map((repeater) => `Repeater: ${repeater.callsign}`));
+  }
+  c.summary.frequencies = summary;
+  return {
+    subtitle: "The communication plan's channels first, then what home's country has, each with whether it needs a licence.",
+    content,
+  };
+}
+
+function supplies(c: Context): Section {
+  const items = c.supplies?.items ?? [];
+  const content: Content[] = [];
+  if (c.outlook)
+    content.push(
+      callout(
+        "know",
+        "How long it lasts",
+        para(
+          `Food for ${daysWords(c.outlook.food.days)}, water for ${daysWords(c.outlook.water.days)}, for the household as set in Supplies. Planning figures, not dietary advice.`,
+          0,
+        ),
+        { keep: true },
+      ),
+    );
+  if (items.length === 0) content.push(para("Nothing is kept in Supplies yet."));
+  else
+    content.push(
+      dataTable(
+        ["What", "How much", "Where", "Date"],
+        [...items]
+          .sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name))
+          .map((item) => [
+            `**${item.name}** (${categoryLabel(item.category)})`,
+            `${item.quantity} ${item.unit}`.trim(),
+            item.location,
+            item.date ?? "",
+          ]),
+      ),
+    );
+  c.summary.supplies = items.map((item) => item.name);
+  return { subtitle: "What is kept, where and until when.", content };
+}
+
+function grabCards(c: Context): Section {
+  const content: Content[] = [];
+  const people = c.grab?.people ?? [];
+  const household = c.grab?.household;
+  if (!household || people.length === 0) {
+    c.summary["grab-cards"] = [];
+    return {
+      subtitle: "A card for each person to carry.",
+      content: [para("No people are listed yet. Add them in the questions or under Supplies.")],
+    };
+  }
+  const width = c.half - 24;
+  const small = (text: string): Content => ({ text, fontSize: 7.5, color: PRINT_COLOURS.muted, margin: [0, 3, 0, 1] });
+  const cards = people.map((person) => {
+    const lines: Content[] = [
+      { text: "In an emergency", fontSize: 8, bold: true, color: PRINT_COLOURS.act },
+      { text: person.name || "Name not given", fontSize: 13, bold: true, margin: [0, 1, 0, 2] },
+      {
+        text: [`Call `, { text: household.emergencyNumber || c.number || "the emergency services", bold: true, color: PRINT_COLOURS.act }],
+        fontSize: 10.5,
+      },
+    ];
+    if (person.sheetLocked) lines.push(small("Medical sheet kept encrypted: not on this card."));
+    else {
+      lines.push({ text: `Blood group: ${person.bloodGroup || "not known"}`, fontSize: 9, margin: [0, 2, 0, 0] });
+      if (person.allergies.length > 0) lines.push(small("Allergies"), { text: person.allergies.join("; "), bold: true, fontSize: 9 });
+      if (person.needs.length > 0) lines.push(small("Medical"), { text: person.needs.join("; "), fontSize: 9 });
+      if (person.medicines.length > 0) lines.push(small("Medicines"), { text: person.medicines.join("; "), fontSize: 9 });
+    }
+    const calls = [...person.contacts, ...household.contacts].filter((entry) => entry.phone).slice(0, 4);
+    if (calls.length > 0)
+      lines.push(
+        small("Who to contact"),
+        ...calls.map((entry) => ({ text: [`${entry.label}: `, { text: entry.phone, bold: true }], fontSize: 9 }) as Content),
+      );
+    if (household.places.length > 0)
+      lines.push(small("Where we meet"), ...household.places.slice(0, 3).map((place) => ({ text: place, fontSize: 9 }) as Content));
+    if (household.comms.length > 0)
+      lines.push(small("Keeping in touch"), ...household.comms.slice(0, 2).map((line) => ({ text: line, fontSize: 9 }) as Content));
+    if (household.home)
+      lines.push(small(`Home: ${household.home.name}`), {
+        text: gridLines(household.home.lat, household.home.lon, ["decimal", "osgb", "maidenhead"]).join("\n"),
+        fontSize: 8.5,
+      });
+    lines.push({
+      text: `Made ${longDate.format(c.made)} in Outpost. Our own plan: follow official warnings.`,
+      fontSize: 6.5,
+      color: PRINT_COLOURS.muted,
+      margin: [0, 4, 0, 0],
+    });
+    return card(lines, width);
+  });
+  for (let index = 0; index < cards.length; index += 2)
+    content.push(twoColumns([cards[index]!], cards[index + 1] ? [cards[index + 1]!] : []));
+  content.push(
+    note(
+      "A card holds medical lines from each person's medical sheet; a sheet kept encrypted and not open on this device leaves them off.",
+    ),
+  );
+  c.summary["grab-cards"] = people.map((person) => person.name);
+  return { subtitle: "A card for each person to carry. Cut along the broken line and fold.", content };
 }
 
 /** How each NHS page is set: those that say to call at once in red, those that warn in amber, the rest in blue. */
@@ -1086,7 +1458,9 @@ function warmthRadio(c: Context): Section {
   ];
   const sets = RECEIVER_PROFILES.filter((profile) => c.answers.receivers.includes(profile.id));
   const summary: string[] = [];
-  if (sets.length === 0) {
+  if (c.answers.sections.includes("frequencies")) {
+    content.push(note("The stations to listen to, and every other frequency, are under Radio frequencies."));
+  } else if (sets.length === 0) {
     content.push(note("No radio sets were named in the questions, so no stations are listed. Name them, and make the book again."));
   } else if (!c.country) {
     content.push(
@@ -1510,6 +1884,11 @@ const SECTION_MAKERS: Record<Exclude<BookSectionId, "notes">, (c: Context) => Se
   checklists,
   "local-risks": localRisks,
   children: childCards,
+  "fridge-sheets": fridgeSheets,
+  places,
+  frequencies,
+  supplies,
+  "grab-cards": grabCards,
 };
 
 function frontContent(c: Context): Content[] {
@@ -1545,6 +1924,7 @@ function frontContent(c: Context): Content[] {
           c.previous ? `Changed since the book of ${longDate.format(new Date(c.previous.madeAt))}` : "The first book",
           changed,
         ),
+        callout("know", "Keep it where you can find it", stepList(steps(["shelter-at-home.before.1", "shelter-at-home.before.2"], c.used))),
       ],
       [
         callout("warn", "What this book cannot know", [
@@ -1564,12 +1944,8 @@ function frontContent(c: Context): Content[] {
   ];
 }
 
-function contentsPage(c: Context, entries: Array<{ number: number; label: string; id: string; about?: string }>): Content[] {
-  return [
-    { text: "Contents", fontSize: 19, bold: true, margin: [0, 0, 0, 10] } as Content,
-    contentsTable(entries),
-    callout("know", "Keep it where you can find it", stepList(steps(["shelter-at-home.before.1", "shelter-at-home.before.2"], c.used))),
-  ];
+function contentsPage(_c: Context, entries: Array<{ number: number; label: string; id: string; about?: string }>): Content[] {
+  return [{ text: "Contents", fontSize: 19, bold: true, margin: [0, 0, 0, 10] } as Content, contentsTable(entries)];
 }
 
 /** The whole book. */

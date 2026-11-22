@@ -87,7 +87,8 @@ export function BookHomeLine({ className }: { className?: string }) {
       <p className="flex items-start gap-2 py-1.5 text-body text-ink-muted md:py-0.5">
         <BookOpen aria-hidden className="mt-[0.3em] size-4 shrink-0" />
         <span>
-          The household book made on {formatDate(made.madeAt)} is older than its {sourcesWords(book.data.stale)}:{" "}
+          The {made.fromBinder ? "household binder" : "household book"} made on {formatDate(made.madeAt)} is older than its{" "}
+          {sourcesWords(book.data.stale)}:{" "}
           <Link to="/prepare/book" className="text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2">
             make it again
           </Link>

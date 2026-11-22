@@ -278,3 +278,28 @@ describe("what the book reads round home", () => {
     expect(facts.notMeasured).toEqual([{ destinationId: "d2", name: "Nowhere", why: expect.stringMatching(/No saved place/) }]);
   });
 });
+
+describe("the old household binder, now part of the book", () => {
+  it("stands in for the book until one is made, out of date wherever the binder is", async () => {
+    const own = await createTestApp({}, undefined, { voacapData: false });
+    try {
+      const call = async <T>(method: string, url: string, body?: unknown): Promise<T> => {
+        const response = await own.api<T>(method, url, body);
+        if (response.status !== 200) throw new Error(`${method} ${url}: ${response.status} ${JSON.stringify(response.body)}`);
+        return response.body;
+      };
+      await call("POST", "/api/maps/markers", { name: "Shed", lat: 54, lon: -2 });
+      await call("POST", "/api/household-binder/made", { parts: ["places", "supplies"], contentAt: Date.now(), pages: 9 });
+      const before = await call<BookResponse>("GET", "/api/household-book");
+      expect(before.made).toMatchObject({ pages: 9, fromBinder: true });
+      expect(before.stale).toEqual([]);
+      await call("POST", "/api/maps/markers", { name: "Gate", lat: 54.1, lon: -2 });
+      expect((await call<BookResponse>("GET", "/api/household-book")).stale).toEqual(["plans", "places"]);
+      const made = await call<BookResponse>("POST", "/api/household-book/made", { pages: 30, sections: ["places"], summary: {} });
+      expect(made.made?.fromBinder).toBeUndefined();
+      expect(made.stale).toEqual([]);
+    } finally {
+      await own.close();
+    }
+  });
+});
