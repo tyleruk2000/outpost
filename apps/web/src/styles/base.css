@@ -177,6 +177,15 @@
     background: var(--page);
   }
 
+  /* On a phone the top bar and the bar of screens stay over the page: what Tab moves to is scrolled clear of both,
+     not under them (WCAG 2.4.11). 3.25rem and 3.5rem are their heights (components/mobile-nav.tsx). */
+  @media (width < 48rem) {
+    html {
+      scroll-padding-top: 3.25rem;
+      scroll-padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
+    }
+  }
+
   h1,
   h2,
   h3 {

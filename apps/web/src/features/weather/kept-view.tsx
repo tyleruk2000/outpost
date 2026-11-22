@@ -35,7 +35,7 @@ export function KeptView({
   const remove = useRemoveCopy();
   const total = kept.reduce((sum, copy) => sum + copy.bytes, 0);
   return (
-    <div className="grid gap-10">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-10">
       <section aria-labelledby="kept-heading">
         <h3 id="kept-heading" className="text-body font-semibold text-ink">
           Kept on this server

@@ -63,3 +63,28 @@ it("says so when “All used up” could not be saved, and still shows the count
   // Nothing pretends it worked: the button is still there to try again.
   expect(screen.getByRole("button", { name: "All used up" })).toBeEnabled();
 });
+
+it("moves the focus into the dialog when Change is pressed, without putting it in a field", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      const { pathname } = new URL(String(input), "http://outpost.test");
+      const json = (body: unknown) => new Response(JSON.stringify(body), { headers: { "content-type": "application/json" } });
+      if (pathname === "/api/supplies/items/i1") return json({ item: beans });
+      if (pathname === "/api/supplies") return json({ items: [beans], household: DEFAULT_HOUSEHOLD, locations: ["Pantry"] });
+      return json({});
+    }),
+  );
+  render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <MemoryRouter initialEntries={["/prepare/supplies/items/i1"]}>
+        <Routes>
+          <Route path="/prepare/supplies/items/:id" element={<SupplyItemPage />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  await userEvent.click(await screen.findByRole("button", { name: "Change" }));
+  const dialog = await screen.findByRole("dialog", { name: "Change Baked beans" });
+  await waitFor(() => expect(dialog).toHaveFocus());
+});

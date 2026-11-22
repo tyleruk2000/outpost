@@ -73,11 +73,16 @@ export default function MedicalPage() {
         </p>
       </div>
       {sheet ? (
-        <Link to={`/prepare/medical/${sheet.id}`} className="inline-flex min-h-11 items-center gap-1 text-small text-primary md:min-h-8">
+        <Link
+          to={`/prepare/medical/${sheet.id}`}
+          // Every row has an Open and a Make a sheet: each is named with whose it is.
+          aria-label={`Open ${name}’s sheet`}
+          className="inline-flex min-h-11 items-center gap-1 text-small text-primary md:min-h-8"
+        >
           Open <ChevronRight aria-hidden className="size-4" />
         </Link>
       ) : (
-        <Button size="sm" onClick={onMake} loading={save.isPending}>
+        <Button size="sm" aria-label={`Make a sheet for ${name}`} onClick={onMake} loading={save.isPending}>
           Make a sheet
         </Button>
       )}
@@ -141,7 +146,7 @@ export default function MedicalPage() {
               <Field
                 label="Someone else"
                 hint="A relative you look after, a lodger: anyone not counted in the household."
-                className="min-w-[14rem] flex-1"
+                className="min-w-[min(100%,14rem)] flex-1"
               >
                 {(ids) => (
                   <Input
@@ -162,15 +167,18 @@ export default function MedicalPage() {
           <Section title="Who else can read them" description="Both are off until you turn them on. Encrypted sheets are never included.">
             <Rows>
               <li className="flex items-start justify-between gap-4 py-3">
-                <label htmlFor="medical-in-search" className="min-w-0">
-                  <span className="block text-ink">Find them in search</span>
-                  <span className="block text-small text-ink-muted">
+                <div className="min-w-0">
+                  <label htmlFor="medical-in-search" className="block text-ink">
+                    Find them in search
+                  </label>
+                  <span id="medical-in-search-about" className="block text-small text-ink-muted">
                     Medicines, allergies and conditions of sheets that are not encrypted, in Search and the quick search, and in search by
                     meaning where it is set up (which sends their words to its model server).
                   </span>
-                </label>
+                </div>
                 <Switch
                   id="medical-in-search"
+                  aria-describedby="medical-in-search-about"
                   checked={sheets.data.inSearch}
                   disabled={settings.isPending}
                   onCheckedChange={(on) => settings.mutate({ "medical.inSearch": on }, { onSuccess: () => void sheets.refetch() })}

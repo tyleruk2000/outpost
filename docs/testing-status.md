@@ -56,6 +56,13 @@ of what each feature does are in its own guide.
   phone's touch, on-screen keyboard and safe areas (only Chromium and WebKit with touch at
   phone sizes); the live compass, the phone's motion sensors and the camera on a real device;
   Windows High Contrast and forced colours; a switch device or voice control.
+- **Preparedness screens** (plans, medical sheets, Keeping in touch, grab cards, check-in, log, checks,
+  offline drill, supplies, weather): walked in Chromium at 1280, 390 and 320 wide, light and dark, text
+  at 200% and at Largest, with axe, a layout measure, a Tab walk and the accessibility tree read back,
+  and every dialog opened from the keyboard. Not tried: VoiceOver or TalkBack reading them, Safari on a
+  real iPhone (the bar of screens' room for the home indicator is worked out, not seen), Windows High
+  Contrast, a switch or voice control, the barcode scanner with a screen reader, and the sheets and
+  cards printed and read by someone with low vision.
 
 ## Installing and looking after it
 

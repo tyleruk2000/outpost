@@ -104,7 +104,10 @@ export function PlanInUse({
                         {checked ? <Check className="size-5" strokeWidth={3} /> : null}
                       </span>
                       <span className="min-w-0">
-                        <span className={cn("block text-lead", checked ? "text-ink-muted line-through decoration-1" : "text-ink")}>
+                        {/* A step may hold an address (a web page to read), which must wrap on a small phone. */}
+                        <span
+                          className={cn("block text-lead wrap-anywhere", checked ? "text-ink-muted line-through decoration-1" : "text-ink")}
+                        >
                           <span className="tabular">{index + 1}.</span> {step.text}
                         </span>
                         {checked ? <span className="block text-small text-ink-muted">Done at {formatTimeOfDay(at)}</span> : null}

@@ -22,6 +22,7 @@ import { type DrawLine, writeLettered } from "@/features/maps/print/lettering";
 import type { Sheet } from "@/features/maps/print/sheet";
 import { fridgeSheets, grabSheets, walletSheets } from "./cards";
 import CardsPage from "./cards-page";
+import { RowTools } from "./list-edit";
 import PlanPage from "./plan-page";
 import PlansPage from "./plans-page";
 import { readableOf } from "./printable";
@@ -341,6 +342,10 @@ describe("a plan", () => {
     // Nothing in Supplies: each listed thing is missing, and can go on the shopping list.
     await waitFor(() => expect(screen.getAllByTestId("supply-standing")[0]).toHaveTextContent("Missing"));
     expect(screen.getByRole("button", { name: /Add 10 missing or low things to the shopping list/ })).toBeEnabled();
+    // Every row has the same two boxes: each is named with its supply, so a screen reader can tell them apart.
+    const perPerson = screen.getAllByRole("checkbox", { name: /^Each person: / });
+    expect(new Set(perPerson.map((box) => box.getAttribute("aria-label"))).size).toBe(perPerson.length);
+    expect(screen.getAllByRole("checkbox", { name: /^Each day: / })).toHaveLength(perPerson.length);
   });
 
   it("says when the copy was last opened, not the plan it was copied from", async () => {
@@ -672,5 +677,20 @@ describe("the line about warnings held for the home place", () => {
     });
     show("/prepare/plans/p1/use", <UsePlanPage />, "/prepare/plans/:id/use");
     expect(await screen.findByTestId("home-warning-line")).toHaveTextContent(/when Outpost last checked, 1 hour ago/);
+  });
+});
+
+describe("moving a row", () => {
+  it("keeps the focus on Move up when the row reaches the top, and moves nothing further", async () => {
+    const onMove = vi.fn();
+    render(<RowTools name="Fill the bath" first last={false} onMove={onMove} onRemove={() => undefined} />);
+    const up = screen.getByRole("button", { name: "Move up: Fill the bath" });
+    expect(up).toHaveAttribute("aria-disabled", "true");
+    up.focus();
+    await userEvent.keyboard("{Enter}");
+    expect(onMove).not.toHaveBeenCalled();
+    expect(up).toHaveFocus();
+    await userEvent.click(screen.getByRole("button", { name: "Move down: Fill the bath" }));
+    expect(onMove).toHaveBeenCalledWith(1);
   });
 });
