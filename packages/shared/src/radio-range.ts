@@ -47,6 +47,13 @@ export const RANGE_NEAR_METERS = 25_000;
 export const RANGE_NEAR_STEP_METERS = 50;
 /** The last band's step. */
 export const RANGE_FAR_STEP_METERS = 250;
+/**
+ * No band is read from tiles coarser than a band read this often: beyond 50 km the ground is read every 250 m, but from
+ * the same tiles as the band before it (cells of about 90 m at 55° N, rather than about 180 m), where the terrain
+ * installed has them. A summit's crown or a ridge's top far out is then the height it is, not the average of a cell
+ * twice as wide. Where only coarser tiles are installed, those are read, as before.
+ */
+export const RANGE_FAR_READ_METERS = 100;
 /** The distances the share of the ground in sight is given within. */
 export const RANGE_SHARE_WITHIN_METERS = [10_000, 25_000, 50_000, 100_000] as const;
 /**
