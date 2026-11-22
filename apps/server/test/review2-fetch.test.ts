@@ -79,7 +79,15 @@ const SECURITY_ONLY = new Set([
 ]);
 const NAMED_AS_A_SETTING = new Set(["download.mapterhorn.com"]);
 /** XML namespaces: names written into files, never fetched. */
-const NAMESPACES = new Set(["www.w3.org", "www.topografix.com", "www.idpf.org", "ns.adobe.com", "calendarserver.org", "opds-spec.org"]);
+const NAMESPACES = new Set([
+  "www.w3.org",
+  "www.topografix.com",
+  "www.idpf.org",
+  "ns.adobe.com",
+  "calendarserver.org",
+  "opds-spec.org",
+  "www.opengis.net",
+]);
 
 function sourceFiles(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
