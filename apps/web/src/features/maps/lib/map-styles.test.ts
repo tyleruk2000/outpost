@@ -136,6 +136,39 @@ describe("the high-contrast map", () => {
   });
 });
 
+describe("the names on the high-contrast map", () => {
+  const luminance = (colour: string) => {
+    const [r, g, b] = parseColour(colour)!
+      .slice(0, 3)
+      .map((value) => {
+        const s = value / 255;
+        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+      });
+    return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+  };
+  const ratio = (a: string, b: string) => {
+    const [x, y] = [luminance(a), luminance(b)];
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+  };
+  const coloursIn = (value: unknown): string[] =>
+    typeof value === "string" ? (parseColour(value) ? [value] : []) : Array.isArray(value) ? value.flatMap(coloursIn) : [];
+
+  it("are all at least 4.5:1 against their halo (WCAG 1.4.3)", () => {
+    for (const flavour of ["light", "dark"] as const) {
+      const style = buildStyle(input({ mapStyle: "high-contrast", flavour, theme: FALLBACK_THEME[flavour] }));
+      for (const each of style.layers) {
+        if (each.type !== "symbol") continue;
+        const paint = paintOf(style, each.id);
+        const halo = coloursIn(paint["text-halo-color"])[0];
+        if (!halo) continue;
+        // A name drawn in its halo's own colour is not a name that shows (a case colour in the Protomaps styles).
+        for (const text of coloursIn(paint["text-color"]).filter((colour) => colour.toLowerCase() !== halo.toLowerCase()))
+          expect(ratio(text, halo), `${each.id} ${text} on ${halo}`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+});
+
 describe("the night map", () => {
   it("is drawn in reds only, without the coloured place pictures", () => {
     const style = buildStyle(input({ mapStyle: "night", roadNumbers: true }));

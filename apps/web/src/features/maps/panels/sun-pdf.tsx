@@ -8,7 +8,7 @@
  * day, the clock or the span changes; it is a few thousand bytes of text.
  */
 import { FileText } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/misc";
@@ -81,6 +81,9 @@ function SunPdfOpen({
   const [paper, setPaper] = useState<AidPaper>(() => readStored(AID_PAPER_KEY, isAidPaper, likelyPaper(navigator.language)));
   const [made, setMade] = useState<Made | null>(null);
   const { name, lat, lon, coordinates } = place;
+  // The button that opened this is gone: its heading has the keyboard, so that focus is not dropped on the page.
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => heading.current?.focus({ preventScroll: true }), []);
 
   useEffect(() => {
     let live = true;
@@ -110,7 +113,9 @@ function SunPdfOpen({
   return (
     <section aria-label="Sun times as a PDF" className="grid gap-3 border-t border-border pt-3" data-testid="sun-pdf">
       <div>
-        <h4 className="text-small font-medium text-ink">Sun times on paper</h4>
+        <h4 ref={heading} tabIndex={-1} className="text-small font-medium text-ink focus:outline-none">
+          Sun times on paper
+        </h4>
         <p className="mt-0.5 text-small text-ink-muted">
           {spanWords(date, span)}, a day to a line, on the clock shown above
           {made && "pdf" in made ? `: ${plural(made.pages, "page")} of ${PAPERS[paper].label}` : ""}. Made on this device.

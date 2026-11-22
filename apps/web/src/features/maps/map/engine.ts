@@ -145,6 +145,8 @@ interface PlaceCarry {
 
 const MAP_LABEL = "Map. Arrow keys pan, plus and minus zoom.";
 const MAP_LABEL_DRAWING = `${MAP_LABEL} Enter adds a point of the route at the centre.`;
+/** What the keyboard does at the centre while browsing: the menu a right-click or a long press opens. */
+const MAP_KEY_MENU = "Shift F10 opens the menu for the point at the centre.";
 
 /** How near a press must be to a point of the route to take hold of it, in pixels. */
 const HANDLE_REACH_MOUSE = 9;
@@ -446,7 +448,7 @@ export class MapEngine {
     });
 
     // The canvas hears the keyboard; MapLibre's handler pans and zooms from it.
-    map.getCanvas().setAttribute("aria-label", MAP_LABEL);
+    map.getCanvas().setAttribute("aria-label", this.canvasLabel());
   }
 
   private emitContext(position: LatLon, point: { x: number; y: number }): void {
@@ -672,6 +674,20 @@ export class MapEngine {
     this.map.resetNorth();
   }
 
+  /** The map's name for a screen reader: how to move it, and what Enter or Shift F10 does with the tool in hand. */
+  private canvasLabel(): string {
+    if (this.route) return MAP_LABEL_DRAWING;
+    return `${MAP_LABEL} ${this.keyHint ?? MAP_KEY_MENU}`;
+  }
+
+  private keyHint: string | null = null;
+
+  /** Says what a key does at the centre with the tool in hand (Enter adds a point), in place of the menu's key. */
+  setKeyHint(hint: string | null): void {
+    this.keyHint = hint;
+    this.map.getCanvas().setAttribute("aria-label", this.canvasLabel());
+  }
+
   focus(): void {
     this.map.getCanvas().focus({ preventScroll: true });
   }
@@ -720,7 +736,7 @@ export class MapEngine {
     if (!state) this.dropHandle();
     if (!this.held) this.setOverlay("o-draw", drawData(state));
     if (was === (state !== null)) return;
-    this.map.getCanvas().setAttribute("aria-label", state ? MAP_LABEL_DRAWING : MAP_LABEL);
+    this.map.getCanvas().setAttribute("aria-label", this.canvasLabel());
     // Two quick points close together must not zoom the map.
     if (state) this.map.doubleClickZoom.disable();
     else {
@@ -846,7 +862,8 @@ export class MapEngine {
       element.setAttribute("aria-roledescription", "movable pin");
     } else {
       element.removeAttribute("tabindex");
-      element.removeAttribute("role");
+      // A mark with a name: an image, so that the name is said (a plain div may not carry one).
+      element.setAttribute("role", "img");
       element.removeAttribute("aria-roledescription");
     }
     if (this.pinState?.draggable !== state.draggable) this.pin.setDraggable(state.draggable);

@@ -17,15 +17,15 @@ export const mapSurface = cn(floating, "z-auto min-w-0 p-0");
 /**
  * A card over the map: the one shell every such card uses, whichever tool it belongs to.
  *
- * On a phone the card's greatest height is not its own to choose. The place it is put in
- * (`MapFurniture`) gives the cards the lower three fifths of the clear map and no more; a card
- * with more to say than fits scrolls inside itself, under a title and a close button that
- * stay where they are.
+ * A card's greatest height is not its own to choose. The place it is put in (`MapFurniture`)
+ * gives the cards on a phone the lower three fifths of the clear map, and on a wide screen the
+ * height between the search box and the readout; a card with more to say than fits scrolls
+ * inside itself, under a title and a close button that stay where they are.
  */
 export const mapCard = cn(
   mapSurface,
   "outpost-map-card scroll-quiet pointer-events-auto w-full max-w-[26rem] p-3.5",
-  "max-md:min-h-[52px] max-md:shrink max-md:overflow-y-auto max-md:overscroll-contain",
+  "min-h-[52px] shrink overflow-y-auto overscroll-contain",
 );
 
 /**

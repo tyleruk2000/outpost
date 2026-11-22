@@ -44,6 +44,13 @@ of what each feature does are in its own guide.
   from inside another are not.
 - **Not tried:** a pass by hand with a screen reader. No one has used the map, the notes
   editor or the reader with VoiceOver from start to finish.
+- **Maps, not tried:** VoiceOver, TalkBack or a switch on a real phone; Safari on a real
+  iPhone with its bars and on-screen keyboard (WebKit in a test is not that); a real
+  compass, GPS fix or long press on glass. The keyboard routes (Shift F10 for the
+  centre's menu, Enter to measure or save at the centre, a search result's card taking
+  the keyboard) were checked in Chromium only; whether a screen reader in browse mode
+  passes Shift F10 and Enter through to the map is not known. Contrast of names drawn on
+  the map was worked out from the style's colours, not measured on screen.
 
 ## Installing and looking after it
 

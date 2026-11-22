@@ -20,7 +20,7 @@ export function Locator({ position, className }: { position: LatLon; className?:
       }}
       title="Copy"
       aria-label={`Copy Maidenhead locator ${locator}`}
-      className={cn("tabular rounded-[3px] text-left text-small text-ink-muted", className)}
+      className={cn("tabular min-h-6 rounded-[3px] text-left text-small text-ink-muted", className)}
     >
       Locator{" "}
       <span className="font-mono text-[0.8125rem] text-ink underline decoration-border-strong decoration-dotted underline-offset-4 hover:decoration-ink">

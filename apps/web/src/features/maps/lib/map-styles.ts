@@ -405,7 +405,20 @@ function highContrastVariant(theme: MapTheme, tuned: (flavour: MapFlavour, theme
     buildings: "#8c8c8c",
     railway: "#000000",
     boundaries: "#000000",
-    ocean_label: "#00264d",
+    // Every name at least 4.5:1 against what is behind it (WCAG 1.4.3), as the style's name promises. Water's names are
+    // haloed in the water's own blue (4.9:1); the names of places of interest and house numbers, in white (6.2:1 and up).
+    ocean_label: "#00122b",
+    address_label: "#555555",
+    pois: {
+      blue: "#0b5f80",
+      green: "#166339",
+      lapis: "#2347a8",
+      pink: "#a3247a",
+      red: "#b0213f",
+      slategray: "#5a4d7a",
+      tangerine: "#8a4400",
+      turquoise: "#006b75",
+    },
     roads_label_major: "#000000",
     roads_label_minor: "#000000",
     subplace_label: "#000000",

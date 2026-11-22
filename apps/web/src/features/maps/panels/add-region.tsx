@@ -251,6 +251,14 @@ export function AddRegion({
     if (step === "options") onNeedRoom();
   }, [step, onNeedRoom]);
 
+  // Each step takes the place of what was pressed to reach it: its heading has the keyboard, so that focus is not
+  // dropped on the page and the step is read out from its start (WCAG 2.4.3).
+  const stepHeading = useRef<HTMLHeadingElement>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once for each step
+  useEffect(() => {
+    stepHeading.current?.focus({ preventScroll: true });
+  }, [step]);
+
   const regionName = area?.kind === "preset" ? area.preset.name : name.trim();
   const zooms = detailChoices(recommended);
   const tooLarge = (zoom: number) => (bbox ? countTiles(bbox, 0, zoom) > MAX_TILES : false);
@@ -293,7 +301,9 @@ export function AddRegion({
         {header}
         <div className="scroll-quiet grid min-h-0 flex-1 content-start gap-4 overflow-y-auto px-4 py-4">
           <div>
-            <h3 className="font-title text-lead text-ink">Add a region</h3>
+            <h3 ref={stepHeading} tabIndex={-1} className="font-title text-lead text-ink focus:outline-none">
+              Add a region
+            </h3>
             <p className="mt-1 text-small text-ink-muted">
               Pick a ready-made area, or draw your own box around the hills you are heading for.
             </p>
@@ -421,7 +431,9 @@ export function AddRegion({
       {header}
       <div className="scroll-quiet grid min-h-0 flex-1 content-start gap-5 overflow-y-auto px-4 py-4">
         <div>
-          <h3 className="font-title text-lead text-ink">{regionName}</h3>
+          <h3 ref={stepHeading} tabIndex={-1} className="font-title text-lead text-ink focus:outline-none">
+            {regionName}
+          </h3>
           {bbox ? (
             <p className="tabular mt-1 text-small text-ink-muted">
               {formatBboxSize(bbox)}

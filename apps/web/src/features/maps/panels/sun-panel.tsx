@@ -105,7 +105,7 @@ export function SunPanel({
                   }}
                   title="Copy"
                   aria-label={`Copy coordinates ${coordinates}`}
-                  className="tabular rounded-[3px] font-mono text-[0.8125rem] text-ink underline decoration-border-strong decoration-dotted underline-offset-4 hover:decoration-ink"
+                  className="tabular min-h-6 rounded-[3px] font-mono text-[0.8125rem] text-ink underline decoration-border-strong decoration-dotted underline-offset-4 hover:decoration-ink"
                 >
                   {coordinates}
                 </button>

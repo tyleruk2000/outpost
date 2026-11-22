@@ -239,7 +239,12 @@ function Attribution({ credits, fold }: { credits: Credit[]; fold: boolean }) {
           <button
             type="button"
             aria-expanded={opened}
-            aria-label={opened ? "Show fewer map credits" : `Show all ${credits.length} map credits`}
+            // The name starts with the words that show ("2 more", "Fewer"), so that it is the name a voice control is told (WCAG 2.5.3).
+            aria-label={
+              opened
+                ? "Fewer map credits: show one line"
+                : `${credits.length - 1} more map credit${credits.length === 2 ? "" : "s"}: show all ${credits.length}`
+            }
             onClick={() => setOpened((now) => !now)}
             // Small to look at, a line of text, so that the credits are one line and not 44 px of the map; 44 px to
             // touch, by a reach above and below it (maps.css leaves it out of the phone's rule for the same reason).

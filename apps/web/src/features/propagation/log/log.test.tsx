@@ -324,7 +324,7 @@ describe("the contact log", () => {
     await waitFor(() => expect(row.textContent).toContain("Contact log from years.adi: 12.0 MB of 30.0 MB read."));
     expect(row.textContent).toContain("None of it is in the log until all of it is.");
     expect(bar).toHaveAttribute("aria-valuenow", "40");
-    expect(screen.getByRole("button", { name: /Import an ADIF file/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Import an ADIF file/ })).toHaveAttribute("aria-disabled", "true");
     expect(screen.queryByText(/brought in/)).not.toBeInTheDocument();
 
     const before = server.listed;

@@ -61,6 +61,8 @@ describe("sun times on paper", () => {
     expect(screen.queryByRole("region", { name: "Sun times as a PDF" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "A PDF of sun times, day by day" }));
     const block = screen.getByRole("region", { name: "Sun times as a PDF" });
+    // The button that opened it is gone; its heading has the keyboard, not the page.
+    expect(within(block).getByRole("heading", { name: "Sun times on paper" })).toHaveFocus();
     const save = await within(block).findByRole("link", { name: "Save as PDF" });
     expect(save).toHaveAttribute("download", "sun-times-51-48000-0-00000-14-days-from-21-jun-2026.pdf");
     expect(within(block).getByRole("button", { name: "Add to library" })).toBeEnabled();

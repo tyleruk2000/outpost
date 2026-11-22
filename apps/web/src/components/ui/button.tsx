@@ -38,14 +38,19 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>, Va
   ref?: Ref<HTMLButtonElement>;
 }
 
-export function Button({ className, variant, size, asChild, loading, disabled, children, type, ...props }: ButtonProps) {
+export function Button({ className, variant, size, asChild, loading, disabled, children, type, onClick, ...props }: ButtonProps) {
   const Component = asChild ? Slot.Root : "button";
+  // While its action is in flight a button refuses presses but keeps the keyboard: a button made `disabled` under the
+  // focus drops it on the page, and a keyboard or screen reader user is sent back to the top (WCAG 2.4.3).
+  const busy = !asChild && Boolean(loading) && !disabled;
   return (
     <Component
       className={cn(button({ variant, size }), className)}
-      disabled={asChild ? undefined : disabled || loading}
+      disabled={asChild ? undefined : disabled}
+      aria-disabled={busy || undefined}
       aria-busy={loading || undefined}
       type={asChild ? undefined : (type ?? "button")}
+      onClick={busy ? (event) => event.preventDefault() : onClick}
       {...props}
     >
       {/* With asChild the single child is the element itself, so nothing may sit beside it. */}

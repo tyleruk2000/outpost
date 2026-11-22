@@ -110,30 +110,33 @@ export function SightPanel({
         <span className="sr-only">Point </span>
         {label}
       </dt>
-      <dd className="tabular min-w-0 flex-1 text-small text-ink">
-        {value ? (
-          <>
-            {value.name ? <span className="block truncate font-medium">{value.name}</span> : null}
-            <span className="block font-mono text-[0.8125rem]">{locatorOf(value.position)}</span>
-            <span className="block font-mono text-[0.8125rem] text-ink-muted">
-              {formatPosition(value.position.lat, value.position.lon, shown).text}
-            </span>
-          </>
-        ) : (
-          <span className="text-ink-muted">{picking === which ? "Being chosen on the map" : "Not chosen yet"}</span>
-        )}
+      {/* The button is inside the definition: a list of terms may hold nothing else (WCAG 1.3.1). */}
+      <dd className="tabular flex min-w-0 flex-1 items-start gap-3 text-small text-ink">
+        <span className="block min-w-0 flex-1">
+          {value ? (
+            <>
+              {value.name ? <span className="block truncate font-medium">{value.name}</span> : null}
+              <span className="block font-mono text-[0.8125rem]">{locatorOf(value.position)}</span>
+              <span className="block font-mono text-[0.8125rem] text-ink-muted">
+                {formatPosition(value.position.lat, value.position.lon, shown).text}
+              </span>
+            </>
+          ) : (
+            <span className="text-ink-muted">{picking === which ? "Being chosen on the map" : "Not chosen yet"}</span>
+          )}
+        </span>
+        {mapReady && picking !== which ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            aria-label={`${value ? "Move" : "Choose"} point ${label}`}
+            onClick={() => sight.pick(which)}
+            className="-my-1 shrink-0"
+          >
+            {value ? "Move" : "Choose"}
+          </Button>
+        ) : null}
       </dd>
-      {mapReady && picking !== which ? (
-        <Button
-          size="sm"
-          variant="ghost"
-          aria-label={`${value ? "Move" : "Choose"} point ${label}`}
-          onClick={() => sight.pick(which)}
-          className="-my-1 shrink-0"
-        >
-          {value ? "Move" : "Choose"}
-        </Button>
-      ) : null}
     </div>
   );
 

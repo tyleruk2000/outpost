@@ -14,6 +14,13 @@ export interface Waiver {
 
 export const WAIVERS: Waiver[] = [
   {
+    rule: "target-size",
+    where: /^\/maps/,
+    target: /outpost-box-handle/,
+    reason:
+      "A handle of the box on the map (the page to print, a region to download) is drawn 24 by 10 px on its edge, but is pressed by a reach of its own (maps.css: a ::before 48 by 44 px, 44 by 44 at a corner) that axe does not measure. Each handle is also a slider or moved with the arrow keys, and the card beside it sets the box without the pointer.",
+  },
+  {
     rule: "label-content-name-mismatch",
     where: /^\/games\/(chess|draughts)$/,
     target: /data-square/,

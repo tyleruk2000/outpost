@@ -145,7 +145,7 @@ describe("adding to the library", () => {
     show(prediction(), upload.send);
     await add();
     expect(status()).toHaveAttribute("data-state", "adding");
-    expect(screen.getByRole("button", { name: "Add to library" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Add to library" })).toHaveAttribute("aria-disabled", "true");
     act(() => upload.calls[0]!.progress(0.43));
     expect(screen.getByRole("progressbar", { name: "Sending the PDF to the library" })).toHaveAttribute("aria-valuenow", "43");
     expect(status()).toHaveTextContent("Sending 21 bytes to the library: 43%.");
