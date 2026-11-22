@@ -20,10 +20,15 @@ async function coveredStops(page: Page, stops: number): Promise<string[]> {
       const element = document.activeElement as HTMLElement | null;
       if (!element || element === document.body || !element.closest("main")) return null;
       const box = element.getBoundingClientRect();
-      // The middle of the element, and its top and bottom edges just inside.
-      const points = [box.top + 2, box.top + box.height / 2, box.bottom - 2].map((y) =>
-        document.elementFromPoint(box.left + box.width / 2, y),
-      );
+      // The middle of the element, and its top and bottom edges just inside. A stop taller
+      // than the room between the bars (a whole tab panel) can never be all in sight: for it,
+      // its top edge, which is what scrolling to it brings clear (2.4.11: not entirely hidden).
+      const room =
+        window.innerHeight -
+        (document.querySelector("header")?.getBoundingClientRect().height ?? 0) -
+        (document.querySelector('nav[aria-label="Main"]')?.getBoundingClientRect().height ?? 0);
+      const ys = box.height > room ? [box.top + 2] : [box.top + 2, box.top + box.height / 2, box.bottom - 2];
+      const points = ys.map((y) => document.elementFromPoint(box.left + box.width / 2, y));
       const over = points.find((hit) => hit && !element.contains(hit) && !hit.contains(element));
       if (!over) return null;
       const name = (element.getAttribute("aria-label") || element.textContent || element.id || element.tagName).trim().slice(0, 40);
