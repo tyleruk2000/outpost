@@ -330,3 +330,14 @@
   --map-range-typical: var(--map-range-typical-night);
   --map-walk: var(--map-walk-night);
 }
+
+/*
+ * On a wide screen the column of tools runs down the right of the map, where messages (sonner's toasts) come up: they lay
+ * over its last buttons, and stayed there while the pointer rested on them. On the Maps screen they come up to its left.
+ */
+@media (min-width: 48rem) {
+  body:has(.outpost-touch:not([data-compact])) [data-sonner-toaster][data-x-position="right"] {
+    /* biome-ignore lint/complexity/noImportantStyles: sonner sets the offset in the element's own style */
+    --offset-right: calc(24px + 2.25rem) !important;
+  }
+}

@@ -23,8 +23,10 @@ const button = cva(
         sm: "min-h-8 px-2.5 py-1 text-small max-md:min-h-11",
         md: "min-h-9 px-3.5 py-1.5 text-small max-md:min-h-11",
         lg: "min-h-11 px-5 py-2 text-body",
-        icon: "size-9 max-md:size-11",
-        "icon-sm": "size-7 max-md:size-11 [&_svg]:size-[15px]",
+        // An icon button is its size, never capped: `max-w-full` measured against a parent that the button's own negative
+        // margin had shrunk cut a 28 px button to 22 (a card's close button pulled into its corner).
+        icon: "size-9 max-w-none max-md:size-11",
+        "icon-sm": "size-7 max-w-none max-md:size-11 [&_svg]:size-[15px]",
       },
     },
     defaultVariants: { variant: "secondary", size: "md" },

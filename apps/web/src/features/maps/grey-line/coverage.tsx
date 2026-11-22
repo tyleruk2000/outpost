@@ -52,8 +52,8 @@ export function CoverageGreyLine({
       </div>
       <p id={`${id}-when`} className="text-small text-ink-muted" data-coverage-grey-line>
         {on && at !== null
-          ? `Drawn for ${utcLabel(utcHour)} UTC on about the 15th of ${monthFormat.format(at)}. The prediction is for the whole month, so the line is drawn for the middle of it; on other days it lies a little east or west of this, most of all near the equinoxes and far from the equator. Night is shaded under the cells, and the line is where the Sun rises or sets.`
-          : "Night shaded and the line where the Sun rises and sets, for the hour shown, in the middle of the month."}
+          ? `Drawn for ${utcLabel(utcHour)} UTC on about the 15th of ${monthFormat.format(at)}. The prediction is for the whole month, so the line is drawn for the middle of it; on other days it lies a little east or west of this, most of all near the equinoxes and far from the equator. Night is shaded and hatched under the cells, and the line is where the Sun rises or sets.`
+          : "Night shaded and hatched, and the line where the Sun rises and sets, for the hour shown, in the middle of the month."}
       </p>
     </div>
   );

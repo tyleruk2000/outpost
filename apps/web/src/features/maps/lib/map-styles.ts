@@ -69,9 +69,17 @@ export const MAP_STYLES: Record<MapStyleId, MapStyleInfo> = {
     hint: "Strong land, water and roads with heavier names, for a screen in bright sun.",
     printable: true,
   },
-  night: { label: "Night (red)", hint: "Dark, in reds only, so the map does not spoil your eyes for the dark.", printable: false },
+  night: {
+    label: "Night (red)",
+    hint: "Dark, in reds only, so the map does not spoil your eyes for the dark. Its names are dim on purpose: High contrast is the one to read.",
+    printable: false,
+  },
   "low-ink": { label: "Low ink", hint: "White land, thin dark roads and no fills: the least ink for a printed page.", printable: true },
 };
+
+/** Said when the night style is chosen: its names are dim on purpose, below 4.5:1, and which style is the readable one. */
+export const NIGHT_STYLE_NOTE =
+  "Night (red) is dim on purpose, for eyes used to the dark, and its names are faint. For names that are easy to read, use High contrast.";
 
 /** How a style changes what `buildStyle` draws. */
 export interface StyleVariant {
@@ -158,6 +166,61 @@ export function parseColour(text: string): Rgba | null {
   const rgb = /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)$/i.exec(value);
   if (rgb) return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3]), rgb[4] === undefined ? 1 : Number(rgb[4])];
   return null;
+}
+
+/** WCAG's relative luminance of a colour (0 black to 1 white). */
+export function luminance(colour: string): number {
+  const parsed = parseColour(colour);
+  if (!parsed) return 0;
+  const [r, g, b] = parsed.slice(0, 3).map((value) => {
+    const s = value / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+}
+
+/** WCAG's contrast ratio between two colours, 1 to 21. */
+export function contrastRatio(a: string, b: string): number {
+  const [x, y] = [luminance(a), luminance(b)];
+  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+}
+
+/**
+ * A colour made readable against another (WCAG 1.4.3, 4.5:1 for text): unchanged when it already is, otherwise mixed
+ * step by step towards black on a light ground or white on a dark one, so that its hue, and so the map's look, stays.
+ */
+export function readableAgainst(colour: string, against: string, ratio = 4.5): string {
+  const parsed = parseColour(colour);
+  if (!parsed || !parseColour(against) || contrastRatio(colour, against) >= ratio) return colour;
+  const [r, g, b, a] = parsed;
+  const target = luminance(against) > 0.18 ? 0 : 255;
+  for (let step = 1; step <= 50; step += 1) {
+    const amount = step / 50;
+    const channels = [r, g, b].map((value) => Math.round(value + (target - value) * amount));
+    const hex = `#${channels.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
+    // A little over the line, so that rounding in the renderer does not bring it under.
+    if (contrastRatio(hex, against) >= ratio + 0.1) return a < 1 ? `rgba(${channels.join(", ")}, ${a})` : hex;
+  }
+  return target === 0 ? "#000000" : "#ffffff";
+}
+
+/**
+ * Every name of the detailed map made readable against the halo it is drawn on. A name drawn in its halo's own colour
+ * (a case colour in the Protomaps styles) shows nothing, and is left. Colours inside expressions are reached too.
+ */
+export function readableNames(layers: LayerSpecification[]): LayerSpecification[] {
+  return layers.map((layer) => {
+    if (layer.type !== "symbol" || !layer.paint) return layer;
+    const paint = layer.paint as Record<string, unknown>;
+    const halo = typeof paint["text-halo-color"] === "string" ? (paint["text-halo-color"] as string) : undefined;
+    if (!halo || !parseColour(halo) || paint["text-color"] === undefined) return layer;
+    const fix = (value: unknown): unknown => {
+      if (typeof value === "string")
+        return parseColour(value) && value.toLowerCase() !== halo.toLowerCase() ? readableAgainst(value, halo) : value;
+      return Array.isArray(value) ? value.map(fix) : value;
+    };
+    return { ...layer, paint: { ...paint, "text-color": fix(paint["text-color"]) } } as LayerSpecification;
+  });
 }
 
 /**

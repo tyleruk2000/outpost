@@ -18,6 +18,7 @@ import { boxAtScale } from "../print/scale";
 import { layoutSheet, sheetBottom, sheetWords } from "../print/sheet";
 import { CoverageGreyLine, coverageMoment } from "./coverage";
 import { greyLineShown, momentText, useGreyLine } from "./grey-line";
+import { drawHatchImage, greyLineShadeLayers, hatchImageId } from "./layers";
 import { fieldsOf, mapMoment, momentOf, setMapMoment } from "./time";
 
 const render = (ui: ReactElement) =>
@@ -289,8 +290,29 @@ describe("where the grey line is drawn among the map's layers", () => {
     });
     const ids = style.layers.map((layer) => layer.id);
     const firstName = style.layers.findIndex((layer) => layer.type === "symbol");
-    expect(ids.indexOf("o-grey-line-shade")).toBe(firstName - 1);
+    expect(ids.indexOf("o-grey-line-shade")).toBe(firstName - 2);
+    expect(ids.indexOf("o-grey-line-hatch")).toBe(firstName - 1);
     expect(ids.indexOf("o-grey-line-line")).toBeGreaterThan(ids.indexOf("o-propagation-cells"));
     expect(ids.indexOf("o-grey-line-line")).toBeLessThan(ids.indexOf("o-markers"));
+  });
+});
+
+describe("the night's hatching", () => {
+  it("covers the whole night, after the Sun has set, in each theme's ink, so night reads in any theme and in greyscale", () => {
+    for (const flavour of ["light", "dark"] as const) {
+      const theme = FALLBACK_THEME[flavour];
+      const hatch = greyLineShadeLayers(theme).find((layer) => layer.id === "o-grey-line-hatch") as {
+        filter: unknown;
+        paint: Record<string, unknown>;
+      };
+      expect(hatch.paint["fill-pattern"]).toBe(hatchImageId(theme));
+      expect(hatchImageId(theme)).toContain(theme.ink.replace("#", "").toLowerCase());
+      expect(JSON.stringify(hatch.filter)).toContain('["==",["get","step"],0]');
+    }
+  });
+
+  it("is a picture only for its own name", () => {
+    expect(drawHatchImage("pin-teal-home", 2)).toBeNull();
+    expect(drawHatchImage("grey-line-hatch-nothex", 2)).toBeNull();
   });
 });

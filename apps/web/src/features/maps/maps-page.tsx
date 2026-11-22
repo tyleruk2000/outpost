@@ -60,7 +60,15 @@ import { type ContourReach, contourReach, contoursSupported } from "./lib/contou
 import { formatPosition, isReadoutFormat, type ReadoutFormat } from "./lib/coords";
 import { formatDistance, type LatLon } from "./lib/geo";
 import { isMapFile } from "./lib/map-files";
-import { DEFAULT_MAP_STYLE, isMapStyleId, MAP_STYLE_KEY, MAP_STYLES, type MapStyleId, ROAD_NUMBERS_KEY } from "./lib/map-styles";
+import {
+  DEFAULT_MAP_STYLE,
+  isMapStyleId,
+  MAP_STYLE_KEY,
+  MAP_STYLES,
+  type MapStyleId,
+  NIGHT_STYLE_NOTE,
+  ROAD_NUMBERS_KEY,
+} from "./lib/map-styles";
 import { MARKER_HEX } from "./lib/palette";
 import { iconOf, pinGlyphOf } from "./lib/place-icons";
 import { pressWord } from "./lib/press";
@@ -251,6 +259,12 @@ export default function MapsPage() {
   const [clear, setClear] = useState<ClearSpace & { held: number }>({ top: 64, bottom: 98, held: 98 });
   /** On a phone: from the foot of the map up to just below its centre, the room a card in the sheet's place may take. */
   const [dockRoom, setDockRoom] = useState<number | undefined>(undefined);
+  /**
+   * On a wide screen whose map is too narrow (large text on a computer, the panel open on a small laptop) or too short
+   * for the column of tools: the phone's layout over the map, with as many tools as fit and the rest under More, and the
+   * card of what is in hand docked at the foot. Worked out from the map's measured size (below), not the window's.
+   */
+  const [compact, setCompact] = useState(false);
   /** Something is in hand on the map (a tool, a found point, a place being moved): set further down, read when a measurement arrives. */
   const inHand = useRef(false);
   const onClear = useCallback(
@@ -798,7 +812,7 @@ export default function MapsPage() {
   useEffect(() => {
     if (!engine) return;
     // On a phone the search box is across the top; what it takes is measured, as larger text makes it taller.
-    const top = isDesktop ? 16 : clear.top;
+    const top = isDesktop && !compact ? 16 : clear.top;
     const height = area.current?.clientHeight ?? 0;
     // On a phone: the sheet (at most half the height, as "full" hides the map anyway) and, above it, the readout
     // with whatever is written under it (while the sheet is lowered, today's sunrise and sunset) and the credits.
@@ -806,11 +820,12 @@ export default function MapsPage() {
     // the coordinates that have stepped aside for it. The box then has all of the clear map, and the centre its middle.
     const cardless = !isDesktop && tool === "print";
     const foot = cardless ? clear.bottom : clear.held;
-    const under = isDesktop ? 0 : detentHeight(detent === "peek" ? "peek" : "half", height, peekHeight) + foot;
+    // A compact wide screen has no sheet: only the readout at the foot.
+    const under = isDesktop ? (compact ? foot : 0) : detentHeight(detent === "peek" ? "peek" : "half", height, peekHeight) + foot;
     // The centre is kept two fifths of the way down the clear part of the map, not half way: a card that comes up
     // from the foot of it (which may take three fifths, less a margin; see maps.css) then never covers the centre,
     // and the map does not have to move when a card appears or grows.
-    const fifth = isDesktop || cardless ? 0 : Math.max(0, height - top - under) * 0.2;
+    const fifth = (isDesktop && !compact) || cardless ? 0 : Math.max(0, height - top - under) * 0.2;
     const sheet = under + fifth;
     // Room kept at the foot that nothing lies over: the fifth for a card, and what is held while something is in hand.
     const spare = fifth + (foot - clear.bottom);
@@ -818,11 +833,11 @@ export default function MapsPage() {
     const bottom = Math.max(0, Math.min(sheet, height - top - 96));
     // A phone's sheet covers the lower part of the map, so there the camera keeps the space all the time and the
     // centre of the map is in the part that shows. On a wide screen nothing lies over the middle of the map.
-    engine.setPadding({ top, right: isDesktop ? 56 : 0, bottom, left: 0 }, !isDesktop, spare);
+    engine.setPadding({ top, right: isDesktop && !compact ? 56 : 0, bottom, left: 0 }, !isDesktop || compact, spare);
     // The cross that marks the centre is 20 px across: a card at the foot stops 12 px short of it.
     const centre = top + Math.max(0, height - top - bottom) / 2;
-    setDockRoom(isDesktop ? undefined : Math.max(0, Math.round(height - centre - 22)));
-  }, [engine, isDesktop, detent, peekHeight, clear, tool]);
+    setDockRoom(isDesktop && !compact ? undefined : Math.max(0, Math.round(height - centre - 22)));
+  }, [engine, isDesktop, compact, detent, peekHeight, clear, tool]);
 
   // A place being saved is slid into the clear map if it is where the sheet, the readout or a card would hide it.
   useEffect(() => {
@@ -1250,6 +1265,14 @@ export default function MapsPage() {
   /** A style may switch on what it is made to show (the walking map its hill shading and contours); each can be switched off again. */
   const changeMapStyle = (next: MapStyleId) => {
     setMapStyle(next);
+    // The night style is dim on purpose, its names under the contrast the rest of the app keeps (docs/testing-status.md):
+    // said when it is chosen, with the readable style a press away.
+    if (next === "night" && mapStyle !== "night")
+      toast(NIGHT_STYLE_NOTE, {
+        id: NIGHT_STYLE_NOTE,
+        duration: 12_000,
+        action: { label: "Use High contrast", onClick: () => setMapStyle("high-contrast") },
+      });
     const turnsOn = MAP_STYLES[next].turnsOn;
     if (turnsOn?.hillshade) setHillshade(true);
     if (turnsOn?.contours && sources.data?.hasTerrain && contoursSupported()) setContours(true);
@@ -1589,7 +1612,7 @@ export default function MapsPage() {
    * time, with the room it needs. The sheet's tabs come back when the card is closed. Not for the page to print, which
    * has the sheet itself, nor while the sheet has been raised (line of sight's whole answer, a route being named).
    */
-  const docked = !isDesktop && Boolean(handCard) && detent === "peek" && tool !== "print";
+  const docked = (!isDesktop && Boolean(handCard) && detent === "peek" && tool !== "print") || (compact && Boolean(handCard));
   // The map does not move for it: the room kept at the foot is what it was before the card came up.
   if (docked) inHand.current = true;
 
@@ -1627,6 +1650,30 @@ export default function MapsPage() {
     disabled: !engine,
   };
   const tools = mapTools(toolsInput);
+
+  // Whether the wide screen's map is compact (see `compact`): narrower than 30rem, or shorter than its column of tools
+  // (zoom and every tool, about 2.17rem each with the hairlines and the gaps between blocks) above the line of credits.
+  const toolCount = tools.length + 2;
+  useEffect(() => {
+    const element = area.current;
+    if (!isDesktop || !element || typeof ResizeObserver === "undefined") {
+      setCompact(false);
+      return;
+    }
+    const measure = () => {
+      // Out of sight (the browser's own Print shows only the sheet being printed): nothing to measure, and a layout
+      // changed now would put away the print dialog that is printing.
+      if (element.clientWidth === 0 || element.clientHeight === 0) return;
+      const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      const narrow = element.clientWidth < 30 * rem;
+      const short = element.clientHeight - 3 * rem < toolCount * 2.17 * rem;
+      setCompact(narrow || short);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [isDesktop, toolCount]);
 
   const mapNotice =
     loadError || sources.isError ? (
@@ -1672,6 +1719,7 @@ export default function MapsPage() {
       {/* biome-ignore lint/a11y/noStaticElementInteractions: a place to drop files, not a control; the same import is a button in the Routes tab */}
       <div
         ref={area}
+        data-compact={compact ? "" : undefined}
         className="outpost-touch relative min-w-0 flex-1 bg-surface"
         onDragEnter={(event) => hasFiles(event) && setDropping(true)}
         onDragOver={(event) => hasFiles(event) && event.preventDefault()}
@@ -1716,7 +1764,7 @@ export default function MapsPage() {
         ) : null}
 
         <MapFurniture
-          phone={!isDesktop}
+          phone={!isDesktop || compact}
           covered={!isDesktop && detent === "full"}
           docked={docked}
           dockRoom={dockRoom}
@@ -1747,7 +1795,7 @@ export default function MapsPage() {
             />
           }
           tools={
-            isDesktop ? (
+            isDesktop && !compact ? (
               <MapControls
                 className="pointer-events-auto ml-auto"
                 {...toolsInput}

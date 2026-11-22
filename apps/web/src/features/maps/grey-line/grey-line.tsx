@@ -58,16 +58,22 @@ export function momentText(ms: number, clock: SunClock, zone: string, style: "24
   return `${parts.time}${parts.mark ? ` ${parts.mark}` : ""} on ${longDate(ms, shown)}`;
 }
 
-/** A small square of the map's land with a number of shades over it, as the map draws them. */
+/**
+ * A small square of the map's land with a number of shades over it, as the map draws them: from the Sun's setting on,
+ * hatched with the same fine diagonal lines, in the theme's ink at half strength.
+ */
 function Swatch({ theme, steps, className }: { theme: MapTheme; steps: number; className?: string }) {
   const opacity = 1 - (1 - shadeOpacity(theme)) ** steps;
   const dark = shadeOpacity(theme) > 0.1;
   const tint = dark ? `rgba(0, 0, 0, ${opacity})` : `color-mix(in srgb, ${theme.ink} ${Math.round(opacity * 100)}%, transparent)`;
+  const line = `color-mix(in srgb, ${theme.ink} 50%, transparent)`;
+  const hatch = steps > 0 ? `repeating-linear-gradient(-45deg, ${line} 0 1px, transparent 1px 4px), ` : "";
   return (
     <span
       aria-hidden
+      data-hatched={steps > 0 ? "" : undefined}
       className={cn("inline-block h-3 w-4 shrink-0 rounded-[2px] border border-border-strong", className)}
-      style={{ background: `linear-gradient(${tint}, ${tint}), ${theme.land}` }}
+      style={{ background: `${hatch}linear-gradient(${tint}, ${tint}), ${theme.land}` }}
     />
   );
 }

@@ -267,7 +267,8 @@ cell, not a point.
 
 ## The grey line: day and night
 
-**Grey line (day and night)** shades where it is night, deepening through civil, nautical
+**Grey line (day and night)** shades where it is night and hatches it with fine diagonal
+lines, so that night reads in either theme and in greyscale. The shade deepens through civil, nautical
 and astronomical twilight, for now or a time you choose. Radio amateurs call the twilight
 band along its edge the grey line: HF signals along it often travel well at dawn and dusk.
 The legend gives the time it is drawn for; its clock button chooses another, and **Back to

@@ -4,6 +4,11 @@
  * address) and to elements (`target`, matched against axe's selector for the element
  * followed by the start of its HTML).
  * Keep this list short: a finding is fixed in the app unless it is wrong or cannot be.
+ *
+ * Not a rule axe checks, so not in the list, but let through all the same (WCAG 1.4.3): the names drawn on the map in
+ * the Night (red) style are 1.1 to 3.5:1. They are dim on purpose, for eyes used to the dark, by the owner's decision of
+ * November 2026; choosing the style says so and offers High contrast. Every other style's names are held to 4.5:1 by
+ * apps/web/src/features/maps/lib/map-styles.test.ts. See docs/testing-status.md.
  */
 export interface Waiver {
   rule: string;
