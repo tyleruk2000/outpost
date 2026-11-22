@@ -7,6 +7,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import bidiFactory from "bidi-js";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import type { Content } from "pdfmake/interfaces";
 import { describe, expect, it } from "vitest";
@@ -42,6 +43,9 @@ import {
   twoColumns,
   withFallbacks,
 } from ".";
+import { visualPieces } from "./order";
+import { loadRightToLeft } from "./rtl";
+import { writeSample } from "./samples";
 
 async function pdfWords(bytes: Uint8Array): Promise<string[]> {
   const pdf = await getDocument({ data: bytes.slice() }).promise;
@@ -283,5 +287,104 @@ describe("names in other scripts", () => {
     expect(JSON.stringify(fallen.doc.content)).toContain('<tspan font-family=\\"NotoSans\\">Москва');
     const words = (await pdfWords((await renderPdf(doc)).bytes)).join(" ");
     for (const name of ["London", "Москва", "北京"]) expect(words).toContain(name);
+  }, 60_000);
+});
+
+describe("right-to-left names", () => {
+  const bidi = bidiFactory();
+
+  /** The words on a page with where each starts, left to right. */
+  async function placedWords(bytes: Uint8Array): Promise<Array<{ text: string; x: number; y: number }>> {
+    const pdf = await getDocument({ data: bytes.slice() }).promise;
+    const text = await (await pdf.getPage(1)).getTextContent();
+    return text.items.flatMap((item) =>
+      "str" in item && item.str.trim() ? [{ text: item.str, x: item.transform[4] as number, y: item.transform[5] as number }] : [],
+    );
+  }
+  const xOf = (words: Array<{ text: string; x: number }>, word: string) => {
+    const found = words.find((item) => item.text === word || item.text.split(/\s+/).includes(word));
+    if (!found) throw new Error(`${word} is not on the page: ${words.map((item) => item.text).join(" | ")}`);
+    return found.x;
+  };
+
+  it("puts Arabic and Hebrew words in the order they are drawn, each word in written order", () => {
+    expect(visualPieces(bidi, "Arabic: محمد علي")).toEqual([
+      { text: "Arabic: ", rtl: false },
+      { text: "علي", rtl: true },
+      { text: " ", rtl: false },
+      { text: "محمد", rtl: true },
+    ]);
+    // A line that starts in Hebrew reads from the right: the Latin after it comes first from the left, the comma beside its word.
+    expect(visualPieces(bidi, "שלום עליכם, Tel Aviv")).toEqual([
+      { text: "Tel Aviv ,", rtl: false },
+      { text: "עליכם", rtl: true },
+      { text: " ", rtl: false },
+      { text: "שלום", rtl: true },
+    ]);
+    // Brackets are mirrored; Arabic-Indic figures read left to right, so fontkit, which turns Arabic round, is given them backwards.
+    expect(visualPieces(bidi, "(علي) Ali")).toEqual([
+      { text: "Ali (", rtl: false },
+      { text: "علي", rtl: true },
+      { text: ")", rtl: false },
+    ]);
+    expect(visualPieces(bidi, "رقم ١٢٣")).toEqual([
+      { text: "٣٢١", rtl: true },
+      { text: " ", rtl: false },
+      { text: "رقم", rtl: true },
+    ]);
+  });
+
+  it("prints them joined and in order, in text and in a drawing, as words a reader can find", async () => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="70" viewBox="0 0 300 70"><text x="150" y="20" font-family="Atkinson" font-size="12" text-anchor="middle">Meet at: بيت محمد</text><text x="290" y="50" font-family="Atkinson" font-size="12" font-weight="bold" text-anchor="end">שלום עליכם, Tel Aviv</text></svg>`;
+    const doc = printDocument({
+      paper: "a4",
+      title: "Names",
+      made: new Date(Date.UTC(2026, 10, 22)),
+      footerName: "Names",
+      footerRight: "",
+      parts: [
+        {
+          kind: "plain",
+          content: [
+            para("Arabic: محمد علي السيد, phone 123"),
+            dataTable(
+              ["Name", "Phone"],
+              [
+                ["فاطمة بنت يوسف", "+20 2 0000 0000"],
+                ["דוד כהן", "+972 3 000 0000"],
+              ],
+            ),
+            figure(svg, { width: 300 }),
+          ],
+        },
+      ],
+    });
+    // The words as written stay as written for the screen and for tests.
+    expect(contentText(doc.content)).toContain("محمد علي السيد");
+    const plain = withFallbacks(doc);
+    expect(plain.fonts).toEqual(new Set(["NotoSansArabic", "NotoSansHebrew"]));
+    const ordered = withFallbacks(doc, await loadRightToLeft(plain.fonts));
+    // The drawing's Arabic and Hebrew are drawn as shapes (pdfmake's drawing would drop the dots), with the words over them unseen.
+    expect(JSON.stringify(ordered.doc.content)).toMatch(/<g><path d=\\"M[\d.]+,[\d.]+/);
+    expect(JSON.stringify(ordered.doc.content)).toContain(
+      'font-family=\\"NotoSansArabic\\" font-size=\\"12\\" fill=\\"#000\\" fill-opacity=\\"0.001\\">بيت',
+    );
+
+    const made = await renderPdf(doc);
+    writeSample("right-to-left", made.bytes);
+    const words = await placedWords(made.bytes);
+    const all = words.map((item) => item.text).join(" ");
+    // No stray control characters where a letter's dots are a glyph of their own.
+    expect([...all].filter((character) => character.charCodeAt(0) < 32)).toEqual([]);
+    for (const word of ["محمد", "علي", "السيد", "فاطمة", "يوسف", "דוד", "כהן", "بيت", "שלום", "עליכם", "Tel Aviv"])
+      expect(all).toContain(word);
+    // Right to left: the first word written is the furthest right.
+    expect(xOf(words, "محمد")).toBeGreaterThan(xOf(words, "علي"));
+    expect(xOf(words, "علي")).toBeGreaterThan(xOf(words, "السيد"));
+    expect(xOf(words, "phone")).toBeGreaterThan(xOf(words, "محمد"));
+    expect(xOf(words, "فاطمة")).toBeGreaterThan(xOf(words, "يوسف"));
+    expect(xOf(words, "דוד")).toBeGreaterThan(xOf(words, "כהן"));
+    expect(xOf(words, "بيت")).toBeGreaterThan(xOf(words, "Meet"));
+    expect(xOf(words, "שלום")).toBeGreaterThan(xOf(words, "Tel"));
   }, 60_000);
 });
