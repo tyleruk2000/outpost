@@ -200,6 +200,15 @@ async function build(): Promise<Built> {
           if (id) run.anchor = id;
           else delete run.anchor;
         }
+        // A link whose words are a file's name ("api.md"), written for reading on GitHub, reads under Help as the
+        // guide's title, and its section's when it names one ("Search: When nothing has every word").
+        if (run.t === "chapter" && /^[\w./-]+\.md(#[\w-]*)?$/i.test(words(run.c as Inline[]).trim())) {
+          const entry = index[GUIDES[(run.chapter as number) - 1]!.slug];
+          if (entry) {
+            const section = typeof run.anchor === "string" ? entry.sections.find(([id]) => id === run.anchor)?.[1] : undefined;
+            run.c = [{ t: "text", v: section ? `${entry.title}: ${section}` : entry.title }];
+          }
+        }
         visit(run.c);
       }
     };

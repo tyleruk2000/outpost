@@ -87,7 +87,8 @@ describe("a guide", () => {
   it("links to another guide inside Outpost, at the heading it names", async () => {
     show("/help/deployment");
     await screen.findByRole("heading", { level: 2, name: "Docker Compose quick start" }, LOADED);
-    const link = screen.getAllByRole("link", { name: "storage.md" })[0]!;
+    // Its words in docs/ are "storage.md"; under Help the link reads as the guide and the section it leads to.
+    const link = screen.getAllByRole("link", { name: /^Storage(: .+)?$/ })[0]!;
     expect(link.getAttribute("href")).toMatch(/^\/help\/storage(#h-[a-z0-9-]+)?$/);
     await userEvent.click(link);
     await waitFor(() => expect(screen.getByTestId("where")).toHaveTextContent(/^\/help\/storage/));
