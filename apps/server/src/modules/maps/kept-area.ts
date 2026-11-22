@@ -10,6 +10,7 @@
 import {
   type Bbox,
   countRectTiles,
+  deepestKeptZoom,
   MAX_KEPT_AREA_TILES,
   type MapAreaLayerSize,
   type MapAreaSize,
@@ -37,6 +38,27 @@ export const areaSizeQuery = z.object({
   terrain: flag,
 });
 
+/**
+ * The refusal of a box with more tiles than one kept area may hold, saying what would fit: the same box at less
+ * detail (the deepest zoom that fits, which for a whole country is a low one), or a smaller box. `details` carries
+ * the zooms, so the screen can offer the detail that fits.
+ */
+export function tooLarge(tileType: MapTileType, bbox: Bbox, minZoom: number, maxZoom: number): AppError {
+  const fitsZoom = deepestKeptZoom(bbox, minZoom, maxZoom);
+  const what = tileType === "vector" ? "the map" : "its terrain";
+  const most = MAX_KEPT_AREA_TILES.toLocaleString("en-GB");
+  const message =
+    fitsZoom === null
+      ? `That area is too large to keep even at the least detail: ${what} would be more than ${most} tiles. Choose a smaller area.`
+      : `At zoom ${maxZoom}, ${what} of that area would be more than ${most} tiles, more than one kept area may hold. It fits to zoom ${fitsZoom}: choose that detail or less, or a smaller area.`;
+  return new AppError("too_large", message, {
+    layer: tileType === "vector" ? "map" : "terrain",
+    zoom: maxZoom,
+    fitsZoom,
+    mostTiles: MAX_KEPT_AREA_TILES,
+  });
+}
+
 export function createAreaMeter(tiles: TileServer) {
   async function measure(tileType: MapTileType, bbox: Bbox, wanted: number): Promise<MapAreaLayerSize | null> {
     const source = tiles.sources().sources[tileType === "vector" ? "basemap" : "terrain"];
@@ -44,12 +66,7 @@ export function createAreaMeter(tiles: TileServer) {
     const maxZoom = Math.min(wanted, source.maxzoom);
     const minZoom = Math.min(source.minzoom, maxZoom);
     const rects = tileRects(bbox, minZoom, maxZoom);
-    if (countRectTiles(rects) > MAX_KEPT_AREA_TILES) {
-      throw new AppError(
-        "too_large",
-        `That area is too large to keep at this detail: it is more than ${MAX_KEPT_AREA_TILES.toLocaleString("en-GB")} map tiles. Zoom in to a smaller area, or choose less detail.`,
-      );
-    }
+    if (countRectTiles(rects) > MAX_KEPT_AREA_TILES) throw tooLarge(tileType, bbox, minZoom, maxZoom);
     let count = 0;
     let bytes = 0;
     for (const rect of rects) {

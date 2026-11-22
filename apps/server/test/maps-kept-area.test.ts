@@ -1,8 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
-import { countRectTiles, MAX_KEPT_AREA_TILES, type MapAreaSize, tileRects } from "@outpost/shared";
+import { countRectTiles, deepestKeptZoom, MAX_KEPT_AREA_TILES, type MapAreaSize, tileRects } from "@outpost/shared";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { tooLarge as keptTooLarge } from "../src/modules/maps/kept-area.ts";
 import { Compression, TileType } from "../src/modules/maps/pmtiles/header.ts";
 import { LocalArchive } from "../src/modules/maps/pmtiles/reader.ts";
 import { buildArchive, type Fixture, fakeTile, tileInBbox, worldTiles } from "./fixtures/maps/archive.ts";
@@ -122,6 +123,23 @@ describe("measuring a box of the installed map", () => {
     const tooLarge = await sizeOf(`bbox=${REGION.join(",")}&maxZoom=12`);
     expect(tooLarge.status).toBe(413);
     expect(tooLarge.body).toMatchObject({ error: { code: "too_large" } });
+
+    // It says what would fit, and that is so: the same box at the deepest zoom that fits, and not one zoom more.
+    const { error } = tooLarge.body as unknown as { error: { message: string; details: { fitsZoom: number; zoom: number } } };
+    const fits = deepestKeptZoom(REGION, 0, 12)!;
+    expect(error.details).toMatchObject({ layer: "map", zoom: 12, fitsZoom: fits });
+    expect(error.message).toContain(`It fits to zoom ${fits}: choose that detail or less, or a smaller area.`);
+    expect(error.message).not.toMatch(/zoom in/i);
+    expect(countRectTiles(tileRects(REGION, 0, fits))).toBeLessThanOrEqual(MAX_KEPT_AREA_TILES);
+    expect(countRectTiles(tileRects(REGION, 0, fits + 1))).toBeGreaterThan(MAX_KEPT_AREA_TILES);
+    expect((await sizeOf(`bbox=${REGION.join(",")}&maxZoom=${fits}`)).status).toBe(200);
+  });
+
+  it("says only a smaller area will do when even the least detail is too much", () => {
+    // The whole world from zoom 7: more than 12,000 tiles at its first zoom.
+    const refusal = keptTooLarge("vector", [-180, -85, 180, 85], 7, 9);
+    expect(refusal.details).toMatchObject({ fitsZoom: null });
+    expect(refusal.message).toMatch(/even at the least detail.*Choose a smaller area\.$/);
   });
 
   it("answers with no map at all when nothing is installed", async () => {

@@ -128,7 +128,9 @@ internet, and an area is only as detailed as the region at home.
 
 One area holds at most 12,000 map tiles, 12,000 terrain tiles and 400 MB, and is refused
 if the browser reports too little room. A whole country usually fits only at less
-detail. Outside a kept area the map draws coarsely from the low zooms and the world
+detail: when an area is too large, Outpost says the deepest zoom it fits to, and
+**Measure at zoom …** measures it again there. Otherwise keep less of the map: zoom in,
+or for a region keep the part of it in view. Outside a kept area the map draws coarsely from the low zooms and the world
 outline. With terrain kept, contours, hill shading, the height readout and **Estimated
 radio range from the centre** work out of reach (the range only over ground the phone
 holds). Line of sight, walk reach, the relay planner and route heights need the server.

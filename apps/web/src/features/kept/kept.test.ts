@@ -401,7 +401,13 @@ describe("a kept map area", () => {
     expect(areaRefusal(size(1000), 50 * 1024 * 1024)).toBeUndefined();
     expect(areaRefusal({ ...size(0, 0), map: null }, null)).toMatch(/No detailed map is installed/);
     expect(areaRefusal(size(0, 0), null)).toMatch(/No detailed map is installed/);
-    expect(areaRefusal(size(500 * 1024 * 1024), null)).toMatch(/more than one kept area may hold/);
+    expect(areaRefusal(size(500 * 1024 * 1024), null)).toMatch(
+      /^At this detail that is 524 MB, more than one kept area may hold\. Choose less detail, or zoom the map in so that less of it is in view\.$/,
+    );
+    // A whole region cannot be zoomed into: the other way is the part of it in view.
+    expect(areaRefusal(size(500 * 1024 * 1024), null, "Ireland")).toMatch(
+      /Choose less detail, or keep the part of Ireland in view instead\.$/,
+    );
     expect(areaRefusal(size(30 * 1024 * 1024), 20 * 1024 * 1024)).toMatch(/does not have that much room/);
   });
 });

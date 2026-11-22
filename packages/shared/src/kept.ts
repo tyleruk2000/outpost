@@ -53,6 +53,22 @@ export function countRectTiles(rects: TileRect[]): number {
   return total;
 }
 
+/**
+ * The deepest zoom, from `minZoom` up to `maxZoom`, at which a box still fits in one kept area by its count of tiles;
+ * null when it does not fit even at `minZoom`, so only a smaller box will. Each zoom holds about four times the tiles
+ * of the one before, so a whole country fits only at a low zoom.
+ */
+export function deepestKeptZoom(bbox: Bbox, minZoom: number, maxZoom: number): number | null {
+  let total = 0;
+  let deepest: number | null = null;
+  for (let z = minZoom; z <= maxZoom; z += 1) {
+    total += countRectTiles([tileRect(bbox, z)]);
+    if (total > MAX_KEPT_AREA_TILES) break;
+    deepest = z;
+  }
+  return deepest;
+}
+
 /** One layer of a measured area: the map itself, or the terrain under it. */
 export interface MapAreaLayerSize {
   /** Tiles the installed maps actually hold inside the box. */

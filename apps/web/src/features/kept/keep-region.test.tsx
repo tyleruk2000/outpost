@@ -8,7 +8,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api } from "@/lib/api";
+import { ApiError, api } from "@/lib/api";
 import { installFakeCaches } from "./fake-caches";
 import { KeepAreaSection } from "./keep-controls";
 
@@ -89,5 +89,41 @@ describe("keeping a whole region", () => {
     expect(await screen.findByText(/about 140/)).toBeTruthy();
     const measured = asked.find((entry) => entry.path === "/api/maps/area-size")!;
     expect((measured.query as { bbox: string }).bbox).toBe("-3.60000,54.20000,-2.60000,54.80000");
+  });
+
+  it("says what a region too large at this detail fits to, without telling the person to zoom in, and measures it there", async () => {
+    const asked: Array<{ path: string; query: unknown }> = [];
+    vi.spyOn(api, "get").mockImplementation(async (path: string, query?: unknown) => {
+      asked.push({ path, query });
+      if (path === "/api/maps/sources") return sources as never;
+      if (path === "/api/maps/overview") return overview as never;
+      if (path === "/api/maps/area-size") {
+        if ((query as { maxZoom: number }).maxZoom === 11) return size as never;
+        throw new ApiError(413, "too_large", "From the server.", { layer: "map", zoom: 14, fitsZoom: 11, mostTiles: 12_000 });
+      }
+      throw new Error(`not expected: ${path}`);
+    });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <KeepAreaSection engine={null} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await userEvent.click(await screen.findByRole("combobox", { name: "What to keep" }));
+    await userEvent.click(await screen.findByRole("option", { name: "All of Lake District" }));
+    await userEvent.click(screen.getByRole("button", { name: "Measure all of Lake District" }));
+    const refusal = await screen.findByText(/All of Lake District is more than 12,000 tiles at zoom 14/);
+    expect(refusal.textContent).toMatch(
+      /It fits to zoom 11: choose that detail or less, or keep the part of Lake District in view instead\./,
+    );
+    expect(refusal.textContent).not.toMatch(/zoom in/i);
+    await userEvent.click(screen.getByRole("button", { name: "Measure at zoom 11" }));
+    expect(await screen.findByText(/about 140/)).toBeTruthy();
+    expect(
+      asked.filter((entry) => entry.path === "/api/maps/area-size").map((entry) => (entry.query as { maxZoom: number }).maxZoom),
+    ).toEqual([14, 11]);
+    expect(screen.getByRole("combobox", { name: "Detail to keep" }).textContent).toMatch(/zoom 11/);
   });
 });
