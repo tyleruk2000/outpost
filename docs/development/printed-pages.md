@@ -2,9 +2,10 @@
 
 The household book is laid out with the print kit, `apps/web/src/features/print-kit/`:
 pdfmake (MIT) in its browser build, Atkinson Hyperlegible Next (OFL) in four styles, and a
-small set of components. pdfmake and the fonts load only when a PDF is made. The other
-papers still use the hand-written writer in `features/maps/print/pdf.ts`; this page is
-for moving them.
+small set of components. pdfmake and the fonts load only when a PDF is made. So are the
+other papers, except printed map pages, the household papers, and papers holding a name
+the typeface cannot set, which keep the hand-written writer in
+`features/maps/print/pdf.ts`.
 
 ## Making a document
 
@@ -77,3 +78,38 @@ real text in the PDF. Callout symbols are shapes, not letters, so a search finds
   syllables), each font loaded only when a document uses it. Text inside SVG drawings is
   not split, so keep names out of drawings. Arabic and Hebrew are not reordered right to
   left. `printable()` writes ′ ″ arrows and ⅓ with marks the typeface has.
+
+## Charts, drawing helpers and making a PDF on a screen
+
+- `chart(input)` (`chart.ts`) draws lines, bands between two lines and bars over a numeric
+  x axis, with shaded spans (night, say), rules across at a value, and a key. It uses
+  d3-scale and d3-shape (ISC) and returns a `Drawing` for `figure`. A null is a gap, never
+  joined across. Give every series its own dash as well as its colour.
+- `drawing`, `svgText`, `svgLeader`, `svgArrowHead`, `svgKeyItem` (`draw.ts`) are the
+  helpers `diagrams.ts` uses, exported for drawings kept beside their feature. pdfmake draws
+  paths, shapes, text, dashes, clip paths and fill opacity; not filters, masks or CSS.
+- `useKitPdf(make, { title, kind, from })` (`use-kit-pdf.ts`, not in the index) renders a
+  maker's document on a screen and answers `making`, `made` (with `pdf`, `bytes`, `pages`)
+  or `failed`; `kitPdfOf(made)` is what `PdfActions` takes. Give `make` with `useCallback`
+  or `useMemo` (null makes nothing). The made-PDF guard (`lib/made-pdf-rule.test.ts`) counts
+  `renderPdf` and `useKitPdf` as making a PDF.
+- `writeSample(name, bytes)` (`samples.ts`, tests only) writes a made PDF to the folder named
+  by `OUTPOST_PRINT_SAMPLES`, to look at.
+- Radio papers keep their drawings in `features/propagation/print/`: the ionosphere's
+  regions, sky wave and skip zone, near-vertical sky wave, a path in section, and day and
+  night on the world (`greyLineSketch`, over `public/world/land.json`). Their letters
+  outside Latin Extended-A still print as "?" (`print/glyphs.ts`) and the screen names them,
+  until they move to the kit's fallback fonts.
+- A paper that may hold a person's or a place's name in another script checks its words
+  with `kitCanSetAll` (`contacts/kit-letters.ts`, built from the typeface's own character
+  lists) and, when a letter is missing, falls back to the lettered writer
+  (`maps/print/lettering.ts`); the emergency cards, the contacts sheet, the QR sheet and
+  the sun times sheet do this. Both checks predate the fallback fonts above and are to be
+  replaced by them.
+- A cut-out at exact size (the sundial and nocturnal templates): put each drawn page down
+  whole with `{ svg, width: page.width, height: page.height, absolutePosition: { x: 0, y: 0 } }`,
+  so one point of the drawing is one point of paper (see `solar-clock/templates-kit.ts`).
+  The printed map keeps the old writer, which places its picture at an exact size.
+- Guidance sheets (water, cooking, rations, the sight form) use `guidanceDocument`
+  (`tools/kit/sheet.ts`) and its paper choice; map pictures go in through
+  `sheetItemsToSvg` with data addresses, at the kit's measure (`nuclear/print.ts`).

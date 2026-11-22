@@ -3,33 +3,28 @@
  * things every PDF made in Outpost offers (save it, add it to the library, share it),
  * the choice of paper, and the same content as Markdown.
  *
- * The file is a few thousand bytes of text, so it is made as soon as there is an
- * answer and "Save as PDF" is a plain link to it.
+ * The file is laid out with the print kit (print/) as soon as there is an answer, and
+ * "Save as PDF" is a plain link to it once it is made.
  */
 import type { CompareResult, PredictionResult } from "@outpost/shared";
 import { FileDown } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/misc";
 import { AID_PAPER_KEY, isAidPaper, likelyPaper } from "@/features/encryption/paper-aids";
-import { type MadePdf, madePdf } from "@/features/library/made/made-pdf";
 import { PdfActions } from "@/features/library/made/pdf-actions";
 import { readStored, writeStored } from "@/features/maps/lib/view";
 import { PAPERS } from "@/features/maps/print/paper";
 import { pdfFileName } from "@/features/maps/print/pdf";
-import { errorMessage } from "@/lib/api";
+import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
 import { plural } from "@/lib/utils";
-import { comparisonMarkdown, comparisonPdf, comparisonTitle } from "./comparison-document";
+import { comparisonMarkdown, comparisonTitle } from "./comparison-document";
 import { saveFile } from "./plans/document";
-import {
-  type PredictionPaper,
-  predictionMarkdown,
-  predictionPdf,
-  predictionSheets,
-  predictionTitle,
-  predictionUnwritable,
-} from "./prediction-document";
+import { type PredictionPaper, predictionMarkdown, predictionTitle, predictionUnwritable } from "./prediction-document";
+import { comparisonPrint } from "./print/comparison-print";
+import { predictionPrint } from "./print/prediction-print";
+import { useLand } from "./print/use-land";
 
 const PLANNER = "/radio/propagation";
 
@@ -57,8 +52,6 @@ export function PaperChoice({ paper, onChange }: { paper: PredictionPaper; onCha
   );
 }
 
-type Made = { pdf: MadePdf; pages: number; lost: string[] } | { error: string };
-
 function Failed({ message }: { message: string }) {
   return (
     <Notice tone="danger" title="The PDF could not be made">
@@ -76,34 +69,32 @@ export function PredictionExport({
   savedName?: string;
 }) {
   const [paper, setPaper] = usePaper();
-  const made = useMemo<Made>(() => {
-    try {
-      const from = savedName ? `the saved HF prediction “${savedName}”` : "the HF propagation planner";
-      return {
-        pdf: madePdf(predictionPdf(result, paper), predictionTitle(result), "HF prediction", { what: from, path: PLANNER }),
-        pages: predictionSheets(result, paper).length,
-        lost: predictionUnwritable(result),
-      };
-    } catch (error) {
-      return { error: errorMessage(error) };
-    }
-  }, [result, paper, savedName]);
+  const { land, settled } = useLand();
+  // Made once the world's outline has been read (or could not be), so that it is made once.
+  const make = useCallback(() => predictionPrint(result, paper, { land }), [result, paper, land]);
+  const made = useKitPdf(settled ? make : null, {
+    title: predictionTitle(result),
+    kind: "HF prediction",
+    from: { what: savedName ? `the saved HF prediction “${savedName}”` : "the HF propagation planner", path: PLANNER },
+  });
+  const lost = useMemo(() => predictionUnwritable(result), [result]);
 
   return (
     <section aria-label="This prediction as a PDF" className="mb-6 grid gap-3 border-y border-border py-4" data-testid="prediction-export">
       <div>
         <h2 className="text-body font-semibold text-ink">This prediction on paper</h2>
         <p className="mt-0.5 max-w-[70ch] text-small text-ink-muted">
-          {"pdf" in made ? `${plural(made.pages, "page")} of ${PAPERS[paper].label}` : "A PDF"}, made on this device: the path, both
-          stations as the engine ran them, where the sunspot number came from, this frequency and every band hour by hour, and what to know
+          {made.status === "made" ? `${plural(made.pages, "page")} of ${PAPERS[paper].label}` : "A PDF"}, made on this device: the path,
+          both stations as the engine ran them, where the sunspot number came from, the usable frequencies through the day, the path drawn
+          at its best hour with day and night on the world, this frequency and every band hour by hour, how HF travels, and what to know
           before relying on it.
         </p>
       </div>
-      {"error" in made ? (
+      {made.status === "failed" ? (
         <Failed message={made.error} />
       ) : (
         <>
-          <PdfActions pdf={made.pdf}>
+          <PdfActions pdf={kitPdfOf(made)}>
             <Button
               onClick={() =>
                 saveFile(
@@ -117,9 +108,9 @@ export function PredictionExport({
               Export as Markdown
             </Button>
           </PdfActions>
-          {made.lost.length > 0 ? (
+          {lost.length > 0 ? (
             <p className="text-small text-ink-muted">
-              The PDF’s typeface cannot write {made.lost.slice(0, 8).join(" ")}; they are printed as “?”. The Markdown export keeps them.
+              The PDF’s typeface cannot write {lost.slice(0, 8).join(" ")}; they are printed as “?”. The Markdown export keeps them.
             </p>
           ) : null}
         </>
@@ -132,23 +123,17 @@ export function PredictionExport({
 /** Under the planner's "one thing changed" chart: the comparison on screen as a PDF. */
 export function ComparisonExport({ result, comparison }: { result: PredictionResult; comparison: CompareResult }) {
   const [paper] = usePaper();
-  const made = useMemo<{ pdf: MadePdf } | { error: string }>(() => {
-    try {
-      return {
-        pdf: madePdf(comparisonPdf(result, comparison, paper), comparisonTitle(result, comparison), "HF comparison", {
-          what: "the HF propagation planner",
-          path: PLANNER,
-        }),
-      };
-    } catch (error) {
-      return { error: errorMessage(error) };
-    }
-  }, [result, comparison, paper]);
-  if ("error" in made) return <Failed message={made.error} />;
+  const make = useCallback(() => comparisonPrint(result, comparison, paper), [result, comparison, paper]);
+  const made = useKitPdf(make, {
+    title: comparisonTitle(result, comparison),
+    kind: "HF comparison",
+    from: { what: "the HF propagation planner", path: PLANNER },
+  });
+  if (made.status === "failed") return <Failed message={made.error} />;
   return (
     <section aria-label="This comparison as a PDF" className="mt-4 grid gap-2" data-testid="comparison-export">
       <p className="text-small text-ink-muted">This comparison on {PAPERS[paper].label}: every row above with its figures, hour by hour.</p>
-      <PdfActions pdf={made.pdf} lead="none">
+      <PdfActions pdf={kitPdfOf(made)} lead="none">
         <Button
           onClick={() =>
             saveFile(

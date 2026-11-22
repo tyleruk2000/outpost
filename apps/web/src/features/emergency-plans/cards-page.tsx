@@ -6,10 +6,11 @@
  * names, numbers and where they will be.
  */
 import { type EmergencyPlan, planKindLabel } from "@outpost/shared";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 import { ErrorState, Notice, Page, PageHeader } from "@/components/page";
 import { Segmented, Skeleton } from "@/components/ui/misc";
+import { kitCanSetAll } from "@/features/contacts/kit-letters";
 import { AID_PAPER_KEY, isAidPaper, likelyPaper } from "@/features/encryption/paper-aids";
 import { type MadePdf, madePdf } from "@/features/library/made/made-pdf";
 import { PdfActions } from "@/features/library/made/pdf-actions";
@@ -18,11 +19,14 @@ import { type DrawLine, writeLettered } from "@/features/maps/print/lettering";
 import { PAPERS } from "@/features/maps/print/paper";
 import type { Sheet } from "@/features/maps/print/sheet";
 import { SheetView } from "@/features/maps/print/sheet-view";
+import { PdfPagesPreview } from "@/features/print-kit/preview";
+import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
 import { errorMessage } from "@/lib/api";
 import { appLocale } from "@/lib/region";
 import { plural } from "@/lib/utils";
 import { type CardPaper, fridgeSheets, grabSheets, walletSheets } from "./cards";
 import { usePlan } from "./data";
+import { fridgeDocument, grabDocument, planTexts, walletDocument } from "./kit-cards";
 import { type Readable, readableOf } from "./printable";
 
 type Kind = "wallet" | "fridge" | "grab";
@@ -71,7 +75,63 @@ export function libraryQuestion(people: number) {
   };
 }
 
-export function CardsPdf({
+/**
+ * The cards as a PDF. Laid out with the print kit, unless the words hold letters its
+ * typeface lacks (a name in Greek, say): then the old writer makes it, drawing such a
+ * name as a picture with the words kept for search (maps/print/lettering.ts).
+ */
+export function CardsPdf(props: { plan: EmergencyPlan; readable: Readable; kind: Kind; paper: CardPaper; draw?: DrawLine }) {
+  const kit = useMemo(
+    () => kitCanSetAll(planTexts(props.readable, props.kind === "wallet" ? props.readable.people : [])),
+    [props.readable, props.kind],
+  );
+  return kit ? <KitCardsPdf {...props} /> : <LetteredCardsPdf {...props} />;
+}
+
+function KitCardsPdf({ plan, readable, kind, paper }: { plan: EmergencyPlan; readable: Readable; kind: Kind; paper: CardPaper }) {
+  const at = plan.updatedAt;
+  const laid = useMemo(() => {
+    const made = new Date(at);
+    if (kind === "wallet") {
+      const { doc, cards } = walletDocument(readable, readable.people, { made, paper });
+      return { doc, overflow: cards.filter((card) => card.overflow).map((card) => card.person.name || "a person with no name") };
+    }
+    return { doc: kind === "fridge" ? fridgeDocument(readable, { made, paper }) : grabDocument(readable, { made, paper }), overflow: [] };
+  }, [readable, kind, paper, at]);
+  const make = useCallback(() => laid.doc, [laid]);
+  const made = useKitPdf(make, {
+    title: cardTitle(kind, plan),
+    kind: KINDS.find((each) => each.value === kind)!.what,
+    from: { what: `the emergency plan “${plan.name}”`, path: `/prepare/plans/${plan.id}/cards` },
+  });
+  const count = readable.people.length + readable.contacts.length;
+  return (
+    <div className="grid gap-4">
+      {made.status === "failed" ? (
+        <Notice tone="danger" title="The PDF could not be made">
+          {made.error}
+        </Notice>
+      ) : (
+        <PdfActions pdf={kitPdfOf(made)} confirm={libraryQuestion(count)} />
+      )}
+      {laid.overflow.length > 0 ? (
+        <Notice tone="warning" title="Too much for a card">
+          The card for {laid.overflow.join(", ")} does not fit, even in the smallest type: shorten the medical note or the names, or put
+          fewer contacts first.
+        </Notice>
+      ) : null}
+      {made.status === "made" ? (
+        <div data-testid="cards-preview">
+          <PdfPagesPreview bytes={made.bytes} pages={made.pages} label={(page, of) => `Page ${page} of ${of} as it prints`} />
+        </div>
+      ) : made.status === "making" ? (
+        <Skeleton className="aspect-[1/1.41] w-full" />
+      ) : null}
+    </div>
+  );
+}
+
+function LetteredCardsPdf({
   plan,
   readable,
   kind,
@@ -191,7 +251,7 @@ export default function CardsPage() {
         title="Cards to print"
         description={
           response.data
-            ? `For “${response.data.plan.name}”${kindAside(response.data.plan)}. Black on white, so a grey copy reads the same. Print at actual size.`
+            ? `For “${response.data.plan.name}”${kindAside(response.data.plan)}. Each mark is told by its shape and words as well as its colour, so a grey copy reads the same. Print at actual size.`
             : undefined
         }
       />

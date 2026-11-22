@@ -1,7 +1,4 @@
-import { useMemo } from "react";
 import { Notice } from "@/components/page";
-import { madePdf } from "@/features/library/made/made-pdf";
-import { PdfActions } from "@/features/library/made/pdf-actions";
 import { formatDate, plural } from "@/lib/utils";
 import {
   allValues,
@@ -21,7 +18,7 @@ import {
   useChoice,
   useNumber,
 } from "../kit";
-import { guidanceSheetPdf } from "../kit/sheet";
+import { SheetPdfActions, useSheetPdf } from "../kit/sheet-pdf";
 import { boilAdvice, filterLife, rainYieldLitres, storageLitres } from "./formulas";
 import {
   BLEACH_STEPS,
@@ -34,7 +31,7 @@ import {
   WATER_SOURCES as S,
   WHAT_NONE_REMOVE,
 } from "./guidance";
-import { GUIDANCE_READ, PURIFICATION_TITLE, purificationBlocks } from "./purification-sheet";
+import { PURIFICATION_TITLE, purificationDocument } from "./purification-sheet";
 
 const CALCULATORS = [
   { id: "storage", title: "Water to store" },
@@ -421,24 +418,11 @@ function Purification() {
   const tables = BLEACH_TABLES.map((table) => ({ value: table.id, label: table.title }));
   const [tableId, setTable] = useChoice("water.bleach.table", tables, "epa-6");
   const table = BLEACH_TABLES.find((item) => item.id === tableId) ?? BLEACH_TABLES[0]!;
-  const pdf = useMemo(
-    () =>
-      madePdf(
-        guidanceSheetPdf(
-          purificationBlocks(),
-          PURIFICATION_TITLE,
-          "Making water safe to drink · official guidance, quoted · Outpost",
-          new Date(`${GUIDANCE_READ}T00:00:00Z`),
-        ),
-        PURIFICATION_TITLE,
-        "Guidance",
-        {
-          what: "the water calculators",
-          path: "/tools/water#purification",
-        },
-      ),
-    [],
-  );
+  const pdf = useSheetPdf(purificationDocument, {
+    title: PURIFICATION_TITLE,
+    kind: "Guidance",
+    from: { what: "the water calculators", path: "/tools/water#purification" },
+  });
   return (
     <Calculator
       id="purification"
@@ -547,7 +531,7 @@ function Purification() {
       <p className="mt-1 mb-3 text-small text-ink-muted">
         All of the above on a sheet to print and keep with your water, dated by when the guidance was read.
       </p>
-      <PdfActions pdf={pdf} />
+      <SheetPdfActions made={pdf} />
 
       <HowWorkedOut
         formula={

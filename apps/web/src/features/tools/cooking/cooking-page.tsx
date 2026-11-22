@@ -1,10 +1,7 @@
 import { Timer } from "lucide-react";
-import { useMemo } from "react";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Field, Textarea } from "@/components/ui/input";
-import { madePdf } from "@/features/library/made/made-pdf";
-import { PdfActions } from "@/features/library/made/pdf-actions";
 import {
   Calculator,
   ChoiceField,
@@ -25,7 +22,7 @@ import {
   useNumber,
   useText,
 } from "../kit";
-import { guidanceSheetPdf } from "../kit/sheet";
+import { SheetPdfActions, useSheetPdf } from "../kit/sheet-pdf";
 import { BOILING_MAX_HEIGHT_M, boilingPointAtHeight, scaleRecipe } from "./formulas";
 import {
   type Bird,
@@ -38,7 +35,7 @@ import {
   SAFETY_QUOTES,
   TIME_IS_A_GUIDE,
 } from "./safety";
-import { SAFETY_READ, SAFETY_SHEET_TITLE, safetyBlocks } from "./safety-sheet";
+import { SAFETY_SHEET_TITLE, safetyDocument } from "./safety-sheet";
 import { TimerPanel, TimerProvider, useTimer } from "./timer";
 
 const CALCULATORS = [
@@ -180,24 +177,11 @@ function RoastingCalculator() {
 // ── Safe temperatures ───────────────────────────────────────────────────────
 
 function SafeTemperatures() {
-  const pdf = useMemo(
-    () =>
-      madePdf(
-        guidanceSheetPdf(
-          safetyBlocks(),
-          SAFETY_SHEET_TITLE,
-          "Safe cooking temperatures · UK food-safety guidance, quoted · Outpost",
-          new Date(`${SAFETY_READ}T00:00:00Z`),
-        ),
-        SAFETY_SHEET_TITLE,
-        "Guidance",
-        {
-          what: "the cooking calculators",
-          path: "/tools/cooking#safe",
-        },
-      ),
-    [],
-  );
+  const pdf = useSheetPdf(safetyDocument, {
+    title: SAFETY_SHEET_TITLE,
+    kind: "Guidance",
+    from: { what: "the cooking calculators", path: "/tools/cooking#safe" },
+  });
   return (
     <Calculator
       id="safe"
@@ -241,7 +225,7 @@ function SafeTemperatures() {
       <p className="mt-1 mb-3 text-small text-ink-muted">
         These temperatures and checks on a sheet to print, dated by when the guidance was read.
       </p>
-      <PdfActions pdf={pdf} />
+      <SheetPdfActions made={pdf} />
       <div className="mt-4 text-small">
         <SourceList sources={[S.fsaCooking, S.fss]} />
       </div>

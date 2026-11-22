@@ -20,6 +20,8 @@ export type Rgb = readonly [number, number, number];
 export const INK: Rgb = [0.09, 0.12, 0.13];
 export const MUTED: Rgb = [0.3, 0.35, 0.37];
 export const PAPER: Rgb = [1, 1, 1];
+/** The print kit's accent (print-kit/tokens.ts, #1f6470), for the sheet's title and its scale: the furniture only, never the map. */
+export const ACCENT: Rgb = [0x1f / 255, 0x64 / 255, 0x70 / 255];
 
 export type SheetItem =
   | { kind: "image"; id: string; x: number; y: number; width: number; height: number }
@@ -311,14 +313,22 @@ export function layoutSheet(input: SheetInput): Sheet {
   bar(items, metric, miles, barLeft, strip.y);
   const ratio = formatScale(input.scale);
   const ratioRight = barLeft - 14;
-  items.push({ kind: "text", x: ratioRight, y: strip.y + 14, text: ratio, size: 11, bold: true, color: INK, anchor: "end" });
+  items.push({ kind: "text", x: ratioRight, y: strip.y + 14, text: ratio, size: 11, bold: true, color: ACCENT, anchor: "end" });
   items.push({ kind: "text", x: ratioRight, y: strip.y + 23.5, text: "at the middle of the sheet", size: 6, color: MUTED, anchor: "end" });
 
   // Title and date, cut short rather than run into the scale.
   const titleRoom = ratioRight - Math.max(textWidth(ratio, 11, true), textWidth("at the middle of the sheet", 6)) - 16 - strip.x;
   const title = input.title.trim();
   if (title) {
-    items.push({ kind: "text", x: strip.x, y: strip.y + 13, text: fitText(title, 13, titleRoom, true), size: 13, bold: true, color: INK });
+    items.push({
+      kind: "text",
+      x: strip.x,
+      y: strip.y + 13,
+      text: fitText(title, 13, titleRoom, true),
+      size: 13,
+      bold: true,
+      color: ACCENT,
+    });
     items.push({ kind: "text", x: strip.x, y: strip.y + 24, text: input.date, size: 7.5, color: MUTED });
   } else {
     items.push({ kind: "text", x: strip.x, y: strip.y + 13, text: input.date, size: 10, color: INK });
