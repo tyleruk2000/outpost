@@ -225,6 +225,32 @@ describe("the Steading screen", () => {
     expect(startView(state).across).toBe(14);
   });
 
+  it("zoomed out past a press, the map is one button that zooms back in to squares", async () => {
+    const user = userEvent.setup();
+    // A window 700 px wide: squares of 24 px or more are buttons, so at most 29 across.
+    const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 700, 700));
+    try {
+      serve(newSteading(NOW, { land: "valley", seed: "outpost-tests-1" }));
+      show();
+      const land = await screen.findByRole("group", { name: /^The land, 48 squares by 48/ });
+      expect(within(land).getAllByRole("button").length).toBeGreaterThan(100);
+      const out = screen.getByRole("button", { name: "Zoom out" });
+      while (!out.hasAttribute("disabled")) await user.click(out);
+      // The whole map: one stop, not 2,304.
+      const whole = screen.getByRole("button", { name: /^The land, 48 squares by 48, zoomed out too far to choose a square: woods \d+%/ });
+      expect(screen.queryAllByRole("button", { name: /^Column \d+, row \d+/ })).toHaveLength(0);
+      whole.focus();
+      await user.keyboard("{Enter}");
+      expect(screen.queryByRole("button", { name: /zoomed out too far/ })).toBeNull();
+      const squares = screen.getAllByRole("button", { name: /^Column \d+, row \d+/ });
+      expect(squares.length).toBeGreaterThan(100);
+      expect(squares.length).toBeLessThanOrEqual(31 * 31);
+      expect(document.activeElement?.getAttribute("aria-label")).toMatch(/^Column \d+, row \d+/);
+    } finally {
+      rect.mockRestore();
+    }
+  });
+
   it("offers Start again when the kept settlement cannot be read", async () => {
     serve(newSteading(NOW), { damaged: true });
     show();

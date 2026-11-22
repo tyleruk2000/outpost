@@ -61,7 +61,7 @@ import { type KeyboardEvent, memo, type PointerEvent, useEffect, useLayoutEffect
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { boardSurface } from "../kit/frame";
-import { heldUp, squareName } from "./words";
+import { heldUp, holds, squareName } from "./words";
 
 export const KIND_ICONS: Record<KindId, LucideIcon> = {
   storehouse: Warehouse,
@@ -317,6 +317,12 @@ const MIN_ACROSS = 6;
 /** The most squares across the window starts with, and the least a square may measure on a phone, in CSS px (DESIGN.md). */
 const START_ACROSS = 14;
 const TOUCH_TARGET = 44;
+/** The least a square may measure, in CSS px, to be a button of its own with a mouse (WCAG 2.5.8). */
+const POINTER_TARGET = 24;
+
+/** The least a square may measure to be chosen: a finger's width where the pointer is a finger. */
+const leastSquare = () =>
+  typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches ? TOUCH_TARGET : POINTER_TARGET;
 
 /**
  * The window a settlement opens on, about its storehouse. On a narrow screen it starts closer in, so
@@ -372,6 +378,17 @@ export function Valley({
   const mapKey = state.map.legacy ? "ashgill" : `${state.map.land}:${state.map.seed}`;
 
   const boxWidth = () => box.current?.getBoundingClientRect().width ?? 0;
+  // The window's width, kept so that the plan knows when its squares are too small to press.
+  const [boxPx, setBoxPx] = useState(0);
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    setBoxPx(el.getBoundingClientRect().width);
+    if (typeof ResizeObserver === "undefined") return;
+    const watch = new ResizeObserver(() => setBoxPx(el.getBoundingClientRect().width));
+    watch.observe(el);
+    return () => watch.disconnect();
+  }, []);
   // A new settlement (another land or seed) starts with the window on its storehouse, close enough
   // in on a phone for each square to take a finger.
   // biome-ignore lint/correctness/useExhaustiveDependencies: only when the map itself changes
@@ -405,7 +422,9 @@ export function Valley({
 
   useEffect(() => {
     if (!focusTarget) return;
-    const cell = grid.current?.querySelector<HTMLButtonElement>(`[data-square="${focusTarget}"]`);
+    const cell =
+      grid.current?.querySelector<HTMLButtonElement>(`[data-square="${focusTarget}"]`) ??
+      box.current?.querySelector<HTMLButtonElement>("[data-overview]");
     if (cell) {
       cell.focus();
       setFocusTarget(null);
@@ -448,6 +467,16 @@ export function Valley({
   const onPointerUp = (event: PointerEvent<HTMLDivElement>) => {
     pointers.current.delete(event.pointerId);
     if (pointers.current.size > 0 || gesture.current.moved) return;
+    // A tap on the whole map, zoomed out: in to where it was tapped.
+    if ((event.target as HTMLElement).closest?.("[data-overview]")) {
+      const rect = box.current?.getBoundingClientRect();
+      if (rect)
+        zoomToChoose({
+          x: view.x + ((event.clientX - rect.left) / rect.width) * view.across,
+          y: view.y + ((event.clientY - rect.top) / rect.width) * view.across,
+        });
+      return;
+    }
     // A tap: the square under it (each square's button carries its place).
     const square = (event.target as HTMLElement).closest?.("[data-square]")?.getAttribute("data-square");
     if (!square) return;
@@ -504,13 +533,24 @@ export function Valley({
   const squares: { x: number; y: number }[] = [];
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) squares.push({ x, y });
   const big = width > 16;
+  // Zoomed out until a square is smaller than a press, the map is one button that zooms in,
+  // rather than thousands of squares too small to press or to listen through.
+  const least = leastSquare();
+  const choosable = !big || boxPx === 0 || boxPx / view.across >= least - 0.5;
+  const mostAcross = Math.max(MIN_ACROSS, Math.floor(boxPx / least));
+  const zoomToChoose = (about: { x: number; y: number }) => {
+    const across = Math.min(view.across, mostAcross);
+    set({ across, x: about.x - across / 2, y: about.y - across / 2 });
+    setFocusTarget(`${Math.floor(about.x)},${Math.floor(about.y)}`);
+  };
 
   return (
-    <div className="grid gap-2">
+    <div className={cn("grid gap-2", !big && "overflow-x-auto")}>
       <div
         ref={box}
         className={cn("relative w-full overflow-hidden rounded-panel border border-border", boardSurface, big && "touch-none")}
-        style={{ aspectRatio: `1 / ${tall}` }}
+        // A small map is shown whole, its squares never narrower than a finger: on a narrow phone it scrolls in its own box.
+        style={{ aspectRatio: `1 / ${tall}`, minWidth: big ? undefined : `${width * TOUCH_TARGET}px` }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -586,12 +626,33 @@ export function Valley({
             />
           ) : null}
         </svg>
+        {choosable ? null : (
+          <button
+            type="button"
+            data-overview
+            aria-label={`The land, ${width} squares by ${height}, zoomed out too far to choose a square: ${holds(state.map.land, state.map.seed)}; ${state.buildings.length} buildings. Press to zoom in.`}
+            onClick={(event) => {
+              if (event.detail === 0) zoomToChoose({ x: focusSquare.x + 0.5, y: focusSquare.y + 0.5 });
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "-" || event.key === "_") {
+                event.preventDefault();
+                zoom(1.4);
+              } else if (event.key === "+" || event.key === "=") {
+                event.preventDefault();
+                zoomToChoose({ x: focusSquare.x + 0.5, y: focusSquare.y + 0.5 });
+              }
+            }}
+            className="absolute inset-0 size-full cursor-zoom-in outline-offset-[-2px] focus-visible:outline-2 focus-visible:outline-focus"
+          />
+        )}
         <fieldset
           ref={grid}
+          hidden={!choosable}
           aria-label={`The land, ${width} squares by ${height}: a square for each place in view. Use the arrow keys to move between them, and + and − to zoom.`}
           className="absolute inset-0 m-0 min-w-0 border-0 p-0"
         >
-          {squares.map(({ x, y }) => {
+          {(choosable ? squares : []).map(({ x, y }) => {
             const isSelected = selected?.x === x && selected?.y === y;
             return (
               <button

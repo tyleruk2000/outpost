@@ -2,8 +2,11 @@
  * Steading on a phone: reached from the More sheet under Games, a settlement founded in the
  * river valley from a seed typed in, a woodcutter built on a meadow beside the woods, the
  * settlement found the same after a reload (it is kept on the server, for the household),
- * and started again from the foot of the screen. Nothing scrolls sideways.
+ * zoomed out to the whole map (one button, not a square too small for a finger) and back in,
+ * no serious accessibility finding, and started again from the foot of the screen. Nothing
+ * scrolls sideways.
  */
+import { accessibilityInBothThemes } from "./a11y";
 import { api, expect, test, watchForErrors } from "./fixtures";
 
 test.use({ viewport: { width: 390, height: 844 } });
@@ -81,6 +84,20 @@ test.describe("Steading on a phone", () => {
     await page.reload();
     await expect(page.getByText("outpost-tests-1", { exact: true })).toBeVisible();
     await expect(buildings.getByRole("button", { name: new RegExp(`^Woodcutter · ${x}, ${y}`) })).toBeVisible();
+    expect(await accessibilityInBothThemes(page, "/games/steading")).toEqual([]);
+
+    // Zoomed out, a square would be narrower than a finger: the map is one button instead,
+    // and a tap on it zooms back in to squares of 44 px or more.
+    await page.getByRole("button", { name: "Zoom out" }).tap();
+    const whole = page.getByRole("button", { name: /^The land, 48 squares by 48, zoomed out too far to choose a square: woods \d+%/ });
+    await expect(whole).toBeVisible();
+    await expect(land.getByRole("button")).toHaveCount(0);
+    expect(await accessibilityInBothThemes(page, "/games/steading")).toEqual([]);
+    await whole.tap();
+    await expect(whole).toHaveCount(0);
+    const again = (await land.getByRole("button").first().boundingBox())!;
+    expect(Math.min(again.width, again.height)).toBeGreaterThanOrEqual(44);
+    expect(await overflow()).toBeLessThanOrEqual(0);
 
     // Start again, which asks first, and is back at founding.
     await page.getByRole("button", { name: "Start again" }).tap();
