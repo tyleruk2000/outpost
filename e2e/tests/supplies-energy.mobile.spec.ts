@@ -23,12 +23,13 @@ test("adds rice by name, takes its energy from the USDA table, and sees the days
   const errors = watchForErrors(page);
   await page.goto("/");
   await clear(page);
-  // One man (2,500 kcal a day, Public Health England) and ten tins of beans (3,360 kcal) to start with, and oats with no figure.
+  // One man on the UK table (2,500 kcal a day, Public Health England) and ten tins of beans (3,360 kcal) to start with, and oats with no figure.
   await api(page, "PUT", "/api/supplies/household", {
     daysWanted: 7,
     drinkingLitres: 3,
     allUsesLitres: 7.5,
     waterBasis: "drinking",
+    energyTable: "uk",
     members: [{ kind: "person", name: "", band: "19-64", sex: "male" }],
   });
   await api(page, "POST", "/api/supplies/items", {

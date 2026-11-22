@@ -76,11 +76,13 @@ test.describe("Supplies on a phone", () => {
     await minus.tap();
     await expect(beans).toContainText("9 tins");
 
-    // One adult for seven days: 2,500 kcal and 3 litres a day.
+    // One adult on the UK table for seven days: 2,500 kcal and 3 litres a day.
     await page.getByRole("tab", { name: "Household" }).tap();
     await page.getByRole("button", { name: "Add a person" }).tap();
     await page.getByRole("radio", { name: "Male", exact: true }).tap();
     await page.getByLabel("Days wanted", { exact: true }).fill("7");
+    // The UK table, chosen by hand: there is no Home place here to take it from.
+    await page.getByRole("radio", { name: "UK", exact: true }).tap();
     await page.getByRole("button", { name: "Save household" }).tap();
     await expect(page.getByText("Household saved.", { exact: false })).toBeVisible();
 
