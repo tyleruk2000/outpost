@@ -21,9 +21,22 @@
  * made (seen with `--log-code`: two for a pair of workers before, none after), so the
  * code that failed is never reached. The crash itself was not reproduced in 1,450
  * attempts: this is a way round a fault that was seen, not a cure that was watched
- * working. It can go when Node moves to a V8 whose wrapper cache is not 13.6's. Node 26
- * (V8 14.6) still has the flag, and it is kept there: whether 14.6 still has the fault
- * has not been checked.
+ * working. It can go when Node moves to a V8 whose wrapper cache is not 13.6's.
+ *
+ * Checked again on Node 26.13.1 (V8 14.6.202.34-node.40), 22 November 2026, and kept:
+ * - The code is still reached there. Two workers started from TypeScript still compile
+ *   two wasm-to-JS wrappers without the flag and none with it (`--log-code`), and type
+ *   stripping is still WebAssembly (amaro 1.1.11).
+ * - The code that failed is still there. V8 14.6's `WasmEngine::FreeDeadCodeLocked` still
+ *   hands dead import wrappers to `WasmImportWrapperCache::Free`, the call in the crash
+ *   stack (deps/v8/src/wasm/wasm-engine.cc in Node's v26.13.1 source). The cache around it
+ *   was reworked (wrappers are now counted handles), which may or may not have removed
+ *   the race; nothing in it says so.
+ * - Without the flag, 2,000 fresh processes each starting 2 to 8 such workers at once
+ *   (some with 32 and 64 MB heaps, 12 at a time on 12 cores) and a full server test run
+ *   all ended normally. So did 1,450 on Node 24, where the fault was seen, so this shows
+ *   nothing either way.
+ * The fault is not shown to be fixed, so the flag stays.
  */
 import v8 from "node:v8";
 import { isBundled } from "./paths.ts";

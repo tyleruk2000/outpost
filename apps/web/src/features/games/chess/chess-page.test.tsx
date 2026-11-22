@@ -80,7 +80,7 @@ describe("the board", () => {
     ]);
     await user.click(square("f3, empty, you can move here"));
     expect(turn()).toHaveTextContent("The computer is thinking…");
-    await waitFor(() => expect(turn()).toHaveTextContent("Your move. You play white."), { timeout: 8000 });
+    await waitFor(() => expect(turn()).toHaveTextContent("Your move. You play white."));
     expect(screen.getByRole("list", { name: "Moves" })).toHaveTextContent(/^1\.Nf3/);
     await waitFor(() => expect(kept().moves).toHaveLength(2));
   });

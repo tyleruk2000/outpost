@@ -63,7 +63,7 @@ describe("saving a backup from Settings", () => {
     await userEvent.click(link);
     expect(await screen.findByText(/Making the backup/)).toBeInTheDocument();
     made = NOW;
-    const done = (await screen.findByText("Backup made", {}, { timeout: 4000 })).closest('[aria-live="polite"]');
+    const done = (await screen.findByText("Backup made")).closest('[aria-live="polite"]');
     expect(done).toHaveTextContent("outpost-backup-2026-11-17-13-14.zip");
     expect(done).toHaveTextContent(/Downloads/);
     expect(done).toHaveTextContent(/original documents, collections and maps are not in it/);

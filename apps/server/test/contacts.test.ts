@@ -103,7 +103,7 @@ describe("keeping contacts", () => {
 
   it("does not save over a change made somewhere else", async () => {
     const made = await create(named("Sam", "Whitlock"));
-    await new Promise((resolve) => setTimeout(resolve, 3));
+    // At once, in the same millisecond as likely as not: the change is still told apart.
     const first = await app.api<{ contact: ContactDto }>("PATCH", `/api/contacts/${made.id}`, {
       nickname: "Sammy",
       baseUpdatedAt: made.updatedAt,

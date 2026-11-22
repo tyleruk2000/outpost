@@ -70,7 +70,7 @@ describe("the Satellites screen", () => {
       now,
     });
     expect(screen.getByText(/1 satellite, from CelesTrak/)).toBeInTheDocument();
-    expect(await screen.findByText(/passes? of amateur satellites/, {}, { timeout: 5000 })).toBeInTheDocument();
+    expect(await screen.findByText(/passes? of amateur satellites/)).toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: "One satellite" }));
     expect(await screen.findByRole("heading", { name: "ISS (ZARYA)" })).toBeInTheDocument();
     expect(screen.getByText("FM voice repeater")).toBeInTheDocument();

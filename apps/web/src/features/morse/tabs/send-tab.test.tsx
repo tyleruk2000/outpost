@@ -146,7 +146,7 @@ describe("the Send tab's practice", () => {
     press("keydown");
     await new Promise((r) => setTimeout(r, 200));
     press("keyup");
-    await waitFor(() => expect(grade).not.toBeDisabled(), { timeout: 3000 });
+    await waitFor(() => expect(grade).not.toBeDisabled());
     fireEvent.click(grade);
     expect(screen.getByText(/copy accuracy/)).toBeInTheDocument();
     await waitFor(() => expect(requests.filter((r) => r.url === "/api/morse/sessions")).toHaveLength(1));

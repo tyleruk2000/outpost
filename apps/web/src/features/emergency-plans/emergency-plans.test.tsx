@@ -452,7 +452,7 @@ describe("a plan", () => {
       const name = (await screen.findAllByRole("textbox", { name: "Name" }))[0]!;
       await userEvent.clear(name);
       await userEvent.type(name, "Power cut (mine)");
-      expect(await screen.findByText("This plan was changed somewhere else", {}, { timeout: 3000 })).toBeInTheDocument();
+      expect(await screen.findByText("This plan was changed somewhere else")).toBeInTheDocument();
     }
 
     it("says so instead of saving over it, and keeps what was typed", async () => {
@@ -488,7 +488,7 @@ describe("a plan", () => {
       expect(screen.queryByText("This plan was changed somewhere else")).toBeNull();
       expect(puts(server)).toHaveLength(1);
       await userEvent.type(screen.getByLabelText("In your words (optional)"), "Storm");
-      await waitFor(() => expect(puts(server)).toHaveLength(2), { timeout: 3000 });
+      await waitFor(() => expect(puts(server)).toHaveLength(2));
       expect(puts(server)[1]!.body).toMatchObject({ name: "Power cut (from the kitchen)", kindText: "Storm", baseUpdatedAt: THEIRS });
     });
   });

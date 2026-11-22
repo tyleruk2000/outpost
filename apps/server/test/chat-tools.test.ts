@@ -21,7 +21,9 @@ afterEach(async () => {
   for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
 });
 
-const QUICK = { firstTokenMs: 1500, idleMs: 1000, totalMs: 10_000, probeMs: 1000 };
+// Short, so that a test of a model that is slow to start or goes quiet is quick; but the
+// whole of a reply is let take as long as a busy machine needs to write it.
+const QUICK = { firstTokenMs: 1500, idleMs: 1500, totalMs: 120_000, probeMs: 1500 };
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /** The two ways the provider speaks: Ollama's own `/api/chat`, and the OpenAI-compatible `/v1` (the stand-in without Ollama's endpoints). */
@@ -304,16 +306,17 @@ describe("stopping while looking things up", () => {
   });
 
   it("closes the connection to the model while it is asking for a tool, and runs nothing", async () => {
-    const s = await station("stand-in-tools", { toolCallDelayMs: 600 });
+    // The model holds its call far longer than the test takes, so it is stopped while
+    // asking however slowly the machine runs.
+    const s = await station("stand-in-tools", { toolCallDelayMs: 30_000 });
     const id = await s.open();
     expect(
       (await s.app.api("POST", `/api/chat/conversations/${id}/messages`, { text: 'use search_library {"query":"boil"}' })).status,
     ).toBe(200);
-    await sleep(150);
+    await expect.poll(() => s.model.writing()).toBe(1);
     const stopped = await s.app.api<ChatConversationDetail>("POST", `/api/chat/conversations/${id}/stop`);
     expect(stopped.body.messages.at(-1)!.state).toBe("stopped");
-    await sleep(700);
-    expect(s.model.abandoned()).toBe(1);
+    await expect.poll(() => s.model.abandoned()).toBe(1);
     expect(s.chats()).toHaveLength(1);
     expect(lookups(stopped.body.messages.at(-1)!)).toEqual([]);
   });

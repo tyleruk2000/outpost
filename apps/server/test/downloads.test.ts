@@ -7,7 +7,7 @@ import type { DownloadDetail } from "@outpost/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OFFLINE_MESSAGE } from "../src/modules/downloads/service.ts";
 import type { DownloadKind, DownloadRow, Installer, StartDownload } from "../src/modules/downloads/types.ts";
-import { type FileServer, startFileServer, testBytes, unusedPort, waitFor } from "./fixtures/downloads/file-server.ts";
+import { type FileServer, partFileHolds, startFileServer, testBytes, unusedPort, waitFor } from "./fixtures/downloads/file-server.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
 const sha256 = (data: Buffer) => createHash("sha256").update(data).digest("hex");
@@ -169,7 +169,7 @@ describe("resuming", () => {
     app = await createTestApp();
     const server = await fileServer();
     const body = testBytes(400_000, 7);
-    server.routes.set("/big.zim", { body, dropAfterBytes: 150_000, headers: { etag: '"v1"' } });
+    server.routes.set("/big.zim", { body, dropAfterBytes: 150_000, beforeDrop: partFileHolds(app, 150_000), headers: { etag: '"v1"' } });
 
     const started = await downloads(app).start(
       request(server, "/big.zim", "collections/zim/big.zim", { kind: "zim", sha256: sha256(body) }),
@@ -212,7 +212,12 @@ describe("resuming", () => {
     const server = await fileServer();
     const first = testBytes(300_000, 20);
     const second = testBytes(310_000, 21);
-    server.routes.set("/doc", { body: first, dropAfterBytes: 120_000, headers: { etag: '"build-1"' } });
+    server.routes.set("/doc", {
+      body: first,
+      dropAfterBytes: 120_000,
+      beforeDrop: partFileHolds(app, 120_000),
+      headers: { etag: '"build-1"' },
+    });
 
     const started = await downloads(app).start(request(server, "/doc", "doc.bin"));
     await waitFor(() => downloads(app!).get(started.id)!.state === "queued" && server.requests.length === 1, "the dropped connection");
@@ -234,7 +239,12 @@ describe("resuming", () => {
     const body = testBytes(300_000, 22);
     // "localhost" is a different host from 127.0.0.1 as far as HTTP is concerned.
     origin.routes.set("/zim/a.zim", { body: Buffer.alloc(0), redirectTo: `http://localhost:${mirror.port}/pub/a.zim` });
-    mirror.routes.set("/pub/a.zim", { body, dropAfterBytes: 100_000, headers: { etag: '"mirror-specific"' } });
+    mirror.routes.set("/pub/a.zim", {
+      body,
+      dropAfterBytes: 100_000,
+      beforeDrop: partFileHolds(app, 100_000),
+      headers: { etag: '"mirror-specific"' },
+    });
 
     const started = await downloads(app).start(request(origin, "/zim/a.zim", "a.zim", { kind: "zim", sha256: sha256(body) }));
     const row = await settled(app, started.id);
@@ -638,6 +648,7 @@ describe("a storage location that goes away", () => {
       request(server, "/slow", "collections/files/slow.bin", { locationId: usb.id, sha256: sha256(body) }),
     );
     await midway(app, started.id);
+    await onDisk(app, started.id);
 
     // "Unplug" the drive: its folder is no longer under any storage root.
     fs.renameSync(usbPath, unplugged);

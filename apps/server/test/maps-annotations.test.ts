@@ -4,6 +4,7 @@ import { haversineMeters, type MarkerDto, type TrackDto, type TrackImportRespons
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildGpx, escapeXml, parseGpx, splitCollection, trackStats } from "../src/modules/maps/gpx.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { threadMs } from "./thread-time.ts";
 
 const FIXTURE = fs.readFileSync(path.join(import.meta.dirname, "fixtures/maps/fairfield.gpx"), "utf8");
 
@@ -363,10 +364,12 @@ describe("tracks", () => {
     // One file used to be held to 5,000, because all of them were written in one go: about
     // 1.2 seconds on this thread for 5,000 and 4.4 for 20,000. A batch is about a fortieth of a second.
     const many = waypointsFile(6000);
+    // Measured as this thread's working time between ticks, not by the clock: on a busy
+    // machine the clock runs on while the process waits its turn, and that is no hold.
     let longest = 0;
-    let last = performance.now();
+    let last = threadMs();
     const tick = setInterval(() => {
-      const now = performance.now();
+      const now = threadMs();
       longest = Math.max(longest, now - last);
       last = now;
     }, 5);

@@ -81,7 +81,7 @@ describe("the board", () => {
     await user.click(screen.getByRole("button", { name: "Square d4, empty, you can move here" }));
     expect(screen.getByRole("button", { name: "Square d4, your man" })).toBeInTheDocument();
     expect(turn()).toHaveTextContent("The computer is thinking…");
-    await waitFor(() => expect(turn()).toHaveTextContent("Your move. You play dark."), { timeout: 4000 });
+    await waitFor(() => expect(turn()).toHaveTextContent("Your move. You play dark."));
     // One light man has left rank 6 (or 7), and the move is named on its square.
     expect(screen.getAllByRole("button", { name: /computer's man, just moved here from/ })).toHaveLength(1);
     await waitFor(() => expect(kept().paths).toHaveLength(2));
@@ -144,7 +144,7 @@ describe("the computer", () => {
     show("/games/draughts?seed=5");
     await user.click(screen.getByRole("button", { name: "Square c3, your man" }));
     await user.click(screen.getByRole("button", { name: "Square d4, empty, you can move here" }));
-    await waitFor(() => expect(turn()).toHaveTextContent("Your move. You play dark."), { timeout: 4000 });
+    await waitFor(() => expect(turn()).toHaveTextContent("Your move. You play dark."));
     expect(workers).toHaveLength(1);
     expect(workers[0]!.ended).toBe(true);
   });
@@ -166,7 +166,7 @@ describe("the computer", () => {
       expect(turn()).toHaveTextContent("The computer is thinking…");
       expect(screen.queryByRole("button", { name: /just moved here/ })).toBeNull();
       turnTo("visible");
-      await waitFor(() => expect(turn()).toHaveTextContent("Your move. You play dark."), { timeout: 4000 });
+      await waitFor(() => expect(turn()).toHaveTextContent("Your move. You play dark."));
     } finally {
       visibility.mockRestore();
     }
@@ -210,7 +210,7 @@ describe("a new game", () => {
     await user.click(screen.getByRole("radio", { name: "Light" }));
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     expect(turn()).toHaveTextContent("The computer is thinking…");
-    await waitFor(() => expect(turn()).toHaveTextContent("Your move. You play light."), { timeout: 4000 });
+    await waitFor(() => expect(turn()).toHaveTextContent("Your move. You play light."));
     // Rank 1 is at the top: the first button of the grid is on rank 1.
     const first = within(screen.getByRole("grid", { name: "Board" })).getAllByRole("button")[0]!;
     expect(first).toHaveAccessibleName(/^Square [a-h]1, /);
