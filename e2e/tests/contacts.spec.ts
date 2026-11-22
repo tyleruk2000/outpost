@@ -69,7 +69,8 @@ test.describe("contacts", () => {
     await page.getByRole("link", { name: /^Dr\. Adaeze Okafor/ }).click();
 
     // ── One contact: every number a touch from a call ──
-    await expect(page.getByRole("heading", { name: "Dr. Adaeze Okafor", level: 1 })).toBeVisible();
+    // Beside the list the page has one top heading, "Contacts"; the contact comes under it.
+    await expect(page.getByRole("heading", { name: "Dr. Adaeze Okafor", level: 2 })).toBeVisible();
     await expect(page.getByRole("link", { name: "Call +44 7700 900123" })).toHaveAttribute("href", "tel:+447700900123");
     await expect(page.getByRole("link", { name: "Text 01632 960188" })).toHaveAttribute("href", "sms:01632960188");
     await expect(page.getByRole("link", { name: "Email adaeze.okafor@fellroad.example" })).toHaveAttribute(

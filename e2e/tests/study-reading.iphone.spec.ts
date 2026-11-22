@@ -15,6 +15,10 @@ test.describe("the reading and people screens on an iPhone", () => {
     for (const [name, address] of screens(seeded)) reports.push(await walk(page, name, address, "iphone", 24));
     writeReport("iphone.json", reports);
     expect(reports.flatMap((report) => report.axe)).toEqual([]);
+    // Settings, Text size: Largest (150%) never makes a screen scroll sideways.
+    expect(reports.filter((report) => report.wide150 > 0).map((report) => report.path)).toEqual([]);
+    // And neither does text at 200%.
+    expect(reports.filter((report) => report.wide200 > 0).map((report) => report.path)).toEqual([]);
     expect(
       reports.filter((report) => report.layout.some((finding) => finding.kind === "sideways-scroll")).map((report) => report.path),
     ).toEqual([]);

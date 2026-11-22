@@ -461,6 +461,7 @@ Types: `notes.ts`. See [notes-and-imports.md](notes-and-imports.md).
 | `POST /api/notes/:id/duplicate` | `{ withChildren? }`. |
 | `DELETE /api/notes/:id` | To the trash with sub-pages; `?permanent=1` deletes a trashed page for good. |
 | `POST /api/notes/:id/restore` | Out of the trash. |
+| `POST /api/notes/:id/discard` | Deletes the page for good only if it holds nothing (no title, icon, tags, cover, sub-pages or text): `{ discarded }`. The app sends it when a page made by New page is left untouched. |
 | `GET /api/notes/:id/versions`, `/:versionId` | Earlier versions; one with content. |
 | `POST /api/notes/:id/versions/:versionId/restore` | `{ baseUpdatedAt }`. The current version is kept as a version. |
 | `GET /api/notes/versions/space`, `DELETE /api/notes/versions` | Space used by versions; erase them all. |

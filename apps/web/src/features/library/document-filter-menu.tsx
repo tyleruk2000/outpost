@@ -41,7 +41,7 @@ export function ChoiceMenu<T extends string>({
         <Button
           variant={filtering ? "soft" : "secondary"}
           size="sm"
-          className="max-w-56 shrink-0"
+          className="max-w-[min(14rem,100%)] shrink-0"
           aria-label={`${label}: ${current?.label ?? value ?? anyLabel}`}
         >
           {icon}

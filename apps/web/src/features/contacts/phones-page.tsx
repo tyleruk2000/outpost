@@ -118,7 +118,7 @@ export default function PhonesPage() {
                   />
                 </label>
                 {!data.lanAccess ? (
-                  <p className="mt-2 max-w-[65ch] text-small text-ink-muted">
+                  <p className="mt-2 max-w-[65ch] text-small text-ink-muted [overflow-wrap:anywhere]">
                     Outpost is open only on this computer at the moment, so no phone can reach it. Sharing it on the network is a start-up
                     setting (OUTPOST_LAN_ACCESS).
                   </p>

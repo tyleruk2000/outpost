@@ -27,6 +27,16 @@
 .prose > * + * {
   margin-top: 0.85em;
 }
+/* Wide spacing (Settings, Appearance, or the reader's Text control): past the 1.5 line height, 2× paragraph
+   spacing and the letter and word spacing WCAG 1.4.12 asks text to bear. */
+:root[data-spacing="wide"] .prose {
+  line-height: 2;
+  letter-spacing: 0.04em;
+  word-spacing: 0.16em;
+}
+:root[data-spacing="wide"] .prose > * + * {
+  margin-top: 2em;
+}
 .prose h1,
 .prose h2,
 .prose h3 {

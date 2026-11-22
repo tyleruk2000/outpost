@@ -327,7 +327,9 @@ export function DocumentList({
                     : `${formatNumber(first.matched)} of ${plural(first.total, "document")}`
                   : plural(first.total, "document")}
             </p>
-            {first.total > 0 ? <AddToLibraryPanel collectionId={collectionId} query={query} /> : null}
+            {first.total > 0 ? (
+              <AddToLibraryPanel collectionId={collectionId} query={query} listed={query ? first.matched : first.total} />
+            ) : null}
             {documents.length > 0 ? (
               <ul className="mt-4 divide-y divide-border border-t border-border" aria-label="Documents">
                 {documents.map((document) => (

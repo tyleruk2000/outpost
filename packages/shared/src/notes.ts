@@ -238,6 +238,27 @@ export interface NoteDetail extends NoteRef {
   lastViewedAt: number | null;
 }
 
+/**
+ * Whether a page holds nothing at all: no title, icon, tags, cover or sub-pages, and only empty paragraphs.
+ * Such a page, made by "New page" and left untouched, is removed when it is left (`POST /api/notes/:id/discard`).
+ */
+export function isEmptyNote(
+  note: Pick<NoteDetail, "title" | "icon" | "tags" | "coverAttachmentId" | "children" | "encrypted" | "trashedAt" | "content">,
+): boolean {
+  const blocks = note.content?.content ?? [];
+  const emptyText = blocks.every((block) => block.type === "paragraph" && !("content" in block && block.content?.length));
+  return (
+    note.title.trim() === "" &&
+    note.icon === null &&
+    note.tags.length === 0 &&
+    note.coverAttachmentId === null &&
+    note.children.length === 0 &&
+    !note.encrypted &&
+    note.trashedAt === null &&
+    emptyText
+  );
+}
+
 /** What a save returns: everything except the content that was just sent. */
 export interface NoteSaveResult extends NoteRef {
   /** Send this back as `baseUpdatedAt` with the next save. */

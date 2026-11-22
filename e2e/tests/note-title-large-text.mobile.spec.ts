@@ -9,12 +9,12 @@ const doc = { type: "doc", content: [{ type: "paragraph", content: [{ type: "tex
 
 test("a page's title shows whole when the text is made larger on the page", async ({ page }) => {
   await page.goto("/");
-  const { note } = await api(page, "POST", "/api/notes", { title: "Water and food store for the winter months", content: doc });
+  const { note } = await api(page, "POST", "/api/notes", { title: "Fuel and lamp oil store for the winter months", content: doc });
   try {
     await page.goto(`/notes/${note.id}`);
     const title = page.getByRole("textbox", { name: "Page title" });
-    await expect(title).toHaveValue("Water and food store for the winter months");
-    await expect(page.getByRole("heading", { level: 1, name: "Water and food store for the winter months" })).toBeAttached();
+    await expect(title).toHaveValue("Fuel and lamp oil store for the winter months");
+    await expect(page.getByRole("heading", { level: 1, name: "Fuel and lamp oil store for the winter months" })).toBeAttached();
     for (const size of ["150%", "200%"]) {
       await page.evaluate((value) => document.documentElement.style.setProperty("font-size", value, "important"), size);
       await expect

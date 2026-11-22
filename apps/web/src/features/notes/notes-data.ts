@@ -21,6 +21,7 @@ import type {
   NoteTreeResponse,
   UpdateNoteBody,
 } from "@outpost/shared";
+import { isEmptyNote } from "@outpost/shared";
 import { type QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useNavigate } from "react-router";
@@ -122,6 +123,59 @@ export function reflectInTree(client: QueryClient, id: string, patch: Pick<Parti
   patchTreeItem(client, id, patch);
 }
 
+/**
+ * Blank pages made in this tab ("New page" with nothing given) that have not been typed in yet. Left untouched,
+ * such a page is removed when it is left (`leaveUntouched`), so that "New page" pressed by mistake or out of
+ * curiosity does not leave an empty "Untitled" behind. Typing anything, even once, takes a page off this list.
+ */
+export const madeBlank = new Set<string>();
+
+/** Whether a page holds nothing at all (shared with the server, which checks again before removing it). */
+export const isEmptyPage = isEmptyNote;
+
+/** How many screens show each page just now: a page shown again at once (React's checks in development, a remount) is not left. */
+const showing = new Map<string, number>();
+
+/** Called when a page's screen opens; what it returns is called when it closes. */
+export function showPage(client: QueryClient, id: string): () => void {
+  showing.set(id, (showing.get(id) ?? 0) + 1);
+  return () => {
+    showing.set(id, (showing.get(id) ?? 1) - 1);
+    window.setTimeout(() => {
+      if ((showing.get(id) ?? 0) > 0) return;
+      showing.delete(id);
+      void leaveUntouched(client, id);
+    }, 0);
+  };
+}
+
+/** Removes a blank page made here and left as it was made. The server removes it only if it still holds nothing. */
+export async function leaveUntouched(client: QueryClient, id: string): Promise<void> {
+  if (!madeBlank.delete(id)) return;
+  try {
+    const { discarded } = await api.post<{ discarded: boolean }>(`/api/notes/${id}/discard`);
+    if (!discarded) return;
+    client.removeQueries({ queryKey: noteKeys.detail(id) });
+    await refreshNotes(client);
+  } catch {
+    // Left as it is: an empty page is a nuisance, not a loss.
+  }
+}
+
+// Closing the tab or reloading it leaves the page too. The request is sent so that it outlives the page.
+if (typeof window !== "undefined") {
+  window.addEventListener("pagehide", () => {
+    for (const id of madeBlank) {
+      if ((showing.get(id) ?? 0) === 0) continue;
+      void fetch(`/api/notes/${encodeURIComponent(id)}/discard`, {
+        method: "POST",
+        keepalive: true,
+        headers: { "X-Outpost-Request": "1" },
+      }).catch(() => undefined);
+    }
+  });
+}
+
 export interface NoteActions {
   create(body?: CreateNoteBody, options?: { open?: boolean }): Promise<NoteRef | undefined>;
   setFavorite(page: NoteRef, isFavorite: boolean): Promise<void>;
@@ -172,6 +226,7 @@ export function useNoteActions(): NoteActions {
       async create(body = {}, { open = true } = {}) {
         try {
           const { note } = await api.post<NoteResponse>("/api/notes", body);
+          if (!body.title && !body.content && !body.templateId && !body.icon) madeBlank.add(note.id);
           client.setQueryData(noteKeys.detail(note.id), { note });
           void refresh();
           if (open) navigate(`/notes/${note.id}`);

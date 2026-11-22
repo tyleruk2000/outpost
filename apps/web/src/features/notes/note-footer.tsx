@@ -40,7 +40,7 @@ export function PageList({ pages, noun }: { pages: readonly NoteRef[]; noun: str
 function FooterSection({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
     <section className="mt-9">
-      <div className="mb-2 flex min-h-8 items-center justify-between gap-3">
+      <div className="mb-2 flex min-h-8 flex-wrap items-center justify-between gap-x-3">
         <h2 className="text-small font-semibold text-ink">{title}</h2>
         {action}
       </div>

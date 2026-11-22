@@ -15,6 +15,7 @@ import { buildExtensions } from "./extensions";
 import type { EditorHost } from "./host";
 import { SelectionToolbar } from "./selection-toolbar";
 import { TableMenu } from "./table-menu";
+import { TOOLBAR_SHORTCUT } from "./toolbar-keys";
 import { TouchBar } from "./touch-bar";
 import { filesOf, uploadImages } from "./uploads";
 import { useIsTouch } from "./use-touch";
@@ -94,6 +95,8 @@ export function NoteEditor({
           role: "textbox",
           "aria-multiline": "true",
           "aria-label": "Page content",
+          // The bar over a selection or a table (toolbar-keys.ts).
+          "aria-keyshortcuts": TOOLBAR_SHORTCUT,
         },
         handlePaste(_view: unknown, event: ClipboardEvent) {
           const files = filesOf(event.clipboardData);

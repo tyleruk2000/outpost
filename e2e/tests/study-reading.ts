@@ -120,14 +120,14 @@ export async function seed(request: APIRequestContext): Promise<Seeded> {
   const existing = await json<{ documents: Array<{ id: string; originalName: string }> }>(await request.get("/api/documents?limit=200"));
   const named = (name: string) => existing.documents.find((document) => document.originalName === name)?.id;
   const pdf =
-    named("water-treatment.pdf") ??
+    named("fell-water-notes.pdf") ??
     (await upload(
       request,
-      "water-treatment.pdf",
+      "fell-water-notes.pdf",
       "application/pdf",
       buildPdf([
-        ["Treating water in the field", "Boil for one minute, or three above 2000 metres."],
-        ["Chlorine dioxide tablets", "One tablet treats one litre. Wait thirty minutes."],
+        ["Water on the fell", "A rolling boil for one minute, or three high up."],
+        ["Tablets for the bottle", "One tablet to a litre; wait half an hour."],
         ["Filters", "A 0.2 micron filter stops bacteria and protozoa but not viruses."],
       ]),
     ));
@@ -153,25 +153,28 @@ export async function seed(request: APIRequestContext): Promise<Seeded> {
       ),
     ));
 
-  let audio: string | null = null;
-  const audiobooks = await json<{ audiobooks?: Array<{ url: string }> }>(await request.get("/api/audiobooks"));
-  if (audiobooks.audiobooks?.length) audio = audiobooks.audiobooks[0]!.url;
-  else {
+  // An audiobook of its own, named so that it is never taken for audiobooks.mobile.spec.ts's.
+  const album = "Tide Tables Read Aloud";
+  const ours = async () =>
+    (await json<{ audiobooks?: Array<{ url: string; title: string }> }>(await request.get("/api/audiobooks"))).audiobooks?.find(
+      (book) => book.title === album,
+    )?.url ?? null;
+  let audio = await ours();
+  if (!audio) {
     const zip = storedZip([
-      { name: "01 Kindling.wav", content: wav(4, { title: "Kindling", artist: "A. Woodsman", album: "Fires for Damp Days", track: 1 }) },
-      { name: "02 Tinder.wav", content: wav(4, { title: "Tinder", artist: "A. Woodsman", album: "Fires for Damp Days", track: 2 }) },
+      { name: "01 High water.wav", content: wav(4, { title: "High water", artist: "R. Reader", album, track: 1 }) },
+      { name: "02 Low water.wav", content: wav(4, { title: "Low water", artist: "R. Reader", album, track: 2 }) },
     ]);
     const added = await request.post("/api/audiobooks", {
       headers,
-      multipart: { files: { name: "fires.zip", mimeType: "application/zip", buffer: zip } },
+      multipart: { files: { name: "tides.zip", mimeType: "application/zip", buffer: zip } },
     });
     if (added.ok()) {
       const { job } = await added.json();
       await expect
         .poll(async () => (await (await request.get(`/api/jobs/${job.id}`)).json()).job.state, { timeout: 30_000 })
         .toMatch(/succeeded|failed/);
-      const after = await json<{ audiobooks?: Array<{ url: string }> }>(await request.get("/api/audiobooks"));
-      audio = after.audiobooks?.[0]?.url ?? null;
+      audio = await ours();
     }
   }
 
@@ -184,13 +187,13 @@ export async function seed(request: APIRequestContext): Promise<Seeded> {
   const collection = await addArchive(request);
 
   const notes = await json<{ items?: Array<{ id: string; title: string }> }>(await request.get("/api/notes/recent"));
-  let note = notes.items?.find((item) => item.title === "Water and food store")?.id;
+  let note = notes.items?.find((item) => item.title === "Fuel and lamp oil store")?.id;
   if (!note) {
     const made = await json<{ note: { id: string } }>(
       await request.post("/api/notes", {
         headers,
         data: {
-          title: "Water and food store",
+          title: "Fuel and lamp oil store",
           content: {
             type: "doc",
             content: [
@@ -223,7 +226,7 @@ export async function seed(request: APIRequestContext): Promise<Seeded> {
     });
   }
 
-  const contacts = await json<{ contacts: Array<{ id: string; displayName: string }> }>(await request.get("/api/contacts?q=Okafor"));
+  const contacts = await json<{ contacts: Array<{ id: string; displayName: string }> }>(await request.get("/api/contacts?q=Trelawny"));
   let contact = contacts.contacts[0]?.id;
   if (!contact) {
     contact = (
@@ -232,7 +235,7 @@ export async function seed(request: APIRequestContext): Promise<Seeded> {
           headers,
           data: {
             kind: "person",
-            name: { prefix: "", given: "Adaeze", additional: "", family: "Okafor", suffix: "" },
+            name: { prefix: "", given: "Morwenna", additional: "", family: "Trelawny", suffix: "" },
             organisation: "Fellside mountain rescue",
             title: "Team leader",
             phones: [{ label: "mobile", value: "07700 900123" }],
@@ -248,13 +251,13 @@ export async function seed(request: APIRequestContext): Promise<Seeded> {
     ).contact.id;
     await request.post("/api/contacts", {
       headers,
-      data: { kind: "organisation", organisation: "Village hall", phones: [{ label: "work", value: "01234 567890" }] },
+      data: { kind: "organisation", organisation: "Chapel hall", phones: [{ label: "work", value: "01234 567890" }] },
     });
     await request.post("/api/contacts", {
       headers,
       data: {
         kind: "person",
-        name: { prefix: "", given: "Zoë", additional: "", family: "Łukasiewicz", suffix: "" },
+        name: { prefix: "", given: "Ifeoma", additional: "", family: "Nwosu", suffix: "" },
         phones: [{ label: "mobile", value: "07700 900456" }],
       },
     });
@@ -325,6 +328,7 @@ export interface ScreenReport {
   /** What reaches past the right of the screen at 150%, deepest first. */
   past150: string[];
   wide200: number;
+  past200: string[];
   errors: string[];
 }
 
@@ -357,12 +361,25 @@ async function settle(page: Page): Promise<string> {
 function pastTheEdge(page: Page): Promise<string[]> {
   return page.evaluate(() => {
     const width = document.documentElement.clientWidth;
+    // Past the edge, and not inside a box that clips it (a scrolling table, a decoration cut to its card).
+    const clipped = (element: Element) => {
+      for (let node = element.parentElement; node && node !== document.body; node = node.parentElement) {
+        const style = getComputedStyle(node);
+        if (style.overflowX !== "visible" && node.getBoundingClientRect().right <= width + 1) return true;
+      }
+      return false;
+    };
     const over = (element: Element) => {
       const box = element.getBoundingClientRect();
-      return box.width > 0 && box.height > 0 && box.right > width + 1;
+      return box.width > 0 && box.height > 0 && box.right > width + 1 && !clipped(element);
     };
     return [...document.querySelectorAll("body *")]
-      .filter((element) => !element.closest("svg") && over(element) && ![...element.children].some(over))
+      .filter(
+        (element) =>
+          (!element.closest("svg") || element.tagName.toLowerCase() === "svg") &&
+          over(element) &&
+          (element.tagName.toLowerCase() === "svg" || ![...element.children].some(over)),
+      )
       .slice(0, 6)
       .map(
         (element) =>
@@ -400,10 +417,11 @@ export async function walk(page: Page, name: string, address: string, size: stri
   await page.evaluate(() => document.documentElement.style.setProperty("font-size", "200%", "important"));
   await page.waitForTimeout(300);
   const wide200 = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  const past200 = wide200 > 0 ? await pastTheEdge(page) : [];
   if (out) await page.screenshot({ path: path.join(out, `${size}-${name}-200.png`), fullPage: true });
   await page.evaluate(() => document.documentElement.style.removeProperty("font-size"));
   page.off("pageerror", onError);
-  return { name, path: address, size, heading: title, axe, layout, wide150, past150, wide200, errors };
+  return { name, path: address, size, heading: title, axe, layout, wide150, past150, wide200, past200, errors };
 }
 
 export function writeReport(file: string, reports: ScreenReport[]): void {

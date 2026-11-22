@@ -9,6 +9,8 @@ import { createContext, type ReactNode, useContext, useEffect, useMemo, useState
 export type ThemeChoice = "system" | "light" | "dark";
 export type ReadingFace = "serif" | "sans";
 export type TextSize = "smaller" | "default" | "larger" | "largest";
+/** The room between lines, words and paragraphs on reading surfaces: "wide" goes past what WCAG 1.4.12 asks a page to bear. */
+export type ReadingSpacing = "normal" | "wide";
 
 /**
  * The text sizes, as a scale of the root font size, which every size in the app is in rem of. They
@@ -36,6 +38,8 @@ interface ThemeValue {
   setReading(face: ReadingFace): void;
   textSize: TextSize;
   setTextSize(size: TextSize): void;
+  spacing: ReadingSpacing;
+  setSpacing(spacing: ReadingSpacing): void;
 }
 
 const ThemeContext = createContext<ThemeValue | undefined>(undefined);
@@ -63,6 +67,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [textSize, setTextSizeState] = useState<TextSize>(() =>
     read("outpost.textSize", ["smaller", "default", "larger", "largest"], "default"),
   );
+  const [spacing, setSpacingState] = useState<ReadingSpacing>(() => read("outpost.spacing", ["normal", "wide"], "normal"));
   const [systemDark, setSystemDark] = useState(() => window.matchMedia("(prefers-color-scheme: dark)").matches);
 
   useEffect(() => {
@@ -77,8 +82,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.dataset.theme = resolved;
     document.documentElement.dataset.reading = reading;
+    if (spacing === "wide") document.documentElement.dataset.spacing = "wide";
+    else delete document.documentElement.dataset.spacing;
     document.querySelector('meta[name="theme-color"]')?.setAttribute("content", resolved === "dark" ? "#0d1516" : "#1d3a3f");
-  }, [resolved, reading]);
+  }, [resolved, reading, spacing]);
 
   useEffect(() => applyTextSize(textSize), [textSize]);
 
@@ -100,8 +107,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         setTextSizeState(next);
         write("outpost.textSize", next);
       },
+      spacing,
+      setSpacing(next) {
+        setSpacingState(next);
+        write("outpost.spacing", next);
+      },
     }),
-    [theme, resolved, reading, textSize],
+    [theme, resolved, reading, textSize, spacing],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
