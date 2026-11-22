@@ -159,6 +159,55 @@ describe("the household's broker, from Settings", () => {
     expect(JSON.stringify(test.body)).not.toContain(OUTPOST_PASSWORD);
   });
 
+  it("never sends the saved password to an address other than the one it was saved for", async () => {
+    await app.api<MeshResponse>("PUT", "/api/mesh/meshtastic", {
+      mode: "off",
+      client: { host: "127.0.0.1", port, userName: "outpost", password: OUTPOST_PASSWORD, rootTopic: ROOT, tls: false },
+    });
+    // Something else listening: whatever it is sent is kept, to look for the password in.
+    const received: Buffer[] = [];
+    const other = net.createServer((socket) => {
+      socket.on("data", (chunk) => received.push(chunk));
+      socket.on("error", () => {});
+    });
+    const otherPort = await listen(other);
+    try {
+      for (const change of [{ port: otherPort }, { host: "localhost", port: otherPort }, { userName: "someone-else", port: otherPort }]) {
+        const test = await app.api<MeshBrokerTestResult>("POST", "/api/mesh/broker/test", {
+          host: "127.0.0.1",
+          port,
+          userName: "outpost",
+          rootTopic: ROOT,
+          tls: false,
+          ...change,
+        });
+        expect(test.status).toBe(400);
+        expect((test.body as unknown as { error: { message: string } }).error.message).toMatch(/Type the password/);
+      }
+      // Saved over TLS, tried without: the same address, but the password would cross the network in the clear.
+      await app.api<MeshResponse>("PUT", "/api/mesh/meshtastic", {
+        mode: "off",
+        client: { host: "127.0.0.1", port: otherPort, userName: "outpost", rootTopic: ROOT, tls: true },
+      });
+      const plain = await app.api("POST", "/api/mesh/broker/test", {
+        host: "127.0.0.1",
+        port: otherPort,
+        userName: "outpost",
+        rootTopic: ROOT,
+        tls: false,
+      });
+      expect(plain.status).toBe(400);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(Buffer.concat(received).includes(OUTPOST_PASSWORD)).toBe(false);
+    } finally {
+      await new Promise((resolve) => other.close(resolve));
+      await app.api<MeshResponse>("PUT", "/api/mesh/meshtastic", {
+        mode: "off",
+        client: { host: "127.0.0.1", port, userName: "outpost", rootTopic: ROOT, tls: false },
+      });
+    }
+  });
+
   it("says when a broker gives no answer to dynamic security, and that Outpost does not change its files", async () => {
     const answer = await app.api<MeshDynsecResult>("POST", "/api/mesh/broker/dynsec");
     expect(answer.body.state).toBe("off");

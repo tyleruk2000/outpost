@@ -118,7 +118,7 @@ export function TestBroker({ input, disabled }: { input: MeshBrokerTestInput | n
         <p className="min-w-0 flex-1 text-small text-ink-muted">
           {test.isPending
             ? "Signing in, then listening for a radio for up to 8 seconds…"
-            : "Signs in as typed here (the saved password if none is typed), sends one check message under the root topic, and listens for a radio. Nothing is saved."}
+            : "Signs in as typed here (the saved password if none is typed, at the address it was saved for only), sends one check message under the root topic, and listens for a radio. Nothing is saved."}
         </p>
       </div>
       {test.isError ? (

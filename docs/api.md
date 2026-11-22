@@ -1174,7 +1174,7 @@ routes; a message too long, a file or an edit is `400` there. Settings routes ar
 | `PUT /api/mesh/meshtastic` | `MeshtasticInput`: `mode` (`off`, `broker`, `client`), broker or client settings, `channels`. A password left out is kept; `""` removes it. `400` for a broker password under 12 characters. |
 | `PUT /api/mesh/meshcore` | `MeshCoreInput`: `mode` (`off`, `serial`, `tcp`), device, host, port, channels. |
 | `POST /api/mesh/broker/find` | Looks for a broker on 1883 and 8883. |
-| `POST /api/mesh/broker/test` | Signs in, subscribes, sends a check, listens 8 s. |
+| `POST /api/mesh/broker/test` | Signs in, subscribes, sends a check, listens 8 s. A password left out is the saved one, used only for the address, port and user name it was saved with (and not without TLS if saved with it); otherwise `400`. |
 | `POST /api/mesh/broker/dynsec` | Asks the broker's dynamic security plugin `listClients`. |
 | `POST /api/mesh/broker/radio-account` | Creates a role and account for the radio. |
 | `GET /api/mesh/positions`, `PUT /api/mesh/radios/:id/map` | Radios heard and whether each is on the map. |

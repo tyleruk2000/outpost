@@ -299,8 +299,23 @@ export function createMeshService(ctx: AppContext, options: { open?: Opener } = 
     testBroker(input) {
       const client = checkedClient(input, true);
       const ca = input.ca !== undefined ? checkCa(input.ca) : store.config().meshtastic.client.ca;
-      // A password left out is the one saved: never sent back to the browser, only used from here.
-      const password = input.password !== undefined ? input.password || null : secrets.clientPassword();
+      // A password left out is the one saved: never sent back to the browser, only used from here, and only
+      // to the broker it was saved for (same address, port and user name, and over TLS if it was saved so).
+      let password: string | null;
+      if (input.password !== undefined) password = input.password || null;
+      else {
+        password = secrets.clientPassword();
+        const saved = store.config().meshtastic.client;
+        const same =
+          client.host.toLowerCase() === saved.host.trim().replace(/^\[|\]$/g, "").toLowerCase() &&
+          client.port === saved.port &&
+          client.userName === saved.userName &&
+          (input.tls || !saved.tls);
+        if (password !== null && !same)
+          throw badRequest(
+            "The saved password is only sent to the broker it was saved for. Type the password to try this address, user name or connection.",
+          );
+      }
       return testBroker({ ...client, tls: input.tls, ca }, password);
     },
 
