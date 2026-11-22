@@ -49,6 +49,12 @@ of what each feature does are in its own guide.
   phone's touch, on-screen keyboard and safe areas (only Chromium and WebKit with touch at
   phone sizes); the live compass, the phone's motion sensors and the camera on a real device;
   Windows High Contrast and forced colours; a switch device or voice control.
+- **Game boards on small phones, accepted:** Sudoku's cells are 40 px on a phone 390 px wide,
+  and the squares of Chess and Draughts, the holes of Peg solitaire, Solitaire's cards and
+  Allotment's stall are 36 to 41 px at 320 px wide. A whole board has to fit the screen, so they
+  stay under the 44 px the design asks of touch controls. They meet WCAG 2.5.8 (24 px), each is a
+  separate square with no other control inside it, and every board can also be played from the
+  keyboard.
 
 ## Installing and looking after it
 

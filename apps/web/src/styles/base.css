@@ -68,6 +68,8 @@
   --color-game-card-picked: var(--game-card-picked);
   --color-game-board-light: var(--game-board-light);
   --color-game-board-dark: var(--game-board-dark);
+  --color-game-board-mark-on-light: var(--game-board-mark-on-light);
+  --color-game-board-mark-on-dark: var(--game-board-mark-on-dark);
   --color-game-piece-light: var(--game-piece-light);
   --color-game-piece-light-edge: var(--game-piece-light-edge);
   --color-game-piece-dark: var(--game-piece-dark);

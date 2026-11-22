@@ -230,11 +230,19 @@ export function Select<T extends string>({
 
 // ── Switch and checkbox ────────────────────────────────────────────────────
 
+/**
+ * A finger-sized pressable area (44 by 44 px) around a small control on a touch screen, drawn by an empty
+ * pseudo-element centred on it: the control looks the same and takes no more room.
+ */
+const touchArea =
+  "pointer-coarse:before:absolute pointer-coarse:before:top-1/2 pointer-coarse:before:left-1/2 pointer-coarse:before:size-11 pointer-coarse:before:-translate-x-1/2 pointer-coarse:before:-translate-y-1/2 pointer-coarse:before:content-['']";
+
 export function Switch({ className, ...props }: ComponentProps<typeof SwitchPrimitive.Root>) {
   return (
     <SwitchPrimitive.Root
       className={cn(
         "relative inline-flex h-6 w-10 shrink-0 items-center rounded-full border border-border-strong bg-surface-strong transition-colors duration-150 data-[state=checked]:border-primary data-[state=checked]:bg-primary disabled:opacity-50",
+        touchArea,
         className,
       )}
       {...props}
@@ -248,7 +256,8 @@ export function Checkbox({ className, ...props }: ComponentProps<typeof Checkbox
   return (
     <CheckboxPrimitive.Root
       className={cn(
-        "grid size-[18px] shrink-0 place-content-center rounded-[4px] border-[1.5px] border-border-strong bg-page transition-colors data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary disabled:opacity-50",
+        "relative grid size-[18px] shrink-0 place-content-center rounded-[4px] border-[1.5px] border-border-strong bg-page transition-colors data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary disabled:opacity-50",
+        touchArea,
         className,
       )}
       {...props}

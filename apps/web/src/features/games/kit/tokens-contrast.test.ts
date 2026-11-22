@@ -42,4 +42,16 @@ describe("game colours", () => {
     expect(line).toHaveLength(2);
     for (const theme of [0, 1]) expect(ratio(line[theme]!, felt[theme]!)).toBeGreaterThanOrEqual(3);
   });
+
+  it("writes the board's coordinate marks at 4.5:1 or more on the square under them, in both themes", () => {
+    const light = values("game-board-light");
+    const dark = values("game-board-dark");
+    const onLight = values("game-board-mark-on-light");
+    const onDark = values("game-board-mark-on-dark");
+    for (const each of [light, dark, onLight, onDark]) expect(each).toHaveLength(2);
+    for (const theme of [0, 1]) {
+      expect(ratio(onLight[theme]!, light[theme]!)).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(onDark[theme]!, dark[theme]!)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
 });

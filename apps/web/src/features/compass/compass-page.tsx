@@ -72,7 +72,7 @@ export default function CompassPage() {
         </>
       }
     >
-      <section aria-label="Place" className="mb-2 grid gap-4 sm:grid-cols-2">
+      <section aria-label="Place" className="mb-2 grid items-start gap-4 sm:grid-cols-2">
         <OriginPicker origin={origin} label="Place" />
         {position ? (
           <p className="self-end font-mono text-small text-ink-muted sm:col-span-2">
