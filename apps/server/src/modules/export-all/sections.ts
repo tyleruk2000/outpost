@@ -6,7 +6,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import type { ExportSection, ExportSectionEstimate } from "@outpost/shared";
+import { type ExportSection, type ExportSectionEstimate, FIRST_HOUSEHOLD_ID } from "@outpost/shared";
 import type { ZipArchive } from "archiver";
 import type { AppContext } from "../../core/context.ts";
 import { safeFileName } from "../../core/fs-safe.ts";
@@ -61,6 +61,42 @@ function namer() {
     used.add(name.toLowerCase());
     return name;
   };
+}
+
+/**
+ * The households, each with a folder of its own name when there are several. With one (as
+ * most Outposts have) its things are at the top of the section's folder, as they always were.
+ */
+function householdFolders(ctx: AppContext): Array<{ id: string; prefix: string }> {
+  const list = ctx.services.households.list();
+  if (list.length <= 1) return [{ id: list[0]?.id ?? FIRST_HOUSEHOLD_ID, prefix: "" }];
+  const name = namer();
+  return list.map((household) => ({ id: household.id, prefix: `${name(household.name, "")}/` }));
+}
+
+/** A medical sheet as its file: the armoured message of a locked one, else JSON. */
+function sheetFile(sheet: SheetRow, name: string): { name: string; text: string } {
+  return sheet.armor
+    ? { name: `${name}.asc`, text: sheet.armor }
+    : {
+        name: `${name}.json`,
+        text: json({
+          name: sheet.name,
+          created: iso(sheet.createdAt),
+          updated: iso(sheet.updatedAt),
+          sheet: JSON.parse(sheet.record ?? "{}"),
+        }),
+      };
+}
+
+interface SheetRow {
+  name: string;
+  record: string | null;
+  armor: string | null;
+  memberId: string | null;
+  householdId: string | null;
+  createdAt: number;
+  updatedAt: number;
 }
 
 /** A section made of a few text files, worked out in full both to estimate and to write. */
@@ -174,21 +210,15 @@ const supplies = textSection(
   "supplies",
   "Supplies",
   "CSV",
-  "The supplies list as `supplies.csv`, the same columns Supplies reads back in. Opens in any spreadsheet. With several households, each household has its own file, named after the household (`Home.csv`).",
+  "The supplies list as `supplies.csv`, the same columns Supplies reads back in. Opens in any spreadsheet. With several households, each has a folder of its own name with its own `supplies.csv`.",
   (ctx) => {
-    const households = ctx.services.households.list();
-    if (households.length === 1) {
-      const items = ctx.services.supplies.items(households[0]!.id);
-      return { count: items.length, files: items.length ? [{ name: "supplies.csv", text: suppliesCsv(items) }] : [] };
-    }
     // Every household's own list, not only the current one's: this is everything taken out.
-    const name = namer();
     let count = 0;
     const files: Array<{ name: string; text: string }> = [];
-    for (const household of households) {
-      const items = ctx.services.supplies.items(household.id);
+    for (const folder of householdFolders(ctx)) {
+      const items = ctx.services.supplies.items(folder.id);
       count += items.length;
-      if (items.length) files.push({ name: name(household.name, ".csv"), text: suppliesCsv(items) });
+      if (items.length > 0) files.push({ name: `${folder.prefix}supplies.csv`, text: suppliesCsv(items) });
     }
     return { count, files };
   },
@@ -284,19 +314,27 @@ const plans = textSection(
   "plans",
   "Emergency plans",
   "JSON",
-  "Each emergency plan as a JSON file: its steps, people, places and contacts as you wrote them, and how far through it you were. JSON opens in any text editor.",
+  "Each emergency plan as a JSON file: its steps, people, places and contacts as you wrote them, and how far through it you were. JSON opens in any text editor. With several households, each has a folder of its own name with its plans.",
   (ctx) => {
     const rows = ctx.sqlite
       .prepare(
         `SELECT name, kind, kind_text AS kindText, emergency_number AS emergencyNumber, review_every_days AS reviewEveryDays,
-          reviewed_at AS reviewedAt, body, use, created_at AS createdAt, updated_at AS updatedAt FROM emergency_plans ORDER BY name`,
+          reviewed_at AS reviewedAt, body, use, created_at AS createdAt, updated_at AS updatedAt, household_id AS householdId
+         FROM emergency_plans ORDER BY name`,
       )
-      .all() as Array<Record<string, unknown> & { name: string; body: string; use: string }>;
-    const name = namer();
+      .all() as Array<Record<string, unknown> & { name: string; body: string; use: string; householdId: string }>;
+    const folders = householdFolders(ctx);
+    const prefixOf = new Map(folders.map((folder) => [folder.id, folder.prefix]));
+    const names = new Map<string, ReturnType<typeof namer>>();
     return {
       count: rows.length,
-      files: rows.map((row) => ({
-        name: name(row.name, ".json"),
+      files: rows.map((row) => {
+        // With one household every plan is at the top; a plan of a household since removed is too.
+        const prefix = folders.length === 1 ? "" : (prefixOf.get(row.householdId) ?? "");
+        const name = names.get(prefix) ?? namer();
+        names.set(prefix, name);
+        return {
+        name: `${prefix}${name(row.name, ".json")}`,
         text: json({
           name: row.name,
           kind: row.kindText || row.kind,
@@ -308,7 +346,8 @@ const plans = textSection(
           plan: JSON.parse(row.body),
           inUse: JSON.parse(row.use),
         }),
-      })),
+      };
+      }),
     };
   },
 );
@@ -372,28 +411,98 @@ const papers = textSection(
   "papers",
   "Medical sheets and keeping in touch",
   "JSON, and OpenPGP for locked sheets",
-  "Medical sheets as JSON, one file each; a sheet locked with a passphrase stays locked, as the armoured OpenPGP message (`.asc`) it is kept as, and opens with that passphrase in any OpenPGP program. `keeping-in-touch.json` is the household's communication plan.",
+  "Medical sheets as JSON, one file each; a sheet locked with a passphrase stays locked, as the armoured OpenPGP message (`.asc`) it is kept as, and opens with that passphrase in any OpenPGP program. `keeping-in-touch.json` is the household's communication plan. With several households, each has a folder of its own name with its people's sheets (someone in two households is in both) and its own plan; a sheet of someone in no household is at the top.",
   (ctx) => {
     const sheets = ctx.sqlite
-      .prepare("SELECT name, record, armor, created_at AS createdAt, updated_at AS updatedAt FROM medical_sheets ORDER BY name")
-      .all() as Array<{ name: string; record: string | null; armor: string | null; createdAt: number; updatedAt: number }>;
-    const comms = ctx.sqlite.prepare("SELECT body FROM comms_plans WHERE id = 'household'").pluck().get() as string | undefined;
+      .prepare(
+        "SELECT name, record, armor, member_id AS memberId, household_id AS householdId, created_at AS createdAt, updated_at AS updatedAt FROM medical_sheets ORDER BY name",
+      )
+      .all() as SheetRow[];
+    const folders = householdFolders(ctx);
+    const files: Array<{ name: string; text: string }> = [];
+    const written = new Set<SheetRow>();
+    for (const folder of folders) {
+      const people = new Set(ctx.services.households.personIds(folder.id));
+      // A household's sheets: its people's, and its own for nobody in particular. With one household, every sheet.
+      const own =
+        folders.length === 1
+          ? sheets
+          : sheets.filter((sheet) => (sheet.memberId ? people.has(sheet.memberId) : sheet.householdId === folder.id));
+      const name = namer();
+      for (const sheet of own) {
+        written.add(sheet);
+        files.push(sheetFile(sheet, `${folder.prefix}${name(`Medical sheet - ${sheet.name}`, "")}`));
+      }
+      const comms = ctx.sqlite.prepare("SELECT body FROM comms_plans WHERE id = ?").pluck().get(folder.id) as string | undefined;
+      if (comms) files.push({ name: `${folder.prefix}keeping-in-touch.json`, text: json(JSON.parse(comms)) });
+    }
+    // A sheet of someone in no household is not left out.
     const name = namer();
-    const files = sheets.map((sheet) =>
-      sheet.armor
-        ? { name: name(`Medical sheet - ${sheet.name}`, ".asc"), text: sheet.armor }
-        : {
-            name: name(`Medical sheet - ${sheet.name}`, ".json"),
-            text: json({
-              name: sheet.name,
-              created: iso(sheet.createdAt),
-              updated: iso(sheet.updatedAt),
-              sheet: JSON.parse(sheet.record ?? "{}"),
-            }),
-          },
-    );
-    if (comms) files.push({ name: "keeping-in-touch.json", text: json(JSON.parse(comms)) });
+    for (const sheet of sheets.filter((entry) => !written.has(entry)))
+      files.push(sheetFile(sheet, name(`Medical sheet - ${sheet.name}`, "")));
     return { count: files.length, files };
+  },
+);
+
+// ── Households and people ──
+
+const households = textSection(
+  "households",
+  "Households and people",
+  "JSON",
+  "`households.json`: each household, whether it stays put or moves, its home or where it was last, its country, and who is in it. `people.json`: everyone on the People list with their needs (age, energy and water a day) and the households they are in. `household-book.json` holds the household book's answers; with several households there is one for each, named after it.",
+  (ctx) => {
+    const service = ctx.services.households;
+    const list = service.list();
+    const people = service.people.list();
+    const nameOf = new Map(list.map((household) => [household.id, household.name]));
+    const personName = new Map(people.map((person) => [person.id, person.name]));
+    const files: Array<{ name: string; text: string }> = [];
+    // The one household Outpost always has, with nobody in it, is nothing of a person's own.
+    if (people.length > 0 || list.length > 1) {
+      files.push({
+        name: "households.json",
+        text: json(
+          list.map((household) => ({
+            name: household.name,
+            kind: household.kind,
+            home: household.home
+              ? {
+                  name: household.home.name,
+                  lat: household.home.lat,
+                  lon: household.home.lon,
+                  asOf: household.home.at ? iso(household.home.at) : null,
+                }
+              : null,
+            country: household.country,
+            people: household.personIds.map((id) => personName.get(id) ?? ""),
+          })),
+        ),
+      });
+      files.push({
+        name: "people.json",
+        text: json(
+          people.map((person) => ({
+            name: person.name,
+            kind: person.kind,
+            ageBand: person.band,
+            sex: person.sex,
+            kcalPerDay: person.kcalPerDay,
+            drinkingLitres: person.drinkingLitres,
+            allUsesLitres: person.allUsesLitres,
+            note: person.note,
+            households: person.householdIds.map((id) => nameOf.get(id) ?? id),
+          })),
+        ),
+      });
+    }
+    const books = ctx.sqlite.prepare("SELECT id, answers FROM household_book ORDER BY id").all() as Array<{ id: string; answers: string }>;
+    const name = namer();
+    for (const book of books) {
+      const named = list.length > 1 && nameOf.has(book.id) ? `household-book - ${nameOf.get(book.id)}` : "household-book";
+      files.push({ name: name(named, ".json"), text: json(JSON.parse(book.answers)) });
+    }
+    return { count: files.length === 0 ? 0 : list.length + people.length + books.length, files };
   },
 );
 
@@ -570,6 +679,7 @@ export const SECTIONS: Section[] = [
   radioPlans,
   powerPlans,
   papers,
+  households,
   board,
   documents,
 ];

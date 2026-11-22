@@ -22,6 +22,8 @@ import { Notice, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox, Progress, Skeleton } from "@/components/ui/misc";
+import { useHouseholds } from "@/features/households/use-household";
+import { listWords } from "@/features/households/words";
 import { api, errorMessage } from "@/lib/api";
 import { useServerConnection, useServerEvent } from "@/lib/events";
 import { usePageVisible } from "@/lib/page-visible";
@@ -30,6 +32,18 @@ import { FolderPicker, type PickedFolder } from "./folder-picker";
 import { dialogColumn, phoneSheet, phoneSheetFooter, SwitchRow } from "./parts";
 
 const steps = ["Where", "What to take", "Check and write"] as const;
+
+/** A drive carries every household's people and papers: with several, it says which. */
+function DriveHouseholds() {
+  const households = useHouseholds();
+  const list = Array.isArray(households.data?.households) ? households.data.households : [];
+  if (list.length < 2) return null;
+  return (
+    <p className="mt-3 text-small text-ink-muted" data-testid="drive-households">
+      It carries every household, with its people, supplies, plans and papers: {listWords(list.map((household) => household.name))}.
+    </p>
+  );
+}
 
 const FINISHED = ["succeeded", "failed", "cancelled"];
 
@@ -340,6 +354,7 @@ function Wizard({ status, onClose, startAt }: { status: PortableStatus; onClose:
                   />
                 ) : null}
               </div>
+              <DriveHouseholds />
 
               {collections.isPending ? (
                 <div className="mt-3 grid gap-2" aria-busy>

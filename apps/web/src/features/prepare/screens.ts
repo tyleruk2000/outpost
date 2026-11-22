@@ -10,6 +10,7 @@ import {
   ClipboardList,
   CloudSun,
   HeartPulse,
+  House,
   IdCard,
   NotebookTabs,
   Package,
@@ -21,6 +22,15 @@ import {
 import type { SectionScreen } from "@/components/section";
 
 export const prepareScreens: SectionScreen[] = [
+  // Households and people (features/households): first, since everything below is kept for one.
+  {
+    to: "/prepare/households",
+    label: "Households",
+    icon: House,
+    keywords: "household people family members who lives here pets second home caravan campervan car hiking group portable current switch",
+    about:
+      "The homes Outpost keeps things for and the people in each: your own, the family's, a second place, or a caravan on the move. Choose which is current.",
+  },
   {
     to: "/prepare/plans",
     label: "Emergency plans",

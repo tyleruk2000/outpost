@@ -112,6 +112,13 @@ Every change publishes `households.changed`. The web app's event provider
 it; when `data.currentChanged` is set it resets every cached query, so each screen
 fetches its own again and nothing of the other household is shown meanwhile.
 
+The screens: Prepare › Households (`features/households/households-page.tsx`, the list,
+a new household and the People list) and each household's page (`household-page.tsx`).
+`<ForHousehold />` (`for-household.tsx`) is the "For <name> · Change" line under a
+per-household screen's title, nothing with one household; `HouseholdSwitcher`
+(`switcher.tsx`) is in the sidebar and the More sheet with two or more; the people rows
+are `PeopleEditor` (`people-editor.tsx`), which Supplies' Household tab uses too.
+
 `features/households/use-household.ts`: `useHouseholds()` (the list and `currentId`),
 `useHousehold()` (`{ household, home, country, several, households }` for the current
 one), `usePeople()`, `useSetCurrentHousehold()`. Query keys start with `households`.
@@ -164,13 +171,4 @@ power plans work on the current household:
 
 Hard-coded `"household"` ids and Home lookups the per-household packages replace:
 
-- One-row ids: `export-all/sections.ts` (the comms query). (Supplies, the household
-  papers and the garden are keyed by the current household.)
-- Rows inserted elsewhere take the column default, `'household'`.
-- Server Home lookups (`homePlaceOf`): `weather/service.ts` (two), `tools/where.ts`,
-  `mesh/service.ts` and `games/allotment.ts` (these two take `first()`).
-- Web Home lookups (`homePlaceOf` or `useHomeCountry`): maps, layers (food panel, dataset
-  manager), frequencies, satellites (page and map), explore suggestions, solar clock,
-  heard (page, APRS weather), weather places.
-- Erase everything, the database inspector and the table checks already know the new
-  tables; Export everything and the drive screen do not yet say which household.
+TODO-INTEGRATOR

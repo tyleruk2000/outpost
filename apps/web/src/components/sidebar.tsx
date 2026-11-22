@@ -1,6 +1,7 @@
 import { ChevronRight, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
 import { type ReactNode, type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router";
+import { HouseholdSwitcher } from "@/features/households/switcher";
 import { useActiveJobs } from "@/lib/queries";
 import { cn, modKey } from "@/lib/utils";
 import { Lamp } from "./lamp";
@@ -351,6 +352,8 @@ export function Sidebar({
             </>
           ) : null}
         </button>
+        {/* With two or more households, which one is current, and a way to change it. */}
+        <HouseholdSwitcher collapsed={collapsed} className="mt-1" />
       </div>
 
       {/* The one part that scrolls: the screens, then the tree of pages. What looks after the library stays in view below. */}
