@@ -148,6 +148,11 @@ test.describe("Prepare at 320 with the Largest text", () => {
       "/prepare/supplies",
       "/prepare/supplies?view=shopping",
       "/prepare/supplies?view=household",
+      "/prepare/book",
+      "/prepare/book?step=people",
+      "/prepare/book?step=places",
+      "/prepare/book?step=readiness",
+      "/prepare/book?step=book",
     ]) {
       await page.goto(where);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
@@ -161,7 +166,18 @@ test.describe("Tabs, fields and leaving with changes not saved", () => {
   test("Tab goes from the units to the chosen weather tab after a tab was pressed, never to the row of tabs", async ({ page }) => {
     await page.goto("/prepare/weather");
     await page.getByRole("tab", { name: "Warnings" }).click();
-    await page.getByRole("radio", { name: "°F" }).focus();
+    // The tab is chosen by ?view=: wait for the screen to have drawn itself again for it.
+    await expect(page).toHaveURL(/view=warnings/);
+    await expect(page.getByRole("tabpanel", { name: "Warnings" })).toBeVisible();
+    // Focus what comes just before the row of tabs (the units, or a place's choices when there are places), then Tab.
+    await page.evaluate(() => {
+      const list = document.querySelector('[role="tablist"]')!;
+      const before = [...document.querySelectorAll<HTMLElement>('main button, main a[href], main input, main [tabindex="0"]')].filter(
+        (element) =>
+          !list.contains(element) && element.tabIndex >= 0 && list.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_PRECEDING,
+      );
+      before.at(-1)!.focus();
+    });
     await page.keyboard.press("Tab");
     await expect(page.getByRole("tab", { name: "Warnings" })).toBeFocused();
   });

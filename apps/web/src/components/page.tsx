@@ -104,19 +104,23 @@ export function Section({
   description,
   actions,
   className,
+  level = 2,
   children,
 }: {
   title: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
   className?: string;
+  /** The heading's level: 3 for a section inside a part of the screen that has a heading of its own. */
+  level?: 2 | 3;
   children: ReactNode;
 }) {
+  const Heading = level === 3 ? "h3" : "h2";
   return (
     <section className={cn("mt-10 first:mt-0", className)}>
       <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-lead font-semibold text-ink">{title}</h2>
+          <Heading className="text-lead font-semibold text-ink">{title}</Heading>
           {description ? <p className="mt-0.5 text-small text-ink-muted">{description}</p> : null}
         </div>
         {actions}

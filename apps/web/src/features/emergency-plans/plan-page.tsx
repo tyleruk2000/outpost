@@ -20,7 +20,7 @@ import { type ReactNode, useCallback, useEffect, useRef, useState } from "react"
 import { flushSync } from "react-dom";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { LeaveGuard } from "@/components/leave-guard";
-import { ErrorState, Notice, Page, PageHeader, Section } from "@/components/page";
+import { ErrorState, JumpLinks, Notice, Page, PageHeader, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
@@ -178,24 +178,6 @@ function Part({ id, children }: { id: string; children: ReactNode }) {
     <div id={id} className="mt-10 scroll-mt-16 first:mt-0 md:scroll-mt-6 [&>section]:mt-0">
       {children}
     </div>
-  );
-}
-
-/** The parts of the plan as links, at its top: on a phone the plan is long, and a part is a press away. */
-function JumpList() {
-  return (
-    <nav aria-label="Parts of this plan" className="mb-8">
-      <p className="text-small font-medium text-ink">On this page</p>
-      <ul className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-small">
-        {PARTS.map((part) => (
-          <li key={part.id}>
-            <a href={`#${part.id}`} className="inline-flex min-h-11 items-center text-primary underline underline-offset-2 md:min-h-6">
-              {part.label}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </nav>
   );
 }
 
@@ -381,7 +363,8 @@ export default function EmergencyPlanPage() {
         </Notice>
       ) : null}
 
-      <JumpList />
+      {/* The parts of the plan as links, at its top: on a phone the plan is long, and a part is a press away. */}
+      <JumpLinks label="Parts of this plan" items={[...PARTS]} className="mt-0" />
 
       <Part id="plan-what">
         <Section title="What it is for">

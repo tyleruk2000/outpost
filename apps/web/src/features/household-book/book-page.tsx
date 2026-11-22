@@ -265,8 +265,9 @@ function Summary({ answers, madeAt, pages }: { answers: BookAnswers; madeAt: num
   return (
     <div className="grid gap-2">
       <p className="text-body text-ink">
-        {madeAt ? `Last made on ${formatDate(madeAt)}${pages ? `, ${plural(pages, "page")}` : ""}.` : "Not made yet."} Make it again
-        whenever the household, its plans or its places change: the new book says what changed since.
+        {madeAt
+          ? `Last made on ${formatDate(madeAt)}${pages ? `, ${plural(pages, "page")}` : ""}. Make it again whenever the household, its plans or its places change: the new book says what changed since.`
+          : "Not made yet. Once it is, make it again whenever the household, its plans or its places change: the new book says what changed since."}
       </p>
       <Rows>
         {lines.map((line) => (
