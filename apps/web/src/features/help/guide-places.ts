@@ -50,9 +50,10 @@ export function findGuides(typed: string, index: Index | null): Place[] {
       if (matchesWords(title, typed)) {
         sections.push({
           to: sectionPath(guide.slug, id),
-          label: title,
+          // One rule for every place: "where it opens: what it is". A section of a guide opens under Help, at its guide.
+          label: `${entry.title} › ${title}`,
           icon: BookMarked,
-          parent: { to, label: entry.title },
+          parent: help,
           section: true,
         });
       }

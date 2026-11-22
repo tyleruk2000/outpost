@@ -103,6 +103,9 @@ describe("finding a guide in the quick search", () => {
     const found = findGuides("raspberry pi", GUIDE_INDEX);
     expect(found[0]?.to).toMatch(/^\/help\/deployment#h-/);
     expect(found[0]?.label).toMatch(/Raspberry Pi/);
+    // Where it opens, then what it is: under Help, at its guide.
+    expect(found[0]?.parent?.label).toBe("Help");
+    expect(found[0]?.label).toMatch(/^Installing and running Outpost › /);
   });
 
   it("finds guides by their everyday words and their sections", () => {

@@ -2,6 +2,9 @@
  * Finding a place to go by the words a person types: the quick search's "Go to" list and the
  * search page's. A place is a screen of the navigation (nav.ts) or a section of Settings, and
  * is found by its name, the name of the screen it is under, and the everyday words given for it.
+ *
+ * Every place, here and in the guides (features/help/guide-places.ts), reads the same way: where it opens, then
+ * what it is ("Radio: Repeaters", "Settings: Backup", "Help: Storage", "Help: Storage › Automatic backups").
  */
 import { type ChildScreen, everyScreen, knowledgeNav, mapSections, type NavItem, settingsSections, upkeepNav } from "./nav";
 

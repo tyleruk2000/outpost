@@ -17,7 +17,7 @@ test("from Home, the quick search finds the Raspberry Pi in the deployment guide
   await page.getByRole("button", { name: "Quick search" }).click();
   const palette = page.getByRole("dialog", { name: "Search and go to" });
   await palette.getByRole("combobox").fill("raspberry pi");
-  const option = palette.getByRole("option", { name: /^Installing and running Outpost: .*Raspberry Pi/ }).first();
+  const option = palette.getByRole("option", { name: /^Help: Installing and running Outpost › .*Raspberry Pi/ }).first();
   await expect(option).toBeVisible();
   await option.click();
 
