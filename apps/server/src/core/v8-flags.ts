@@ -33,9 +33,9 @@
  *   was reworked (wrappers are now counted handles), which may or may not have removed
  *   the race; nothing in it says so.
  * - Without the flag, 2,000 fresh processes each starting 2 to 8 such workers at once
- *   (some with 32 and 64 MB heaps, 12 at a time on 12 cores) and a full server test run
- *   all ended normally. So did 1,450 on Node 24, where the fault was seen, so this shows
- *   nothing either way.
+ *   (some with 32 and 64 MB heaps, 12 at a time on 12 cores) ended normally, and a full
+ *   server test run beside the web tests (load average over 200) had no engine crash.
+ *   So did 1,450 on Node 24, where the fault was seen, so this shows nothing either way.
  * The fault is not shown to be fixed, so the flag stays.
  */
 import v8 from "node:v8";

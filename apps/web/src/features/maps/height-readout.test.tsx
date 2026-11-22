@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/lib/api";
 import { setHeightUnit } from "@/lib/heights";
+import { PACE_MS } from "./ground-height";
 import type { LatLon } from "./lib/geo";
 import type { MapEngine } from "./map/engine";
 import { MapFooter, type ReadoutHeights } from "./map-footer";
@@ -112,14 +113,17 @@ describe("the height in the readout", () => {
     act(() => map.pointer({ lat: 54.5, lon: -3.5 }));
     await waitFor(() => expect(figure()).toHaveTextContent("· 545 m"));
     const before = asked.mock.calls.length;
+    const started = Date.now();
     for (let step = 1; step <= 30; step += 1) {
       act(() => map.pointer({ lat: 54.5 + step * 0.01, lon: -3.5 }));
       // Never blank between one figure and the next.
       expect(figure()).not.toBeNull();
       await new Promise((resolve) => setTimeout(resolve, 10));
     }
-    // 300 ms of movement asks a few times, not thirty.
-    expect(asked.mock.calls.length - before).toBeLessThanOrEqual(5);
+    // About 300 ms of movement asks a few times, not thirty: once each PACE_MS, and once
+    // more at each end. Measured, because on a busy machine the 30 steps take longer.
+    const paces = Math.ceil((Date.now() - started) / PACE_MS);
+    expect(asked.mock.calls.length - before).toBeLessThanOrEqual(paces + 2);
     await waitFor(() => expect(figure()).toHaveTextContent("· 548 m"));
   });
 
