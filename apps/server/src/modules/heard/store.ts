@@ -116,6 +116,14 @@ export interface StationWrite {
 export const MOST_STATIONS_LISTED = 5000;
 export const MOST_TRAIL = 500;
 export const MOST_REPORTS = 20_000;
+/**
+ * Stations of one source kept: anything in radio range (or on the network, for a decoder
+ * over TCP) can send callsigns or MMSIs without end. Past this the longest unheard ones,
+ * never a pinned one, are taken off with their positions.
+ */
+export const MOST_STATIONS_KEPT = 20_000;
+/** Positions of one station kept, the oldest taken off first: a beacon every 30 s for three days and more. */
+export const MOST_REPORTS_KEPT = 10_000;
 
 export function createHeardStore(ctx: AppContext) {
   const sqlite = ctx.sqlite;
@@ -136,7 +144,18 @@ export function createHeardStore(ctx: AppContext) {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
 
+  const countSource = sqlite.prepare("SELECT count(*) AS n FROM heard_stations WHERE source = ?");
+  const longestUnheard = sqlite.prepare("SELECT id FROM heard_stations WHERE source = ? AND pinned = 0 ORDER BY last_at LIMIT ?");
+  const deleteStationReports = sqlite.prepare("DELETE FROM heard_reports WHERE station_id = ?");
+  const deleteStation = sqlite.prepare("DELETE FROM heard_stations WHERE id = ?");
+  const trimReports = sqlite.prepare(
+    "DELETE FROM heard_reports WHERE id IN (SELECT id FROM heard_reports WHERE station_id = ? ORDER BY at, id LIMIT ?)",
+  );
+  const setReports = sqlite.prepare("UPDATE heard_stations SET reports = ? WHERE id = ?");
+
   const write = sqlite.transaction((writes: StationWrite[]) => {
+    const added = new Set<HeardSourceId>();
+    const overfull = new Map<string, number>();
     for (const entry of writes) {
       const row = selectByKey.get(entry.source, entry.key) as StationRow | undefined;
       const f = entry.fields;
@@ -171,7 +190,11 @@ export function createHeardStore(ctx: AppContext) {
         reports: (row?.reports ?? 0) + entry.reports.length,
       };
       if (row) updateStation.run(next);
-      else insertStation.run(next);
+      else {
+        insertStation.run(next);
+        added.add(entry.source);
+      }
+      if (next.reports > MOST_REPORTS_KEPT) overfull.set(next.id, next.reports);
       for (const report of entry.reports)
         insertReport.run(
           next.id,
@@ -186,6 +209,18 @@ export function createHeardStore(ctx: AppContext) {
           report.rssi,
           report.hops,
         );
+    }
+    for (const [id, reports] of overfull) {
+      const removed = trimReports.run(id, reports - MOST_REPORTS_KEPT).changes;
+      setReports.run(reports - removed, id);
+    }
+    for (const source of added) {
+      const over = (countSource.get(source) as { n: number }).n - MOST_STATIONS_KEPT;
+      if (over <= 0) continue;
+      for (const { id } of longestUnheard.all(source, over) as Array<{ id: string }>) {
+        deleteStationReports.run(id);
+        deleteStation.run(id);
+      }
     }
   });
 
