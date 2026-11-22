@@ -53,7 +53,7 @@ export function ParentPicker({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         id={id}
-        className="flex min-h-9 w-full items-center justify-between gap-2 rounded-control border border-border-strong bg-page px-3 py-1.5 text-left text-small text-ink transition-colors hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus/30 max-md:min-h-11"
+        className="flex min-h-9 w-full items-center justify-between gap-2 rounded-control border border-border-strong bg-page px-3 py-1.5 text-left text-small text-ink transition-colors hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus max-md:min-h-11"
       >
         <span className="min-w-0">
           <span className="block truncate">{value ? titleOf(value.title) : "Top level of your notes"}</span>
@@ -63,7 +63,8 @@ export function ParentPicker({
       </PopoverTrigger>
       <PopoverContent className="w-(--radix-popover-trigger-width) min-w-64 p-0">
         <Command shouldFilter={false} loop label="Put the pages under">
-          <div className="flex items-center gap-2.5 border-b border-border px-3">
+          {/* The search field draws no outline of its own: the row around it, icon and all, takes the fields' 2 px focus ring. */}
+          <div className="flex items-center gap-2.5 rounded-t-[inherit] border-b border-border px-3 focus-within:ring-2 focus-within:ring-focus focus-within:ring-inset">
             <Search aria-hidden className="size-4 shrink-0 text-ink-muted" />
             <Command.Input
               autoFocus
