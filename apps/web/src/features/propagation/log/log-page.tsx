@@ -29,6 +29,7 @@ import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Progress, Select, Skeleton } from "@/components/ui/misc";
 import { LicenceLine } from "@/features/radio/licence";
+import { ScrollBox } from "@/features/radio/scroll-box";
 import { errorMessage } from "@/lib/api";
 import { formatNumber, plural } from "@/lib/utils";
 import { AntennaPicker, antennaChoices } from "../antenna-picker";
@@ -320,36 +321,40 @@ function LevelsTable({ levels, caption, shares }: { levels: Levels; caption: str
   const cell = (count: number, of: number) =>
     shares && of > 0 ? `${formatNumber(count)} (${Math.round((count / of) * 100)}%)` : formatNumber(count);
   return (
-    <table className="tabular mt-3 w-full max-w-2xl text-small">
-      <caption className="mb-1 text-left text-ink-muted">{caption}</caption>
-      <thead>
-        <tr className="border-b border-border-strong text-left text-ink-muted">
-          <th scope="col" className="py-1.5 pr-3 font-medium">
-            The engine's reliability
-          </th>
-          <th scope="col" className="px-3 py-1.5 text-right font-medium">
-            Contacts made or stations heard
-          </th>
-          <th scope="col" className="py-1.5 pl-3 text-right font-medium">
-            Calls not heard
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        {COMPARISON_LEVELS.map((level) => {
-          const counts = levels.find((item) => item.id === level.id) ?? { contact: 0, heard: 0, failed: 0 };
-          return (
-            <tr key={level.id} className="border-b border-border">
-              <th scope="row" className="py-1.5 pr-3 text-left font-medium text-ink">
-                {level.label}
-              </th>
-              <td className="px-3 py-1.5 text-right text-ink">{cell(counts.contact + counts.heard, made)}</td>
-              <td className="py-1.5 pl-3 text-right text-ink">{cell(counts.failed, failed)}</td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+    // With large text on a phone the three columns are wider than the screen: the table scrolls in its own box,
+    // and the page does not scroll sideways (WCAG 1.4.10).
+    <ScrollBox label={caption} className="scroll-quiet mt-3 max-w-2xl overflow-x-auto">
+      <table className="tabular w-full text-small">
+        <caption className="mb-1 text-left text-ink-muted">{caption}</caption>
+        <thead>
+          <tr className="border-b border-border-strong text-left text-ink-muted">
+            <th scope="col" className="py-1.5 pr-3 font-medium">
+              The engine's reliability
+            </th>
+            <th scope="col" className="px-3 py-1.5 text-right font-medium">
+              Contacts made or stations heard
+            </th>
+            <th scope="col" className="py-1.5 pl-3 text-right font-medium">
+              Calls not heard
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {COMPARISON_LEVELS.map((level) => {
+            const counts = levels.find((item) => item.id === level.id) ?? { contact: 0, heard: 0, failed: 0 };
+            return (
+              <tr key={level.id} className="border-b border-border">
+                <th scope="row" className="py-1.5 pr-3 text-left font-medium text-ink">
+                  {level.label}
+                </th>
+                <td className="px-3 py-1.5 text-right text-ink">{cell(counts.contact + counts.heard, made)}</td>
+                <td className="py-1.5 pl-3 text-right text-ink">{cell(counts.failed, failed)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </ScrollBox>
   );
 }
 
@@ -417,7 +422,10 @@ function Comparison({ result }: { result: ComparisonResult }) {
         </ul>
       </div>
       {result.rows.length > 0 ? (
-        <div className="scroll-quiet mt-5 max-h-96 overflow-auto border-y border-border">
+        <ScrollBox
+          label="Each entry compared, with the engine's figures for it"
+          className="scroll-quiet mt-5 max-h-96 overflow-auto border-y border-border"
+        >
           <table className="tabular w-full min-w-[40rem] text-small">
             <caption className="sr-only">Each entry compared, with the engine's figures for it</caption>
             <thead className="sticky top-0 bg-page">
@@ -469,7 +477,7 @@ function Comparison({ result }: { result: ComparisonResult }) {
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollBox>
       ) : null}
       {result.rows.length > 200 ? (
         <p className="mt-1 text-small text-ink-muted">The first 200 of {formatNumber(result.rows.length)} compared are listed.</p>
@@ -812,9 +820,9 @@ export default function LogPage() {
           <Disclosure summary="What is read from an ADIF file" className="mt-2">
             <p className="text-ink-muted">
               ADIF files are read as version {log.data.adif.version} of the specification describes the .adi form ({log.data.adif.source},
-              read {log.data.adif.read}). Fields read: <span className="font-mono">{log.data.adif.fields.join(", ")}</span>. A position is
-              taken only from a latitude and longitude or a locator of four characters or more that the file states. The same contact is one
-              with the same minute, callsigns, band and mode. The XML form (.adx) is not read.
+              read {log.data.adif.read}). Fields read: <span className="font-mono wrap-anywhere">{log.data.adif.fields.join(", ")}</span>. A
+              position is taken only from a latitude and longitude or a locator of four characters or more that the file states. The same
+              contact is one with the same minute, callsigns, band and mode. The XML form (.adx) is not read.
             </p>
           </Disclosure>
         </div>

@@ -163,6 +163,15 @@
     -webkit-text-size-adjust: 100%;
   }
 
+  /* On a phone the window scrolls under the top bar and the bar of screens at the bottom. What the
+     keyboard moves to is scrolled clear of both, so focus is never hidden behind them (WCAG 2.4.11). */
+  @media (width < 48rem) {
+    html {
+      scroll-padding-top: 4rem;
+      scroll-padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+    }
+  }
+
   body {
     min-height: 100dvh;
     background: var(--page);

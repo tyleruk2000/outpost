@@ -239,7 +239,8 @@ function Attribution({ credits, fold }: { credits: Credit[]; fold: boolean }) {
           <button
             type="button"
             aria-expanded={opened}
-            aria-label={opened ? "Show fewer map credits" : `Show all ${credits.length} map credits`}
+            // The name starts with the words shown, so that a person who speaks to the page can say them (WCAG 2.5.3).
+            aria-label={opened ? "Fewer map credits" : `${credits.length - 1} more: show all ${credits.length} map credits`}
             onClick={() => setOpened((now) => !now)}
             // Small to look at, a line of text, so that the credits are one line and not 44 px of the map; 44 px to
             // touch, by a reach above and below it (maps.css leaves it out of the phone's rule for the same reason).

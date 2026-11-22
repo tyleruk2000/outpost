@@ -44,6 +44,11 @@ of what each feature does are in its own guide.
   from inside another are not.
 - **Not tried:** a pass by hand with a screen reader. No one has used the map, the notes
   editor or the reader with VoiceOver from start to finish.
+- **Radio screens, not tried:** VoiceOver or TalkBack on a real phone reading the
+  propagation charts, the coverage map's legend and a plan's tables; a real iPhone or
+  Android phone's on-screen keyboard over the forms (the phone sizes were browsers set to
+  that size, and WebKit); Morse sent with a real key or paddle while a screen reader runs;
+  the app's own large-text setting with the phone's text size raised as well.
 
 ## Installing and looking after it
 

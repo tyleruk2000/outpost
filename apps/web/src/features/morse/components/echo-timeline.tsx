@@ -7,6 +7,7 @@
  */
 import type { KeyingAnalysis, TimelineSpan, TimelineTracks } from "@outpost/shared";
 import { type KeyboardEvent, type PointerEvent, useId, useState } from "react";
+import { ScrollBox } from "@/features/radio/scroll-box";
 import { cn, formatNumber, plural } from "@/lib/utils";
 
 const PLAYED = "var(--chart-1)";
@@ -166,7 +167,7 @@ export function EchoTimeline({ tracks, analysis }: { tracks: TimelineTracks; ana
         </p>
       </figure>
 
-      <div className="overflow-x-auto">
+      <ScrollBox label="Your timing against standard proportions" className="overflow-x-auto">
         <table className="tabular w-full text-left text-small">
           <caption className="mb-1 text-left font-medium text-ink">Your timing against standard proportions</caption>
           <thead className="text-ink-muted">
@@ -207,11 +208,11 @@ export function EchoTimeline({ tracks, analysis }: { tracks: TimelineTracks; ana
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollBox>
 
       <details className="text-small">
         <summary className="flex min-h-11 cursor-pointer items-center font-medium text-primary md:min-h-0">Element by element</summary>
-        <div className="mt-2 overflow-x-auto">
+        <ScrollBox label="Each element played and keyed" className="mt-2 overflow-x-auto">
           <table className="tabular w-full min-w-[24rem] text-left">
             <caption className="sr-only">Each element played and keyed, with the gap after it</caption>
             <thead className="text-ink-muted">
@@ -249,7 +250,7 @@ export function EchoTimeline({ tracks, analysis }: { tracks: TimelineTracks; ana
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollBox>
       </details>
     </div>
   );

@@ -8,6 +8,7 @@ import { useState } from "react";
 import { ErrorState, Notice, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Badge, Select, Skeleton } from "@/components/ui/misc";
+import { ScrollBox } from "@/features/radio/scroll-box";
 import { useStorage } from "@/lib/queries";
 import { formatDate } from "@/lib/utils";
 import { useDatasets, useDownloadSolar, useEngines } from "./data";
@@ -45,8 +46,8 @@ function DatasetRow({ dataset, action }: { dataset: PropagationDataset; action?:
             </p>
           ) : null}
           <p className="mt-1 text-small text-ink-muted">Terms: {dataset.licence}</p>
-          {dataset.source ? <p className="mt-0.5 font-mono text-[0.75rem] break-all text-ink-muted">{dataset.source}</p> : null}
-          {dataset.sha256 ? <p className="mt-0.5 font-mono text-[0.75rem] break-all text-ink-muted">sha256 {dataset.sha256}</p> : null}
+          {dataset.source ? <p className="mt-0.5 font-mono text-micro break-all text-ink-muted">{dataset.source}</p> : null}
+          {dataset.sha256 ? <p className="mt-0.5 font-mono text-micro break-all text-ink-muted">sha256 {dataset.sha256}</p> : null}
         </div>
         {action}
       </div>
@@ -87,7 +88,7 @@ export function Datasets() {
                 {engine.maxMhz} MHz.
               </p>
               {engine.problem ? <p className="mt-1 text-small text-danger">{engine.problem}</p> : null}
-              {engine.sha256 ? <p className="mt-0.5 font-mono text-[0.75rem] break-all text-ink-muted">sha256 {engine.sha256}</p> : null}
+              {engine.sha256 ? <p className="mt-0.5 font-mono text-micro break-all text-ink-muted">sha256 {engine.sha256}</p> : null}
             </li>
           </Rows>
         ) : null}
@@ -140,7 +141,7 @@ export function Datasets() {
         title="The solar table in use"
         description={`Dated ${formatDate(Date.parse(`${solar.dataDate}T12:00:00Z`))}, ${solar.origin === "included" ? "included with Outpost" : "downloaded"}. NOAA's forecast of the smoothed sunspot number, with the low and high figures it gives.`}
       >
-        <div className="max-h-72 overflow-auto rounded-panel border border-border">
+        <ScrollBox label="The solar table in use, by month" className="max-h-72 overflow-auto rounded-panel border border-border">
           <table className="tabular w-full text-small">
             <thead className="sticky top-0 bg-surface text-left text-ink-muted">
               <tr>
@@ -171,7 +172,7 @@ export function Datasets() {
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollBox>
       </Section>
 
       <Section title="Looked at and not offered">

@@ -10,6 +10,7 @@ import { RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/misc";
+import { ScrollBox } from "@/features/radio/scroll-box";
 import { timeAgo } from "@/lib/utils";
 import { usePiDecoder } from "./data";
 
@@ -98,9 +99,12 @@ export function PiDecoders({ status, disabled }: { status: PiDecodersStatus; dis
                 )
               ) : null}
               {decoder.log.length > 0 ? (
-                <pre className="max-h-40 overflow-auto rounded-control bg-surface px-2 py-1.5 font-mono text-micro text-ink">
-                  {decoder.log.join("\n")}
-                </pre>
+                <ScrollBox
+                  label={`What ${about.name} last wrote`}
+                  className="max-h-40 overflow-auto rounded-control bg-surface px-2 py-1.5"
+                >
+                  <pre className="font-mono text-micro text-ink">{decoder.log.join("\n")}</pre>
+                </ScrollBox>
               ) : null}
               {id === "direwolf" && decoder.running ? (
                 <p className="text-small text-ink-muted">

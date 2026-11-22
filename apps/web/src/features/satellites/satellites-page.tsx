@@ -40,6 +40,7 @@ import { useMarkers } from "@/features/maps/data";
 import type { PlaceField } from "@/features/propagation/data";
 import { PlaceInput } from "@/features/propagation/place-field";
 import { LicenceLine, useRadioLicence } from "@/features/radio/licence";
+import { ScrollBox } from "@/features/radio/scroll-box";
 import { useClockStyle } from "@/lib/clock";
 import { usePageVisible } from "@/lib/page-visible";
 import { cn, formatDate, plural, timeAgo } from "@/lib/utils";
@@ -248,7 +249,7 @@ function PassesTab({
   return (
     <>
       <div className="mb-4 flex flex-wrap items-end gap-4">
-        <Field label="Find a satellite" className="min-w-[14rem] flex-1">
+        <Field label="Find a satellite" className="min-w-[min(14rem,100%)] flex-1">
           {(ids) => (
             <Input
               {...ids}
@@ -390,7 +391,7 @@ function Transmitters({
       </p>
     );
   return (
-    <div className="overflow-x-auto">
+    <ScrollBox label="Transmitters" className="overflow-x-auto">
       <table className="w-full min-w-[34rem] text-left text-small">
         <caption className="sr-only">Transmitters, with the frequencies corrected for Doppler now</caption>
         <thead className="text-ink-muted">
@@ -465,7 +466,7 @@ function Transmitters({
         {licensed ? "" : "Sending to a satellite needs an amateur licence: uplinks are listed for reference."} From SatNOGS DB (CC BY-SA
         4.0); a transmitter listed as in use may still be off.
       </p>
-    </div>
+    </ScrollBox>
   );
 }
 
@@ -485,7 +486,7 @@ function DopplerThroughPass({
   const rows = path.filter((_, index) => index % step === 0 || index === path.length - 1);
   return (
     <Disclosure summary={`What to tune to through the pass: ${transmitter.description}`} className="mt-4">
-      <div className="overflow-x-auto">
+      <ScrollBox label="Look angles and frequencies through the pass" className="overflow-x-auto">
         <table className="w-full min-w-[28rem] text-left text-small">
           <caption className="sr-only">Look angles and Doppler-corrected frequencies through the pass</caption>
           <thead className="text-ink-muted">
@@ -516,7 +517,7 @@ function DopplerThroughPass({
             })}
           </tbody>
         </table>
-      </div>
+      </ScrollBox>
     </Disclosure>
   );
 }
@@ -697,7 +698,7 @@ function OneSatellite({
   return (
     <>
       <div className="mb-4 flex flex-wrap items-end gap-4">
-        <Field label="Satellite" className="min-w-[16rem] flex-1">
+        <Field label="Satellite" className="min-w-[min(16rem,100%)] flex-1">
           {(ids) => (
             <Select
               id={ids.id}

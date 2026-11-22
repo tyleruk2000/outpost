@@ -82,6 +82,8 @@ export function AirportFrequencies({ frequencies }: { frequencies: AirportFreque
         <>
           <ul
             aria-label="Radio frequencies"
+            // biome-ignore lint/a11y/noNoninteractiveTabindex: the list scrolls in the card, and the keyboard must be able to scroll it
+            tabIndex={0}
             className="scroll-quiet mt-1 max-h-[10.5rem] divide-y divide-border overflow-y-auto overscroll-contain border-y border-border pr-1 sm:max-h-52"
           >
             {frequencies.list.map((entry, index) => (
