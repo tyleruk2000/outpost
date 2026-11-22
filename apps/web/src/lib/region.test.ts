@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { guessEmergencyNumber, templatesWhereLine } from "@/features/emergency-plans/words";
+import { guessEmergencyNumber, templatesFor, templatesWhereLine } from "@/features/emergency-plans/words";
+import { rootTopicHint, suggestedRoot } from "@/features/mesh/root-topic";
+import { energyTableLine } from "@/features/supplies/household-view";
 import {
   appLocale,
   deviceRegion,
@@ -98,5 +100,44 @@ describe("what a new plan says about its templates", () => {
     );
     expect(templatesWhereLine(null, "US")).toMatch(/^The templates are drawn mostly from UK guidance/);
     expect(templatesWhereLine(null, null)).toContain("Outpost has no templates from your own country's government");
+  });
+});
+
+describe("templates from the household's own government", () => {
+  it("lists them first and says whose they are, in Australia and the Netherlands", () => {
+    expect(
+      templatesFor({ code: "AU" })
+        .slice(0, 2)
+        .map((template) => template.id),
+    ).toEqual(["qld-evacuate", "qld-storm"]);
+    expect(templatesFor(null, "NL")[0]!.id).toBe("nl-72-hours");
+    expect(templatesFor(null, "GB")[0]!.id).toBe("power-cut");
+    expect(templatesWhereLine({ code: "AU", name: "Australia" })).toMatch(
+      /^Home is in Australia: the first 2 templates are from the Queensland Government, Australia \(Leaving home \(Queensland\), Storm or cyclone \(Queensland\)\)\./,
+    );
+    expect(templatesWhereLine(null, "NL")).toMatch(/^The first template is from the Government of the Netherlands/);
+  });
+});
+
+describe("a Meshtastic radio's root topic", () => {
+  it("starts on the region Meshtastic's table gives Home's country, else the device's, else none", () => {
+    expect(suggestedRoot({ code: "US" }, "GB")).toBe("msh/US");
+    expect(suggestedRoot(null, "NZ")).toBe("msh/ANZ");
+    expect(suggestedRoot(null, "DE")).toBe("msh/EU_868");
+    expect(suggestedRoot(null, "ZZ")).toBeNull();
+    expect(rootTopicHint({ code: "IN", name: "India" }, "GB")).toBe(
+      "As set on the radio. Home is in India: Meshtastic's table of regions by country gives IN, so a radio with none set uses msh/IN.",
+    );
+    expect(rootTopicHint(null, null)).toMatch(/^As set on the radio. A radio with none set uses msh\//);
+  });
+});
+
+describe("the energy table Supplies works to", () => {
+  it("says which table, and why", () => {
+    expect(energyTableLine("home", { table: "uk", country: "GB" }, "United Kingdom")).toBe(
+      "Home is in United Kingdom: the UK's figures (Public Health England) are used.",
+    );
+    expect(energyTableLine("home", { table: "international", country: null })).toMatch(/^No saved place has the home icon/);
+    expect(energyTableLine("uk", undefined)).toMatch(/^The UK's figures/);
   });
 });

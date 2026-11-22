@@ -85,6 +85,8 @@ const memberSchema = z
 const householdSchema = z
   .object({
     daysWanted: z.number().int().min(1, "Plan for at least one day.").max(3650),
+    /** Null, or left out by an older screen: by Home's country. */
+    energyTable: z.enum(["uk", "international"]).nullable().default(null),
     drinkingLitres: z.number().finite().min(0.5).max(50),
     allUsesLitres: z.number().finite().min(0.5).max(200),
     waterBasis: z.enum(["drinking", "all"]),

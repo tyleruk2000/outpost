@@ -34,16 +34,19 @@ import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Checkbox, Select, Skeleton } from "@/components/ui/misc";
 import { allMessages, useBoardMessages, useDeviceName } from "@/features/board/data";
+import { useHomeCountry } from "@/features/frequencies/home-country";
 import { LicenceLine } from "@/features/radio/licence";
 import { SettingRow, SettingsSection } from "@/features/settings/parts";
 import { errorMessage } from "@/lib/api";
 import { useClockStyle } from "@/lib/clock";
 import { notify } from "@/lib/notify";
 import { usePageVisible } from "@/lib/page-visible";
+import { deviceRegion } from "@/lib/region";
 import { cn } from "@/lib/utils";
 import { suggestPassword, useMesh, useMeshDevices, useMeshTest, useSaveMeshCore, useSaveMeshtastic } from "./data";
 import { DynamicSecurity, FindBroker, PortInUse, TestBroker } from "./household-broker";
 import { MosquittoGuide } from "./mosquitto-guide";
+import { rootTopicHint, suggestedRoot } from "./root-topic";
 import {
   awayAdvice,
   CHOOSE_BROKER,
@@ -348,6 +351,14 @@ function MeshtasticPart({ data }: { data: MeshResponse }) {
   const [clientUser, setClientUser] = useState(config.client.userName);
   const [clientPassword, setClientPassword] = useState("");
   const [rootTopic, setRootTopic] = useState(config.client.rootTopic || "msh/EU_868");
+  // Before a household broker is saved, the root topic starts on the one for Home's country (else the device's), until typed in.
+  const home = useHomeCountry();
+  const region = deviceRegion();
+  const suggested = suggestedRoot(home, region);
+  const [rootTyped, setRootTyped] = useState(Boolean(config.client.host));
+  useEffect(() => {
+    if (!rootTyped && suggested) setRootTopic(suggested);
+  }, [rootTyped, suggested]);
   const [tls, setTls] = useState(config.client.tls);
   const [ca, setCa] = useState(config.client.ca ?? "");
   const [channels, setChannels] = useState<ChannelDraft[]>(() =>
@@ -529,13 +540,12 @@ function MeshtasticPart({ data }: { data: MeshResponse }) {
             <TextField
               label="Root topic"
               value={rootTopic}
-              onChange={setRootTopic}
+              onChange={(value) => {
+                setRootTyped(true);
+                setRootTopic(value);
+              }}
               monoText
-              hint={
-                status.heardRoot
-                  ? `The radio was last heard under ${status.heardRoot}.`
-                  : "As set on the radio. A radio with none set uses msh/ and its LoRa region: msh/US in the United States, msh/EU_868 in Europe."
-              }
+              hint={status.heardRoot ? `The radio was last heard under ${status.heardRoot}.` : rootTopicHint(home, region)}
             />
             <PasswordField label="Password" value={clientPassword} set={config.client.passwordSet} onChange={setClientPassword} optional />
             <TlsFields tls={tls} onTls={setTls} ca={ca} onCa={setCa} />

@@ -18,11 +18,13 @@
  * rest by modules/manage, counted in the database's figures, and in every backup.
  */
 import {
-  DEFAULT_EMERGENCY_NUMBER,
+  countryAt,
   type EmergencyPlan,
   type EmergencyPlanInput,
   type EmergencyPlanResponse,
   type EmergencyPlanSummary,
+  emergencyNumberFor,
+  homePlaceOf,
   PLAN_KIND_IDS,
   PLAN_LIMITS,
   type PlanBody,
@@ -39,6 +41,7 @@ import type { AppContext } from "../../core/context.ts";
 import { AppError, conflict, notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
 import { communicationPlans, documents, emergencyPlans, markers, notes, nuclearScenarios, powerPlans } from "../../db/schema.ts";
+import { COUNTRIES } from "../layers/countries.ts";
 
 export interface EmergencyPlansService {
   list(): EmergencyPlanSummary[];
@@ -173,7 +176,8 @@ const planSchema = z
       .trim()
       .min(1, "Give the number for the emergency services where you are.")
       .max(20)
-      .default(DEFAULT_EMERGENCY_NUMBER),
+      // Left out: Home's country's number on a new plan (`numberHere`), the plan's own on a change.
+      .optional(),
     reviewEveryDays: z.number().int().min(7, "Ask for a review no more often than once a week.").max(3650).nullable().default(180),
     body: bodySchema,
   })
@@ -495,11 +499,26 @@ export async function registerEmergencyPlans(app: FastifyInstance, ctx: AppConte
 
   const id = (request: { params: unknown }) => idParams.parse(request.params).id;
   app.get("/api/emergency-plans", async () => ({ plans: service.list() }));
-  app.post("/api/emergency-plans", async (request) => service.create(planSchema.parse(request.body)));
+  /**
+   * The number for a new plan that names none: the one listed for Home's country (the
+   * saved place with the home icon, in the smallest Natural Earth box round it), else
+   * 112. The screen offers its own first choice too; this is for anything that asks
+   * without one.
+   */
+  const numberHere = () => {
+    const home = homePlaceOf(ctx.services.maps.annotations.listMarkers());
+    return emergencyNumberFor(home ? countryAt(home, COUNTRIES) : null);
+  };
+  app.post("/api/emergency-plans", async (request) => {
+    const plan = planSchema.parse(request.body);
+    return service.create({ ...plan, emergencyNumber: plan.emergencyNumber ?? numberHere() });
+  });
   app.get("/api/emergency-plans/:id", async (request) => service.get(id(request)));
   app.put("/api/emergency-plans/:id", async (request) => {
-    const { baseUpdatedAt, ...plan } = baseSchema.parse(request.body);
-    return service.update(id(request), planSchema.parse(plan), baseUpdatedAt);
+    const { baseUpdatedAt, ...given } = baseSchema.parse(request.body);
+    const plan = planSchema.parse(given);
+    const emergencyNumber = plan.emergencyNumber ?? service.get(id(request)).plan.emergencyNumber;
+    return service.update(id(request), { ...plan, emergencyNumber }, baseUpdatedAt);
   });
   app.delete("/api/emergency-plans/:id", async (request) => {
     service.remove(id(request));

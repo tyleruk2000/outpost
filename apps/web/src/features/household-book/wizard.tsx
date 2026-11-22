@@ -177,6 +177,7 @@ function PeopleStep({ answers, set, household, sheets }: StepProps & { household
     setHousehold.mutate(
       {
         daysWanted: household.daysWanted,
+        energyTable: household.energyTable ?? null,
         drinkingLitres: household.drinkingLitres,
         allUsesLitres: household.allUsesLitres,
         waterBasis: household.waterBasis,

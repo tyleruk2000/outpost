@@ -59,7 +59,12 @@ const person = (band: HouseholdMember["band"], sex: HouseholdMember["sex"], extr
   note: "",
   ...extra,
 });
-const household = (members: HouseholdMember[], extra: Partial<Household> = {}): Household => ({ ...DEFAULT_HOUSEHOLD, members, ...extra });
+const household = (members: HouseholdMember[], extra: Partial<Household> = {}): Household => ({
+  ...DEFAULT_HOUSEHOLD,
+  energyTable: "uk",
+  members,
+  ...extra,
+});
 
 describe("the planning figures", () => {
   it("are those of PHE's tables 1 and 2 (2016)", () => {

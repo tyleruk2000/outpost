@@ -28,7 +28,10 @@ import {
   daysWords,
   EMERGENCY_NUMBERS,
   type EmergencyPlanResponse,
+  energyTableOf,
+  energyTableSource,
   FLOOD_ZONE_WORDS,
+  FNNE_SOURCE,
   FOOD_WORDS,
   type FrequencyEntry,
   filterFrequencies,
@@ -1082,9 +1085,7 @@ function sourcesBlocks(c: Context): Block[] {
           ", ",
         )}); each layer's publisher and licence is listed under Maps › Layers. OpenStreetMap data © OpenStreetMap contributors, Open Database Licence.`,
     );
-  figures.push(
-    `Energy needs: ${"Public Health England, Government Dietary Recommendations (2016), from SACN (2011)"}, as Supplies uses them.`,
-  );
+  figures.push(`Energy needs: ${c.household ? energyTableSource(energyTableOf(c.household)) : FNNE_SOURCE}, as Supplies uses them.`);
   blocks.push({ kind: "heading", text: "Figures and places" }, { kind: "list", items: figures });
   if (c.attributions.size > 0) blocks.push({ kind: "heading", text: "Licences" }, { kind: "list", items: [...c.attributions] });
   return blocks;

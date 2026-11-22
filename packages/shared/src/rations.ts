@@ -11,7 +11,7 @@
  * bodies describe: everyone reduced, or a full ration kept for those who need it and the
  * rest reduced. A planning aid, not dietary or medical advice.
  */
-import { type AgeBand, ENERGY_BANDS, type MemberSex, tableKcal } from "./supplies.ts";
+import { type AgeBand, ENERGY_BANDS, FNNE_ROWS, type MemberSex, tableKcal } from "./supplies.ts";
 
 export const RATIONS_READ = "2026-11-21";
 
@@ -85,23 +85,7 @@ export interface RationPerson {
   ownKcal: number | null;
 }
 
-/**
- * FNNE annex 1: energy requirements per caput, kcal a day, male, female and both, for a
- * developing-country profile at a "light" activity level (adult weights 60 kg and 52 kg).
- * Ages 1 to 4 are years of their own.
- */
-export const FNNE_ROWS: ReadonlyArray<{ from: number; to: number; male: number; female: number; both: number }> = [
-  { from: 0, to: 0, male: 850, female: 780, both: 820 },
-  { from: 1, to: 1, male: 1250, female: 1190, both: 1220 },
-  { from: 2, to: 2, male: 1430, female: 1330, both: 1380 },
-  { from: 3, to: 3, male: 1560, female: 1440, both: 1500 },
-  { from: 4, to: 4, male: 1690, female: 1540, both: 1620 },
-  { from: 5, to: 9, male: 1980, female: 1730, both: 1860 },
-  { from: 10, to: 14, male: 2370, female: 2040, both: 2210 },
-  { from: 15, to: 19, male: 2700, female: 2120, both: 2420 },
-  { from: 20, to: 59, male: 2460, female: 1990, both: 2230 },
-  { from: 60, to: 200, male: 2010, female: 1780, both: 1890 },
-];
+// FNNE annex 1's rows (`FNNE_ROWS`) live with the Supplies tables, which use them too.
 export const FNNE_PREGNANT_KCAL = 285;
 export const FNNE_LACTATING_KCAL = 500;
 /** SACN: 191 kcal a day in the last trimester only; 330 kcal a day in the first six months of breastfeeding. */

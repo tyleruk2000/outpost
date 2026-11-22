@@ -53,6 +53,7 @@ describe("energy per food", () => {
   it("says how many days of energy are held, on whose figures, and what is not counted", async () => {
     await ok("PUT", "/api/supplies/household", {
       daysWanted: 7,
+      energyTable: "uk",
       drinkingLitres: 3,
       allUsesLitres: 7.5,
       waterBasis: "drinking",
@@ -95,6 +96,7 @@ describe("energy per food", () => {
   it("says plainly when there is nobody to work it out for", async () => {
     await ok("PUT", "/api/supplies/household", {
       daysWanted: 3,
+      energyTable: "uk",
       drinkingLitres: 3,
       allUsesLitres: 7.5,
       waterBasis: "drinking",

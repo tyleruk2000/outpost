@@ -25,6 +25,7 @@ const texts = (pages: Sheet[]) =>
 
 const household: Household = {
   daysWanted: 3,
+  energyTable: "uk",
   drinkingLitres: 3,
   allUsesLitres: 7.5,
   waterBasis: "drinking",

@@ -581,6 +581,7 @@ fetched from any of them.
 | Source | What is used | Terms |
 | --- | --- | --- |
 | Public Health England, *Government Dietary Recommendations* (August 2016), tables 1 and 2 ([PDF](https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/618167/government_dietary_recommendations.pdf)) | Energy a day by age band and sex | Crown copyright, OGL v3.0 |
+| UNHCR, UNICEF, WFP and WHO, *Food and Nutrition Needs in Emergencies* (2002), annex 1 ([PDF](https://iris.who.int/server/api/core/bitstreams/c6f336b9-0c36-4431-80fd-840c05344817/content), read 2026-11-21 for the ration calculator) | Energy a day by year of age and sex, light activity: the table for a household whose Home is outside the UK | Figures quoted, nothing copied |
 | UK government, *Be ready* ([beready.campaign.gov.uk](https://beready.campaign.gov.uk/get-prepared-for-emergencies)) | 3 litres a person a day to drink | A figure quoted |
 | WHO, *Technical notes on drinking-water, sanitation and hygiene in emergencies*, note 9 (WEDC, 2013) ([PDF](https://wedc-knowledge.lboro.ac.uk/resources/who_notes/WHO_TNE_ALL.pdf)) | 7.5 to 15 litres a day for drinking, cooking and basic hygiene (table 9.1) | © WHO 2013, all rights reserved: figures quoted, nothing copied |
 | FEMA, [ready.gov/water](https://www.ready.gov/water) | One US gallon a day for drinking and sanitation; needs can double in heat. Read again 2026-11-21: "Water that has not been commercially bottled should be replaced every six months", the interval of the stored-water check ([readiness.md](readiness.md)); no interval is given for bottled water | US Government work |
@@ -659,6 +660,19 @@ publisher whose terms allow copying are shipped; a test holds this.
 | Queensland Government | https://www.qld.gov.au/legal/copyright | CC BY 4.0, keep the notice, attribute the State. | **Cleared**: "© State of Queensland, CC BY 4.0 (“Triple Zero (000)”, qld.gov.au)." |
 | British Red Cross | https://www.redcross.org.uk/terms-and-conditions | All rights reserved. | **Not cleared**: pointed to, not quoted. |
 | Ready.gov and FEMA | https://www.fema.gov/about/website-information | fema.gov refused (403) on the day; read only through a summarising fetcher; Ready.gov has no terms page of its own. | **Not cleared**: pointed to, not quoted. |
+
+### Templates from other governments (read 2026-11-22)
+
+| Publisher | Terms page | What it allows | Verdict |
+| --- | --- | --- | --- |
+| Queensland Government (Australia), qld.gov.au disaster pages | https://www.qld.gov.au/legal/copyright | As above: CC BY 4.0 (page last reviewed 13 February 2025). | **Cleared**: the two Queensland templates, with the notice above. |
+| Denk vooruit (Ministry of Justice and Security, the Netherlands), english.denkvooruit.nl | https://english.denkvooruit.nl/service/copyright | CC0 for the content, but "CC0 does not apply to photographs, videos, infographics or other images". | **Cleared** for the text. The emergency kit list is an infographic "written out as text", so it is **not used**, nor its water figure. |
+| Rijksoverheid.nl (Government of the Netherlands) | https://www.rijksoverheid.nl/service/copyright | CC0 1.0; a reuse must make clear the government does not necessarily agree with all of it. | **Cleared**, shown with "The Dutch government has not reviewed or endorsed this plan." |
+| BBK (Germany) | https://www.bbk.bund.de/DE/Service/Impressum/impressum_node.html | Texts may not be copied without the BBK's prior consent. | **Not cleared**: no German template. |
+| New Zealand Get Ready (NEMA), getready.govt.nz | https://getready.govt.nz/copyright/ | Refused the request (HTTP 403). | **Not read**: follow-up. |
+| gov.ie (Ireland) | https://www.gov.ie/en/help/copyright/ | Refused the request (HTTP 403). | **Not read**: follow-up. |
+| Canada.ca (Get Prepared) | https://www.canada.ca/en/transparency/terms.html | No answer (timed out twice). | **Not read**: follow-up. |
+| NEMA (Australia), nema.gov.au | https://www.nema.gov.au/copyright | No answer (timed out twice). | **Not read**: follow-up. |
 
 Not used: ICRP (permission needed for any reuse); New Zealand Police (non-commercial private use only, so 111 is given as a fact); the IAEA (its website allows reuse with acknowledgement, per the Internet Archive's copy of its terms, but no page for households was found).
 
@@ -782,6 +796,10 @@ bundled or fetched.
   noncommercial sites to say they are "not affiliated with or endorsed by Meshtastic": the
   screen says "works with" and that sentence, with no logo. The LoRa page's "Check your
   national band plan before transmitting" is linked; Outpost states no country's rules.
+  The [LoRa Region by Country](https://meshtastic.org/docs/configuration/region-by-country/)
+  table (docs version 2.8, read 2026-11-22) gives the first choice of root topic by Home's
+  country (`msh/` and the region); where it lists two regions the first is taken. Facts
+  only, in `packages/shared/src/meshtastic-regions.ts`.
 - **MeshCore** (MIT, © 2025 Scott Powell). Built from `docs/companion_protocol.md`
   (2026-03-08, firmware v1.12.0+; it says it "may be inaccurate"): command and answer bytes,
   little-endian, UTF-8, 133 characters. USB frames from `ArduinoSerialInterface.cpp`

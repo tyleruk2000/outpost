@@ -57,6 +57,7 @@ export * from "./manage.ts";
 export * from "./maps.ts";
 export * from "./merge.ts";
 export * from "./mesh.ts";
+export * from "./meshtastic-regions.ts";
 export * from "./model-choice.ts";
 export * from "./model-trials.ts";
 export * from "./morse/index.ts";
