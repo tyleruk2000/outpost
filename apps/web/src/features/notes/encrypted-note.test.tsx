@@ -10,7 +10,7 @@
  */
 import { encryptedNoteArmor, encryptedNoteDoc, type NoteDetail, type NoteDoc, type UpdateNoteBody } from "@outpost/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { toast } from "sonner";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -304,7 +304,12 @@ beforeEach(() => {
   });
   vi.mocked(toast.error).mockClear();
 });
-afterEach(() => {
+afterEach(async () => {
+  // Leaving the page saves what is unsaved. That save is let finish here, on this test's
+  // clock: left to the shared clean-up after the real clock is back, it would end a second
+  // later in whichever test runs next, and be counted among that test's saves.
+  cleanup();
+  await pass(10 * SLOW_MS);
   lockAll();
   vi.useRealTimers();
 });

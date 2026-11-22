@@ -19,11 +19,11 @@ import { prepareDriveDatabase } from "../src/modules/portable/database.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 import { tempDir } from "./temp.ts";
 
-/** The one port these tests may listen on. */
-const PORT = 9209;
+/** MQTT's own port, for set-ups that name a documentation address nothing answers on. */
+const MQTT_PORT = 1883;
 
-function setMesh(app: TestApp, host: string): void {
-  const value = { meshtastic: { mode: "client", client: { host, port: PORT, userName: "radio", rootTopic: "msh/EU_868" } } };
+function setMesh(app: TestApp, host: string, port = MQTT_PORT): void {
+  const value = { meshtastic: { mode: "client", client: { host, port, userName: "radio", rootTopic: "msh/EU_868" } } };
   app.ctx.db
     .insert(settings)
     .values({ key: "mesh.config", value, updatedAt: Date.now() })
@@ -62,13 +62,14 @@ describe("the mesh set-up and a restore", () => {
       connections.push(socket.remoteAddress ?? "?");
       socket.destroy();
     });
-    await new Promise<void>((resolve) => listener.listen(PORT, "127.0.0.1", resolve));
+    await new Promise<void>((resolve) => listener.listen(0, "127.0.0.1", resolve));
+    const port = (listener.address() as net.AddressInfo).port;
     opened.push(() => new Promise((resolve) => listener.close(() => resolve())));
 
     const home = await createTestApp({}, undefined, { voacapData: false });
     opened.push(() => home.close());
     // Written straight to the row: the home server is not told, so it connects to nothing itself.
-    setMesh(home, "127.0.0.1");
+    setMesh(home, "127.0.0.1", port);
     const backup = await home.app.inject({ method: "GET", url: "/api/backup/download", headers: { host: "localhost" } });
     expect(backup.statusCode).toBe(200);
 

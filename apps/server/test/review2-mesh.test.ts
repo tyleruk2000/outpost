@@ -1,16 +1,23 @@
 /**
  * Security review of the mesh radio link: Outpost's own MQTT broker against a hostile
- * device on the home network, on a raw socket. Listens on 127.0.0.1:9207 only.
+ * device on the home network, on a raw socket. Listens on 127.0.0.1 only, on a port the system gives.
  */
 import net from "node:net";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { socketBytes } from "../src/core/socket-bytes.ts";
 import { createBroker, type MqttBroker } from "../src/modules/mesh/mqtt/broker.ts";
 import { createClient } from "../src/modules/mesh/mqtt/client.ts";
 import { encodePacket, type Packet, PacketReader } from "../src/modules/mesh/mqtt/packets.ts";
+import { freePort } from "./free-port.ts";
 import { createTestApp } from "./helpers.ts";
 
-const PORT = 9207;
+/** The port the broker under test was given (it listens on port 0). */
+let PORT = 0;
+/** The port the app's own broker is set up on: one the system says is free. */
+let APP_PORT = 0;
+beforeAll(async () => {
+  APP_PORT = await freePort();
+});
 const USER = "radio";
 const PASSWORD = "kettle-on-at-four-517";
 const quiet = { info() {}, warn() {}, debug() {} };
@@ -26,7 +33,7 @@ async function start(): Promise<{ checks: () => number }> {
   let checks = 0;
   const broker = createBroker({
     host: "127.0.0.1",
-    port: PORT,
+    port: 0,
     checkLogin: (user, password) => {
       checks += 1;
       return user === USER && password.equals(Buffer.from(PASSWORD));
@@ -35,7 +42,7 @@ async function start(): Promise<{ checks: () => number }> {
     log: quiet,
   });
   brokers.push(broker);
-  await broker.listen();
+  PORT = (await broker.listen()).port;
   return { checks: () => checks };
 }
 
@@ -102,7 +109,7 @@ describe("Meshtastic names heard over the air", () => {
     const app = await createTestApp({}, undefined, { voacapData: false });
     const radio = createClient({
       host: "127.0.0.1",
-      port: 9208,
+      port: APP_PORT,
       clientId: "!a1b2c3d4",
       userName: USER,
       password: PASSWORD,
@@ -113,7 +120,7 @@ describe("Meshtastic names heard over the air", () => {
     try {
       const set = await app.api("PUT", "/api/mesh/meshtastic", {
         mode: "broker",
-        broker: { port: 9208, userName: USER, password: PASSWORD },
+        broker: { port: APP_PORT, userName: USER, password: PASSWORD },
         channels: [{ name: "LongFast", index: 0 }],
       });
       expect(set.status, JSON.stringify(set.body)).toBe(200);
@@ -144,7 +151,7 @@ describe("what is learnt from the radios", () => {
     const app = await createTestApp({}, undefined, { voacapData: false });
     const radio = createClient({
       host: "127.0.0.1",
-      port: 9208,
+      port: APP_PORT,
       clientId: "!a1b2c3d4",
       userName: USER,
       password: PASSWORD,
@@ -155,7 +162,7 @@ describe("what is learnt from the radios", () => {
     try {
       await app.api("PUT", "/api/mesh/meshtastic", {
         mode: "broker",
-        broker: { port: 9208, userName: USER, password: PASSWORD },
+        broker: { port: APP_PORT, userName: USER, password: PASSWORD },
         channels: [{ name: "LongFast", index: 0 }],
       });
       radio.start();
@@ -180,7 +187,7 @@ describe("setting the link up", () => {
   it("is refused through a proxy and from another device, and the device list takes no path", async () => {
     const app = await createTestApp({ OUTPOST_LAN_ACCESS: "true", OUTPOST_HOST: "0.0.0.0" }, undefined, { voacapData: false });
     try {
-      const body = { mode: "broker", broker: { port: 9208, userName: USER, password: PASSWORD } };
+      const body = { mode: "broker", broker: { port: APP_PORT, userName: USER, password: PASSWORD } };
       for (const extra of [
         { headers: { "x-forwarded-for": "127.0.0.1" } },
         { headers: { forwarded: "for=127.0.0.1" } },

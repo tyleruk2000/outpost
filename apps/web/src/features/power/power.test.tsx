@@ -271,14 +271,16 @@ describe("a power plan", () => {
     expect(server.put).toHaveLength(0);
     Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "hidden" });
     document.dispatchEvent(new Event("visibilitychange"));
-    // Well inside the moment an ordinary change waits before it is saved.
-    await waitFor(() => expect(server.put).toHaveLength(1), { timeout: 300 });
+    // Sent by the hiding, not by the wait an ordinary change has before it is saved: only
+    // a save made as the page goes asks for a request that outlives it (keepalive).
+    await waitFor(() => expect(server.put).toHaveLength(1));
     expect(server.put[0]!.name).toBe("Shack, winter");
     expect(server.keptAlive).toEqual([true]);
     fireEvent.change(screen.getByLabelText("Notes (optional)"), { target: { value: "For the winter months." } });
     window.dispatchEvent(new Event("pagehide"));
-    await waitFor(() => expect(server.put).toHaveLength(2), { timeout: 300 });
+    await waitFor(() => expect(server.put).toHaveLength(2));
     expect(server.put[1]!.notes).toBe("For the winter months.");
+    expect(server.keptAlive).toEqual([true, true]);
   });
 
   it("sends one save at a time, and a change made while one is under way follows it", async () => {
