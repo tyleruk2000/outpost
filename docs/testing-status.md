@@ -49,6 +49,11 @@ of what each feature does are in its own guide.
   phone's touch, on-screen keyboard and safe areas (only Chromium and WebKit with touch at
   phone sizes); the live compass, the phone's motion sensors and the camera on a real device;
   Windows High Contrast and forced colours; a switch device or voice control.
+- **Storage, backups, downloads, import and access, not tried:** VoiceOver or TalkBack through
+  adding a location, connecting a share, restoring a backup or entering the PIN; a real USB drive
+  pulled out, a real NAS switched off and a really full disk (each was stood in for by a removed
+  folder or a changed answer from the server); the Mac Keychain prompt and real SMB mounts from
+  the Connect a network share dialog; Docker's and Linux's mount lines typed into a real system.
 
 ## Installing and looking after it
 
