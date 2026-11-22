@@ -83,8 +83,17 @@ export function createHeardService(ctx: AppContext) {
     timer.unref();
   }
 
+  /** Run from a timer: anything thrown out of it would be uncaught and stop the server. */
   function flush(): void {
     timer = undefined;
+    try {
+      flushPending();
+    } catch (error) {
+      ctx.log.warn({ err: error }, "Could not finish writing what the receivers heard");
+    }
+  }
+
+  function flushPending(): void {
     const writes = [...pending.values()];
     pending.clear();
     if (writes.length > 0) {
@@ -100,9 +109,10 @@ export function createHeardService(ctx: AppContext) {
       store.pruneAircraft(Date.now() - hours * 3_600_000);
     }
     if (sourcesChanged.size > 0 || statusChanged) {
-      ctx.events.publish({ type: "heard.changed", data: { sources: [...sourcesChanged] } });
+      const sources = [...sourcesChanged];
       sourcesChanged.clear();
       statusChanged = false;
+      ctx.events.publish({ type: "heard.changed", data: { sources } });
     }
   }
 

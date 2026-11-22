@@ -1127,7 +1127,7 @@ Types: `readiness.ts`; see [readiness.md](readiness.md).
 | `POST /api/event-log/to-notes` | Writes the lines to a new page. |
 | `GET /api/routine-checks`, `POST`, `PUT`, `DELETE …/:id` | Checks with `dueAt`, `overdue`; `{ name, everyDays (1 to 3,650), note?, link? }`, ≤60. `PUT` with `baseUpdatedAt`: `409` if saved since. |
 | `POST /api/routine-checks/suggested` | Adds the template's checks. |
-| `POST /api/routine-checks/:id/done` | `{ by, at? }`. |
+| `POST /api/routine-checks/:id/done` | `{ by, at?, baseUpdatedAt? }`; `at: null` clears it. A check changed since `baseUpdatedAt` refuses it with `409`. |
 | `GET /api/offline-drill` | `DrillLine`s (`held`, `missing`, `stale`, `untried`) and the last run. |
 | `POST /api/offline-drill/runs` | `{ by, startedAt, answers, notes? }`. |
 
@@ -1138,7 +1138,7 @@ Types: `garden.ts`; see [garden.md](garden.md). The calendar is worked out in th
 | Method and path | Purpose |
 | --- | --- |
 | `GET /api/garden` | Settings and every sowing. |
-| `PUT /api/garden/settings` | `{ lastFrost: "MM-DD" \| null }` (not 29 February). |
+| `PUT /api/garden/settings` | `{ lastFrost: "MM-DD" \| null, baseUpdatedAt? }` (not 29 February). `baseUpdatedAt` is the `updatedAt` read (`null` if never saved); a newer one refuses it with `409`. |
 | `POST /api/garden/sowings`, `PUT`, `DELETE …/:id` | `cropId` or `name`, `sownOn`, optional place, amount, dates, notes. ≤5,000. `PUT` with `baseUpdatedAt`: `409` if saved since. |
 
 ## Tide times
@@ -1174,7 +1174,7 @@ routes; a message too long, a file or an edit is `400` there. Settings routes ar
 | `PUT /api/mesh/meshtastic` | `MeshtasticInput`: `mode` (`off`, `broker`, `client`), broker or client settings, `channels`. A password left out is kept; `""` removes it. `400` for a broker password under 12 characters. |
 | `PUT /api/mesh/meshcore` | `MeshCoreInput`: `mode` (`off`, `serial`, `tcp`), device, host, port, channels. |
 | `POST /api/mesh/broker/find` | Looks for a broker on 1883 and 8883. |
-| `POST /api/mesh/broker/test` | Signs in, subscribes, sends a check, listens 8 s. |
+| `POST /api/mesh/broker/test` | Signs in, subscribes, sends a check, listens 8 s. A password left out is the saved one, used only for the address, port and user name it was saved with (and not without TLS if saved with it); otherwise `400`. |
 | `POST /api/mesh/broker/dynsec` | Asks the broker's dynamic security plugin `listClients`. |
 | `POST /api/mesh/broker/radio-account` | Creates a role and account for the radio. |
 | `GET /api/mesh/positions`, `PUT /api/mesh/radios/:id/map` | Radios heard and whether each is on the map. |

@@ -113,7 +113,7 @@ function ThisMonth({ month, plan }: { month: CalendarMonth; plan: GardenMonth })
   );
 }
 
-function LastFrost({ value, loading }: { value: string | null; loading: boolean }) {
+function LastFrost({ value, updatedAt, loading }: { value: string | null; updatedAt: number | null; loading: boolean }) {
   const save = useSaveLastFrost();
   const parsed = value ? parseMonthDay(value) : null;
   const [month, setMonth] = useState<string>(parsed ? String(parsed.month) : "5");
@@ -124,7 +124,7 @@ function LastFrost({ value, loading }: { value: string | null; loading: boolean 
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (valid) save.mutate(candidate);
+    if (valid) save.mutate({ lastFrost: candidate, baseUpdatedAt: updatedAt });
   };
 
   return (
@@ -154,7 +154,12 @@ function LastFrost({ value, loading }: { value: string | null; loading: boolean 
           Save last frost
         </Button>
         {value ? (
-          <Button type="button" variant="ghost" onClick={() => save.mutate(null)} disabled={save.isPending}>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => save.mutate({ lastFrost: null, baseUpdatedAt: updatedAt })}
+            disabled={save.isPending}
+          >
             Clear it
           </Button>
         ) : null}
@@ -404,7 +409,12 @@ export default function GardenPage() {
         {garden.isError ? (
           <ErrorState error={garden.error} onRetry={() => garden.refetch()} />
         ) : (
-          <LastFrost key={lastFrost ?? "none"} value={lastFrost} loading={garden.isPending} />
+          <LastFrost
+            key={lastFrost ?? "none"}
+            value={lastFrost}
+            updatedAt={garden.data?.settings.updatedAt ?? null}
+            loading={garden.isPending}
+          />
         )}
       </Section>
 

@@ -114,7 +114,7 @@ describe("the month", () => {
     const section = await region("Your last frost");
     fireEvent.change(await within(section).findByLabelText("Day"), { target: { value: "12" } });
     fireEvent.click(within(section).getByRole("button", { name: "Save last frost" }));
-    await vi.waitFor(() => expect(api.bodiesOf("PUT /api/garden/settings")).toEqual([{ lastFrost: "05-12" }]));
+    await vi.waitFor(() => expect(api.bodiesOf("PUT /api/garden/settings")).toEqual([{ lastFrost: "05-12", baseUpdatedAt: null }]));
   });
 });
 

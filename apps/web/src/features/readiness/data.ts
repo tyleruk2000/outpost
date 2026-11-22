@@ -115,8 +115,13 @@ export function useAddSuggested() {
 export function useCheckDone() {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: ({ id, by, at }: { id: string; by: string; at?: number | null }) =>
-      api.post<{ check: RoutineCheck }>(`/api/routine-checks/${encodeURIComponent(id)}/done`, { by, ...(at !== undefined ? { at } : {}) }),
+    // The check as the screen showed it goes with it: one marked or changed on another device since is refused.
+    mutationFn: ({ id, by, at, baseUpdatedAt }: { id: string; by: string; at?: number | null; baseUpdatedAt: number }) =>
+      api.post<{ check: RoutineCheck }>(`/api/routine-checks/${encodeURIComponent(id)}/done`, {
+        by,
+        ...(at !== undefined ? { at } : {}),
+        baseUpdatedAt,
+      }),
     onSuccess: invalidate,
   });
 }

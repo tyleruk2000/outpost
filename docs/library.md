@@ -84,7 +84,9 @@ Each book brings one file: EPUB, else PDF, else text, Markdown or HTML. A book w
 MOBI, AZW3 or DOCX is left out; convert it to EPUB in Calibre. Books already in the
 library are skipped, so reading the library again adds only what is new. Up to 20,000
 books per import. A book used where it is offers **Remove from Outpost only**, leaving
-its file.
+its file. Symbolic links in the Calibre folder are never followed, including one put in
+place of a book, cover or folder after the library was read: that book is listed as not
+added, with the reason.
 
 ## Where Outpost makes a PDF
 

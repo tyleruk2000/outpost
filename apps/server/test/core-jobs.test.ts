@@ -110,6 +110,27 @@ describe("the job runner", () => {
     await queue.close();
   });
 
+  it("ignores progress a job reports after it has ended, even once the database is closed", async () => {
+    // Text reading runs in a worker whose last progress message can arrive after the job has
+    // ended and the server has closed the database (seen in links.test.ts under load).
+    const { queue, db } = queueOn();
+    let late: ((update: { current: number }) => void) | undefined;
+    queue.register("quick", {
+      queue: "work",
+      run: async (run) => {
+        late = run.progress;
+        return {};
+      },
+    });
+    queue.start();
+    const job = queue.enqueue("quick", {}, { title: "Quick" });
+    await queue.whenIdle(1000);
+    expect(queue.get(job.id)?.state).toBe("succeeded");
+    await queue.close();
+    db.sqlite.close();
+    expect(() => late?.({ current: 5 })).not.toThrow();
+  });
+
   it("runs two of the same job one after the other on a queue of one", async () => {
     const { queue } = queueOn();
     let running = 0;

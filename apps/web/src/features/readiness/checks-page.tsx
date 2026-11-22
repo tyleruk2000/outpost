@@ -123,14 +123,18 @@ function CheckRow({
 
   const markDone = () =>
     done.mutate(
-      { id: check.id, by: name ?? "" },
+      { id: check.id, by: name ?? "", baseUpdatedAt: check.updatedAt },
       {
         onSuccess: (result) => {
           const before = { lastDoneAt: check.lastDoneAt };
           toast.success(`Done: ${check.name}.`, {
             action: {
               label: "Undo",
-              onClick: () => done.mutate({ id: check.id, by: check.lastDoneBy ?? "", at: before.lastDoneAt }),
+              onClick: () =>
+                done.mutate(
+                  { id: check.id, by: check.lastDoneBy ?? "", at: before.lastDoneAt, baseUpdatedAt: result.check.updatedAt },
+                  { onError: (error) => notify.error(errorMessage(error)) },
+                ),
             },
           });
           return result;

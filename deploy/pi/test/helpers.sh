@@ -80,6 +80,42 @@ else
   pass "set-clock: reads the request as the folder's owner"
 fi
 
+# A signed release older than (or the same as) the one running is refused, whatever the
+# container asks for: the version running is read from the checkout's .env (root's) and
+# from the record of the last release installed, never from the container's folder.
+for case in "1.1.0|OUTPOST_IMAGE=outpost:1.2.0|" "1.2.0|OUTPOST_IMAGE=outpost:1.2.0|" "1.2.0-rc.1|OUTPOST_IMAGE=outpost:1.2.0|" \
+  "1.3.0|OUTPOST_IMAGE=outpost:1.2.0|1.4.0" "1.10.0|OUTPOST_IMAGE=outpost:1.9.0|1.10.0"; do
+  want="${case%%|*}"
+  rest="${case#*|}"
+  env_line="${rest%%|*}"
+  installed="${rest#*|}"
+  fresh update
+  rm -rf /repo /work
+  mkdir -p /repo /work
+  printf '%s\n' "$env_line" >/repo/.env
+  [ -n "$installed" ] && printf '%s\n' "$installed" >/work/installed
+  request update "abc12 $want"
+  OUTPOST_UPDATE_WORK=/work sh "$HELPERS/update.sh" /data/update /repo >/dev/null 2>&1
+  if grep -q "^abc12 failed $want .*not newer than" /data/update/result 2>/dev/null; then
+    pass "update: $want refused over $env_line${installed:+ (installed $installed)}"
+  else
+    fail "update: $want not refused over $env_line${installed:+ (installed $installed)}: $(head -c 200 /data/update/result 2>/dev/null)"
+  fi
+done
+# A newer release gets past that check (and fails later here, with no release key).
+fresh update
+rm -rf /repo /work
+mkdir -p /repo /work
+printf 'OUTPOST_IMAGE=outpost:1.2.0\n' >/repo/.env
+printf '1.2.0\n' >/work/installed
+request update "abc12 1.2.1"
+OUTPOST_UPDATE_WORK=/work OUTPOST_RELEASE_KEY_FILE=/nonexistent sh "$HELPERS/update.sh" /data/update /repo >/dev/null 2>&1
+if grep -q '^abc12 failed 1.2.1 no release key' /data/update/result 2>/dev/null; then
+  pass "update: a newer release is not refused as older"
+else
+  fail "update: a newer release was refused: $(head -c 200 /data/update/result 2>/dev/null)"
+fi
+
 echo
 if [ "$failures" -gt 0 ]; then
   echo "$failures failed"

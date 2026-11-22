@@ -67,7 +67,9 @@ and **Remove**. **Print or save as PDF** can include what is heard.
 
 **Radio → Heard on the radio** lists what was heard, nearest or newest first. Everything is
 kept until you clear it (all, one source, before a date, or one station); aircraft can be
-limited to the last 6, 24, 72 or 168 hours.
+limited to the last 6, 24, 72 or 168 hours. So that a flood of made-up callsigns or ships
+cannot fill the disk, Outpost keeps at most 20,000 stations of each kind, taking off the
+longest unheard first (never a pinned one), and the latest 10,000 positions of each.
 
 ## Range heard
 

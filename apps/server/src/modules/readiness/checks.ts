@@ -35,7 +35,7 @@ export interface RoutineChecksService {
   remove(id: string): void;
   /** Adds the suggested checks the household does not have yet. */
   addSuggested(): RoutineCheck[];
-  done(id: string, input: { by: string; at?: number | null }): RoutineCheck;
+  done(id: string, input: { by: string; at?: number | null; baseUpdatedAt?: number }): RoutineCheck;
   count(): number;
   eraseAll(): number;
 }
@@ -171,16 +171,23 @@ export function createRoutineChecksService(ctx: AppContext, changed: () => void)
     },
 
     done(id, input) {
-      get(id);
+      const row = get(id);
+      // A screen that had not seen a newer done (or undo) from another device would put it back as it was.
+      if (input.baseUpdatedAt !== undefined && row.updatedAt > input.baseUpdatedAt)
+        throw conflict(
+          "This check was marked done or changed somewhere else after you opened it. Nothing was changed; look at it again and mark it if it still needs it.",
+          { current: { updatedAt: row.updatedAt, name: row.name } },
+        );
       const now = Date.now();
+      const updatedAt = Math.max(now, row.updatedAt + 1);
       if (input.at === null) {
-        db.update(routineChecks).set({ lastDoneAt: null, lastDoneBy: null, updatedAt: now }).where(eq(routineChecks.id, id)).run();
+        db.update(routineChecks).set({ lastDoneAt: null, lastDoneBy: null, updatedAt }).where(eq(routineChecks.id, id)).run();
       } else {
         const by = cleanName(input.by);
         const at = input.at ?? now;
         if (at > now + 5 * 60_000) throw badRequest("That day has not come yet. Give the day it was done.");
         db.update(routineChecks)
-          .set({ lastDoneAt: Math.min(at, now), lastDoneBy: by || null, updatedAt: now })
+          .set({ lastDoneAt: Math.min(at, now), lastDoneBy: by || null, updatedAt })
           .where(eq(routineChecks.id, id))
           .run();
       }

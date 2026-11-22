@@ -14,8 +14,9 @@ export const useGarden = () => useQuery({ queryKey: gardenKeys.all, queryFn: () 
 export function useSaveLastFrost() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (lastFrost: string | null) =>
-      api.put<{ settings: GardenSettings }>("/api/garden/settings", { lastFrost }).then((data) => data.settings),
+    // The date the screen showed goes with it: one changed on another device since is refused, not saved over.
+    mutationFn: ({ lastFrost, baseUpdatedAt }: { lastFrost: string | null; baseUpdatedAt: number | null }) =>
+      api.put<{ settings: GardenSettings }>("/api/garden/settings", { lastFrost, baseUpdatedAt }).then((data) => data.settings),
     onSuccess: () => client.invalidateQueries({ queryKey: gardenKeys.all }),
     onError: (error) => notify.error(errorMessage(error)),
   });

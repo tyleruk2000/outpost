@@ -239,6 +239,41 @@ describe("bringing in a Calibre library", () => {
     expect((await app.api("POST", "/api/calibre", { locationId, relPath: "linked" })).status).toBe(403);
   });
 
+  it("follows no link put in place of a book, its cover or its folder between reading and adding", async () => {
+    const dto = await read();
+    expect(dto.plan.bookCount).toBe(2);
+    // Outside every storage location: what a link swapped in would reach.
+    const outside = path.join(app.dir, "private");
+    fs.mkdirSync(outside);
+    const secret = Buffer.concat([tinyPng, Buffer.from("not for the library")]);
+    fs.writeFileSync(path.join(outside, "secret.jpg"), secret);
+    fs.writeFileSync(path.join(outside, "secret.txt"), "The private notes of someone else.");
+    const dune = path.join(library, "Frank Herbert", "Dune (1)");
+    fs.rmSync(path.join(dune, "cover.jpg"));
+    fs.symlinkSync(path.join(outside, "secret.jpg"), path.join(dune, "cover.jpg"));
+    fs.rmSync(path.join(dune, "metadata.opf"));
+    fs.symlinkSync(path.join(outside, "secret.txt"), path.join(dune, "metadata.opf"));
+    // The whole folder of the other book becomes a link to the private folder, holding a file of the same name.
+    fs.copyFileSync(path.join(outside, "secret.txt"), path.join(outside, "Knots for Sailors - Jane Doe.txt"));
+    const knots = path.join(library, "Jane Doe", "Knots for Sailors (2)");
+    fs.rmSync(knots, { recursive: true });
+    fs.symlinkSync(outside, knots);
+
+    await app.api("POST", `/api/calibre/${dto.id}/commit`, { mode: "copy" });
+    await app.ctx.jobs.whenIdle();
+    const report = (await app.api("GET", `/api/calibre/${dto.id}`)).body.import.report;
+    expect(report.failed.map((entry: { title: string }) => entry.title)).toEqual([expect.stringContaining("Knots for Sailors")]);
+    const docs = (await app.api("GET", "/api/documents")).body.documents as Array<{ id: string; title: string }>;
+    expect(docs.map((doc) => doc.title)).toEqual(["Dune"]);
+    // The book itself is still an ordinary file: added, with neither the cover nor the description read through the links.
+    expect((await app.api("GET", `/api/documents/${docs[0]!.id}/book`)).body.details.coverUrl).toBeNull();
+    const covers = path.join(app.ctx.config.dataDir, "covers");
+    for (const name of fs.existsSync(covers) ? fs.readdirSync(covers) : [])
+      expect(fs.readFileSync(path.join(covers, name)).equals(secret)).toBe(false);
+    const document = (await app.api("GET", `/api/documents/${docs[0]!.id}`)).body;
+    expect(JSON.stringify(document)).not.toContain("private notes");
+  });
+
   it("can be discarded before anything is added", async () => {
     const dto = await read();
     expect((await app.api("DELETE", `/api/calibre/${dto.id}`)).body.import.state).toBe("discarded");
