@@ -14,33 +14,47 @@
  * - SatNOGS DB's transmitter list (about 4 MB), kept for the satellites above only, asked
  *   for at most once a day as LogBook73 did. If it fails, the elements are still kept and
  *   the transmitters from last time stay.
+ * - SatNOGS DB's satellite list (about 1.6 MB): names, launch, countries, website and the
+ *   rest of what it keeps of each satellite, for "About this satellite". Asked, kept and
+ *   failed exactly as the transmitters are.
+ *
+ * One more route makes a request, and only on its own press: "Read about it on
+ * Wikipedia" for one satellite (./wikipedia.ts). Its summary is kept until discarded.
  */
 import type {
+  SatelliteAbout,
   SatelliteElements,
   SatelliteGroup,
   SatelliteSourceState,
   SatellitesFetchResponse,
   SatellitesResponse,
   SatelliteTransmitter,
+  SatelliteWikipedia,
 } from "@outpost/shared";
 import { parseCelestrakCsv, SATELLITE_SOURCES } from "@outpost/shared";
+import { eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
+import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
-import { AppError, classifyNetworkError } from "../../core/errors.ts";
+import { AppError, classifyNetworkError, notFound } from "../../core/errors.ts";
 import { createHttpClient, type HttpClient, USER_AGENT } from "../../core/http.ts";
-import { satelliteElements, satelliteFetches, satelliteTransmitters } from "../../db/schema.ts";
-import { parseSatnogsTransmitters } from "./satnogs.ts";
+import { satelliteAbout, satelliteElements, satelliteFetches, satelliteTransmitters, satelliteWikipedia } from "../../db/schema.ts";
+import { parseSatnogsSatellites, parseSatnogsTransmitters } from "./satnogs.ts";
+import { findArticle, NoArticleError, WIKIPEDIA_URLS, type WikipediaUrls } from "./wikipedia.ts";
 
 const GROUPS: SatelliteGroup[] = ["stations", "amateur", "weather"];
 /** LogBook73's floor for each group: a list smaller than this is taken to be a fault at the publisher, not the truth. */
 const MINIMUM_ROWS: Record<SatelliteGroup, number> = { stations: 5, amateur: 40, weather: 20 };
 const MAX_BYTES = 16 * 1024 * 1024;
 
-type SourceId = "celestrak" | "satnogs";
+type SourceId = SatelliteSourceState["id"];
+const SOURCE_IDS: SourceId[] = ["celestrak", "satnogs", "satnogs-satellites"];
 
 export interface SatellitesService {
   list(): SatellitesResponse;
   fetchElements(): Promise<SatellitesFetchResponse>;
+  fetchWikipedia(noradId: number): Promise<SatelliteWikipedia>;
+  discardWikipedia(noradId: number): void;
 }
 
 declare module "../../core/context.ts" {
@@ -82,7 +96,14 @@ export function createSatellitesService(ctx: AppContext, http: HttpClient): Sate
   const celestrakUrl = (group: SatelliteGroup) =>
     standIn ? `${standIn}/celestrak/gp.php?GROUP=${group}&FORMAT=csv` : `${SATELLITE_SOURCES.celestrak.url}?GROUP=${group}&FORMAT=csv`;
   const satnogsUrl = standIn ? `${standIn}/satnogs/transmitters/?format=json` : `${SATELLITE_SOURCES.satnogs.url}?format=json`;
+  const satnogsSatellitesUrl = standIn
+    ? `${standIn}/satnogs/satellites/?format=json`
+    : `${SATELLITE_SOURCES["satnogs-satellites"].url}?format=json`;
+  const wikipediaUrls: WikipediaUrls = standIn
+    ? { search: `${standIn}/wikipedia/w/api.php`, summary: `${standIn}/wikipedia/api/rest_v1/page/summary/` }
+    : WIKIPEDIA_URLS;
   let fetching: Promise<SatellitesFetchResponse> | null = null;
+  const reading = new Map<number, Promise<SatelliteWikipedia>>();
 
   function sources(): SatelliteSourceState[] {
     const rows = new Map(
@@ -92,7 +113,7 @@ export function createSatellitesService(ctx: AppContext, http: HttpClient): Sate
         .all()
         .map((row) => [row.source, row]),
     );
-    return (["celestrak", "satnogs"] as const).map((id) => {
+    return SOURCE_IDS.map((id) => {
       const row = rows.get(id);
       return {
         id,
@@ -217,8 +238,59 @@ export function createSatellitesService(ctx: AppContext, http: HttpClient): Sate
         said.push(`Could not get transmitters from SatNOGS DB. ${message(error)} The transmitters kept before are unchanged.`);
       }
     }
+
+    const keptAbout = ctx.db.select({ noradId: satelliteAbout.noradId }).from(satelliteAbout).all().length;
+    if (current("satnogs-satellites", started, keptAbout)) {
+      said.push("SatNOGS DB's satellite list was asked less than a day ago: the details kept were left as they are.");
+    } else {
+      try {
+        const about = parseSatnogsSatellites(JSON.parse(await readText(http, satnogsSatellitesUrl, "application/json")) as unknown, wanted);
+        ctx.sqlite.transaction(() => {
+          ctx.db.delete(satelliteAbout).run();
+          for (const row of about) ctx.db.insert(satelliteAbout).values(row).run();
+        })();
+        record("satnogs-satellites", { fetchedAt: Date.now(), count: about.length, error: null, triedAt: started });
+        said.push(`Got the details of ${about.length} satellites from SatNOGS DB.`);
+      } catch (error) {
+        record("satnogs-satellites", { error: message(error), triedAt: started });
+        said.push(`Could not get satellite details from SatNOGS DB. ${message(error)} The details kept before are unchanged.`);
+      }
+    }
     ctx.events.publish({ type: "satellites.changed" });
     return { sources: sources(), said };
+  }
+
+  /** The names a satellite goes by, its main one first: SatNOGS's name and other names, then CelesTrak's with and without its brackets. */
+  function namesOf(noradId: number): string[] {
+    const about = ctx.db.select().from(satelliteAbout).where(eq(satelliteAbout.noradId, noradId)).get();
+    const elements = ctx.db
+      .select({ name: satelliteElements.name })
+      .from(satelliteElements)
+      .where(eq(satelliteElements.noradId, noradId))
+      .get();
+    if (!about && !elements) throw notFound("That satellite");
+    const celestrak = elements?.name ?? "";
+    const bracketed = /^(.*?)\s*\((.+)\)\s*$/.exec(celestrak);
+    const names = [about?.name, ...(about?.otherNames ?? []), celestrak, bracketed?.[1], bracketed?.[2]]
+      .map((name) => name?.trim() ?? "")
+      .filter((name) => name.length >= 2);
+    const seen = new Set<string>();
+    return names.filter((name) => !seen.has(name.toLowerCase()) && seen.add(name.toLowerCase()));
+  }
+
+  async function readWikipedia(noradId: number): Promise<SatelliteWikipedia> {
+    const names = namesOf(noradId);
+    let found: Omit<SatelliteWikipedia, "noradId" | "fetchedAt">;
+    try {
+      found = await findArticle(http, wikipediaUrls, names);
+    } catch (error) {
+      if (error instanceof NoArticleError) throw new AppError("not_found", error.message);
+      throw new AppError("upstream", `Could not read Wikipedia. ${message(error)}`);
+    }
+    const row: SatelliteWikipedia = { noradId, ...found, fetchedAt: Date.now() };
+    ctx.db.insert(satelliteWikipedia).values(row).onConflictDoUpdate({ target: satelliteWikipedia.noradId, set: row }).run();
+    ctx.events.publish({ type: "satellites.changed" });
+    return row;
   }
 
   return {
@@ -230,7 +302,26 @@ export function createSatellitesService(ctx: AppContext, http: HttpClient): Sate
         .map((row) => ({ ...row, groups: row.groups as SatelliteGroup[] }) as unknown as SatelliteElements)
         .sort((a, b) => a.name.localeCompare(b.name));
       const transmitters: SatelliteTransmitter[] = ctx.db.select().from(satelliteTransmitters).all();
-      return { satellites, transmitters, sources: sources(), fetching: fetching !== null, now: Date.now() };
+      const about: SatelliteAbout[] = ctx.db.select().from(satelliteAbout).all();
+      const wikipedia = ctx.db
+        .select()
+        .from(satelliteWikipedia)
+        .all()
+        .map((row) => ({ ...row, foundBy: row.foundBy === "search" ? "search" : "name" }) as SatelliteWikipedia);
+      return { satellites, transmitters, about, wikipedia, sources: sources(), fetching: fetching !== null, now: Date.now() };
+    },
+    fetchWikipedia(noradId) {
+      // Two presses for one satellite share one look-up.
+      let pending = reading.get(noradId);
+      if (!pending) {
+        pending = readWikipedia(noradId).finally(() => reading.delete(noradId));
+        reading.set(noradId, pending);
+      }
+      return pending;
+    },
+    discardWikipedia(noradId) {
+      ctx.db.delete(satelliteWikipedia).where(eq(satelliteWikipedia.noradId, noradId)).run();
+      ctx.events.publish({ type: "satellites.changed" });
     },
     fetchElements() {
       // Two presses at once share one fetch.
@@ -255,4 +346,19 @@ export async function registerSatellites(app: FastifyInstance, ctx: AppContext):
 
   /** The one route that contacts CelesTrak and SatNOGS DB, and only when a person presses for it. */
   app.post("/api/satellites/fetch", async (): Promise<SatellitesFetchResponse> => service.fetchElements());
+
+  /** Contacts Wikipedia, and only when a person presses "Read about it on Wikipedia". */
+  app.post(
+    "/api/satellites/:noradId/wikipedia",
+    async (request): Promise<{ wikipedia: SatelliteWikipedia }> => ({
+      wikipedia: await service.fetchWikipedia(noradParams.parse(request.params).noradId),
+    }),
+  );
+
+  app.delete("/api/satellites/:noradId/wikipedia", async (request) => {
+    service.discardWikipedia(noradParams.parse(request.params).noradId);
+    return { ok: true };
+  });
 }
+
+const noradParams = z.object({ noradId: z.coerce.number().int().positive().max(999_999_999) });

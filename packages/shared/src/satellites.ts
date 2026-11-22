@@ -84,8 +84,58 @@ export interface SatelliteElements {
   groups: SatelliteGroup[];
 }
 
+/**
+ * What SatNOGS DB's satellite list (`/api/satellites/`) says of a satellite, for the
+ * "About this satellite" part. Facts only: SatNOGS DB has no free-text description.
+ */
+export interface SatelliteAbout {
+  noradId: number;
+  /** SatNOGS's own name: "ISS". */
+  name: string;
+  /** Its other names, as SatNOGS lists them: ["ZARYA", "RS0ISS", "NA1SS"]. */
+  otherNames: string[];
+  /** "in orbit", "re-entered" or "future", as SatNOGS gives it. */
+  status: string;
+  /** ISO 8601 dates, or null where SatNOGS gives none. */
+  launched: string | null;
+  deployed: string | null;
+  decayed: string | null;
+  /** An http(s) address, or null. */
+  website: string | null;
+  /** Who runs it, or null (SatNOGS often writes the word "None"). */
+  operator: string | null;
+  /** ISO 3166 codes: ["RU", "US"]. */
+  countries: string[];
+  /** Where SatNOGS's record comes from, as it gives it, or null. */
+  citation: string | null;
+  /** SatNOGS flags it as sending on frequencies not coordinated for it. */
+  frequencyViolator: boolean;
+  /** The names of satellites SatNOGS links to this one. */
+  associated: string[];
+}
+
+/** An English Wikipedia article's summary, fetched for a satellite when a person pressed for it, and kept. CC BY-SA 4.0. */
+export interface SatelliteWikipedia {
+  noradId: number;
+  /** The article's title: "Fox-1B". */
+  title: string;
+  /** The article's address on en.wikipedia.org. */
+  url: string;
+  /** Wikipedia's short description: "American amateur radio satellite", or null. */
+  description: string | null;
+  /** The summary, as plain text. */
+  extract: string;
+  /** How it was found: an article under one of the satellite's names, or the first fitting answer to a search. */
+  foundBy: "name" | "search";
+  /** The name it was found under ("NA1SS"), or the words searched for ("FOX-1B satellite"). */
+  searchedFor: string;
+  /** When the article was last edited, as the summary gives it (ISO 8601), or null. */
+  editedAt: string | null;
+  fetchedAt: number;
+}
+
 export interface SatelliteSourceState {
-  id: "celestrak" | "satnogs";
+  id: "celestrak" | "satnogs" | "satnogs-satellites";
   label: string;
   url: string;
   /** When the last fetch that worked finished, or null if it never has. */
@@ -101,6 +151,10 @@ export interface SatelliteSourceState {
 export interface SatellitesResponse {
   satellites: SatelliteElements[];
   transmitters: SatelliteTransmitter[];
+  /** What SatNOGS DB says of each kept satellite it lists. */
+  about: SatelliteAbout[];
+  /** The Wikipedia summaries a person fetched, one a satellite at most. */
+  wikipedia: SatelliteWikipedia[];
   sources: SatelliteSourceState[];
   /** A fetch is running now. */
   fetching: boolean;
@@ -131,7 +185,73 @@ export const SATELLITE_SOURCES = {
     /** About 4 MB; LogBook73 asked once a day at most. */
     updatesEveryMs: 24 * 60 * 60_000,
   },
+  "satnogs-satellites": {
+    label: "SatNOGS DB satellites",
+    url: "https://db.satnogs.org/api/satellites/",
+    terms: "https://db.satnogs.org/about",
+    attribution: "Satellite details: SatNOGS DB, CC BY-SA 4.0.",
+    /** About 1.6 MB; asked once a day at most, as the transmitters are. */
+    updatesEveryMs: 24 * 60 * 60_000,
+  },
 } as const;
+
+/** Where a satellite's Wikipedia summary comes from: asked only when a person presses "Read about it on Wikipedia". */
+export const WIKIPEDIA_SOURCE = {
+  search: "https://en.wikipedia.org/w/api.php",
+  summary: "https://en.wikipedia.org/api/rest_v1/page/summary/",
+  licence: "CC BY-SA 4.0",
+  licenceUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
+} as const;
+
+// The Earth's gravitational parameter, equatorial radius (WGS 84) and J2 (EGM96), and the sidereal day.
+const EARTH_MU_KM3_S2 = 398_600.4418;
+const EARTH_RADIUS_KM = 6_378.137;
+const SIDEREAL_DAY_S = 86_164.0905;
+
+/** What the elements say of an orbit's shape, for words on screen (not for tracking: SGP4 does that). */
+export interface OrbitFacts {
+  /** Minutes for one turn. */
+  periodMinutes: number;
+  /** Mean height above the equator's radius, km (from the semi-major axis). */
+  meanHeightKm: number;
+  /** Lowest and highest heights, km. */
+  perigeeKm: number;
+  apogeeKm: number;
+  inclinationDeg: number;
+  /** It goes round the other way to the Earth's turning (inclination over 90°). */
+  retrograde: boolean;
+  /** The furthest north and south it passes over: the inclination, or 180° less it when retrograde. */
+  latitudeReachDeg: number;
+  geostationary: boolean;
+  /** Its plane turns with the Sun through the year (J2 nodal precession within 10% of 360° a year). */
+  sunSynchronous: boolean;
+}
+
+/**
+ * The orbit's size from Kepler's third law (a³ = μ / n²), and whether its plane keeps pace
+ * with the Sun from the J2 precession, dΩ/dt = −3/2 · J2 · (R/p)² · n · cos i.
+ */
+export function orbitFacts(elements: Pick<OmmElements, "MEAN_MOTION" | "ECCENTRICITY" | "INCLINATION">): OrbitFacts {
+  const n = (elements.MEAN_MOTION * 2 * Math.PI) / 86_400; // radians a second
+  const a = Math.cbrt(EARTH_MU_KM3_S2 / (n * n));
+  const e = elements.ECCENTRICITY;
+  const i = elements.INCLINATION;
+  const p = a * (1 - e * e);
+  const J2 = 1.082_626_68e-3;
+  const nodeDegPerYear = ((-1.5 * J2 * (EARTH_RADIUS_KM / p) ** 2 * n * Math.cos((i * Math.PI) / 180) * 180) / Math.PI) * 365.2422 * 86_400;
+  const periodSeconds = 86_400 / elements.MEAN_MOTION;
+  return {
+    periodMinutes: periodSeconds / 60,
+    meanHeightKm: a - EARTH_RADIUS_KM,
+    perigeeKm: a * (1 - e) - EARTH_RADIUS_KM,
+    apogeeKm: a * (1 + e) - EARTH_RADIUS_KM,
+    inclinationDeg: i,
+    retrograde: i > 90,
+    latitudeReachDeg: i > 90 ? 180 - i : i,
+    geostationary: Math.abs(periodSeconds - SIDEREAL_DAY_S) < 0.01 * SIDEREAL_DAY_S && e < 0.01 && i < 5,
+    sunSynchronous: Math.abs(nodeDegPerYear - 360) < 36,
+  };
+}
 
 // ── Two-line elements ────────────────────────────────────────────────────────
 

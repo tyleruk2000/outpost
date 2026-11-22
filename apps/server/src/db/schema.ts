@@ -1916,6 +1916,37 @@ export const satelliteTransmitters = sqliteTable(
   (table) => [index("satellite_transmitters_norad_idx").on(table.noradId)],
 );
 
+/** What SatNOGS DB's satellite list says of each satellite kept above, replaced whole by each fetch. */
+export const satelliteAbout = sqliteTable("satellite_about", {
+  noradId: integer("norad_id").primaryKey(),
+  name: text("name").notNull(),
+  otherNames: json<string[]>("other_names").notNull(),
+  status: text("status").notNull(),
+  launched: text("launched"),
+  deployed: text("deployed"),
+  decayed: text("decayed"),
+  website: text("website"),
+  operator: text("operator"),
+  countries: json<string[]>("countries").notNull(),
+  citation: text("citation"),
+  frequencyViolator: integer("frequency_violator", { mode: "boolean" }).notNull().default(false),
+  associated: json<string[]>("associated").notNull(),
+});
+
+/** A Wikipedia article's summary a person fetched for a satellite; kept until they discard it. */
+export const satelliteWikipedia = sqliteTable("satellite_wikipedia", {
+  noradId: integer("norad_id").primaryKey(),
+  title: text("title").notNull(),
+  url: text("url").notNull(),
+  description: text("description"),
+  extract: text("extract").notNull(),
+  /** "name" or "search". */
+  foundBy: text("found_by").notNull(),
+  searchedFor: text("searched_for").notNull(),
+  editedAt: text("edited_at"),
+  fetchedAt: integer("fetched_at").notNull(),
+});
+
 /** When each publisher was last fetched from, and how it went. */
 export const satelliteFetches = sqliteTable("satellite_fetches", {
   source: text("source").primaryKey(),

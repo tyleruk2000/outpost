@@ -839,6 +839,7 @@ server opens:
 | VOACAP coefficients; P.533 maps | `raw.githubusercontent.com` |
 | **Build the P.533 engine** | `raw.githubusercontent.com`, `github.com`, `release-assets.githubusercontent.com` |
 | **Fetch the registry from the IEEE** | `standards-oui.ieee.org` (`OUTPOST_IEEE_OUI_URL`) |
+| Satellites: **Get orbital elements**; **Read about it on Wikipedia** | `celestrak.org`, `db.satnogs.org`; `en.wikipedia.org`, sent the satellite's names |
 | A portable drive for another kind of computer | `nodejs.org`, `download.kiwix.org` |
 | Answers, Chat, **Test**, **Look for Ollama**, model lists | `answers.endpoint`; `127.0.0.1:11434`, `host.docker.internal:11434` |
 | Indexing new passages with an embedding server; **Test** | `search.semantic.endpoint` |

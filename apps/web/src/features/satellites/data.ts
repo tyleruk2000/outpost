@@ -2,7 +2,13 @@
  * The elements and transmitters the server keeps, and the one press that fetches them.
  * Refreshed by `satellites.changed`; never polled.
  */
-import type { SatelliteElements, SatellitesFetchResponse, SatellitesResponse, SatelliteTransmitter } from "@outpost/shared";
+import type {
+  SatelliteElements,
+  SatellitesFetchResponse,
+  SatellitesResponse,
+  SatelliteTransmitter,
+  SatelliteWikipedia,
+} from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
@@ -21,6 +27,24 @@ export function useFetchElements() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: () => api.post<SatellitesFetchResponse>("/api/satellites/fetch", {}),
+    onSettled: () => client.invalidateQueries({ queryKey: SATELLITES_KEY }),
+    onError: (error) => notify.error(errorMessage(error)),
+  });
+}
+
+/** "Read about it on Wikipedia": the one press that asks Wikipedia, for one satellite. */
+export function useReadWikipedia() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (noradId: number) => api.post<{ wikipedia: SatelliteWikipedia }>(`/api/satellites/${noradId}/wikipedia`, {}),
+    onSettled: () => client.invalidateQueries({ queryKey: SATELLITES_KEY }),
+  });
+}
+
+export function useDiscardWikipedia() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (noradId: number) => api.delete<{ ok: true }>(`/api/satellites/${noradId}/wikipedia`),
     onSettled: () => client.invalidateQueries({ queryKey: SATELLITES_KEY }),
     onError: (error) => notify.error(errorMessage(error)),
   });
