@@ -4,7 +4,7 @@
  */
 import { useEffect } from "react";
 import type { MapEngine } from "./engine";
-import { encodeShade, keepShade, releaseShade, type ShadeGroup, type ShadePicture, setShadesShowing } from "./shades";
+import { encodeShade, keepShade, releaseShade, type ShadeGroup, type ShadePicture } from "./shades";
 
 export function useShades(engine: MapEngine | null, group: ShadeGroup, pictures: ShadePicture[], opacity: number): void {
   useEffect(() => {
@@ -20,7 +20,6 @@ export function useShades(engine: MapEngine | null, group: ShadeGroup, pictures:
       });
       shown = shades.map((shade) => shade.url);
       engine.setShades(group, shades);
-      setShadesShowing(group, shades);
     })();
     return () => {
       current = false;
@@ -35,7 +34,6 @@ export function useShades(engine: MapEngine | null, group: ShadeGroup, pictures:
   useEffect(
     () => () => {
       engine?.setShades(group, []);
-      setShadesShowing(group, []);
     },
     [engine, group],
   );

@@ -39,11 +39,12 @@ import { buildStyle, MAP_FONTS, type MapTheme, SOURCE_IDS } from "../lib/style";
 import type { LayerSpecification, SourceSpecification, StyleSpecification } from "../lib/style-types";
 import { utmGridShown } from "../lib/use-utm-grid";
 import { type FeatureCollection, markersData, type OverlaySource, overlayLayers, overlaySources, tracksData } from "../map/overlays";
-import { shadeStyle, shadesShowing } from "../map/shades";
+import { shadeStyle } from "../map/shades";
 import { locatorGrid, locatorLengthAt } from "../radio/locator-grid";
 import { locatorGridShown } from "../radio/use-locator-grid";
 import { readable } from "./coverage";
 import { type Graticule, graticuleLines } from "./graticule";
+import { paperShades } from "./range-paper";
 import { formatScale, latitudeAt, longitudeAt, mercatorX, mercatorY, scaleForZoom } from "./scale";
 import { utmGrid, utmGridNote } from "./utm-grid";
 
@@ -312,9 +313,10 @@ export const PRINT_OVERLAYS: PrintOverlay[] = [
     },
     initially: () => rangesShown().length > 0,
     usesTerrain: true,
-    apply: (draft) => {
+    apply: (draft, context) => {
       draft.data["o-range"] = rangesData(rangesShown());
-      const shade = shadeStyle({ range: shadesShowing("range") });
+      // Painted again in the light map's colours for paper, not the picture on screen (range-paper.ts).
+      const shade = shadeStyle({ range: paperShades(rangesShown(), context.theme.range) });
       Object.assign(draft.sources, shade.sources);
       draft.layers.push(...shade.layers);
       draft.notes.push(
