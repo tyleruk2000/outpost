@@ -156,6 +156,8 @@ export default function PrintTool({
 
   /** Puts a new box on the map and brings all of it into view, clear of this card, which lies over the foot of the map. */
   const card = useRef<HTMLDivElement>(null);
+  const latestBox = useRef(box);
+  latestBox.current = box;
   // The handles on the box's lower edge reach 7 px below it, so the room kept is the card's height and a little more.
   const clearOfCard = () => (card.current?.offsetHeight ?? 0) + 20;
   const place = (next: Bbox) => {
@@ -166,7 +168,7 @@ export default function PrintTool({
   // gives way to a card on a phone has done so), make room for that too.
   // biome-ignore lint/correctness/useExhaustiveDependencies: once, when the tool is taken up
   useEffect(() => {
-    const frame = requestAnimationFrame(() => engine.fitBounds(box, { maxZoom: 17, clearBottom: clearOfCard() }));
+    const frame = requestAnimationFrame(() => engine.fitBounds(latestBox.current, { maxZoom: 17, clearBottom: clearOfCard() }));
     return () => cancelAnimationFrame(frame);
   }, [engine]);
 
@@ -185,8 +187,6 @@ export default function PrintTool({
   };
 
   const inSheet = sheet !== undefined;
-  const latestBox = useRef(box);
-  latestBox.current = box;
   // biome-ignore lint/correctness/useExhaustiveDependencies: when the place in the sheet comes and goes
   useEffect(() => {
     if (!sheet) return;
