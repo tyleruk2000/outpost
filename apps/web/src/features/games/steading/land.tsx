@@ -6,7 +6,6 @@
 import {
   ARRAY_KWP,
   cleanSeed,
-  groundOf,
   harvestFactor,
   heatFactor,
   LAND_IDS,
@@ -14,7 +13,6 @@ import {
   type LandId,
   MAP_SIZE,
   seedFromNumber,
-  TERRAIN_IDS,
 } from "@outpost/shared/games/steading";
 import { Shuffle } from "lucide-react";
 import { useId, useMemo, useState } from "react";
@@ -23,26 +21,9 @@ import { Field, Input } from "@/components/ui/input";
 import { cn, formatNumber } from "@/lib/utils";
 import type { Act } from "./panels";
 import { GroundLayer } from "./valley";
-import { amount } from "./words";
+import { amount, holds } from "./words";
 
 const randomSeed = () => seedFromNumber(Math.floor(Math.random() * 2 ** 31));
-
-/** What a land's map holds, in words: "woods 25%, rock 6%, ore, no coal". */
-function holds(land: LandId, seed: string): string {
-  const g = groundOf({ land, seed });
-  const counts = new Map<string, number>();
-  for (const t of g.tiles) counts.set(TERRAIN_IDS[t] ?? "", (counts.get(TERRAIN_IDS[t] ?? "") ?? 0) + 1);
-  const share = (id: string) => Math.round(((counts.get(id) ?? 0) / g.tiles.length) * 100);
-  const has = (id: string, name: string) => ((counts.get(id) ?? 0) > 0 ? name : `no ${name}`);
-  return [
-    `woods ${share("woods")}%`,
-    `rock ${share("rock")}%`,
-    `water ${share("water") + share("river")}%`,
-    has("clay", "clay"),
-    has("coal", "coal"),
-    has("ore", "ore"),
-  ].join(", ");
-}
 
 export function FoundSettlement({ busy, act }: { busy: boolean; act: Act }) {
   const [land, setLand] = useState<LandId>("valley");

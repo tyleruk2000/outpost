@@ -16,6 +16,13 @@ Routes are in [api.md](../api.md). This page holds what the guides leave out.
   The server applies actions with its own clock, clamped so time never runs back; `GET`
   works the plot out without writing. Plot `v: 1` is read into `v: 2` on load.
 - Steading: flows are steady between events, so state is worked out from time exactly.
+  Between events (a store or yard fills, batteries fill or reach their floor, a tank runs
+  dry, sunrise or sunset, the month turns, a household moves in) every flow is steady;
+  within a month whole days are carried forward at once. A version 1 settlement is read as
+  version 2 on Ashgill, with no belts and empty batteries. The screen's script is 111 KB
+  (38 KB compressed), loaded with the screen; a map is drawn again from its seed, not kept.
+  The plan has a button per square only while a square is at least 44 px (coarse pointer)
+  or 24 px (fine); zoomed further out it is one button (`valley.tsx`).
 - Draughts searches 6 plies alpha-beta (man 100, king 160); chess 1 to 4 plies with
   quiescence. Both run in a Web Worker started per reply.
 - Sudoku: full grid by randomised search, cells emptied while the answer stays unique.

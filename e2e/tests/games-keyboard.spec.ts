@@ -1,7 +1,8 @@
 /**
  * Games played from the keyboard alone, with reduced motion asked for, in a real browser: the board is
  * reached with Tab, a move is made with the arrow keys and Enter (or typed), and the move is said in the
- * page's polite live region. Skerry's command line shows a ring while it has the focus.
+ * page's polite live region. Skerry's command line shows a ring while it has the focus. The Steading's
+ * map is moved over and zoomed with the keys, and zoomed right out is one stop rather than every square.
  */
 import type { Page } from "@playwright/test";
 import { api, expect, test, watchForErrors } from "./fixtures";
@@ -73,6 +74,42 @@ test.describe("games from the keyboard", () => {
     });
     expect(ring.style).not.toBe("none");
     expect(ring.width).toBeGreaterThanOrEqual(2);
+    expect(errors).toEqual([]);
+  });
+
+  test("steading: a square chosen with the arrow keys and Enter; zoomed out, the whole map is one stop", async ({ page }) => {
+    const errors = watchForErrors(page);
+    await page.goto("/games/steading");
+    await api(page, "DELETE", "/api/games/steading");
+    await page.reload();
+    await page.getByRole("textbox", { name: "Seed" }).fill("outpost-tests-1");
+    await page.getByRole("button", { name: "Found the settlement" }).focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByText("outpost-tests-1", { exact: true })).toBeVisible();
+    // The plan is one stop with Tab, on the storehouse; the arrow keys move within it.
+    await tabTo(page, ({ label }) => /^Column \d+, row \d+, Storehouse/.test(label));
+    await page.keyboard.press("ArrowRight");
+    await expect(page.locator(":focus")).toHaveAttribute("aria-label", /^Column \d+, row \d+, /);
+    await page.keyboard.press("Enter");
+    await expect(
+      page
+        .locator("main")
+        .getByText(/^Column \d+, row \d+$/)
+        .first(),
+    ).toBeVisible();
+    // Zoomed right out with −, the focus is on the whole map, one button; + is back on a square.
+    for (let index = 0; index < 8; index++) {
+      await page.keyboard.press("-");
+      if (/zoomed out too far/.test((await page.locator(":focus").getAttribute("aria-label")) ?? "")) break;
+    }
+    await expect(page.locator(":focus")).toHaveAttribute(
+      "aria-label",
+      /^The land, 48 squares by 48, zoomed out too far to choose a square/,
+    );
+    await expect(page.getByRole("group", { name: /^The land, 48 squares by 48/ })).toHaveCount(0);
+    await page.keyboard.press("+");
+    await expect(page.locator(":focus")).toHaveAttribute("aria-label", /^Column \d+, row \d+, /);
+    await api(page, "DELETE", "/api/games/steading");
     expect(errors).toEqual([]);
   });
 

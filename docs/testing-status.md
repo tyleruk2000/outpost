@@ -359,6 +359,8 @@ of what each feature does are in its own guide.
 
 - **Allotment**: rain, drying and seasons are checked in engine tests and with a server's clock moved,
   not by leaving a plot for days or across a real change of month.
-- **Steading**: a settlement left a day, a month and a year, in engine tests only.
+- **Steading**: a settlement left a day, a month and a year, in engine tests only. Speed measured in
+  Chromium at 390 by 844 with the processor slowed six times (opens in 1.1 s, drags at 60 frames a
+  second), not on a real phone.
 - **Chess**: reply time on a Pi or old phone, and the levels' strength against real players, unmeasured.
 - **Snake**: swipes and arrow buttons untried on a phone.
