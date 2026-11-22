@@ -372,6 +372,9 @@ export class JobQueue {
 
     let lastWrite = 0;
     let pending: JobProgress | undefined;
+    // Once the handler has returned or thrown, progress it still reports (a worker's last message, say) is
+    // dropped: the row is settled, and the database may be closed by then.
+    let ended = false;
     const flush = () => {
       if (!pending) return;
       const patch: Partial<typeof jobs.$inferInsert> = {};
@@ -388,6 +391,7 @@ export class JobQueue {
       payload: job.payload as never,
       signal: controller.signal,
       progress: (update) => {
+        if (ended) return;
         pending = { ...pending, ...update };
         if (Date.now() - lastWrite >= PROGRESS_WRITE_INTERVAL_MS) flush();
       },
@@ -396,9 +400,11 @@ export class JobQueue {
 
     try {
       const result = await handler.run(run);
+      ended = true;
       flush();
       this.update(job.id, { state: "succeeded", result: result ?? null, finishedAt: Date.now() });
     } catch (error) {
+      ended = true;
       flush();
       const reason = controller.signal.aborted ? (controller.signal.reason as StopReason) : undefined;
       if (reason === "paused") {

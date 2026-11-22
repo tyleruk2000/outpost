@@ -32,7 +32,9 @@ const paper = buildPdf([
   ["Reading the dial", "Hold it to the light."],
 ]);
 
-describe("saving a file that a reference page links to", () => {
+// Its waits (15 s for a download, 15 s for its text) are longer than the usual 20 s for a test: on a
+// loaded machine a test cut short would leave its wait polling a server already closed.
+describe("saving a file that a reference page links to", { timeout: 60_000 }, () => {
   it("fetches it into the document library, where it can be read and searched", async () => {
     app = await withLocalSites();
     const site = await fileServer();

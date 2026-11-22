@@ -69,6 +69,8 @@ export function runExtraction(request: ExtractRequest, options: RunOptions): Pro
     watchForStall();
 
     worker.on("message", (message: WorkerMessage) => {
+      // terminate() is not immediate: a message already sent can still arrive after the end.
+      if (settled) return;
       if (message.kind === "progress") {
         watchForStall();
         options.onProgress?.(message.progress);
