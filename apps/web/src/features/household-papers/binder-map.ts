@@ -16,14 +16,15 @@ import type { StyleSpecification } from "@/features/maps/lib/style-types";
 import { creditsFor } from "@/features/maps/map-footer";
 import { mapCoverage } from "@/features/maps/print/coverage";
 import { printedCredits } from "@/features/maps/print/credits";
-import { PAPERS, PT_PER_MAP_PX } from "@/features/maps/print/paper";
+import { MAP_PX_STEP, PT_PER_MAP_PX } from "@/features/maps/print/paper";
 import type { PdfPicture } from "@/features/maps/print/pdf";
 import type { Frame, PixelSize } from "@/features/maps/print/scale";
 import { mercatorX, mercatorY } from "@/features/maps/print/scale";
 import { INK, type SheetItem } from "@/features/maps/print/sheet";
 import { GET_A_MAP, type MapFigure, mapFigureBlock } from "@/features/nuclear/print-figures";
-import { frameFor, pictureSize } from "@/features/nuclear/print-frames";
+import { frameFor, type PictureSize, pictureSize } from "@/features/nuclear/print-frames";
 import type { DrawMap } from "@/features/nuclear/print-maps";
+import { measureOf } from "@/features/print-kit/tokens";
 import type { Block } from "@/features/propagation/plans/document";
 import { errorMessage } from "@/lib/api";
 import type { BinderPlace } from "./binder-places";
@@ -46,8 +47,20 @@ export interface BinderMap {
 /** About a kilometre each way: the least the map shows round a single place. */
 const LEAST_SPAN_DEGREES = 0.01;
 const MAX_HEIGHT = 420;
-const PAGE_MARGIN = 42;
 const PRINT_DPI = 150;
+
+/**
+ * The picture across the whole measure, as tall as the places need. Places spread north and
+ * south would otherwise make a narrow map in the middle of the page: it shows more ground to
+ * either side instead (the frame fits the places in the height and centres them).
+ */
+function fullWidth(size: PictureSize, inner: number): PictureSize {
+  const pixels = {
+    width: Math.max(MAP_PX_STEP, Math.floor(inner / PT_PER_MAP_PX / MAP_PX_STEP) * MAP_PX_STEP),
+    height: size.pixels.height,
+  };
+  return { width: pixels.width * PT_PER_MAP_PX, height: size.height, pixels };
+}
 
 /** The ground the page shows: every place, with a margin, and never less than about two kilometres across. */
 export function placesBbox(places: readonly BinderPlace[]): Bbox {
@@ -133,9 +146,9 @@ export async function binderMap(
   options: { draw?: DrawMap; signal?: AbortSignal } = {},
 ): Promise<BinderMap | null> {
   if (places.length === 0) return null;
-  const inner = PAPERS[paper].width - 2 * PAGE_MARGIN;
+  const inner = measureOf(paper);
   const bbox = placesBbox(places);
-  const size = pictureSize(bbox, inner, MAX_HEIGHT);
+  const size = fullWidth(pictureSize(bbox, inner, MAX_HEIGHT), inner);
   const frame = frameFor(bbox, size.pixels as PixelSize);
   const attributions = input.sources?.attributions ?? [];
   const hasTiles = input.sources?.hasTiles ?? false;

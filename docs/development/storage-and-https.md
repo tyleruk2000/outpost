@@ -99,6 +99,24 @@ computer that set the passphrase.
   a help page: Android's **CA certificate**, **Install anyway**, **Trusted credentials**;
   Chrome's certificate manager; Firefox's import dialog.
 
+## Paths, tuning, and variables set for the server
+
+Read by the server; the guide ([deployment.md](../deployment.md#environment-variables))
+has the ones people set. Image values in brackets.
+
+| Variable | Default | Use |
+| --- | --- | --- |
+| `OUTPOST_STORAGE_PROBE_TIMEOUT_MS` | `5000` | How long a location may take to answer its check before it is marked not answering. |
+| `UV_THREADPOOL_SIZE` | `16` | Threads for file work, so a share that stops answering does not hold up the rest. |
+| `OUTPOST_PUBLISHED_ADDRESS` | (from `OUTPOST_BIND`) | The host address the port is published on; non-loopback needs LAN access. |
+| `OUTPOST_IN_CONTAINER` | `false` (`true`) | Tells the server it is in a container. |
+| `OUTPOST_KIWIX_LIBRARY_PATH` | `<data>/kiwix/library.xml` (`/kiwix/library.xml`) | The library file kiwix-serve reads. |
+| `OUTPOST_CATALOG_DIR` | the shipped `catalog` | Folder with `manifests/` and `map-regions.json`. |
+| `OUTPOST_WEB_DIR` | the shipped web app | Folder the web app is served from. |
+| `OUTPOST_OLLAMA_ADDRESSES` | Ollama's two defaults | Where **Look for Ollama on this computer** looks, comma separated. |
+| `OUTPOST_PORTABLE`, `OUTPOST_OPEN_BROWSER` | | Set by a portable drive's launchers. |
+| `OUTPOST_APP_DIR` | the running app | Packaged app copied onto portable drives. |
+
 ## Variables for the test suites only
 
 Leave these unset.

@@ -5,8 +5,9 @@
   margin-block: 0.85em;
 }
 
-/* A long address or command written in a sentence wraps rather than run off a phone's screen. */
-.guide-doc :not(pre) > code {
+/* A long address, command or link (a file's path for a name) written in a sentence wraps rather than run off a phone's screen. */
+.guide-doc :not(pre) > code,
+.guide-doc a {
   overflow-wrap: anywhere;
 }
 

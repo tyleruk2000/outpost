@@ -11,6 +11,8 @@
  */
 import { X509Certificate } from "node:crypto";
 import {
+  countryAt,
+  homePlaceOf,
   MESH_TEXT_BYTES,
   type MeshBrokerTestInput,
   type MeshBrokerTestResult,
@@ -23,6 +25,7 @@ import {
   type MeshtasticInput,
   meshChannelId,
   meshTransportOf,
+  meshtasticRootFor,
   radioText,
   utf8Bytes,
 } from "@outpost/shared";
@@ -30,6 +33,7 @@ import type { AppContext } from "../../core/context.ts";
 import { badRequest } from "../../core/errors.ts";
 import { containerReason } from "../../core/local.ts";
 import type { BoardTransport, OutgoingCheck } from "../board/transport.ts";
+import { COUNTRIES } from "../layers/countries.ts";
 import { addRadioAccount, dynsecStatus, findBrokers, testBroker } from "./household.ts";
 import { createMeshCoreLink, type MeshCoreLink, type Opener, openRadio } from "./meshcore/link.ts";
 import { createMeshtasticLink, type MeshtasticLink } from "./meshtastic/link.ts";
@@ -72,6 +76,9 @@ function checkHost(host: string, what: string): string {
 
 /** Root topics are a few levels of plain words: "msh/EU_868". */
 const ROOT = /^[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+){0,5}$/;
+
+/** The root topic offered when none is known: Meshtastic's own for a radio in Europe. */
+export const FALLBACK_ROOT = "msh/EU_868";
 
 /** The shortest password a radio may sign in to Outpost's broker with: anything on the home network can try it (outpost-4b6). */
 export const MIN_BROKER_PASSWORD = 12;
@@ -198,6 +205,18 @@ export function createMeshService(ctx: AppContext, options: { open?: Opener } = 
     );
   }
 
+  /**
+   * The root topic offered before a household broker is saved, as the settings form offers it: the one
+   * Meshtastic's table of regions gives for Home's country (the saved place with the home icon, in the
+   * smallest Natural Earth box round it), else msh/EU_868. Once a broker is saved, its root topic is the
+   * one saved. (Rows saved before this held msh/EU_868 as a default; with no broker saved it is not a choice.)
+   */
+  function firstRoot(client: { host: string; rootTopic: string }): string {
+    if (client.host && client.rootTopic) return client.rootTopic;
+    const home = homePlaceOf(ctx.services.maps.annotations.listMarkers());
+    return meshtasticRootFor(home ? countryAt(home, COUNTRIES) : null) ?? (client.rootTopic || FALLBACK_ROOT);
+  }
+
   function channels(): MeshChannel[] {
     const config = store.config();
     const list: MeshChannel[] = [];
@@ -239,7 +258,11 @@ export function createMeshService(ctx: AppContext, options: { open?: Opener } = 
           config: {
             mode: config.meshtastic.mode,
             broker: { ...config.meshtastic.broker, passwordSet: secrets.brokerPasswordSet() },
-            client: { ...config.meshtastic.client, passwordSet: secrets.clientPassword() !== null },
+            client: {
+              ...config.meshtastic.client,
+              rootTopic: firstRoot(config.meshtastic.client),
+              passwordSet: secrets.clientPassword() !== null,
+            },
             channels: config.meshtastic.channels,
           },
           status: meshtastic.status(),

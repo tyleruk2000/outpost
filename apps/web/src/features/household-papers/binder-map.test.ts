@@ -2,6 +2,7 @@ import type { Bbox, InstalledRegion, MapSources } from "@outpost/shared";
 import { describe, expect, it } from "vitest";
 import type { SheetItem } from "@/features/maps/print/sheet";
 import type { DrawMap } from "@/features/nuclear/print-maps";
+import { measureOf } from "@/features/print-kit/tokens";
 import { binderMap, placesBbox } from "./binder-map";
 import type { BinderPlace } from "./binder-places";
 
@@ -75,6 +76,35 @@ describe("the binder's map of home and the meeting points", () => {
     // The numbered marks lie inside the frame.
     const marks = items.filter((item) => item.kind === "text" && (item.text === "1" || item.text === "2"));
     for (const mark of marks) expect(mark.kind === "text" && mark.x > 42 && mark.x < 42 + 511).toBe(true);
+  });
+
+  it("fills the page's measure, even for places spread north and south", async () => {
+    const strung: BinderPlace[] = [
+      { number: 1, role: "Home", name: "Home", lat: 54.3, lon: -2.96, note: "" },
+      { number: 2, role: "Meet away from home", name: "Farm", lat: 54.6, lon: -2.95, note: "" },
+    ];
+    for (const paper of ["a4", "letter"] as const) {
+      let asked: { width: number; height: number } | null = null;
+      const draw: DrawMap = async (_style, _frame, pixels) => {
+        asked = pixels;
+        return { pieces: [{ x: 0, y: 0, width: pixels.width, height: pixels.height, pixels, jpeg: new Uint8Array([1]) }], reduced: false };
+      };
+      const map = await binderMap(strung, input, paper, { draw });
+      const frame = drawnItems(map!.block).find((item) => item.kind === "rect" && item.stroke && item.width > 100);
+      const measure = measureOf(paper);
+      expect(frame?.kind === "rect" && frame.width).toBeGreaterThan(measure - 3);
+      expect(frame?.kind === "rect" && frame.width).toBeLessThanOrEqual(measure);
+      expect(asked!.width).toBeGreaterThan(asked!.height);
+      // Both places are still inside the frame, top to bottom.
+      const marks = drawnItems(map!.block).filter((item) => item.kind === "text" && (item.text === "1" || item.text === "2"));
+      expect(marks).toHaveLength(2);
+      for (const mark of marks)
+        if (mark.kind === "text" && frame?.kind === "rect") {
+          expect(mark.y).toBeGreaterThan(frame.y);
+          expect(mark.y).toBeLessThan(frame.y + frame.height);
+          expect(Math.abs(mark.x - (frame.x + frame.width / 2))).toBeLessThan(frame.width / 4);
+        }
+    }
   });
 
   it("puts the places to scale in an empty frame, and says why, where no offline map covers them", async () => {

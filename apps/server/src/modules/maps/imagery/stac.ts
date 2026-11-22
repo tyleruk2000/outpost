@@ -11,6 +11,7 @@ import type { Bbox, SceneOption } from "@outpost/shared";
 import { z } from "zod";
 import { AppError, classifyNetworkError } from "../../../core/errors.ts";
 import type { HttpClient } from "../../../core/http.ts";
+import { dateInWords } from "../../../core/locale.ts";
 import { hostOf } from "../source.ts";
 import { SENTINEL_HOST, STAC_COLLECTION, STAC_SEARCH_URL } from "./catalogue.ts";
 
@@ -128,12 +129,10 @@ export function coveragePercent(scenes: Array<Pick<Scene, "footprint">>, bbox: B
   return Math.round((hit / (steps * steps)) * 100);
 }
 
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-
-/** "12 July 2026" from "2026-07-12". */
+/** "12 July 2026" from "2026-07-12", or "July 12, 2026" for a reader in the United States (core/locale.ts). */
 export function dayText(date: string): string {
   const [year, month, day] = date.split("-").map(Number) as [number, number, number];
-  return `${day} ${MONTHS[month - 1]} ${year}`;
+  return dateInWords(Date.UTC(year, month - 1, day), { month: "long", timeZone: "UTC" });
 }
 
 /** Scenes grouped into passes: one satellite, one day. The least cloudy first, the ones that cover the area before the rest. */

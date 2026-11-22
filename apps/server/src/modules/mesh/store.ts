@@ -45,7 +45,8 @@ export const storedConfig = z.object({
           host: z.string().max(253).default(""),
           port: z.number().int().min(1).max(65535).default(MESH_DEFAULT_PORTS.mqtt),
           userName: z.string().max(64).default(""),
-          rootTopic: z.string().max(100).default("msh/EU_868"),
+          /** Empty until a person saves one: until then the root topic offered is the one for Home's country (service.ts, `firstRoot`). */
+          rootTopic: z.string().max(100).default(""),
           tls: z.boolean().default(false),
           /** The household's certificate authority, PEM: public, so kept here, not with the passwords. */
           ca: z.string().max(MOST_CA_CHARS).nullable().default(null),

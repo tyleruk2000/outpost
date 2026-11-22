@@ -59,4 +59,31 @@ test.describe("importing pages", () => {
     for (const entry of created) await api(page, "DELETE", `/api/notes/${entry.noteId}`);
     expect(errors).toEqual([]);
   });
+
+  test("the search in the page picker shows where focus is", async ({ page }) => {
+    const errors = watchForErrors(page);
+    const uploaded = await page.request.post("/api/imports", {
+      headers: { "X-Outpost-Request": "1" },
+      multipart: { one: { name: "pegs.md", mimeType: "text/markdown", buffer: Buffer.from("# Tent pegs\n\nCount them.\n") } },
+    });
+    expect(uploaded.ok(), await uploaded.text()).toBe(true);
+    const id = (await uploaded.json()).import.id as string;
+    await expect.poll(async () => (await api(page, "GET", `/api/imports/${id}`)).import.state, { timeout: 20_000 }).toBe("ready");
+
+    await page.goto(`/import?id=${id}`);
+    await page.getByLabel("Put the pages under").click();
+    const search = page.getByPlaceholder("Find a page");
+    await expect(search).toBeFocused();
+    // A 2 px ring in the focus colour around the search row, not only the caret (WCAG 2.4.7).
+    const ring = await search.evaluate((input) => {
+      const style = getComputedStyle(input);
+      const row = getComputedStyle(input.parentElement!);
+      return { outline: style.outlineStyle === "none" ? 0 : Number.parseFloat(style.outlineWidth), shadow: row.boxShadow };
+    });
+    expect(ring.outline > 0 || /\b2px\b/.test(ring.shadow), JSON.stringify(ring)).toBe(true);
+
+    await page.keyboard.press("Escape");
+    await api(page, "DELETE", `/api/imports/${id}`);
+    expect(errors).toEqual([]);
+  });
 });

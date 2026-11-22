@@ -1,11 +1,12 @@
 import { ChevronRight, Ellipsis, Search, X } from "lucide-react";
 import { Dialog as Sheet } from "radix-ui";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router";
 import { cn } from "@/lib/utils";
 import { useFocusClearOfBars } from "./focus-clear";
 import { Lamp } from "./lamp";
 import { LogoMark } from "./logo";
+import { useMobileNavHeight } from "./mobile-nav-height";
 import { isInGroup, isOwnScreen, knowledgeNav, type NavItem, upkeepNav } from "./nav";
 
 /** The phone's four tabs, the screens used most. Everything else is in the More sheet. */
@@ -128,27 +129,10 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
   const close = () => setMoreOpen(false);
   // The screen in view is in the More sheet (Settings, a radio tool, Import files): More is lit, as a tab would be.
   const inMore = !tabs.some((item) => (item.to === "/" ? pathname === "/" : isOwnScreen(pathname, item)));
-  // How tall the bar is, said to the page as --mobile-nav-height: its names grow with the text, so a screen that ends
-  // on it (the map, whose sheet sits on it) is not left to guess. 9.5 px went under the bar at 125% text.
   const bar = useRef<HTMLElement>(null);
   const header = useRef<HTMLElement>(null);
   useFocusClearOfBars(header, bar);
-  useLayoutEffect(() => {
-    const element = bar.current;
-    if (!element || typeof ResizeObserver === "undefined") return;
-    const root = document.documentElement;
-    const observer = new ResizeObserver(() => {
-      const height = element.getBoundingClientRect().height;
-      if (height > 0) root.style.setProperty("--mobile-nav-height", `${height}px`);
-      else root.style.removeProperty("--mobile-nav-height");
-    });
-    // The border box: the inset for a home indicator is padding, which the content box does not see.
-    observer.observe(element, { box: "border-box" });
-    return () => {
-      observer.disconnect();
-      root.style.removeProperty("--mobile-nav-height");
-    };
-  }, []);
+  useMobileNavHeight(bar);
 
   return (
     <>

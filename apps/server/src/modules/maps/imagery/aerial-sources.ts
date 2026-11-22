@@ -21,6 +21,7 @@ import { hostOf } from "../source.ts";
 import type { AerialFile, GridProjection } from "./aerial.ts";
 import { lonLatToTransverseMercator } from "./projection.ts";
 import type { RangeFetcher } from "./ranges.ts";
+import { dayText } from "./stac.ts";
 
 /** One survey of an area: what a person chooses, beside the Sentinel-2 days. */
 export const aerialChoiceSchema = z.object({
@@ -571,11 +572,6 @@ export const NAIP: AerialSourceDef = {
   },
   creditText: () => "NAIP imagery provided by USDA Farm Service Agency",
 };
-
-function dayText(date: string): string {
-  const [year, month, day] = date.split("-").map(Number) as [number, number, number];
-  return `${day} ${MONTHS[month - 1]} ${year}`;
-}
 
 function escapeHtml(text: string): string {
   return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");

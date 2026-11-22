@@ -254,6 +254,13 @@ fs.writeFileSync(
   ),
 );
 
+// Playwright empties its output folder when a run starts, so two runs sharing one would delete each
+// other's traces and screenshots. A run on ports of its own writes to a folder of its own too:
+// test-results-8910 for OUTPOST_E2E_PORT=8910; the usual ports keep test-results. OUTPOST_E2E_OUTPUT names one outright.
+const runName = process.env.OUTPOST_E2E_PORT && port !== 8471 ? `-${port}` : "";
+const outputDir = process.env.OUTPOST_E2E_OUTPUT ?? `./test-results${runName}`;
+const reportDir = `playwright-report${runName}`;
+
 export const OPEN_URL = `http://localhost:${port}`;
 // Kept in step with NOT_SECURE_HOST in tests/every-screen.ts and the offline guard in tests/fixtures.ts.
 const notSecureHost = "outpost-lan.test";
@@ -262,11 +269,11 @@ const notSecure = { args: [`--host-resolver-rules=MAP ${notSecureHost} 127.0.0.1
 
 export default defineConfig({
   testDir: "./tests",
-  outputDir: "./test-results",
+  outputDir,
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [["list"], ["html", { open: "never", outputFolder: "playwright-report" }]] : "list",
+  reporter: process.env.CI ? [["list"], ["html", { open: "never", outputFolder: reportDir }]] : "list",
   timeout: 45_000,
   expect: { timeout: 8_000 },
   use: {

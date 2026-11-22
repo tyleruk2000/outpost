@@ -286,11 +286,12 @@ export function JumpLinks({
     <nav aria-label={label} className={cn("-mt-4 mb-6", className)}>
       <ul className="flex flex-wrap gap-x-5 gap-y-1 text-small">
         {items.map((item) => (
-          <li key={item.id}>
+          // A long name (a file's path in a heading) wraps inside the screen rather than run past it.
+          <li key={item.id} className="min-w-0 max-w-full">
             <a
               href={`#${item.id}`}
               onClick={onJump ? (event) => onJump(item.id, event) : undefined}
-              className="inline-flex min-h-11 items-center text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2 md:min-h-8"
+              className="inline-flex min-h-11 items-center text-primary underline decoration-1 [overflow-wrap:anywhere] underline-offset-[0.2em] hover:decoration-2 md:min-h-8"
             >
               {item.label}
             </a>

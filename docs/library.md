@@ -2,23 +2,20 @@
 
 The library holds the files you add: PDFs, EPUB books, Markdown, text, HTML, pictures and
 audio. Each is checked to be what its name says, refused if the library already holds
-the same bytes, read for search, and included in backups and on portable drives. Where
-files are kept is in [storage.md](storage.md); how search reads them in
-[search.md](search.md).
+the same bytes, read for search ([search.md](search.md)), and included in backups and
+on portable drives.
 
 ## Reading
 
 A document Outpost draws as text (an EPUB, Markdown, text or a web page) has **Text** in
-its top bar: the typeface (serif or sans), the size and the spacing (normal or wide, with
-more room between lines, words and paragraphs). They are the same choices as under
-Settings, **Appearance**, kept on this device; the size is for all of Outpost. A PDF keeps
-its own pages, and is made larger with its zoom.
+its top bar: typeface, size and spacing, the same choices as **Settings → Appearance**,
+kept on this device (the size is for all of Outpost). A PDF keeps its own pages; use its
+zoom.
 
 ## Suggested for where you live
 
-At the top of **Explore**, Outpost suggests downloads for the country Home is in (Home is
-the saved place with the home icon). Near a border it may pick the neighbour, and says
-which it took. Every country gets: the map and terrain of the smallest region round
+At the top of **Explore**, Outpost suggests downloads for the country Home is in (near a
+border it may pick the neighbour, and says so). Every country gets: the map and terrain of the smallest region round
 Home, place names, reference layers, Wikipedia in the country's languages, radio and
 weather; the United Kingdom also gets Ordnance Survey names, food shops, flood data and
 Met Office warnings. Each row opens the screen that fetches it, size shown first.
@@ -55,8 +52,8 @@ Public-domain audiobooks, kept on the server and played in the browser.
 - **Add documents** takes one audio file as a book of one chapter.
 
 Only audio files are kept from a zip. Chapters go by track number, or else file name.
-Title, author and readers come from LibriVox for a shelf book (with its licence
-statement), otherwise from tags the files agree on; nothing is guessed. Chapters inside
+Title, author and readers come from LibriVox for a shelf book, otherwise from tags the
+files agree on; nothing is guessed. Chapters inside
 one M4B file are not read, so it plays as one chapter.
 
 ### Playing
@@ -92,9 +89,8 @@ Each book brings one file: EPUB, else PDF, else text, Markdown or HTML. A book w
 MOBI, AZW3 or DOCX is left out; convert it to EPUB in Calibre. Books already in the
 library are skipped, so reading the library again adds only what is new. Up to 20,000
 books per import. A book used where it is offers **Remove from Outpost only**, leaving
-its file. Symbolic links in the Calibre folder are never followed, including one put in
-place of a book, cover or folder after the library was read: that book is listed as not
-added, with the reason.
+its file. Symbolic links in the Calibre folder are never followed; such a book is listed
+as not added, with the reason.
 
 ## Where Outpost makes a PDF
 
@@ -115,7 +111,7 @@ added, with the reason.
 | Tools → Water; Tools → Cooking | The official guidance as quoted, with the date read |
 | Tools → QR codes | The code and what it holds (**asks first** for a Wi-Fi password or contact) |
 | Tools → Solar clock | Sundial and nocturnal templates to cut out |
-| Library → Learning, **On paper** | Each learner's progress (**asks first**; [learning.md](learning.md)) |
+| Library → Learning, **On paper** | Each learner's progress, dated (**asks first**; [learning.md](learning.md)) |
 
 Each offers the same three buttons:
 
@@ -129,31 +125,27 @@ Each offers the same three buttons:
 - **Share**, where the device has a share sheet.
 
 If the library already holds the same bytes, nothing is added and it says where the
-copy is; an emergency sheet or map page is made afresh each time, so each is a new
-document. If there is no room, the PDF is still there to save. Text in these PDFs is
+copy is (an emergency sheet or map page is always new). If there is no room, the PDF is still there to save. Text in these PDFs is
 searchable, and a map page carries the names drawn on it, so a search for a hill finds
 the map.
 
 ## Paper aids: a pad asks first
 
-A one-time pad should exist as two sheets of paper and nowhere else. The library is the
-opposite: everyone on the network can read it, and it is in every backup, every portable
-drive and the search index. So **Add to library** for a pad asks first, in those words;
-use it only for practice pads. The cipher square is not secret and is added without
-asking.
+A one-time pad should exist as two sheets of paper and nowhere else, while everyone on
+the network can read the library, and it is in every backup, portable drive and the
+search index. So **Add to library** for a pad asks first; use it only for practice pads.
+The cipher square is not secret and is added without asking.
 
 ## The emergency sheet asks first
 
-The emergency sheet holds other people's names, numbers and addresses. A copy in the
-library is searchable, goes into backups and drives, and does not change when a contact
-is corrected or removed, so **Add to library** asks first. The sheet carries the time it
-was made. Saving it to the device asks nothing.
+The sheet holds other people's names, numbers and addresses, and a copy in the library
+does not change when a contact is corrected or removed, so **Add to library** asks
+first. Saving it to the device asks nothing.
 
 ## Learning progress, on paper
 
-A PDF of a learner's progress is a record of what a child has covered. Progress itself is
-kept out of search; a copy in the library is searched, backed up and does not change, so
-**Add to library** asks first. The sheet is dated by the day it was made.
+Progress itself is kept out of search; a copy in the library is a searchable, unchanging
+record of what a child has covered, so **Add to library** asks first.
 
 ## Letters the typefaces cannot write
 
