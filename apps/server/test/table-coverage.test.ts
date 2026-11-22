@@ -134,6 +134,16 @@ const TABLES: Record<string, Decision> = {
       "Public orbital elements and transmitters fetched from CelesTrak and SatNOGS DB, like the catalogue's last answers: nothing of the household's.",
     drive: true,
   },
+  satellite_about: {
+    group: "radio",
+    keptByErase: "Public satellite details fetched from SatNOGS DB, like the catalogue's last answers: nothing of the household's.",
+    drive: true,
+  },
+  satellite_wikipedia: {
+    group: "radio",
+    keptByErase: "Public Wikipedia summaries of public satellites, fetched like the catalogue's last answers: nothing of the household's.",
+    drive: true,
+  },
   satellite_fetches: {
     group: "radio",
     keptByErase:

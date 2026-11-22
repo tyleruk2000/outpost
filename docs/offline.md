@@ -49,6 +49,7 @@ Only actions that fetch something new, each started by a person pressing a butto
 | HF propagation: **Fetch today's conditions**, **Download a newer table** | `services.swpc.noaa.gov` ([hf-propagation.md](hf-propagation.md#todays-conditions)) |
 | HF propagation: **Download the P.533 maps**, **Build the P.533 engine** | `raw.githubusercontent.com`; to build, also `github.com` and `release-assets.githubusercontent.com` (about 190 MB) ([hf-propagation.md](hf-propagation.md#a-second-model-itu-p533)) |
 | Satellite imagery and aerial photographs on Maps | Earth Search and its Sentinel-2 files, NASA for the world picture, LINZ's public bucket (New Zealand), Microsoft's Planetary Computer (United States) |
+| Satellites: **Get orbital elements**; **Read about it on Wikipedia** for one satellite | `celestrak.org` and `db.satnogs.org`; `en.wikipedia.org`, sent the satellite's names ([satellites.md](satellites.md)) |
 | Devices on this network: **Fetch the registry from the IEEE** | `standards-oui.ieee.org` ([tools-qr-and-network.md](tools-qr-and-network.md#who-made-each-device)) |
 | The first portable drive for a kind of computer | `nodejs.org` and `download.kiwix.org`; cached after that |
 

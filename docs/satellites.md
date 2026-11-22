@@ -11,11 +11,11 @@ Listening needs no licence. Sending to an amateur satellite needs an amateur lic
 ## Getting the orbital elements
 
 Press **Get orbital elements**. Outpost asks two places, and nothing else on the screen uses the
-internet:
+internet except **Read about it on Wikipedia** (below):
 
 - **CelesTrak**: orbital elements for the amateur, weather and crewed-station groups.
 - **SatNOGS DB**: each satellite's transmitters, frequencies, modes and whether in use (about
-  4 MB).
+  4 MB), and its other names, launch date, countries and website (about 1.6 MB).
 
 Press it again every week or two. A second press within two hours keeps what you have (CelesTrak
 asks for no more), and SatNOGS DB is asked at most once a day. If either fails, what you had
@@ -49,6 +49,22 @@ peaks and sets in. A pass under 10° is marked "low pass"; under 2° is left out
 - **Passes in the next 24 hours**. Choose one for its **sky track** (as if lying on your back,
   head to the north, horizon as the outer ring) and **What to tune to through the pass**: bearing,
   elevation and frequency for each minute.
+
+### About this satellite
+
+A short description made only from facts: its other names, when it was launched and from which
+countries, who runs it, whether it is in orbit, and what SatNOGS DB lists it as carrying (an FM
+voice repeater, an APRS digipeater, a beacon, telemetry and so on). The orbit is worked out from
+its elements: its mean height, how long one turn takes, its angle to the equator and so how far
+north and south it passes over, and whether it is geostationary or sun-synchronous (crossing each
+latitude at about the same local time every day). Its website is linked, and a satellite SatNOGS
+DB flags as transmitting on an uncoordinated or denied frequency is marked.
+
+**Read about it on Wikipedia** asks English Wikipedia for the article under one of the
+satellite's names, or searches for "name satellite" if none is an article, and keeps the summary
+so it can be read offline. The screen names the article and how it was found; a search can find
+the wrong one, so check it, and press **Discard this article** if it is not about this satellite.
+The summary is credited to Wikipedia under CC BY-SA 4.0, with a link to the article.
 
 **This pass as a PDF** writes the sky track as on screen, where to point and what to tune to, to save, print or add to the
 library. **Show on the map** draws its track. **Paste elements** takes one element set from

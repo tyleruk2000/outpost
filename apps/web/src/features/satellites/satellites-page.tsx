@@ -22,9 +22,11 @@ import {
   parseCoordinates,
   SATELLITE_GROUPS,
   SATELLITE_SOURCES,
+  type SatelliteAbout,
   type SatelliteElements,
   type SatelliteGroup,
   type SatelliteTransmitter,
+  type SatelliteWikipedia,
 } from "@outpost/shared";
 import { Download, Map as MapIcon, RefreshCw } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
@@ -45,6 +47,7 @@ import { useClockStyle } from "@/lib/clock";
 import { usePageVisible } from "@/lib/page-visible";
 import { deviceRegion, likelyPaperFor } from "@/lib/region";
 import { cn, formatDate, plural, timeAgo } from "@/lib/utils";
+import { AboutSatellite } from "./about-satellite";
 import { ISS, inGroup, liveTransmitters, useFetchElements, useSatellites } from "./data";
 import { type PassSheet, passDocument, passTitle } from "./document";
 import {
@@ -113,6 +116,7 @@ function ElementsStatus({ data, now }: { data: NonNullable<ReturnType<typeof use
   const fetch = useFetchElements();
   const [said, setSaid] = useState<string[]>([]);
   const [celestrak, satnogs] = data.sources;
+  const details = data.sources.find((source) => source.id === "satnogs-satellites");
   const newest = data.satellites.reduce((max, satellite) => Math.max(max, satellite.epoch), 0);
   const age = newest ? elementsAge(newest, now.getTime()) : null;
   const button = (
@@ -128,7 +132,8 @@ function ElementsStatus({ data, now }: { data: NonNullable<ReturnType<typeof use
   const what = (
     <>
       This asks CelesTrak for the orbital elements of the amateur, weather and crewed satellites (three small files) and SatNOGS DB for
-      their transmitters (about 4 MB). Nothing else on this screen uses the internet, and nothing is fetched on its own.
+      their transmitters (about 4 MB) and details (about 1.6 MB). Nothing else on this screen uses the internet except "Read about it on
+      Wikipedia", and nothing is fetched on its own.
     </>
   );
   if (data.satellites.length === 0) {
@@ -162,6 +167,11 @@ function ElementsStatus({ data, now }: { data: NonNullable<ReturnType<typeof use
       {satnogs?.error && satnogs.triedAt && satnogs.triedAt > (satnogs.fetchedAt ?? 0) ? (
         <Notice tone="warning" className="mt-3" title="The last fetch from SatNOGS DB did not work">
           {satnogs.error}
+        </Notice>
+      ) : null}
+      {details?.error && details.triedAt && details.triedAt > (details.fetchedAt ?? 0) ? (
+        <Notice tone="warning" className="mt-3" title="The last fetch of satellite details from SatNOGS DB did not work">
+          {details.error}
         </Notice>
       ) : null}
       {said.length > 0 ? (
@@ -640,6 +650,9 @@ function OneSatellite({
   satellites,
   transmitters,
   transmittersFetched,
+  about,
+  wikipedia,
+  detailsFetched,
   observer,
   placeName,
   selected,
@@ -650,6 +663,9 @@ function OneSatellite({
   satellites: SatelliteElements[];
   transmitters: SatelliteTransmitter[];
   transmittersFetched: boolean;
+  about: SatelliteAbout[];
+  wikipedia: SatelliteWikipedia[];
+  detailsFetched: boolean;
   observer: ObserverLocation | null;
   placeName: string;
   selected: Shown | null;
@@ -690,6 +706,7 @@ function OneSatellite({
     }
   }
   const own = selected && !selected.manual ? liveTransmitters(transmitters, selected.noradId) : [];
+  const kept = selected && !selected.manual ? satellites.find((satellite) => satellite.noradId === selected.noradId) : undefined;
   const warning = selected ? elementsAgeWarning(selected.epoch, now.getTime()) : null;
   const sheetOf = (): PassSheet | null =>
     selected && pass && observer
@@ -791,6 +808,16 @@ function OneSatellite({
                 metadata={selected.manual ? "manual" : transmittersFetched ? "catalogue" : "none"}
               />
             </Section>
+          ) : null}
+          {kept ? (
+            <AboutSatellite
+              noradId={kept.noradId}
+              about={about.find((item) => item.noradId === kept.noradId) ?? null}
+              elements={kept.elements}
+              transmitters={transmitters.filter((item) => item.noradId === kept.noradId)}
+              wikipedia={wikipedia.find((item) => item.noradId === kept.noradId) ?? null}
+              detailsFetched={detailsFetched}
+            />
           ) : null}
 
           <Section title="Passes in the next 24 hours" className="mt-6">
@@ -1035,6 +1062,9 @@ export default function SatellitesPage() {
                     satellites={satellites}
                     transmitters={data.data.transmitters}
                     transmittersFetched={data.data.sources[1]?.fetchedAt != null}
+                    about={data.data.about ?? []}
+                    wikipedia={data.data.wikipedia ?? []}
+                    detailsFetched={data.data.sources.find((source) => source.id === "satnogs-satellites")?.fetchedAt != null}
                     observer={observer}
                     placeName={placeName}
                     selected={current}
@@ -1056,8 +1086,9 @@ export default function SatellitesPage() {
                 </TabsContent>
               </Tabs>
               <p className="mt-10 border-t border-border pt-3 text-small text-ink-muted">
-                {SATELLITE_SOURCES.celestrak.attribution} {SATELLITE_SOURCES.satnogs.attribution} Positions and passes by SGP4
-                (satellite.js), worked out in this browser. Every time depends on this server's clock being right. How it works:{" "}
+                {SATELLITE_SOURCES.celestrak.attribution} {SATELLITE_SOURCES.satnogs.attribution}{" "}
+                {SATELLITE_SOURCES["satnogs-satellites"].attribution} Positions and passes by SGP4 (satellite.js), worked out in this
+                browser. Every time depends on this server's clock being right. How it works:{" "}
                 <Link to="/help/satellites" className="text-primary underline underline-offset-2">
                   the Satellites guide
                 </Link>

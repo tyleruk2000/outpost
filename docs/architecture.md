@@ -355,6 +355,8 @@ package with its licence text, written by `scripts/build-app.mjs`.
 | `satellite.js` 6.0.2 | MIT | Bundled, pinned; SGP4/SDP4 in the browser. |
 | CelesTrak GP elements | No data licence; CelesTrak's usage policy | Not shipped. Fetched on "Get orbital elements", not within two hours, as CSV (the policy says TLE lacks new objects). Never republished. |
 | SatNOGS DB transmitters | CC BY-SA 4.0 (db.satnogs.org/about, read 21 Nov 2026) | Not shipped. Fetched on the same press, at most daily, credited on screen and printed passes; copies stay CC BY-SA 4.0. |
+| SatNOGS DB satellites (names, launch, countries, website) | CC BY-SA 4.0 (db.satnogs.org/about, read 22 Nov 2026) | Not shipped. Fetched on the same press, at most daily, credited on screen. |
+| Wikipedia article summaries | CC BY-SA 4.0 (Wikipedia:Reusing Wikipedia content, read 22 Nov 2026) | Not shipped. Fetched for one satellite on its own press, kept until discarded, shown with a link to the article and the licence. |
 | Handbook and radio guides (`catalog/bundled/logbook73/`) | MIT, © 2026 Tyler Allen | Bundled; each book's last chapter carries the licence. |
 | Signal figures (`features/library/figures/radio-viz*`) | MIT, © 2026 Tyler Allen | Ported from LogBook73's `RadioViz`. |
 | Mermaid 12 | MIT | Bundled; diagrams in Markdown. Dependencies within the four, with DOMPurify used under Apache-2.0 and `robust-predicates` public domain (Unlicense). |

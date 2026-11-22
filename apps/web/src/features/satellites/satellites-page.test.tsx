@@ -1,4 +1,4 @@
-import { parseCelestrakCsv, type SatellitesResponse } from "@outpost/shared";
+import { parseCelestrakCsv, type SatelliteAbout, type SatellitesResponse } from "@outpost/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -36,9 +36,25 @@ const sources = (fetchedAt: number | null): SatellitesResponse["sources"] => [
   { id: "satnogs", label: "SatNOGS DB", url: "", fetchedAt, count: 1, error: null, triedAt: fetchedAt },
 ];
 
+const ISS_ABOUT: SatelliteAbout = {
+  noradId: 25544,
+  name: "ISS",
+  otherNames: ["ZARYA", "RS0ISS", "NA1SS"],
+  status: "in orbit",
+  launched: "1998-11-20T00:00:00Z",
+  deployed: null,
+  decayed: null,
+  website: "https://www.nasa.gov/mission_pages/station/main/index.html",
+  operator: null,
+  countries: ["RU", "US"],
+  citation: "dl7ndr",
+  frequencyViolator: false,
+  associated: [],
+};
+
 describe("the Satellites screen", () => {
   it("asks for a press before anything is fetched", () => {
-    show({ satellites: [], transmitters: [], sources: sources(null), fetching: false, now });
+    show({ satellites: [], transmitters: [], about: [], wikipedia: [], sources: sources(null), fetching: false, now });
     expect(screen.getByRole("heading", { name: "No orbital elements yet" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Get orbital elements" })).toBeInTheDocument();
   });
@@ -65,6 +81,8 @@ describe("the Satellites screen", () => {
           updatedAt: null,
         },
       ],
+      about: [ISS_ABOUT],
+      wikipedia: [],
       sources: sources(now),
       fetching: false,
       now,
@@ -76,6 +94,12 @@ describe("the Satellites screen", () => {
     expect(screen.getByText("FM voice repeater")).toBeInTheDocument();
     expect(screen.getByText(/Sending to a satellite needs an amateur licence/)).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /Sky track/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "About this satellite" })).toBeInTheDocument();
+    expect(
+      screen.getByText(/Also called ZARYA, RS0ISS and NA1SS\. Launched 20 November 1998, from Russia and the United States\./),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "nasa.gov" })).toHaveAttribute("href", ISS_ABOUT.website);
+    expect(screen.getByRole("button", { name: "Read about it on Wikipedia" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "This pass as a PDF" }));
     expect(await screen.findByRole("link", { name: /Save as PDF/ }, { timeout: 15_000 })).toBeInTheDocument();
   });
@@ -85,8 +109,43 @@ describe("the Satellites screen", () => {
       `${HEADER}\nISS (ZARYA),1998-067A,${new Date(now - 40 * 86_400_000).toISOString().replace("Z", "")},15.49527370,.0007384,51.6319,243.0636,49.3258,310.8372,0,U,25544,999,59609,.2073332E-3,.11207E-3,0`,
       "amateur",
     );
-    show({ satellites: old, transmitters: [], sources: sources(now), fetching: false, now });
+    show({ satellites: old, transmitters: [], about: [], wikipedia: [], sources: sources(now), fetching: false, now });
     expect(screen.getByText("These elements are getting old")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "Weather satellites" }));
+  });
+
+  it("shows a kept Wikipedia summary credited, with how it was found, and a flagged satellite's warning", async () => {
+    const user = userEvent.setup();
+    show({
+      satellites: iss,
+      transmitters: [],
+      about: [{ ...ISS_ABOUT, frequencyViolator: true }],
+      wikipedia: [
+        {
+          noradId: 25544,
+          title: "International Space Station",
+          url: "https://en.wikipedia.org/wiki/International_Space_Station",
+          description: "Space station in low Earth orbit",
+          extract: "The International Space Station is a large space station.",
+          foundBy: "search",
+          searchedFor: "ISS satellite",
+          editedAt: null,
+          fetchedAt: now,
+        },
+      ],
+      sources: sources(now),
+      fetching: false,
+      now,
+    });
+    await user.click(screen.getByRole("tab", { name: "One satellite" }));
+    expect(await screen.findByText("The International Space Station is a large space station.")).toBeInTheDocument();
+    expect(screen.getByText(/a search for “ISS satellite”: check it is about this satellite/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "“International Space Station” on Wikipedia" })).toHaveAttribute(
+      "href",
+      "https://en.wikipedia.org/wiki/International_Space_Station",
+    );
+    expect(screen.getByRole("link", { name: "CC BY-SA 4.0" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Discard this article" })).toBeInTheDocument();
+    expect(screen.getByText("Flagged as a frequency violator")).toBeInTheDocument();
   });
 });

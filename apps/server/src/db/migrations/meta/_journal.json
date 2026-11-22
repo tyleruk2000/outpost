@@ -281,6 +281,13 @@
       "when": 1795359726429,
       "tag": "0039_barometer_wind_direction",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "6",
+      "when": 1795365644300,
+      "tag": "0040_satellite_about",
+      "breakpoints": true
     }
   ]
 }

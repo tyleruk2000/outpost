@@ -821,6 +821,29 @@ uses `satellite.js` 6.0.2 (MIT). Its two sources are fetched only on a press:
 | celestrak.org/usage-policy.php (updated 16 November 2026) | Data updates "once every 2 hours"; "only download data once per update"; FORMAT=tle can 404 for new objects, CSV recommended; stop on any answer but 200. No data licence or redistribution terms. | Asked as CSV, not again within 2 hours; a failed answer keeps what was there; nothing republished. |
 | db.satnogs.org/about | "All data are public and freely distributed under the Creative Commons Atribution-Share Alike v4.0 license." | Credited on the screen and each printed pass. |
 | db.satnogs.org transmitters API | Fields `uuid`, `description`, `alive`, `type`, uplink and downlink low and high, `mode`, `invert`, `baud`, `norad_cat_id`, `status`, `updated` | The fields read. |
+| db.satnogs.org satellites API (`/api/satellites/?format=json`, read 2026-11-22: 2,870 records, 1.6 MB) | Fields `sat_id`, `norad_cat_id`, `name`, `names` (comma-separated), `status` ("in orbit", "re-entered", "future"), `launched`, `deployed`, `decayed`, `website`, `operator` (the word "None" in 2,778 of them), `countries` (ISO codes, comma-separated), `image`, `citation`, `is_frequency_violator`, `associated_satellites` (sat_ids). No free-text description. | All but `image` read for the kept satellites, asked and kept as the transmitters are; same CC BY-SA 4.0 credit. |
+| community.libre.space "Changes in Network and DB for satellites that violate frequency regulations" (read 2026-11-22) | A satellite is flagged when one of its transmitters is; the flag is shown as the satellite "is reported to be transmitting at an uncoordinated or denied frequency"; SatNOGS follows the IARU's coordination decisions. | The wording of the warning under About this satellite. |
+
+**About this satellite** works its orbit figures out from the kept elements: the semi-major
+axis from the mean motion by Kepler's third law (μ = 398,600.4418 km³/s², WGS 84), heights above
+the equatorial radius (6,378.137 km, WGS 84), and sun-synchronous where the J2 precession of the
+orbit's plane (J2 = 1.08262668 × 10⁻³, EGM96) is within 10% of 360° a year; geostationary where
+one turn takes a sidereal day (86,164.09 s) to within 1%, nearly round and under 5° inclined.
+These are textbook figures for words on screen; tracking is SGP4's.
+
+**Wikipedia summaries** are fetched for one satellite only when a person presses "Read about it
+on Wikipedia": one Action API query (`action=query&titles=…&redirects=1`, disambiguation pages
+left out) for an article under one of its names, else one search (`list=search`) for "name
+satellite", then the REST summary (`/api/rest_v1/page/summary/<title>`) of the first that is an
+article: five requests at most. Pages read 2026-11-22:
+
+| Page | What it says | What follows |
+| --- | --- | --- |
+| foundation.wikimedia.org Policy:Wikimedia Foundation User-Agent Policy (edited 27 March 2026) | All requests need a User-Agent; the form is `<client name>/<version> (<contact information>)`; generic agents ("curl", "Python-urllib") and copied browser strings are refused; automated agents are encouraged to include "bot". | Sent as `Outpost/0.1 (self-hosted offline library) bot`. It names no person or address, by choice: nobody's details leave the server. |
+| mediawiki.org Wikimedia APIs/Access policy (edited 24 April 2026) | "The API requires an HTTP User-Agent header for all requests"; licences and attribution vary per wiki. | As above. |
+| mediawiki.org Wikimedia APIs/Rate limits (edited 8 November 2026) | Unidentified requests: 10 a minute; unauthenticated requests with a compliant User-Agent (with contact details): 200 a minute; across the Action and REST APIs. | With no contact details Outpost may count as unidentified: five requests a press is within 10 a minute. |
+| mediawiki.org Wikimedia REST API (edited 14 August 2026) | No deprecation notice for `/api/rest_v1` or `page/summary` (RESTBase, underneath, is being retired). Text is CC BY-SA. | The summary endpoint used; if it is retired, the press fails with Wikipedia's answer and nothing kept is lost. |
+| en.wikipedia.org Wikipedia:Reusing Wikipedia content (edited 22 August 2024) | Credit the authors by a hyperlink or URL to the page; include a notice that the work is under CC BY-SA with a link to the licence. | Each summary is shown with a link to its article, "by its contributors, under CC BY-SA 4.0" linked to the licence. |
 
 **What needs a radio licence** ([radio-licences.md](radio-licences.md)) and **Licences and
 band plans** rest on the regulators' own documents, each named with its date beside the
