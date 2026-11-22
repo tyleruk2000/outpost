@@ -15,7 +15,6 @@ import { APPROXIMATE, APPROXIMATE_KEY, NO_FIGURE, NOT_MODELLED } from "./predict
 
 const longDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 const shortDate = new Intl.DateTimeFormat(appLocale(), { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
-const monthYear = new Intl.DateTimeFormat(appLocale(), { month: "long", year: "numeric", timeZone: "UTC" });
 const dateOf = (iso: string) => new Date(`${iso}T00:00:00Z`);
 const mhz = (value: number) => `${value.toFixed(value >= 10 ? 1 : 2)} MHz`;
 const isNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);

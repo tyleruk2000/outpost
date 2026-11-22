@@ -30,7 +30,6 @@ import {
 import { monoWidth } from "@/features/maps/print/courier";
 import { encodeWinAnsi, wrapText } from "@/features/maps/print/helvetica";
 import { PAPERS } from "@/features/maps/print/paper";
-import { writePdfPages } from "@/features/maps/print/pdf";
 import { INK, MUTED, type Sheet, type SheetItem } from "@/features/maps/print/sheet";
 import { appLocale } from "@/lib/region";
 

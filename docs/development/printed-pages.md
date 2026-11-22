@@ -2,9 +2,10 @@
 
 The household book is laid out with the print kit, `apps/web/src/features/print-kit/`:
 pdfmake (MIT) in its browser build, Atkinson Hyperlegible Next (OFL) in four styles, and a
-small set of components. pdfmake and the fonts load only when a PDF is made. The other
-papers still use the hand-written writer in `features/maps/print/pdf.ts`; this page is
-for moving them.
+small set of components. pdfmake and the fonts load only when a PDF is made. So are the
+other papers, except printed map pages, the household papers, and papers holding a name
+the typeface cannot set, which keep the hand-written writer in
+`features/maps/print/pdf.ts`.
 
 ## Making a document
 
@@ -100,3 +101,6 @@ real text in the PDF. Callout symbols are shapes, not letters, so a search finds
   whole with `{ svg, width: page.width, height: page.height, absolutePosition: { x: 0, y: 0 } }`,
   so one point of the drawing is one point of paper (see `solar-clock/templates-kit.ts`).
   The printed map keeps the old writer, which places its picture at an exact size.
+- Guidance sheets (water, cooking, rations, the sight form) use `guidanceDocument`
+  (`tools/kit/sheet.ts`) and its paper choice; map pictures go in through
+  `sheetItemsToSvg` with data addresses, at the kit's measure (`nuclear/print.ts`).

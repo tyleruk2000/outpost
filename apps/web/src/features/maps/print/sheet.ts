@@ -320,7 +320,15 @@ export function layoutSheet(input: SheetInput): Sheet {
   const titleRoom = ratioRight - Math.max(textWidth(ratio, 11, true), textWidth("at the middle of the sheet", 6)) - 16 - strip.x;
   const title = input.title.trim();
   if (title) {
-    items.push({ kind: "text", x: strip.x, y: strip.y + 13, text: fitText(title, 13, titleRoom, true), size: 13, bold: true, color: ACCENT });
+    items.push({
+      kind: "text",
+      x: strip.x,
+      y: strip.y + 13,
+      text: fitText(title, 13, titleRoom, true),
+      size: 13,
+      bold: true,
+      color: ACCENT,
+    });
     items.push({ kind: "text", x: strip.x, y: strip.y + 24, text: input.date, size: 7.5, color: MUTED });
   } else {
     items.push({ kind: "text", x: strip.x, y: strip.y + 13, text: input.date, size: 10, color: INK });
