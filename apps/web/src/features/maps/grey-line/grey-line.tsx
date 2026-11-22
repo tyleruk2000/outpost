@@ -161,7 +161,7 @@ export function GreyLineLegend({
           aria-expanded={open}
           aria-controls={open ? bodyId : undefined}
           onClick={() => setOpen(!open)}
-          className="-mt-1 -mr-1.5"
+          className="-mt-1 -mr-1.5 max-w-none"
         >
           {open ? <ChevronDown className="rotate-180" /> : <Clock />}
         </Button>

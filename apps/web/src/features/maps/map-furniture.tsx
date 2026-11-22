@@ -130,13 +130,16 @@ export function MapFurniture({
   if (!phone) {
     return (
       <>
-        <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex items-start gap-2">
+        {/* It ends above the line of credits at the foot, so that the column of tools never runs over them or off the map. */}
+        <div className="pointer-events-none absolute inset-x-3 top-3 bottom-9 z-10 flex items-start gap-2">
           {search}
           {tools}
         </div>
         {notice ? <div className="absolute inset-x-3 top-[4.25rem] z-10 flex justify-center">{notice}</div> : null}
-        <div className="pointer-events-none absolute inset-x-3 bottom-2.5 z-10 flex flex-col items-center gap-2">
-          {cards}
+        {/* Below the search box and above the foot: two cards at once (a recording's and a tool's) used to run up off the
+            top of the map, under the search box. Now they share the height there is, and each scrolls inside itself. */}
+        <div className="pointer-events-none absolute inset-x-3 top-[4.25rem] bottom-2.5 z-10 flex flex-col items-center justify-end gap-2">
+          <div className="flex min-h-0 w-full shrink flex-col items-center justify-end gap-2 empty:hidden">{cards}</div>
           {footer}
         </div>
       </>

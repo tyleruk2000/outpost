@@ -201,7 +201,8 @@ describe("a card over the map", () => {
     const title = screen.getByRole("heading", { name: "Measure" });
     // Above its place by the card's own padding, at every width: a card that scrolls measures the header from inside its padding.
     expect(title.parentElement).toHaveClass("sticky", "-top-3.5");
-    expect(title.closest("section")).toHaveClass("outpost-map-card", "max-md:overflow-y-auto");
+    // At every width: on a wide screen two cards at once ran up off the top of the map.
+    expect(title.closest("section")).toHaveClass("outpost-map-card", "overflow-y-auto", "shrink");
     expect(screen.getByRole("button", { name: "Stop measuring" })).toBeInTheDocument();
   });
 
@@ -260,6 +261,10 @@ describe("where things sit over the map", () => {
     const { container } = render(<MapFurniture phone={false} covered={false} {...parts} />);
     expect(container.querySelector(".outpost-furniture")).toBeNull();
     expect(screen.getByText("Tools").parentElement).toBe(screen.getByLabelText("Search the map").parentElement);
-    expect(screen.getByText("Credits").parentElement).toBe(screen.getByRole("region", { name: "A card" }).parentElement);
+    // The cards are in a block of their own above the readout, which shares out the height between the search box and the foot.
+    const cards = screen.getByRole("region", { name: "A card" }).parentElement;
+    expect(cards).toHaveClass("min-h-0", "shrink");
+    expect(screen.getByText("Credits").parentElement).toBe(cards?.parentElement);
+    expect(cards?.parentElement).toHaveClass("top-[4.25rem]", "bottom-2.5");
   });
 });

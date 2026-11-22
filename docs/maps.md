@@ -26,6 +26,13 @@ Right-click the map (press and hold on a touch screen) for **Save a place here**
 from here**, **Draw a route from here**, **Sun times here**, **Estimated radio range from
 here**, **How far on foot from here** and **Copy coordinates**.
 
+From the keyboard, the point is the cross at the centre of the map. Tab to the map, move it
+with the arrow keys (plus and minus zoom), then press **Shift F10** (or the menu key) for the
+same menu at the centre. While measuring, **Enter** adds the centre as the next point; with
+**Save a place** in hand, **Enter** saves the centre; while drawing a route, **Enter** adds a
+point there. The measuring and drawing cards have a button that does the same. A position, grid
+reference or locator typed in the search box opens a card for it, which takes the keyboard.
+
 The readout at the bottom gives the position of the cross at the centre of the map (with a
 mouse, of the pointer, marked "Pointer"). Choose its format: decimal degrees,
 degrees-minutes-seconds, British National Grid, Irish Grid, Irish Transverse Mercator (ITM),

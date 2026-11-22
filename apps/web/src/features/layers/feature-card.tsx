@@ -238,7 +238,7 @@ function RecordCard({
           <Button variant="ghost" size="icon-sm" aria-label="Show the details" aria-expanded={false} onClick={() => setFolded(false)}>
             <ChevronUp />
           </Button>
-          <Button variant="ghost" size="icon-sm" aria-label="Close this record" onClick={onClose} className="-mr-1.5">
+          <Button variant="ghost" size="icon-sm" aria-label="Close this record" onClick={onClose} className="-mr-1.5 max-w-none">
             <X />
           </Button>
         </div>

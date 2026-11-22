@@ -10,7 +10,7 @@
  * typefaces.
  */
 import { FileText } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/misc";
@@ -79,6 +79,10 @@ function SunPdfOpen({
   const [span, setSpan] = useState<SunSpan>(() => readStored(SPAN_KEY, isSunSpan, "fortnight"));
   const [paper, setPaper] = useState<AidPaper>(() => readStored(AID_PAPER_KEY, isAidPaper, likelyPaper(navigator.language)));
   const { name, lat, lon, coordinates } = place;
+  // The button that opened this is gone: its heading has the keyboard, so that focus is not dropped on the page.
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => heading.current?.focus({ preventScroll: true }), []);
+
   // Dated by the day it is made, so the same sheet made twice in a day is the same file, and the library knows it has it.
   const madeOn = dateIn(zone, Date.now());
   const input = useMemo<SunSheetInput>(
@@ -95,7 +99,9 @@ function SunPdfOpen({
   return (
     <section aria-label="Sun times as a PDF" className="grid gap-3 border-t border-border pt-3" data-testid="sun-pdf">
       <div>
-        <h4 className="text-small font-medium text-ink">Sun times on paper</h4>
+        <h4 ref={heading} tabIndex={-1} className="text-small font-medium text-ink focus:outline-none">
+          Sun times on paper
+        </h4>
         <p className="mt-0.5 text-small text-ink-muted">
           {spanWords(date, span)}, a day to a line, on the clock shown above
           {made.status === "made" ? `: ${plural(made.pages, "page")} of ${PAPERS[paper].label}` : ""}. Made on this device.

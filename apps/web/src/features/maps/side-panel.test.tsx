@@ -20,6 +20,17 @@ describe("the heights the sheet rests at", () => {
 });
 
 describe("the tab names", () => {
+  it("head the tab shown at level 2, between the screen's h1 and the tab's own h3s", () => {
+    render(
+      <PanelTabs tab="sun" onTabChange={() => {}} counts={{}}>
+        {{ places: <p>places</p>, routes: <p>routes</p>, layers: <p>layers</p>, offline: <p>offline</p>, sun: <h3>Sun at the centre</h3> }}
+      </PanelTabs>,
+    );
+    const panel = screen.getByRole("tabpanel");
+    expect(panel.querySelector("h2")).toHaveTextContent("Sun");
+    expect(screen.getByRole("heading", { level: 2, name: "Sun" })).toBeInTheDocument();
+  });
+
   it("take a second line when they do not fit, instead of sliding off the edge of a row that scrolls", () => {
     render(
       <PanelTabs tab="places" onTabChange={() => {}} counts={{ places: 128, routes: 14 }}>

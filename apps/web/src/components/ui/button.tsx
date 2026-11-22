@@ -45,7 +45,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>, Va
  */
 export function Button({ className, variant, size, asChild, loading, disabled, children, type, onClick, ...props }: ButtonProps) {
   const Component = asChild ? Slot.Root : "button";
-  const busy = Boolean(loading) && !disabled;
+  const busy = !asChild && Boolean(loading) && !disabled;
   return (
     <Component
       className={cn(button({ variant, size }), className)}

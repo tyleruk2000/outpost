@@ -31,7 +31,7 @@ export function MagneticGlance({ engine, className }: { engine: MapEngine; class
       data-magnetic-glance
       aria-label={`${words}: ${words.replace("Magnetic", "magnetic north is").replace(" E", " east").replace(" W", " west")} of true north at the centre of the map. Open the compass for this point`}
       className={cn(
-        "tabular flex min-h-[44px] items-center px-2.5 py-1 text-small whitespace-nowrap text-ink-muted hover:bg-surface-strong hover:text-ink md:min-h-9",
+        "tabular flex min-h-[44px] min-w-0 items-center px-2.5 py-1 text-small text-ink-muted hover:bg-surface-strong hover:text-ink md:min-h-9",
         className,
       )}
     >
@@ -43,8 +43,10 @@ export function MagneticGlance({ engine, className }: { engine: MapEngine; class
 /** The line under the centre's coordinates: the sun's times when they are shown, and the magnetic line beside them. */
 export function CentreLines({ engine, sun }: { engine: MapEngine; sun: ReactNode }) {
   return (
+    // The sun's times never narrower than their longest piece, and the magnetic line may take two lines: on a 320 px
+    // phone, and a laptop with the largest text, the times were squeezed under "Magnetic 0.3° W" and the two overlapped.
     <div className="flex items-stretch">
-      {sun ? <div className="min-w-0 flex-1">{sun}</div> : null}
+      {sun ? <div className="min-w-min flex-1">{sun}</div> : null}
       <MagneticGlance engine={engine} className={sun ? "border-l border-border" : "w-full"} />
     </div>
   );

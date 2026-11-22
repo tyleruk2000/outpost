@@ -17,7 +17,7 @@ import {
   type TrackDto,
   type TrackWithGeometryDto,
 } from "@outpost/shared";
-import { CircleAlert, FileUp, PanelLeftOpen } from "lucide-react";
+import { CircleAlert, Crosshair, FileUp, PanelLeftOpen } from "lucide-react";
 import { type DragEvent, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
 import { toast } from "sonner";
@@ -159,6 +159,8 @@ interface Pin {
   position: LatLon;
   /** Dropped to see its sun times, so they start unfolded. */
   sun?: boolean;
+  /** Chosen from the search list, which has gone: its card takes the keyboard. */
+  focus?: boolean;
 }
 
 type MapStatus = "loading" | "ready" | "unsupported" | "failed";
@@ -291,7 +293,13 @@ export default function MapsPage() {
   const [finding, setFinding] = useState(false);
   const [routePreview, setRoutePreview] = useState<TrackWithGeometryDto | null>(null);
   const [profilePoint, setProfilePoint] = useState<LatLon | null>(null);
-  const [contextMenu, setContextMenu] = useState<{ position: LatLon; point: { x: number; y: number }; hit: MapHit | null } | null>(null);
+  /** The menu for a point on the map; `keyboard` when it was opened for the centre from the keyboard, which then has it back. */
+  const [contextMenu, setContextMenu] = useState<{
+    position: LatLon;
+    point: { x: number; y: number };
+    hit: MapHit | null;
+    keyboard?: boolean;
+  } | null>(null);
   const [importFiles, setImportFiles] = useState<File[] | null>(null);
   const [dropping, setDropping] = useState(false);
   const [offlineIntent, setOfflineIntent] = useState<OfflineIntent>(null);
@@ -923,11 +931,27 @@ export default function MapsPage() {
         else leaveTool();
         return;
       }
+      const onMap = event.target instanceof HTMLElement && event.target.classList.contains("maplibregl-canvas");
+      // From the keyboard, the point is the centre of the map, which the cross marks: Shift F10 (or the menu key) opens
+      // the menu a right-click or a long press opens, and Enter is a press there for the tool in hand (WCAG 2.1.1).
+      if (onMap && engine && !moving) {
+        const centre = engine.getCenter();
+        if (tool === "browse" && (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10"))) {
+          event.preventDefault();
+          setContextMenu({ position: centre, point: engine.project(centre), hit: null, keyboard: true });
+          return;
+        }
+        if (event.key === "Enter" && (tool === "measure" || tool === "add-place")) {
+          event.preventDefault();
+          if (tool === "measure") setMeasurePoints((points) => [...points, centre]);
+          else startPlace(centre);
+          return;
+        }
+      }
       // In a text field these keys belong to the text.
       if (tool !== "draw" || isTyping(event.target)) return;
       const key = event.key.toLowerCase();
       const command = event.metaKey || event.ctrlKey;
-      const onMap = event.target instanceof HTMLElement && event.target.classList.contains("maplibregl-canvas");
       if (command && key === "z") stepRoute(event.shiftKey ? redo : undo);
       else if (command && key === "y") stepRoute(redo);
       else if (key === "enter" && onMap) addAtCentre();
@@ -939,7 +963,14 @@ export default function MapsPage() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [tool, moving, endMove, leaveTool, closeDrawing, stepRoute, addAtCentre]);
+  }, [tool, moving, endMove, leaveTool, closeDrawing, stepRoute, addAtCentre, engine, startPlace]);
+
+  // The map's name says what Enter does at the centre with the tool in hand.
+  useEffect(() => {
+    engine?.setKeyHint(
+      tool === "measure" ? "Enter adds a point at the centre." : tool === "add-place" ? "Enter saves a place at the centre." : null,
+    );
+  }, [engine, tool]);
 
   const takeUpTool = (next: Tool) => {
     if (next === "browse") return leaveTool();
@@ -1124,7 +1155,8 @@ export default function MapsPage() {
     setDraft(null);
     setMoving(null);
     setTrackId(null);
-    setPin({ title: result.title, detail: result.detail, position: result.position });
+    // The list it was chosen from has gone: the card it opens has the keyboard.
+    setPin({ title: result.title, detail: result.detail, position: result.position, focus: true });
     setDetent("peek");
     engine?.flyTo(result.position, result.kind === "place" ? Math.max(engine.getZoom(), 12) : Math.max(engine.getZoom(), 14));
   };
@@ -1441,6 +1473,7 @@ export default function MapsPage() {
     ) : tool === "measure" ? (
       <MeasureCard
         points={measurePoints}
+        onAddAtCentre={engine ? () => setMeasurePoints((points) => [...points, engine.getCenter()]) : undefined}
         onUndo={() => setMeasurePoints((points) => points.slice(0, -1))}
         onClear={() => setMeasurePoints([])}
         onDone={leaveTool}
@@ -1454,6 +1487,11 @@ export default function MapsPage() {
     ) : tool === "add-place" && !isDesktop ? (
       <MapCard title="Save a place" onClose={leaveTool} closeLabel="Stop saving a place">
         <p className="mt-1 text-small text-ink-muted">{pressWord()} the map where the place is.</p>
+        {engine ? (
+          <Button size="sm" className="mt-3" onClick={() => startPlace(engine.getCenter())}>
+            <Crosshair /> Use the centre of the map
+          </Button>
+        ) : null}
       </MapCard>
     ) : tool === "sight" ? (
       // The whole answer is in the panel; the card stands in for it while a point is chosen and while the panel is out of sight.
@@ -1503,12 +1541,13 @@ export default function MapsPage() {
     ) : pin ? (
       <PinCard
         // A pin dropped for its sun times opens them, even when the pin before it had them folded.
-        key={pin.sun ? "sun" : "pin"}
+        key={pin.sun ? "sun" : pin.focus ? `found ${pin.position.lat},${pin.position.lon}` : "pin"}
         title={pin.title}
         detail={pin.detail}
         position={pin.position}
         format={format}
         sunOpen={pin.sun}
+        focusOnOpen={pin.focus}
         onSave={() => startPlace(pin.position, /^[-\d.,\s]+$/.test(pin.title) ? "" : pin.title)}
         onClose={() => setPin(null)}
       />
@@ -1684,7 +1723,7 @@ export default function MapsPage() {
           onClear={onClear}
           search={
             <SearchBox
-              className="pointer-events-auto w-full md:max-w-[24rem]"
+              className="pointer-events-auto w-full min-w-0 md:max-w-[24rem]"
               markers={markers.data ?? []}
               tracks={allTracks}
               placesInstalled={(overview.data?.places.length ?? 0) > 0}
@@ -1808,7 +1847,10 @@ export default function MapsPage() {
               walk.start(contextMenu.position);
               setDetent("peek");
             }}
-            onClose={() => setContextMenu(null)}
+            onClose={() => {
+              setContextMenu(null);
+              if (contextMenu.keyboard) engine?.focus();
+            }}
           />
         ) : null}
 

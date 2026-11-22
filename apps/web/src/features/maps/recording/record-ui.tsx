@@ -258,7 +258,7 @@ function CardHeader({ title, lamp, action }: { title: ReactNode; lamp?: boolean;
   );
 }
 
-const headerButton = "-mt-1 -mr-1.5";
+const headerButton = "-mt-1 -mr-1.5 max-w-none";
 
 function Intro({ recorder, state }: { recorder: Recorder; state: RecorderSnapshot }) {
   const [starting, setStarting] = useState(false);
@@ -275,7 +275,16 @@ function Intro({ recorder, state }: { recorder: Recorder; state: RecorderSnapsho
     if (outcome === "started") setCardView("open");
   };
   return (
-    <section className={cardShell} aria-label="Record a track">
+    // Escape in the card closes it, as it puts down a tool's card; nothing is recording yet, so nothing is lost.
+    <section
+      className={cardShell}
+      aria-label="Record a track"
+      onKeyDown={(event) => {
+        if (event.key !== "Escape" || event.defaultPrevented) return;
+        event.preventDefault();
+        setCardView("closed");
+      }}
+    >
       <CardHeader title="Record a track" action={close} />
       {able === "insecure" ? (
         <p className="mt-1 text-small text-ink">

@@ -304,7 +304,7 @@ export function useRepeaterRange({
             <ChevronUp />
           </Button>
           {onClose ? (
-            <Button variant="ghost" size="icon-sm" aria-label="Close this repeater" onClick={onClose} className="-mr-1.5">
+            <Button variant="ghost" size="icon-sm" aria-label="Close this repeater" onClick={onClose} className="-mr-1.5 max-w-none">
               <X />
             </Button>
           ) : null}

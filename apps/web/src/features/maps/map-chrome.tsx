@@ -24,7 +24,7 @@ import {
   Waypoints,
   X,
 } from "lucide-react";
-import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -414,7 +414,7 @@ export function MapControls({
   const block = (group: MapTool["group"]) => {
     const members = tools.filter((tool) => tool.group === group);
     return members.length > 0 ? (
-      <ControlGroup>
+      <ControlGroup className="shrink-0">
         {members.map((tool) => (
           <ToolButton key={tool.id} tool={tool} />
         ))}
@@ -422,8 +422,16 @@ export function MapControls({
     ) : null;
   };
   return (
-    <div className={cn("relative flex flex-col gap-2", className)}>
-      <ControlGroup>
+    // On a short window (a laptop's 768 px, less the browser's bars) the column is taller than the map: it scrolls, so that
+    // its last tools are not off the foot of the screen where no pointer can reach them. Its padding keeps the shadows. It
+    // never gives its width to the search box: a box that scrolls may otherwise shrink to nothing (the largest text).
+    <div
+      className={cn(
+        "scroll-quiet relative -mx-2 flex max-h-full shrink-0 flex-col gap-2 overflow-y-auto overscroll-contain px-2 pb-1",
+        className,
+      )}
+    >
+      <ControlGroup className="shrink-0">
         <ControlButton label="Zoom in" onClick={onZoomIn} disabled={disabled}>
           <Plus />
         </ControlButton>
@@ -565,10 +573,13 @@ export function MapMenu({ tools }: { tools: MapTool[] }) {
           <span aria-hidden>More</span>
         </button>
       </MenuTrigger>
+      {/* As wide as the room to the left of the button at most (the screen less the button, its inset and the gap): on a
+          320 px phone a fixed width ran 33 px off the screen. Worked out from the screen, not from the room the menu
+          library measures, which changed with the width it set and looped. */}
       <MenuContent
         side="left"
         align="end"
-        className="scroll-quiet max-h-(--radix-dropdown-menu-content-available-height) w-[min(19rem,calc(100vw-1.5rem))] overflow-y-auto"
+        className="scroll-quiet max-h-(--radix-dropdown-menu-content-available-height) w-[min(19rem,calc(100vw-76px))] overflow-y-auto"
       >
         <MenuLabel className="text-ink-muted">Tools</MenuLabel>
         {tools.filter((tool) => !tool.layer && !tool.choices).map(entry)}
@@ -600,10 +611,16 @@ export function MapCard({
   onClose,
   closeLabel,
   action,
+  focusOnOpen,
   children,
   className,
 }: {
   title: ReactNode;
+  /**
+   * The card takes the keyboard when it opens: for a card opened from somewhere that has just gone (a search result
+   * chosen from the list), so that focus is not dropped on the page and the card is read out (WCAG 2.4.3).
+   */
+  focusOnOpen?: boolean;
   /** A button beside the close button, such as one that folds the card. */
   action?: ReactNode;
   /**
@@ -616,15 +633,35 @@ export function MapCard({
   children: ReactNode;
   className?: string;
 }) {
+  const titleId = useId();
+  const card = useRef<HTMLElement>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once, as the card opens
+  useEffect(() => {
+    if (focusOnOpen) card.current?.focus({ preventScroll: true });
+  }, []);
   return (
-    <section className={cn(mapCard, className)}>
+    <section
+      ref={card}
+      // Named by its title when it takes the keyboard, so that what has it is said.
+      aria-labelledby={focusOnOpen ? titleId : undefined}
+      tabIndex={focusOnOpen ? -1 : undefined}
+      className={cn(mapCard, focusOnOpen && "focus:outline-none focus-visible:outline-2 focus-visible:outline-focus", className)}
+    >
       <div className={mapCardHeader}>
-        <h2 className={cn("min-w-0 text-body font-semibold text-ink", titleHidden && "sr-only")}>{title}</h2>
+        <h2 id={titleId} className={cn("min-w-0 text-body font-semibold text-ink", titleHidden && "sr-only")}>
+          {title}
+        </h2>
         {action || onClose ? (
           <div className="flex shrink-0 items-start gap-1">
             {action}
             {onClose ? (
-              <Button variant="ghost" size="icon-sm" aria-label={closeLabel ?? "Close"} onClick={onClose} className="-mt-1 -mr-1.5">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={closeLabel ?? "Close"}
+                onClick={onClose}
+                className="-mt-1 -mr-1.5 max-w-none"
+              >
                 <X />
               </Button>
             ) : null}
@@ -638,6 +675,7 @@ export function MapCard({
 
 export function MeasureCard({
   points,
+  onAddAtCentre,
   onUndo,
   onClear,
   onDone,
@@ -645,6 +683,8 @@ export function MeasureCard({
   onSight,
 }: {
   points: LatLon[];
+  /** Adds the centre of the map as the next point: the way to measure without pointing at the map. */
+  onAddAtCentre?: () => void;
   onUndo: () => void;
   onClear: () => void;
   onDone: () => void;
@@ -662,17 +702,20 @@ export function MeasureCard({
 
   return (
     <MapCard title="Measure" onClose={onDone} closeLabel="Stop measuring">
-      {points.length === 0 ? (
-        <p className="mt-1 text-small text-ink-muted">
-          {pressWord()} the map to set the first point, then each point after it.{touchScreen() ? "" : " Press Escape to stop."}
-        </p>
-      ) : points.length === 1 ? (
-        <p className="mt-1 text-small text-ink-muted">First point set. {pressWord()} the next one.</p>
-      ) : (
-        <>
-          <p className="tabular mt-1 text-lead font-semibold text-ink" aria-live="polite">
-            {formatDistanceWithMiles(result.totalMeters)}
+      {/* Always in the page, so that each point set is said as it is set: a live region that arrives already full is not. */}
+      <div aria-live="polite" aria-atomic>
+        {points.length === 0 ? (
+          <p className="mt-1 text-small text-ink-muted">
+            {pressWord()} the map to set the first point, then each point after it.{touchScreen() ? "" : " Press Escape to stop."}
           </p>
+        ) : points.length === 1 ? (
+          <p className="mt-1 text-small text-ink-muted">First point set. {pressWord()} the next one.</p>
+        ) : (
+          <p className="tabular mt-1 text-lead font-semibold text-ink">{formatDistanceWithMiles(result.totalMeters)}</p>
+        )}
+      </div>
+      {points.length >= 2 ? (
+        <>
           <p className="tabular text-small text-ink-muted">
             {result.legs.length === 1 ? "One leg" : `${result.legs.length} legs`}, last leg heading {formatBearing(result.lastBearing ?? 0)}
           </p>
@@ -698,8 +741,13 @@ export function MeasureCard({
             </ol>
           ) : null}
         </>
-      )}
+      ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
+        {onAddAtCentre ? (
+          <Button size="sm" onClick={onAddAtCentre}>
+            <Crosshair /> Add the centre of the map
+          </Button>
+        ) : null}
         <Button size="sm" onClick={onUndo} disabled={points.length === 0}>
           <Undo2 /> Undo last point
         </Button>
@@ -843,6 +891,7 @@ export function PinCard({
   format,
   sunOpen,
   closeLabel = "Remove this pin",
+  focusOnOpen,
   onSave,
   onClose,
 }: {
@@ -853,12 +902,14 @@ export function PinCard({
   /** The sun times start unfolded: they are what was asked for. */
   sunOpen?: boolean;
   closeLabel?: string;
+  /** Takes the keyboard as it opens: see `MapCard`. */
+  focusOnOpen?: boolean;
   onSave: () => void;
   onClose: () => void;
 }) {
   const coordinates = formatPosition(position.lat, position.lon, format).text;
   return (
-    <MapCard title={<span className="font-title">{title}</span>} onClose={onClose} closeLabel={closeLabel}>
+    <MapCard title={<span className="font-title">{title}</span>} onClose={onClose} closeLabel={closeLabel} focusOnOpen={focusOnOpen}>
       {detail ? <p className="text-small text-ink-muted">{detail}</p> : null}
       <button
         type="button"
@@ -867,7 +918,7 @@ export function PinCard({
         }}
         title="Copy"
         aria-label={`Copy coordinates ${coordinates}`}
-        className="tabular mt-1 rounded-[3px] font-mono text-[0.8125rem] text-ink underline decoration-border-strong decoration-dotted underline-offset-4 hover:decoration-ink"
+        className="tabular mt-1 min-h-6 rounded-[3px] font-mono text-[0.8125rem] text-ink underline decoration-border-strong decoration-dotted underline-offset-4 hover:decoration-ink"
       >
         {coordinates}
       </button>

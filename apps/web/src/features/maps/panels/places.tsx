@@ -222,7 +222,7 @@ export function PlaceEditor({
               if (await copyText(coordinates)) toast.success(`Copied ${coordinates}`);
             }}
             aria-label={`Copy coordinates ${coordinates}`}
-            className="tabular group flex items-center gap-2 self-start font-mono text-[0.8125rem] text-ink"
+            className="tabular group flex min-h-6 items-center gap-2 self-start font-mono text-[0.8125rem] text-ink"
           >
             {coordinates}
             <Copy aria-hidden className="size-3.5 text-ink-faint group-hover:text-ink" />
