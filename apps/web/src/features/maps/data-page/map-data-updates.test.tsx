@@ -105,9 +105,9 @@ describe("the words", () => {
   });
 
   it("lists a kind it does not name yet under its own name", () => {
-    const streets = item({ key: "s", kind: "streets" as never, title: "Streets", sizeBytes: 10 });
-    const rows = storageRows(mapData({ other: [streets] }));
-    expect(rows.at(-1)).toMatchObject({ name: "Streets", count: 1, bytes: 10 });
+    const future = item({ key: "f", kind: "tide-tables" as never, title: "Tide tables", sizeBytes: 10 });
+    const rows = storageRows(mapData({ other: [future] }));
+    expect(rows.at(-1)).toMatchObject({ name: "Tide tables", count: 1, bytes: 10 });
   });
 });
 
