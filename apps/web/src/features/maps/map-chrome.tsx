@@ -1,5 +1,6 @@
 /** The controls and cards that float over the map: tools, zoom, the measuring card, the drawing card, the pin card, the card for moving a place. */
 import {
+  Car,
   Compass,
   Crosshair,
   Ellipsis,
@@ -379,7 +380,7 @@ function ToolButton({ tool }: { tool: MapTool }) {
               size="icon"
               aria-label={tool.label}
               disabled={tool.disabled}
-              className="rounded-none text-ink focus-visible:-outline-offset-2 max-md:size-[44px]"
+              className="rounded-none text-ink focus-visible:-outline-offset-2 max-md:size-[44px] md:pointer-coarse:size-[44px]"
             >
               {tool.icon}
             </Button>
@@ -479,9 +480,12 @@ export function MapToolColumn({ tools }: { tools: MapTool[] }) {
     // Not laid out (a test without a browser): show them all.
     if (!element || element.offsetParent === null || typeof ResizeObserver === "undefined") return;
     const measure = () => {
-      // A button is 44 px and a hairline; the group has a border of its own. Under it, 8 px, then "More".
+      // A button is 44 px under a finger (36 with a mouse, as a compact wide screen has it: measured, not assumed) and a
+      // hairline; the group has a border of its own. Under it, 8 px, then "More".
       const reserved = (more.current?.offsetHeight ?? 56) + 8;
-      setRoom(Math.max(0, Math.floor((element.clientHeight - reserved - 1) / 45)));
+      const group = element.firstElementChild === more.current ? null : element.firstElementChild;
+      const each = ((group?.firstElementChild as HTMLElement | null)?.offsetHeight || 44) + 1;
+      setRoom(Math.max(0, Math.floor((element.clientHeight - reserved - 1) / each)));
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -514,7 +518,12 @@ function ChoiceGroup({ tool }: { tool: MapTool }) {
       <MenuLabel className="text-ink-muted">{heading}</MenuLabel>
       <MenuRadioGroup value={tool.value} onValueChange={(value) => tool.onChoose?.(value)} aria-label={heading}>
         {tool.choices?.map((choice) => (
-          <MenuRadioItem key={choice.value} value={choice.value} disabled={tool.disabled} className="max-md:min-h-11">
+          <MenuRadioItem
+            key={choice.value}
+            value={choice.value}
+            disabled={tool.disabled}
+            className="max-md:min-h-11 md:pointer-coarse:min-h-11"
+          >
             {choice.label}
           </MenuRadioItem>
         ))}
@@ -537,7 +546,7 @@ export function MapMenu({ tools }: { tools: MapTool[] }) {
       </span>
     );
     return tool.pressed === undefined ? (
-      <MenuItem key={tool.id} disabled={tool.disabled} onSelect={tool.onPress} className="max-md:min-h-11">
+      <MenuItem key={tool.id} disabled={tool.disabled} onSelect={tool.onPress} className="max-md:min-h-11 md:pointer-coarse:min-h-11">
         {words}
       </MenuItem>
     ) : (
@@ -546,7 +555,7 @@ export function MapMenu({ tools }: { tools: MapTool[] }) {
         checked={tool.pressed}
         disabled={tool.disabled}
         onCheckedChange={tool.onPress}
-        className="max-md:min-h-11"
+        className="max-md:min-h-11 md:pointer-coarse:min-h-11"
       >
         {words}
       </MenuCheckItem>
@@ -893,6 +902,7 @@ export function PinCard({
   closeLabel = "Remove this pin",
   focusOnOpen,
   onSave,
+  onRoadRoute,
   onClose,
 }: {
   title: string;
@@ -905,6 +915,8 @@ export function PinCard({
   /** Takes the keyboard as it opens: see `MapCard`. */
   focusOnOpen?: boolean;
   onSave: () => void;
+  /** Opens Road route with this point as where to go: a place found is most often somewhere to get to. */
+  onRoadRoute?: () => void;
   onClose: () => void;
 }) {
   const coordinates = formatPosition(position.lat, position.lon, format).text;
@@ -925,10 +937,15 @@ export function PinCard({
       {/* Already the locator when that is the format coordinates are shown in. */}
       {format === "maidenhead" ? null : <Locator position={position} className="mt-1 block" />}
       <SunSection position={position} defaultOpen={sunOpen} contained className="mt-2 border-t border-border pt-1" />
-      <div className="mt-3">
+      <div className="mt-3 flex flex-wrap gap-2">
         <Button size="sm" variant="primary" onClick={onSave}>
           Save this place
         </Button>
+        {onRoadRoute ? (
+          <Button size="sm" onClick={onRoadRoute}>
+            <Car aria-hidden /> Road route to here
+          </Button>
+        ) : null}
       </div>
     </MapCard>
   );
@@ -998,12 +1015,16 @@ export function ContextMenu({
     };
   }, []);
 
+  // Its own height as drawn, before it is seen: its rows are taller under a finger and with larger text than any sum
+  // of them here could know, and a menu opened low on a tablet ran off the foot of the map.
+  const [drawn, setDrawn] = useState<number | null>(null);
+  useLayoutEffect(() => setDrawn(ref.current?.offsetHeight || null), []);
   const width = 232;
-  const height = (place ? 254 : 218) + (locator ? 18 : 0) + (onRange ? 36 : 0) + (onWalk ? 36 : 0) + (onRoadRoute ? 72 : 0);
+  const height = drawn ?? (place ? 254 : 218) + (locator ? 18 : 0) + (onRange ? 36 : 0) + (onWalk ? 36 : 0) + (onRoadRoute ? 72 : 0);
   const left = Math.max(8, Math.min(point.x, bounds.width - width - 8));
   const top = Math.max(8, Math.min(point.y, bounds.height - height - 8));
   const item =
-    "flex w-full items-center rounded-[4px] px-2.5 py-1.5 text-left text-small text-ink hover:bg-surface-strong focus-visible:bg-surface-strong max-md:py-2.5";
+    "flex w-full items-center rounded-[4px] px-2.5 py-1.5 text-left text-small text-ink hover:bg-surface-strong focus-visible:bg-surface-strong max-md:py-2.5 md:pointer-coarse:py-2.5";
 
   return (
     <div ref={ref} role="menu" aria-label="At this point" className={cn(mapSurface, "absolute z-30 p-1")} style={{ left, top, width }}>

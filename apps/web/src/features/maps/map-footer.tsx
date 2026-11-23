@@ -111,7 +111,7 @@ function CoordinateReadout({
           type="button"
           onClick={copy}
           title="Copy"
-          className="group flex min-h-9 min-w-0 flex-1 items-center gap-2 px-2.5 text-left focus-visible:-outline-offset-2 max-md:min-h-[44px]"
+          className="group flex min-h-9 min-w-0 flex-1 items-center gap-2 px-2.5 text-left focus-visible:-outline-offset-2 max-md:min-h-[44px] md:pointer-coarse:min-h-[44px]"
         >
           {/* Named by what it shows, after what pressing it does: what is read out (and what voice control is told) is what is seen. */}
           <span className="sr-only">Copy these coordinates: </span>
@@ -128,7 +128,7 @@ function CoordinateReadout({
           <MenuTrigger
             aria-label={`Coordinate format: ${READOUT_LABELS[format]}. Change`}
             title="Coordinate format"
-            className="grid w-8 place-content-center border-l border-border text-ink-muted hover:bg-surface-strong hover:text-ink focus-visible:-outline-offset-2 max-md:w-[44px]"
+            className="grid w-8 place-content-center border-l border-border text-ink-muted hover:bg-surface-strong hover:text-ink focus-visible:-outline-offset-2 max-md:w-[44px] md:pointer-coarse:w-[44px]"
           >
             <ChevronUp className="size-4" />
           </MenuTrigger>

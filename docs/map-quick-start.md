@@ -23,6 +23,7 @@ This needs the internet once.
    `54.4609, -3.0886`.
 2. Choose a result. The map moves to it.
 3. To keep it, press **Save this place** and give it a name. It is then under **Places**.
+   To drive there, press **Road route to here** (see [Plan a drive](#plan-a-drive)).
 
 Or press and hold the map (right-click with a mouse) and choose **Save a place here**.
 
@@ -43,7 +44,8 @@ spot height. Metres or feet: **Settings → Appearance**.
 
 ## Print a map
 
-1. Press **Print or save as PDF**. A box appears: the box is the page.
+1. Press **Print or save as PDF** (on a phone, under **More**). A box appears: the box is the
+   page.
 2. Drag it over the area. Choose the paper, which way up, and the scale (1:25,000 suits
    walking).
 3. Press **Preview the page**, give it a title, and tick what to show.
@@ -54,8 +56,9 @@ Print at 100% (not "fit to page") so the scale is right. More in
 
 ## Plan a drive
 
-1. Open **Routes** beside the map and press **Road route**. The first time, press **Add road
-   networks** and add each country you will drive through (this needs the internet once).
+1. Open **Routes** beside the map and press **Road route**, or press **Road route to here**
+   on a place you found. The first time, press **Add road networks** and add each country
+   you will drive through (this needs the internet once).
 2. Give **From** and **To**: a saved place, a town or coordinates, or **Map centre**.
 3. Press **Plan route**. The main roads and the places on their signs are listed, as you
    would write them down.
@@ -88,6 +91,9 @@ This is geometry over terrain, not a promise that a signal gets through.
 The card under the map gives the answer in a few words; press **Show the details** (the
 upward arrow) for the rest. Set the heights under **Heights and details**. Woods, buildings and power are not counted:
 radio often reaches less than this.
+
+From anywhere in Outpost, quick search (Ctrl K) goes straight to these: type "road route"
+(or "directions"), "print" or "routes".
 
 ## More
 

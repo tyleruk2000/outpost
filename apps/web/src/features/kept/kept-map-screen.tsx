@@ -48,7 +48,8 @@ function keptSources(areas: KeptArea[]): MapSources | undefined {
   return { ...newest.sources, hasTerrain: false, sources };
 }
 
-const row = "flex w-full min-w-0 items-start gap-3 px-4 py-2.5 text-left hover:bg-surface focus-visible:-outline-offset-2 max-md:py-3";
+const row =
+  "flex w-full min-w-0 items-start gap-3 px-4 py-2.5 text-left hover:bg-surface focus-visible:-outline-offset-2 max-md:py-3 md:pointer-coarse:py-3";
 
 function List({ heading, count, children }: { heading: string; count: number; children: ReactNode }) {
   if (count === 0) return null;

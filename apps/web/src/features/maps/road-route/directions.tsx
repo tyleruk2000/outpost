@@ -14,7 +14,7 @@ import { cn, formatDate } from "@/lib/utils";
 import { countriesText, endLine, startLine } from "./words";
 
 const legButton =
-  "flex w-full items-start gap-3 px-4 py-2.5 text-left hover:bg-surface focus-visible:-outline-offset-2 aria-pressed:bg-primary-soft max-md:min-h-11";
+  "flex w-full items-start gap-3 px-4 py-2.5 text-left hover:bg-surface focus-visible:-outline-offset-2 aria-pressed:bg-primary-soft max-md:min-h-11 md:pointer-coarse:min-h-11";
 
 /** The totals: distance, time, countries and the crossing, in one sentence. */
 export function RouteTotals({ route }: { route: RoadRouteResult }) {

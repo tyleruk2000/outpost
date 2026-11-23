@@ -193,7 +193,7 @@ export function RouteEditor({
             onClick={onAddAtCentre}
             disabled={!mapReady || isFull(edit)}
             // Its words wrap on a narrow phone with large text, where on one line they ran past the panel.
-            className="h-auto min-h-9 max-w-full justify-self-start py-2 text-left whitespace-normal max-md:h-auto max-md:min-h-11"
+            className="h-auto min-h-9 max-w-full justify-self-start py-2 text-left whitespace-normal max-md:h-auto max-md:min-h-11 md:pointer-coarse:min-h-11"
           >
             <Crosshair /> Add a point at the centre of the map
           </Button>
@@ -238,7 +238,7 @@ export function RouteEditor({
                     type="button"
                     aria-pressed={index === selected}
                     onClick={() => onChange({ ...draft, selected: index === selected ? null : index })}
-                    className="tabular flex min-w-0 flex-1 items-baseline gap-3 py-1.5 pr-2 pl-1 text-left text-small focus-visible:-outline-offset-2 max-md:py-2.5"
+                    className="tabular flex min-w-0 flex-1 items-baseline gap-3 py-1.5 pr-2 pl-1 text-left text-small focus-visible:-outline-offset-2 max-md:py-2.5 md:pointer-coarse:py-2.5"
                   >
                     <span className="w-7 shrink-0 text-right text-ink-muted">{index + 1}</span>
                     <span className="min-w-0 flex-1 truncate text-ink">

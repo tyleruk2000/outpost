@@ -46,7 +46,7 @@ export function PanelTabs({
             value={item}
             onClick={onTabPress}
             aria-label={SHORT_LABELS[item] ? TAB_LABELS[item] : undefined}
-            className="max-md:min-h-[44px] max-md:min-w-[44px] max-md:justify-center"
+            className="max-md:min-h-[44px] md:pointer-coarse:min-h-[44px] max-md:min-w-[44px] md:pointer-coarse:min-w-[44px] max-md:justify-center md:pointer-coarse:justify-center"
           >
             {SHORT_LABELS[item] ?? TAB_LABELS[item]}
             {counts[item] ? <span className="tabular text-micro font-normal text-ink-muted">{counts[item]}</span> : null}
@@ -221,7 +221,7 @@ export function MobileSheet({
       hidden={hidden}
       className={cn(
         "outpost-sheet absolute inset-x-0 bottom-0 z-20 flex flex-col rounded-t-[14px] border-t border-border bg-page shadow-float",
-        dragHeight === null && "transition-[height] duration-200 ease-out",
+        dragHeight === null && "transition-[height] duration-(--duration-slow)",
       )}
       style={{ height }}
     >

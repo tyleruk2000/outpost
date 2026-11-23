@@ -73,7 +73,12 @@ function NetworkRow({ network }: { network: RoadNetworkDto }) {
         </div>
         <Menu>
           <MenuTrigger asChild>
-            <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${network.name}`} className="max-md:size-11">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={`Actions for ${network.name}`}
+              className="max-md:size-11 md:pointer-coarse:size-11"
+            >
               <Ellipsis />
             </Button>
           </MenuTrigger>
@@ -214,7 +219,7 @@ function AddNetwork({
                 },
               )
             }
-            className="max-md:min-h-11"
+            className="max-md:min-h-11 md:pointer-coarse:min-h-11"
           >
             Add
           </Button>
@@ -227,7 +232,13 @@ function AddNetwork({
     <div className="mt-2 grid gap-3 rounded-panel border border-border p-3">
       <div className="flex items-start justify-between gap-2">
         <h4 className="text-small font-semibold text-ink">Add a road network</h4>
-        <Button variant="ghost" size="icon-sm" aria-label="Stop adding a network" onClick={onClose} className="max-md:size-11">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Stop adding a network"
+          onClick={onClose}
+          className="max-md:size-11 md:pointer-coarse:size-11"
+        >
           <X />
         </Button>
       </div>

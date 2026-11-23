@@ -244,7 +244,7 @@ export function usePointRange({
                     <button
                       type="button"
                       onClick={onOpenOffline}
-                      className="font-medium text-primary underline underline-offset-2 hover:no-underline max-md:inline-flex max-md:min-h-11 max-md:items-center"
+                      className="font-medium text-primary underline underline-offset-2 hover:no-underline max-md:inline-flex md:pointer-coarse:inline-flex max-md:min-h-11 md:pointer-coarse:min-h-11 max-md:items-center md:pointer-coarse:items-center"
                     >
                       Get terrain in Offline maps
                     </button>
@@ -263,7 +263,7 @@ export function usePointRange({
               onClick={() => setWhy((open) => !open)}
               className="flex min-h-11 items-center gap-2 text-left text-small font-medium text-ink hover:text-primary"
             >
-              <ChevronRight aria-hidden className={cn("size-4 text-ink-muted transition-transform duration-150", why && "rotate-90")} />
+              <ChevronRight aria-hidden className={cn("size-4 text-ink-muted transition-transform", why && "rotate-90")} />
               Why this shape: look along one direction
             </button>
             {why ? (
@@ -310,7 +310,7 @@ export function usePointRange({
           onClick={() => setDetails((open) => !open)}
           className="flex min-h-11 items-center gap-2 text-left text-small font-medium text-ink hover:text-primary"
         >
-          <ChevronRight aria-hidden className={cn("size-4 text-ink-muted transition-transform duration-150", details && "rotate-90")} />
+          <ChevronRight aria-hidden className={cn("size-4 text-ink-muted transition-transform", details && "rotate-90")} />
           Heights and details: your aerial {formatHeight(prefs.aerial)}, {station.name.toLowerCase()} at the other end
         </button>
 
@@ -342,7 +342,7 @@ export function usePointRange({
 
             <details className="group">
               <summary className="flex min-h-11 cursor-default items-center gap-2 py-1 text-small font-medium text-ink marker:content-none hover:text-primary [&::-webkit-details-marker]:hidden">
-                <ChevronRight aria-hidden className="size-4 text-ink-muted transition-transform duration-150 group-open:rotate-90" />
+                <ChevronRight aria-hidden className="size-4 text-ink-muted transition-transform group-open:rotate-90" />
                 What this is, and is not
               </summary>
               <div className="scroll-quiet grid max-h-56 gap-1.5 overflow-y-auto pb-1 pl-6 text-small text-ink-muted">

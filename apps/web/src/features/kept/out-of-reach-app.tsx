@@ -38,7 +38,7 @@ const NAV = [
 ];
 
 const spineLink =
-  "flex h-9 items-center gap-3 rounded-control px-2.5 text-[0.9375rem] text-spine-ink-muted transition-colors duration-150 hover:bg-spine-raised hover:text-spine-ink focus-visible:outline-spine-ink";
+  "flex h-9 items-center gap-3 rounded-control px-2.5 text-[0.9375rem] text-spine-ink-muted transition-colors duration-(--duration-fast) hover:bg-spine-raised hover:text-spine-ink focus-visible:outline-spine-ink";
 const tab =
   "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 pt-1.5 pb-1 text-[0.6875rem] font-medium text-ink-muted aria-[current=page]:text-primary";
 

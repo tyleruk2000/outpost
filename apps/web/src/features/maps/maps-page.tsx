@@ -41,6 +41,7 @@ import { type SightStart, useRepeatersOnMap } from "@/features/repeaters/map/use
 import { SatellitesLayerPanel, useSatellitesOnMap } from "@/features/satellites/map";
 import { errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
+import { useMediaQuery } from "@/lib/use-media-query";
 import { cn, plural } from "@/lib/utils";
 import { CentreMark } from "./centre-mark";
 import {
@@ -233,6 +234,8 @@ const isTyping = (target: EventTarget | null) =>
 export default function MapsPage() {
   const location = useLocation();
   const isDesktop = useIsDesktop();
+  /** A finger, not a mouse (a tablet at any width): the map's own controls are 44 px each. */
+  const coarse = useMediaQuery("(pointer: coarse)");
   const { flavour, theme } = useMapTheme();
 
   const sources = useMapSources();
@@ -314,6 +317,8 @@ export default function MapsPage() {
   const [routePreview, setRoutePreview] = useState<TrackWithGeometryDto | null>(null);
   /** "Road route" is open in the Routes tab; `roadShown` is the planned route it draws, with the leg picked out. */
   const [roadRouting, setRoadRouting] = useState(false);
+  /** The page to print was asked for in the address (/maps?print=1, from the quick search): taken up once the map is drawn. */
+  const [printAsked, setPrintAsked] = useState(false);
   const [roadIntent, setRoadIntent] = useState<RoadRouteIntent | null>(null);
   const [roadShown, setRoadShown] = useState<{ route: RoadRouteResult; selected: number | null } | null>(null);
   const showRoadRoute = useCallback(
@@ -590,11 +595,18 @@ export default function MapsPage() {
     if (restoredDraft) toast("The route you were drawing is back as you left it. It has not been saved yet.");
   }, [restoredDraft]);
 
-  // A tab named in the address (/maps?tab=layers, from the quick search) is opened, once for each arrival.
+  // A tab named in the address (/maps?tab=layers, from the quick search) is opened, once for each arrival; with
+  // road=1, the Routes tab opens at Road route, and print=1 takes up the page to print once the map is drawn.
   // biome-ignore lint/correctness/useExhaustiveDependencies: once for each arrival, not on every change of the panel
   useEffect(() => {
-    const tab = new URLSearchParams(location.search).get("tab");
+    const params = new URLSearchParams(location.search);
+    const tab = params.get("tab");
+    if (tab === "routes" && params.get("road") === "1") {
+      setFinding(false);
+      setRoadRouting(true);
+    }
     if (tab && (PANEL_TABS as readonly string[]).includes(tab)) showPanel(tab as PanelTab);
+    if (params.get("print") === "1") setPrintAsked(true);
     // From Explore's suggestions: /maps?offline=region&preset=… opens Offline maps at that region, /maps?offline=places at place names.
     const offline = new URLSearchParams(location.search).get("offline");
     if (offline === "region" || offline === "places" || offline === "roads") {
@@ -1026,12 +1038,31 @@ export default function MapsPage() {
     // On a phone the hint is a card in the sheet's place (below); a message there lay over the sheet's tabs.
     if (next === "add-place" && isDesktop) toast(`${pressWord()} the map where the place is.`, { id: ADD_PLACE_HINT });
   };
+  /** Road route opened in the Routes tab with one end set: from the menu at a point, or a found place's card. */
+  const startRoadRoute = (role: RoadRouteIntent["role"], point: RoadRouteIntent["point"]) => {
+    setContextMenu(null);
+    setPin(null);
+    if (tool === "draw") closeDrawing();
+    setFinding(false);
+    setRoadRouting(true);
+    setRoadIntent({ role, point, at: Date.now() });
+    setPanel({ open: true, tab: "routes" });
+    setDetent((current) => (current === "peek" ? "half" : current));
+  };
+
   const changeTool = (next: Tool) => {
     setContextMenu(null);
     // Putting the drawing tool down for another one must not lose points without asking.
     if (tool === "draw") closeDrawing(next === "browse" || next === "draw" ? undefined : () => takeUpTool(next));
     else takeUpTool(next);
   };
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once, when the map is there to print from
+  useEffect(() => {
+    if (!printAsked || !engine) return;
+    setPrintAsked(false);
+    changeTool("print");
+  }, [printAsked, engine]);
 
   const saveDrawnRoute = () => {
     const draft = routeDraft;
@@ -1616,6 +1647,14 @@ export default function MapsPage() {
         sunOpen={pin.sun}
         focusOnOpen={pin.focus}
         onSave={() => startPlace(pin.position, /^[-\d.,\s]+$/.test(pin.title) ? "" : pin.title)}
+        onRoadRoute={() =>
+          startRoadRoute("to", {
+            name: /^[-\d.,\s]+$/.test(pin.title) ? pointName(pin.position) : pin.title,
+            lat: pin.position.lat,
+            lon: pin.position.lon,
+            from: pin.focus ? "search" : "map",
+          })
+        }
         onClose={() => setPin(null)}
       />
     ) : null);
@@ -1696,7 +1735,8 @@ export default function MapsPage() {
   const tools = mapTools(toolsInput);
 
   // Whether the wide screen's map is compact (see `compact`): narrower than 30rem, or shorter than its column of tools
-  // (zoom and every tool, about 2.17rem each with the hairlines and the gaps between blocks) above the line of credits.
+  // (zoom and every tool, about 2.17rem each with the hairlines and the gaps between blocks, or 45 px each under a
+  // finger, where they are 44 px whatever the size of the text) above the line of credits.
   const toolCount = tools.length + 2;
   useEffect(() => {
     const element = area.current;
@@ -1710,14 +1750,14 @@ export default function MapsPage() {
       if (element.clientWidth === 0 || element.clientHeight === 0) return;
       const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
       const narrow = element.clientWidth < 30 * rem;
-      const short = element.clientHeight - 3 * rem < toolCount * 2.17 * rem;
+      const short = element.clientHeight - 3 * rem < toolCount * (coarse ? 45 : 2.17 * rem);
       setCompact(narrow || short);
     };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
-  }, [isDesktop, toolCount]);
+  }, [isDesktop, toolCount, coarse]);
 
   const mapNotice =
     loadError || sources.isError ? (
@@ -1915,16 +1955,7 @@ export default function MapsPage() {
             onDraw={() => startDrawing([contextMenu.position])}
             onRoadRoute={(role) => {
               const { lat, lon } = contextMenu.position;
-              setContextMenu(null);
-              if (tool === "draw") closeDrawing();
-              setRoadRouting(true);
-              setRoadIntent({
-                role,
-                point: { name: contextPlace?.name ?? pointName({ lat, lon }), lat, lon, from: "map" },
-                at: Date.now(),
-              });
-              setPanel({ open: true, tab: "routes" });
-              setDetent((current) => (current === "peek" ? "half" : current));
+              startRoadRoute(role, { name: contextPlace?.name ?? pointName({ lat, lon }), lat, lon, from: "map" });
             }}
             onSun={() => {
               const { lat, lon } = contextMenu.position;

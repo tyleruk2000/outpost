@@ -66,7 +66,7 @@ export function ControlButton({
         aria-pressed={pressed}
         className={cn(
           // 44 px on a phone whatever the size of the text: an icon is not words.
-          "rounded-none text-ink focus-visible:-outline-offset-2 max-md:size-[44px]",
+          "rounded-none text-ink focus-visible:-outline-offset-2 max-md:size-[44px] md:pointer-coarse:size-[44px]",
           pressed && "bg-primary-soft text-primary-soft-ink hover:bg-primary-soft",
           className,
         )}
@@ -114,7 +114,7 @@ export function ColorPicker({ value, onChange, label }: { value: MarkerColor; on
             value={color}
             aria-label={MARKER_COLOR_NAMES[color]}
             title={MARKER_COLOR_NAMES[color]}
-            className="grid size-7 place-content-center rounded-full border-2 border-page shadow-[0_0_0_1px_var(--border-strong)] data-[state=checked]:shadow-[0_0_0_2px_var(--ink)] max-md:size-10"
+            className="grid size-7 place-content-center rounded-full border-2 border-page shadow-[0_0_0_1px_var(--border-strong)] data-[state=checked]:shadow-[0_0_0_2px_var(--ink)] max-md:size-10 md:pointer-coarse:size-10"
             style={{ background: MARKER_HEX[color] }}
           >
             <RadioGroup.Indicator>
@@ -206,7 +206,7 @@ export function IconPicker({
             value={icon}
             aria-label={PLACE_ICON_NAMES[icon]}
             title={PLACE_ICON_NAMES[icon]}
-            className="grid size-9 place-content-center rounded-control hover:bg-surface-strong data-[state=checked]:bg-surface-strong data-[state=checked]:shadow-[inset_0_0_0_2px_var(--ink)] max-md:size-11"
+            className="grid size-9 place-content-center rounded-control hover:bg-surface-strong data-[state=checked]:bg-surface-strong data-[state=checked]:shadow-[inset_0_0_0_2px_var(--ink)] max-md:size-11 md:pointer-coarse:size-11"
           >
             <PlaceMark color={color} icon={icon} />
           </RadioGroup.Item>

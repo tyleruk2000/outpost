@@ -196,7 +196,7 @@ export function GreyLineLegend({
                 min={FIRST_DATE}
                 max={LAST_DATE}
                 onChange={(event) => choose(event.target.value, fields.time)}
-                className="tabular w-full min-w-0 px-2 text-small max-md:h-11"
+                className="tabular w-full min-w-0 px-2 text-small max-md:h-11 md:pointer-coarse:h-11"
               />
             </div>
             <div className="grid min-w-0 gap-1">
@@ -209,7 +209,7 @@ export function GreyLineLegend({
                 type="time"
                 value={fields.time}
                 onChange={(event) => choose(fields.date, event.target.value)}
-                className="tabular w-full min-w-0 px-2 text-small max-md:h-11"
+                className="tabular w-full min-w-0 px-2 text-small max-md:h-11 md:pointer-coarse:h-11"
               />
             </div>
           </div>

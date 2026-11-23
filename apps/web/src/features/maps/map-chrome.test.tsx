@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { Tooltip } from "radix-ui";
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { CONTOUR_NOTES, ContextMenu, MapControls, MoveCard } from "./map-chrome";
+import { CONTOUR_NOTES, ContextMenu, MapControls, MoveCard, PinCard } from "./map-chrome";
 
 function controls(overrides: Partial<ComponentProps<typeof MapControls>> = {}) {
   const onContoursChange = vi.fn();
@@ -182,5 +182,24 @@ describe("the menu at a point on the map", () => {
     await userEvent.keyboard("{Escape}");
     expect(latest).toHaveBeenCalledTimes(1);
     expect(first).not.toHaveBeenCalled();
+  });
+});
+
+describe("the card of a place found", () => {
+  it("offers a road route to it beside saving it, and only when asked to", async () => {
+    const onRoadRoute = vi.fn();
+    const props = {
+      title: "Keswick",
+      position: { lat: 54.6, lon: -3.13 },
+      format: "decimal" as const,
+      onSave: () => {},
+      onClose: () => {},
+    };
+    const { rerender } = render(<PinCard {...props} />);
+    expect(screen.queryByRole("button", { name: "Road route to here" })).toBeNull();
+    rerender(<PinCard {...props} onRoadRoute={onRoadRoute} />);
+    expect(screen.getByRole("button", { name: "Save this place" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Road route to here" }));
+    expect(onRoadRoute).toHaveBeenCalledTimes(1);
   });
 });

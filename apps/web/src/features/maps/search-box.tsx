@@ -112,7 +112,7 @@ export function SearchBox({
         className={cn(
           mapSurface,
           searchRowFocus,
-          "flex h-11 items-center gap-1 max-md:h-[46px]",
+          "flex h-11 items-center gap-1 max-md:h-[46px] md:pointer-coarse:h-[46px]",
           trailing ? "pr-0" : "pr-1",
           leading ? "pl-1" : "pl-3",
         )}
@@ -150,7 +150,7 @@ export function SearchBox({
               setText("");
               inputRef.current?.focus();
             }}
-            className="grid size-9 shrink-0 place-content-center rounded-control text-ink-muted hover:bg-surface-strong hover:text-ink max-md:size-[44px]"
+            className="grid size-9 shrink-0 place-content-center rounded-control text-ink-muted hover:bg-surface-strong hover:text-ink max-md:size-[44px] md:pointer-coarse:size-[44px]"
           >
             <X className="size-4" />
           </button>
@@ -176,7 +176,7 @@ export function SearchBox({
                   onClick={() => choose(result)}
                   onMouseMove={() => setActive(index)}
                   className={cn(
-                    "flex cursor-pointer items-start gap-2.5 rounded-[4px] px-2.5 py-2 max-md:py-2.5",
+                    "flex cursor-pointer items-start gap-2.5 rounded-[4px] px-2.5 py-2 max-md:py-2.5 md:pointer-coarse:py-2.5",
                     index === active && "bg-surface-strong",
                   )}
                 >
@@ -186,13 +186,18 @@ export function SearchBox({
                   ) : (
                     <Icon aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
                   )}
+                  {/* Names wrap rather than being cut short: the name is what is being chosen, and at large text on a phone
+                      a coordinate was cut to "54.60000…" and its kind to "Coordinate…". */}
                   <span className="min-w-0 flex-1">
                     <span
-                      className={cn("block truncate text-ink", result.kind === "coordinate" ? "font-mono text-[0.8125rem]" : "font-medium")}
+                      className={cn(
+                        "block text-ink [overflow-wrap:anywhere]",
+                        result.kind === "coordinate" ? "font-mono text-[0.8125rem]" : "font-medium",
+                      )}
                     >
                       {result.title}
                     </span>
-                    <span className="block truncate text-micro text-ink-muted">{result.detail}</span>
+                    <span className="block text-micro text-ink-muted [overflow-wrap:anywhere]">{result.detail}</span>
                   </span>
                   {result.distance !== null ? (
                     <span className="tabular shrink-0 pt-0.5 text-micro text-ink-muted">{formatDistance(result.distance)}</span>

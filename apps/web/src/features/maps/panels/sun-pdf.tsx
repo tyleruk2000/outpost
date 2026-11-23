@@ -53,7 +53,7 @@ export function SunPdf({
         size="sm"
         variant="secondary"
         // Its words wrap rather than run past the panel on a narrow phone with large text.
-        className="h-auto min-h-8 max-w-full justify-self-start py-1 text-left whitespace-normal max-md:h-auto max-md:min-h-11"
+        className="h-auto min-h-8 max-w-full justify-self-start py-1 text-left whitespace-normal max-md:h-auto max-md:min-h-11 md:pointer-coarse:min-h-11"
         onClick={() => setOpen(true)}
       >
         <FileText aria-hidden /> A PDF of sun times, day by day
