@@ -98,7 +98,14 @@ test.describe("the catalogue", () => {
   test("can be browsed and filtered with no connection", async ({ page }) => {
     await page.goto("/explore");
     await expect(page.getByRole("heading", { name: "Explore", level: 1 })).toBeVisible();
+    // Under All collections each category shows its first few; the rest are a press away.
+    await expect(page.getByText("Best of Wikipedia")).toBeVisible();
+    await expect(page.getByText("Knots by Wikipedia")).toBeHidden();
+    await page.getByRole("button", { name: /^Show all \d+ in Survival and wilderness skills$/ }).click();
     await expect(page.getByText("Knots by Wikipedia")).toBeVisible();
+    const all = page.getByRole("navigation", { name: "Categories" }).getByRole("button", { name: /^All collections/ });
+    await all.click();
+    await expect(all).toHaveAttribute("aria-current", "true");
     await page.getByPlaceholder(/Filter by name/).fill("vikidia");
     await expect(page.getByText(/Vikidia/).first()).toBeVisible();
     await expect(page.getByText("Knots by Wikipedia")).toBeHidden();
