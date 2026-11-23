@@ -255,6 +255,20 @@ export function library() {
       "Carbon monoxide: symptoms and alarms",
       "Carbon monoxide poisoning causes headache, dizziness, nausea and tiredness. Fit a CO alarm near boilers and stoves.",
     ),
+    // Other meanings of the same words, and the same words in the wrong kind of place.
+    doc("railway", "The Canadian Pacific Railway", [
+      { page: 2, text: "The CPR reached the Pacific in 1885. CPR locomotives hauled freight across the prairies." },
+    ]),
+    note(
+      "signal-generator",
+      "Signal generator for the Arduino",
+      "How to use the Arduino as a PWM signal generator safely: keep the output below 5 V so the pins are not damaged.",
+    ),
+    note(
+      "hiking-forum",
+      "Forum: rescue breaths for a child on a hike?",
+      "Someone asked whether to give rescue breaths to a child who fainted on a hike. Nobody answered.",
+    ),
     doc("ev-chemistry", "Electric car battery chemistry", [
       { page: 1, text: "Lithium cells change voltage as they discharge. How fast depends on temperature and on the load." },
     ]),

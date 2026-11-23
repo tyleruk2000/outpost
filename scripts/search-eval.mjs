@@ -10,7 +10,8 @@
  * --rescore also takes the candidates the server returns for the words that matter
  * (and, when they can be said another way, for that too: "tire pressure" for "tyre
  * pressure") and puts them in order with the scorer of this checkout
- * (apps/server/src/modules/search/score.ts), offline: a way to see what a new ranking
+ * (apps/server/src/modules/search/score.ts) and its mild priors for the kind of question
+ * (intent.ts), offline: a way to see what a new ranking
  * would do to a library before it is installed. A server that offers "Did you mean" for
  * a search that found nothing is taken at its word, as a person would.
  * The fixture library and its numbers are in the server's tests (search-quality.test.ts).
@@ -21,6 +22,7 @@
  * Outpost's own results asked without them. Searches run one after another, as a person's do.
  */
 import { writeFileSync } from "node:fs";
+import { adjusted, adjustFor, intentOf } from "../apps/server/src/modules/search/intent.ts";
 import { alternateQuery, expandQuery, parseQuery, plainQuery } from "../apps/server/src/modules/search/query.ts";
 import { inverseFrequency, reasonFor, scoreFields, scoringTerms } from "../apps/server/src/modules/search/score.ts";
 import { formatSummary, formatTable, gradeByPattern, loadQueries, percentile, resultText, summarise } from "./search-eval/metrics.mjs";
@@ -71,11 +73,23 @@ async function rescore(q) {
     ),
   );
   const terms = scoringTerms(parsed, (_, index) => (parsed.required.length < 2 ? 1 : inverseFrequency(items, weights[index])));
+  const intent = intentOf({
+    words: parsed.required.flatMap((term, index) => [term, ...(parsed.alternatives?.[index] ?? [])]),
+    ignored: parsed.ignored ?? [],
+  });
   const results = body.results
     .filter((result) => !PLACES.has(result.kind))
     .map((result) => {
-      const parts = scoreFields(terms, { title: result.title, heading: result.subtitle, text: resultText(result) });
-      return { ...result, score: parts.score, why: reasonFor(parts), coverage: parts.coverage };
+      const text = resultText(result);
+      const parts = scoreFields(terms, { title: result.title, heading: result.subtitle, text });
+      const { factor } = adjustFor(intent, {
+        title: result.title,
+        collection: result.collection,
+        tags: result.tags ?? [],
+        text,
+        article: result.kind === "reference",
+      });
+      return { ...result, score: adjusted(parts.score, factor), why: reasonFor(parts), coverage: parts.coverage };
     })
     .filter((result) => parsed.required.length < 2 || result.coverage >= 0.5)
     .sort((a, b) => b.score - a.score);

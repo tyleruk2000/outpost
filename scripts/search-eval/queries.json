@@ -78,7 +78,11 @@
     { "q": "radio", "grades": { "radio-freqs": 2, "pmr446": 2, "radio-menu": 2 }, "pi": ["radio"] },
     { "q": "stove", "grades": { "wood-stove": 3, "kit-list": 1 }, "pi": ["stove"] },
     { "q": "first aid", "grades": { "first-aid": 3, "first-aid-kit": 3 }, "pi": ["first aid"] },
-    { "q": "cpr", "grades": { "first-aid": 3, "cpr-adult": 3 }, "pi": ["cpr|resuscitat"] },
+    {
+      "q": "cpr",
+      "grades": { "first-aid": 3, "cpr-adult": 3, "railway": 0 },
+      "pi": ["cpr|resuscitat", "compression|breath|heart|resuscitat"]
+    },
     { "q": "seasoned logs", "grades": { "wood-stove": 3 }, "pi": ["log|firewood", "season"] },
     { "q": "smoke alarm", "grades": { "fire-safety": 3 }, "pi": ["smoke", "alarm|detector"] },
     { "q": "\"clove hitch\"", "grades": { "knots": 3 }, "pi": ["clove hitch"] },
@@ -104,13 +108,21 @@
       "pi": ["water", "purif|treat|disinfect|boil|filter|drinking"]
     },
     { "q": "torch batteries", "grades": { "flashlight": 3, "supplies-list": 2 }, "pi": ["torch|flashlight", "batter"] },
-    { "q": "winter driving kit", "grades": { "winter-driving": 3 }, "pi": ["winter", "driv|car"] },
+    { "q": "winter driving kit", "grades": { "winter-driving": 3 }, "pi": ["winter|snow|ice", "driv|car|vehicle"] },
     { "q": "how to make oral rehydration solution", "grades": { "oral-rehydration": 3 }, "pi": ["rehydrat"] },
-    { "q": "how to use a generator safely", "grades": { "generator": 3 }, "pi": ["generator"] },
+    {
+      "q": "how to use a generator safely",
+      "grades": { "generator": 3, "co-alarm": 1, "signal-generator": 0 },
+      "pi": ["generator", "safe|safety|carbon monoxide|ventilat|outdoors|indoors|fumes"]
+    },
     { "q": "map grid reference", "grades": { "map-reading": 3 }, "pi": ["grid", "map|reference"] },
     { "q": "sunburn treatment", "grades": { "sunburn": 3, "burns": 1 }, "pi": ["sunburn"] },
     { "q": "chest compressions", "grades": { "first-aid": 3, "cpr-adult": 3 }, "pi": ["chest compression|cpr"] },
-    { "q": "rescue breaths for a child", "grades": { "first-aid": 3, "cpr-adult": 1 }, "pi": ["rescue breath|cpr", "child|infant"] },
+    {
+      "q": "rescue breaths for a child",
+      "grades": { "first-aid": 3, "cpr-adult": 1, "hiking-forum": 0 },
+      "pi": ["rescue breath|cpr|resuscitat|mouth.to.mouth", "child|infant|paediatric|pediatric|baby"]
+    },
     { "q": "wild yeast starter", "grades": { "sourdough": 3 }, "pi": ["sourdough|starter|yeast"] },
     { "q": "zzqx flurble", "grades": {}, "pi": [] }
   ]

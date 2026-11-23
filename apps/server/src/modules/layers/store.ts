@@ -900,7 +900,9 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
         .filter(Boolean)
         .slice(0, 8);
       if (tokens.length === 0) return [];
-      const match = tokens.map((token) => `"${token.replaceAll('"', "")}"*`).join(" ");
+      // Only the last word as a beginning ("Waterf" while typing): a short word matched as one ("a*")
+      // reads every name it begins in a pack of hundreds of thousands, and is asked on every search.
+      const match = tokens.map((token, index) => `"${token.replaceAll('"', "")}"${index === tokens.length - 1 ? "*" : ""}`).join(" ");
       const where = filterSql(filter);
       const rows = prepared(
         `SELECT f.id AS id, f.layer AS layer, f.provenance AS provenance, f.name AS name, f.kind AS kind, f.country AS country,

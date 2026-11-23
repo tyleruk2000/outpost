@@ -1,6 +1,6 @@
-import type { SearchMode, SearchResponse, SearchResult, SearchSuggestion } from "@outpost/shared";
+import type { SearchCard, SearchMode, SearchResponse, SearchResult, SearchSuggestion } from "@outpost/shared";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ChevronRight, LoaderCircle, Search as SearchIcon, X } from "lucide-react";
+import { ChevronRight, ClipboardList, LoaderCircle, MapPin, Search as SearchIcon, Wrench, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { findPlaces, type Place } from "@/components/find-places";
@@ -55,6 +55,75 @@ function GoTo({ places }: { places: Place[] }) {
   );
 }
 
+const CARD_ICONS = { tool: Wrench, plan: ClipboardList, place: MapPin } as const;
+
+/**
+ * The one place in Outpost that is plainly the answer ("purify water": Tools: Water), above
+ * the results. The server offers one only where the question leaves no doubt, never more.
+ */
+function AnswerCard({ card }: { card: SearchCard }) {
+  const Icon = CARD_ICONS[card.kind];
+  return (
+    <section aria-labelledby="answer-card" className="mt-4 max-w-[46rem]">
+      <h2 id="answer-card" className="sr-only">
+        The answer in Outpost
+      </h2>
+      <Link
+        to={card.url}
+        className="group flex min-h-11 items-start gap-3 rounded-panel border border-border bg-surface px-4 py-3 text-ink hover:border-border-strong"
+      >
+        <Icon aria-hidden className="mt-0.5 size-5 shrink-0 text-primary" strokeWidth={1.6} />
+        <span className="min-w-0 flex-1">
+          <span className="block font-medium group-hover:underline group-hover:decoration-primary group-hover:underline-offset-4">
+            {card.title}
+          </span>
+          <span className="mt-0.5 block text-small text-ink-muted">{card.about}</span>
+        </span>
+        <ChevronRight aria-hidden className="mt-1 size-4 shrink-0 text-ink-faint" />
+      </Link>
+    </section>
+  );
+}
+
+/** The same title elsewhere (a collection, its document, its catalogue entry), named under the one shown. */
+function AlsoIn({ result }: { result: SearchResult }) {
+  if (!result.alsoIn?.length) return null;
+  return (
+    <p className="mt-2 text-small text-ink-muted">
+      Also in:{" "}
+      {result.alsoIn.map((other, index) => (
+        <span key={`${other.kind}:${other.url}`}>
+          {index > 0 ? ", " : null}
+          <Link to={other.url} className="text-primary underline underline-offset-2">
+            {[kindOf(other.kind).label, other.collection ?? other.subtitle].filter(Boolean).join(", ")}
+          </Link>
+        </span>
+      ))}
+    </p>
+  );
+}
+
+/** "Also showing results for purify water": the collections were asked for the near word of one the library does not hold. */
+function Instead({ suggestion, className }: { suggestion: SearchSuggestion; className?: string }) {
+  const suggested = new Set(suggestion.words.map((word) => word.toLowerCase()));
+  return (
+    <p className={cn("text-small text-ink-muted", className)}>
+      Also showing results for{" "}
+      {suggestion.query.split(/([\p{L}\p{N}]+)/u).map((part, index) =>
+        suggested.has(part.toLowerCase()) ? (
+          // biome-ignore lint/suspicious/noArrayIndexKey: the parts of one fixed string, in order
+          <strong key={index} className="font-semibold text-ink">
+            {part}
+          </strong>
+        ) : (
+          part
+        ),
+      )}
+      .
+    </p>
+  );
+}
+
 function ResultRow({ result, heading: Heading = "h2" }: { result: SearchResult; heading?: "h2" | "h3" }) {
   const kind = kindOf(result.kind);
   const context = [kind.label, result.collection, result.subtitle].filter(Boolean);
@@ -99,6 +168,7 @@ function ResultRow({ result, heading: Heading = "h2" }: { result: SearchResult; 
         </ul>
       ) : null}
       {result.tags.length > 0 ? <p className="mt-2 text-micro text-ink-faint">{result.tags.map((tag) => `#${tag}`).join("  ")}</p> : null}
+      <AlsoIn result={result} />
     </li>
   );
 }
@@ -388,7 +458,12 @@ export default function SearchPage() {
   // Added once the reference collections have answered, so that it never moves under a finger.
   const toDownloadShown = toDownload.length > 0 && !(referenceBelow && reference.status !== "done");
   const guides = useGuideIndex(everything && Boolean(q.trim()));
-  const places = everything && page === 1 && q.trim() ? [...findPlaces(q), ...findGuides(q, guides)].slice(0, PLACES_SHOWN) : [];
+  const card = everything && page === 1 && q.trim() ? (data?.card ?? null) : null;
+  // The answer card is not offered twice.
+  const places =
+    everything && page === 1 && q.trim()
+      ? [...findPlaces(q), ...findGuides(q, guides)].filter((place) => place.to !== card?.url).slice(0, PLACES_SHOWN)
+      : [];
   const semanticOffered = data && !data.warnings.some((warning) => warning.source === "semantic") && data.mode !== "keyword";
 
   return (
@@ -514,6 +589,7 @@ export default function SearchPage() {
             ) : null}
           </div>
 
+          {card ? <AnswerCard card={card} /> : null}
           {places.length > 0 ? <GoTo places={places} /> : null}
           {kind === "reference" ? (
             <section aria-label="Reference results">
@@ -523,6 +599,7 @@ export default function SearchPage() {
                     {plural(reference.results.length, "article")} in reference collections
                     {reference.status === "searching" ? " so far." : "."}
                   </p>
+                  {reference.instead ? <Instead suggestion={reference.instead} className="mt-1" /> : null}
                   <ReferenceTrouble reference={reference} />
                   <ol className="mt-1 divide-y divide-border" {...steady.hold}>
                     {steady.shown.slice((referencePage - 1) * PAGE_SIZE, referencePage * PAGE_SIZE).map((result) => (
@@ -604,6 +681,11 @@ export default function SearchPage() {
                   <AlsoSearched also={data.alsoSearched} exact={exact} onExact={(only) => setParam("exact", only ? "1" : undefined)} />
                 ) : null}
                 {data.didYouMean ? <DidYouMean suggestion={data.didYouMean} to={searchFor(data.didYouMean.query)} /> : null}
+                {data.householdShown ? (
+                  <p className="mt-1 text-small text-ink-muted">
+                    Emergency plans and supplies are those of {data.householdShown}, the current household.
+                  </p>
+                ) : null}
                 {data.placesFirst && data.places.length > 0 ? <PlacesStrip places={data.places} /> : null}
                 {referenceBelow ? <ReferenceLine reference={reference} onShow={() => setParam("kind", "reference")} /> : null}
                 {data.warnings.map((warning) => (
@@ -641,6 +723,7 @@ export default function SearchPage() {
                     In reference collections
                   </h2>
                   <ReferenceTrouble reference={reference} />
+                  {reference.instead ? <Instead suggestion={reference.instead} className="mt-1" /> : null}
                   {steady.shown.length > 0 ? (
                     <>
                       <p className="mt-1 text-small text-ink-muted">The best matches across your reference collections.</p>

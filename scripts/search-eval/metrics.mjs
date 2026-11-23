@@ -82,7 +82,7 @@ export function formatSummary(label, summary) {
 }
 
 /** A plain-text table: query, nDCG@5, and the first results with their grades. */
-export function formatTable(rows, shown = 3) {
+export function formatTable(rows, shown = Number(process.env.EVAL_SHOWN ?? 3)) {
   const lines = rows.map((row) => {
     const value = ndcg(row.grades, row.ideal);
     const top = row.titles

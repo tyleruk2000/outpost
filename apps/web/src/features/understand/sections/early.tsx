@@ -262,7 +262,8 @@ export function WordsSection() {
         </p>
         <p>
           If a word is in no passage at all, it may be a slip. Outpost looks through the words your library does hold for the nearest one, a
-          letter or two away, and offers it: “Did you mean purify water?” It never searches for the other word unless you choose it.
+          letter or two away, and offers it: “Did you mean purify water?” It never searches your library for the other word unless you
+          choose it. Reference collections, which know nothing of slips, are asked for both, and the results say so.
         </p>
       </Prose>
 
@@ -353,8 +354,17 @@ export function WordsSection() {
           </li>
         </ul>
         <p>
-          The list of results shows the answer in a few words beside each one, such as “All 3 words, side by side” or “2 of 3 words”. Here
-          are the passages found for your question, in order.
+          Then two mild corrections, for what words cannot tell. A question about first aid favours medical and first aid sources, a “how
+          to” question manuals and questions and answers, one about a car the motor collections, and one about using a generator safely
+          official safety guidance: at most 1.3 times the score, enough to settle near ties and never enough to lift a poor match over a
+          good one. And a word with a strong other meaning (“CPR” is also a railway) counts a result plainly in that other meaning three
+          quarters of its score.
+        </p>
+        <p>
+          The list of results shows the answer in a few words beside each one, such as “All 3 words, side by side”, “2 of 3 words” with the
+          missing word named, “All 2 words in the title; also matched tire” or “All 3 words; favoured: first aid source”. A title that
+          appears more than once (a collection, the document made from it and its catalogue entry) is one row, with the others named under
+          it. Here are the passages found for your question, in order, before those corrections.
         </p>
       </Prose>
 

@@ -15,9 +15,22 @@ import { and, eq, sql } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
 import { AppError } from "../../core/errors.ts";
 import { chunks, searchEntities } from "../../db/schema.ts";
+import { type AlsoIn, type CardSource, cardQuery, collapseSameTitles, firstCard, type SearchCard, waterCard } from "./cards.ts";
 import { type ChunkOptions, chunkSections, type Section } from "./chunker.ts";
 import { reciprocalRankFusion } from "./fusion.ts";
-import { countTerms, FEW, markPassages, RELAXED_COVERAGE, rankKeyword, weighTerms } from "./keyword.ts";
+import { adjusted, adjustFor, type Intent, intentOf, plainIntent } from "./intent.ts";
+import {
+  countTerms,
+  FEW,
+  forgetPassageCount,
+  markPassages,
+  passageCount,
+  type RankedItem,
+  RELAXED_COVERAGE,
+  rankKeyword,
+  weighTerms,
+} from "./keyword.ts";
+import { createOwners } from "./owners.ts";
 import {
   alternateQuery,
   expandQuery,
@@ -47,6 +60,11 @@ export interface IndexEntity {
   sourcePath?: string | null;
   tags?: string[];
   meta?: Record<string, unknown>;
+  /**
+   * For what one household keeps (its plans, its supplies): that household's id. Such an
+   * item is found only while its household is the current one.
+   */
+  household?: string | null;
   sections: Section[];
 }
 
@@ -74,6 +92,8 @@ export interface SearchResult {
   passages: ResultPassage[];
   /** Which layers found this result. */
   sources: string[];
+  /** Results further down with the same title (a collection, its document, its catalogue entry), shown under this one. */
+  alsoIn?: AlsoIn[];
 }
 
 export interface SearchParams {
@@ -112,6 +132,13 @@ export interface SearchResponse {
   places: SearchResult[];
   /** The query looks like one of their names, a callsign or a frequency: show them first. */
   placesFirst: boolean;
+  /** The one place in Outpost that is plainly the answer (cards.ts), on the first page only. Null when none is. */
+  card: SearchCard | null;
+  /**
+   * The current household's name, when there are several and the results hold what one
+   * household keeps (its plans, its supplies): those are that household's only.
+   */
+  householdShown: string | null;
   facets: Record<string, number>;
   /** Sources that could not answer, with a reason a person can read. */
   warnings: Array<{ source: string; message: string }>;
@@ -393,6 +420,12 @@ export interface ChunkRecord {
 export interface SearchService {
   upsert(entity: IndexEntity): { chunks: number; changed: boolean };
   remove(kind: string, entityId: string): void;
+  /**
+   * Makes the index hold exactly `entities` of one kind: each that changed since it was last
+   * given is written, and any other item of the kind is removed. For a module that indexes a
+   * small table whole whenever it changes (emergency plans, supplies).
+   */
+  syncKind(kind: string, entities: IndexEntity[]): void;
   search(params: SearchParams): Promise<SearchResponse>;
   /**
    * The passages that best match a question, whichever items they belong to. `search`
@@ -405,8 +438,19 @@ export interface SearchService {
    * Searches reference collections on their own, a collection at a time. This is the
    * second part of a search asked with `reference: "later"`.
    */
-  searchReference(params: Omit<ReferenceSearchParams, "budgetMs" | "alternate"> & { exact?: boolean }): Promise<ReferenceOutcome>;
+  searchReference(
+    params: Omit<ReferenceSearchParams, "budgetMs" | "alternate"> & {
+      exact?: boolean;
+      /**
+       * Called before anything is asked when a word typed is in no passage of the library and a near
+       * word is ("purifiy": "purify"): the collections are asked for that word as well.
+       */
+      onInstead?(suggestion: Suggestion): void;
+    },
+  ): Promise<ReferenceOutcome>;
   addSource(source: SearchSource): void;
+  /** Offers answer cards (cards.ts): a module's own place that is plainly the answer to some questions. */
+  addCards(source: CardSource): void;
   getChunks(chunkIds: number[]): ChunkRecord[];
   stats(): { entities: Record<string, number>; chunks: number };
   /** Called after an entity's passages change, so vectors can follow. */
@@ -444,6 +488,9 @@ export const TO_DOWNLOAD = "catalog";
 export function onDeviceFirst<T extends { kind: string }>(results: T[]): T[] {
   return [...results.filter((result) => result.kind !== TO_DOWNLOAD), ...results.filter((result) => result.kind === TO_DOWNLOAD)];
 }
+
+/** Kinds of result that one household keeps: found only while it is the current one. */
+export const PER_HOUSEHOLD: ReadonlySet<string> = new Set(["plan", "supply"]);
 
 /** Places and repeaters shown in their strip beside the results. */
 export const PLACES_SHOWN = 5;
@@ -505,6 +552,32 @@ export function blendMeaning(
   return blended.sort((a, b) => b.score - a.score);
 }
 
+/** What kind of question it is (intent.ts), from the words that matter, their other ways of being said, and the small words. */
+export function intentFor(parsed: ParsedQuery): Intent {
+  return intentOf({
+    words: parsed.required.flatMap((term, index) => [term, ...(parsed.alternatives?.[index] ?? [])]),
+    ignored: parsed.ignored ?? [],
+  });
+}
+
+/** The reason for a result, and what the priors did to it: "All 3 words; favoured: first aid source". */
+export function withNotes(why: string, notes: string[]): string {
+  return [why, ...notes].filter(Boolean).join("; ");
+}
+
+/**
+ * A place on the map whose name is exactly what was typed, when it is the only one and
+ * the library itself has almost nothing holding the words: then the map is the answer.
+ */
+export function placeCard(q: string, places: SearchResult[], everyWord: number): SearchCard | null {
+  const typed = q.trim().toLowerCase();
+  if (typed.replace(/[^\p{L}]/gu, "").length < 4 || everyWord >= FEW) return null;
+  const named = places.filter((place) => place.kind !== "repeater" && place.title.trim().toLowerCase() === typed);
+  if (named.length !== 1) return null;
+  const place = named[0]!;
+  return { kind: "place", title: place.title, about: place.subtitle ? `On the map: ${place.subtitle}` : "On the map", url: place.url };
+}
+
 /** Appends the page to a document URL so the viewer opens where the match is. */
 function withPage(url: string, page: number | null): string {
   if (page === null) return url;
@@ -514,6 +587,9 @@ function withPage(url: string, page: number | null): string {
 export function createSearchService(ctx: AppContext): SearchService {
   const { db, sqlite } = ctx;
   const sources: SearchSource[] = [];
+  const cardSources: CardSource[] = [waterCard];
+  /** What `syncKind` was last given, by kind and item, so that an unchanged item is not written again. */
+  const synced = new Map<string, Map<string, string>>();
   const chunkListeners: Array<(entityRowId: number) => void> = [];
 
   const chunkOptions = (): ChunkOptions => ({
@@ -525,6 +601,8 @@ export function createSearchService(ctx: AppContext): SearchService {
     `INSERT INTO chunks (entity_row_id, ordinal, title, tags, heading, text, page, char_start, char_end, content_hash, index_version)
      VALUES (@entityRowId, @ordinal, @title, @tags, @heading, @text, @page, @charStart, @charEnd, @contentHash, @indexVersion)`,
   );
+
+  const owners = createOwners(sqlite);
 
   const upsert = sqlite.transaction((entity: IndexEntity) => {
     const now = Date.now();
@@ -543,7 +621,7 @@ export function createSearchService(ctx: AppContext): SearchService {
       collection: entity.collection ?? null,
       url: entity.url,
       sourcePath: entity.sourcePath ?? null,
-      meta: { ...entity.meta, tags: entity.tags ?? [] },
+      meta: { ...entity.meta, tags: entity.tags ?? [], ...(entity.household ? { household: entity.household } : {}) },
       updatedAt: now,
     };
     let rowId: number;
@@ -553,6 +631,7 @@ export function createSearchService(ctx: AppContext): SearchService {
     } else {
       rowId = Number(db.insert(searchEntities).values(values).run().lastInsertRowid);
     }
+    owners.noteItem(rowId, { kind: entity.kind, household: entity.household ?? null });
 
     let passages = chunkSections(entity.sections, chunkOptions());
     if (passages.length === 0) {
@@ -595,7 +674,7 @@ export function createSearchService(ctx: AppContext): SearchService {
 
     db.delete(chunks).where(eq(chunks.entityRowId, rowId)).run();
     for (const passage of passages) {
-      insertChunk.run({
+      const inserted = insertChunk.run({
         entityRowId: rowId,
         ordinal: passage.ordinal,
         title: entity.title,
@@ -608,11 +687,36 @@ export function createSearchService(ctx: AppContext): SearchService {
         contentHash: passage.contentHash,
         indexVersion: INDEX_VERSION,
       });
+      owners.notePassage(Number(inserted.lastInsertRowid), rowId);
     }
     return { chunks: passages.length, changed: true, rowId };
   });
 
   const suggester = createSuggester(sqlite);
+
+  /**
+   * The question as reference collections are asked it. A word typed that no passage of the
+   * library holds, with a near word that some do ("purifiy" and "purify", as "Did you mean"
+   * finds it), is asked for both ways: kiwix-serve knows nothing of typing slips, and a slip
+   * finds nothing there either. The word as typed stays first and counts in full, so a
+   * real word the library happens not to hold ("bowline") still finds its articles first.
+   */
+  function forReference(q: string, parsed: ParsedQuery): { parsed: ParsedQuery; instead: Suggestion | null } {
+    if (parsed.required.length === 0) return { parsed, instead: null };
+    const counts = countTerms(sqlite, parsed);
+    if (!counts.some((count) => count === 0)) return { parsed, instead: null };
+    const alternatives = parsed.required.map((_, index) => [...(parsed.alternatives?.[index] ?? [])]);
+    let changed = false;
+    parsed.required.forEach((term, index) => {
+      if (counts[index] !== 0 || parsed.quoted?.[index] || parsed.joined?.[index] || term.includes(" ")) return;
+      const word = suggester.nearest(term, 0);
+      if (!word) return;
+      alternatives[index] = [word, ...alternatives[index]!.filter((other) => other !== word)];
+      changed = true;
+    });
+    if (!changed) return { parsed, instead: null };
+    return { parsed: { ...parsed, alternatives }, instead: suggester.suggest(q, parsed, counts, false) };
+  }
 
   /** What was typed, ready to search: the words that matter and, unless asked not to, other ways of saying them. */
   function understand(q: string, exact?: boolean): { parsed: ParsedQuery; also: string[] } {
@@ -635,19 +739,27 @@ export function createSearchService(ctx: AppContext): SearchService {
   } {
     // Passages holding each word: for its weight, and to see whether a word is in the library at all.
     const counts = parsed.required.length > 1 ? countTerms(sqlite, parsed) : undefined;
-    const ranking = rankKeyword(sqlite, parsed, { kinds: params.kinds, tag: params.tag, window, toDownload: TO_DOWNLOAD, counts });
+    const ranking = rankKeyword(sqlite, parsed, {
+      kinds: params.kinds,
+      tag: params.tag,
+      window,
+      toDownload: TO_DOWNLOAD,
+      counts,
+      owners,
+      household: ctx.services.households.currentId(),
+    });
     const didYouMean =
       ranking.total < FEW && parsed.required.length > 0
         ? suggester.suggest(params.q, parsed, counts ?? countTerms(sqlite, parsed), ranking.everyWord === 0)
         : counts?.some((count) => count === 0)
           ? suggester.suggest(params.q, parsed, counts, false)
           : null;
-    const page = ranking.items.slice(0, window);
-    if (page.length === 0) {
+    if (ranking.items.length === 0) {
       return { results: [], relaxed: false, everyWord: 0, facets: ranking.facets, total: 0, terms: ranking.terms, didYouMean };
     }
 
-    const ids = page.map((item) => item.entityRowId);
+    // Every candidate's title, collection and tags: what kind of source it is decides the mild priors (intent.ts).
+    const ids = ranking.items.map((item) => item.entityRowId);
     const entities = new Map(
       (
         sqlite
@@ -669,12 +781,39 @@ export function createSearchService(ctx: AppContext): SearchService {
         }>
       ).map((row) => [row.id, row]),
     );
-    // Snippets only for what is shown: every word that matters is marked, whichever of them a passage holds.
-    const marked = markPassages(
-      sqlite,
-      toFtsQuery(parsed, "any")!,
-      page.flatMap((item) => item.passages.slice(0, 3).map((passage) => passage.chunkId)),
+    const intent = intentFor(parsed);
+    const adjustments = new Map(
+      ranking.items.map((item) => {
+        const entity = entities.get(item.entityRowId);
+        const tags = entity?.tags ? entity.tags.split(TAG_SEPARATOR) : [];
+        return [
+          item.entityRowId,
+          entity ? adjustFor(intent, { title: entity.title, collection: entity.collection, tags }) : { factor: 1, notes: [] },
+        ];
+      }),
     );
+    const scoreOf = (item: RankedItem) => adjusted(item.parts.score, adjustments.get(item.entityRowId)?.factor ?? 1);
+    // The priors reorder within each part of the list only: what can be opened now before what must be downloaded,
+    // items with every word before those with most, the word as typed before words it begins.
+    const part = (item: RankedItem) =>
+      Number(item.kind === TO_DOWNLOAD) * 4 + Number(!item.everyWord) * 2 + Number(Boolean(item.prefixOnly));
+    const ordered = plainIntent(intent)
+      ? ranking.items
+      : ranking.items
+          .map((item, index) => ({ item, index }))
+          .sort((a, b) => part(a.item) - part(b.item) || scoreOf(b.item) - scoreOf(a.item) || a.index - b.index)
+          .map(({ item }) => item);
+    const page = ordered.slice(0, window);
+    // Snippets only for what is shown: every word that matters is marked, whichever of them a passage holds.
+    // The words as typed for most; the few that hold the last word only as a beginning are marked with
+    // every word, so that the beginning is matched among passages holding the rest, not across the library.
+    const shownOf = (items: RankedItem[]) => items.flatMap((item) => item.passages.slice(0, 3).map((passage) => passage.chunkId));
+    const begun = page.filter((item) => item.prefixOnly);
+    const marked = markPassages(sqlite, toFtsQuery(parsed, "any", undefined, false)!, shownOf(page.filter((item) => !item.prefixOnly)));
+    if (begun.length > 0) {
+      for (const [chunkId, mark] of markPassages(sqlite, toFtsQuery(parsed, "all", undefined, true)!, shownOf(begun)))
+        marked.set(chunkId, mark);
+    }
     const results = page.flatMap((item): SearchResult[] => {
       const entity = entities.get(item.entityRowId);
       if (!entity) return [];
@@ -696,8 +835,8 @@ export function createSearchService(ctx: AppContext): SearchService {
           collection: entity.collection,
           url: withPage(entity.url, best.page),
           tags: entity.tags ? entity.tags.split(TAG_SEPARATOR) : [],
-          score: item.parts.score,
-          why: reasonFor(item.parts),
+          score: scoreOf(item),
+          why: withNotes(reasonFor(item.parts), adjustments.get(item.entityRowId)?.notes ?? []),
           passages: shown,
           sources: ["keyword"],
         },
@@ -720,7 +859,19 @@ export function createSearchService(ctx: AppContext): SearchService {
    * and so is one showing less than `RELAXED_COVERAGE` of what the query is about: the
    * same rule as for Outpost's own items that lack a word.
    */
-  function rescore(results: SearchResult[], terms: ScoringTerm[], excluded: string[], nouns?: string[]): SearchResult[] {
+  function rescore(results: SearchResult[], terms: ScoringTerm[], excluded: string[], nouns?: string[], intent?: Intent): SearchResult[] {
+    /** The mild priors of intent.ts: a reference article's kind of source is its collection. */
+    const prior = (result: SearchResult, text: string): SearchResult => {
+      if (!intent || plainIntent(intent)) return result;
+      const { factor, notes } = adjustFor(intent, {
+        title: result.title,
+        collection: result.collection,
+        tags: result.tags,
+        text,
+        article: result.kind === "reference",
+      });
+      return { ...result, score: adjusted(result.score, factor), why: withNotes(result.why ?? "", notes) };
+    };
     return results
       .flatMap((result) => {
         const fields = {
@@ -739,9 +890,10 @@ export function createSearchService(ctx: AppContext): SearchService {
           const asTitle = titled.length > 0 && titled.length < terms.length ? scoreFields(titled, fields).score : 0;
           const score = Math.min(1, Math.round(Math.max(parts.score + TITLE_MATCH_BONUS, asTitle) * 1000) / 1000);
           // "All 3 words in the title" says more, when it is so.
-          return [{ ...result, score, why: parts.inTitle === parts.of ? reasonFor(parts) : "The title is what was asked" }];
+          const why = parts.inTitle === parts.of ? reasonFor(parts) : "The title is what was asked";
+          return [prior({ ...result, score, why }, fields.text)];
         }
-        return [{ ...result, score: parts.score, why: reasonFor(parts) }];
+        return [prior({ ...result, score: parts.score, why: reasonFor(parts) }, fields.text)];
       })
       .sort((a, b) => b.score - a.score);
   }
@@ -780,7 +932,7 @@ export function createSearchService(ctx: AppContext): SearchService {
     const taken = new Set(strict.map((row) => row.chunkId));
     const candidates = (statement.all(toFtsQuery(parsed, "any")!, ...bound, pool) as Row[]).filter((row) => !taken.has(row.chunkId));
     if (candidates.length === 0) return { rows: strict, relaxed: false };
-    const total = (sqlite.prepare("SELECT count(*) AS n FROM chunks_fts").get() as { n: number }).n;
+    const total = passageCount(sqlite);
     const ids = candidates.map((row) => row.chunkId);
     const held = new Map<number, number>(ids.map((id) => [id, 0]));
     let whole = 0;
@@ -904,14 +1056,36 @@ export function createSearchService(ctx: AppContext): SearchService {
 
     upsert(entity) {
       const { rowId, ...outcome } = upsert(entity);
+      if (outcome.changed) forgetPassageCount(sqlite);
       if (outcome.changed) for (const listener of chunkListeners) listener(rowId);
       return outcome;
     },
 
+    syncKind(kind, entities) {
+      const given = synced.get(kind) ?? new Map<string, string>();
+      synced.set(kind, given);
+      const seen = new Set<string>();
+      for (const entity of entities) {
+        seen.add(entity.entityId);
+        const fingerprint = JSON.stringify(entity);
+        if (given.get(entity.entityId) === fingerprint) continue;
+        service.upsert(entity);
+        given.set(entity.entityId, fingerprint);
+      }
+      const held = sqlite.prepare("SELECT entity_id FROM search_entities WHERE kind = ?").pluck().all(kind) as string[];
+      for (const entityId of held) {
+        if (seen.has(entityId)) continue;
+        service.remove(kind, entityId);
+        given.delete(entityId);
+      }
+    },
+
     remove(kind, entityId) {
+      synced.get(kind)?.delete(entityId);
       db.delete(searchEntities)
         .where(and(eq(searchEntities.kind, kind), eq(searchEntities.entityId, entityId)))
         .run();
+      forgetPassageCount(sqlite);
     },
 
     scrubbing(work) {
@@ -983,6 +1157,8 @@ export function createSearchService(ctx: AppContext): SearchService {
           results: [],
           places: [],
           placesFirst: false,
+          card: null,
+          householdShown: null,
           facets: {},
           warnings,
           ...later,
@@ -991,6 +1167,37 @@ export function createSearchService(ctx: AppContext): SearchService {
       }
 
       const { parsed, also } = understand(q, params.exact);
+      const intent = intentFor(parsed);
+      const active = sources.filter((source) => {
+        if (!source.isAvailable()) return false;
+        if (source.layer === "semantic") return mode !== "keyword";
+        // A module answering from its own table is one of Outpost's own results: it does not wait with the archives.
+        if (source.layer === "local") {
+          return mode !== "semantic" && !params.tag && (!params.kinds?.length || params.kinds.includes(source.kind ?? source.id));
+        }
+        if (params.reference === "later") return false;
+        if (params.kinds?.length && !params.kinds.includes("reference")) return false;
+        return mode !== "semantic" && ctx.services.settings.get("search.includeReference");
+      });
+      // Meaning and the modules' own tables are asked first: the query's vector is worked out in another
+      // thread while the words are searched here, instead of after.
+      const early = new Map(
+        active
+          .filter((source) => !source.searchInParts)
+          .map((source) => {
+            // A table of names is asked for the words that matter: "how to" would match every name with "to" in it.
+            const words =
+              source.layer === "local"
+                ? q
+                    .split(/\s+/)
+                    .filter((word) => !STOP_WORDS.has(word.toLowerCase()))
+                    .join(" ") || q
+                : q;
+            const asked = source.search({ q: words, kinds: params.kinds, limit: window, signal: params.signal });
+            asked.catch(() => undefined);
+            return [source, asked] as const;
+          }),
+      );
       const keyword =
         mode === "semantic"
           ? {
@@ -1007,28 +1214,20 @@ export function createSearchService(ctx: AppContext): SearchService {
       const places: SearchResult[] = [];
       let meaning: SearchResult[] = [];
 
-      const active = sources.filter((source) => {
-        if (!source.isAvailable()) return false;
-        if (source.layer === "semantic") return mode !== "keyword";
-        // A module answering from its own table is one of Outpost's own results: it does not wait with the archives.
-        if (source.layer === "local") {
-          return mode !== "semantic" && !params.tag && (!params.kinds?.length || params.kinds.includes(source.kind ?? source.id));
-        }
-        if (params.reference === "later") return false;
-        if (params.kinds?.length && !params.kinds.includes("reference")) return false;
-        return mode !== "semantic" && ctx.services.settings.get("search.includeReference");
-      });
       const answers = await Promise.allSettled(
         active.map(async (source) => {
-          if (!source.searchInParts) return source.search({ q, kinds: params.kinds, limit: window, signal: params.signal });
+          const asked = early.get(source);
+          if (asked) return asked;
           // Every collection's best matches, however far down the list this page is, so
           // that the count and the pages do not change from one page to the next.
           const nouns = titleWords(parsed);
+          const forCollections = forReference(q, parsed).parsed;
           const { results, outcome } = await gatherParts(source, {
-            q: plainQuery(parsed) || q,
-            alternate: alternateQuery(parsed),
-            parsed,
-            rank: (found, options) => rescore(found, keyword.terms, parsed.excluded, options?.titleAnswers === false ? undefined : nouns),
+            q: plainQuery(forCollections) || q,
+            alternate: alternateQuery(forCollections),
+            parsed: forCollections,
+            rank: (found, options) =>
+              rescore(found, keyword.terms, parsed.excluded, options?.titleAnswers === false ? undefined : nouns, intent),
             signal: params.signal,
             budgetMs: referenceBudgets.onePartMs,
           });
@@ -1083,7 +1282,15 @@ export function createSearchService(ctx: AppContext): SearchService {
         });
       }
       results = onDeviceFirst(results);
+      // One title once: a collection, the document made from it and its catalogue entry are one row.
+      const { results: once, collapsed } = collapseSameTitles(results);
+      results = once;
       places.sort((a, b) => b.score - a.score);
+      const firstPage = offset === 0 && !params.kinds?.length && !params.tag;
+      const card = firstPage ? (firstCard(cardSources, cardQuery(q, parsed)) ?? placeCard(q, places, keyword.everyWord)) : null;
+      const households = ctx.services.households;
+      const householdShown =
+        results.some((result) => PER_HOUSEHOLD.has(result.kind)) && households.list().length > 1 ? households.current().name : null;
 
       return {
         query: q,
@@ -1095,10 +1302,12 @@ export function createSearchService(ctx: AppContext): SearchService {
         // Offered only while little is found: a suggestion beside a full page would be noise.
         didYouMean: results.length < FEW ? keyword.didYouMean : null,
         // Results found another way can only add to what the words found.
-        total: Math.max(results.length, keyword.total),
+        total: Math.max(results.length, keyword.total - collapsed),
         results: results.slice(offset, offset + limit),
         places: places.slice(0, PLACES_SHOWN),
         placesFirst: looksLikeAName(q, places),
+        card,
+        householdShown,
         facets: keyword.facets,
         warnings,
         ...later,
@@ -1115,21 +1324,28 @@ export function createSearchService(ctx: AppContext): SearchService {
       }
       // kiwix-serve is asked for the words that matter (and once more for them said another way), and what it
       // finds is put on the same scale as everything else.
-      const { parsed } = understand(q, params.exact);
+      const { parsed, instead } = forReference(q, understand(q, params.exact).parsed);
+      if (instead) params.onInstead?.(instead);
       const terms = weighTerms(sqlite, parsed);
       const nouns = titleWords(parsed);
+      const intent = intentFor(parsed);
+      const { onInstead: _onInstead, ...rest } = params;
       return source.searchInParts!({
-        ...params,
+        ...rest,
         q: plainQuery(parsed) || q,
         alternate: alternateQuery(parsed),
         parsed,
-        rank: (results, options) => rescore(results, terms, parsed.excluded, options?.titleAnswers === false ? undefined : nouns),
+        rank: (results, options) => rescore(results, terms, parsed.excluded, options?.titleAnswers === false ? undefined : nouns, intent),
         budgetMs: referenceBudgets.inPartsMs,
       });
     },
 
     addSource(source) {
       sources.push(source);
+    },
+
+    addCards(source) {
+      cardSources.push(source);
     },
 
     getChunks(chunkIds) {

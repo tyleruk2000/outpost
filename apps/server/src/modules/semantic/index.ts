@@ -279,6 +279,23 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
   ctx.onClose.push(() => debounce && clearTimeout(debounce));
 
   // ── Search source ──
+  // A question's vector, kept for the next time it is asked: the quick search and the search
+  // screen ask the same words one after the other, and the model takes tens of milliseconds a time.
+  const queryVectors = new Map<string, Float32Array>();
+  async function queryVector(provider: { modelId: string; embed: EmbeddingProvider["embed"] }, q: string, signal?: AbortSignal) {
+    const key = `${provider.modelId}\n${q}`;
+    const kept = queryVectors.get(key);
+    if (kept) {
+      queryVectors.delete(key);
+      queryVectors.set(key, kept);
+      return kept;
+    }
+    const [vector] = await provider.embed([q], "query", signal);
+    queryVectors.set(key, vector!);
+    if (queryVectors.size > 200) queryVectors.delete(queryVectors.keys().next().value!);
+    return vector!;
+  }
+
   const source: SearchSource = {
     id: "semantic",
     layer: "semantic",
@@ -290,15 +307,15 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
     async searchPassages({ q, kinds, limit, within, signal }) {
       const provider = currentProvider();
       if (!provider) return [];
-      const [vector] = await provider.embed([q], "query", signal);
-      return index.query(provider.modelId, vector!, limit, kinds, within).map((hit) => ({ chunkId: hit.chunkId, similarity: hit.score }));
+      const vector = await queryVector(provider, q, signal);
+      return index.query(provider.modelId, vector, limit, kinds, within).map((hit) => ({ chunkId: hit.chunkId, similarity: hit.score }));
     },
     async search({ q, kinds, limit, signal }) {
       const provider = currentProvider();
       if (!provider) return [];
-      const [vector] = await provider.embed([q], "query", signal);
+      const vector = await queryVector(provider, q, signal);
       // Several passages can belong to one entity; fetch extra so `limit` entities survive grouping.
-      const hits = index.query(provider.modelId, vector!, limit * 4, kinds);
+      const hits = index.query(provider.modelId, vector, limit * 4, kinds);
       const records = new Map(search.getChunks(hits.map((hit) => hit.chunkId)).map((record) => [record.chunkId, record]));
       const byEntity = new Map<string, SearchResult>();
       for (const hit of hits) {

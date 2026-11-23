@@ -2,13 +2,16 @@ import type { SearchKind, SearchResult, SearchSegment } from "@outpost/shared";
 import {
   BookMarked,
   BookOpen,
+  ClipboardList,
   Compass,
   Contact,
   FileText,
+  HeartPulse,
   Highlighter,
   type LucideIcon,
   MapPin,
   NotebookText,
+  Package,
   RadioReceiver,
   Route,
 } from "lucide-react";
@@ -24,6 +27,9 @@ export const kindMeta: Record<string, { label: string; plural: string; icon: Luc
   contact: { label: "Contact", plural: "Contacts", icon: Contact },
   repeater: { label: "Repeater", plural: "Repeaters", icon: RadioReceiver },
   highlight: { label: "Highlight", plural: "Highlights", icon: Highlighter },
+  plan: { label: "Emergency plan", plural: "Emergency plans", icon: ClipboardList },
+  supply: { label: "Supply", plural: "Supplies", icon: Package },
+  medical: { label: "Medical sheet", plural: "Medical sheets", icon: HeartPulse },
 };
 
 export function kindOf(kind: SearchKind) {

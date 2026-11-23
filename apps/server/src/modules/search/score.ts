@@ -75,6 +75,10 @@ export interface ScoreParts {
   inTitle: number;
   /** How many of the terms were found only as another way of saying them ("tire" for "tyre"). */
   saidOtherwise: number;
+  /** Those other ways, as written ("tire"), in the order of the terms. */
+  matchedAs?: string[];
+  /** The terms it does not hold, as typed. */
+  missing?: string[];
 }
 
 interface Token {
@@ -130,6 +134,8 @@ interface Occurrence {
   credit: number;
   /** A form of the word typed, not another way of saying it. */
   typed: boolean;
+  /** Which of the term's forms it is (0: as typed). */
+  form: number;
 }
 
 /** Where each term occurs in `tokens` (start positions), how long each occurrence is, and how much it counts. */
@@ -162,6 +168,7 @@ function occurrences(term: ScoringTerm, tokens: Token[]): Occurrence[] {
             length: high - low + 1,
             credit: form.credit * (exact ? 1 : FORM_CREDIT.inflected),
             typed: formIndex === 0,
+            form: formIndex,
           });
         }
       }
@@ -190,7 +197,7 @@ function occurrences(term: ScoringTerm, tokens: Token[]): Occurrence[] {
           match = false;
         }
       }
-      if (match) found.push({ at, length: form.stems.length, credit, typed: formIndex === 0 });
+      if (match) found.push({ at, length: form.stems.length, credit, typed: formIndex === 0, form: formIndex });
     }
   });
   return found;
@@ -263,7 +270,20 @@ function nearness(terms: ScoringTerm[], tokens: Token[]): { closeness: number; p
 export function scoreFields(terms: ScoringTerm[], fields: ScoreFields): ScoreParts {
   const of = terms.reduce((sum, term) => sum + term.size, 0);
   if (of === 0)
-    return { score: 0, coverage: 0, title: 0, closeness: 0, phrase: 0, frequency: 0, found: 0, of, inTitle: 0, saidOtherwise: 0 };
+    return {
+      score: 0,
+      coverage: 0,
+      title: 0,
+      closeness: 0,
+      phrase: 0,
+      frequency: 0,
+      found: 0,
+      of,
+      inTitle: 0,
+      saidOtherwise: 0,
+      matchedAs: [],
+      missing: [],
+    };
   const title = contentTokens(tokenize(fields.title));
   const heading = contentTokens(tokenize(fields.heading ?? ""));
   const tags = contentTokens(tokenize(fields.tags ?? ""));
@@ -275,6 +295,8 @@ export function scoreFields(terms: ScoringTerm[], fields: ScoreFields): ScorePar
   let found = 0;
   let wholeInTitle = 0;
   let saidOtherwise = 0;
+  const matchedAs: string[] = [];
+  const missing: string[] = [];
   for (const term of terms) {
     const titleHits = occurrences(term, title);
     const headingHits = occurrences(term, heading);
@@ -285,7 +307,12 @@ export function scoreFields(terms: ScoringTerm[], fields: ScoreFields): ScorePar
     const inTags = best(tagHits);
     const inBody = best(bodyHits);
     const all = [...titleHits, ...headingHits, ...tagHits, ...bodyHits];
-    if (all.length > 0 && !all.some((hit) => hit.typed)) saidOtherwise += 1;
+    if (all.length > 0 && !all.some((hit) => hit.typed)) {
+      saidOtherwise += 1;
+      const form = term.forms[all.reduce((most, hit) => (hit.credit > most.credit ? hit : most)).form];
+      if (form) matchedAs.push(form.raws.join(" "));
+    }
+    if (all.length === 0) missing.push(term.term);
     const credit = Math.max(inTitle, inHeading, inTags, inBody);
     if (credit > 0) {
       covered += term.weight * credit;
@@ -309,21 +336,27 @@ export function scoreFields(terms: ScoringTerm[], fields: ScoreFields): ScorePar
     SCORE_WEIGHTS.closeness * parts.closeness +
     SCORE_WEIGHTS.phrase * parts.phrase +
     SCORE_WEIGHTS.frequency * parts.frequency;
-  return { score: Math.round(score * 1000) / 1000, ...parts, found, of, inTitle: wholeInTitle, saidOtherwise };
+  return { score: Math.round(score * 1000) / 1000, ...parts, found, of, inTitle: wholeInTitle, saidOtherwise, matchedAs, missing };
 }
 
-/** Why a result is where it is, in a few words for the list: "All 3 words, side by side", "2 of 3 words". */
+/**
+ * Why a result is where it is, in a few words for the list: "All 3 words, side by side",
+ * "2 of 3 words, not “sand”", "All 2 words in the title; also matched tire".
+ */
 export function reasonFor(parts: ScoreParts): string {
   const reason = wordsReason(parts);
-  // "Tire care" for "tyre pressure": say that a word was found as another way of saying it.
-  return reason && parts.saidOtherwise > 0
-    ? `${reason}, ${parts.of === 1 ? "said" : parts.saidOtherwise === 1 ? "one said" : "some said"} another way`
-    : reason;
+  if (!reason || parts.saidOtherwise === 0) return reason;
+  // "Tire care" for "tyre pressure": say which other way of saying a word it holds.
+  const named = [...new Set(parts.matchedAs ?? [])];
+  return named.length > 0 ? `${reason}; also matched ${named.join(", ")}` : `${reason}, said another way`;
 }
 
 function wordsReason(parts: ScoreParts): string {
   if (parts.of === 0 || parts.found === 0) return "";
-  if (parts.found < parts.of) return `${parts.found} of ${parts.of} words`;
+  if (parts.found < parts.of) {
+    const missing = parts.missing ?? [];
+    return missing.length === 1 ? `${parts.found} of ${parts.of} words, not “${missing[0]}”` : `${parts.found} of ${parts.of} words`;
+  }
   if (parts.of === 1) return parts.inTitle === 1 ? "In the title" : parts.title > 0 ? "In a heading or tag" : "In the text";
   const all = `All ${parts.of} words`;
   if (parts.inTitle === parts.of) return `${all} in the title`;

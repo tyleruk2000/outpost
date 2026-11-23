@@ -356,3 +356,41 @@ describe("what else was searched, and what might have been meant", () => {
     expect(await screen.findByRole("link", { name: "Water treatment handbook" })).toBeInTheDocument();
   });
 });
+
+describe("the answer, repeated titles and whose plans", () => {
+  it("shows one answer card above the results, and does not offer its screen again under Go to", async () => {
+    const card = { kind: "tool" as const, title: "Tools: Water", about: "Making water safe to drink.", url: "/tools/water" };
+    serveSearch(() => ownAnswer([ownResult("d1", "Water treatment handbook")], { referenceToCome: false, card }));
+    show("/search?q=purify%20water");
+    const answer = await screen.findByRole("region", { name: "The answer in Outpost" });
+    expect(within(answer).getByRole("link", { name: /Tools: Water/ })).toHaveAttribute("href", "/tools/water");
+    expect(screen.queryByRole("region", { name: "Go to" })).not.toBeInTheDocument();
+  });
+
+  it("names the other places a title is in, each a link", async () => {
+    const result = {
+      ...ownResult("c1", "WikiMed Medical Encyclopedia", "collection"),
+      alsoIn: [
+        { kind: "catalog", entityId: "k1", title: "WikiMed Medical Encyclopedia", collection: null, subtitle: null, url: "/explore/k1" },
+      ],
+    };
+    serveSearch(() => ownAnswer([result], { referenceToCome: false }));
+    show("/search?q=wikimed");
+    expect(await screen.findByText(/Also in:/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Available to download" })).toHaveAttribute("href", "/explore/k1");
+  });
+
+  it("says whose plans and supplies they are, and when reference collections were asked for a near word", async () => {
+    const plan = { ...ownResult("p1", "Flood plan", "plan"), url: "/prepare/plans/p1" };
+    const server = serveSearch(() => ownAnswer([plan], { householdShown: "Cabin" }));
+    show("/search?q=purifiy%20sandbags");
+    expect(await screen.findByText("Emergency plans and supplies are those of Cabin, the current household.")).toBeInTheDocument();
+    await waitFor(() => expect(server.reference).toHaveLength(1));
+    await server.send(
+      { type: "start", collections: 1, instead: { query: "purify sandbags", words: ["purify"] } },
+      collectionLine("Water Treatment Library", "Purifying water"),
+    );
+    await server.end({ searched: 1 });
+    expect(screen.getByText(/Also showing results for/)).toHaveTextContent("Also showing results for purify sandbags.");
+  });
+});
