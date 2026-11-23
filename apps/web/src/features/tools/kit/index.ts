@@ -19,6 +19,6 @@ export {
 export { formatDuration, formatFigure, formatRange, ROUGH_MINUTES_WORDS, roughMinutes, roundSignificant } from "./format";
 export { Calculator, ToolScreen } from "./layout";
 export { type NumberLimits, readNumber } from "./read-number";
-export { Formula, HowWorkedOut, KeepButtons, Result, type Source, SourceList } from "./result";
+export { Formula, HowWorkedOut, KeepButtons, Result, type Source, SourceList, useHeldHeight } from "./result";
 export * as u from "./units";
 export { convert, type Unit } from "./units";

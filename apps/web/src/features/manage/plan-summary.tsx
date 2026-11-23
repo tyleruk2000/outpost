@@ -3,6 +3,7 @@ import { type CleanupPlan, formatBytes, type NamedFile } from "@outpost/shared";
 import { CircleAlert } from "lucide-react";
 import { Notice } from "@/components/page";
 import { Skeleton } from "@/components/ui/misc";
+import { Table } from "@/components/ui/table";
 import { plural } from "@/lib/utils";
 import { kindNames, kindOrder, tallyText } from "./manage-text";
 
@@ -40,7 +41,7 @@ export function PlanTables({ plan }: { plan: CleanupPlan }) {
   return (
     <div className="grid gap-4">
       {kinds.length > 0 ? (
-        <table className="w-full text-small">
+        <Table label="What will be deleted">
           <caption className="mb-1 text-left font-semibold text-ink">What will be deleted</caption>
           <thead className="sr-only">
             <tr>
@@ -60,16 +61,15 @@ export function PlanTables({ plan }: { plan: CleanupPlan }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </Table>
       ) : null}
       {plan.byLocation.length > 0 ? (
-        <table className="w-full text-small">
+        <Table label="Where">
           <caption className="mb-1 text-left font-semibold text-ink">Where</caption>
           <thead className="sr-only">
             <tr>
               <th scope="col">Location</th>
-              <th scope="col">Deleted</th>
-              <th scope="col">Stays</th>
+              <th scope="col">Deleted, and what stays</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border border-y border-border">
@@ -86,7 +86,7 @@ export function PlanTables({ plan }: { plan: CleanupPlan }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </Table>
       ) : null}
     </div>
   );

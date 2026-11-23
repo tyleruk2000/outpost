@@ -11,6 +11,7 @@ import { Pause, Play, RotateCcw } from "lucide-react";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Field, Input } from "@/components/ui/input";
 import { usePageVisible } from "@/lib/page-visible";
 import { readPref, writePref } from "../kit/device-pref";
 
@@ -220,24 +221,35 @@ export function TimerPanel() {
             <RotateCcw aria-hidden /> Reset
           </Button>
         ) : (
-          <>
-            <label className="grid gap-1.5 text-small font-medium text-ink">
-              Minutes
-              <input
-                inputMode="decimal"
-                value={minutesText}
-                onChange={(event) => {
-                  setMinutesText(event.target.value);
-                  setRanOut(false);
-                }}
-                aria-invalid={!valid || undefined}
-                className="h-9 w-24 rounded-control border border-border-strong bg-page px-3 text-body text-ink tabular focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus aria-invalid:border-danger max-md:h-11"
-              />
-            </label>
-            <Button variant="primary" disabled={!valid} onClick={() => start(minutes, "")}>
+          // A form, so that Enter (or Go on a phone's keyboard) starts the timer from the field.
+          <form
+            className="flex flex-wrap items-end gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (valid) start(minutes, "");
+            }}
+          >
+            <Field label="Minutes">
+              {(ids) => (
+                <Input
+                  {...ids}
+                  inputMode="decimal"
+                  enterKeyHint="go"
+                  autoComplete="off"
+                  value={minutesText}
+                  onChange={(event) => {
+                    setMinutesText(event.target.value);
+                    setRanOut(false);
+                  }}
+                  aria-invalid={!valid || undefined}
+                  className="w-24 tabular"
+                />
+              )}
+            </Field>
+            <Button type="submit" variant="primary" disabled={!valid}>
               <Play aria-hidden /> Start
             </Button>
-          </>
+          </form>
         )}
       </div>
       <p className="mt-2 text-small text-ink-muted">

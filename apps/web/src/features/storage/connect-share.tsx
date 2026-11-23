@@ -51,7 +51,7 @@ const signInBody = (signIn: SignIn) =>
 const STEPS = ["Server", "Sign in", "Shared folder", "Folder to use"] as const;
 
 /** A lesser action offered as a line of linked text, still a full-size target on a phone. */
-const quietAction = "justify-start self-start justify-self-start max-md:min-h-11";
+const quietAction = "justify-start self-start justify-self-start max-md:min-h-11 md:pointer-coarse:min-h-11";
 
 /** A row to press in a list of things to choose from. */
 function ChoiceRow({

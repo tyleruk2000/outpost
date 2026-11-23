@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Skeleton, Switch } from "@/components/ui/misc";
+import { Table } from "@/components/ui/table";
 import { useHouseholds } from "@/features/households/use-household";
 import { PdfButtons, PdfStatus, useMadePdf } from "@/features/library/made/pdf-actions";
 import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
@@ -423,13 +424,8 @@ export default function PowerPlanPage() {
 
         <div className="mt-8">
           <h3 className="text-body font-semibold text-ink">Each month, from full</h3>
-          {/* biome-ignore lint/a11y/noNoninteractiveTabindex: the table scrolls sideways on a phone, so it is reachable by keyboard */}
-          {/* biome-ignore lint/a11y/useSemanticElements: a named group to scroll, not a set of form fields */}
-          <div tabIndex={0} role="group" aria-label="Each month, from full" className="scroll-quiet mt-2 overflow-x-auto">
-            <table className="tabular w-full min-w-[30rem] text-small">
-              <caption className="sr-only">
-                For each month: peak sun hours, solar a day, the lowest charge in 30 days, and when it runs down
-              </caption>
+          <div className="mt-2">
+            <Table label="Each month, from full" className="tabular min-w-[30rem]">
               <thead>
                 <tr className="border-b border-border text-left text-ink-muted">
                   <th scope="col" className="py-1.5 pr-3 font-medium">
@@ -464,7 +460,7 @@ export default function PowerPlanPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </Table>
           </div>
           <p className="mt-2 max-w-[70ch] text-small text-ink-muted">
             Thirty days of each month's sun, starting full. “Lowest” is the lowest charge reached; “runs down” is the day it first reaches

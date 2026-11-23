@@ -62,7 +62,7 @@ function ValleySkeleton() {
       role="status"
       aria-busy="true"
       aria-label="Loading the settlement"
-      className="grid gap-8 md:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]"
+      className="grid gap-8 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]"
     >
       <div>
         <Skeleton className="mb-3 h-5 w-56" />
@@ -161,7 +161,7 @@ function Settlement({ view }: { view: SteadingView }) {
   };
 
   return (
-    <div className="grid gap-x-10 gap-y-6 md:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
+    <div className="grid gap-x-10 gap-y-6 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
       <div className="min-w-0">
         <div className="mb-3 grid gap-2">
           {firstVisit ? (
@@ -224,7 +224,7 @@ function Settlement({ view }: { view: SteadingView }) {
         <BuildingList state={settlement} flows={flows} onChoose={setSelected} />
       </div>
 
-      <div className="grid gap-8 md:col-span-2 md:grid-cols-2">
+      <div className="grid gap-8 lg:col-span-2 md:grid-cols-2">
         <Ledger state={settlement} flows={flows} />
         <Households state={settlement} flows={flows} />
         <Power state={settlement} flows={flows} busy={busy} act={act} />
@@ -232,7 +232,7 @@ function Settlement({ view }: { view: SteadingView }) {
         <Milestones state={settlement} />
       </div>
 
-      <div className="md:col-span-2">
+      <div className="lg:col-span-2">
         <GameAbout>
           <p>
             Every building makes something from something. Lay a route from each to where its goods are wanted: a workshop that uses them,

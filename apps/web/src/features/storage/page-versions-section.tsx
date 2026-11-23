@@ -41,7 +41,7 @@ export function PageVersionsSection() {
           <p className="tabular text-small text-ink">
             {plural(space.data.versions, "version")} of {plural(space.data.pages, "page")}, {formatBytes(space.data.bytes)}.
           </p>
-          <Button size="sm" variant="secondary" onClick={() => setConfirming(true)} className="max-md:min-h-11">
+          <Button size="sm" variant="secondary" onClick={() => setConfirming(true)} className="max-md:min-h-11 md:pointer-coarse:min-h-11">
             Clear earlier versions
           </Button>
         </div>

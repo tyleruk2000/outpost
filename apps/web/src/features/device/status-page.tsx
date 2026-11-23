@@ -6,6 +6,7 @@ import { Link } from "react-router";
 import { Disclosure, ErrorState, Page, PageHeader, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Badge, Skeleton } from "@/components/ui/misc";
+import { Table } from "@/components/ui/table";
 import { api } from "@/lib/api";
 import { formatTimeOfDay } from "@/lib/clock";
 import { cn, formatDateTime, plural } from "@/lib/utils";
@@ -84,7 +85,7 @@ function CheckRow({ check, action }: { check: DeviceCheck; action?: ReactNode })
             {check.link ? (
               <Link
                 to={check.link.to}
-                className="inline-flex min-h-11 items-center text-small text-primary underline underline-offset-2 md:min-h-6"
+                className="inline-flex min-h-11 items-center text-small text-primary underline underline-offset-2 md:min-h-6 md:pointer-coarse:min-h-11"
               >
                 Open {check.link.label}
               </Link>
@@ -107,7 +108,7 @@ function DelayTable({ eventLoop }: { eventLoop: EventLoopDelay }) {
           {formatDateTime(eventLoop.worst.at)}.
         </p>
       ) : null}
-      <table className="w-full text-small">
+      <Table label="The event loop, minute by minute">
         <thead>
           <tr className="text-left text-ink-muted">
             <th className="py-1 pr-4 font-medium">Minute</th>
@@ -124,7 +125,7 @@ function DelayTable({ eventLoop }: { eventLoop: EventLoopDelay }) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </Table>
     </Disclosure>
   );
 }

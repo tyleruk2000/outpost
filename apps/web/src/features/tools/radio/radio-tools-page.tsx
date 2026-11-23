@@ -1,5 +1,6 @@
 import { HF_BANDS, maxSightDistanceMeters, REPEATER_BANDS } from "@outpost/shared";
 import { Link } from "react-router";
+import { Table, TableHead, Td, Th, Tr } from "@/components/ui/table";
 import {
   allValues,
   Calculator,
@@ -438,23 +439,23 @@ function CoaxCalculator() {
               scales, since cable loss rises close to the square root of frequency.
             </p>
             {cable ? (
-              <table className="mt-2 w-full max-w-sm text-left tabular">
-                <caption className="text-left font-semibold">{cable.name}, as published</caption>
-                <thead>
-                  <tr className="text-ink-muted">
-                    <th className="py-1 font-medium">MHz</th>
-                    <th className="py-1 font-medium">dB per 100 m</th>
-                  </tr>
-                </thead>
+              <Table label={`${cable.name}, as published`} className="mt-2 max-w-sm">
+                <caption className="pb-1 text-left font-semibold">{cable.name}, as published</caption>
+                <TableHead>
+                  <Tr>
+                    <Th numeric>MHz</Th>
+                    <Th numeric>dB per 100 m</Th>
+                  </Tr>
+                </TableHead>
                 <tbody>
                   {cable.table.map(([mhz, db]) => (
-                    <tr key={mhz} className="border-t border-border">
-                      <td className="py-1">{formatFigure(mhz, { decimals: 1 })}</td>
-                      <td className="py-1">{formatFigure(db, { decimals: 2 })}</td>
-                    </tr>
+                    <Tr key={mhz}>
+                      <Td numeric>{formatFigure(mhz, { decimals: 1 })}</Td>
+                      <Td numeric>{formatFigure(db, { decimals: 2 })}</Td>
+                    </Tr>
                   ))}
                 </tbody>
-              </table>
+              </Table>
             ) : null}
             {cable?.note ? <p className="mt-1">{cable.note}</p> : null}
           </>

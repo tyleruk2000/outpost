@@ -5,7 +5,7 @@
  * button to press.
  */
 import { type ReactNode, useCallback, useId, useMemo, useState } from "react";
-import { Field } from "@/components/ui/input";
+import { Field, Input } from "@/components/ui/input";
 import { Segmented, Select } from "@/components/ui/misc";
 import { cn } from "@/lib/utils";
 import { readPref, writePref } from "./device-pref";
@@ -92,15 +92,16 @@ export function NumberField({ input, className }: { input: NumberInput; classNam
       {(ids) => (
         // Wraps the unit under the figure when both do not fit (a narrow box, a phone with large text).
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <input
+          <Input
             {...ids}
             type="text"
             inputMode="decimal"
+            enterKeyHint="done"
             autoComplete="off"
             spellCheck={false}
             value={input.text}
             onChange={(event) => input.setText(event.target.value)}
-            className="h-9 w-full min-w-[5rem] flex-1 rounded-control border border-border-strong bg-page px-3 text-body text-ink tabular transition-[border-color,box-shadow] duration-150 placeholder:text-ink-faint hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus aria-invalid:border-danger aria-invalid:ring-danger/25 max-md:h-11"
+            className="min-w-[5rem] flex-1 tabular"
           />
           {units.length > 2 ? (
             <Select

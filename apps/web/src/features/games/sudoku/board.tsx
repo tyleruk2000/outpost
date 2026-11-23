@@ -53,7 +53,7 @@ export function SudokuGrid({
       aria-label="Sudoku grid"
       onKeyDown={moveBy}
       // On a phone the board reaches into the page's margins, to 8 px from each edge, so that a cell is 40 px or more.
-      className="mx-auto flex aspect-square w-full max-w-[32rem] flex-col border-2 border-ink-muted bg-page max-[33rem]:-mx-2 max-[33rem]:w-[calc(100%+1rem)] md:mx-0"
+      className="mx-auto flex aspect-square w-full max-w-[32rem] flex-col border-2 border-ink-muted bg-page max-[33rem]:-mx-2 max-[33rem]:w-[calc(100%+1rem)] lg:mx-0"
     >
       {Array.from({ length: 9 }, (_, r) => (
         // biome-ignore lint/a11y/useFocusableInteractive: a row of a grid is not focused itself; its cells are
@@ -92,7 +92,7 @@ export function SudokuGrid({
                   aria-label={cellName(game, cell)}
                   onClick={() => onSelect(cell, false)}
                   className={cn(
-                    "absolute inset-0 flex items-center justify-center transition-colors duration-150 motion-reduce:transition-none focus-visible:z-10",
+                    "absolute inset-0 flex items-center justify-center transition-colors duration-(--duration-fast) motion-reduce:transition-none focus-visible:z-10",
                     peer && "bg-surface-strong",
                     same && "bg-primary-soft",
                     isSelected && "bg-primary-soft shadow-[inset_0_0_0_2px_var(--primary)]",
@@ -150,7 +150,7 @@ export function NumberPad({
 }) {
   return (
     // biome-ignore lint/a11y/useSemanticElements: a pad of buttons, not a form
-    <div role="group" aria-label="Number pad" className="grid grid-cols-5 gap-1.5 md:grid-cols-3 md:gap-2">
+    <div role="group" aria-label="Number pad" className="grid grid-cols-5 gap-1.5 lg:grid-cols-3 lg:gap-2">
       {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => {
         const count = left[digit]!;
         return (
@@ -161,7 +161,7 @@ export function NumberPad({
             aria-label={`${noting ? "Note" : "Write"} ${digit}, ${count === 0 ? "none" : count} left`}
             onClick={() => onDigit(digit)}
             className={cn(
-              "flex h-14 flex-col items-center justify-center rounded-control border border-border-strong bg-page transition-colors duration-150 hover:bg-surface active:bg-surface-strong disabled:opacity-50 motion-reduce:transition-none md:h-16",
+              "flex h-14 flex-col items-center justify-center rounded-control border border-border-strong bg-page transition-colors duration-(--duration-fast) hover:bg-surface active:bg-surface-strong disabled:opacity-50 motion-reduce:transition-none md:h-16",
               noting && "border-dashed",
             )}
           >
@@ -185,7 +185,7 @@ export function NumberPad({
         type="button"
         disabled={disabled}
         onClick={onErase}
-        className="flex h-14 flex-col items-center justify-center gap-1 rounded-control border border-border-strong bg-page text-small text-ink transition-colors duration-150 hover:bg-surface active:bg-surface-strong disabled:opacity-50 motion-reduce:transition-none md:col-span-3 md:h-12 md:flex-row md:gap-2"
+        className="flex h-14 flex-col items-center justify-center gap-1 rounded-control border border-border-strong bg-page text-small text-ink transition-colors duration-(--duration-fast) hover:bg-surface active:bg-surface-strong disabled:opacity-50 motion-reduce:transition-none lg:col-span-3 lg:h-12 lg:flex-row lg:gap-2"
       >
         <Eraser aria-hidden className="size-5" />
         Erase

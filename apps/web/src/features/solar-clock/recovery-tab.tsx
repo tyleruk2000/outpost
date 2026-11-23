@@ -7,7 +7,8 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { JumpLinks } from "@/components/page";
-import { Field } from "@/components/ui/input";
+import { Field, Input } from "@/components/ui/input";
+import { Table } from "@/components/ui/table";
 import { type IsoDate, isIsoDate } from "@/features/maps/lib/sun";
 import { dateIn, deviceZone } from "@/features/maps/lib/sun-text";
 import { useClockStyle } from "@/lib/clock";
@@ -137,9 +138,6 @@ const EVENTS = [
   { value: "rise" as const, label: "Sunrise" },
   { value: "set" as const, label: "Sunset" },
 ];
-
-const inputClass =
-  "h-9 w-full rounded-control border border-border-strong bg-page px-3 text-body text-ink tabular hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus aria-invalid:border-danger max-md:h-11";
 
 /** Minutes past midnight from "14:05", or null. */
 const minutesOf = (text: string): number | null => {
@@ -287,9 +285,7 @@ export function RecoveryTab({ place, zone }: { place: ChosenPlace | null; zone: 
               : undefined
           }
         >
-          {(ids) => (
-            <input {...ids} type="date" value={dateText} onChange={(event) => setDate(event.target.value)} className={inputClass} />
-          )}
+          {(ids) => <Input {...ids} type="date" value={dateText} onChange={(event) => setDate(event.target.value)} className="tabular" />}
         </Field>
       </div>
       {!place ? (
@@ -364,23 +360,23 @@ export function RecoveryTab({ place, zone }: { place: ChosenPlace | null; zone: 
               <Inputs>
                 <Field label="At the morning mark">
                   {(ids) => (
-                    <input
+                    <Input
                       {...ids}
                       type="time"
                       value={firstReading}
                       onChange={(event) => setFirst(event.target.value)}
-                      className={inputClass}
+                      className="tabular"
                     />
                   )}
                 </Field>
                 <Field label="At the afternoon mark">
                   {(ids) => (
-                    <input
+                    <Input
                       {...ids}
                       type="time"
                       value={secondReading}
                       onChange={(event) => setSecond(event.target.value)}
-                      className={inputClass}
+                      className="tabular"
                     />
                   )}
                 </Field>
@@ -574,41 +570,38 @@ export function RecoveryTab({ place, zone }: { place: ChosenPlace | null; zone: 
           {shifts.length === 0 ? (
             <p className="text-body text-ink-muted">Work out a time above and its sensitivity to the date shows here.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-small tabular">
-                <caption className="sr-only">How much each answer moves for a date wrong by 1, 3 or 7 days</caption>
-                <thead>
-                  <tr className="border-b border-border text-left text-ink-muted">
-                    <th scope="col" className="py-2 pr-3 font-medium">
-                      Method
+            <Table label="How much each answer moves for a date wrong by 1, 3 or 7 days" className="tabular">
+              <thead>
+                <tr className="border-b border-border text-left text-ink-muted">
+                  <th scope="col" className="py-2 pr-3 font-medium">
+                    Method
+                  </th>
+                  <th scope="col" className="py-2 pr-3 font-medium">
+                    1 day out
+                  </th>
+                  <th scope="col" className="py-2 pr-3 font-medium">
+                    3 days
+                  </th>
+                  <th scope="col" className="py-2 font-medium">
+                    A week
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {shifts.map((row) => (
+                  <tr key={row.name}>
+                    <th scope="row" className="py-2 pr-3 text-left font-normal text-ink">
+                      {row.name}
                     </th>
-                    <th scope="col" className="py-2 pr-3 font-medium">
-                      1 day out
-                    </th>
-                    <th scope="col" className="py-2 pr-3 font-medium">
-                      3 days
-                    </th>
-                    <th scope="col" className="py-2 font-medium">
-                      A week
-                    </th>
+                    {row.shift.map((cell) => (
+                      <td key={cell.days} className="py-2 pr-3 whitespace-nowrap text-ink">
+                        {cell.minutes === null ? "–" : cell.minutes < 1 ? "under 1 min" : `${Math.round(cell.minutes)} min`}
+                      </td>
+                    ))}
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {shifts.map((row) => (
-                    <tr key={row.name}>
-                      <th scope="row" className="py-2 pr-3 text-left font-normal text-ink">
-                        {row.name}
-                      </th>
-                      {row.shift.map((cell) => (
-                        <td key={cell.days} className="py-2 pr-3 whitespace-nowrap text-ink">
-                          {cell.minutes === null ? "–" : cell.minutes < 1 ? "under 1 min" : `${Math.round(cell.minutes)} min`}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </Table>
           )}
         </Calculator>
 

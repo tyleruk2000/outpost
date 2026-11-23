@@ -212,7 +212,12 @@ function ShareRow({ share }: { share: NetworkShare }) {
         </div>
         <Menu>
           <MenuTrigger asChild>
-            <Button variant="ghost" size="icon-sm" className="max-md:size-11" aria-label={`Actions for ${address}`}>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="max-md:size-11 md:pointer-coarse:size-11"
+              aria-label={`Actions for ${address}`}
+            >
               <Ellipsis />
             </Button>
           </MenuTrigger>

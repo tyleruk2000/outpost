@@ -22,6 +22,7 @@ import {
 } from "@outpost/shared/games/steading";
 import { Disclosure } from "@/components/page";
 import { Button } from "@/components/ui/button";
+import { Table } from "@/components/ui/table";
 import { formatNumber } from "@/lib/utils";
 import type { Act } from "./panels";
 import { Heading } from "./panels";
@@ -130,53 +131,48 @@ export function Power({ state, flows, busy, act }: { state: SteadingState; flows
         </>
       )}
       <Disclosure summary={`The sun and wind of ${land.place}`}>
-        <div className="overflow-x-auto">
-          <table className="tabular w-full text-small">
-            <caption className="sr-only">
-              Month by month: what one solar array and one wind turbine make in a day, the daylight and the cold
-            </caption>
-            <thead className="text-left text-ink-muted">
-              <tr className="border-b border-border">
-                <th scope="col" className="py-1.5 pr-3 font-normal">
-                  Month
+        <Table label={`The sun and wind of ${land.place}, month by month`} className="tabular">
+          <thead className="text-left text-ink-muted">
+            <tr className="border-b border-border">
+              <th scope="col" className="py-1.5 pr-3 font-normal">
+                Month
+              </th>
+              <th scope="col" className="py-1.5 pr-3 text-right font-normal">
+                Array, kWh a day
+              </th>
+              <th scope="col" className="py-1.5 pr-3 text-right font-normal">
+                Daylight, hours
+              </th>
+              <th scope="col" className="py-1.5 pr-3 text-right font-normal">
+                Wind, m/s
+              </th>
+              <th scope="col" className="py-1.5 pr-3 text-right font-normal">
+                Turbine, kWh a day
+              </th>
+              <th scope="col" className="py-1.5 text-right font-normal">
+                Mean, °C
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {MONTHS.map((month, i) => (
+              <tr
+                key={month}
+                aria-current={i === p.weather.month ? "true" : undefined}
+                className={i === p.weather.month ? "font-semibold" : undefined}
+              >
+                <th scope="row" className="py-1 pr-3 text-left font-normal text-ink">
+                  {month}
                 </th>
-                <th scope="col" className="py-1.5 pr-3 text-right font-normal">
-                  Array, kWh a day
-                </th>
-                <th scope="col" className="py-1.5 pr-3 text-right font-normal">
-                  Daylight, hours
-                </th>
-                <th scope="col" className="py-1.5 pr-3 text-right font-normal">
-                  Wind, m/s
-                </th>
-                <th scope="col" className="py-1.5 pr-3 text-right font-normal">
-                  Turbine, kWh a day
-                </th>
-                <th scope="col" className="py-1.5 text-right font-normal">
-                  Mean, °C
-                </th>
+                <td className="py-1 pr-3 text-right text-ink">{amount(ARRAY_KWP * (land.solarKwhPerKwp[i] ?? 0))}</td>
+                <td className="py-1 pr-3 text-right text-ink">{amount(land.daylightHours[i] ?? 0)}</td>
+                <td className="py-1 pr-3 text-right text-ink">{amount(land.windMs[i] ?? 0)}</td>
+                <td className="py-1 pr-3 text-right text-ink">{amount(land.turbineKwh[i] ?? 0)}</td>
+                <td className="py-1 text-right text-ink">{amount(land.meanC[i] ?? 0)}</td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {MONTHS.map((month, i) => (
-                <tr
-                  key={month}
-                  aria-current={i === p.weather.month ? "true" : undefined}
-                  className={i === p.weather.month ? "font-semibold" : undefined}
-                >
-                  <th scope="row" className="py-1 pr-3 text-left font-normal text-ink">
-                    {month}
-                  </th>
-                  <td className="py-1 pr-3 text-right text-ink">{amount(ARRAY_KWP * (land.solarKwhPerKwp[i] ?? 0))}</td>
-                  <td className="py-1 pr-3 text-right text-ink">{amount(land.daylightHours[i] ?? 0)}</td>
-                  <td className="py-1 pr-3 text-right text-ink">{amount(land.windMs[i] ?? 0)}</td>
-                  <td className="py-1 pr-3 text-right text-ink">{amount(land.turbineKwh[i] ?? 0)}</td>
-                  <td className="py-1 text-right text-ink">{amount(land.meanC[i] ?? 0)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </Table>
         <ul className="mt-2 grid list-disc gap-1.5 pl-5 text-small text-ink">
           <li>
             An array is twelve 400 W panels, {ARRAY_KWP} kW at its peak. Its day's energy is made evenly through the daylight hours here,

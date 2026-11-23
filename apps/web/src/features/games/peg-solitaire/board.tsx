@@ -61,10 +61,7 @@ export function Peg({ lifted }: { lifted: boolean }) {
     <svg
       viewBox="0 0 100 100"
       aria-hidden
-      className={cn(
-        "size-full transition-transform duration-150 ease-out motion-reduce:transition-none",
-        lifted && "-translate-y-[6%] scale-[1.06]",
-      )}
+      className={cn("size-full transition-transform motion-reduce:transition-none", lifted && "-translate-y-[6%] scale-[1.06]")}
     >
       <circle cx="50" cy="54" r="29" fill="var(--game-peg-edge)" />
       <circle cx="50" cy="49" r="27" fill="var(--game-peg)" />

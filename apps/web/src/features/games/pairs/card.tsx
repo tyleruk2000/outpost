@@ -49,7 +49,7 @@ export function PairsCard({
     >
       <span
         className={cn(
-          "absolute inset-0 transition-transform duration-200 ease-out [transform-style:preserve-3d] motion-reduce:transition-none",
+          "absolute inset-0 transition-transform duration-(--duration-slow) [transform-style:preserve-3d] motion-reduce:transition-none",
           faceUp && "[transform:rotateY(180deg)]",
         )}
       >

@@ -40,6 +40,7 @@ import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { Checkbox, Select } from "@/components/ui/misc";
+import { Table, TableHead, Td, Th, Tr } from "@/components/ui/table";
 import { useHousehold } from "@/features/households/use-household";
 import type { PrintPaper } from "@/features/print-kit";
 import { api, errorMessage } from "@/lib/api";
@@ -354,7 +355,7 @@ function NeedCalculator({
               )}
             </Field>
             <Button
-              size="sm"
+              size="icon"
               variant="ghost"
               aria-label={`Take ${person.name || "this person"} off the list`}
               onClick={() => setPeople(people.filter((entry) => entry.id !== person.id))}
@@ -421,25 +422,26 @@ function NeedCalculator({
             own figure.
           </p>
         ) : null}
-        <table className="mt-3 w-full text-left text-small tabular">
-          <caption className="sr-only">Each person's figure and what it is made of</caption>
+        <Table label="Each person's figure and what it is made of" className="mt-3 tabular">
           <tbody>
             {needs.map((need) => (
-              <tr key={need.id} className="border-t border-border align-top">
-                <th scope="row" className="py-1 pr-3 font-medium">
+              <Tr key={need.id}>
+                <th scope="row" className="py-2.5 pr-3 text-left align-top font-medium text-ink">
                   {need.name || "Someone"}
                   {need.protected ? (
                     <span className="block font-normal text-ink-muted">Kept on a full ration: {need.why.join(", ")}</span>
                   ) : null}
                 </th>
-                <td className="py-1 pr-3 text-ink-muted">
+                <Td className="text-ink-muted">
                   {need.parts.map((part) => `${part.label} ${formatFigure(part.kcal, { decimals: 0 })}`).join(" + ")}
-                </td>
-                <td className="py-1 text-right">{need.kcal === null ? "No figure" : kcal(need.kcal)}</td>
-              </tr>
+                </Td>
+                <Td numeric className="whitespace-nowrap">
+                  {need.kcal === null ? "No figure" : kcal(need.kcal)}
+                </Td>
+              </Tr>
             ))}
           </tbody>
-        </table>
+        </Table>
       </Result>
       <HowWorkedOut
         formula={
@@ -476,7 +478,7 @@ function NeedCalculator({
 
 function Tick({ id, label, checked, onChange }: { id: string; label: string; checked: boolean; onChange: (on: boolean) => void }) {
   return (
-    <div className="flex min-h-11 items-center gap-2 md:min-h-8">
+    <div className="flex min-h-11 items-center gap-2 md:min-h-8 md:pointer-coarse:min-h-11">
       <Checkbox id={id} checked={checked} onCheckedChange={(on) => onChange(on === true)} />
       <label htmlFor={id} className="text-small text-ink">
         {label}
@@ -630,45 +632,33 @@ function LastsCalculator({
       >
         {levels ? (
           <>
-            {/* biome-ignore lint/a11y/useSemanticElements: a named group to scroll, not a set of form fields */}
-            <div
-              // biome-ignore lint/a11y/noNoninteractiveTabindex: with large text the table scrolls sideways, so it is reachable by keyboard
-              tabIndex={0}
-              role="group"
-              aria-label="Days at each level"
-              className="scroll-quiet mt-2 overflow-x-auto"
-            >
-              <table className="w-full text-left text-small tabular">
-                <caption className="sr-only">Days at each level</caption>
-                <thead>
-                  <tr className="text-ink-muted">
-                    <th className="py-1 pr-3 font-normal" scope="col">
-                      Eaten at
-                    </th>
-                    <th className="py-1 pr-3 font-normal" scope="col">
-                      A day
-                    </th>
-                    <th className="py-1 pr-3 font-normal" scope="col">
-                      Lasts
-                    </th>
-                    <th className="py-1 font-normal" scope="col">
-                      Last day covered
-                    </th>
-                  </tr>
-                </thead>
+            <div className="mt-2">
+              <Table label="Days at each level" className="tabular">
+                <TableHead>
+                  <Tr>
+                    <Th>Eaten at</Th>
+                    <Th numeric>A day</Th>
+                    <Th numeric>Lasts</Th>
+                    <Th>Last day covered</Th>
+                  </Tr>
+                </TableHead>
                 <tbody>
                   {levels.map((level) => (
-                    <tr key={level.id} className="border-t border-border">
-                      <th scope="row" className="py-1 pr-3 font-medium">
+                    <Tr key={level.id}>
+                      <th scope="row" className="py-2.5 pr-3 text-left align-top font-medium text-ink">
                         {level.id === "full" ? "Full need" : level.id === "half" ? "Half" : "Three quarters"}
                       </th>
-                      <td className="py-1 pr-3">{kcal(level.perDay)}</td>
-                      <td className="py-1 pr-3">{level.days === null ? "—" : days(level.days)}</td>
-                      <td className="py-1">{level.days === null ? "—" : dayWords(runsOutOn(today, level.days))}</td>
-                    </tr>
+                      <Td numeric className="whitespace-nowrap">
+                        {kcal(level.perDay)}
+                      </Td>
+                      <Td numeric className="whitespace-nowrap">
+                        {level.days === null ? "—" : days(level.days)}
+                      </Td>
+                      <Td>{level.days === null ? "—" : dayWords(runsOutOn(today, level.days))}</Td>
+                    </Tr>
                   ))}
                 </tbody>
-              </table>
+              </Table>
             </div>
             <p className="mt-2">
               {nobodyReduced
@@ -811,20 +801,21 @@ function StoreCalculator({ perDay, people }: { perDay: number; people: number })
             <p>
               {kcal(total)} in all: {kcal(perDay)} a day for {plural(length.value ?? 0, "day")}.
             </p>
-            <table className="mt-2 w-full text-left text-small tabular">
-              <caption className="sr-only">Each food by weight</caption>
+            <Table label="Each food by weight" className="mt-2 tabular">
               <tbody>
                 {lines.map((line) => (
-                  <tr key={line.label} className="border-t border-border">
-                    <th scope="row" className="py-1 pr-3 font-medium">
+                  <Tr key={line.label}>
+                    <th scope="row" className="py-2.5 pr-3 text-left align-top font-medium text-ink">
                       {line.label}
                     </th>
-                    <td className="py-1 pr-3 text-ink-muted">{formatFigure(line.share * 100, { decimals: 0 })}% of the energy</td>
-                    <td className="py-1 text-right">{kg(line.grams)}</td>
-                  </tr>
+                    <Td className="text-ink-muted">{formatFigure(line.share * 100, { decimals: 0 })}% of the energy</Td>
+                    <Td numeric className="whitespace-nowrap">
+                      {kg(line.grams)}
+                    </Td>
+                  </Tr>
                 ))}
               </tbody>
-            </table>
+            </Table>
             {balance ? <BalanceWords balance={balance} /> : null}
           </>
         ) : null}
@@ -926,20 +917,21 @@ function ShareCalculator({
       >
         {shared ? (
           <>
-            <table className="mt-2 w-full text-left text-small tabular">
-              <caption className="sr-only">Each person's daily amount</caption>
+            <Table label="Each person's daily amount" className="mt-2 tabular">
               <tbody>
                 {shared.lines.map((line) => (
-                  <tr key={line.id} className="border-t border-border">
-                    <th scope="row" className="py-1 pr-3 font-medium">
+                  <Tr key={line.id}>
+                    <th scope="row" className="py-2.5 pr-3 text-left align-top font-medium text-ink">
                       {line.name || "Someone"}
                     </th>
-                    <td className="py-1 pr-3">{kcal(line.kcal)} a day</td>
-                    <td className="py-1 text-right text-ink-muted">{formatFigure(line.ofNeed * 100, { decimals: 0 })}% of their need</td>
-                  </tr>
+                    <Td>{kcal(line.kcal)} a day</Td>
+                    <Td numeric className="text-ink-muted">
+                      {formatFigure(line.ofNeed * 100, { decimals: 0 })}% of their need
+                    </Td>
+                  </Tr>
                 ))}
               </tbody>
-            </table>
+            </Table>
             <p className="mt-2">
               {short
                 ? "The stock does not cover everyone's full need for that long. Those kept on a full ration are given theirs first; that is a plan for the stock, not a safe diet for the others."

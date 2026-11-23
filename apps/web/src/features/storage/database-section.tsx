@@ -11,6 +11,7 @@ import { ErrorState, Notice, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/misc";
+import { Table } from "@/components/ui/table";
 import { api, errorMessage } from "@/lib/api";
 import { useServerConnection } from "@/lib/events";
 import { notify } from "@/lib/notify";
@@ -76,8 +77,7 @@ function Contents({ status, onAgain, again }: { status: DatabaseStatus; onAgain:
           : `${counted.join(", ").replace(/, ([^,]*)$/, " and $1")}.`}
       </p>
       {contents.groups ? (
-        <table className="w-full max-w-xl">
-          <caption className="sr-only">Where the bytes of the database go</caption>
+        <Table label="Where the bytes of the database go" className="max-w-xl">
           <thead className="sr-only">
             <tr>
               <th>Part</th>
@@ -106,7 +106,7 @@ function Contents({ status, onAgain, again }: { status: DatabaseStatus; onAgain:
               </td>
             </tr>
           </tbody>
-        </table>
+        </Table>
       ) : (
         <p>The database software here cannot say how much room each part takes, so only the counts are shown.</p>
       )}
@@ -117,7 +117,7 @@ function Contents({ status, onAgain, again }: { status: DatabaseStatus; onAgain:
             ? `by reading every part of the ${formatBytes(contents.fileBytes)} file. The parts add up to the file exactly.`
             : "by counting what is in each part."}
         </p>
-        <Button size="sm" onClick={onAgain} loading={again || status.measuring} className="max-md:min-h-11">
+        <Button size="sm" onClick={onAgain} loading={again || status.measuring} className="max-md:min-h-11 md:pointer-coarse:min-h-11">
           {again || status.measuring ? null : <RefreshCw />} Work out again
         </Button>
       </div>
@@ -256,8 +256,8 @@ function ReclaimRow({ status }: { status: DatabaseStatus }) {
 function TechnicalDetails({ status }: { status: DatabaseStatus }) {
   return (
     <details className="group mt-2">
-      <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-primary md:min-h-8 [&::-webkit-details-marker]:hidden">
-        <ChevronRight aria-hidden className="size-4 transition-transform duration-150 group-open:rotate-90" />
+      <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-primary md:min-h-8 md:pointer-coarse:min-h-11 [&::-webkit-details-marker]:hidden">
+        <ChevronRight aria-hidden className="size-4 transition-transform group-open:rotate-90" />
         Technical details
       </summary>
       <ul className="mt-1 max-w-[70ch] space-y-1 pl-5.5">

@@ -59,6 +59,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/misc";
+import { Table } from "@/components/ui/table";
 import { cn, formatDate, formatNumber } from "@/lib/utils";
 import { BeltDetail } from "./belts";
 import { KIND_ICONS } from "./valley";
@@ -584,7 +585,7 @@ export function BuildingList({
               <button
                 type="button"
                 onClick={() => onChoose({ x: b.x, y: b.y })}
-                className="flex min-h-11 w-full items-start gap-3 py-2 text-left hover:bg-surface md:min-h-9"
+                className="flex min-h-11 w-full items-start gap-3 py-2 text-left hover:bg-surface md:min-h-9 md:pointer-coarse:min-h-11"
               >
                 <Icon aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
                 <span className="min-w-0 flex-1 text-small">
@@ -615,49 +616,47 @@ export function Ledger({ state, flows }: { state: SteadingState; flows: Flows })
         In the storehouses, out of {formatNumber(cap)} of each. Stock is kept for building and trade; workshops work only from what is sent
         to them along routes, so nothing in store is ever used up by itself.
       </p>
-      <div className="overflow-x-auto">
-        <table className="tabular w-full text-small">
-          <thead className="text-left text-ink-muted">
-            <tr className="border-b border-border">
-              <th scope="col" className="py-1.5 pr-3 font-normal">
-                Good
+      <Table label="Ledger" className="tabular">
+        <thead className="text-left text-ink-muted">
+          <tr className="border-b border-border">
+            <th scope="col" className="py-1.5 pr-3 font-normal">
+              Good
+            </th>
+            <th scope="col" className="py-1.5 pr-3 text-right font-normal">
+              In store
+            </th>
+            <th scope="col" className="py-1.5 pr-3 text-right font-normal">
+              Kept a day
+            </th>
+            <th scope="col" className="py-1.5 pr-3 text-right font-normal">
+              To households
+            </th>
+            <th scope="col" className="py-1.5 text-right font-normal">
+              Made in all
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {rows.map((good) => (
+            <tr key={good}>
+              <th scope="row" className="py-1.5 pr-3 text-left font-normal text-ink">
+                {capital(GOODS[good].name)}
               </th>
-              <th scope="col" className="py-1.5 pr-3 text-right font-normal">
-                In store
-              </th>
-              <th scope="col" className="py-1.5 pr-3 text-right font-normal">
-                Kept a day
-              </th>
-              <th scope="col" className="py-1.5 pr-3 text-right font-normal">
-                To households
-              </th>
-              <th scope="col" className="py-1.5 text-right font-normal">
-                Made in all
-              </th>
+              <td className="py-1.5 pr-3 text-right text-ink">
+                {held(state.stock[good])}
+                {state.stock[good] >= cap - 1e-6 ? <span className="text-ink-muted"> full</span> : null}
+              </td>
+              <td className="py-1.5 pr-3 text-right text-ink">
+                {flows.store[good].toStock > 0 ? `+${amount(flows.store[good].toStock)}` : "–"}
+              </td>
+              <td className="py-1.5 pr-3 text-right text-ink">
+                {flows.store[good].toHouses > 0 ? amount(flows.store[good].toHouses) : "–"}
+              </td>
+              <td className="py-1.5 text-right text-ink">{held(state.made[good])}</td>
             </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map((good) => (
-              <tr key={good}>
-                <th scope="row" className="py-1.5 pr-3 text-left font-normal text-ink">
-                  {capital(GOODS[good].name)}
-                </th>
-                <td className="py-1.5 pr-3 text-right text-ink">
-                  {held(state.stock[good])}
-                  {state.stock[good] >= cap - 1e-6 ? <span className="text-ink-muted"> full</span> : null}
-                </td>
-                <td className="py-1.5 pr-3 text-right text-ink">
-                  {flows.store[good].toStock > 0 ? `+${amount(flows.store[good].toStock)}` : "–"}
-                </td>
-                <td className="py-1.5 pr-3 text-right text-ink">
-                  {flows.store[good].toHouses > 0 ? amount(flows.store[good].toHouses) : "–"}
-                </td>
-                <td className="py-1.5 text-right text-ink">{held(state.made[good])}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </Table>
       {rows.length === 0 ? <p className="text-small text-ink-muted">Nothing in store yet.</p> : null}
     </section>
   );
@@ -714,39 +713,36 @@ export function Households({ state, flows }: { state: SteadingState; flows: Flow
         {state.map.legacy || state.map.land === "valley" ? "" : ", the heat scaled for this land's cold"}; here a settlement day passes in
         an hour.
       </p>
-      <div className="overflow-x-auto">
-        <table className="tabular w-full text-small">
-          <caption className="sr-only">What the households need in a day, and what reaches them</caption>
-          <thead className="text-left text-ink-muted">
-            <tr className="border-b border-border">
-              <th scope="col" className="py-1.5 pr-3 font-normal">
-                A day
-              </th>
-              <th scope="col" className="py-1.5 pr-3 text-right font-normal">
-                Needed
-              </th>
-              <th scope="col" className="py-1.5 pr-3 text-right font-normal">
-                Reaching them
-              </th>
-              <th scope="col" className="py-1.5 text-right font-normal">
-                <span className="sr-only">Enough or short</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            <NeedRow what="Water" need={h.water.need} supply={h.water.supply} unit="litres" />
-            <NeedRow what="Food" need={h.food.need} supply={h.food.supply} unit="kcal" />
-            <NeedRow what="Heat" need={h.heat.need} supply={h.heat.supply} unit="kWh" />
-            <NeedRow
-              what="Electricity"
-              need={h.electricity.need}
-              supply={h.electricity.supply}
-              unit="kWh"
-              none={state.buildings.some((b) => ["wheel", "solar", "turbine", "generator"].includes(b.kind)) ? undefined : "no power yet"}
-            />
-          </tbody>
-        </table>
-      </div>
+      <Table label="What the households need in a day, and what reaches them" className="tabular">
+        <thead className="text-left text-ink-muted">
+          <tr className="border-b border-border">
+            <th scope="col" className="py-1.5 pr-3 font-normal">
+              A day
+            </th>
+            <th scope="col" className="py-1.5 pr-3 text-right font-normal">
+              Needed
+            </th>
+            <th scope="col" className="py-1.5 pr-3 text-right font-normal">
+              Reaching them
+            </th>
+            <th scope="col" className="py-1.5 text-right font-normal">
+              <span className="sr-only">Enough or short</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          <NeedRow what="Water" need={h.water.need} supply={h.water.supply} unit="litres" />
+          <NeedRow what="Food" need={h.food.need} supply={h.food.supply} unit="kcal" />
+          <NeedRow what="Heat" need={h.heat.need} supply={h.heat.supply} unit="kWh" />
+          <NeedRow
+            what="Electricity"
+            need={h.electricity.need}
+            supply={h.electricity.supply}
+            unit="kWh"
+            none={state.buildings.some((b) => ["wheel", "solar", "turbine", "generator"].includes(b.kind)) ? undefined : "no power yet"}
+          />
+        </tbody>
+      </Table>
       <p className="text-small text-ink-muted">
         A household already here stays, whatever runs short; a shortage only keeps a new house waiting. Electricity is for light and is not
         needed to move in: the line lights the houses first, then runs the workshops' machines.

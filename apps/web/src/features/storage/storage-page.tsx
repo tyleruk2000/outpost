@@ -19,6 +19,7 @@ import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "
 import { Field, Input } from "@/components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Badge, Skeleton } from "@/components/ui/misc";
+import { Table } from "@/components/ui/table";
 import { api, errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { useStorage } from "@/lib/queries";
@@ -150,7 +151,12 @@ function LocationRow({
         </div>
         <Menu>
           <MenuTrigger asChild>
-            <Button variant="ghost" size="icon-sm" className="max-md:size-11" aria-label={`Actions for ${location.name}`}>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="max-md:size-11 md:pointer-coarse:size-11"
+              aria-label={`Actions for ${location.name}`}
+            >
               <Ellipsis />
             </Button>
           </MenuTrigger>
@@ -405,7 +411,7 @@ export default function StoragePage() {
             actions={
               <Link
                 to={manageLink()}
-                className="inline-flex min-h-6 items-center text-small text-primary underline underline-offset-2 max-md:min-h-11"
+                className="inline-flex min-h-6 items-center text-small text-primary underline underline-offset-2 max-md:min-h-11 md:pointer-coarse:min-h-11"
               >
                 Free up space
               </Link>
@@ -417,7 +423,7 @@ export default function StoragePage() {
               </p>
             ) : (
               <div className="@container">
-                <table className="w-full max-w-xl text-small">
+                <Table label="Space used by each kind" className="max-w-xl">
                   <thead className="sr-only">
                     <tr>
                       <th>Kind</th>
@@ -441,7 +447,7 @@ export default function StoragePage() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </Table>
               </div>
             )}
           </Section>

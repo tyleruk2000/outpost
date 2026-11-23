@@ -1,7 +1,7 @@
 import { Plus, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Field, Textarea } from "@/components/ui/input";
+import { Field, Input, Textarea } from "@/components/ui/input";
 import { plural } from "@/lib/utils";
 import {
   allValues,
@@ -407,36 +407,35 @@ function UValueCalculator() {
           <li key={index} className="grid grid-cols-[1fr_1fr_auto] items-end gap-2 sm:grid-cols-[1.4fr_1fr_1fr_auto]">
             <Field label={`Layer ${index + 1}`} className="col-span-3 sm:col-span-1">
               {(ids) => (
-                <input
+                <Input
                   {...ids}
                   value={row.name}
                   onChange={(event) => setRows(rows.map((item, at) => (at === index ? { ...item, name: event.target.value } : item)))}
                   placeholder="What it is"
-                  className="h-9 w-full rounded-control border border-border-strong bg-page px-3 text-body text-ink focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus max-md:h-11"
                 />
               )}
             </Field>
             <Field label="Thickness, mm" error={parsed[index]!.mmError}>
               {(ids) => (
-                <input
+                <Input
                   {...ids}
                   inputMode="decimal"
                   value={row.mm}
                   onChange={(event) => setRows(rows.map((item, at) => (at === index ? { ...item, mm: event.target.value } : item)))}
-                  className="h-9 w-full rounded-control border border-border-strong bg-page px-3 text-body text-ink tabular focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus aria-invalid:border-danger max-md:h-11"
+                  className="tabular"
                 />
               )}
             </Field>
             <Field label="λ, W/mK" error={parsed[index]!.kError}>
               {(ids) => (
-                <input
+                <Input
                   {...ids}
                   inputMode="decimal"
                   value={row.conductivity}
                   onChange={(event) =>
                     setRows(rows.map((item, at) => (at === index ? { ...item, conductivity: event.target.value } : item)))
                   }
-                  className="h-9 w-full rounded-control border border-border-strong bg-page px-3 text-body text-ink tabular focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus aria-invalid:border-danger max-md:h-11"
+                  className="tabular"
                 />
               )}
             </Field>

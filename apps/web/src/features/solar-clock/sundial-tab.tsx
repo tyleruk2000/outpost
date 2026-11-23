@@ -7,6 +7,7 @@
  */
 import { useMemo } from "react";
 import { Notice } from "@/components/page";
+import { Table } from "@/components/ui/table";
 import { dateIn, deviceZone } from "@/features/maps/lib/sun-text";
 import { useClockStyle } from "@/lib/clock";
 import { appLocale } from "@/lib/region";
@@ -71,8 +72,7 @@ export function SundialTab({ place, zone }: { place: ChosenPlace | null; zone: Z
             <GnomonSide latitude={place.lat} />
           </>
         ) : null}
-        <table className="mt-4 w-full max-w-md text-small tabular">
-          <caption className="sr-only">Hour lines for a horizontal sundial at {latitudeWords(place.lat)}</caption>
+        <Table label={`Hour lines for a horizontal sundial at ${latitudeWords(place.lat)}`} className="mt-4 max-w-md tabular">
           <thead>
             <tr className="border-b border-border text-left text-ink-muted">
               <th scope="col" className="py-2 pr-3 font-medium">
@@ -97,7 +97,7 @@ export function SundialTab({ place, zone }: { place: ChosenPlace | null; zone: Z
               </tr>
             ))}
           </tbody>
-        </table>
+        </Table>
         <p className="mt-3 max-w-[62ch] text-small text-ink-muted">
           Angles past 90° run back beyond the east–west line, for the early morning and late evening of summer. Morning hours are on the
           west side, because the morning shadow points west.
@@ -141,10 +141,10 @@ export function SundialTab({ place, zone }: { place: ChosenPlace | null; zone: Z
         title="Reading clock time from it"
         intro={`The dial shows sundial time. Add the correction for the date to get clock time on ${formatOffset(standard)}; in summer time add an hour as well.`}
       >
-        <table className="w-full max-w-md text-small tabular">
-          <caption className="sr-only">
-            Minutes to add to the sundial's reading at {longitudeWords(place.lon)} for clocks on {formatOffset(standard)}
-          </caption>
+        <Table
+          label={`Minutes to add to the sundial's reading at ${longitudeWords(place.lon)} for clocks on ${formatOffset(standard)}`}
+          className="max-w-md tabular"
+        >
           <thead>
             <tr className="border-b border-border text-left text-ink-muted">
               <th scope="col" className="py-2 pr-3 font-medium">
@@ -165,7 +165,7 @@ export function SundialTab({ place, zone }: { place: ChosenPlace | null; zone: Z
               </tr>
             ))}
           </tbody>
-        </table>
+        </Table>
         <HowWorkedOut
           formula={
             <>

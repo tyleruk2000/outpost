@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/misc";
 import { cn } from "@/lib/utils";
+import { useHeldHeight } from "../tools/kit";
 
 /** Reads a number as people type it: "1,5" and "1.5" are both one and a half; anything else is nothing. */
 export function readNumber(text: string): number | null {
@@ -81,6 +82,7 @@ export function NumberField({
           <Input
             {...ids}
             inputMode="decimal"
+            enterKeyHint="done"
             autoComplete="off"
             value={text}
             placeholder={placeholder}
@@ -162,8 +164,10 @@ export function Answer({ label, children, detail }: { label: ReactNode; children
 
 /** The answers of a calculator, or a line saying what is missing for there to be any. */
 export function Answers({ children, missing }: { children: ReactNode; missing?: string | null }) {
+  // While a figure is retyped the answers give way to what is missing; the box keeps their height meanwhile.
+  const held = useHeldHeight(!missing);
   return (
-    <div aria-live="polite" className="mt-4 rounded-panel bg-surface px-4 py-2">
+    <div ref={held.ref} style={held.style} aria-live="polite" className="mt-4 rounded-panel bg-surface px-4 py-2">
       {missing ? <p className="py-2 text-small text-ink-muted">{missing}</p> : <dl className="divide-y divide-border">{children}</dl>}
     </div>
   );
@@ -173,8 +177,8 @@ export function Answers({ children, missing }: { children: ReactNode; missing?: 
 export function Basis({ children, summary = "How this is worked out" }: { children: ReactNode; summary?: string }) {
   return (
     <details className="group mt-3 text-small">
-      <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-primary md:min-h-8 [&::-webkit-details-marker]:hidden">
-        <ChevronRight aria-hidden className="size-4 transition-transform duration-150 group-open:rotate-90" />
+      <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-primary md:min-h-8 md:pointer-coarse:min-h-11 [&::-webkit-details-marker]:hidden">
+        <ChevronRight aria-hidden className="size-4 transition-transform group-open:rotate-90" />
         {summary}
       </summary>
       <div className="mt-1 grid max-w-[70ch] gap-2 pl-5.5 text-ink">{children}</div>
@@ -192,7 +196,7 @@ export function CalculatorGroup({ title, about, children, id }: { title: string;
             <span className="block text-lead text-ink group-hover:text-primary">{title}</span>
             <span className="mt-0.5 block text-small text-ink-muted">{about}</span>
           </span>
-          <ChevronRight aria-hidden className="size-4 shrink-0 text-ink-faint transition-transform duration-150 group-open:rotate-90" />
+          <ChevronRight aria-hidden className="size-4 shrink-0 text-ink-faint transition-transform group-open:rotate-90" />
         </summary>
         <div className="pb-6">{children}</div>
       </details>

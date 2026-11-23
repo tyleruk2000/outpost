@@ -60,7 +60,7 @@ function PlotSkeleton() {
       role="status"
       aria-busy="true"
       aria-label="Loading the allotment"
-      className="grid gap-8 md:grid-cols-[minmax(0,32rem)_minmax(0,1fr)]"
+      className="grid gap-8 lg:grid-cols-[minmax(0,32rem)_minmax(0,1fr)]"
     >
       <div>
         <Skeleton className="mb-3 h-5 w-56" />
@@ -167,7 +167,7 @@ function Allotment({ view }: { view: AllotmentView }) {
   const away = view.started && view.awayMs > AWAY_AFTER_MS;
 
   return (
-    <div className="grid gap-x-10 gap-y-6 md:grid-cols-[minmax(0,32rem)_minmax(0,1fr)]">
+    <div className="grid gap-x-10 gap-y-6 lg:grid-cols-[minmax(0,32rem)_minmax(0,1fr)]">
       <div className="min-w-0">
         <div className="mb-3 grid gap-2">
           {away ? <p className="text-body text-ink">You were away {awayWords(view.awayMs)}. Everything waited for you.</p> : null}
@@ -241,7 +241,7 @@ function Allotment({ view }: { view: AllotmentView }) {
         <Stall plot={plot} busy={busy} act={act} />
       </div>
 
-      <div className="grid gap-8 md:col-span-2 md:grid-cols-2">
+      <div className="grid gap-8 lg:col-span-2 md:grid-cols-2">
         <div className="grid content-start gap-8">
           <ThisMonth plot={plot} hemisphere={view.hemisphere} />
           <Seasons plot={plot} hemisphere={view.hemisphere} from={view.hemisphereFrom} season={season} busy={busy} act={act} />
@@ -249,7 +249,7 @@ function Allotment({ view }: { view: AllotmentView }) {
         <Almanac plot={plot} hemisphere={view.hemisphere} />
       </div>
 
-      <div className="md:col-span-2">
+      <div className="lg:col-span-2">
         <GameAbout>
           <p>
             Sow a bed, water it, harvest it, and sell what you grow at the stall for coins to buy more beds and a few lasting things. Radish

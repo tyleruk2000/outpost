@@ -14,6 +14,7 @@ import { EmptyState, Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
+import { Table } from "@/components/ui/table";
 import { errorMessage } from "@/lib/api";
 import { localId } from "@/lib/utils";
 import { loadFromEntry, loadFromOwn, type MixAnswers, type MixSetting, workOutMix } from "./calc/devices";
@@ -249,8 +250,7 @@ function MixAnswerRows({ answers, setting }: { answers: MixAnswers; setting: Mix
 export function UsesMost({ answers }: { answers: MixAnswers }) {
   const most = Math.max(...answers.ranked.map((item) => item.fromBatteryWh), 0);
   return (
-    <table className="tabular w-full text-small">
-      <caption className="sr-only">Watt-hours a day from the battery, most first</caption>
+    <Table label="Watt-hours a day from the battery, most first" className="tabular">
       <thead className="sr-only">
         <tr>
           <th scope="col">Device</th>
@@ -280,7 +280,7 @@ export function UsesMost({ answers }: { answers: MixAnswers }) {
           </tr>
         ))}
       </tbody>
-    </table>
+    </Table>
   );
 }
 
