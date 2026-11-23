@@ -35,6 +35,7 @@ off; and fetch nothing from the internet without a press.
 | Search | search by meaning (optional), installed collections | "Search by meaning is not set up…" with **Set up search by meaning** (fixed: had no link) | a part that fails is named in words, the rest shown (fixed: showed the raw error) | no |
 | Library, learning panel | collections, OCR languages beyond English | "No collections installed yet" with Explore and Download maps | local | no |
 | Maps | map regions, terrain, place names, layers, imagery | "No detailed maps on this device yet" with **Choose your area** / **World overview (about 45 MB)**; "Place names are not installed" with **Add place names**; terrain lines link to **Get terrain in Offline maps** (fixed: route profile and relay had no link) | estimate or start for a region or terrain says "Outpost could not reach the map source…" (fixed: was a generic server error) | no |
+| Maps: road routes | road networks (Geofabrik extracts, built here) | "No road networks yet" with **Add road networks**; a route across a missing country names it | adding one says the site could not be reached; saved routes open with their directions | no |
 | Explore | catalogue refresh | "The catalogue was not refreshed: there is no connection…" and the last list still works | good | no |
 | Chat | a language model on this machine or network | "Chat needs a language model…" with the size and Set-up guide | "The model server is not answering" with Look again | lists models on opening, from the model server on this machine or network only |
 | Contacts, Messages, Encryption | nothing | — | local | no |
@@ -50,7 +51,7 @@ off; and fetch nothing from the internet without a press.
 | Prepare: Weather and hazards | forecasts and warnings | "Choose a place for forecasts" | "{publisher} could not be reached. Check the connection and try again." | only if the person ticked "update when I open" |
 | Prepare: Nuclear | population grid, map region | grid: **Get reference data**; map: **Add your area in Offline maps** with the overview's size (fixed: had no link or size) | local | no |
 | Other Prepare screens, Games | nothing | — | local | no |
-| Downloads | — | — | "Waiting for a connection"; resumes when the network is back | resumes after a restart |
+| Downloads and tasks | — | — | "Waiting for a connection"; resumes when the network is back | resumes after a restart |
 | Storage (portable drive) | the Node runtime and kiwix-tools for other systems | — | a failed fetch is worded (fixed: "fetch failed") | no |
 | Settings, Updates | release manifest; model and embedding servers | "Needs the internet. Outpost asks only when you press" | "The release page could not be reached…" (fixed: "fetch failed", and a generic error from Download) | no |
 | Server status, Help, Set-up guide, On this device | nothing | — | local | no |

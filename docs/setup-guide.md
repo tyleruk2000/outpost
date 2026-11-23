@@ -13,7 +13,7 @@ Outpost itself never needs the internet. Getting Ollama and a model does, once; 
 
 1. Open **Settings** and go down to **Search by meaning**.
 2. Turn the switch on.
-3. Wait. Outpost reads your library once and says how long is left: about 45 seconds for every thousand passages on a recent laptop, and several times longer on a small computer such as a Raspberry Pi. You can close the page; it carries on. It is done when it says **Search now also finds things by meaning**.
+3. Wait. Outpost reads your library once and says how long is left: about 45 seconds for every thousand passages on a recent laptop, and about four minutes on a Raspberry Pi 5. You can close the page; it carries on. It is done when it says **Search now also finds things by meaning**.
 
 That is all. Nothing is downloaded and nothing leaves the computer Outpost runs on. What you add later is read as it arrives. Turning the switch off keeps what was read.
 

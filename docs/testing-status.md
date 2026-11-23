@@ -156,8 +156,9 @@ of what each feature does are in its own guide.
 
 ### Search by meaning and OCR
 
-- The built-in model has not been run on a Pi, an Intel Mac, Windows or musl Linux (Alpine); AMD64
-  only under emulation. Its memory use on a Pi is unmeasured (about 430 MiB for the container during an
+- The built-in model has been timed building an index on one Raspberry Pi 5 (about four minutes per
+  thousand passages); not run on a Pi 4, an Intel Mac, Windows or musl Linux (Alpine), and AMD64 only
+  under emulation. Its memory use on a Pi is unmeasured (about 430 MiB for the container during an
   index build on a laptop).
 - A local embedding server is tested against a stand-in only.
 - OCR speed on a Pi is unmeasured; JBIG2 scans are untried.
@@ -254,6 +255,11 @@ of what each feature does are in its own guide.
 - **Keeping maps on a phone**: areas of thousands of tiles, and how long a phone takes to work out a
   radio range, are untried; Safari older than 16.4 gets unpacked tiles two to three times larger.
 
+- **Road routes**: networks built and routes planned from real Geofabrik extracts (Great Britain,
+  France and smaller ones) on a Mac only; building a network on a Raspberry Pi is unmeasured. Routes
+  through Germany and Austria (downloaded by Land) untried. The printed route card not printed or
+  followed on a drive; directions compared with one person's own written route only.
+
 ## Keeping things on a phone
 
 - Not tried on a real phone, in Safari or Firefox, or from a Home Screen app. What browsers do with kept
@@ -332,11 +338,20 @@ of what each feature does are in its own guide.
 - **Devices on this network**: one real scan, on the build Mac's network, before the fix to "this
   computer" marking. Not tried on Linux, a Pi (including whether ping works without root), or a
   container with host networking.
+- **Power**: the devices' figures were read from makers' pages and not measured on the devices; the
+  battery bank drawing and a power station's figures not checked against a real bank or station.
 - **Cooking**: USDA's food-safety pages refused every request on the day the figures were
   gathered, so none of its figures is used.
 
 ## Preparing
 
+- **Households**: **We're here now** from a device's position not tried on a real phone; a portable
+  household moved across a border (its country, warnings and frequencies changing) tried with made-up
+  places only.
+- **Household book**: repeater coverage maps timed on a laptop only (about a second a repeater), not on
+  a Pi or a phone; books with dozens of repeaters and journeys not measured for size. Names in Arabic
+  and Hebrew were checked by extracting the PDF's words, not read by someone who reads those scripts;
+  a right-to-left passage that wraps onto a second line reads its lines in the wrong order.
 - **Weather and hazards**: the publishers' real answers were fetched by hand once (Bedford, 16 November
   2026; King's Lynn river stations, 17 November); the tests use recorded answers. Environment Agency
   warning times carry no zone and are read as UK time, unverified in summer and across a clock change.

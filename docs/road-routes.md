@@ -55,8 +55,8 @@ and Austria. Neighbouring networks join at their borders by themselves.
 
 1. Read Geofabrik's list of regions once (the same list as for reference layers).
 2. Choose a country or region and install it. The extract is downloaded (you see it on
-   the Downloads screen), checked against Geofabrik's checksum, read for its main roads,
-   and **deleted** unless you ask to keep it. Only the network is kept: about 1–2% of
+   **Downloads and tasks**), checked against Geofabrik's checksum, read for its main roads,
+   and then **deleted**. Only the network is kept: about 1–2% of
    the extract (Great Britain's 2.2 GB extract makes a 30 MB network).
 3. Building takes a while on a Raspberry Pi: minutes for a large country. It runs in the
    background; one network is built at a time.
@@ -64,13 +64,14 @@ and Austria. Neighbouring networks join at their borders by themselves.
 Germany (and some other large countries) cannot be downloaded whole, because Geofabrik
 sends its file from another server: install its parts (its Länder) instead. They join.
 
-You can also build a network from an `.osm.pbf` file already in your storage. That file is
-yours and is never deleted.
+A network can also be built from an `.osm.pbf` file already in your storage, or with
+the extract kept, through the API only (see
+[the developer page](development/road-routes.md)); that file is yours and is never deleted.
 
-Each network's **…** menu has **Update**, which downloads it again and replaces the
-network, and **Remove**, which deletes the network (a kept extract stays where it is).
+Each network's **…** menu has **Update**, which downloads it again and replaces the network, and
+**Remove**, which deletes the network (saved routes keep their directions).
 While a network is being added its download and then its build show there with their
-progress, and the download is on the Downloads screen too.
+progress, and the download is on **Downloads and tasks** too.
 
 ## Planning a route
 

@@ -114,21 +114,27 @@ as not added, with the reason.
 
 | Screen | The PDF |
 | --- | --- |
-| Maps → **Print or save as PDF** | One page of map at a stated scale ([maps.md](maps.md#printing-a-map)) |
+| Maps → **Print or save as PDF** | One page of map at a stated scale ([map-printing.md](map-printing.md)) |
 | Maps → Sun tab, or a place's Sun section | Sun times for two weeks, a month or a year ([maps.md](maps.md#sun-times-on-paper)) |
+| Maps → Routes → Road route | A route card: overview map and directions ([road-routes.md](road-routes.md)) |
 | Radio → HF propagation | A prediction, or a comparison ([hf-propagation.md](hf-propagation.md#a-prediction-on-paper)) |
 | Radio → HF coverage | The coverage map, with its grid in figures ([hf-propagation.md](hf-propagation.md#a-coverage-map-on-paper)) |
 | Radio → Communication plans | A plan written out ([hf-propagation.md](hf-propagation.md#exports)) |
-| Radio → Frequencies | The chosen frequencies as a sheet |
+| Radio → Frequencies to listen to | The chosen frequencies as a sheet |
+| Radio → Satellites | One pass, with what to tune to through it |
 | Encryption → By hand | One-time pads (**asks first**) and the cipher square |
 | Contacts → Emergency sheet | The marked contacts, dated to the minute (**asks first**; [contacts.md](contacts.md#using-them)) |
-| Preparedness → Nuclear preparedness | The scenarios with their maps (**asks first** with saved places ticked; [nuclear-preparedness.md](nuclear-preparedness.md#on-paper)) |
+| Preparedness → Household book | The household's emergency book ([household-book.md](household-book.md)) |
+| Preparedness → Medical sheets, Keeping in touch, Grab cards | Each paper, and the binder of them all ([household-papers.md](household-papers.md)) |
 | Preparedness → Emergency plans | Wallet cards, a fridge sheet or a grab list (**asks first**) |
+| Preparedness → Log of events | The log, as a record |
 | Preparedness → Supplies | The shopping list |
-| Tools → Power and batteries | A saved power plan |
-| Tools → Water; Tools → Cooking | The official guidance as quoted, with the date read |
+| Preparedness → Nuclear preparedness | The scenarios with their maps (**asks first** with saved places ticked; [nuclear-preparedness.md](nuclear-preparedness.md#on-paper)) |
+| Tools → Power and batteries | A saved power plan, with its battery bank drawn |
+| Tools → Water, Cooking, Rations | The official guidance as quoted, with the date read |
 | Tools → QR codes | The code and what it holds (**asks first** for a Wi-Fi password or contact) |
 | Tools → Solar clock | Sundial and nocturnal templates to cut out |
+| Tools → Celestial navigation | A sight form to fill in by hand |
 | Library → Learning, **On paper** | Each learner's progress, dated (**asks first**; [learning.md](learning.md)) |
 
 Each offers the same three buttons:
@@ -165,13 +171,13 @@ first. Saving it to the device asks nothing.
 Progress itself is kept out of search; a copy in the library is a searchable, unchanging
 record of what a child has covered, so **Add to library** asks first.
 
-## Letters the typefaces cannot write
+## Other alphabets
 
-The PDFs write only Western European letters. On the emergency sheet and sun times, other
-scripts are drawn as a picture, still searchable; if the device cannot draw them they
-print "[?]". Other PDFs print "?" and say which entries.
+Names and words in other scripts print in a matching typeface: Greek, Cyrillic, Arabic
+and Hebrew (right to left, joined), Devanagari, Thai, Chinese, Japanese kana and Korean.
+A rare character outside these prints as an empty box.
 
-Not made as PDFs: routes, place lists and repeaters (they export GPX or radio formats),
+Not made as PDFs: drawn routes, place lists and repeaters (they export GPX or radio formats),
 notes (Markdown), contacts (vCard), keys and encrypted files (deliberately kept out of
 the library).
 

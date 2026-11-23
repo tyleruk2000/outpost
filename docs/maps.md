@@ -8,23 +8,26 @@ More on the map: [Routes and tracks](map-routes.md), [Road routes](road-routes.m
 
 ## The Maps screen
 
-The panel beside the map (a sheet you drag up on a phone) has four tabs: **Places** (saved
-places), **Routes** ([map-routes.md](map-routes.md)), **Offline** (installed regions and
-downloads) and **Sun** ([Sunrise and sunset](#sunrise-and-sunset)).
+The panel beside the map (a sheet you drag up on a phone) has five tabs: **Places** (saved
+places), **Routes** ([map-routes.md](map-routes.md) and [road routes](road-routes.md)),
+**Layers** ([reference-layers.md](reference-layers.md)), **Offline** (installed regions,
+road networks and downloads) and **Sun** ([Sunrise and sunset](#sunrise-and-sunset)).
 
 The buttons on the map: the **search box** (place names, postcodes in Great Britain, or any
-of the [Coordinate formats](#coordinate-formats)), the **ruler** (measures a path; **Save as
-a route** or **Check line of sight**), **Record a track**, **Hill shading**, **Contour
-lines**, **Map style**, **Find where you are from bearings**, **Print or save as PDF**,
-**Road numbers**, **Magnetic north lines**, **UTM grid**, **Maidenhead locator grid**, **Grey
-line (day and night)**, **Satellite** and **Line of sight between two points**. On a phone the icons
-under the search box show as many as fit, and **More** under them lists every tool by name.
-A tool taken up on a phone has its card at the foot of the screen in place of the tabs;
-close the card to have the tabs back. Pinch to zoom.
+of the [Coordinate formats](#coordinate-formats)), **Measure a distance** (then **Save as a
+route** or **Check line of sight**), **Draw a route**, **Save a place**, **Show where I
+am**, **Record a track**, **Hill shading**, **Contour lines**, **Map style**, **Find where
+you are from bearings**, **Print or save as PDF**, **Road numbers**, **Magnetic north
+lines**, **UTM grid**, **Maidenhead locator grid**, **Grey line (day and night)**,
+**Repeaters**, **Satellite imagery** and **Line of sight between two points**. Where there
+is not room for them all, as on a phone, the column shows as many as fit and **More** under
+it lists every tool by name. A tool taken up on a phone has its card at the foot of the
+screen in place of the tabs; close the card to have the tabs back. Pinch to zoom.
 
 Right-click the map (press and hold on a touch screen) for **Save a place here**, **Measure
-from here**, **Draw a route from here**, **Sun times here**, **Estimated radio range from
-here**, **How far on foot from here** and **Copy coordinates**.
+from here**, **Draw a route from here**, **Road route from here**, **Road route to here**,
+**Sun times here**, **Estimated radio range from here**, **How far on foot from here** and
+**Copy coordinates** (and **Move** on a saved place).
 
 From the keyboard, the point is the cross at the centre of the map. Tab to the map, move it
 with the arrow keys (plus and minus zoom), then press **Shift F10** (or the menu key) for the
@@ -400,15 +403,9 @@ Names: postcodes, roads, settlements, hills, waters and woods, with Welsh and Ga
 - The Open Government Licence credit is shown on the map while the names are installed
   ([sources.md](sources.md)).
 
-### Terrain from Ordnance Survey: why it was not added
-
-OS Terrain 50 is a 50 m grid. The terrain Outpost downloads is built over Great Britain from
-1 m lidar where it exists and a 30 m model elsewhere, so Terrain 50 would make the map
-coarser.
-
 ## Satellite imagery
 
-**Satellite** draws pictures of the ground under the map from Outpost's own disk. See
+**Satellite imagery** draws pictures of the ground under the map from Outpost's own disk. See
 [map-imagery.md](map-imagery.md).
 
 ## Keeping a map area on a phone

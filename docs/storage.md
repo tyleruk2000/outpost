@@ -287,8 +287,10 @@ place.
 programs read: pages as Markdown with their attachments, contacts as vCard 4.0, places
 as GPX and GeoJSON, supplies and the barometer log as CSV, the radio log as ADIF 3.1.8
 and CSV, plans and weather places as JSON and GeoJSON, medical sheets and the
-keeping-in-touch plan as JSON (locked sheets stay locked, as OpenPGP), the household
-board as plain text, and documents as the original files. Its `README.md` says what was
+keeping-in-touch plan as JSON (locked sheets stay locked, as OpenPGP), communication and
+power plans as JSON, the households, their people and the household book's answers as
+JSON, the household board as plain text, and documents as the original files. With
+several households, each has a folder of its own for its supplies, plans and papers. Its `README.md` says what was
 left out (documents on disconnected locations, the bin, collections, maps, settings).
 **Download to this device**, or write it to a storage location's `outpost-exports`,
 which Outpost never deletes from. The zip is not encrypted.

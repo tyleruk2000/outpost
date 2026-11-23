@@ -12,9 +12,14 @@ A household has a name, a home (or, if it moves, where it is now), a country, an
 people and pets in it. Each household has its own:
 
 - supplies, the shopping list and the days wanted;
-- emergency plans, the log of events and routine checks;
+- emergency plans, the log of events, routine checks and the offline drill;
 - medical sheets for nobody in particular, the keeping in touch plan, grab cards and the
-  household book.
+  household book;
+- the garden's record of sowings.
+
+A power plan is for every household unless you choose one under **For** on the plan (the
+caravan's leisure battery, say). Saved places, contacts, notes and the library are shared
+by every household.
 
 A person's medical sheet belongs to the person, so it is the same in every household
 they are in.

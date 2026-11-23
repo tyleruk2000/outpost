@@ -187,7 +187,7 @@ back as `{ error: { code, message } }` with a 4xx.
 | Method and path | Body | Answer |
 | --- | --- | --- |
 | `GET /networks` | | `RoadNetworksResponse`: `networks: RoadNetworkDto[]`, `building` (jobs and downloads under way), `credit` |
-| `POST /networks` | `{ regionId, keepExtract?, locationId? }` (a Geofabrik region id, as `GET /api/reference/regions` lists them once read with `POST /api/reference/regions`) or `{ locationId, relPath, name, country? }` (a file already in storage) | `{ downloadId, jobId }`: a download (Downloads screen) that builds when it finishes, or a build job |
+| `POST /networks` | `{ regionId, keepExtract?, locationId? }` (a Geofabrik region id, as `GET /api/reference/regions` lists them once read with `POST /api/reference/regions`) or `{ locationId, relPath, name, country? }` (a file already in storage) | `{ downloadId, jobId }`: a download (Downloads and tasks) that builds when it finishes, or a build job |
 | `POST /networks/:id/update` | | as above: the region downloaded again, or the file read again; the new network replaces the old when built |
 | `DELETE /networks/:id` | | `{ ok: true }`: the network file and row go; a kept extract stays |
 | `POST /countries` | `{ boxes: [w, s, e, n][] }` (≤ 200) | `{ countries }`: ISO codes the boxes cover, most first, from the country outlines; a box over 40° by 25° is passed over. The web app sends the installed map regions' boxes, to offer their countries first |
@@ -264,6 +264,8 @@ installed maps are read before the overview is drawn), `words.ts` (start and end
 crossing choices, and `legLines`, which cuts the route's geometry into each leg's part by
 the legs' ends). Query keys start with `roads`; `roads.changed` refreshes them. The map's
 point menu has **Road route from here / to here**; `/maps?offline=roads` opens the networks.
+The screen installs by region only and never keeps the extract: `keepExtract` and building
+from a file in storage are offered through the API alone.
 Tests: `road-route.test.tsx`, `e2e/tests/road-routes*.spec.ts` (networks built from the
 server fixtures in storage).
 

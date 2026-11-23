@@ -1,6 +1,6 @@
 # Satellite imagery
 
-**Satellite**, on the Maps screen, draws pictures of the ground under the map's roads and
+**Satellite imagery**, on the Maps screen, draws pictures of the ground under the map's roads and
 names, from Outpost's own disk: nothing is fetched while you look. Download them under
 **Offline maps → Satellite imagery**. All are free and need no account.
 

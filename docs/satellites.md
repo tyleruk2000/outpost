@@ -1,7 +1,7 @@
 # Satellites
 
-**Radio → Satellites** says when amateur, weather and crewed satellites pass over Home (or any
-place you give), where each is now, its track across your sky, and what to tune to through a
+**Radio → Satellites** says when amateur, weather and crewed satellites pass over the
+household's home (or any place you give), where each is now, its track across your sky, and what to tune to through a
 pass as Doppler shifts its signal. Everything is worked out on your device except the orbital
 elements, which are fetched only when you press.
 
@@ -84,7 +84,7 @@ decoding software; Outpost only says when and where to listen.
 On the Maps screen, **Layers**, **Satellites now** draws the amateur satellites and crewed
 stations where they are, moving every 10 seconds. A shaded
 ring is the ground that can hear a satellite: always the ISS's, the chosen satellite's, and any
-above Home's horizon now.
+above the household's home's horizon now.
 
 ## What it does not do
 

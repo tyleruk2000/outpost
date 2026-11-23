@@ -268,7 +268,9 @@ collections** is off.
 ### Reference articles arrive late, or a note says a collection was not searched in time
 
 On a slow drive the first search of an archive can take seconds. A collection that takes
-over 8 seconds is named in a note; search again and it is quick
+too long is named in a note; search again and it is quick. Each search asks the
+collections likeliest to hold the answer first: **Search all reference collections**
+under the results asks every one
 ([search.md](search.md#reference-collections-in-results)).
 
 ## Maps
@@ -298,6 +300,13 @@ can declare another in `<data directory>/catalog/routes/route-sources.json`
 
 Try part of the name. A path not mapped as a route is found only with **This map view**
 over it. A regional server knows only its region. Otherwise draw it or import a GPX file.
+
+### "No road network is installed", or "The road networks installed do not join these points"
+
+A road route needs a road network for every country it passes through, installed under
+**Maps → Offline → Road networks for routes**. The message names a country missing
+between the points when it can. Across the sea, both sides need a network, joined by a car ferry or the Channel Tunnel
+([road-routes.md](road-routes.md#installing-road-networks)).
 
 ### "That area is too large to download at zoom N in one go"
 
@@ -354,7 +363,7 @@ run the script with `--force`.
 | "No model server answered at …" | Start it (`ollama serve` or the Ollama app) and press **Test**. In Docker, `127.0.0.1` is the container ([ai.md](ai.md#in-docker-or-with-the-model-on-another-machine)). llama.cpp's server now defaults to port 9931. |
 | "The model server … has no model called …" | Use the exact name with its tag (`llama3.2:3b`), or `ollama pull` it. |
 | "… cannot write text. It is probably an embedding model…" | Choose a chat model. |
-| "The passages and the question were too long for the model." | Lower **Context budget**. Ollama drops what does not fit without saying; keep within its 4,096 tokens ([ai.md](ai.md#with-ollama)). |
+| "The passages and the question were too long for the model." | Outpost has already tried once with fewer passages. Lower **Context budget**, or with Ollama raise it so Outpost asks for a larger context ([ai.md](ai.md#with-ollama)); with llama-server, a larger `-c`. |
 | "The model had not started writing after 3 minutes…" | Use a smaller model or budget. The first answer after a start is slowest. |
 | "Outpost is already writing an answer…" | One answer at a time for the household; wait, or stop the other. |
 | An answer cites nothing, or a struck-through number | The model ignored its instructions: treat the answer as unsupported, read the passages, try a larger model. |

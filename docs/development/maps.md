@@ -69,5 +69,8 @@ after "busy".
   sources are entries in `apps/server/src/modules/maps/imagery/aerial-sources.ts`; the reader
   takes 8-bit COGs (uncompressed, Deflate or WebP) in UTM or Transverse Mercator. Switzerland
   and the Netherlands would need a JPEG-in-TIFF decoder and their national projections.
+- OS Terrain 50 is not offered: it is a 50 m grid, and the terrain downloaded is built over
+  Great Britain from 1 m lidar where it exists and a 30 m model elsewhere, so it would make
+  the map coarser.
 - OS Open Names: checked against OS's MD5; attribution from the edition's `Doc/licence.txt`;
   Helmert transformation from OS's *A guide to coordinate systems in Great Britain* v3.6.

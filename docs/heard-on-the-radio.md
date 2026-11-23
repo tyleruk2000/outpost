@@ -65,7 +65,9 @@ and **Remove**. **Print or save as PDF** can include what is heard.
 
 ## The list, and keeping it
 
-**Radio → Heard on the radio** lists what was heard, nearest or newest first. Everything is
+**Radio → Heard on the radio** lists what was heard, nearest or newest first. Distances
+and bearings are from the current household's home: its home place, or for a portable
+household where it was last said to be, with that position's age. Everything is
 kept until you clear it (all, one source, before a date, or one station); aircraft can be
 limited to the last 6, 24, 72 or 168 hours. So that a flood of made-up callsigns or ships
 cannot fill the disk, Outpost keeps at most 20,000 stations of each kind, taking off the

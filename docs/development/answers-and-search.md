@@ -104,8 +104,48 @@ elicitation, sampling, roots, batches, HTTP+SSE, authorization, `x-mcp-header`.
 
 ## Search internals
 
-Keyword ranking (`modules/search/keyword.ts`, `score.ts`, rules in
+### Ranking weights
+
+The one scale every result is put on (`score.ts`; the guide's summary is
 [search.md](../search.md#ranking)):
+
+| Part | Share | What it asks |
+| --- | --- | --- |
+| Coverage | 0.50 | How much of the query it holds, each word weighed by its IDF in the library. Another form of a word counts 0.92 of it, another name for it (the synonyms) 0.85, a longer word it begins 0.6. |
+| Title | 0.20 | How much of the query is in the title (a tag counts 0.75, a heading 0.6). |
+| Closeness | 0.15 | How near together the words are, stop words in between not counted. |
+| Side by side | 0.05 | All the words adjacent, in the order typed. |
+| Frequency | 0.10 | How often they occur, with diminishing returns. |
+
+BM25 column weights: title 8, tags 4, heading 3, body 1. Intent priors (`intent.ts`):
+medical × 1.25 (medical and first aid sources), safety × 1.25 (official guidance on
+generators, heaters, stoves, fuel, carbon monoxide), vehicle × 1.2, how-to × 1.1 (Q&A,
+manuals, guides); together at most × 1.3, applied so a high score rises by less (0.9 to
+0.92). Fuel alone is not a vehicle word. Another sense of an ambiguous word × 0.75.
+
+"Did you mean": a word in no passage (or, when nothing holds every word, in one or two) is
+matched to the nearest library word within edit distance 2 (1 for four letters or fewer),
+same first letter preferred, then the commoner; never a stop word, the word in at least
+two passages; offered while fewer than five results come back (meaning-only results not
+counted). The relaxed pass adds items whose IDF-weighted coverage is at least 0.5.
+
+Search by meaning, passages for an answer: kept when similarity ≥ 0.3 and within 0.2 of
+the nearest, fused by reciprocal rank (`weight / (k + rank)`, `search.hybrid.rrfK` 60,
+`keywordWeight` and `semanticWeight` 1). Up to five passages, deduplicated by text.
+
+Reference routing: six archives first, eight articles from each; the rest asked at once
+when the first find fewer than three good ones. Results kept five minutes. Time limits: 8 s
+per full-text search, 3 s per title search, 30 s to be reached. An archive with no
+full-text index is tried again after a week, a failing one after half an hour.
+
+Built-in model, measured on an Apple M2 Max (four threads): 33 to 54 s per thousand
+passages (Settings quotes 45); a Raspberry Pi 5 about four minutes. About 3 ms to compare a
+question with 57,800 passages and 10 ms to embed it; on a 57,600-passage library, own
+results p95 about 35 ms on the laptop.
+
+### Keyword pass
+
+Keyword ranking (`modules/search/keyword.ts`, `score.ts`):
 
 1. `parseQuery` drops `STOP_WORDS` (not inside quotes, not when nothing else is left)
    and lists them as `ignored`.

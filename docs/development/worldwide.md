@@ -55,5 +55,6 @@ Rules for new code:
 | Grid references | Maps, Compass, grab cards | Already worldwide | Decimal degrees is the default readout. The National Grid is only used in Great Britain and dropped elsewhere; Compass picks UTM outside Britain. |
 | Frequencies and band plans | Frequencies, Radio | Already worldwide | ITU regions and IARU Regions 1 to 3, the country filter starts on Home's country. |
 | Weather and warnings | Weather and hazards | Already worldwide | Open-Meteo, GDACS and the USGS worldwide; MeteoAlarm, the US National Weather Service, ECCC (Canada), MetService (New Zealand) or JMA (Japan) by Home's country or the one chosen; Met Office and Environment Agency as UK extras. |
+| Road routes | Maps › Routes › Road route | Already worldwide | Networks for any country Geofabrik publishes; junctions read "J10" in Britain, Ireland and the Crown Dependencies and "exit 21" elsewhere; kilometres or miles as chosen; one speed table for every country, kept under the UK's limits. |
 | Garden calendar, map suggestions, radio licences | Garden, Explore, Radio | Already by Home's country | Each says which country it took. |
 | Paper size on household papers, plans, cards, encryption aids, QR, HF predictions | PDFs | Already worldwide | A4 or US Letter, chosen by the device. |

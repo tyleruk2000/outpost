@@ -40,8 +40,8 @@ At most 20,000 contacts. **Photos are not kept.**
   finds it. On a phone, if Print does nothing, use the browser's Share menu, then Print,
   or a screenshot ([encryption.md](encryption.md#printing-from-a-phone)).
 - **The sheet as a PDF** offers **Save as PDF**, **Add to library** and **Share**, A4 or
-  US Letter. Names in scripts the PDF's type lacks (Greek, Cyrillic, Chinese and so on)
-  are drawn as pictures and still searchable. **Add to library** asks first: the library
+  US Letter. Names in any script (Greek, Cyrillic, Chinese and so on) print as text in
+  their own letters. **Add to library** asks first: the library
   is readable by everyone on the network, goes into every backup, and keeps the copy
   until you delete it.
 - Nothing is saved until **Save contact**. If the contact changed elsewhere since you

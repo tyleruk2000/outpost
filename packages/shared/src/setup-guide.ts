@@ -123,7 +123,7 @@ export const SETUP_GUIDE: Guide = {
           steps: [
             "Open **Settings** and go down to **Search by meaning**.",
             "Turn the switch on.",
-            "Wait. Outpost reads your library once and says how long is left: about 45 seconds for every thousand passages on a recent laptop, and several times longer on a small computer such as a Raspberry Pi. You can close the page; it carries on. It is done when it says **Search now also finds things by meaning**.",
+            "Wait. Outpost reads your library once and says how long is left: about 45 seconds for every thousand passages on a recent laptop, and about four minutes on a Raspberry Pi 5. You can close the page; it carries on. It is done when it says **Search now also finds things by meaning**.",
           ],
         },
         {

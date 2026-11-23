@@ -7,8 +7,8 @@ opens the formula, its source, the range it holds for and what it leaves out.
 
 They need no server and store nothing on it. The unit and last figure in each input are
 remembered on this device. **Copy** copies an answer; **Save as a page** makes a page in
-Notes; the two printable sheets (water purification and cooking temperatures) offer **Save
-as PDF**, **Add to library** and **Share**.
+Notes; the printable sheets (making water safe, cooking temperatures and sharing out a
+stock) offer **Save as PDF**, **Add to library** and **Share**.
 
 **General information, not advice.** Anything about health or safety is quoted from the
 official body that publishes it, with the date read, and no more precisely than the source

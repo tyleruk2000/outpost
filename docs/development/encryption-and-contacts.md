@@ -17,9 +17,9 @@
   scrubs the text from the database, WAL and FTS tables (`encryptedNoteArmor`,
   `scrubbing`).
 - One-time pad letters come from `crypto.getRandomValues`, rejecting bytes ≥ 234.
-- PDFs (pads, square, map pages) come from `apps/web/src/features/maps/print/pdf.ts`, with
-  Helvetica and Courier as reader-supplied fonts. Print detection is in
-  `apps/web/src/lib/printing.ts`.
+- The pads and the Vigenère square are drawn by the print kit
+  (`apps/web/src/features/encryption/kit-aids.ts` on `apps/web/src/features/print-kit/`; see
+  [printed-pages.md](printed-pages.md)). Print detection is in `apps/web/src/lib/printing.ts`.
 - `engine.test.ts` round-trips keys, messages, files, signatures and revocations with a
   throwaway GnuPG 2.5.18 keyring when `gpg` is installed; `fixtures/` holds files gpg wrote.
   Ciphers are tested against the worked examples on their Wikipedia pages (revisions read

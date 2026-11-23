@@ -17,9 +17,8 @@ Your place is remembered per book on this device (up to 200 books), not on the s
 Clearing the browser's site data forgets it.
 
 Search reads a book chapter by chapter, and a result opens the chapter (not the
-paragraph). If two chapters start with the same heading, it opens the first. For a book
-added before this version, **Read text again** in its details makes results open the
-right chapter.
+paragraph). If two chapters start with the same heading, it opens the first. If results
+open the wrong chapter, **Read text again** in the book's details puts that right.
 
 ## What you see, and what you do not
 

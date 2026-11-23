@@ -13,7 +13,7 @@ device from the installed maps; nothing is sent anywhere until you choose **Add 
 3. **Preview the page**. Give it a title, choose a **Map style** (**Low ink** saves ink), and
    tick what to show: names, contour lines, hill shading, road numbers, routes, saved places,
    **Magnetic north**, latitude and longitude lines, UTM grid lines, Maidenhead squares, the
-   grey line. The preview warns when the installed maps or terrain do not cover the page in
+   grey line, an estimated radio range, and what was heard on the radio. The preview warns when the installed maps or terrain do not cover the page in
    enough detail (1:25,000 needs zoom 13). An estimated radio range is printed in the light
    map's green whatever the screen shows (the dark theme, the night style).
 4. **Make the PDF**, then **Save as PDF**, **Add to library**, **Share** or **Print**.

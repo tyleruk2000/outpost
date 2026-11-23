@@ -28,7 +28,7 @@ of the time, 13 closed (kept with the date so nobody hunts for them) and 4 not v
 - **Filters**: kind, country or region, band, **a set like mine**, and a search box for a
   name, a frequency's first figures (`9410`, `156.8`) or a channel (`16`). They are kept in
   the address, so a link can open one kind: `/radio/frequencies?kind=time-signals`.
-- **Country first**: the list starts from your home place's country, with entries for its
+- **Country first**: the list starts from the current household's country, with entries for its
   region (ITU Region 1, the CEPT countries) and the world. **Show every place** takes the
   filter off.
 - **A set like mine** says what each kind of set (kitchen radio, shortwave portable,
