@@ -36,6 +36,7 @@ import type { AppContext } from "../../core/context.ts";
 import { contentDisposition } from "../notes/attachments.ts";
 import { previewCsv, toCsv } from "./csv.ts";
 import { findFoods, foodsById } from "./foods.ts";
+import { indexSupplies } from "./search.ts";
 import { createSuppliesService, type SuppliesService } from "./service.ts";
 
 declare module "../../core/context.ts" {
@@ -124,6 +125,8 @@ const importSchema = z.object({
 export async function registerSupplies(app: FastifyInstance, ctx: AppContext): Promise<void> {
   const service = createSuppliesService(ctx);
   ctx.services.supplies = service;
+  // Found by search, the current household's only (search.ts).
+  ctx.onClose.push(indexSupplies(ctx));
   /** The day the figures are for: the device's, when it says, else this computer's. */
   const todayOf = (query: unknown) => todayQuery.parse(query).today ?? localDay();
 

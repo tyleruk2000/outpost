@@ -67,7 +67,7 @@ describe("the score", () => {
     expect(every.coverage).toBe(1);
     expect(some.coverage).toBeCloseTo(2 / 3);
     expect(every.score).toBeGreaterThan(some.score);
-    expect(reasonFor(some)).toBe("2 of 3 words");
+    expect(reasonFor(some)).toBe("2 of 3 words, not “change”");
   });
 
   it("rewards words close together, and side by side most", () => {
@@ -159,7 +159,7 @@ describe("keyword search", () => {
     expect(ids(few)[0]).toBe("both");
     // "buttermilk" is the rarer word, so holding it is holding most of what the question is about; "bread" alone is not.
     expect(ids(few)).toEqual(["both", "buttermilk"]);
-    expect(few.results.slice(1).every((result: Result) => result.why === "1 of 2 words")).toBe(true);
+    expect(few.results.slice(1).every((result: Result) => result.why === "1 of 2 words, not “bread”")).toBe(true);
 
     // With enough items holding every word, nothing else is added.
     for (let index = 0; index < 5; index += 1) note(`more-${index}`, `More ${index}`, "Bread and buttermilk.");
@@ -298,7 +298,7 @@ describe("reference collections", () => {
     const titles = body.results.map((result: Result) => result.title);
     // kiwix-serve's own order put this last; every word, in the title, puts it first.
     expect(titles[0]).toBe("How to change a car battery");
-    expect(body.results[0].why).toBe("All 3 words in the title");
+    expect(body.results[0].why).toBe("All 3 words in the title; favoured: vehicle source");
     // One word of three, and a common one: not shown.
     expect(titles).not.toContain("Why does my car pull to the left?");
     // One scale: the article with every word outranks Outpost's own note with two of them.

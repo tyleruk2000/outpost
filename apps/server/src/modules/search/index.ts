@@ -1,4 +1,4 @@
-import type { ReferenceSearchEvent } from "@outpost/shared";
+import type { ReferenceSearchEvent, SearchSuggestion as ReferenceSearchInstead } from "@outpost/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
@@ -72,12 +72,17 @@ export async function registerSearch(app: FastifyInstance, ctx: AppContext): Pro
       if (!raw.destroyed && !raw.writableEnded) raw.write(`${JSON.stringify(event)}\n`);
     };
     try {
+      let instead: ReferenceSearchInstead | undefined;
       const outcome = await ctx.services.search.searchReference({
         q,
         exact: asTyped,
         scope,
         signal: controller.signal,
-        onStart: (collections, more) => send({ type: "start", collections, more: more ?? 0, ranked: true }),
+        onInstead: (suggestion) => {
+          instead = suggestion;
+        },
+        onStart: (collections, more) =>
+          send({ type: "start", collections, more: more ?? 0, ranked: true, ...(instead ? { instead } : {}) }),
         onWiden: (collections) => send({ type: "widen", collections }),
         onPart: (part) => send({ type: "collection", ...part, done: part.done !== false }),
       });

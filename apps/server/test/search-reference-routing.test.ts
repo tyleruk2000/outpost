@@ -323,7 +323,7 @@ describe("reference search, routed", () => {
     const all = await lines(base, "treat a burn");
     const results = finals(all).find((line) => line.title === "WikiMed Medical Encyclopedia")!.results as Line[];
     expect(results.map((result) => result.title)).toEqual(["Burn", "First aid for minor injuries"]);
-    expect(results[0]!.why).toBe("The title is what was asked");
+    expect(results[0]!.why).toBe("The title is what was asked; favoured: medical source");
     const word = finals(all).find((line) => line.title === "Wiktionary")!.results[0];
     expect(word.why).not.toBe("The title is what was asked");
     expect(word.score).toBeLessThan(results[0]!.score);

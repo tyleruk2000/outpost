@@ -106,20 +106,48 @@ Keyword ranking (`modules/search/keyword.ts`, `score.ts`, rules in
 
 1. `parseQuery` drops `STOP_WORDS` (not inside quotes, not when nothing else is left)
    and lists them as `ignored`.
-2. One FTS pass, no `LIMIT`, returns every matching passage's id, item and BM25; items are
-   grouped in JS. This is what makes `total` exact and every page reachable (a book's
-   title is copied onto each of its passages, so a passage-level `LIMIT` filled up with
-   three books).
-3. The first `max(200, offset + limit)` items by best BM25 have their best four passages
-   read and scored by `scoreFields`; `snippet()`/`highlight()` run only for the passages
-   shown (`markPassages`), with the any-word expression so every word that matters is marked.
+2. One FTS pass, no `LIMIT`, returns every matching passage's rowid and BM25 (no join);
+   the item, kind and household of each passage come from `owners.ts`, an in-memory map
+   noted on every write and read again whole when a rowid is not in it. Items are grouped
+   in JS, keeping each one's best four passages. This is what makes `total` exact and
+   every page reachable (a book's title is copied onto each of its passages, so a
+   passage-level `LIMIT` filled up with three books). Items with `meta.household` (plans,
+   supplies) are skipped unless it is the current household.
+3. The first `max(200, offset + limit)` items by best BM25 are scored by `scoreFields` on
+   their best BM25 passage; the best `max(60, window + 5)` then on their next three too.
+   `intent.ts` priors (≤ × 1.3; × 0.75 for another sense) reorder within each part of the
+   list (on device / every word / prefix only). `snippet()`/`highlight()` run only for the
+   passages shown (`markPassages`), one `rowid =` lookup each: with `rowid IN (…)` FTS5
+   walks every match of the expression first, hundreds of ms for a prefix term. The
+   prefix form is used only when the ranking needed it (`prefixUsed`).
 4. Fewer than `FEW` (5) strict items: the any-word pass adds items with rarity-weighted
    coverage ≥ `RELAXED_COVERAGE` (0.5), after the strict ones. `everyWord` and
    `relaxed` tell the page what to say.
 
-Word weights are the index's own IDF, one `count(*)` per term. The stemmer (`stem.ts`)
-is Porter's, as the `porter` tokenizer uses, so the scorer finds a word exactly when the
-index does.
+Word weights are the index's own IDF, one `count(*)` per term; the total passage count is
+cached (`passageCount`, dropped on every write, trusted 30 s otherwise). The stemmer
+(`stem.ts`) is Porter's, as the `porter` tokenizer uses, so the scorer finds a word
+exactly when the index does; its cache holds 200,000 words.
+
+After ordering: `collapseSameTitles` (cards.ts) joins non-reference results of one
+normalised title into the first, as `alsoIn`; `firstCard` asks the card sources (water in
+search, the power cut plan from emergency-plans via `addCards`) then `placeCard`.
+`syncKind` indexes a small table whole (plans, supplies), writing only items whose
+`IndexEntity` JSON changed. `searchReference` adds the "Did you mean" word as the first
+alternative of a term no passage holds (`forReference`), so kiwix-serve is asked both
+ways, and reports it as `instead` on the `start` line.
+
+Semantic and local sources are asked before the keyword pass, so the model embeds the
+query in its worker while the words are searched; query vectors are kept (200, LRU).
+`vector-index.ts` keeps the model's vectors as one Float32 matrix, updated by `upsert`,
+reloaded when `count(*)` differs, dropped after `MATRIX_IDLE_MS`; kind- or item-narrowed
+queries still read SQLite. Local sources get the query without `STOP_WORDS`; the layers
+store matches only the last word as a prefix.
+
+`scripts/search-eval/speed.mjs build|run <folder>` makes a library of about 57,800
+passages from the system word list (Zipf frequencies, household words placed among them)
+and times the evaluation set's searches at the server. On an M2 Max laptop the own-results
+p95 went from 178 ms to 29 ms with these changes, and a flat vector query from 115 ms to 22 ms.
 
 Other sources' results are scored by `rescore` from what they show (title, subtitle,
 snippet). Local sources (places, repeaters) go to `places`, not `results`, unless their

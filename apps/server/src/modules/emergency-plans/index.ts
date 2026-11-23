@@ -40,6 +40,7 @@ import type { AppContext } from "../../core/context.ts";
 import { AppError, conflict, notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
 import { communicationPlans, documents, emergencyPlans, markers, notes, nuclearScenarios, powerPlans } from "../../db/schema.ts";
+import { indexPlans } from "./search.ts";
 
 export interface EmergencyPlansService {
   /** The current household's plans. A plan of another household is still answered by `get`, by its id. */
@@ -515,6 +516,8 @@ export async function registerEmergencyPlans(app: FastifyInstance, ctx: AppConte
     },
   };
   ctx.services.emergencyPlans = service;
+  // Found by search, the current household's only (search.ts).
+  ctx.onClose.push(indexPlans(ctx, () => service.list()));
 
   const id = (request: { params: unknown }) => idParams.parse(request.params).id;
   app.get("/api/emergency-plans", async () => ({ plans: service.list() }));

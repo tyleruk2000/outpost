@@ -91,9 +91,15 @@ When a word you typed is in no passage (or, when nothing has every word, in only
 two), Outpost looks for the nearest word your library does hold: at most two letters
 added, dropped, changed or swapped (one, for a word of four letters or fewer), the same
 first letter preferred, then the commoner word. It is offered as a link: "Did you mean
-**purify** water?" The search itself stays as you typed it. Small words are never offered,
-and a word must be in at least two passages. The words come from your own library, as it
-is now, not from reference collections.
+**purify** water?" The search of your library stays as you typed it. Small words are never
+offered, and a word must be in at least two passages. The words come from your own library,
+as it is now, not from reference collections.
+
+Reference collections know nothing of slips, so when a word you typed is in no passage of
+your library and a near word is, they are asked for both: "purifiy water" as typed, and
+"purify water". The word as typed counts in full, so a real word your library happens not
+to hold ("bowline") still finds its own articles first. The reference results say so: "Also
+showing results for **purify** water."
 
 ### When few items have every word
 
@@ -114,11 +120,18 @@ result has every word; showing results with some."
 | Catalogue entries | What Explore lists, so you can find something to download. |
 | Map markers and tracks | Names and notes. |
 | Contacts | Name, title, organisation, tags, numbers, addresses, callsign, channels and notes. |
+| Emergency plans | Name, what it is for, the steps (by before, during and after), supplies, where things are, places, people's names and what they must remember, people to call, keeping in touch, notes. Never what a person needs for their health. |
+| Supplies | Name, category, where it is kept, how much, its date and notes. |
+| Medical sheets | Medicines, allergies and conditions, only with **Find them in search** on (under **Medical sheets**), and never a sheet kept encrypted. |
 | Repeaters | Callsign, town and frequency (up to 50 found). |
 | Places in reference layers | Feature names in installed packs (up to 30 found). |
 | Reference articles | Articles in installed ZIM archives: see [below](#reference-collections-in-results). |
 
 Not searched: the notes trash, your page templates, and the household board.
+
+Emergency plans and supplies belong to a household: only the current household's are
+found. With several households, each such result names whose it is, and the results say
+"Emergency plans and supplies are those of Home, the current household."
 
 Text is cut into passages of about 1,200 characters overlapping by 150 (**Settings →
 Reading documents**). A passage never crosses a page or heading, so a result points at
@@ -138,13 +151,14 @@ your own and an article in a reference collection can be put in one order:
 | Frequency | 0.10 | How often they occur, each further mention adding less. |
 
 An item is scored by its best passage and shows up to three, with the words that matter
-marked; a PDF opens at that passage's page. Beside each result a few words say why it is
-there: "All 3 words in the title", "All 3 words, side by side", "2 of 3 words".
+marked; a PDF opens at that passage's page.
 
 The index first finds every passage holding the words and groups them into items, so every
 match is counted and every page of results can be reached, however many passages a long
 book has. The first 200 items by BM25 (weights title 8, tags 4, heading 3, body 1) are
-then scored by the rule above. Paging further scores further.
+then scored by the rule above: each by its best passage in BM25's order, and the 60 that
+come out best (more for a later page) by their next three passages as well. Paging further
+scores further.
 
 **Places and repeaters** whose names match are not mixed into the list: they are shown
 apart, under **Places and repeaters**, after the results, or before them when what you
@@ -154,6 +168,71 @@ typed looks like one of their names, a callsign or a frequency. Their tabs list 
 before they could be opened, so they always come after everything that can be opened now:
 on the **Everything** tab they are listed last, under **Available to download**, after
 **In reference collections**.
+
+#### Favoured sources and other meanings
+
+Words cannot tell that a question about rescue breaths is better answered by a first aid
+manual than by a hiking forum using the same words. So two mild corrections follow:
+
+| The question | Favours | At most |
+| --- | --- | --- |
+| About first aid or medicine ("burn", "rescue breaths", "CPR") | Medical and first aid sources | × 1.25 |
+| About using a generator, heater, stove or fuel safely, or carbon monoxide | Official safety guidance | × 1.25 |
+| About a car or other vehicle ("tyre", "brakes", "winter driving") | Vehicle and motor collections | × 1.2 |
+| How to do something ("how to…", "fix…", "replace…") | Questions and answers, manuals, guides | × 1.1 |
+
+What kind of source a result is comes from its collection (a reference article's archive,
+a document's category), its tags, and the words of its own title that are not the
+question's: "First aid manual" is a first aid source for "rescue breaths", but "Electric car
+battery chemistry" is not a vehicle source for "car battery" just for saying "car".
+Together the priors are at most × 1.3, and a high score rises by less (0.9 becomes 0.92),
+so they settle near ties and never lift a poor match over a good one. Fuel alone is not a
+vehicle word: "store petrol safely" is about a shed.
+
+A few words have a strong other meaning. When the question is in the household's sense and
+a result is plainly in the other, its score counts three quarters: "CPR" in a railway
+history, a "generator" that makes signals for electronics (for a question about running or
+using one), a "stroke" of an engine or a swimmer, a "shock" absorber, "bleeding" brakes
+(for a medical question). A question that names the other meaning ("CPR railway") is taken
+at its word.
+
+#### Why each result is there
+
+Beside each result a few words say why it is there, from the same rule: "All 3 words in
+the title", "All 3 words, side by side", "2 of 3 words, not “sand”", "All 2 words in the
+title; also matched tire", and what the corrections did: "favoured: first aid source",
+"another meaning of “cpr”". Found by meaning: "Found by meaning". A place: its name.
+
+#### One title, one row
+
+An installed collection, the document made from one of its files and its catalogue entry
+can share one title, and so can several documents called "Quick reference card". The list
+shows the first, best placed, once, and names the others under it, each a link: "Also in:
+Document, Radio manuals; Available to download". The count of results counts it once.
+Reference articles are not joined this way: two collections' articles of one name are
+usually two articles.
+
+### The answer, above the results
+
+For a few questions there is one place in Outpost that is plainly the answer, and a single
+line above the results links to it:
+
+- making water safe to drink ("purify water", "how do I boil water"): **Tools: Water**;
+- a power cut ("power cut", "blackout", "what to do in a power cut"): the current
+  household's power cut plan, when it has one;
+- the exact name of one place on the map, when your library holds almost nothing with that
+  name: the place on the map.
+
+Never more than one, only on the first page of **Everything**, and never instead of the
+results. **Go to** does not offer the same screen again.
+
+### How fast
+
+Your own results come from the index on this device. On a library of 57,600 passages (the
+size of one Raspberry Pi's, made up for the test) a laptop answers 95 searches in 100
+within about 35 ms; a Raspberry Pi takes several times as long. Two things are kept in
+memory for it: which item each passage belongs to (a few hundred kilobytes), and, while
+search by meaning is in use, its vectors (see [below](#limits-of-the-built-in-index)).
 
 ### Filters
 
@@ -208,7 +287,8 @@ about is dropped. An article whose title is made only of the question's words an
 every word a title would ("Burn" for "treat a burn", "Tire pressure" for "tyre pressure")
 counts as holding the whole question ("The title is what was asked" beside it), in a
 collection that fits the question (one about its topic, or a general encyclopaedia): in a
-dictionary or a book of quotations, "Burn" is a word or a heading, not the answer.
+dictionary or a book of quotations, "Burn" is a word or a heading, not the answer. The [favoured sources and other meanings](#favoured-sources-and-other-meanings) apply to
+articles too, an article's kind of source being its collection.
 
 - **In reference collections**, under your own results, shows the five best articles
   across all collections; the **Reference** tab lists every article found. Both are in
@@ -342,7 +422,7 @@ Measured with the built-in model on an Apple M2 Max laptop (four threads):
 | Building the index | 33 to 54 seconds per thousand passages (Settings quotes 45). |
 | A search | 12 to 20 ms with the index built; 40 to 140 ms during a build. |
 | Disk | About 2.2 MB per thousand passages. |
-| Memory | About 300 MB while loaded, given back after five idle minutes. |
+| Memory | About 300 MB while loaded, given back after five idle minutes; and the vectors, 1.5 KB a passage (about 90 MB for 60,000), the same. |
 | The model itself | 39 MB in the app. |
 
 A Raspberry Pi 5 is about five times slower: about four minutes per thousand passages
@@ -453,7 +533,12 @@ meaning** alone leaves reference articles out, since they have no vectors.
 ### Limits of the built-in index
 
 Each query is compared with every vector: exact, and comfortable to about 100,000
-passages (about 220 MB); beyond that, searches slow in proportion. Reference articles are
+passages (about 220 MB on disk); beyond that, searches slow in proportion. The vectors are
+read into memory at the first search and kept up to date as passages are read, so a search
+does not read them from the database again: about 20 ms for 57,600 passages on a laptop,
+against 115 ms reading them each time. Five minutes without a search, and the memory is
+given back. A search narrowed to one kind of result still reads them from the database.
+The same question asked again within a while reuses its vector. Reference articles are
 found by keyword only. Results found by meaning show the passage's start, unhighlighted.
 
 How it works inside, for developers: [development/answers-and-search.md](development/answers-and-search.md).

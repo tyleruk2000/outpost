@@ -537,8 +537,14 @@ describe("a page's pictures", () => {
     const read = (await app.api("GET", `/api/documents/${id}`)).body.document;
     expect(read.extractionDetail).toBeNull();
     expect(read.textChars).toBeLessThan(3000);
+    // Pages saved under one title are one row, the others named under it ("Also in").
     expect(
-      (await app.api("GET", "/api/search?q=mosquitoes")).body.results.map((result: { entityId: string }) => result.entityId),
+      (await app.api("GET", "/api/search?q=mosquitoes")).body.results.flatMap(
+        (result: { entityId: string; alsoIn?: Array<{ entityId: string }> }) => [
+          result.entityId,
+          ...(result.alsoIn ?? []).map((other) => other.entityId),
+        ],
+      ),
     ).toContain(id);
   }, 60_000);
 });

@@ -30,6 +30,27 @@ export interface SearchResult {
   why?: string;
   passages: SearchPassage[];
   sources: string[];
+  /** Results with the same title further down (a collection, its document, its catalogue entry), named under this one. */
+  alsoIn?: SearchAlsoIn[];
+}
+
+export interface SearchAlsoIn {
+  kind: SearchKind;
+  entityId: string;
+  title: string;
+  collection: string | null;
+  subtitle: string | null;
+  url: string;
+}
+
+/** The one place in Outpost that is plainly the answer to a question, shown above the results. */
+export interface SearchCard {
+  /** "tool": a screen of Outpost; "plan": one of the household's emergency plans; "place": a place on the map. */
+  kind: "tool" | "plan" | "place";
+  title: string;
+  /** One line on what it holds. */
+  about: string;
+  url: string;
 }
 
 export interface SearchSuggestion {
@@ -59,6 +80,11 @@ export type ReferenceSearchEvent =
       more?: number;
       /** Results carry scores on one scale, to be shown as one list in score order. Absent from an older server. */
       ranked?: boolean;
+      /**
+       * A word typed is in no passage of the library and a near word is ("purifiy", "purify"): the
+       * collections are asked for the query with it as well. Absent when not.
+       */
+      instead?: SearchSuggestion;
     }
   | {
       /** The first collections found too little, so the rest are being searched too. */
@@ -118,6 +144,13 @@ export interface SearchResponse {
   places: SearchResult[];
   /** The query looks like one of their names, a callsign or a frequency, so the strip comes first. */
   placesFirst: boolean;
+  /** The one place in Outpost that is plainly the answer, above the results; first page only. Absent from an older server. */
+  card?: SearchCard | null;
+  /**
+   * The current household's name, when there are several and the results hold its emergency
+   * plans or supplies, which are that household's only. Absent from an older server.
+   */
+  householdShown?: string | null;
   facets: Record<string, number>;
   warnings: Array<{ source: string; message: string }>;
   /**

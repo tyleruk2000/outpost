@@ -139,7 +139,7 @@ describe("other ways of saying a word", () => {
     const tyre = await search(test, "tyre pressure");
     expect(ids(tyre)).toEqual(["uk", "us"]);
     expect(tyre.alsoSearched).toEqual(["tire"]);
-    expect(tyre.results[1].why).toBe("All 2 words, side by side, one said another way");
+    expect(tyre.results[1].why).toBe("All 2 words, side by side; also matched tire");
 
     const asTyped = await search(test, "tyre pressure", "&exact=1");
     expect(ids(asTyped)).toEqual(["uk"]);

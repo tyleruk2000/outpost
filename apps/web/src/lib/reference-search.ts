@@ -16,7 +16,7 @@
  * Typing something else closes the connection, and the server stops asking collections
  * it has not asked yet. `useSteadyOrder` keeps the list still under a person's pointer.
  */
-import type { ReferenceSearchEvent, ReferenceSearchMissing, SearchResult } from "@outpost/shared";
+import type { ReferenceSearchEvent, ReferenceSearchMissing, SearchResult, SearchSuggestion } from "@outpost/shared";
 import { type FocusEvent, useEffect, useRef, useState } from "react";
 import { api } from "./api";
 
@@ -35,9 +35,23 @@ export interface ReferenceSearch {
   missing: ReferenceSearchMissing[];
   /** Why reference collections could not be searched at all; null when they could. */
   problem: string | null;
+  /**
+   * A word typed is in no passage of the library and a near word is: the collections were asked
+   * for the query with it as well ("purify water" for "purifiy water"). Null when not.
+   */
+  instead: SearchSuggestion | null;
 }
 
-const NOTHING: ReferenceSearch = { status: "idle", collections: 0, answered: 0, results: [], more: 0, missing: [], problem: null };
+const NOTHING: ReferenceSearch = {
+  status: "idle",
+  collections: 0,
+  answered: 0,
+  results: [],
+  more: 0,
+  missing: [],
+  problem: null,
+  instead: null,
+};
 
 const LOST = "Reference collections could not be searched just now, so their articles are missing from these results.";
 
@@ -58,7 +72,9 @@ function ranked(parts: Map<string, SearchResult[]>): SearchResult[] {
 
 function after(held: Held, event: ReferenceSearchEvent): Held {
   const { search } = held;
-  if (event.type === "start") return { ...held, search: { ...search, collections: event.collections, more: event.more ?? 0 } };
+  if (event.type === "start") {
+    return { ...held, search: { ...search, collections: event.collections, more: event.more ?? 0, instead: event.instead ?? null } };
+  }
   if (event.type === "widen") return { ...held, search: { ...search, collections: search.collections + event.collections, more: 0 } };
   if (event.type === "collection") {
     const parts = new Map(held.parts);

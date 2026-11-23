@@ -46,6 +46,8 @@ export interface RankedItem {
   parts: ScoreParts;
   /** Holds every word of the query. */
   everyWord: boolean;
+  /** Holds the last word only as the start of a longer one ("battery" for "batt"). */
+  prefixOnly?: boolean;
 }
 
 export interface KeywordRanking {
@@ -233,6 +235,7 @@ export function rankKeyword(
   const strict = strictAll.filter((item) => wanted(item.kind));
   // The pool grows with the page asked for, so that every match can be paged to.
   const items = score(strict.slice(0, Math.max(RESCORE_POOL, options.window)), true).sort(byScore);
+  for (const item of items) if (begun.has(item.entityRowId)) item.prefixOnly = true;
   const facets: Record<string, number> = {};
   for (const item of strictAll) facets[item.kind] = (facets[item.kind] ?? 0) + 1;
 
