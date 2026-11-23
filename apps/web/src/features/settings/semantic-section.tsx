@@ -12,6 +12,7 @@ import { formatBytes, formatDuration, type SemanticStatus, type Settings, second
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleAlert, CircleCheck } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Progress, Skeleton, Switch } from "@/components/ui/misc";
@@ -212,8 +213,11 @@ export function SemanticSection({
         </Notice>
       ) : null}
 
-      <p className="text-small text-ink-muted">
+      <p className="flex flex-wrap gap-x-4 gap-y-1 text-small text-ink-muted">
         <GuideLink part="search-by-meaning" />
+        <Link to="/search/how-meaning-works" className="text-primary underline decoration-1 underline-offset-2 hover:decoration-2">
+          How search by meaning works
+        </Link>
       </p>
 
       {data ? (

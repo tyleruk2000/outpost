@@ -188,6 +188,17 @@ your query. An **embedding model** turns each passage into a list of numbers (a 
 and your query is compared with them. A small model is **built in**, in the app, the
 Docker image and portable drives; nothing is downloaded and nothing leaves the machine.
 
+### How it works, in pictures
+
+**Search → How search by meaning works** (also linked from **Settings → Search by
+meaning**) explains it step by step with diagrams: passages, the 384 numbers the model
+makes for each, finding the nearest passages to a question, how the two lists are
+combined, where it runs, how the library is read, and what it cannot do. It shows this
+Outpost's own figures: on or off, passages read of the total, and the model. New and
+changed documents are read by themselves about five seconds after they are indexed,
+while search by meaning is on. *How search works* has the same steps in more depth, on
+a question of your own.
+
 ### Turning it on
 
 **Settings → Search by meaning**: the section says what it will cost for your library.
