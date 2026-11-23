@@ -32,13 +32,20 @@ import { ImageryArea, SatelliteSection } from "../imagery/panel";
 import { formatBboxSize } from "../lib/geo";
 import { formatBuild } from "../lib/tracks";
 import type { MapEngine } from "../map/engine";
+import { RoadNetworksSection } from "../road-route/road-networks";
 import { PanelHeading, PanelLoading } from "../ui";
 import { AddRegion, detailLabel } from "./add-region";
 import { DestinationPicker, useDestination } from "./destination";
 import { isOsNamesDownload, OsNamesSection } from "./os-names";
 
 /** What the panel was opened to do, when it was opened from elsewhere on the screen. */
-export type OfflineIntent = { type: "add"; presetId?: string } | { type: "places" } | { type: "imagery" } | { type: "reference" } | null;
+export type OfflineIntent =
+  | { type: "add"; presetId?: string }
+  | { type: "places" }
+  | { type: "imagery" }
+  | { type: "reference" }
+  | { type: "roads" }
+  | null;
 
 function ActiveDownloads({ downloads }: { downloads: DownloadDto[] }) {
   if (downloads.length === 0) return null;
@@ -360,6 +367,8 @@ export function OfflinePanel({
   const placesRef = useRef<HTMLElement>(null);
   const imageryRef = useRef<HTMLElement>(null);
   const [choosingImagery, setChoosingImagery] = useState(false);
+  const roadsRef = useRef<HTMLElement>(null);
+  const [addingRoads, setAddingRoads] = useState(false);
 
   useEffect(() => {
     if (!intent) return;
@@ -371,6 +380,11 @@ export function OfflinePanel({
     if (intent.type === "reference") {
       setAdding(null);
       window.setTimeout(() => document.getElementById("reference-data")?.scrollIntoView({ block: "start" }), 0);
+    }
+    if (intent.type === "roads") {
+      setAdding(null);
+      setAddingRoads(true);
+      window.setTimeout(() => roadsRef.current?.scrollIntoView({ block: "start" }), 0);
     }
     if (intent.type === "places") {
       setAdding(null);
@@ -479,6 +493,7 @@ export function OfflinePanel({
 
       <SatelliteSection engine={engine} onChooseArea={() => setChoosingImagery(true)} sectionRef={imageryRef} />
       <PlaceNames datasets={places} downloads={placeDownloads} sectionRef={placesRef} />
+      <RoadNetworksSection mapRegions={regions} sectionRef={roadsRef} adding={addingRoads} onAddingChange={setAddingRoads} />
       <ReferenceDataSection engine={engine} />
       <KeepAreaSection engine={engine} />
     </div>

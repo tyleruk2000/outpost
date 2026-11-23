@@ -370,6 +370,20 @@ describe("the road routes API", () => {
     expect((await app.api("GET", `/api/roads/routes/${saved.id}`)).status).toBe(404);
   });
 
+  it("says which countries the installed map regions cover, passing over a world overview", async () => {
+    // Kent and the Pas-de-Calais in one box, Luxembourg in another; and the whole world.
+    const { status, body } = await app.api("POST", "/api/roads/countries", {
+      boxes: [
+        [0.2, 50.6, 2.2, 51.4],
+        [6.0, 49.6, 6.2, 49.8],
+        [-180, -85, 180, 85],
+      ],
+    });
+    expect(status).toBe(200);
+    expect(new Set(body.countries)).toEqual(new Set(["GB", "FR", "LU"]));
+    expect((await app.api("POST", "/api/roads/countries", { boxes: [[0, 0, 400, 0]] })).status).toBe(400);
+  });
+
   it("checks what it is given", async () => {
     expect((await app.api("POST", "/api/roads/route", { points: [LEATHERHEAD] })).status).toBe(400);
     expect((await app.api("POST", "/api/roads/route", { points: [LEATHERHEAD, { placeId: "nope" }] })).status).toBe(400);

@@ -14,6 +14,7 @@ import {
   haversineMeters,
   homeLabel,
   type MarkerDto,
+  type RoadRouteResult,
   type TrackDto,
   type TrackWithGeometryDto,
 } from "@outpost/shared";
@@ -133,6 +134,9 @@ import { useLocatorGrid } from "./radio/use-locator-grid";
 import { useSight } from "./radio/use-sight";
 import { foldRecordingCard, TrackRecording, useRecordTool } from "./recording/record-ui";
 import { useResection } from "./resection/resection-card";
+import { ROAD_ROUTE_SOURCE, roadRouteData } from "./road-route/layers";
+import { pointName } from "./road-route/point-field";
+import { type RoadRouteIntent, RoadRoutePanel } from "./road-route/road-route-panel";
 import { SearchBox } from "./search-box";
 import { DesktopPanel, type Detent, detentHeight, MobileSheet, PANEL_TABS, type PanelTab, PanelTabs, PEEK_HEIGHT } from "./side-panel";
 import { PanelLoading } from "./ui";
@@ -308,6 +312,15 @@ export default function MapsPage() {
   /** "Find a route" is open in the Routes tab; `routePreview` is the route it is showing on the map, if any. */
   const [finding, setFinding] = useState(false);
   const [routePreview, setRoutePreview] = useState<TrackWithGeometryDto | null>(null);
+  /** "Road route" is open in the Routes tab; `roadShown` is the planned route it draws, with the leg picked out. */
+  const [roadRouting, setRoadRouting] = useState(false);
+  const [roadIntent, setRoadIntent] = useState<RoadRouteIntent | null>(null);
+  const [roadShown, setRoadShown] = useState<{ route: RoadRouteResult; selected: number | null } | null>(null);
+  const showRoadRoute = useCallback(
+    (route: RoadRouteResult | null, selected: number | null) => setRoadShown(route ? { route, selected } : null),
+    [],
+  );
+  const clearRoadIntent = useCallback(() => setRoadIntent(null), []);
   const [profilePoint, setProfilePoint] = useState<LatLon | null>(null);
   /** The menu for a point on the map; `keyboard` when it was opened for the centre from the keyboard, which then has it back. */
   const [contextMenu, setContextMenu] = useState<{
@@ -584,9 +597,15 @@ export default function MapsPage() {
     if (tab && (PANEL_TABS as readonly string[]).includes(tab)) showPanel(tab as PanelTab);
     // From Explore's suggestions: /maps?offline=region&preset=… opens Offline maps at that region, /maps?offline=places at place names.
     const offline = new URLSearchParams(location.search).get("offline");
-    if (offline === "region" || offline === "places") {
+    if (offline === "region" || offline === "places" || offline === "roads") {
       const preset = new URLSearchParams(location.search).get("preset");
-      setOfflineIntent(offline === "places" ? { type: "places" } : { type: "add", ...(preset ? { presetId: preset } : {}) });
+      setOfflineIntent(
+        offline === "places"
+          ? { type: "places" }
+          : offline === "roads"
+            ? { type: "roads" }
+            : { type: "add", ...(preset ? { presetId: preset } : {}) },
+      );
       showPanel("offline");
     }
   }, [location.key]);
@@ -647,6 +666,10 @@ export default function MapsPage() {
     engine.setOverlay("o-tracks", data.lines);
     engine.setOverlay("o-track-ends", data.ends);
   }, [engine, geometries, tracks.data, trackId, reshapingId, routePreview]);
+
+  useEffect(() => {
+    engine?.setOverlay(ROAD_ROUTE_SOURCE, roadRouteData(roadShown?.route ?? null, roadShown?.selected ?? null));
+  }, [engine, roadShown]);
 
   const routePoints = routeDraft?.edit.points;
   const routeColor = routeDraft?.color;
@@ -1242,8 +1265,8 @@ export default function MapsPage() {
     });
     // A route found in OpenStreetMap is credited while it is on the map, whatever the map beneath it is.
     const withImagery = [...satellite.credits, ...reference.credits, ...base];
-    return routePreview || anyFoundRoute(geometries) ? [...withImagery, ROUTE_CREDIT] : withImagery;
-  }, [sources.data, hasTiles, hillshade, contours, geometries, routePreview, satellite.credits, reference.credits]);
+    return routePreview || roadShown || anyFoundRoute(geometries) ? [...withImagery, ROUTE_CREDIT] : withImagery;
+  }, [sources.data, hasTiles, hillshade, contours, geometries, routePreview, roadShown, satellite.credits, reference.credits]);
   const firstUse = sources.isSuccess && !hasTiles && !mapDownloading && !firstUseDismissed && !offlineVisible;
   const openOffline = (intent: OfflineIntent) => {
     setOfflineIntent(intent);
@@ -1379,6 +1402,17 @@ export default function MapsPage() {
             onSave={saveDrawnRoute}
             onClose={() => closeDrawing()}
           />
+        ) : roadRouting ? (
+          <RoadRoutePanel
+            engine={engine}
+            markers={markers.data ?? []}
+            intent={roadIntent}
+            onIntentHandled={clearRoadIntent}
+            onClose={() => setRoadRouting(false)}
+            onShow={showRoadRoute}
+            onNeedMap={() => setDetent((current) => (current === "full" ? "half" : current))}
+            onOpenNetworks={() => openOffline({ type: "roads" })}
+          />
         ) : finding ? (
           <FindRoutePanel
             engine={engine}
@@ -1421,6 +1455,7 @@ export default function MapsPage() {
             onImport={setImportFiles}
             onDraw={() => startDrawing()}
             onFind={() => setFinding(true)}
+            onRoadRoute={() => setRoadRouting(true)}
             canDraw={Boolean(engine)}
           />
         ),
@@ -1878,6 +1913,19 @@ export default function MapsPage() {
               setDetent("peek");
             }}
             onDraw={() => startDrawing([contextMenu.position])}
+            onRoadRoute={(role) => {
+              const { lat, lon } = contextMenu.position;
+              setContextMenu(null);
+              if (tool === "draw") closeDrawing();
+              setRoadRouting(true);
+              setRoadIntent({
+                role,
+                point: { name: contextPlace?.name ?? pointName({ lat, lon }), lat, lon, from: "map" },
+                at: Date.now(),
+              });
+              setPanel({ open: true, tab: "routes" });
+              setDetent((current) => (current === "peek" ? "half" : current));
+            }}
             onSun={() => {
               const { lat, lon } = contextMenu.position;
               setContextMenu(null);

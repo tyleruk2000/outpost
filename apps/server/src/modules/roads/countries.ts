@@ -80,3 +80,30 @@ export function countryOfPoint(lat: number, lon: number): string | null {
   }
   return best;
 }
+
+/** A box wider or taller than this (a world overview) says nothing about where a person drives: it is passed over. */
+const WIDEST_BOX_DEG = 40;
+const TALLEST_BOX_DEG = 25;
+
+/**
+ * The countries some boxes cover, most covered first: each box is looked at on a grid of
+ * about 17 by 17 points (never closer than a tenth of a degree), and a country counts by
+ * the points that fall in it. A world-sized box is passed over.
+ */
+export function countriesInBoxes(boxes: ReadonlyArray<readonly [number, number, number, number]>): string[] {
+  const hits = new Map<string, number>();
+  for (const [west, south, east, north] of boxes) {
+    const width = east - west;
+    const height = north - south;
+    if (!(width >= 0 && height >= 0) || width > WIDEST_BOX_DEG || height > TALLEST_BOX_DEG) continue;
+    const stepLon = Math.max(width / 16, 0.1);
+    const stepLat = Math.max(height / 16, 0.1);
+    for (let lat = south; lat <= north + 1e-9; lat += stepLat) {
+      for (let lon = west; lon <= east + 1e-9; lon += stepLon) {
+        const code = countryOfPoint(lat, lon);
+        if (code) hits.set(code, (hits.get(code) ?? 0) + 1);
+      }
+    }
+  }
+  return [...hits.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([code]) => code);
+}
