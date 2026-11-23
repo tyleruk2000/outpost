@@ -6,6 +6,7 @@ import type { BackupSchedule, RestoreTestResult } from "@outpost/shared";
 import { Check, CircleAlert } from "lucide-react";
 import { Notice } from "@/components/page";
 import { Progress } from "@/components/ui/misc";
+import { Table, TableHead, Td, Th, Tr } from "@/components/ui/table";
 import { formatDateTime } from "@/lib/utils";
 
 /** "Opened and sound", or what was wrong, in one line. */
@@ -46,33 +47,32 @@ export function RestoreTestPart({ schedule }: { schedule: BackupSchedule }) {
               It was made by an earlier version of Outpost ({test.appVersion}); a restore brings its database up to date as it starts.
             </p>
           ) : null}
-          <table className="mt-2 w-full max-w-md text-small">
-            <caption className="sr-only">What the backup holds, against what is here now</caption>
-            <thead>
-              <tr className="text-ink-muted">
-                <th scope="col" className="py-1.5 pr-4 text-left font-normal">
-                  &nbsp;
-                </th>
-                <th scope="col" className="py-1.5 pr-4 text-right font-normal">
-                  In the backup
-                </th>
-                <th scope="col" className="py-1.5 text-right font-normal">
-                  Here now
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border border-y border-border">
-              {test.counts.map((entry) => (
-                <tr key={entry.what}>
-                  <th scope="row" className="py-1.5 pr-4 text-left font-normal text-ink">
-                    {entry.what}
-                  </th>
-                  <td className="tabular py-1.5 pr-4 text-right text-ink">{entry.inBackup}</td>
-                  <td className="tabular py-1.5 text-right text-ink-muted">{entry.now}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="mt-2 max-w-md">
+            <Table label="What the backup holds, against what is here now">
+              <TableHead>
+                <Tr>
+                  <Th>
+                    <span className="sr-only">What</span>
+                  </Th>
+                  <Th numeric>In the backup</Th>
+                  <Th numeric>Here now</Th>
+                </Tr>
+              </TableHead>
+              <tbody>
+                {test.counts.map((entry) => (
+                  <Tr key={entry.what}>
+                    <Th scope="row" className="py-2.5 align-top font-normal text-ink">
+                      {entry.what}
+                    </Th>
+                    <Td numeric>{entry.inBackup}</Td>
+                    <Td numeric className="text-ink-muted">
+                      {entry.now}
+                    </Td>
+                  </Tr>
+                ))}
+              </tbody>
+            </Table>
+          </div>
         </div>
       ) : (
         <Notice tone="danger" icon={<CircleAlert aria-hidden />} title={restoreTestHeadline(test)} className="mt-2">

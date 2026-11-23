@@ -52,7 +52,7 @@ function ResultItem({ result, onSelect }: { result: SearchResult; onSelect: () =
           <Highlighted segments={result.titleSegments.length ? result.titleSegments : [{ text: result.title, hit: false }]} />
         </span>
         {passage ? (
-          <span className="mt-0.5 line-clamp-1 block text-micro text-ink-muted">
+          <span className="mt-0.5 line-clamp-1 text-micro text-ink-muted">
             <Highlighted segments={passage.segments} />
           </span>
         ) : null}

@@ -30,6 +30,34 @@ describe("a row of Settings", () => {
     expect(screen.getByRole("switch")).toHaveAccessibleDescription("It is slow, and it makes mistakes.");
   });
 
+  it("turns its switch on and off at a press on its name, a bigger target than the switch on a phone", async () => {
+    const user = userEvent.setup();
+    const change = vi.fn();
+    render(
+      <SettingRow
+        label="Read text from scans automatically"
+        control={<Switch checked={false} onCheckedChange={change} aria-label="Read text from scans automatically" />}
+      />,
+    );
+    await user.click(screen.getByText("Read text from scans automatically"));
+    expect(change).toHaveBeenCalledWith(true);
+  });
+
+  it("names nothing by its label where a row holds more than one switch", () => {
+    render(
+      <SettingRow
+        label="Two of them"
+        control={
+          <span>
+            <Switch checked={false} aria-label="One" />
+            <Switch checked={false} aria-label="Other" />
+          </span>
+        }
+      />,
+    );
+    expect(screen.getByText("Two of them")).not.toHaveAttribute("for");
+  });
+
   it("says why a number out of range was not saved, and that the old one stands", async () => {
     const user = userEvent.setup();
     const save = vi.fn();

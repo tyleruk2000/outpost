@@ -64,6 +64,23 @@ describe("Help", () => {
     show("/help");
     for (const guide of GUIDES) expect(document.querySelector(`a[href="/help/${guide.slug}"]`), guide.slug).not.toBeNull();
   });
+
+  it("narrows the guides to those about what is typed, and says when none is", async () => {
+    const user = userEvent.setup();
+    show("/help");
+    const field = screen.getByRole("searchbox", { name: "Find a guide" });
+    await user.type(field, "ollama");
+    const found = screen.getByRole("region", { name: "Guides found" });
+    expect(within(found).getByRole("link", { name: /^Setting up search by meaning/ })).toBeVisible();
+    expect(screen.queryByRole("link", { name: /^Troubleshooting/ })).not.toBeInTheDocument();
+    expect(within(found).getByRole("status")).toHaveTextContent(/guides? about “ollama”/);
+    await user.clear(field);
+    await user.type(field, "zzqx");
+    expect(within(screen.getByRole("region", { name: "Guides found" })).getByRole("status")).toHaveTextContent("No guide is about “zzqx”.");
+    await user.click(screen.getByRole("button", { name: "Show every guide" }));
+    expect(field).toHaveValue("");
+    expect(screen.getByRole("link", { name: /^Troubleshooting/ })).toBeVisible();
+  });
 });
 
 describe("a guide", () => {

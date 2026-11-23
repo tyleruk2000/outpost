@@ -1,6 +1,6 @@
 import type { DeviceStatus, ServerClock } from "@outpost/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -140,7 +140,11 @@ describe("the status screen", () => {
     expect(screen.getByText(/things need attention/)).toBeInTheDocument();
     expect(screen.getByText("No backup has been made.")).toBeInTheDocument();
     expect(screen.getByText("Not reported")).toBeInTheDocument();
-    expect(await screen.findByText("Clock")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Clock" })).toBeInTheDocument();
+    // Under the sentence, what needs attention, each a link to its line further down.
+    const needing = screen.getByRole("navigation", { name: "What needs attention" });
+    expect(within(needing).getByRole("link", { name: "Clock" })).toHaveAttribute("href", "#check-clock");
+    expect(screen.getByRole("heading", { name: "Clock" }).closest("li")).toHaveAttribute("id", "check-clock");
     expect(screen.getByRole("button", { name: "Set the server's clock from this computer" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open Storage" })).toHaveAttribute("href", "/storage");
     expect(screen.getByText("The hold-ups, minute by minute")).toBeInTheDocument();

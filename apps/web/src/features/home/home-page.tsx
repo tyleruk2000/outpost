@@ -47,7 +47,10 @@ function Block({ title, more, children }: { title: string; more?: { to: string; 
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="text-lead font-semibold text-ink">{title}</h2>
         {more ? (
-          <Link to={more.to} className="flex min-h-11 items-center gap-1 text-small text-primary hover:underline md:min-h-6">
+          <Link
+            to={more.to}
+            className="flex min-h-11 items-center gap-1 text-small text-primary hover:underline md:min-h-6 md:pointer-coarse:min-h-11"
+          >
             {more.label}
           </Link>
         ) : null}
@@ -62,7 +65,10 @@ function RowLink({ to, icon, title, meta }: { to: string; icon: ReactNode; title
     <li>
       {/* Where the title and "21 minutes ago" do not both fit (text at 200% on a 320 px phone), the time goes under the
           title, to the right, rather than past the edge of the screen. */}
-      <Link to={to} className="group flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 text-ink">
+      <Link
+        to={to}
+        className="group -mx-2 flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 rounded-control px-2 py-2.5 text-ink transition-colors duration-(--duration-fast) hover:bg-surface"
+      >
         <span className="grid w-5 shrink-0 place-content-center text-ink-muted [&_svg]:size-[17px]">{icon}</span>
         <span className="min-w-0 flex-[1_1_6ch] truncate font-title text-body decoration-primary decoration-1 underline-offset-[0.22em] group-hover:underline">
           {title}
@@ -256,12 +262,23 @@ export default function HomePage() {
               </Block>
             ) : null}
 
-            {empty ? (
+            {!loaded ? (
+              // Room held for the first steps or the recent lists while the counts come, so that neither jumps in.
+              <div className="grid gap-3" aria-busy>
+                <Skeleton className="h-6 w-40" />
+                <Skeleton className="h-14" />
+                <Skeleton className="h-14" />
+                <Skeleton className="h-14" />
+              </div>
+            ) : empty ? (
               <Block title="Start here">
                 <ol className="divide-y divide-border border-y border-border">
                   {firstSteps.map((step) => (
                     <li key={step.to}>
-                      <Link to={step.to} className="group flex items-start gap-4 py-4">
+                      <Link
+                        to={step.to}
+                        className="group -mx-2 flex items-start gap-4 rounded-control px-2 py-4 transition-colors duration-(--duration-fast) hover:bg-surface"
+                      >
                         <step.icon aria-hidden className="mt-0.5 size-5 shrink-0 text-primary" strokeWidth={1.6} />
                         <span className="min-w-0 flex-1">
                           <span className="block font-title text-lead text-ink decoration-primary decoration-1 underline-offset-[0.22em] group-hover:underline">
@@ -271,7 +288,7 @@ export default function HomePage() {
                         </span>
                         <ArrowRight
                           aria-hidden
-                          className="mt-1 size-4 shrink-0 text-ink-faint transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-primary"
+                          className="mt-1 size-4 shrink-0 text-ink-faint transition-[translate,color] duration-(--duration-fast) group-hover:translate-x-0.5 group-hover:text-primary"
                         />
                       </Link>
                     </li>
@@ -389,7 +406,10 @@ export default function HomePage() {
                 <ul className="grid gap-1 text-small">
                   {firstSteps.map((step) => (
                     <li key={step.to}>
-                      <Link to={step.to} className="flex items-center gap-2.5 py-1 text-ink hover:text-primary max-md:min-h-11">
+                      <Link
+                        to={step.to}
+                        className="flex items-center gap-2.5 py-1 text-ink transition-colors duration-(--duration-fast) hover:text-primary max-md:min-h-11 md:pointer-coarse:min-h-11"
+                      >
                         <step.icon aria-hidden className="size-4 text-ink-muted" strokeWidth={1.6} />
                         {step.title}
                       </Link>

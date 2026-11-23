@@ -243,14 +243,28 @@ export const upkeepNav: NavItem[] = [
 /**
  * The sections of Settings, in the order the screen has them, each reached at /settings#id. The
  * quick search lists each as "Settings: Backup", found by the words people use for it; those with
- * `inContents` are also the line of links at the top of Settings.
+ * `inContents` are also the contents at the top of Settings, under the name of their `group`.
+ * The groups put what most people come for (how it looks, search and answers, backups and who can
+ * use it) before the radio and the fine-tuning of downloads and reading that few ever change.
  */
 export interface SettingsSection {
   id: string;
   label: string;
   keywords: string;
   inContents?: boolean;
+  group: SettingsGroupId;
 }
+
+export type SettingsGroupId = "device" | "search" | "safe" | "radio" | "tuning";
+
+/** The groups of Settings, in order, as the contents at its top names them. */
+export const settingsGroups: Array<{ id: SettingsGroupId; label: string }> = [
+  { id: "device", label: "On this device" },
+  { id: "search", label: "Search and answers" },
+  { id: "safe", label: "Keeping it safe" },
+  { id: "radio", label: "Radio and messages" },
+  { id: "tuning", label: "Fine-tuning" },
+];
 
 export const settingsSections: SettingsSection[] = [
   {
@@ -258,47 +272,82 @@ export const settingsSections: SettingsSection[] = [
     label: "Appearance",
     inContents: true,
     keywords: "theme dark mode light mode night colours typeface serif sans clock 24-hour 12-hour",
+    group: "device",
   },
-  { id: "text-size", label: "Text size", keywords: "font size bigger text larger smaller zoom read easier" },
-  { id: "heights", label: "Heights in metres or feet", keywords: "units meters elevation altitude height" },
-  { id: "downloads", label: "Downloads", inContents: true, keywords: "at once attempts speed slow connection" },
-  { id: "indexing", label: "Reading documents", inContents: true, keywords: "ocr scans passages pdf pages indexing" },
-  { id: "search", label: "Search", inContents: true, keywords: "reference collections wikipedia in results" },
-  { id: "semantic", label: "Search by meaning", inContents: true, keywords: "semantic embeddings vectors model" },
-  { id: "answers", label: "Answers", inContents: true, keywords: "ai language model ollama llm" },
-  { id: "tools", label: "Looking things up", inContents: true, keywords: "tools mcp model context protocol llm look up claude code" },
+  { id: "text-size", label: "Text size", keywords: "font size bigger text larger smaller zoom read easier", group: "device" },
+  { id: "heights", label: "Heights in metres or feet", keywords: "units meters elevation altitude height", group: "device" },
+  { id: "search", label: "Search", inContents: true, keywords: "reference collections wikipedia in results", group: "search" },
+  { id: "semantic", label: "Search by meaning", inContents: true, keywords: "semantic embeddings vectors model", group: "search" },
+  { id: "answers", label: "Answers", inContents: true, keywords: "ai language model ollama llm", group: "search" },
+  {
+    id: "tools",
+    label: "Looking things up",
+    inContents: true,
+    keywords: "tools mcp model context protocol llm look up claude code",
+    group: "search",
+  },
   {
     id: "tools-switch",
     label: "Let the model look things up in Outpost",
     keywords: "tools llm chat look up places supplies plans weather ai",
+    group: "search",
   },
   {
     id: "tools-mcp-switch",
     label: "Let other programs use these tools (MCP)",
     keywords: "mcp model context protocol claude code vs code tools llm",
+    group: "search",
   },
-  { id: "maps", label: "Maps", inContents: true, keywords: "map source terrain tiles" },
-  { id: "board", label: "Message board", inContents: true, keywords: "messages files keep" },
-  { id: "mesh", label: "Mesh radio", inContents: true, keywords: "meshtastic meshcore lora mqtt radio link mesh off grid messages" },
-  { id: "radio-licence", label: "Radio licence", inContents: true, keywords: "amateur licence license ham callsign licensed listen only" },
-  { id: "receivers", label: "Receivers", inContents: true, keywords: "aprs aircraft ships ais ads-b kiss sbs nmea decoder dire wolf port" },
-  { id: "backup", label: "Backup", inContents: true, keywords: "back up restore copy save everything password passphrase protect" },
-  { id: "automatic-backups", label: "Automatic backups", inContents: true, keywords: "backup schedule every night nas" },
+  {
+    id: "backup",
+    label: "Backup",
+    inContents: true,
+    keywords: "back up restore copy save everything password passphrase protect",
+    group: "safe",
+  },
+  { id: "automatic-backups", label: "Automatic backups", inContents: true, keywords: "backup schedule every night nas", group: "safe" },
   {
     id: "export",
     label: "Take everything out",
     inContents: true,
     keywords: "export take out everything leave my data open formats markdown vcard gpx geojson zip",
+    group: "safe",
   },
-  { id: "https", label: "HTTPS", inContents: true, keywords: "secure certificate padlock not secure warning" },
   {
     id: "access",
     label: "Who can use it",
     inContents: true,
     keywords: "wifi wi-fi network lan phones share sharing household password sign in accounts pin lock unlock guest read only",
+    group: "safe",
   },
-  { id: "updates", label: "Updates", inContents: true, keywords: "update upgrade newer release usb stick install" },
-  { id: "about", label: "This installation", inContents: true, keywords: "version memory processor about" },
+  { id: "https", label: "HTTPS", inContents: true, keywords: "secure certificate padlock not secure warning", group: "safe" },
+  { id: "updates", label: "Updates", inContents: true, keywords: "update upgrade newer release usb stick install", group: "safe" },
+  { id: "board", label: "Message board", inContents: true, keywords: "messages files keep", group: "radio" },
+  {
+    id: "mesh",
+    label: "Mesh radio",
+    inContents: true,
+    keywords: "meshtastic meshcore lora mqtt radio link mesh off grid messages",
+    group: "radio",
+  },
+  {
+    id: "radio-licence",
+    label: "Radio licence",
+    inContents: true,
+    keywords: "amateur licence license ham callsign licensed listen only",
+    group: "radio",
+  },
+  {
+    id: "receivers",
+    label: "Receivers",
+    inContents: true,
+    keywords: "aprs aircraft ships ais ads-b kiss sbs nmea decoder dire wolf port",
+    group: "radio",
+  },
+  { id: "downloads", label: "Downloads", inContents: true, keywords: "at once attempts speed slow connection", group: "tuning" },
+  { id: "indexing", label: "Reading documents", inContents: true, keywords: "ocr scans passages pdf pages indexing", group: "tuning" },
+  { id: "maps", label: "Maps", inContents: true, keywords: "map source terrain tiles", group: "tuning" },
+  { id: "about", label: "This installation", inContents: true, keywords: "version memory processor about", group: "tuning" },
 ];
 
 /**

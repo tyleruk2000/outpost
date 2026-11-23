@@ -2,7 +2,7 @@ import { formatBytes, type Settings } from "@outpost/shared";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { type ReactNode, useEffect } from "react";
 import { useLocation } from "react-router";
-import { settingsSections } from "@/components/nav";
+import { settingsGroups, settingsSections } from "@/components/nav";
 import { ErrorState, JumpLinks, Page, PageHeader } from "@/components/page";
 import { Segmented, Skeleton, Switch } from "@/components/ui/misc";
 import { AccessPinSetting } from "@/features/access/access-section";
@@ -64,10 +64,14 @@ function queueText(queue: string, counts: { running: number; queued: number; pau
 }
 
 /**
- * The sections in the order they come, so that a person on a phone can go straight to one. They are listed in
- * components/nav.ts, where the quick search finds each by its everyday words ("backup", "dark mode").
+ * The sections in the order they come, under the name of their group, so that a person new to Settings sees what
+ * is here and goes straight to one. They are listed in components/nav.ts, where the quick search finds each by its
+ * everyday words ("backup", "dark mode").
  */
-const SECTIONS = settingsSections.filter((section) => section.inContents);
+const GROUPS = settingsGroups.map((group) => ({
+  ...group,
+  items: settingsSections.filter((section) => section.inContents && section.group === group.id),
+}));
 
 export default function SettingsPage() {
   const settings = useSettings();
@@ -104,10 +108,41 @@ export default function SettingsPage() {
     };
   }, [hash, drawn]);
 
+  // Who can use it does not depend on the settings: it is shown even when they could not be fetched.
+  const accessSection = (
+    <SettingsSection
+      id="access"
+      title="Who can use this library"
+      description="Set when the server starts, not from this screen, so that nobody on the network can open Outpost up from a browser."
+    >
+      <dl>
+        <Fact label="Reachable from" value={info?.lanAccess ? "Every device on your local network" : "This device only"} />
+        <Fact label="Accounts" value="None" />
+        <Fact
+          label="Changing and deleting"
+          value={access.data ? (access.data.mode === "pin" ? "Needs the household PIN" : "Every device, no PIN") : "…"}
+        />
+      </dl>
+      <p className="text-small text-ink-muted">
+        {info?.lanAccess
+          ? "Outpost is shared with your network and has no sign-in, so use it only on a network where you trust everyone, such as your home. Do not forward its port to the internet. A household PIN keeps changing and deleting to the people who know it."
+          : "To let phones and other computers on your network use this library, set "}
+        {info?.lanAccess ? null : (
+          <>
+            <span className="font-mono text-[0.8125rem] [overflow-wrap:anywhere] text-ink">OUTPOST_LAN_ACCESS=true</span> in the{" "}
+            <span className="font-mono text-[0.8125rem] text-ink">.env</span> file and restart. There is no sign-in: everyone on that
+            network will be able to use and change it.
+          </>
+        )}
+      </p>
+      <AccessPinSetting />
+    </SettingsSection>
+  );
+
   return (
     <Page>
       <PageHeader title="Settings" under="/settings" />
-      <JumpLinks label="Sections of Settings" items={SECTIONS} />
+      <JumpLinks label="Sections of Settings" groups={GROUPS} className="mb-8" />
 
       <SettingsSection id="appearance" title="Appearance" description="Saved in this browser, so each device can have its own.">
         <SettingRow
@@ -147,9 +182,45 @@ export default function SettingsPage() {
           <Skeleton className="h-10" />
         </div>
       ) : settings.isError || !s ? (
-        <ErrorState error={settings.error} onRetry={() => settings.refetch()} />
+        <>
+          <ErrorState error={settings.error} onRetry={() => settings.refetch()} />
+          {accessSection}
+        </>
       ) : (
         <>
+          <SettingsSection id="search" title="Search">
+            <SettingRow
+              label="Search inside reference collections"
+              hint="Includes articles from installed collections such as Wikipedia in results. Turn off to search only your own documents and pages."
+              control={
+                <Switch
+                  checked={s["search.includeReference"]}
+                  disabled={disabled}
+                  onCheckedChange={(value) => save("search.includeReference", value)}
+                  aria-label="Search inside reference collections"
+                />
+              }
+            />
+          </SettingsSection>
+
+          <SemanticSection settings={s} disabled={disabled} save={save} />
+
+          <AnswersSection settings={s} disabled={disabled} save={save} />
+          <ToolsSection settings={s} disabled={disabled} save={save} />
+
+          <BackupSection />
+          <ExportSection />
+          {accessSection}
+
+          <HttpsSection settings={s} disabled={disabled} save={save} />
+
+          <UpdateSection />
+
+          <BoardSettingsSection settings={s} disabled={disabled} save={save} />
+          <MeshSettingsSection />
+          <RadioLicenceSettingsSection settings={s} disabled={disabled} save={save} />
+          <ReceiversSettingsSection />
+
           <SettingsSection id="downloads" title="Downloads" description="How hard Outpost works when fetching collections and maps.">
             <SettingRow
               htmlFor="dl-concurrency"
@@ -265,26 +336,6 @@ export default function SettingsPage() {
             />
           </SettingsSection>
 
-          <SettingsSection id="search" title="Search">
-            <SettingRow
-              label="Search inside reference collections"
-              hint="Includes articles from installed collections such as Wikipedia in results. Turn off to search only your own documents and pages."
-              control={
-                <Switch
-                  checked={s["search.includeReference"]}
-                  disabled={disabled}
-                  onCheckedChange={(value) => save("search.includeReference", value)}
-                  aria-label="Search inside reference collections"
-                />
-              }
-            />
-          </SettingsSection>
-
-          <SemanticSection settings={s} disabled={disabled} save={save} />
-
-          <AnswersSection settings={s} disabled={disabled} save={save} />
-          <ToolsSection settings={s} disabled={disabled} save={save} />
-
           <SettingsSection
             id="maps"
             title="Maps"
@@ -320,48 +371,8 @@ export default function SettingsPage() {
               }
             />
           </SettingsSection>
-
-          <BoardSettingsSection settings={s} disabled={disabled} save={save} />
-          <MeshSettingsSection />
-          <RadioLicenceSettingsSection settings={s} disabled={disabled} save={save} />
-          <ReceiversSettingsSection />
-
-          <BackupSection />
-          <ExportSection />
-
-          <HttpsSection settings={s} disabled={disabled} save={save} />
-
-          <UpdateSection />
         </>
       )}
-
-      <SettingsSection
-        id="access"
-        title="Who can use this library"
-        description="Set when the server starts, not from this screen, so that nobody on the network can open Outpost up from a browser."
-      >
-        <dl>
-          <Fact label="Reachable from" value={info?.lanAccess ? "Every device on your local network" : "This device only"} />
-          <Fact label="Accounts" value="None" />
-          <Fact
-            label="Changing and deleting"
-            value={access.data ? (access.data.mode === "pin" ? "Needs the household PIN" : "Every device, no PIN") : "…"}
-          />
-        </dl>
-        <p className="text-small text-ink-muted">
-          {info?.lanAccess
-            ? "Outpost is shared with your network and has no sign-in, so use it only on a network where you trust everyone, such as your home. Do not forward its port to the internet. A household PIN keeps changing and deleting to the people who know it."
-            : "To let phones and other computers on your network use this library, set "}
-          {info?.lanAccess ? null : (
-            <>
-              <span className="font-mono text-[0.8125rem] [overflow-wrap:anywhere] text-ink">OUTPOST_LAN_ACCESS=true</span> in the{" "}
-              <span className="font-mono text-[0.8125rem] text-ink">.env</span> file and restart. There is no sign-in: everyone on that
-              network will be able to use and change it.
-            </>
-          )}
-        </p>
-        <AccessPinSetting />
-      </SettingsSection>
 
       <SettingsSection id="about" title="This installation" description="What Outpost is using on this device right now.">
         {info ? (

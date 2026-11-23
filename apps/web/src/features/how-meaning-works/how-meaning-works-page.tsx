@@ -15,6 +15,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { ErrorState, JumpLinks, Page, PageHeader } from "@/components/page";
 import { Progress, Skeleton } from "@/components/ui/misc";
+import { Table, TableHead, Td, Th, Tr } from "@/components/ui/table";
 import { indexCost } from "@/features/settings/semantic-options";
 import { api } from "@/lib/api";
 import { usePageVisible } from "@/lib/page-visible";
@@ -207,39 +208,33 @@ function Together() {
 
       <MergePlate words={BY_WORDS} meaning={BY_MEANING} together={fused.map((entry) => entry.name)} />
 
-      <div className="my-5 overflow-x-auto">
-        <table className="w-full min-w-[20rem] text-small">
-          <caption className="mb-2 text-left text-small text-ink-muted">How each passage in the example scores</caption>
-          <thead>
-            <tr className="border-b border-border text-left text-ink-muted">
-              <th scope="col" className="py-1.5 pr-3 font-medium">
-                Passage
-              </th>
-              <th scope="col" className="py-1.5 pr-3 font-medium">
-                By words
-              </th>
-              <th scope="col" className="py-1.5 pr-3 font-medium">
-                By meaning
-              </th>
-              <th scope="col" className="py-1.5 font-medium">
-                Points
-              </th>
-            </tr>
-          </thead>
+      <div className="my-5">
+        <p aria-hidden className="mb-2 text-small text-ink-muted">
+          How each passage in the example scores
+        </p>
+        <Table label="How each passage in the example scores" className="min-w-[20rem]">
+          <TableHead>
+            <Tr>
+              <Th>Passage</Th>
+              <Th numeric>By words</Th>
+              <Th numeric>By meaning</Th>
+              <Th numeric>Points</Th>
+            </Tr>
+          </TableHead>
           <tbody>
             {fused.map((entry) => (
-              <tr key={entry.name} className="border-b border-border align-baseline">
-                <th scope="row" className="py-1.5 pr-3 text-left font-medium text-ink">
+              <Tr key={entry.name}>
+                <Th scope="row" className="py-2.5 align-top text-ink">
                   {entry.name}
                   <span className="block font-normal text-ink-muted">{PASSAGE_NAMES[entry.name]}</span>
-                </th>
-                <td className="tabular py-1.5 pr-3 text-ink">{share(wordsWeight, entry.places[0]!) ?? "not found"}</td>
-                <td className="tabular py-1.5 pr-3 text-ink">{share(meaningWeight, entry.places[1]!) ?? "not found"}</td>
-                <td className="tabular py-1.5 text-ink">{entry.score.toFixed(4)}</td>
-              </tr>
+                </Th>
+                <Td numeric>{share(wordsWeight, entry.places[0]!) ?? "not found"}</Td>
+                <Td numeric>{share(meaningWeight, entry.places[1]!) ?? "not found"}</Td>
+                <Td numeric>{entry.score.toFixed(4)}</Td>
+              </Tr>
             ))}
           </tbody>
-        </table>
+        </Table>
       </div>
 
       <div className="prose">

@@ -362,7 +362,7 @@ export function TrustSteps({ certificate, open }: { certificate: TrustedCertific
       {DEVICES.map((device) => (
         <details key={device.id} className="group" open={device.id === open}>
           <summary className="flex min-h-11 cursor-default flex-wrap items-center gap-2 py-2 text-body font-medium text-ink marker:content-none hover:text-primary [&::-webkit-details-marker]:hidden">
-            <ChevronRight aria-hidden className="size-4 text-ink-muted transition-transform duration-150 group-open:rotate-90" />
+            <ChevronRight aria-hidden className="size-4 text-ink-muted transition-transform group-open:rotate-90" />
             {device.name}
             {device.id === open ? <Badge tone="primary">This device</Badge> : null}
           </summary>

@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import RadioPage from "@/features/radio/radio-page";
 import { ThemeProvider } from "@/lib/theme";
 import { CommandPalette } from "./command-palette";
-import { allNav, everyScreen } from "./nav";
+import { allNav, everyScreen, settingsGroups, settingsSections } from "./nav";
 import { Sidebar } from "./sidebar";
 import { TooltipProvider } from "./ui/misc";
 
@@ -28,6 +28,25 @@ const NOT_SCREENS = new Set([
   // The household binder's old address, which opens the household book.
   "prepare/binder",
 ]);
+
+describe("the sections of Settings", () => {
+  it("come group by group, every group with something in the contents, so the screen's order and its contents agree", () => {
+    const order = settingsGroups.map((group) => group.id);
+    const groupsInOrder = settingsSections.map((section) => order.indexOf(section.group));
+    expect(groupsInOrder.every((at) => at >= 0)).toBe(true);
+    expect(groupsInOrder).toEqual([...groupsInOrder].sort((a, b) => a - b));
+    for (const group of settingsGroups) {
+      expect(
+        settingsSections.some((section) => section.group === group.id && section.inContents),
+        group.id,
+      ).toBe(true);
+    }
+    // What most people come for is before the radio and the fine-tuning.
+    const at = (id: string) => settingsSections.findIndex((section) => section.id === id);
+    expect(at("backup")).toBeLessThan(at("mesh"));
+    expect(at("access")).toBeLessThan(at("downloads"));
+  });
+});
 
 describe("the navigation's description of every screen", () => {
   it("reads the routes it checks from app.tsx", () => {
