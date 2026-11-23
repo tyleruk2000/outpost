@@ -11,7 +11,7 @@ import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "./ui/me
 import { Tooltip } from "./ui/misc";
 
 const rowClass =
-  "group flex min-h-9 items-center gap-3 rounded-control px-2.5 py-1.5 text-[0.9375rem] text-spine-ink-muted transition-colors duration-150 hover:bg-spine-raised hover:text-spine-ink focus-visible:outline-spine-ink";
+  "group flex min-h-9 pointer-coarse:min-h-11 items-center gap-3 rounded-control px-2.5 py-1.5 text-[0.9375rem] text-spine-ink-muted transition-colors duration-(--duration-fast) hover:bg-spine-raised hover:text-spine-ink focus-visible:outline-spine-ink";
 const litClass = "bg-spine-active font-medium text-spine-ink hover:bg-spine-active";
 
 /** What a person opened or closed, by the path of the screen the group is under. Kept on this device. */
@@ -124,7 +124,7 @@ function ParentRow({
             aria-expanded={open}
             aria-controls={open ? listId : undefined}
             aria-label={`${open ? "Hide" : "Show"} the screens under ${label}`}
-            className="absolute top-1/2 right-1 grid size-7 -translate-y-1/2 place-content-center rounded-[4px] text-spine-ink-muted hover:bg-spine-raised hover:text-spine-ink focus-visible:outline-spine-ink"
+            className="absolute top-1/2 right-1 grid size-7 pointer-coarse:size-10 -translate-y-1/2 place-content-center rounded-[4px] text-spine-ink-muted hover:bg-spine-raised hover:text-spine-ink focus-visible:outline-spine-ink"
           >
             <ChevronRight
               aria-hidden
@@ -144,7 +144,7 @@ function ParentRow({
                 className={({ isActive }) =>
                   cn(
                     // Indented so that the name starts under its parent's name.
-                    "flex min-h-8 items-center rounded-control py-1 pr-2.5 pl-10 text-[0.875rem] text-spine-ink-muted transition-colors duration-150 hover:bg-spine-raised hover:text-spine-ink focus-visible:outline-spine-ink",
+                    "flex min-h-8 pointer-coarse:min-h-11 items-center rounded-control py-1 pr-2.5 pl-10 text-[0.875rem] text-spine-ink-muted transition-colors duration-(--duration-fast) hover:bg-spine-raised hover:text-spine-ink focus-visible:outline-spine-ink",
                     isActive && litClass,
                   )
                 }
@@ -208,11 +208,16 @@ function IconRow({ item, label, lit, pathname }: { item: NavItem; label: string;
 
 export function Sidebar({
   collapsed,
+  over = false,
+  onClose,
   onToggle,
   onOpenSearch,
   notesTree,
 }: {
   collapsed: boolean;
+  /** Open over the page rather than beside it (a tablet's width), with the page dimmed behind; Escape closes it. */
+  over?: boolean;
+  onClose?: () => void;
   onToggle: () => void;
   onOpenSearch: () => void;
   /** The page tree, shown under Notes when the spine is expanded. */
@@ -264,6 +269,20 @@ export function Sidebar({
 
   const moreBelow = useMoreBelow(regionRef, collapsed, pathname, notesTree);
 
+  // Open over the page: Escape closes it, and the focus goes back to the button that opened it.
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!over) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      event.preventDefault();
+      onClose?.();
+      toggleRef.current?.focus();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [over, onClose]);
+
   const row = (item: NavItem, trailing?: ReactNode) => {
     const label = item.label;
     const lit = isOwnScreen(pathname, item);
@@ -297,95 +316,113 @@ export function Sidebar({
     </nav>
   );
   return (
-    <aside
-      aria-label="Main"
-      className={cn(
-        "sticky top-0 z-(--z-nav) hidden h-dvh shrink-0 flex-col bg-spine text-spine-ink transition-[width] duration-200 ease-out md:flex",
-        // 16rem, but at larger text no more than 22% of the window (still 256 px at least): at Largest on a 1280 px
-        // window it took 384 px, and 512 px at 200%, from the screen beside it.
-        collapsed ? "w-[60px]" : "w-[min(16rem,max(256px,22vw))]",
-      )}
-    >
-      <div className={cn("flex h-14 shrink-0 items-center gap-2 px-3", collapsed && "justify-center px-0")}>
-        {!collapsed ? (
-          <Link to="/" className="flex min-w-0 flex-1 items-center gap-2.5 rounded-control px-1.5 py-1 focus-visible:outline-spine-ink">
-            <LogoMark />
-            <span className="font-title text-[1.1875rem] tracking-[-0.01em]">Outpost</span>
-          </Link>
-        ) : null}
-        <Tooltip label={collapsed ? "Expand sidebar" : "Collapse sidebar"} shortcut={`${modKey} \\`} side="right">
+    <>
+      {over ? (
+        <>
+          {/* The rail's room, kept while the whole sidebar lies over the page, so that the page does not move. */}
+          <div aria-hidden className="box-content hidden w-[60px] shrink-0 pl-[env(safe-area-inset-left)] md:block" />
           <button
             type="button"
-            onClick={onToggle}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            aria-expanded={!collapsed}
-            className="grid size-8 place-content-center rounded-control text-spine-ink-muted hover:bg-spine-raised hover:text-spine-ink focus-visible:outline-spine-ink"
-          >
-            {collapsed ? (
-              <PanelLeftOpen className="size-[18px]" strokeWidth={1.6} />
-            ) : (
-              <PanelLeftClose className="size-[18px]" strokeWidth={1.6} />
-            )}
-          </button>
-        </Tooltip>
-      </div>
-
-      <div className={cn("shrink-0 px-3 pb-2", collapsed && "px-2")}>
-        <button
-          type="button"
-          onClick={onOpenSearch}
-          // Named by its words where they show, so that what is read out (and what voice control is told) is what is seen.
-          aria-label={collapsed ? "Quick search" : undefined}
-          aria-keyshortcuts="Control+K Meta+K"
-          className={cn(
-            "flex h-9 w-full items-center gap-2.5 rounded-control border border-spine-border bg-spine-raised/60 px-2.5 text-[0.9375rem] text-spine-ink-muted transition-colors hover:border-spine-ink-muted/40 hover:text-spine-ink focus-visible:outline-spine-ink",
-            collapsed && "justify-center border-transparent bg-transparent px-0",
-          )}
-        >
-          <Search aria-hidden className="size-[17px] shrink-0" strokeWidth={1.6} />
+            tabIndex={-1}
+            aria-label="Close the sidebar"
+            onClick={onClose}
+            className="fixed inset-0 z-(--z-overlay) hidden cursor-default bg-overlay animate-fade md:block"
+          />
+        </>
+      ) : null}
+      <aside
+        aria-label="Main"
+        className={cn(
+          "sticky top-0 z-(--z-nav) box-content hidden h-dvh shrink-0 flex-col bg-spine pl-[env(safe-area-inset-left)] text-spine-ink transition-[width] duration-(--duration-slow) md:flex",
+          // 16rem, but at larger text no more than 22% of the window (still 256 px at least): at Largest on a 1280 px
+          // window it took 384 px, and 512 px at 200%, from the screen beside it.
+          collapsed ? "w-[60px]" : "w-[min(16rem,max(256px,22vw))]",
+          // Over the page on a tablet, at its full width whatever the window's, above the dimmed page.
+          over && "fixed inset-y-0 left-0 z-(--z-dialog) w-[min(18rem,calc(100vw-4rem))] shadow-dialog",
+        )}
+      >
+        <div className={cn("flex h-14 shrink-0 items-center gap-2 px-3", collapsed && "justify-center px-0")}>
           {!collapsed ? (
-            <>
-              <span className="flex-1 text-left">Quick search</span>
-              <kbd aria-hidden className="font-mono text-micro text-spine-ink-muted/80">
-                {modKey} K
-              </kbd>
-            </>
+            <Link to="/" className="flex min-w-0 flex-1 items-center gap-2.5 rounded-control px-1.5 py-1 focus-visible:outline-spine-ink">
+              <LogoMark />
+              <span className="font-title text-[1.1875rem] tracking-[-0.01em]">Outpost</span>
+            </Link>
           ) : null}
-        </button>
-        {/* With two or more households, which one is current, and a way to change it. */}
-        <HouseholdSwitcher collapsed={collapsed} className="mt-1" />
-      </div>
+          <Tooltip label={collapsed ? "Expand sidebar" : "Collapse sidebar"} shortcut={`${modKey} \\`} side="right">
+            <button
+              ref={toggleRef}
+              type="button"
+              onClick={onToggle}
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-expanded={!collapsed}
+              className="grid size-8 pointer-coarse:size-11 place-content-center rounded-control text-spine-ink-muted hover:bg-spine-raised hover:text-spine-ink focus-visible:outline-spine-ink"
+            >
+              {collapsed ? (
+                <PanelLeftOpen className="size-[18px]" strokeWidth={1.6} />
+              ) : (
+                <PanelLeftClose className="size-[18px]" strokeWidth={1.6} />
+              )}
+            </button>
+          </Tooltip>
+        </div>
 
-      {/* The one part that scrolls: the screens, then the tree of pages. What looks after the library stays in view below. */}
-      <div className="relative flex min-h-0 flex-1 flex-col">
-        <div
-          ref={regionRef}
-          className={cn(
-            "scroll-quiet flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pb-2 [scrollbar-color:var(--spine-border)_transparent]",
-            collapsed && "px-2",
-          )}
-        >
-          <nav ref={knowledgeRef} aria-label="Knowledge">
-            <ul className="grid gap-0.5">{knowledgeNav.map((item) => row(item))}</ul>
-          </nav>
-          <div ref={treeRef} className="mt-1 flex-1">
-            {!collapsed ? notesTree : null}
+        <div className={cn("shrink-0 px-3 pb-2", collapsed && "px-2")}>
+          <button
+            type="button"
+            onClick={onOpenSearch}
+            // Named by its words where they show, so that what is read out (and what voice control is told) is what is seen.
+            aria-label={collapsed ? "Quick search" : undefined}
+            aria-keyshortcuts="Control+K Meta+K"
+            className={cn(
+              "flex h-9 pointer-coarse:h-11 w-full items-center gap-2.5 rounded-control border border-spine-border bg-spine-raised/60 px-2.5 text-[0.9375rem] text-spine-ink-muted transition-colors hover:border-spine-ink-muted/40 hover:text-spine-ink focus-visible:outline-spine-ink",
+              collapsed && "justify-center border-transparent bg-transparent px-0",
+            )}
+          >
+            <Search aria-hidden className="size-[17px] shrink-0" strokeWidth={1.6} />
+            {!collapsed ? (
+              <>
+                <span className="flex-1 text-left">Quick search</span>
+                <kbd aria-hidden className="font-mono text-micro text-spine-ink-muted/80">
+                  {modKey} K
+                </kbd>
+              </>
+            ) : null}
+          </button>
+          {/* With two or more households, which one is current, and a way to change it. */}
+          <HouseholdSwitcher collapsed={collapsed} className="mt-1" />
+        </div>
+
+        {/* The one part that scrolls: the screens, then the tree of pages. What looks after the library stays in view below. */}
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          <div
+            ref={regionRef}
+            className={cn(
+              "scroll-quiet flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pb-2 [scrollbar-color:var(--spine-border)_transparent]",
+              collapsed && "px-2",
+            )}
+          >
+            <nav ref={knowledgeRef} aria-label="Knowledge">
+              <ul className="grid gap-0.5">{knowledgeNav.map((item) => row(item))}</ul>
+            </nav>
+            <div ref={treeRef} className="mt-1 flex-1">
+              {!collapsed ? notesTree : null}
+            </div>
           </div>
+          {/* More of the screens or the tree is below: said by a fade into the spine, over the last line shown. */}
+          <div
+            aria-hidden
+            data-more-below={moreBelow || undefined}
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-linear-to-b from-transparent to-spine opacity-0 transition-opacity duration-150 data-more-below:opacity-100"
+          />
         </div>
-        {/* More of the screens or the tree is below: said by a fade into the spine, over the last line shown. */}
-        <div
-          aria-hidden
-          data-more-below={moreBelow || undefined}
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-linear-to-b from-transparent to-spine opacity-0 transition-opacity duration-150 data-more-below:opacity-100"
-        />
-      </div>
 
-      <div className={cn("shrink-0 border-t border-spine-border px-3 pt-2 pb-2", collapsed && "px-2")}>
-        <div ref={upkeepRef} className="mb-1 border-b border-spine-border pb-2">
-          {upkeep}
+        <div className={cn("shrink-0 border-t border-spine-border px-3 pt-2 pb-2", collapsed && "px-2")}>
+          <div ref={upkeepRef} className="mb-1 border-b border-spine-border pb-2">
+            {upkeep}
+          </div>
+          <Lamp collapsed={collapsed} />
         </div>
-        <Lamp collapsed={collapsed} />
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 }

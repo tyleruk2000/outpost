@@ -2,6 +2,8 @@
 
 How screens in `apps/web` are put together. Read `PRODUCT.md` and `DESIGN.md` first.
 `features/storage/storage-page.tsx` is the reference screen: match its structure and tone.
+[design-quality.md](design-quality.md) is the checklist a screen is held to before it is
+done (states, touch, forms, tables, motion) and names the shared part for each.
 
 ## Where things are
 
@@ -11,7 +13,8 @@ apps/web/src/
   styles/base.css        Tailwind v4 theme on the tokens, base rules, the type scale
   styles/prose.css       reading and writing surfaces (.prose)
   components/ui/         controls: button, input, dialog, menu, tabs, select, switch, checkbox,
-                         radio, progress, badge, tooltip, popover, segmented, skeleton, kbd
+                         radio, progress, badge, tooltip, popover, segmented, skeleton, kbd,
+                         table (Table, TableHead, Tr, Th, Td)
   components/page.tsx    Page, PageHeader, Section, EmptyState, Notice, Rows, ErrorState,
                          BackLink, Joined, JumpLinks, Disclosure
   components/nav.ts      every screen and where it belongs
@@ -20,6 +23,8 @@ apps/web/src/
   lib/use-debounced.ts   useDebounced(value, ms)
   lib/page-visible.ts    usePageVisible(), isPageVisible(): stop clocks while hidden
   lib/use-width.ts       useWidth(fallback): an element's width, for hand-drawn charts
+  lib/use-media-query.ts useMediaQuery(query), TABLET: a choice CSS cannot make alone
+  lib/query-client.ts    the query client's defaults (asked always; fresh for 30 s)
   lib/clipboard.ts       copyText(text), with the fallback for plain http
   lib/events.tsx         live updates: server events to query keys
   lib/queries.ts         shared hooks (system, storage, jobs, settings)
@@ -137,7 +142,9 @@ their parents.
 
 ## Every screen has all of its states
 
-- **Loading:** `Skeleton`s shaped like the content, not a spinner.
+- **Loading:** `Skeleton`s shaped like the content, not a spinner. A skeleton holds its
+  room at once and is seen only after 300 ms, so a quick answer shows no flash. A spinner
+  beside a field that refetches as a person types takes `delay` for the same reason.
 - **Empty:** `EmptyState` saying what belongs here, with a first action (`compact`,
   `level={3}` inside a section). A filter that matches nothing says so, with a way to
   clear it.
@@ -157,6 +164,11 @@ their parents.
   progress is patched into `useActiveJobs` from the event.
 - Types from `@outpost/shared`; never redeclared.
 - `useMutation`, invalidate on success, `notify.error` on error.
+- A list whose query key changes as a person types or filters keeps the last answer on
+  screen while the next comes: `placeholderData: keepPreviousData`. Never for a screen of
+  one thing by its id, which would show another's data for a moment.
+- Queries are asked whatever `navigator.onLine` says (`networkMode: "always"` in
+  `lib/query-client.ts`): the server is on this network, not the internet.
 - Long work is a server job shown with `Progress` from real numbers. No fake progress,
   no control that does nothing.
 
@@ -206,7 +218,13 @@ secret (a one-time pad) gets none of these buttons.
   `useFocusReturn`). A dialog without a description is described by nothing.
 - App shortcuts (`/`, Ctrl/⌘ K, `g` then a letter, Ctrl/⌘ \) act only outside fields,
   menus, lists and dialogs; a screen's own keys follow the same rule.
-- Mobile-first from 320 px. Leave `Page`'s bottom padding. Touch targets ≥44 px.
+- Mobile-first from 320 px. Leave `Page`'s bottom padding. Touch targets ≥44 px: the shared
+  controls grow to 44 px under 768 px (`max-md:`) and wherever the pointer is a finger
+  on a tablet (`md:pointer-coarse:`); a control of a screen's own does the same.
+- From 768 to 1023 px the sidebar is a rail of icons (`TABLET` in `lib/use-media-query.ts`):
+  a screen there has the width less 60 px.
+- On a phone a `DialogContent` or `ConfirmDialog` is a sheet from the foot of the screen;
+  a long form that wants the whole screen passes its own `max-md:` classes (`phoneSheet`).
 - **A full-height screen** leaves `pb-[calc(3.5rem+env(safe-area-inset-bottom))]`, not
   `pb-14`. Heights in `dvh`, never `vh`.
 - **A row of names wraps** rather than scrolling sideways. Check phones at root font

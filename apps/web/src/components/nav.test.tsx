@@ -213,7 +213,7 @@ describe("the quick search's Go to list", () => {
     expect(within(goTo).getAllByRole("option")).toHaveLength(everyScreen.length);
     expect(within(goTo).getByRole("option", { name: "Radio: Repeaters" })).toBeInTheDocument();
 
-    await user.type(screen.getByPlaceholderText(/Search your library/), "repeat");
+    await user.type(screen.getByPlaceholderText(/Search, or go to a screen/), "repeat");
     expect(within(screen.getByRole("group", { name: "Go to" })).getAllByRole("option")[0]).toHaveTextContent("Radio: Repeaters");
     await user.keyboard("{Enter}");
     // Outside the open dialog, so hidden from the accessibility tree while it is open.
@@ -237,7 +237,7 @@ describe("the quick search's Go to list", () => {
         </ThemeProvider>
       </QueryClientProvider>,
     );
-    const field = screen.getByPlaceholderText(/Search your library/);
+    const field = screen.getByPlaceholderText(/Search, or go to a screen/);
     for (const typed of ["solitaire", "patience", "klondike"]) {
       await user.clear(field);
       await user.type(field, typed);

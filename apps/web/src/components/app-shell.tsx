@@ -6,10 +6,12 @@ import { ClockNotice } from "@/features/device/clock-notice";
 import { ReachNotice } from "@/features/kept/reach";
 import { RecordingIndicator } from "@/features/maps/recording/indicator";
 import { notify } from "@/lib/notify";
+import { TABLET, useMediaQuery } from "@/lib/use-media-query";
 import { MobileNav } from "./mobile-nav";
 import { allNav } from "./nav";
 import { RouteAnnouncer } from "./route-announcer";
 import { ScreenErrorBoundary } from "./screen-error";
+import { useScrollMemory } from "./scroll-memory";
 import { Sidebar } from "./sidebar";
 import { Skeleton } from "./ui/misc";
 import { UpdateNotice } from "./update-notice";
@@ -95,9 +97,23 @@ export function AppShell({ notesTree, onNewPage }: { notesTree?: ReactNode; onNe
     }
   });
   const pendingGo = useRef<number | undefined>(undefined);
+  const tabletNow = useRef(false);
   const mainRef = useRef<HTMLElement>(null);
 
+  // On a tablet's width the sidebar is a rail of icons, and the whole of it opens over the page when asked for and
+  // closes again on the next screen: beside the page it left a map 160 px wide at 768 px. The choice kept on this
+  // device (folded or not) is for wider screens.
+  const tablet = useMediaQuery(TABLET);
+  tabletNow.current = tablet;
+  const [drawer, setDrawer] = useState(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: closed on every change of screen, by design
+  useEffect(() => setDrawer(false), [location.pathname, tablet]);
+
   const toggleSidebar = useCallback(() => {
+    if (tabletNow.current) {
+      setDrawer((open) => !open);
+      return;
+    }
     setCollapsed((current) => {
       try {
         localStorage.setItem("outpost.sidebar", current ? "open" : "collapsed");
@@ -151,15 +167,8 @@ export function AppShell({ notesTree, onNewPage }: { notesTree?: ReactNode; onNe
     return () => window.removeEventListener("keydown", onKey);
   }, [navigate, toggleSidebar]);
 
-  // A new screen starts at its top. At desktop width the content area scrolls; on a phone
-  // the window does, and a screen opened from a scrolled list used to open part-way down.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: runs on every path change by design
-  useEffect(() => {
-    mainRef.current?.scrollTo?.({ top: 0 });
-    // Not when the address names a place on the screen ("…#backup"): the screen goes there itself.
-    const page = document.scrollingElement;
-    if (page && !location.hash) page.scrollTop = 0;
-  }, [location.pathname]);
+  // A new screen starts at its top; Back and Forward return to where a screen was left (components/scroll-memory.ts).
+  useScrollMemory();
 
   return (
     <div className="flex min-h-dvh bg-page max-md:flex-col">
@@ -169,7 +178,17 @@ export function AppShell({ notesTree, onNewPage }: { notesTree?: ReactNode; onNe
       >
         Skip to content
       </a>
-      <Sidebar collapsed={collapsed} onToggle={toggleSidebar} onOpenSearch={() => setPaletteOpen(true)} notesTree={notesTree} />
+      <Sidebar
+        collapsed={tablet ? !drawer : collapsed}
+        over={tablet && drawer}
+        onClose={() => setDrawer(false)}
+        onToggle={toggleSidebar}
+        onOpenSearch={() => {
+          setDrawer(false);
+          setPaletteOpen(true);
+        }}
+        notesTree={notesTree}
+      />
       <MobileNav onOpenSearch={() => setPaletteOpen(true)} />
       <main id="content" ref={mainRef} tabIndex={-1} className="min-w-0 flex-1 focus:outline-none">
         <UpdateNotice />

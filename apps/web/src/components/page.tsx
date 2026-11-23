@@ -9,7 +9,16 @@ import { ScreensUnder } from "./screens-under";
 /** Standard screen frame: a width, consistent gutters, and room for the mobile bar. */
 export function Page({ width = "wide", className, ...props }: ComponentProps<"div"> & { width?: "reading" | "wide" | "full" }) {
   const max = { reading: "max-w-[46rem]", wide: "max-w-[70rem]", full: "max-w-none" }[width];
-  return <div className={cn("mx-auto w-full px-5 pt-8 pb-24 md:px-10 md:pt-12 md:pb-16", max, className)} {...props} />;
+  return (
+    <div
+      className={cn(
+        "mx-auto w-full pt-8 pr-[max(1.25rem,env(safe-area-inset-right))] pb-24 pl-[max(1.25rem,env(safe-area-inset-left))] md:px-10 md:pt-12 md:pb-16",
+        max,
+        className,
+      )}
+      {...props}
+    />
+  );
 }
 
 /**

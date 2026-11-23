@@ -76,7 +76,14 @@ test.describe("on a phone", () => {
     // Grouped as the sidebar is: the screens for finding and reading, then those that look after the library.
     // A screen with others under it is a heading; the screens under it are folded away until asked for.
     const groups: Array<[string, string, Array<[string, string]>]> = [
-      ["Search", "/search", [["How search works", "/search/how-it-works"]]],
+      [
+        "Search",
+        "/search",
+        [
+          ["How search works", "/search/how-it-works"],
+          ["How search by meaning works", "/search/how-meaning-works"],
+        ],
+      ],
       // A tab, listed again as the heading of the screen under it.
       ["Library", "/library", [["Import from Calibre", "/library/calibre"]]],
       // A tab, listed again as the heading of the screen under it.

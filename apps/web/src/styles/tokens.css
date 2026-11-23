@@ -279,9 +279,18 @@
   --radius-control: 5px;
   --radius-panel: 8px;
 
-  /* Motion */
+  /*
+   * Motion: one easing and three durations, nothing else (DESIGN.md, Motion). `fast` is a colour or
+   * border answering the pointer; the plain one is the default of every `transition-*` utility and of
+   * anything opening in place (a menu, a dialog, a chevron turning); `slow` is something that travels
+   * (a sheet rising, the sidebar folding). A press answers at once, with no duration of its own.
+   * Skeletons and spinners wait `--reveal-delay` before showing, so work that is over sooner shows none.
+   */
   --ease-out: cubic-bezier(0.25, 1, 0.5, 1);
+  --duration-fast: 120ms;
   --duration: 140ms;
+  --duration-slow: 200ms;
+  --reveal-delay: 300ms;
 
   /* Type */
   --font-sans: "Atkinson Hyperlegible Next Variable", "Atkinson Hyperlegible Next", system-ui, -apple-system, "Segoe UI", sans-serif;

@@ -3,6 +3,7 @@ import { Dialog as Sheet } from "radix-ui";
 import { useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router";
 import { HouseholdSwitcher } from "@/features/households/switcher";
+import { useActiveJobs } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import { useFocusClearOfBars } from "./focus-clear";
 import { Lamp } from "./lamp";
@@ -122,6 +123,9 @@ const tab =
 export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const { pathname } = useLocation();
+  // Downloads running: the lamp on More, as the sidebar has their number beside Downloads and tasks.
+  const jobs = useActiveJobs();
+  const downloads = jobs.data?.filter((job) => job.queue === "download" && job.state !== "paused").length ?? 0;
   const tabs = knowledgeNav.filter((item) => TABS.includes(item.to));
   // Everything the four tabs do not hold, in the order of the sidebar and in its two parts. A tab with screens
   // under it (Notes) is listed again as their heading, so that Import reads as part of Notes here as it does on a
@@ -137,7 +141,10 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
 
   return (
     <>
-      <header ref={header} className="sticky top-0 z-(--z-nav) flex h-13 items-center gap-2 bg-spine px-4 text-spine-ink md:hidden">
+      <header
+        ref={header}
+        className="sticky top-0 z-(--z-nav) flex h-13 items-center gap-2 bg-spine pr-[max(1rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))] text-spine-ink md:hidden"
+      >
         <Link to="/" className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5">
           <LogoMark />
           <span className="font-title text-lead">Outpost</span>
@@ -155,7 +162,7 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
       <nav
         ref={bar}
         aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-(--z-nav) flex border-t border-border bg-page/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm md:hidden"
+        className="fixed inset-x-0 bottom-0 z-(--z-nav) flex border-t border-border bg-page/95 pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] backdrop-blur-sm md:hidden"
       >
         {tabs.map((item) => (
           <NavLink key={item.to} to={item.to} end={item.to === "/"} className={tab}>
@@ -165,8 +172,14 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
         ))}
         <Sheet.Root open={moreOpen} onOpenChange={setMoreOpen}>
           <Sheet.Trigger className={cn(tab, inMore && "text-primary")} aria-current={inMore ? "true" : undefined}>
-            <Ellipsis aria-hidden className="size-[22px]" strokeWidth={1.6} />
+            <span className="relative block">
+              <Ellipsis aria-hidden className="size-[22px]" strokeWidth={1.6} />
+              {downloads > 0 ? (
+                <span aria-hidden data-lamp className="absolute -top-0.5 -right-1.5 size-2 rounded-full bg-lamp ring-2 ring-page" />
+              ) : null}
+            </span>
             More
+            {downloads > 0 ? <span className="sr-only">, {downloads === 1 ? "a download" : `${downloads} downloads`} running</span> : null}
           </Sheet.Trigger>
           <Sheet.Portal>
             <Sheet.Overlay className="fixed inset-0 z-(--z-overlay) bg-overlay data-[state=open]:animate-fade" />

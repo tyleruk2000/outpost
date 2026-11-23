@@ -120,8 +120,9 @@ export function CommandPalette({
   const toDownload = stillSearching ? [] : (results.data?.results.filter((result) => result.kind === "catalog") ?? []);
 
   const everyAction: PaletteAction[] = [
-    { id: "new-page", label: "New page", icon: Plus, run: () => run(onNewPage) },
+    // First is what Enter does with nothing typed: a way somewhere, never something made.
     { id: "add-documents", label: "Add documents", icon: Upload, run: () => go("/library?upload=1") },
+    { id: "new-page", label: "New page", icon: Plus, run: () => run(onNewPage) },
     { id: "save-web-page", label: "Save a web page", icon: Globe, run: () => go("/library?save=page") },
     { id: "import", label: "Import pages from Markdown or Notion", icon: FolderInput, run: () => go("/import") },
     { id: "free-space", label: "Free up space and clean up", icon: Eraser, run: () => go("/storage/manage") },
@@ -138,6 +139,18 @@ export function CommandPalette({
   const guides = useGuideIndex(open);
   const places = typed ? [...findPlaces(typed), ...findGuides(typed, guides)] : everyPlace.filter((place) => !place.section);
   const actions = everyAction.filter((action) => matchesWords(`${action.label}${action.keywords ? ` ${action.keywords}` : ""}`, typed));
+
+  const doGroup =
+    actions.length > 0 ? (
+      <Command.Group heading="Do" className={groupClass}>
+        {actions.map((action) => (
+          <Command.Item key={action.id} value={`do ${action.id}`} onSelect={action.run} className={itemClass}>
+            <action.icon aria-hidden />
+            {action.label}
+          </Command.Item>
+        ))}
+      </Command.Group>
+    ) : null;
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -157,10 +170,14 @@ export function CommandPalette({
               <Command.Input
                 value={query}
                 onValueChange={setQuery}
-                placeholder="Search your library, or type a place to go"
+                placeholder="Search, or go to a screen"
+                enterKeyHint="search"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 className="h-13 flex-1 bg-transparent text-body text-ink placeholder:text-ink-faint focus:outline-none"
               />
-              {(results.isFetching || stillSearching) && searching ? <Spinner label="Searching" /> : null}
+              {(results.isFetching || stillSearching) && searching ? <Spinner label="Searching" delay /> : null}
               {/* On a touch screen, where there is no Escape key: a way out a screen reader can reach too. */}
               <Dialog.Close
                 aria-label="Close quick search"
@@ -170,7 +187,10 @@ export function CommandPalette({
               </Dialog.Close>
             </div>
             <Command.List className="scroll-quiet max-h-[min(60dvh,26rem)] overflow-y-auto p-1.5">
-              {/* Places come first, so typing the name of a screen and pressing Enter always goes there. */}
+              {/* With nothing typed, the things people come to do are first, in sight without scrolling past every
+                  screen (they were below sixty of them). With words typed, places come first, so that typing the name
+                  of a screen and pressing Enter always goes there. */}
+              {typed ? null : doGroup}
               {places.length > 0 ? (
                 <Command.Group heading="Go to" className={groupClass}>
                   {places.map((item) => (
@@ -192,16 +212,7 @@ export function CommandPalette({
                   ))}
                 </Command.Group>
               ) : null}
-              {actions.length > 0 ? (
-                <Command.Group heading="Do" className={groupClass}>
-                  {actions.map((action) => (
-                    <Command.Item key={action.id} value={`do ${action.id}`} onSelect={action.run} className={itemClass}>
-                      <action.icon aria-hidden />
-                      {action.label}
-                    </Command.Item>
-                  ))}
-                </Command.Group>
-              ) : null}
+              {typed ? doGroup : null}
               {typed.length > 0 ? (
                 <>
                   <Command.Group heading={places.length + actions.length > 0 ? "In your library" : undefined} className={groupClass}>

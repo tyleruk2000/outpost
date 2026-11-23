@@ -9,8 +9,13 @@ export const DialogTrigger = DialogPrimitive.Trigger;
 export const DialogClose = DialogPrimitive.Close;
 
 const overlay = "fixed inset-0 z-(--z-overlay) bg-overlay data-[state=open]:animate-fade";
+/**
+ * Centred on a wide screen. On a phone (under 768 px) a sheet from the foot of the screen, edge to edge, where a thumb
+ * reaches its buttons: rounded at the top only, rising rather than growing, and clear of the home indicator. A screen
+ * that wants the whole phone screen for a long form passes its own `max-md:` classes (`phoneSheet` in Storage).
+ */
 const panel =
-  "fixed z-(--z-dialog) flex max-h-[min(86dvh,46rem)] w-[calc(100vw-2rem)] flex-col rounded-panel border border-border bg-raised shadow-dialog focus:outline-none data-[state=open]:animate-enter left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2";
+  "fixed z-(--z-dialog) flex max-h-[min(86dvh,46rem)] w-[calc(100vw-2rem)] flex-col rounded-panel border border-border bg-raised shadow-dialog focus:outline-none data-[state=open]:animate-enter left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 max-md:inset-x-0 max-md:top-auto max-md:bottom-0 max-md:max-h-[calc(100dvh-env(safe-area-inset-top)-1.5rem)] max-md:w-full max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-b-none max-md:border-x-0 max-md:border-b-0 max-md:pb-[env(safe-area-inset-bottom)] max-md:data-[state=open]:animate-sheet";
 
 /** The least room the body of a dialog is given before the whole dialog scrolls instead, in rem. */
 const LEAST_BODY_REM = 6;
