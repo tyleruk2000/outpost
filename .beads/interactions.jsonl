@@ -521,3 +521,4 @@
 {"id":"int-5146d132","kind":"field_change","created_at":"2026-11-23T13:23:49.316104Z","actor":"Tyler Allen","issue_id":"outpost-o6of","extra":{"field":"status","new_value":"in_progress","old_value":"open"}}
 {"id":"int-5fbe6e1c","kind":"field_change","created_at":"2026-11-23T13:23:49.721481Z","actor":"Tyler Allen","issue_id":"outpost-o6of.1","extra":{"field":"status","new_value":"in_progress","old_value":"open"}}
 {"id":"int-882bc95e","kind":"field_change","created_at":"2026-11-23T13:23:50.141354Z","actor":"Tyler Allen","issue_id":"outpost-o6of.2","extra":{"field":"status","new_value":"in_progress","old_value":"open"}}
+{"id":"int-dec91d53","kind":"field_change","created_at":"2026-11-23T13:38:10.022869Z","actor":"Tyler Allen","issue_id":"outpost-jie0.2","extra":{"field":"status","new_value":"closed","old_value":"open","reason":"UK built on the Pi: 31 MB network, routes 0.1–0.2 s"}}
