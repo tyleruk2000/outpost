@@ -114,9 +114,10 @@ export function coverageOf(
     const base = { code, name: countryName(code), regionId: regionOf(code), dataDate: dates.sort()[0] ?? null };
     if (onItsWay) return { ...base, state: "downloading", parts: [], progress: onItsWay };
     if (kept.length === 0) return { ...base, state: "missing", parts: [], progress: failed };
-    // Kept, but does what is kept reach where the route goes? A network with no box is taken as the whole country.
+    // Kept, but does what is kept reach the points in it? (Points only: the road between may well go round a part not kept.) A network with no box is taken as the whole country.
     const whole = kept.some((n) => !n.bbox);
-    const outside = !whole && samples.some((s) => s.country === code && !kept.some((n) => n.bbox && inBox(n.bbox, s.lat, s.lon)));
+    const outside =
+      !whole && samples.some((s) => s.segment === -1 && s.country === code && !kept.some((n) => n.bbox && inBox(n.bbox, s.lat, s.lon)));
     return outside
       ? { ...base, state: "part", parts: kept.map((n) => n.name), progress: failed }
       : { ...base, state: "ready", parts: [], progress: null };

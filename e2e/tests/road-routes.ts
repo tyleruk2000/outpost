@@ -10,8 +10,8 @@ import type { Page } from "@playwright/test";
 import { franceNorth, franceSouth, greatBritain } from "../../apps/server/test/fixtures/roads/channel-trip.ts";
 import { api, expect } from "./fixtures";
 
-/** Builds the three networks and saves Leatherhead, Reims and Chamonix as places; answers the places' ids. */
-export async function installChannelTrip(page: Page): Promise<string[]> {
+/** Builds the three networks (or those of the countries given) and saves Leatherhead, Reims and Chamonix as places; answers the places' ids. */
+export async function installChannelTrip(page: Page, only?: readonly string[]): Promise<string[]> {
   const { locations } = await api<{ locations: Array<{ id: string; path: string; isDefault: boolean }> }>(
     page,
     "GET",
@@ -19,18 +19,20 @@ export async function installChannelTrip(page: Page): Promise<string[]> {
   );
   const location = locations.find((each) => each.isDefault) ?? locations[0]!;
   fs.mkdirSync(path.join(location.path, "roads-e2e"), { recursive: true });
-  for (const [name, body, country] of [
+  const all = [
     ["Great Britain (test)", greatBritain(), "GB"],
     ["France north (test)", franceNorth(), "FR"],
     ["France south (test)", franceSouth(), "FR"],
-  ] as const) {
+  ] as const;
+  const chosen = all.filter(([, , country]) => !only || only.includes(country));
+  for (const [name, body, country] of chosen) {
     const file = `roads-e2e/${name.split(" ")[1]}-${country}.osm.pbf`;
     fs.writeFileSync(path.join(location.path, file), body);
     await api(page, "POST", "/api/roads/networks", { locationId: location.id, relPath: file, name, country });
   }
   await expect
     .poll(async () => (await api<{ networks: unknown[] }>(page, "GET", "/api/roads/networks")).networks.length, { timeout: 60_000 })
-    .toBe(3);
+    .toBe(chosen.length);
   const places: string[] = [];
   for (const place of [
     { name: "Leatherhead", lat: 51.296, lon: -0.33 },

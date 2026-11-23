@@ -82,8 +82,8 @@ test.describe("street routes", () => {
       // A way that cannot be used yet says why, with the step that puts it right.
       await openPlanner(page);
       await page.getByRole("radiogroup", { name: "Way of travelling" }).getByRole("radio", { name: "Walk" }).click();
-      await expect(page.getByText(/This needs streets for routes/)).toBeVisible();
-      await expect(page.getByRole("button", { name: /^Add streets for/ })).toBeVisible();
+      await expect(page.getByText("Walking routes need street detail, built once on this device.")).toBeVisible();
+      await expect(page.getByRole("button", { name: /^Add walking and cycling/ })).toBeVisible();
 
       // Streets for Great Britain ready.
       installStreets("ready");

@@ -186,7 +186,7 @@ export function RouteNeedsNotice({ coverage, onAdd }: { coverage: RoadCoverageRe
           </p>
           {part.map((c) => (
             <p key={c.code} className="mt-1">
-              For {c.name}, only {namesText(c.parts)} {c.parts.length === 1 ? "is" : "are"} kept, and the route goes further.
+              For {c.name}, only {namesText(c.parts)} {c.parts.length === 1 ? "is" : "are"} kept, and the route goes outside it.
             </p>
           ))}
           {gone.map((c) => (

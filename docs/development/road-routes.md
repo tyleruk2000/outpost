@@ -192,6 +192,7 @@ back as `{ error: { code, message } }` with a 4xx.
 | `DELETE /networks/:id` | | `{ ok: true }`: the network file and row go; a kept extract stays |
 | `POST /countries` | `{ boxes: [w, s, e, n][] }` (≤ 200) | `{ countries }`: ISO codes the boxes cover, most first, from the country outlines; a box over 40° by 25° is passed over. The web app sends the installed map regions' boxes, to offer their countries first |
 | `GET /crossings` | | `{ crossings: RoadCrossingDto[] }`: sea crossings in what is installed (`id` is `"eurotunnel"` or `"way/<id>"`), with `joined` when both ends reach a road |
+| `POST /coverage` | `{ points: [{ lat, lon }] }` (1–12) | `RoadCoverageResponse`: each point's country; each country the route touches, in order, with `state` `ready` \| `part` (a point outside the parts kept) \| `downloading` (with `progress`: phase, bytes, time left) \| `missing`; and `seaCrossing`. Local only: country outlines and the networks table, no graph read, nothing asked of anyone |
 | `POST /route` | `RoadRouteRequest`: `{ points: [{lat, lon, name?} \| {placeId, name?}] (2–12), crossing?: "any" \| "eurotunnel" \| "way/<id>", units?: "km" \| "miles" }` | `RoadRouteResult` |
 | `GET /routes` | | `{ routes: SavedRoadRouteSummaryDto[] }`, newest first |
 | `POST /routes` | `{ name, route: RoadRouteResult }` | `SavedRoadRouteDto` |
@@ -236,12 +237,17 @@ RoadLeg {
 }
 ```
 
-Errors a person sees, word for word in kind: "No road network is installed for
-Switzerland, where “Zürich” is: install it from Road networks."; "“Chamonix” is more
-than 40 km from a main road in the networks installed (France)."; "The road networks
-installed do not join these points. The way between runs through Belgium, which has no
-network installed."; "There is no way by the Channel Tunnel shuttle with the networks
-installed: it does not reach both sides."
+Errors a person sees, word for word in kind: "Germany and Switzerland have no roads yet.
+Add roads for Germany and Switzerland, then plan again."; "“Chamonix” is more than 40 km
+from any main road kept for France: only Nord-Pas-de-Calais is kept. Add roads for all of
+France, or choose a point nearer a main road."; "The roads kept do not join these points.
+Belgium has no roads yet. …"; "There is no way by the Channel Tunnel shuttle with the
+networks installed: it does not reach both sides." Each of the first three carries
+`details: RoadRouteProblem` (`{ missing: [{ code, name, regionId }], far: [{ index, name,
+country, distanceM }], reason: "empty" | "point" | "between" }`), from which the screen
+offers **Add roads for …** for exactly those countries. The countries a route needs are its
+points' and those the straight lines between them cross for at least 40 km (or a quarter of
+a short line), sampled every 5 km over the country outlines (`coverage.ts`).
 
 ### Plain text
 

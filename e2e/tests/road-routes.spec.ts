@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import { accessibilityInBothThemes } from "./a11y";
-import { expect, test, watchForErrors } from "./fixtures";
+import { api, expect, test, watchForErrors } from "./fixtures";
 import { pdfWords } from "./pdf";
 import { choosePlace, installChannelTrip, removeChannelTrip } from "./road-routes";
 
@@ -39,7 +39,8 @@ test.describe("road routes", () => {
       await choose("Via 1", "Reims");
       await choose("To", "Chamonix");
       // The ferry, not the tunnel.
-      await page.getByLabel("Crossing the Channel").click();
+      // Over the Channel: the sea crossing is asked about, as it is for no route over land.
+      await page.getByLabel("Sea crossing").click();
       await page.getByRole("option", { name: /Dover \(UK\) - Calais \(F\)/ }).click();
       await page.getByRole("button", { name: "Plan route" }).click();
 
@@ -99,6 +100,76 @@ test.describe("road routes", () => {
         page.getByRole("region", { name: "Saved road routes" }).getByRole("button", { name: /Alps by the ferry/ }),
       ).toBeVisible();
       expect(errors).toEqual([]);
+    } finally {
+      await removeChannelTrip(page, places);
+    }
+  });
+
+  test("names the country a route has no roads for before Plan route, and adds exactly that one", async ({ page }, testInfo) => {
+    test.setTimeout(120_000);
+    const errors = watchForErrors(page);
+    await page.goto("/");
+    // Only Great Britain's roads are kept.
+    const places = await installChannelTrip(page, ["GB"]);
+    places.push(
+      (await api<{ marker: { id: string } }>(page, "POST", "/api/maps/markers", { name: "London", lat: 51.5074, lon: -0.1278 })).marker.id,
+    );
+    try {
+      await page.goto("/maps?lat=49&lon=3&z=5");
+      await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
+      await page.getByRole("tab", { name: /Routes/ }).click();
+      await page.getByRole("button", { name: "Plan a route" }).first().click();
+      await expect(page.getByRole("heading", { name: "Plan a route", exact: true })).toBeVisible();
+      await choosePlace(page, "From", "London");
+      await choosePlace(page, "To", "Chamonix");
+
+      // Said before Plan route is pressed, worked out on this device.
+      await expect(page.getByText("France has no roads yet")).toBeVisible();
+      await expect(page.getByText("This route runs through France. United Kingdom is ready.")).toBeVisible();
+      const plan = page.getByRole("button", { name: "Plan route" });
+      await expect(plan).toBeDisabled();
+      await expect(page.getByText("Add France first")).toBeVisible();
+      await expect(page.getByLabel("Sea crossing")).toBeVisible();
+      await expect(page.getByText("Crossing the Channel")).toHaveCount(0);
+      expect(await accessibilityInBothThemes(page, "/maps (route needs a country)")).toEqual([]);
+      const shots = process.env.OUTPOST_SHOTS_DIR;
+      if (shots) await page.screenshot({ path: `${shots}/p1-route-needs-france-1280.png` });
+
+      // One press opens Map data's add flow for France and nothing else.
+      const opened = page.waitForURL(/\/maps\/data\?add=1&kinds=roads&countries=FR$/, { waitUntil: "commit" });
+      await page.getByRole("button", { name: "Add roads for France" }).click();
+      await opened;
+      await testInfo.attach("url", { body: page.url() });
+      expect(errors).toEqual([]);
+    } finally {
+      await removeChannelTrip(page, places);
+    }
+  });
+});
+
+// Pictures of the same at a phone's width, for looking at by eye: only when a folder is given.
+test.describe("road routes on a phone", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+  test("pictures the countries a route needs", async ({ page }) => {
+    const shots = process.env.OUTPOST_SHOTS_DIR;
+    test.skip(!shots, "Pictures only when OUTPOST_SHOTS_DIR is set");
+    test.setTimeout(120_000);
+    await page.goto("/");
+    const places = await installChannelTrip(page, ["GB"]);
+    places.push(
+      (await api<{ marker: { id: string } }>(page, "POST", "/api/maps/markers", { name: "London", lat: 51.5074, lon: -0.1278 })).marker.id,
+    );
+    try {
+      await page.goto("/maps?lat=49&lon=3&z=5");
+      await page.getByRole("tab", { name: /Routes/ }).click();
+      await page.getByRole("button", { name: "Plan a route" }).first().click();
+      await page.screenshot({ path: `${shots}/p1-route-empty-390.png` });
+      await choosePlace(page, "From", "London");
+      await choosePlace(page, "To", "Chamonix");
+      await page.getByText("France has no roads yet").scrollIntoViewIfNeeded();
+      await page.screenshot({ path: `${shots}/p1-route-needs-france-390.png` });
+      await page.getByRole("button", { name: "Plan route" }).scrollIntoViewIfNeeded();
+      await page.screenshot({ path: `${shots}/p1-route-needs-france-390-b.png` });
     } finally {
       await removeChannelTrip(page, places);
     }

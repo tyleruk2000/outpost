@@ -105,7 +105,7 @@ export interface RoadCoverageRequest {
 
 /**
  * - ready: roads are kept for it
- * - part: roads are kept for part of it, and the route goes outside that part
+ * - part: roads are kept for part of it, and a point of the route is outside that part
  * - downloading: on its way (waiting, downloading or being built: see `progress.phase`)
  * - missing: none kept (after a failed try, `progress.phase` is "failed")
  */
