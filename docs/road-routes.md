@@ -43,6 +43,11 @@ countries you need are installed, nothing goes on the internet.
 
 ## Installing road networks
 
+On the Maps screen, open **Offline**; the part called **Road networks for routes** lists the
+networks installed, with the country, the date of the map data and the size. **Add a road
+network** offers first the countries your downloaded map regions cover, then any country or
+region by name.
+
 Road data comes by country, or by part of a country, from Geofabrik's OpenStreetMap
 extracts. Install every country you will drive through: a trip from England to Austria
 needs Great Britain, France, and Belgium or Luxembourg and Germany (or however you go),
@@ -62,17 +67,29 @@ sends its file from another server: install its parts (its Länder) instead. The
 You can also build a network from an `.osm.pbf` file already in your storage. That file is
 yours and is never deleted.
 
-The list shows each network's country, the date of its data and its size. **Update**
-downloads it again and replaces the network; **Remove** deletes the network (a kept
-extract stays where it is).
+Each network's **…** menu has **Update**, which downloads it again and replaces the
+network, and **Remove**, which deletes the network (a kept extract stays where it is).
+While a network is being added its download and then its build show there with their
+progress, and the download is on the Downloads screen too.
 
 ## Planning a route
 
-Give a start and an end (a point on the map, or a saved place), and up to ten via points
-in the order you want to pass them. Each is joined to the nearest main road; the result
+On the Maps screen, open **Routes** and press **Road route**. Give a start (**From**) and an
+end (**To**), and up to ten via points (**Add a via point**) in the order you want to pass
+them. For each, type a saved place, a town (with place names installed) or coordinates,
+choose from your saved places, or press **Map centre**. You can also press and hold
+(right-click) a point on the map and choose **Road route from here** or **Road route to
+here**. Then press **Plan route**. The first route after a while takes longest, up to a
+minute on a small computer, while the networks are read.
+
+The route is drawn on the map: the main roads bold, a crossing dashed. Under it come the
+totals and the directions: the start ("Join the A24"), a line for each road, the crossing
+in a band of its own, each via point as a rule across, and the end ("Leave the N205, then
+local roads"). Choose a line to see that part on the map; **Whole route on the map** shows
+all of it again. Each is joined to the nearest main road; the result
 says how far that is, and warns when it is more than 5 km.
 
-**Crossing the Channel**: choose **Let Outpost choose** (the quickest), **Eurotunnel**,
+**Crossing the Channel**: choose **Any** (the quickest), **Eurotunnel**,
 or a particular ferry from the list of crossings in your installed networks. A crossing
 reaches both sides only when the networks on both sides are installed.
 
@@ -100,12 +117,24 @@ These are Outpost's assumptions, kept under the legal limits (in the United King
 
 ## Saving and printing
 
-Save a route with a name. It is kept with its directions, so it opens and prints even if
-you later remove or update the networks.
+Give the route a name and press **Save route**. It is kept with its directions, so it opens
+and prints even if you later remove or update the networks. Saved routes are listed under
+the form, as **Saved road routes**: open one to rename it, delete it, print it or **Plan it
+again** on the networks you have now.
 
-The **condensed plain text** is the whole route in lines no wider than 48 characters
-(the width can be changed), ready to copy into anything or to print on a small printer of
-your own. Ask for plain letters if your printer lacks accents ("Genève" becomes "Geneve").
+**Printable route card (PDF)** makes the card on this device, on A4 or US Letter: first an
+overview map of the whole route (your offline map where a region covers it, otherwise the
+plain map of coastlines and borders) with the main roads drawn bold, the via points and
+the crossing marked; then the directions in large type, each road's line bold with the
+detail small under it, the distance and time in columns, the crossing in its own band, and
+a box to tick for each line. At the foot: planned in advance and not live, the day it was
+planned, check the signs and closures, and the OpenStreetMap credit. There are no maps of
+junctions. Save it, add it to the library or share it as with any PDF Outpost makes.
+
+The **condensed plain text** is the whole route in lines no wider than 48 characters, in a
+box with a **Copy** button, ready to paste into a message or a note or to print on a small
+printer of your own (Outpost does not print it itself). Tick **Plain letters only (ASCII)**
+if your printer lacks accents ("Genève" becomes "Geneve").
 
 ## The data
 

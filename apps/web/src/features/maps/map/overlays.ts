@@ -27,6 +27,7 @@ import { utmGridLayers } from "../print/utm-grid";
 import { gridLayers, relayLayers, sightLayers } from "../radio/layers";
 import { recordingLayers } from "../recording/overlay";
 import { resectionLayers } from "../resection/layers";
+import { roadRouteLayers } from "../road-route/layers";
 import { walkLayers } from "../walk/walk-map";
 
 export const OVERLAY_SOURCES = [
@@ -41,6 +42,8 @@ export const OVERLAY_SOURCES = [
   "o-box",
   "o-tracks",
   "o-track-ends",
+  // A planned road route (road-route/).
+  "o-road-route",
   "o-measure",
   "o-walk",
   "o-range",
@@ -237,6 +240,8 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
       },
       paint: halo,
     },
+    // A planned road route (road-route/), over the tracks and under what is being measured or drawn.
+    ...roadRouteLayers(theme),
     // Measuring.
     {
       id: "o-measure-casing",

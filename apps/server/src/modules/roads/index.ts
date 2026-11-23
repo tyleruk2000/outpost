@@ -6,6 +6,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { createHttpClient } from "../../core/http.ts";
+import { countriesInBoxes } from "./countries.ts";
 import { BUILD_JOB, type BuildFromFileInput, createRoadsService, isRoadsDownload, type RoadsService } from "./service.ts";
 
 declare module "../../core/context.ts" {
@@ -46,6 +47,9 @@ const installSchema = z.union([
     keepExtract: z.literal(true).optional(),
   }),
 ]);
+const countriesSchema = z.object({
+  boxes: z.array(z.tuple([lon, lat, lon, lat])).max(200),
+});
 const idParams = z.object({ id: z.string().min(1).max(40) });
 const routeName = z.string().trim().min(1, "Give the route a name.").max(160);
 /** A saved route is kept as it was planned: checked for its shape, not planned again. */
@@ -97,6 +101,8 @@ export async function registerRoads(app: FastifyInstance, ctx: AppContext): Prom
     return { ok: true };
   });
 
+  /** The countries the given boxes (the installed map regions') cover: offered first when a network is added. */
+  app.post("/api/roads/countries", async (request) => ({ countries: countriesInBoxes(countriesSchema.parse(request.body).boxes) }));
   app.get("/api/roads/crossings", async () => ({ crossings: await service.crossings() }));
   app.post("/api/roads/route", async (request) => service.plan(routeRequestSchema.parse(request.body)));
 

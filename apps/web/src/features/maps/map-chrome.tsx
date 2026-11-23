@@ -944,6 +944,7 @@ export function ContextMenu({
   onSave,
   onMeasure,
   onDraw,
+  onRoadRoute,
   onSun,
   onRange,
   onWalk,
@@ -960,6 +961,8 @@ export function ContextMenu({
   onSave: () => void;
   onMeasure: () => void;
   onDraw: () => void;
+  /** Starts a road route from or to the point (road-route/). */
+  onRoadRoute?: (role: "from" | "to") => void;
   /** Drops a pin there with its sunrise and sunset times open. */
   onSun: () => void;
   /** Shows how far a radio there could reach over the terrain (maps/radio/point-range.tsx). */
@@ -996,7 +999,7 @@ export function ContextMenu({
   }, []);
 
   const width = 232;
-  const height = (place ? 254 : 218) + (locator ? 18 : 0) + (onRange ? 36 : 0) + (onWalk ? 36 : 0);
+  const height = (place ? 254 : 218) + (locator ? 18 : 0) + (onRange ? 36 : 0) + (onWalk ? 36 : 0) + (onRoadRoute ? 72 : 0);
   const left = Math.max(8, Math.min(point.x, bounds.width - width - 8));
   const top = Math.max(8, Math.min(point.y, bounds.height - height - 8));
   const item =
@@ -1020,6 +1023,16 @@ export function ContextMenu({
       <button type="button" role="menuitem" className={item} onClick={onDraw}>
         Draw a route from here
       </button>
+      {onRoadRoute ? (
+        <>
+          <button type="button" role="menuitem" className={item} onClick={() => onRoadRoute("from")}>
+            Road route from here
+          </button>
+          <button type="button" role="menuitem" className={item} onClick={() => onRoadRoute("to")}>
+            Road route to here
+          </button>
+        </>
+      ) : null}
       <button type="button" role="menuitem" className={item} onClick={onSun}>
         Sun times here
       </button>

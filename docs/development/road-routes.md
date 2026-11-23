@@ -190,6 +190,7 @@ back as `{ error: { code, message } }` with a 4xx.
 | `POST /networks` | `{ regionId, keepExtract?, locationId? }` (a Geofabrik region id, as `GET /api/reference/regions` lists them once read with `POST /api/reference/regions`) or `{ locationId, relPath, name, country? }` (a file already in storage) | `{ downloadId, jobId }`: a download (Downloads screen) that builds when it finishes, or a build job |
 | `POST /networks/:id/update` | | as above: the region downloaded again, or the file read again; the new network replaces the old when built |
 | `DELETE /networks/:id` | | `{ ok: true }`: the network file and row go; a kept extract stays |
+| `POST /countries` | `{ boxes: [w, s, e, n][] }` (≤ 200) | `{ countries }`: ISO codes the boxes cover, most first, from the country outlines; a box over 40° by 25° is passed over. The web app sends the installed map regions' boxes, to offer their countries first |
 | `GET /crossings` | | `{ crossings: RoadCrossingDto[] }`: sea crossings in what is installed (`id` is `"eurotunnel"` or `"way/<id>"`), with `joined` when both ends reach a road |
 | `POST /route` | `RoadRouteRequest`: `{ points: [{lat, lon, name?} \| {placeId, name?}] (2–12), crossing?: "any" \| "eurotunnel" \| "way/<id>", units?: "km" \| "miles" }` | `RoadRouteResult` |
 | `GET /routes` | | `{ routes: SavedRoadRouteSummaryDto[] }`, newest first |
@@ -251,6 +252,20 @@ note and the credit. No line is longer than `width` (words wrap; a longer word i
 broken). Typographic dashes and quotes become plain ones; `ascii: true` also takes the
 accents off (`roadAsciiText`: "Genève" → "Geneve"). Distances are in the units the route
 was planned in.
+
+## The web side
+
+`apps/web/src/features/maps/road-route/`: `road-route-panel.tsx` (the Routes tab's **Road
+route**: form, planned route, saved route, saved list), `point-field.tsx` (a point from the
+map's search, saved places or the map centre), `directions.tsx`, `plain-text.tsx`,
+`road-networks.tsx` (Offline maps, **Road networks for routes**), `layers.ts` (the
+`o-road-route` overlay), `route-map.ts` and `route-card.ts` (the print-kit card; the
+installed maps are read before the overview is drawn), `words.ts` (start and end lines,
+crossing choices, and `legLines`, which cuts the route's geometry into each leg's part by
+the legs' ends). Query keys start with `roads`; `roads.changed` refreshes them. The map's
+point menu has **Road route from here / to here**; `/maps?offline=roads` opens the networks.
+Tests: `road-route.test.tsx`, `e2e/tests/road-routes*.spec.ts` (networks built from the
+server fixtures in storage).
 
 ## Storage and memory at rest
 

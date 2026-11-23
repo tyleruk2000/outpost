@@ -3,7 +3,7 @@
 Outpost draws the map in the browser from tiles it serves itself. Once a region is
 installed, the map needs no internet. OpenStreetMap's public tile servers are never used.
 
-More on the map: [Routes and tracks](map-routes.md), [Printing a map](map-printing.md),
+More on the map: [Routes and tracks](map-routes.md), [Road routes](road-routes.md), [Printing a map](map-printing.md),
 [Satellite imagery](map-imagery.md), and the [map quick start](map-quick-start.md).
 
 ## The Maps screen
@@ -131,6 +131,14 @@ With no GPS, take compass bearings to two or three landmarks you can find on the
 
 Bearings are magnetic unless you choose **True north**. Choose landmarks 60° to 120° apart.
 A hand compass reads to a degree or two, about 90 m at 5 km, so expect a few hundred metres.
+
+## Road routes
+
+Planned directions for a drive, written the way you would write them down: "M20 -
+Folkestone", "A26 (E17) - Reims (A4)". Open **Routes**, then **Road route**; or press and
+hold (right-click) a point on the map and choose **Road route from here** or **Road route to
+here**. The road data is installed by country under **Offline**, in **Road networks for
+routes**. See [road-routes.md](road-routes.md).
 
 ## Printing a map
 

@@ -55,6 +55,21 @@ export interface RoadNetworkInstallResponse {
   jobId: string | null;
 }
 
+/**
+ * POST /api/roads/countries: the countries some boxes cover (the installed map regions'),
+ * so that the networks for the map areas a person has downloaded can be offered first.
+ * Worked out on the server from the country outlines it holds; nothing is asked of anyone.
+ */
+export interface RoadCountriesRequest {
+  /** [west, south, east, north] each; at most 200. */
+  boxes: Array<[number, number, number, number]>;
+}
+
+export interface RoadCountriesResponse {
+  /** ISO 3166-1 alpha-2, upper case, most covered first. */
+  countries: string[];
+}
+
 // ── Crossings ───────────────────────────────────────────────────────────────
 
 export type RoadCrossingKind = "ferry" | "shuttle";

@@ -4,7 +4,7 @@
  */
 import type { Bbox, TrackDto } from "@outpost/shared";
 import type { UseQueryResult } from "@tanstack/react-query";
-import { ArrowLeft, CircleAlert, Download, Ellipsis, FileUp, Mountain, PenLine, Scan, Search, Spline, Trash2 } from "lucide-react";
+import { ArrowLeft, Car, CircleAlert, Download, Ellipsis, FileUp, Mountain, PenLine, Scan, Search, Spline, Trash2 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
@@ -400,6 +400,7 @@ export function RoutesList({
   onImport,
   onDraw,
   onFind,
+  onRoadRoute,
   canDraw,
 }: {
   tracks: UseQueryResult<TrackDto[]>;
@@ -413,6 +414,8 @@ export function RoutesList({
   onDraw: () => void;
   /** Opens "Find a route": looking a known route up in a route source. */
   onFind: () => void;
+  /** Opens "Road route": planned road directions from the road networks installed. */
+  onRoadRoute: () => void;
   /** False when the map could not be drawn, so there is nothing to draw on. */
   canDraw: boolean;
 }) {
@@ -460,9 +463,9 @@ export function RoutesList({
         {chooser}
         <h3 className="font-title text-lead text-ink">No routes yet</h3>
         <p className="mt-1.5 text-small text-ink-muted">
-          Draw a route on the map point by point, find a known one by name (a waymarked walk, a cycle route), or import a file (GPX, KML,
-          KMZ or GeoJSON) from a GPS, a phone app, a route-planning site or a council's open data. Whichever way, it is shown on the map
-          with its distance, and can be exported as GPX. You can also drop a file onto the map.
+          Draw a route on the map point by point, find a known one by name (a waymarked walk, a cycle route), plan a drive by road, or
+          import a file (GPX, KML, KMZ or GeoJSON) from a GPS, a phone app, a route-planning site or a council's open data. Whichever way,
+          it is shown on the map with its distance, and can be exported as GPX. You can also drop a file onto the map.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <Button variant="primary" onClick={onDraw} disabled={!canDraw}>
@@ -470,6 +473,9 @@ export function RoutesList({
           </Button>
           <Button onClick={onFind}>
             <Search /> Find a route
+          </Button>
+          <Button onClick={onRoadRoute}>
+            <Car /> Road route
           </Button>
           <Button onClick={() => input.current?.click()}>
             <FileUp /> Import a map file
@@ -492,6 +498,9 @@ export function RoutesList({
       <div className="flex flex-wrap items-center gap-2 px-4 pt-3">
         <Button onClick={onDraw} disabled={!canDraw}>
           <PenLine /> Draw a route
+        </Button>
+        <Button onClick={onRoadRoute}>
+          <Car /> Road route
         </Button>
         <Button onClick={() => input.current?.click()}>
           <FileUp /> Import a map file
