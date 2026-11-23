@@ -36,6 +36,7 @@ const BOOK_READS: Record<Exclude<BookSource, "answers">, SourceId[]> = {
   places: ["places"],
   medical: ["medical", "people"],
   comms: ["comms"],
+  radio: ["radioPlans"],
   supplies: ["supplies", "people"],
 };
 
@@ -106,6 +107,8 @@ export const bookSchema = z
     planChoice: z.enum(["all", "some"]).default("all"),
     grabCardSize: z.enum(["wallet", "a6"]).default("wallet"),
     planIds: z.array(itemId).max(200).default([]),
+    radioPlanChoice: z.enum(["all", "some"]).default("all"),
+    radioPlanIds: z.array(itemId).max(200).default([]),
     baseAnswersAt: z.number().int().nonnegative().nullable().optional(),
   })
   .strict();
@@ -139,6 +142,11 @@ function withDefaults(stored: unknown): BookAnswers {
   // the binder's are added, so that a book made from them has everything the binder had.
   if (stored && typeof stored === "object" && !("planChoice" in stored)) {
     const sections = new Set([...answers.sections, ...SECTIONS_FROM_BINDER]);
+    answers.sections = BOOK_SECTION_IDS.filter((id) => sections.has(id));
+  }
+  // Answers saved before radio plans went in the book (they have no `radioPlanChoice`) take the new section too.
+  if (stored && typeof stored === "object" && !("radioPlanChoice" in stored) && !answers.sections.includes("radio-plans")) {
+    const sections = new Set<BookSectionId>([...answers.sections, "radio-plans"]);
     answers.sections = BOOK_SECTION_IDS.filter((id) => sections.has(id));
   }
   return answers;

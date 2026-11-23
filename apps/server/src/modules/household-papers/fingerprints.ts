@@ -13,7 +13,7 @@ import type { BinderPart } from "@outpost/shared";
 import type { AppContext } from "../../core/context.ts";
 import { MEDICAL_SHEETS_OF_HOUSEHOLD, medicalSheetsParams } from "./medical.ts";
 
-export type SourceId = "plans" | "emergencyContacts" | "contacts" | "places" | "medical" | "comms" | "people" | "supplies";
+export type SourceId = "plans" | "emergencyContacts" | "contacts" | "places" | "medical" | "comms" | "people" | "supplies" | "radioPlans";
 
 /** Which household a fingerprint is for: its id, and the first household's (which keeps the sheets of nobody's household). */
 interface Scope {
@@ -40,6 +40,8 @@ const SOURCES: Record<SourceId, Query[]> = {
     ],
   ],
   comms: [({ household }) => ["SELECT id, updated_at FROM comms_plans WHERE id = ? ORDER BY id", household]],
+  // Radio plans are everyone's; a matrix worked out again changes the plan's result key.
+  radioPlans: [() => ["SELECT id, updated_at, result_key FROM communication_plans ORDER BY id"]],
   people: [
     ({ household }) => [
       "SELECT id, updated_at FROM supply_members WHERE id IN (SELECT person_id FROM household_people WHERE household_id = ?) ORDER BY id",

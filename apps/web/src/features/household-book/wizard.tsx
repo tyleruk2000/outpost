@@ -35,6 +35,7 @@ import { Field, Input } from "@/components/ui/input";
 import { Checkbox, Segmented, Select } from "@/components/ui/misc";
 import { usePlans } from "@/features/emergency-plans/data";
 import { ageWords, usePaperHousehold, whereWasWords } from "@/features/household-papers/paper-household";
+import { usePlans as useRadioPlans } from "@/features/propagation/plans/data";
 import { useSetHousehold } from "@/features/supplies/data";
 import { api, errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
@@ -852,7 +853,79 @@ function ReadinessStep({
 
 // ── What goes in the book ───────────────────────────────────────────────────
 
+/** Which radio plans go in "Radio plans": all of them (they are everyone's, not one household's), or only some. */
+function RadioPlansChoice({
+  answers,
+  set,
+  plans,
+  failed,
+}: StepProps & { plans: Array<{ id: string; name: string }> | undefined; failed: boolean }) {
+  return (
+    <Section
+      level={3}
+      title="Your radio plans"
+      description="Each radio plan from Radio › Plans goes in “Radio plans”: its stations, when to listen and call, and the bands to try. Radio plans are kept for every household."
+    >
+      {failed ? (
+        <p className="text-small text-ink-muted">
+          The radio plans could not be read. The book takes all of them unless you choose some here.
+        </p>
+      ) : !plans ? (
+        <p className="text-small text-ink-muted">Reading the radio plans…</p>
+      ) : plans.length === 0 ? (
+        <p className="text-small text-ink-muted">
+          No radio plan is made yet. Make one under{" "}
+          <Link to="/radio/plans" className="text-primary underline underline-offset-2">
+            Radio › Plans
+          </Link>
+          , and it goes in the book.
+        </p>
+      ) : (
+        <>
+          <Segmented<"all" | "some">
+            label="Which radio plans"
+            value={answers.radioPlanChoice}
+            onChange={(radioPlanChoice) =>
+              set({
+                radioPlanChoice,
+                radioPlanIds:
+                  radioPlanChoice === "some" && answers.radioPlanIds.length === 0 ? plans.map((plan) => plan.id) : answers.radioPlanIds,
+              })
+            }
+            options={[
+              { value: "all", label: `All ${plans.length}` },
+              { value: "some", label: "Only some" },
+            ]}
+          />
+          {answers.radioPlanChoice === "some" ? (
+            <Rows className="mt-2">
+              {plans.map((plan) => (
+                <li key={plan.id} className="py-1">
+                  <label htmlFor={`radio-plan-${plan.id}`} className="flex min-h-11 items-center gap-3 text-ink">
+                    <Checkbox
+                      id={`radio-plan-${plan.id}`}
+                      checked={answers.radioPlanIds.includes(plan.id)}
+                      onCheckedChange={(on) =>
+                        set({
+                          radioPlanIds:
+                            on === true ? [...answers.radioPlanIds, plan.id] : answers.radioPlanIds.filter((id) => id !== plan.id),
+                        })
+                      }
+                    />
+                    {plan.name}
+                  </label>
+                </li>
+              ))}
+            </Rows>
+          ) : null}
+        </>
+      )}
+    </Section>
+  );
+}
+
 function BookStep({ answers, set, country }: StepProps & { country: string | null }) {
+  const radioPlans = useRadioPlans();
   return (
     <div className="grid gap-8">
       <div className="grid gap-4 sm:grid-cols-2">
@@ -952,6 +1025,9 @@ function BookStep({ answers, set, country }: StepProps & { country: string | nul
           </span>
         </label>
       </Section>
+      {answers.sections.includes("radio-plans") ? (
+        <RadioPlansChoice answers={answers} set={set} plans={radioPlans.data} failed={radioPlans.isError} />
+      ) : null}
     </div>
   );
 }

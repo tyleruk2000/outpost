@@ -4,7 +4,7 @@
  * the start of the window with day and night, a log to fill in, and the page on how HF
  * travels. The words are the plan's own blocks (plans/document.ts).
  */
-import { type CommunicationPlan, type PlanResult, planHours, utcLabel } from "@outpost/shared";
+import { type CommunicationPlan, type PlanPair, type PlanResult, planHours, utcLabel } from "@outpost/shared";
 import type { Content, TDocumentDefinitions } from "pdfmake/interfaces";
 import {
   blocksToContent,
@@ -55,6 +55,39 @@ function callLog(rows: number): Content {
     },
     margin: [0, 2, 0, 10],
   } as Content;
+}
+
+/**
+ * One pair's hours on each band, from the plan's own table of them, as a grid shaded by
+ * the two-way share of days, with its key. The household book prints the same grid.
+ */
+export function pairGrid(
+  block: Extract<Block, { kind: "table" }>,
+  pair: PlanPair | undefined,
+  hours: number[],
+  byRatio: boolean,
+  measure: number,
+): Content[] {
+  const grid = heatGrid(
+    block.head.slice(1),
+    block.rows.map((row, index) => ({
+      label: row[0]!,
+      cells: row.slice(1).map((text, hour) => {
+        const band = pair?.bands[index];
+        const at = hours[hour];
+        const forward = band && at !== undefined ? band.forward.reliability[at - 1] : null;
+        const back = band && at !== undefined ? band.back.reliability[at - 1] : null;
+        const share =
+          byRatio || text === "-" || text === "n/m" || forward === null || back === null || forward === undefined || back === undefined
+            ? null
+            : Math.min(forward, back);
+        return { text, level: shareLevel(share) };
+      }),
+    })),
+    measure,
+    { labelWidth: 46 },
+  );
+  return byRatio ? [grid] : [grid, heatKey(measure)];
 }
 
 export interface PlanPrintOptions {
@@ -136,34 +169,7 @@ export function planPrint(
           ),
         );
       else if (block.kind === "table") {
-        out.push(
-          heatGrid(
-            block.head.slice(1),
-            block.rows.map((row, index) => ({
-              label: row[0]!,
-              cells: row.slice(1).map((text, hour) => {
-                const band = pair?.bands[index];
-                const at = hours[hour];
-                const forward = band && at !== undefined ? band.forward.reliability[at - 1] : null;
-                const back = band && at !== undefined ? band.back.reliability[at - 1] : null;
-                const share =
-                  byRatio ||
-                  text === "-" ||
-                  text === "n/m" ||
-                  forward === null ||
-                  back === null ||
-                  forward === undefined ||
-                  back === undefined
-                    ? null
-                    : Math.min(forward, back);
-                return { text, level: shareLevel(share) };
-              }),
-            })),
-            measure,
-            { labelWidth: 46 },
-          ),
-        );
-        if (!byRatio) out.push(heatKey(measure));
+        out.push(...pairGrid(block, pair, hours, byRatio, measure));
       } else if (block.kind === "para") out.push(note(block.text));
     }
     first.push(kept(...out));

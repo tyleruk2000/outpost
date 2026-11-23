@@ -33,11 +33,13 @@ import { useMapOverview, useMapSources } from "@/features/maps/data";
 import { regionsCacheKey } from "@/features/maps/lib/tiles";
 import { measureOf, renderPdf } from "@/features/print-kit";
 import { PdfPagesPreview } from "@/features/print-kit/preview";
+import { usePlans as useRadioPlans } from "@/features/propagation/plans/data";
 import { errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { formatDate, plural } from "@/lib/utils";
 import { bookMapPlaces, bookRepeaterGroups, makeBook } from "./book";
 import { sourcesWords } from "./book-line";
+import { gatherRadioPlans } from "./book-radio-gather";
 import { useBook, useBookFacts, useBookMade, useSaveBook } from "./data";
 import { BookWizard } from "./wizard";
 
@@ -58,6 +60,7 @@ export default function BookPage() {
   const [result, setResult] = useState<{ pdf: MadePdf; bytes: Uint8Array; pages: number; medical: boolean } | null>(null);
   const [making, setMaking] = useState(false);
   const [drawing, setDrawing] = useState(false);
+  const radioPlans = useRadioPlans();
   const mapSources = useMapSources();
   const overview = useMapOverview();
   /**
@@ -166,6 +169,8 @@ export default function BookPage() {
       // Repeaters round every place the book covers, from Outpost's own list (on this Outpost, not the internet),
       // with each one's range over the terrain installed and the offline map under each place.
       const repeaterInputs = chosen.includes("frequencies") ? await gatherBookRepeaters(book.data.answers, fresh.data) : null;
+      // The radio plans chosen, with the matrix kept for each (worked out on this Outpost, never fetched).
+      const radioInputs = chosen.includes("radio-plans") ? await gatherRadioPlans(book.data.answers, radioPlans) : [];
       const out = makeBook({
         answers: book.data.answers,
         facts: fresh.data,
@@ -196,6 +201,7 @@ export default function BookPage() {
         repeaterRanges: repeaterInputs?.ranges,
         repeaterMaps: repeaterInputs?.maps,
         repeaterMapsMissing: repeaterInputs?.missing,
+        radioPlans: radioInputs,
         placesMap: placesMap ? { block: placesMap.block, pictures: placesMap.pictures, missing: placesMap.missing } : null,
       });
       const printed = await renderPdf(out.document);

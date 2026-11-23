@@ -25,6 +25,7 @@ import {
   type BookSectionId,
   bookChanges,
   bookPlanIds,
+  bookRadioPlanIds,
   bookSectionLabel,
   type CommsResponse,
   type ContactDto,
@@ -137,6 +138,9 @@ import {
 import type { Block } from "@/features/propagation/plans/document";
 import { BLEACH_STEPS, METHODS, PLANNING_FIGURES, WATER_SOURCES } from "@/features/tools/water/guidance";
 import { purificationBlocks } from "@/features/tools/water/purification-sheet";
+import type { GoRow, LastingRow } from "./book-figures";
+import { goFlow, lastingDrawing, powerCutTimeline, safeWaterFlow, waterNeedsDrawing } from "./book-figures";
+import { type BookRadioPlan, radioPlansContent } from "./book-radio";
 import {
   type BookRepeaterRange,
   type ChosenRepeater,
@@ -194,6 +198,10 @@ export interface BookInputs {
   repeaterMapsMissing?: string | null;
   /** The map of home and the meeting points, drawn from the offline map before the book is made; absent, there is none. */
   placesMap?: { block: Block; pictures: ReadonlyMap<string, PdfPicture>; missing?: string | null } | null;
+  /** The radio plans under Radio › Plans (everyone's), each with its kept matrix; the answers choose which go in. Absent: none. */
+  radioPlans?: BookRadioPlan[];
+  /** The time zone the radio plans' local times are given in; the device's when absent. */
+  timeZone?: string;
   /** The household the book is for: named on the cover and in the footer when there are several. Absent: the only one. */
   which?: Pick<PaperHousehold, "name" | "kind" | "several"> | null;
   /** A portable household's people and kit, printed on the cover in place of an address. */
@@ -223,6 +231,8 @@ class Used {
   nasa = false;
   tobler = false;
   fema = false;
+  /** The engines the radio plans in the book were worked out with. */
+  radio = new Set<string>();
   layers = new Set<ReferenceLayerId>();
 }
 
@@ -521,6 +531,40 @@ const bookPlans = (c: Context) => {
   return c.plans.filter((each) => included.has(each.plan.id));
 };
 
+/** The radio plans that go in the book, by the answers, with their matrices. */
+const bookRadioPlans = (c: Pick<BookInputs, "answers" | "radioPlans">): BookRadioPlan[] => {
+  const all = c.radioPlans ?? [];
+  const included = new Set(
+    bookRadioPlanIds(
+      c.answers,
+      all.map((each) => each.plan),
+    ),
+  );
+  return all.filter((each) => included.has(each.plan.id));
+};
+
+/**
+ * What an emergency plan says about keeping in touch, each part named: its words, the
+ * frequency, when, and the radio plan it names, with where that is in the book.
+ */
+function planCommsLines(c: Context, own: EmergencyPlanResponse): string[] {
+  const comms = own.plan.body.comms;
+  const out: string[] = [];
+  if (comms.text.trim()) out.push(comms.text.trim());
+  if (comms.frequency.trim()) out.push(`**On:** ${comms.frequency.trim()}`);
+  if (comms.schedule.trim()) out.push(`**When:** ${comms.schedule.trim()}`);
+  const radio = own.resolved.commPlan;
+  if (comms.commPlanId && radio === null) out.push("**Radio plan:** one no longer in Outpost");
+  else if (radio) {
+    const inBook =
+      c.answers.sections.includes("radio-plans") && bookRadioPlans(c).some((each) => each.plan.id === radio.id)
+        ? "under Radio plans in this book"
+        : "in Outpost under Radio › Plans";
+    out.push(`**Radio plan:** ${radio.name}, ${inBook}`);
+  }
+  return out;
+}
+
 /** One page for each plan, to put on the fridge: the number, what to do, who to call, where to meet. */
 function fridgeSheets(c: Context): Section {
   const plans = bookPlans(c);
@@ -576,7 +620,7 @@ function fridgeSheets(c: Context): Section {
                 ),
               ]
             : []),
-          ...(readable.comms.length > 0 ? [callout("know", "Keeping in touch", bullets(readable.comms))] : []),
+          ...(planCommsLines(c, own).length > 0 ? [callout("know", "Keeping in touch", bullets(planCommsLines(c, own)))] : []),
         ],
       ),
       note("Our household's own plan, made in advance. In a real emergency, follow the emergency services and official warnings."),
@@ -661,6 +705,16 @@ function places(c: Context): Section {
     content.push(
       note("The map of these places is drawn from the offline map on the device the book is made on; none was drawn for this one."),
     );
+  const flow = goRows(c, mapped);
+  if (flow.length > 0)
+    content.push(
+      figure(goFlow(c.measure, flow).svg, {
+        title: "Where we go",
+        width: c.measure,
+        caption:
+          "Our meeting points and the people we would go to, from the questions. Numbers are the map's. Go to the first; if it cannot be reached, the next.",
+      }),
+    );
   if (mapped.length > 0)
     content.push(
       heading("Where each place is"),
@@ -706,6 +760,36 @@ function places(c: Context): Section {
     );
   c.summary.places = summary;
   return { subtitle: "Where home and every meeting point is, in several grid formats, and who you would go to.", content };
+}
+
+/** The meeting points and the people the household would go to, as the drawing "Where we go" has them. */
+function goRows(c: Context, mapped: Array<{ number: number; name: string; lat: number; lon: number }>): GoRow[] {
+  const numberOf = (marker: MarkerDto | undefined) =>
+    marker
+      ? (mapped.find((place) => Math.abs(place.lat - marker.lat) < 1e-5 && Math.abs(place.lon - marker.lon) < 1e-5)?.number ?? null)
+      : null;
+  const points = (role: "near" | "away") =>
+    c.answers.meetingPoints
+      .filter((point) => point.role === role)
+      .map((point) => c.markers.find((marker) => marker.id === point.markerId))
+      .filter((marker): marker is MarkerDto => !!marker)
+      .map((marker) => ({ name: marker.name, number: numberOf(marker) }));
+  const rows: GoRow[] = [];
+  const near = points("near");
+  if (near.length > 0) rows.push({ kind: "near", when: "If we cannot get home, or must leave home", places: near });
+  const away = points("away");
+  if (away.length > 0) rows.push({ kind: "away", when: "If the area round home is closed", places: away });
+  const stay = c.answers.destinations.map((destination) => {
+    const contact = destination.contactId ? c.destinationContacts[destination.contactId] : null;
+    const marker = destination.markerId ? c.markers.find((each) => each.id === destination.markerId) : undefined;
+    return {
+      name: destination.name,
+      number: numberOf(marker),
+      also: contact ? [contact.displayName, contact.phones[0]?.value].filter(Boolean).join(", ") : undefined,
+    };
+  });
+  if (stay.length > 0) rows.push({ kind: "stay", when: "To stay with someone", places: stay });
+  return rows;
 }
 
 function base64Of(bytes: Uint8Array): string {
@@ -995,6 +1079,23 @@ function supplies(c: Context): Section {
         { keep: true },
       ),
     );
+  if (c.outlook && items.length > 0) {
+    const outlook = c.outlook;
+    const rows: LastingRow[] = [
+      { label: "Food", days: outlook.food.days, why: "no one to feed, or no food counted" },
+      { label: "Water to drink", days: outlook.water.daysDrinking, why: "no water counted" },
+      { label: "Water for all uses", days: outlook.water.daysAllUses, why: "no water counted" },
+      ...(outlook.petFood ? [{ label: "Pet food", days: outlook.petFood.days, why: "no pet food counted" }] : []),
+    ];
+    content.push(
+      figure(lastingDrawing(c.measure, rows, outlook.daysWanted).svg, {
+        title: "How long it lasts, against the days we want",
+        width: c.measure,
+        caption:
+          "As Supplies works it out from what is entered there, eaten and drunk in date order; what passes its use-by first is not counted.",
+      }),
+    );
+  }
   if (items.length === 0) content.push(para("Nothing is kept in Supplies yet."));
   else
     content.push(
@@ -1397,7 +1498,8 @@ function planContent(c: Context, own: EmergencyPlanResponse, first: boolean): Co
         { bold: [0] },
       ),
     );
-  if (readable.comms.length > 0) content.push(label("Keeping in touch"), bullets(readable.comms));
+  const comms = planCommsLines(c, own);
+  if (comms.length > 0) content.push(label("Keeping in touch"), bullets(comms));
   if (readable.where.length > 0)
     content.push(
       label("Where things are"),
@@ -1517,6 +1619,15 @@ function water(c: Context): Section {
     ]),
   );
 
+  // The steps in order, drawn; then each in words, quoted.
+  content.push(
+    figure(safeWaterFlow(c.measure).svg, {
+      title: "Making water safe, in order",
+      width: c.measure,
+      caption: "The two steps below, as a path. Which way to clear it, and which way to kill the germs, is in the words under it.",
+    }),
+  );
+
   // Clear it, then kill the germs; beside it, the filter and the bottle method.
   const boil = methodQuotes("boil");
   const chlorine = methodQuotes("chlorine");
@@ -1631,6 +1742,17 @@ function water(c: Context): Section {
           note(
             `Drinking: ${WATER_FIGURES.drinking.litres} litres a person a day, from ${WATER_FIGURES.drinking.source}. All uses: ${WATER_FIGURES.allUses.litres} litres, the low end of ${WATER_FIGURES.allUses.source}. A figure set on a person in Supplies is used in place of these.`,
           ),
+          figure(
+            waterNeedsDrawing(
+              c.half,
+              n.list.map((need) => ({ name: need.name, drinking: need.drinking, allUses: need.allUses })),
+            ).svg,
+            {
+              title: "Litres a day",
+              width: c.half,
+              caption: "The figures in the table, drawn to one scale.",
+            },
+          ),
           ...(c.outlook && c.outlook.water.days !== null
             ? [
                 callout(
@@ -1672,6 +1794,9 @@ function water(c: Context): Section {
   return { subtitle: "How much to keep, and making water safe to drink with no tap and no power.", content };
 }
 
+/** The hours a step names ("over 4 hours"), or the figure given when it names none. */
+const hoursIn = (words: string, otherwise: number) => Number(/(\d+) hours/.exec(words)?.[1] ?? otherwise);
+
 const round1 = (value: number) => Math.round(value * 10) / 10;
 
 function foodHygiene(c: Context): Section {
@@ -1701,8 +1826,31 @@ function foodHygiene(c: Context): Section {
     ),
   ];
   c.used.cdc = true;
+  const [doors, fridge, freezer] = steps(["power-cut.during.8", "flooding.after.9", "flooding.after.10"], c.used);
+  const timeline: Content[] =
+    doors && fridge && freezer
+      ? [
+          figure(
+            powerCutTimeline(c.measure, {
+              doors: doors.replace(/\.$/, ""),
+              fridge: "throw away fridge food if it was off longer",
+              freezer: "throw away freezer food if it was off longer",
+              fridgeHours: hoursIn(fridge, 4),
+              freezerHours: hoursIn(freezer, 24),
+            }).svg,
+            {
+              title: "Food in the fridge and freezer when the power is off",
+              width: c.measure,
+              caption: `The steps “${fridge.replace(/\.$/, "")}” and “${freezer.replace(/\.$/, "")}”, drawn as hours: GOV.UK's guidance for after a flood, listed at the back. Keeping the doors closed is its power cut page's.`,
+            },
+          ),
+        ]
+      : [];
   c.summary["food-hygiene"] = [`${Math.round(n.kcal)} kcal a day`];
-  return { subtitle: "Food in a power cut or a flood, and keeping clean with little water.", content: [twoColumns(left, right)] };
+  return {
+    subtitle: "Food in a power cut or a flood, and keeping clean with little water.",
+    content: [twoColumns(left, right), ...timeline],
+  };
 }
 
 function warmthRadio(c: Context): Section {
@@ -1769,6 +1917,27 @@ function warmthRadio(c: Context): Section {
   }
   c.summary["warmth-radio"] = summary;
   return { subtitle: "Keeping warm and lit, and the stations your radios can hear.", content };
+}
+
+function radioPlans(c: Context): Section {
+  const plans = bookRadioPlans(c);
+  for (const each of plans) if (each.result) c.used.radio.add(`${each.result.engine.name} (${each.result.engine.model})`);
+  const made = radioPlansContent({
+    plans,
+    emergencyPlans: bookPlans(c),
+    contacts: c.emergencyContacts,
+    timeZone: c.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
+    made: c.made,
+    measure: c.measure,
+  });
+  c.summary["radio-plans"] = made.summary;
+  return {
+    subtitle:
+      plans.length > 0
+        ? `Our ${plans.length === 1 ? "radio plan" : `${plans.length} radio plans`}: when to listen and call, in local time and UTC, and the bands to try, best first.`
+        : "Our radio plans from Radio › Plans: none is in the book yet.",
+    content: made.content,
+  };
 }
 
 function journeys(c: Context): Section {
@@ -2135,6 +2304,10 @@ function sourcesSection(c: Context): Section {
         )}); each layer's publisher and licence is listed under Maps › Layers. OpenStreetMap data © OpenStreetMap contributors, Open Database Licence.`,
     );
   figures.push(`Energy needs: ${c.household ? energyTableSource(energyTableOf(c.household)) : FNNE_SOURCE}, as Supplies uses them.`);
+  if (c.used.radio.size > 0)
+    figures.push(
+      `Radio plans: worked out on this Outpost with ${[...c.used.radio].join(", ")}, as each plan's own paper says. The rule that picks the bands is printed under Radio › Plans.`,
+    );
   figures.push("The drawings are Outpost's own, each of the words printed beside it.");
   content.push(label("Figures, places and drawings"), bullets(figures));
   if (c.attributions.size > 0) content.push(label("Licences"), bullets([...c.attributions]));
@@ -2162,6 +2335,7 @@ const SECTION_MAKERS: Record<Exclude<BookSectionId, "notes">, (c: Context) => Se
   water,
   "food-hygiene": foodHygiene,
   "warmth-radio": warmthRadio,
+  "radio-plans": radioPlans,
   journeys,
   checklists,
   "local-risks": localRisks,

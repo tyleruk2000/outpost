@@ -8,6 +8,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import {
+  ANTENNA_PRESETS,
   type BookFacts,
   type BookResponse,
   bookChanges,
@@ -74,7 +75,16 @@ describe("the book's answers", () => {
   it("are the defaults before they are saved, and are kept as a draft", async () => {
     const first = await ok<BookResponse>("GET", "/api/household-book");
     expect(first).toMatchObject({ answers: DEFAULT_BOOK_ANSWERS, answersAt: null, made: null, stale: [] });
-    expect(Object.keys(first.fingerprints).sort()).toEqual(["answers", "comms", "contacts", "medical", "places", "plans", "supplies"]);
+    expect(Object.keys(first.fingerprints).sort()).toEqual([
+      "answers",
+      "comms",
+      "contacts",
+      "medical",
+      "places",
+      "plans",
+      "radio",
+      "supplies",
+    ]);
     const saved = await ok<BookResponse>("PUT", "/api/household-book", {
       ...DEFAULT_BOOK_ANSWERS,
       householdName: "The Rowans",
@@ -151,6 +161,65 @@ describe("the book's answers", () => {
     await madeNow();
     await ok("DELETE", `/api/emergency-plans/${added.plan.id}`);
     expect((await ok<BookResponse>("GET", "/api/household-book")).stale).toEqual(["plans"]);
+  });
+
+  it("says the book is older than the radio plans when one is added, changed or deleted", async () => {
+    const madeNow = async () => {
+      const now = await ok<BookResponse>("GET", "/api/household-book");
+      await ok("POST", "/api/household-book/made", { pages: 41, sections: ["radio-plans"], summary: {}, fingerprints: now.fingerprints });
+      expect((await ok<BookResponse>("GET", "/api/household-book")).stale).toEqual([]);
+    };
+    const station = (id: string, lat: number) => ({
+      id,
+      name: id,
+      lat,
+      lon: -1,
+      powerWatts: 10,
+      antenna: ANTENNA_PRESETS[0]!.spec,
+      antennaName: "",
+      noise: "residential",
+    });
+    const plan = {
+      name: "Family net",
+      notes: "",
+      stations: [station("home", 51.5), station("gran", 54.4)],
+      date: "2026-11-16",
+      fromUtc: 8,
+      toUtc: 17,
+      bands: ["40m"],
+      mode: "ssb",
+      requiredSnrDb: null,
+      referenceBandwidthHz: null,
+      solar: { source: "table" },
+      links: [],
+    };
+    await madeNow();
+    const added = await ok<{ plan: { id: string; updatedAt: number } }>("POST", "/api/radio/communication-plans", plan);
+    expect((await ok<BookResponse>("GET", "/api/household-book")).stale).toEqual(["radio"]);
+    await madeNow();
+    await ok("PATCH", `/api/radio/communication-plans/${added.plan.id}`, {
+      ...plan,
+      name: "Family net, changed",
+      baseUpdatedAt: added.plan.updatedAt,
+    });
+    expect((await ok<BookResponse>("GET", "/api/household-book")).stale).toEqual(["radio"]);
+    await madeNow();
+    await ok("DELETE", `/api/radio/communication-plans/${added.plan.id}`);
+    expect((await ok<BookResponse>("GET", "/api/household-book")).stale).toEqual(["radio"]);
+  });
+
+  it("keeps which radio plans go in the book", async () => {
+    const saved = await ok<BookResponse>("GET", "/api/household-book");
+    expect(saved.answers.radioPlanChoice).toBe("all");
+    const some = await ok<BookResponse>("PUT", "/api/household-book", {
+      ...saved.answers,
+      radioPlanChoice: "some",
+      radioPlanIds: ["rp1"],
+      baseAnswersAt: saved.answersAt,
+    });
+    expect(some.answers).toMatchObject({ radioPlanChoice: "some", radioPlanIds: ["rp1"] });
+    expect((await app.api("PUT", "/api/household-book", { ...some.answers, radioPlanChoice: "most" })).status).toBe(400);
+    await ok("PUT", "/api/household-book", { ...some.answers, radioPlanChoice: "all", radioPlanIds: [], baseAnswersAt: some.answersAt });
   });
 
   it("keeps which plans go in the book", async () => {
@@ -298,7 +367,29 @@ describe("answers saved before the binder became part of the book", () => {
         "supplies",
         "grab-cards",
       ]);
-      expect(response.body.answers).toMatchObject({ planChoice: "all", grabCardSize: "wallet" });
+      expect(response.body.answers).toMatchObject({ planChoice: "all", grabCardSize: "wallet", radioPlanChoice: "all" });
+    } finally {
+      await own.close();
+    }
+  });
+
+  it("gain the radio plans when saved before they went in, and keep them out once left out", async () => {
+    const own = await createTestApp({}, undefined, { voacapData: false });
+    try {
+      const old = { ...DEFAULT_BOOK_ANSWERS, sections: ["first-minutes", "frequencies"] } as Record<string, unknown>;
+      delete old.radioPlanChoice;
+      delete old.radioPlanIds;
+      own.ctx.db.insert(householdBook).values({ id: "household", answers: old, answersAt: 1, made: null }).run();
+      const before = (await own.api<BookResponse>("GET", "/api/household-book")).body;
+      expect(before.answers.sections).toEqual(["first-minutes", "frequencies", "radio-plans"]);
+      expect(before.answers).toMatchObject({ radioPlanChoice: "all", radioPlanIds: [] });
+      const saved = await own.api<BookResponse>("PUT", "/api/household-book", {
+        ...before.answers,
+        sections: ["first-minutes"],
+        baseAnswersAt: before.answersAt,
+      });
+      expect(saved.body.answers.sections).toEqual(["first-minutes"]);
+      expect((await own.api<BookResponse>("GET", "/api/household-book")).body.answers.sections).toEqual(["first-minutes"]);
     } finally {
       await own.close();
     }
