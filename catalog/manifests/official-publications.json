@@ -3,7 +3,7 @@
   "schemaVersion": 1,
   "id": "official-publications",
   "name": "Official publications",
-  "description": "Individual handbooks, guides, leaflets and textbooks as PDF files, each fetched from its publisher's own website at the moment you ask for it: aviation handbooks from the FAA, preparedness guides from Ready.gov, FEMA and the National Weather Service, health and safety sheets from the CDC, a mould clean-up guide from the EPA, the USDA guide to home canning, farming manuals from the FAO, references from NASA, NOAA, NIST and the US Geological Survey, training handbooks from the US Department of Energy, UK weather factsheets from the Met Office, safety guidance from the Health and Safety Executive, UK government guides from GOV.UK, household emergency plans from Be Ready, Ready Scotland and nidirect, hand-tool and trail manuals from the US Forest Service, old-building repair briefs from the US National Park Service, a soil book from SARE, a surgery manual from the ICRC, history books from NASA, mountain medicine papers from the UIAA, health manuals from the WHO, textbooks from OpenStax, and Lessons In Electric Circuits. Every file was downloaded and its checksum recorded on the date given as last verified; if a publisher later replaces a file, the download is refused until the entry is updated.",
+  "description": "Individual handbooks, guides, leaflets and textbooks as PDF files, each fetched from its publisher's own website at the moment you ask for it: aviation handbooks from the FAA, preparedness guides from Ready.gov, FEMA and the National Weather Service, health and safety sheets from the CDC, a mould clean-up guide from the EPA, the USDA guide to home canning, farming manuals from the FAO, references from NASA, NOAA, NIST and the US Geological Survey, training handbooks from the US Department of Energy, UK weather factsheets from the Met Office, safety guidance from the Health and Safety Executive, UK government guides from GOV.UK, household emergency plans from Be Ready, Ready Scotland and nidirect, hand-tool and trail manuals from the US Forest Service, old-building repair briefs from the US National Park Service, a soil book from SARE, a surgery manual from the ICRC, history books from NASA, mountain medicine papers and climbing safety notes from the UIAA, a boating safety guide from the US Coast Guard, an avalanche handbook and two wartime survival manuals digitised on GovInfo, a foraging leaflet from Mississippi State University Extension, health manuals from the WHO, textbooks from OpenStax, and Lessons In Electric Circuits. Every file was downloaded and its checksum recorded on the date given as last verified; if a publisher later replaces a file, the download is refused until the entry is updated.",
   "maintainers": ["Outpost maintainers"],
   "downloadHosts": [
     "assets.openstax.org",
@@ -33,7 +33,10 @@
     "www.fs.usda.gov",
     "www.nps.gov",
     "www.sare.org",
-    "shop.icrc.org"
+    "shop.icrc.org",
+    "www.govinfo.gov",
+    "www.uscgboating.org",
+    "extension.msstate.edu"
   ],
   "entries": [
     {
@@ -1424,6 +1427,121 @@
         "sha256": "bdaac768a8bd39f5f32448d1529457f9e2da300a01cced4b4dc0da6b23cf3e99",
         "sizeBytes": 175465,
         "version": "3rd revised edition, V 7.4 (April 2021)"
+      }
+    },
+    {
+      "id": "uiaa.medcom-1-4x4-health-rules-for-mountaineers",
+      "name": "4 x 4 Health Rules for Mountaineers",
+      "description": "The UIAA Medical Commission's short list of health rules for hill walkers, climbers and trekkers: preparing before a trip, acclimatising, drinking and eating enough, and when to turn back or go down. 3 pages.",
+      "category": "climbing",
+      "publisher": "UIAA (International Climbing and Mountaineering Federation)",
+      "language": "en",
+      "format": "pdf",
+      "license": "See source",
+      "licenseNote": "© UIAA. The UIAA offers this paper for free download on its own website. Neither the paper nor the page it is offered from states a reuse licence, and the UIAA's terms page states none, so the terms for reuse have not been verified by the catalogue maintainers. Check with the publisher before redistributing this content.",
+      "attribution": "UIAA Medical Commission. Consensus Statement No. 1.",
+      "homepage": "https://www.theuiaa.org/mountain-medicine/medical-advice/",
+      "lastVerified": "2026-11-23",
+      "tags": ["mountaineering", "altitude", "health"],
+      "sizeBytes": 81682,
+      "source": {
+        "type": "http",
+        "url": "https://www.theuiaa.org/documents/mountainmedicine/UIAA_MedCom_Rec_No_1_4x4_health_rules_2008_V1-1.pdf",
+        "sha256": "5de48dd5b5a0ed7d6cd27aad60fd2b3dde5e6d42269ab4325149b171c39b8fbf",
+        "sizeBytes": 81682,
+        "version": "V 1-1 (2008)"
+      }
+    },
+    {
+      "id": "uiaa.medcom-4-nutrition-in-mountaineering",
+      "name": "Nutritional Considerations in Mountaineering",
+      "description": "A UIAA Medical Commission paper on food and drink in the mountains and at altitude: energy needs, fluids, carbohydrate, fat and protein, appetite loss high up, and planning food for an expedition. 13 pages.",
+      "category": "climbing",
+      "publisher": "UIAA (International Climbing and Mountaineering Federation)",
+      "language": "en",
+      "format": "pdf",
+      "license": "See source",
+      "licenseNote": "© UIAA. The UIAA offers this paper for free download on its own website. Neither the paper nor the page it is offered from states a reuse licence, and the UIAA's terms page states none, so the terms for reuse have not been verified by the catalogue maintainers. Check with the publisher before redistributing this content.",
+      "attribution": "UIAA Medical Commission. Consensus Statement No. 4.",
+      "homepage": "https://www.theuiaa.org/mountain-medicine/medical-advice/",
+      "lastVerified": "2026-11-23",
+      "tags": ["mountaineering", "food", "altitude"],
+      "sizeBytes": 119367,
+      "source": {
+        "type": "http",
+        "url": "https://www.theuiaa.org/documents/mountainmedicine/UIAA_MedCom_Rec_No_4_Nutrition_2008_V1-2.pdf",
+        "sha256": "3d00b2ca68c3723b5fbdb52d63d5070f2299a668766828ac8d178497379850da",
+        "sizeBytes": 119367,
+        "version": "V 1-2 (2008)"
+      }
+    },
+    {
+      "id": "uiaa.medcom-20-eye-problems-on-expeditions",
+      "name": "Eye Problems on Expeditions",
+      "description": "A UIAA Medical Commission paper on the eye in the mountains: snow blindness and sun protection, contact lenses and glasses, eye injuries, and how altitude affects sight, with what to carry and do in the field. 13 pages.",
+      "category": "medicine",
+      "publisher": "UIAA (International Climbing and Mountaineering Federation)",
+      "language": "en",
+      "format": "pdf",
+      "license": "See source",
+      "licenseNote": "© UIAA. The UIAA offers this paper for free download on its own website. Neither the paper nor the page it is offered from states a reuse licence, and the UIAA's terms page states none, so the terms for reuse have not been verified by the catalogue maintainers. Check with the publisher before redistributing this content.",
+      "attribution": "UIAA Medical Commission. Official Standard No. 20.",
+      "homepage": "https://www.theuiaa.org/mountain-medicine/medical-advice/",
+      "lastVerified": "2026-11-23",
+      "tags": ["mountaineering", "snow blindness", "first aid"],
+      "sizeBytes": 94817,
+      "source": {
+        "type": "http",
+        "url": "https://www.theuiaa.org/documents/mountainmedicine/Engl_UIAA_MedCom_Rec_No_20_Eye_problems_2020_V2-4.pdf",
+        "sha256": "028a679c8961305eb6e497844375817a6835a36669a5dfebeadb28f532d47a6f",
+        "sizeBytes": 94817,
+        "version": "V 2-4 (2020)"
+      }
+    },
+    {
+      "id": "uiaa.watch-your-anchor-2024",
+      "name": "Watch Your Anchor! Climbing anchor failures",
+      "description": "A one-page UIAA Safety Commission warning for climbers about bolts and anchors that fail after only months or years in place, mostly stainless steel near the sea, through stress corrosion cracking: what to look for and what to do when climbing.",
+      "category": "climbing",
+      "publisher": "UIAA (International Climbing and Mountaineering Federation)",
+      "language": "en",
+      "format": "pdf",
+      "license": "See source",
+      "licenseNote": "© UIAA. The UIAA offers this paper for free download on its own website. Neither the paper nor the page it is offered from states a reuse licence, and the UIAA's terms page states none, so the terms for reuse have not been verified by the catalogue maintainers. Check with the publisher before redistributing this content.",
+      "attribution": "UIAA Safety Commission.",
+      "homepage": "https://www.theuiaa.org/safety/rockanchors/",
+      "lastVerified": "2026-11-23",
+      "tags": ["rock climbing", "anchors", "bolts", "safety"],
+      "sizeBytes": 1430066,
+      "source": {
+        "type": "http",
+        "url": "https://www.theuiaa.org/documents/safety-standards/UIAA_Anchor_Failures_2024.pdf",
+        "sha256": "d39bc3626e6d9040cdfd5c5730d0a2bdfe801737b4022f95127700910cf07e4f",
+        "sizeBytes": 1430066,
+        "version": "2024"
+      }
+    },
+    {
+      "id": "uiaa.avalanche-transceivers-electromagnetic-interference",
+      "name": "Electromagnetic Interference in Avalanche Transceivers",
+      "description": "The UIAA's two-page advice on keeping phones, cameras, metal and other electronics away from an avalanche transceiver, in send mode and while searching, so that it can be found and can find.",
+      "category": "climbing",
+      "publisher": "UIAA (International Climbing and Mountaineering Federation)",
+      "language": "en",
+      "format": "pdf",
+      "license": "See source",
+      "licenseNote": "© UIAA. The UIAA offers this paper for free download on its own website. Neither the paper nor the page it is offered from states a reuse licence, and the UIAA's terms page states none, so the terms for reuse have not been verified by the catalogue maintainers. Check with the publisher before redistributing this content.",
+      "attribution": "UIAA Safety Commission.",
+      "homepage": "https://www.theuiaa.org/electromagnetic-interference-in-avalanche-transceivers/",
+      "lastVerified": "2026-11-23",
+      "tags": ["avalanche", "transceiver", "ski touring", "safety"],
+      "sizeBytes": 315053,
+      "source": {
+        "type": "http",
+        "url": "https://www.theuiaa.org/documents/safety/UIAA-Avalanche-Beacons-Recommendation.pdf",
+        "sha256": "951f211d2f33da61e0810204f2d6fb7af714a001f8bb00e0e6c7092b58ed9aff",
+        "sizeBytes": 315053,
+        "version": "December 2023"
       }
     },
     {
@@ -4110,6 +4228,123 @@
         "sizeBytes": 10339653,
         "version": "Second edition (November 2019), ref. 0973/002",
         "published": "2019-11-01"
+      }
+    },
+    {
+      "id": "usfs.avalanche-handbook-1976",
+      "name": "Avalanche Handbook (Agriculture Handbook 489)",
+      "description": "The US Forest Service's 1976 handbook on snow avalanches: mountain weather and snow, how avalanches start and run, avalanche terrain, judging stability, travelling and choosing a route in avalanche country, rescuing buried people, and control work. 248 pages, scanned. Avalanche science and rescue gear have moved on since 1976; use it alongside a current avalanche forecast and course.",
+      "category": "climbing",
+      "publisher": "US Forest Service",
+      "language": "en",
+      "format": "pdf",
+      "license": "Public domain (US Government work)",
+      "licenseNote": "A US Government work, in the public domain in the United States. The file is the Federal Depository Library Program's digitised copy on GovInfo, the US Government Publishing Office's official service, whose Public Domain & Copyright Notice says public documents \"can generally be reprinted without legal restriction\" but may contain copyrighted material used with permission. The handbook's acknowledgements say some photographs were furnished by people outside the Forest Service.",
+      "attribution": "Perla, R. I. and Martinelli, M., Jr. Avalanche Handbook. Agriculture Handbook 489. US Department of Agriculture, Forest Service, 1976. Copy from the USDA National Agricultural Library via GovInfo.",
+      "homepage": "https://www.govinfo.gov/app/details/GOVPUB-A-PURL-gpo27529",
+      "lastVerified": "2026-11-23",
+      "tags": ["avalanche", "snow", "mountaineering", "rescue", "ski touring"],
+      "sizeBytes": 11414200,
+      "source": {
+        "type": "http",
+        "url": "https://www.govinfo.gov/content/pkg/GOVPUB-A-PURL-gpo27529/pdf/GOVPUB-A-PURL-gpo27529.pdf",
+        "sha256": "b0dba51111cecba05352f0b23278fc0d6f2d59a59a57cd0789807359efd5cadf",
+        "sizeBytes": 11414200,
+        "version": "July 1976"
+      }
+    },
+    {
+      "id": "war-department.tm-1-240-arctic-manual-1944",
+      "name": "Arctic Manual (TM 1-240, 1944)",
+      "description": "The US War Department's 1944 manual for living and travelling in the far north, written for people away from any base: Arctic seas, ice and weather; shelter, fuel, heating and light; food, cooking and finding water; cold-weather clothing; living off the country by hunting, fishing and food plants; travel and the compass; insects, frostbite and snow blindness; and what to do after a forced landing. 142 pages, scanned. Some of its first aid is out of date; follow current first aid guidance.",
+      "category": "survival",
+      "publisher": "US War Department",
+      "language": "en",
+      "format": "pdf",
+      "license": "Public domain (US Government work)",
+      "licenseNote": "A US Government work, in the public domain in the United States. The file is the Federal Depository Library Program's digitised copy on GovInfo, the US Government Publishing Office's official service, whose Public Domain & Copyright Notice says public documents \"can generally be reprinted without legal restriction\" but may contain copyrighted material used with permission. The copy carries no copyright notice.",
+      "attribution": "War Department Technical Manual TM 1-240, Arctic Manual, 17 January 1944. Copy from the University of North Texas Libraries via GovInfo.",
+      "homepage": "https://www.govinfo.gov/app/details/GOVPUB-W-d6c46690b99e9b1e06dfdefeb0d70f5a",
+      "lastVerified": "2026-11-23",
+      "tags": ["cold weather", "shelter", "fire", "food", "hunting", "fishing", "Arctic"],
+      "sizeBytes": 21820126,
+      "source": {
+        "type": "http",
+        "url": "https://www.govinfo.gov/content/pkg/GOVPUB-W-d6c46690b99e9b1e06dfdefeb0d70f5a/pdf/GOVPUB-W-d6c46690b99e9b1e06dfdefeb0d70f5a.pdf",
+        "sha256": "e42ebd9df2ca1aa63bc4e24afed6fff361cea486cbb0a04e8a8f35732888e800",
+        "sizeBytes": 21820126,
+        "version": "17 January 1944"
+      }
+    },
+    {
+      "id": "war-department.tm-10-420-emergency-food-plants-pacific-1943",
+      "name": "Emergency Food Plants and Poisonous Plants of the Islands of the Pacific (TM 10-420, 1943)",
+      "description": "A 1943 War Department field guide, written by the botanist E. D. Merrill, to the wild plants a person cut off on a tropical island can eat and the ones to avoid: coconut, breadfruit, palms, fruits, nuts, roots, greens and seaweeds, then poisonous plants, with drawings for identification. 164 pages, scanned. Never eat a plant you have not identified for certain.",
+      "category": "survival",
+      "publisher": "US War Department",
+      "language": "en",
+      "format": "pdf",
+      "license": "Public domain in the United States",
+      "licenseNote": "Published by the US Government Printing Office in 1943 with no copyright notice, which places it in the public domain in the United States. It was written for the War Department by Dr E. D. Merrill of Harvard University, who died in 1956; outside the United States, check its status where you are before passing it on. The file is the Federal Depository Library Program's digitised copy on GovInfo, the US Government Publishing Office's official service.",
+      "attribution": "Merrill, E. D. Emergency Food Plants and Poisonous Plants of the Islands of the Pacific. War Department Technical Manual TM 10-420, 15 April 1943. Copy from the University of North Texas Libraries via GovInfo.",
+      "homepage": "https://www.govinfo.gov/app/details/GOVPUB-W-c525def2fe43099a885a74ec1c2067bd",
+      "lastVerified": "2026-11-23",
+      "tags": ["edible plants", "poisonous plants", "foraging", "tropics", "islands"],
+      "sizeBytes": 16272988,
+      "source": {
+        "type": "http",
+        "url": "https://www.govinfo.gov/content/pkg/GOVPUB-W-c525def2fe43099a885a74ec1c2067bd/pdf/GOVPUB-W-c525def2fe43099a885a74ec1c2067bd.pdf",
+        "sha256": "c3921c805e478d40288ce9a5345c0260ce98729599bc9f6f834f20b16e956f6b",
+        "sizeBytes": 16272988,
+        "version": "15 April 1943"
+      }
+    },
+    {
+      "id": "msu-extension.forgotten-foods-wild-edible-plants",
+      "name": "Forgotten Foods: Introduction to Wild Edible Plants",
+      "description": "A four-page introduction from Mississippi State University Extension to foraging wild edible plants: rules for identifying a plant safely, poisonous look-alikes, where not to pick, and a few common plants of the south-eastern United States and how they are eaten.",
+      "category": "survival",
+      "publisher": "Mississippi State University Extension",
+      "language": "en",
+      "format": "pdf",
+      "license": "© Mississippi State University; copying allowed for non-profit education",
+      "licenseNote": "The publication says: \"Copyright 2026 by Mississippi State University. All rights reserved. This publication may be copied and distributed without alteration for nonprofit educational purposes provided that credit is given to the Mississippi State University Extension Service.\" Non-commercial, unaltered copies only.",
+      "attribution": "Bell, S. Forgotten Foods: Introduction to Wild Edible Plants. Publication 4173. Mississippi State University Extension Service, 2026.",
+      "homepage": "https://extension.msstate.edu/publications/forgotten-foods-introduction-wild-edible-plants",
+      "lastVerified": "2026-11-23",
+      "tags": ["edible plants", "foraging", "wild food"],
+      "sizeBytes": 115964,
+      "source": {
+        "type": "http",
+        "url": "https://extension.msstate.edu/sites/default/files/document/2026-02/P4173_web.pdf",
+        "sha256": "2ff2e87307fe681407b09e3c3857005f143fecaa34b2707fb95b4e129ed38b64",
+        "sizeBytes": 115964,
+        "version": "Publication 4173 (POD-01-26)",
+        "published": "2026-02-04"
+      }
+    },
+    {
+      "id": "uscg.boaters-guide-federal-requirements-recreational-boats",
+      "name": "A Boater's Guide to the Federal Requirements for Recreational Boats",
+      "description": "The US Coast Guard's guide for anyone in a small boat: lifejackets, visual distress signals, fire extinguishers, navigation lights and sound signals, then safety and survival tips: staying afloat, cold-water survival, weather, leaving a float plan, distress beacons, calling for help on VHF and digital selective calling, and how maritime search and rescue works. The rules are American; most of the safety advice holds anywhere. 49 pages.",
+      "category": "survival",
+      "publisher": "US Coast Guard",
+      "language": "en",
+      "format": "pdf",
+      "license": "Public domain (US Government work)",
+      "licenseNote": "A publication of the US Coast Guard Boating Safety Division, a US Government work. The guide carries no copyright notice or outside credits. The site's footer points to the Coast Guard's disclaimer and link policies on uscg.mil, which refused automated requests and could not be read.",
+      "attribution": "US Coast Guard Boating Safety Division.",
+      "homepage": "https://uscgboating.org/links/regulations.php",
+      "lastVerified": "2026-11-23",
+      "tags": ["boating", "sea survival", "cold water", "distress signals", "search and rescue"],
+      "sizeBytes": 2545583,
+      "source": {
+        "type": "http",
+        "url": "https://www.uscgboating.org/assets/1/AssetManager/Boaters-Guide-to-Federal-Requirements-for-Receational-Boats-20231108.pdf",
+        "sha256": "8379d7ad2af3f2f997a621f76bd31609c3da1e872163c52ee6c2bcdc43865a4b",
+        "sizeBytes": 2545583,
+        "version": "Revised November 2023",
+        "published": "2023-11-08"
       }
     }
   ]

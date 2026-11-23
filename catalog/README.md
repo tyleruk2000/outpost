@@ -50,7 +50,7 @@ Follow [`schema/manifest.schema.json`](schema/manifest.schema.json)
 ```
 
 - `id`: unique across all manifests, lower-case words joined by dots or hyphens.
-- `category`: `survival`, `medicine`, `food`, `agriculture`, `engineering`, `repair`,
+- `category`: `survival`, `climbing`, `medicine`, `food`, `agriculture`, `engineering`, `repair`,
   `radio`, `navigation`, `preparedness`, `encyclopedias`, `science`, `reference`,
   `reading` (books read for pleasure) or `maps`.
 - `sizeBytes`: an estimate, shown until the source gives the real size.

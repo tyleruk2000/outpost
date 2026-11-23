@@ -1059,7 +1059,7 @@
     {
       "id": "kiwix.wikibooks-en-all-nopic",
       "name": "Wikibooks (without images)",
-      "description": "The Wikibooks collection of open-content textbooks. This edition has the full text without images, which makes it much smaller.",
+      "description": "The Wikibooks collection of open-content textbooks, among them books on outdoor survival, rock climbing, knots and first aid (with a wilderness first aid chapter). This edition has the full text without images, which makes it much smaller.",
       "category": "science",
       "publisher": "Wikibooks",
       "language": "en",
@@ -1079,7 +1079,7 @@
     {
       "id": "kiwix.wikibooks-en-all-maxi",
       "name": "Wikibooks (complete, with images)",
-      "description": "The Wikibooks collection of open-content textbooks. This is the complete edition, with images.",
+      "description": "The Wikibooks collection of open-content textbooks, among them books on outdoor survival, rock climbing, knots and first aid (with a wilderness first aid chapter). This is the complete edition, with images.",
       "category": "science",
       "publisher": "Wikibooks",
       "language": "en",
@@ -1139,7 +1139,7 @@
     {
       "id": "kiwix.wikivoyage-en-all-nopic",
       "name": "Wikivoyage (without images)",
-      "description": "The collaborative travel guide, covering destinations worldwide. This edition has the full text without images, which makes it much smaller.",
+      "description": "The collaborative travel guide, covering destinations worldwide, with travel topics on hiking, wilderness backpacking, camping, mountaineering, rock climbing, altitude sickness, cold weather, arid regions and foraging. This edition has the full text without images, which makes it much smaller.",
       "category": "reference",
       "publisher": "Wikivoyage",
       "language": "en",
@@ -1159,7 +1159,7 @@
     {
       "id": "kiwix.wikivoyage-en-all-maxi",
       "name": "Wikivoyage (complete, with images)",
-      "description": "The collaborative travel guide, covering destinations worldwide. This is the complete edition, with images.",
+      "description": "The collaborative travel guide, covering destinations worldwide, with travel topics on hiking, wilderness backpacking, camping, mountaineering, rock climbing, altitude sickness, cold weather, arid regions and foraging. This is the complete edition, with images.",
       "category": "reference",
       "publisher": "Wikivoyage",
       "language": "en",

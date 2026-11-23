@@ -11,7 +11,7 @@ The catalogue lives in [`catalog/manifests/`](../catalog/manifests):
 | `kiwix-essentials.json` | A starter selection of Kiwix archives | 61 |
 | `kiwix-more.json` | Further Kiwix archives: programming documentation, Project Gutenberg shelves, medicine and science, courses, preparedness, question-and-answer sites, literature, picture books, sheet music | 107 |
 | `kiwix-languages.json` | Wikipedia in twelve more languages | 12 |
-| `official-publications.json` | PDF handbooks, guides, leaflets and textbooks, each from its publisher's own website | 174 |
+| `official-publications.json` | PDF handbooks, guides, leaflets and textbooks, each from its publisher's own website (or, for scanned US Government books, GovInfo) | 184 |
 | `radio.json` | Radio rules, frequency tables, field guides and band plans (38 PDFs) and five Kiwix archives | 43 |
 | `outpost-reference.json` | Reference sheets written for Outpost and shipped with it ([radio.md](radio.md)) | 9 |
 | `logbook73.json` | The Radio Engineering Handbook and fifteen radio guides by this project's author for LogBook73 (MIT), generated and shipped as books ([radio.md](radio.md)) | 16 |
@@ -28,7 +28,7 @@ and rules for entries are in [`catalog/README.md`](../catalog/README.md).
   and gives the main conditions.
 - Where no licence statement was found or checked, the entry says `"See source"`. That
   covers most Kiwix archives of third-party websites, the USDA canning guide and the UIAA
-  papers.
+  papers and safety notes.
 - Ofcom's documents are under Ofcom's own terms (row R1), not the Open Government Licence.
   GOV.UK documents are under the Open Government
   Licence v3.0 "except where otherwise stated"; entries name what is excepted where seen.
@@ -161,7 +161,7 @@ entry points at a file on the publisher's own website. Rows 1 to 36 were read on
 | 18 | FAA handbooks | **Direct: 6 entries** (Pilot's Handbook of Aeronautical Knowledge; Airplane Flying; Aviation Weather; Instrument Flying; Helicopter Flying; Aviation Maintenance Technician: General). The Airframe handbook and AC 43.13-1B pass but are set aside as aircraft-only; Powerplant (205 MB, no checksum published) not fetched. | US Government works; [handbooks page](https://www.faa.gov/regulations_policies/handbooks_manuals/aviation). Images credited to outsiders may be in copyright. |
 | 19 | ARRL (arrl.org) | **Not integrated.** The [copyright page](https://www.arrl.org/copyright) reserves all rights and forbids storing its publications in a retrieval system. One newsletter page was read to trace the "Wilderness Protocol". | All rights reserved. |
 | 20 | NOAA (noaa.gov) | **Direct: 9 entries**: from the National Weather Service, the Weather Spotter's Field Guide, Thunderstorms, Winter Storms, Cloud Chart, Observing Handbook No. 1, Marine Radiofacsimile Schedules, the NOAA Weather Radio brochure; *U.S. Chart No. 1* (Office of Coast Survey); *NOAA Space Weather Scales* (SWPC). **Left out:** *Lightning Safety for Backpackers* (no author; may not be NWS's work). | Public domain unless noted ([NWS disclaimer](https://www.weather.gov/disclaimer)): do not claim it as yours or alter it and present it as official. For Chart No. 1 no reuse statement could be read (noaa.gov/disclaimer answered 403); its entry says so. |
-| 21 | UIAA (theuiaa.org) | **Direct: 2 entries** (Altitude Sickness; Water Disinfection in the Mountains). | Offered free on the [medical advice page](https://www.theuiaa.org/mountain-medicine/medical-advice/); no reuse licence found: "See source". |
+| 21 | UIAA (theuiaa.org) | **Direct: 7 entries** (Altitude Sickness; Water Disinfection in the Mountains; five more in O1). | Offered free on the [medical advice page](https://www.theuiaa.org/mountain-medicine/medical-advice/); no reuse licence found: "See source". |
 
 ### Radio
 
@@ -215,7 +215,7 @@ Also read for the sheets only, one page each, terms not checked: NPL (MSF) and P
 | N13 | US agencies that refused or failed | **Candidates**: 503, 502 and 403 answers; tried again in W27. | Would be US Government works. |
 | N15 | Radio sources again | ukrepeater.net (disallows its data folders), Summits on the Air (no licence found), IARU VHF and HF managers' handbooks (not fetched). **Not listed.** | No licence found. |
 
-Also: the EPA's emergency water disinfection is a web page with no PDF (N14). Not yet examined (N16): Mountaineering Scotland, the BMC, Mountain Rescue England and Wales, Oxfam's technical briefs, the US Fire Administration, the US Coast Guard's boating safety site, remaining FAO and WHO titles.
+Also: the EPA's emergency water disinfection is a web page with no PDF (N14). Not yet examined (N16): Oxfam's technical briefs, the US Fire Administration, remaining FAO and WHO titles. Mountaineering Scotland, the BMC, Mountain Rescue England and Wales and the US Coast Guard's boating safety site were read on 2026-11-23 (O3, O6).
 
 ### Audiobooks and the NIOSH Pocket Guide, added on 2026-11-17
 
@@ -306,6 +306,25 @@ Left out, licences not read (the place to start next): the Internet Encyclopedia
 Philosophy, Prunelle, Tom Lehrer, xkcd, Nicky Case, Open Music Theory, the Milne textbooks,
 ProofWiki, PlanetMath, VOA Learning English, the Chopin and Celtic scores. Also out: One More
 Library (a third party's collection), CrashCourse and TED.
+
+### Survival, climbing and mountains, read on 2026-11-23
+
+A search for open sources covering the ground of a classic wilderness survival handbook
+(being ready, climate and terrain, food, water, shelter and fire, finding your way, first
+aid, the sea, signals and rescue, disasters) and for rock climbing, mountaineering and
+alpinism. The packs **Survival guide** and **Climbing and mountains** gather what is listed
+here with entries already in the catalogue. No copyrighted survival book is listed.
+
+| # | Source | How Outpost uses it | Licence and terms |
+| --- | --- | --- | --- |
+| O1 | UIAA (theuiaa.org), more papers | **Listed: 5**: Medical Commission No. 1 *4 x 4 Health Rules for Mountaineers*, No. 4 *Nutritional Considerations in Mountaineering*, No. 20 *Eye Problems on Expeditions*; Safety Commission *Watch Your Anchor!* (2024) and *Electromagnetic Interference in Avalanche Transceivers* (2023). Addresses from the [medical advice](https://www.theuiaa.org/mountain-medicine/medical-advice/), [rock anchors](https://www.theuiaa.org/safety/rockanchors/) and [transceiver](https://www.theuiaa.org/electromagnetic-interference-in-avalanche-transceivers/) pages; `robots.txt` allows all. **Left out:** the DAV-UIAA *Bolting Guide* (2025: "Reprinting, including excerpts, only with prior permission"); the *Alpine Summer Skills Handbook* (sold; "Republishing or sharing of the Handbook is strictly forbidden"); the UIAA 123 pictorial and standard update (for testers and bolters). | As row 21: free download, © UIAA, no reuse licence in the files, on the pages or on the [terms page](https://theuiaa.org/uiaa-terms-conditions/): "See source". |
+| O2 | GovInfo (govinfo.gov), US Government Publishing Office | **Listed: 3** scanned Federal Depository Library copies: USDA Forest Service *Avalanche Handbook* (Agriculture Handbook 489, 1976); War Department TM 1-240 *Arctic Manual* (1944); TM 10-420 *Emergency Food Plants and Poisonous Plants of the Islands of the Pacific* (1943). Addresses from search engines; `robots.txt` allows `/content/pkg/`. GPO is the federal government's own publisher, so these count as official copies, not mirrors. **Left out:** *Snow Avalanches* (Agriculture Handbook 194, 1961; the 1976 handbook replaces it). | [Public Domain & Copyright Notice](https://www.govinfo.gov/about/policies): US Government works are not under copyright and "can generally be reprinted without legal restriction"; they may hold copyrighted material used with permission. The avalanche handbook credits some photographs to outsiders. TM 10-420 was written by E. D. Merrill of Harvard and printed in 1943 without a copyright notice: public domain in the United States. |
+| O3 | US Coast Guard boating safety (uscgboating.org) | **Listed: 1**: *A Boater's Guide to the Federal Requirements for Recreational Boats* (November 2023), from the [regulations page](https://uscgboating.org/links/regulations.php); it includes staying afloat, cold-water survival, distress signals and calls, float plans and search and rescue. The site has no `robots.txt`. | A US Government work; no notice or outside credits in the guide. uscg.mil (its disclaimer) refused. |
+| O4 | Mississippi State University Extension (extension.msstate.edu) | **Listed: 1**: *Forgotten Foods: Introduction to Wild Edible Plants* (Publication 4173, 2026). | In the file: "may be copied and distributed without alteration for nonprofit educational purposes provided that credit is given". Non-commercial. |
+| O5 | US military survival and mountaineering manuals (ATP 3-50.21 *Survival*, FM 3-05.70, TC 3-97.61 *Military Mountaineering*, ATP 3-50.3, AFH 10-644, MCRPs) | **Not listed as files.** armypubs.army.mil's `robots.txt` disallows everything (row R16); alssa.mil, e-publishing.af.mil, marines.mil, dco.uscg.mil and apps.dtic.mil refused automated requests (403 or a block page); home.army.mil answered 502. Copies on irp.fas.org, archive.org, Scribd and university sites are re-uploads and are not used. The Kiwix archive of the Army's publications (`kiwix.armypubs-en-all`, about 8 GB) is already listed; its contents were not checked title by title. | Search results show ATP 3-50.21 (2018) and TC 3-97.61 (2012) marked "Approved for public release; distribution is unlimited", but that was not read on an official copy. |
+| O6 | Avalanche and mountain bodies | **Not listed.** Avalanche.org ("All Content © 2017 – 2026 Avalanche.org"; HTML only); the Scottish Avalanche Information Service ("© sportscotland"; HTML only); EAWS (avalanches.org: rights reserved to the Province of Tyrol, use beyond "personal information" needs a request); the BMC ([terms](https://www.thebmc.co.uk/bmc-website-terms-of-use): "your own personal, non-commercial use"); Mountain Rescue England and Wales ([terms](https://www.mountain.rescue.org.uk/terms-and-conditions/): no distribution without written consent); Mountaineering Scotland (no reuse terms; mostly HTML). | As said. Use their websites; their advice is current. |
+| O7 | Other survival sources | **Not listed.** Plants For A Future (text "copyrighted by Ken Fern/Plants for a Future", images CC BY-NC-SA, no file); USDA PLANTS (public domain data, but a checklist, not a guide to eating plants); the MCA's MSN 1560 *Survival at sea* (about training courses); NIOSH's *Cold Stress* card (cdc.gov answered 403 on the day); the FAA's survival brochure (no longer offered); the National Library of Medicine's scans of old field manuals (its `robots.txt` disallows AI agents). Not yet examined: the RNLI's sea safety advice. | As said. |
+| O8 | Kiwix library | **Nothing new.** Fourteen small searches of the feed, five seconds apart (climbing, mountain, survival, outdoor, wilderness, avalanche, plants, foraging, mushroom, hiking, rescue, camping, bushcraft, scout) and one listing of English Wikipedia selections found no climbing, mountaineering or survival archive not already listed. Wikivoyage's travel topics (hiking, mountaineering, rock climbing, cold weather, arid regions, foraging) and Wikibooks' *Outdoor Survival*, *Rock Climbing* and wilderness first aid are inside the archives already listed; their descriptions now say so. | As rows 1 and N8. |
 
 ### Repeater lists
 
@@ -557,6 +576,8 @@ Programs, not content; none is in the catalogue.
 | Open scholarship, literature in translation | Open Book Publishers | Refused (W32). |
 | Generator, electrical and fire safety, UK | Electrical Safety First; NFCC | W14. |
 | New Zealand's and Canada's household guides | NEMA; Public Safety Canada | W11 refused; W10 not yet asked. |
+| Current military survival and mountaineering manuals (ATP 3-50.21, TC 3-97.61, AFH 10-644) | Army Publishing Directorate; ALSSA; Air Force e-Publishing | `robots.txt` disallows, or the hosts refuse (O5). **Ask** the Army Publishing Directorate, or try another day. |
+| Avalanche education and current mountain safety advice | EAWS, SAIS, Avalanche.org, the BMC, Mountain Rescue England and Wales | Personal use only, or rights reserved (O6). **Ask** them. |
 
 ## Sources that are not integrated: what you can do
 
