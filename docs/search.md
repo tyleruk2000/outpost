@@ -221,8 +221,9 @@ Measured with the built-in model on an Apple M2 Max laptop (four threads):
 | Memory | About 300 MB while loaded, given back after five idle minutes. |
 | The model itself | 39 MB in the app. |
 
-A small computer will be several times slower; the progress line shows the real time
-left. Or build on a faster computer and [move the vectors](#moving-vectors-between-installations).
+A Raspberry Pi 5 is about five times slower: about four minutes per thousand passages
+(measured 23 November 2026), so 60,000 passages take about four hours the first time.
+The progress line shows the real time left. Or build on a faster computer and [move the vectors](#moving-vectors-between-installations).
 
 ### Choosing where the model runs
 

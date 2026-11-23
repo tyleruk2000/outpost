@@ -368,7 +368,10 @@ export default function HowMeaningWorksPage() {
             On a recent laptop it takes about 45 seconds for every thousand passages.
             {total > 0 ? ` This library has ${plural(total, "passage")}: about ${indexCost(total, 384).time} on that laptop.` : ""}
           </p>
-          <p>A small computer such as a Raspberry Pi is several times slower. How much slower has not been measured.</p>
+          <p>
+            A Raspberry Pi 5 is about five times slower: about four minutes for every thousand passages (measured on 23 November 2026, 7,008
+            passages in half an hour), so a large library takes some hours the first time.
+          </p>
           <p>
             While it reads, Settings shows how far it has got and the time left at the speed it is really going.
             {data?.indexing && data.secondsLeft !== null ? ` Right now: about ${formatDuration(data.secondsLeft)} left.` : ""}
