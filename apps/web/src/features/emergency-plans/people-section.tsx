@@ -74,7 +74,17 @@ export function ContactPicker({
       >
         <DialogBody>
           <Field label="Find in Contacts">
-            {(ids) => <Input {...ids} value={q} onChange={(event) => setQ(event.target.value)} placeholder="A name or number" />}
+            {(ids) => (
+              <Input
+                {...ids}
+                value={q}
+                type="search"
+                enterKeyHint="search"
+                autoComplete="off"
+                onChange={(event) => setQ(event.target.value)}
+                placeholder="A name or number"
+              />
+            )}
           </Field>
           {found.isError ? (
             <p role="alert" className="mt-2 text-small text-danger">
@@ -126,7 +136,14 @@ export function ContactPicker({
                 </Field>
                 <Field label="Phone number" optional>
                   {(ids) => (
-                    <Input {...ids} value={phone} inputMode="tel" maxLength={120} onChange={(event) => setPhone(event.target.value)} />
+                    <Input
+                      {...ids}
+                      value={phone}
+                      type="tel"
+                      autoComplete="off"
+                      maxLength={120}
+                      onChange={(event) => setPhone(event.target.value)}
+                    />
                   )}
                 </Field>
               </div>
@@ -205,7 +222,8 @@ export function ContactsSection({
                     <Input
                       aria-label={`Phone number of ${contact.name || `contact ${index + 1}`}`}
                       value={contact.phone}
-                      inputMode="tel"
+                      type="tel"
+                      autoComplete="off"
                       maxLength={120}
                       className="tabular"
                       onChange={(event) => onChange(replaceAt(contacts, index, { ...contact, phone: event.target.value }))}

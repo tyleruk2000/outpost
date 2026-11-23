@@ -99,7 +99,7 @@ function Phase({
       <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 select-none md:min-h-8 [&::-webkit-details-marker]:hidden">
         <ChevronRight
           aria-hidden
-          className="size-4 shrink-0 text-ink-muted transition-transform duration-150 group-open:rotate-90 motion-reduce:transition-none"
+          className="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-90 motion-reduce:transition-none"
         />
         <h3 className="text-body font-semibold text-ink">{phase.label}</h3>
         <span className="text-small text-ink-muted">{plural(steps.length, "step")}</span>

@@ -42,8 +42,19 @@ export function locateDevice(): Promise<{ lat: number; lon: number }> {
 }
 
 /** The three ways of saying where a portable household is, with the place chosen so far. */
-export function HereChooser({ value, onChange }: { value: HereChoice | null; onChange: (value: HereChoice | null) => void }) {
-  const [how, setHow] = useState<HereSource>(value?.source ?? "device");
+export function HereChooser({
+  value,
+  onChange,
+  sources = ["device", "map", "place"],
+  nameHint = "Such as the campsite or the car park, so the place says what it is.",
+}: {
+  value: HereChoice | null;
+  onChange: (value: HereChoice | null) => void;
+  /** The ways offered, in this order: a home place leaves out "a saved place", chosen from the list beside it. */
+  sources?: readonly HereSource[];
+  nameHint?: string;
+}) {
+  const [how, setHow] = useState<HereSource>(value?.source ?? sources[0] ?? "device");
   const [locating, setLocating] = useState(false);
   const markers = useMarkers();
   const places: MarkerDto[] = markers.data ?? [];
@@ -64,11 +75,13 @@ export function HereChooser({ value, onChange }: { value: HereChoice | null; onC
           label="Where it is from"
           value={how}
           onChange={setHow}
-          options={[
-            { value: "device", label: "This device", icon: <LocateFixed aria-hidden /> },
-            { value: "map", label: "On the map", icon: <Crosshair aria-hidden /> },
-            { value: "place", label: "A saved place", icon: <MapPin aria-hidden /> },
-          ]}
+          options={(
+            [
+              { value: "device", label: "This device", icon: <LocateFixed aria-hidden /> },
+              { value: "map", label: "On the map", icon: <Crosshair aria-hidden /> },
+              { value: "place", label: "A saved place", icon: <MapPin aria-hidden /> },
+            ] as const
+          ).filter((option) => sources.includes(option.value))}
           className="justify-self-start"
         />
       </div>
@@ -122,7 +135,7 @@ export function HereChooser({ value, onChange }: { value: HereChoice | null; onC
           <p className="text-small text-ink" data-testid="here-chosen">
             Chosen: <span className="font-mono">{positionName({ ...value, name: null })}</span>
           </p>
-          <Field label="Name for this place" optional hint="Such as the campsite or the car park, so the place says what it is.">
+          <Field label="Name for this place" optional hint={nameHint}>
             {(ids) => (
               <Input
                 {...ids}

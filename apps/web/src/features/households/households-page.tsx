@@ -3,7 +3,7 @@
  * current for the whole Outpost, a new one, and the People list of everyone in any of them.
  */
 import { ENERGY_BANDS, type HouseholdDto, type HouseholdKind, type PersonDto } from "@outpost/shared";
-import { House, Plus, Trash2 } from "lucide-react";
+import { House, Plus, Trash2, UserRoundPlus } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -47,7 +47,10 @@ export function PlaceSelect({
       hint={
         <>
           {hint ? `${hint} ` : null}
-          <Link to="/maps" className="text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2">
+          <Link
+            to="/maps"
+            className="inline-flex min-h-6 items-center text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2 max-md:min-h-11 md:pointer-coarse:min-h-11"
+          >
             Save a place on the Maps screen
           </Link>
         </>
@@ -240,7 +243,7 @@ function HouseholdRow({ household, current }: { household: HouseholdDto; current
 const bandLabel = (person: PersonDto) =>
   person.kind === "pet" ? "Pet" : (ENERGY_BANDS.find((band) => band.id === person.band)?.label ?? "Person");
 
-function PeopleList({ households }: { households: HouseholdDto[] }) {
+function PeopleList({ households, currentId }: { households: HouseholdDto[]; currentId: string }) {
   const people = usePeople();
   const remove = useDeletePerson();
   const [doomed, setDoomed] = useState<PersonDto | null>(null);
@@ -258,7 +261,20 @@ function PeopleList({ households }: { households: HouseholdDto[] }) {
       ) : people.isError ? (
         <ErrorState error={people.error} onRetry={() => people.refetch()} />
       ) : people.data.length === 0 ? (
-        <EmptyState compact level={3} title="Nobody yet">
+        <EmptyState
+          compact
+          level={3}
+          title="Nobody yet"
+          action={
+            households.some((household) => household.id === currentId) ? (
+              <Button asChild>
+                <Link to={`${HOUSEHOLDS_PATH}/${currentId}#people`}>
+                  <UserRoundPlus /> Add people to {households.find((household) => household.id === currentId)?.name}
+                </Link>
+              </Button>
+            ) : null
+          }
+        >
           Add people and pets on a household's page. Each one's needs count towards that household's supplies.
         </EmptyState>
       ) : (
@@ -334,13 +350,19 @@ function PeopleList({ households }: { households: HouseholdDto[] }) {
 export default function HouseholdsPage() {
   const households = useHouseholds();
   const [creating, setCreating] = useState(false);
+  // The first fixed household with no home place, the current one first.
+  const homeless = households.data
+    ? [...households.data.households]
+        .sort((a, b) => Number(b.id === households.data.currentId) - Number(a.id === households.data.currentId))
+        .find((household) => household.kind === "fixed" && !household.home)
+    : undefined;
   return (
     <Page width="reading">
       <PageHeader
         title="Households"
         description="The homes Outpost keeps things for, and the people in each: your own, the family's, a second place, a caravan or a group on the move."
         actions={
-          <Button variant="primary" onClick={() => setCreating(true)}>
+          <Button onClick={() => setCreating(true)}>
             <Plus /> New household
           </Button>
         }
@@ -368,12 +390,24 @@ export default function HouseholdsPage() {
               ))}
             </Rows>
           </Section>
-          {households.data.households.some((household) => household.kind === "fixed" && !household.home) ? (
-            <Notice tone="info" icon={<House />} className="mt-4">
-              A household with no home place takes no weather, tides or country of its own. Open it to choose a saved place.
+          {homeless ? (
+            <Notice
+              tone="info"
+              icon={<House />}
+              className="mt-4"
+              action={
+                <Button size="sm" asChild>
+                  <Link to={`${HOUSEHOLDS_PATH}/${homeless.id}#place`}>Mark home</Link>
+                </Button>
+              }
+            >
+              A household with no home place takes no weather, tides or country of its own.{" "}
+              {households.data.households.filter((household) => household.kind === "fixed" && !household.home).length > 1
+                ? `${homeless.name} is one.`
+                : null}
             </Notice>
           ) : null}
-          <PeopleList households={households.data.households} />
+          <PeopleList households={households.data.households} currentId={households.data.currentId} />
         </>
       )}
       <NewHouseholdDialog open={creating} onOpenChange={setCreating} />

@@ -7,6 +7,7 @@
  * (env(safe-area-inset-bottom)) is nought here, and was not tried on an iPhone.
  */
 import type { Page } from "@playwright/test";
+import { accessibilityInBothThemes } from "./a11y";
 import { api, expect, test, watchForErrors } from "./fixtures";
 
 test.use({ viewport: { width: 390, height: 844 } });
@@ -68,7 +69,27 @@ test.describe("Focus on the Prepare forms on a phone", () => {
     await page.goto("/prepare/supplies?view=household");
     await expect(page.getByRole("tab", { name: "Household", selected: true })).toBeVisible();
     expect(await coveredStops(page, 40)).toEqual([]);
+
+    // A household's people, whose Save stays at the foot while the list is in view.
+    const { currentId } = await api(page, "GET", "/api/households");
+    await page.goto(`/prepare/households/${currentId}#people`);
+    await page.getByRole("button", { name: "Add a person" }).click();
+    expect(await coveredStops(page, 40)).toEqual([]);
     expect(errors).toEqual([]);
+  });
+});
+
+test.describe("Getting ready on a phone", () => {
+  test("leads in order, at most one step marked Next, straight to a household's people", async ({ page }) => {
+    await page.goto("/prepare");
+    const steps = page.getByRole("list", { name: "Steps to get ready" });
+    await expect(steps.getByRole("link")).toHaveCount(5);
+    expect(await steps.locator('[aria-current="step"]').count()).toBeLessThanOrEqual(1);
+    expect(await sideways(page)).toBeLessThanOrEqual(0);
+    expect(await accessibilityInBothThemes(page, "/prepare")).toEqual([]);
+    await steps.getByRole("link", { name: /^Who lives here/ }).click();
+    await expect(page).toHaveURL(/\/prepare\/households\/[^/]+#people$/);
+    await expect(page.getByRole("button", { name: "Add a person" })).toBeInViewport();
   });
 });
 

@@ -6,6 +6,13 @@ as it always has. Add another when you keep things for more than one place: your
 home and the family's, a home and a second place with mostly the same people, a caravan
 or a group on the move.
 
+## Getting ready from nothing
+
+The **Preparedness** page starts with **Getting ready**: five steps in the order each
+needs the one before. Who lives here, where home is, supplies, an emergency plan and the
+household book. Each is ticked once Outpost holds it, the first not yet done is marked
+**Next**, and each goes straight to where it is done.
+
 ## What a household is
 
 A household has a name, a home (or, if it moves, where it is now), a country, and the
@@ -27,7 +34,9 @@ they are in.
 ## Fixed and portable
 
 - **Fixed:** a home that stays put. Its home is a saved place: choose one on the
-  household's page, or save one first on the **Maps** screen.
+  household's page, or press **Mark home on the map** there and press the map where
+  home is (or use this device's location). That saves the place on the map with the
+  home icon and makes it the household's home in one go.
 - **Portable:** a caravan, a car or a hiking group. Its home is wherever you last said
   it is. Press **We're here now** (on Households, the household's page, or Home) and
   choose this device's location, a point on the map, or a saved place. The browser asks

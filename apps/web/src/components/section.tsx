@@ -26,16 +26,23 @@ export function SectionPage({
   description,
   screens,
   children,
+  lead,
+  listTitle,
 }: {
   title: string;
   description: string;
   screens: readonly SectionScreen[];
   /** Said under the list: a caution that belongs to the whole section. */
   children?: ReactNode;
+  /** Shown before the list, such as the steps to start with; the list is then headed `listTitle`. */
+  lead?: ReactNode;
+  listTitle?: string;
 }) {
   return (
     <Page width="reading">
       <PageHeader title={title} description={description} />
+      {lead}
+      {lead && listTitle && screens.length > 0 ? <h2 className="mb-3 text-lead font-semibold text-ink">{listTitle}</h2> : null}
       {screens.length === 0 ? (
         <EmptyState title="Nothing here yet">This section has no screens in this version of Outpost.</EmptyState>
       ) : (

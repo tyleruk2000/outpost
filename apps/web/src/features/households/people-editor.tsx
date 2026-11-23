@@ -170,6 +170,8 @@ export function PeopleEditor({
                         value={member.name}
                         onChange={(event) => change(member.key, { name: event.target.value })}
                         maxLength={80}
+                        autoComplete="off"
+                        enterKeyHint="next"
                       />
                     )}
                   </Field>

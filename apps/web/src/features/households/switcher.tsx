@@ -33,7 +33,7 @@ export function HouseholdSwitcher({
     <MenuTrigger
       aria-label={`Household: ${name}. Change the current household`}
       className={cn(
-        "flex min-h-9 w-full items-center gap-2.5 rounded-control px-2.5 text-left text-[0.9375rem] text-spine-ink-muted transition-colors hover:bg-spine-raised hover:text-spine-ink focus-visible:outline-spine-ink max-md:min-h-11",
+        "flex min-h-9 w-full items-center gap-2.5 rounded-control px-2.5 text-left text-[0.9375rem] text-spine-ink-muted transition-colors hover:bg-spine-raised hover:text-spine-ink focus-visible:outline-spine-ink max-md:min-h-11 md:pointer-coarse:min-h-11",
         collapsed && "justify-center px-0",
         className,
       )}

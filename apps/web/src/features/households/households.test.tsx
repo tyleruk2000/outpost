@@ -89,6 +89,7 @@ function serve(options: { households: HouseholdDto[]; currentId?: string; people
         if (method === "DELETE") return json(listed);
         if (url.pathname === "/api/households/current") return json(listed);
         if (url.pathname === "/api/households") return json({ household: household({ id: "new", name: body.name, kind: body.kind }) });
+        if (url.pathname === "/api/maps/markers") return json({ marker: { id: "m9", createdAt: 2, updatedAt: 2, ...body } });
         if (url.pathname === "/api/people") return json({ person: person({ id: "made", ...body }) });
         if (url.pathname.startsWith("/api/people/")) return json({ person: person({ ...body }) });
         const id = url.pathname.split("/")[3]!;
@@ -273,6 +274,38 @@ describe("a household's page", () => {
     expect(confirm).toHaveTextContent("1 person or pet will be in no household afterwards, with 1 medical sheet kept.");
     await userEvent.click(within(confirm).getByRole("button", { name: "Delete Caravan" }));
     await waitFor(() => expect(server.sent).toContainEqual({ call: "DELETE /api/households/caravan?confirm=true", body: null }));
+  });
+
+  it("marks home from this device without going to Maps: a saved place with the home icon, made the home place", async () => {
+    const server = serve({ households: [household({ homePlaceId: null, home: null, country: null })], people: [] });
+    vi.stubGlobal("isSecureContext", true);
+    vi.stubGlobal("navigator", {
+      ...navigator,
+      geolocation: {
+        getCurrentPosition: (ok: PositionCallback) => ok({ coords: { latitude: 54.6, longitude: -3.1 } } as GeolocationPosition),
+      },
+    });
+    wrap(null, "/prepare/households/household");
+    await userEvent.click(await screen.findByRole("button", { name: "Mark home on the map" }));
+    const dialog = await screen.findByRole("dialog", { name: "Where Home is" });
+    await userEvent.click(within(dialog).getByRole("radio", { name: "This device" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Use this device's location" }));
+    await userEvent.type(await within(dialog).findByLabelText(/^Name for this place/), "Fell Cottage");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Make it home" }));
+    await waitFor(() =>
+      expect(server.sent).toContainEqual({
+        call: "POST /api/maps/markers",
+        body: { name: "Fell Cottage", note: "", lat: 54.6, lon: -3.1, color: "teal", icon: "home", isFavorite: true },
+      }),
+    );
+    await waitFor(() => expect(server.sent).toContainEqual({ call: "PUT /api/households/household", body: { homePlaceId: "m9" } }));
+  });
+
+  it("on Households, leads from an empty People list and a missing home straight to the household's page", async () => {
+    serve({ households: [household({ homePlaceId: null, home: null, country: null })], people: [] });
+    wrap(null, "/prepare/households");
+    expect(await screen.findByRole("link", { name: "Add people to Home" })).toHaveAttribute("href", "/prepare/households/household#people");
+    expect(screen.getByRole("link", { name: "Mark home" })).toHaveAttribute("href", "/prepare/households/household#place");
   });
 
   it("with only one household, offers no delete", async () => {
