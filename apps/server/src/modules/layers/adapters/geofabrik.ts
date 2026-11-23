@@ -66,7 +66,13 @@ export function readGeofabrikIndex(text: string, base = GEOFABRIK_BASE): IndexEn
     const urls = p.urls as Record<string, unknown> | undefined;
     // Given as a list (["PS", "IL"]) and as text ("PS,IL", "FR") by Geofabrik over time: take either.
     const given = p["iso3166-1:alpha2"];
-    const alpha2 = typeof given === "string" ? given.split(",").map((code) => code.trim()).filter(Boolean) : given;
+    const alpha2 =
+      typeof given === "string"
+        ? given
+            .split(",")
+            .map((code) => code.trim())
+            .filter(Boolean)
+        : given;
     if (typeof p.id !== "string" || typeof urls?.pbf !== "string" || !Array.isArray(alpha2)) continue;
     let pbf: URL;
     try {
