@@ -28,6 +28,7 @@ import { manageLink } from "../manage/manage-data";
 import { AddLocationDialog } from "./add-location-dialog";
 import { DatabaseSection } from "./database-section";
 import { KindDefaultsSection } from "./kind-defaults";
+import { MapDataSection } from "./map-data-section";
 import { NetworkSharesSection, useShares } from "./network-shares";
 import { PageVersionsSection } from "./page-versions-section";
 import { PortableDriveSection } from "./portable-drive";
@@ -451,6 +452,8 @@ export default function StoragePage() {
               </div>
             )}
           </Section>
+
+          <MapDataSection />
 
           <DatabaseSection />
 

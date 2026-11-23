@@ -6,7 +6,11 @@
 import type {
   MapDataAddRequest,
   MapDataAddResponse,
+  MapDataCheckRequest,
+  MapDataCheckResponse,
   MapDataResponse,
+  MapDataUpdateRequest,
+  MapDataUpdateResponse,
   ReferenceEstimate,
   ReferenceRegionDto,
   ReferenceRegionsResponse,
@@ -48,6 +52,26 @@ export function useAddMapData() {
     onSuccess: () => {
       for (const key of [["maps"], ["downloads"], ["jobs"], ["roads"], ["layers"], ["settings"]])
         void client.invalidateQueries({ queryKey: key });
+    },
+  });
+}
+
+/** Asks the source, on a press, how large and how new its newest copy is. Nothing is downloaded. */
+export function useCheckUpdate() {
+  return useMutation({
+    mutationFn: (collectionId: string) =>
+      api.post<MapDataCheckResponse>("/api/maps/data/check", { collectionId } satisfies MapDataCheckRequest),
+  });
+}
+
+/** Downloads the same area or list again; the one kept stays until the new one is in place and checked. */
+export function useUpdateMapData() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (collectionId: string) =>
+      api.post<MapDataUpdateResponse>("/api/maps/data/update", { collectionId } satisfies MapDataUpdateRequest),
+    onSuccess: () => {
+      for (const key of [["maps"], ["downloads"], ["jobs"]]) void client.invalidateQueries({ queryKey: key });
     },
   });
 }

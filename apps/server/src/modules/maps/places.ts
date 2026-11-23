@@ -32,7 +32,7 @@ import { sql } from "drizzle-orm";
 import yauzl from "yauzl";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
-import { AppError, conflict } from "../../core/errors.ts";
+import { AppError, badRequest, conflict } from "../../core/errors.ts";
 import { yieldToEventLoop } from "../../core/event-loop.ts";
 import { PermanentJobError } from "../../core/jobs.ts";
 import { places } from "../../db/schema.ts";
@@ -265,7 +265,12 @@ export const datasetSchema = z
     path: ["country"],
   });
 
-const placesMetaSchema = z.object({ dataset: z.string().min(1), country: z.string().optional() });
+const placesMetaSchema = z.object({
+  dataset: z.string().min(1),
+  country: z.string().optional(),
+  /** An update: the collection this one takes the place of, once it is read in. */
+  replaces: z.string().optional(),
+});
 
 interface PlaceRow {
   id: number;
@@ -286,6 +291,10 @@ interface PlaceRow {
 
 export interface PlacesService {
   startDownload(input: z.infer<typeof datasetSchema>): Promise<DownloadRow>;
+  /** Where a GeoNames list comes from ("GB", "cities500"), for a check of its size and date. */
+  sourceUrl(dataset: string): string;
+  /** Downloads a GeoNames list again; the one held stays, and is searched, until the new one is read in. */
+  update(collectionId: string): Promise<DownloadRow>;
   installer: Installer;
   search(query: string, options?: { limit?: number; near?: { lat: number; lon: number } }): PlaceSearchResponse;
   datasets(): PlacesDataset[];
@@ -352,7 +361,7 @@ function openDataFile(zipPath: string, preferred: string): Promise<{ stream: Nod
 
 export function createPlacesService(ctx: AppContext, options: { baseUrl?: string } = {}): PlacesService {
   const { sqlite, db } = ctx;
-  const baseUrl = options.baseUrl ?? GEONAMES_BASE_URL;
+  const baseUrl = options.baseUrl ?? ctx.config.geonamesUrl ?? GEONAMES_BASE_URL;
 
   const insert = sqlite.prepare(
     `INSERT INTO places (collection_id, geoname_id, name, ascii_name, alt_names, lat, lon, feature_class, feature_code, country, admin1, population, elevation)
@@ -424,6 +433,18 @@ export function createPlacesService(ctx: AppContext, options: { baseUrl?: string
     ];
   }
 
+  /** The list an update replaces, removed once the new one is in: its rows, and its zip where its location is connected. */
+  async function retire(oldId: string, newId: string) {
+    const old = ctx.services.collections.get(oldId);
+    if (!old || old.id === newId || old.kind !== "places") return;
+    try {
+      await ctx.services.collections.remove(old.id, { deleteFiles: ctx.services.storage.isAvailable(old.locationId) });
+    } catch (error) {
+      // Both are searched until the old one is removed by hand; nothing is lost.
+      ctx.log.warn({ err: error, collection: old.id }, "the place names an update replaced could not be removed");
+    }
+  }
+
   const installer: Installer = async ({ download, filePath, sizeBytes, sha256, signal, progress }) => {
     const meta = placesMetaSchema.safeParse(download.meta);
     if (!meta.success) throw new PermanentJobError("This place names download is missing its details. Remove it and start it again.");
@@ -483,6 +504,8 @@ export function createPlacesService(ctx: AppContext, options: { baseUrl?: string
         meta: { places: { countries: [...countries].sort(), count }, dataset },
       });
       sqlite.prepare("UPDATE places SET collection_id = ? WHERE collection_id = ?").run(collection.id, pendingId);
+      // An update: only now, with the new list read in, does the old one go (the person asked for this).
+      if (meta.data.replaces) await retire(meta.data.replaces, collection.id);
       ctx.events.publish({ type: "maps.changed" });
       return { collectionId: collection.id };
     } catch (error) {
@@ -670,6 +693,39 @@ export function createPlacesService(ctx: AppContext, options: { baseUrl?: string
     search,
     datasets: datasetsOf,
     removeRows,
+    sourceUrl: (dataset) => new URL(`${dataset}.zip`, baseUrl).toString(),
+
+    async update(collectionId) {
+      const row = ctx.services.collections.get(collectionId);
+      if (row?.kind !== "places") throw new AppError("not_found", "Those place names were not found.");
+      const dataset = typeof row.meta.dataset === "string" ? row.meta.dataset : "";
+      if (dataset === OS_NAMES_DATASET)
+        throw badRequest("OS Open Names is brought up to date with “Check for a newer edition”, under Place names.");
+      if (!/^([A-Z]{2}|cities500|cities15000)$/.test(dataset)) throw badRequest("Outpost does not know where these place names came from.");
+      if (!ctx.services.storage.isAvailable(row.locationId))
+        throw new AppError("storage_unavailable", "The storage location holding these place names is not connected. Reconnect it first.", {
+          locationId: row.locationId,
+        });
+      const url = new URL(`${dataset}.zip`, baseUrl);
+      const day = new Date().toISOString().slice(0, 10);
+      try {
+        const download = await ctx.services.downloads.start({
+          kind: "places",
+          title: row.title,
+          url: url.toString(),
+          locationId: row.locationId,
+          relPath: `collections/places/${dataset}-${day}.zip`,
+          allowedHosts: [url.hostname],
+          meta: { dataset, ...(/^[A-Z]{2}$/.test(dataset) ? { country: dataset } : {}), replaces: row.id },
+        });
+        ctx.events.publish({ type: "maps.changed" });
+        return download;
+      } catch (error) {
+        if (error instanceof AppError && error.code === "conflict")
+          throw conflict(`These place names were updated today already, or the update is on its way. ${error.message}`);
+        throw error;
+      }
+    },
 
     count() {
       return db.select({ n: sql<number>`count(*)` }).from(places).get()?.n ?? 0;

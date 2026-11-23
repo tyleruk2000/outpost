@@ -29,7 +29,14 @@ import { createExtractFetcher, createTilesInstaller, EXTRACT_FETCHER } from "./e
 import { MAX_GPX_BYTES } from "./gpx.ts";
 import { createImageryInstaller, type ImageryService, isImageryDownload, registerImagery } from "./imagery/index.ts";
 import { areaSizeQuery, createAreaMeter } from "./kept-area.ts";
-import { createMapData, createMapDataAdd, mapDataAddSchema } from "./map-data.ts";
+import {
+  createMapData,
+  createMapDataAdd,
+  createMapDataUpdates,
+  mapDataAddSchema,
+  mapDataCheckSchema,
+  mapDataUpdateSchema,
+} from "./map-data.ts";
 import { registerOsNames } from "./os-names/index.ts";
 import { createPlacesService, datasetSchema, type PlacesService } from "./places.ts";
 import { createPlanner } from "./planner.ts";
@@ -195,6 +202,10 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
   const mapDataAdd = createMapDataAdd(ctx);
   app.get("/api/maps/data", async (): Promise<MapDataResponse> => mapData());
   app.post("/api/maps/data/add", async (request) => mapDataAdd(mapDataAddSchema.parse(request.body)));
+  // Updating: asking the source first is a press of its own; so is the download that follows.
+  const mapDataUpdates = createMapDataUpdates(ctx, client);
+  app.post("/api/maps/data/check", async (request) => mapDataUpdates.check(mapDataCheckSchema.parse(request.body).collectionId));
+  app.post("/api/maps/data/update", async (request) => mapDataUpdates.update(mapDataUpdateSchema.parse(request.body).collectionId));
 
   app.get("/api/maps/regions", async () => {
     return regions.list();

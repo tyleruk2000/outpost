@@ -144,7 +144,8 @@ export function tileTypeMatches(header: { tileType: number }, tileType: "vector"
 }
 
 /**
- * Installer for finished `map` and `terrain` downloads. Extracts carry their region in
+ * Installer for finished `map` and `terrain` downloads. An update carries `meta.replaces`, the
+ * collection it takes the place of, removed (file and all) once the new one is installed. Extracts carry their region in
  * `meta`; an archive fetched whole (from a catalogue entry, say) carries none, so
  * everything that matters is read from the archive itself.
  */
@@ -189,6 +190,18 @@ export function createTilesInstaller(ctx: AppContext, kind: "map" | "terrain"): 
       sha256,
       meta: { map, ...(meta?.regionId ? { regionId: meta.regionId } : {}) },
     });
+    // An update (regions.ts): the new archive is in and was read, so only now does the one it replaces go.
+    const replaces = typeof download.meta.replaces === "string" ? download.meta.replaces : null;
+    const old = replaces ? ctx.services.collections.get(replaces) : undefined;
+    if (old && old.id !== collection.id && old.kind === kind) {
+      try {
+        if (ctx.services.storage.isAvailable(old.locationId)) await ctx.services.collections.remove(old.id, { deleteFiles: true });
+        else ctx.log.warn({ collection: old.id }, "the map an update replaces is on a location that is not connected; both are kept");
+      } catch (error) {
+        // Both stay listed until the old one is removed by hand: nothing is lost.
+        ctx.log.warn({ err: error, collection: old.id }, "the map an update replaced could not be removed");
+      }
+    }
     ctx.events.publish({ type: "maps.changed" });
     return { collectionId: collection.id };
   };

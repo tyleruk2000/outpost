@@ -102,7 +102,18 @@ export interface RegionsService {
   estimate(input: z.infer<typeof estimateSchema>, signal?: AbortSignal): Promise<MapEstimate>;
   start(input: z.infer<typeof startRegionSchema>, signal?: AbortSignal): Promise<DownloadRow[]>;
   importArchive(input: z.infer<typeof importSchema>): Promise<CollectionRow>;
+  /** Asks the source, on a press, for the size and build day of the same area as a kept map or terrain. */
+  check(
+    collectionId: string,
+    signal?: AbortSignal,
+  ): Promise<{ host: string; sizeBytes: number; build: string | null; newer: boolean | null }>;
+  /** Downloads the same area again from the source's newest build; the one kept is replaced once the new one is in and checked. */
+  update(collectionId: string, signal?: AbortSignal): Promise<DownloadRow>;
 }
+
+/** "2026-11-15" from a build day "20261115". */
+export const dayOfBuild = (build: string | null | undefined) =>
+  build && /^\d{8}$/.test(build) ? `${build.slice(0, 4)}-${build.slice(4, 6)}-${build.slice(6, 8)}` : null;
 
 /** A name reduced to something safe and readable in a file name. */
 export function slugify(name: string): string {
@@ -152,6 +163,20 @@ export function createRegionsService(ctx: AppContext, deps: { planner: Planner; 
     const summary = await deps.planner.summary(source.url, request, signal);
     assertDownloadable(summary);
     return { source, summary };
+  }
+
+  /** A kept map or terrain that can be fetched again: the area, the zooms and the kind, from the collection itself. */
+  function updatable(collectionId: string) {
+    const row = collections.get(collectionId);
+    if (!row || (row.kind !== "map" && row.kind !== "terrain")) throw new AppError("not_found", "That map was not found.");
+    const map = row.meta.map;
+    if (!map || map.tileType === "imagery" || !map.bounds)
+      throw badRequest("Satellite pictures are fetched again under Maps, Offline, Satellite pictures.");
+    if (row.meta.imported)
+      throw badRequest("This map was imported from a file of your own, so Outpost cannot fetch it again. Import a newer file instead.");
+    const tileType: MapTileType = row.kind === "terrain" ? "terrain" : "vector";
+    const request = requestOf({ bbox: map.bounds as Bbox, minZoom: map.minZoom, maxZoom: map.maxZoom }, tileType);
+    return { row, tileType, request };
   }
 
   const service: RegionsService = {
@@ -261,6 +286,67 @@ export function createRegionsService(ctx: AppContext, deps: { planner: Planner; 
           }
           throw error;
         }
+      }
+      ctx.events.publish({ type: "maps.changed" });
+      return started;
+    },
+
+    async check(collectionId, signal) {
+      const { row, tileType, request } = updatable(collectionId);
+      const { source, summary } = await plan(tileType, request, signal);
+      const build = source.build;
+      return {
+        host: source.host,
+        sizeBytes: summary.sizeBytes,
+        build,
+        newer: build && row.version && /^\d{8}$/.test(row.version) ? build > row.version : null,
+      };
+    },
+
+    async update(collectionId, signal) {
+      const { row, tileType, request } = updatable(collectionId);
+      if (!storage.isAvailable(row.locationId)) {
+        const name = storage.list().find((location) => location.id === row.locationId)?.name ?? "Its storage location";
+        throw new AppError("storage_unavailable", `"${name}" is not connected. Reconnect it, then update.`, { locationId: row.locationId });
+      }
+      const { source, summary } = await plan(tileType, request, signal);
+      const build = source.build ?? todayStamp();
+      const terrain = tileType === "terrain";
+      const relPath = `collections/${terrain ? "terrain" : "maps"}/${slugify(row.title.replace(/ \(terrain\)$/, ""))}-${build}.pmtiles`;
+      if (relPath === row.relPath || (source.build && row.version === source.build)) {
+        const day = dayOfBuild(source.build);
+        throw conflict(`“${row.title}” is from the newest build already${day ? ` (${day})` : ""}. Nothing was downloaded.`);
+      }
+      // The new one is downloaded beside the old, so both must fit until the old one goes.
+      await storage.assertSpace(row.locationId, summary.sizeBytes);
+      const meta: ExtractMeta & { replaces: string } = {
+        bbox: request.bbox,
+        minZoom: request.minZoom,
+        maxZoom: request.maxZoom,
+        tileType,
+        ...(typeof row.meta.regionId === "string" ? { regionId: row.meta.regionId } : {}),
+        regionName: row.title,
+        sourceBuild: source.build,
+        followsNewest: source.followsNewest,
+        replaces: row.id,
+      };
+      let started: DownloadRow;
+      try {
+        started = await downloads.start({
+          kind: terrain ? "terrain" : "map",
+          title: terrain ? `Terrain: ${row.title.replace(/ \(terrain\)$/, "")}` : `Map: ${row.title}`,
+          url: source.url,
+          locationId: row.locationId,
+          relPath,
+          sizeBytes: summary.sizeBytes,
+          fetcher: EXTRACT_FETCHER,
+          allowedHosts: [source.host],
+          meta,
+        });
+      } catch (error) {
+        if (error instanceof AppError && error.code === "conflict")
+          throw conflict(`An update of “${row.title}” is already on its way, or done. ${error.message}`);
+        throw error;
       }
       ctx.events.publish({ type: "maps.changed" });
       return started;

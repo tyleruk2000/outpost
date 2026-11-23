@@ -12,26 +12,34 @@ import {
   MAP_DATA_COUNTRY_KINDS,
   type MapDataAddRequest,
   type MapDataAddResponse,
+  type MapDataCheckResponse,
   type MapDataCountry,
   type MapDataItem,
   type MapDataKind,
   type MapDataProgress,
   type MapDataResponse,
   type MapDataState,
+  type MapDataUpdateResponse,
+  type MapDataUpdateWay,
   OS_NAMES_DATASET,
 } from "@outpost/shared";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
-import { badRequest } from "../../core/errors.ts";
+import { AppError, badRequest } from "../../core/errors.ts";
 import type { HttpClient } from "../../core/http.ts";
 import type { JobRow } from "../../core/jobs.ts";
 import type { CollectionRow } from "../collections/service.ts";
 import type { DownloadRow } from "../downloads/types.ts";
-import { createRegionIndex } from "../layers/adapters/geofabrik-regions.ts";
+import { resolveGeofabrikFile } from "../layers/adapters/geofabrik-file.ts";
+import { createRegionIndex, GEOFABRIK_BASE } from "../layers/adapters/geofabrik-regions.ts";
 import { EXTRACT_LAYERS } from "../layers/adapters/osm-tags.ts";
 import { COUNTRIES, countryOf } from "../layers/countries.ts";
 import { DEFAULT_PLACE_LAYERS, isCountryFileDownload } from "./country-files.ts";
-import { bboxSchema } from "./regions.ts";
+import { bboxSchema, dayOfBuild } from "./regions.ts";
+import { BUILD_BASE_URL, BUILDS_URL, hostOf } from "./source.ts";
+
+export const mapDataCheckSchema = z.object({ collectionId: z.string().min(1).max(100) }).strict();
+export const mapDataUpdateSchema = mapDataCheckSchema;
 
 export const mapDataAddSchema = z
   .object({
@@ -105,8 +113,54 @@ export function countryOfBox(box: Bbox): string | null {
 
 const dayOf = (ms: number | null | undefined) => (ms ? new Date(ms).toISOString().slice(0, 10) : null);
 
+/** The day a collection's data is from: its version where that is a day ("2026-11-21" or a map build's "20261121"). */
+const dayOfVersion = (version: string | null) =>
+  version && /^\d{4}-\d{2}-\d{2}/.test(version) ? version.slice(0, 10) : dayOfBuild(version);
+
+const hostsOf = (url: string) => {
+  try {
+    return [hostOf(url)];
+  } catch {
+    return [];
+  }
+};
+
+/** Who is asked, and who a download comes from, for each source: what the screen says before anything is pressed. */
+export function updateHosts(ctx: AppContext) {
+  const { settings } = ctx.services;
+  const geofabrik = hostsOf(ctx.config.geofabrikUrl ?? GEOFABRIK_BASE);
+  return {
+    map: () => {
+      const override = settings.get("maps.tileSource").trim();
+      return override ? hostsOf(override) : [...hostsOf(BUILDS_URL), ...hostsOf(BUILD_BASE_URL)];
+    },
+    terrain: () => hostsOf(settings.get("maps.terrainSource").trim()),
+    names: () => hostsOf(ctx.services.maps.places.sourceUrl("cities500")),
+    geofabrik: () => geofabrik,
+  };
+}
+
 export function createMapData(ctx: AppContext, client: HttpClient) {
   const { collections, storage, downloads, settings } = ctx.services;
+
+  const hosts = updateHosts(ctx);
+  /** How a collection of this kind is brought up to date. */
+  function updateWay(row: CollectionRow, kind: MapDataKind): MapDataUpdateWay | null {
+    const way = (how: MapDataUpdateWay["how"], list: string[], note: string | null = null): MapDataUpdateWay => ({
+      how,
+      hosts: list,
+      note,
+    });
+    if (kind === "imagery") return way("elsewhere", [], "Fetched again under Maps, Offline, Satellite pictures.");
+    if (kind === "map" || kind === "terrain")
+      return row.meta.imported ? null : way("download", kind === "map" ? hosts.map() : hosts.terrain());
+    if (kind === "names")
+      return row.meta.dataset === OS_NAMES_DATASET
+        ? way("elsewhere", [], "Brought up to date with “Check for a newer edition”, under Place names.")
+        : way("download", hosts.names());
+    if (kind === "extract") return way("download", hosts.geofabrik());
+    return null;
+  }
 
   return function mapData(): MapDataResponse {
     const locations = new Map(storage.list().map((location) => [location.id, location]));
@@ -164,11 +218,12 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
         sizeBytes: row.sizeBytes,
         locationId: row.locationId,
         locationName: location?.name ?? "Unknown location",
-        dataDate: row.version && /^\d{4}-\d{2}-\d{2}/.test(row.version) ? row.version.slice(0, 10) : dayOf(row.installedAt),
+        dataDate: dayOfVersion(row.version) ?? dayOf(row.installedAt),
         progress: moving ? progressOf(moving) : null,
         collectionId: row.id,
         regionId: typeof row.meta.regionId === "string" ? row.meta.regionId : null,
         taskId: jobs[0]?.id ?? null,
+        update: updateWay(row, kind),
       };
     }
 
@@ -270,6 +325,12 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
         packId: pack.id,
         dataDate: pack.publishedAt?.slice(0, 10) ?? dayOf(pack.retrievedAt),
         regionId: pack.request?.scope.regions?.[0] ?? null,
+        update:
+          pack.request?.provider === "osm-extract" && pack.request.scope.regions?.[0]
+            ? { how: "country-file" as const, hosts: hosts.geofabrik(), note: null }
+            : pack.origin === "download"
+              ? { how: "elsewhere" as const, hosts: [], note: "Checked for an update from its own source, in its menu." }
+              : null,
       };
       if (pack.countries.length === 1) put(pack.countries[0], item);
       else put(null, item, true);
@@ -293,6 +354,7 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
         count: network.nodes,
         regionId: network.regionId,
         networkId: network.id,
+        update: network.regionId ? { how: "country-file", hosts: hosts.geofabrik(), note: null } : null,
       });
     }
     for (const job of ctx.jobs.list({ states: ["queued", "running", "paused"], types: ["roads.build"] })) {
@@ -443,5 +505,91 @@ export function createMapDataAdd(ctx: AppContext) {
       downloadIds.push(row.id);
     }
     return { countryFile, downloadIds, taskIds };
+  };
+}
+
+/**
+ * Bringing one kept thing up to date, on a press: first asking its source how large and how new
+ * the newest copy is (nothing downloaded), then downloading it. The one kept stays, and is used,
+ * until the new one is in place and checked; a failed download leaves it as it was.
+ */
+export function createMapDataUpdates(ctx: AppContext, client: HttpClient) {
+  const { collections } = ctx.services;
+  const hosts = updateHosts(ctx);
+
+  function rowOf(collectionId: string): CollectionRow {
+    const row = collections.get(collectionId);
+    if (!row) throw new AppError("not_found", "That map data was not found. It may have been removed.");
+    return row;
+  }
+
+  const countryFileOf = (row: CollectionRow) => {
+    const meta = (row.meta as { countryFile?: { regionId?: string; name?: string; dataDate?: string | null } }).countryFile;
+    if (!meta?.regionId) throw badRequest("Outpost does not know which region this country file is of.");
+    return { regionId: meta.regionId, name: meta.name ?? row.title, dataDate: meta.dataDate ?? null };
+  };
+
+  return {
+    async check(collectionId: string, signal?: AbortSignal): Promise<MapDataCheckResponse> {
+      const row = rowOf(collectionId);
+      if (row.kind === "map" || row.kind === "terrain") {
+        const found = await ctx.services.maps.regions.check(row.id, signal);
+        const asked = row.kind === "map" ? hosts.map() : [found.host];
+        return { hosts: asked, sizeBytes: found.sizeBytes, dataDate: dayOfBuild(found.build), newer: found.newer };
+      }
+      if (row.kind === "places") {
+        if (row.meta.dataset === OS_NAMES_DATASET)
+          throw badRequest("OS Open Names is checked with “Check for a newer edition”, under Place names.");
+        const url = ctx.services.maps.places.sourceUrl(String(row.meta.dataset ?? ""));
+        const { response } = await client.fetch(url, { method: "HEAD", allowedHosts: hostsOf(url), signal });
+        await response.body?.cancel().catch(() => undefined);
+        if (!response.ok) throw new AppError("upstream", `GeoNames answered ${response.status} for this list. Try again later.`);
+        const length = Number(response.headers.get("content-length"));
+        const modified = Date.parse(response.headers.get("last-modified") ?? "");
+        const dataDate = Number.isFinite(modified) ? new Date(modified).toISOString().slice(0, 10) : null;
+        const held = dayOfVersion(row.version);
+        return {
+          hosts: hostsOf(url),
+          sizeBytes: Number.isFinite(length) && length > 0 ? length : null,
+          dataDate,
+          newer: dataDate && held ? dataDate > held : null,
+        };
+      }
+      if (row.kind === "extract") {
+        const meta = countryFileOf(row);
+        const region = createRegionIndex(ctx, client).find(meta.regionId);
+        if (!region) throw badRequest("Read Geofabrik's list of regions first: Add map data reads it.");
+        const file = await resolveGeofabrikFile(client, region.pbf, region.name, signal);
+        return {
+          hosts: hostsOf(file.url),
+          sizeBytes: file.bytes,
+          dataDate: file.nameDate,
+          newer: file.nameDate && meta.dataDate ? file.nameDate > meta.dataDate : null,
+        };
+      }
+      throw badRequest("This kind of map data is not checked from here.");
+    },
+
+    async update(collectionId: string, signal?: AbortSignal): Promise<MapDataUpdateResponse> {
+      const row = rowOf(collectionId);
+      if (row.kind === "map" || row.kind === "terrain")
+        return { downloadIds: [(await ctx.services.maps.regions.update(row.id, signal)).id] };
+      if (row.kind === "places") return { downloadIds: [(await ctx.services.maps.places.update(row.id)).id] };
+      if (row.kind === "extract") {
+        const meta = countryFileOf(row);
+        // Newer than the one kept: otherwise the kept one would be found and nothing fetched.
+        const after = new Date(Date.parse(`${meta.dataDate ?? new Date().toISOString().slice(0, 10)}T12:00:00Z`) + 86_400_000);
+        const added = await ctx.services.countryFiles.add({
+          regionId: meta.regionId,
+          roads: false,
+          layers: [],
+          keep: true,
+          locationId: row.locationId,
+          newerThan: after.toISOString().slice(0, 10),
+        });
+        return { downloadIds: added.downloadId ? [added.downloadId] : [] };
+      }
+      throw badRequest("This kind of map data is not updated from here.");
+    },
   };
 }
