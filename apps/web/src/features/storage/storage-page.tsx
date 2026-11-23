@@ -151,7 +151,12 @@ function LocationRow({
         </div>
         <Menu>
           <MenuTrigger asChild>
-            <Button variant="ghost" size="icon-sm" className="max-md:size-11" aria-label={`Actions for ${location.name}`}>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="max-md:size-11 md:pointer-coarse:size-11"
+              aria-label={`Actions for ${location.name}`}
+            >
               <Ellipsis />
             </Button>
           </MenuTrigger>
@@ -406,7 +411,7 @@ export default function StoragePage() {
             actions={
               <Link
                 to={manageLink()}
-                className="inline-flex min-h-6 items-center text-small text-primary underline underline-offset-2 max-md:min-h-11"
+                className="inline-flex min-h-6 items-center text-small text-primary underline underline-offset-2 max-md:min-h-11 md:pointer-coarse:min-h-11"
               >
                 Free up space
               </Link>

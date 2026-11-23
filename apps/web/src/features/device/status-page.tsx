@@ -85,7 +85,7 @@ function CheckRow({ check, action }: { check: DeviceCheck; action?: ReactNode })
             {check.link ? (
               <Link
                 to={check.link.to}
-                className="inline-flex min-h-11 items-center text-small text-primary underline underline-offset-2 md:min-h-6"
+                className="inline-flex min-h-11 items-center text-small text-primary underline underline-offset-2 md:min-h-6 md:pointer-coarse:min-h-11"
               >
                 Open {check.link.label}
               </Link>

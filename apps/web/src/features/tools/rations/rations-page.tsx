@@ -355,7 +355,7 @@ function NeedCalculator({
               )}
             </Field>
             <Button
-              size="sm"
+              size="icon"
               variant="ghost"
               aria-label={`Take ${person.name || "this person"} off the list`}
               onClick={() => setPeople(people.filter((entry) => entry.id !== person.id))}
@@ -478,7 +478,7 @@ function NeedCalculator({
 
 function Tick({ id, label, checked, onChange }: { id: string; label: string; checked: boolean; onChange: (on: boolean) => void }) {
   return (
-    <div className="flex min-h-11 items-center gap-2 md:min-h-8">
+    <div className="flex min-h-11 items-center gap-2 md:min-h-8 md:pointer-coarse:min-h-11">
       <Checkbox id={id} checked={checked} onCheckedChange={(on) => onChange(on === true)} />
       <label htmlFor={id} className="text-small text-ink">
         {label}

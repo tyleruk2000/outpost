@@ -31,7 +31,7 @@ export function GameFrame({
 export function GameAbout({ summary = "About this game", children }: { summary?: string; children: ReactNode }) {
   return (
     <details className="group mt-6 border-t border-border pt-2 text-small">
-      <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-primary md:min-h-8 [&::-webkit-details-marker]:hidden">
+      <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-primary md:min-h-8 md:pointer-coarse:min-h-11 [&::-webkit-details-marker]:hidden">
         <ChevronRight aria-hidden className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none" />
         {summary}
       </summary>

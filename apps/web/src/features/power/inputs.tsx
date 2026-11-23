@@ -174,7 +174,7 @@ export function Answers({ children, missing }: { children: ReactNode; missing?: 
 export function Basis({ children, summary = "How this is worked out" }: { children: ReactNode; summary?: string }) {
   return (
     <details className="group mt-3 text-small">
-      <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-primary md:min-h-8 [&::-webkit-details-marker]:hidden">
+      <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-primary md:min-h-8 md:pointer-coarse:min-h-11 [&::-webkit-details-marker]:hidden">
         <ChevronRight aria-hidden className="size-4 transition-transform group-open:rotate-90" />
         {summary}
       </summary>

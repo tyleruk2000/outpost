@@ -585,7 +585,7 @@ export function BuildingList({
               <button
                 type="button"
                 onClick={() => onChoose({ x: b.x, y: b.y })}
-                className="flex min-h-11 w-full items-start gap-3 py-2 text-left hover:bg-surface md:min-h-9"
+                className="flex min-h-11 w-full items-start gap-3 py-2 text-left hover:bg-surface md:min-h-9 md:pointer-coarse:min-h-11"
               >
                 <Icon aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
                 <span className="min-w-0 flex-1 text-small">

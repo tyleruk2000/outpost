@@ -182,7 +182,7 @@ export default function SudokuPage() {
         </>
       }
     >
-      <div className={cn("md:grid md:grid-cols-[minmax(0,32rem)_minmax(15rem,19rem)] md:items-start md:gap-8", boardSurface)}>
+      <div className={cn("lg:grid lg:grid-cols-[minmax(0,32rem)_minmax(15rem,19rem)] lg:items-start lg:gap-8", boardSurface)}>
         <SudokuGrid
           game={game}
           selected={selected}
@@ -192,7 +192,7 @@ export default function SudokuPage() {
             setByKeyboard(keyboard);
           }}
         />
-        <div className="mt-4 grid gap-3 md:mt-0">
+        <div className="mt-4 grid gap-3 lg:mt-0">
           {game.finished ? (
             <div className="grid gap-3">
               <p className="text-lead text-ink">
@@ -204,7 +204,7 @@ export default function SudokuPage() {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-3 gap-1.5 md:gap-2">
+              <div className="grid grid-cols-3 gap-1.5 lg:gap-2">
                 <Button
                   variant={noting ? "soft" : "secondary"}
                   aria-pressed={noting}

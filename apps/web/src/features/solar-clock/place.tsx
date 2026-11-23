@@ -92,7 +92,7 @@ export function usePlaceAndZone(): PlaceState {
         {markers.isPending ? (
           <div className="grid gap-1.5">
             <span className="text-small font-medium text-ink">Place</span>
-            <Skeleton className="h-9 max-md:h-11" aria-label="Loading saved places" />
+            <Skeleton className="h-9 max-md:h-11 md:pointer-coarse:h-11" aria-label="Loading saved places" />
           </div>
         ) : markers.isError ? (
           <Notice tone="warning" title="Saved places could not be read">

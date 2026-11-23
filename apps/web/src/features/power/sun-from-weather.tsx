@@ -309,7 +309,7 @@ export function SunFromWeather({
             </Button>
             <Link
               to="/prepare/weather?view=climate"
-              className="inline-flex min-h-11 items-center text-small text-primary underline underline-offset-2 md:min-h-6"
+              className="inline-flex min-h-11 items-center text-small text-primary underline underline-offset-2 md:min-h-6 md:pointer-coarse:min-h-11"
             >
               Open Weather and hazards
             </Link>

@@ -117,7 +117,7 @@ function Contents({ status, onAgain, again }: { status: DatabaseStatus; onAgain:
             ? `by reading every part of the ${formatBytes(contents.fileBytes)} file. The parts add up to the file exactly.`
             : "by counting what is in each part."}
         </p>
-        <Button size="sm" onClick={onAgain} loading={again || status.measuring} className="max-md:min-h-11">
+        <Button size="sm" onClick={onAgain} loading={again || status.measuring} className="max-md:min-h-11 md:pointer-coarse:min-h-11">
           {again || status.measuring ? null : <RefreshCw />} Work out again
         </Button>
       </div>
@@ -256,7 +256,7 @@ function ReclaimRow({ status }: { status: DatabaseStatus }) {
 function TechnicalDetails({ status }: { status: DatabaseStatus }) {
   return (
     <details className="group mt-2">
-      <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-primary md:min-h-8 [&::-webkit-details-marker]:hidden">
+      <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-primary md:min-h-8 md:pointer-coarse:min-h-11 [&::-webkit-details-marker]:hidden">
         <ChevronRight aria-hidden className="size-4 transition-transform group-open:rotate-90" />
         Technical details
       </summary>

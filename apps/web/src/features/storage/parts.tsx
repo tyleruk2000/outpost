@@ -79,7 +79,13 @@ export function CopyBlock({ label, text, className }: { label: string; text: str
     <div className={cn("min-w-0 overflow-hidden rounded-control border border-border", className)}>
       <div className="flex items-center justify-between gap-3 border-b border-border bg-surface py-1 pr-1 pl-3">
         <span className="min-w-0 truncate font-mono text-[0.8125rem] text-ink-muted">{label}</span>
-        <Button variant="ghost" size="sm" onClick={copy} aria-label={`Copy the text for ${label}`} className="max-md:h-11">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={copy}
+          aria-label={`Copy the text for ${label}`}
+          className="max-md:h-11 md:pointer-coarse:h-11"
+        >
           {state === "copied" ? <Check /> : <Copy />}
           <span aria-live="polite">{state === "copied" ? "Copied" : state === "failed" ? "Select and copy" : "Copy"}</span>
         </Button>
@@ -128,7 +134,7 @@ export function PasswordInput({
         onClick={() => setShown(!shown)}
         aria-label={shown ? "Hide the password" : "Show the password"}
         aria-pressed={shown}
-        className="absolute top-1/2 right-1 -translate-y-1/2 max-md:right-0 max-md:size-11"
+        className="absolute top-1/2 right-1 -translate-y-1/2 max-md:right-0 max-md:size-11 md:pointer-coarse:right-0 md:pointer-coarse:size-11"
       >
         {shown ? <EyeOff /> : <Eye />}
       </Button>

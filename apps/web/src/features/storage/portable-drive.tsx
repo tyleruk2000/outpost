@@ -371,7 +371,7 @@ function Wizard({ status, onClose, startAt }: { status: PortableStatus; onClose:
                     <span className="text-small font-medium text-ink">Collections and maps</span>
                     <button
                       type="button"
-                      className="text-small text-primary underline underline-offset-2 max-md:-mr-2 max-md:min-h-11 max-md:px-2"
+                      className="text-small text-primary underline underline-offset-2 max-md:-mr-2 max-md:min-h-11 max-md:px-2 md:pointer-coarse:-mr-2 md:pointer-coarse:min-h-11 md:pointer-coarse:px-2"
                       onClick={() =>
                         setCollectionIds(
                           collectionIds.length === installed.length

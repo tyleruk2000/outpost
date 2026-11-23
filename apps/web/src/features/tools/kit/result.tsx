@@ -6,7 +6,7 @@
 import type { NoteDoc, NoteResponse } from "@outpost/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, Copy, ExternalLink, FilePlus2 } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -30,8 +30,9 @@ export interface ResultProps {
 }
 
 export function Result({ label, figure, children, keep, refusal, className }: ResultProps) {
+  const held = useHeldHeight(figure !== null && !refusal);
   return (
-    <div className={cn("mt-5 rounded-panel bg-surface px-4 py-3", className)}>
+    <div ref={held.ref} style={held.style} className={cn("mt-5 rounded-panel bg-surface px-4 py-3", className)}>
       <div aria-live="polite" aria-atomic="true">
         <p className="text-small text-ink-muted">{label}</p>
         {refusal ? (
@@ -48,6 +49,30 @@ export function Result({ label, figure, children, keep, refusal, className }: Re
       {keep && figure !== null && !refusal ? <KeepButtons title={keep.title} lines={keep.lines} /> : null}
     </div>
   );
+}
+
+/**
+ * While a figure is being retyped (the field empty for a moment, a stray character) the answer gives way to a line
+ * saying what to correct. The box keeps the height the last answer had, so the page under it does not jump up and
+ * back down with each key.
+ */
+function useHeldHeight(answered: boolean) {
+  const ref = useRef<HTMLDivElement>(null);
+  const last = useRef<number | null>(null);
+  const [minHeight, setMinHeight] = useState<number | undefined>(undefined);
+  useLayoutEffect(() => {
+    if (answered) {
+      setMinHeight(undefined);
+      last.current = ref.current?.offsetHeight ?? null;
+    } else if (last.current !== null) {
+      setMinHeight(last.current);
+    }
+  }, [answered]);
+  // Measured again whenever an answer is shown, as it may be a line longer or shorter than the one before.
+  useLayoutEffect(() => {
+    if (answered && ref.current) last.current = ref.current.offsetHeight;
+  });
+  return { ref, style: minHeight === undefined ? undefined : { minHeight } };
 }
 
 /** A note of one paragraph per line, the last saying where it came from. */

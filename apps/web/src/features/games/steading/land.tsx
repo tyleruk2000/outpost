@@ -34,7 +34,7 @@ export function FoundSettlement({ busy, act }: { busy: boolean; act: Act }) {
   const average = (values: readonly number[]) => values.reduce((a, b) => a + b, 0) / values.length;
   const facts = useMemo(() => holds(land, seed), [land, seed]);
   return (
-    <div className="grid gap-x-10 gap-y-6 md:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
+    <div className="grid gap-x-10 gap-y-6 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
       <div className="grid content-start gap-3">
         <p className="text-body text-ink">
           Choose the land to found the settlement in. Each is drawn from a real place: its sun and wind are what that place gets, month by

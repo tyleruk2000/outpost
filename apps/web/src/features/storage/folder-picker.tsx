@@ -92,7 +92,7 @@ export function FolderPicker({
           <Button
             variant="ghost"
             size="icon-sm"
-            className="max-md:size-11"
+            className="max-md:size-11 md:pointer-coarse:size-11"
             aria-label="Up one folder"
             disabled={atFloor || browse.isPending}
             onClick={() => {
@@ -110,7 +110,7 @@ export function FolderPicker({
             <Button
               variant="ghost"
               size="sm"
-              className="max-md:h-11"
+              className="max-md:h-11 md:pointer-coarse:h-11"
               onClick={() => {
                 setNaming(newFolder === null);
                 setNewFolder(newFolder === null ? (newFolderSuggestion ?? preferFolder ?? "") : null);
@@ -165,7 +165,7 @@ export function FolderPicker({
                       setNewFolder(null);
                       setPath(entry.path);
                     }}
-                    className="flex w-full items-center gap-2.5 rounded-[4px] px-2.5 py-1.5 text-left text-small text-ink hover:bg-surface-strong active:bg-surface-strong max-md:min-h-11"
+                    className="flex w-full items-center gap-2.5 rounded-[4px] px-2.5 py-1.5 text-left text-small text-ink hover:bg-surface-strong active:bg-surface-strong max-md:min-h-11 md:pointer-coarse:min-h-11"
                   >
                     <Folder aria-hidden className="size-4 shrink-0 text-ink-muted" />
                     {/* A root is shown whole, wrapped: two roots can differ only at the end. */}

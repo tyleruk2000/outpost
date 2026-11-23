@@ -227,7 +227,7 @@ function Skerry({ levels }: { levels: Level[] }) {
             autoComplete="off"
             spellCheck={false}
             enterKeyHint="send"
-            className="min-h-11 w-full min-w-0 flex-1 bg-transparent text-game-term-ink caret-game-term-prompt outline-none md:min-h-8"
+            className="min-h-11 w-full min-w-0 flex-1 bg-transparent text-game-term-ink caret-game-term-prompt outline-none md:min-h-8 md:pointer-coarse:min-h-11"
           />
         </form>
       </div>
