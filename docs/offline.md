@@ -35,15 +35,15 @@ Only actions that fetch something new, each started by a person pressing a butto
 | --- | --- |
 | **Refresh** on Explore | `opds.library.kiwix.org`. A manifest of your own without file sizes and checksums causes one small request to the host it names. |
 | Starting a catalogue download | The hosts in the manifests' `downloadHosts`, and mirrors they redirect to |
-| Estimating or downloading a map region | `build-metadata.protomaps.dev` and `build.protomaps.com`, or the `maps.tileSource` archive; for terrain, the `maps.terrainSource` archive |
+| Offline maps: **Check size** and **Download** for a place's map | `build-metadata.protomaps.dev` and `build.protomaps.com`, or the `maps.tileSource` archive; for terrain, the `maps.terrainSource` archive |
 | Downloading place names | `download.geonames.org` |
-| Map data: **Check sizes** and **Download** for roads, places or a country file | `download.geofabrik.de`, for its list of regions and the country's file ([road-routes.md](road-routes.md#installing-road-networks)) |
+| Offline maps: **Check size** and **Download** for routes, nearby places or a source file | `download.geofabrik.de`, for its list of countries and their parts, and the country's source file ([road-routes.md](road-routes.md#adding-routes-for-a-place)) |
 | Place names for Great Britain: **Check the size**, **Download** | `api.os.uk`, which redirects to `omseprd1stdstordownload.blob.core.windows.net` ([maps.md](maps.md#place-names-for-great-britain)) |
 | **Find a route** on Maps | The route source shown beside the search (as shipped, `ovp.dresel.systems` or `overpass.private.coffee`), sent the name typed and, for **This map view**, its edges ([maps.md](map-routes.md#finding-a-known-route)) |
 | Repeaters: **Get the list**, **Bring up to date** | The publisher named beside the source (as shipped, `www.irts.ie` and `hearham.com`) ([radio.md](radio.md#where-to-get-a-list)) |
 | **Save to library** on a link in a reference page | The host in the link. The address must be `http` or `https`, end in a kind of file the library keeps, and not be on a private network. |
 | **Look at the page**, **Save page** under "Save a web page" | The host in the address pasted, and the hosts of its pictures if you asked for them ([notes-and-imports.md](notes-and-imports.md#saving-a-web-page)) |
-| Reference data for the map: **Show the size**, **Download** | The source chosen: `raw.githubusercontent.com`, `davidmegginson.github.io`, `ovp.dresel.systems` or your Overpass server, `download.geofabrik.de`, `query.wikidata.org`, `data.worldpop.org`, `data.geo.admin.ch`, `environment.data.gov.uk` or `api.ratings.food.gov.uk` ([reference-layers.md](reference-layers.md)) |
+| Layer data for the map: **Show the size**, **Download** | The source chosen: `raw.githubusercontent.com`, `davidmegginson.github.io`, `ovp.dresel.systems` or your Overpass server, `download.geofabrik.de`, `query.wikidata.org`, `data.worldpop.org`, `data.geo.admin.ch`, `environment.data.gov.uk` or `api.ratings.food.gov.uk` ([reference-layers.md](reference-layers.md)) |
 | Weather: **Update now**; Climate: **Fetch the averages for this place** | `api.open-meteo.com`, `www.metoffice.gov.uk`, `environment.data.gov.uk`; for averages `power.larc.nasa.gov` and `re.jrc.ec.europa.eu`. Positions are rounded to two decimal places. ([weather.md](weather.md)) |
 | Weather: **Fetch alerts** | `www.gdacs.org`, `earthquake.usgs.gov`, and one national service: `feeds.meteoalarm.org` (sent the country), `api.weather.gov` or `api.weather.gc.ca` (sent Home's position), `alerts.metservice.com` or `www.data.jma.go.jp` (sent nothing) ([weather.md](weather.md#worldwide-alerts)) |
 | Weather: **Fetch river and sea levels** | `environment.data.gov.uk` ([weather.md](weather.md#river-and-sea-levels)) |
@@ -206,7 +206,7 @@ and reports the answer. The room figures shown are the browser's rough estimates
 
 ## Before you leave: a checklist
 
-1. Download the reference collections, map regions, place names and road networks you need.
+1. Download the reference collections you need, and add each place you need under **Maps → Offline maps** (its map, routes and nearby places).
 2. Wait until Downloads shows nothing running and the status line reads **Ready offline**.
 3. Use **Check files** on anything you could not replace.
 4. Open one of each: an article per collection, a PDF, the map at the zoom you will use,

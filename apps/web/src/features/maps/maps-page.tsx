@@ -1532,14 +1532,7 @@ export default function MapsPage() {
         ),
         offline: (
           <Suspense fallback={<PanelLoading />}>
-            <OfflinePanel
-              overview={overview}
-              engine={engine}
-              intent={offlineIntent}
-              onIntentHandled={clearIntent}
-              onNeedMap={lowerSheet}
-              onNeedRoom={raiseSheet}
-            />
+            <OfflinePanel overview={overview} engine={engine} intent={offlineIntent} onIntentHandled={clearIntent} onNeedMap={lowerSheet} />
           </Suspense>
         ),
         sun: <SunPanel engine={engine} format={format} locate={locate.supported ? locate.state : undefined} onLocate={toggleLocate} />,

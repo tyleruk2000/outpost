@@ -16,7 +16,15 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import type { StreetsBuildState, StreetsCountryFile, StreetsEstimate, StreetsRegion, StreetsTileset } from "@outpost/shared";
+import {
+  formatBytes,
+  type StreetsBuildState,
+  type StreetsCountryFile,
+  type StreetsEstimate,
+  type StreetsEstimateRequest,
+  type StreetsRegion,
+  type StreetsTileset,
+} from "@outpost/shared";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, conflict } from "../../core/errors.ts";
 import { resolveInside } from "../../core/fs-safe.ts";
@@ -61,7 +69,9 @@ function along(input: number, key: "seconds" | "written" | "result"): number {
   return points.at(-1)![key];
 }
 
-const gb = (bytes: number) => `${(bytes / 1e9).toLocaleString("en-GB", { maximumFractionDigits: bytes < 10e9 ? 1 : 0 })} GB`;
+// Under a gigabyte the size is said in its own unit ("120 MB"), never "0 GB".
+const gb = (bytes: number) =>
+  bytes < 1e9 ? formatBytes(bytes) : `${(bytes / 1e9).toLocaleString("en-GB", { maximumFractionDigits: bytes < 10e9 ? 1 : 0 })} GB`;
 function minutesWords(minutes: number): string {
   if (minutes < 50) return `about ${minutes} minute${minutes === 1 ? "" : "s"}`;
   const hours = Math.round((minutes / 60) * 2) / 2;
@@ -76,9 +86,9 @@ export function estimateBuild(regions: StreetsRegion[], inputBytes: number, join
   const freeSpaceBytes = inputBytes * (joined ? 4 : 3);
   const measured = inputBytes <= GB_INPUT * 1.05;
   const warnings: string[] = [
-    `This takes ${minutesWords(minutes)} on a Raspberry Pi 5, which is slower for everything else while it builds. The streets in use keep working until the new ones are ready.`,
+    `This takes ${minutesWords(minutes)} on a Raspberry Pi 5, which is slower for everything else while it builds. The walking and cycling in use keep working until the new ones are ready.`,
     `It writes about ${gb(writtenBytes)} to the disk it works on. An SD card wears with writes: build again only when the roads have changed, or work on a USB SSD.`,
-    `It needs ${gb(freeSpaceBytes)} free to work in, and the streets take about ${gb(resultBytes)} afterwards.`,
+    `It needs ${gb(freeSpaceBytes)} free to work in, and walking and cycling take about ${gb(resultBytes)} afterwards.`,
     inputBytes <= GB_INPUT
       ? `It takes up to ${gb(memoryBytes)} of memory (measured for Great Britain; smaller areas take less).`
       : `It may take ${gb(memoryBytes)} of memory or more.`,
@@ -91,7 +101,7 @@ export function estimateBuild(regions: StreetsRegion[], inputBytes: number, join
     warnings.push(
       `This computer has ${gb(totalMemory)} of memory. Great Britain took 2.3 GB on top of everything else running: a smaller area (a county, a city) is the safer choice.`,
     );
-  if (joined) warnings.push("Several country files are joined into one first, which takes longer and needs more room.");
+  if (joined) warnings.push("Several source files are joined into one first, which takes longer and needs more room.");
   return { regions, inputBytes, joined, minutes, memoryBytes, writtenBytes, freeSpaceBytes, resultBytes, measured, warnings };
 }
 
@@ -116,9 +126,9 @@ export interface StreetsBuildPayload {
 }
 
 const STAGES: Record<string, string> = {
-  merge: "Joining the country files",
+  merge: "Joining the source files",
   admins: "Reading boundaries",
-  tiles: "Building streets (the long part)",
+  tiles: "Building walking and cycling (the long part)",
   extract: "Packing the streets",
   import: "Copying the streets",
   swap: "Starting the new streets",
@@ -172,8 +182,10 @@ const sleep = (ms: number, signal?: AbortSignal) =>
 
 export interface StreetsTiles {
   countryFiles(): StreetsCountryFile[];
-  estimate(regionIds: string[]): StreetsEstimate;
+  estimate(regionIds: string[], coming?: StreetsEstimateRequest["coming"]): StreetsEstimate;
   build(input: { regions: string[]; workLocationId?: string }): { jobId: string; estimate: StreetsEstimate };
+  /** The regions a build adding these keeps: those in the streets in use (with a kept file still) and these. */
+  adding(regionIds: string[]): string[];
   importFile(input: { locationId: string; relPath: string; name?: string }): { jobId: string };
   remove(): Promise<void>;
   tileset(): StreetsTileset | null;
@@ -214,20 +226,24 @@ export function createStreetsTiles(ctx: AppContext, connection: StreetsConnectio
   }
 
   function chosen(regionIds: string[]) {
-    if (regionIds.length === 0) throw badRequest("Choose at least one country file to build streets from.");
+    if (regionIds.length === 0) throw badRequest("Choose at least one place to build walking and cycling for.");
     const files = countryFiles();
     return [...new Set(regionIds)].map((id) => {
       const found = files.find((f) => f.regionId === id);
       if (!found)
         throw badRequest(
-          `There is no kept country file for “${id}” on a connected storage location. Add the country file (and keep it) from Map data first.`,
+          `There is no kept source file for “${id}” on a connected storage location. Add the place with its source file kept, under Offline maps, first.`,
         );
       return found;
     });
   }
 
-  function estimate(regionIds: string[]) {
-    const files = chosen(regionIds);
+  function estimate(regionIds: string[], coming: NonNullable<StreetsEstimateRequest["coming"]> = []) {
+    const files = [
+      ...(regionIds.length > 0 || coming.length === 0 ? chosen(regionIds) : []),
+      // Files on their way (Add a place downloads them first): their size as Check size found it.
+      ...coming.map((c) => ({ ...c, dataDate: null })),
+    ];
     return estimateBuild(
       files.map((f) => ({ regionId: f.regionId, name: f.name, country: f.country, dataDate: f.dataDate })),
       files.reduce((sum, f) => sum + f.bytes, 0),
@@ -272,7 +288,7 @@ export function createStreetsTiles(ctx: AppContext, connection: StreetsConnectio
       expectedMs: est.minutes * 60_000,
     };
     const job = ctx.jobs.enqueue(STREETS_BUILD_JOB, payload, {
-      title: `Building streets for routes: ${name}`,
+      title: `${name}: walking and cycling`,
       // While it is read, the (first) country file is not moved or removed.
       subject: `collection:${files[0]!.collectionId}`,
       maxAttempts: 1,
@@ -291,7 +307,7 @@ export function createStreetsTiles(ctx: AppContext, connection: StreetsConnectio
     const job = ctx.jobs.enqueue(
       STREETS_BUILD_JOB,
       { name, import: { locationId: input.locationId, relPath: input.relPath }, expectedMs: null } satisfies StreetsBuildPayload,
-      { title: `Bringing in streets for routes: ${name}`, maxAttempts: 1 },
+      { title: `${name}: walking and cycling, brought in`, maxAttempts: 1 },
     );
     ctx.events.publish({ type: "streets.changed" });
     return { jobId: job.id };
@@ -334,7 +350,7 @@ export function createStreetsTiles(ctx: AppContext, connection: StreetsConnectio
         for (const f of files) {
           if (!ctx.services.storage.isAvailable(f.locationId)) {
             const name = ctx.services.storage.list().find((l) => l.id === f.locationId)?.name ?? "A storage location";
-            throw new PermanentJobError(`“${name}”, where a country file is kept, is not connected. Connect it and try again.`);
+            throw new PermanentJobError(`“${name}”, where a source file is kept, is not connected. Connect it and try again.`);
           }
         }
         request.extracts = files.map((f) => ctx.services.storage.resolve(f.locationId, f.relPath));
@@ -367,7 +383,7 @@ export function createStreetsTiles(ctx: AppContext, connection: StreetsConnectio
       if (ours(status) && status!.state === "failed") {
         connection.forget();
         ctx.events.publish({ type: "streets.changed" });
-        throw new PermanentJobError(status!.message ?? "The streets could not be built. The streets in use are as they were.");
+        throw new PermanentJobError(status!.message ?? "Walking and cycling could not be built. Those in use are as they were.");
       }
       // The service takes the request a moment before it says so: only a long silence means it lost it.
       if (status && !ours(status) && status.state !== "building" && !fs.existsSync(file("request.json"))) {
@@ -418,6 +434,14 @@ export function createStreetsTiles(ctx: AppContext, connection: StreetsConnectio
     countryFiles,
     estimate,
     build,
+    adding(regionIds) {
+      // One set of streets is in use at a time: the places it has already, with a kept file still, and these.
+      const kept = new Set(countryFiles().map((f) => f.regionId));
+      const had = (tilesetOf(connection.status()?.current)?.regions ?? [])
+        .map((r) => r.regionId)
+        .filter((id): id is string => id !== null && kept.has(id));
+      return [...new Set([...had, ...regionIds])];
+    },
     importFile,
     async remove() {
       if (!connection.installed()) throw badRequest("Streets for routes are not installed.");

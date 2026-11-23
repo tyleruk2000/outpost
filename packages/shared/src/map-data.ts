@@ -271,6 +271,8 @@ export interface MapDataAddRequest {
   newerThan?: string;
   /** For "map" (and "terrain"): the area, as the map regions list gives it. */
   map?: { name: string; regionId?: string; bbox: [number, number, number, number]; maxZoom: number; minZoom?: number };
+  /** Walking and cycling, built on this device from the source file once it is kept (needs `keep`). */
+  streets?: { workLocationId?: string };
   /** For "names": the country whose GeoNames list to fetch, two letters. */
   country?: string;
 }

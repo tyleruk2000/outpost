@@ -146,14 +146,14 @@ export function LayersPanel({
   if (layers.length === 0 && population.length === 0) {
     return (
       <div className="px-4 py-5">
-        <h3 className="font-title text-lead text-ink">No reference data on this device yet</h3>
+        <h3 className="font-title text-lead text-ink">No layer data on this device yet</h3>
         <p className="mt-1.5 text-small text-ink-muted">
           Layers of published data for the map: country and regional boundaries, airports, publicly mapped military sites, nuclear
           facilities, hospitals, emergency services, shelters, food shops and drinking water, population, and historical records you import.
           Each is downloaded when you ask, by country or for the area on screen, with its size shown first.
         </p>
         <Button variant="primary" className="mt-4" onClick={onManage}>
-          <Layers /> Get reference data
+          <Layers /> Get layer data
         </Button>
       </div>
     );
@@ -334,7 +334,7 @@ export function LayersPanel({
 
       <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-border px-4 py-3">
         <Button onClick={onManage}>
-          <Layers /> Manage reference data
+          <Layers /> Manage layer data
         </Button>
         <span className="tabular text-small text-ink-muted">
           {formatNumber(layers.reduce((sum, layer) => sum + layer.count, 0))} records

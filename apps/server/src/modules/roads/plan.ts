@@ -231,7 +231,9 @@ export function planRoute(
   const now = options.now ?? Date.now();
   for (const network of graph.networks) {
     if (network.dataDate && now - Date.parse(network.dataDate) > OLD_DATA_MS)
-      warnings.push(`The road data for ${network.name} is from ${network.dataDate}: roads may have changed since. Update it in Map data.`);
+      warnings.push(
+        `The road data for ${network.name} is from ${network.dataDate}: roads may have changed since. Update it in Offline maps.`,
+      );
   }
 
   const countries: string[] = [];

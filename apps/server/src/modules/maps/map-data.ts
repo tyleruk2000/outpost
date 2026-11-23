@@ -103,6 +103,10 @@ export const mapDataAddSchema = z
       .regex(/^[A-Za-z]{2}$/)
       .transform((code) => code.toUpperCase())
       .optional(),
+    streets: z
+      .object({ workLocationId: z.string().min(1).max(100).optional() })
+      .strict()
+      .optional(),
   })
   .strict()
   .superRefine((value, context) => {
@@ -110,9 +114,15 @@ export const mapDataAddSchema = z
     if (fromFile && !value.regionId) context.addIssue({ code: "custom", path: ["regionId"], message: "Choose the country or region." });
     // The person's own choice, every time: nothing is kept or deleted by default.
     if (fromFile && value.keep === undefined)
-      context.addIssue({ code: "custom", path: ["keep"], message: "Say whether to keep the country file once it is read." });
+      context.addIssue({ code: "custom", path: ["keep"], message: "Say whether to keep the source file once it is read." });
     if (value.kinds.includes("extract") && value.keep === false)
-      context.addIssue({ code: "custom", path: ["keep"], message: "Adding the country file on its own means keeping it." });
+      context.addIssue({ code: "custom", path: ["keep"], message: "Adding the source file on its own means keeping it." });
+    if (value.streets && !(fromFile && value.keep === true))
+      context.addIssue({
+        code: "custom",
+        path: ["streets"],
+        message: "Walking and cycling are built from the source file: keep it to build them.",
+      });
     if ((value.kinds.includes("map") || value.kinds.includes("terrain")) && !value.map)
       context.addIssue({ code: "custom", path: ["map"], message: "Give the area of the map: its name, box and zoom." });
     if (value.kinds.includes("terrain") && !value.kinds.includes("map"))
@@ -364,6 +374,8 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
       const item = {
         ...fromCollection(row, "places"),
         count: pack.records,
+        // Its records in the database, not the few bytes left of a file read and deleted.
+        sizeBytes: pack.sizeBytes,
         layers: pack.layers,
         packId: pack.id,
         ageless: AGELESS_PROVIDERS.has(pack.provider),
@@ -433,6 +445,8 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
           return {
             ...item,
             key: `download:${download.id}:${kind}`,
+            // The download is the source file: its bytes are the source file's line, not the routes' or the places'.
+            sizeBytes: kind === "extract" ? item.sizeBytes : null,
             regionId: entry.regionId,
             layers: kind === "places" ? entry.layers : [],
           };
@@ -442,7 +456,7 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
           state:
             job?.state === "queued" ? "waiting" : job?.state === "failed" ? "failed" : job?.state === "paused" ? "paused" : "processing",
           progress: progressOf(job, entry.step),
-          reason: job?.state === "failed" ? (job.error ?? "The country file could not be read.") : null,
+          reason: job?.state === "failed" ? (job.error ?? "The source file could not be read.") : null,
           regionId: entry.regionId,
           layers: kind === "places" ? entry.layers : [],
           taskId: job?.id ?? null,
@@ -549,7 +563,7 @@ export function createMapDataAdd(ctx: AppContext, osNames: () => OsNamesService 
     let countryFile: MapDataAddResponse["countryFile"] = null;
     const kinds = new Set(body.kinds);
     if (kinds.has("roads") || kinds.has("places") || kinds.has("extract")) {
-      if (!body.regionId || body.keep === undefined) throw badRequest("Choose the region, and whether to keep its country file.");
+      if (!body.regionId || body.keep === undefined) throw badRequest("Choose the place, and whether to keep its source file.");
       const added = await ctx.services.countryFiles.add({
         regionId: body.regionId,
         roads: kinds.has("roads"),
@@ -558,6 +572,7 @@ export function createMapDataAdd(ctx: AppContext, osNames: () => OsNamesService 
         ...(body.locationId ? { locationId: body.locationId } : {}),
         ...(body.newerThan ? { newerThan: body.newerThan } : {}),
         remember: true,
+        ...(body.streets ? { streets: body.streets } : {}),
       });
       countryFile = added.countryFile;
       if (added.downloadId) downloadIds.push(added.downloadId);
@@ -608,7 +623,7 @@ export function createMapDataUpdates(ctx: AppContext, client: HttpClient, osName
 
   const countryFileOf = (row: CollectionRow) => {
     const meta = (row.meta as { countryFile?: { regionId?: string; name?: string; dataDate?: string | null } }).countryFile;
-    if (!meta?.regionId) throw badRequest("Outpost does not know which region this country file is of.");
+    if (!meta?.regionId) throw badRequest("Outpost does not know which place this source file is of.");
     return { regionId: meta.regionId, name: meta.name ?? row.title, dataDate: meta.dataDate ?? null };
   };
 

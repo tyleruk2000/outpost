@@ -9,6 +9,7 @@ import type { Reading } from "./charts/scale";
 import { formatSpeed } from "./charts/speed";
 import { clockAt } from "./charts/time-axis";
 import type { TimelineLine } from "./detail-parts";
+import { mapTaskTitle } from "./download-text";
 import type { Tone } from "./plan-text";
 
 type JobLike = Pick<JobDto, "type" | "state" | "progress" | "error" | "errorKind">;
@@ -189,7 +190,7 @@ export function waitingWords(waiting: JobWaiting, now: number): string | null {
     case "turn": {
       const running = waiting.running[0];
       const room = waiting.slots === 1 ? "One task of this kind runs at a time" : `${waiting.slots} tasks of this kind run at a time`;
-      const behind = running ? `Waiting for “${running.title}” to finish. ${room}.` : `Waiting for its turn. ${room}.`;
+      const behind = running ? `Waiting for “${mapTaskTitle(running.title)}” to finish. ${room}.` : `Waiting for its turn. ${room}.`;
       if (waiting.aheadCount === 0) return behind;
       return `${behind} ${waiting.aheadCount === 1 ? "One more is" : `${formatNumber(waiting.aheadCount)} more are`} ahead of it.`;
     }

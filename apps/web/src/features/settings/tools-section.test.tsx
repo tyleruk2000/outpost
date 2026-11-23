@@ -133,7 +133,7 @@ describe("Looking things up in Outpost, in Settings", () => {
   it("switches an area off as an ordinary setting", async () => {
     serve(status());
     const save = show(settings({ "tools.enabled": true }));
-    await userEvent.click(await screen.findByRole("switch", { name: "Places and map layers" }));
+    await userEvent.click(await screen.findByRole("switch", { name: "Places and nearby places" }));
     expect(save).toHaveBeenCalledWith("tools.places", false);
   });
 

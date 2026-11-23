@@ -469,7 +469,7 @@ export default function NuclearPage() {
     <Page width="full" className="@container">
       <PageHeader
         title="Nuclear preparedness"
-        description="An educational workspace over the offline map: what a published model says a nuclear detonation of a stated size does at a distance, published reference data, historical records, and your household's own plans. Nothing here is a forecast or an instruction."
+        description="An educational workspace over the offline map: what a published model says a nuclear detonation of a stated size does at a distance, published data, historical records, and your household's own plans. Nothing here is a forecast or an instruction."
       />
       <OfflineLine regions={installedRegions} loading={overview.isPending} />
 
@@ -669,7 +669,7 @@ export default function NuclearPage() {
               >
                 <div className="-mx-4 grid">{reference.panel}</div>
               </Section>
-              <Section title="Reference data">
+              <Section title="Layer data">
                 <ReferenceDataSection engine={engine} />
               </Section>
               <Section title="Where things come from">
@@ -741,7 +741,7 @@ function OfflineLine({ regions, loading }: { regions: number; loading: boolean }
     <p className="mb-5 flex items-start gap-2 text-small text-ink-muted" data-testid="offline-line">
       <CloudOff aria-hidden className="mt-0.5 size-4 shrink-0" />
       <span>
-        Works offline: the map, the model, the reference data you installed and your plans are on this device, and nothing here uses the
+        Works offline: the map, the model, the layer data you installed and your plans are on this device, and nothing here uses the
         internet unless you press Download.{" "}
         {loading ? (
           ""

@@ -7,7 +7,7 @@ carry on in the background, whether or not the screen is open:
   resumable, retried by itself when the connection drops, and checked against its
   published checksum before it is installed.
 - **Tasks**: work Outpost does here, such as reading a document, building search by
-  meaning, or building a road network. Moving a collection, writing a portable drive,
+  meaning, or building a place's routes. Moving a collection, writing a portable drive,
   checking the database and making a backup are tasks too.
 
 **Show** at the top picks **Downloads and tasks**, **Downloads** or **Tasks**. The
@@ -35,7 +35,7 @@ it does a minute and, when it knows how much there is, about how long it has lef
 
 Some tasks can be paused: building search by meaning, reading scanned pages and adding a
 collection's files carry on from where they stopped; checking a collection and building a
-road network start again from the beginning. **Cancel** asks first: a cancelled task does
+place's routes start again from the beginning. **Cancel** asks first: a cancelled task does
 not carry on by itself, though what it finished is kept. Reading a document, reclaiming
 space in the database, installing an update and erasing everything cannot be cancelled,
 because stopping them part of the way would leave things worse.

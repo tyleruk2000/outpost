@@ -93,7 +93,7 @@ export function unavailableLine(
   }
   if (status.state === "not-answering")
     return { text: status.message ?? "The streets service is not answering just now. Drives still plan on the main roads.", action: null };
-  return { text: status.message ?? "Streets for routes cannot be used just now.", action: null };
+  return { text: status.message ?? "Walking and cycling cannot be used just now.", action: null };
 }
 
 /** The lines that are turns: everything but setting off and arriving. */

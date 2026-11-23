@@ -69,14 +69,17 @@ test.describe("street routes", () => {
     ])
       doors.push((await api<{ marker: { id: string } }>(page, "POST", "/api/maps/markers", place)).marker.id);
     try {
-      // Installed with no streets yet: the row offers to add them, and the dialog asks for a kept country file first.
+      // Installed with no streets yet: the row's Add opens Add a place with Walking and cycling ticked, its cost said.
       installStreets("none");
       await page.goto("/maps/data");
       const gb = page.locator('[data-place="country:GB"]');
       await gb.getByRole("button", { name: "Add walking and cycling for United Kingdom" }).click();
-      const dialog = page.getByRole("dialog", { name: "Add streets for routes" });
-      await expect(dialog.getByRole("button", { name: "Keep a country file" })).toBeVisible();
-      await dialog.getByRole("button", { name: "Cancel" }).click();
+      const dialog = page.getByRole("dialog", { name: "Add a place" });
+      await expect(dialog.getByRole("heading", { name: "What for United Kingdom?" })).toBeVisible();
+      await expect(dialog.getByRole("checkbox", { name: /Walking and cycling/ })).toBeChecked();
+      await expect(dialog.getByText(/source file.*Raspberry Pi 5/).first()).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(dialog).toBeHidden();
 
       // A way that cannot be used yet says why, with the step that puts it right.
       await openPlanner(page);

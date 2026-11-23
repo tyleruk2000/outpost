@@ -18,6 +18,7 @@ import { speedTicks } from "./charts/speed";
 import { SpeedChart } from "./charts/speed-chart";
 import { clockAt, clockTicks, clockTimeWithSeconds } from "./charts/time-axis";
 import { Exact, Fact, Facts, Part, Timeline } from "./detail-parts";
+import { mapTaskTitle } from "./download-text";
 import type { Tone } from "./plan-text";
 import { liveRate, TaskControls } from "./task-row";
 import {
@@ -160,7 +161,12 @@ function NowPart({ detail, job }: { detail: JobDetail; job: JobDto }) {
       ) : (
         <div>
           {running || (fraction !== undefined && fraction > 0) ? (
-            <Progress value={fraction} tone={running ? "lamp" : "muted"} label={`Progress of ${job.title}`} className="mb-2" />
+            <Progress
+              value={fraction}
+              tone={running ? "lamp" : "muted"}
+              label={`Progress of ${mapTaskTitle(job.title)}`}
+              className="mb-2"
+            />
           ) : null}
           <p className="text-small text-ink" aria-live="off">
             {taskNowWords(job)}
@@ -201,7 +207,7 @@ function WaitingBehind({ detail }: { detail: JobDetail }) {
             to={`/downloads/tasks/${item.id}`}
             className="text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2"
           >
-            {item.title}
+            {mapTaskTitle(item.title)}
           </Link>
         </li>
       ))}
@@ -366,7 +372,7 @@ export default function TaskPage() {
     <Page>
       <BackToList />
       <header className="mt-3 mb-9">
-        <h1 className="font-title text-title text-ink">{job.title}</h1>
+        <h1 className="font-title text-title text-ink">{mapTaskTitle(job.title)}</h1>
         <p className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-small text-ink-muted">
           <Badge tone={badgeTone[state.tone]}>{state.label}</Badge>
           <span>

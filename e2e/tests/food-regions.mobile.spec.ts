@@ -17,7 +17,7 @@ test.describe("food and supplies for a state on a phone", () => {
     const errors = watchForErrors(page);
     // Nearby places from another source: the link Layers gives, to Offline maps.
     await page.goto("/maps/data?get=places");
-    const dialog = page.getByRole("dialog", { name: "Get reference data" });
+    const dialog = page.getByRole("dialog", { name: "Get layer data" });
 
     // The source, from the drop-down inside the dialog.
     await dialog.getByRole("combobox", { name: "Source" }).click();
@@ -63,7 +63,7 @@ test.describe("food and supplies for a state on a phone", () => {
     await expect(us).toContainText(/Nearby places/);
     await us.getByRole("button", { name: /^United States/ }).tap();
     const detail = us.getByRole("region", { name: /in detail$/ });
-    await expect(detail).toContainText(/OpenStreetMap: Ohio/);
+    await expect(detail).toContainText(/Ohio, United States of America: nearby places/);
     await expect(detail).toContainText(/read and deleted/);
 
     await page.goto(`/maps?lat=${COLUMBUS.lat}&lon=${COLUMBUS.lon}&z=14`);

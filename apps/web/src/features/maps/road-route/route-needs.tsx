@@ -1,28 +1,28 @@
 /**
  * What a route needs, said before Plan route: the countries it runs through that have no
  * roads kept ("France has no roads yet", with one press to add exactly those), the ones on
- * their way with real progress ("France: Downloading 1.20 of 4.90 GB, 18 minutes left"),
+ * their way with real progress ("France: Downloading 1.2 of 4.9 GB, 18 min left"),
  * and "France is ready." when one arrives. Worked out on this device from the points alone
  * (POST /api/roads/coverage), so it is there as soon as From and To are chosen.
  *
- * The state words are Map data's: Not added · Waiting · Downloading n of N, time left ·
- * Building · Ready, from <date> · Failed: <what to do>.
+ * The state words and the progress are Offline maps' own (the Map data pattern): the same
+ * `bundleStateText` and `MapDataProgress` a place's Routes uses there.
  */
-import {
-  formatBytes,
-  formatDuration,
-  type RoadCoverageCountry,
-  type RoadCoverageResponse,
-  type RoadMissingCountry,
-  type RoadNetworkBuilding,
-  type RoadRouteProblem,
+import type {
+  MapDataBundle,
+  RoadCoverageCountry,
+  RoadCoverageResponse,
+  RoadMissingCountry,
+  RoadNetworkBuilding,
+  RoadRouteProblem,
 } from "@outpost/shared";
 import { CircleAlert, CircleCheck, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/misc";
 import { ApiError } from "@/lib/api";
+import { MapDataProgress } from "../data-page/pattern";
+import { bundleStateText, type DownloadFigures } from "../data-page/words";
 
 /** "France", "France and Switzerland", "France, Italy and Switzerland". */
 export function namesText(names: readonly string[]): string {
@@ -34,39 +34,40 @@ export function namesText(names: readonly string[]): string {
 export const addRoadsLink = (codes?: readonly string[]) =>
   codes && codes.length > 0 ? `/maps/data?add=1&kinds=roads&countries=${codes.join(",")}` : "/maps/data";
 
-/** "1.20 of 4.90 GB" (one unit when both share it), "412 MB of 1.90 GB", or "412 MB" while the size is not known. */
-export function bytesText(received: number, total: number | null | undefined): string {
-  if (!total) return formatBytes(received);
-  const a = formatBytes(received);
-  const b = formatBytes(total);
-  const unit = (text: string) => text.split(" ")[1];
-  return unit(a) === unit(b) ? `${a.split(" ")[0]} of ${b}` : `${a} of ${b}`;
-}
-
-/** Where one on its way stands, in Map data's words: "Waiting", "Downloading 1.20 of 4.90 GB, 18 minutes left", "Building". */
-export function progressText(progress: RoadNetworkBuilding): string {
-  switch (progress.phase) {
-    case "waiting":
-      return "Waiting";
-    case "failed":
-      return `Failed: ${progress.error ?? progress.message ?? "it stopped"}. Add it again to try once more`;
-    case "building":
-      return progress.message ? `Building: ${progress.message.replace(/\.$/, "")}` : "Building";
-    default: {
-      if (progress.receivedBytes === null || progress.receivedBytes === undefined) return "Downloading";
-      const left =
-        progress.etaSeconds !== null && progress.etaSeconds !== undefined && progress.etaSeconds >= 0
-          ? `, ${formatDuration(progress.etaSeconds)} left`
-          : "";
-      return `Downloading ${bytesText(progress.receivedBytes, progress.totalBytes)}${left}`;
-    }
-  }
-}
-
 const fraction = (progress: RoadNetworkBuilding) =>
   progress.phase === "downloading" && progress.totalBytes && progress.receivedBytes !== null && progress.receivedBytes !== undefined
     ? progress.receivedBytes / progress.totalBytes
     : null;
+
+/** A country's routes on their way, as Offline maps' Routes bundle, so its words and bar are the same. */
+export function routesBundle(progress: RoadNetworkBuilding): MapDataBundle {
+  return {
+    kind: "routes",
+    state:
+      progress.phase === "waiting"
+        ? "waiting"
+        : progress.phase === "failed"
+          ? "failed"
+          : progress.phase === "building"
+            ? "building"
+            : "downloading",
+    items: [],
+    sizeBytes: 0,
+    fraction: fraction(progress),
+    dataDate: null,
+    reason: progress.phase === "failed" ? `${(progress.error ?? progress.message ?? "it stopped").replace(/\.$/, "")}. Add it again` : null,
+  };
+}
+
+const figuresOf = (progress: RoadNetworkBuilding): DownloadFigures | null =>
+  progress.phase === "downloading" && progress.receivedBytes !== null && progress.receivedBytes !== undefined
+    ? { receivedBytes: progress.receivedBytes, totalBytes: progress.totalBytes ?? null, etaSeconds: progress.etaSeconds ?? null }
+    : null;
+
+/** Where one on its way stands, in Offline maps' words: "Waiting", "Downloading 1.2 of 4.9 GB, 18 min left", "Building". */
+export function progressText(progress: RoadNetworkBuilding): string {
+  return bundleStateText(routesBundle(progress), figuresOf(progress));
+}
 
 export interface RouteNeeds {
   /** No roads kept, or kept for only part of it while the route goes further. */
@@ -136,19 +137,16 @@ export function AddRoadsButton({
   );
 }
 
-/** One country on its way: its name, where it stands, and a bar from real numbers. */
+/** One country on its way: its name, and Offline maps' own progress (one bar, one line of words). */
 export function CountryProgress({ country }: { country: Pick<RoadCoverageCountry, "name" | "progress"> }) {
   if (!country.progress) return null;
-  const value = fraction(country.progress);
   return (
-    <div className="grid gap-1.5">
-      <p className="tabular text-small text-ink">
-        <span className="font-medium">{country.name}:</span> {progressText(country.progress)}.
-      </p>
-      <Progress
-        value={value}
-        tone={country.progress.phase === "waiting" ? "muted" : "lamp"}
-        label={`${country.name}: roads for routes on their way`}
+    <div className="grid gap-1">
+      <p className="text-small font-medium text-ink">{country.name}</p>
+      <MapDataProgress
+        bundle={routesBundle(country.progress)}
+        download={figuresOf(country.progress)}
+        label={`Routes for ${country.name}`}
       />
     </div>
   );

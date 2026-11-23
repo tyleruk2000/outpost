@@ -61,6 +61,23 @@ const UNDER_WAY = new Set<MapDataItem["state"]>(["waiting", "downloading", "paus
 /** On disk now: not a download or a task on its way. */
 export const mapItemOnDisk = (item: MapDataItem) => !item.downloadId && !UNDER_WAY.has(item.state) && item.state !== "failed";
 
+/**
+ * A failed download or read that a later one for the same region and kind has taken the place of:
+ * the first, damaged attempt at a country beside the routes that a second attempt made. It is not
+ * shown on Offline maps at all (Downloads still lists it, to remove), and never outranks what is ready.
+ */
+export function isMapItemSuperseded(item: MapDataItem, all: MapDataItem[]): boolean {
+  if (item.state !== "failed" || !(item.downloadId || item.taskId)) return false;
+  return all.some(
+    (other) =>
+      other !== item &&
+      other.kind === item.kind &&
+      other.state !== "failed" &&
+      STATE_OF[other.state] !== "failed" &&
+      (other.regionId === item.regionId || other.regionId === null || item.regionId === null),
+  );
+}
+
 /** Over a year old by the day its data is from; never for a set made once (ageless). */
 export function isMapItemStale(item: MapDataItem, now = Date.now()): boolean {
   if (item.ageless || !item.dataDate || item.state !== "ready") return false;
@@ -69,7 +86,8 @@ export function isMapItemStale(item: MapDataItem, now = Date.now()): boolean {
 }
 
 /** One bundle from its items: the most pressing state, real progress, the oldest day. */
-export function mapBundleOf(kind: MapDataBundleKind, items: MapDataItem[]): MapDataBundle {
+export function mapBundleOf(kind: MapDataBundleKind, given: MapDataItem[]): MapDataBundle {
+  const items = given.filter((item) => !isMapItemSuperseded(item, given));
   const states = items.map((item) => STATE_OF[item.state]);
   // A failed copy beside one under way is the same thing being fetched again: the one under way is what counts.
   const state = ORDER.find((each) => states.includes(each)) ?? "none";
@@ -83,8 +101,9 @@ export function mapBundleOf(kind: MapDataBundleKind, items: MapDataItem[]): MapD
   const seen = new Set<string>();
   const sizeBytes = items.reduce((sum, item) => {
     // One download feeding two bundles is counted in each bundle once only.
+    // A failed download holds nothing; what it would have been is not counted.
     const id = item.downloadId ?? item.key;
-    if (seen.has(id)) return sum;
+    if (seen.has(id) || item.state === "failed") return sum;
     seen.add(id);
     return sum + (item.sizeBytes ?? 0);
   }, 0);
@@ -106,11 +125,12 @@ function placeOf(
   now: number,
 ): MapDataPlace {
   const seen = new Set<string>();
-  const items = all.filter((item) => {
+  const once = all.filter((item) => {
     if (seen.has(item.key)) return false;
     seen.add(item.key);
     return true;
   });
+  const items = once.filter((item) => !isMapItemSuperseded(item, once));
   const of = (kind: MapDataBundleKind) => items.filter((item) => MAP_BUNDLE_OF[item.kind] === kind);
   const kinds: MapDataBundleKind[] = ["map", "routes", "nearby", "walk", "imagery"];
   const bundles = kinds.filter((kind) => always.includes(kind) || of(kind).length > 0).map((kind) => mapBundleOf(kind, of(kind)));

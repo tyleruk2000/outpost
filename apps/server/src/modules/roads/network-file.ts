@@ -121,7 +121,7 @@ export async function readNetworkFile(filePath: string): Promise<LoadedNetwork> 
   const file = await fs.promises.readFile(filePath);
   // Typed arrays need their offsets aligned: a buffer from a shared pool may not be.
   const bytes = file.byteOffset % 8 === 0 ? file : Buffer.from(file);
-  if (bytes.toString("ascii", 0, 8) !== MAGIC) throw new Error("This is not an Outpost road network file.");
+  if (bytes.toString("ascii", 0, 8) !== MAGIC) throw new Error("This is not an Outpost routes file.");
   const jsonLength = bytes.readUInt32LE(8);
   const parsed = JSON.parse(bytes.toString("utf8", 12, 12 + jsonLength)) as {
     meta: NetworkFileMeta;
@@ -129,14 +129,14 @@ export async function readNetworkFile(filePath: string): Promise<LoadedNetwork> 
     crossings: CrossingInfo[];
     lengths: Record<ArrayKey, number>;
   };
-  if (parsed.meta.version !== FORMAT_VERSION) throw new Error("This road network was built by another version of Outpost: build it again.");
+  if (parsed.meta.version !== FORMAT_VERSION) throw new Error("These routes were built by another version of Outpost: build them again.");
   let at = 12 + jsonLength;
   at += pad8(at);
   const out: Record<string, unknown> = { meta: parsed.meta, strings: parsed.strings, crossings: parsed.crossings };
   for (const [key, Kind] of ARRAYS) {
     const length = parsed.lengths[key];
     const per = (Kind as unknown as { BYTES_PER_ELEMENT: number }).BYTES_PER_ELEMENT;
-    if (at + length * per > bytes.length) throw new Error("The road network file is cut short: build it again.");
+    if (at + length * per > bytes.length) throw new Error("The routes file is cut short: build it again.");
     out[key] = new Kind(bytes.buffer as ArrayBuffer, bytes.byteOffset + at, length);
     at += length * per;
     at += pad8(at);

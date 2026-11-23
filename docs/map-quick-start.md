@@ -58,8 +58,8 @@ Print at 100% (not "fit to page") so the scale is right. More in
 ## Plan a drive
 
 1. Open **Routes** beside the map and press **Plan a route**, or press **Plan a route to here**
-   on a place you found. The first time, press **Add road networks** and add each country
-   you will drive through (this needs the internet once).
+   on a place you found. Once From and To are set, it names any country on the way that has
+   no roads yet, with one button to add them (this needs the internet once).
 2. Give **From** and **To**: a saved place, a town or coordinates, or **Map centre**.
 3. Press **Plan route**. The main roads and the places on their signs are listed, as you
    would write them down.

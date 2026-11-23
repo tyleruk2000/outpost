@@ -170,7 +170,7 @@ describe("a region on a real test server", () => {
     expect(found.items).toEqual([
       expect.objectContaining({
         key: "geofabrik:us/ohio:US",
-        title: "OpenStreetMap: Ohio, United States of America (Geofabrik)",
+        title: "Ohio, United States of America: nearby places",
         bytes: ohio.body.length,
         exact: true,
         layers: ["food", "hospitals"],
@@ -202,7 +202,10 @@ describe("a region on a real test server", () => {
     const left = fs.readdirSync(folder);
     expect(left.filter((name) => name.endsWith(".osm.pbf"))).toEqual([]);
     expect(left.filter((name) => name.endsWith(".read.json"))).toHaveLength(1);
-    expect(pack!.sizeBytes).toBeLessThan(2_000);
+    // Its size is the short record and its places in the database, not the extract read and deleted.
+    expect(app.ctx.services.collections.get(pack!.id)!.sizeBytes).toBeLessThan(2_000);
+    expect(pack!.sizeBytes).toBeGreaterThan(pack!.records * 160);
+    expect(pack!.sizeBytes).toBeLessThan(100_000);
     // Its box is the file's own.
     expect(pack!.bbox).not.toBeNull();
 
@@ -252,7 +255,7 @@ describe("a region on a real test server", () => {
     ]);
     // The file is a country file of its own; the pack holds only its places.
     const [kept] = app.ctx.services.collections.list({ kind: "extract" });
-    expect(kept).toMatchObject({ title: "Country file: Ohio", sizeBytes: standIn.files.get("north-america/us/ohio")!.body.length });
+    expect(kept).toMatchObject({ title: "Ohio: source file", sizeBytes: standIn.files.get("north-america/us/ohio")!.body.length });
     expect(kept!.relPath).toMatch(/^collections\/country-files\/us-ohio-.+\.osm\.pbf$/);
     expect(fs.existsSync(app.ctx.services.storage.resolve(kept!.locationId, kept!.relPath))).toBe(true);
 
@@ -276,8 +279,8 @@ describe("a region on a real test server", () => {
     expect(found.items.map((item) => item.key)).toEqual(["geofabrik:us/ohio:US", "geofabrik:us/indiana:US"]);
     const held = await packs();
     expect(held.map((pack) => pack.title).sort()).toEqual([
-      "OpenStreetMap: Indiana, United States of America (Geofabrik)",
-      "OpenStreetMap: Ohio, United States of America (Geofabrik)",
+      "Indiana, United States of America: nearby places",
+      "Ohio, United States of America: nearby places",
     ]);
     // Each updates on its own: its request names only its own region.
     expect(held.map((pack) => pack.request?.scope.regions)).toEqual(expect.arrayContaining([["us/ohio"], ["us/indiana"]]));
@@ -288,7 +291,7 @@ describe("a region on a real test server", () => {
     const indiana = held.find((pack) => pack.title.includes("Indiana"))!;
     const removed = await app.api("DELETE", `/api/reference/packs/${indiana.id}?deleteFiles=1`);
     expect(removed.status).toBe(200);
-    expect((await packs()).map((pack) => pack.title)).toEqual(["OpenStreetMap: Ohio, United States of America (Geofabrik)"]);
+    expect((await packs()).map((pack) => pack.title)).toEqual(["Ohio, United States of America: nearby places"]);
     expect(await line()).toHaveLength(1);
     const near = (await app.api("GET", `/api/reference/nearest?lat=${INDIANAPOLIS.lat}&lon=${INDIANAPOLIS.lon}&kind=food:pharmacy`))
       .body as NearestResponse;

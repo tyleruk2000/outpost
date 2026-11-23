@@ -65,15 +65,15 @@ Each guide, also inside Outpost under **Help**, says what a feature does and doe
 
 | Feature | What it does |
 | --- | --- |
-| [Offline maps](docs/maps.md) | Download a country, one of 188 ready-made regions or a box you draw, with the exact size shown first, and view it with no connection. |
-| [Terrain and contours](docs/maps.md) | An optional terrain download adds hill shading, contour lines and the height of the ground, in metres or feet. |
+| [Offline maps](docs/maps.md) | Add any country, part of one or an area you draw, with its map, routes and nearby places, the size shown first, and use it with no connection. |
+| [Terrain and contours](docs/maps.md) | Every map comes with its hills: hill shading, contour lines and the height of the ground, in metres or feet. |
 | [Places and routes](docs/maps.md) | Saved places; routes drawn with distance, ascent and profile; GPX, KML, KMZ and GeoJSON in, GPX out. |
-| [Road routes](docs/road-routes.md) | A drive planned on this device from road networks you install by country, written as you would write it down: the road, the place on the signs, the junctions, with the ferry or tunnel. A printable route card and a short plain-text copy. |
+| [Road routes](docs/road-routes.md) | A drive planned on this device from the routes you add for each country under Offline maps, written as you would write it down: the road, the place on the signs, the junctions, with the ferry or tunnel. A printable route card and a short plain-text copy. |
 | [Find and record routes](docs/map-routes.md) | Look a named route up in OpenStreetMap (only when you search), or record where you walk while the screen is on, over `https`. |
 | [Coordinates and place search](docs/maps.md) | Grid references, UTM, MGRS and Maidenhead; offline place names, and every British postcode. |
 | [Sun, grey line, line of sight](docs/maps.md) | Sunrise and twilight for any place, day and night over the map, and whether two points can see each other over the terrain. |
 | [Satellite imagery](docs/maps.md) | The world from NASA's Blue Marble, 10 m Sentinel-2 for an area, and aerial photographs for New Zealand and the US. |
-| [Reference layers](docs/reference-layers.md) | Published data for the map (boundaries, airports, shelters, population, flood zones), each with its source and licence. |
+| [Layers on the map](docs/reference-layers.md) | Published data for the map (boundaries, airports, shelters, population, flood zones), each with its source and licence. |
 | [Food and supplies](docs/reference-layers.md) | Shops, food banks, water, fuel and pharmacies from OpenStreetMap (and in the UK the Food Standards Agency), with the nearest of each to home worked out offline. |
 | [Printing](docs/maps.md) | A one-page PDF map at a stated scale, made on your device. |
 

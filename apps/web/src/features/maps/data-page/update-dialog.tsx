@@ -139,7 +139,7 @@ function FromCountryFile({ item, data }: { item: MapDataItem; data: MapDataRespo
       <Started>
         {add.data.countryFile?.source === "kept"
           ? "Reading the kept file again. What you have is used until the new one is built."
-          : "Downloading the country file. What you have is used until the new one is built."}
+          : "Downloading the source file. What you have is used until the new one is built."}
       </Started>
     );
   const size = kept?.sizeBytes ?? read?.bytes ?? null;
@@ -147,10 +147,10 @@ function FromCountryFile({ item, data }: { item: MapDataItem; data: MapDataRespo
     <div className="grid gap-2">
       <p className="text-small text-ink-muted">
         {kept
-          ? `No download: read from the kept file (${dayText(kept.dataDate) ?? "date not known"}). Or download a newer country file${
+          ? `No download: read from the kept file (${dayText(kept.dataDate) ?? "date not known"}). Or download a newer source file${
               size ? ` (about ${formatBytes(size)})` : ""
             } from ${geofabrik} and keep it in its place.`
-          : `Downloads the country file again${size ? ` (about ${formatBytes(size)})` : ""} from ${geofabrik}; it is read, then deleted.`}
+          : `Downloads the source file again${size ? ` (about ${formatBytes(size)})` : ""} from ${geofabrik}; it is read, then deleted.`}
       </p>
       {add.isError ? <Failed error={add.error} /> : null}
       <div className="flex flex-wrap gap-2">

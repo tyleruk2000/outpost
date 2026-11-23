@@ -14,7 +14,6 @@ import { contentText } from "@/features/print-kit";
 import { DirectionsList } from "./directions";
 import { roadRouteData } from "./layers";
 import { PlainTextBox } from "./plain-text";
-import { RoadNetworksSection } from "./road-networks";
 import { RoadRoutePanel } from "./road-route-panel";
 import { routeCardDocument } from "./route-card";
 import { routeOverlay } from "./route-map";
@@ -110,16 +109,14 @@ describe("the words round the lines", () => {
     expect(addRoadsLink([])).toBe("/maps/data");
     const on = { jobId: "d1", name: "France", state: "running", message: null };
     expect(progressText({ ...on, phase: "downloading", receivedBytes: 1.2e9, totalBytes: 4.9e9, etaSeconds: 1080 })).toBe(
-      "Downloading 1.20 of 4.90 GB, 18 minutes left",
+      "Downloading 1.2 of 4.9 GB, 18 min left",
     );
     expect(progressText({ ...on, phase: "downloading", receivedBytes: 412e6, totalBytes: 4.9e9, etaSeconds: null })).toBe(
-      "Downloading 412 MB of 4.90 GB",
+      "Downloading 0.4 of 4.9 GB",
     );
     expect(progressText({ ...on, phase: "waiting" })).toBe("Waiting");
     expect(progressText({ ...on, phase: "building", message: null })).toBe("Building");
-    expect(progressText({ ...on, phase: "failed", error: "The connection dropped" })).toBe(
-      "Failed: The connection dropped. Add it again to try once more",
-    );
+    expect(progressText({ ...on, phase: "failed", error: "The connection dropped" })).toBe("Failed: The connection dropped. Add it again");
   });
 
   it("cuts the drawn line into each leg's part, the crossing its own", () => {
@@ -397,11 +394,11 @@ describe("the road route panel", () => {
     await screen.findByRole("button", { name: "Plan route" });
     await choosePlace("From", "Leatherhead");
     await choosePlace("To", "Chamonix");
-    expect(await screen.findByText("Downloading 1.20 of 4.90 GB, 18 minutes left.", { exact: false })).toBeInTheDocument();
-    // One download, said once.
-    expect(screen.getAllByText(/Downloading 1\.20 of 4\.90 GB/)).toHaveLength(1);
+    expect(await screen.findByText("Downloading 1.2 of 4.9 GB, 18 min left", { exact: false })).toBeInTheDocument();
+    // One download, said once, with Offline maps' own progress.
+    expect(screen.getAllByText(/Downloading 1\.2 of 4\.9 GB/)).toHaveLength(1);
     expect(screen.getByText("You can leave this screen.")).toBeInTheDocument();
-    expect(screen.getByRole("progressbar", { name: "France: roads for routes on their way" })).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Progress of Routes for France" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Add roads for/ })).toBeNull();
     expect(screen.getByRole("button", { name: "Plan route" })).toHaveAccessibleDescription("Wait for France");
     state = "ready";
@@ -554,69 +551,5 @@ describe("the printed route card", () => {
     expect(svg).toContain("Via 1: Reims");
     expect(svg).toContain("End: Chamonix");
     expect(svg).toContain("Eurotunnel");
-  });
-});
-
-describe("the road networks in Offline maps", () => {
-  it("offers the countries the downloaded map areas cover first, says what the download is, and adds one", async () => {
-    sent = [];
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-        const path = String(input).split("?")[0];
-        const body = typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
-        if (init?.method === "POST") sent.push({ path: path!, body });
-        const json = (value: unknown) =>
-          new Response(JSON.stringify(value), { status: 200, headers: { "content-type": "application/json" } });
-        if (path === "/api/roads/networks" && init?.method === "POST") return json({ downloadId: "d1", jobId: null });
-        if (path === "/api/roads/networks") return json({ networks: [], building: [], credit });
-        if (path === "/api/roads/countries") return json({ countries: ["FR"] });
-        if (path === "/api/downloads") return json({ downloads: [], historyTotal: 0 });
-        if (path === "/api/jobs") return json({ jobs: [] });
-        if (path === "/api/reference/regions")
-          return json({
-            held: true,
-            readAt: Date.parse("2026-11-20"),
-            source: "https://download.geofabrik.de",
-            suggested: [],
-            regions: [
-              { id: "france", name: "France", country: "FR", parent: null, depth: 0 },
-              { id: "alsace", name: "Alsace", country: "FR", parent: "france", depth: 1 },
-              { id: "great-britain", name: "Great Britain", country: "GB", parent: null, depth: 0 },
-            ],
-          });
-        return new Response("{}", { status: 404 });
-      }),
-    );
-    const region = {
-      id: "c1",
-      regionId: null,
-      name: "Calais",
-      tileType: "vector" as const,
-      bounds: [1.6, 50.8, 2.2, 51.1] as [number, number, number, number],
-      minZoom: 0,
-      maxZoom: 14,
-      sizeBytes: 1,
-      sourceBuild: null,
-      installedAt: 0,
-      locationId: "l1",
-      locationName: "Internal storage",
-      available: true,
-      status: "installed" as const,
-    };
-    const onAddingChange = vi.fn();
-    const view = show(<RoadNetworksSection mapRegions={[region]} adding={false} onAddingChange={onAddingChange} />);
-    expect(await screen.findByText(/a one-off download from Geofabrik \(OpenStreetMap data, under the ODbL\)/)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Add a road network" }));
-    expect(onAddingChange).toHaveBeenCalledWith(true);
-    view.unmount();
-    show(<RoadNetworksSection mapRegions={[region]} adding onAddingChange={onAddingChange} />);
-    const first = await screen.findByRole("region", { name: "For the map areas you have downloaded" });
-    expect(within(first).getByText("The whole of France")).toBeInTheDocument();
-    expect(within(first).queryByText("The whole of Great Britain")).toBeNull();
-    expect(screen.getByText(/2\.2 GB\s+for Great Britain/)).toBeInTheDocument();
-    expect(sent.find((each) => each.path === "/api/roads/countries")?.body).toEqual({ boxes: [[1.6, 50.8, 2.2, 51.1]] });
-    await userEvent.click(within(first).getByRole("button", { name: "Add France" }));
-    await waitFor(() => expect(sent.find((each) => each.path === "/api/roads/networks")?.body).toEqual({ regionId: "france" }));
   });
 });

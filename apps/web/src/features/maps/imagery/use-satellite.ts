@@ -20,11 +20,12 @@ export const SATELLITE_NOTES: Record<Exclude<SatelliteReach, "drawn">, { label: 
   "none-installed": {
     label: "Satellite: none downloaded yet",
     message:
-      "No satellite imagery is downloaded yet. Under Offline maps, Satellite imagery, get the world from NASA or a small area of your own from Sentinel-2. Both are free.",
+      "No satellite pictures are downloaded yet. On Offline maps, Add a place: tick Satellite pictures for the whole world (NASA) or an area of your own (Sentinel-2). Both are free.",
   },
   "none-here": {
     label: "Satellite: none downloaded for this area",
-    message: "Satellite imagery is on, but none is downloaded for this part of the map. Choose an area for it under Offline maps.",
+    message:
+      "Satellite pictures are on, but none are downloaded for this part of the map. Add this view on the Offline tab and tick Satellite pictures.",
   },
 };
 

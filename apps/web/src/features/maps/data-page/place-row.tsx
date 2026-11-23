@@ -23,6 +23,7 @@ import { Joined } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Badge, Progress } from "@/components/ui/misc";
 import { DownloadControls, DownloadProgress } from "@/features/downloads/download-progress";
+import { mapTaskTitle } from "@/features/downloads/download-text";
 import { MoveItemsDialog } from "@/features/manage/item-dialogs";
 import { cn } from "@/lib/utils";
 import { detailLabel } from "../lib/detail";
@@ -58,6 +59,16 @@ export interface RowContext {
 }
 
 /** The camera that shows a box: its middle, at a zoom where it fills the view. */
+/**
+ * An item's line in a place's details: its title in Offline maps' words (an older title such as
+ * "OpenStreetMap extract: France (Geofabrik)" reworded), then what it is, unless the title says so.
+ */
+export function itemTitle(item: MapDataItem): string {
+  const title = mapTaskTitle(item.title);
+  const kind = KIND_NAMES[item.kind].toLowerCase();
+  return title.toLowerCase().endsWith(kind) ? title : `${title} · ${kind}`;
+}
+
 export function cameraLink(bounds: [number, number, number, number]): string {
   const [west, south, east, north] = bounds;
   const span = Math.max(east - west, (north - south) * 1.6, 0.0001);
@@ -299,7 +310,7 @@ function BundleDetail({ place, bundle, context }: { place: MapDataPlace; bundle:
           <p className="tabular text-small text-ink">{bundleStateText(bundle, download, context.now)}</p>
         )}
         {items.map((item) => (
-          <ItemState key={item.key} item={item} context={context} title={`${item.title} · ${KIND_NAMES[item.kind].toLowerCase()}`} />
+          <ItemState key={item.key} item={item} context={context} title={itemTitle(item)} />
         ))}
       </div>
     </div>

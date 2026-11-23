@@ -42,10 +42,10 @@ export function RouteWarnings({ route, onOpenNetworks }: { route: RoadRouteResul
       {route.warnings.map((warning) => (
         <Notice key={warning} tone="warning" icon={<CircleAlert />}>
           {warning}
-          {onOpenNetworks && /in Map data|from Road networks/.test(warning) ? (
+          {onOpenNetworks && /in Offline maps|in Map data|from Road networks/.test(warning) ? (
             <span className="mt-2 block">
               <Button size="sm" onClick={onOpenNetworks}>
-                Open Map data
+                Open Offline maps
               </Button>
             </span>
           ) : null}

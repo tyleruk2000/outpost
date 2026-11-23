@@ -162,8 +162,8 @@ describe("the Layers panel", () => {
         />,
       ),
     );
-    expect(screen.getByRole("heading", { name: "No reference data on this device yet" })).toBeVisible();
-    await userEvent.click(screen.getByRole("button", { name: "Get reference data" }));
+    expect(screen.getByRole("heading", { name: "No layer data on this device yet" })).toBeVisible();
+    await userEvent.click(screen.getByRole("button", { name: "Get layer data" }));
     expect(onManage).toHaveBeenCalled();
   });
 

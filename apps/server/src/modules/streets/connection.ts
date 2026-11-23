@@ -186,7 +186,7 @@ export function createStreetsConnection(options: { url: string; dir: string }): 
       const said = status();
       if (!said) return { state: "problem", message: "The streets service's status cannot be read. Restart its container." };
       if (!said.current)
-        return { state: "no-streets", message: "No streets are built yet. Build them from a kept country file in Map data." };
+        return { state: "no-streets", message: "Walking and cycling is not built yet. Add it for a place under Offline maps." };
       const up = await isUp();
       if (up) return { state: "ready", message: null };
       return { state: "not-answering", message: lastCheck.problem ?? "The streets service is not answering." };

@@ -83,7 +83,7 @@ export const streetsReachSchema = z.object({
 const buildSchema = z.union([
   z
     .object({
-      regions: z.array(regionId).min(1, "Choose at least one country file.").max(12),
+      regions: z.array(regionId).min(1, "Choose at least one place.").max(12),
       workLocationId: z.string().min(1).max(100).optional(),
     })
     .strict(),
@@ -97,7 +97,22 @@ const buildSchema = z.union([
     })
     .strict(),
 ]);
-const estimateSchema = z.object({ regions: z.array(regionId).min(1, "Choose at least one country file.").max(12) });
+const estimateSchema = z
+  .object({
+    regions: z.array(regionId).max(12),
+    coming: z
+      .array(
+        z.object({
+          regionId,
+          name: z.string().trim().min(1).max(120),
+          country: z.string().length(2).nullable(),
+          bytes: z.number().int().min(0),
+        }),
+      )
+      .max(12)
+      .optional(),
+  })
+  .refine((value) => value.regions.length + (value.coming?.length ?? 0) > 0, "Choose at least one place.");
 
 const countryName = (code: string) => countryOf(code)?.name ?? code;
 const VALHALLA_CREDIT = "routed by Valhalla (MIT licence)";
@@ -141,7 +156,7 @@ export function createStreetsService(ctx: AppContext): StreetsService {
     for (const point of points) {
       const code = countryLookup(point.lat, point.lon, null);
       if (code && !tileset.countries.includes(code))
-        throw badRequest(`Streets are not installed for ${countryName(code)}. Build streets with its country file from Map data.`);
+        throw badRequest(`Walking and cycling is not added for ${countryName(code)}. Add it under Offline maps.`);
     }
   }
 
@@ -305,7 +320,7 @@ export function createStreetsService(ctx: AppContext): StreetsService {
     if (request.mode !== "drive")
       throw new AppError(
         ready ? "bad_request" : "unsupported",
-        `Areas reachable ${request.mode === "walk" ? "on foot" : "by bicycle"} need streets for routes${connection.installed() ? ": build them from a kept country file in Map data." : ", an optional add-on this installation does not have."} The walking reach on the map works over open ground without them.`,
+        `Areas reachable ${request.mode === "walk" ? "on foot" : "by bicycle"} need walking and cycling${connection.installed() ? ": add it for the place under Offline maps." : ", an optional add-on this installation does not have."} The walking reach on the map works over open ground without them.`,
       );
     const graph = await ctx.services.roads.loadGraph();
     const code = countryLookup(point!.lat, point!.lon, null);
@@ -455,7 +470,10 @@ export async function registerStreets(app: FastifyInstance, ctx: AppContext): Pr
   app.get("/api/streets/status", async () => service.status());
   app.post("/api/streets/route", async (request, reply) => service.route(streetsRouteSchema.parse(request.body), goneSignal(reply)));
   app.post("/api/streets/reach", async (request, reply) => service.reach(streetsReachSchema.parse(request.body), goneSignal(reply)));
-  app.post("/api/streets/tiles/estimate", async (request) => service.tiles.estimate(estimateSchema.parse(request.body).regions));
+  app.post("/api/streets/tiles/estimate", async (request) => {
+    const body = estimateSchema.parse(request.body);
+    return service.tiles.estimate(body.regions, body.coming);
+  });
   /** Build streets from kept country files, or bring in a set built elsewhere: a task either way. */
   app.post("/api/streets/tiles", async (request) => {
     const body = buildSchema.parse(request.body);

@@ -13,7 +13,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
 import { EmptyState, ErrorState, Notice, Page, PageHeader, Section } from "@/components/page";
-import { StorageBar, usageKinds } from "@/components/storage-bar";
+import { StorageBar, usageKinds, usageOf } from "@/components/storage-bar";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
@@ -28,7 +28,7 @@ import { manageLink } from "../manage/manage-data";
 import { AddLocationDialog } from "./add-location-dialog";
 import { DatabaseSection } from "./database-section";
 import { KindDefaultsSection } from "./kind-defaults";
-import { MapDataSection } from "./map-data-section";
+import { OfflineMapsRows } from "./map-data-section";
 import { NetworkSharesSection, useShares } from "./network-shares";
 import { PageVersionsSection } from "./page-versions-section";
 import { PortableDriveSection } from "./portable-drive";
@@ -53,7 +53,7 @@ export function nearlyFull(location: Pick<StorageLocation, "freeBytes" | "totalB
 }
 
 function UsageLegend({ usage, holdsBackups }: { usage: StorageUsage; holdsBackups: boolean }) {
-  const present = usageKinds.filter((entry) => (usage.byKind[entry.kind]?.bytes ?? 0) > 0);
+  const present = usageKinds.filter((entry) => usageOf(entry, usage).bytes > 0);
   if (present.length === 0)
     return (
       <p className="text-small text-ink-muted">
@@ -63,7 +63,7 @@ function UsageLegend({ usage, holdsBackups }: { usage: StorageUsage; holdsBackup
   return (
     <ul className="flex flex-wrap gap-x-5 gap-y-1 text-small text-ink-muted">
       {present.map((entry) => {
-        const bucket = usage.byKind[entry.kind]!;
+        const bucket = usageOf(entry, usage);
         return (
           <li key={entry.kind} className="flex items-center gap-2">
             <span aria-hidden className="size-2.5 rounded-[2px]" style={{ background: entry.color }} />
@@ -342,10 +342,12 @@ export default function StoragePage() {
   const totals = usageKinds
     .map((entry) => ({
       ...entry,
-      bytes: locations.reduce((sum, location) => sum + (location.usage.byKind[entry.kind]?.bytes ?? 0), 0),
-      count: locations.reduce((sum, location) => sum + (location.usage.byKind[entry.kind]?.count ?? 0), 0),
+      bytes: locations.reduce((sum, location) => sum + usageOf(entry, location.usage).bytes, 0),
+      count: locations.reduce((sum, location) => sum + usageOf(entry, location.usage).count, 0),
     }))
-    .filter((entry) => entry.count > 0);
+    // Offline maps is always a row, to say where maps are managed (and offer the first place).
+    .filter((entry) => entry.count > 0 || entry.kind === "maps");
+  const empty = totals.every((entry) => entry.count === 0);
 
   return (
     <Page>
@@ -418,11 +420,12 @@ export default function StoragePage() {
               </Link>
             }
           >
-            {totals.length === 0 ? (
-              <p className="text-small text-ink-muted">
-                Your library is empty. Space used will be listed here as you add documents, collections and maps.
-              </p>
-            ) : (
+            <div className="grid gap-3">
+              {empty ? (
+                <p className="text-small text-ink-muted">
+                  Your library is empty. Space used will be listed here as you add documents, collections and maps.
+                </p>
+              ) : null}
               <div className="@container">
                 <Table label="Space used by each kind" className="max-w-xl">
                   <thead className="sr-only">
@@ -433,27 +436,31 @@ export default function StoragePage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border border-y border-border">
-                    {totals.map((entry) => (
-                      <tr key={entry.kind}>
-                        <td className="py-2.5 pr-4">
-                          <span className="flex items-center gap-2.5 text-ink">
-                            <span aria-hidden className="size-2.5 shrink-0 rounded-[2px]" style={{ background: entry.color }} />
-                            {entry.label}
-                          </span>
-                          {/* Where three columns do not fit (a phone with large text: rem here follows the text), the count goes under the kind. */}
-                          <span className="tabular block pl-5 text-ink-muted @min-[20rem]:hidden">{plural(entry.count, "item")}</span>
-                        </td>
-                        <td className="tabular py-2.5 pr-4 text-right text-ink-muted @max-[20rem]:hidden">{plural(entry.count, "item")}</td>
-                        <td className="tabular py-2.5 text-right font-medium whitespace-nowrap text-ink">{formatBytes(entry.bytes)}</td>
-                      </tr>
-                    ))}
+                    {totals.map((entry) =>
+                      entry.kind === "maps" ? (
+                        <OfflineMapsRows key={entry.kind} color={entry.color} bytes={entry.bytes} />
+                      ) : (
+                        <tr key={entry.kind}>
+                          <td className="py-2.5 pr-4">
+                            <span className="flex items-center gap-2.5 text-ink">
+                              <span aria-hidden className="size-2.5 shrink-0 rounded-[2px]" style={{ background: entry.color }} />
+                              {entry.label}
+                            </span>
+                            {/* Where three columns do not fit (a phone with large text: rem here follows the text), the count goes under the kind. */}
+                            <span className="tabular block pl-5 text-ink-muted @min-[20rem]:hidden">{plural(entry.count, "item")}</span>
+                          </td>
+                          <td className="tabular py-2.5 pr-4 text-right text-ink-muted @max-[20rem]:hidden">
+                            {plural(entry.count, "item")}
+                          </td>
+                          <td className="tabular py-2.5 text-right font-medium whitespace-nowrap text-ink">{formatBytes(entry.bytes)}</td>
+                        </tr>
+                      ),
+                    )}
                   </tbody>
                 </Table>
               </div>
-            )}
+            </div>
           </Section>
-
-          <MapDataSection />
 
           <DatabaseSection />
 

@@ -8,6 +8,7 @@
 import type { Page } from "@playwright/test";
 import { api, expect, test, watchForErrors } from "./fixtures";
 import { centreOf, mapReady, settled } from "./grey-line";
+import { imageryNamed, startAreaPictures } from "./satellite-flow";
 
 /** Inside the stand-in sheet of Christchurch. */
 const IN_SHEET = { lat: -43.426, lon: 172.5405 };
@@ -50,32 +51,26 @@ test.describe("an aerial photograph", () => {
     const dismiss = page.getByRole("button", { name: "Dismiss" });
     if (await dismiss.isVisible()) await dismiss.click();
 
-    await page.getByRole("tab", { name: "Offline maps" }).click();
-    const section = page.getByRole("region", { name: "Satellite imagery" });
-    await expect(section).toContainText(/Environment Agency's\s+photographs of England are published only in a closed format/);
-    await section.getByRole("button", { name: "Choose an area" }).first().click();
-    await page.getByRole("button", { name: "Use the current view" }).click();
-    await page.getByRole("textbox", { name: "Name for this area" }).fill("Test streets");
-    await page.getByRole("button", { name: "Find pictures" }).click();
-
-    const photo = page.getByRole("radio", { name: /Aerial photograph, 2 m/ });
+    const dialog = await startAreaPictures(page, "Test streets");
+    await expect(dialog).toContainText(/England's aerial photographs are published only in a closed format/);
+    const photo = dialog.getByRole("radio", { name: /Aerial photograph, 2 m/ });
     await expect(photo).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByText("Christchurch 2m Urban Aerial Photos (2023), flown January to April 2023")).toBeVisible();
+    await expect(dialog.getByText("Christchurch 2m Urban Aerial Photos (2023), flown January to April 2023")).toBeVisible();
     await photo.click();
-    await page.getByRole("button", { name: "Continue" }).click();
+    await dialog.getByRole("button", { name: "Continue" }).click();
 
-    const figures = page.getByLabel("What it will be");
+    const figures = dialog.getByLabel("What it will be");
     await expect(figures).toContainText("Christchurch 2m Urban Aerial Photos (2023)", { timeout: 20_000 });
-    await expect(figures).toContainText("2 m a pixel, to zoom 16");
+    await expect(figures).toContainText("2 m a pixel");
     await expect(figures).toContainText(/from one of the publisher's files/);
     await expect(figures).toContainText("Creative Commons Attribution 4.0 International (CC BY 4.0)");
     await expect(figures).toContainText("Licensed by Stand-in City Council for re-use under CC-BY-4.0");
     await expect(figures).toContainText(/Free.*not requester-pays/);
     await expect(figures).not.toContainText("Cloud");
-    await page.getByRole("button", { name: /^Fetch / }).click();
-
-    const set = section.getByRole("listitem").filter({ hasText: "Test streets" });
-    await expect(set).toContainText("Aerial photograph, LINZ, flown January to April 2023, 2 m a pixel", { timeout: 30_000 });
+    await dialog.getByRole("button", { name: /^Download · / }).click();
+    await expect
+      .poll(async () => (await imageryNamed(page, "Test streets"))?.imageDateText, { timeout: 30_000 })
+      .toBe("January to April 2023");
 
     await page.goto(`/maps?lat=${IN_SHEET.lat}&lon=${IN_SHEET.lon}&z=15`);
     await mapReady(page);

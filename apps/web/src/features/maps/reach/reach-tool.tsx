@@ -85,7 +85,7 @@ export function ReachSwatch({ minutes, steps }: { minutes: number; steps: number
 /** "France has no roads yet. [Add roads for France]", for the point's own country. */
 function NoRoadsHere({ country, onAdd }: { country: RoadCoverageCountry | null; onAdd: (countries?: readonly string[]) => void }) {
   const text = !country
-    ? "A drive's reach is worked out from the roads kept for routes, and none are kept for here yet."
+    ? "A drive's reach is worked out from the routes kept on this device, and none are kept for here yet."
     : country.state === "part"
       ? `Only part of ${country.name} has roads, and this point is outside it.`
       : `${country.name} has no roads yet.`;
@@ -101,7 +101,7 @@ function NoRoadsHere({ country, onAdd }: { country: RoadCoverageCountry | null; 
         <AddRoadsButton countries={[country]} onAdd={(codes) => onAdd(codes)} size="sm" all={country.state === "part"} />
       ) : (
         <Button size="sm" variant="primary" onClick={() => onAdd([])}>
-          Add roads for routes
+          Add a place
         </Button>
       )}
     </div>

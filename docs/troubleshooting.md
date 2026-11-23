@@ -151,7 +151,7 @@ Check the server's own connection, not only your browser's.
 
 ### "The downloaded file did not match its published checksum, twice…"
 
-A file that fails its checksum (or, for a country file, Geofabrik's MD5) is deleted and
+A file that fails its checksum (or, for a source file, Geofabrik's MD5) is deleted and
 downloaded once more from the start; this message means the second copy failed too.
 Nothing was installed or kept. Press **Retry** later. If it fails again, **Refresh** on
 Explore and start afresh, or download to the device's own storage.
@@ -303,20 +303,22 @@ can declare another in `<data directory>/catalog/routes/route-sources.json`
 Try part of the name. A path not mapped as a route is found only with **This map view**
 over it. A regional server knows only its region. Otherwise draw it or import a GPX file.
 
-### "No road network is installed", or "The road networks installed do not join these points"
+### "France has no roads yet", or "The roads kept do not join these points"
 
-A road route needs a road network for every country it passes through, added under
-**Maps → Map data**, as **Roads for routes**. The message names a country missing
-between the points when it can. Across the sea, both sides need a network, joined by a car ferry or the Channel Tunnel
-([road-routes.md](road-routes.md#installing-road-networks)).
+A road route needs **Routes** for every country it passes through, added under
+**Maps → Offline maps**. **Plan a route** names the countries missing before you plan, with
+one button to add them. Across the sea, both sides need routes, joined by a car ferry or
+the Channel Tunnel ([road-routes.md](road-routes.md#adding-routes-for-a-place)).
 
-### "That area is too large to download at zoom N in one go"
+### "That area is too large to download at this detail in one go"
 
-Lower the maximum zoom or split the area. One region is at most 60 GB.
+Choose less detail under **More choices** in **Add a place**, or split the area. One map is
+at most 60 GB.
 
 ### The map is empty somewhere
 
-Only installed regions are drawn, and not while their drive is disconnected.
+Only the places added under **Offline maps** are drawn in detail, and not while their drive
+is disconnected.
 
 ## Documents and search
 

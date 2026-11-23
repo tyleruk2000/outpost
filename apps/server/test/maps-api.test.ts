@@ -213,7 +213,7 @@ describe("estimating a region", () => {
   it("refuses the whole world at full detail before asking the source anything", async () => {
     const { status, body } = await app.api("POST", "/api/maps/estimate", { bbox: WORLD, maxZoom: 15 });
     expect(status).toBe(413);
-    expect(body.error.message).toMatch(/too large to download at zoom 15.*Lower the maximum zoom/);
+    expect(body.error.message).toMatch(/too large to download at this detail.*Choose less detail/);
     expect(server.requests.length).toBe(0);
   });
 
