@@ -39,6 +39,8 @@ const isNotFound = (error: unknown) => error instanceof AppError && error.code =
 /** What will happen to an entry under a policy, without doing it. */
 export function foresee(ctx: AppContext, entry: Entry, policy: RemovePolicy): "remove" | "forget" | "leave" | "refuse" {
   if (entry.item.busyReason) return "refuse";
+  // A road network is Outpost's own file in its own data: removing it is the one thing to do with it.
+  if (entry.roadNetworkId) return "remove";
   if (policy.files === "keep") return "forget";
   if (!entry.item.inOutpostFolder && policy.outside === "forget") return "forget";
   if (!ctx.services.storage.isAvailable(entry.item.locationId)) return policy.disconnected === "forget" ? "forget" : "leave";
@@ -56,6 +58,15 @@ export async function removeEntry(ctx: AppContext, inventory: Inventory, entry: 
   for (const document of entry.documents) {
     const busy = inventory.documentBusy(document.id);
     if (busy) return { outcome: "failed", reason: busy };
+  }
+
+  if (entry.roadNetworkId) {
+    try {
+      await ctx.services.roads.remove(entry.roadNetworkId);
+    } catch (error) {
+      if (!isNotFound(error)) return { outcome: "failed", reason: messageOf(error) };
+    }
+    return { outcome: "removed", bytes: entry.item.sizeBytes };
   }
 
   const plan = foresee(ctx, { ...entry, item: { ...entry.item, busyReason: null } }, policy);

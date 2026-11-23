@@ -19,15 +19,12 @@ import type {
 } from "@outpost/shared";
 import { desc, eq } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
-import { AppError, badRequest, notFound } from "../../core/errors.ts";
+import { badRequest, notFound } from "../../core/errors.ts";
 import { resolveInside } from "../../core/fs-safe.ts";
-import type { HttpClient } from "../../core/http.ts";
 import { newId } from "../../core/ids.ts";
 import { PermanentJobError } from "../../core/jobs.ts";
 import { markers, roadNetworks, roadRoutes } from "../../db/schema.ts";
 import type { DownloadRow, Installer } from "../downloads/types.ts";
-import { createRegionIndex } from "../layers/adapters/geofabrik-regions.ts";
-import { fetchText, headSize } from "../layers/adapters/http.ts";
 import { buildNetwork } from "./build.ts";
 import { buildGraph, type Graph } from "./graph.ts";
 import { readNetworkFile, writeNetworkFile } from "./network-file.ts";
@@ -61,9 +58,30 @@ export interface BuildFromFileInput {
   replaces?: string | null;
 }
 
+/** A country file to build a region's network from (modules/maps/country-files.ts). */
+export interface CountryFileBuild {
+  filePath: string;
+  regionId: string;
+  name: string;
+  country: string | null;
+  sourceUrl: string;
+  bytes: number;
+  /** Where the file is kept afterwards, or null when it is deleted once read. */
+  kept: { locationId: string; relPath: string; collectionId: string | null } | null;
+  signal: AbortSignal;
+  progress: (current: number, total: number | null, message: string, unit?: string | null) => void;
+}
+
 export interface RoadsService {
   list(): RoadNetworksResponse;
-  installRegion(input: { regionId: string; keepExtract?: boolean; locationId?: string }): Promise<{ downloadId: string }>;
+  /** Reads the region's country file: a kept one if there is one, otherwise downloads it (on a press). */
+  installRegion(input: {
+    regionId: string;
+    keepExtract?: boolean;
+    locationId?: string;
+  }): Promise<{ downloadId: string | null; jobId: string | null }>;
+  /** Builds (or rebuilds) a region's network from its country file, replacing the region's network once built. */
+  buildFromCountryFile(input: CountryFileBuild): Promise<{ id: string; dataDate: string | null }>;
   installFile(input: BuildFromFileInput): { jobId: string };
   update(id: string): Promise<{ downloadId: string | null; jobId: string | null }>;
   remove(id: string): Promise<void>;
@@ -118,7 +136,7 @@ function summaryOf(row: RouteRow): SavedRoadRouteSummaryDto {
   };
 }
 
-export function createRoadsService(ctx: AppContext, client: HttpClient): RoadsService {
+export function createRoadsService(ctx: AppContext): RoadsService {
   const roadsDir = () => resolveInside(ctx.config.dataDir, "roads");
   const rows = () => ctx.db.select().from(roadNetworks).orderBy(roadNetworks.name).all();
   const changed = () => ctx.events.publish({ type: "roads.changed" });
@@ -276,45 +294,41 @@ export function createRoadsService(ctx: AppContext, client: HttpClient): RoadsSe
   };
 
   async function installRegion(input: { regionId: string; keepExtract?: boolean; locationId?: string }) {
-    // Read afresh each press: the list is read (and kept) from the reference layers' screen, after this service started.
-    const regions = createRegionIndex(ctx, client);
-    if (!regions.kept()) throw badRequest("Read Geofabrik's list of regions first (Reference layers: “Read the list of regions”).");
-    const region = regions.find(input.regionId);
-    if (!region) throw badRequest(`“${input.regionId}” is not in Geofabrik's list as read on this device. Read the list again.`);
-    let head: Awaited<ReturnType<typeof headSize>>;
-    try {
-      head = await headSize(client, region.pbf);
-    } catch (error) {
-      if (error instanceof AppError && error.code === "forbidden")
-        throw badRequest(
-          `Geofabrik sends ${region.name}'s file from another server (a mirror), which Outpost does not download from. Choose its parts instead: each is its own, smaller file, and neighbouring parts join.`,
-        );
-      throw error;
-    }
-    const md5 = /^([0-9a-f]{32})\b/i.exec((await fetchText(client, `${head.finalUrl}.md5`, { max: 4096 })).trim())?.[1];
-    if (!md5)
-      throw new AppError("upstream", `Geofabrik did not give an MD5 for ${region.name}'s file, so it was not downloaded. Try again later.`);
-    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-    const row = await ctx.services.downloads.start({
-      kind: "dataset",
-      title: `Road network: ${region.name} (Geofabrik)`,
-      url: head.finalUrl,
-      relPath: `roads/extracts/${region.id.replace(/[^a-z0-9-]/gi, "-")}-${stamp}.osm.pbf`,
+    // One country file serves the roads and the places: a kept one is read again, otherwise it is downloaded once.
+    const added = await ctx.services.countryFiles.add({
+      regionId: input.regionId,
+      roads: true,
+      layers: [],
+      keep: input.keepExtract === true,
       ...(input.locationId ? { locationId: input.locationId } : {}),
-      sizeBytes: head.bytes ?? undefined,
-      md5: md5.toLowerCase(),
-      allowedHosts: [new URL(head.finalUrl).hostname],
-      meta: {
-        roads: {
-          regionId: region.id,
-          name: region.name,
-          country: region.country ?? null,
-          keepExtract: input.keepExtract === true,
-          sourceUrl: head.finalUrl,
-        } satisfies RoadsDownloadMeta,
-      },
     });
-    return { downloadId: row.id };
+    return { downloadId: added.downloadId, jobId: added.taskId };
+  }
+
+  async function buildFromCountryFile(input: CountryFileBuild) {
+    const replaces = rows()
+      .filter((r) => r.regionId === input.regionId)
+      .map((r) => r.id);
+    const row = await build({
+      filePath: input.filePath,
+      regionId: input.regionId,
+      name: input.name,
+      country: input.country,
+      source: input.sourceUrl,
+      extract: input.kept
+        ? {
+            kept: true,
+            locationId: input.kept.locationId,
+            relPath: input.kept.relPath,
+            bytes: input.bytes,
+            collectionId: input.kept.collectionId,
+          }
+        : { kept: false, locationId: null, relPath: null, bytes: input.bytes },
+      replaces,
+      signal: input.signal,
+      progress: input.progress,
+    });
+    return { id: row.id, dataDate: row.dataDate };
   }
 
   function installFile(input: BuildFromFileInput) {
@@ -376,6 +390,7 @@ export function createRoadsService(ctx: AppContext, client: HttpClient): RoadsSe
     list() {
       const jobs = ctx.jobs.list({ states: ["queued", "running", "paused"], types: [BUILD_JOB] });
       const downloads = ctx.services.downloads.unfinished().filter(isRoadsDownload);
+      const fromCountryFiles = ctx.services.countryFiles.pending().filter((entry) => entry.roads);
       const credit = roadCredit(rows().map((r) => ({ id: r.id, name: r.name, country: r.country, dataDate: r.dataDate })));
       return {
         networks: rows().map((row) => toNetworkDto(row, fs.existsSync(resolveInside(ctx.config.dataDir, row.relPath)))),
@@ -392,24 +407,28 @@ export function createRoadsService(ctx: AppContext, client: HttpClient): RoadsSe
             state: d.state,
             message: null,
           })),
+          ...fromCountryFiles.map((entry) => ({
+            jobId: entry.downloadId ?? entry.taskId ?? "",
+            name: entry.name,
+            state: entry.state,
+            message: entry.message,
+          })),
         ],
         credit,
       };
     },
     installRegion,
+    buildFromCountryFile,
     installFile,
     async update(id) {
       const row = rows().find((r) => r.id === id);
       if (!row) throw notFound("That road network");
       if (row.regionId)
-        return {
-          ...(await installRegion({
-            regionId: row.regionId,
-            keepExtract: row.extract.kept,
-            ...(row.extract.locationId ? { locationId: row.extract.locationId } : {}),
-          })),
-          jobId: null,
-        };
+        return installRegion({
+          regionId: row.regionId,
+          keepExtract: row.extract.kept,
+          ...(row.extract.locationId ? { locationId: row.extract.locationId } : {}),
+        });
       if (!row.extract.locationId || !row.extract.relPath)
         throw badRequest("Outpost no longer knows which file this network was built from: install it again.");
       return {

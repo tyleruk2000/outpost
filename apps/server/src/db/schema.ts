@@ -168,7 +168,7 @@ export const collections = sqliteTable(
   "collections",
   {
     id: id(),
-    kind: text("kind", { enum: ["zim", "map", "terrain", "places", "file", "model", "dataset"] }).notNull(),
+    kind: text("kind", { enum: ["zim", "map", "terrain", "places", "file", "model", "dataset", "extract"] }).notNull(),
     catalogEntryId: text("catalog_entry_id"),
     title: text("title").notNull(),
     description: text("description"),
@@ -205,7 +205,7 @@ export const downloads = sqliteTable(
     id: id(),
     jobId: text("job_id"),
     /** What kind of thing is being fetched; decides how it is installed afterwards. */
-    kind: text("kind", { enum: ["zim", "map", "terrain", "places", "file", "model", "document", "dataset"] }).notNull(),
+    kind: text("kind", { enum: ["zim", "map", "terrain", "places", "file", "model", "document", "dataset", "extract"] }).notNull(),
     catalogEntryId: text("catalog_entry_id"),
     title: text("title").notNull(),
     url: text("url").notNull(),
@@ -672,13 +672,46 @@ export const roadNetworks = sqliteTable("road_networks", {
   source: text("source").notNull(),
   bbox: json<[number, number, number, number]>("bbox"),
   /** The extract read: kept (where) or deleted once read. */
-  extract: json<{ kept: boolean; locationId: string | null; relPath: string | null; bytes: number }>("extract").notNull(),
+  extract: json<{ kept: boolean; locationId: string | null; relPath: string | null; bytes: number; collectionId?: string | null }>(
+    "extract",
+  ).notNull(),
   /** How the build went: seconds, peak memory, ways read. */
   stats: json<Record<string, unknown>>("stats"),
   builtAt: integer("built_at").notNull(),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
+
+/**
+ * Country files (modules/maps/country-files.ts): each Geofabrik extract Outpost downloaded
+ * and read, whether it was kept (then also a collection of kind "extract") or deleted once
+ * read. A row is what the Map data screen says of a country's file ("read and deleted
+ * 17 Nov 2026, 2.29 GB"); it is history, never a file of its own.
+ */
+export const countryFiles = sqliteTable(
+  "country_files",
+  {
+    id: id(),
+    /** Geofabrik's region id ("united-kingdom", "us/ohio"). */
+    regionId: text("region_id").notNull(),
+    name: text("name").notNull(),
+    country: text("country"),
+    /** The day the data is from, as the file's header says ("2026-11-21"), or from its dated name. */
+    dataDate: text("data_date"),
+    /** Geofabrik's dated file name ("united-kingdom-261121.osm.pbf"). */
+    fileName: text("file_name").notNull(),
+    sourceUrl: text("source_url").notNull(),
+    bytes: integer("bytes").notNull(),
+    /** The kept file's collection; null when the file was deleted once read. */
+    collectionId: text("collection_id"),
+    /** What was made from it this time: the road network and the places pack, where asked. */
+    roadNetworkId: text("road_network_id"),
+    packId: text("pack_id"),
+    readAt: integer("read_at").notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [index("country_files_region_idx").on(table.regionId)],
+);
 
 /** Road routes a person planned and saved, with their directions, so they print with no network loaded. */
 export const roadRoutes = sqliteTable("road_routes", {

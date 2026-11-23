@@ -36,10 +36,25 @@ export const kindNames: Record<ManagedKind, { one: string; many: string }> = {
   model: { one: "Search model", many: "Search models" },
   dataset: { one: "Radio data", many: "Radio data" },
   document: { one: "Document", many: "Documents" },
+  extract: { one: "Country file", many: "Country files" },
+  roads: { one: "Road network", many: "Roads for routes" },
 };
 
 /** The order kinds are offered in filters and listed in summaries. */
-export const kindOrder: ManagedKind[] = ["zim", "map", "terrain", "places", "layer", "sheet", "file", "model", "dataset", "document"];
+export const kindOrder: ManagedKind[] = [
+  "zim",
+  "map",
+  "terrain",
+  "places",
+  "layer",
+  "roads",
+  "extract",
+  "sheet",
+  "file",
+  "model",
+  "dataset",
+  "document",
+];
 
 // ── What is taking the space ──
 
@@ -53,7 +68,7 @@ export const usageGroups: UsageGroup[] = [
   {
     title: "Downloaded",
     description: "From the catalogue or the map. All of it can be fetched again.",
-    ids: ["zim", "map", "terrain", "places", "layer", "sheet", "file", "model", "dataset"],
+    ids: ["zim", "map", "terrain", "places", "layer", "roads", "extract", "sheet", "file", "model", "dataset"],
   },
   {
     title: "Yours",
@@ -82,6 +97,8 @@ export const usageNames: Record<UsageId, string> = {
   file: kindNames.file.many,
   model: kindNames.model.many,
   dataset: kindNames.dataset.many,
+  extract: kindNames.extract.many,
+  roads: kindNames.roads.many,
   document: "Documents you added",
   attachments: "Pictures and files in notes",
   board: "Files sent on the board",

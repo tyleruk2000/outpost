@@ -21,8 +21,9 @@ import { PermanentJobError } from "../../../core/jobs.ts";
 import { countryOf } from "../countries.ts";
 import { PROVIDERS } from "../providers.ts";
 import type { AdapterDeps, EstimatedItem, ReferenceAdapter } from "../types.ts";
+import { resolveGeofabrikFile } from "./geofabrik-file.ts";
 import { GEOFABRIK_BASE, INDEX_PATH, type RegionIndex } from "./geofabrik-regions.ts";
-import { fetchText, headSize } from "./http.ts";
+import { fetchText } from "./http.ts";
 import { addOsm } from "./osm-read.ts";
 import { EXTRACT_LAYERS, OSM_LAYERS, type OsmLayer } from "./osm-tags.ts";
 import { readPbf, wantedFor } from "./pbf.ts";
@@ -124,15 +125,16 @@ const layerWords = (layers: string[]) => {
   return words.length <= 1 ? (words[0] ?? "") : `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`;
 };
 
-export function createGeofabrikAdapter({ client }: AdapterDeps, regions: RegionIndex): ReferenceAdapter {
+export function createGeofabrikAdapter({ client, ctx }: AdapterDeps, regions: RegionIndex): ReferenceAdapter {
   const base = regions.base;
   const asked = (layers: string[] | undefined) =>
     (layers?.length ? layers : OSM_LAYERS).filter((layer): layer is OsmLayer => (EXTRACT_LAYERS as string[]).includes(layer));
 
   async function sized(url: string, name: string, signal?: AbortSignal) {
-    let head: Awaited<ReturnType<typeof headSize>>;
+    let file: Awaited<ReturnType<typeof resolveGeofabrikFile>>;
     try {
-      head = await headSize(client, url, signal);
+      // The dated file the "latest" address leads to (or the newest one there is, when that is not there yet), and its own MD5.
+      file = await resolveGeofabrikFile(client, url, name, signal);
     } catch (error) {
       // Geofabrik sends its largest files (Germany's on 17 November 2026) from a mirror on another host.
       if (error instanceof AppError && error.code === "forbidden")
@@ -142,14 +144,22 @@ export function createGeofabrikAdapter({ client }: AdapterDeps, regions: RegionI
         );
       throw error;
     }
-    // The MD5 of the dated file the size is for, not of whatever "latest" is a moment later.
-    const md5 = /^([0-9a-f]{32})\b/i.exec((await fetchText(client, `${head.finalUrl}.md5`, { max: 4096, signal })).trim())?.[1];
-    // The download is held to Geofabrik's host on its first request only: the MD5, asked of
-    // that host alone, is what checks the bytes, so a file without one is not offered.
-    if (!md5) throw new AppError("upstream", `Geofabrik did not give an MD5 for ${name}'s file, so it was not offered. Try again later.`);
-    // The dated address the "latest" one leads to, so that resuming fetches the same file, and its MD5.
-    return { head, extra: { url: head.finalUrl, md5: md5.toLowerCase() } };
+    // The download is held to Geofabrik's host on its first request only: the MD5, asked of that host alone, is what checks the bytes.
+    return {
+      head: { bytes: file.bytes },
+      extra: { url: file.url, md5: file.md5, fileName: file.fileName, ...(file.fallback ? { fallback: file.fallback } : {}) },
+    };
   }
+
+  /** A country file kept for this region, which is read again rather than downloaded. */
+  const keptFor = (regionId: string) => ctx.services.countryFiles?.kept(regionId) ?? null;
+  const keptItem = (kept: NonNullable<ReturnType<typeof keptFor>>) => ({
+    bytes: 0,
+    exact: true,
+    host: "",
+    basis: `Read from the country file kept on ${kept.locationName}${kept.dataDate ? `, with data from ${kept.dataDate}` : ""}: nothing is downloaded.`,
+    extra: { url: kept.sourceUrl, md5: kept.md5 ?? "", fileName: kept.fileName, kept: kept.collectionId },
+  });
 
   return {
     provider,
@@ -170,6 +180,24 @@ export function createGeofabrikAdapter({ client }: AdapterDeps, regions: RegionI
           const parents: string[] = [];
           for (let at = region.parent ? regions.find(region.parent) : undefined; at; at = at.parent ? regions.find(at.parent) : undefined)
             parents.push(at.name);
+          const kept = keptFor(region.id);
+          const coverage = region.country === "GB" ? COVERAGE_UK : COVERAGE_OSM_ONLY;
+          if (kept) {
+            const item = keptItem(kept);
+            items.push({
+              key: `geofabrik:${region.id}:${region.country ?? ""}`,
+              title: `OpenStreetMap: ${[region.name, ...parents].join(", ")} (Geofabrik)`,
+              layers,
+              ...item,
+              basis: `${item.basis} Read from it: ${layerWords(layers)}. ${coverage}`,
+              records: null,
+              replaces: null,
+              databaseBytes: databaseAllowance(kept.bytes, layers),
+              fileKeptByDefault: true,
+              extra: { ...item.extra, region: region.id, name: region.name },
+            });
+            continue;
+          }
           const { head, extra } = await sized(region.pbf, region.name, signal);
           const bytes = head.bytes ?? 0;
           items.push({
@@ -178,7 +206,7 @@ export function createGeofabrikAdapter({ client }: AdapterDeps, regions: RegionI
             layers,
             bytes,
             exact: head.bytes !== null,
-            basis: `The size Geofabrik's server gives for today's file, which holds all of OpenStreetMap for ${region.name}. Read from it: ${layerWords(layers)}. ${region.country === "GB" ? COVERAGE_UK : COVERAGE_OSM_ONLY}`,
+            basis: `The size Geofabrik's server gives for today's file, which holds all of OpenStreetMap for ${region.name}. Read from it: ${layerWords(layers)}. ${coverage}`,
             records: null,
             host: new URL(region.pbf).host,
             replaces: null,
@@ -198,6 +226,21 @@ export function createGeofabrikAdapter({ client }: AdapterDeps, regions: RegionI
             notes.push(`Geofabrik has no extract for ${countryOf(code)?.name ?? code} on its own.`);
             continue;
           }
+          const kept = keptFor(entry.id);
+          if (kept) {
+            items.push({
+              key: `geofabrik:${entry.id}:${code}`,
+              title: `OpenStreetMap extract: ${entry.name} (Geofabrik)`,
+              layers,
+              ...keptItem(kept),
+              records: null,
+              replaces: null,
+              databaseBytes: databaseAllowance(kept.bytes, layers),
+              fileKeptByDefault: true,
+              extra: { ...keptItem(kept).extra, name: entry.name },
+            });
+            continue;
+          }
           const { head, extra } = await sized(entry.pbf, entry.name, signal);
           const bytes = head.bytes ?? 0;
           items.push({
@@ -214,7 +257,7 @@ export function createGeofabrikAdapter({ client }: AdapterDeps, regions: RegionI
             databaseBytes: databaseAllowance(bytes, layers),
             // As before for the five layers; a country's shops make the file's other contents no more useful to keep.
             fileKeptByDefault: !layers.includes("food"),
-            extra,
+            extra: { ...extra, name: entry.name },
           });
         }
       }

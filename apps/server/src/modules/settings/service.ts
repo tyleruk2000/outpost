@@ -87,6 +87,11 @@ export const settingsSchema = z.object({
   "maps.terrainSource": z.string().max(500).default("https://download.mapterhorn.com/planet.pmtiles"),
   "maps.defaultMaxZoom": z.number().int().min(0).max(15).default(14),
   /**
+   * What the person chose last for a country file once it is read (Map data): keep it, or delete it. "ask" until
+   * they have chosen once; the screen preselects the last choice and never chooses for them the first time.
+   */
+  "maps.countryFileKeep": z.enum(["ask", "keep", "delete"]).default("ask"),
+  /**
    * Serve Outpost over HTTPS as well, on a second port, with a certificate this server
    * makes for itself. Off until a person turns it on; plain HTTP keeps working either way.
    */

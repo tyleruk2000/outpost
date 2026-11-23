@@ -28,7 +28,7 @@ const keys = z
     z
       .string()
       .max(120)
-      .regex(/^(collection|document):[0-9A-Za-z_-]+$/, "That is not something in the list."),
+      .regex(/^(collection|document|road-network):[0-9A-Za-z_-]+$/, "That is not something in the list."),
   )
   .min(1, "Choose at least one item.")
   .max(50_000);
@@ -127,7 +127,9 @@ export async function registerManage(app: FastifyInstance, ctx: AppContext): Pro
 
     const movable = picked.filter((entry) => {
       const { item } = entry;
-      if (item.locationId === target.id) refuse(entry, `It is already on "${target.name}".`);
+      if (entry.roadNetworkId)
+        refuse(entry, "Road networks are kept with Outpost's own data, not on a storage location, so they are not moved.");
+      else if (item.locationId === target.id) refuse(entry, `It is already on "${target.name}".`);
       else if (item.busyReason) refuse(entry, item.busyReason);
       else if (!item.locationAvailable) refuse(entry, `"${item.locationName}" is not connected, so it cannot be copied from there.`);
       else if (item.state === "missing") refuse(entry, "Its file is missing, so there is nothing to move.");

@@ -5,7 +5,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
-import { createHttpClient } from "../../core/http.ts";
 import { countriesInBoxes } from "./countries.ts";
 import { BUILD_JOB, type BuildFromFileInput, createRoadsService, isRoadsDownload, type RoadsService } from "./service.ts";
 
@@ -71,8 +70,7 @@ const savedRouteSchema = z.object({
 });
 
 export async function registerRoads(app: FastifyInstance, ctx: AppContext): Promise<void> {
-  const client = createHttpClient({ allowPrivate: ctx.config.allowPrivateDownloads });
-  const service = createRoadsService(ctx, client);
+  const service = createRoadsService(ctx);
   ctx.services.roads = service;
   ctx.services.downloads.registerInstaller("dataset", service.installer, isRoadsDownload);
   ctx.jobs.register<BuildFromFileInput>(BUILD_JOB, {
@@ -85,14 +83,13 @@ export async function registerRoads(app: FastifyInstance, ctx: AppContext): Prom
   });
   ctx.onClose.push(async () => {
     service.close();
-    await client.close();
   });
 
   app.get("/api/roads/networks", async () => service.list());
   /** Install from Geofabrik (a download, then a build) or build from a file already in storage (a job). */
   app.post("/api/roads/networks", async (request) => {
     const body = installSchema.parse(request.body);
-    if ("regionId" in body) return { ...(await service.installRegion(body)), jobId: null };
+    if ("regionId" in body) return service.installRegion(body);
     return {
       downloadId: null,
       ...service.installFile({ locationId: body.locationId, relPath: body.relPath, name: body.name, country: body.country ?? null }),

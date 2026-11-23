@@ -96,7 +96,8 @@ export interface LayersService {
   population: PopulationService;
   catalogue(): ReferenceCatalogueResponse;
   estimate(request: ReferenceEstimateRequest, signal?: AbortSignal): Promise<ReferenceEstimate>;
-  start(request: ReferenceStartRequest): Promise<DownloadRow[]>;
+  /** Downloads started, and tasks queued (a kept country file read again). */
+  start(request: ReferenceStartRequest): Promise<{ downloads: DownloadRow[]; tasks: string[] }>;
   packs(): ReferencePackDto[];
   pack(id: string): ReferencePackDto;
   remove(id: string, deleteFiles: boolean): Promise<void>;
@@ -118,6 +119,21 @@ export interface LayersService {
   /** Reads Geofabrik's list of regions again, on a person's press. */
   refreshRegions(signal?: AbortSignal): Promise<ReferenceRegionsResponse>;
   regionIndex: RegionIndex;
+  /**
+   * Reads places from a country file (modules/maps/country-files.ts) into a pack, as a Geofabrik download would have
+   * been read. The pack keeps only a short record of the file: whether the file stays is the country file's business.
+   */
+  readCountryFile(input: {
+    reference: ReferenceMeta;
+    filePath: string;
+    locationId: string;
+    fileRelPath: string;
+    sizeBytes: number;
+    /** Whether the file stays once read, for what the pack says about updating. */
+    kept: boolean;
+    signal: AbortSignal;
+    progress: (current: number, total: number | null, message: string) => void;
+  }): Promise<{ packId: string; dataDate: string | null; records: number }>;
   close(): Promise<void>;
 }
 
@@ -344,6 +360,10 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
     sourceDate: string | null;
     signal: AbortSignal;
     progress: (current: number, total: number | null, message: string) => void;
+    /** Read from a country file, which is not the pack's to delete: the pack keeps only its record. */
+    countryFile?: boolean;
+    /** The country file stays once read. */
+    countryFileKept?: boolean;
   }): Promise<{ collection: CollectionRow; meta: PackMeta; duplicates: number; skipped: number; problems: string[] }> {
     const retrievedAt = Date.now();
     const providerId =
@@ -387,11 +407,17 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
     const replaced = replacedBy(meta);
     const provider = PROVIDERS.find((entry) => entry.id === providerId) ?? importProvider;
     // Only the places read out are kept: the extract gives way to a short record of what it was, deleted once the pack is in.
-    const placesOnly = input.adapter !== "import" && meta.origin === "download" && meta.options?.keep === "places";
+    const placesOnly =
+      input.countryFile === true || (input.adapter !== "import" && meta.origin === "download" && meta.options?.keep === "places");
     let kept = { relPath: input.relPath, sizeBytes: input.sizeBytes, sha256: input.sha256 };
     const notes = [...(result.notes ?? [])];
     if (placesOnly) {
-      const relPath = `${input.relPath.replace(/(\.osm)?\.pbf$/, "")}.read.json`;
+      const base = path.posix.basename(input.relPath).replace(/(\.osm)?\.pbf$/, "");
+      // A kept country file is read again and again: each record has a name of its own, beside the packs.
+      const relPath = input.countryFile
+        ? `collections/reference/osm-extract/${base}-read-${newId().toLowerCase()}.read.json`
+        : `${input.relPath.replace(/(\.osm)?\.pbf$/, "")}.read.json`;
+      await fs.promises.mkdir(path.dirname(storage.resolve(input.locationId, relPath)), { recursive: true });
       const record = JSON.stringify(
         {
           what: "The record of an OpenStreetMap extract Outpost read and then deleted, keeping only the places read from it (in its database).",
@@ -411,7 +437,9 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
       await fs.promises.writeFile(storage.resolve(input.locationId, relPath), record);
       kept = { relPath, sizeBytes: Buffer.byteLength(record), sha256: null };
       notes.push(
-        `Only the places were kept: the ${formatBytes(input.sizeBytes)} extract was deleted once read. Updating this pack downloads it again.`,
+        input.countryFileKept
+          ? "Read from the country file, which is kept: updating this pack reads it again with no download."
+          : `Only the places were kept: the ${formatBytes(input.sizeBytes)} extract was deleted once read. Updating this pack downloads it again.`,
       );
     }
     const packMeta: PackMeta = {
@@ -449,7 +477,7 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
       meta: { dataset: "reference", reference: packMeta } as CollectionMeta,
     });
     store.adopt(input.owner, collection.id, replaced);
-    if (placesOnly) await fs.promises.rm(input.filePath, { force: true });
+    if (placesOnly && !input.countryFile) await fs.promises.rm(input.filePath, { force: true });
     const duplicates = await store.findDuplicates(collection.id);
     for (const old of replaced) {
       const row = collections.get(old);
@@ -561,6 +589,7 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
         throw new AppError("conflict", "That estimate is more than half an hour old or was not made here. Estimate again.");
       const adapter = adapters.get(estimate.request.provider)!;
       const started: DownloadRow[] = [];
+      const tasks: string[] = [];
       for (const key of keys) {
         const item = estimate.items.find((entry) => entry.key === key);
         if (!item) throw badRequest("That item is not part of the estimate.");
@@ -582,6 +611,34 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
           ...(partial.md5 ? { md5: partial.md5 } : {}),
           ...(options ? { options } : {}),
         };
+        if (adapter.provider.id === "osm-extract") {
+          // One country file, downloaded once (or read again where it is kept), serves the places and the roads.
+          const [, regionId, code] = key.split(":");
+          const extra = item.extra ?? {};
+          const added = await ctx.services.countryFiles.add({
+            regionId: regionId!,
+            region: { id: regionId!, name: typeof extra.name === "string" ? extra.name : item.title, country: code || null, pbf: spec.url },
+            ...(typeof extra.md5 === "string" && extra.md5 && !extra.kept
+              ? {
+                  file: {
+                    url: spec.url,
+                    md5: extra.md5,
+                    bytes: item.bytes || null,
+                    fileName: typeof extra.fileName === "string" ? extra.fileName : (spec.url.split("/").at(-1) ?? ""),
+                    fallback: typeof extra.fallback === "string" ? extra.fallback : null,
+                  },
+                }
+              : {}),
+            roads: false,
+            layers: reference.layers,
+            reference,
+            keep: keep === "file",
+            ...(locationId ? { locationId } : {}),
+          });
+          if (added.downloadId) started.push(ctx.services.downloads.get(added.downloadId)!);
+          if (added.taskId) tasks.push(added.taskId);
+          continue;
+        }
         try {
           started.push(
             await ctx.services.downloads.start({
@@ -605,7 +662,7 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
         }
       }
       changed();
-      return started;
+      return { downloads: started, tasks };
     },
 
     packs() {
@@ -784,6 +841,29 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
     },
 
     regionIndex,
+
+    async readCountryFile(input) {
+      const adapter = adapters.get("osm-extract")!;
+      // The file was held to Geofabrik's MD5 when it arrived (and a kept one can be checked from Storage): it is not hashed again.
+      const { md5: _md5, ...meta } = input.reference;
+      const { collection, meta: packMeta } = await ingest({
+        adapter,
+        owner: `pending:country-file-${newId()}`,
+        meta,
+        title: input.reference.title,
+        filePath: input.filePath,
+        locationId: input.locationId,
+        relPath: input.fileRelPath,
+        sizeBytes: input.sizeBytes,
+        sha256: null,
+        sourceDate: null,
+        signal: input.signal,
+        progress: input.progress,
+        countryFile: true,
+        countryFileKept: input.kept,
+      });
+      return { packId: collection.id, dataDate: packMeta.publishedAt, records: packMeta.records };
+    },
 
     packTitles() {
       return new Map(installedPacks().map(({ row }) => [row.id, { title: row.title }]));

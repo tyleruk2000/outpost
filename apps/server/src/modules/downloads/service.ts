@@ -58,6 +58,7 @@ const CONTENT_KIND_OF: Record<DownloadKind, ContentKind | null> = {
   terrain: "terrain",
   places: "places",
   dataset: "layers",
+  extract: "layers",
   document: "documents",
   model: null,
 };
@@ -138,7 +139,7 @@ interface ActiveRun {
 }
 
 const startSchema = z.object({
-  kind: z.enum(["zim", "map", "terrain", "places", "file", "model", "document", "dataset"]),
+  kind: z.enum(["zim", "map", "terrain", "places", "file", "model", "document", "dataset", "extract"]),
   title: z.string().trim().min(1).max(300),
   url: z.string().min(1).max(4000),
   locationId: z.string().min(1).optional(),
@@ -157,6 +158,7 @@ const startSchema = z.object({
   allowedHosts: z.array(z.string().min(1)).optional(),
   everyHop: z.boolean().optional(),
   meta: z.record(z.string(), z.unknown()).optional(),
+  note: z.string().max(1000).optional(),
 });
 
 const optionalText = z.string().trim().min(1).optional().catch(undefined);
@@ -1106,7 +1108,7 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
           meta: {
             ...(input.meta ?? {}),
             ...(input.md5 ? { md5Expected: input.md5.toLowerCase() } : {}),
-            events: [{ at: Date.now(), state: "queued" }],
+            events: [{ at: Date.now(), state: "queued", ...(input.note ? { detail: input.note } : {}) }],
           },
           createdAt: now,
           updatedAt: now,

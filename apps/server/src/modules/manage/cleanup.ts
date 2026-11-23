@@ -589,6 +589,8 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
     }
     // Saved road routes count as routes; the road networks go too (their files with the data folder's).
     personal.routes += await ctx.services.roads.eraseAll();
+    // What country files were read: history only, its kept files went with the collections above.
+    sqlite.prepare("DELETE FROM country_files").run();
     // Contacts are other people's details as well as the person's own: every one goes, with its place in search.
     personal.contacts = ctx.services.contacts.eraseAll();
     // Conversations with a model are the person's own words, and a reply being written is stopped first.

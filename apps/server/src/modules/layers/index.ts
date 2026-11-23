@@ -194,7 +194,7 @@ export async function registerLayers(app: FastifyInstance, ctx: AppContext): Pro
 
   app.post("/api/reference/downloads", async (request) => {
     const started = await service.start(startSchema.parse(request.body));
-    return { downloads: started.map((row) => ctx.services.downloads.toDto(row)) };
+    return { downloads: started.downloads.map((row) => ctx.services.downloads.toDto(row)), tasks: started.tasks };
   });
 
   app.get("/api/reference/packs", async () => ({ packs: service.packs() }));

@@ -56,6 +56,7 @@ export * from "./learning.ts";
 export * from "./links.ts";
 export * from "./locator.ts";
 export * from "./manage.ts";
+export * from "./map-data.ts";
 export * from "./maps.ts";
 export * from "./merge.ts";
 export * from "./mesh.ts";

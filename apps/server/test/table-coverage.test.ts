@@ -111,6 +111,7 @@ const TABLES: Record<string, Decision> = {
       "Road networks are files in the data folder of the computer that built them: installed again where the drive is used (docs/portable.md).",
   },
   road_routes: { group: "maps", drive: true },
+  country_files: { group: "maps", drive: true },
   contacts: { group: "other", drive: true },
   contact_tags: { group: "other", drive: true },
   contact_pages: { group: "other", drive: true },

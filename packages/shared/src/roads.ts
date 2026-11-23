@@ -28,7 +28,7 @@ export interface RoadNetworkDto {
   /** Sea and river crossings (ferries, the Channel Tunnel shuttle) found in it. */
   crossings: number;
   /** The extract it was built from: kept (and where), or deleted once read. */
-  extract: { kept: boolean; locationId: string | null; relPath: string | null; bytes: number };
+  extract: { kept: boolean; locationId: string | null; relPath: string | null; bytes: number; collectionId?: string | null };
   /** Where the extract came from: Geofabrik's address, or "Your file". */
   source: string;
   bbox: [number, number, number, number] | null;
