@@ -74,6 +74,7 @@ export function prepareDriveDatabase(file: string, contents: DriveContents): { c
         DELETE FROM heard_reports;
         DELETE FROM heard_stations;
         DELETE FROM heard_range_tests;
+        DELETE FROM road_networks;
         DELETE FROM settings WHERE key IN ('access.pin', 'access.devices');
       `);
 

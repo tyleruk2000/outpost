@@ -220,6 +220,15 @@ export const GUIDES: Guide[] = [
     opens: { to: "/maps", label: "Open Maps" },
   },
   {
+    slug: "road-routes",
+    file: "road-routes.md",
+    group: "using",
+    about:
+      "Planned road directions offline: main roads, junctions and signs, via points and Channel crossings, from road networks you install.",
+    keywords: "road route drive directions motorway junction ferry eurotunnel channel crossing sat nav",
+    opens: { to: "/maps", label: "Open Maps" },
+  },
+  {
     slug: "map-printing",
     file: "map-printing.md",
     group: "using",
@@ -576,6 +585,13 @@ export const GUIDES: Guide[] = [
     file: "development/maps.md",
     group: "developers",
     about: "How the map's parts work, its own map and route sources, and its constants.",
+  },
+  {
+    slug: "development-road-routes",
+    file: "development/road-routes.md",
+    group: "developers",
+    about:
+      "How road networks are built and joined, how routes and directions are worked out, the speed table, measurements and the API shapes.",
   },
   {
     slug: "radio-development",

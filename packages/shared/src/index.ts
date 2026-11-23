@@ -95,6 +95,7 @@ export * from "./recommended-models.ts";
 export * from "./reference-layers.ts";
 export * from "./repeaters.ts";
 export * from "./retrieval.ts";
+export * from "./roads.ts";
 export * from "./route-finder.ts";
 export * from "./satellites.ts";
 export * from "./search.ts";

@@ -48,6 +48,7 @@ import { registerPropagation } from "./propagation/index.ts";
 import { registerReadiness } from "./readiness/index.ts";
 import { registerRepeaters } from "./repeaters/index.ts";
 import { registerRetrieval } from "./retrieval/index.ts";
+import { registerRoads } from "./roads/index.ts";
 import { registerSatellites } from "./satellites/index.ts";
 import { registerSearch } from "./search/index.ts";
 import { registerSemantic } from "./semantic/index.ts";
@@ -129,6 +130,8 @@ export const modules: ModuleRegister[] = [
   registerSatellites,
   // Heard on the radio (APRS, aircraft, ships), after the mesh link whose positions it keeps for the range view, on a line of its own.
   registerHeard,
+  // Road routes (Maps): main-roads networks and planned directions, on a line of its own.
+  registerRoads,
   // Tools a language model may call (Chat, and /mcp), last: they read from every module above.
   registerTools,
 ];

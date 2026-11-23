@@ -186,6 +186,19 @@ The browser sees one tile endpoint; the server picks the best installed archive 
 tile, so regions join seamlessly and a world overview fills in when zoomed out. Styles,
 fonts and sprites are served by Outpost. Place search uses GeoNames in FTS5.
 
+### Road routes: a main-roads graph per country, joined in memory
+
+Planned road directions come from a network built from a Geofabrik extract per country
+or region: motorway to secondary roads, junctions, signs, car ferries and the Channel
+Tunnel shuttle, read by Outpost's own `.osm.pbf` reader into typed arrays and written as
+one binary file per network in the data directory (`roads/<id>.roads`), not SQLite rows:
+routing needs all of it in memory, and a file of arrays loads in one read. The extract is
+deleted once read unless kept. Networks join where neighbouring extracts share node ids
+(Geofabrik keeps border-crossing ways whole); crossings join to the nearest main road.
+A* by time over the joined graph; the path is folded into a driver's lines ("A26 (E17) -
+Reims (A4)"). Built on the first route asked for and let go after 30 minutes unused. No
+routing library, no server: see [development/road-routes.md](development/road-routes.md).
+
 ### A phone out of reach: a kept app and chosen copies
 
 The web app keeps itself in the browser with a service worker, and a person keeps chosen
@@ -292,7 +305,7 @@ in [testing-status.md](testing-status.md).
 | OCR | Optional, slow, makes mistakes. Tesseract in WebAssembly, English built in. Reads pictures on a page, not text drawn as shapes; orientation by trying each way. | Drawn text needs a canvas renderer (`@napi-rs/canvas`, native). `modules/ocr/types.ts` is the seam. |
 | Answers and chat | Need the person's own model server. One answer or reply at a time. Library read from documents, notes and chapters only. Conversations visible to everyone who can open Outpost. | Reference articles would need ZIM content split into passages. |
 | ZIM archives | Need kiwix-serve. | Reading the format in JavaScript means reimplementing libzim. |
-| Maps | Protomaps schema only; hill shading and contours need a terrain download and are only as fine as it; no routing; line of sight is geometry, not a coverage prediction. | Contours are traced in the browser, so there is no contour tileset. |
+| Maps | Protomaps schema only; hill shading and contours need a terrain download and are only as fine as it; routing only for planned road directions on main roads, from networks installed per country (no live navigation, no foot or cycle routing); line of sight is geometry, not a coverage prediction. | Contours are traced in the browser, so there is no contour tileset. |
 | Map source | Depends on the Protomaps build host for new downloads. | The address is a setting; any PMTiles archive of the same schema works. |
 | HF propagation | VOACAP monthly medians, never today's conditions; 2 to 30 MHz, short path; coverage ≤2,304 cells; plans ≤8 stations; the log comparison calibrates nothing. P.533 optional, isotropic, built on each computer. The engine is a young one-author Rust translation. | The engine sits behind `modules/propagation/engine.ts`. |
 | Recording a track | Only with the screen on and Outpost in front. | A browser limit; lifting it needs a native app. |
@@ -359,7 +372,7 @@ package with its licence text, written by `scripts/build-app.mjs`.
 | `@jsquash/webp` 1.5.0 (libwebp 1.0.2 in WebAssembly) | Apache-2.0 (libwebp BSD-3-Clause) | Bundled in the server, pinned; encodes imagery tiles. Copied to `server/imagery/` with its licence. Chosen over `sharp` (LGPL-3.0 libvips) and JPEG (edges must be transparent). GeoTIFF reading, reprojection and the PMTiles writer are Outpost's own (not `geotiff.js`, whose `xml-utils` is CC0). |
 | Map data | ODbL (OpenStreetMap) | Downloaded by the user; credited on the map. |
 | GeoNames | CC BY 4.0 | Downloaded by the user; credited. |
-| Natural Earth | Public domain | Bundled world outline; other layers downloaded as reference layers. |
+| Natural Earth | Public domain | Bundled world outline, and country outlines for road routes (`modules/roads/country-outlines.json`, simplified); other layers downloaded as reference layers. |
 | Catalogue content | Per collection | Never bundled; each entry states its licence, or that it is unverified. |
 | Reference sheets (`catalog/bundled/radio/`) | MIT | Bundled; compilations of facts from official sources, each listing them. |
 | Satellite tracking, ported from LogBook73 (`features/satellites/`) | MIT, © 2026 Tyler Allen | LogBook73's tracker rewritten into Outpost; its licence read 21 Nov 2026. |

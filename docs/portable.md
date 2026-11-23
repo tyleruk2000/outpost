@@ -30,7 +30,9 @@ installed and no internet needed.
 - **Never copied:** the mesh radio set-up and radios heard, the MCP switch, Heard on the
   radio's receivers and what they heard, download history, jobs, earlier versions of
   pages, import and merge records, network shares, [Chat](ai.md#chat) conversations, the
-  household board, and the setting that shares contacts with phones.
+  household board, the setting that shares contacts with phones, and road networks
+  (install them again on the computer the drive is used with; saved road routes are
+  copied, with their directions).
 - The drive's database lists only what was copied, with one location, "This drive". It
   also records what every page, document, place and track was when written, so changes
   can be [brought back](#bringing-changes-back-from-a-drive) exactly.

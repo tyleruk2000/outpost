@@ -35,6 +35,9 @@ const GROUPS: Record<Exclude<DatabaseGroupId, "other">, string[]> = {
     "places_fts_idx",
     "markers",
     "tracks",
+    // Road routes (modules/roads): the installed networks (their files are in the data folder) and saved routes.
+    "road_networks",
+    "road_routes",
     "nuclear_scenarios",
     "nuclear_scenario_sets",
     // The reference layers (modules/layers): records downloaded or imported, with their indexes.

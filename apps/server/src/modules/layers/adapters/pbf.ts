@@ -32,7 +32,7 @@ export class PbfError extends PermanentJobError {}
 
 // ── Protocol buffers ─────────────────────────────────────────────────────────
 
-class Proto {
+export class Proto {
   pos = 0;
   readonly buf: Uint8Array;
   readonly end: number;
@@ -103,18 +103,18 @@ class Proto {
   }
 }
 
-const decoder = new TextDecoder("utf-8");
+export const decoder = new TextDecoder("utf-8");
 
 // ── Blobs ────────────────────────────────────────────────────────────────────
 
-interface Blob {
+export interface Blob {
   type: string;
   data: Uint8Array;
   /** Bytes of the file read so far, for progress. */
   offset: number;
 }
 
-async function* blobs(filePath: string, signal?: AbortSignal): AsyncGenerator<Blob> {
+export async function* blobs(filePath: string, signal?: AbortSignal): AsyncGenerator<Blob> {
   const handle = await fs.promises.open(filePath, "r");
   try {
     const size = (await handle.stat()).size;
@@ -171,7 +171,7 @@ async function* blobs(filePath: string, signal?: AbortSignal): AsyncGenerator<Bl
 
 // ── Primitive blocks ─────────────────────────────────────────────────────────
 
-interface Block {
+export interface Block {
   strings: string[];
   granularity: number;
   latOffset: number;
@@ -180,7 +180,7 @@ interface Block {
   buf: Uint8Array;
 }
 
-function readBlock(data: Uint8Array): Block {
+export function readBlock(data: Uint8Array): Block {
   const p = new Proto(data);
   const block: Block = { strings: [], granularity: 100, latOffset: 0, lonOffset: 0, groups: [], buf: data };
   for (let field = p.field(); field; field = p.field()) {
@@ -278,7 +278,7 @@ function eachNode(
   }
 }
 
-function eachWay(block: Block, visit: (id: number, tags: () => Record<string, string>, refs: () => number[]) => void): void {
+export function eachWay(block: Block, visit: (id: number, tags: () => Record<string, string>, refs: () => number[]) => void): void {
   const { buf, strings } = block;
   for (const [start, end] of block.groups) {
     const group = new Proto(buf, start, end);
@@ -320,7 +320,7 @@ function eachWay(block: Block, visit: (id: number, tags: () => Record<string, st
   }
 }
 
-function eachRelation(
+export function eachRelation(
   block: Block,
   visit: (id: number, tags: Record<string, string>, ways: Array<{ ref: number; role: string }>) => void,
 ): void {
@@ -365,7 +365,7 @@ export interface PbfHeader {
   bbox: Bbox | null;
 }
 
-function readHeader(data: Uint8Array): PbfHeader {
+export function readHeader(data: Uint8Array): PbfHeader {
   const p = new Proto(data);
   const header: PbfHeader = { timestamp: null, bbox: null };
   for (let field = p.field(); field; field = p.field()) {

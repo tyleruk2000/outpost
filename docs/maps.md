@@ -411,7 +411,8 @@ browser, with routes and places, for when it cannot reach the server. See
 
 ## What is not included
 
-- **Routing**: Outpost does not work out routes or directions.
+- **Routing on foot or by bicycle**, and live navigation of any kind. Planned road
+  directions (main roads, junctions and signs) are in [road-routes.md](road-routes.md).
 - **Surveyed contours**, crags, scree and spot heights.
 - **Recording in the background**: only while the screen is on and Outpost is in front.
 - **Radio coverage**: line of sight and range are geometry, not signal predictions.
