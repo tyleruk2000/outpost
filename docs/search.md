@@ -165,24 +165,82 @@ switch offers **Best of both**, **Exact words** or **By meaning**. API:
 
 Articles in ZIM archives are searched by kiwix-serve, not Outpost's index. **Your own
 results do not wait for them**: they appear at once, and "Still searching reference
-collections…" shows while the archives are asked, three at a time.
+collections…" shows while the archives are asked.
 
-- kiwix-serve is asked for the words that matter, without the small words (and once more
-  for them [said another way](#other-spellings-and-names), when they can be), and puts its
-  answers in an order of its own. Outpost scores each article again by the
-  [same rule](#ranking), from its title and snippet, and drops one that shows less than
-  half of what the query is about. A collection's articles come best first.
-- Each collection's best match is added under **In reference collections** as it
-  answers; nothing already shown moves. The **Reference** tab lists every article found.
-- A collection that takes more than 8 seconds, or is not reached within 30, is left out
-  and named; its answer is kept for five minutes for the next search.
+**Which collections are asked.** Searching every archive takes seconds each on a small
+computer, and most cannot hold the answer. So each search asks the six collections
+likeliest to hold it first, eight articles from each:
+
+- a collection about what the question is about: medical words ("burn", "nosebleed",
+  "diarrhoea") go to medical collections, car words ("tyre", "jump start") to the motor
+  mechanics, food words to the cooking ones, and so on for some twenty everyday topics,
+  judged from each collection's title and description (and, counting for less, its
+  catalogue category and tags);
+- a collection whose title or description uses the question's own words;
+- a general encyclopaedia such as Wikipedia;
+- for "how to…" questions, collections of questions and answers, manuals and guides;
+- collections that gave good results for the same words in recent searches (remembered
+  until Outpost restarts).
+
+A collection in a language other than English counts for less. When only one or two
+collections would be left over, all are asked. When the first six find fewer than three
+good articles, the rest are asked straight away in the same search. Otherwise **Search all
+reference collections** under the results asks every one; answers already found are kept
+for five minutes, so the first six answer again at once.
+
+**How articles are found.** For each collection, kiwix-serve is asked two things at once:
+
+- its full text, for the words that matter, without the small words (and once more for
+  them [said another way](#other-spellings-and-names), when they can be);
+- its titles, for the words a title would hold: the question without the words that only
+  say what to do ("treat a burn" asks for titles with "burn"). Titles answer in a fraction
+  of the time, so they are usually the first reference results to appear.
+
+**What is left out.** Pages that only list other pages: lists of questions by tag
+(addresses under `questions/tagged/`, `tags/`, `users/`, `badges/`), one page of a longer
+list (`page=N` in the address), titles such as "Highest voted … questions" and "Questions
+tagged …", a wiki's main page, and its Category:, Portal:, Special:, Template:, Help:,
+Talk: and User: pages. The reader still opens them.
+
+**One ranked list.** Every article is scored by the [same rule](#ranking) as your own
+items, from its title and snippet, and one that shows less than half of what the query is
+about is dropped. An article whose title is made only of the question's words and holds
+every word a title would ("Burn" for "treat a burn", "Tire pressure" for "tyre pressure")
+counts as holding the whole question ("The title is what was asked" beside it), in a
+collection that fits the question (one about its topic, or a general encyclopaedia): in a
+dictionary or a book of quotations, "Burn" is a word or a heading, not the answer.
+
+- **In reference collections**, under your own results, shows the five best articles
+  across all collections; the **Reference** tab lists every article found. Both are in
+  score order as articles arrive. While the pointer is over the list, or focus is in it,
+  nothing in it moves: newcomers wait, with a line saying how many, and take their places
+  when you move away.
+- Quick search lists the five best of the same collections, in the same order, and keeps
+  them still while the pointer is over them.
+- In the full list of a search asked in one part (the API's `reference=include`), an
+  article counts 0.95 of its score beside your own items: among nearly equal results,
+  yours come first.
+
+**Collections that are searched by their titles only.** A collection that kiwix-serve
+says has no full-text index, or whose full-text search fails three times in a row, is
+marked once and from then on searched by its titles only, with no warning in the results.
+Its details in **Library → Collections** say so, when it was noticed and what the Kiwix
+server said. A collection without an index is tried again after a week, a failing one
+after half an hour; the mark goes the first time a full-text search works.
+
+**Time.** Three full-text searches are at kiwix-serve at once, and one title search beside
+them: kiwix-serve works on four requests at a time, and one more would wait inside it. A
+collection that takes more than 8 seconds (3 for its titles), or is not reached within 30,
+is left out and named; its answer is kept for five minutes for the next search.
+
 - Turn it off with **Settings → Search → Search inside reference collections**.
 - If kiwix-serve is not running, your own results still appear, with a note saying why.
 - A collection that is a set of documents with a list
   ([troubleshooting.md](troubleshooting.md#a-collection-opens-as-a-list-of-documents)) is
   found by its documents' titles and authors (every typed word must start a word of one),
-  up to 50,000 documents across all collections. The text inside is searched only once a
-  file is added to your library.
+  up to 50,000 documents across all collections. A collection whose list matches is always
+  among those asked first, since its list costs kiwix-serve nothing. The text inside is
+  searched only once a file is added to your library.
 
 ## Scanned pages and images (OCR)
 

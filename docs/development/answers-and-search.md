@@ -127,27 +127,49 @@ kind was asked for; `placesFirst` when the query looks like a name, callsign or 
 Meaning is blended by `blendMeaning` (`MEANING_CEILING` 0.6). Answers still fuse passages
 with RRF (`searchPassages`).
 
-Reference archives are searched three at a time in Outpost's own queue, because
-kiwix-serve works four at a time and finishes searches whose caller has gone; each is
-asked for few results, with `plainQuery` (the words that matter, phrases quoted).
-`GET /api/search` without `reference=later` merges archives by score and waits at most 10
-seconds.
+Reference archives (`modules/kiwix`):
+
+- `routing.ts` gives each archive a prior for the question (topics, its own words, general
+  encyclopaedia, how-to, `RouteMemory` of recent good results, language) and
+  `routeArchives` splits them into the first `ROUTED_FIRST` (6) and the rest. The rest are
+  searched in the same search when the first give fewer than `referenceShape.enoughGood`
+  (3) results scoring `GOOD_SCORE` (0.6), and otherwise on `scope=all`.
+- Full text (`referenceShape.firstEach`, 8, from each routed archive) goes through Outpost's
+  own queue three at a time, because kiwix-serve works four at a time and finishes searches
+  whose caller has gone; title search (`suggest`, for `titleWords`) through a second queue,
+  one at a time. A collection's titles go out as a `done: false` part, replaced by its last.
+- `junk.ts` drops list pages before scoring; `rank` (the search service's `rescore`, with
+  `titleIsAnswer` and `TITLE_MATCH_BONUS` where the archive's prior reaches
+  `TITLE_ANSWER_PRIOR`) puts every article on the one scale.
+- `search-health.ts` marks an archive refused (400s) or failing (three in a row) in
+  `meta.kiwix.search`, so it is searched by titles only and not warned about.
+
+`GET /api/search` without `reference=later` merges archives by score (each at
+`OWN_FIRST`, 0.95, of its score beside the library's own) and waits at most 10 seconds.
 
 ### Measuring search
 
 `scripts/search-eval/queries.json` holds 50 household questions, each with graded answers
 in the fixture library (`library.mjs`, item id → 0–3) and patterns for grading any
-library's results. `reference.json` is what 36 reference collections answered to them,
-recorded from a real library through `GET /api/search/reference` (titles, paths and
-snippet starts: short quotations of Stack Exchange and Wikimedia archives, CC BY-SA, and
-of others under their own open licences), which `test/slow-kiwix.ts` replays.
+library's results. `reference.json` is what 37 reference collections answered to them,
+with each collection's description, category, tags and language, recorded from a real
+library with GET requests only (`node scripts/search-eval/record-reference.mjs
+http://host:8080`: each archive's full text and its title search, through Outpost's
+per-archive endpoints; titles, paths and snippet starts: short quotations of Stack
+Exchange and Wikimedia archives, CC BY-SA, and of others under their own open licences),
+which `test/slow-kiwix.ts` replays (its title search answers with the titles holding every
+word).
 
 - `apps/server/test/search-quality.test.ts` runs the set on the fixture library and the
   recorded collections and fails below nDCG@5 0.8, success@3 95% or any zero-result
-  question. `SEARCH_EVAL_OUT=table.txt` writes the table.
+  question, and below success@3 80% or with any list page among the reference
+  collections' own results. `SEARCH_EVAL_OUT=table.txt` writes both tables.
 - `node scripts/search-eval.mjs http://host:8080` runs it against a running Outpost with
   GET requests only and grades by pattern; `--rescore` also orders that server's
-  candidates with this checkout's scorer, offline.
+  candidates with this checkout's scorer, offline. `--reference` measures the reference
+  collections as the search screen gets them (`reference-stream.mjs`): time to the first
+  article, to the first useful one and to the end, success@3 and the useful share of the
+  first five of the list shown, and the server's time for the person's own results.
 
 Measures: nDCG@5 (gain 2^grade − 1; ideal from the grades, or on a real library from
 everything either run retrieved), success@3 (grade ≥ 2 in the first three), zero-result

@@ -259,7 +259,7 @@ Types: `search.ts`, `semantic.ts`. See [search.md](search.md).
 | Method and path | Purpose |
 | --- | --- |
 | `GET /api/search` | `SearchResponse`. `q` (≤500 characters), `kinds`, `tag`, `mode` (`keyword`, `semantic`, `hybrid`), `limit` (1 to 100, 20), `offset`, `reference` (`include` or `later`), `exact=1` (no other spellings or names). |
-| `GET /api/search/reference` | `q`, `exact=1`. NDJSON (`ReferenceSearchEvent`): `start` `{ collections }`, one `collection` line per archive as it answers, then `end` `{ searched, missing, message, tookMs }`. Close the connection to stop. |
+| `GET /api/search/reference` | `q`, `exact=1`, `scope` (`routed`, the default: the collections likeliest to hold the answer first; `all`). NDJSON (`ReferenceSearchEvent`): `start` `{ collections, more, ranked }`, `collection` lines as archives answer (`done: false` for a first look at its titles, replaced by its `done: true` line), `widen` `{ collections }` when the rest are asked because the first found too little, then `end` `{ searched, missing, message, more, tookMs }`. Results carry scores on one scale. Close the connection to stop. |
 | `GET /api/search/stats` | `{ entities, chunks }`. |
 
 `total` counts every match of the kinds asked for (at least that many when search by

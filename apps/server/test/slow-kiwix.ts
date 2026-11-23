@@ -34,6 +34,8 @@ export interface SlowBook {
   hits?: Array<{ title: string; path: string; snippet: string }>;
   /** Answer every search of this book with an error. */
   broken?: boolean;
+  /** Refuse every search of this book's full text, as kiwix-serve does an archive without a full-text index. */
+  noIndex?: boolean;
 }
 
 export interface SlowKiwix {
@@ -41,6 +43,8 @@ export interface SlowKiwix {
   books: SlowBook[];
   /** Searches that reached the program, as "book name: word", in the order they began work. */
   started: string[];
+  /** Title searches (suggest), as "book name: term". They answer at once and take no place. */
+  suggested: string[];
   /** Searches being worked on now. */
   running(): number;
   /** Searches waiting for one of the program's places. */
@@ -80,7 +84,13 @@ export function writeArchives(folder: string, books: SlowBook[]): string[] {
 
 const escapeXml = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-export async function startSlowKiwix(options: { books: SlowBook[]; threads?: number; port?: number }): Promise<SlowKiwix> {
+export async function startSlowKiwix(options: {
+  books: SlowBook[];
+  threads?: number;
+  port?: number;
+  /** False: title search finds nothing, as with an older kiwix-serve. */
+  titles?: boolean;
+}): Promise<SlowKiwix> {
   const threads = options.threads ?? 4;
   const queue: Array<() => void> = [];
   let running = 0;
@@ -114,6 +124,7 @@ export async function startSlowKiwix(options: { books: SlowBook[]; threads?: num
     url: "",
     books: options.books,
     started: [],
+    suggested: [],
     running: () => running,
     waiting: () => queue.length,
     peak: () => peak,
@@ -156,6 +167,13 @@ export async function startSlowKiwix(options: { books: SlowBook[]; threads?: num
         response.statusCode = 500;
         return response.end("<error/>");
       }
+      if (book.noIndex) {
+        response.statusCode = 400;
+        response.setHeader("Content-Type", "text/html");
+        return response.end(
+          "<html><body><h1>Invalid request</h1><p>The fulltext search is not available for this content.</p></body></html>",
+        );
+      }
       response.setHeader("Content-Type", "application/xml");
       if (book.hits) {
         const stems = word
@@ -190,8 +208,23 @@ export async function startSlowKiwix(options: { books: SlowBook[]; threads?: num
       );
     }
     if (url.pathname === "/suggest") {
+      // Title search: the titles holding every word of the term (its first five letters), at once, as kiwix-serve
+      // answers from its title index without reading articles.
       response.setHeader("Content-Type", "application/json");
-      return response.end("[]");
+      const book = options.books.find((candidate) => candidate.name === url.searchParams.get("content"));
+      kiwix.suggested.push(`${book?.name ?? "?"}: ${url.searchParams.get("term") ?? ""}`);
+      if (!book || book.broken || options.titles === false) return response.end("[]");
+      const stems = (url.searchParams.get("term") ?? "")
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .filter((part) => part.length >= 3)
+        .map((part) => part.slice(0, 5));
+      const count = Number(url.searchParams.get("count")) || 10;
+      const holds = (title: string) => stems.length > 0 && stems.every((part) => title.toLowerCase().includes(part));
+      const titled = (book.hits ?? book.articles.map((title) => ({ title, path: title.replace(/ /g, "_") })))
+        .filter((hit) => holds(hit.title))
+        .slice(0, count);
+      return response.end(JSON.stringify(titled.map((hit) => ({ value: hit.title, label: hit.title, kind: "path", path: hit.path }))));
     }
     // Details, pages and lists of documents: these books have none to give.
     response.statusCode = 404;

@@ -24,11 +24,15 @@ import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, notFound } from "../../core/errors.ts";
 import { randomToken } from "../../core/ids.ts";
 import type { CollectionRow } from "../collections/service.ts";
-import { gatherParts, referenceBudgets, type SearchSource } from "../search/service.ts";
+import { titleWords } from "../search/query.ts";
+import { gatherParts, referenceBudgets, type SearchResult, type SearchSource } from "../search/service.ts";
 import { type ArchiveAdding, registerArchiveAdding } from "./add-files.ts";
 import { type DocumentLists, registerDocumentLists } from "./document-lists.ts";
 import { type ArchiveFilesService, registerArchiveFiles } from "./files.ts";
+import { isJunkHit } from "./junk.ts";
 import { bookNameOf, decodeEntities, type LibraryBook, readZimUuid, writeLibrary } from "./library.ts";
+import { type ArchiveProfile, createRouteMemory, routeArchives, routeWords, TITLE_ANSWER_PRIOR } from "./routing.ts";
+import { createSearchHealth, type SearchMark } from "./search-health.ts";
 import { type Asked, createSearchQueue } from "./search-queue.ts";
 import { createKiwixConnection, type KiwixConnection } from "./server.ts";
 
@@ -42,6 +46,8 @@ interface KiwixMeta {
   mediaCount?: number;
   /** Details were read from the archive itself. */
   enriched?: boolean;
+  /** Set when it can be searched by its titles only (search-health.ts). */
+  search?: SearchMark;
 }
 
 export interface BookDto {
@@ -172,7 +178,30 @@ export const referenceTimings = {
   archiveLimitMs: 8_000,
   /** How long a search may go on at kiwix-serve before Outpost stops waiting for it to end. */
   archiveCeilingMs: 20_000,
+  /**
+   * How long a search of an archive's titles is waited for. kiwix-serve answers one from
+   * its title index without reading any article: well under a second, even on a Pi.
+   */
+  titleLimitMs: 3_000,
+  /**
+   * How many title searches are at kiwix-serve at once, beside the full-text ones: one, so
+   * that the two together are never more than the four requests kiwix-serve works on.
+   */
+  titlesAtOnce: 1,
 };
+
+/** How a search of reference collections is shaped (routing.ts chooses which archives come first). */
+export const referenceShape = {
+  /** Results asked of each archive searched first: enough for one ranked list across them. */
+  firstEach: 8,
+  /** Titles asked of each archive's title search. */
+  titles: 5,
+  /** With fewer good results than this from the first archives, the rest are searched too. */
+  enoughGood: 3,
+};
+
+/** A result this good (on the one scale, score.ts) counts as a good one: most of the question, much of it in the title. */
+export const GOOD_SCORE = 0.6;
 
 /**
  * How many results to ask each archive for. Every result costs kiwix-serve a read of
@@ -180,6 +209,17 @@ export const referenceTimings = {
  * than is shown: enough to make about twenty in all, at least three and at most ten.
  */
 export const resultsFromEach = (archives: number) => Math.min(10, Math.max(3, Math.ceil(20 / Math.max(archives, 1))));
+
+/** kiwix-serve refused a search (an answer in the 400s): this archive cannot be searched that way. */
+class Refused extends Error {
+  status: number;
+  body: string;
+  constructor(status: number, body: string) {
+    super(`kiwix-serve answered ${status}`);
+    this.status = status;
+    this.body = body;
+  }
+}
 
 const zimOf = (row: CollectionRow) => row.meta.zim;
 const kiwixOf = (row: CollectionRow) => (row.meta.kiwix ?? {}) as KiwixMeta;
@@ -442,6 +482,9 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
     const response = await upstream(`search?${query}`, { signal: signal ?? AbortSignal.timeout(8000) });
     const body = await response.text();
     if (!response.ok) {
+      if (strict && response.status >= 400 && response.status < 500 && response.status !== 408 && response.status !== 429) {
+        throw new Refused(response.status, body);
+      }
       if (strict) throw new Error(`kiwix-serve answered ${response.status}`);
       return { total: 0, hits: [] };
     }
@@ -468,14 +511,10 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
     return { total: Number(channel["opensearch:totalResults"]) || hits.length, hits };
   }
 
-  /** Two answers of one archive as one: found if either was, their articles taken in turn without repeats. */
-  function mergeAnswers(answers: Array<Asked<BookAnswer>>, each: number): Asked<BookAnswer> {
-    const found = answers.flatMap((answer) => (answer.status === "found" ? [answer.value] : []));
-    if (found.length === 0) return answers[0]!;
-    if (found.length === 1) return { status: "found", value: found[0]! };
+  /** Two answers of one archive as one: their articles taken in turn without repeats. */
+  function mergeHits(lists: Hit[][], each: number): Hit[] {
     const seen = new Set<string>();
     const hits: Hit[] = [];
-    const lists = found.map((value) => value.hits);
     for (let rank = 0; hits.length < each && lists.some((list) => rank < list.length); rank += 1) {
       for (const list of lists) {
         const hit = list[rank];
@@ -485,14 +524,31 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
         }
       }
     }
-    return { status: "found", value: { total: Math.max(...found.map((value) => value.total)), hits } };
+    return hits;
+  }
+
+  /** kiwix-serve's title search: the titles holding these words, best first. Fast: it reads no article. */
+  async function suggestBook(row: CollectionRow, term: string, count: number, signal?: AbortSignal): Promise<Hit[]> {
+    const query = new URLSearchParams({ content: zimOf(row)!.bookName, term, count: String(count) });
+    const response = await upstream(`suggest?${query}`, { signal: signal ?? AbortSignal.timeout(4000) });
+    if (!response.ok) {
+      await response.body?.cancel();
+      return [];
+    }
+    const raw = (await response.json().catch(() => [])) as Array<{ value?: string; kind?: string; path?: string }>;
+    return raw
+      .filter((item) => item.kind === "path" && item.path && item.value)
+      .map((item) => {
+        const title = decodeEntities(item.value!);
+        return { title, path: decodeEntities(item.path!), snippet: "", segments: [] };
+      });
   }
 
   const readerUrl = (collectionId: string, articlePath: string) =>
     `/library/read/${collectionId}/${articlePath.split("/").map(encodeURIComponent).join("/")}`;
 
-  /** One archive's answer, as the queue keeps it. */
-  type BookAnswer = { total: number; hits: Hit[] };
+  /** One archive's answer to a search of its full text, as the queue keeps it. */
+  type BookAnswer = { refused: false; total: number; hits: Hit[] } | { refused: true; status: number; body: string };
   const queue = createSearchQueue<BookAnswer>({
     concurrency: referenceTimings.atOnce,
     limitMs: referenceTimings.archiveLimitMs,
@@ -501,6 +557,40 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
     rememberMs: 5 * 60_000,
   });
   ctx.onClose.push(() => queue.close());
+  const titleQueue = createSearchQueue<Hit[]>({
+    concurrency: referenceTimings.titlesAtOnce,
+    limitMs: referenceTimings.titleLimitMs,
+    ceilingMs: referenceTimings.archiveCeilingMs,
+    remember: 600,
+    rememberMs: 5 * 60_000,
+  });
+  ctx.onClose.push(() => titleQueue.close());
+
+  // Which archives answered well for which words lately, and which cannot be searched by their full text.
+  const memory = createRouteMemory();
+  const health = createSearchHealth({
+    read: (id) => {
+      const row = collections.get(id);
+      return row ? kiwixOf(row).search : undefined;
+    },
+    write: (id, mark) => {
+      const row = collections.get(id);
+      if (!row) return;
+      const { search: _gone, ...rest } = kiwixOf(row);
+      collections.update(id, { meta: { ...row.meta, kiwix: mark ? { ...rest, search: mark } : rest } });
+      if (mark) log.info({ collection: row.title, mark: mark.fullText }, "reference collection searched by its titles only from now");
+    },
+  });
+
+  const profileOf = (row: CollectionRow): ArchiveProfile => ({
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    category: row.category,
+    tags: kiwixOf(row).tags,
+    language: kiwixOf(row).language ?? row.language,
+    sizeBytes: row.sizeBytes,
+  });
 
   const source: SearchSource = {
     id: "reference",
@@ -512,75 +602,163 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
       if (outcome.message) throw new Error(outcome.message);
       return results;
     },
-    async searchInParts({ q, alternate, signal, budgetMs, onStart, onPart }) {
+    async searchInParts({ q, alternate, parsed, scope = "routed", rank, signal, budgetMs, onStart, onWiden, onPart }) {
       if (!(await connection.isUp())) {
-        onStart?.(0);
+        onStart?.(0, 0);
         return {
           collections: 0,
           searched: 0,
           missing: [],
           message: connection.problem() ?? "Reference collections are not answering, so their articles are missing from these results.",
+          more: 0,
         };
       }
-      // Smallest first: a small archive is the quickest to search, so the first results come soonest.
-      const books = zimCollections()
-        .filter(servable)
-        .sort((a, b) => a.sizeBytes - b.sizeBytes || a.id.localeCompare(b.id));
-      const each = resultsFromEach(books.length);
-      onStart?.(books.length);
+      const books = zimCollections().filter(servable);
+      const words = parsed ?? { required: q.split(/\s+/).filter(Boolean), excluded: [], prefixLast: false };
+      const route = routeWords(words);
+      const titleTerm = titleWords(words).join(" ");
+      // A book that is a list of documents has no articles to search; its documents are found by their titles, at no cost.
+      const listedOf = new Map(books.map((row) => [row.id, lists?.hits(row, q, referenceShape.firstEach) ?? []]));
+      const always = new Set([...listedOf].filter(([, hits]) => hits.length > 0).map(([id]) => id));
+      const plan = routeArchives(books.map(profileOf), route, { memory, always, first: scope === "all" ? books.length : undefined });
+      const byId = new Map(books.map((row) => [row.id, row]));
+      const first = plan.first.map((profile) => byId.get(profile.id)!);
+      const rest = plan.rest.map((profile) => byId.get(profile.id)!);
+      onStart?.(first.length, rest.length);
+
       const budget = AbortSignal.timeout(budgetMs);
       const waiting = signal ? AbortSignal.any([signal, budget]) : budget;
       const missing: Array<{ collectionId: string; title: string; reason: "slow" | "failed" }> = [];
       let searched = 0;
-      await Promise.all(
-        books.map(async (row) => {
-          // The words as typed and, when they can be said another way ("tire" for "tyre"), once more that way:
-          // never more than two requests to an archive.
-          const patterns = alternate && alternate !== q ? [q, alternate] : [q];
-          const answers = await Promise.all(
-            patterns.map((pattern) =>
-              queue.ask(`${zimOf(row)!.uuid}\n${each}\n${pattern}`, (running) => searchBook(row, pattern, 0, each, running, true), waiting),
-            ),
-          );
-          if (signal?.aborted) return;
-          const answer = mergeAnswers(answers, each);
-          // A book that is a list of documents has no articles to search; its documents are found by their titles.
-          const listed = (lists?.hits(row, q, each) ?? []).map((hit) => ({
+      let good = 0;
+      // A title that is the answer counts as one only where the collection fits the question (routing.ts).
+      const fits = (row: CollectionRow) => (plan.priors.get(row.id)?.prior ?? 0) >= TITLE_ANSWER_PRIOR;
+      const ranked = (row: CollectionRow, results: SearchResult[]) => (rank ? rank(results, { titleAnswers: fits(row) }) : results);
+
+      const toResult = (row: CollectionRow, hit: { entityId: string; title: string; url: string; segments: Hit["segments"] }) => ({
+        kind: "reference",
+        entityId: hit.entityId,
+        title: hit.title,
+        titleSegments: [{ text: hit.title, hit: false }],
+        subtitle: null,
+        collection: row.title,
+        url: hit.url,
+        tags: [],
+        score: 0,
+        passages: hit.segments.length > 0 ? [{ chunkId: null, segments: hit.segments, page: null, heading: null }] : [],
+        sources: ["reference"],
+      });
+      /** An archive's hits as results on the one scale, junk left out, best first, at most `each`. */
+      function resultsOf(row: CollectionRow, hits: Hit[], each: number): SearchResult[] {
+        const listed = (listedOf.get(row.id) ?? []).map((hit) =>
+          toResult(row, {
             entityId: hit.entityId,
             title: hit.title,
             url: hit.url,
             segments: hit.description ? [{ text: hit.description, hit: false }] : [],
-          }));
-          const articles = (answer.status === "found" ? answer.value.hits : []).map((hit) => ({
-            entityId: `${row.id}:${hit.path}`,
-            title: hit.title,
-            url: readerUrl(row.id, hit.path),
-            segments: hit.snippet ? hit.segments : [],
-          }));
-          if (answer.status === "found") searched += 1;
-          else missing.push({ collectionId: row.id, title: row.title, reason: answer.status === "failed" ? "failed" : "slow" });
-          if (answer.status !== "found" && listed.length === 0) return;
-          onPart({
-            collectionId: row.id,
-            title: row.title,
-            results: [...listed, ...articles].slice(0, each).map((hit, rank) => ({
-              kind: "reference",
-              entityId: hit.entityId,
+          }),
+        );
+        const seen = new Set<string>();
+        const articles = hits
+          .filter((hit) => !isJunkHit(hit) && !seen.has(hit.path) && seen.add(hit.path))
+          .map((hit) =>
+            toResult(row, {
+              entityId: `${row.id}:${hit.path}`,
               title: hit.title,
-              titleSegments: [{ text: hit.title, hit: false }],
-              subtitle: null,
-              collection: row.title,
-              url: hit.url,
-              tags: [],
-              score: 1 - rank / each,
-              passages: hit.segments.length > 0 ? [{ chunkId: null, segments: hit.segments, page: null, heading: null }] : [],
-              sources: ["reference"],
-            })),
-          });
-        }),
-      );
+              url: readerUrl(row.id, hit.path),
+              segments: hit.segments,
+            }),
+          );
+        const all = [...listed, ...articles];
+        const scored = rank ? ranked(row, all) : all.map((result, index) => ({ ...result, score: 1 - index / Math.max(all.length, 1) }));
+        return scored.slice(0, each);
+      }
+
+      async function searchSet(rows: CollectionRow[], each: number): Promise<void> {
+        // The words as typed and, when they can be said another way ("tire" for "tyre"), once more that way:
+        // never more than two requests to an archive for its full text.
+        const patterns = alternate && alternate !== q ? [q, alternate] : [q];
+        // Titles first, for every archive: they answer in a fraction of the time, and put the first results on screen.
+        const titles = rows.map((row) =>
+          titleTerm
+            ? titleQueue.ask(
+                `${zimOf(row)!.uuid}\n${titleTerm}`,
+                (running) => suggestBook(row, titleTerm, referenceShape.titles, running),
+                waiting,
+              )
+            : Promise.resolve<Asked<Hit[]>>({ status: "found", value: [] }),
+        );
+        const fullText = rows.map((row) =>
+          health.fullTextNow(row.id)
+            ? Promise.all(
+                patterns.map((pattern) =>
+                  queue.ask(
+                    `${zimOf(row)!.uuid}\n${each}\n${pattern}`,
+                    (running) =>
+                      searchBook(row, pattern, 0, each, running, true).then(
+                        (value): BookAnswer => ({ refused: false, ...value }),
+                        (error: unknown) => {
+                          if (error instanceof Refused) return { refused: true, status: error.status, body: error.body };
+                          throw error;
+                        },
+                      ),
+                    waiting,
+                  ),
+                ),
+              )
+            : null,
+        );
+        await Promise.all(
+          rows.map(async (row, index) => {
+            const asked = fullText[index];
+            const titled = await titles[index]!;
+            const titleHits = titled.status === "found" ? titled.value : [];
+            if (signal?.aborted) return;
+            // A first look while the full text is still being searched.
+            if (asked && titleHits.length > 0) {
+              const preview = resultsOf(row, titleHits, each);
+              if (preview.length > 0) onPart({ collectionId: row.id, title: row.title, results: preview, done: false });
+            }
+            const answers = asked ? await asked : [];
+            if (signal?.aborted) return;
+            const found: Hit[][] = [];
+            let failure: "slow" | "failed" | null = null;
+            for (const answer of answers) {
+              if (answer.status === "found" && !answer.value.refused) found.push(answer.value.hits);
+              else if (answer.status === "found" && answer.value.refused) health.refused(row.id, answer.value.status, answer.value.body);
+              else if (answer.status === "failed") {
+                failure = "failed";
+                health.failed(row.id, answer.message);
+              } else if (answer.status === "slow" && failure === null) failure = "slow";
+            }
+            if (found.length > 0) health.worked(row.id);
+            // Searched by its titles alone (no full-text index, or failing lately): nothing is said about it in the results.
+            const titlesOnly = !asked || !health.fullTextNow(row.id);
+            const answered = found.length > 0 || (titlesOnly && titled.status === "found");
+            const results = resultsOf(row, [...mergeHits(found, each), ...titleHits], each);
+            if (answered) searched += 1;
+            else missing.push({ collectionId: row.id, title: row.title, reason: failure === "failed" ? "failed" : "slow" });
+            const goodHere = results.filter((result) => result.score >= GOOD_SCORE).length;
+            good += goodHere;
+            if (answered) memory.record(route.words, row.id, goodHere > 0);
+            if (!answered && results.length === 0) return;
+            onPart({ collectionId: row.id, title: row.title, results, done: true });
+          }),
+        );
+      }
+
+      await searchSet(first, referenceShape.firstEach);
+      let more = rest.length;
+      let collectionsAsked = first.length;
+      // Too little found where it was most likely: the rest after all, while there is time.
+      if (more > 0 && good < referenceShape.enoughGood && !waiting.aborted) {
+        onWiden?.(more);
+        collectionsAsked += more;
+        more = 0;
+        await searchSet(rest, resultsFromEach(rest.length));
+      }
       missing.sort((a, b) => a.title.localeCompare(b.title));
-      return { collections: books.length, searched, missing, message: null };
+      return { collections: collectionsAsked, searched, missing, message: null, more };
     },
   };
   search.addSource(source);

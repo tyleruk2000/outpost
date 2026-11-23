@@ -11,11 +11,13 @@ import { Button } from "@/components/ui/button";
 import { Segmented, Skeleton } from "@/components/ui/misc";
 import { findGuides, useGuideIndex } from "@/features/help/guide-places";
 import { api } from "@/lib/api";
-import { type ReferenceSearch, referenceProgress, referenceTrouble, useReferenceSearch } from "@/lib/reference-search";
+import { type ReferenceSearch, referenceProgress, referenceTrouble, useReferenceSearch, useSteadyOrder } from "@/lib/reference-search";
 import { cn, plural } from "@/lib/utils";
 import { AnswerArea, AnswerHint } from "./answer";
 
 const PAGE_SIZE = 20;
+/** How many reference articles "Everything" shows under a person's own results: the best of all collections. */
+const REFERENCE_SHOWN = 5;
 /** How many screens a search offers to go to, at most: the quick search's matching, on the search page. */
 const PLACES_SHOWN = 3;
 
@@ -229,6 +231,34 @@ function ReferenceTrouble({ reference }: { reference: ReferenceSearch }) {
 }
 
 /**
+ * Under the reference articles, once the search has ended: the collections that were not
+ * searched because those likeliest to hold the answer found enough, and the button that
+ * searches them too.
+ */
+function SearchAll({ reference, onAll, className }: { reference: ReferenceSearch; onAll: () => void; className?: string }) {
+  if (reference.status !== "done" || reference.more === 0) return null;
+  return (
+    <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-2", className)}>
+      <Button onClick={onAll}>Search all reference collections</Button>
+      <p className="text-small text-ink-muted">
+        {plural(reference.collections, "collection")} likeliest to hold this {reference.collections === 1 ? "was" : "were"} searched;{" "}
+        {plural(reference.more, "other")} {reference.more === 1 ? "was" : "were"} not.
+      </p>
+    </div>
+  );
+}
+
+/** While the pointer or focus holds the list still: how many articles are waiting to be put in their places. */
+function Waiting({ count }: { count: number }) {
+  if (count === 0) return null;
+  return (
+    <p className="tabular mt-2 text-small text-ink-muted" role="status">
+      {plural(count, "more article")} found, put in place once you move away from the list.
+    </p>
+  );
+}
+
+/**
  * One line under the count of a person's own results that says where the search of
  * reference collections has got to. It is there from the first results and always one
  * line high, so that nothing below it moves when the collections answer.
@@ -266,6 +296,8 @@ export default function SearchPage() {
   const page = Math.max(1, Number(params.get("page")) || 1);
   /** Only what was typed: no other spellings or ways of saying it. */
   const exact = params.get("exact") === "1";
+  /** Every reference collection, not only those likeliest to hold the answer. */
+  const allCollections = params.get("collections") === "all";
   const [draft, setDraft] = useState(q);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -281,8 +313,9 @@ export default function SearchPage() {
           if (draft) next.set("q", draft);
           else next.delete("q");
           next.delete("page");
-          // Searching only for what was typed belongs to the words it was asked for.
+          // Searching only for what was typed, or every collection, belongs to the words it was asked for.
           next.delete("exact");
+          next.delete("collections");
           return next;
         },
         { replace: true },
@@ -311,7 +344,9 @@ export default function SearchPage() {
     enabled: q.trim().length > 0,
     placeholderData: keepPreviousData,
   });
-  const reference = useReferenceSearch(q, search.data?.referenceToCome === true, exact);
+  const reference = useReferenceSearch(q, search.data?.referenceToCome === true, exact, allCollections);
+  // One list in score order; still while the pointer is over it, so that nothing moves under it.
+  const steady = useSteadyOrder(reference.results, `${q}\n${exact}\n${allCollections}`);
 
   const setParam = (key: string, value: string | undefined) =>
     setParams((current) => {
@@ -329,6 +364,7 @@ export default function SearchPage() {
     next.set("q", query);
     next.delete("page");
     next.delete("exact");
+    next.delete("collections");
     return `/search?${next}`;
   };
   const facets = Object.entries(data?.facets ?? {})
@@ -342,7 +378,7 @@ export default function SearchPage() {
   const referenceBelow = kind === "" && Boolean(data?.referenceToCome) && reference.status !== "idle";
   const trouble = referenceTrouble(reference);
   const referenceHasSomething = reference.status === "searching" || reference.results.length > 0 || trouble.length > 0;
-  const referencePages = Math.max(1, Math.ceil(reference.results.length / PAGE_SIZE));
+  const referencePages = Math.max(1, Math.ceil(steady.shown.length / PAGE_SIZE));
   const referencePage = Math.min(page, referencePages);
   // On "Everything", what would have to be downloaded is listed apart, last of all: after a person's own results and after
   // what the reference collections hold, which are on this device too. The server ranks it last as well (docs/search.md).
@@ -488,12 +524,14 @@ export default function SearchPage() {
                     {reference.status === "searching" ? " so far." : "."}
                   </p>
                   <ReferenceTrouble reference={reference} />
-                  <ol className="mt-1 divide-y divide-border">
-                    {reference.results.slice((referencePage - 1) * PAGE_SIZE, referencePage * PAGE_SIZE).map((result) => (
+                  <ol className="mt-1 divide-y divide-border" {...steady.hold}>
+                    {steady.shown.slice((referencePage - 1) * PAGE_SIZE, referencePage * PAGE_SIZE).map((result) => (
                       <ResultRow key={`${result.kind}:${result.entityId}`} result={result} />
                     ))}
                   </ol>
+                  <Waiting count={steady.waiting} />
                   {reference.status === "searching" ? <StillSearching reference={reference} className="mt-2" /> : null}
+                  <SearchAll reference={reference} onAll={() => setParam("collections", "all")} className="mt-4" />
                   {referencePages > 1 ? (
                     <Pager page={referencePage} pages={referencePages} onPage={(next) => setParam("page", String(next))} />
                   ) : null}
@@ -505,6 +543,7 @@ export default function SearchPage() {
                   <h2 className="font-title text-heading">Nothing in your reference collections matches “{q}”</h2>
                   <p className="mt-2 text-ink-muted">Check the spelling, or try fewer or different words.</p>
                   <ReferenceTrouble reference={reference} />
+                  <SearchAll reference={reference} onAll={() => setParam("collections", "all")} className="mt-4" />
                 </div>
               )}
             </section>
@@ -602,11 +641,11 @@ export default function SearchPage() {
                     In reference collections
                   </h2>
                   <ReferenceTrouble reference={reference} />
-                  {reference.best.length > 0 ? (
+                  {steady.shown.length > 0 ? (
                     <>
-                      <p className="mt-1 text-small text-ink-muted">The best match from each collection that has one.</p>
-                      <ol className="divide-y divide-border">
-                        {reference.best.map((result) => (
+                      <p className="mt-1 text-small text-ink-muted">The best matches across your reference collections.</p>
+                      <ol className="divide-y divide-border" {...steady.hold}>
+                        {steady.shown.slice(0, REFERENCE_SHOWN).map((result) => (
                           <ResultRow key={`${result.kind}:${result.entityId}`} result={result} heading="h3" />
                         ))}
                       </ol>
@@ -615,11 +654,12 @@ export default function SearchPage() {
                     <p className="mt-2 text-small text-ink-muted">No article in your reference collections matches.</p>
                   ) : null}
                   {reference.status === "searching" ? <StillSearching reference={reference} className="mt-2" /> : null}
-                  {reference.status === "done" && reference.results.length > reference.best.length ? (
+                  {reference.status === "done" && reference.results.length > REFERENCE_SHOWN ? (
                     <Button className="mt-4" onClick={() => setParam("kind", "reference")}>
                       See all {reference.results.length} reference results
                     </Button>
                   ) : null}
+                  <SearchAll reference={reference} onAll={() => setParam("collections", "all")} className="mt-4" />
                 </section>
               ) : null}
               {toDownloadShown ? (
