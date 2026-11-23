@@ -30,6 +30,7 @@ const DownloadPage = lazy(() => import("./features/downloads/download-page"));
 const TaskPage = lazy(() => import("./features/downloads/task-page"));
 const UnderstandPage = lazy(() => import("./features/understand/understand-page"));
 const HowMeaningWorksPage = lazy(() => import("./features/how-meaning-works/how-meaning-works-page"));
+const HowSearchTunedPage = lazy(() => import("./features/how-search-tuned/how-search-tuned-page"));
 const MapsPage = lazy(() => import("./features/maps/maps-page"));
 const RepeatersPage = lazy(() => import("./features/repeaters/repeaters-page"));
 const RepeaterPage = lazy(() => import("./features/repeaters/repeater-page"));
@@ -189,6 +190,7 @@ export function App() {
           <Route path="downloads/tasks/:id" element={<TaskPage />} />
           <Route path="search/how-it-works" element={<UnderstandPage />} />
           <Route path="search/how-meaning-works" element={<HowMeaningWorksPage />} />
+          <Route path="search/how-it-was-tuned" element={<HowSearchTunedPage />} />
           <Route path="storage" element={<StoragePage />} />
           <Route path="storage/manage" element={<ManagePage />} />
           <Route path="storage/merge" element={<MergePage />} />

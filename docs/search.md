@@ -23,6 +23,10 @@ Keyword search works at once with no set-up. Search by meaning and reading scann
 - **Search → How search by meaning works** (also linked from **Settings → Search by
   meaning**) explains search by meaning in plain words and diagrams, with this Outpost's
   own figures: whether it is on, how much of the library has been read, and the model.
+- **Search → How search was tuned** (also linked from the top of How search works)
+  explains how search was measured and improved one change at a time: the evaluation
+  questions and their grades, nDCG@5 worked by hand, BM25, the final score's weights, the
+  8-bit meaning index, where the time went on a Raspberry Pi, and the before and after.
 
 ## Answers from your library
 

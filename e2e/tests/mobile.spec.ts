@@ -82,6 +82,7 @@ test.describe("on a phone", () => {
         [
           ["How search works", "/search/how-it-works"],
           ["How search by meaning works", "/search/how-meaning-works"],
+          ["How search was tuned", "/search/how-it-was-tuned"],
         ],
       ],
       // A tab, listed again as the heading of the screen under it.
