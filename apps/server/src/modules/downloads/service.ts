@@ -87,6 +87,8 @@ function integrityOf(row: DownloadRow): DownloadDetail["integrity"] {
 
 /** How often in one run a file may be put right after the storage lost part of it, before the storage is called at fault. */
 const MAX_STORAGE_REPAIRS = 2;
+/** How often in one run a file that does not match its published checksum is fetched again from the start, before the download fails. */
+const MAX_CHECKSUM_REFETCHES = 1;
 
 export const OFFLINE_MESSAGE = "No connection. This download will resume when the network is back.";
 export const OFFLINE_GAVE_UP_MESSAGE =
@@ -569,7 +571,10 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
       if (await pathExists(finalPath)) {
         // Either an earlier attempt was interrupted between putting the file in place
         // and installing it, or something else now has that name. Only the first is ours.
-        const ours = partSize === undefined && row.sha256Actual !== null && (await sha256File(finalPath, { signal })) === row.sha256Actual;
+        const ours =
+          partSize === undefined &&
+          row.sha256Actual !== null &&
+          (await sha256File(finalPath, { signal, fromStorage: true })) === row.sha256Actual;
         if (!ours) {
           throw new AppError(
             "conflict",
@@ -585,14 +590,18 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
         let sizeBytes = 0;
         let sha256 = "";
         let checked: { meta?: Record<string, unknown> } = {};
-        for (let repairs = 0; ; repairs += 1) {
-          if (!fetched || repairs > 0) {
+        // A file already fetched is still checked again before anything reads it: it may have changed on its storage since.
+        let fetchNext = !fetched;
+        let refetches = 0;
+        for (let repairs = 0; ; ) {
+          if (fetchNext) {
             if (row.sha256Actual !== null) row = write(id, { sha256Actual: null, meta: { ...requireRow(id).meta, md5Actual: undefined } });
             await fetcher({
               download: row,
               partPath,
               allowedHosts: run.payload.allowedHosts,
               everyHop: run.payload.everyHop === true,
+              network: storage.list().find((location) => location.id === row.locationId)?.kind === "network",
               signal,
               progress,
               throttle: (bytes) => limiter.take(bytes, signal),
@@ -615,8 +624,10 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
           const md5Expected = text(row.meta.md5Expected);
           // In the same reading, what the storage gives back is held against what was written to it as it arrived.
           const readBack = record.check();
+          // Read from the storage itself: from memory, a network share's copy reads back as written whatever it holds.
           const sums = await hashFile(partPath, md5Expected ? (["sha256", "md5"] as const) : (["sha256"] as const), {
             signal,
+            fromStorage: true,
             onProgress: (bytes) => run.progress({ current: bytes, total: sizeBytes, message: "Checking the file" }),
             onChunk: (chunk) => readBack.update(chunk),
           });
@@ -657,21 +668,38 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
                 ? `What was written to ${where} did not read back the same, so the file is fetched again.`
                 : `What was written to ${where} did not read back the same from ${formatBytes(damagedAt)} on (of ${formatBytes(sizeBytes)}), so that part is fetched again.`,
             );
+            repairs += 1;
+            fetchNext = true;
             continue;
           }
           checked = md5Expected ? { meta: { ...requireRow(id).meta, md5Actual: sums.md5 } } : {};
           if ((row.sha256Expected && sha256 !== row.sha256Expected) || (md5Expected && sums.md5 !== md5Expected)) {
             // What was written here read back as it arrived: where that covers the whole file, the storage is not to blame.
             const arrivedSo = record.bytes >= sizeBytes && sizeBytes > 0;
-            // Deleted, so that trying again fetches it again and does not check the same bytes twice.
+            const which = md5Expected && sums.md5 !== md5Expected ? "the MD5 its publisher gives" : "its published checksum";
+            // Deleted, never kept or read: trying again fetches it again and does not check the same bytes twice.
             await fs.promises.rm(partPath, { force: true });
             record.clear();
             state.receivedBytes = 0;
+            if (refetches < MAX_CHECKSUM_REFETCHES) {
+              // Once more from the first byte, not continued: no part of a file that failed its check is trusted.
+              refetches += 1;
+              run.log.warn({ download: id, sizeBytes, arrivedSo }, "a download did not match its published checksum; fetching it again");
+              signal.throwIfAborted();
+              state.message = null;
+              row = write(
+                id,
+                { state: "running", sha256Actual: null, receivedBytes: 0, ...checked },
+                `The file did not match ${which}, so it was deleted and is downloaded again from the start.`,
+              );
+              fetchNext = true;
+              continue;
+            }
             write(id, { sha256Actual: sha256, receivedBytes: 0, ...checked });
             throw new PermanentJobError(
               arrivedSo
-                ? "The downloaded file does not match its published checksum, and it is the file as it arrived: it was damaged on the way or changed at its source, or had been tampered with. It has been deleted and nothing was installed. Try the download again."
-                : "The downloaded file does not match its published checksum: it was damaged on the way or as it was written to storage, or had been tampered with. It has been deleted and nothing was installed. Try the download again.",
+                ? `The downloaded file did not match ${which}, twice, and it is the file as it arrived: it was damaged on the way or changed at its source, or had been tampered with. It has been deleted and nothing was installed. Try the download again later.`
+                : `The downloaded file did not match ${which}, twice: it was damaged on the way or as it was written to storage, or had been tampered with. It has been deleted and nothing was installed. Try the download again later, or download to another storage location.`,
               "checksum_mismatch",
             );
           }

@@ -64,11 +64,35 @@ function validatorOf(etag: string | null, lastModified: string | null): string |
  */
 export const UNSTATED_MAX_BYTES = 8 * 1024 ** 3;
 
+/** What a download to a network share is written in: a multiple of every page size Linux uses (4, 16 and 64 KiB). */
+export const NETWORK_BLOCK_BYTES = 1024 * 1024;
+
 /** How much is let through per request to the speed limiter. */
 const THROTTLE_SLICE_BYTES = 16 * 1024;
 
 function sameHost(a: string, b: string): boolean {
   return new URL(a).host.toLowerCase() === new URL(b).host.toLowerCase();
+}
+
+/**
+ * Whether a tail (206) is of the same file the partial file holds the start of: the same validators, where the
+ * same host answers each time, and the same size the last answer gave. If-Range asks the server to see to this;
+ * this is for one that does not.
+ */
+function sameFile(
+  download: FetchContext["download"],
+  headers: { get(name: string): string | null },
+  url: string,
+  total: number | null,
+): boolean {
+  const before = (download.meta as { servedBytes?: unknown }).servedBytes;
+  if (typeof before === "number" && total !== null && before !== total) return false;
+  if (!sameHost(download.url, url)) return true;
+  const etag = headers.get("etag");
+  if (download.etag && etag && download.etag !== etag) return false;
+  const lastModified = headers.get("last-modified");
+  if (download.lastModified && lastModified && download.lastModified !== lastModified) return false;
+  return true;
 }
 
 async function attempt(client: HttpClient, context: FetchContext, stated: number | null, unstatedMax: number): Promise<Outcome> {
@@ -134,9 +158,15 @@ async function attempt(client: HttpClient, context: FetchContext, stated: number
       await fs.promises.rm(partPath, { force: true });
       return "restart";
     }
-    append = true;
     const rest = contentLength(response.headers);
     total = range.total ?? (rest === null ? null : have + rest);
+    if (!sameFile(download, response.headers, url, total)) {
+      // A server that sends a tail without honouring If-Range: the tail of a different file than the first part was.
+      await response.body?.cancel();
+      await fs.promises.rm(partPath, { force: true });
+      return "restart";
+    }
+    append = true;
   } else {
     total = contentLength(response.headers);
   }
@@ -146,7 +176,7 @@ async function attempt(client: HttpClient, context: FetchContext, stated: number
     etag: viaMirror ? null : response.headers.get("etag"),
     lastModified: viaMirror ? null : response.headers.get("last-modified"),
     // Shown on the download's details: which server actually sent the bytes.
-    meta: { servedBy: new URL(url).hostname, resumedAt: append ? have : 0 },
+    meta: { servedBy: new URL(url).hostname, resumedAt: append ? have : 0, servedBytes: total },
   });
 
   let received = append ? have : 0;
@@ -186,7 +216,12 @@ async function attempt(client: HttpClient, context: FetchContext, stated: number
           }
         }
       },
-      syncedWriteStream(partPath, { flags: append ? "a" : "w" }),
+      syncedWriteStream(
+        partPath,
+        { flags: append ? "a" : "w" },
+        undefined,
+        context.network ? { bytes: NETWORK_BLOCK_BYTES, from: received } : undefined,
+      ),
       { signal },
     );
   } else if (!append) {

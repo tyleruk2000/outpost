@@ -171,7 +171,9 @@ again or restore it); `missing` (the location is connected, the file is not).
 ### What is written is read back
 
 A drive or share can silently lose part of what is written, so Outpost reads each
-download back as it arrives and fetches a damaged stretch again. After three times it
+download back as it arrives and fetches a damaged stretch again. The check reads from the
+drive or share itself, not from what the device still remembers writing, so a share that
+lost part of a file cannot pass it. After three times it
 stops, deletes the file and says the storage is not keeping what is written. Files you
 copied in and later damage are not covered (**Check files** finds that). It guards
 against accidents, not tampering.

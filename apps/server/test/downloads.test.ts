@@ -5,6 +5,7 @@ import path from "node:path";
 import { Writable } from "node:stream";
 import type { DownloadDetail } from "@outpost/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { storageRead } from "../src/core/storage-read.ts";
 import { OFFLINE_MESSAGE } from "../src/modules/downloads/service.ts";
 import type { DownloadKind, DownloadRow, Installer, StartDownload } from "../src/modules/downloads/types.ts";
 import { type FileServer, partFileHolds, startFileServer, testBytes, unusedPort, waitFor } from "./fixtures/downloads/file-server.ts";
@@ -232,6 +233,48 @@ describe("resuming", () => {
     expect(fs.readFileSync(finalPath(app, row)).equals(second)).toBe(true);
   });
 
+  it("starts again when a server sends the tail of a changed file without honouring If-Range", async () => {
+    app = await createTestApp();
+    const server = await fileServer();
+    const first = testBytes(300_000, 23);
+    const second = testBytes(300_000, 24);
+    server.routes.set("/extract", {
+      body: first,
+      dropAfterBytes: 120_000,
+      beforeDrop: partFileHolds(app, 120_000),
+      headers: { etag: '"day-1"' },
+    });
+
+    const started = await downloads(app).start(request(server, "/extract", "extract.bin"));
+    await waitFor(() => downloads(app!).get(started.id)!.state === "queued" && server.requests.length === 1, "the dropped connection");
+    // Replaced at its source, by a server that sends the tail asked for whatever If-Range says.
+    server.routes.set("/extract", { body: second, ifRange: false, headers: { etag: '"day-2"' } });
+    const row = await settled(app, started.id);
+
+    expect(server.requests.map((seen) => seen.range ?? "all of it")).toEqual(["all of it", "bytes=120000-", "all of it"]);
+    expect(row.state).toBe("completed");
+    // Not 120 kB of the old file followed by the tail of the new one, which is the same size.
+    expect(fs.readFileSync(finalPath(app, row)).equals(second)).toBe(true);
+  });
+
+  it("starts again when the tail is of a file of another size", async () => {
+    app = await createTestApp();
+    const server = await fileServer();
+    const first = testBytes(300_000, 25);
+    const second = testBytes(320_000, 26);
+    server.routes.set("/extract", { body: first, dropAfterBytes: 120_000, beforeDrop: partFileHolds(app, 120_000) });
+
+    const started = await downloads(app).start(request(server, "/extract", "extract.bin"));
+    await waitFor(() => downloads(app!).get(started.id)!.state === "queued" && server.requests.length === 1, "the dropped connection");
+    // No validators at all: only the size gives it away.
+    server.routes.set("/extract", { body: second });
+    const row = await settled(app, started.id);
+
+    expect(server.requests.map((seen) => seen.range ?? "all of it")).toEqual(["all of it", "bytes=120000-", "all of it"]);
+    expect(row.state).toBe("completed");
+    expect(fs.readFileSync(finalPath(app, row)).equals(second)).toBe(true);
+  });
+
   it("does not rely on ETags across mirrors; the checksum decides", async () => {
     app = await createTestApp();
     const origin = await fileServer();
@@ -425,6 +468,9 @@ describe("failures", () => {
     );
     expect(row.error).toMatch(/nothing was installed/);
     expect(row.attempts).toBe(1);
+    // Fetched once more from the start before giving up, and never continued from the failed copy.
+    const asked = server.requests.filter((seen) => seen.method === "GET");
+    expect(asked.map((seen) => seen.range ?? "all of it")).toEqual(["all of it", "all of it"]);
     expect(fs.existsSync(finalPath(app, row))).toBe(false);
     expect(fs.existsSync(`${finalPath(app, row)}.part`)).toBe(false);
     expect(app.ctx.services.collections.list()).toHaveLength(0);
@@ -458,7 +504,7 @@ describe("failures", () => {
     const row = await settled(app, started.id);
     expect(row.state).toBe("failed");
     expect(row.errorKind).toBe("checksum_mismatch");
-    expect(row.error).toMatch(/does not match its published checksum/);
+    expect(row.error).toMatch(/did not match (its published checksum|the MD5 its publisher gives), twice/);
     expect(row.error).toMatch(/it is the file as it arrived/);
     expect(fs.existsSync(`${finalPath(app, row)}.part`)).toBe(false);
     expect(app.ctx.services.collections.list()).toHaveLength(0);
@@ -474,6 +520,45 @@ describe("failures", () => {
     expect(server.requests.length).toBeGreaterThan(before);
     expect(fs.readFileSync(finalPath(app, again)).equals(body)).toBe(true);
     expect(((await app.api("GET", `/api/downloads/${started.id}`)).body as DownloadDetail).integrity.verified).toBe(true);
+  });
+
+  it("downloads a file that fails its publisher's MD5 once more from the start, and keeps the copy that passes", async () => {
+    app = await createTestApp();
+    const server = await fileServer();
+    const body = testBytes(200_000, 14);
+    const damaged = Buffer.from(body);
+    damaged.fill(0, 131_072, 135_168);
+    let sent = 0;
+    server.routes.set("/extract", { body, respond: () => (sent++ === 0 ? damaged : body) });
+    const md5 = createHash("md5").update(body).digest("hex");
+    const read: Buffer[] = [];
+    downloads(app).registerInstaller(
+      "extract",
+      async ({ filePath }) => {
+        read.push(fs.readFileSync(filePath));
+        return undefined;
+      },
+      () => true,
+    );
+
+    const started = await downloads(app).start(request(server, "/extract", "extract.bin", { kind: "extract", md5 }));
+    const row = await settled(app, started.id);
+    expect(row.error).toBeNull();
+    expect(row.state).toBe("completed");
+    expect(row.attempts).toBe(1);
+    // The installer (what reads a country file) was given only the copy that passed, once.
+    expect(read).toHaveLength(1);
+    expect(read[0]!.equals(body)).toBe(true);
+    expect(server.requests.filter((seen) => seen.method === "GET").map((seen) => seen.range ?? "all of it")).toEqual([
+      "all of it",
+      "all of it",
+    ]);
+    const detail = (await app.api("GET", `/api/downloads/${started.id}`)).body as DownloadDetail;
+    expect(detail.events.map((event) => event.state)).toEqual(["queued", "running", "verifying", "running", "verifying", "completed"]);
+    expect(detail.events[3]!.detail).toBe(
+      "The file did not match the MD5 its publisher gives, so it was deleted and is downloaded again from the start.",
+    );
+    expect(detail.integrity).toMatchObject({ md5Expected: md5, md5Actual: md5, verified: true });
   });
 
   it("treats 404 as permanent", async () => {
@@ -977,5 +1062,147 @@ describe("storage that loses part of what is written to it", () => {
     expect(fs.existsSync(finalPath(app, row))).toBe(false);
     expect(fs.existsSync(`${finalPath(app, row)}.part`)).toBe(false);
     expect(app.ctx.services.collections.list()).toHaveLength(0);
+  });
+});
+
+/**
+ * A network share that remembers what was written better than it keeps it: the first Raspberry Pi's NAS share
+ * (23 November 2026) gave a 2.29 GB country file back with Geofabrik's MD5 when it was checked, from the device's
+ * memory of writing it, while the copy on the NAS was damaged. Here the stream the downloader writes through
+ * writes the bytes as sent to the file (what an ordinary read gives) and a damaged copy beside it (what the
+ * share holds), and a read from the storage itself is given the damaged copy.
+ */
+describe("a network share whose copy differs from what the device remembers writing", () => {
+  const MEGABYTE = 1024 * 1024;
+  const LOST = { from: MEGABYTE + 300_000, bytes: 4096 };
+  const onShare = (file: string) => `${file}.on-share`;
+
+  function forgetfulShare(times: number) {
+    const open = fs.createWriteStream;
+    let streams = 0;
+    vi.spyOn(fs, "createWriteStream").mockImplementation(((file: fs.PathLike, options?: { flags?: string }) => {
+      const real = open(file, options as never);
+      if (!String(file).endsWith(".part")) return real;
+      streams += 1;
+      const lossy = streams <= times;
+      const appending = options?.flags === "a" && fs.existsSync(file);
+      let position = appending ? fs.statSync(file).size : 0;
+      // The share's copy is cut back with the file when only the rest is fetched again.
+      if (appending) fs.truncateSync(onShare(String(file)), position);
+      const share = open(onShare(String(file)), { flags: appending ? "a" : "w" });
+      return new Writable({
+        write(chunk: Buffer, _encoding, done) {
+          const [start, end] = [position, position + chunk.length];
+          position = end;
+          let kept = chunk;
+          if (lossy && start < LOST.from + LOST.bytes && end > LOST.from) {
+            kept = Buffer.from(chunk);
+            kept.fill(0, Math.max(0, LOST.from - start), Math.min(chunk.length, LOST.from + LOST.bytes - start));
+          }
+          share.write(kept, () => real.write(chunk, done));
+        },
+        final(done) {
+          share.end(() => real.end(done));
+        },
+      }) as never;
+    }) as never);
+    vi.spyOn(storageRead, "open").mockImplementation(async (file: string) => {
+      const there = file.endsWith(".part") && fs.existsSync(onShare(file)) ? onShare(file) : file;
+      return { handle: await fs.promises.open(there, "r"), direct: true };
+    });
+  }
+
+  it("is checked as the share holds it, and the damaged part is fetched again before anything reads it", async () => {
+    app = await createTestApp();
+    const server = await fileServer();
+    const body = testBytes(2 * MEGABYTE + 200_000, 41);
+    server.routes.set("/country.osm.pbf", { body });
+    const md5 = createHash("md5").update(body).digest("hex");
+    forgetfulShare(1);
+    const read: Buffer[] = [];
+    downloads(app).registerInstaller(
+      "extract",
+      async ({ filePath }) => {
+        read.push(fs.readFileSync(filePath));
+        return undefined;
+      },
+      () => true,
+    );
+
+    const started = await downloads(app).start(request(server, "/country.osm.pbf", "country.osm.pbf", { kind: "extract", md5 }));
+    const row = await settled(app, started.id);
+    expect(row.error).toBeNull();
+    expect(row.state).toBe("completed");
+    // Caught by the read-back check, from the megabyte the damage is in: not by the MD5, not the whole file again.
+    expect(server.requests.filter((seen) => seen.method === "GET").map((seen) => seen.range ?? "all of it")).toEqual([
+      "all of it",
+      `bytes=${MEGABYTE}-`,
+    ]);
+    const share = fs.readFileSync(onShare(`${finalPath(app, row)}.part`));
+    expect(share.equals(body)).toBe(true);
+    expect(read).toHaveLength(1);
+    const { events } = (await app.api("GET", `/api/downloads/${started.id}`)).body as DownloadDetail;
+    expect(events[3]!.detail).toMatch(/did not read back the same from 1\.05 MB on/);
+  });
+
+  it("writes a download to a network location in whole blocks, and carries on after a dropped connection", async () => {
+    app = await createTestApp();
+    const server = await fileServer();
+    const body = testBytes(3 * MEGABYTE + 123_456, 43);
+    server.routes.set("/country.osm.pbf", { body, dropAfterBytes: 1_500_000 });
+    const share = path.join(app.dir, "storage", "nas");
+    fs.mkdirSync(share, { recursive: true });
+    const nas = await app.ctx.services.storage.add({ name: "NAS", path: share, kind: "network" });
+    const ends: number[] = [];
+    const write = fs.write;
+    vi.spyOn(fs, "write").mockImplementation(((fd: number, buffer: Buffer, ...rest: unknown[]) => {
+      ends.push(buffer.length);
+      return (write as (...args: unknown[]) => void)(fd, buffer, ...rest);
+    }) as never);
+
+    const started = await downloads(app).start(
+      request(server, "/country.osm.pbf", "country.osm.pbf", { locationId: nas.id, sha256: sha256(body) }),
+    );
+    const row = await settled(app, started.id);
+    expect(row.error).toBeNull();
+    expect(row.state).toBe("completed");
+    expect(fs.readFileSync(finalPath(app, row)).equals(body)).toBe(true);
+    const asked = server.requests.filter((seen) => seen.method === "GET").map((seen) => seen.range ?? "all of it");
+    expect(asked[0]).toBe("all of it");
+    // Whatever had arrived when the line was cut was written, and the rest asked for from there.
+    expect(asked[1]).toBe("bytes=1500000-");
+    // Every write ends on a megabyte boundary but the one at the cut and the last.
+    let at = 0;
+    const offBoundary: number[] = [];
+    for (const size of ends) {
+      at += size;
+      if (at % MEGABYTE !== 0) offBoundary.push(at);
+    }
+    expect(offBoundary).toEqual([1_500_000, body.length]);
+  });
+
+  it("fails plainly, keeps nothing and reads nothing when the share keeps losing it", async () => {
+    app = await createTestApp();
+    const server = await fileServer();
+    const body = testBytes(2 * MEGABYTE, 42);
+    server.routes.set("/country.osm.pbf", { body });
+    forgetfulShare(Number.POSITIVE_INFINITY);
+    let installs = 0;
+    downloads(app).registerInstaller(
+      "extract",
+      async () => {
+        installs += 1;
+        return undefined;
+      },
+      () => true,
+    );
+
+    const started = await downloads(app).start(request(server, "/country.osm.pbf", "country.osm.pbf", { kind: "extract" }));
+    const row = await settled(app, started.id);
+    expect(row.state).toBe("failed");
+    expect(row.errorKind).toBe("storage_damaged");
+    expect(installs).toBe(0);
+    expect(fs.existsSync(finalPath(app, row))).toBe(false);
+    expect(fs.existsSync(`${finalPath(app, row)}.part`)).toBe(false);
   });
 });
