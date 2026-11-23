@@ -172,9 +172,9 @@ describe("imports a person brings", () => {
     });
     expect(detail.source.accuracy).toMatch(/converted from British National Grid/);
 
-    // The search across everything finds it too, and opens it on the map.
+    // The search across everything finds it too, beside the results, and opens it on the map.
     const everything = await app.api("GET", "/api/search?q=Town%20Hall&mode=keyword");
-    const result = (everything.body.results as Array<{ kind: string; url: string }>).find((entry) => entry.kind === "map-feature");
+    const result = (everything.body.places as Array<{ kind: string; url: string }>).find((entry) => entry.kind === "map-feature");
     expect(result?.url).toBe(`/maps?feature=${hit.id}`);
 
     // With no publisher or licence given for the whole file, the map's credit names the import, not "As stated in the file" twice.

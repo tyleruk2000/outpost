@@ -24,8 +24,10 @@ export interface SearchResult {
   /** In-app route that opens the source at the matching place. */
   url: string;
   tags: string[];
-  /** 0–1, relative to the best result of this search. */
+  /** 0–1, on one scale for every source; not relative to the best result. */
   score: number;
+  /** Why it is here, in a few words: "All 3 words, side by side", "2 of 3 words". */
+  why?: string;
   passages: SearchPassage[];
   sources: string[];
 }
@@ -70,9 +72,18 @@ export interface ReferenceSearchMissing {
 export interface SearchResponse {
   query: string;
   mode: SearchMode;
+  /** Too few results had every word, so results holding most of them follow those that do. */
   relaxed: boolean;
+  /** How many items hold every word that matters. */
+  everyWord: number;
+  /** Words typed that only shape the question ("how", "to"), left out of matching and ranking. */
+  ignored: string[];
   total: number;
   results: SearchResult[];
+  /** Places and repeaters whose names match: shown in a strip of their own, not among the results. */
+  places: SearchResult[];
+  /** The query looks like one of their names, a callsign or a frequency, so the strip comes first. */
+  placesFirst: boolean;
   facets: Record<string, number>;
   warnings: Array<{ source: string; message: string }>;
   /**

@@ -241,7 +241,7 @@ describe("search in two parts", () => {
       title: "Water",
       collection: "Book 01",
       url: `/library/read/${ids[0]}/Water`,
-      score: 1,
+      why: "In the title",
       sources: ["reference"],
       passages: [
         {

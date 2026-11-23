@@ -85,8 +85,7 @@ describe("what can be opened now, and what would have to be downloaded", () => {
     // The count is not run into the name ("Available to download2"); jsdom drops the space a browser keeps.
     expect(toDownload).toHaveAccessibleName(/^Available to download, ?2$/);
     expect(everything).toHaveAttribute("tabindex", "0");
-    // What "% match" means is on the screen, for touch and the keyboard, not only in a hover title.
-    expect(screen.getByText(/The match beside each result is how close it comes to the best one for this search/)).toBeInTheDocument();
+    // Nothing is explained only in a hover title.
     expect(document.querySelector("[title]")).toBeNull();
     expect(toDownload).toHaveAttribute("tabindex", "-1");
     everything.focus();
@@ -247,5 +246,42 @@ describe("the search page, with reference collections answering later", () => {
     expect(server.reference).toHaveLength(0);
     expect(screen.queryByText(/reference collections/)).not.toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: /Reference/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("why each result is there", () => {
+  const place = { ...ownResult("p1", "Waterfields", "map-feature"), subtitle: "Farm, United Kingdom", url: "/maps?feature=1" };
+
+  it("says so in words, says when results lack a word, names the words left out, and keeps places apart", async () => {
+    const results = [
+      { ...ownResult("d1", "Soda bread"), why: "All 2 words, side by side" },
+      { ...ownResult("n1", "Buttermilk", "note"), why: "1 of 2 words" },
+    ];
+    serveSearch(() => ownAnswer(results, { referenceToCome: false, relaxed: true, everyWord: 1, ignored: ["how", "to"], places: [place] }));
+    show("/search?q=how%20to%20bread%20buttermilk");
+    expect(await screen.findByText("All 2 words, side by side")).toBeInTheDocument();
+    expect(screen.getByText("1 of 2 words")).toBeInTheDocument();
+    expect(screen.queryByText(/% match/)).not.toBeInTheDocument();
+    expect(screen.getByText("Only 1 result has every word; results with some of them follow.")).toBeInTheDocument();
+    expect(screen.getByText(/Left out of the search, as words that only shape a question: “how”, “to”/)).toBeInTheDocument();
+    const strip = screen.getByRole("region", { name: "Places and repeaters" });
+    expect(within(strip).getByRole("link", { name: /Waterfields/ })).toHaveAttribute("href", "/maps?feature=1");
+    // After the results, since the words are not a place's name.
+    expect(titles().indexOf("Places and repeaters")).toBeGreaterThan(titles().indexOf("Buttermilk"));
+  });
+
+  it("puts places first when the words are one of their names, and says when no result has every word", async () => {
+    serveSearch(() =>
+      ownAnswer([ownResult("n1", "Water kit", "note")], {
+        referenceToCome: false,
+        relaxed: true,
+        everyWord: 0,
+        places: [place],
+        placesFirst: true,
+      }),
+    );
+    show("/search?q=waterfields");
+    expect(await screen.findByText("No result has every word; showing results with some.")).toBeInTheDocument();
+    expect(titles().indexOf("Places and repeaters")).toBeLessThan(titles().indexOf("Water kit"));
   });
 });

@@ -26,6 +26,12 @@ export interface SlowBook {
   /** How long one search of this book takes, in milliseconds. */
   delayMs: number;
   articles: string[];
+  /**
+   * Recorded answers instead: a search answers with every hit whose title or snippet
+   * holds a word of the pattern (its first five letters), in the order recorded, as the
+   * real program answers with any of the words and in an order of its own.
+   */
+  hits?: Array<{ title: string; path: string; snippet: string }>;
   /** Answer every search of this book with an error. */
   broken?: boolean;
 }
@@ -150,8 +156,29 @@ export async function startSlowKiwix(options: { books: SlowBook[]; threads?: num
         response.statusCode = 500;
         return response.end("<error/>");
       }
-      const found = book.articles.filter((title) => title.toLowerCase().includes(word));
       response.setHeader("Content-Type", "application/xml");
+      if (book.hits) {
+        const stems = word
+          .split(/[^a-z0-9]+/)
+          .filter((part) => part.length >= 3)
+          .map((part) => part.slice(0, 5));
+        const holds = (text: string) => stems.some((part) => text.toLowerCase().includes(part));
+        const recorded = book.hits.filter((hit) => holds(hit.title) || holds(hit.snippet));
+        const bold = (text: string) =>
+          escapeXml(text).replace(/[A-Za-z0-9]+/g, (token) =>
+            stems.some((part) => token.toLowerCase().startsWith(part)) ? `<b>${token}</b>` : token,
+          );
+        return response.end(
+          `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/"><channel><opensearch:totalResults>${recorded.length}</opensearch:totalResults>${recorded
+            .slice(0, wanted)
+            .map(
+              (hit) =>
+                `<item><title>${escapeXml(hit.title)}</title><link>/content/${book.name}/${escapeXml(hit.path)}</link><description>${bold(hit.snippet)}</description></item>`,
+            )
+            .join("")}</channel></rss>`,
+        );
+      }
+      const found = book.articles.filter((title) => title.toLowerCase().includes(word));
       return response.end(
         `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/"><channel><opensearch:totalResults>${found.length}</opensearch:totalResults>${found
           .slice(0, wanted)

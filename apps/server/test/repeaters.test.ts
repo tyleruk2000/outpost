@@ -935,25 +935,28 @@ describe("repeaters API", () => {
     await app.ctx.jobs.whenIdle();
 
     const byCallsign = (await app.api<SearchResponse>("GET", "/api/search?q=QZ3AB")).body;
-    expect(byCallsign.results).toHaveLength(1);
-    expect(byCallsign.results[0]).toMatchObject({
+    expect(byCallsign.results).toEqual([]);
+    expect(byCallsign.placesFirst).toBe(true);
+    expect(byCallsign.places).toHaveLength(1);
+    expect(byCallsign.places[0]).toMatchObject({
       kind: "repeater",
       title: "QZ3AB",
       subtitle: "145.6625 MHz, THORNWICK",
       collection: "Repeaters",
     });
-    expect(byCallsign.results[0]!.url).toMatch(/^\/radio\/repeaters\/[0-9a-z]{26}$/);
-    expect(byCallsign.results[0]!.titleSegments).toEqual([{ text: "QZ3AB", hit: true }]);
-    expect(byCallsign.results[0]!.passages[0]!.segments[0]!.text).toBe(
+    expect(byCallsign.places[0]!.url).toMatch(/^\/radio\/repeaters\/[0-9a-z]{26}$/);
+    expect(byCallsign.places[0]!.titleSegments).toEqual([{ text: "QZ3AB", hit: true }]);
+    expect(byCallsign.places[0]!.passages[0]!.segments[0]!.text).toBe(
       "FM, shift -0.6 MHz, CTCSS 94.8 Hz. From A made-up society, data of 2026-10-01.",
     );
     expect(byCallsign.facets).toEqual({ repeater: 1 });
 
-    // A town: the page of notes and the repeater, each under its own kind.
+    // A town: the page of notes among the results, the repeater beside them, each under its own kind.
     const byTown = (await app.api<SearchResponse>("GET", "/api/search?q=thornwick")).body;
-    expect(byTown.results.map((result) => result.kind).sort()).toEqual(["note", "repeater"]);
+    expect(byTown.results.map((result) => result.kind)).toEqual(["note"]);
+    expect(byTown.places.map((result) => result.kind)).toEqual(["repeater"]);
     expect(byTown.facets).toEqual({ note: 1, repeater: 1 });
-    expect((await app.api<SearchResponse>("GET", "/api/search?q=430.875")).body.results.map((result) => result.title)).toEqual(["QZ3EF"]);
+    expect((await app.api<SearchResponse>("GET", "/api/search?q=430.875")).body.places.map((result) => result.title)).toEqual(["QZ3EF"]);
 
     // Narrowed to one kind, or to another.
     expect(
@@ -965,7 +968,7 @@ describe("repeaters API", () => {
     // A removed entry is not found.
     const gone = await find("QZ3AB");
     await app.api("DELETE", `/api/repeaters/${gone.id}`);
-    expect((await app.api<SearchResponse>("GET", "/api/search?q=QZ3AB")).body.results).toEqual([]);
+    expect((await app.api<SearchResponse>("GET", "/api/search?q=QZ3AB")).body.places).toEqual([]);
   });
 
   it("does not hand repeaters to the model as sources for an answer", async () => {

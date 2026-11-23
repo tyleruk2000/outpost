@@ -111,7 +111,10 @@ export function CommandPalette({
   const referenceShown = searching ? reference.best.slice(0, REFERENCE_SHOWN) : [];
   // What would have to be downloaded comes after everything on this device, the reference collections included. It is
   // added once they have answered, so that nothing above it moves when it comes.
-  const own = results.data?.results.filter((result) => result.kind !== "catalog") ?? [];
+  const matches = results.data?.results.filter((result) => result.kind !== "catalog") ?? [];
+  // Places and repeaters come apart from the results: first when the words are one of their names, otherwise a couple after.
+  const named = (results.data?.places ?? []).slice(0, 2);
+  const own = results.data?.placesFirst ? [...named, ...matches] : [...matches, ...named];
   const toDownload = stillSearching ? [] : (results.data?.results.filter((result) => result.kind === "catalog") ?? []);
 
   const everyAction: PaletteAction[] = [

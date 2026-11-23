@@ -28,6 +28,7 @@ import type { AppContext } from "../../core/context.ts";
 import { notFound } from "../../core/errors.ts";
 import { reciprocalRankFusion } from "../search/fusion.ts";
 import { HIT_CLOSE, HIT_OPEN, parseQuery, toFtsQuery, toSegments } from "../search/query.ts";
+import { reasonFor, scoreFields, scoringTerms } from "../search/score.ts";
 import { demoProvider, demoTerms, type EmbeddingProvider } from "../semantic/providers.ts";
 import { contextAssembler } from "./index.ts";
 import { buildAnswerPrompt } from "./prompt.ts";
@@ -291,15 +292,24 @@ export function registerExplain(app: FastifyInstance, ctx: AppContext): void {
        WHERE chunks_fts MATCH ? AND c.text <> '' ORDER BY bm25 LIMIT ?`,
     );
     type KeywordRow = ChunkRow & { bm25: number; snippet: string; titleMarked: string; headingMarked: string; tagsMarked: string };
-    let keywordRows = expression ? (keywordSql.all(expression, limit * 2) as KeywordRow[]) : [];
+    // BM25 chooses the candidates; the shared scale (search/score.ts) puts them in order, as search does.
+    let keywordRows = expression ? (keywordSql.all(expression, limit * 6) as KeywordRow[]) : [];
     let relaxed = false;
     if (keywordRows.length === 0 && parsed.required.length > 1) {
       expression = toFtsQuery(parsed, "any");
-      keywordRows = keywordSql.all(expression, limit * 2) as KeywordRow[];
+      keywordRows = keywordSql.all(expression, limit * 6) as KeywordRow[];
       relaxed = keywordRows.length > 0;
     }
-    const keywordHits: ExplainKeywordHit[] = keywordRows.map((row, index) => ({
+    const scoring = scoringTerms(parsed, (_, index) => (parsed.required.length < 2 ? 1 : terms[index]!.idf));
+    const scored = keywordRows
+      .map((row) => ({ row, parts: scoreFields(scoring, row) }))
+      .sort((a, b) => b.parts.score - a.parts.score)
+      .slice(0, limit * 2);
+    const keywordHits: ExplainKeywordHit[] = scored.map(({ row, parts }, index) => ({
       rank: index + 1,
+      bm25: -row.bm25,
+      why: reasonFor(parts),
+      parts: { coverage: parts.coverage, title: parts.title, closeness: parts.closeness, phrase: parts.phrase, frequency: parts.frequency },
       chunkId: row.chunkId,
       kind: row.kind,
       entityId: row.entityId,
@@ -309,7 +319,7 @@ export function registerExplain(app: FastifyInstance, ctx: AppContext): void {
       heading: row.heading || null,
       segments: toSegments(row.snippet),
       length: row.text.length,
-      score: -row.bm25,
+      score: parts.score,
       fields: {
         title: row.titleMarked.includes(HIT_OPEN),
         heading: row.headingMarked.includes(HIT_OPEN),
@@ -362,7 +372,7 @@ export function registerExplain(app: FastifyInstance, ctx: AppContext): void {
         return row && vector ? [toSemanticHit(row, hit.score, vector, index + 1)] : [];
       });
     } else {
-      const pool = demoPool(keywordRows.map((row) => row.chunkId));
+      const pool = demoPool(keywordHits.map((hit) => hit.chunkId));
       compared = pool.length;
       const vectors = await source.provider.embed(
         pool.map((row) => [row.title, row.heading, row.text].filter(Boolean).join("\n")),
@@ -467,6 +477,7 @@ export function registerExplain(app: FastifyInstance, ctx: AppContext): void {
       query,
       parse: {
         words: parsed.required,
+        ignored: parsed.ignored ?? [],
         excluded: parsed.excluded,
         prefixLast: parsed.prefixLast,
         expression,
