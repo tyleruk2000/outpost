@@ -13,6 +13,7 @@ import { ChoiceList } from "@/features/downloads/choice-list";
 import { usePacks, useRemovePack } from "@/features/layers/data";
 import { useRemovePlaces, useRemoveRegion } from "../data";
 import { useRemoveRoadNetwork } from "../road-route/data";
+import { useRemoveStreets } from "../road-route/streets-data";
 import { useMapData } from "./use-map-data";
 import { keptFileFor } from "./words";
 
@@ -218,7 +219,31 @@ function RemovePlaces({ item, open, onOpenChange }: { item: MapDataItem; open: b
   );
 }
 
+/** The streets in use: one set for every country it covers, so removing it removes it from each. */
+function RemoveStreets({ item, open, onOpenChange }: { item: MapDataItem; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const remove = useRemoveStreets();
+  return (
+    <ConfirmDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={`Remove “${item.title}”?`}
+      description={`${WHAT_STOPS.streets} ${item.sizeBytes !== null ? `Frees ${formatBytes(item.sizeBytes)}.` : ""} The country files they were built from stay.`}
+      confirmLabel="Remove streets"
+      loading={remove.isPending}
+      onConfirm={() =>
+        remove.mutate(undefined, {
+          onSuccess: () => {
+            onOpenChange(false);
+            toast.success(`Removed “${item.title}”.`);
+          },
+        })
+      }
+    />
+  );
+}
+
 export function RemoveDialog(props: { item: MapDataItem; open: boolean; onOpenChange: (open: boolean) => void }) {
+  if (props.item.kind === "streets") return <RemoveStreets {...props} />;
   if (props.item.kind === "roads") return <RemoveRoads {...props} />;
   if (props.item.kind === "places") return <RemovePlaces {...props} />;
   if (props.item.kind === "names") return <RemoveNames {...props} />;
@@ -228,6 +253,7 @@ export function RemoveDialog(props: { item: MapDataItem; open: boolean; onOpenCh
 /** Whether a row's thing can be removed from here: what is here, not what is on its way. */
 export function removable(item: MapDataItem): boolean {
   if (item.downloadId || (item.taskId && !item.collectionId && !item.networkId && !item.packId)) return false;
+  if (item.kind === "streets") return item.key === "streets:current" && item.state === "ready";
   if (item.kind === "roads") return item.networkId !== null;
   if (item.kind === "places") return item.packId !== null;
   return item.collectionId !== null && item.state !== "moving";

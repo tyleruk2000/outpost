@@ -15,7 +15,7 @@ import {
   type MapDataResponse,
   type ReferenceEstimateRequest,
 } from "@outpost/shared";
-import { CircleAlert, Ellipsis, ExternalLink, FolderInput, RefreshCw, Scan, Trash2 } from "lucide-react";
+import { CircleAlert, CircleStop, Ellipsis, ExternalLink, FolderInput, RefreshCw, Scan, Trash2 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
@@ -28,6 +28,7 @@ import { usePacks } from "@/features/layers/data";
 import { MoveItemsDialog } from "@/features/manage/item-dialogs";
 import { detailLabel } from "../panels/add-region";
 import { useUpdateRoadNetwork } from "../road-route/data";
+import { useStopStreetsBuild } from "../road-route/streets-data";
 import { RemoveDialog, removable } from "./remove-dialog";
 import { dayText, isHere, KIND_NAMES, overAYearOld, readyFacts, stateLine, WHILE_AWAY } from "./words";
 
@@ -93,6 +94,7 @@ const updatableHere = (item: MapDataItem) => isHere(item) && Boolean(item.update
 function ItemMenu({ item, context }: { item: MapDataItem; context: RowContext }) {
   const [open, setOpen] = useState<"remove" | "move" | null>(null);
   const reread = useUpdateRoadNetwork();
+  const stop = useStopStreetsBuild();
   const packs = usePacks(item.kind === "places" && item.packId !== null);
   const pack = packs.data?.find((each) => each.id === item.packId);
   const region = context.regions.find((each) => each.id === item.collectionId);
@@ -104,7 +106,9 @@ function ItemMenu({ item, context }: { item: MapDataItem; context: RowContext })
   const canReread = item.kind === "roads" && item.networkId !== null && item.regionId === null && item.state !== "processing";
   const canUpdatePlaces =
     item.kind === "places" && !canUpdate && pack?.origin === "download" && pack.request !== null && pack.request !== undefined;
-  const opens = Boolean(details || region || canUpdate || canReread || canUpdatePlaces || canMove);
+  // Streets being built: stopped from here, the streets in use left as they were.
+  const canStop = item.kind === "streets" && item.taskId !== null && (item.state === "processing" || item.state === "waiting");
+  const opens = Boolean(details || region || canUpdate || canReread || canUpdatePlaces || canMove || canStop);
   if (!opens && !canRemove) return null;
   return (
     <>
@@ -147,6 +151,17 @@ function ItemMenu({ item, context }: { item: MapDataItem; context: RowContext })
           {canUpdatePlaces ? (
             <MenuItem onSelect={() => pack?.request && context.onUpdatePlaces(pack.request)}>
               <RefreshCw /> Check for an update
+            </MenuItem>
+          ) : null}
+          {canStop ? (
+            <MenuItem
+              onSelect={() =>
+                stop.mutate(item.taskId!, {
+                  onSuccess: () => toast.success("Stopped building the streets. The streets in use are as they were."),
+                })
+              }
+            >
+              <CircleStop /> Stop building
             </MenuItem>
           ) : null}
           {canMove ? (

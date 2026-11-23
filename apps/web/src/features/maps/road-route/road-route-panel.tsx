@@ -1,17 +1,34 @@
 /**
- * "Road route" in the Routes tab: planned, high-level road directions worked out on this
- * Outpost from the road networks installed. Never live: a route is planned once, read as
- * the main roads and the places on their signs ("M20 - Folkestone", "A26 (E17) - Reims
- * (A4)"), saved, and printed. Nothing here reaches the internet.
+ * "Plan a route" in the Routes tab. Drive: planned, high-level road directions worked out on
+ * this Outpost from the road networks installed, read as the main roads and the places on
+ * their signs ("M20 - Folkestone", "A26 (E17) - Reims (A4)"), saved and printed. Where the
+ * optional streets service is installed, three more ways: Door to door (the same lines with
+ * the streets from and to the door folded in at each end), Walk and Cycle (turn by turn on
+ * streets). Never live; nothing here reaches the internet.
  *
- * Three views: the form (start, via points, end, the crossing, Plan route), with the saved
- * routes under it; a planned route (directions, save, print, plain text); and a saved one
- * (the same, with rename and delete).
+ * Where the streets service is not installed (most installations) there is nothing to
+ * choose, so no choice is shown: a single line under the form says the other ways exist and
+ * how to add them. Where it is installed but cannot answer a way yet, that way still shows,
+ * and choosing it says why in one line with the step that puts it right.
+ *
+ * Four views: the form (way, start, via points, end, the crossing, Plan route), with the
+ * saved routes under it; a planned drive (directions, save, print, plain text); a route
+ * planned on streets (the same, without saving); and a saved drive (rename and delete).
  */
-import type { MarkerDto, RoadCrossingChoice, RoadDistanceUnit, RoadRouteResult, SavedRoadRouteDto } from "@outpost/shared";
+import type {
+  MarkerDto,
+  RoadCrossingChoice,
+  RoadDistanceUnit,
+  RoadRouteResult,
+  SavedRoadRouteDto,
+  StreetLine,
+  StreetsRouteResult,
+  StreetsStatusResponse,
+} from "@outpost/shared";
 import { roadDistanceText, roadDurationText } from "@outpost/shared";
 import { ArrowLeft, CircleAlert, Plus, Route, Save, Scan, Trash2 } from "lucide-react";
 import { type FormEvent, useEffect, useId, useMemo, useRef, useState } from "react";
+import { Link } from "react-router";
 import { toast } from "sonner";
 import { EmptyState, ErrorState, Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -38,6 +55,19 @@ import { DirectionsList, RouteCredit, RouteTotals, RouteWarnings } from "./direc
 import { PlainTextBox } from "./plain-text";
 import { PointField } from "./point-field";
 import { RouteCardPdf } from "./route-card-pdf";
+import { DoorToDoorList, StreetLinesList, StreetsCredit, StreetsTotals } from "./street-directions";
+import {
+  addStreetsLabel,
+  geometryBounds,
+  isRouteMode,
+  MODE_LINES,
+  modeAvailable,
+  ROUTE_MODES,
+  type RouteMode,
+  streetsTitle,
+  unavailableLine,
+} from "./street-words";
+import { usePlanStreetsRoute, useStreetsStatus } from "./streets-data";
 import {
   crossingOptions,
   legBounds,
@@ -62,6 +92,7 @@ export interface RoadRouteIntent {
 /** Ten via points at most: twelve points in all, as the server takes. */
 const MAX_VIAS = 10;
 const UNITS_KEY = "outpost.maps.roadRoute.units";
+const MODE_KEY = "outpost.maps.roadRoute.mode";
 const isUnits = (value: unknown): value is RoadDistanceUnit => value === "km" || value === "miles";
 
 const header = (label: string, onBack: () => void) => (
@@ -72,7 +103,10 @@ const header = (label: string, onBack: () => void) => (
   </div>
 );
 
-type View = { kind: "plan" } | { kind: "planned" } | { kind: "saved"; id: string };
+type View = { kind: "plan" } | { kind: "planned" } | { kind: "streets" } | { kind: "saved"; id: string };
+
+/** A route the panel draws on the map: a drive, or one planned on streets. */
+export type ShownRoute = RoadRouteResult | StreetsRouteResult;
 
 export function RoadRoutePanel({
   engine,
@@ -83,6 +117,7 @@ export function RoadRoutePanel({
   onShow,
   onNeedMap,
   onOpenNetworks,
+  onOpenStreets,
 }: {
   engine: RoadRouteMap | null;
   markers: readonly MarkerDto[];
@@ -90,17 +125,25 @@ export function RoadRoutePanel({
   onIntentHandled: () => void;
   onClose: () => void;
   /** Draws a route on the map with one leg picked out, or takes it off. */
-  onShow: (route: RoadRouteResult | null, selected: number | null) => void;
+  onShow: (route: ShownRoute | null, selected: number | null) => void;
   /** On a phone, lowers the sheet so the map can be seen. */
   onNeedMap: () => void;
   /** Opens Map data at adding roads for routes, for a country (two letters) when one is known. */
   onOpenNetworks: (country?: string | null) => void;
+  /** Opens Map data at building streets for routes, for a country (two letters) when one is known. */
+  onOpenStreets: (country?: string | null) => void;
 }) {
   const home = useHomeCountry();
   const networks = useRoadNetworks();
   const installed = networks.data?.networks ?? [];
   const crossings = useRoadCrossings(installed.length > 0);
   const plan = usePlanRoadRoute();
+  const streets = useStreetsStatus();
+  const streetsPlan = usePlanStreetsRoute();
+  const [storedMode, setMode] = useStoredState<RouteMode>(MODE_KEY, isRouteMode, "drive");
+  // Without the streets service there is one way only, whatever was chosen on another installation.
+  const installed_ = streets.data?.installed ?? false;
+  const mode: RouteMode = installed_ ? storedMode : "drive";
   const [view, setView] = useState<View>({ kind: "plan" });
   const [points, setPoints] = useState<Array<RoutePointChoice | null>>([null, null]);
   const [crossing, setCrossing] = useState<RoadCrossingChoice>("any");
@@ -130,6 +173,25 @@ export function RoadRoutePanel({
     if (points.some((point) => point === null)) return setMissing(true);
     setMissing(false);
     setSelected(null);
+    if (mode !== "drive") {
+      streetsPlan.mutate(
+        {
+          points: (points as RoutePointChoice[]).map((point) => ({ lat: point.lat, lon: point.lon, name: point.name })),
+          mode,
+          units,
+          ...(mode === "drive-door" ? { crossing: chosenCrossing } : {}),
+        },
+        {
+          onSuccess: (route) => {
+            setView({ kind: "streets" });
+            show.current(route, null);
+            engine?.fitBounds(geometryBounds(route));
+            onNeedMap();
+          },
+        },
+      );
+      return;
+    }
     plan.mutate(
       {
         points: (points as RoutePointChoice[]).map((point) => ({ lat: point.lat, lon: point.lon, name: point.name })),
@@ -171,6 +233,41 @@ export function RoadRoutePanel({
         }}
         onSaved={(saved) => setView({ kind: "saved", id: saved.id })}
         onOpenNetworks={() => onOpenNetworks()}
+      />
+    );
+  }
+
+  if (view.kind === "streets" && streetsPlan.data) {
+    const result = streetsPlan.data;
+    return (
+      <StreetsPlanned
+        key={result.plannedAt}
+        result={result}
+        selected={selected}
+        onLeg={(index) => {
+          if (result.road) {
+            const next = selected === index ? null : index;
+            setSelected(next);
+            show.current(result, next);
+            const leg = result.road.legs[index];
+            if (leg)
+              engine?.fitBounds(next === null ? geometryBounds(result) : legBounds(leg, legLines(result.road)[index] ?? []), {
+                maxZoom: 12,
+              });
+            onNeedMap();
+          }
+        }}
+        onLine={(line) => {
+          const [lon, lat] = line.at;
+          engine?.fitBounds([lon - 0.002, lat - 0.0013, lon + 0.002, lat + 0.0013], { maxZoom: 17 });
+          onNeedMap();
+        }}
+        onFit={() => engine?.fitBounds(geometryBounds(result))}
+        onBack={() => {
+          setView({ kind: "plan" });
+          setSelected(null);
+          show.current(null, null);
+        }}
       />
     );
   }
@@ -222,22 +319,35 @@ export function RoadRoutePanel({
       {header("Routes", onClose)}
       <div className="scroll-quiet grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] content-start gap-4 overflow-y-auto px-4 py-4">
         <div>
-          <h3 className="font-title text-lead text-ink">Road route</h3>
+          <h3 className="font-title text-lead text-ink">Plan a route</h3>
           <p className="mt-1 text-small text-ink-muted">
-            Planned directions for a drive: the main roads, which way, the junctions and the places on the signs. Not turn by turn, and
-            never live. Worked out on this device from the road networks installed.
+            {mode === "drive"
+              ? "Planned directions for a drive: the main roads, which way, the junctions and the places on the signs. Not turn by turn, and never live. Worked out on this device from the road networks installed."
+              : `${MODE_LINES[mode]} Worked out on this device; never live.`}
           </p>
         </div>
 
-        {networks.isPending ? (
+        {installed_ ? (
+          <Segmented<RouteMode>
+            label="Way of travelling"
+            value={mode}
+            onChange={setMode}
+            options={ROUTE_MODES}
+            className="justify-self-start"
+          />
+        ) : null}
+
+        {mode !== "drive" && streets.data && !modeAvailable(streets.data, mode) ? (
+          <StreetsUnavailable status={streets.data} home={home} onOpenStreets={onOpenStreets} />
+        ) : mode === "drive" && networks.isPending ? (
           <div className="grid gap-3" aria-busy>
             <Skeleton className="h-9" />
             <Skeleton className="h-9" />
             <Skeleton className="h-9" />
           </div>
-        ) : networks.isError ? (
+        ) : mode === "drive" && networks.isError ? (
           <ErrorState error={networks.error} onRetry={() => networks.refetch()} />
-        ) : installed.length === 0 ? (
+        ) : mode === "drive" && installed.length === 0 ? (
           <EmptyState
             compact
             level={3}
@@ -250,8 +360,8 @@ export function RoadRoutePanel({
           >
             Routes are planned from the roads kept on this device, one country (or part of one) at a time, read from its country file: a
             one-off download from Geofabrik, after which planning works offline. Add every country you will drive through.
-            {networks.data.building.length > 0
-              ? ` ${plural(networks.data.building.length, "network")} being added now: ${networks.data.building.map((each) => each.name).join(", ")}.`
+            {(networks.data?.building ?? []).length > 0
+              ? ` ${plural((networks.data?.building ?? []).length, "network")} being added now: ${(networks.data?.building ?? []).map((each) => each.name).join(", ")}.`
               : ""}
           </EmptyState>
         ) : (
@@ -293,25 +403,27 @@ export function RoadRoutePanel({
               <p className="text-small text-ink-muted">Ten via points is as many as a route takes.</p>
             )}
 
-            <Field label="Crossing the Channel" hint="Used only where the route crosses the sea. The time given is time on board.">
-              {(ids) =>
-                crossings.isError ? (
-                  <p className="text-small text-danger">{errorMessage(crossings.error)}</p>
-                ) : (
-                  <Select
-                    {...ids}
-                    value={chosenCrossing}
-                    onChange={(value) => setCrossing(value)}
-                    options={options.map((option) => ({
-                      value: option.value,
-                      label: option.label,
-                      description: option.description,
-                      disabled: option.disabled,
-                    }))}
-                  />
-                )
-              }
-            </Field>
+            {mode === "drive" || (mode === "drive-door" && installed.length > 0) ? (
+              <Field label="Crossing the Channel" hint="Used only where the route crosses the sea. The time given is time on board.">
+                {(ids) =>
+                  crossings.isError ? (
+                    <p className="text-small text-danger">{errorMessage(crossings.error)}</p>
+                  ) : (
+                    <Select
+                      {...ids}
+                      value={chosenCrossing}
+                      onChange={(value) => setCrossing(value)}
+                      options={options.map((option) => ({
+                        value: option.value,
+                        label: option.label,
+                        description: option.description,
+                        disabled: option.disabled,
+                      }))}
+                    />
+                  )
+                }
+              </Field>
+            ) : null}
 
             <Segmented<RoadDistanceUnit>
               label="Distances in"
@@ -331,12 +443,32 @@ export function RoadRoutePanel({
             ) : null}
 
             <div className="flex flex-wrap gap-2">
-              <Button type="submit" variant="primary" loading={plan.isPending}>
+              <Button type="submit" variant="primary" loading={mode === "drive" ? plan.isPending : streetsPlan.isPending}>
                 <Route /> Plan route
               </Button>
             </div>
 
-            {plan.isPending ? (
+            {mode !== "drive" ? (
+              streetsPlan.isPending ? (
+                <p className="flex items-center gap-2.5 text-small text-ink" role="status">
+                  <Spinner label="Planning" delay /> Planning the route on the streets built on this device. Nothing is sent anywhere.
+                </p>
+              ) : streetsPlan.isError ? (
+                <Notice tone="danger" icon={<CircleAlert />} title="The route could not be planned">
+                  {errorMessage(streetsPlan.error)}
+                  <span className="mt-2 flex flex-wrap gap-2">
+                    {/not installed for/i.test(errorMessage(streetsPlan.error)) ? (
+                      <Button size="sm" onClick={() => onOpenStreets()}>
+                        Streets for routes
+                      </Button>
+                    ) : null}
+                    <Button size="sm" onClick={() => submit()}>
+                      Try again
+                    </Button>
+                  </span>
+                </Notice>
+              ) : null
+            ) : plan.isPending ? (
               <div className="grid gap-2" aria-busy>
                 <p className="flex items-center gap-2.5 text-small text-ink" role="status">
                   <Spinner label="Planning" /> Planning the route on the road networks installed.
@@ -364,7 +496,111 @@ export function RoadRoutePanel({
           </form>
         )}
 
+        {streets.data && !streets.data.installed ? (
+          <p className="text-small text-ink-muted">
+            Door to door, walking and cycling routes come with an optional add-on for the streets.{" "}
+            <Link to="/help/road-routes#h-door-to-door-walking-and-cycling" className="text-primary underline underline-offset-2">
+              How to turn it on
+            </Link>
+          </p>
+        ) : null}
+
         <SavedRoutesList onOpen={(id) => setView({ kind: "saved", id })} />
+      </div>
+    </div>
+  );
+}
+
+// ── Streets, when a way of travelling cannot be used yet ──
+
+function StreetsUnavailable({
+  status,
+  home,
+  onOpenStreets,
+}: {
+  status: StreetsStatusResponse;
+  home: { code: string; name: string } | null | undefined;
+  onOpenStreets: (country?: string | null) => void;
+}) {
+  const { text, action } = unavailableLine(status);
+  return (
+    <div className="grid justify-items-start gap-2" role="status">
+      <p className="text-small text-ink">{text}</p>
+      {action === "add" ? (
+        <Button variant="primary" onClick={() => onOpenStreets(home?.code)}>
+          {addStreetsLabel(home)}
+        </Button>
+      ) : action === "progress" ? (
+        <Button onClick={() => onOpenStreets()}>See its progress</Button>
+      ) : null}
+    </div>
+  );
+}
+
+// ── A route planned on streets ──
+
+function StreetsPlanned({
+  result,
+  selected,
+  onLeg,
+  onLine,
+  onFit,
+  onBack,
+}: {
+  result: StreetsRouteResult;
+  selected: number | null;
+  onLeg: (index: number) => void;
+  onLine: (line: StreetLine) => void;
+  onFit: () => void;
+  onBack: () => void;
+}) {
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => heading.current?.focus({ preventScroll: true }), []);
+  const title = streetsTitle(result);
+  const door = result.mode === "drive-door" && result.road;
+  return (
+    <div key="streets" className="flex min-h-0 flex-1 flex-col">
+      {header("Change the route", onBack)}
+      <div className="scroll-quiet grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] content-start gap-4 overflow-y-auto px-4 py-4">
+        <div>
+          <p className="text-micro font-medium text-ink-muted">{ROUTE_MODES.find((each) => each.value === result.mode)?.label}</p>
+          <h3 ref={heading} tabIndex={-1} className="font-title text-lead break-words text-ink focus:outline-none">
+            {title}
+          </h3>
+        </div>
+        <StreetsTotals result={result} />
+        {result.warnings.length > 0 ? (
+          <div className="grid gap-2">
+            {result.warnings.map((warning) => (
+              <Notice key={warning} tone="warning" icon={<CircleAlert />}>
+                {warning}
+              </Notice>
+            ))}
+          </div>
+        ) : null}
+        <div className="grid gap-1.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h4 className="text-body font-semibold text-ink">Directions</h4>
+            <Button size="sm" variant="ghost" onClick={onFit} className="max-md:min-h-11 md:pointer-coarse:min-h-11">
+              <Scan /> Whole route on the map
+            </Button>
+          </div>
+          <p className="text-small text-ink-muted">
+            {door ? "Choose a road to see it on the map; open the start or the end for its turns." : "Choose a turn to see it on the map."}
+          </p>
+          <div className="-mx-4">
+            {door ? (
+              <DoorToDoorList result={result} selected={selected} onLeg={onLeg} onLine={onLine} />
+            ) : result.streets ? (
+              <div className="border-y border-border">
+                <StreetLinesList directions={result.streets} label="Directions" onLine={onLine} />
+              </div>
+            ) : null}
+          </div>
+        </div>
+        <RouteCardPdf route={result} name={title} from={{ what: "a route planned on the map", path: "/maps?tab=routes" }} />
+        <PlainTextBox route={result} title={title} />
+        <StreetsCredit result={result} />
       </div>
     </div>
   );
@@ -530,7 +766,7 @@ function SavedRoute({
 
   return (
     <div key="saved" className="flex min-h-0 flex-1 flex-col">
-      {header("Road route", onBack)}
+      {header("Plan a route", onBack)}
       <div className="scroll-quiet grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] content-start gap-4 overflow-y-auto px-4 py-4">
         {saved.isPending ? (
           <div className="grid gap-3" aria-busy>

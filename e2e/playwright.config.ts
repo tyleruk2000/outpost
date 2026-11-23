@@ -36,6 +36,10 @@ process.env.OUTPOST_E2E_HTTPS_PORT = String(httpsPort);
 // The stand-in for kiwix-serve, holding one archive that is a list of documents (apps/server/test/nautilus-archive.ts).
 const kiwixPort = Number(process.env.OUTPOST_E2E_KIWIX_PORT ?? filesPort + 5);
 process.env.OUTPOST_E2E_KIWIX_URL = `http://127.0.0.1:${kiwixPort}`;
+// The stand-in for the optional streets service (Valhalla), answering with replies recorded from a real one
+// (apps/server/test/fixtures/streets). The open server asks it only while a test has written the service's
+// status.json in its streets folder (tests/streets.ts): otherwise streets are "not installed", as on most installations.
+const streetsPort = Number(process.env.OUTPOST_E2E_STREETS_PORT ?? filesPort + 6);
 
 // This file is read by the runner and again by every worker it starts. Only the runner
 // makes the folder; the workers find it in the environment they inherit. (Each used to
@@ -333,12 +337,19 @@ export default defineConfig({
       url: `http://127.0.0.1:${kiwixPort}/health`,
       reuseExistingServer: false,
     },
+    {
+      command: `node "${path.join(root, "apps/server/test/fixtures/streets/stand-in-server.ts")}" ${streetsPort}`,
+      url: `http://127.0.0.1:${streetsPort}/health`,
+      reuseExistingServer: false,
+    },
     // The open server fetches portable-drive runtimes from the stand-in above, which is on a private address.
     server("open", port, {
       OUTPOST_NODE_DIST_URL: `http://127.0.0.1:${filesPort}`,
       OUTPOST_ALLOW_PRIVATE_DOWNLOADS: "true",
       OUTPOST_HTTPS_PORT: String(httpsPort),
       OUTPOST_KIWIX_URL: `http://127.0.0.1:${kiwixPort}`,
+      OUTPOST_VALHALLA_URL: `http://127.0.0.1:${streetsPort}`,
+      OUTPOST_VALHALLA_DIR: path.join(work, "open", "valhalla"),
       OUTPOST_P533_MAPS_MANIFEST: p533Maps,
       OUTPOST_VOACAP_DATA_MANIFEST: voacapData,
       // Satellite imagery's publishers, stood in for by the file server above.

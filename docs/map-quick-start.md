@@ -56,7 +56,7 @@ Print at 100% (not "fit to page") so the scale is right. More in
 
 ## Plan a drive
 
-1. Open **Routes** beside the map and press **Road route**, or press **Road route to here**
+1. Open **Routes** beside the map and press **Plan a route**, or press **Plan a route to here**
    on a place you found. The first time, press **Add road networks** and add each country
    you will drive through (this needs the internet once).
 2. Give **From** and **To**: a saved place, a town or coordinates, or **Map centre**.

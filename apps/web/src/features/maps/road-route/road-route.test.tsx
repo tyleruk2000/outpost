@@ -245,6 +245,7 @@ function panel() {
     onShow: vi.fn(),
     onNeedMap: vi.fn(),
     onOpenNetworks: vi.fn(),
+    onOpenStreets: vi.fn(),
     onIntentHandled: vi.fn(),
   };
   const engine = { getCenter: () => ({ lat: 49, lon: 2 }), fitBounds: vi.fn() };

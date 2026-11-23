@@ -475,7 +475,7 @@ export function RoutesList({
             <Search /> Find a route
           </Button>
           <Button onClick={onRoadRoute}>
-            <Car /> Road route
+            <Car /> Plan a route
           </Button>
           <Button onClick={() => input.current?.click()}>
             <FileUp /> Import a map file
@@ -500,7 +500,7 @@ export function RoutesList({
           <PenLine /> Draw a route
         </Button>
         <Button onClick={onRoadRoute}>
-          <Car /> Road route
+          <Car /> Plan a route
         </Button>
         <Button onClick={() => input.current?.click()}>
           <FileUp /> Import a map file

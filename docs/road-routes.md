@@ -78,11 +78,12 @@ and then the reading show on the row with their progress.
 
 ## Planning a route
 
-On the Maps screen, open **Routes** and press **Road route**. Give a start (**From**) and an
+On the Maps screen, open **Routes** and press **Plan a route** (or type "directions" in the
+quick search). Give a start (**From**) and an
 end (**To**), and up to ten via points (**Add a via point**) in the order you want to pass
 them. For each, type a saved place, a town (with place names installed) or coordinates,
 choose from your saved places, or press **Map centre**. You can also press and hold
-(right-click) a point on the map and choose **Road route from here** or **Road route to
+(right-click) a point on the map and choose **Plan a route from here** or **Plan a route to
 here**. Then press **Plan route**. The first route after a while takes longest, up to a
 minute on a small computer, while the networks are read.
 
@@ -118,6 +119,50 @@ Distances are in kilometres or miles, as you choose.
 
 These are Outpost's assumptions, kept under the legal limits (in the United Kingdom
 70 mph on motorways and dual carriageways, 60 mph on single carriageways).
+
+## Door to door, walking and cycling
+
+Where the optional streets add-on is installed, **Plan a route** has four ways of
+travelling at its top. Without it (most installations) there is nothing to choose and the
+form plans a drive, as above; one line under it says the other ways exist.
+
+| Way | What you get |
+| --- | --- |
+| **Drive** | The main-road lines above, unchanged. |
+| **Door to door** | The same main-road lines, with the streets from your door to the first main road and from the last one to your door. Each end is one line, "From your door to the A24 (8 turns, 2.1 km)", which opens to its turns. Under 15 km between the doors, or with no road networks installed, the whole drive is turn by turn instead. |
+| **Walk** | Turn by turn on streets and paths: "Turn left onto Church Street (B2450)", each with the distance to the next. |
+| **Cycle** | The same by bicycle, on streets, lanes and cycle paths. |
+
+Choose a road or a turn to see it on the map. The route card and the condensed plain text
+carry the turns too: on a door-to-door card each end is a band with its turns in smaller
+type and a box to tick. Routes on streets are not saved: print the card or copy
+the text.
+
+A way that cannot be used yet still shows, and choosing it says why in one line with the
+step that puts it right: **Add streets for** your country (no streets built yet), or **See
+its progress** while they are being built. A point outside the streets built is said
+plainly ("Streets are not installed for France").
+
+To turn the add-on on, see [Street routes on a Raspberry Pi](deployment.md#street-routes);
+streets are then built for a country on **Map data** (see [maps.md](maps.md#streets-for-routes)).
+
+## Reachable from here
+
+Press and hold (right-click) a point on the map and choose **Reachable from here**, or
+type "reachable" in the quick search for the middle of the map. A card shows the areas you
+could reach in **15 min**, **30 min** or **1 hour**: the time you choose and each shorter
+one, as three steps of one colour, darkest nearest, each with its own outline (solid 15,
+dashed 30, dotted 60) and its time written on it, so they read apart in grey too. The
+legend says which is which and where the areas come from:
+
+- **Streets**: over every street, by car, bicycle or on foot, where the streets add-on has
+  streets built.
+- **Main roads only**: by car over the road networks installed, on every installation
+  with one. The point is joined to the nearest main road; streets off the main roads are
+  not counted, so the true area is a little larger near towns.
+
+Both are for **free-flowing traffic, no stops**. Tick **Reachable areas** in **Print or
+save as PDF** to put them on a paper map, with the legend in words under it.
 
 ## Saving and printing
 

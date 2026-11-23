@@ -7,6 +7,7 @@
  */
 import { type RoadRouteResult, roadDistanceText, roadDurationText } from "@outpost/shared";
 import { CircleAlert, Flag, MapPin, Ship, TrainFront } from "lucide-react";
+import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -58,16 +59,21 @@ export function DirectionsList({
   route,
   selected,
   onLeg,
+  startRow,
+  endRow,
 }: {
   route: RoadRouteResult;
   /** The leg shown on the map, or null. */
   selected: number | null;
   /** Shows a leg on the map; left out, the lines are not buttons. */
   onLeg?: (index: number) => void;
+  /** In place of the first and last lines ("Start", "End"): the streets from and to the door, for a door-to-door drive. */
+  startRow?: ReactNode;
+  endRow?: ReactNode;
 }) {
   const start = startLine(route);
   const end = endLine(route);
-  const endRow = (line: NonNullable<typeof start>) => (
+  const endLineRow = (line: NonNullable<typeof start>) => (
     <li className="flex items-start gap-3 px-4 py-2.5">
       {line.role === "start" ? (
         <MapPin aria-hidden className="mt-1 size-4 shrink-0 text-ink-muted" />
@@ -84,7 +90,7 @@ export function DirectionsList({
 
   return (
     <ol aria-label="Directions" className="divide-y divide-border border-y border-border">
-      {start ? endRow(start) : null}
+      {startRow ?? (start ? endLineRow(start) : null)}
       {route.legs.map((leg, index) => {
         const key = `${index}-${leg.title}`;
         if (leg.kind === "via") {
@@ -129,7 +135,7 @@ export function DirectionsList({
           </li>
         );
       })}
-      {end ? endRow(end) : null}
+      {endRow ?? (end ? endLineRow(end) : null)}
     </ol>
   );
 }

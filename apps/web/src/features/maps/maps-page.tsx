@@ -14,7 +14,6 @@ import {
   haversineMeters,
   homeLabel,
   type MarkerDto,
-  type RoadRouteResult,
   type TrackDto,
   type TrackWithGeometryDto,
 } from "@outpost/shared";
@@ -29,6 +28,7 @@ import { Skeleton, Tooltip } from "@/components/ui/misc";
 import { useCelnavOnMap } from "@/features/celestial-navigation/on-map";
 import { CentreLines } from "@/features/compass/magnetic-glance";
 import { useDownloads } from "@/features/downloads/use-downloads";
+import { useHomeCountry } from "@/features/frequencies/home-country";
 import type { HeardTools } from "@/features/heard/card";
 import { HeardGroup } from "@/features/heard/heard";
 import { useHeardOnMap } from "@/features/heard/use-heard-on-map";
@@ -133,11 +133,12 @@ import { SightCard } from "./radio/sight-card";
 import { SightPanel } from "./radio/sight-panel";
 import { useLocatorGrid } from "./radio/use-locator-grid";
 import { useSight } from "./radio/use-sight";
+import { useReach } from "./reach/reach-tool";
 import { foldRecordingCard, TrackRecording, useRecordTool } from "./recording/record-ui";
 import { useResection } from "./resection/resection-card";
-import { ROAD_ROUTE_SOURCE, roadRouteData } from "./road-route/layers";
+import { ROAD_ROUTE_SOURCE, shownRouteData } from "./road-route/layers";
 import { pointName } from "./road-route/point-field";
-import { type RoadRouteIntent, RoadRoutePanel } from "./road-route/road-route-panel";
+import { type RoadRouteIntent, RoadRoutePanel, type ShownRoute } from "./road-route/road-route-panel";
 import { SearchBox } from "./search-box";
 import { DesktopPanel, type Detent, detentHeight, MobileSheet, PANEL_TABS, type PanelTab, PanelTabs, PEEK_HEIGHT } from "./side-panel";
 import { PanelLoading } from "./ui";
@@ -321,9 +322,9 @@ export default function MapsPage() {
   /** The page to print was asked for in the address (/maps?print=1, from the quick search): taken up once the map is drawn. */
   const [printAsked, setPrintAsked] = useState(false);
   const [roadIntent, setRoadIntent] = useState<RoadRouteIntent | null>(null);
-  const [roadShown, setRoadShown] = useState<{ route: RoadRouteResult; selected: number | null } | null>(null);
+  const [roadShown, setRoadShown] = useState<{ route: ShownRoute; selected: number | null } | null>(null);
   const showRoadRoute = useCallback(
-    (route: RoadRouteResult | null, selected: number | null) => setRoadShown(route ? { route, selected } : null),
+    (route: ShownRoute | null, selected: number | null) => setRoadShown(route ? { route, selected } : null),
     [],
   );
   const clearRoadIntent = useCallback(() => setRoadIntent(null), []);
@@ -682,7 +683,7 @@ export default function MapsPage() {
   }, [engine, geometries, tracks.data, trackId, reshapingId, routePreview]);
 
   useEffect(() => {
-    engine?.setOverlay(ROAD_ROUTE_SOURCE, roadRouteData(roadShown?.route ?? null, roadShown?.selected ?? null));
+    engine?.setOverlay(ROAD_ROUTE_SOURCE, shownRouteData(roadShown?.route ?? null, roadShown?.selected ?? null));
   }, [engine, roadShown]);
 
   const routePoints = routeDraft?.edit.points;
@@ -1137,6 +1138,26 @@ export default function MapsPage() {
     where: (position) => formatPosition(position.lat, position.lon, format, engine?.getZoom()).text,
     onOpenOffline: () => openOffline({ type: "add" }),
   });
+  // "Reachable from here", from the same menu and the quick search (/maps?reach=1, from the middle of the map).
+  const homeCountry = useHomeCountry();
+  const reachable = useReach({
+    engine,
+    where: (position) => formatPosition(position.lat, position.lon, format, engine?.getZoom()).text,
+    home: homeCountry,
+    onOpenStreets: (country) => navigate(`/maps/data?streets=1${country ? `&country=${country}` : ""}`),
+    onOpenNetworks: (country) => navigate(`/maps/data?add=1&kinds=roads${country ? `&country=${country}` : ""}`),
+  });
+  const handledReach = useRef<string | undefined>(undefined);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once for each arrival, when the map is there
+  useEffect(() => {
+    if (!engine || handledReach.current === location.key) return;
+    handledReach.current = location.key;
+    if (new URLSearchParams(location.search).get("reach") !== "1") return;
+    walk.stop();
+    pointRange.stop();
+    reachable.start(engine.getCenter());
+    setDetent("peek");
+  }, [engine, location.key]);
   const repeaters = useRepeatersOnMap({
     extraRange: pointRange.outline,
     engine,
@@ -1446,6 +1467,7 @@ export default function MapsPage() {
             onShow={showRoadRoute}
             onNeedMap={() => setDetent((current) => (current === "full" ? "half" : current))}
             onOpenNetworks={(country) => navigate(`/maps/data?add=1&kinds=roads${country ? `&country=${country}` : ""}`)}
+            onOpenStreets={(country) => navigate(`/maps/data?streets=1${country ? `&country=${country}` : ""}`)}
           />
         ) : finding ? (
           <FindRoutePanel
@@ -1635,6 +1657,8 @@ export default function MapsPage() {
         }}
         onClose={() => closeDrawing()}
       />
+    ) : reachable.card ? (
+      reachable.card
     ) : walk.card ? (
       walk.card
     ) : pointRange.card ? (
@@ -1974,6 +1998,7 @@ export default function MapsPage() {
               setMoving(null);
               setPin(null);
               walk.stop();
+              reachable.stop();
               pointRange.start({ position: contextMenu.position, name: contextPlace?.name });
               setDetent("peek");
             }}
@@ -1983,7 +2008,18 @@ export default function MapsPage() {
               setMoving(null);
               setPin(null);
               pointRange.stop();
+              reachable.stop();
               walk.start(contextMenu.position);
+              setDetent("peek");
+            }}
+            onReach={() => {
+              setContextMenu(null);
+              setDraft(null);
+              setMoving(null);
+              setPin(null);
+              pointRange.stop();
+              walk.stop();
+              reachable.start(contextMenu.position, contextPlace?.name ?? null);
               setDetent("peek");
             }}
             onClose={() => {

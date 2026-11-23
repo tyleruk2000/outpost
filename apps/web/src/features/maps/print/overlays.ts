@@ -42,6 +42,8 @@ import { type FeatureCollection, markersData, type OverlaySource, overlayLayers,
 import { shadeStyle } from "../map/shades";
 import { locatorGrid, locatorLengthAt } from "../radio/locator-grid";
 import { locatorGridShown } from "../radio/use-locator-grid";
+import { reachData, reachSentence, reachShown } from "../reach/reach-map";
+import { reachTimeText } from "../road-route/street-words";
 import { readable } from "./coverage";
 import { type Graticule, graticuleLines } from "./graticule";
 import { paperShades } from "./range-paper";
@@ -322,6 +324,26 @@ export const PRINT_OVERLAYS: PrintOverlay[] = [
       draft.notes.push(
         "Estimated radio range: line of sight only, over the terrain held. Shaded ground is in sight; the dashed circle is the typical range, the middle of the furthest ground in sight over every direction; the grey rings give the distance.",
       );
+    },
+  },
+  {
+    // The areas reachable from a point (reach/), as the map on screen shows them: three steps of one hue, each time's
+    // outline its own (solid, dashed, dotted) with the time written on it, so it reads on a printer with no colour.
+    id: "reach",
+    label: "Reachable areas",
+    unavailable: () => (reachShown() ? undefined : "No reachable areas are showing on the map."),
+    hint: () => {
+      const shown = reachShown();
+      return shown ? reachSentence(shown) : undefined;
+    },
+    initially: () => reachShown() !== null,
+    apply: (draft) => {
+      const shown = reachShown();
+      if (!shown) return;
+      draft.data["o-reach"] = reachData(shown);
+      const lines = { 15: "solid", 30: "dashed", 60: "dotted" } as Record<number, string>;
+      const key = shown.areas.features.map((area) => `${lines[area.properties.minutes]}, ${reachTimeText(area.properties.minutes)}`);
+      draft.notes.push(`${reachSentence(shown)} Outlines: ${key.join("; ")}. ${shown.note}`);
     },
   },
   {

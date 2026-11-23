@@ -368,9 +368,15 @@ export const mapSections: Array<{ id: string; label: string; keywords: string; t
   { id: "routes", label: "Routes", keywords: "route track tracks gpx kml walk hike trail draw import" },
   {
     id: "road-route",
-    label: "Road route",
+    label: "Plan a route",
     to: "/maps?tab=routes&road=1",
-    keywords: "drive driving directions car journey sat nav navigation plan road route",
+    keywords: "drive driving directions car journey sat nav navigation plan road route door to door walk walking cycle cycling bike",
+  },
+  {
+    id: "reachable",
+    label: "Reachable from here",
+    to: "/maps?reach=1",
+    keywords: "reach reachable isochrone minutes drive time how far within 15 30 60 area catchment",
   },
   { id: "print", label: "Print", to: "/maps?print=1", keywords: "printing pdf paper sheet" },
   {
