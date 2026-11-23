@@ -8,7 +8,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { notFound } from "../../core/errors.ts";
-import { toJobDto } from "../../core/jobs.ts";
+import { toJobDetail, toJobDto } from "../../core/jobs.ts";
 import { isBundled } from "../../core/paths.ts";
 import { VERSION } from "../../core/version.ts";
 import { jobs } from "../../db/schema.ts";
@@ -16,6 +16,30 @@ import type { Settings } from "../settings/service.ts";
 import { detectHost } from "../storage/shares/host.ts";
 
 export { VERSION };
+
+const JOB_STATES = ["queued", "running", "paused", "succeeded", "failed", "cancelled"] as const;
+/** "a,b,c" as a list, each checked; an empty value is no filter. */
+const commaList = <T extends z.ZodType<unknown, string>>(item: T) =>
+  z
+    .string()
+    .max(2000)
+    .transform((value) => value.split(",").filter(Boolean))
+    .pipe(z.array(item).max(50))
+    .optional()
+    .transform((list) => (list?.length ? list : undefined));
+const jobType = z.string().regex(/^[a-z0-9][a-z0-9.-]{0,63}$/);
+const jobsQuery = z.object({
+  active: z.enum(["true", "false"]).optional(),
+  states: commaList(z.enum(JOB_STATES)),
+  types: commaList(jobType),
+  notTypes: commaList(jobType),
+  // A limit that is not a number, or out of range, is the default or the nearest allowed: older callers send what they like.
+  limit: z.coerce
+    .number()
+    .transform((value) => Math.min(Math.max(Math.floor(value) || 50, 1), 200))
+    .catch(50),
+});
+const jobParams = z.object({ id: z.string().min(1).max(64) });
 
 /** How often an open live-events stream is sent a comment line, so a quiet one is not cut. */
 export const EVENTS_HEARTBEAT_MS = 50_000;
@@ -129,21 +153,33 @@ export async function registerSystem(app: FastifyInstance, ctx: AppContext): Pro
     request.raw.on("close", () => ctx.stopping.removeEventListener("abort", stopping));
   });
 
-  app.get<{ Querystring: { active?: string; limit?: string } }>("/api/jobs", async (request) => {
-    const limit = Math.min(Math.max(Math.floor(Number(request.query.limit)) || 50, 1), 200);
-    const states = request.query.active === "true" ? (["queued", "running", "paused"] as const) : undefined;
-    return { jobs: ctx.jobs.list({ states: states ? [...states] : undefined, limit }).map(toJobDto) };
+  app.get("/api/jobs", async (request) => {
+    const query = jobsQuery.parse(request.query);
+    const states = query.active === "true" ? (["queued", "running", "paused"] as const) : query.states;
+    return {
+      jobs: ctx.jobs
+        .list({ states: states ? [...states] : undefined, types: query.types, excludeTypes: query.notTypes, limit: query.limit })
+        .map((job) => ctx.jobs.toDto(job)),
+    };
   });
 
-  app.get<{ Params: { id: string } }>("/api/jobs/:id", async (request) => {
-    const job = ctx.jobs.get(request.params.id);
+  app.get("/api/jobs/:id", async (request) => {
+    const { id } = jobParams.parse(request.params);
+    const job = ctx.jobs.get(id);
     if (!job) throw notFound("Job");
-    return { job: toJobDto(job) };
+    return { job: ctx.jobs.toDto(job) };
   });
 
-  app.post<{ Params: { id: string; action: string } }>("/api/jobs/:id/:action", async (request) => {
-    const action = z.enum(["pause", "resume", "cancel"]).parse(request.params.action);
-    return { job: toJobDto(ctx.jobs[action](request.params.id)) };
+  // One job with its progress now and then, its history and what it is waiting for: the task's page.
+  app.get("/api/jobs/:id/detail", async (request) => {
+    const { id } = jobParams.parse(request.params);
+    if (!ctx.jobs.get(id)) throw notFound("Job");
+    return toJobDetail(ctx.jobs, ctx.jobs.detail(id));
+  });
+
+  app.post("/api/jobs/:id/:action", async (request) => {
+    const { id, action } = jobParams.extend({ action: z.enum(["pause", "resume", "cancel"]) }).parse(request.params);
+    return { job: toJobDto(ctx.jobs[action](id)) };
   });
 
   app.get("/api/settings", async () => ({ settings: settings.all() }));

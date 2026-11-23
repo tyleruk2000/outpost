@@ -78,7 +78,10 @@ export async function registerRoads(app: FastifyInstance, ctx: AppContext): Prom
   ctx.jobs.register<BuildFromFileInput>(BUILD_JOB, {
     queue: "import",
     run: ({ payload, signal, progress }) =>
-      service.runBuildJob(payload, signal, (current, total, message) => progress({ current, total, message })),
+      // Each pass is a stage of its own in the task's history, and says what it counts.
+      service.runBuildJob(payload, signal, (current, total, message, unit) =>
+        progress({ current, total, message, stage: message, ...(unit === undefined ? {} : { unit }) }),
+      ),
   });
   ctx.onClose.push(async () => {
     service.close();

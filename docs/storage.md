@@ -158,7 +158,7 @@ drives appear are already roots; if you set the roots yourself on a Mac, include
 ## Moving collections and documents
 
 **Move** on a collection in **Library**, or **Move documents here** in a location's menu,
-runs as a job under **Downloads**. It never overwrites. Each file is copied and checked
+runs as a task under **Downloads and tasks**. It never overwrites. Each file is copied and checked
 before the original is deleted; anything stopped part-way leaves the original as it
 was. What cannot be moved is listed with the reason.
 

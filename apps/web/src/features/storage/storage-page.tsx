@@ -111,7 +111,7 @@ function LocationRow({
     mutationFn: () => api.post<{ documents: number }>("/api/documents/move", { locationId: location.id }),
     onSuccess: (result) => {
       setMovingDocuments(false);
-      toast.success(`Moving ${plural(result.documents, "document")} to “${location.name}”. Progress is under Downloads.`);
+      toast.success(`Moving ${plural(result.documents, "document")} to “${location.name}”. Progress is under Downloads and tasks.`);
     },
     onError: (error) => notify.error(errorMessage(error)),
   });

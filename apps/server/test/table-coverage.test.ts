@@ -60,6 +60,19 @@ const TABLES: Record<string, Decision> = {
     notRestored: "Work in progress does not transfer: its queued jobs must not start on this machine.",
     drive: "Background jobs are not copied (docs/portable.md).",
   },
+  // A job's progress now and then and the steps of its history: they go wherever the job goes (deleted with it).
+  job_samples: {
+    group: "other",
+    keptByErase: "Only the erase's own job is left, with what it has recorded so far.",
+    notRestored: "They go with the jobs, which do not transfer.",
+    drive: "They go with the background jobs, which are not copied (docs/portable.md).",
+  },
+  job_events: {
+    group: "other",
+    keptByErase: "Only the erase's own job is left, with what it has recorded so far.",
+    notRestored: "They go with the jobs, which do not transfer.",
+    drive: "They go with the background jobs, which are not copied (docs/portable.md).",
+  },
   collections: { group: "library", drive: true },
   downloads: { group: "library", drive: "Download history is not copied (docs/portable.md)." },
   catalog_cache: {

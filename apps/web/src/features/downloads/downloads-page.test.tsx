@@ -10,12 +10,12 @@ afterEach(() => vi.unstubAllGlobals());
 
 const job = (over: Partial<JobDto>): JobDto => ({
   id: "j1",
-  type: "collection.move",
-  queue: "transfer",
+  type: "semantic.index",
+  queue: "index",
   state: "running",
-  title: "Move Wikipedia 100 to USB drive",
-  subject: "collection:c1",
-  progress: { current: 50, total: 200, message: "Copying to USB drive" },
+  title: "Build semantic search index",
+  subject: "semantic:m1",
+  progress: { current: 1200, total: 6000, message: "1200 of 6000 passages", unit: "passages", ratePerSecond: 5 },
   error: null,
   errorKind: null,
   attempts: 1,
@@ -73,9 +73,24 @@ function serve(routes: Record<string, unknown> = {}) {
   return fakeServer({
     "GET /api/downloads": { downloads: everything },
     "GET /api/downloads/plan": plan(),
-    "GET /api/jobs": {
-      jobs: [job({}), job({ id: "j0", type: "download.run", title: "Download Best of Wikipedia", subject: "download:run" })],
-    },
+    "GET /api/jobs": ({ url }: { url: URL }) =>
+      url.searchParams.get("active") === "true"
+        ? { jobs: [job({}), job({ id: "j0", type: "download.run", title: "Download Best of Wikipedia", subject: "download:run" })] }
+        : {
+            jobs: [
+              job({
+                id: "j2",
+                type: "document.extract",
+                state: "failed",
+                title: "Reading text from “Field manual”",
+                error: "The file is missing from “USB drive”.",
+                errorKind: "not_found",
+                progress: { current: 0, total: null, message: null },
+                finishedAt: 20,
+              }),
+              job({ id: "j3", type: "database.check", state: "succeeded", title: "Check the database", finishedAt: 10 }),
+            ],
+          },
     "GET /api/collections": { collections: [collection({ id: "c1" })] },
     ...routes,
   });
@@ -158,23 +173,75 @@ describe("Downloads", () => {
     expect(history.queryByRole("button", { name: "Show more" })).not.toBeInTheDocument();
   });
 
-  it("lists other background work, leaving out the jobs that are downloads", async () => {
+  it("says what a task is, and lists tasks apart from downloads with their progress, rate and time left", async () => {
+    serve();
+    renderScreen(<DownloadsPage />);
+    expect(await screen.findByRole("heading", { name: "Downloads and tasks", level: 1 })).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/A task is work Outpost does here, such as reading a document, building search by meaning/).length,
+    ).toBeGreaterThan(0);
+    const tasks = within(await section("Tasks"));
+    expect(await tasks.findByRole("heading", { name: "Build semantic search index" })).toBeInTheDocument();
+    expect(tasks.getByText("Building search by meaning")).toBeInTheDocument();
+    expect(tasks.getByText("1,200 of 6,000 passages")).toBeInTheDocument();
+    expect(tasks.getByText("300 passages a minute")).toBeInTheDocument();
+    expect(tasks.getByText("about 16 minutes left")).toBeInTheDocument();
+    expect(tasks.getByRole("progressbar", { name: "Progress of Build semantic search index" })).toBeInTheDocument();
+    expect(tasks.getByRole("link", { name: "Details of Build semantic search index" })).toHaveAttribute("href", "/downloads/tasks/j1");
+    // The jobs that are downloads are the downloads above, not tasks.
+    expect(tasks.queryByText("Download Best of Wikipedia")).not.toBeInTheDocument();
+    // Finished ones too, newest first, after what is running.
+    expect(await tasks.findByText("Reading text from “Field manual”")).toBeInTheDocument();
+    expect(tasks.getByText("The file is missing from “USB drive”.")).toBeInTheDocument();
+    expect(tasks.getByRole("button", { name: "Pause Build semantic search index" })).toBeInTheDocument();
+    // Reading a document is never stopped part of the way.
+    expect(tasks.queryByRole("button", { name: /^Cancel Reading/ })).not.toBeInTheDocument();
+  });
+
+  it("filters tasks by running, waiting, finished and failed, and says when none are of that kind", async () => {
+    serve();
+    renderScreen(<DownloadsPage />);
+    const tasks = within(await section("Tasks"));
+    await tasks.findByText("Reading text from “Field manual”");
+    expect(tasks.getByRole("radio", { name: "Running (1)" })).toBeInTheDocument();
+    await userEvent.click(tasks.getByRole("radio", { name: "Failed (1)" }));
+    expect(tasks.getByText("Reading text from “Field manual”")).toBeInTheDocument();
+    expect(tasks.queryByText("Build semantic search index")).not.toBeInTheDocument();
+    await userEvent.click(tasks.getByRole("radio", { name: "Waiting (0)" }));
+    expect(tasks.getByText("No task is waiting.")).toBeInTheDocument();
+    await userEvent.click(tasks.getByRole("button", { name: "Show all tasks" }));
+    expect(tasks.getByText("Build semantic search index")).toBeInTheDocument();
+  });
+
+  it("asks before cancelling a task", async () => {
     const server = serve({ "POST /api/jobs/j1/cancel": { job: job({ state: "cancelled" }) } });
     renderScreen(<DownloadsPage />);
-    const other = within(await section("Other work in the background"));
-    expect(other.getByText("Move Wikipedia 100 to USB drive")).toBeInTheDocument();
-    expect(other.getByText("Copying to USB drive")).toBeInTheDocument();
-    expect(other.getByText("25%")).toBeInTheDocument();
-    expect(other.queryByText("Download Best of Wikipedia")).not.toBeInTheDocument();
-    await userEvent.click(other.getByRole("button", { name: "Cancel: Move Wikipedia 100 to USB drive" }));
+    const tasks = within(await section("Tasks"));
+    await userEvent.click(await tasks.findByRole("button", { name: "Cancel Build semantic search index" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByText(/What it has finished so far is kept/)).toBeInTheDocument();
+    expect(server.calls).not.toContain("POST /api/jobs/j1/cancel");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Cancel the task" }));
     await waitFor(() => expect(server.calls).toContain("POST /api/jobs/j1/cancel"));
   });
 
-  it("hides the background section when there is no such work", async () => {
+  it("shows only the tasks, or only the downloads, when asked", async () => {
+    serve();
+    const { unmount } = renderScreen(<DownloadsPage />, "/downloads?show=tasks");
+    expect(await screen.findByRole("heading", { name: "Tasks" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "In progress" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("radio", { name: /^Tasks/ })).toHaveAttribute("aria-checked", "true");
+    unmount();
+    renderScreen(<DownloadsPage />, "/downloads?show=downloads");
+    expect(await screen.findByRole("heading", { name: "In progress" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Tasks" })).not.toBeInTheDocument();
+  });
+
+  it("leaves the tasks out when there have been none", async () => {
     serve({ "GET /api/jobs": { jobs: [] } });
     renderScreen(<DownloadsPage />);
     await section("In progress");
-    expect(screen.queryByRole("heading", { name: "Other work in the background" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Tasks" })).not.toBeInTheDocument();
   });
 
   it("points to Explore when nothing has ever been downloaded", async () => {

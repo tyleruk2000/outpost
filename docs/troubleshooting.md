@@ -237,8 +237,7 @@ files each, are read.
 **Add to library** copies a document out of the collection, with no download, to the
 default storage location, so it is on disk twice. **Add all to library** (or **Add
 these**, for what the search shows) says how many, how much space and where first, and
-will not start without room. It runs on the server (see **Downloads → Other work in the
-background**), goes on after a restart, and **Stop** keeps what was added. It ends with
+will not start without room. It runs on the server (see **Downloads and tasks → Tasks**), goes on after a restart, and **Stop** keeps what was added. It ends with
 what was added, already there and failed, with **Try again**. Removing the collection
 later keeps the documents.
 

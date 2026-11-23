@@ -603,7 +603,7 @@ export function ImageryArea({
       {
         onSuccess: () => {
           destination.remember();
-          toast.success(`Fetching “${name.trim()}” to ${kept}. Progress is shown here and under Downloads.`);
+          toast.success(`Fetching “${name.trim()}” to ${kept}. Progress is shown here and under Downloads and tasks.`);
           onClose();
         },
       },

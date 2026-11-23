@@ -329,7 +329,12 @@ export function powerCheck(throttling: Throttling | null): DeviceCheck | null {
 }
 
 export function jobsCheck(counts: { running: number; queued: number; paused: number; failedToday: number }): DeviceCheck {
-  const base = { id: "jobs", group: "work" as const, title: "Background work", link: { to: "/downloads", label: "Downloads" } };
+  const base = {
+    id: "jobs",
+    group: "work" as const,
+    title: "Background work",
+    link: { to: "/downloads", label: "Downloads and tasks" },
+  };
   const parts = [
     counts.running > 0 ? `${counts.running} running` : null,
     counts.queued > 0 ? `${counts.queued} waiting` : null,
@@ -341,7 +346,7 @@ export function jobsCheck(counts: { running: number; queued: number; paused: num
       ...base,
       state: "attention",
       summary: `${summary} ${counts.failedToday} failed in the last day.`,
-      advice: "Each failed download says why on the Downloads screen, with a button to try again.",
+      advice: "Each failed download says why on the Downloads and tasks screen, with a button to try again.",
     };
   return { ...base, state: "good", summary, advice: null };
 }

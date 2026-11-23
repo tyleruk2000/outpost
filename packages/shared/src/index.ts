@@ -108,6 +108,8 @@ export * from "./sun.ts";
 export * from "./supplies.ts";
 export * from "./supplies-energy.ts";
 export * from "./system.ts";
+// Tasks: background jobs in words, and one job's details, on a line of their own.
+export * from "./tasks.ts";
 // Heights from terrain tiles and an aerial's viewshed, read alike on the server and on a phone out of reach.
 export * from "./terrain-sampler.ts";
 // Tide predictions from harmonic constants, on a line of their own.

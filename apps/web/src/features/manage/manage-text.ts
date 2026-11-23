@@ -484,10 +484,10 @@ export const leftoverWords: Record<LeftoverKind, LeftoverWords> = {
   download: {
     title: "Downloads that did not finish",
     description:
-      "Each stopped part of the way, was cancelled or failed, and the part that arrived is still on disk. Clearing one deletes that partial file and takes the download off the Downloads screen. Starting it again later begins from nothing.",
+      "Each stopped part of the way, was cancelled or failed, and the part that arrived is still on disk. Clearing one deletes that partial file and takes the download off the Downloads and tasks screen. Starting it again later begins from nothing.",
     action: "Clear",
     confirm:
-      "Their partial files are deleted and the downloads are taken off the Downloads screen. Nothing that finished installing is touched.",
+      "Their partial files are deleted and the downloads are taken off the Downloads and tasks screen. Nothing that finished installing is touched.",
   },
   missing: {
     title: "Records whose file has gone",
@@ -513,7 +513,7 @@ export const leftoverWords: Record<LeftoverKind, LeftoverWords> = {
   history: {
     title: "History",
     description:
-      "The lists of finished work and finished downloads shown on the Downloads screen. Clearing them shortens those lists and nothing else: what was installed stays installed.",
+      "The lists of finished work and finished downloads shown on the Downloads and tasks screen. Clearing them shortens those lists and nothing else: what was installed stays installed.",
     action: "Clear",
     confirm: "The lists are emptied. Nothing installed is removed. A download that failed keeps its entry, so it can still be retried.",
   },

@@ -66,7 +66,13 @@ Queues: `download`, `index` (extraction, embeddings), `ocr` (one at a time), `tr
 `database` (holds every other queue with `ctx.jobs.holdFor` while reclaiming),
 `engine-build`, `update`, `export`; `ocr` and every queue from `manage` on run one at a time (`reference-files` one collection at a time). Handlers
 get an `AbortSignal` and must stop promptly. Report progress with
-`run.progress({ current, total, message })`. Throw `PermanentJobError` for what
+`run.progress({ current, total, message })`, with `unit` ("passages", "pages", "bytes")
+when it counts something and `stage` when it moves on to a step a person would name
+("Sorting the junctions"); the runner samples progress for the task's rate and time left
+and records each stage in its history (`job_samples`, `job_events`, bounded and kept a
+week). A new job type needs an entry in `TASK_KINDS` (`packages/shared/src/tasks.ts`):
+its name in words, what it does, and whether it can be paused, cancelled or retried.
+Throw `PermanentJobError` for what
 retrying cannot fix, and `StoppedWithResult` when cancelled part-way through work that
 cannot be undone, with an account of what was done.
 

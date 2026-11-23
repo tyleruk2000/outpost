@@ -309,6 +309,7 @@ export function createDocumentOcr(ctx: AppContext, hooks: OcrHooks): DocumentOcr
         progress({
           current: done.size,
           total: batch.length,
+          unit: kind === "image" ? null : "pages",
           message:
             kind === "image"
               ? "Reading the image"

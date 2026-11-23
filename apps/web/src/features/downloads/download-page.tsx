@@ -47,7 +47,7 @@ const badgeTone: Record<Tone, "neutral" | "lamp" | "success" | "warning" | "dang
 };
 
 function BackToDownloads() {
-  return <BackLink to="/downloads">Downloads</BackLink>;
+  return <BackLink to="/downloads">Downloads and tasks</BackLink>;
 }
 
 /** A figure with its name, small and in a row: speed, time left, when it finishes. */
@@ -270,7 +270,7 @@ export default function DownloadPage() {
               seed={11}
               action={
                 <Button asChild variant="primary">
-                  <Link to="/downloads">Back to Downloads</Link>
+                  <Link to="/downloads">Back to Downloads and tasks</Link>
                 </Button>
               }
             >

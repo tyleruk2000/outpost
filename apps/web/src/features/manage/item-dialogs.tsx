@@ -175,7 +175,7 @@ function MoveSteps({ items, onClose }: { items: ManagedItem[]; onClose: () => vo
               : "Nothing could be moved."}{" "}
             {moving > 0 ? (
               <Link to="/downloads" className="text-primary underline underline-offset-2">
-                Follow it under Downloads
+                Follow it under Downloads and tasks
               </Link>
             ) : null}
           </p>

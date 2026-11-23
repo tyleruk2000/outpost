@@ -53,7 +53,7 @@ export const AT_LEAST: Array<[string, string]> = [
   ["Steading", "/games/steading"],
   ["Notes", "/notes"],
   ["Import", "/import"],
-  ["Downloads", "/downloads"],
+  ["Downloads and tasks", "/downloads"],
   ["Storage", "/storage"],
   ["Manage and clean up", "/storage/manage"],
   ["Bring back changes from a drive", "/storage/merge"],

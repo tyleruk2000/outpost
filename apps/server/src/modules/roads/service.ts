@@ -80,7 +80,7 @@ export interface RoadsService {
   runBuildJob(
     input: BuildFromFileInput,
     signal: AbortSignal,
-    progress: (current: number, total: number | null, message: string) => void,
+    progress: (current: number, total: number | null, message: string, unit?: string | null) => void,
   ): Promise<Record<string, unknown>>;
   /** For tests and measurements: the graph as loaded now. */
   loadGraph(): Promise<Graph>;
@@ -185,15 +185,15 @@ export function createRoadsService(ctx: AppContext, client: HttpClient): RoadsSe
     extract: NetworkRow["extract"];
     replaces: string[];
     signal: AbortSignal;
-    progress: (current: number, total: number | null, message: string) => void;
+    progress: (current: number, total: number | null, message: string, unit?: string | null) => void;
   }): Promise<NetworkRow> {
     return oneAtATime(async () => {
       const data = await buildNetwork(input.filePath, {
         signal: input.signal,
-        progress: (message, bytes, total) => input.progress(bytes, total, message),
+        progress: (message, done, total, unit) => input.progress(done, total, message, unit),
       });
       if (data.nodeId.length === 0) throw new PermanentJobError("The file holds no main roads Outpost could read: no network was made.");
-      input.progress(1, 1, "Writing the network");
+      input.progress(1, 1, "Writing the network", null);
       const id = newId();
       const relPath = `roads/${id}.roads`;
       await fs.promises.mkdir(roadsDir(), { recursive: true });
@@ -249,6 +249,7 @@ export function createRoadsService(ctx: AppContext, client: HttpClient): RoadsSe
     const replaces = rows()
       .filter((r) => r.regionId === meta.regionId)
       .map((r) => r.id);
+    let fileBytes = sizeBytes;
     const row = await build({
       filePath,
       regionId: meta.regionId,
@@ -260,7 +261,14 @@ export function createRoadsService(ctx: AppContext, client: HttpClient): RoadsSe
         : { kept: false, locationId: null, relPath: null, bytes: sizeBytes },
       replaces,
       signal,
-      progress: (current, total, message) => progress(current, total, message),
+      // A download counts bytes: while the junctions are sorted (counted in ways) the file has been read to its end.
+      progress: (current, total, message, unit) => {
+        if (unit === "ways") progress(fileBytes, fileBytes, message);
+        else {
+          if (unit === "bytes" && total) fileBytes = total;
+          progress(current, total, message);
+        }
+      },
     });
     // The extract was fetched for this network alone: unless asked to keep it, it goes once read.
     if (!meta.keepExtract) await fs.promises.rm(filePath, { force: true });
@@ -323,7 +331,7 @@ export function createRoadsService(ctx: AppContext, client: HttpClient): RoadsSe
   async function runBuildJob(
     input: BuildFromFileInput,
     signal: AbortSignal,
-    progress: (current: number, total: number | null, message: string) => void,
+    progress: (current: number, total: number | null, message: string, unit?: string | null) => void,
   ) {
     const filePath = ctx.services.storage.resolve(input.locationId, input.relPath);
     const bytes = (await fs.promises.stat(filePath)).size;

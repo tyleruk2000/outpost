@@ -32,7 +32,7 @@ test.describe("downloading from the catalogue", () => {
 
     // The plan says what is left, how fast, and when.
     await page.goto("/downloads");
-    await expect(page.getByRole("heading", { name: "Downloads", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Downloads and tasks", level: 1 })).toBeVisible();
     // Figures are kept on one line with their units, so the spaces between them do not break.
     await expect(page.getByText(/1\sdownload,\s.*\sto go/)).toBeVisible();
     await expect(page.getByText(/limited to\s30\skB\/s/).first()).toBeVisible();

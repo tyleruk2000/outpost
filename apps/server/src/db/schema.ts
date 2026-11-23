@@ -87,6 +87,8 @@ export const jobs = sqliteTable(
     progressCurrent: integer("progress_current").notNull().default(0),
     progressTotal: integer("progress_total"),
     progressMessage: text("progress_message"),
+    /** What `progressCurrent` and `progressTotal` count ("bytes", "passages", "pages"); null when the job does not say. */
+    progressUnit: text("progress_unit"),
     result: json<Record<string, unknown>>("result"),
     error: text("error"),
     errorKind: text("error_kind"),
@@ -101,6 +103,46 @@ export const jobs = sqliteTable(
     updatedAt: updatedAt(),
   },
   (table) => [index("jobs_state_idx").on(table.queue, table.state, table.runAfter), index("jobs_subject_idx").on(table.subject)],
+);
+
+/**
+ * Where a job's progress stood, now and then while it ran: what its rate over time and
+ * the time it has left are worked out from. Bounded: at most a couple of hundred a job
+ * (thinned to every other one as it goes on), and removed a week after the job ends.
+ */
+export const jobSamples = sqliteTable(
+  "job_samples",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    jobId: text("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    at: integer("at").notNull(),
+    current: integer("current").notNull(),
+    total: integer("total"),
+    unit: text("unit"),
+  },
+  (table) => [index("job_samples_job_idx").on(table.jobId, table.at)],
+);
+
+/**
+ * What happened to a job, oldest first: each change of state, each retry and each stage
+ * it said it had reached. At most a hundred a job; removed a week after the job ends.
+ */
+export const jobEvents = sqliteTable(
+  "job_events",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    jobId: text("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    at: integer("at").notNull(),
+    /** "state": its state changed; "retry": it failed and will try again; "stage": it said what it had moved on to. */
+    kind: text("kind", { enum: ["state", "retry", "stage", "resumed", "restarted"] }).notNull(),
+    state: text("state").notNull(),
+    message: text("message"),
+  },
+  (table) => [index("job_events_job_idx").on(table.jobId, table.id)],
 );
 
 // ── Installed content ───────────────────────────────────────────────────────

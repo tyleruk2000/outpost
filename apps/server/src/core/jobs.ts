@@ -9,10 +9,11 @@
  * Work runs inside the server process, one named queue per kind of work, each with its
  * own concurrency limit so that, say, three downloads do not starve text extraction.
  */
-import { and, asc, eq, gt, inArray, lte, sql } from "drizzle-orm";
+import type { JobDetail, JobEventKind, JobRef, JobWaiting } from "@outpost/shared";
+import { and, asc, eq, gt, inArray, isNotNull, lt, lte, ne, notInArray, sql } from "drizzle-orm";
 import type { FastifyBaseLogger } from "fastify";
 import type { Db } from "../db/client.ts";
-import { jobs } from "../db/schema.ts";
+import { jobEvents, jobSamples, jobs } from "../db/schema.ts";
 import { AppError, classifyNetworkError, messageOf, networkSentence } from "./errors.ts";
 import type { EventBus } from "./events.ts";
 import { newId } from "./ids.ts";
@@ -24,6 +25,10 @@ export interface JobProgress {
   current?: number;
   total?: number | null;
   message?: string | null;
+  /** What `current` and `total` count: "bytes", "passages", "pages". Kept until it is changed. */
+  unit?: string | null;
+  /** A stage the job has moved on to ("Reading the roads"). Each new one is a step in its history. */
+  stage?: string;
 }
 
 export interface JobRun<P> {
@@ -79,6 +84,35 @@ export class StoppedWithResult extends Error {
 type StopReason = "paused" | "cancelled" | "shutdown";
 
 const PROGRESS_WRITE_INTERVAL_MS = 500;
+/** The least time between two recorded samples of a job's progress, at first; it doubles each time they are thinned. */
+const SAMPLE_EVERY_MS = 2_000;
+/** Past this many samples of one job, every other one is dropped: the history stays bounded however long it runs. */
+export const MAX_JOB_SAMPLES = 200;
+/** Past this many steps in one job's history, the oldest after the first are dropped. */
+export const MAX_JOB_EVENTS = 100;
+/** How long the samples and history of a finished job are kept. */
+export const JOB_HISTORY_KEPT_MS = 7 * 24 * 60 * 60 * 1000;
+const PRUNE_EVERY_MS = 60 * 60 * 1000;
+/** How many of the jobs queued ahead of one are named in its details. */
+const AHEAD_NAMED = 5;
+/** How far back a running job's rate is judged over: long enough to smooth out work done in batches. */
+export const RATE_WINDOW_MS = 3 * 60 * 1000;
+/** Less than this much time measured is too little to give a rate. */
+const LEAST_RATE_SPAN_MS = 5_000;
+
+type PacePoint = { at: number; current: number; unit: string | null };
+
+/**
+ * A running job's rate, in what its progress counts each second: over the last few
+ * minutes in which it counted the same thing and the count did not start again. Null
+ * until there is enough to go on.
+ */
+export function paceOf(points: readonly PacePoint[]): number | null {
+  const last = points[points.length - 1];
+  const first = points[0];
+  if (!first || !last || last.at - first.at < LEAST_RATE_SPAN_MS) return null;
+  return Math.max(0, (last.current - first.current) / ((last.at - first.at) / 1000));
+}
 /** The longest a timer may be set for; a job due later than this is looked at again then. */
 const LONGEST_WAIT_MS = 2 ** 31 - 1;
 
@@ -92,12 +126,15 @@ export class JobQueue {
   private readonly handlers = new Map<string, JobHandler<never>>();
   private readonly limits = new Map<string, number>();
   private readonly running = new Map<string, { controller: AbortController; queue: string }>();
+  /** Where each running job's progress stood over the last few minutes, for its rate. In memory only. */
+  private readonly paces = new Map<string, PacePoint[]>();
   /** `onSettled` hooks under way: a job's work is not over until its hook has finished too. */
   private settling = 0;
   /** Set only while a queued job is waiting for a time in the future: its `runAfter`. */
   private timer: { at: number; handle: NodeJS.Timeout } | undefined;
   private started = false;
   private closing = false;
+  private prunedAt = 0;
   /** While set, only this queue starts work; what is queued on the others waits (see `holdFor`). */
   private held: { queue: string; reason: string } | null = null;
   private readonly idleWaiters: Array<() => void> = [];
@@ -115,6 +152,11 @@ export class JobQueue {
     if (this.handlers.has(type)) throw new Error(`Job type "${type}" is already registered.`);
     this.handlers.set(type, handler as JobHandler<never>);
     if (!this.limits.has(handler.queue)) this.limits.set(handler.queue, 1);
+  }
+
+  /** Every job type registered, for the test that each has a name in words. */
+  registeredTypes(): string[] {
+    return [...this.handlers.keys()];
   }
 
   setConcurrency(queue: string, limit: number): void {
@@ -146,11 +188,14 @@ export class JobQueue {
   start(): void {
     if (this.started) return;
     this.started = true;
+    const left = this.db.select({ id: jobs.id }).from(jobs).where(eq(jobs.state, "running")).all();
     this.db
       .update(jobs)
       .set({ state: "queued", updatedAt: Date.now(), progressMessage: "Resuming after restart" })
       .where(eq(jobs.state, "running"))
       .run();
+    for (const { id } of left) this.note(id, "restarted", "queued", null);
+    this.prune();
     this.pump();
   }
 
@@ -182,6 +227,7 @@ export class JobQueue {
     };
     this.db.insert(jobs).values(row).run();
     const job = this.get(row.id)!;
+    this.note(job.id, "state", job.state, null);
     this.announce(job);
     queueMicrotask(() => this.pump());
     return job;
@@ -200,10 +246,11 @@ export class JobQueue {
    * limit: a caller looking for its own kind of job must pass `types`, or a few hundred
    * newer jobs of another kind push the ones it is looking for out of what it is given.
    */
-  list(filter: { states?: JobState[]; types?: string[]; limit?: number } = {}): JobRow[] {
+  list(filter: { states?: JobState[]; types?: string[]; excludeTypes?: string[]; limit?: number } = {}): JobRow[] {
     const wanted = and(
       filter.states?.length ? inArray(jobs.state, filter.states) : undefined,
       filter.types ? inArray(jobs.type, filter.types) : undefined,
+      filter.excludeTypes?.length ? notInArray(jobs.type, filter.excludeTypes) : undefined,
     );
     return this.db
       .select()
@@ -228,9 +275,105 @@ export class JobQueue {
     if (job.state !== "paused" && job.state !== "failed") {
       throw new AppError("conflict", `This job is ${job.state} and cannot be resumed.`);
     }
-    this.update(id, { state: "queued", error: null, errorKind: null, runAfter: 0, attempts: 0 });
+    this.update(id, { state: "queued", error: null, errorKind: null, runAfter: 0, attempts: 0 }, { kind: "resumed" });
     queueMicrotask(() => this.pump());
     return this.require(id);
+  }
+
+  /**
+   * One job with what it recorded as it went (its progress now and then, and the steps
+   * of its history) and, when it is waiting, what it is waiting for.
+   */
+  detail(id: string): Omit<JobDetail, "job"> & { job: JobRow } {
+    const job = this.require(id);
+    const samples = this.db
+      .select({ at: jobSamples.at, current: jobSamples.current, total: jobSamples.total, unit: jobSamples.unit })
+      .from(jobSamples)
+      .where(eq(jobSamples.jobId, id))
+      .orderBy(asc(jobSamples.at), asc(jobSamples.id))
+      .all();
+    const events = this.db
+      .select({ at: jobEvents.at, kind: jobEvents.kind, state: jobEvents.state, message: jobEvents.message })
+      .from(jobEvents)
+      .where(eq(jobEvents.jobId, id))
+      .orderBy(asc(jobEvents.id))
+      .all() as JobDetail["events"];
+    return { job, samples, events, waiting: this.waitingOf(job) };
+  }
+
+  private waitingOf(job: JobRow): JobWaiting {
+    const slots = this.limits.get(job.queue) ?? 1;
+    const none: JobWaiting = { reason: null, slots, running: [], ahead: [], aheadCount: 0, held: null, retryAt: null };
+    if (job.state === "paused") return { ...none, reason: "paused" };
+    if (job.state !== "queued") return none;
+    const ref = (row: JobRow): JobRef => ({ id: row.id, type: row.type, title: row.title, state: row.state });
+    const running = this.db
+      .select()
+      .from(jobs)
+      .where(and(eq(jobs.queue, job.queue), eq(jobs.state, "running")))
+      .orderBy(asc(jobs.startedAt))
+      .all()
+      .map(ref);
+    const now = Date.now();
+    if (job.runAfter > now) return { ...none, reason: "retry", running, retryAt: job.runAfter };
+    const ahead = this.db
+      .select()
+      .from(jobs)
+      .where(
+        and(
+          eq(jobs.queue, job.queue),
+          eq(jobs.state, "queued"),
+          lte(jobs.runAfter, now),
+          lt(jobs.createdAt, job.createdAt),
+          ne(jobs.id, job.id),
+        ),
+      )
+      .orderBy(asc(jobs.createdAt))
+      .all();
+    const held = this.held && this.held.queue !== job.queue ? this.held.reason : null;
+    return {
+      reason: held ? "held" : "turn",
+      slots,
+      running,
+      ahead: ahead.slice(0, AHEAD_NAMED).map(ref),
+      aheadCount: ahead.length,
+      held,
+      retryAt: null,
+    };
+  }
+
+  /** A step in a job's history. At most `MAX_JOB_EVENTS` are kept: the first, and the newest. */
+  private note(jobId: string, kind: JobEventKind, state: JobState, message: string | null): void {
+    this.db.insert(jobEvents).values({ jobId, at: Date.now(), kind, state, message }).run();
+    const count = this.db.select({ n: sql<number>`count(*)` }).from(jobEvents).where(eq(jobEvents.jobId, jobId)).get()?.n ?? 0;
+    if (count <= MAX_JOB_EVENTS) return;
+    this.db.run(
+      sql`DELETE FROM job_events WHERE id IN (SELECT id FROM job_events WHERE job_id = ${jobId} ORDER BY id LIMIT ${count - MAX_JOB_EVENTS} OFFSET 1)`,
+    );
+  }
+
+  /** Drops every other sample of a job, keeping its first and last. Returns how many are left. */
+  private thinSamples(jobId: string): number {
+    this.db.run(
+      sql`DELETE FROM job_samples WHERE id IN (
+        SELECT id FROM (
+          SELECT id, row_number() OVER (ORDER BY at, id) AS n, count(*) OVER () AS c FROM job_samples WHERE job_id = ${jobId}
+        ) WHERE n % 2 = 0 AND n < c
+      )`,
+    );
+    return this.db.select({ n: sql<number>`count(*)` }).from(jobSamples).where(eq(jobSamples.jobId, jobId)).get()?.n ?? 0;
+  }
+
+  /** Removes the samples and history of jobs that ended more than a week ago. At most once an hour; sets no timer. */
+  private prune(now = Date.now()): void {
+    if (now - this.prunedAt < PRUNE_EVERY_MS) return;
+    this.prunedAt = now;
+    const ended = this.db
+      .select({ id: jobs.id })
+      .from(jobs)
+      .where(and(isNotNull(jobs.finishedAt), lt(jobs.finishedAt, now - JOB_HISTORY_KEPT_MS)));
+    this.db.delete(jobSamples).where(inArray(jobSamples.jobId, ended)).run();
+    this.db.delete(jobEvents).where(inArray(jobEvents.jobId, ended)).run();
   }
 
   /** Resolves when nothing is running or queued to run now. Used by tests and shutdown. */
@@ -286,18 +429,57 @@ export class JobQueue {
     return this.require(id);
   }
 
-  private update(id: string, patch: Partial<typeof jobs.$inferInsert>): void {
+  /**
+   * Writes a change to a job and announces it. A change of state is also a step in its
+   * history; `event` names a step that is more than that (a retry, a resume) or gives it words.
+   */
+  private update(
+    id: string,
+    patch: Partial<typeof jobs.$inferInsert>,
+    event?: { kind: JobEventKind; message?: string | null },
+  ): JobRow | undefined {
+    const before = patch.state !== undefined ? this.get(id)?.state : undefined;
     this.db
       .update(jobs)
       .set({ ...patch, updatedAt: Date.now() })
       .where(eq(jobs.id, id))
       .run();
     const job = this.get(id);
-    if (job) this.announce(job);
+    if (job) {
+      if (job.state === "running" && patch.progressCurrent !== undefined) this.recordPace(job);
+      if (patch.state !== undefined && (event || before !== patch.state)) {
+        this.note(id, event?.kind ?? "state", patch.state, event?.message ?? (patch.state === "failed" ? job.error : null));
+      }
+      this.announce(job);
+    }
+    return job;
   }
 
   private announce(job: JobRow): void {
-    this.events.publish({ type: "job.updated", id: job.id, data: toJobDto(job) });
+    this.events.publish({ type: "job.updated", id: job.id, data: this.toDto(job) });
+  }
+
+  /** A job as the API gives it, with its rate while it runs. */
+  toDto(job: JobRow): JobDto {
+    return toJobDto(job, job.state === "running" ? this.rateOf(job.id) : null);
+  }
+
+  /** The job's rate now, in what its progress counts each second; null when not running or not yet known. */
+  rateOf(id: string): number | null {
+    const points = this.paces.get(id);
+    return points ? paceOf(points) : null;
+  }
+
+  private recordPace(job: JobRow): void {
+    const points = this.paces.get(job.id);
+    if (!points) return;
+    const now = Date.now();
+    const last = points[points.length - 1];
+    // Counting something else, or counting again from the start: the rate starts afresh.
+    if (last && (last.unit !== job.progressUnit || job.progressCurrent < last.current)) points.length = 0;
+    if (last && last.at === now) points.pop();
+    points.push({ at: now, current: job.progressCurrent, unit: job.progressUnit });
+    while (points.length > 2 && now - points[0]!.at > RATE_WINDOW_MS) points.shift();
   }
 
   private pump(): void {
@@ -363,29 +545,71 @@ export class JobQueue {
     }
     const controller = new AbortController();
     this.running.set(job.id, { controller, queue: job.queue });
+    this.paces.set(job.id, []);
     const attempt = job.attempts + 1;
-    this.update(job.id, {
-      state: "running",
-      attempts: attempt,
-      startedAt: job.startedAt ?? Date.now(),
-      error: null,
-      errorKind: null,
-    });
+    const started = this.update(
+      job.id,
+      {
+        state: "running",
+        attempts: attempt,
+        startedAt: job.startedAt ?? Date.now(),
+        error: null,
+        errorKind: null,
+      },
+      { kind: "state", message: attempt > 1 ? `Attempt ${attempt} of ${job.maxAttempts}` : null },
+    );
 
     let lastWrite = 0;
     let pending: JobProgress | undefined;
     // Once the handler has returned or thrown, progress it still reports (a worker's last message, say) is
     // dropped: the row is settled, and the database may be closed by then.
     let ended = false;
-    const flush = () => {
-      if (!pending) return;
+
+    // Progress now and then, for the rate over time and the time left: bounded however long the job runs.
+    let samples = this.db.select({ n: sql<number>`count(*)` }).from(jobSamples).where(eq(jobSamples.jobId, job.id)).get()?.n ?? 0;
+    let sampleEvery = SAMPLE_EVERY_MS;
+    let lastSample = 0;
+    let unit = started?.progressUnit ?? null;
+    let stage: string | undefined;
+    const sample = (row: JobRow, force: boolean) => {
+      const now = Date.now();
+      if (!force && now - lastSample < sampleEvery) return;
+      lastSample = now;
+      this.db
+        .insert(jobSamples)
+        .values({ jobId: job.id, at: now, current: row.progressCurrent, total: row.progressTotal, unit: row.progressUnit })
+        .run();
+      samples += 1;
+      if (samples > MAX_JOB_SAMPLES) {
+        samples = this.thinSamples(job.id);
+        sampleEvery *= 2;
+      }
+    };
+    if (started) sample(started, true);
+
+    const flush = (force = false) => {
+      if (!pending) {
+        const row = force ? this.get(job.id) : undefined;
+        if (row) sample(row, true);
+        return;
+      }
       const patch: Partial<typeof jobs.$inferInsert> = {};
       if (pending.current !== undefined) patch.progressCurrent = Math.round(pending.current);
       if (pending.total !== undefined) patch.progressTotal = pending.total === null ? null : Math.round(pending.total);
       if (pending.message !== undefined) patch.progressMessage = pending.message;
+      if (pending.unit !== undefined) patch.progressUnit = pending.unit;
+      const newStage = pending.stage !== undefined && pending.stage !== stage ? pending.stage : undefined;
+      const newUnit = pending.unit !== undefined && pending.unit !== unit;
+      if (pending.unit !== undefined) unit = pending.unit;
       pending = undefined;
       lastWrite = Date.now();
-      this.update(job.id, patch);
+      const row = this.update(job.id, patch);
+      if (!row) return;
+      if (newStage !== undefined) {
+        stage = newStage;
+        this.note(job.id, "stage", row.state, newStage);
+      }
+      sample(row, force || newStage !== undefined || newUnit);
     };
 
     const run: JobRun<never> = {
@@ -403,11 +627,11 @@ export class JobQueue {
     try {
       const result = await handler.run(run);
       ended = true;
-      flush();
+      flush(true);
       this.update(job.id, { state: "succeeded", result: result ?? null, finishedAt: Date.now() });
     } catch (error) {
       ended = true;
-      flush();
+      flush(true);
       const reason = controller.signal.aborted ? (controller.signal.reason as StopReason) : undefined;
       if (reason === "paused") {
         this.update(job.id, { state: "paused", progressMessage: "Paused" });
@@ -435,13 +659,17 @@ export class JobQueue {
         if (!permanent && attempt < job.maxAttempts) {
           const delay = retryDelayMs(attempt);
           this.log.warn({ job: job.id, attempt, delay, err: messageOf(error) }, "job failed, will retry");
-          this.update(job.id, {
-            state: "queued",
-            runAfter: Date.now() + delay,
-            error: said,
-            errorKind: kind,
-            progressMessage: network === "offline" ? "Waiting for a connection" : "Waiting to retry",
-          });
+          this.update(
+            job.id,
+            {
+              state: "queued",
+              runAfter: Date.now() + delay,
+              error: said,
+              errorKind: kind,
+              progressMessage: network === "offline" ? "Waiting for a connection" : "Waiting to retry",
+            },
+            { kind: "retry", message: said },
+          );
         } else {
           this.log.error({ job: job.id, err: error }, "job failed");
           this.update(job.id, { state: "failed", error: said, errorKind: kind, finishedAt: Date.now() });
@@ -449,6 +677,7 @@ export class JobQueue {
       }
     } finally {
       this.running.delete(job.id);
+      this.paces.delete(job.id);
       const final = this.get(job.id);
       if (final && ["succeeded", "failed", "cancelled"].includes(final.state)) await this.settle(final);
       this.pump();
@@ -458,6 +687,7 @@ export class JobQueue {
   }
 
   private async settle(job: JobRow): Promise<void> {
+    this.prune();
     this.settling += 1;
     try {
       await this.handlers.get(job.type)?.onSettled?.(job);
@@ -470,7 +700,7 @@ export class JobQueue {
   }
 }
 
-export function toJobDto(job: JobRow) {
+export function toJobDto(job: JobRow, ratePerSecond: number | null = null) {
   return {
     id: job.id,
     type: job.type,
@@ -482,6 +712,8 @@ export function toJobDto(job: JobRow) {
       current: job.progressCurrent,
       total: job.progressTotal,
       message: job.progressMessage,
+      unit: job.progressUnit,
+      ratePerSecond,
     },
     error: job.error,
     errorKind: job.errorKind,
@@ -495,4 +727,9 @@ export function toJobDto(job: JobRow) {
   };
 }
 
-export type JobDto = ReturnType<typeof toJobDto>;
+export interface JobDto extends ReturnType<typeof toJobDto> {}
+
+/** One job's details as the API gives them. */
+export function toJobDetail(queue: JobQueue, detail: ReturnType<JobQueue["detail"]>): JobDetail {
+  return { ...detail, job: queue.toDto(detail.job) };
+}

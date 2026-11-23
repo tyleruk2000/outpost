@@ -58,7 +58,7 @@ first with `node scripts/build-app.mjs`.
    collections and maps.
 3. **Check and write.** It shows what will be written, the free space and any warnings.
 
-Writing runs as a job under **Downloads**; you can close the window. An interrupted
+Writing runs as a task under **Downloads and tasks**; you can close the window. An interrupted
 write continues where it stopped; `outpost-portable.json` is written last. Eject the
 drive before unplugging it.
 

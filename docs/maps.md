@@ -80,7 +80,7 @@ needs the internet.
    says why. Map and terrain must both fit.
 5. **Check the size** gives the exact size before anything is fetched. Then **Download**.
 
-The download shows under **Downloads**, can be paused, and survives a restart.
+The download shows under **Downloads and tasks**, can be paused, and survives a restart.
 
 Limits: a box cannot cross the 180° meridian (make two), the map ends at about 85° north and
 south, and a box over about 20 million tiles or 60 GB is refused. Magnifying past the zoom

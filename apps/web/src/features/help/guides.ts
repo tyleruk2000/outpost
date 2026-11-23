@@ -91,6 +91,14 @@ export const GUIDES: Guide[] = [
   },
   // Looking after it
   {
+    slug: "downloads-and-tasks",
+    file: "downloads-and-tasks.md",
+    group: "looking-after",
+    about: "What is downloading and what Outpost is working on, how fast, about how long is left, and what happened.",
+    keywords: "downloads tasks jobs background work progress queue paused failed retry",
+    opens: { to: "/downloads", label: "Open Downloads and tasks" },
+  },
+  {
     slug: "storage",
     file: "storage.md",
     group: "looking-after",

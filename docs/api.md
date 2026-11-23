@@ -143,8 +143,9 @@ Types: `system.ts`, `common.ts`, `device.ts`.
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/jobs` | `{ jobs }`, newest first. `active=true`; `limit` (50, at most 200). |
-| `GET /api/jobs/:id` | `{ job }`; `job.result` once finished. |
+| `GET /api/jobs` | `{ jobs }`, newest first. `active=true`, or `states` (comma list); `types`, `notTypes` (comma lists); `limit` (50, at most 200). |
+| `GET /api/jobs/:id` | `{ job }`; `job.result` once finished. `job.progress.unit` says what it counts; `ratePerSecond` while it runs. |
+| `GET /api/jobs/:id/detail` | `JobDetail` (`tasks.ts`): the job, its `samples` (at most 200, kept a week after it ends), its `events` (at most 100) and `waiting` (why it has not started). |
 | `POST /api/jobs/:id/pause`, `/resume`, `/cancel` | Pause (kept), queue again, stop for good. |
 
 ### Settings
