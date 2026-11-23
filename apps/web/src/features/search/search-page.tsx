@@ -1,4 +1,4 @@
-import type { SearchMode, SearchResponse, SearchResult } from "@outpost/shared";
+import type { SearchMode, SearchResponse, SearchResult, SearchSuggestion } from "@outpost/shared";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ChevronRight, LoaderCircle, Search as SearchIcon, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -113,6 +113,55 @@ function relaxedSentence(everyWord: number): string {
   return `Only ${plural(everyWord, "result")} ${everyWord === 1 ? "has" : "have"} every word; results with some of them follow.`;
 }
 
+/** "Did you mean purify water?", the suggested words in bold, as a link that searches for it. */
+function DidYouMean({ suggestion, to }: { suggestion: SearchSuggestion; to: string }) {
+  const suggested = new Set(suggestion.words.map((word) => word.toLowerCase()));
+  return (
+    <p className="mt-2 text-body text-ink">
+      Did you mean{" "}
+      <Link to={to} className="text-primary underline underline-offset-2">
+        {suggestion.query.split(/([\p{L}\p{N}]+)/u).map((part, index) =>
+          suggested.has(part.toLowerCase()) ? (
+            // biome-ignore lint/suspicious/noArrayIndexKey: the parts of one fixed string, in order
+            <strong key={index} className="font-semibold">
+              {part}
+            </strong>
+          ) : (
+            part
+          ),
+        )}
+      </Link>
+      ?
+    </p>
+  );
+}
+
+/**
+ * What else was searched besides the words typed ("Also searched: tire"), with a way to
+ * search for only what was typed; or, when that is what was asked, a way back.
+ */
+function AlsoSearched({ also, exact, onExact }: { also: string[]; exact: boolean; onExact: (exact: boolean) => void }) {
+  if (exact) {
+    return (
+      <p className="mt-1 text-small text-ink-muted">
+        Searched only for what you typed.{" "}
+        <button type="button" onClick={() => onExact(false)} className="text-primary underline underline-offset-2">
+          Search other spellings and words too
+        </button>
+      </p>
+    );
+  }
+  if (also.length === 0) return null;
+  return (
+    <p className="mt-1 text-small text-ink-muted">
+      Also searched: {also.join(", ")}.{" "}
+      <button type="button" onClick={() => onExact(true)} className="text-primary underline underline-offset-2">
+        Search only for what you typed
+      </button>
+    </p>
+  );
+}
+
 /** Places on the map and repeaters whose names match: apart from the results, so that a town called Waterfields does not bury what is about water. */
 function PlacesStrip({ places }: { places: SearchResult[] }) {
   return (
@@ -215,6 +264,8 @@ export default function SearchPage() {
   const kind = params.get("kind") ?? "";
   const mode = (params.get("mode") as SearchMode | null) ?? undefined;
   const page = Math.max(1, Number(params.get("page")) || 1);
+  /** Only what was typed: no other spellings or ways of saying it. */
+  const exact = params.get("exact") === "1";
   const [draft, setDraft] = useState(q);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -230,6 +281,8 @@ export default function SearchPage() {
           if (draft) next.set("q", draft);
           else next.delete("q");
           next.delete("page");
+          // Searching only for what was typed belongs to the words it was asked for.
+          next.delete("exact");
           return next;
         },
         { replace: true },
@@ -239,7 +292,7 @@ export default function SearchPage() {
   }, [draft, q, setParams]);
 
   const search = useQuery({
-    queryKey: ["search", "page", q, kind, mode ?? "", page],
+    queryKey: ["search", "page", q, kind, mode ?? "", page, exact],
     queryFn: ({ signal }) =>
       api.get<SearchResponse>(
         "/api/search",
@@ -251,13 +304,14 @@ export default function SearchPage() {
           limit: PAGE_SIZE,
           offset: kind === "reference" ? 0 : (page - 1) * PAGE_SIZE,
           reference: "later",
+          exact: exact ? "1" : undefined,
         },
         signal,
       ),
     enabled: q.trim().length > 0,
     placeholderData: keepPreviousData,
   });
-  const reference = useReferenceSearch(q, search.data?.referenceToCome === true);
+  const reference = useReferenceSearch(q, search.data?.referenceToCome === true, exact);
 
   const setParam = (key: string, value: string | undefined) =>
     setParams((current) => {
@@ -269,6 +323,14 @@ export default function SearchPage() {
     });
 
   const data = search.data;
+  /** The address of a search for `query`, with the same filters. */
+  const searchFor = (query: string) => {
+    const next = new URLSearchParams(params);
+    next.set("q", query);
+    next.delete("page");
+    next.delete("exact");
+    return `/search?${next}`;
+  };
   const facets = Object.entries(data?.facets ?? {})
     .filter(([key]) => key !== "reference")
     // Most first, and what would have to be downloaded after every kind that is on this device.
@@ -463,6 +525,8 @@ export default function SearchPage() {
           ) : data && data.results.length === 0 && data.places.length === 0 && !(referenceBelow && referenceHasSomething) ? (
             <div className="mt-8 max-w-[52ch]">
               <h2 className="font-title text-heading">Nothing matches “{data.query}”</h2>
+              {data.didYouMean ? <DidYouMean suggestion={data.didYouMean} to={searchFor(data.didYouMean.query)} /> : null}
+              <AlsoSearched also={data.alsoSearched} exact={exact} onExact={(only) => setParam("exact", only ? "1" : undefined)} />
               <p className="mt-2 text-ink-muted">
                 Check the spelling, try fewer or different words, or clear the filter. If you expected a document here, its text may still
                 be processing: see{" "}
@@ -497,6 +561,10 @@ export default function SearchPage() {
                     Left out of the search, as words that only shape a question: {data.ignored.map((word) => `“${word}”`).join(", ")}.
                   </p>
                 ) : null}
+                {own.length > 0 ? (
+                  <AlsoSearched also={data.alsoSearched} exact={exact} onExact={(only) => setParam("exact", only ? "1" : undefined)} />
+                ) : null}
+                {data.didYouMean ? <DidYouMean suggestion={data.didYouMean} to={searchFor(data.didYouMean.query)} /> : null}
                 {data.placesFirst && data.places.length > 0 ? <PlacesStrip places={data.places} /> : null}
                 {referenceBelow ? <ReferenceLine reference={reference} onShow={() => setParam("kind", "reference")} /> : null}
                 {data.warnings.map((warning) => (

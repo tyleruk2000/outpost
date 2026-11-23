@@ -53,7 +53,8 @@ Up to five are given.
 | `water filter` | Both words must appear. |
 | `"chlorine dioxide"` | The exact phrase. |
 | `water -pool` | "water" but not "pool". `-"swimming pool"` excludes a phrase. |
-| `clov` | The last word matches as a beginning while you type ("clove"). A space or closing quote ends that. |
+| `clov` | While you type, the last word also matches as a beginning ("clove"), but only when the word itself is in fewer than five items, and those come after. A space or closing quote ends that. |
+| `"tyre"` | Only this word, not other spellings or names for it. |
 
 English word forms match ("boil" finds "boiling"); accents, capitals and punctuation are
 ignored; `AND` and `OR` are just words. Up to 500 characters.
@@ -63,6 +64,36 @@ the like) are left out, and the results name them: "How to change car battery" l
 "change", "car" and "battery". "Not", "no", "without" and "off" are kept, since they change
 the meaning. Inside quotes every word counts, and a query of nothing but small words keeps
 them all.
+
+### Other spellings and names
+
+A word is also searched as it is spelt or said elsewhere, and the results say so: "Also
+searched: tire". **Search only for what you typed** turns this off for that search; a word in
+quotes is never widened. About 250 entries:
+
+- British and American spellings: tyre and tire, aluminium, diarrhoea, colour, centre,
+  sterilise (with their endings: "sterilising" also finds "sterilizing").
+- British and American words: petrol and gasoline, torch and flashlight, nappy and diaper,
+  paracetamol and acetaminophen, mobile phone and cell phone, 999 and 911.
+- Names for the same emergency: power cut, power outage and blackout; burn and scald;
+  CPR and resuscitation; jump start and boost.
+- Some only beside other words: "change" also finds "replace" and "fit" beside a part
+  ("change car battery"), and "treat" finds "purify" and "disinfect" beside "water".
+
+A passage with any one of them counts as holding the word; the word as typed counts a
+little more than another way of saying it. Phrases such as "power cut" are found with
+their words near each other in any order ("the power was cut"). Reference collections are
+asked a second time with the other spelling ("tire pressure"), never more.
+
+### Did you mean
+
+When a word you typed is in no passage (or, when nothing has every word, in only one or
+two), Outpost looks for the nearest word your library does hold: at most two letters
+added, dropped, changed or swapped (one, for a word of four letters or fewer), the same
+first letter preferred, then the commoner word. It is offered as a link: "Did you mean
+**purify** water?" The search itself stays as you typed it. Small words are never offered,
+and a word must be in at least two passages. The words come from your own library, as it
+is now, not from reference collections.
 
 ### When few items have every word
 
@@ -100,7 +131,7 @@ your own and an article in a reference collection can be put in one order:
 
 | Part | Share | What it asks |
 | --- | --- | --- |
-| Coverage | 0.50 | How much of the query it holds, each word weighed by how rare it is in your library. |
+| Coverage | 0.50 | How much of the query it holds, each word weighed by how rare it is in your library. Another form of a word ("boiling" for "boil") counts 0.92 of it, another name for it 0.85, a longer word it begins 0.6. |
 | Title | 0.20 | How much of the query is in the title (a tag counts three quarters, a heading 0.6). |
 | Closeness | 0.15 | How near together the words are, small words in between not counted. |
 | Side by side | 0.05 | All the words next to each other, in the order typed. |
@@ -136,7 +167,8 @@ Articles in ZIM archives are searched by kiwix-serve, not Outpost's index. **You
 results do not wait for them**: they appear at once, and "Still searching reference
 collections…" shows while the archives are asked, three at a time.
 
-- kiwix-serve is asked for the words that matter, without the small words, and puts its
+- kiwix-serve is asked for the words that matter, without the small words (and once more
+  for them [said another way](#other-spellings-and-names), when they can be), and puts its
   answers in an order of its own. Outpost scores each article again by the
   [same rule](#ranking), from its title and snippet, and drops one that shows less than
   half of what the query is about. A collection's articles come best first.

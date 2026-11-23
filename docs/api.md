@@ -257,14 +257,16 @@ Types: `search.ts`, `semantic.ts`. See [search.md](search.md).
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/search` | `SearchResponse`. `q` (≤500 characters), `kinds`, `tag`, `mode` (`keyword`, `semantic`, `hybrid`), `limit` (1 to 100, 20), `offset`, `reference` (`include` or `later`). |
-| `GET /api/search/reference` | `q`. NDJSON (`ReferenceSearchEvent`): `start` `{ collections }`, one `collection` line per archive as it answers, then `end` `{ searched, missing, message, tookMs }`. Close the connection to stop. |
+| `GET /api/search` | `SearchResponse`. `q` (≤500 characters), `kinds`, `tag`, `mode` (`keyword`, `semantic`, `hybrid`), `limit` (1 to 100, 20), `offset`, `reference` (`include` or `later`), `exact=1` (no other spellings or names). |
+| `GET /api/search/reference` | `q`, `exact=1`. NDJSON (`ReferenceSearchEvent`): `start` `{ collections }`, one `collection` line per archive as it answers, then `end` `{ searched, missing, message, tookMs }`. Close the connection to stop. |
 | `GET /api/search/stats` | `{ entities, chunks }`. |
 
 `total` counts every match of the kinds asked for (at least that many when search by
 meaning is in use); `relaxed` means fewer than five items held every word and items
 holding most of them follow (`everyWord` counts those that hold all); `ignored` lists the
-small words left out; `facets` are per kind; `warnings` name sources that could not
+small words left out; `alsoSearched` the other spellings and names searched as well;
+`didYouMean` (`{ query, words }` or null) a near word for one in no passage, offered
+only while fewer than five results are found; `facets` are per kind; `warnings` name sources that could not
 answer. Each result's `score` is 0 to 1 on one scale for every source, and `why` says in
 a few words why it is there ([search.md](search.md#ranking)). With `reference=include`
 the search waits up to 10 seconds for archives and counts their articles in `total`; with

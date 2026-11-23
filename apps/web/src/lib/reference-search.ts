@@ -51,10 +51,12 @@ function after(state: ReferenceSearch, event: ReferenceSearchEvent): ReferenceSe
 
 /**
  * Searches reference collections for `q` while `enabled`. Give it text that has
- * already settled (the callers wait a moment after the last keystroke).
+ * already settled (the callers wait a moment after the last keystroke). `exact` asks
+ * for only what was typed, without other spellings or ways of saying it.
  */
-export function useReferenceSearch(q: string, enabled: boolean): ReferenceSearch {
-  const wanted = enabled ? q.trim() : "";
+export function useReferenceSearch(q: string, enabled: boolean, exact = false): ReferenceSearch {
+  // The words and whether to widen them, as one key: either changing is a new search.
+  const wanted = enabled && q.trim() ? `${exact ? "1" : "0"}${q.trim()}` : "";
   const [state, setState] = useState<{ q: string; search: ReferenceSearch }>({ q: "", search: NOTHING });
 
   useEffect(() => {
@@ -69,7 +71,7 @@ export function useReferenceSearch(q: string, enabled: boolean): ReferenceSearch
     api
       .lines<ReferenceSearchEvent>(
         "/api/search/reference",
-        { q: wanted },
+        { q: wanted.slice(1), exact: wanted.startsWith("1") ? "1" : undefined },
         (event) => apply((search) => after(search, event)),
         controller.signal,
       )

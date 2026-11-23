@@ -269,6 +269,37 @@ export function library() {
       "How do I add a page? What is a tag? Where are my files? How do I store a document? What can I do when the power is off? How to find water on the map.",
     ),
     note("rice-pudding", "Rice pudding", "Rice pudding: short-grain rice, milk and sugar, baked slowly for two hours."),
+    // Said another way: American spellings and words, found only through synonyms.ts.
+    note(
+      "tire-care",
+      "Tire care",
+      "Check tire pressure once a month when the tires are cold, and inflate them to the pressure on the door placard.",
+    ),
+    note(
+      "tired-driving",
+      "Driving when tired",
+      "Tired drivers react slowly. If you feel tired, stop and rest; pressure to keep going is how crashes happen.",
+    ),
+    note(
+      "gasoline-storage",
+      "Gasoline storage",
+      "Store gasoline only in approved red cans, away from the house, and add stabilizer if it will be kept more than a month.",
+    ),
+    note(
+      "diarrhea",
+      "Diarrhea in children",
+      "With diarrhea, give small sips of oral rehydration solution often. See a doctor if there is blood, or no wet diaper for six hours.",
+    ),
+    note(
+      "power-outage",
+      "Power outage plan",
+      "In a power outage, keep the fridge and freezer closed, switch off appliances, and check on neighbors who rely on medical equipment.",
+    ),
+    note(
+      "flashlight",
+      "Flashlights",
+      "Keep a flashlight in every room with spare batteries. Lithium AA batteries last longest and work in the cold.",
+    ),
     longBook("water-systems", "Water systems for the home", 45, "Header tanks and pipes, section"),
     longBook("water-storage", "Water storage containers", 45, "Containers and their care, section"),
     longBook("rainwater", "Rainwater harvesting", 45, "Gutters, butts and first-flush diverters, section"),

@@ -29,7 +29,7 @@ import { type ArchiveAdding, registerArchiveAdding } from "./add-files.ts";
 import { type DocumentLists, registerDocumentLists } from "./document-lists.ts";
 import { type ArchiveFilesService, registerArchiveFiles } from "./files.ts";
 import { bookNameOf, decodeEntities, type LibraryBook, readZimUuid, writeLibrary } from "./library.ts";
-import { createSearchQueue } from "./search-queue.ts";
+import { type Asked, createSearchQueue } from "./search-queue.ts";
 import { createKiwixConnection, type KiwixConnection } from "./server.ts";
 
 interface KiwixMeta {
@@ -468,6 +468,26 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
     return { total: Number(channel["opensearch:totalResults"]) || hits.length, hits };
   }
 
+  /** Two answers of one archive as one: found if either was, their articles taken in turn without repeats. */
+  function mergeAnswers(answers: Array<Asked<BookAnswer>>, each: number): Asked<BookAnswer> {
+    const found = answers.flatMap((answer) => (answer.status === "found" ? [answer.value] : []));
+    if (found.length === 0) return answers[0]!;
+    if (found.length === 1) return { status: "found", value: found[0]! };
+    const seen = new Set<string>();
+    const hits: Hit[] = [];
+    const lists = found.map((value) => value.hits);
+    for (let rank = 0; hits.length < each && lists.some((list) => rank < list.length); rank += 1) {
+      for (const list of lists) {
+        const hit = list[rank];
+        if (hit && !seen.has(hit.path) && hits.length < each) {
+          seen.add(hit.path);
+          hits.push(hit);
+        }
+      }
+    }
+    return { status: "found", value: { total: Math.max(...found.map((value) => value.total)), hits } };
+  }
+
   const readerUrl = (collectionId: string, articlePath: string) =>
     `/library/read/${collectionId}/${articlePath.split("/").map(encodeURIComponent).join("/")}`;
 
@@ -492,7 +512,7 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
       if (outcome.message) throw new Error(outcome.message);
       return results;
     },
-    async searchInParts({ q, signal, budgetMs, onStart, onPart }) {
+    async searchInParts({ q, alternate, signal, budgetMs, onStart, onPart }) {
       if (!(await connection.isUp())) {
         onStart?.(0);
         return {
@@ -514,12 +534,16 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
       let searched = 0;
       await Promise.all(
         books.map(async (row) => {
-          const answer = await queue.ask(
-            `${zimOf(row)!.uuid}\n${each}\n${q}`,
-            (running) => searchBook(row, q, 0, each, running, true),
-            waiting,
+          // The words as typed and, when they can be said another way ("tire" for "tyre"), once more that way:
+          // never more than two requests to an archive.
+          const patterns = alternate && alternate !== q ? [q, alternate] : [q];
+          const answers = await Promise.all(
+            patterns.map((pattern) =>
+              queue.ask(`${zimOf(row)!.uuid}\n${each}\n${pattern}`, (running) => searchBook(row, pattern, 0, each, running, true), waiting),
+            ),
           );
           if (signal?.aborted) return;
+          const answer = mergeAnswers(answers, each);
           // A book that is a list of documents has no articles to search; its documents are found by their titles.
           const listed = (lists?.hits(row, q, each) ?? []).map((hit) => ({
             entityId: hit.entityId,

@@ -32,6 +32,13 @@ export interface SearchResult {
   sources: string[];
 }
 
+export interface SearchSuggestion {
+  /** The whole query with the suggested words in place of the typed ones. */
+  query: string;
+  /** The words suggested, to show in bold. */
+  words: string[];
+}
+
 export type SearchMode = "keyword" | "semantic" | "hybrid";
 
 /**
@@ -78,6 +85,13 @@ export interface SearchResponse {
   everyWord: number;
   /** Words typed that only shape the question ("how", "to"), left out of matching and ranking. */
   ignored: string[];
+  /**
+   * Other spellings and ways of saying the words typed that were searched as well
+   * ("tire" for "tyre", "power outage" for "power cut"). Empty when asked with `exact=1`.
+   */
+  alsoSearched: string[];
+  /** A word typed is in no passage, or almost none, while a near word is common: offered, never searched instead. */
+  didYouMean: SearchSuggestion | null;
   total: number;
   results: SearchResult[];
   /** Places and repeaters whose names match: shown in a strip of their own, not among the results. */

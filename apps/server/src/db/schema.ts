@@ -498,7 +498,8 @@ export const searchEntities = sqliteTable(
 );
 
 /**
- * Passages. Keyword search indexes them through `chunks_fts`; semantic search attaches
+ * Passages. Keyword search indexes them through `chunks_fts` ("Did you mean" reads their words
+ * as written from `chunks_words`); semantic search attaches
  * vectors through `embeddings`. A chunk keeps everything needed to cite its source.
  */
 export const chunks = sqliteTable(

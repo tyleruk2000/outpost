@@ -223,6 +223,19 @@ export function CommandPalette({
                         ))}
                       </Command.Group>
                     ) : null
+                  ) : searching && results.isSuccess && results.data?.didYouMean ? (
+                    <Command.Group heading={`Nothing matches “${debounced}”`} className={groupClass}>
+                      <Command.Item
+                        value={`__suggest ${results.data.didYouMean.query}`}
+                        onSelect={() => setQuery(results.data!.didYouMean!.query)}
+                        className={itemClass}
+                      >
+                        <Search aria-hidden />
+                        <span className="flex-1 truncate">
+                          Did you mean <span className="font-semibold">{results.data.didYouMean.query}</span>?
+                        </span>
+                      </Command.Item>
+                    </Command.Group>
                   ) : searching && results.isSuccess && !stillSearching && referenceShown.length === 0 ? (
                     <p className="px-3 py-4 text-small text-ink-muted">
                       Nothing in your library matches “{debounced}”. Check the spelling, or try fewer words.

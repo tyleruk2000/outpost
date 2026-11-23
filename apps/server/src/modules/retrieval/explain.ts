@@ -27,7 +27,7 @@ import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { notFound } from "../../core/errors.ts";
 import { reciprocalRankFusion } from "../search/fusion.ts";
-import { HIT_CLOSE, HIT_OPEN, parseQuery, toFtsQuery, toSegments } from "../search/query.ts";
+import { expandQuery, groupExpression, HIT_CLOSE, HIT_OPEN, parseQuery, toFtsQuery, toSegments } from "../search/query.ts";
 import { reasonFor, scoreFields, scoringTerms } from "../search/score.ts";
 import { demoProvider, demoTerms, type EmbeddingProvider } from "../semantic/providers.ts";
 import { contextAssembler } from "./index.ts";
@@ -266,10 +266,11 @@ export function registerExplain(app: FastifyInstance, ctx: AppContext): void {
     // 1. Words
     // The index counts every row it holds, including those with a title and no text.
     const indexRows = (sqlite.prepare("SELECT count(*) AS n FROM chunks_fts").get() as { n: number }).n;
-    const parsed = parseQuery(query);
+    // As search reads it: the words that matter, and other ways of saying them (search/synonyms.ts).
+    const { parsed, also } = expandQuery(parseQuery(query));
     let expression = toFtsQuery(parsed, "all");
     const terms = parsed.required.map((term, index) => {
-      const single = toFtsQuery({ required: [term], excluded: [], prefixLast: parsed.prefixLast && index === parsed.required.length - 1 });
+      const single = groupExpression(parsed, index, parsed.prefixLast && index === parsed.required.length - 1);
       const containing = single
         ? (sqlite.prepare("SELECT count(*) AS n FROM chunks_fts WHERE chunks_fts MATCH ?").get(single) as { n: number }).n
         : 0;
@@ -480,6 +481,7 @@ export function registerExplain(app: FastifyInstance, ctx: AppContext): void {
         ignored: parsed.ignored ?? [],
         excluded: parsed.excluded,
         prefixLast: parsed.prefixLast,
+        alsoSearched: also,
         expression,
         relaxed,
         terms,

@@ -116,6 +116,8 @@ export interface ExplainResponse {
     excluded: string[];
     /** The last word is treated as the start of a word, because it may still be being typed. */
     prefixLast: boolean;
+    /** Other spellings and ways of saying the words that were searched as well ("tire" for "tyre"). */
+    alsoSearched: string[];
     /** The expression handed to the full-text index. */
     expression: string | null;
     /** No passage had every word, so the search fell back to any word. */
