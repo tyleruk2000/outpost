@@ -243,4 +243,28 @@ describe("the screen", () => {
     }
     expect(screen.getAllByText(/Listening only\./).length).toBeGreaterThan(0);
   });
+
+  it("names an empty list in its own words, APRS in capitals", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = new URL(String(input), "http://outpost.test");
+        const body =
+          url.pathname === "/api/heard/receivers"
+            ? receivers
+            : url.pathname === "/api/heard/stations"
+              ? { stations: [] }
+              : url.pathname === "/api/heard/reports"
+                ? { reports: [], limited: false }
+                : url.pathname === "/api/heard/range-tests"
+                  ? { tests: [] }
+                  : url.pathname === "/api/settings"
+                    ? { settings: {} }
+                    : {};
+        return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+      }),
+    );
+    wrap(<HeardPage />);
+    expect(await screen.findByRole("heading", { level: 3, name: "No APRS stations heard yet" })).toBeInTheDocument();
+  });
 });

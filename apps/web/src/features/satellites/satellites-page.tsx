@@ -36,6 +36,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Checkbox, Segmented, Select, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/misc";
+import { Table, TableHead, Td, Th, Tr } from "@/components/ui/table";
 import { HomeAsOf, NoHome, useHome } from "@/features/households/home";
 import { PdfActions } from "@/features/library/made/pdf-actions";
 import { useMarkers } from "@/features/maps/data";
@@ -43,7 +44,6 @@ import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
 import type { PlaceField } from "@/features/propagation/data";
 import { PlaceInput } from "@/features/propagation/place-field";
 import { LicenceLine, useRadioLicence } from "@/features/radio/licence";
-import { ScrollBox } from "@/features/radio/scroll-box";
 import { useClockStyle } from "@/lib/clock";
 import { usePageVisible } from "@/lib/page-visible";
 import { deviceRegion, likelyPaperFor } from "@/lib/region";
@@ -403,23 +403,22 @@ function Transmitters({
       </p>
     );
   return (
-    <ScrollBox label="Transmitters" className="overflow-x-auto">
-      <table className="w-full min-w-[34rem] text-left text-small">
-        <caption className="sr-only">Transmitters, with the frequencies corrected for Doppler now</caption>
-        <thead className="text-ink-muted">
-          <tr className="border-b border-border">
-            <th className="py-1.5 pr-3 font-medium">What</th>
-            <th className="py-1.5 pr-3 font-medium">Down: published, and to listen on now</th>
-            <th className="py-1.5 font-medium">Up: published{licensed ? ", and to send on now" : ""}</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
+    <div>
+      <Table label="Transmitters, with the frequencies corrected for Doppler now" stack>
+        <TableHead>
+          <Tr>
+            <Th>What</Th>
+            <Th numeric>Down: published, and to listen on now</Th>
+            <Th numeric>Up: published{licensed ? ", and to send on now" : ""}</Th>
+          </Tr>
+        </TableHead>
+        <tbody>
           {transmitters.map((transmitter) => {
             const tuned = dopplerTuning(state.rangeRateKmS, transmitter.downlinkLowHz, transmitter.uplinkLowHz);
             const up = placeKnown && state.elevationDeg > 0;
             return (
-              <tr key={transmitter.id}>
-                <td className="py-1.5 pr-3 text-ink">
+              <Tr key={transmitter.id} className="last:border-b-0">
+                <Td label="What">
                   {transmitter.description}
                   <span className="block text-ink-muted">
                     <Joined
@@ -431,10 +430,10 @@ function Transmitters({
                       ]}
                     />
                   </span>
-                </td>
-                <td className="py-1.5 pr-3 tabular text-ink">
+                </Td>
+                <Td label="Down" numeric>
                   {transmitter.downlinkLowHz ? (
-                    <>
+                    <span>
                       {frequencyWords(transmitter.downlinkLowHz)}
                       {transmitter.downlinkHighHz && transmitter.downlinkHighHz !== transmitter.downlinkLowHz
                         ? ` to ${frequencyWords(transmitter.downlinkHighHz)}`
@@ -444,14 +443,14 @@ function Transmitters({
                           now {frequencyWords(tuned.downlinkHz)} ({shiftWords(tuned.downlinkHz - transmitter.downlinkLowHz)})
                         </span>
                       ) : null}
-                    </>
+                    </span>
                   ) : (
                     "none"
                   )}
-                </td>
-                <td className="py-1.5 tabular text-ink">
+                </Td>
+                <Td label="Up" numeric>
                   {transmitter.uplinkLowHz ? (
-                    <>
+                    <span>
                       {frequencyWords(transmitter.uplinkLowHz)}
                       {transmitter.uplinkHighHz && transmitter.uplinkHighHz !== transmitter.uplinkLowHz
                         ? ` to ${frequencyWords(transmitter.uplinkHighHz)}`
@@ -461,16 +460,16 @@ function Transmitters({
                           now {frequencyWords(tuned.uplinkHz)} ({shiftWords(tuned.uplinkHz - transmitter.uplinkLowHz)})
                         </span>
                       ) : null}
-                    </>
+                    </span>
                   ) : (
                     "none"
                   )}
-                </td>
-              </tr>
+                </Td>
+              </Tr>
             );
           })}
         </tbody>
-      </table>
+      </Table>
       <p className="mt-2 text-small text-ink-muted">
         {placeKnown
           ? "The corrected frequencies are shown while the satellite is above the horizon here. A satellite coming nearer is heard higher than published."
@@ -478,7 +477,7 @@ function Transmitters({
         {licensed ? "" : "Sending to a satellite needs an amateur licence: uplinks are listed for reference."} From SatNOGS DB (CC BY-SA
         4.0); a transmitter listed as in use may still be off.
       </p>
-    </ScrollBox>
+    </div>
   );
 }
 
@@ -498,38 +497,43 @@ function DopplerThroughPass({
   const rows = path.filter((_, index) => index % step === 0 || index === path.length - 1);
   return (
     <Disclosure summary={`What to tune to through the pass: ${transmitter.description}`} className="mt-4">
-      <ScrollBox label="Look angles and frequencies through the pass" className="overflow-x-auto">
-        <table className="w-full min-w-[28rem] text-left text-small">
-          <caption className="sr-only">Look angles and Doppler-corrected frequencies through the pass</caption>
-          <thead className="text-ink-muted">
-            <tr className="border-b border-border">
-              <th className="py-1 pr-3 font-medium">UTC</th>
-              <th className="py-1 pr-3 font-medium">Bearing</th>
-              <th className="py-1 pr-3 font-medium">Elevation</th>
-              <th className="py-1 pr-3 font-medium">Listen on</th>
-              {licensed && transmitter.uplinkLowHz ? <th className="py-1 font-medium">Send on</th> : null}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border tabular">
-            {rows.map((point) => {
-              const tuned = dopplerTuning(point.rangeRateKmS, transmitter.downlinkLowHz, transmitter.uplinkLowHz);
-              return (
-                <tr key={point.at.getTime()}>
-                  <td className="py-1 pr-3">{utcTime(point.at)}</td>
-                  <td className="py-1 pr-3">
-                    {Math.round(point.azimuthDeg)}° {compassPoint(point.azimuthDeg)}
-                  </td>
-                  <td className="py-1 pr-3">{Math.max(0, Math.round(point.elevationDeg))}°</td>
-                  <td className="py-1 pr-3">{tuned.downlinkHz ? frequencyWords(tuned.downlinkHz) : ""}</td>
-                  {licensed && transmitter.uplinkLowHz ? (
-                    <td className="py-1">{tuned.uplinkHz ? frequencyWords(tuned.uplinkHz) : ""}</td>
-                  ) : null}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </ScrollBox>
+      <Table label="Look angles and frequencies through the pass">
+        <TableHead>
+          <Tr>
+            <Th numeric>UTC</Th>
+            <Th numeric>Bearing</Th>
+            <Th numeric>Elevation</Th>
+            <Th numeric>Listen on</Th>
+            {licensed && transmitter.uplinkLowHz ? <Th numeric>Send on</Th> : null}
+          </Tr>
+        </TableHead>
+        <tbody>
+          {rows.map((point) => {
+            const tuned = dopplerTuning(point.rangeRateKmS, transmitter.downlinkLowHz, transmitter.uplinkLowHz);
+            return (
+              <Tr key={point.at.getTime()}>
+                <Td numeric className="py-1.5">
+                  {utcTime(point.at)}
+                </Td>
+                <Td numeric className="py-1.5 whitespace-nowrap">
+                  {Math.round(point.azimuthDeg)}° {compassPoint(point.azimuthDeg)}
+                </Td>
+                <Td numeric className="py-1.5">
+                  {Math.max(0, Math.round(point.elevationDeg))}°
+                </Td>
+                <Td numeric className="py-1.5 whitespace-nowrap">
+                  {tuned.downlinkHz ? frequencyWords(tuned.downlinkHz) : ""}
+                </Td>
+                {licensed && transmitter.uplinkLowHz ? (
+                  <Td numeric className="py-1.5 whitespace-nowrap">
+                    {tuned.uplinkHz ? frequencyWords(tuned.uplinkHz) : ""}
+                  </Td>
+                ) : null}
+              </Tr>
+            );
+          })}
+        </tbody>
+      </Table>
     </Disclosure>
   );
 }

@@ -133,6 +133,28 @@ export function Planner() {
         Outpost does not estimate propagation any other way. See the Data tab for what is installed.
       </EngineNotReady>
 
+      {/* New here: one press shows what an answer looks like, before the long form; the answer comes below it. */}
+      {!result && !predict.isPending ? (
+        <div className="mb-8 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-panel border border-border px-4 py-3">
+          <p className="min-w-0 flex-1 basis-60 text-small text-ink-muted">
+            <span className="font-medium text-ink">New to this?</span> See what a prediction looks like before filling in the form.
+          </p>
+          <Button
+            variant="soft"
+            className="h-auto min-h-9 max-w-full py-2 whitespace-normal max-md:h-auto max-md:min-h-11"
+            disabled={engine ? !engine.ready : false}
+            onClick={() => {
+              const example = exampleForm();
+              setForm(example);
+              setOpened(null);
+              run(example);
+            }}
+          >
+            Try London to Birmingham on 40 m
+          </Button>
+        </div>
+      ) : null}
+
       <form
         className="grid gap-x-10 gap-y-8 lg:grid-cols-2"
         noValidate
@@ -515,26 +537,9 @@ export function Planner() {
             <SecondModel result={result} hour={hour} onHour={setHour} />
           </>
         ) : (
-          <EmptyState
-            title="No prediction yet"
-            action={
-              <Button
-                variant="primary"
-                className="h-auto min-h-9 max-w-full py-2 whitespace-normal max-md:h-auto max-md:min-h-11"
-                disabled={engine ? !engine.ready : false}
-                onClick={() => {
-                  const example = exampleForm();
-                  setForm(example);
-                  setOpened(null);
-                  run(example);
-                }}
-              >
-                Try London to Birmingham on 40 m
-              </Button>
-            }
-          >
+          <EmptyState title="No prediction yet">
             Say where the two stations are and press Predict. The answer is a day on that path, hour by hour and band by band, worked out on
-            this computer with no connection.
+            this computer with no connection. The example at the top fills in the form for you.
           </EmptyState>
         )}
       </div>

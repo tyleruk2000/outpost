@@ -18,8 +18,8 @@ import { Link, useSearchParams } from "react-router";
 import { Disclosure, EmptyState, Notice, Page, PageHeader, Rows, Section } from "@/components/page";
 import { Field } from "@/components/ui/input";
 import { Select } from "@/components/ui/misc";
+import { Table, TableHead, Td, Th, Tr } from "@/components/ui/table";
 import { useHome } from "@/features/households/home";
-import { ScrollBox } from "@/features/radio/scroll-box";
 import { LicenceLine, useRadioLicence } from "./licence";
 
 const linkClass = "text-primary underline underline-offset-2";
@@ -113,29 +113,34 @@ function CountryRules({ rules }: { rules: CountryRadioRules }) {
         {rules.classes.map((item) => (
           <Disclosure key={item.id} summary={`${item.name}: ${item.privileges.length} bands`} className="border-b border-border py-2">
             {item.how ? <p className="text-small text-ink">{item.how}</p> : null}
-            <ScrollBox label={`Bands and power for the ${item.name} licence`} className="mt-2 overflow-x-auto">
-              <table className="w-full min-w-[32rem] text-left text-small">
-                <caption className="sr-only">Bands and power for the {item.name} licence</caption>
-                <thead className="text-ink-muted">
-                  <tr className="border-b border-border">
-                    <th className="py-1.5 pr-3 font-medium">Band</th>
-                    <th className="py-1.5 pr-3 font-medium">Frequencies</th>
-                    <th className="py-1.5 pr-3 font-medium">Most power</th>
-                    <th className="py-1.5 font-medium">Conditions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {item.privileges.map((band) => (
-                    <tr key={`${band.fromKhz}-${band.toKhz}-${band.power}`}>
-                      <td className="py-1.5 pr-3 text-ink">{band.band}</td>
-                      <td className="py-1.5 pr-3 tabular text-ink">{formatPrivilegeRange(band.fromKhz, band.toKhz)}</td>
-                      <td className="py-1.5 pr-3 tabular text-ink">{band.power}</td>
-                      <td className="py-1.5 text-ink-muted">{band.note ?? ""}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </ScrollBox>
+            <Table label={`Bands and power for the ${item.name} licence`} stack className="mt-2">
+              <TableHead>
+                <Tr>
+                  <Th>Band</Th>
+                  <Th>Frequencies</Th>
+                  <Th>Most power</Th>
+                  <Th>Conditions</Th>
+                </Tr>
+              </TableHead>
+              <tbody>
+                {item.privileges.map((band) => (
+                  <Tr key={`${band.fromKhz}-${band.toKhz}-${band.power}`} className="last:border-b-0">
+                    <Td label="Band" className="whitespace-nowrap">
+                      {band.band}
+                    </Td>
+                    <Td label="Frequencies" className="tabular sm:whitespace-nowrap">
+                      {formatPrivilegeRange(band.fromKhz, band.toKhz)}
+                    </Td>
+                    <Td label="Most power" className="tabular">
+                      {band.power}
+                    </Td>
+                    <Td label="Conditions" className="text-ink-muted">
+                      {band.note ?? null}
+                    </Td>
+                  </Tr>
+                ))}
+              </tbody>
+            </Table>
             {item.notes?.length ? (
               <ul className="mt-2 grid list-disc gap-1 pl-5 text-small text-ink-muted wrap-anywhere">
                 {item.notes.map((note) => (
@@ -210,12 +215,26 @@ export default function LicencesPage() {
               <a href={notRead.url} className={linkClass} rel="noreferrer" target="_blank">
                 {notRead.regulator}
               </a>
-            ) : undefined
+            ) : (
+              <ul aria-label="Countries read" className="flex flex-wrap gap-2">
+                {options.map((option) => (
+                  <li key={option.value}>
+                    <Link
+                      to={`?country=${option.value}`}
+                      replace
+                      className="inline-flex min-h-9 items-center rounded-control border border-border-strong bg-page px-3 text-small text-ink transition-colors duration-(--duration-fast) hover:bg-surface-strong max-md:min-h-11 md:pointer-coarse:min-h-11"
+                    >
+                      {option.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )
           }
         >
           {notRead
             ? `Outpost has not read ${notRead.regulator}'s documents, so it says nothing about the rules there. The regulator's own pages are the place to look.`
-            : `The rules of ${RADIO_RULES.length} countries are here. Others are listed below.`}
+            : `The rules of ${RADIO_RULES.length} countries are here: pick one, or choose it above. Others are listed below.`}
         </EmptyState>
       )}
 

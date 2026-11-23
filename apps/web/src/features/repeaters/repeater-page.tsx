@@ -25,8 +25,8 @@ import { BackLink, ErrorState, Notice, Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/misc";
+import { Table, TableHead, Td, Th, Tr } from "@/components/ui/table";
 import { formatBearing, formatDistance } from "@/features/maps/lib/geo";
-import { ScrollBox } from "@/features/radio/scroll-box";
 import { formatDate } from "@/lib/utils";
 import { useRemoveRepeater, useRepeater, useRevertRepeater, useSeparate } from "./data";
 import { OriginPicker, useOrigin } from "./origin";
@@ -287,34 +287,26 @@ export default function RepeaterPage() {
           <p className="text-small text-ink-muted">
             Bringing the list up to date leaves this entry as you have it. This is where it differs from what the list says now.
           </p>
-          <ScrollBox label="Where this entry differs from the list" className="scroll-quiet overflow-x-auto border-y border-border">
-            <table className="w-full min-w-[26rem] text-small">
-              <thead>
-                <tr className="text-left text-ink-muted">
-                  <th scope="col" className="py-1.5 pr-4 font-medium">
-                    What
+          <Table label="Where this entry differs from the list" stack>
+            <TableHead>
+              <Tr>
+                <Th>What</Th>
+                <Th>As you have it</Th>
+                <Th>As listed</Th>
+              </Tr>
+            </TableHead>
+            <tbody>
+              {changes.map((change) => (
+                <Tr key={change.label}>
+                  <th scope="row" className="py-2.5 pr-4 text-left align-top font-normal text-ink-muted">
+                    {change.label}
                   </th>
-                  <th scope="col" className="py-1.5 pr-4 font-medium">
-                    As you have it
-                  </th>
-                  <th scope="col" className="py-1.5 font-medium">
-                    As listed
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {changes.map((change) => (
-                  <tr key={change.label} className="align-top">
-                    <th scope="row" className="py-1.5 pr-4 text-left font-normal text-ink-muted">
-                      {change.label}
-                    </th>
-                    <td className="py-1.5 pr-4 text-ink">{change.mine}</td>
-                    <td className="py-1.5 text-ink">{change.listed}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </ScrollBox>
+                  <Td label="As you have it">{change.mine}</Td>
+                  <Td label="As listed">{change.listed}</Td>
+                </Tr>
+              ))}
+            </tbody>
+          </Table>
           <div>
             <Button
               onClick={() =>

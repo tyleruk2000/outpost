@@ -355,6 +355,12 @@
   .outpost-table[data-stack] :is(tbody, tr, td) {
     display: block;
   }
+  /* A row's own name (a th with scope="row") leads its block, as a first cell does. */
+  .outpost-table[data-stack] tbody th {
+    display: block;
+    padding: 0.25rem 0;
+    font-weight: 600;
+  }
   .outpost-table[data-stack] thead {
     position: absolute;
     width: 1px;
@@ -374,16 +380,25 @@
     text-align: right;
   }
   .outpost-table[data-stack] td:first-child {
+    /* It has no name before it, so it is a block: a second line in it stays under the first. */
+    display: block;
     font-weight: 600;
     text-align: left;
   }
   .outpost-table[data-stack] td[data-label]::before {
     content: attr(data-label);
+    /* A short name stays on one line; the figure beside it wraps first. */
+    flex-shrink: 0;
+    max-width: 45%;
     color: var(--ink-muted);
     font-weight: 400;
     text-align: left;
   }
   .outpost-table[data-stack] td:first-child::before {
     content: none;
+  }
+  /* A cell with nothing in it (no note, say) is not a line of its own. */
+  .outpost-table[data-stack] td:empty {
+    display: none;
   }
 }

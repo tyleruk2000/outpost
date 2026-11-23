@@ -37,6 +37,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Checkbox, Select, Skeleton } from "@/components/ui/misc";
+import { Table, TableHead, Td, Th, Tr } from "@/components/ui/table";
 import { ScrollBox } from "@/features/radio/scroll-box";
 import { errorMessage } from "@/lib/api";
 import { formatDate, formatDateTime, formatNumber, plural } from "@/lib/utils";
@@ -96,37 +97,41 @@ function ColumnsEditor({
 /** The first rows as they would be kept: enough to see whether the columns were read the right way round. */
 function Sample({ preview }: { preview: RepeaterImportPreview }) {
   return (
-    <ScrollBox label="The first rows of the file as they would be kept" className="scroll-quiet overflow-x-auto border-y border-border">
-      <table className="w-full min-w-[34rem] text-small">
-        <caption className="sr-only">The first rows of the file as they would be kept</caption>
-        <thead>
-          <tr className="text-left text-ink-muted">
-            {["Callsign", "Listen on", "Shift", "Access", "Modes", "Where"].map((heading) => (
-              <th key={heading} scope="col" className="py-1.5 pr-3 font-medium">
-                {heading}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {preview.sample.map((row) => (
-            <tr key={row.line} className="align-top">
-              <th scope="row" className="py-1.5 pr-3 text-left font-semibold text-ink">
-                {row.callsign}
-              </th>
-              <td className="tabular py-1.5 pr-3 font-mono text-[0.8125rem] text-ink">{formatMHz(row.outputHz)}</td>
-              <td className="tabular py-1.5 pr-3 text-ink">{formatShift(row.outputHz, row.inputHz)}</td>
-              <td className="py-1.5 pr-3 text-ink">{accessParts(row).join(", ") || "None listed"}</td>
-              <td className="py-1.5 pr-3 text-ink">{modesLine(row) || "Not listed"}</td>
-              <td className="py-1.5 text-ink">
+    <Table label="The first rows of the file as they would be kept" stack>
+      <TableHead>
+        <Tr>
+          <Th>Callsign</Th>
+          <Th numeric>Listen on</Th>
+          <Th numeric>Shift</Th>
+          <Th>Access</Th>
+          <Th>Modes</Th>
+          <Th>Where</Th>
+        </Tr>
+      </TableHead>
+      <tbody>
+        {preview.sample.map((row) => (
+          <Tr key={row.line}>
+            <th scope="row" className="py-2.5 pr-3 text-left align-top font-semibold text-ink">
+              {row.callsign}
+            </th>
+            <Td label="Listen on" numeric className="whitespace-nowrap">
+              {formatMHz(row.outputHz)}
+            </Td>
+            <Td label="Shift" numeric className="whitespace-nowrap">
+              {formatShift(row.outputHz, row.inputHz)}
+            </Td>
+            <Td label="Access">{accessParts(row).join(", ") || "None listed"}</Td>
+            <Td label="Modes">{modesLine(row) || "Not listed"}</Td>
+            <Td label="Where">
+              <span>
                 {row.place || row.locator || "Not listed"}
                 {row.lat === null ? <span className="block text-ink-muted">No position</span> : null}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </ScrollBox>
+              </span>
+            </Td>
+          </Tr>
+        ))}
+      </tbody>
+    </Table>
   );
 }
 
