@@ -498,6 +498,16 @@ describe("search by meaning in Settings: more options", () => {
   });
 });
 
+describe("search by meaning in Settings: the explanation", () => {
+  it("links to the page that explains how it works, beside the set-up guide", async () => {
+    serve(status(OFF));
+    show(settings({ "search.semantic.enabled": false }));
+    expect(await screen.findByText("Off")).toBeVisible();
+    expect(screen.getByRole("link", { name: "How search by meaning works" })).toHaveAttribute("href", "/search/how-meaning-works");
+    expect(screen.getByRole("link", { name: "Set-up guide" })).toBeVisible();
+  });
+});
+
 describe("the sums behind the screen", () => {
   it("costs an index from the measured figures", () => {
     expect(indexCost(1000, 384)).toEqual({ disk: "2.16 MB", time: "45 seconds" });

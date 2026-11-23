@@ -1,5 +1,6 @@
 import type { ExplainSemanticHit, ProjectionResponse } from "@outpost/shared";
 import type { UseQueryResult } from "@tanstack/react-query";
+import { Link } from "react-router";
 import { ErrorState } from "@/components/page";
 import { kindMeta } from "@/components/search-hit";
 import { formatNumber, plural } from "@/lib/utils";
@@ -23,6 +24,9 @@ export function MeaningSection({ projection }: { projection: UseQueryResult<Proj
     <Stage id="stage-meaning">
       <VectorNotice source={source} className="mb-6 max-w-[46rem]" />
       <Prose>
+        <p>
+          A shorter, plainer account is on <Link to="/search/how-meaning-works">How search by meaning works</Link>.
+        </p>
         <p>
           The second search does not look at your words at all. It looks at what they mean, or as near to that as arithmetic can get. The
           trick is to turn every piece of text into a list of numbers, in such a way that texts about the same thing get similar lists.
