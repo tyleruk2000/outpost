@@ -164,10 +164,12 @@ was. What cannot be moved is listed with the reason.
 
 ## Offline maps
 
-The **Offline maps** section says how much the maps keep and where, then lists each place (a
-country, an area drawn on the map, World basics) with where it is kept and its size. Each
-leads to **Maps → Offline maps**, the one place map data is added, updated, moved and removed;
-**Manage** goes there too. Routes are kept with Outpost's own data, not on a storage location,
+Under **What is taking the space**, everything the maps keep (maps, hills, place names, routes,
+nearby places, source files, satellite pictures) is one row: **Offline maps**, its size, where
+it is kept, and **Manage**. Press **Offline maps** to open it to each place (a country, an area
+drawn on the map, World basics) with the same marks as on Offline maps, where it is kept and its
+size. Each place leads to **Offline maps**, the one place map data is added, updated, moved and
+removed. Routes are kept with Outpost's own data, not on a storage location,
 and do not move. When a place is over a year old, the section says so. See
 [updating](maps.md#updating).
 

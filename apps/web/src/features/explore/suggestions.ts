@@ -99,38 +99,27 @@ export function suggestionsFor(input: SuggestionInput): Suggestions {
   const regions = input.overview?.regions ?? [];
   const mapHere = regions.some((region) => region.tileType !== "terrain" && contains(region.bounds, home) && region.maxZoom >= 10);
   const terrainHere = regions.some((region) => region.tileType === "terrain" && contains(region.bounds, home));
+  const places = input.overview?.places ?? [];
+  const namesHere = places.some(
+    (dataset) => dataset.source === "geonames" && (dataset.countries.includes(country.code) || dataset.dataset.startsWith("cities")),
+  );
+  // Offline maps' one way in, Add a place: a ready-made part of a country by its box, else the country.
+  const add =
+    preset && !preset.id.startsWith("country-")
+      ? `/maps/data?add=1&bbox=${preset.bbox.join(",")}&name=${encodeURIComponent(preset.name)}`
+      : `/maps/data?add=1&countries=${country.code}`;
   rows.push({
     id: "map",
     title: preset ? `Map of ${preset.name}` : `A map of ${country.name}`,
-    about: preset
-      ? `The detailed map round Home, from OpenStreetMap, to zoom ${preset.recommendedMaxZoom}.`
-      : "No ready-made region holds Home: draw a box round it under Offline maps.",
-    to: preset ? `/maps?offline=region&preset=${encodeURIComponent(preset.id)}` : "/maps?offline=region",
-    done: mapHere,
+    about: "The detailed map round Home, with its hills and towns by name, from OpenStreetMap. Added under Offline maps.",
+    to: add,
+    done: mapHere && terrainHere && namesHere,
   });
   rows.push({
-    id: "terrain",
-    title: "Terrain round Home",
-    about: "Heights for hill shading, contour lines, profiles, the walk reach and the estimated range of a radio.",
-    to: preset ? `/maps?offline=region&preset=${encodeURIComponent(preset.id)}` : "/maps?offline=region",
-    done: terrainHere,
-  });
-  const places = input.overview?.places ?? [];
-  rows.push({
-    id: "places",
-    title: `Place names in ${country.name}`,
-    about: "Towns, villages and features to search the map by name, from GeoNames.",
-    to: "/maps/data?names=1",
-    done: places.some(
-      (dataset) => dataset.source === "geonames" && (dataset.countries.includes(country.code) || dataset.dataset.startsWith("cities")),
-    ),
-  });
-  rows.push({
-    id: "layers",
-    title: `OpenStreetMap reference layers for ${country.name}`,
-    about:
-      "Hospitals, police, fire and ambulance, shelters, food and supplies, and walking and cycling routes, read from one Geofabrik extract of the country or a region of it.",
-    to: `/maps/data?add=1&kinds=places&country=${country.code}`,
+    id: "nearby",
+    title: `Nearby places in ${country.name}`,
+    about: "Hospitals, police, fire and ambulance, shelters, and food and supplies, to find the nearest with no connection.",
+    to: `/maps/data?add=1&kinds=places&countries=${country.code}`,
     done: false,
   });
 

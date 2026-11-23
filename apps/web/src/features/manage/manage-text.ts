@@ -27,17 +27,17 @@ import { formatNumber, plural } from "@/lib/utils";
 
 export const kindNames: Record<ManagedKind, { one: string; many: string }> = {
   zim: { one: "Reference archive", many: "Reference archives" },
-  map: { one: "Map region", many: "Maps" },
-  terrain: { one: "Terrain", many: "Terrain" },
-  places: { one: "Place names", many: "Place names" },
-  layer: { one: "Map layer", many: "Map layers" },
+  map: { one: "Map", many: "Maps" },
+  terrain: { one: "Map hills", many: "Map hills" },
+  places: { one: "Map place names", many: "Map place names" },
+  layer: { one: "Nearby places", many: "Nearby places" },
   sheet: { one: "Catalogue sheet or book", many: "Catalogue sheets and books" },
   file: { one: "Catalogue file", many: "Other catalogue files" },
   model: { one: "Search model", many: "Search models" },
   dataset: { one: "Radio data", many: "Radio data" },
   document: { one: "Document", many: "Documents" },
-  extract: { one: "Country file", many: "Country files" },
-  roads: { one: "Road network", many: "Roads for routes" },
+  extract: { one: "Source file", many: "Source files" },
+  roads: { one: "Routes", many: "Routes" },
 };
 
 /** The order kinds are offered in filters and listed in summaries. */

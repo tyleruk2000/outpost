@@ -116,6 +116,8 @@ export type StreetsBuildRequest =
 /** POST /api/streets/tiles/estimate: what a build will cost, said before it starts. */
 export interface StreetsEstimateRequest {
   regions: string[];
+  /** Source files not kept yet (to be downloaded first, from Add a place), with the size Check size found. */
+  coming?: Array<{ regionId: string; name: string; country: string | null; bytes: number }>;
 }
 
 /** Figures measured on a Raspberry Pi 5 (8 GB) with two threads, scaled by the size of the country files. */

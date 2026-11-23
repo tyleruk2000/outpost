@@ -1,8 +1,8 @@
 /**
  * The Offline tab of Maps: only what needs the map in view. What covers the view now; "Add this
- * view" (or an area drawn on the map), which opens Add a place on Offline maps with that area;
- * satellite pictures of an area and keeping the view on this device, which need the map to
- * choose the area; and one link to Offline maps, the one place map data is managed.
+ * view" (or an area drawn on the map), which opens Add a place on Offline maps with that area,
+ * where its map and its satellite pictures are ticks; keeping the view on this device; and one
+ * link to Offline maps, the one place map data is managed.
  */
 import { ACTIVE_DOWNLOAD_STATES, type Bbox, type DownloadDto, formatBytes, type InstalledRegion, type MapOverview } from "@outpost/shared";
 import type { UseQueryResult } from "@tanstack/react-query";
@@ -15,7 +15,6 @@ import { Badge } from "@/components/ui/misc";
 import { DownloadControls, DownloadProgress } from "@/features/downloads/download-progress";
 import { useDownloads } from "@/features/downloads/use-downloads";
 import { KeepAreaSection } from "@/features/kept/keep-controls";
-import { ImageryArea, SatelliteSection } from "../imagery/panel";
 import { detailLabel } from "../lib/detail";
 import { isValidBbox } from "../lib/geo";
 import type { MapEngine } from "../map/engine";
@@ -162,7 +161,6 @@ export function OfflinePanel({
   intent,
   onIntentHandled,
   onNeedMap,
-  onNeedRoom,
 }: {
   overview: UseQueryResult<MapOverview>;
   engine: MapEngine | null;
@@ -170,14 +168,10 @@ export function OfflinePanel({
   onIntentHandled: () => void;
   /** Asks the screen to uncover the map (on a phone, lowers the sheet). */
   onNeedMap: () => void;
-  /** Asks the screen for as much room as it can give (on a phone, raises the sheet). */
-  onNeedRoom: () => void;
 }) {
   const navigate = useNavigate();
   const downloads = useDownloads();
   const [drawing, setDrawing] = useState(false);
-  const imageryRef = useRef<HTMLElement>(null);
-  const [choosingImagery, setChoosingImagery] = useState(false);
   const view = useView(engine);
   const regions = overview.data?.regions ?? [];
   const covering = view ? regions.filter((region) => overlaps(region.bounds, view)) : regions;
@@ -189,14 +183,12 @@ export function OfflinePanel({
       if (intent.draw) setDrawing(true);
       else navigate(addPresetLink(intent.presetId));
     }
-    if (intent.type === "imagery") window.setTimeout(() => imageryRef.current?.scrollIntoView({ block: "start" }), 0);
+    // Satellite pictures are added through Add a place, for this view or an area drawn.
+    if (intent.type === "imagery") navigate("/maps/data?add=1&kinds=imagery");
     onIntentHandled();
   }, [intent, onIntentHandled, navigate]);
 
   if (drawing) return <DrawArea engine={engine} onDone={() => setDrawing(false)} onNeedMap={onNeedMap} />;
-  if (choosingImagery) {
-    return <ImageryArea engine={engine} onClose={() => setChoosingImagery(false)} onNeedMap={onNeedMap} onNeedRoom={onNeedRoom} />;
-  }
   if (overview.isPending) return <PanelLoading />;
   if (overview.isError) {
     return (
@@ -259,11 +251,12 @@ export function OfflinePanel({
           >
             All offline maps <ArrowRight aria-hidden className="size-4" />
           </Link>
-          <span className="block text-ink-muted">Countries, routes and nearby places: add, update and remove them there.</span>
+          <span className="block text-ink-muted">
+            Countries, routes, nearby places and satellite pictures: add, update and remove them there.
+          </span>
         </p>
       </section>
 
-      <SatelliteSection engine={engine} onChooseArea={() => setChoosingImagery(true)} sectionRef={imageryRef} />
       <KeepAreaSection engine={engine} />
     </div>
   );

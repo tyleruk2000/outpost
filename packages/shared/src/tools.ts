@@ -34,9 +34,9 @@ export const TOOL_AREAS: readonly ToolAreaInfo[] = [
   },
   {
     area: "places",
-    label: "Places and map layers",
+    label: "Places and nearby places",
     about:
-      "Your saved places, every reference layer you have fetched (hospitals, shops, airports and the rest), and the map's place names, with where each is and how far.",
+      "Your saved places, the nearby places and layers you have added (hospitals, shops, airports and the rest), and the map's place names, with where each is and how far.",
     defaultOn: true,
   },
   {

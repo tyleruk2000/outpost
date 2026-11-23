@@ -1,7 +1,7 @@
 /**
  * Satellite imagery on a phone, 390 pixels wide: the button is in the map's tools, the
- * picture shows under the map, and choosing an area, its day and reading its figures
- * all fit the screen, with nothing over anything else, nothing scrolling sideways and
+ * picture shows under the map, and adding an area's pictures through Add a place (its day,
+ * reading its figures) all fit the screen, with nothing over anything else, nothing scrolling sideways and
  * nothing too small to touch (layout-audit.ts). Against the stand-ins for NASA and
  * Sentinel-2 (apps/server/test/fixtures/maps/imagery-stand-in.ts).
  */
@@ -9,6 +9,7 @@ import type { Page } from "@playwright/test";
 import { api, expect, test, watchForErrors } from "./fixtures";
 import { auditLayout, type Finding } from "./layout-audit";
 import { type InstalledTestMaps, installTestMaps, removeTestMaps } from "./map-fixture";
+import { imageryNamed, startAreaPictures } from "./satellite-flow";
 
 test.use({ viewport: { width: 390, height: 844 } });
 
@@ -57,25 +58,19 @@ test.describe("satellite imagery on a phone", () => {
     await expect(page.locator('.outpost-map[data-map-idle="true"]')).toBeVisible({ timeout: 20_000 });
     await page.waitForTimeout(450);
 
-    await page.getByRole("tab", { name: "Offline maps" }).tap();
-    const section = page.getByRole("region", { name: "Satellite imagery" });
-    await section.getByRole("button", { name: "Choose an area" }).first().tap();
-    await page.getByRole("button", { name: "Use the current view" }).tap();
-    await page.getByRole("textbox", { name: "Name for this area" }).fill("Phone valley");
-    expect(await wrong(page), "choosing the area").toEqual([]);
-    await page.getByRole("button", { name: "Find pictures" }).tap();
-    await page.getByRole("radio", { name: /12 July 2026/ }).tap();
+    const dialog = await startAreaPictures(page, "Phone valley", true);
+    await dialog.getByRole("radio", { name: /12 July 2026/ }).tap();
     expect(await wrong(page), "choosing the day").toEqual([]);
     await page.getByRole("button", { name: "Continue" }).tap();
     await expect(page.getByText("To fetch")).toBeVisible({ timeout: 20_000 });
     expect(await wrong(page), "the figures before fetching").toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-    const fetch = page.getByRole("button", { name: /^Fetch / });
+    const fetch = dialog.getByRole("button", { name: /^Download · / });
     expect((await fetch.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await fetch.tap();
-    await expect(section.getByRole("listitem").filter({ hasText: "Phone valley" })).toContainText("taken on 12 July 2026", {
-      timeout: 30_000,
-    });
+    await expect.poll(async () => (await imageryNamed(page, "Phone valley"))?.imageDateText, { timeout: 30_000 }).toBe("12 July 2026");
+    await page.goto("/maps?lat=53.06&lon=-4.09&z=13");
+    await expect(page.locator('.outpost-map[data-map-idle="true"]')).toBeVisible({ timeout: 20_000 });
 
     await page
       .getByRole("button", { name: /^Panel height/ })
@@ -98,19 +93,14 @@ test.describe("satellite imagery on a phone", () => {
     await page.goto("/maps?lat=-43.426&lon=172.5405&z=16");
     await expect(page.locator('.outpost-map[data-map-idle="true"]')).toBeVisible({ timeout: 20_000 });
     await page.waitForTimeout(450);
-    await page.getByRole("tab", { name: "Offline maps" }).tap();
-    const section = page.getByRole("region", { name: "Satellite imagery" });
-    await section.getByRole("button", { name: "Choose an area" }).first().tap();
-    await page.getByRole("button", { name: "Use the current view" }).tap();
-    await page.getByRole("textbox", { name: "Name for this area" }).fill("Phone streets");
-    await page.getByRole("button", { name: "Find pictures" }).tap();
-    await page.getByRole("radio", { name: /Aerial photograph, 2 m/ }).tap();
+    const dialog = await startAreaPictures(page, "Phone streets", true);
+    await dialog.getByRole("radio", { name: /Aerial photograph, 2 m/ }).tap();
     expect(await wrong(page), "choosing the picture").toEqual([]);
     await page.getByRole("button", { name: "Continue" }).tap();
     await expect(page.getByText("Kept on disk")).toBeVisible({ timeout: 20_000 });
     expect(await wrong(page), "the photograph's figures before fetching").toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-    const fetch = page.getByRole("button", { name: /^Fetch / });
+    const fetch = dialog.getByRole("button", { name: /^Download · / });
     expect((await fetch.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     expect(errors).toEqual([]);
   });

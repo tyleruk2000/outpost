@@ -44,7 +44,7 @@ describe("what the installed maps cover of a page", () => {
     expect(coverage.coarserZoom).toBe(6);
     const warning = coverageWarning(coverage, true)!;
     expect(warning.title).toBe("Part of this page will lack detail");
-    expect(warning.detail).toMatch(/About 50% of this area is installed only to zoom 6, where this scale needs zoom 13/);
+    expect(warning.detail).toMatch(/About 50% of this area is kept in less detail than this scale needs/);
   });
 
   it("tells apart the part with a coarser map and the part with none", () => {
@@ -53,7 +53,7 @@ describe("what the installed maps cover of a page", () => {
     expect(coverage.coarser).toBeCloseTo(0.25, 6);
     expect(coverage.none).toBeCloseTo(0.25, 6);
     expect(coverageWarning(coverage, true)?.detail).toMatch(
-      /^About 25% of this area has no detailed map installed and will show only an outline; about 25% of it is installed only to zoom 10/,
+      /^About 25% of this area has no detailed map installed and will show only an outline; about 25% of it is kept in less detail than this scale needs/,
     );
   });
 

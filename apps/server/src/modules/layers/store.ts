@@ -277,7 +277,8 @@ export interface ReferenceStore {
   detail(id: number, packs: Map<string, { title: string }>): ReferenceFeatureDetail | null;
   search(query: string, filter: Partial<ReferenceFilter>, limit: number): LayerSearchHit[];
   summary(providerNames: Map<string, string>): ReferenceLayerSummary[];
-  countsOf(collectionId: string): { records: number; duplicates: number; figures: number; layers: ReferenceLayerId[] };
+  /** `heldBytes`: about what its rows take in the database (an estimate). */
+  countsOf(collectionId: string): { records: number; duplicates: number; figures: number; layers: ReferenceLayerId[]; heldBytes: number };
   figures(country?: string): CountryFigureDto[];
   /**
    * The nearest records of a layer to a point, from what is held: of one kind (by any of
@@ -314,6 +315,29 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
     }
     statements.set(sql, statement);
     return statement;
+  };
+
+  /**
+   * About what a pack's records take in the database: the text of each row, its name again in the
+   * search index, and a fixed allowance for its numbers and index entries. Kept by pack and count,
+   * since the rows of a pack change only when it is read again.
+   */
+  const held = new Map<string, number>();
+  const ROW_ALLOWANCE = 160;
+  const heldBytesOf = (collectionId: string, rows: number) => {
+    const key = `${collectionId}:${rows}`;
+    const known = held.get(key);
+    if (known !== undefined) return known;
+    const text = (
+      prepared(
+        `SELECT coalesce(sum(length(source_id) + length(kind) + 2 * (length(name) + length(alt_names)) + coalesce(length(geometry), 0)
+           + length(props) + length(accuracy) + length(publisher) + length(license) + coalesce(length(source_url), 0)), 0) AS n
+         FROM reference_features WHERE collection_id = ?`,
+      ).get(collectionId) as { n: number }
+    ).n;
+    const bytes = text + rows * ROW_ALLOWANCE;
+    held.set(key, bytes);
+    return bytes;
   };
 
   const insertFeature = sqlite.prepare(
@@ -931,7 +955,7 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
           layer: ReferenceLayerId;
         }>
       ).map((row) => row.layer);
-      return { records, duplicates, figures, layers };
+      return { records, duplicates, figures, layers, heldBytes: heldBytesOf(collectionId, records + figures) };
     },
 
     figures(country) {

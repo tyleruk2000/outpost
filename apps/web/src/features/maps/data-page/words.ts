@@ -19,14 +19,14 @@ import { formatDate, plural } from "@/lib/utils";
 
 /** What each kind is called, as a person would. */
 export const KIND_NAMES: Record<MapDataKind, string> = {
-  map: "Map to look at",
+  map: "Map",
   terrain: "Hills and heights",
   names: "Place names",
-  roads: "Roads for routes",
-  places: "Places to find",
-  extract: "Country file",
+  roads: "Routes",
+  places: "Nearby places",
+  extract: "Source file",
   imagery: "Satellite pictures",
-  streets: "Streets for routes",
+  streets: "Walking and cycling",
 };
 
 /** What a row says when there is nothing of its kind yet: that, and what it is needed for. */
@@ -46,7 +46,7 @@ export const WHILE_AWAY: Record<MapDataKind, string> = {
   names: "Search still finds coordinates and your own places.",
   roads: "Routes wait until it is back.",
   places: "Its places are not shown until it is back.",
-  extract: "Roads and places made from it keep working; rebuilding waits.",
+  extract: "Routes and nearby places made from it keep working; rebuilding waits.",
   imagery: "The map is drawn without the pictures until it is back.",
   streets: "Drives still plan on the main roads; door to door, walking and cycling wait until it is back.",
 };
@@ -129,7 +129,7 @@ export function stateLine(item: MapDataItem): string | null {
 /** The country file row when none is kept. */
 export function notKeptLine(lastRead: CountryFileRead | null): string {
   if (lastRead && !lastRead.kept) return `Not kept: read and deleted ${formatDate(lastRead.readAt)} (${formatBytes(lastRead.bytes)})`;
-  return "Not kept. Roads and places to find are read from it.";
+  return "Not kept. Routes and nearby places are read from it.";
 }
 
 /** The status sentence at the top of the screen. */
@@ -246,51 +246,6 @@ export function olderFiles(files: MapDataItem[]): Map<string, MapDataItem> {
 export function hostsText(hosts: string[]): string {
   if (hosts.length === 0) return "its source";
   return hosts.length === 1 ? hosts[0]! : `${hosts.slice(0, -1).join(", ")} and ${hosts.at(-1)}`;
-}
-
-// ── Storage › Map data ──
-
-/** The kinds as Storage lists them, by what they are for. */
-export const STORAGE_KINDS: Array<{ kinds: MapDataKind[]; name: string; jump: string }> = [
-  { kinds: ["map"], name: "Maps to look at", jump: "your-places" },
-  { kinds: ["terrain"], name: "Hills and heights", jump: "your-places" },
-  { kinds: ["names"], name: "Place names", jump: "your-places" },
-  { kinds: ["places"], name: "Places to find", jump: "your-places" },
-  { kinds: ["roads"], name: "Roads for routes", jump: "your-places" },
-  { kinds: ["extract"], name: "Country files", jump: "country-files" },
-  { kinds: ["imagery"], name: "Satellite pictures", jump: "whole-world" },
-];
-
-export interface StorageRow {
-  name: string;
-  jump: string;
-  count: number;
-  bytes: number;
-  where: string[];
-}
-
-/**
- * Storage's rows: what is here of each kind, where, how many and how large. A kind the list does
- * not name (one added since, such as streets) follows the rest under its own name.
- */
-export function storageRows(data: MapDataResponse): StorageRow[] {
-  const here = allItems(data).filter(isHere);
-  const known = new Set<string>(STORAGE_KINDS.flatMap((entry) => entry.kinds));
-  const extra = [...new Set(here.map((item) => item.kind as string).filter((kind) => !known.has(kind)))].map((kind) => ({
-    kinds: [kind as MapDataKind],
-    name: (KIND_NAMES as Record<string, string | undefined>)[kind] ?? kind.charAt(0).toUpperCase() + kind.slice(1),
-    jump: "your-places",
-  }));
-  return [...STORAGE_KINDS, ...extra].map((entry) => {
-    const items = here.filter((item) => entry.kinds.includes(item.kind));
-    return {
-      name: entry.name,
-      jump: entry.jump,
-      count: items.length,
-      bytes: items.reduce((sum, item) => sum + (item.sizeBytes ?? 0), 0),
-      where: [...new Set(items.map((item) => item.locationName ?? "Outpost's own data"))],
-    };
-  });
 }
 
 // ── By place: the one pattern every kind of map data follows ──

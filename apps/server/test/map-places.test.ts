@@ -112,6 +112,39 @@ describe("places from the rows", () => {
     expect(failed).toMatchObject({ state: "failed", reason: "Its file is missing." });
   });
 
+  it("hides a failed download that a later one for the same region made good, and counts its bytes nowhere", () => {
+    // The owner's Pi: a first, damaged attempt at the United Kingdom beside the routes and kept file of a second.
+    const region = "europe/united-kingdom";
+    const failed = { state: "failed" as const, downloadId: "first", regionId: region, reason: "Checksum did not match." };
+    const [uk] = mapPlacesOf(
+      {
+        countries: [
+          country(
+            "GB",
+            "United Kingdom",
+            [
+              item({ key: "download:first:roads", kind: "roads", sizeBytes: null, ...failed }),
+              item({ key: "download:first:extract", kind: "extract", sizeBytes: 2_291_161_370, ...failed }),
+              item({ key: "road-network:n1", kind: "roads", sizeBytes: 31_418_680, regionId: region }),
+              item({ key: "collection:file", kind: "extract", sizeBytes: 2_291_161_370, regionId: region }),
+            ],
+            region,
+          ),
+        ],
+        world: [],
+        other: [],
+      },
+      { streets: false, now: NOW },
+    );
+    const routes = uk!.bundles.find((bundle) => bundle.kind === "routes")!;
+    expect(routes).toMatchObject({ state: "ready", sizeBytes: 31_418_680, reason: null });
+    expect(uk!.items.map((each) => each.key)).not.toContain("download:first:roads");
+    expect(uk!.sourceFile?.key).toBe("collection:file");
+    // A failure with nothing to take its place is still said.
+    const alone = mapBundleOf("routes", [item({ key: "download:x:roads", kind: "roads", sizeBytes: 900, ...failed })]);
+    expect(alone).toMatchObject({ state: "failed", sizeBytes: 0 });
+  });
+
   it("never counts a set made once as over a year old", () => {
     const old = item({ key: "ne", kind: "places", dataDate: "2022-05-13" });
     expect(isMapItemStale(old, NOW)).toBe(true);

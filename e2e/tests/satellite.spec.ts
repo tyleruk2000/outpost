@@ -1,8 +1,9 @@
 /**
  * Satellite imagery, from an empty map to a printed page: the button says what it needs
- * before anything is installed; the world is downloaded from a stand-in for NASA after
- * its size is shown; a small area is chosen on the map, its day picked and its figures
- * read before it is fetched from a stand-in for Sentinel-2; then the map shows the area's
+ * before anything is installed; the world is added through Add a place from a stand-in for
+ * NASA after its size is shown; an area's pictures are added through Add a place too (Add this
+ * view, the Satellite pictures tick), its day picked and its figures read before it is fetched
+ * from a stand-in for Sentinel-2; then the map shows the area's
  * picture over the world's, with the map's names on top and the picture's credit and day
  * beside it, and a printed page carries both. The stand-ins' pictures are each one strong
  * colour (apps/server/test/fixtures/maps/imagery-stand-in.ts), so a pixel says which is
@@ -100,48 +101,64 @@ test.describe("satellite imagery", () => {
     await expect(button).toBeVisible();
     await button.click();
     await expect(button).toHaveAttribute("aria-pressed", "false");
-    await expect(page.getByText(/No satellite imagery is downloaded yet/)).toBeVisible();
-    await page.getByRole("button", { name: "Offline maps" }).last().click();
+    await expect(page.getByText(/No satellite pictures are downloaded yet/)).toBeVisible();
 
-    const section = page.getByRole("region", { name: "Satellite imagery" });
-    await expect(section).toBeVisible();
-    await expect(section.getByText("None downloaded yet.")).toBeVisible();
-    const world = section.getByRole("listitem").filter({ hasText: "The world, 2 km a pixel" });
-    await expect(world).toContainText(/Fetches .* from NASA/);
-    await world.getByRole("button", { name: "Download" }).click();
-    const dialog = page.getByRole("alertdialog");
-    await expect(dialog).toContainText(/to fetch/);
-    await expect(dialog).toContainText("NASA Earth Observatory");
-    await expect(dialog).toContainText("Free");
-    await dialog.getByRole("button", { name: /^Download / }).click();
-    await expect(section.getByText("The world, 2 km a pixel").first()).toBeVisible();
-    await expect(section.getByRole("listitem").filter({ hasText: "taken in July 2004" })).toBeVisible({ timeout: 30_000 });
+    // Added like any other map data: Add a place, the whole world, the Satellite pictures tick.
+    await page.goto("/maps/data?add=1&world=1");
+    const dialog = page.getByRole("dialog", { name: "Add a place" });
+    await expect(dialog.getByRole("heading", { name: "What for The whole world?" })).toBeVisible();
+    const map = dialog.getByRole("checkbox", { name: /^Map/ });
+    if (await map.isChecked()) await map.click();
+    await dialog.getByRole("checkbox", { name: /Satellite pictures/ }).click();
+    await expect(dialog.getByText(/fetches .* from NASA; about .* kept\. Free, no account\./)).toBeVisible();
+    const small = dialog.getByRole("radio", { name: /The world, 2 km a pixel/ });
+    if (await small.isVisible()) await small.click();
+    await dialog.getByRole("button", { name: "Check size" }).click();
+    await dialog.getByRole("button", { name: /^Download · / }).click();
+    await expect(dialog).toBeHidden();
+    await expect
+      .poll(
+        async () =>
+          (await api<{ sets: Array<{ imageDateText: string }> }>(page, "GET", "/api/maps/imagery")).sets.map((set) => set.imageDateText),
+        {
+          timeout: 30_000,
+        },
+      )
+      .toContain("July 2004");
     expect(errors).toEqual([]);
   });
 
-  test("an area is chosen, its day picked and its figures read before it is fetched", async ({ page }) => {
+  test("an area's picture is added through Add a place: its day picked and its figures read before it is fetched", async ({ page }) => {
     const errors = watchForErrors(page);
     await openAt(page, IN_AREA, 13.5);
     await page.getByRole("tab", { name: "Offline maps" }).click();
-    const section = page.getByRole("region", { name: "Satellite imagery" });
-    await section.getByRole("button", { name: "Choose an area" }).first().click();
-    await page.getByRole("button", { name: "Use the current view" }).click();
-    await page.getByRole("textbox", { name: "Name for this area" }).fill("Test valley");
-    await page.getByRole("button", { name: "Find pictures" }).click();
-    await page.getByRole("radio", { name: /12 July 2026/ }).click();
-    await page.getByRole("button", { name: "Continue" }).click();
+    await page.getByRole("button", { name: "Add this view" }).click();
+    const dialog = page.getByRole("dialog", { name: "Add a place" });
+    await dialog.getByRole("textbox", { name: "Name" }).fill("Test valley");
+    await expect(dialog.getByRole("heading", { name: "What for Test valley?" })).toBeVisible();
+    const map = dialog.getByRole("checkbox", { name: /^Map/ });
+    if (await map.isChecked()) await map.click();
+    await dialog.getByRole("checkbox", { name: /Satellite pictures/ }).click();
+    await dialog.getByRole("button", { name: "Choose the picture" }).click();
+    await expect(dialog.getByRole("heading", { name: "Satellite pictures of Test valley" })).toBeVisible();
+    await dialog.getByRole("radio", { name: /12 July 2026/ }).click();
+    await dialog.getByRole("button", { name: "Continue" }).click();
 
-    const figures = page.getByRole("definition");
-    await expect(page.getByText("To fetch")).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByText("Cloud over the area")).toBeVisible();
+    const figures = dialog.getByRole("definition");
+    await expect(dialog.getByText("To fetch")).toBeVisible({ timeout: 20_000 });
+    await expect(dialog.getByText("Cloud over the area")).toBeVisible();
     await expect(figures.filter({ hasText: /requests/ })).toBeVisible();
     await expect(figures.filter({ hasText: /^FreeNo account and no bill/ })).toBeVisible();
-    await expect(page.getByText(/one moment's picture, not a seamless mosaic/)).toBeVisible();
-    await page.getByRole("button", { name: /^Fetch / }).click();
+    await expect(dialog.getByText(/one moment's picture, not a seamless mosaic/)).toBeVisible();
+    await dialog.getByRole("button", { name: /^Download · / }).click();
+    await expect(dialog).toBeHidden();
 
-    const set = page.getByRole("region", { name: "Satellite imagery" }).getByRole("listitem").filter({ hasText: "Test valley" });
-    await expect(set).toContainText("Sentinel-2, taken on 12 July 2026", { timeout: 30_000 });
-    await expect(set).toContainText("10 m a pixel");
+    // A row on Offline maps like every other place, its satellite pictures said with the same marks.
+    const row = page.locator('[data-pattern="row"]').filter({ hasText: "Test valley" });
+    await expect(row).toBeVisible({ timeout: 30_000 });
+    await expect(row.locator('[data-pattern="state"][data-state="ready"]')).toHaveCount(1, { timeout: 30_000 });
+    const sets = await api<{ sets: Array<{ name: string; imageDateText: string }> }>(page, "GET", "/api/maps/imagery");
+    expect(sets.sets.find((set) => set.name === "Test valley")?.imageDateText).toBe("12 July 2026");
     expect(errors).toEqual([]);
   });
 

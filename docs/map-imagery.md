@@ -1,8 +1,10 @@
 # Satellite imagery
 
 **Satellite imagery**, on the Maps screen, draws pictures of the ground under the map's roads and
-names, from Outpost's own disk: nothing is fetched while you look. Download them under
-**Offline maps → Satellite imagery**. All are free and need no account.
+names, from Outpost's own disk: nothing is fetched while you look. Add them like any other map
+data, with **Add a place** on **Offline maps**: tick **Satellite pictures** for a drawn area (or
+**Add this view** on the map's Offline tab), or for **The whole world**. All are free and need
+no account.
 
 | | The world | A small area in detail |
 | --- | --- | --- |
@@ -15,22 +17,28 @@ names, from Outpost's own disk: nothing is fetched while you look. Download them
 The most detailed set covering the screen is drawn on top. **A picture is of one day**, with
 that day's cloud, snow and season; the day is written in the credits under the map.
 
-## Choosing an area
+## Pictures of an area
 
-1. **Choose an area**: draw a box or use the current view, and name it.
-2. **Find pictures** lists the passes of the last year: day, cloud and coverage.
+1. In **Add a place**, choose **Draw an area on the map** (or **Add this view** on the map's
+   Offline tab), name it, and tick **Satellite pictures**. Tick **Map** too for its map.
+2. **Choose the picture** lists the passes of the last year: day, cloud and coverage. (With
+   **Map** ticked, the map's download starts first.)
 3. **Continue** shows the picture, **the cloud over your area**, the exact bytes to fetch, the
    size on disk, the time, and the cost (none). If cloud covers what you need, choose another
    day.
-4. **Fetch** starts a download that can be paused and survives a restart.
+4. **Download** starts a download that can be paused and survives a restart. The pictures are
+   then a row on Offline maps, updated and removed there like everything else.
+
+For **The whole world**, the **Satellite pictures** tick says NASA's size; where there are two
+details, choose one under the tick.
 
 Above 2,500 km² you are warned that several small areas are usually better; above 10,000 km²
 it is refused.
 
 ## Aerial photographs
 
-Where a government publishes aerial photographs openly in a form Outpost reads, **Find
-pictures** lists them first: 5 cm to 1 m a pixel, so houses, paths and walls show.
+Where a government publishes aerial photographs openly in a form Outpost reads, **Choose the
+picture** lists them first: 5 cm to 1 m a pixel, so houses, paths and walls show.
 
 | | New Zealand | United States (lower 48) |
 | --- | --- | --- |

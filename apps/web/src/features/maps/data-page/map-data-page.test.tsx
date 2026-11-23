@@ -2,16 +2,20 @@
  * Offline maps: one row per place with a word for each of Map, Routes, Nearby places; one line for
  * what is downloading and one for what is over a year old; every kind of row built from the same
  * row, state and menu; Add a place (a town found offline, several countries from a link, a
- * country in parts); removing and updating by place.
+ * country in parts, walking and cycling, satellite pictures); removing and updating by place; and
+ * map data elsewhere (Storage's row, Downloads and tasks' titles) in the same parts and words.
  */
-import type { MapDataResponse, MapDataWhereResponse, MapDataWhereResult } from "@outpost/shared";
+import type { JobDto, MapDataResponse, MapDataWhereResponse, MapDataWhereResult } from "@outpost/shared";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { download, fakeServer, installBrowserStubs, location, renderScreen } from "@/features/downloads/test-support";
-import { MapDataSection } from "@/features/storage/map-data-section";
+import { mapTaskTitle } from "@/features/downloads/download-text";
+import DownloadsPage from "@/features/downloads/downloads-page";
+import { download, fakeServer, installBrowserStubs, location, plan, renderScreen } from "@/features/downloads/test-support";
+import { OfflineMapsRows } from "@/features/storage/map-data-section";
 import MapDataPage from "./map-data-page";
 import { country, item, mapData } from "./test-data";
+import { BUNDLE_NAMES } from "./words";
 
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }) }));
 
@@ -53,6 +57,7 @@ function where(url: URL): MapDataWhereResponse {
   const countries = url.searchParams.get("countries") ?? "";
   if (countries === "FR,CH") return { results: [FRANCE, SWITZERLAND], regionsListed: false };
   if (countries === "DE") return { results: [GERMANY], regionsListed: true };
+  if (countries === "FR") return { results: [{ ...FRANCE, regionId: "france" }], regionsListed: true };
   if (/^cham/i.test(q))
     return {
       results: [
@@ -292,6 +297,92 @@ describe("Add a place", () => {
     ]);
   });
 
+  it("adds walking and cycling as a tick, keeping the source file, saying what the build takes and where it works", async () => {
+    const user = userEvent.setup();
+    serve(mapData({ streetsInstalled: true, countryFileChoice: { keep: false, locationId: null } }), {
+      "GET /api/reference/regions": {
+        held: true,
+        readAt: 1,
+        source: "x",
+        regions: [{ id: "france", name: "France", country: "FR", parent: null, depth: 0 }],
+        suggested: [],
+      },
+      "POST /api/streets/tiles/estimate": {
+        regions: [{ regionId: "france", name: "France", country: "FR", dataDate: null }],
+        inputBytes: 4_900_000_000,
+        joined: false,
+        minutes: 130,
+        memoryBytes: 5e9,
+        writtenBytes: 110e9,
+        freeSpaceBytes: 14.7e9,
+        resultBytes: 6e9,
+        measured: false,
+        warnings: ["This takes about 2 hours on a Raspberry Pi 5.", "It writes about 110 GB to the disk it works on."],
+      },
+    });
+    renderScreen(<MapDataPage />, "/maps/data?add=1&country=FR&kinds=streets");
+    const dialog = await screen.findByRole("dialog", { name: "Add a place" });
+    await within(dialog).findByRole("heading", { name: "What for France?" });
+    const walk = within(dialog).getByRole("checkbox", { name: /Walking and cycling/ });
+    expect(walk).toBeChecked();
+    expect(within(dialog).getByText(/Needs France's source file: downloaded and kept first/)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Check size" }));
+    await within(dialog).findByRole("button", { name: /^Download · / });
+    // The build's own figures, inside the flow: the time on a Raspberry Pi and the writes to the disk.
+    expect(await within(dialog).findByText("It writes about 110 GB to the disk it works on.")).toBeInTheDocument();
+    expect(posted("/api/streets/tiles/estimate")).toEqual([
+      { regions: [], coming: [{ regionId: "france", name: "France", country: "FR", bytes: 4_900_000_000 }] },
+    ]);
+    expect(within(dialog).queryByRole("radio", { name: /Delete it after reading/ })).not.toBeInTheDocument();
+    await user.click(within(within(dialog).getByRole("radiogroup", { name: "Where it works" })).getByRole("radio", { name: /^NAS/ }));
+    await user.click(within(dialog).getByRole("button", { name: /^Download · / }));
+    await waitFor(() =>
+      expect(posted("/api/maps/data/add")).toEqual([
+        { regionId: "france", kinds: ["extract"], keep: true, streets: { workLocationId: "nas" }, locationId: expect.any(String) },
+      ]),
+    );
+  });
+
+  it("adds satellite pictures of an area as a tick, then chooses the day of the picture in the same dialog", async () => {
+    const user = userEvent.setup();
+    serve(mapData(), {
+      "GET /api/maps/imagery": { sets: [], world: [], sources: [], limits: { noticeKm2: 400, warnKm2: 2500, maxKm2: 10000 } },
+      "POST /api/maps/imagery/scenes": {
+        bbox: [6.8, 45.9, 7.0, 46.0],
+        areaKm2: 170,
+        from: "2025-11-23",
+        to: "2026-11-23",
+        searchedAt: 1,
+        notes: [],
+        options: [
+          {
+            key: "A",
+            source: "sentinel-2",
+            resolutionMeters: 10,
+            date: "2026-07-12",
+            dateText: "12 July 2026",
+            platform: "sentinel-2b",
+            sceneIds: ["A"],
+            sceneCloudPercent: 0.4,
+            coveragePercent: 100,
+          },
+        ],
+      },
+    });
+    renderScreen(<MapDataPage />, "/maps/data?add=1&bbox=6.8,45.9,7.0,46.0&name=Chamonix%20valley");
+    const dialog = await screen.findByRole("dialog", { name: "Add a place" });
+    await within(dialog).findByRole("heading", { name: "What for Chamonix valley?" });
+    await user.click(within(dialog).getByRole("checkbox", { name: /^Map/ }));
+    await user.click(within(dialog).getByRole("checkbox", { name: /Satellite pictures/ }));
+    expect(within(dialog).getByText(/Free, from Sentinel-2 \(10 m\) or a government's aerial photographs/)).toBeInTheDocument();
+    expect(posted("/api/maps/imagery/scenes")).toEqual([]);
+    await user.click(within(dialog).getByRole("button", { name: "Choose the picture" }));
+    expect(await within(dialog).findByRole("heading", { name: "Satellite pictures of Chamonix valley" })).toBeInTheDocument();
+    expect(await within(dialog).findByRole("radio", { name: /12 July 2026/ })).toBeInTheDocument();
+    expect(within(dialog).getByText(/cloud over the scene 0\.4%/)).toBeInTheDocument();
+    expect(posted("/api/maps/imagery/scenes")).toEqual([{ bbox: [6.8, 45.9, 7, 46] }]);
+  });
+
   it("offers a country in parts, all ticked, and reads only the parts left ticked", async () => {
     const user = userEvent.setup();
     serve(mapData({ countryFileChoice: { keep: false, locationId: null } }), {
@@ -365,11 +456,89 @@ describe("removing and updating by place", () => {
 });
 
 describe("Storage", () => {
-  it("lists offline maps by place, each leading to Offline maps", async () => {
+  it("is one row, Offline maps · size · where › Manage, that opens by place with the same marks", async () => {
+    const user = userEvent.setup();
     serve(ukAndMore());
-    renderScreen(<MapDataSection />, "/storage");
-    const table = await screen.findByRole("table", { name: "Offline maps by place" });
-    expect(within(table).getByRole("link", { name: "United Kingdom" })).toHaveAttribute("href", "/maps/data");
+    renderScreen(
+      <table>
+        <tbody>
+          <OfflineMapsRows color="green" bytes={1} />
+        </tbody>
+      </table>,
+      "/storage",
+    );
+    const row = await screen.findByRole("row", { name: /Offline maps/ });
+    await waitFor(() => expect(row).toHaveTextContent("3.10 GB"));
+    expect(row).toHaveTextContent("Internal storage");
+    expect(row).toHaveTextContent("4 places");
+    expect(within(row).getByRole("link", { name: "Manage" })).toHaveAttribute("href", "/maps/data");
+    expect(screen.queryByRole("list", { name: "Offline maps by place" })).not.toBeInTheDocument();
+
+    const toggle = within(row).getByRole("button", { name: "Offline maps" });
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    const list = screen.getByRole("list", { name: "Offline maps by place" });
+    expect(within(list).getByRole("link", { name: "United Kingdom" })).toHaveAttribute("href", "/maps/data");
+    // Built from the pattern: a row each, with the marks and words Offline maps uses.
+    const places = [...list.querySelectorAll<HTMLElement>('[data-pattern="row"]')];
+    expect(places).toHaveLength(4);
+    const uk = places[0]!;
+    expect([...uk.querySelectorAll<HTMLElement>('[data-pattern="state"]')].map((mark) => mark.dataset.state)).toEqual([
+      "ready",
+      "downloading",
+    ]);
+    expect(uk).toHaveTextContent("Map");
+    expect(uk).toHaveTextContent("Routes");
+    expect(uk).toHaveTextContent("43%");
     expect(screen.getByText(/1 place is over a year old\./)).toBeInTheDocument();
+  });
+});
+
+describe("Downloads and tasks", () => {
+  it("titles map downloads and builds in Offline maps' words: the place, then the bundle", async () => {
+    installBrowserStubs();
+    const job: JobDto = {
+      id: "j1",
+      type: "roads.build",
+      queue: "import",
+      state: "running",
+      title: "Building the road network: France",
+      subject: "roads:fr",
+      progress: { current: 1, total: 4, message: null, unit: null, ratePerSecond: null },
+      error: null,
+      errorKind: null,
+      attempts: 1,
+      maxAttempts: 1,
+      result: null,
+      createdAt: 1,
+      startedAt: 2,
+      finishedAt: null,
+      updatedAt: 3,
+    } as JobDto;
+    fakeServer({
+      "GET /api/downloads": {
+        downloads: [
+          // An older row, stored with the retired words, and a new one.
+          download({ id: "d1", kind: "extract", title: "Country file: United Kingdom (Geofabrik)", state: "running" }),
+          download({ id: "d2", kind: "extract", title: "Switzerland: routes and nearby places", state: "queued" }),
+        ],
+      },
+      "GET /api/downloads/plan": plan(),
+      "GET /api/jobs": { jobs: [job] },
+      "GET /api/collections": { collections: [] },
+    });
+    renderScreen(<DownloadsPage />, "/downloads");
+    const bundles = Object.values(BUNDLE_NAMES).map((name) => name.toLowerCase());
+    const words = new RegExp(`^(.+): (${[...bundles, "source file"].join("|")})( and (${bundles.join("|")}))?$`);
+    const titles = await waitFor(() => {
+      const found = screen.getAllByRole("link", { name: /^Details of / }).map((each) => each.getAttribute("aria-label")!.slice(11));
+      expect(found).toEqual(
+        expect.arrayContaining(["United Kingdom: source file", "Switzerland: routes and nearby places", "France: routes"]),
+      );
+      return found;
+    });
+    for (const title of titles) expect(title).toMatch(words);
+    expect(mapTaskTitle("OpenStreetMap: Bavaria, Germany (Geofabrik)")).toBe("Bavaria, Germany: nearby places");
+    expect(document.body.textContent?.match(/.{0,80}(country file|road network|Geofabrik).{0,40}/i)?.[0] ?? null).toBeNull();
   });
 });

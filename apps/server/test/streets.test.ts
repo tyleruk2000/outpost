@@ -321,9 +321,9 @@ describe("with the streets service", () => {
   it("says plainly when a point is outside the streets built", async () => {
     const { status, body } = await app.api("POST", "/api/streets/route", { points: [LEATHERHEAD, REIMS], mode: "cycle" });
     expect(status).toBe(400);
-    expect(body.error.message).toBe("Streets are not installed for France. Build streets with its country file from Map data.");
+    expect(body.error.message).toBe("Walking and cycling is not added for France. Add it under Offline maps.");
     const reach = await app.api("POST", "/api/streets/reach", { point: REIMS, mode: "walk", minutes: [15] });
-    expect(reach.body.error.message).toMatch(/not installed for France/);
+    expect(reach.body.error.message).toMatch(/not added for France/);
   });
 
   it("drives door to door: Outpost's route as the spine, streets at each end", async () => {
@@ -423,7 +423,7 @@ describe("building streets", () => {
     expect((await status()).state).toBe("no-streets");
     const refused = await app.api("POST", "/api/streets/tiles", { regions: ["europe/great-britain/england/kent"] });
     expect(refused.status).toBe(400);
-    expect(refused.body.error.message).toMatch(/no kept country file/);
+    expect(refused.body.error.message).toMatch(/no kept source file/);
     await keepCountryFile(app, "europe/great-britain/england/kent", "Kent", "GB", 54_460_111);
     await keepCountryFile(app, "europe/great-britain/england/east-sussex", "East Sussex", "GB", 22_326_090);
     expect((await status()).countryFiles.map((f) => f.name)).toEqual(["East Sussex", "Kent"]);
@@ -466,7 +466,7 @@ describe("building streets", () => {
       sidecarStatus({ state: "building", id: jobId, name: "Kent and East Sussex", stage: "tiles", startedAt, current: null }),
     );
     await waitFor(
-      () => app.ctx.jobs.get(jobId)?.progressMessage?.startsWith("Building streets") === true,
+      () => app.ctx.jobs.get(jobId)?.progressMessage?.startsWith("Building walking and cycling") === true,
       "the streets service's side",
       10_000,
     );

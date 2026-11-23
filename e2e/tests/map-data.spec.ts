@@ -9,6 +9,7 @@
 import { accessibilityInBothThemes } from "./a11y";
 import { api, expect, test, watchForErrors } from "./fixtures";
 import { removeReferencePacks } from "./reference-layers";
+import { installStreets, removeStreets } from "./streets";
 
 const filesPort = Number(process.env.OUTPOST_E2E_FILES_PORT ?? 8473);
 const standIn = (build: string) => `http://127.0.0.1:${filesPort}/maps/${build}.pmtiles`;
@@ -52,7 +53,9 @@ test.describe("Offline maps", () => {
     await expect(page.getByRole("region", { name: "What covers this view" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Add this view" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Draw an area" })).toBeVisible();
-    await expect(page.getByRole("region", { name: "Satellite imagery" })).toBeAttached();
+    // Satellite pictures are a tick of Add a place now, said beside the one link.
+    await expect(page.getByText(/satellite pictures: add, update and remove them there/)).toBeVisible();
+    await expect(page.getByRole("region", { name: "Satellite imagery" })).toHaveCount(0);
     // What moved is not here twice.
     await expect(page.getByRole("heading", { name: "Add a region" })).toHaveCount(0);
     await link.click();
@@ -60,7 +63,11 @@ test.describe("Offline maps", () => {
     await expect(page.getByRole("button", { name: "Add a place" }).first()).toBeVisible();
 
     await page.goto("/storage");
-    await page.getByRole("link", { name: "Manage", exact: true }).click();
+    // One row among the kinds of content, not a table by kind: Offline maps · size · where › Manage.
+    const offline = page.getByRole("row", { name: /Offline maps/ });
+    await expect(offline).toBeVisible();
+    await expect(page.getByRole("row", { name: /Country files|Place names|Terrain/ })).toHaveCount(0);
+    await offline.getByRole("link", { name: "Manage", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Offline maps", level: 1 })).toBeVisible();
 
     await page.goto("/downloads");
@@ -126,8 +133,65 @@ test.describe("Offline maps", () => {
     await dialog.getByText("More choices").click();
     await expect(dialog.getByRole("radio", { name: /Keep the source file/ })).toBeChecked();
     await page.keyboard.press("Escape");
+
+    // Storage's row opens to Monaco with the same marks; Downloads and tasks titles the work in the same words.
+    await page.goto("/storage");
+    await page
+      .getByRole("row", { name: /Offline maps/ })
+      .getByRole("button", { name: "Offline maps" })
+      .click();
+    const byPlace = page.getByRole("list", { name: "Offline maps by place" });
+    const there = byPlace.locator('[data-pattern="row"]').filter({ hasText: "Monaco" });
+    await expect(there.locator('[data-pattern="state"][data-state="ready"]')).toHaveCount(2);
+    await expect(there).toContainText("Routes");
+    await page.goto("/downloads");
+    await expect(page.getByRole("main").getByText("Monaco: routes and nearby places").first()).toBeVisible();
+    await expect(page.getByRole("main")).not.toContainText(/Country file|Geofabrik|road network/);
     expect(errors).toEqual([]);
     expect(sealed.external).toEqual([]);
+  });
+
+  test("adds walking and cycling through Add a place: the source file downloaded and kept first, the build said and queued", async ({
+    page,
+    sealed,
+  }) => {
+    test.setTimeout(90_000);
+    const errors = watchForErrors(page);
+    installStreets("none");
+    try {
+      await page.goto("/maps/data?add=1&country=MC&kinds=streets");
+      const dialog = page.getByRole("dialog", { name: "Add a place" });
+      await expect(dialog.getByRole("heading", { name: "What for Monaco?" })).toBeVisible();
+      await expect(dialog.getByRole("checkbox", { name: /Walking and cycling/ })).toBeChecked();
+      await expect(dialog.getByText(/Needs Monaco's source file.*downloaded and kept first/)).toBeVisible();
+      await dialog.getByRole("button", { name: "Check size" }).click();
+      const download = dialog.getByRole("button", { name: /^Download · / });
+      await expect(download).toBeVisible({ timeout: 15_000 });
+      // The build's own figures, in the flow: the time on a Raspberry Pi 5 and what it writes.
+      const takes = dialog.getByTestId("streets-estimate");
+      await expect(takes).toContainText(/Raspberry Pi 5/);
+      await expect(takes).toContainText(/writes about/i);
+      // Kept, not asked: walking and cycling are built from it.
+      await expect(dialog.getByRole("radio", { name: /Delete it after reading/ })).toHaveCount(0);
+      await download.click();
+      await expect(dialog).toBeHidden();
+      // Once the file is kept, the build is queued, titled in Offline maps' words.
+      await expect
+        .poll(
+          async () =>
+            (await api<{ jobs: Array<{ title: string; type: string }> }>(page, "GET", "/api/jobs?active=true")).jobs
+              .filter((job) => job.type === "streets.build")
+              .map((job) => job.title),
+          { timeout: 45_000 },
+        )
+        .toEqual(["Monaco: walking and cycling"]);
+      expect(errors).toEqual([]);
+      expect(sealed.external).toEqual([]);
+    } finally {
+      for (const job of (await api<{ jobs: Array<{ id: string; type: string }> }>(page, "GET", "/api/jobs?active=true")).jobs)
+        if (job.type === "streets.build") await api(page, "POST", `/api/jobs/${job.id}/cancel`).catch(() => undefined);
+      removeStreets();
+    }
   });
 
   test("updates a map over a year old by place, keeping the old one until the new one is in", async ({ page, sealed }) => {

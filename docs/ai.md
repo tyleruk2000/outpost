@@ -264,7 +264,7 @@ off by default. Each area has a switch that says what it lets a model server see
 | Area | Default | What a model may read |
 | --- | --- | --- |
 | Library and notes | on | Passages of documents and notes. Never contacts. |
-| Places and map layers | on | Saved places and reference-layer records: what, where, how far, which way, fetched when. |
+| Places and nearby places | on | Saved places and reference-layer records: what, where, how far, which way, fetched when. |
 | Supplies | on | Days of food, water and energy, what runs out first, stock. |
 | Emergency plans | on | Plans, steps, meeting places; not their contacts or medical notes. |
 | Weather, sun and compass | on | Weather as last fetched (never fetched afresh), sun times, magnetic declination. |

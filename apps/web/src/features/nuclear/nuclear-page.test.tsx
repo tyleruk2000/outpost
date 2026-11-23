@@ -599,7 +599,7 @@ describe("Nuclear preparedness", () => {
     // The layers panel of the Maps screen, unchanged, with its sentence on targets.
     expect(await screen.findByRole("switch", { name: "Shelters and assembly points" })).toBeInTheDocument();
     expect(screen.getByText(/Nothing here marks a place as a likely target or ranks places/)).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Reference data for the map" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Layer data for the map" })).toBeInTheDocument();
   });
 
   it("has a records browser with an empty state that says why nothing ships", async () => {

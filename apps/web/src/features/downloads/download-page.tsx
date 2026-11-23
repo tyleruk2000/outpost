@@ -22,21 +22,21 @@ import { SpeedChart } from "./charts/speed-chart";
 import { clockAt, clockTicks, clockTimeWithSeconds } from "./charts/time-axis";
 import { Checksum, Exact, Fact, Facts, History, Part, Region } from "./detail-parts";
 import { DownloadControls, DownloadProgress, RemoveDownloadButton } from "./download-progress";
-import { describeDownload } from "./download-text";
+import { describeDownload, mapTaskTitle } from "./download-text";
 import { fetcherWords, integrityVerdict, queuePosition, queuePositions, retryWords, stateWords, type Tone } from "./plan-text";
 import { useDownloads } from "./use-downloads";
 import { useDownloadDetail, useNow, usePlan } from "./use-plan";
 
 const kindWords: Record<DownloadKind, string> = {
   zim: "Reference collection",
-  map: "Map region",
-  terrain: "Terrain for a map region",
-  places: "Place names",
+  map: "Map",
+  terrain: "Map hills",
+  places: "Map place names",
   file: "File",
   model: "Search model",
-  dataset: "Map layer or radio data",
+  dataset: "Nearby places or radio data",
   document: "Document saved from a link",
-  extract: "Country file",
+  extract: "Map source file",
 };
 
 const badgeTone: Record<Tone, "neutral" | "lamp" | "success" | "warning" | "danger"> = {
@@ -304,7 +304,7 @@ export default function DownloadPage() {
     <Page>
       <BackToDownloads />
       <header className="mt-3 mb-9">
-        <h1 className="font-title text-title text-ink">{download.title}</h1>
+        <h1 className="font-title text-title text-ink">{mapTaskTitle(download.title)}</h1>
         <p className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-small text-ink-muted">
           <Badge tone={badgeTone[state.tone]}>{state.label}</Badge>
           <span>

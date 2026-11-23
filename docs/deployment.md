@@ -403,13 +403,13 @@ That sets `COMPOSE_PROFILES=routes` in `.env` and builds the streets image on th
 downloads Valhalla's image, about 700 MB, once). Elsewhere, put `COMPOSE_PROFILES=routes`
 in `.env` and run `docker compose up -d --build`.
 
-Then build streets for a country on **Maps → Map data**, from its kept country file
-([maps.md](maps.md#streets-for-routes)). Great Britain took 56 minutes on a Pi 5 with
+Then add **Walking and cycling** for a place under **Maps → Offline maps**, in **Add a
+place** ([maps.md](maps.md#walking-and-cycling)). Great Britain took 56 minutes on a Pi 5 with
 8 GB, needed about 8 GB free while building, takes 2.7 GB after, and wrote about 53 GB to
 the disk: choose a NAS or USB disk as the place it works to spare the SD card (that
 location must be mounted read-write in the `valhalla` service). Drives keep planning on
-Outpost's own road networks whether or not the add-on is there. To take it away, remove
-the streets on Map data, set `COMPOSE_PROFILES` back, and delete the `valhalla-tiles`
+Outpost's own routes whether or not the add-on is there. To take it away, remove
+walking and cycling on Offline maps, set `COMPOSE_PROFILES` back, and delete the `valhalla-tiles`
 volume.
 
 #### A box you can carry: the install script and a Wi-Fi network of the Pi's own

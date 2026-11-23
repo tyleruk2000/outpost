@@ -113,7 +113,7 @@ describe("getting reference data from a source that is told what is asking", () 
 });
 
 describe("a whole country", () => {
-  it("starts at the current household's country, and at the UK with none", async () => {
+  it("chooses no country for the person, not even home's, and shows no size until one is chosen", async () => {
     show(
       null,
       householdsAnswer(
@@ -124,11 +124,7 @@ describe("a whole country", () => {
         "gite",
       ),
     );
-    await waitFor(() => expect(screen.getByRole("combobox", { name: "Country" })).toHaveTextContent("France"));
-  });
-
-  it("with one household and no country, is the UK as before", async () => {
-    show(null);
-    await waitFor(() => expect(screen.getByRole("combobox", { name: "Country" })).toHaveTextContent("United Kingdom"));
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Country" })).toHaveTextContent("Choose a country"));
+    expect(screen.getByRole("button", { name: "Show the size" })).toBeDisabled();
   });
 });

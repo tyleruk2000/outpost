@@ -12,6 +12,11 @@
  * remembered. One button changes as it goes: "Check size" (which asks the map sources and, the
  * first time, reads Geofabrik's list of regions) and then "Download · 4.1 GB".
  *
+ * Walking and cycling (where the add-on is installed) and Satellite pictures are ticks of step 2
+ * too, each with its cost: walking and cycling is built on this device from the kept source file
+ * (with the time on a Raspberry Pi, the writes to the disk, and where it works); satellite
+ * pictures of an area go on to choosing the day of the picture, and of the world, NASA's picture.
+ *
  * Arriving with countries (/maps/data?add=1&countries=FR,CH, from a route that needs them) opens
  * at step 2 with Routes ticked for each.
  */
@@ -45,6 +50,8 @@ import { useHomeCountry } from "@/features/frequencies/home-country";
 import { api, errorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { estimateRegion, type RegionEstimate, useMapRegions, useStartPlaces } from "../data";
+import { useImagery, useStartWorld } from "../imagery/data";
+import { SATELLITE_AREA_COST, SatellitePicture, WorldPictureChoice, worldLine } from "../imagery/panel";
 import { detailChoices, detailLabel } from "../lib/detail";
 import { countTiles } from "../lib/geo";
 import { fold } from "../lib/search";
@@ -52,6 +59,7 @@ import { isCameraView, readStored, STORAGE_KEYS } from "../lib/view";
 import { DestinationPicker, useDestination } from "../panels/destination";
 import { suggestedFileLocation } from "./country-file-choice";
 import { touchSize } from "./pattern";
+import { OWN, WalkDetails, walkCostLine } from "./streets-build";
 import { mapDataKeys, useAddMapData } from "./use-map-data";
 import { BUNDLE_DETAILS, BUNDLE_NAMES, keptFileFor, namesText, placesIn } from "./words";
 import { WorldPick } from "./world-pick";
@@ -99,11 +107,13 @@ export function bundlesOfKinds(kinds: string[]): MapDataBundleKind[] {
     if (kind === "roads") out.add("routes");
     if (kind === "places") out.add("nearby");
     if (kind === "streets") out.add("walk");
+    if (kind === "imagery") out.add("imagery");
   }
   return [...out];
 }
 
-type Choosable = "map" | "routes" | "nearby";
+type Choosable = "map" | "routes" | "nearby" | "walk" | "imagery";
+const CHOOSABLE: Choosable[] = ["map", "routes", "nearby", "walk", "imagery"];
 
 /** A where-result as a place to add for. */
 function chosenOf(result: MapDataWhereResult, part: boolean): Chosen {
@@ -348,6 +358,7 @@ function Tick({
   onChange,
   trailing,
   disabled,
+  children,
 }: {
   name: string;
   detail: ReactNode;
@@ -355,24 +366,29 @@ function Tick({
   onChange: (on: boolean) => void;
   trailing?: ReactNode;
   disabled?: boolean;
+  /** What more it needs once ticked (walking and cycling's build, NASA's picture). */
+  children?: ReactNode;
 }) {
   const id = useId();
   return (
-    <li className="flex items-start gap-3 py-3">
-      <Checkbox id={id} checked={checked} disabled={disabled} onCheckedChange={(next) => onChange(next === true)} className="mt-0.5" />
-      <label
-        htmlFor={id}
-        className={cn(
-          "flex min-w-0 flex-1 flex-wrap items-baseline justify-between gap-x-4",
-          disabled ? "cursor-not-allowed" : "cursor-pointer",
-        )}
-      >
-        <span className="min-w-0">
-          <span className={cn("block text-small font-medium", disabled ? "text-ink-muted" : "text-ink")}>{name}</span>
-          <span className="block text-small text-ink-muted">{detail}</span>
-        </span>
-        {trailing ? <span className="tabular shrink-0 text-small text-ink-muted">{trailing}</span> : null}
-      </label>
+    <li className="py-3">
+      <div className="flex items-start gap-3">
+        <Checkbox id={id} checked={checked} disabled={disabled} onCheckedChange={(next) => onChange(next === true)} className="mt-0.5" />
+        <label
+          htmlFor={id}
+          className={cn(
+            "flex min-w-0 flex-1 flex-wrap items-baseline justify-between gap-x-4",
+            disabled ? "cursor-not-allowed" : "cursor-pointer",
+          )}
+        >
+          <span className="min-w-0">
+            <span className={cn("block text-small font-medium", disabled ? "text-ink-muted" : "text-ink")}>{name}</span>
+            <span className="block text-small text-ink-muted">{detail}</span>
+          </span>
+          {trailing ? <span className="tabular shrink-0 text-small text-ink-muted">{trailing}</span> : null}
+        </label>
+      </div>
+      {children}
     </li>
   );
 }
@@ -461,7 +477,7 @@ function Flow({
   const add = useAddMapData();
   const startPlaces = useStartPlaces();
   const heading = useRef<HTMLHeadingElement>(null);
-  const [step, setStep] = useState<"where" | "what">("where");
+  const [step, setStep] = useState<"where" | "what" | "picture">("where");
   const [places, setPlaces] = useState<Chosen[]>([]);
   const [ticks, setTicks] = useState<Set<Choosable>>(new Set());
   const [hills, setHills] = useState(true);
@@ -474,6 +490,12 @@ function Flow({
   const [checking, setChecking] = useState(false);
   const [checkError, setCheckError] = useState<unknown>(null);
   const [sending, setSending] = useState(false);
+  /** Where a walking and cycling build works: Outpost's own disk, or another location. */
+  const [workWhere, setWorkWhere] = useState(OWN);
+  /** NASA's picture of the world, when Satellite pictures is ticked for the world. */
+  const [worldPicture, setWorldPicture] = useState<string>();
+  const imagery = useImagery();
+  const startWorld = useStartWorld();
   const regionsHeld = useQuery({
     queryKey: ["layers", "regions", ""],
     queryFn: () => api.get<ReferenceRegionsResponse>("/api/reference/regions"),
@@ -492,7 +514,7 @@ function Flow({
         return have?.bundles.some((each) => each.kind === bundle && each.state !== "none") ?? false;
       });
     const wanted: Choosable[] = asked
-      ? (asked.filter((each) => each === "map" || each === "routes" || each === "nearby") as Choosable[])
+      ? (asked.filter((each) => (CHOOSABLE as string[]).includes(each)) as Choosable[])
       : next[0]?.type === "country"
         ? (["map", "routes"] as const).filter((each) => !held(each))
         : ["map"];
@@ -535,7 +557,15 @@ function Flow({
   }, [step]);
 
   const countries = places.filter((place) => place.type === "country");
-  const fromFile = ticks.has("routes") || ticks.has("nearby");
+  const fromFile = ticks.has("routes") || ticks.has("nearby") || ticks.has("walk");
+  /** Walking and cycling are built from the source file: ticked, it is kept. */
+  const mustKeep = ticks.has("walk");
+  const keepChoice = mustKeep ? true : keep;
+  const worldOptions = (imagery.data?.world ?? []).filter((option) => !option.installed && option.downloadId === null);
+  const worldOption = worldOptions.find((option) => option.id === worldPicture) ?? worldOptions[0] ?? null;
+  const areaPicture = ticks.has("imagery") && places[0]?.type === "area";
+  /** Only satellite pictures of an area: nothing to check here, the picture is chosen next. */
+  const pictureOnly = areaPicture && ticks.size === 1;
   const regionList = sizes?.sizes.regions.length ? sizes.sizes.regions : regionsHeld.data?.held ? regionsHeld.data.regions : [];
   const wholeRegion = (place: Chosen) =>
     place.regionId ?? regionList.find((region) => region.depth === 0 && region.country === place.code)?.id ?? null;
@@ -565,6 +595,7 @@ function Flow({
     hills,
     zoom,
     leftOut: [...leftOut].sort(),
+    world: ticks.has("imagery") ? (worldOption?.id ?? null) : null,
   });
   const found = sizes?.key === signature ? sizes.sizes : null;
 
@@ -648,10 +679,11 @@ function Flow({
   const fileBytes = found ? Object.values(found.file).reduce<number>((sum, bytes) => sum + (bytes ?? 0), 0) : 0;
   const mapBytes = found ? Object.values(found.map).reduce((sum, estimate) => sum + estimate.totalBytes, 0) : 0;
   const namesBytes = found?.names && !found.names.installed ? found.names.sizeBytes : 0;
-  const total = fileBytes + mapBytes + namesBytes;
+  const worldBytes = ticks.has("imagery") && places[0]?.type === "world" && worldOption ? worldOption.transferBytes : 0;
+  const total = fileBytes + mapBytes + namesBytes + worldBytes;
   const allKept = fromFile && found !== null && Object.values(found.file).every((bytes) => bytes === null);
 
-  const mapDestination = useDestination(found ? mapBytes + namesBytes : null, "maps");
+  const mapDestination = useDestination(found ? mapBytes + namesBytes + worldBytes : null, "maps");
   const fileDestination = useDestination(found && fileBytes > 0 ? fileBytes : null);
   const [suggested, setSuggested] = useState(false);
   useEffect(() => {
@@ -664,12 +696,14 @@ function Flow({
   const askFile = fromFile && countries.length > 0 && !allKept;
   const problems = [
     ticks.size === 0 ? "Choose what to add." : null,
-    askFile && keep === undefined ? "Choose what happens to the source file." : null,
-    askFile && keep && fileBytes > 0 && !fileDestination.locationId ? "Choose where to keep the source file." : null,
-    ticks.has("map") && found && !mapDestination.locationId ? "Choose where to keep the map." : null,
+    askFile && keepChoice === undefined ? "Choose what happens to the source file." : null,
+    askFile && keepChoice && fileBytes > 0 && !fileDestination.locationId ? "Choose where to keep the source file." : null,
+    (ticks.has("map") || worldBytes > 0) && found && !mapDestination.locationId ? "Choose where to keep the map." : null,
+    ticks.has("imagery") && places[0]?.type === "world" && !worldOption ? "NASA's picture of the world is added already." : null,
   ].filter((each): each is string => each !== null);
 
   const download = async () => {
+    if (pictureOnly) return setStep("picture");
     if (!found || problems.length > 0) return;
     setSending(true);
     try {
@@ -678,13 +712,16 @@ function Flow({
         if (place.type === "country" && fromFile) {
           for (const regionId of filesOf({ ...place, regionId: wholeRegion(place) })) {
             const kept = keptFor(regionId);
+            const read = [...(ticks.has("routes") ? (["roads"] as const) : []), ...(ticks.has("nearby") ? (["places"] as const) : [])];
             requests.push({
               regionId,
-              kinds: [...(ticks.has("routes") ? (["roads"] as const) : []), ...(ticks.has("nearby") ? (["places"] as const) : [])],
-              keep: kept ? true : (keep ?? false),
+              // Only walking and cycling: the source file itself, kept, to build it from.
+              kinds: read.length > 0 ? read : ["extract"],
+              keep: kept ? true : (keepChoice ?? false),
+              ...(ticks.has("walk") ? { streets: workWhere !== OWN ? { workLocationId: workWhere } : {} } : {}),
               ...(kept
                 ? { locationId: kept.locationId ?? undefined }
-                : keep && fileDestination.locationId
+                : keepChoice && fileDestination.locationId
                   ? { locationId: fileDestination.locationId }
                   : {}),
             });
@@ -713,11 +750,18 @@ function Flow({
             dataset: "cities500",
             ...(mapDestination.locationId ? { locationId: mapDestination.locationId } : {}),
           });
+        if (place.type === "world" && worldBytes > 0 && worldOption)
+          await startWorld.mutateAsync({
+            entryId: worldOption.id,
+            ...(mapDestination.locationId ? { locationId: mapDestination.locationId } : {}),
+          });
       }
       mapDestination.remember();
       toast.success(`Adding ${namesText(places.map((place) => place.name))}. Progress is shown on Offline maps.`);
       onAdded?.(places[0]!);
-      onClose();
+      // Satellite pictures of an area: the picture is chosen next, in this dialog.
+      if (areaPicture) setStep("picture");
+      else onClose();
     } catch (error) {
       setCheckError(error);
     } finally {
@@ -744,18 +788,83 @@ function Flow({
 
   const title = namesText(places.map((place) => place.name));
   const first = places[0];
+  if (step === "picture" && first?.type === "area" && first.bbox) {
+    return (
+      <SatellitePicture area={{ bbox: first.bbox, name: first.name }} heading={heading} onBack={() => setStep("what")} onDone={onClose} />
+    );
+  }
+  /** The files to build walking and cycling from: kept ones by region, those on their way with the size found. */
+  const walkFiles = countries.flatMap((place) => filesOf({ ...place, regionId: wholeRegion(place) }));
+  const walkHeld = walkFiles.length > 0 && walkFiles.every((id) => keptFor(id));
+  const walkRequest =
+    walkFiles.length === 0 || (!walkHeld && !found)
+      ? null
+      : {
+          regions: walkFiles.filter((id) => keptFor(id)),
+          coming: walkFiles
+            .filter((id) => !keptFor(id))
+            .map((id) => ({
+              regionId: id,
+              name: regionList.find((region) => region.id === id)?.name ?? countries[0]?.name ?? id,
+              country: regionList.find((region) => region.id === id)?.country ?? countries[0]?.code ?? null,
+              bytes: found?.file[id] ?? 0,
+            })),
+        };
+  const detailOf = (bundle: Choosable): ReactNode => {
+    if (bundle === "map" && first?.type === "world") return "Countries, cities and main roads everywhere, and the world's towns by name";
+    if (bundle === "map" && first?.countryName) return `${BUNDLE_DETAILS.map}: all of ${first.countryName}`;
+    if (bundle === "walk")
+      return (
+        <>
+          {BUNDLE_DETAILS.walk}
+          <span className="block">{walkCostLine(title, fileBytes || null, walkHeld)}</span>
+        </>
+      );
+    if (bundle === "imagery" && first?.type === "world")
+      return (
+        <>
+          {BUNDLE_DETAILS.imagery}
+          <span className="block">
+            {worldOption ? `${worldLine(worldOption)}. Free, no account.` : "NASA's picture of the world is added already."}
+          </span>
+        </>
+      );
+    if (bundle === "imagery")
+      return (
+        <>
+          {BUNDLE_DETAILS.imagery}
+          <span className="block">{SATELLITE_AREA_COST}</span>
+        </>
+      );
+    return BUNDLE_DETAILS[bundle];
+  };
   const sizeOf = (bundle: Choosable): ReactNode => {
+    if (bundle === "imagery") return first?.type === "world" && worldOption ? formatBytes(worldOption.transferBytes) : null;
     if (!found) return null;
     if (bundle === "map") return mapBytes > 0 ? formatBytes(mapBytes + namesBytes) : null;
+    if (bundle === "walk") return walkHeld ? "Built here" : "Source file kept";
     if (allKept) return "No download";
     if (bundle === "routes") return fileBytes > 0 ? `about ${formatBytes(fileBytes * ROADS_SHARE)} kept` : null;
     return ticks.has("routes") ? "Read from the same file" : null;
   };
-  const offered: Choosable[] = first?.type === "country" ? ["map", "routes", "nearby"] : ["map"];
+  const offered: Choosable[] =
+    first?.type === "country"
+      ? ["map", "routes", "nearby", ...(data.streetsInstalled ? (["walk"] as const) : [])]
+      : first?.type === "world"
+        ? ["map", ...(worldOptions.length > 0 ? (["imagery"] as const) : [])]
+        : ["map", "imagery"];
   const partsNote = countries.length === 1 && !countries[0]!.part ? partsOf(countries[0]!) : [];
   const wholeSize = found && countries.length === 1 ? found.file[wholeRegion(countries[0]!) ?? ""] : undefined;
 
-  const fileChoice = (
+  const fileChoice = mustKeep ? (
+    <div className="grid gap-2">
+      <p className="text-small text-ink">
+        The source file{fileBytes > 0 ? ` (${formatBytes(fileBytes)})` : ""} is kept: walking and cycling are built from it, and routes and
+        places can be rebuilt with no download.
+      </p>
+      {fileBytes > 0 ? <DestinationPicker destination={fileDestination} label="Where to keep the source file" /> : null}
+    </div>
+  ) : (
     <div className="grid gap-2">
       <ChoiceList
         label="The source file"
@@ -806,13 +915,7 @@ function Flow({
               <Tick
                 key={bundle}
                 name={BUNDLE_NAMES[bundle]}
-                detail={
-                  bundle === "map" && first?.type === "world"
-                    ? "Countries, cities and main roads everywhere, and the world's towns by name"
-                    : bundle === "map" && first?.countryName
-                      ? `${BUNDLE_DETAILS.map}: all of ${first.countryName}`
-                      : BUNDLE_DETAILS[bundle]
-                }
+                detail={detailOf(bundle)}
                 checked={ticks.has(bundle)}
                 onChange={(on) =>
                   setTicks((current) => {
@@ -823,7 +926,15 @@ function Flow({
                   })
                 }
                 trailing={sizeOf(bundle)}
-              />
+              >
+                {bundle === "walk" && ticks.has("walk") ? (
+                  <WalkDetails request={walkRequest} where={workWhere} onWhere={setWorkWhere} />
+                ) : bundle === "imagery" && ticks.has("imagery") && first?.type === "world" && worldOptions.length > 1 ? (
+                  <div className="pt-2 pl-8">
+                    <WorldPictureChoice options={worldOptions} value={worldOption?.id} onChange={setWorldPicture} />
+                  </div>
+                ) : null}
+              </Tick>
             ))}
           </ul>
           {fromFile && partsNote.length > 0 ? (
@@ -947,7 +1058,11 @@ function Flow({
         <Button onClick={() => setStep("where")}>
           <ArrowLeft /> Another place
         </Button>
-        {found ? (
+        {pictureOnly ? (
+          <Button variant="primary" onClick={download}>
+            Choose the picture
+          </Button>
+        ) : found ? (
           <Button variant="primary" onClick={download} loading={sending} disabled={problems.length > 0}>
             {allKept && mapBytes === 0 ? "Build from the kept file" : `Download · ${formatBytes(total)}`}
           </Button>

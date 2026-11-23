@@ -96,7 +96,7 @@ export function coverageWarning(coverage: Coverage, hasTiles: boolean): { title:
     parts.push(`${share(coverage.none)} of this area has no detailed map installed and will show only an outline`);
   if (coverage.coarser >= WORTH_SAYING) {
     parts.push(
-      `${share(coverage.coarser)} of ${parts.length ? "it" : "this area"} is installed only to zoom ${coverage.coarserZoom}, where this scale needs zoom ${coverage.neededZoom}, and will be drawn with less detail than the rest`,
+      `${share(coverage.coarser)} of ${parts.length ? "it" : "this area"} is kept in less detail than this scale needs, and will be drawn with less detail than the rest`,
     );
   }
   if (parts.length === 0) return null;

@@ -1,7 +1,7 @@
 import { formatBytes, type Settings } from "@outpost/shared";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { type ReactNode, useEffect } from "react";
-import { useLocation } from "react-router";
+import { Link, useLocation } from "react-router";
 import { settingsGroups, settingsSections } from "@/components/nav";
 import { ErrorState, JumpLinks, Page, PageHeader } from "@/components/page";
 import { Segmented, Skeleton, Switch } from "@/components/ui/misc";
@@ -351,7 +351,16 @@ export default function SettingsPage() {
           <SettingsSection
             id="maps"
             title="Maps"
-            description="Where map regions are fetched from when you download them. The defaults suit almost everyone."
+            description={
+              <>
+                Where maps are fetched from when a place is added. The defaults suit almost everyone. Places are added, updated and removed
+                under{" "}
+                <Link to="/maps/data" className="text-primary underline decoration-1 underline-offset-2">
+                  Offline maps
+                </Link>
+                .
+              </>
+            }
           >
             <SettingRow
               htmlFor="maps-source"
@@ -370,8 +379,8 @@ export default function SettingsPage() {
             />
             <SettingRow
               htmlFor="maps-terrain"
-              label="Terrain source"
-              hint="Used for hill shading when you choose to download terrain with a region."
+              label="Hills source"
+              hint="Where a map's hills and heights come from when a place is added."
               control={
                 <TextSetting
                   id="maps-terrain"

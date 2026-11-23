@@ -126,3 +126,25 @@ export function describeDownload(download: DownloadDto): DownloadView {
 export function removalDeletesPartialFile(download: Pick<DownloadDto, "state" | "receivedBytes">): boolean {
   return download.state !== "completed" && download.receivedBytes > 0;
 }
+
+/**
+ * Old titles of offline map downloads and tasks, made before they were named as Offline maps names
+ * them, in its words: "United Kingdom: routes", "France: source file". Any other title is as given.
+ */
+const OLD_MAP_TITLES: Array<[RegExp, string]> = [
+  [/^Building the road network: (.+)$/, "$1: routes"],
+  [/^Road network: (.+)$/, "$1: routes"],
+  [/^Roads for routes: (.+)$/, "$1: routes"],
+  [/^Reading the country file: (.+)$/, "$1: source file"],
+  [/^Country file: (.+?)(?: \(Geofabrik\))?$/, "$1: source file"],
+  [/^OpenStreetMap(?: extract)?: (.+?) \(Geofabrik\)$/, "$1: nearby places"],
+  [/^Building streets for routes: (.+)$/, "$1: walking and cycling"],
+  [/^Bringing in streets for routes: (.+)$/, "$1: walking and cycling, brought in"],
+  [/^Satellite: (.+)$/, "$1: satellite pictures"],
+];
+
+/** A download's or task's title as Downloads and tasks shows it: map data in the words of Offline maps. */
+export function mapTaskTitle(title: string): string {
+  for (const [pattern, words] of OLD_MAP_TITLES) if (pattern.test(title)) return title.replace(pattern, words);
+  return title;
+}

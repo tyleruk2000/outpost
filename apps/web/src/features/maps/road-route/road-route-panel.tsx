@@ -456,7 +456,8 @@ export function RoadRoutePanel({
               <StreetsUnavailable status={streets.data!} mode={mode} country={routeCountry} onOpenStreets={onOpenStreets} />
             ) : null}
 
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            {/* Kept in view at the foot of the panel while a notice above pushes it down (1280 × 800 with the roads notice). */}
+            <div className="sticky bottom-0 z-10 -mx-4 -mb-1 flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-border bg-page px-4 py-2.5">
               <Button
                 type="submit"
                 variant="primary"
@@ -816,7 +817,7 @@ function SavedRoute({
               <h3 className="font-title text-lead break-words text-ink">{saved.data.name}</h3>
               <p className="text-small text-ink-muted">
                 {saved.data.fromTo}. Saved {formatDate(saved.data.createdAt)}, kept with its directions: it opens and prints even if the
-                road networks are removed.
+                routes are removed from Offline maps.
               </p>
             </div>
             <form

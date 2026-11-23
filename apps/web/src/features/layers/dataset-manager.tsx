@@ -25,7 +25,6 @@ import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "
 import { Field, Input } from "@/components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Badge, Checkbox, Select, Skeleton } from "@/components/ui/misc";
-import { useHomeCountry } from "@/features/frequencies/home-country";
 import { useHome } from "@/features/households/home";
 import type { MapEngine } from "@/features/maps/map/engine";
 import { DestinationPicker, useDestination } from "@/features/maps/panels/destination";
@@ -247,10 +246,8 @@ export function GetDialog({
   // The current household's home (its saved place, or where it was last said to be), to offer its region first.
   const found = useHome().home;
   const home = useMemo(() => (found ? { lat: found.lat, lon: found.lon } : null), [found]);
-  // A whole country starts at the current household's (its own choice, else where home is), else the UK.
-  const homeCountry = useHomeCountry()?.code ?? null;
-  const [chosenCountry, setCountry] = useState<string | null>(start?.scope.countries?.[0] ?? null);
-  const country = chosenCountry ?? homeCountry ?? "GB";
+  // Worldwide: no country is chosen for the person, not even home's.
+  const [country, setCountry] = useState<string | undefined>(start?.scope.countries?.[0] ?? undefined);
   const [layers, setLayers] = useState<ReferenceLayerId[]>(start?.layers ?? []);
   const estimate = useEstimate();
   const provider: ReferenceProviderDto | undefined = providers.find((entry) => entry.id === providerId);
@@ -277,7 +274,7 @@ export function GetDialog({
     provider: providerId,
     scope:
       scope === "country"
-        ? { countries: [country] }
+        ? { countries: country ? [country] : [] }
         : scope === "region"
           ? { regions }
           : scope === "bbox" && engine
@@ -300,7 +297,7 @@ export function GetDialog({
       }}
     >
       <DialogContent
-        title="Get reference data"
+        title="Get layer data"
         description="Choose a source and an area. The size is shown before anything is downloaded."
         size="lg"
       >
@@ -385,7 +382,7 @@ export function GetDialog({
                           estimate.reset();
                         }}
                       >
-                        get it from a Geofabrik extract
+                        get it from a Geofabrik source file
                       </button>
                       .
                     </p>
@@ -396,6 +393,7 @@ export function GetDialog({
                       aria-label="Country"
                       value={country}
                       onChange={setCountry}
+                      placeholder="Choose a country"
                       options={countries.map((entry) => ({ value: entry.code, label: entry.name }))}
                     />
                   ) : null}
@@ -427,7 +425,7 @@ export function GetDialog({
                         ) : layer === "routes" || layer === "rights-of-way" ? (
                           <span className="block text-micro text-ink-muted">
                             {layer === "routes"
-                              ? "Only when ticked. Lines from the whole extract: a large country needs a good deal of memory to read; a region is quicker."
+                              ? "Only when ticked. Lines from the whole source file: a large country needs a good deal of memory to read; a region is quicker."
                               : "Only when ticked, and only where the right of way is tagged. For England, read a county rather than the country."}
                           </span>
                         ) : null}
@@ -479,6 +477,7 @@ export function GetDialog({
                     !provider ||
                     (scope === "bbox" && !engine) ||
                     (scope === "region" && regions.length === 0) ||
+                    (scope === "country" && !country) ||
                     (needsAgreement && !agreed)
                   }
                 >
@@ -523,8 +522,8 @@ const FORMATS: Array<{ value: ReferenceImportFormat; label: string; about: strin
   },
   {
     value: "osm-pbf",
-    label: "OpenStreetMap extract (.osm.pbf)",
-    about: "A Geofabrik extract you downloaded. Over 32 MB, put it in a storage location first.",
+    label: "OpenStreetMap source file (.osm.pbf)",
+    about: "A Geofabrik source file you downloaded. Over 32 MB, put it in a storage location first.",
   },
   {
     value: "worldpop-tif",
@@ -768,8 +767,8 @@ export function ReferenceDataSection({ engine }: { engine: MapEngine | null }) {
   const [update, setUpdate] = useState<ReferenceEstimateRequest | null>(null);
   const sorted = useMemo(() => packs.data ?? [], [packs.data]);
   return (
-    <section className="grid gap-2" aria-label="Reference data for the map" id="reference-data">
-      <PanelHeading>Reference data for the map</PanelHeading>
+    <section className="grid gap-2" aria-label="Layer data for the map" id="reference-data">
+      <PanelHeading>Layer data for the map</PanelHeading>
       <p className="text-small text-ink-muted">
         Boundaries, airports, publicly mapped infrastructure, shelters, population and historical records, as layers you switch on in the
         Layers tab. Each comes from a published source and keeps its licence and dates.
@@ -802,7 +801,7 @@ export function ReferenceDataSection({ engine }: { engine: MapEngine | null }) {
             setGetting(true);
           }}
         >
-          <Download /> Get reference data
+          <Download /> Get layer data
         </Button>
         <Button onClick={() => setImporting(true)}>
           <FileUp /> Import a file

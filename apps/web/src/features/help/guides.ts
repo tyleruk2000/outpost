@@ -215,8 +215,8 @@ export const GUIDES: Guide[] = [
     slug: "maps",
     file: "maps.md",
     group: "using",
-    about: "Downloading map regions, contour lines, printing, routes and tracks, and where the map data comes from.",
-    keywords: "map offline region route gpx print contour",
+    about: "Adding a place under Offline maps, contour lines, printing, routes and tracks, and where the maps come from.",
+    keywords: "map offline maps add a place region route gpx print contour",
     opens: { to: "/maps", label: "Open Maps" },
   },
   {
@@ -232,7 +232,7 @@ export const GUIDES: Guide[] = [
     file: "road-routes.md",
     group: "using",
     about:
-      "Planned road directions offline: main roads, junctions and signs, via points and Channel crossings, from road networks you install.",
+      "Planned road directions offline: main roads, junctions and signs, via points and sea crossings, from the routes you add for each place.",
     keywords: "road route drive directions motorway junction ferry eurotunnel channel crossing sat nav",
     opens: { to: "/maps", label: "Open Maps" },
   },

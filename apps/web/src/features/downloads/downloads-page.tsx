@@ -19,7 +19,7 @@ import { formatNumber, plural, timeAgo } from "@/lib/utils";
 import { manageLink } from "../manage/manage-data";
 import { clockAt } from "./charts/time-axis";
 import { DownloadControls, DownloadProgress, RemoveDownloadButton } from "./download-progress";
-import { describeDownload } from "./download-text";
+import { describeDownload, mapTaskTitle } from "./download-text";
 import { PlanControls } from "./plan-controls";
 import { PlanSection } from "./plan-section";
 import { queuePosition, queuePositions, stalledWords } from "./plan-text";
@@ -31,7 +31,7 @@ import { useFinishedTasks } from "./use-tasks";
 
 /** What a task is, said once at the top of the screen and again over the tasks. */
 export const TASK_MEANING =
-  "A task is work Outpost does here, such as reading a document, building search by meaning, or building a road network.";
+  "A task is work Outpost does here, such as reading a document, building search by meaning, or building routes for a place.";
 
 type Show = "all" | "downloads" | "tasks";
 
@@ -39,7 +39,7 @@ type Show = "all" | "downloads" | "tasks";
 const taskOrder: Record<TaskFilter, number> = { running: 0, waiting: 1, failed: 2, finished: 3 };
 
 const nothingWords: Record<TaskFilter | "all", string> = {
-  all: "No tasks yet. Reading a document you add, building search by meaning, or building a road network shows here.",
+  all: "No tasks yet. Reading a document you add, building search by meaning, or building routes for a place shows here.",
   running: "No task is running right now.",
   waiting: "No task is waiting.",
   finished: "No task has finished in a while.",
@@ -143,7 +143,7 @@ function MetaLine({ parts, className }: { parts: ReactNode[]; className?: string
 function DetailsLink({ download }: { download: DownloadDto }) {
   return (
     <Button asChild variant="ghost" size="sm">
-      <Link to={`/downloads/${download.id}`} aria-label={`Details of ${download.title}`}>
+      <Link to={`/downloads/${download.id}`} aria-label={`Details of ${mapTaskTitle(download.title)}`}>
         Details
       </Link>
     </Button>
@@ -165,7 +165,7 @@ const ActiveRow = memo(function ActiveRow({
     <li className="py-5">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
         <div className="min-w-0">
-          <h3 className="font-title text-lead text-ink">{download.title}</h3>
+          <h3 className="font-title text-lead text-ink">{mapTaskTitle(download.title)}</h3>
           <MetaLine
             parts={[
               `To ${download.locationName}`,
@@ -194,7 +194,7 @@ function FailedRow({ download }: { download: DownloadDto }) {
     <li className="py-5">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
         <div className="min-w-0">
-          <h3 className="font-title text-lead text-ink">{download.title}</h3>
+          <h3 className="font-title text-lead text-ink">{mapTaskTitle(download.title)}</h3>
           <MetaLine parts={[`To ${download.locationName}`, download.finishedAt ? `Stopped ${timeAgo(download.finishedAt)}` : null]} />
         </div>
         <div className="flex max-w-full flex-wrap items-center gap-1 max-md:-ml-2.5 md:-mr-2.5">
@@ -227,10 +227,10 @@ function HistoryRow({ download, installed }: { download: DownloadDto; installed:
               to={download.documentId ? `/library/documents/${download.documentId}` : `/library/collections/${download.collectionId}`}
               className="decoration-primary decoration-1 underline-offset-[0.22em] hover:underline"
             >
-              {download.title}
+              {mapTaskTitle(download.title)}
             </Link>
           ) : (
-            download.title
+            mapTaskTitle(download.title)
           )}
         </h3>
         <MetaLine

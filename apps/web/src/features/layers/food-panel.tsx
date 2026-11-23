@@ -110,7 +110,7 @@ export function FoodSection({
         ) : nearest.data.hits.length === 0 ? (
           <p className="mt-1 text-small text-ink-muted">
             {alone ? `No ${aloneLabel} is held` : "Nothing is held"} within {formatDistanceWithMiles(nearest.data.withinMeters)} of{" "}
-            {originName}. Fetch the area under Manage reference data.
+            {originName}. Add nearby places for it under Offline maps.
           </p>
         ) : (
           <ul className="mt-1 divide-y divide-border" aria-label={`Nearest to ${originName}`}>

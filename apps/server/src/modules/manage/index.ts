@@ -127,8 +127,7 @@ export async function registerManage(app: FastifyInstance, ctx: AppContext): Pro
 
     const movable = picked.filter((entry) => {
       const { item } = entry;
-      if (entry.roadNetworkId)
-        refuse(entry, "Road networks are kept with Outpost's own data, not on a storage location, so they are not moved.");
+      if (entry.roadNetworkId) refuse(entry, "Routes are kept with Outpost's own data, not on a storage location, so they are not moved.");
       else if (item.locationId === target.id) refuse(entry, `It is already on "${target.name}".`);
       else if (item.busyReason) refuse(entry, item.busyReason);
       else if (!item.locationAvailable) refuse(entry, `"${item.locationName}" is not connected, so it cannot be copied from there.`);

@@ -44,7 +44,7 @@ describe("the words of Map data", () => {
       kept: false,
     });
     expect(line).toMatch(/^Not kept: read and deleted .+ \(2\.29 GB\)$/);
-    expect(notKeptLine(null)).toBe("Not kept. Roads and places to find are read from it.");
+    expect(notKeptLine(null)).toBe("Not kept. Routes and nearby places are read from it.");
   });
 
   it("says how much there is and where in one sentence", () => {

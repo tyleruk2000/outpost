@@ -392,6 +392,7 @@ export interface ReferencePackDto {
   figures: number;
   /** How many of its records describe something another pack already has. */
   duplicates: number;
+  /** What it holds: its file plus about what its records take in the database. */
   sizeBytes: number;
   publisher: string;
   license: string;

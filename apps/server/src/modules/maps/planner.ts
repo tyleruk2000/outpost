@@ -72,7 +72,7 @@ export function assertPlannable(request: ExtractRequest): void {
   if (tiles > MAX_PLAN_TILES) {
     throw new AppError(
       "too_large",
-      `That area is too large to download at zoom ${request.maxZoom} in one go (about ${Math.round(tiles / 1e6)} million map tiles). Lower the maximum zoom, or split it into smaller regions.`,
+      `That area is too large to download at this detail in one go (about ${Math.round(tiles / 1e6)} million map tiles). Choose less detail under More choices, or split it into smaller areas.`,
       { tiles, maxTiles: MAX_PLAN_TILES },
     );
   }

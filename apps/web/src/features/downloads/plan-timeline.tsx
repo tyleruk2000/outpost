@@ -7,6 +7,7 @@ import { ChartTooltip } from "./charts/chart-tooltip";
 import { linearScale } from "./charts/scale";
 import { useTextScale } from "./charts/text-scale";
 import { aheadLabel, atClock, clockAt, clockTime, durationTicks } from "./charts/time-axis";
+import { mapTaskTitle } from "./download-text";
 import { finishWords, startWords, unscheduledReason } from "./plan-text";
 
 /** The label column and the plot share these columns in the axis, the grid and every row, so they line up. */
@@ -190,7 +191,7 @@ export const PlanTimeline = memo(function PlanTimeline({
                   <li key={item.id}>
                     <Link
                       to={`/downloads/${item.id}`}
-                      aria-label={`Details of ${item.title}`}
+                      aria-label={`Details of ${mapTaskTitle(item.title)}`}
                       className={cn(columns, "group items-center rounded-control py-1.5 -outline-offset-2 max-md:gap-y-0.5 max-md:py-2")}
                       onPointerMove={pointAt(item)}
                       onPointerLeave={() => setTip(null)}
@@ -199,7 +200,7 @@ export const PlanTimeline = memo(function PlanTimeline({
                     >
                       <span className="flex min-w-0 items-baseline justify-between gap-x-3 md:block">
                         <span className="block truncate text-small font-medium text-ink decoration-1 underline-offset-[0.2em] group-hover:underline group-focus-visible:underline">
-                          {item.title}
+                          {mapTaskTitle(item.title)}
                         </span>
                         <span className="tabular block shrink-0 text-small text-ink-muted">{leftOf(item)}</span>
                       </span>
@@ -259,7 +260,7 @@ export const PlanTimeline = memo(function PlanTimeline({
 
         {tip && tipped ? (
           <ChartTooltip x={tip.x} y={tip.y} frameWidth={frame.current?.clientWidth ?? 0}>
-            <p className="font-medium">{tipped.title}</p>
+            <p className="font-medium">{mapTaskTitle(tipped.title)}</p>
             {reasonFor(tipped) === null ? (
               <>
                 <p className="tabular">{startWords(tipped, now)}</p>
@@ -297,7 +298,7 @@ export const PlanTimeline = memo(function PlanTimeline({
               const timed = reasonFor(item) === null;
               return (
                 <tr key={item.id}>
-                  <th scope="row">{item.title}</th>
+                  <th scope="row">{mapTaskTitle(item.title)}</th>
                   <td>{reasonFor(item) ?? (item.phase === "active" ? "Downloading now" : "Waiting for its turn")}</td>
                   <td>{item.remainingBytes === null ? "Not known" : formatBytes(item.remainingBytes)}</td>
                   <td>

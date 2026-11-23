@@ -167,7 +167,8 @@ million tiles is refused: choose less detail under **More choices**. The detail 
 | Villages and tracks | Villages, tracks, larger streams |
 | Footpaths and buildings, Everything | Streets and paths, for walking |
 
-Hills and heights stop at zoom 12 at the source. Downloads can be paused and survive a
+Hills and heights are less detailed than the most detailed map: the source stops before
+footpath detail. Downloads can be paused and survive a
 restart.
 
 ## Map styles
@@ -229,37 +230,39 @@ See [road-routes.md](road-routes.md).
 
 Press and hold a point and choose **Reachable from here**: the areas reachable in 15, 30 or
 60 minutes, drawn in three steps of one colour with a labelled outline for each time. By
-car it works over the road networks installed (**Main roads only**); with the streets
-add-on, over every street, by car, bicycle or on foot (**Streets**). Free-flowing traffic,
+car it works over the routes added (**Main roads only**); with walking and cycling added,
+over every street, by car, bicycle or on foot (**Streets**). Free-flowing traffic,
 no stops. See [road-routes.md](road-routes.md#reachable-from-here).
 
-## Streets for routes
+## Walking and cycling
 
 Only where the optional streets add-on is installed, each country on **Offline maps** has a
-**Walk/cycle** column. Streets are built on this device from a kept source file; nothing is
-downloaded.
+**Walk/cycle** column, and **Walking and cycling** ("Walking, cycling and door-to-door
+routes") is one of the choices in **Add a place**. It is built on this device from the
+country's source file; nothing more is downloaded once that file is kept.
 
-1. Keep the source file first (Add a place, **Routes**, **Keep the source file**), if it is not kept.
-2. In the country's **Walk/cycle**, press **Add**, and tick the countries to build (several are
-   joined into one set, which replaces the one in use).
-3. Read **What it takes** before you start: for Great Britain on a Raspberry Pi 5, about an
+1. Press **Add** under **Walk/cycle** on the country's row (or **Add a place**, then tick
+   **Walking and cycling** in **What for France?**). Where the source file is not kept yet,
+   the flow downloads it first and says so ("Needs France's source file, 4.9 GB:
+   downloaded first").
+2. Read what it takes before you start: for Great Britain on a Raspberry Pi 5, about an
    hour, about 2.3 GB of memory, and about 53 GB written to the disk it works on. An SD
    card wears with every write: under **Where it works**, choose the NAS or a USB disk to
-   spare it. The finished streets are copied back.
-4. **Build streets**. The row shows each stage with its progress (step 3 of 5) and the time
-   left; routes keep working on the streets in use meanwhile. **Stop building** in its
-   **…** menu stops it and leaves the streets in use as they were.
+   spare it. The finished streets are copied back. Several countries are joined into one
+   set, which replaces the one in use.
+3. Press the button that starts it. The row shows each stage with its progress (step 3 of 5)
+   and the time left; routes keep working on what is in use meanwhile.
 
-**Remove** in the row's menu deletes the streets; the country files stay. Where the add-on
-is not installed, Offline maps says so in one line ("Walking and cycling: not set up"), with how
-to add it.
+**Remove…** in the place's **⋯** menu lets you tick **Walking and cycling**; the source file
+stays unless you tick it too. Where the add-on is not installed, Offline maps says so in one
+line ("Walking and cycling: not set up"), with how to add it.
 
 ## Printing a map
 
 **Print or save as PDF** makes a one-page paper map at a true scale. See
 [map-printing.md](map-printing.md).
 
-## Reference layers
+## Layers
 
 The **Layers** tab draws published data over the map: boundaries, airports, hospitals,
 shelters, planning zones and more. See [reference-layers.md](reference-layers.md).

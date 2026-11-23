@@ -610,7 +610,7 @@ export function createImageryService(ctx: AppContext, deps: ImageryDeps): Imager
       };
       const row = await downloads.start({
         kind: "map",
-        title: `Satellite: ${input.name}`,
+        title: `${input.name}: satellite pictures`,
         url: scenes[0]!.bands.red,
         locationId: location.id,
         relPath: `collections/maps/imagery-${slugify(input.name)}-${option.date.replaceAll("-", "")}.pmtiles`,
@@ -631,7 +631,7 @@ export function createImageryService(ctx: AppContext, deps: ImageryDeps): Imager
       const transferBytes = entry.files.reduce((sum, file) => sum + file.bytes, 0);
       const row = await downloads.start({
         kind: "map",
-        title: `Satellite: ${entry.name}`,
+        title: `${entry.name}: satellite pictures`,
         url: entry.files[0]!.url,
         locationId: location.id,
         relPath: `collections/maps/imagery-${entry.id}-200407.pmtiles`,

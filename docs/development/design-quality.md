@@ -172,6 +172,9 @@ desktop at 1280 px.
 | Show 30 minutes' drive from a point | Not possible | 2 (press and hold, Reachable from here): 30 minutes is the default | Not possible | 2 (right-click, Reachable from here) | From the quick search ("reachable"), 2 for the middle of the map. Works on every installation with a road network (Main roads only) |
 | Maps and routes for France, first time, from Offline maps | 10 (Add map data, Another place (home was chosen), France, tick Roads for routes, Read the list of regions, Check sizes, Next, the country file, Next, Download) | 5 (Add a place, France, Check size, the source file, Download) | 8 (the same, with no Next) | 5 | Nothing chosen for the person; Map and Routes ticked; the list of regions read on the Check size press; the source file a two-line choice on the same view. 4 once the choice is remembered. From a route that needs France: 3 (Add roads for France, Check size, Download) |
 | See what a place has, on a phone | Scroll 21 rows for 3 countries (3,931 px) | One row a place (about 90 px each), 1 press to open it | 7 rows a country | One row a place, in a table | |
+| Walking and cycling for a country with no source file kept, from its row | 8 (Add, Keep a country file, Check size, keep it, Download, wait, Add again, Build streets) | 3 (Add, Check size, Download) | 8 | 3 | A tick of Add a place: the source file is kept and the build queued when it is in, its time on a Raspberry Pi, writes and where it works said under the tick. With the file kept already: 3 |
+| Satellite pictures of the view | 8 (Offline, Choose an area, Use the current view, name, Find pictures, a day, Continue, Fetch) | 9 (Offline, Add this view, name, untick Map, tick Satellite pictures, Choose the picture, a day, Continue, Download) | 8 | 9 | One more press, for one flow and one set of words for all map data; the map of the area comes on the same flow (Check size and Download before the picture is chosen) |
+| See the space map data takes, in Storage | Two tables by kind (7 rows) | One row, Offline maps, 1 press to open it by place | Two tables | One row | |
 
 On a tablet at 768 px every screen gained 196 px of width; the full sidebar is one press
 away (the button at the top of the rail, or Ctrl \\).
@@ -201,6 +204,13 @@ line that names who is asked. Sets made once and never revised are `ageless` and
 over a year old. `map-data-page.test.tsx` renders each kind's row and checks it is built from
 these parts, with the menu in this order.
 
-Not yet in the pattern: walking and cycling and satellite pictures are still added through
-their own dialogs (the streets build, choosing an area on the map) rather than through Add a
-place.
+Walking and cycling and satellite pictures are ticks of Add a place like the rest, each with
+its cost line: walking and cycling keeps the source file and says the build's time on a
+Raspberry Pi, its writes and where it works under the tick; satellite pictures of an area go on
+to choosing the picture (its day and cloud) in the same dialog.
+
+Outside Offline maps the same parts and words are used: Storage has one row, "Offline maps ·
+size · where › Manage", that opens to its places with the same `StateMark`s; Downloads and tasks
+titles map work "United Kingdom: routes" (`mapTaskTitle` rewords rows stored with the retired
+words); Plan a route and Reachable from here show a country on its way with `MapDataProgress`
+and `bundleStateText`. `map-data-page.test.tsx` checks Storage's row and a Downloads row too.

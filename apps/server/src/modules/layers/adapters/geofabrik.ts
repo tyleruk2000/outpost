@@ -186,7 +186,7 @@ export function createGeofabrikAdapter({ client, ctx }: AdapterDeps, regions: Re
             const item = keptItem(kept);
             items.push({
               key: `geofabrik:${region.id}:${region.country ?? ""}`,
-              title: `OpenStreetMap: ${[region.name, ...parents].join(", ")} (Geofabrik)`,
+              title: `${[region.name, ...parents].join(", ")}: nearby places`,
               layers,
               ...item,
               basis: `${item.basis} Read from it: ${layerWords(layers)}. ${coverage}`,
@@ -202,7 +202,7 @@ export function createGeofabrikAdapter({ client, ctx }: AdapterDeps, regions: Re
           const bytes = head.bytes ?? 0;
           items.push({
             key: `geofabrik:${region.id}:${region.country ?? ""}`,
-            title: `OpenStreetMap: ${[region.name, ...parents].join(", ")} (Geofabrik)`,
+            title: `${[region.name, ...parents].join(", ")}: nearby places`,
             layers,
             bytes,
             exact: head.bytes !== null,
@@ -230,7 +230,7 @@ export function createGeofabrikAdapter({ client, ctx }: AdapterDeps, regions: Re
           if (kept) {
             items.push({
               key: `geofabrik:${entry.id}:${code}`,
-              title: `OpenStreetMap extract: ${entry.name} (Geofabrik)`,
+              title: `${entry.name}: nearby places`,
               layers,
               ...keptItem(kept),
               records: null,
@@ -245,7 +245,7 @@ export function createGeofabrikAdapter({ client, ctx }: AdapterDeps, regions: Re
           const bytes = head.bytes ?? 0;
           items.push({
             key: `geofabrik:${entry.id}:${code}`,
-            title: `OpenStreetMap extract: ${entry.name} (Geofabrik)`,
+            title: `${entry.name}: nearby places`,
             layers,
             bytes,
             exact: head.bytes !== null,

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/misc";
 import { cn } from "@/lib/utils";
-import { describeDownload, removalDeletesPartialFile } from "./download-text";
+import { describeDownload, mapTaskTitle, removalDeletesPartialFile } from "./download-text";
 import { useDownloadAction, useRemoveDownload } from "./use-downloads";
 
 /**
@@ -20,7 +20,7 @@ export function DownloadProgress({ download, className }: { download: DownloadDt
         <Progress
           value={view.alive || view.fraction !== undefined ? view.fraction : 0}
           tone={view.alive ? "lamp" : "muted"}
-          label={`Progress of ${download.title}`}
+          label={`Progress of ${mapTaskTitle(download.title)}`}
           className="mb-2"
         />
       ) : null}
@@ -47,7 +47,7 @@ export function DownloadControls({ download, className }: { download: DownloadDt
           size="sm"
           loading={busy === "pause"}
           onClick={() => action.mutate("pause")}
-          aria-label={`Pause ${download.title}`}
+          aria-label={`Pause ${mapTaskTitle(download.title)}`}
         >
           {busy === "pause" ? null : <Pause />} Pause
         </Button>
@@ -58,7 +58,7 @@ export function DownloadControls({ download, className }: { download: DownloadDt
           size="sm"
           loading={busy === "resume"}
           onClick={() => action.mutate("resume")}
-          aria-label={`Resume ${download.title}`}
+          aria-label={`Resume ${mapTaskTitle(download.title)}`}
         >
           {busy === "resume" ? null : <Play />} Resume
         </Button>
@@ -69,7 +69,7 @@ export function DownloadControls({ download, className }: { download: DownloadDt
           size="sm"
           loading={busy === "retry"}
           onClick={() => action.mutate("retry")}
-          aria-label={`Retry ${download.title}`}
+          aria-label={`Retry ${mapTaskTitle(download.title)}`}
         >
           {busy === "retry" ? null : <RotateCw />} Retry
         </Button>
@@ -80,7 +80,7 @@ export function DownloadControls({ download, className }: { download: DownloadDt
           size="sm"
           loading={busy === "cancel"}
           onClick={() => action.mutate("cancel")}
-          aria-label={`Cancel ${download.title}`}
+          aria-label={`Cancel ${mapTaskTitle(download.title)}`}
         >
           {busy === "cancel" ? null : <X />} Cancel
         </Button>
@@ -101,14 +101,14 @@ export function RemoveDownloadButton({ download, label, onRemoved }: { download:
         size="sm"
         loading={remove.isPending && !confirming}
         onClick={() => (deletes ? setConfirming(true) : remove.mutate(undefined, { onSuccess: onRemoved }))}
-        aria-label={`${label}: ${download.title}`}
+        aria-label={`${label}: ${mapTaskTitle(download.title)}`}
       >
         {label}
       </Button>
       <ConfirmDialog
         open={confirming}
         onOpenChange={setConfirming}
-        title={`Remove the download of “${download.title}”?`}
+        title={`Remove the download of “${mapTaskTitle(download.title)}”?`}
         description={`The ${formatBytes(download.receivedBytes)} already downloaded to “${download.locationName}” will be deleted. To get this collection later, the download starts from the beginning.`}
         confirmLabel="Remove and delete the partial file"
         onConfirm={() =>

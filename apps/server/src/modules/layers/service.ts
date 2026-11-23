@@ -268,7 +268,8 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
       records: counts.records,
       figures: counts.figures,
       duplicates: counts.duplicates,
-      sizeBytes: row.sizeBytes,
+      // What it holds: its file and, about, its records in the database (an extract read and deleted leaves a few bytes of file).
+      sizeBytes: row.sizeBytes + counts.heldBytes,
       publisher: row.publisher ?? "",
       license: row.license ?? "",
       licenseUrl: PROVIDERS.find((provider) => provider.id === meta.provider)?.licenseUrl ?? null,

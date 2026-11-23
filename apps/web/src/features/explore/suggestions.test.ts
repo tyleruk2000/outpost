@@ -55,9 +55,9 @@ describe("suggestions for where Home is", () => {
     const found = suggestionsFor({ markers: home(-1.29, 36.82), countries, presets, overview: undefined, entries });
     if (found.state !== "ready") throw new Error(found.state);
     expect(found.country.name).toBe("Kenya");
-    expect(found.rows.map((row) => row.id)).toEqual(["map", "terrain", "places", "layers", "language-sw", "radio", "weather"]);
+    expect(found.rows.map((row) => row.id)).toEqual(["map", "nearby", "language-sw", "radio", "weather"]);
     expect(found.rows[0]!.title).toBe("Map of Kenya");
-    expect(found.rows[0]!.to).toBe("/maps?offline=region&preset=country-ke");
+    expect(found.rows[0]!.to).toBe("/maps/data?add=1&countries=KE");
     expect(found.rows.some((row) => row.uk)).toBe(false);
     expect(found.rows.find((row) => row.id === "weather")!.about).not.toMatch(/MeteoAlarm/);
   });
@@ -76,7 +76,7 @@ describe("suggestions for where Home is", () => {
     const found = suggestionsFor({ markers: home(51.5, -0.12), countries, presets, overview: undefined, entries });
     if (found.state !== "ready") throw new Error(found.state);
     const ids = found.rows.map((row) => row.id);
-    expect(ids.slice(0, 6)).toEqual(["map", "terrain", "places", "layers", "radio", "weather"]);
+    expect(ids.slice(0, 4)).toEqual(["map", "nearby", "radio", "weather"]);
     expect(found.rows.filter((row) => row.uk).map((row) => row.id)).toEqual(["uk-os-names", "uk-fsa", "uk-ea", "uk-met-office"]);
   });
 
@@ -91,7 +91,7 @@ describe("suggestions for where Home is", () => {
     } as never;
     const found = suggestionsFor({ markers: home(-1.29, 36.82), countries, presets, overview, entries });
     if (found.state !== "ready") throw new Error(found.state);
-    expect(found.rows.filter((row) => row.done).map((row) => row.id)).toEqual(["map", "terrain", "places"]);
+    expect(found.rows.filter((row) => row.done).map((row) => row.id)).toEqual(["map"]);
   });
 
   it("reads the languages of a country from GeoNames' list", () => {

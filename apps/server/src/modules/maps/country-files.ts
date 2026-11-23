@@ -60,6 +60,8 @@ export interface CountryFileWork {
   roads: boolean;
   /** The places pack to read, or null for none. */
   reference: ReferenceMeta | null;
+  /** Walking and cycling to build from the file once it is kept (Add a place's tick), and where the build works. */
+  streets?: { workLocationId: string | null } | null;
 }
 
 interface ReadPayload extends CountryFileWork {
@@ -113,6 +115,8 @@ export interface AddCountryFile {
   newerThan?: string;
   /** Remember `keep` as the choice to preselect next time (the Map data screen's own add). */
   remember?: boolean;
+  /** Build walking and cycling from the file once it is kept: needs `keep`. */
+  streets?: { workLocationId?: string };
 }
 
 export interface CountryFilesService {
@@ -138,6 +142,15 @@ export const countryFileMetaOf = (row: CollectionRow): CountryFileMeta | null =>
   return meta && typeof meta.regionId === "string" ? meta : null;
 };
 
+/**
+ * What a download or read of a source file is for, in the words of Offline maps: "routes and nearby
+ * places", "routes", "nearby places", or "source file" where it is only kept.
+ */
+export function sourceFileWork(work: { roads: boolean; layers: number }): string {
+  const what = [work.roads ? "routes" : null, work.layers > 0 ? "nearby places" : null].filter(Boolean);
+  return what.length > 0 ? what.join(" and ") : "source file";
+}
+
 export const isCountryFileDownload = (download: DownloadRow) =>
   download.kind === "extract" && typeof (download.meta as { countryFile?: unknown }).countryFile === "object";
 
@@ -157,7 +170,7 @@ export function referenceFor(region: GeofabrikRegion, parents: string[], layers:
   return {
     provider: "osm-extract",
     key: `geofabrik:${region.id}:${region.country ?? ""}`,
-    title: `OpenStreetMap: ${[region.name, ...parents].join(", ")} (Geofabrik)`,
+    title: `${[region.name, ...parents].join(", ")}: nearby places`,
     layers: layers as ReferenceMeta["layers"],
     request: { provider: "osm-extract", scope: { regions: [region.id] }, layers: layers as ReferenceMeta["layers"] },
     countries: region.country ? [region.country] : [],
@@ -300,7 +313,7 @@ export function createCountryFiles(ctx: AppContext, client: HttpClient): Country
   }
 
   const installer: Installer = async ({ download, filePath, sizeBytes, sha256, signal, progress }) => {
-    if (!isCountryFileDownload(download)) throw new PermanentJobError("Outpost does not know what this country file is for.");
+    if (!isCountryFileDownload(download)) throw new PermanentJobError("Outpost does not know what this source file is for.");
     const work = workOf(download);
     const made = await readAll({
       work,
@@ -317,7 +330,7 @@ export function createCountryFiles(ctx: AppContext, client: HttpClient): Country
     if (work.keep) {
       const collection = await collections.create({
         kind: "extract",
-        title: `Country file: ${work.name}`,
+        title: `${work.name}: source file`,
         description: `All of OpenStreetMap for ${work.name}, from Geofabrik, kept to read roads and places from again with no download.`,
         category: "Maps",
         publisher: "Geofabrik GmbH",
@@ -339,7 +352,7 @@ export function createCountryFiles(ctx: AppContext, client: HttpClient): Country
             md5: work.md5,
           } satisfies CountryFileMeta,
           removalWarning:
-            "Roads for routes and places to find made from it keep working. Rebuilding or updating them downloads the country file again.",
+            "Roads for routes and places to find made from it keep working. Rebuilding or updating them downloads the source file again.",
         },
       });
       collectionId = collection.id;
@@ -348,6 +361,8 @@ export function createCountryFiles(ctx: AppContext, client: HttpClient): Country
       await fs.promises.rm(filePath, { force: true });
     }
     record({ work, dataDate: made.dataDate, bytes: sizeBytes, collectionId, roadNetworkId: made.roadNetworkId, packId: made.packId });
+    // Once the download is in place as a kept file: the walking and cycling asked for with it.
+    if (work.keep && work.streets) setTimeout(() => startStreets(work), 0);
     return {
       ...(collectionId ? { collectionId } : {}),
       meta: { roadNetworkId: made.roadNetworkId, packId: made.packId, dataDate: made.dataDate, kept: work.keep },
@@ -358,14 +373,14 @@ export function createCountryFiles(ctx: AppContext, client: HttpClient): Country
     queue: "import",
     async run({ payload, signal, progress, job }) {
       const row = collections.get(payload.collectionId);
-      if (!row) throw new PermanentJobError("The kept country file has been removed, so there is nothing to read. Add it again.");
+      if (!row) throw new PermanentJobError("The kept source file has been removed, so there is nothing to read. Add it again.");
       if (!storage.isAvailable(row.locationId)) {
         const name = storage.list().find((candidate) => candidate.id === row.locationId)?.name ?? "Its storage location";
-        throw new PermanentJobError(`“${name}”, where the country file is kept, is not connected. Connect it and try again.`);
+        throw new PermanentJobError(`“${name}”, where the source file is kept, is not connected. Connect it and try again.`);
       }
       const filePath = storage.resolve(row.locationId, row.relPath);
       if (!fs.existsSync(filePath))
-        throw new PermanentJobError("The kept country file is missing from its storage location. Download it again.");
+        throw new PermanentJobError("The kept source file is missing from its storage location. Download it again.");
       const made = await readAll({
         work: payload,
         filePath,
@@ -386,18 +401,41 @@ export function createCountryFiles(ctx: AppContext, client: HttpClient): Country
         roadNetworkId: made.roadNetworkId,
         packId: made.packId,
       });
+      startStreets(payload);
       return { roadNetworkId: made.roadNetworkId, packId: made.packId, dataDate: made.dataDate };
     },
   });
+
+  /**
+   * Walking and cycling asked for in Add a place, built from the file now kept. A build that cannot
+   * start (another under way) is said in the log; its row on Offline maps still offers it.
+   */
+  function startStreets(work: CountryFileWork) {
+    if (!work.streets) return;
+    try {
+      ctx.services.streets?.tiles.build({
+        regions: ctx.services.streets.tiles.adding([work.regionId]),
+        ...(work.streets.workLocationId ? { workLocationId: work.streets.workLocationId } : {}),
+      });
+    } catch (error) {
+      ctx.log.warn({ err: error, region: work.regionId }, "walking and cycling could not start after the source file was kept");
+    }
+  }
 
   function readTasks() {
     return ctx.jobs.list({ states: ["queued", "running", "paused", "failed"], types: [COUNTRY_FILE_READ_JOB] });
   }
 
   function pending(): PendingCountryFile[] {
-    const fromDownloads = downloads
-      .unfinished()
-      .filter(isCountryFileDownload)
+    const files = downloads.unfinished().filter(isCountryFileDownload);
+    const reads = ctx.db.select().from(countryFilesTable).all();
+    // A failed download is shown until a newer download or read of the same region starts or succeeds.
+    const superseded = (row: DownloadRow) =>
+      row.state === "failed" &&
+      (files.some((other) => other.id !== row.id && other.createdAt > row.createdAt && workOf(other).regionId === workOf(row).regionId) ||
+        reads.some((read) => read.regionId === workOf(row).regionId && read.readAt > row.createdAt));
+    const fromDownloads = files
+      .filter((row) => !superseded(row))
       .map((row) => {
         const work = workOf(row);
         return {
@@ -454,7 +492,11 @@ export function createCountryFiles(ctx: AppContext, client: HttpClient): Country
     const layers = input.layers;
     const readsSomething = roads || layers.length > 0;
     if (!readsSomething && !input.keep)
-      throw badRequest("Nothing would be read from the country file and it would not be kept: choose roads, places or to keep it.");
+      throw badRequest("Nothing would be read from the source file and it would not be kept: choose routes, nearby places or to keep it.");
+
+    if (input.streets && !input.keep) throw badRequest("Walking and cycling are built from the source file: keep it to build them.");
+    if (input.streets && !ctx.services.streets?.connection.installed())
+      throw badRequest("Walking and cycling come with an optional add-on that is not part of this installation.");
 
     let region = input.region;
     let parents: string[] = [];
@@ -475,8 +517,8 @@ export function createCountryFiles(ctx: AppContext, client: HttpClient): Country
     if (busy)
       throw conflict(
         busy.downloadId
-          ? `${region.name}'s country file is already being downloaded. What it is read for is set when it starts: add the rest once it is done.`
-          : `${region.name}'s country file is already being read. Try again once it is done.`,
+          ? `${region.name}'s source file is already being downloaded. What it is read for is set when it starts: add the rest once it is done.`
+          : `${region.name}'s source file is already being read. Try again once it is done.`,
       );
 
     const referenceOf = (sourceUrl: string) =>
@@ -486,13 +528,22 @@ export function createCountryFiles(ctx: AppContext, client: HttpClient): Country
 
     // A kept file for the region, as new as asked: read again, nothing downloaded.
     const here = kept(region.id, input.newerThan);
+    const streets = input.streets ? { workLocationId: input.streets.workLocationId ?? null } : null;
     if (here) {
-      if (!readsSomething)
+      if (!readsSomething) {
+        // Kept already, and only walking and cycling asked for: built from it now.
+        const built = streets
+          ? ctx.services.streets?.tiles.build({
+              regions: ctx.services.streets.tiles.adding([region.id]),
+              ...(streets.workLocationId ? { workLocationId: streets.workLocationId } : {}),
+            })
+          : undefined;
         return {
           downloadId: null,
-          taskId: null,
+          taskId: built?.jobId ?? null,
           countryFile: { source: "kept" as const, collectionId: here.collectionId, dataDate: here.dataDate, fileName: here.fileName },
         };
+      }
       const payload: ReadPayload = {
         collectionId: here.collectionId,
         regionId: region.id,
@@ -504,9 +555,10 @@ export function createCountryFiles(ctx: AppContext, client: HttpClient): Country
         keep: true,
         roads,
         reference: referenceOf(here.sourceUrl),
+        streets,
       };
       const job = ctx.jobs.enqueue(COUNTRY_FILE_READ_JOB, payload, {
-        title: `Reading the country file: ${region.name}`,
+        title: `${region.name}: ${sourceFileWork({ roads, layers: layers.length })}`,
         // While it is read, the file cannot be moved or removed.
         subject: `collection:${here.collectionId}`,
         maxAttempts: 1,
@@ -543,10 +595,11 @@ export function createCountryFiles(ctx: AppContext, client: HttpClient): Country
       keep: input.keep,
       roads,
       reference: referenceOf(file.url),
+      streets: input.keep ? streets : null,
     };
     const row = await downloads.start({
       kind: "extract",
-      title: `Country file: ${region.name} (Geofabrik)`,
+      title: `${region.name}: ${input.keep && !readsSomething ? "source file" : sourceFileWork({ roads, layers: layers.length })}`,
       url: file.url,
       relPath: `${COUNTRY_FILE_FOLDER}/${region.id.replace(/[^a-z0-9-]/gi, "-")}-${stamp()}.osm.pbf`,
       ...(input.locationId ? { locationId: input.locationId } : {}),

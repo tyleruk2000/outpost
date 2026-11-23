@@ -28,7 +28,7 @@ const WHAT_STOPS: Record<MapDataItem["kind"], string> = {
   map: "The map will show only outlines here unless another map covers the area.",
   terrain: "Hill shading, contour lines and heights will no longer be drawn for this area.",
   imagery: "The satellite pictures will no longer be drawn under the map here.",
-  extract: "Roads and places made from it keep working. Rebuilding or refreshing them will download the country file again.",
+  extract: "Routes and nearby places made from it keep working. Rebuilding or updating them downloads the source file again.",
   names: "Search will no longer find these places by name. The list can be downloaded again at any time.",
   roads: "Routes can no longer be planned through it. Saved routes keep their directions.",
   places: "Its places leave the map and the lists of what is nearest.",
@@ -141,8 +141,8 @@ function RemoveRoads({ item, open, onOpenChange }: { item: MapDataItem; open: bo
         onOpenChange(next);
       }}
       title={`Remove “${item.title}”?`}
-      description={`${WHAT_STOPS.roads} ${freesLine(item)}${kept ? "" : " A kept country file stays where it is."}`}
-      confirmLabel={alsoFile ? "Remove roads and the country file" : "Remove roads"}
+      description={`${WHAT_STOPS.roads} ${freesLine(item)}${kept ? "" : " A kept source file stays where it is."}`}
+      confirmLabel={alsoFile ? "Remove routes and the source file" : "Remove routes"}
       loading={remove.isPending || removeFile.isPending}
       onConfirm={() =>
         item.networkId &&
@@ -150,7 +150,7 @@ function RemoveRoads({ item, open, onOpenChange }: { item: MapDataItem; open: bo
           onSuccess: () => {
             if (!(alsoFile && kept?.collectionId)) {
               onOpenChange(false);
-              toast.success(`Removed “${item.title}”.${kept ? ` The country file stays on ${where}.` : ""}`);
+              toast.success(`Removed “${item.title}”.${kept ? ` The source file stays on ${where}.` : ""}`);
               return;
             }
             removeFile.mutate(
@@ -158,7 +158,7 @@ function RemoveRoads({ item, open, onOpenChange }: { item: MapDataItem; open: bo
               {
                 onSuccess: () => {
                   onOpenChange(false);
-                  toast.success(`Removed “${item.title}” and deleted its country file from ${where}.`);
+                  toast.success(`Removed “${item.title}” and deleted its source file from ${where}.`);
                 },
               },
             );
@@ -177,12 +177,12 @@ function RemoveRoads({ item, open, onOpenChange }: { item: MapDataItem; open: bo
               className="mt-0.5"
             />
             <span>
-              Also delete the kept country file ({formatBytes(kept.sizeBytes)} on {where})?
+              Also delete the kept source file ({formatBytes(kept.sizeBytes)} on {where})?
             </span>
           </label>
           <p className="pl-7 text-ink-muted">
             {reachable
-              ? "Places to find made from it keep working. Building roads again, or refreshing the places, would download it again."
+              ? "Nearby places made from it keep working. Building routes again, or updating the places, would download it again."
               : `${where} is not connected, so the file cannot be deleted now.`}
           </p>
         </div>
@@ -228,7 +228,7 @@ function RemoveStreets({ item, open, onOpenChange }: { item: MapDataItem; open: 
       open={open}
       onOpenChange={onOpenChange}
       title={`Remove “${item.title}”?`}
-      description={`${WHAT_STOPS.streets} ${item.sizeBytes !== null ? `Frees ${formatBytes(item.sizeBytes)}.` : ""} The country files they were built from stay.`}
+      description={`${WHAT_STOPS.streets} ${item.sizeBytes !== null ? `Frees ${formatBytes(item.sizeBytes)}.` : ""} The source files they were built from stay.`}
       confirmLabel="Remove streets"
       loading={remove.isPending}
       onConfirm={() =>

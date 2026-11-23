@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/misc";
 import { cn, timeAgo } from "@/lib/utils";
+import { mapTaskTitle } from "./download-text";
 import {
   fractionDone,
   progressText,
@@ -45,13 +46,13 @@ function CancelTask({ job, onCancelled }: { job: JobDto; onCancelled?: () => voi
   const kind = taskKind(job.type);
   return (
     <>
-      <Button variant="ghost" size="sm" onClick={() => setAsking(true)} aria-label={`Cancel ${job.title}`}>
+      <Button variant="ghost" size="sm" onClick={() => setAsking(true)} aria-label={`Cancel ${mapTaskTitle(job.title)}`}>
         <X /> Cancel
       </Button>
       <ConfirmDialog
         open={asking}
         onOpenChange={setAsking}
-        title={`Cancel “${job.title}”?`}
+        title={`Cancel “${mapTaskTitle(job.title)}”?`}
         description={
           kind.pause === "resumes"
             ? "It stops now. What it has finished so far is kept; to finish the rest, start it again from where it began. To stop for now and carry on later, pause it instead."
@@ -93,7 +94,7 @@ export function TaskControls({ job, className }: { job: JobDto; className?: stri
           size="sm"
           loading={busy === "pause"}
           onClick={() => action.mutate("pause")}
-          aria-label={`Pause ${job.title}`}
+          aria-label={`Pause ${mapTaskTitle(job.title)}`}
         >
           {busy === "pause" ? null : <Pause />} Pause
         </Button>
@@ -104,7 +105,7 @@ export function TaskControls({ job, className }: { job: JobDto; className?: stri
           size="sm"
           loading={busy === "resume"}
           onClick={() => action.mutate("resume")}
-          aria-label={`Resume ${job.title}`}
+          aria-label={`Resume ${mapTaskTitle(job.title)}`}
         >
           {busy === "resume" ? null : <Play />} Resume
         </Button>
@@ -115,7 +116,7 @@ export function TaskControls({ job, className }: { job: JobDto; className?: stri
           size="sm"
           loading={busy === "resume"}
           onClick={() => action.mutate("resume")}
-          aria-label={`Retry ${job.title}`}
+          aria-label={`Retry ${mapTaskTitle(job.title)}`}
         >
           {busy === "resume" ? null : <RotateCw />} Retry
         </Button>
@@ -139,7 +140,7 @@ export const TaskRow = memo(function TaskRow({ job }: { job: JobDto }) {
     <li className="py-4">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
         <div className="min-w-0">
-          <h3 className="text-body font-medium text-ink">{job.title}</h3>
+          <h3 className="text-body font-medium text-ink">{mapTaskTitle(job.title)}</h3>
           <p className="mt-0.5 text-small text-ink-muted">
             <Joined
               parts={[
@@ -155,7 +156,7 @@ export const TaskRow = memo(function TaskRow({ job }: { job: JobDto }) {
         <div className="flex max-w-full shrink-0 flex-wrap items-center gap-1 max-md:-ml-2.5 md:-mr-2.5">
           <TaskControls job={job} />
           <Button asChild variant="ghost" size="sm">
-            <Link to={`/downloads/tasks/${job.id}`} aria-label={`Details of ${job.title}`}>
+            <Link to={`/downloads/tasks/${job.id}`} aria-label={`Details of ${mapTaskTitle(job.title)}`}>
               Details
             </Link>
           </Button>
@@ -164,9 +165,9 @@ export const TaskRow = memo(function TaskRow({ job }: { job: JobDto }) {
       {running || job.state === "queued" || job.state === "paused" ? (
         <div className="mt-2.5">
           {running ? (
-            <Progress value={fraction} tone="lamp" label={`Progress of ${job.title}`} className="mb-2" />
+            <Progress value={fraction} tone="lamp" label={`Progress of ${mapTaskTitle(job.title)}`} className="mb-2" />
           ) : fraction !== undefined && fraction > 0 ? (
-            <Progress value={fraction} tone="muted" label={`Progress of ${job.title}`} className="mb-2" />
+            <Progress value={fraction} tone="muted" label={`Progress of ${mapTaskTitle(job.title)}`} className="mb-2" />
           ) : null}
           <p className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 text-small" aria-live="off">
             <span className="min-w-0 text-ink">{taskNowWords(job)}</span>

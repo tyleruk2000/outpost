@@ -1,19 +1,27 @@
 import { formatBytes, type StorageLocation, type StorageUsage } from "@outpost/shared";
 import { cn } from "@/lib/utils";
 
-/** Content kinds, in the order they are stacked, with their label and pattern-free colour. */
-export const usageKinds: Array<{ kind: string; label: string; color: string }> = [
-  { kind: "zim", label: "Reference collections", color: "var(--primary)" },
-  { kind: "map", label: "Maps", color: "oklch(0.62 0.11 150)" },
-  { kind: "terrain", label: "Terrain", color: "oklch(0.7 0.08 120)" },
-  { kind: "document", label: "Documents", color: "var(--lamp)" },
-  { kind: "places", label: "Place names", color: "oklch(0.62 0.1 285)" },
-  { kind: "layer", label: "Map layers", color: "oklch(0.66 0.09 190)" },
-  { kind: "file", label: "Books and other files", color: "oklch(0.6 0.09 30)" },
-  { kind: "model", label: "Search models", color: "oklch(0.58 0.07 250)" },
-  { kind: "extract", label: "Country files", color: "var(--chart-seq-2)" },
-  { kind: "dataset", label: "Radio data", color: "var(--chart-other)" },
+/**
+ * Content kinds, in the order they are stacked, with their label and pattern-free colour. Everything
+ * Offline maps holds (maps, hills, place names, nearby places, source files) is one kind, as it is
+ * managed in one place; `kinds` are the server's kinds it adds up.
+ */
+export const usageKinds: Array<{ kind: string; kinds: string[]; label: string; color: string }> = [
+  { kind: "zim", kinds: ["zim"], label: "Reference collections", color: "var(--primary)" },
+  { kind: "maps", kinds: ["map", "terrain", "places", "layer", "extract"], label: "Offline maps", color: "oklch(0.62 0.11 150)" },
+  { kind: "document", kinds: ["document"], label: "Documents", color: "var(--lamp)" },
+  { kind: "file", kinds: ["file"], label: "Books and other files", color: "oklch(0.6 0.09 30)" },
+  { kind: "model", kinds: ["model"], label: "Search models", color: "oklch(0.58 0.07 250)" },
+  { kind: "dataset", kinds: ["dataset"], label: "Radio data", color: "var(--chart-other)" },
 ];
+
+/** The bytes and items of one of `usageKinds` in a location's usage. */
+export function usageOf(entry: (typeof usageKinds)[number], usage?: Pick<StorageUsage, "byKind">) {
+  return entry.kinds.reduce(
+    (sum, kind) => ({ bytes: sum.bytes + (usage?.byKind[kind]?.bytes ?? 0), count: sum.count + (usage?.byKind[kind]?.count ?? 0) }),
+    { bytes: 0, count: 0 },
+  );
+}
 
 type BarLocation = Pick<StorageLocation, "totalBytes" | "freeBytes" | "name">;
 
@@ -23,7 +31,7 @@ export function storageSegments(location: BarLocation, usage?: StorageUsage) {
   const free = location.freeBytes ?? 0;
   const other = Math.max(0, total - free - (usage?.totalBytes ?? 0));
   return [
-    ...usageKinds.map((entry) => ({ ...entry, bytes: usage?.byKind[entry.kind]?.bytes ?? 0 })).filter((entry) => entry.bytes > 0),
+    ...usageKinds.map((entry) => ({ ...entry, bytes: usageOf(entry, usage).bytes })).filter((entry) => entry.bytes > 0),
     { kind: "other", label: "Other files on this drive", color: "var(--border-strong)", bytes: other },
   ].filter((segment) => segment.bytes > 0);
 }

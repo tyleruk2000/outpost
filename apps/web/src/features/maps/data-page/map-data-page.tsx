@@ -25,7 +25,6 @@ import { AddMapData, type AddStart, bundlesOfKinds, startOfPlace } from "./add-m
 import { isUnderWay, touchSize } from "./pattern";
 import { downloadOf, KeptHereRow, PlaceHeader, PlaceRow, type RowContext } from "./place-row";
 import { RemovePlaceDialog } from "./remove-dialog";
-import { StreetsBuildDialog } from "./streets-build";
 import { PlaceUpdatesDialog } from "./update-dialog";
 import { useMapData } from "./use-map-data";
 import { BUNDLE_NAMES, bundleStateText, offlineSummary, placesIn, stalePlacesLine } from "./words";
@@ -140,7 +139,6 @@ export default function MapDataPage() {
   const [adding, setAdding] = useState<AddStart | null>(null);
   const [getting, setGetting] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [streetsFor, setStreetsFor] = useState<{ country: string | null } | null>(null);
   const [updating, setUpdating] = useState<{ places: MapDataPlace[]; review: boolean } | null>(null);
   const [removing, setRemoving] = useState<MapDataPlace | null>(null);
 
@@ -168,7 +166,8 @@ export default function MapDataPage() {
       });
     }
     if (params.get("get")) setGetting(true);
-    if (params.get("streets")) setStreetsFor({ country: params.get("country") });
+    // Walking and cycling are a tick of Add a place, as every kind of map data is added.
+    if (params.get("streets")) setAdding({ ...(countries.length > 0 ? { countries } : {}), bundles: ["walk"] as MapDataBundleKind[] });
     if (params.get("add") || params.get("get") || params.get("names") || params.get("streets")) setParams({}, { replace: true });
   }, [params.toString()]);
 
@@ -183,10 +182,7 @@ export default function MapDataPage() {
       regions: overview.data?.regions ?? [],
       home: home?.code ?? null,
       columns,
-      onAdd: (place, bundle) => {
-        if (bundle === "walk") setStreetsFor({ country: place.country });
-        else setAdding(startOfPlace(place, bundle));
-      },
+      onAdd: (place, bundle) => setAdding(startOfPlace(place, bundle)),
       onUpdate: (place) => setUpdating({ places: [place], review: false }),
       onRemove: (place) => setRemoving(place),
     }),
@@ -315,14 +311,6 @@ export default function MapDataPage() {
         />
       ) : null}
       <RemovePlaceDialog place={removing} open={removing !== null} onOpenChange={(open) => !open && setRemoving(null)} />
-      {answer?.streetsInstalled ? (
-        <StreetsBuildDialog
-          open={streetsFor !== null}
-          onOpenChange={(open) => !open && setStreetsFor(null)}
-          country={streetsFor?.country ?? null}
-          onKeepFile={(country) => setAdding({ ...(country ? { countries: [country] } : {}), bundles: ["routes"] })}
-        />
-      ) : null}
     </Page>
   );
 }

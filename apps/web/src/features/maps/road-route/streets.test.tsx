@@ -13,7 +13,7 @@ import type { ReactElement } from "react";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { contentText } from "@/features/print-kit";
-import { StreetsBuildDialog, StreetsNotInstalled } from "../data-page/streets-build";
+import { StreetsNotInstalled, WalkDetails, walkCostLine } from "../data-page/streets-build";
 import { PRINT_OVERLAYS } from "../print/overlays";
 import { reachData, reachSentence, setReachShown } from "../reach/reach-map";
 import { useReach } from "../reach/reach-tool";
@@ -362,7 +362,7 @@ describe("reachable areas", () => {
   });
 });
 
-describe("building streets", () => {
+describe("walking and cycling in Add a place", () => {
   const estimate: StreetsEstimate = {
     regions: [{ regionId: "europe/great-britain", name: "Great Britain", country: "GB", dataDate: "2026-11-22" }],
     inputBytes: 2_205_301_182,
@@ -376,33 +376,25 @@ describe("building streets", () => {
     warnings: [],
   };
 
-  it("says what it takes before it starts, and can work on the NAS to spare the card", async () => {
-    serve(NO_STREETS, { "/api/streets/tiles/estimate": estimate, "/api/streets/tiles": { jobId: "j1", estimate } });
-    const onOpenChange = vi.fn();
-    show(<StreetsBuildDialog open onOpenChange={onOpenChange} country="GB" onKeepFile={vi.fn()} />);
-    expect(await screen.findByRole("checkbox", { name: /Great Britain/ })).toBeChecked();
+  it("says what building takes once ticked in Add a place, and can work on the NAS to spare the card", async () => {
+    serve(NO_STREETS, { "/api/streets/tiles/estimate": estimate });
+    const onWhere = vi.fn();
+    show(<WalkDetails request={{ regions: ["europe/great-britain"], coming: [] }} where="own" onWhere={onWhere} />);
     const what = await screen.findByTestId("streets-estimate");
     expect(what).toHaveTextContent("Takes about an hour on a Raspberry Pi 5");
     expect(what).toHaveTextContent(/memory/);
     expect(what).toHaveTextContent(/Writes about 53(\.0)? GB to the disk it works on/);
+    expect(sent.find((each) => each.path === "/api/streets/tiles/estimate")?.body).toEqual({
+      regions: ["europe/great-britain"],
+      coming: [],
+    });
     await userEvent.click(await screen.findByRole("radio", { name: /NAS/ }));
-    await userEvent.click(screen.getByRole("button", { name: "Build streets" }));
-    await waitFor(() =>
-      expect(sent.find((each) => each.path === "/api/streets/tiles")?.body).toEqual({
-        regions: ["europe/great-britain"],
-        workLocationId: "nas",
-      }),
-    );
-    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(onWhere).toHaveBeenCalledWith("nas");
   });
 
-  it("asks for a kept country file first where there is none", async () => {
-    serve({ ...NO_STREETS, countryFiles: [] });
-    const onKeepFile = vi.fn();
-    show(<StreetsBuildDialog open onOpenChange={vi.fn()} country="GB" onKeepFile={onKeepFile} />);
-    await userEvent.click(await screen.findByRole("button", { name: "Keep a country file" }));
-    expect(onKeepFile).toHaveBeenCalledWith("GB");
-    expect(screen.queryByRole("button", { name: "Build streets" })).toBeNull();
+  it("says the source file is downloaded and kept first where none is held", () => {
+    expect(walkCostLine("France", 4_900_000_000, false)).toMatch(/^Needs France's source file, 4\.9\d? GB: downloaded and kept first/);
+    expect(walkCostLine("France", null, true)).toMatch(/from the kept source file: nothing to download/);
   });
 
   it("where the service is not installed, says it is an optional add-on and how to turn it on", () => {

@@ -1,4 +1,4 @@
-# Reference layers
+# Layers on the map
 
 Layers of published data for the map: boundaries, populated places, airports and their
 radio frequencies, publicly mapped military sites and nuclear facilities, hospitals and
@@ -6,7 +6,7 @@ emergency services, shelters and meeting points, emergency planning zones, flood
 England, population, historical records, walking and cycling routes with rights of way,
 and food and supplies.
 
-Nothing is bundled and nothing is fetched by itself: each pack is downloaded when you
+Nothing is bundled and nothing is fetched by itself: each set is downloaded when you
 press **Download**, after its size has been shown, or imported from a file. Every record
 keeps its source, dates, accuracy and licence, and the map says what kind of record it is:
 
@@ -29,29 +29,28 @@ mapped infrastructure and anything modelled are kept apart and never counted tog
   its scale; filters by country, source and kind; a search by name; the legend.
 - **A press on a record** opens its card: kind, class, source, dates, licence, accuracy,
   and every field the source gives.
-- **Maps → Map data** (also from Downloads and tasks and Manage and clean up): installed
-  packs under **Places to find** for each country and under **Whole world**, each with
-  **Check for an update** and **Remove**; the **…** beside **Add map data** has **Other places
-  to find** (every source) and **Import a file**; **Sources and licences** lists the sources
-  that are only linked, with why.
+- **Maps → Offline maps** (also from Storage): what is held, under **Nearby places** for each
+  place and under **World basics**, with **Update** and **Remove…** in each place's **⋯**
+  menu; **Add a place** adds nearby places for a country or a part of one; **Sources and
+  licences** lists the sources that are only linked, with why.
 - **Preparedness → Nuclear preparedness** shows the same layers
   ([nuclear-preparedness.md](nuclear-preparedness.md)). **Search** finds records by name.
 
-## Getting a pack
+## Getting a set
 
-In **Get reference data** choose a source, the area (a country, a state or region, the
+In **Get layer data** (the Layers tab) choose a source, the area (a country, a state or region, the
 area on screen, or the world, as the source allows) and the layers, then **Show the
 size**. Each item is listed with its size, host and what it would replace, then the total,
 the room needed, and a choice of storage location. Press **Download** within half an hour.
 
 Downloads resume and are checked where a checksum exists. A file that cannot be read
-leaves the installed pack as it was. **Update** repeats the estimate and replaces the
-pack. If a pack's drive is unplugged its records stay on the map.
+leaves the installed set as it was. **Update** repeats the estimate and replaces the
+set. If a set's drive is unplugged its records stay on the map.
 
 **Importing.** GeoJSON and CSV in WGS 84, Web Mercator, the British National Grid (to
 about 5 m) or the Swiss grids (about 1 m); others are refused. A WorldPop grid downloaded
 by hand imports if it is the 2020, 1 km, UN-adjusted product. Over 1,500 records in a view
-are counted into patches: zoom in.
+are counted into patches: move closer.
 
 ## Providers
 
@@ -63,7 +62,7 @@ Each publisher's terms, quoted with the day read, are in
 | Natural Earth (public domain) | Countries, first-level regions, populated places | Fetched on a press, release v5.1.2, the countries file checked against a recorded SHA-256 |
 | OurAirports (public domain) | Airports, airfields, heliports, and their frequencies | Fetched on a press (12.8 MB and 1.3 MB), the chosen area kept. Nothing says an airfield is military, and nothing is guessed |
 | OpenStreetMap by Overpass (ODbL) | Military sites, nuclear facilities, hospitals, police, fire and ambulance stations, shelters; food and supplies | One layer of one country (or a box up to 20° by 20°) per question, paced, from dresel.systems or a server you declare. Private.coffee is not used: its terms exclude military uses |
-| OpenStreetMap from Geofabrik (ODbL) | The same, plus routes and rights of way, from a `.osm.pbf` extract | At most three files per estimate, MD5 checked; or a file you downloaded |
+| OpenStreetMap from Geofabrik (ODbL) | The same, plus routes and rights of way, from a `.osm.pbf` source file | At most three files per estimate, MD5 checked; or a file you downloaded |
 | Wikidata (CC0) | Nuclear power stations and research reactors | Only after you agree to send Outpost's name ([below](#the-name-a-source-is-given)). A large country may time out |
 | WorldPop (CC BY 4.0) | Population, 2020, about 1 km | One GeoTIFF per country, with WorldPop's citation |
 | BABS, Switzerland | Emergency meeting points | One GeoJSON file, 1.5 MB |
@@ -107,8 +106,8 @@ The Environment Agency's Flood Zones 2 and 3, from rivers and the sea. England o
 
 - **Getting it**: source "Flood zones, England (Environment Agency)", **The area on
   screen**, **Show the size**. At most 0.2° by 0.3° (about 22 by 20 km) and 5,000 areas,
-  so zoom in first. Larger boxes went unanswered.
-- **On the map** from zoom 11 (a town across a phone), at most 3,000 to a view. Zone 3 is
+  so move closer first. Larger boxes went unanswered.
+- **On the map** once a town fills a phone, at most 3,000 to a view. Zone 3 is
   the deeper tone with a solid edge, zone 2 lighter with a broken edge.
 - **The legend** gives each zone in the Agency's words (Zone 3: a 1% or greater annual
   chance of flooding from rivers, or 0.5% from the sea), that it ignores flood defences,
@@ -117,8 +116,8 @@ The Environment Agency's Flood Zones 2 and 3, from rivers and the sea. England o
 
 ### Airport frequencies
 
-Fetched with the airports pack. If the file cannot be had or is not as expected, the
-airports are installed without them and the pack says so: update it to try again.
+Fetched with the airports. If the file cannot be had or is not as expected, the
+airports are installed without them and the set says so: update it to try again.
 
 The card lists them first, tower first, then ATIS and information, each with what it is
 for and the frequency in MHz. They are **not for navigation or flight planning**: a
@@ -149,22 +148,23 @@ stays off until you tick **Send this name to …**, each time, updates included.
 In some countries it is illegal to map military sites or use a map of them; Outpost shows
 the OpenStreetMap wiki's warning before that layer is estimated.
 
-**The licence.** Keeping a pack for your household owes nothing. The map credits
+**The licence.** Keeping a set for your household owes nothing. The map credits
 "© OpenStreetMap contributors, ODbL" while such a layer is drawn. Outpost has no export of
 reference layers; anyone passing the downloaded files on must offer them under the ODbL.
 
 ## Walking and cycling routes, and rights of way
 
-From a Geofabrik extract for any country or region: tick **Walking and cycling routes**,
+From a country's or region's source file: tick **Walking and cycling routes**,
 **Rights of way**, or both (also under **Also read** when importing).
 
-- Routes are a solid line from zoom 8, rights of way a broken line from zoom 12. A press
+- Routes are a solid line once the map shows about a region, rights of way a broken line once
+  it shows about a town. A press
   opens the card: name or number, network, distance, from and to.
 - Only paths tagged with a `designation` are shown. In England and Wales the council's
   definitive map is the legal record: a path missing here may still be a right of way, and
   a line here is not permission to walk it nor a promise it is open.
 - England's rights of way are hundreds of thousands of paths: on a small computer, read a
-  county. To add routes to an area read before, get its extract again.
+  county. To add routes to an area read before, read its source file again.
 
 ## Food and supplies
 
@@ -182,7 +182,7 @@ The Food Standards Agency's list is fuller for UK shops but places some at the p
   1.5° by 2° (about a county) and 30,000 places.
 - **OpenStreetMap, from a Geofabrik extract**, for a state, region or country
   ([below](#food-and-supplies-for-a-state-or-region)).
-- **Food Standards Agency (UK)**: **The area on screen**, same limits; two packs,
+- **Food Standards Agency (UK)**: **The area on screen**, same limits; two sets,
   supermarkets and other shops. **Hygiene ratings are not kept or shown.**
 
 A shop in both sources is shown once, the other listed under "Also recorded by".
@@ -207,7 +207,7 @@ Source **OpenStreetMap, from a Geofabrik extract**, area **A state or region, by
 2. Type a name ("ohio", "bay") or pick from **For the home place** or **Countries**.
 3. Tick up to three, tick **Food and supplies** (and any other layer, read from the same
    file), **Show the size**: Ohio is 328 MB to download and at most 26.3 MB kept.
-4. **Download**. Each region is its own pack.
+4. **Download**. Each region is its own set.
 
 Sizes run from Cumbria's 46 MB to England's 1.72 GB and the United States' 12.3 GB. The
 file is deleted once read unless you tick **Keep the downloaded file too**. A state the

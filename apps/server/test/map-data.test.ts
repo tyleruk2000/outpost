@@ -91,10 +91,20 @@ describe("one country file for roads and places", () => {
   it("asks the person whether to keep the file, and chooses nothing for them", async () => {
     const refused = await app.api("POST", "/api/maps/data/add", { regionId: "monaco", kinds: ["roads"] });
     expect(refused.status).toBe(400);
-    expect(JSON.stringify(refused.body)).toMatch(/whether to keep the country file/);
+    expect(JSON.stringify(refused.body)).toMatch(/whether to keep the source file/);
     const before = await data();
     expect(before.countryFileChoice).toEqual({ keep: null, locationId: null });
     expect(before.regionsListed).toBe(true);
+  });
+
+  it("builds walking and cycling only from a kept source file, and only where the add-on is installed", async () => {
+    const unkept = await app.api("POST", "/api/maps/data/add", { regionId: "monaco", kinds: ["roads"], keep: false, streets: {} });
+    expect(unkept.status).toBe(400);
+    expect(JSON.stringify(unkept.body)).toMatch(/keep it to build them/);
+    const missing = await app.api("POST", "/api/maps/data/add", { regionId: "monaco", kinds: ["extract"], keep: true, streets: {} });
+    expect(missing.status).toBe(400);
+    expect(JSON.stringify(missing.body)).toMatch(/optional add-on that is not part of this installation/);
+    expect(pbfFetches()).toEqual([]);
   });
 
   it("downloads once, falling back to the newest dated file when the latest is not there, reads roads and places, then deletes it", async () => {
@@ -131,6 +141,10 @@ describe("one country file for roads and places", () => {
     expect(mc.rows.map((r) => r.kind)).toEqual(["map", "terrain", "names", "roads", "places", "extract"]);
     expect(rowOf(answer, "roads")).toMatchObject([{ state: "ready", dataDate: "2026-11-21", locationId: null, networkId: networks[0].id }]);
     expect(rowOf(answer, "places")).toMatchObject([{ state: "ready", packId: packs[0].id }]);
+    // Its size is what its records take in the database, not the short record left of the deleted file.
+    const collection = app.ctx.services.collections.get(packs[0].id)!;
+    expect(packs[0].sizeBytes).toBeGreaterThan(collection.sizeBytes + packs[0].records * 100);
+    expect(rowOf(answer, "places")[0]!.sizeBytes).toBe(packs[0].sizeBytes);
     expect(rowOf(answer, "extract")).toEqual([]);
     expect(mc.lastRead).toMatchObject({ fileName: "monaco-261121.osm.pbf", bytes: body.length, kept: false, dataDate: "2026-11-21" });
     expect(answer.countryFileChoice.keep).toBe(false);
@@ -148,7 +162,7 @@ describe("one country file for roads and places", () => {
     expect(added.status, JSON.stringify(added.body)).toBe(200);
     await app.ctx.jobs.whenIdle();
     const [kept] = app.ctx.services.collections.list({ kind: "extract" });
-    expect(kept).toMatchObject({ kind: "extract", title: "Country file: Monaco", locationId: location.id, sizeBytes: body.length });
+    expect(kept).toMatchObject({ kind: "extract", title: "Monaco: source file", locationId: location.id, sizeBytes: body.length });
     expect(fs.existsSync(app.ctx.services.storage.resolve(kept!.locationId, kept!.relPath))).toBe(true);
     // Replaced, not added beside: still one network and one pack.
     expect((await app.api("GET", "/api/roads/networks")).body.networks).toHaveLength(1);
@@ -216,7 +230,7 @@ describe("one country file for roads and places", () => {
     });
     expect(network.sizeBytes).toBeGreaterThan(0);
     const file = items.find((item) => item.kind === "extract")!;
-    expect(file).toMatchObject({ type: "collection", title: "Country file: Monaco", sizeBytes: body.length, state: "ok" });
+    expect(file).toMatchObject({ type: "collection", title: "Monaco: source file", sizeBytes: body.length, state: "ok" });
     expect(file.warning).toMatch(/keep working/);
     const usage = (await app.api("GET", "/api/manage/usage")).body as UsageResponse;
     expect(usage.rows.find((row) => row.id === "roads")).toMatchObject({ count: 1, bytes: network.sizeBytes });

@@ -4,16 +4,13 @@
  * Query keys start with "streets", which the `streets.changed` event refreshes.
  */
 import type {
-  StreetsBuildRequest,
-  StreetsBuildResponse,
-  StreetsEstimate,
   StreetsReachRequest,
   StreetsReachResult,
   StreetsRouteRequest,
   StreetsRouteResult,
   StreetsStatusResponse,
 } from "@outpost/shared";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 
@@ -50,28 +47,6 @@ export function useStreetsReach(request: StreetsReachRequest | null) {
     enabled: request !== null,
     staleTime: Number.POSITIVE_INFINITY,
     retry: false,
-  });
-}
-
-/** What a build of these country files costs, said before it starts; the last answer stays while the next is asked. */
-export const useStreetsEstimate = (regions: string[]) =>
-  useQuery({
-    queryKey: streetsKeys.estimate([...regions].sort().join(",")),
-    queryFn: () => api.post<StreetsEstimate>("/api/streets/tiles/estimate", { regions }),
-    enabled: regions.length > 0,
-    placeholderData: keepPreviousData,
-    staleTime: Number.POSITIVE_INFINITY,
-  });
-
-export function useBuildStreets() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (request: StreetsBuildRequest) => api.post<StreetsBuildResponse>("/api/streets/tiles", request),
-    onSuccess: () => {
-      void client.invalidateQueries({ queryKey: streetsKeys.all });
-      void client.invalidateQueries({ queryKey: ["maps"] });
-      void client.invalidateQueries({ queryKey: ["jobs"] });
-    },
   });
 }
 

@@ -80,6 +80,7 @@ export function StateMark({
   name,
   place,
   onAdd,
+  labelled = false,
   now = Date.now(),
 }: {
   bundle: MapDataBundle | null;
@@ -88,12 +89,15 @@ export function StateMark({
   /** The place's name, for the Add button's label. */
   place: string;
   onAdd?: (() => void) | undefined;
+  /** Its name shown at every width, where no column names it (Storage, the map's cards). */
+  labelled?: boolean;
   now?: number;
 }) {
+  const named = labelled ? "" : "md:sr-only";
   if (!bundle) {
     return (
       <span data-pattern="state" data-state="not-offered" className="text-small text-ink-faint max-md:hidden">
-        <span className="md:sr-only">{name} </span>
+        <span className={named}>{name} </span>
         <span aria-hidden>–</span>
         <span className="sr-only">not offered</span>
       </span>
@@ -102,7 +106,7 @@ export function StateMark({
   if (bundle.state === "none") {
     return (
       <span data-pattern="state" data-state="none" className="inline-flex items-center gap-1 text-small">
-        <span className="text-ink-muted md:sr-only">{name}:</span>
+        <span className={cn("text-ink-muted", named)}>{name}:</span>
         {onAdd ? (
           <Button
             variant="ghost"
@@ -126,7 +130,7 @@ export function StateMark({
       title={bundleStateText(bundle, null, now)}
       className={cn("inline-flex min-w-0 items-center gap-1 text-small [&_svg]:size-4 [&_svg]:shrink-0", markTone(bundle, now))}
     >
-      <span className="text-ink md:sr-only">{name}</span>
+      <span className={cn("text-ink", named)}>{name}</span>
       <span aria-hidden className="inline-flex">
         {markIcon(bundle, now)}
       </span>

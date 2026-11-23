@@ -277,7 +277,7 @@ export function createRoadsService(ctx: AppContext): RoadsService {
 
   const installer: Installer = async ({ download, filePath, sizeBytes, signal, progress }) => {
     const meta = (download.meta as { roads?: RoadsDownloadMeta }).roads;
-    if (!meta) throw new PermanentJobError("Outpost does not know which road network this download is for.");
+    if (!meta) throw new PermanentJobError("Outpost does not know which routes this download is for.");
     const replaces = rows()
       .filter((r) => r.regionId === meta.regionId)
       .map((r) => r.id);
@@ -350,7 +350,7 @@ export function createRoadsService(ctx: AppContext): RoadsService {
     const file = ctx.services.storage.resolve(input.locationId, input.relPath);
     if (!fs.existsSync(file)) throw notFound("That file");
     const job = ctx.jobs.enqueue(BUILD_JOB, input as unknown as Record<string, unknown>, {
-      title: `Building the road network: ${input.name}`,
+      title: `${input.name}: routes`,
       maxAttempts: 1,
     });
     return { jobId: job.id };

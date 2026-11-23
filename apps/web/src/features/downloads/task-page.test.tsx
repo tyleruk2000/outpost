@@ -111,11 +111,9 @@ describe("A task's page", () => {
     show();
     const now = within(await part("Now"));
     expect(
-      now.getByText(
-        "Waiting for “Building the road network: Wales” to finish. One task of this kind runs at a time. One more is ahead of it.",
-      ),
+      now.getByText("Waiting for “Wales: routes” to finish. One task of this kind runs at a time. One more is ahead of it."),
     ).toBeInTheDocument();
-    expect(now.getByRole("link", { name: "Building the road network: Wales" })).toHaveAttribute("href", "/downloads/tasks/j0");
+    expect(now.getByRole("link", { name: "Wales: routes" })).toHaveAttribute("href", "/downloads/tasks/j0");
     expect(within(await part("Rate over time")).getByText(/There is nothing to show until this one is moving/)).toBeInTheDocument();
   });
 

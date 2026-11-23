@@ -144,9 +144,9 @@ export const TASK_KINDS: Record<string, TaskKind> = {
     from: { to: "/library?tab=collections", label: "Open your collections" },
   },
   "layers.import": {
-    name: "Importing reference data for the map",
+    name: "Importing a layer for the map",
     about: "Reads a file of places or areas and makes it a layer you can show on the map.",
-    from: { to: "/maps?reference=manage", label: "Open reference data for the map" },
+    from: { to: "/maps?reference=manage", label: "Open the map's layers" },
   },
   "manage.derived": {
     name: "Clearing and rebuilding search data",
@@ -223,25 +223,25 @@ export const TASK_KINDS: Record<string, TaskKind> = {
     from: { to: "/radio/propagation", label: "Open HF propagation" },
   },
   "maps.country-file.read": {
-    name: "Reading a country file",
-    about: "Reads a kept country file (an OpenStreetMap extract) again for road routes and places to find, with nothing downloaded.",
+    name: "Reading a source file",
+    about: "Reads a place's kept source file (its OpenStreetMap record) again for routes and nearby places, with nothing downloaded.",
     pause: "restarts",
     retry: true,
-    from: { to: "/maps", label: "Open Maps" },
+    from: { to: "/maps/data", label: "Open Offline maps" },
   },
   "roads.build": {
-    name: "Building a road network",
-    about: "Reads the main roads out of an OpenStreetMap extract and makes the network road directions are planned on.",
+    name: "Building routes",
+    about: "Reads the main roads out of a place's source file and makes the routes drives are planned on.",
     pause: "restarts",
     retry: true,
-    from: { to: "/maps", label: "Open Maps" },
+    from: { to: "/maps/data", label: "Open Offline maps" },
   },
   "streets.build": {
-    name: "Building streets for routes",
+    name: "Building walking and cycling",
     about:
-      "Has the streets service build door-to-door, walking and cycling streets from kept country files, or bring in a set built elsewhere.",
+      "Has the optional add-on build door-to-door, walking and cycling routes from kept source files, or bring in a set built elsewhere.",
     retry: true,
-    from: { to: "/maps", label: "Open Maps" },
+    from: { to: "/maps/data", label: "Open Offline maps" },
   },
   "semantic.index": {
     name: "Building search by meaning",

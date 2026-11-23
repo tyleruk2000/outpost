@@ -77,12 +77,12 @@ export function RingPeople({ at, result, onGetData }: { at: { lat: number; lon: 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
         <p className="text-small text-ink-muted">
           {sets.length === 0
-            ? "No population grid is installed. To see how many people live inside each ring, get WorldPop's population grid for the country (1 km cells, CC BY 4.0) from Reference data in the Layers tab."
-            : `No installed population grid reaches these rings (installed: ${sets.map((set) => set.country).join(", ")}). To count the people inside them, get WorldPop's grid for this country from Reference data in the Layers tab.`}
+            ? "No population grid is installed. To see how many people live inside each ring, get WorldPop's population grid for the country (1 km cells, CC BY 4.0) from Layer data in the Layers tab."
+            : `No installed population grid reaches these rings (installed: ${sets.map((set) => set.country).join(", ")}). To count the people inside them, get WorldPop's grid for this country from Layer data in the Layers tab.`}
         </p>
         <div>
           <Button onClick={onGetData}>
-            <Layers aria-hidden /> Get reference data
+            <Layers aria-hidden /> Get layer data
           </Button>
         </div>
       </div>

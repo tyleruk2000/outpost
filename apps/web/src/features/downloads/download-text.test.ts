@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describeDownload, removalDeletesPartialFile } from "./download-text";
+import { describeDownload, mapTaskTitle, removalDeletesPartialFile } from "./download-text";
 import { download } from "./test-support";
 
 describe("describing a download", () => {
@@ -63,5 +63,19 @@ describe("removing a download", () => {
     expect(removalDeletesPartialFile(download({ state: "cancelled" }))).toBe(true);
     expect(removalDeletesPartialFile(download({ state: "failed", receivedBytes: 0 }))).toBe(false);
     expect(removalDeletesPartialFile(download({ state: "completed" }))).toBe(false);
+  });
+});
+
+describe("map data titles", () => {
+  it("names old map downloads and tasks as Offline maps does, and leaves others as they are", () => {
+    expect(mapTaskTitle("Country file: United Kingdom (Geofabrik)")).toBe("United Kingdom: source file");
+    expect(mapTaskTitle("Country file: Monaco")).toBe("Monaco: source file");
+    expect(mapTaskTitle("Building the road network: Wales")).toBe("Wales: routes");
+    expect(mapTaskTitle("Reading the country file: France")).toBe("France: source file");
+    expect(mapTaskTitle("OpenStreetMap: Ohio, United States of America (Geofabrik)")).toBe("Ohio, United States of America: nearby places");
+    expect(mapTaskTitle("Building streets for routes: France")).toBe("France: walking and cycling");
+    expect(mapTaskTitle("Satellite: Lake shore")).toBe("Lake shore: satellite pictures");
+    expect(mapTaskTitle("United Kingdom: routes")).toBe("United Kingdom: routes");
+    expect(mapTaskTitle("Wikipedia (English)")).toBe("Wikipedia (English)");
   });
 });

@@ -1,13 +1,12 @@
-import type { ImageryEstimate, ImageryOverview, ImagerySet, ImageryStyleSource, MapSources, SceneSearchResponse } from "@outpost/shared";
-import { act, renderHook, screen, waitFor, within } from "@testing-library/react";
+import type { ImageryEstimate, ImageryOverview, ImageryStyleSource, MapSources, SceneSearchResponse } from "@outpost/shared";
+import { act, renderHook, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fakeServer, installBrowserStubs, location, renderScreen } from "@/features/downloads/test-support";
 import type { MapTheme } from "../lib/style";
 import type { LayerSpecification } from "../lib/style-types";
-import type { MapEngine } from "../map/engine";
-import { ImageryArea, SatelliteSection } from "./panel";
+import { SatellitePicture } from "./panel";
 import { imageryStyle, withImagery } from "./style";
 import { imageryCredits, setsInView, useSatellite } from "./use-satellite";
 
@@ -85,7 +84,7 @@ describe("the Satellite button", () => {
     expect(result.current.label).toBe("Satellite: none downloaded yet");
     act(() => result.current.setOn(true));
     expect(result.current.on).toBe(false);
-    expect(toast).toHaveBeenCalledWith(expect.stringMatching(/No satellite imagery is downloaded yet/), expect.anything());
+    expect(toast).toHaveBeenCalledWith(expect.stringMatching(/No satellite pictures are downloaded yet/), expect.anything());
     const action = (vi.mocked(toast).mock.calls[0]![1] as unknown as { action: { onClick: () => void } }).action;
     action.onClick();
     expect(onGetImagery).toHaveBeenCalled();
@@ -99,30 +98,6 @@ describe("the Satellite button", () => {
     expect(localStorage.getItem("outpost.maps.satellite")).toBe("true");
     expect(result.current.credits).toHaveLength(1);
   });
-});
-
-const set = (over: Partial<ImagerySet> = {}): ImagerySet => ({
-  id: "s1",
-  name: "Derwentwater",
-  source: "sentinel-2",
-  bounds: [-3.218, 54.535, -3.063, 54.625],
-  minZoom: 6,
-  maxZoom: 14,
-  imageDate: "2026-07-12",
-  imageDateText: "12 July 2026",
-  sceneCloudPercent: 0.4,
-  areaCloudPercent: 2.5,
-  scenes: ["S2B_T30UVF_20260712T112112_L2A"],
-  resolutionMeters: 10,
-  sizeBytes: 326_784,
-  transferredBytes: 16_294_936,
-  installedAt: 1,
-  locationId: "loc1",
-  locationName: "Internal storage",
-  available: true,
-  status: "installed",
-  attribution: "",
-  ...over,
 });
 
 const overview = (over: Partial<ImageryOverview> = {}): ImageryOverview => ({
@@ -146,53 +121,6 @@ const overview = (over: Partial<ImageryOverview> = {}): ImageryOverview => ({
   aerialLimits: { noticeBytes: 50e6, warnBytes: 400e6, maxBytes: 2e9, warnTiles: 15000, maxTiles: 60000 },
   ...over,
 });
-
-describe("the satellite imagery section", () => {
-  it("says when none is downloaded, and gives the world's size before anything is fetched", async () => {
-    installBrowserStubs();
-    const server = fakeServer({
-      "GET /api/maps/imagery": overview(),
-      "GET /api/storage/locations": { roots: ["/srv"], locations: [location()] },
-      "POST /api/maps/imagery/world": { download: {} },
-    });
-    renderScreen(<SatelliteSection engine={null} onChooseArea={() => {}} />);
-    expect(await screen.findByText("None downloaded yet.")).toBeInTheDocument();
-    expect(screen.getByText(/Fetches .* from NASA; about .* kept/)).toHaveTextContent(/Fetches 25\d(\.\d)? MB from NASA/);
-    await userEvent.click(screen.getByRole("button", { name: "Download" }));
-    const dialog = await screen.findByRole("alertdialog");
-    expect(dialog).toHaveTextContent(/25\d(\.\d)? MB to fetch/);
-    expect(dialog).toHaveTextContent("NASA Earth Observatory");
-    expect(server.calls.filter((call) => call.startsWith("POST"))).toEqual([]);
-    await userEvent.click(within(dialog).getByRole("button", { name: /^Download 25/ }));
-    await waitFor(() => expect(server.calls).toContain("POST /api/maps/imagery/world"));
-  });
-
-  it("lists what is installed with its day, cloud, size and what was fetched, and says when its drive is away", async () => {
-    installBrowserStubs();
-    fakeServer({
-      "GET /api/maps/imagery": overview({
-        sets: [set(), set({ id: "s2", name: "Away", available: false })],
-        world: overview().world.map((option) => ({ ...option, downloadId: "d1" })),
-      }),
-    });
-    renderScreen(<SatelliteSection engine={null} onChooseArea={() => {}} />);
-    const row = (await screen.findByText("Derwentwater")).closest("li")!;
-    expect(row).toHaveTextContent("Sentinel-2, taken on 12 July 2026, 10 m a pixel");
-    expect(row).toHaveTextContent("Cloud or its shadow over the area: 2.5%. Whole scene: 0.4%.");
-    expect(row).toHaveTextContent("16.3 MB fetched to make it");
-    expect(screen.getByText("Away").closest("li")).toHaveTextContent("The drive holding this is not connected");
-    expect(screen.getByText("Downloading")).toBeInTheDocument();
-  });
-});
-
-const engine = () =>
-  ({
-    setBox: vi.fn(),
-    setDrawing: vi.fn(),
-    on: vi.fn(() => () => true),
-    getBounds: () => [-3.3, 54.5, -3.0, 54.7],
-    fitBounds: vi.fn(),
-  }) as unknown as MapEngine;
 
 const search: SceneSearchResponse = {
   bbox: [-3.264, 54.524, -3.036, 54.676],
@@ -266,11 +194,9 @@ async function walkToConfirmation(answer: ImageryEstimate) {
     "POST /api/maps/imagery/areas": { download: {} },
   });
   const onClose = vi.fn();
-  renderScreen(<ImageryArea engine={engine()} onClose={onClose} onNeedMap={() => {}} onNeedRoom={() => {}} />);
-  await userEvent.click(screen.getByRole("button", { name: "Use the current view" }));
-  await userEvent.type(screen.getByRole("textbox", { name: "Name for this area" }), "Borrowdale");
-  expect(server.calls.filter((call) => call.startsWith("POST"))).toEqual([]);
-  await userEvent.click(screen.getByRole("button", { name: "Find pictures" }));
+  // Reached from Add a place, for an area chosen there: the press that came here asks for the pictures.
+  renderScreen(<SatellitePicture area={{ bbox: [-3.3, 54.5, -3.0, 54.7], name: "Borrowdale" }} onBack={() => {}} onDone={onClose} />);
+  expect(screen.getByRole("heading", { name: "Satellite pictures of Borrowdale" })).toBeInTheDocument();
   await userEvent.click(await screen.findByRole("radio", { name: /17 October 2026/ }));
   expect(screen.getByText(/cloud over the scene 12%; covers 80% of the area/)).toBeInTheDocument();
   await userEvent.click(screen.getByRole("radio", { name: /12 July 2026/ }));
@@ -284,7 +210,8 @@ describe("choosing an area", () => {
     const { server, onClose } = await walkToConfirmation(estimate());
     const figures = screen.getByLabelText("What it will be");
     expect(figures).toHaveTextContent("Sentinel-2, Level-2A, 12 July 2026");
-    expect(figures).toHaveTextContent("10 m a pixel, to zoom 14");
+    expect(figures).toHaveTextContent("10 m a pixel");
+    expect(figures).not.toHaveTextContent("zoom");
     expect(figures).toHaveTextContent("16.2 MB15 requests");
     expect(figures).toHaveTextContent("About 666 kB");
     expect(figures).toHaveTextContent("About 4 seconds to 20 seconds");
@@ -293,7 +220,7 @@ describe("choosing an area", () => {
     expect(figures).toHaveTextContent("FreeNo account and no bill");
     expect(screen.getByText(/one moment's picture, not a seamless mosaic/)).toBeInTheDocument();
     expect(server.calls.filter((call) => call.startsWith("POST /api/maps/imagery/areas"))).toEqual([]);
-    await userEvent.click(screen.getByRole("button", { name: "Fetch 16.2 MB" }));
+    await userEvent.click(screen.getByRole("button", { name: "Download · 16.2 MB" }));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(server.calls).toContain("POST /api/maps/imagery/areas");
   });
@@ -308,7 +235,7 @@ describe("choosing an area", () => {
       }),
     );
     expect(screen.getByText(/Several smaller areas/)).toBeInTheDocument();
-    const fetch = screen.getByRole("button", { name: "Fetch 16.2 MB" });
+    const fetch = screen.getByRole("button", { name: "Download · 16.2 MB" });
     expect(fetch).toBeDisabled();
     await userEvent.click(screen.getByRole("checkbox", { name: "I have read this and want the whole area" }));
     expect(fetch).toBeEnabled();
@@ -317,7 +244,7 @@ describe("choosing an area", () => {
   it("refuses an area past the ceiling, with the reason", async () => {
     await walkToConfirmation(estimate({ warning: { level: "refuse", message: "20,000 km² is more than one area can be (10,000 km²)." } }));
     expect(screen.getByText("Too large for one area")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Fetch 16.2 MB" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Download · 16.2 MB" })).toBeDisabled();
   });
 });
 
@@ -367,10 +294,9 @@ describe("an aerial photograph of an area", () => {
       "POST /api/maps/imagery/estimate": aerialEstimate,
       "POST /api/maps/imagery/areas": { download: {} },
     });
-    renderScreen(<ImageryArea engine={engine()} onClose={() => {}} onNeedMap={() => {}} onNeedRoom={() => {}} />);
-    await userEvent.click(screen.getByRole("button", { name: "Use the current view" }));
-    await userEvent.type(screen.getByRole("textbox", { name: "Name for this area" }), "Cathedral Square");
-    await userEvent.click(screen.getByRole("button", { name: "Find pictures" }));
+    renderScreen(
+      <SatellitePicture area={{ bbox: [172.6, -43.54, 172.65, -43.52], name: "Cathedral Square" }} onBack={() => {}} onDone={() => {}} />,
+    );
     const choice = await screen.findByRole("radio", { name: /Aerial photograph, 7.5 cm/ });
     expect(screen.getByText("Christchurch 0.075m Urban Aerial Photos (2023), flown January to April 2023")).toBeInTheDocument();
     expect(screen.getByText("Nothing else to say.")).toBeInTheDocument();
@@ -378,7 +304,7 @@ describe("an aerial photograph of an area", () => {
     await userEvent.click(screen.getByRole("button", { name: "Continue" }));
     const figures = await screen.findByLabelText("What it will be");
     expect(figures).toHaveTextContent("Christchurch 0.075m Urban Aerial Photos (2023)");
-    expect(figures).toHaveTextContent("7.5 cm a pixel, to zoom 19");
+    expect(figures).toHaveTextContent("7.5 cm a pixel");
     expect(figures).toHaveTextContent("reduced copy at 15 cm");
     expect(figures).toHaveTextContent("from 4 of the publisher's files");
     expect(figures).toHaveTextContent("1,230 map tiles");
@@ -386,27 +312,7 @@ describe("an aerial photograph of an area", () => {
     expect(figures).not.toHaveTextContent("Cloud");
     expect(screen.getByText(/not of today/)).toBeInTheDocument();
     expect(server.calls.filter((call) => call.startsWith("POST /api/maps/imagery/areas"))).toEqual([]);
-    await userEvent.click(screen.getByRole("button", { name: "Fetch 7.20 MB" }));
+    await userEvent.click(screen.getByRole("button", { name: "Download · 7.20 MB" }));
     await waitFor(() => expect(server.calls).toContain("POST /api/maps/imagery/areas"));
-  });
-
-  it("lists an installed photograph with the season it was flown", async () => {
-    installBrowserStubs();
-    fakeServer({
-      "GET /api/maps/imagery": overview({
-        sets: [
-          set({
-            source: "linz-aerial",
-            imageDateText: "January to April 2023",
-            resolutionMeters: 0.075,
-            sceneCloudPercent: null,
-            areaCloudPercent: null,
-          }),
-        ],
-      }),
-    });
-    renderScreen(<SatelliteSection engine={null} onChooseArea={() => {}} />);
-    const row = (await screen.findByText("Derwentwater")).closest("li")!;
-    expect(row).toHaveTextContent("Aerial photograph, LINZ, flown January to April 2023, 7.5 cm a pixel");
   });
 });
