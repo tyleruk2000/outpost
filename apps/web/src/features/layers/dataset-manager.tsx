@@ -534,7 +534,7 @@ const FORMATS: Array<{ value: ReferenceImportFormat; label: string; about: strin
   },
 ];
 
-function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const client = useQueryClient();
   const [format, setFormat] = useState<ReferenceImportFormat>("features-csv");
   const [file, setFile] = useState<File | null>(null);

@@ -164,6 +164,9 @@ desktop at 1280 px.
 | Find a guide in Help | Scroll a list of 60 | Type a word (0 presses) | Scroll | Type a word | A field over the guides |
 | Reach what Server status says needs attention | Scroll past every line that is fine | 1 (a link under the sentence) | Scroll | 1 | |
 | Read search results on a phone | First result 790 px down for "water" | About 560 px down | | | The explainer links give way to results on a phone; Go to's sentences one line each |
+| Maps for where I live: map, hills and place names for the home country | 11 (Maps, Offline, Choose your area, the country, terrain, Check the size, Download; then One country in full, the country from a list, Download place names) | 6 (Maps, Offline, All map data, Add map data, Check sizes, Download) | 10 | 5 (Maps, Map data, Add map data, Check sizes, Download) | Map data's one flow; the home country chosen already; one press for every size. From Map data itself: 3 |
+| The same with roads for routes and places to find, first time | about 23 (the above, then Add a road network, Read the list of regions, Add; Get reference data, the source, its layers, Show the size, Download), the 2.2 GB country file downloaded twice | 10 (the above, two ticks, Next, the country file choice) | about 22 | 8 (two ticks, the country file choice) | One country file for both, asked once whether to keep it; from Map data 7 on a phone, 6 on a desktop, one fewer once the choice is remembered |
+| Roads for a drive, from Road route's empty state | 4 (Add road networks, Add a road network, Read the list of regions, Add), the file deleted with no say | 4 (Add roads for the home country, Check sizes, the choice, Download) | 4 | 4 | The country chosen from home; the choice asked, then remembered (3); a kept file is read with no download (**Build roads**, 2) |
 
 On a tablet at 768 px every screen gained 196 px of width; the full sidebar is one press
 away (the button at the top of the rail, or Ctrl \\).

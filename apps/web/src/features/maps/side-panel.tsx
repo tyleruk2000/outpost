@@ -4,6 +4,7 @@
  */
 import { PanelLeftClose } from "lucide-react";
 import { type KeyboardEvent, type PointerEvent, type ReactNode, type RefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger, Tooltip } from "@/components/ui/misc";
 import { cn } from "@/lib/utils";
@@ -73,6 +74,13 @@ export function DesktopPanel({ onCollapse, children }: { onCollapse: () => void;
     <aside aria-label="Places, routes and offline maps" className="flex w-[22rem] shrink-0 flex-col border-r border-border bg-page">
       <div className="flex h-14 shrink-0 items-center justify-between gap-2 pr-2 pl-4">
         <h1 className="font-title text-heading text-ink">Maps</h1>
+        {/* The screen under Maps, linked from its own content as every parent screen does. */}
+        <Link
+          to="/maps/data"
+          className="ml-auto inline-flex min-h-8 items-center rounded-control px-1 text-small text-primary underline decoration-1 underline-offset-2 hover:decoration-2"
+        >
+          Map data
+        </Link>
         <Tooltip label="Hide this panel" side="bottom">
           <Button variant="ghost" size="icon" aria-label="Hide this panel" onClick={onCollapse}>
             <PanelLeftClose />

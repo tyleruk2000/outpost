@@ -14,6 +14,7 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
+import { buildPbf } from "../../apps/server/test/fixtures/layers/builders.ts";
 import { createGeofabrikStandIn } from "../../apps/server/test/fixtures/layers/geofabrik-stand-in.ts";
 import { serveOurAirportsStandIn } from "../../apps/server/test/fixtures/layers/ourairports-stand-in.ts";
 import { createImageryStandIn } from "../../apps/server/test/fixtures/maps/imagery-stand-in.ts";
@@ -58,6 +59,28 @@ export const FIELD_MANUAL = Buffer.alloc(300_000, "A field manual for end-to-end
 const routeSource = createOverpassStandIn();
 // download.geofabrik.de: its list of extracts and small made-up extracts (apps/server/test/fixtures/layers).
 const geofabrik = createGeofabrikStandIn();
+// A made-up Monaco for Map data's own add (map-data.spec.ts): one main road through it, a hospital and a pharmacy beside it.
+{
+  const body = buildPbf({
+    nodes: [
+      { id: 1, lat: 43.725, lon: 7.41 },
+      { id: 2, lat: 43.733, lon: 7.42 },
+      { id: 3, lat: 43.741, lon: 7.43 },
+      { id: 10, lat: 43.734, lon: 7.421, tags: { amenity: "hospital", name: "Made-up Hospital (test)" } },
+      { id: 11, lat: 43.732, lon: 7.419, tags: { amenity: "pharmacy", name: "Made-up Pharmacy (test)" } },
+    ],
+    ways: [{ id: 100, refs: [1, 2, 3], tags: { highway: "primary", ref: "M6", name: "Boulevard (test)" } }],
+    relations: [],
+    timestamp: Date.UTC(2026, 10, 21) / 1000,
+  });
+  geofabrik.files.set("europe/monaco", {
+    path: "europe/monaco",
+    body,
+    md5: createHash("md5").update(body).digest("hex"),
+    latest: "261121",
+    dated: ["261121"],
+  });
+}
 const voacapHome = path.resolve(import.meta.dirname, "../../engines/voacap");
 const voacapFiles = new Set(JSON.parse(fs.readFileSync(path.join(voacapHome, "coefficients.json"), "utf8")).files.map((file) => file.path));
 const repeaterSource = createRepeaterSourceStandIn();

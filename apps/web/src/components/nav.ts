@@ -29,6 +29,7 @@ import {
   LockKeyhole,
   type LucideIcon,
   Map as MapIcon,
+  MapPinned,
   MessageSquareText,
   MessagesSquare,
   NotebookText,
@@ -108,6 +109,14 @@ export const knowledgeNav: NavItem[] = [
     icon: MapIcon,
     key: "m",
     keywords: "map offline places routes gps location sun times postcode grid reference",
+    children: [
+      {
+        to: "/maps/data",
+        label: "Map data",
+        icon: MapPinned,
+        keywords: "offline maps regions terrain hills place names roads country file geofabrik openstreetmap extract",
+      },
+    ],
   },
   // Importing brings in pages (Markdown, Notion), so it is Notes'.
   {

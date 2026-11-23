@@ -22,8 +22,8 @@ test.describe("every screen, on a wide screen", () => {
     const closed = sidebar.getByRole("button", { name: /^Show the screens under / });
     await expect(closed.first()).toBeVisible();
     while ((await closed.count()) > 0) await closed.first().click();
-    // One for each screen that has others under it: Search, Library, Tools, Preparedness, Games, Radio, Notes, Storage, Settings.
-    await expect(sidebar.getByRole("button", { name: /^Hide the screens under / })).toHaveCount(9);
+    // One for each screen that has others under it: Search, Library, Maps, Tools, Preparedness, Games, Radio, Notes, Storage, Settings.
+    await expect(sidebar.getByRole("button", { name: /^Hide the screens under / })).toHaveCount(10);
 
     const links = sidebar.locator('nav[aria-label="Knowledge"] a, nav[aria-label="Upkeep"] a');
     const screens = await links.evaluateAll((all) =>

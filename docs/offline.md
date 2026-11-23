@@ -37,7 +37,7 @@ Only actions that fetch something new, each started by a person pressing a butto
 | Starting a catalogue download | The hosts in the manifests' `downloadHosts`, and mirrors they redirect to |
 | Estimating or downloading a map region | `build-metadata.protomaps.dev` and `build.protomaps.com`, or the `maps.tileSource` archive; for terrain, the `maps.terrainSource` archive |
 | Downloading place names | `download.geonames.org` |
-| Offline maps: **Add a road network** | `download.geofabrik.de`, for its list of regions and the country's extract ([road-routes.md](road-routes.md#installing-road-networks)) |
+| Map data: **Check sizes** and **Download** for roads, places or a country file | `download.geofabrik.de`, for its list of regions and the country's file ([road-routes.md](road-routes.md#installing-road-networks)) |
 | Place names for Great Britain: **Check the size**, **Download** | `api.os.uk`, which redirects to `omseprd1stdstordownload.blob.core.windows.net` ([maps.md](maps.md#place-names-for-great-britain)) |
 | **Find a route** on Maps | The route source shown beside the search (as shipped, `ovp.dresel.systems` or `overpass.private.coffee`), sent the name typed and, for **This map view**, its edges ([maps.md](map-routes.md#finding-a-known-route)) |
 | Repeaters: **Get the list**, **Bring up to date** | The publisher named beside the source (as shipped, `www.irts.ie` and `hearham.com`) ([radio.md](radio.md#where-to-get-a-list)) |

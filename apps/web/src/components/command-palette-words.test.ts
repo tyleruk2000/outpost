@@ -67,6 +67,8 @@ const lands: Array<[string, string | null]> = [
   ["offline drill", "Preparedness: Offline drill"],
   ["pace", "Preparedness: Keeping in touch"],
   ["wikipedia", "Explore"],
+  ["country file", "Maps: Map data"],
+  ["terrain", "Maps: Map data"],
   ["download", "Downloads and tasks"],
   ["background work", "Downloads and tasks"],
   ["disk space", "Storage"],

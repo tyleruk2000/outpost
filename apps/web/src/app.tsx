@@ -32,6 +32,7 @@ const UnderstandPage = lazy(() => import("./features/understand/understand-page"
 const HowMeaningWorksPage = lazy(() => import("./features/how-meaning-works/how-meaning-works-page"));
 const HowSearchTunedPage = lazy(() => import("./features/how-search-tuned/how-search-tuned-page"));
 const MapsPage = lazy(() => import("./features/maps/maps-page"));
+const MapDataPage = lazy(() => import("./features/maps/data-page/map-data-page"));
 const RepeatersPage = lazy(() => import("./features/repeaters/repeaters-page"));
 const RepeaterPage = lazy(() => import("./features/repeaters/repeater-page"));
 const MorsePage = lazy(() => import("./features/morse/morse-page"));
@@ -169,6 +170,7 @@ export function App() {
           <Route path="library/collections/:id" element={<CollectionPage />} />
           <Route path="library/read/:collectionId/*" element={<ReaderPage />} />
           <Route path="maps" element={<MapsPage />} />
+          <Route path="maps/data" element={<MapDataPage />} />
           <Route path="radio/repeaters" element={<RepeatersPage />} />
           <Route path="radio/repeaters/:id" element={<RepeaterPage />} />
           <Route path="radio/morse" element={<MorsePage />} />

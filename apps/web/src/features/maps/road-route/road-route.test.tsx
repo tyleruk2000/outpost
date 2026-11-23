@@ -262,9 +262,9 @@ describe("the road route panel", () => {
   it("with no networks installed, says so and leads to installing one", async () => {
     serve({ networks: { networks: [], building: [], credit } });
     const { onOpenNetworks } = panel();
-    expect(await screen.findByRole("heading", { name: "No road networks yet" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "No roads for routes yet" })).toBeInTheDocument();
     expect(screen.getByText(/a one-off download from Geofabrik, after which planning works offline/)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Add road networks" }));
+    await userEvent.click(screen.getByRole("button", { name: /^Add roads for/ }));
     expect(onOpenNetworks).toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: "Plan route" })).toBeNull();
   });
