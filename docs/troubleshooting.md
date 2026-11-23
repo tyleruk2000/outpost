@@ -285,12 +285,12 @@ The map fonts and icons were missing when Outpost was built. With a connection, 
 
 ### "Outpost could not reach the map source."
 
-Downloading a region needs a connection; installed regions do not.
+Adding a place under **Offline maps** needs a connection; what is already added does not.
 
 ### "The map source is no longer available at its address."
 
-Check `maps.tileSource` if you set it; otherwise try again in a few minutes, or remove the
-download and start again.
+Check `maps.tileSource` if you set it; otherwise try again in a few minutes, or cancel the
+download and add the place again.
 
 ### "Find a route" says the server is busy, or did not answer
 
@@ -305,7 +305,7 @@ over it. A regional server knows only its region. Otherwise draw it or import a 
 
 ### "France has no roads yet", or "The roads kept do not join these points"
 
-A road route needs **Routes** for every country it passes through, added under
+A drive needs **Routes** for every country it passes through, added under
 **Maps → Offline maps**. **Plan a route** names the countries missing before you plan, with
 one button to add them. Across the sea, both sides need routes, joined by a car ferry or
 the Channel Tunnel ([road-routes.md](road-routes.md#adding-routes-for-a-place)).

@@ -391,9 +391,9 @@ NTFS need the mount options `uid=1000,gid=1000`. Mount drives at a fixed place
 
 #### Street routes
 
-Door-to-door, walking and cycling routes and street-level reachable areas come from an
-optional add-on, a streets service (Valhalla) in a container of its own beside Outpost,
-on a private network with no port open. It is off unless you ask for it:
+Door-to-door, walking and cycling routes and street-level reachable areas come from the
+optional **Walking and cycling** add-on: a streets service (Valhalla) in a container of its
+own beside Outpost, on a private network with no port open. It is off unless you ask for it:
 
 ```bash
 ./deploy/pi/install.sh --street-routes

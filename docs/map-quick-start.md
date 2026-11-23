@@ -24,7 +24,7 @@ This needs the internet once.
    `54.4609, -3.0886`.
 2. Choose a result. The map moves to it.
 3. To keep it, press **Save this place** and give it a name. It is then under **Places**.
-   To drive there, press **Road route to here** (see [Plan a drive](#plan-a-drive)).
+   To drive there, press **Plan a route to here** (see [Plan a drive](#plan-a-drive)).
 
 Or press and hold the map (right-click with a mouse) and choose **Save a place here**.
 
@@ -65,7 +65,8 @@ Print at 100% (not "fit to page") so the scale is right. More in
    would write them down.
 4. **Save route** keeps it; **Printable route card (PDF)** makes a card for the car.
 
-It is planned once, not live: no traffic, closures or voice. More in
+It is planned once, not live: no traffic, closures or voice. To see how far you could drive
+in 15, 30 or 60 minutes, press and hold a point and choose **Reachable from here**. More in
 [Road routes](road-routes.md).
 
 ## Check line of sight between two points
@@ -93,8 +94,8 @@ The card under the map gives the answer in a few words; press **Show the details
 upward arrow) for the rest. Set the heights under **Heights and details**. Woods, buildings and power are not counted:
 radio often reaches less than this.
 
-From anywhere in Outpost, quick search (Ctrl K) goes straight to these: type "road route"
-(or "directions"), "print" or "routes".
+From anywhere in Outpost, quick search (Ctrl K) goes straight to these: type "plan a route"
+(or "directions"), "reachable", "print" or "routes".
 
 ## More
 

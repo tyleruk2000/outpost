@@ -255,8 +255,8 @@ of what each feature does are in its own guide.
 - **Keeping maps on a phone**: areas of thousands of tiles, and how long a phone takes to work out a
   radio range, are untried; Safari older than 16.4 gets unpacked tiles two to three times larger.
 
-- **Road routes**: networks built and routes planned from real Geofabrik extracts (Great Britain,
-  France and smaller ones) on a Mac only; building a network on a Raspberry Pi is unmeasured. Routes
+- **Plan a route**: routes built and planned from real Geofabrik source files (Great Britain,
+  France and smaller ones) on a Mac only; building a country's routes on a Raspberry Pi is unmeasured. Routes
   through Germany and Austria (downloaded by Land) untried. The printed route card not printed or
   followed on a drive; directions compared with one person's own written route only.
 
@@ -359,9 +359,9 @@ of what each feature does are in its own guide.
   Two publishers' pages that build themselves with JavaScript were read through a summary (marked
   "(summary)" in [sources.md](sources.md)) and not read again on the page.
 - **Reference layers**: Overpass, Wikidata, Natural Earth, OurAirports, WorldPop, BABS and one Geofabrik
-  extract were each fetched once by hand; the airport frequencies file, flood zones, Food Standards
-  Agency and Geofabrik region downloads only against stand-ins. No whole state or country extract has
-  been downloaded (large-file figures are Monaco's extract repeated to Ohio's size). Flood zones have no
+  source file were each fetched once by hand; the airport frequencies file, flood zones, Food Standards
+  Agency and Geofabrik region downloads only against stand-ins. No whole state or country source file has
+  been downloaded for layers (large-file figures are Monaco's file repeated to Ohio's size). Flood zones have no
   browser test; a first world view on a Pi is unmeasured (about a second on a laptop).
 - **Nuclear preparedness**: effect colours over imagery measured against three ground tones; PDF maps
   over a real region not measured for size or time.

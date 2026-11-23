@@ -14,7 +14,7 @@ Everything already installed or written, including:
 - keyword search, and search by meaning once its index is built ([search.md](search.md));
 - answers and chat, if the model server runs on your own machine or network ([ai.md](ai.md));
 - writing notes, uploading documents, importing files;
-- installed map regions, place search, markers, routes, GPX import and export;
+- offline maps, place search, saved places, routes and planned drives, GPX import and export;
 - moving and checking collections, backup and restore;
 - writing a portable drive, once its programs are cached (below);
 - the frequency list, the Morse trainer, the Solar clock and the games;
@@ -36,7 +36,7 @@ Only actions that fetch something new, each started by a person pressing a butto
 | **Refresh** on Explore | `opds.library.kiwix.org`. A manifest of your own without file sizes and checksums causes one small request to the host it names. |
 | Starting a catalogue download | The hosts in the manifests' `downloadHosts`, and mirrors they redirect to |
 | Offline maps: **Check size** and **Download** for a place's map | `build-metadata.protomaps.dev` and `build.protomaps.com`, or the `maps.tileSource` archive; for terrain, the `maps.terrainSource` archive |
-| Downloading place names | `download.geonames.org` |
+| Offline maps: **Download** for a place's map (its towns by name) | `download.geonames.org` |
 | Offline maps: **Check size** and **Download** for routes, nearby places or a source file | `download.geofabrik.de`, for its list of countries and their parts, and the country's source file ([road-routes.md](road-routes.md#adding-routes-for-a-place)) |
 | Place names for Great Britain: **Check the size**, **Download** | `api.os.uk`, which redirects to `omseprd1stdstordownload.blob.core.windows.net` ([maps.md](maps.md#place-names-for-great-britain)) |
 | **Find a route** on Maps | The route source shown beside the search (as shipped, `ovp.dresel.systems` or `overpass.private.coffee`), sent the name typed and, for **This map view**, its edges ([maps.md](map-routes.md#finding-a-known-route)) |
@@ -96,7 +96,7 @@ you ask:
 | Saved places | Under the list of places, **Keep on this phone** | All of them |
 | An emergency plan | Foot of its **Use now**, **Keep on this phone** | Steps, emergency number, people and their numbers, meeting places, ticks |
 | Medical sheets | Under their list, **Keep on this phone** | Every sheet; an encrypted one stays encrypted and opens with its passphrase |
-| An area of the map | **Offline maps**, "Map areas on this phone" | The map tiles, lettering, icons, and terrain if ticked |
+| An area of the map | The **Offline** tab on Maps, "Map areas on this phone" | The map tiles, lettering, icons, and terrain if ticked |
 
 On a tablet the button reads "Keep on this tablet", on a laptop "Keep on this computer".
 **On this phone** lists what is kept, with size and date, and removes copies. Removing a
@@ -119,10 +119,10 @@ is back:
 
 ### A map area
 
-The phone copies tiles from the server's installed regions; nothing comes from the
-internet, and an area is only as detailed as the region at home.
+The phone copies tiles from the server's offline maps; nothing comes from the internet,
+and an area is only as detailed as the map at home.
 
-1. Put the area in view, or choose **All of** an installed region under "What to keep".
+1. Put the area in view, or choose **All of** a place's map under "What to keep".
 2. Choose the detail and whether terrain comes too. Press **Measure the area in view**
    for the exact size (plus up to about 2 MB of lettering and icons).
 3. Press **Keep this area** and keep Outpost open until it says the area is kept. If it
@@ -132,12 +132,12 @@ One area holds at most 12,000 map tiles, 12,000 terrain tiles and 400 MB, and is
 if the browser reports too little room. A whole country usually fits only at less
 detail: when an area is too large, Outpost says the deepest zoom it fits to, and
 **Measure at zoom …** measures it again there. Otherwise keep less of the map: zoom in,
-or for a region keep the part of it in view. Outside a kept area the map draws coarsely from the low zooms and the world
+or for a large place keep the part of it in view. Outside a kept area the map draws coarsely from the low zooms and the world
 outline. With terrain kept, contours, hill shading, the height readout and **Estimated
 radio range from the centre** work out of reach (the range only over ground the phone
 holds). Line of sight, walk reach, the relay planner and route heights need the server.
 
-When the server's regions change, "On this phone" offers **Fetch again**. The old copy
+When the server's maps change, "On this phone" offers **Fetch again**. The old copy
 stays whole until every new tile has arrived.
 
 ### What out of reach looks like

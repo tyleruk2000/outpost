@@ -149,7 +149,7 @@ These are Outpost's assumptions, kept under the legal limits (in the United King
 
 ## Door to door, walking and cycling
 
-Where the optional streets add-on is installed, **Plan a route** has four ways of
+Where the optional Walking and cycling add-on is installed, **Plan a route** has four ways of
 travelling at its top. Without it (most installations) there is nothing to choose and the
 form plans a drive, as above; one line under it says the other ways exist.
 

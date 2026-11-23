@@ -107,13 +107,13 @@ results with some."
 | Notes | Title, parent pages' titles, tags, and the text under each heading. |
 | Installed collections | Title, publisher, description. |
 | Catalogue entries | What Explore lists, so you can find something to download. |
-| Map markers and tracks | Names and notes. |
+| Saved places and routes | Names and notes. |
 | Contacts | Name, title, organisation, tags, numbers, addresses, callsign, channels and notes. |
 | Emergency plans | Name, purpose, steps, supplies, where things are, places, people's names and what they must remember, people to call, keeping in touch, notes. Never what a person needs for their health. |
 | Supplies | Name, category, where it is kept, how much, its date and notes. |
 | Medical sheets | Medicines, allergies and conditions, only with **Find them in search** on (under **Medical sheets**), and never a sheet kept encrypted. |
 | Repeaters | Callsign, town and frequency (up to 50 found). |
-| Places in reference layers | Feature names in installed packs (up to 30 found). |
+| Nearby places and map layers | Names of the places and features kept for the map (up to 30 found). |
 | Reference articles | Articles in installed ZIM archives: see [below](#reference-collections-in-results). |
 
 Not searched: the notes trash, your page templates, and the household board.

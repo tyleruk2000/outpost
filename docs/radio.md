@@ -5,6 +5,11 @@ Everything here works with no connection. Screens with pages of their own: [Freq
 [Satellites](satellites.md), [Heard on the radio](heard-on-the-radio.md) and
 [Mesh radio](mesh-radio.md).
 
+The **Radio** screen lists them in four groups: **Listen** (frequencies, what was heard,
+satellites), **Learn** (licences, the Morse trainer, the guides), **Plan and transmit**
+(repeaters, HF propagation and coverage, communication plans, the contact log) and **On the
+map** (line of sight, Maidenhead locators).
+
 Every radio screen says in one line whether what it does needs a licence; the detail is on
 [What needs a radio licence](radio-licences.md). A household with a licensed operator can
 say so under **Settings → Radio licence**, and the reminders are left out.

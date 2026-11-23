@@ -7,7 +7,7 @@ carry on in the background, whether or not the screen is open:
   resumable, retried by itself when the connection drops, and checked against its
   published checksum before it is installed.
 - **Tasks**: work Outpost does here, such as reading a document, building search by
-  meaning, or building a place's routes. Moving a collection, writing a portable drive,
+  meaning, or building a place's routes or its walking and cycling. Moving a collection, writing a portable drive,
   checking the database and making a backup are tasks too.
 
 **Show** at the top picks **Downloads and tasks**, **Downloads** or **Tasks**. The
