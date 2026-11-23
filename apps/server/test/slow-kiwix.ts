@@ -165,7 +165,9 @@ export async function startSlowKiwix(options: { books: SlowBook[]; threads?: num
         const holds = (text: string) => stems.some((part) => text.toLowerCase().includes(part));
         const recorded = book.hits.filter((hit) => holds(hit.title) || holds(hit.snippet));
         const bold = (text: string) =>
-          escapeXml(text).replace(/[A-Za-z0-9]+/g, (token) => (stems.some((part) => token.toLowerCase().startsWith(part)) ? `<b>${token}</b>` : token));
+          escapeXml(text).replace(/[A-Za-z0-9]+/g, (token) =>
+            stems.some((part) => token.toLowerCase().startsWith(part)) ? `<b>${token}</b>` : token,
+          );
         return response.end(
           `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/"><channel><opensearch:totalResults>${recorded.length}</opensearch:totalResults>${recorded
             .slice(0, wanted)

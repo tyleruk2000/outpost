@@ -45,7 +45,10 @@ export function dcg(grades, depth = 5) {
 
 /** nDCG@depth of `grades` against the best order of `ideal` (all grades there are to have). */
 export function ndcg(grades, ideal, depth = 5) {
-  const best = dcg([...ideal].sort((a, b) => b - a), depth);
+  const best = dcg(
+    [...ideal].sort((a, b) => b - a),
+    depth,
+  );
   return best > 0 ? dcg(grades, depth) / best : null;
 }
 

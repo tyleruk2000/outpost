@@ -363,7 +363,9 @@ export const PLACES_SHOWN = 5;
 export function looksLikeAName(q: string, places: SearchResult[]): boolean {
   const typed = q.trim().toLowerCase();
   if (/^[a-z]{1,2}\d[a-z]{1,4}$/i.test(typed) || /^\d{2,4}([.,]\d+)?\s*(mhz|khz)?$/i.test(typed)) return places.length > 0;
-  return typed.length >= 3 && places.some((place) => place.title.toLowerCase() === typed || place.title.toLowerCase().startsWith(`${typed} `));
+  return (
+    typed.length >= 3 && places.some((place) => place.title.toLowerCase() === typed || place.title.toLowerCase().startsWith(`${typed} `))
+  );
 }
 
 /**
@@ -402,7 +404,11 @@ export function blendMeaning(
     };
   });
   for (const near of meaning.values()) {
-    blended.push({ ...near, score: Math.round(Math.min(1, meaningScore(near.score) * weights.semanticWeight) * 1000) / 1000, why: "Found by meaning" });
+    blended.push({
+      ...near,
+      score: Math.round(Math.min(1, meaningScore(near.score) * weights.semanticWeight) * 1000) / 1000,
+      why: "Found by meaning",
+    });
   }
   return blended.sort((a, b) => b.score - a.score);
 }
@@ -564,7 +570,9 @@ export function createSearchService(ctx: AppContext): SearchService {
       const best = item.passages[0]!;
       const shown = item.passages.slice(0, 3).flatMap((passage) => {
         const snippet = marked.get(passage.chunkId)?.snippet ?? "";
-        return snippet.trim() ? [{ chunkId: passage.chunkId, segments: toSegments(snippet), page: passage.page, heading: passage.heading || null }] : [];
+        return snippet.trim()
+          ? [{ chunkId: passage.chunkId, segments: toSegments(snippet), page: passage.page, heading: passage.heading || null }]
+          : [];
       });
       const titleMarked = marked.get(best.chunkId)?.titleMarked;
       return [

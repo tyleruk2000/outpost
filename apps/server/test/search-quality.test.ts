@@ -33,7 +33,8 @@ interface Recorded {
 const recorded = JSON.parse(readFileSync(new URL("../../../scripts/search-eval/reference.json", import.meta.url), "utf8")) as Recorded;
 const asResult = (hit: { title: string; snippet: string }) => ({ title: hit.title, passages: [{ segments: [{ text: hit.snippet }] }] });
 /** Library items by their grades; reference articles by the patterns, since their ids are made on import. */
-const grade = (query: Query, result: { kind: string }) => (result.kind === "reference" ? gradeByPattern(query, result) : gradeById(query, result));
+const grade = (query: Query, result: { kind: string }) =>
+  result.kind === "reference" ? gradeByPattern(query, result) : gradeById(query, result);
 
 describe("search quality on the household evaluation set", () => {
   let app: TestApp;

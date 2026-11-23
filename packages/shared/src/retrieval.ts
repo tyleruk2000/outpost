@@ -67,8 +67,14 @@ export interface ExplainHit {
 }
 
 export interface ExplainKeywordHit extends ExplainHit {
-  /** BM25 score, turned positive so that larger is better. */
+  /** The score search puts results in order by: 0 to 1, the same scale for every source. */
   score: number;
+  /** The index's own BM25 score, turned positive so that larger is better: it chooses the candidates. */
+  bm25: number;
+  /** Why it is where it is, in a few words: "All 2 words, side by side". */
+  why: string;
+  /** The parts of `score`, each 0 to 1, before they are weighed (coverage half, title a fifth, and so on). */
+  parts: { coverage: number; title: number; closeness: number; phrase: number; frequency: number };
   /** Which fields the words were found in. Title, heading and tags count for more than body text. */
   fields: { title: boolean; heading: boolean; text: boolean; tags: boolean };
 }
@@ -105,6 +111,8 @@ export interface ExplainResponse {
   query: string;
   parse: {
     words: string[];
+    /** Words that only shape the question ("how", "to"), left out of matching and ranking. */
+    ignored: string[];
     excluded: string[];
     /** The last word is treated as the start of a word, because it may still be being typed. */
     prefixLast: boolean;

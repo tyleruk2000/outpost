@@ -97,6 +97,7 @@ function explain(query: string): ExplainResponse {
     query,
     parse: {
       words: ["boil", "water"],
+      ignored: ["how", "to"],
       excluded: [],
       prefixLast: true,
       expression: '("boil" AND "water"*)',
@@ -111,7 +112,10 @@ function explain(query: string): ExplainResponse {
       tookMs: 0.4,
       hits: keywordHits.map((item, index) => ({
         ...item,
-        score: 8 - index * 2,
+        score: 0.9 - index * 0.2,
+        bm25: 8 - index * 2,
+        why: index === 0 ? "All 2 words, side by side" : "All 2 words",
+        parts: { coverage: 1, title: index === 2 ? 1 : 0, closeness: 1 - index * 0.3, phrase: index === 0 ? 1 : 0, frequency: 0.5 },
         fields: { title: index === 2, heading: index === 0, text: true, tags: false },
       })),
     },
@@ -288,7 +292,7 @@ describe("How search works", () => {
     expect(screen.getByText(/any word starting with these letters/)).toBeInTheDocument();
     // Rarity, keyword bars and field marks.
     expect(screen.getByRole("img", { name: "boil: in 2 of 9 passages" })).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: /Rank 1: Alpha stoves, Boiling. BM25 score 8/ })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /Rank 1: Alpha stoves, Boiling. Score 0.9/ })).toBeInTheDocument();
     // Vectors: the words behind the demonstration vector, and a bar per passage.
     expect(screen.getByText(/Your question’s vector is built from 2 words: “boil”, “water”/)).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /Rank 1: Delta weather, Fog. Cosine similarity 0.50/ })).toBeInTheDocument();

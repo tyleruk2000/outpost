@@ -39,7 +39,11 @@ function longBook(entityId, title, pages, topic) {
 export function library() {
   return [
     doc("car-maint", "Car maintenance manual", [
-      { page: 3, heading: "Checking oil", text: "Check the oil with the engine cold and the car on level ground. Top up a little at a time." },
+      {
+        page: 3,
+        heading: "Checking oil",
+        text: "Check the oil with the engine cold and the car on level ground. Top up a little at a time.",
+      },
       {
         page: 12,
         heading: "How to replace a car battery",
@@ -72,14 +76,22 @@ export function library() {
       "A phone charges from the car's 12 V socket with a USB adapter. Run the engine so the car battery is not drained.",
     ),
     note("solar-charger", "Folding solar charger", "A 20 W folding panel charges a phone or a small battery bank in a few hours of sun."),
-    note("tyre-pressure", "Car tyre pressures", "Check tyre pressure monthly, with tyres cold. The right pressure is on a sticker inside the driver's door."),
+    note(
+      "tyre-pressure",
+      "Car tyre pressures",
+      "Check tyre pressure monthly, with tyres cold. The right pressure is on a sticker inside the driver's door.",
+    ),
     note(
       "winter-driving",
       "Winter driving kit",
       "Keep a winter driving kit in the car: blanket, torch, shovel, de-icer, water and snacks. Hypothermia can set in if you are stranded.",
     ),
     doc("water-handbook", "Water treatment handbook", [
-      { page: 1, heading: "Boiling", text: "Boiling is the most reliable way to purify water. Bring water to a rolling boil for one minute, three at altitude." },
+      {
+        page: 1,
+        heading: "Boiling",
+        text: "Boiling is the most reliable way to purify water. Bring water to a rolling boil for one minute, three at altitude.",
+      },
       {
         page: 2,
         heading: "Chlorine and bleach",
@@ -90,13 +102,25 @@ export function library() {
         heading: "Sand and gravel filters",
         text: "A sand filter: layers of gravel, coarse sand and fine sand in a bucket. Filter the water through it, then boil or disinfect it.",
       },
-      { page: 4, heading: "Storing water", text: "Store at least 4 litres of drinking water per person per day, for at least three days. Rotate every six months." },
+      {
+        page: 4,
+        heading: "Storing water",
+        text: "Store at least 4 litres of drinking water per person per day, for at least three days. Rotate every six months.",
+      },
     ]),
     note("pool-care", "Swimming pool care", "Keep pool water chlorine between 1 and 3 ppm. Shock the pool weekly in summer."),
     note("kit-list", "Kit list", [{ heading: "Cooking", text: "Stove, gas, lighter, pan for boiling water, mug." }]),
-    note("supplies-list", "Emergency supplies", "Water (4 litres per person per day), tinned food, torch, radio, batteries, first aid kit."),
+    note(
+      "supplies-list",
+      "Emergency supplies",
+      "Water (4 litres per person per day), tinned food, torch, radio, batteries, first aid kit.",
+    ),
     doc("first-aid", "First aid manual", [
-      { page: 10, heading: "Burns", text: "Treat a burn by cooling it under cool running water for twenty minutes. Cover it loosely with cling film." },
+      {
+        page: 10,
+        heading: "Burns",
+        text: "Treat a burn by cooling it under cool running water for twenty minutes. Cover it loosely with cling film.",
+      },
       { page: 14, heading: "Nosebleeds", text: "To stop a nosebleed, sit forward and pinch the soft part of the nose for ten minutes." },
       {
         page: 18,
@@ -108,13 +132,29 @@ export function library() {
         heading: "CPR on a child",
         text: "CPR on a child: give five rescue breaths, then thirty chest compressions with one hand, a third of the chest's depth.",
       },
-      { page: 26, heading: "Snake bites", text: "Treat a snake bite by keeping the person still and the bitten limb below the heart. Call for help." },
-      { page: 30, heading: "Dehydration", text: "Symptoms of dehydration: thirst, dark urine, dizziness, tiredness. Give small sips of fluid." },
+      {
+        page: 26,
+        heading: "Snake bites",
+        text: "Treat a snake bite by keeping the person still and the bitten limb below the heart. Call for help.",
+      },
+      {
+        page: 30,
+        heading: "Dehydration",
+        text: "Symptoms of dehydration: thirst, dark urine, dizziness, tiredness. Give small sips of fluid.",
+      },
     ]),
-    note("burns", "Burns and scalds", "Cool a burn or scald with running water for 20 minutes. Do not use ice or butter. Treat large burns in hospital."),
+    note(
+      "burns",
+      "Burns and scalds",
+      "Cool a burn or scald with running water for 20 minutes. Do not use ice or butter. Treat large burns in hospital.",
+    ),
     note("sunburn", "Sunburn", "Treat sunburn with cool showers and after-sun. A blistering burn needs a doctor."),
     note("cpr-adult", "CPR for adults", "CPR for an adult: thirty chest compressions, two rescue breaths, repeat until help comes."),
-    note("first-aid-kit", "What to put in a first aid kit", "A first aid kit: plasters, bandages, gauze, tape, scissors, tweezers, gloves, antiseptic wipes."),
+    note(
+      "first-aid-kit",
+      "What to put in a first aid kit",
+      "A first aid kit: plasters, bandages, gauze, tape, scissors, tweezers, gloves, antiseptic wipes.",
+    ),
     note(
       "oral-rehydration",
       "Oral rehydration solution",
@@ -167,9 +207,17 @@ export function library() {
         text: "The best frequency for an emergency call depends on the band. Marine VHF channel 16 (156.8 MHz) is the international distress and calling channel.",
       },
     ]),
-    note("pmr446", "PMR446 channels", "PMR446 is licence-free radio with 16 channels. Many groups agree channel 8 as their emergency channel."),
+    note(
+      "pmr446",
+      "PMR446 channels",
+      "PMR446 is licence-free radio with 16 channels. Many groups agree channel 8 as their emergency channel.",
+    ),
     doc("knots", "Knots for climbing", [
-      { page: 2, heading: "Bowline", text: "To tie a bowline, make a small loop, pass the end up through it, round the standing part and back down." },
+      {
+        page: 2,
+        heading: "Bowline",
+        text: "To tie a bowline, make a small loop, pass the end up through it, round the standing part and back down.",
+      },
       { page: 4, heading: "Clove hitch", text: "The clove hitch is quick to tie and easy to adjust at a belay." },
     ]),
     note(
@@ -177,14 +225,31 @@ export function library() {
       "Lighting a fire without matches",
       "To start a fire without matches, strike a ferro rod onto dry tinder, or use a bow drill. Build the fire from tinder to kindling to fuel.",
     ),
-    doc("wood-stove", "Wood stove guide", [{ page: 3, text: "Burn seasoned logs only. A stove fire needs air at first; close the vents once it is going." }]),
-    note("fire-safety", "Fire safety at home", "Test smoke alarms monthly. Plan two ways out of every room in case of fire."),
-    note("potatoes", "Growing potatoes", "Grow potatoes by planting chitted seed potatoes in spring and earthing up the shoots. Watch for potato blight in wet summers."),
-    note("pickling", "Pickling vegetables", "Pickling vegetables: pack them in clean jars and cover with hot vinegar, salt and sugar brine."),
-    doc("compass", "Using a compass", [
-      { page: 1, text: "To read a compass, hold it flat, turn the housing until the orienting arrow lines up with the needle, and read the bearing." },
+    doc("wood-stove", "Wood stove guide", [
+      { page: 3, text: "Burn seasoned logs only. A stove fire needs air at first; close the vents once it is going." },
     ]),
-    note("map-reading", "Map reading basics", "A grid reference gives a place on the map: eastings first, then northings. A compass sets the map."),
+    note("fire-safety", "Fire safety at home", "Test smoke alarms monthly. Plan two ways out of every room in case of fire."),
+    note(
+      "potatoes",
+      "Growing potatoes",
+      "Grow potatoes by planting chitted seed potatoes in spring and earthing up the shoots. Watch for potato blight in wet summers.",
+    ),
+    note(
+      "pickling",
+      "Pickling vegetables",
+      "Pickling vegetables: pack them in clean jars and cover with hot vinegar, salt and sugar brine.",
+    ),
+    doc("compass", "Using a compass", [
+      {
+        page: 1,
+        text: "To read a compass, hold it flat, turn the housing until the orienting arrow lines up with the needle, and read the bearing.",
+      },
+    ]),
+    note(
+      "map-reading",
+      "Map reading basics",
+      "A grid reference gives a place on the map: eastings first, then northings. A compass sets the map.",
+    ),
     note(
       "co-alarm",
       "Carbon monoxide: symptoms and alarms",
@@ -208,7 +273,11 @@ export function library() {
     longBook("water-storage", "Water storage containers", 45, "Containers and their care, section"),
     longBook("rainwater", "Rainwater harvesting", 45, "Gutters, butts and first-flush diverters, section"),
     ...Array.from({ length: 12 }, (_, index) =>
-      note(`garden-${index + 1}`, `Garden diary, week ${index + 1}`, `Watered the beds this week. Water butts are ${index % 2 ? "full" : "low"}.`),
+      note(
+        `garden-${index + 1}`,
+        `Garden diary, week ${index + 1}`,
+        `Watered the beds this week. Water butts are ${index % 2 ? "full" : "low"}.`,
+      ),
     ),
   ];
 }

@@ -69,10 +69,10 @@ export function FusionSection() {
         <p>
           {best && closest
             ? `For your question, the best keyword match scored ${formatValue(best.score)} and the closest passage by meaning scored ${closest.similarity.toFixed(2)}.`
-            : "A keyword score might be 8.4. A cosine similarity might be 0.43."}{" "}
-          These are not amounts of the same thing. A BM25 score has no upper limit and changes with the question: more words, or rarer
-          words, and every score goes up. A cosine similarity is always between −1 and 1. Add them and the keyword score simply drowns the
-          other one. Rescaling them first only hides the problem, since nothing says a BM25 of 8 is “as good as” a cosine of 0.8.
+            : "A keyword score might be 0.84. A cosine similarity might be 0.43."}{" "}
+          These are not amounts of the same thing. The keyword score says how much of your question a passage holds, and how well. A cosine
+          similarity says how close two meanings are, and the model decides what “close” means. Nothing says a keyword score of 0.8 is “as
+          good as” a similarity of 0.8.
         </p>
         <p>
           What the two lists do share is order. Each has a first place, a second place and so on. A passage’s position in a list is its{" "}
@@ -94,6 +94,11 @@ export function FusionSection() {
           The number <em>k</em> decides how much the very top places are worth compared with the rest. It is {data ? data.fusion.k : 60}{" "}
           here; 60 is the value the method’s inventors found worked well, and it has been the usual choice ever since. Each list can also be
           given a weight, which multiplies its awards. Equal weights treat the two searches as equally trustworthy.
+        </p>
+        <p>
+          This is how passages are chosen for an answer. The list of results on the Search screen mixes the two a simpler way, so that its
+          scores keep their meaning: a result found both ways scores more than either alone, and one found by meaning alone never scores as
+          high as one holding all your words.
         </p>
       </Prose>
 

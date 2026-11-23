@@ -101,10 +101,57 @@ elicitation, sampling, roots, batches, HTTP+SSE, authorization, `x-mcp-header`.
 
 ## Search internals
 
+Keyword ranking (`modules/search/keyword.ts`, `score.ts`, rules in
+[search.md](../search.md#ranking)):
+
+1. `parseQuery` drops `STOP_WORDS` (not inside quotes, not when nothing else is left)
+   and lists them as `ignored`.
+2. One FTS pass, no `LIMIT`, returns every matching passage's id, item and BM25; items are
+   grouped in JS. This is what makes `total` exact and every page reachable (a book's
+   title is copied onto each of its passages, so a passage-level `LIMIT` filled up with
+   three books).
+3. The first `max(200, offset + limit)` items by best BM25 have their best four passages
+   read and scored by `scoreFields`; `snippet()`/`highlight()` run only for the passages
+   shown (`markPassages`), with the any-word expression so every word that matters is marked.
+4. Fewer than `FEW` (5) strict items: the any-word pass adds items with rarity-weighted
+   coverage ≥ `RELAXED_COVERAGE` (0.5), after the strict ones. `everyWord` and
+   `relaxed` tell the page what to say.
+
+Word weights are the index's own IDF, one `count(*)` per term. The stemmer (`stem.ts`)
+is Porter's, as the `porter` tokenizer uses, so the scorer finds a word exactly when the
+index does.
+
+Other sources' results are scored by `rescore` from what they show (title, subtitle,
+snippet). Local sources (places, repeaters) go to `places`, not `results`, unless their
+kind was asked for; `placesFirst` when the query looks like a name, callsign or frequency.
+Meaning is blended by `blendMeaning` (`MEANING_CEILING` 0.6). Answers still fuse passages
+with RRF (`searchPassages`).
+
 Reference archives are searched three at a time in Outpost's own queue, because
 kiwix-serve works four at a time and finishes searches whose caller has gone; each is
-asked for few results. `GET /api/search` without `reference=later` merges archives by rank and waits
-at most 10 seconds.
+asked for few results, with `plainQuery` (the words that matter, phrases quoted).
+`GET /api/search` without `reference=later` merges archives by score and waits at most 10
+seconds.
+
+### Measuring search
+
+`scripts/search-eval/queries.json` holds 50 household questions, each with graded answers
+in the fixture library (`library.mjs`, item id → 0–3) and patterns for grading any
+library's results. `reference.json` is what 36 reference collections answered to them,
+recorded from a real library through `GET /api/search/reference` (titles, paths and
+snippet starts: short quotations of Stack Exchange and Wikimedia archives, CC BY-SA, and
+of others under their own open licences), which `test/slow-kiwix.ts` replays.
+
+- `apps/server/test/search-quality.test.ts` runs the set on the fixture library and the
+  recorded collections and fails below nDCG@5 0.8, success@3 95% or any zero-result
+  question. `SEARCH_EVAL_OUT=table.txt` writes the table.
+- `node scripts/search-eval.mjs http://host:8080` runs it against a running Outpost with
+  GET requests only and grades by pattern; `--rescore` also orders that server's
+  candidates with this checkout's scorer, offline.
+
+Measures: nDCG@5 (gain 2^grade − 1; ideal from the grades, or on a real library from
+everything either run retrieved), success@3 (grade ≥ 2 in the first three), zero-result
+rate, p95 time.
 
 OCR: Tesseract 5.1 as WebAssembly (`tesseract.js-core`), English `tessdata_best`
 (integer), in a worker thread. PDF pages are rebuilt from their images with the PDF text

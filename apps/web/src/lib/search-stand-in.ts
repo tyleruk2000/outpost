@@ -47,8 +47,12 @@ export const ownAnswer = (results: SearchResult[], over: Partial<SearchResponse>
   query: "",
   mode: "keyword",
   relaxed: false,
+  everyWord: results.length,
+  ignored: [],
   total: results.length,
   results,
+  places: [],
+  placesFirst: false,
   facets: Object.fromEntries(
     [...new Set(results.map((result) => result.kind))].map((kind) => [kind, results.filter((r) => r.kind === kind).length]),
   ),

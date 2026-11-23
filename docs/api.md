@@ -262,12 +262,16 @@ Types: `search.ts`, `semantic.ts`. See [search.md](search.md).
 | `GET /api/search/stats` | `{ entities, chunks }`. |
 
 `total` counts every match of the kinds asked for (at least that many when search by
-meaning is in use); `relaxed` means it fell back to "any word"; `facets` are per kind;
-`warnings` name sources that could not answer. With `reference=include` the search
-waits up to 10 seconds for archives and counts their articles in `total`; with `later`
-it leaves them to `/reference`, and `referenceToCome` says whether there are any.
-Repeaters are found here as kind `repeater`, answered by their own module rather than
-the passage index.
+meaning is in use); `relaxed` means fewer than five items held every word and items
+holding most of them follow (`everyWord` counts those that hold all); `ignored` lists the
+small words left out; `facets` are per kind; `warnings` name sources that could not
+answer. Each result's `score` is 0 to 1 on one scale for every source, and `why` says in
+a few words why it is there ([search.md](search.md#ranking)). With `reference=include`
+the search waits up to 10 seconds for archives and counts their articles in `total`; with
+`later` it leaves them to `/reference`, and `referenceToCome` says whether there are any.
+Repeaters (kind `repeater`) and places in reference layers (`map-feature`) are answered by
+their own modules and come in `places` (up to five, `placesFirst` when the query looks
+like one of their names), or in `results` when their kind is asked for.
 
 ### Semantic search
 

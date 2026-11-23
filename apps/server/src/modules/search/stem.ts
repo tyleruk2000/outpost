@@ -87,7 +87,27 @@ const STEP3: Array<[string, string]> = [
   ["ness", ""],
 ];
 
-const STEP4 = ["al", "ance", "ence", "er", "ic", "able", "ible", "ant", "ement", "ment", "ent", "ion", "ou", "ism", "ate", "iti", "ous", "ive", "ize"];
+const STEP4 = [
+  "al",
+  "ance",
+  "ence",
+  "er",
+  "ic",
+  "able",
+  "ible",
+  "ant",
+  "ement",
+  "ment",
+  "ent",
+  "ion",
+  "ou",
+  "ism",
+  "ate",
+  "iti",
+  "ous",
+  "ive",
+  "ize",
+];
 
 const cache = new Map<string, string>();
 

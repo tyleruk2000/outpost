@@ -58,7 +58,11 @@ interface Token {
 /** Words as the index sees them: accents and case gone, split at anything not a letter or digit, stemmed. */
 export function tokenize(text: string): Token[] {
   const tokens: Token[] = [];
-  for (const raw of text.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().split(/[^\p{L}\p{N}]+/u)) {
+  for (const raw of text
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)) {
     if (raw) tokens.push({ raw, stem: stem(raw) });
   }
   return tokens;
@@ -88,7 +92,11 @@ function occurrences(term: ScoringTerm, tokens: Token[]): Array<{ at: number; le
         const last = offset === form.length - 1;
         match =
           token.stem === wanted ||
-          (prefixForm && last && (token.raw.startsWith(wanted) || token.stem.startsWith(wanted) || token.raw.startsWith(term.term.toLowerCase().split(" ").at(-1)!)));
+          (prefixForm &&
+            last &&
+            (token.raw.startsWith(wanted) ||
+              token.stem.startsWith(wanted) ||
+              token.raw.startsWith(term.term.toLowerCase().split(" ").at(-1)!)));
       }
       if (match) found.push({ at, length: form.length });
     }

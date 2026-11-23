@@ -7,12 +7,12 @@ import { AxisNote, HiddenTable, Legend } from "../charts/figure";
 import { LinePlot } from "../charts/line-plot";
 import { Tip, TipBody, useTip } from "../charts/tip";
 import { BM25_B, BM25_K1, inverseDocumentFrequency, saturationCurve, termFrequencyCeiling } from "../lib/bm25";
-import { clamp, formatShare, formatValue, niceMax } from "../lib/scale";
+import { clamp, formatShare, formatValue } from "../lib/scale";
 import { RankedBars } from "./ranked";
 
 /** The question broken into the words the index is asked for, and the expression actually sent. */
 export function QueryWords({ trace }: { trace: ExplainResponse }) {
-  const { words, excluded, prefixLast, expression, relaxed } = trace.parse;
+  const { words, ignored = [], excluded, prefixLast, expression, relaxed } = trace.parse;
   const joiner = relaxed ? "OR" : "AND";
   const chip = "inline-flex items-center gap-1.5 rounded-full border-[1.5px] bg-page px-3 py-1 text-small text-ink";
   return (
@@ -41,6 +41,11 @@ export function QueryWords({ trace }: { trace: ExplainResponse }) {
         ))}
         {words.length === 0 ? <span className="text-small text-ink-muted">No searchable words were found in the question.</span> : null}
       </div>
+      {ignored.length > 0 ? (
+        <p className="mt-3 text-small text-ink-muted">
+          Left out, because they only shape the question: {ignored.map((word) => `“${word}”`).join(", ")}.
+        </p>
+      ) : null}
       <dl className="mt-4 grid gap-x-4 gap-y-1 text-small sm:grid-cols-[auto_1fr]">
         <dt className="text-ink-muted">Sent to the index</dt>
         <dd className="font-mono text-[0.8125rem] break-words text-ink">{expression ?? "nothing: there were no words to look for"}</dd>
@@ -250,29 +255,28 @@ export function keywordReading(trace: ExplainResponse): string {
   const first = hits[0];
   if (!first) return "No passage contained the words of this question.";
   const last = hits[hits.length - 1]!;
-  const inTitle = hits.filter((hit) => hit.fields.title).length;
-  const lead = `The best match scores ${formatValue(first.score)}; the last one shown, ${formatValue(last.score)}.`;
-  const title =
-    inTitle > 0
-      ? ` ${inTitle === hits.length ? "Every passage here comes" : `${inTitle} of the ${hits.length} come`} from a document whose title contains one of the words, and each word in a title is counted as eight mentions.`
+  const lead = `The best match scores ${formatValue(first.score)} out of 1 (${first.why.toLowerCase() || "it holds the words"}); the last one shown, ${formatValue(last.score)}.`;
+  const every = hits.filter((hit) => hit.parts.coverage >= 0.999).length;
+  const all =
+    trace.parse.words.length > 1
+      ? ` ${every === hits.length ? "Every passage here holds" : `${every} of the ${hits.length} hold`} all of your words.`
       : "";
-  return `${lead}${title}`;
+  return `${lead}${all}`;
 }
 
-/** The keyword results as ranked bars of BM25 score. */
+/** The keyword results as ranked bars of their score on the shared scale. */
 export function KeywordResults({ trace }: { trace: ExplainResponse }) {
   const hits = trace.keyword.hits;
-  const max = niceMax(Math.max(...hits.map((hit) => hit.score), 0.0001), 4);
   return (
     <RankedBars
       color={COLOR.keyword}
-      measure="BM25 score"
-      max={max}
+      measure="Score"
+      max={1}
       caption="Keyword results in rank order"
       axis={
         <>
-          Bar length is the BM25 score, from 0 to {formatValue(max)}. Scores have no fixed top: they only mean something compared with each
-          other, for this question.
+          Bar length is the score, from 0 to 1. The same scale is used for every kind of result, so a score means the same thing here as for
+          an article in a reference collection.
         </>
       }
       rows={hits.map((hit) => ({
@@ -283,7 +287,7 @@ export function KeywordResults({ trace }: { trace: ExplainResponse }) {
         url: hit.url,
         segments: hit.segments,
         value: hit.score,
-        valueText: formatValue(hit.score),
+        valueText: `${formatValue(hit.score)}${hit.why ? `, ${hit.why.toLowerCase()}` : ""}`,
         length: hit.length,
         detail: <FieldMarks fields={hit.fields} />,
       }))}

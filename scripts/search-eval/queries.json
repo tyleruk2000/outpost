@@ -1,26 +1,66 @@
 {
   "about": "Household questions and what a good answer would be. `grades` grade the fixture library's items (3 the answer, 2 useful, 1 on the subject); `pi` are patterns that must all match a real library's result for it to count (all in the title: 3; all in title and text: 2; any in the title: 1).",
   "queries": [
-    { "q": "How to change car battery", "grades": { "car-maint": 3, "jump-start": 1, "phone-charging": 1 }, "pi": ["\\b(car|vehicle|automotive)", "batter"] },
-    { "q": "purify water", "grades": { "water-handbook": 3, "kit-list": 1 }, "pi": ["water", "purif|treat|disinfect|boil|filter|drinking"] },
+    {
+      "q": "How to change car battery",
+      "grades": { "car-maint": 3, "jump-start": 1, "phone-charging": 1 },
+      "pi": ["\\b(car|vehicle|automotive)", "batter"]
+    },
+    {
+      "q": "purify water",
+      "grades": { "water-handbook": 3, "kit-list": 1 },
+      "pi": ["water", "purif|treat|disinfect|boil|filter|drinking"]
+    },
     { "q": "treat a burn", "grades": { "burns": 3, "first-aid": 3, "sunburn": 1 }, "pi": ["burn|scald", "treat|cool|first aid|dressing"] },
     { "q": "fix a puncture", "grades": { "bike-repair": 3 }, "pi": ["puncture|inner tube|flat tyre|flat tire"] },
     { "q": "store petrol safely", "grades": { "fuel-storage": 3, "generator": 1 }, "pi": ["petrol|gasoline|fuel", "stor|container|jerry"] },
-    { "q": "make bread without yeast", "grades": { "soda-bread": 3, "sourdough": 1, "bread-machine": 1 }, "pi": ["bread|soda|flatbread|damper", "yeast|soda|baking powder|unleavened"] },
-    { "q": "what to do in a power cut", "grades": { "power-cut": 3, "freezer": 2, "generator": 2 }, "pi": ["power cut|power outage|blackout|power failure|without power"] },
-    { "q": "CPR on a child", "grades": { "first-aid": 3, "cpr-adult": 2 }, "pi": ["cpr|resuscitat|chest compression", "child|infant|paediatric|pediatric"] },
+    {
+      "q": "make bread without yeast",
+      "grades": { "soda-bread": 3, "sourdough": 1, "bread-machine": 1 },
+      "pi": ["bread|soda|flatbread|damper", "yeast|soda|baking powder|unleavened"]
+    },
+    {
+      "q": "what to do in a power cut",
+      "grades": { "power-cut": 3, "freezer": 2, "generator": 2 },
+      "pi": ["power cut|power outage|blackout|power failure|without power"]
+    },
+    {
+      "q": "CPR on a child",
+      "grades": { "first-aid": 3, "cpr-adult": 2 },
+      "pi": ["cpr|resuscitat|chest compression", "child|infant|paediatric|pediatric"]
+    },
     { "q": "jump start a car", "grades": { "jump-start": 3, "car-maint": 1 }, "pi": ["jump", "car|vehicle|batter"] },
-    { "q": "best frequency for emergency", "grades": { "radio-freqs": 3, "pmr446": 2 }, "pi": ["frequen|channel|mhz", "emergenc|distress"] },
+    {
+      "q": "best frequency for emergency",
+      "grades": { "radio-freqs": 3, "pmr446": 2 },
+      "pi": ["frequen|channel|mhz", "emergenc|distress"]
+    },
     { "q": "how to tie a bowline", "grades": { "knots": 3 }, "pi": ["bowline"] },
     { "q": "signs of hypothermia", "grades": { "first-aid": 3, "winter-driving": 1 }, "pi": ["hypotherm"] },
-    { "q": "how long does food last in a freezer", "grades": { "freezer": 3, "food-storage": 3 }, "pi": ["freez", "food|meat|keep|store|last"] },
-    { "q": "how to start a fire without matches", "grades": { "fire-lighting": 3 }, "pi": ["fire", "friction|ferro|flint|spark|match|bow drill"] },
+    {
+      "q": "how long does food last in a freezer",
+      "grades": { "freezer": 3, "food-storage": 3 },
+      "pi": ["freez", "food|meat|keep|store|last"]
+    },
+    {
+      "q": "how to start a fire without matches",
+      "grades": { "fire-lighting": 3 },
+      "pi": ["fire", "friction|ferro|flint|spark|match|bow drill"]
+    },
     { "q": "treat a snake bite", "grades": { "first-aid": 3 }, "pi": ["snake|venom|adder", "bite"] },
     { "q": "stop a nosebleed", "grades": { "first-aid": 3 }, "pi": ["nose ?bleed|epistaxis"] },
     { "q": "how to filter water with sand", "grades": { "water-handbook": 3 }, "pi": ["filter", "sand|gravel|charcoal"] },
     { "q": "charge phone from car", "grades": { "phone-charging": 3, "solar-charger": 1 }, "pi": ["phone|usb|mobile", "charg"] },
-    { "q": "how much water per person per day", "grades": { "water-handbook": 3, "supplies-list": 2 }, "pi": ["water", "per person|per day|litre|gallon|daily"] },
-    { "q": "what to put in a first aid kit", "grades": { "first-aid-kit": 3, "supplies-list": 1, "first-aid": 1 }, "pi": ["first aid", "kit|bag|box"] },
+    {
+      "q": "how much water per person per day",
+      "grades": { "water-handbook": 3, "supplies-list": 2 },
+      "pi": ["water", "per person|per day|litre|gallon|daily"]
+    },
+    {
+      "q": "what to put in a first aid kit",
+      "grades": { "first-aid-kit": 3, "supplies-list": 1, "first-aid": 1 },
+      "pi": ["first aid", "kit|bag|box"]
+    },
     { "q": "how to grow potatoes", "grades": { "potatoes": 3 }, "pi": ["potato"] },
     { "q": "pickling vegetables", "grades": { "pickling": 3 }, "pi": ["pickl"] },
     { "q": "how to read a compass", "grades": { "compass": 3, "map-reading": 2 }, "pi": ["compass"] },

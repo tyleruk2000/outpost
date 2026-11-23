@@ -5,6 +5,7 @@ import { formatNumber, plural } from "@/lib/utils";
 import { Figure, FigureInvitation, FigureSkeleton, FromTrace, Prose } from "../charts/figure";
 import { type ChunksResponse, useTraceState } from "../data";
 import { LengthHistogram, lengthsReading } from "../figures/lengths";
+import { PassagesPicture } from "../figures/passages-picture";
 import { PipelineDiagram } from "../figures/pipeline";
 import { DocumentPicker, DocumentRibbon, ribbonReading } from "../figures/ribbon";
 import { TimingBar, timingReading } from "../figures/timing";
@@ -19,20 +20,22 @@ export function JourneySection() {
     <Stage id="stage-journey">
       <Prose>
         <p>
-          A language model on its own answers from memory. It has read a great deal, but it has not read your documents, and when it does
-          not know something it tends to write a fluent guess. That failing has a name: a <strong>hallucination</strong> is a statement a
-          model produces that sounds right and is not supported by anything.
+          This page follows one question from the moment you type it. Most of it is about search: how Outpost finds the pages that answer
+          you, and puts them in order.
         </p>
         <p>
-          <strong>Retrieval-augmented generation</strong>, usually shortened to RAG, is the standard remedy. Before the model writes a word,
-          a search finds the pieces of text most likely to contain the answer. Those pieces are placed in front of the model with an
-          instruction: answer from these, and say which one each statement came from. Retrieval is the finding. Augmented means the question
-          has had the found text added to it. Generation is the writing.
+          The same search can also feed a <strong>language model</strong>: a program that writes text, like a chatbot. On its own, a model
+          answers from memory. It has not read your documents. When it does not know, it tends to make up something that sounds right. That
+          is called a <strong>hallucination</strong>.
         </p>
         <p>
-          Outpost does the retrieval and the augmenting. It does not include a language model. The writing is done by a model you run
-          yourself, if you have set one up in Settings: Outpost hands it the passages and shows you what it wrote. So the journey below is
-          drawn with its last two steps dashed: they happen on your model server, and everything before them happens here.
+          The usual cure has a long name: <strong>retrieval-augmented generation</strong>, or RAG. It means: find the right passages first
+          (retrieval), add them to the question (augmented), and only then let the model write (generation). The model is told to answer
+          from those passages and to say which one each sentence came from.
+        </p>
+        <p>
+          Outpost does the finding and the adding. It does not come with a model. If you set one up in Settings, Outpost hands it the
+          passages and shows you its answer. That is why the last two steps below are drawn dashed: they happen on your model, not here.
         </p>
       </Prose>
 
@@ -114,34 +117,50 @@ export function CuttingSection({
     <Stage id="stage-cutting">
       <Prose>
         <p>
-          A search that returned whole documents would leave you to find the right paragraph yourself. And a language model can only read a
-          limited amount at a time, so handing it a 300-page manual is not possible. Both problems have the same answer: cut every document
-          into small pieces, and search the pieces.
+          Imagine asking a librarian how to change a car battery. A good librarian does not hand you a 300-page car manual. They open it at
+          the right page and point to the right paragraph. Search tries to do the same.
         </p>
         <p>
-          A piece is called a <strong>passage</strong> (you will also see the word <em>chunk</em>; they mean the same thing). In this
-          library a passage is at most {size ? formatNumber(size) : "about a thousand"} characters, which is two or three paragraphs.
+          To point at a paragraph, it has to know where each paragraph is. So when you add a document, Outpost cuts its text into short
+          pieces. Each piece is called a <strong>passage</strong>. A passage is a few paragraphs long: at most{" "}
+          {size ? formatNumber(size) : "about a thousand"} letters and spaces.
         </p>
         <p>
-          The cutting follows the document’s own shape where it can. A page of a PDF, or the text under one heading, is never merged with
-          its neighbour, so every passage belongs to exactly one page and one heading and can be pointed to precisely. When a page or
-          section is too long for one passage, it is cut at the end of a paragraph if possible, otherwise at the end of a sentence,
-          otherwise between two words.
+          When you search, every passage is checked on its own. The best passage decides where a document comes in the list. It is also the
+          bit of text you see under the title, and the page the document opens at.
+        </p>
+      </Prose>
+
+      <Figure
+        id="fig-passages-idea"
+        title="Why a document is cut up"
+        reading="Search can then point you to the right page of the right book, not only to the right book."
+      >
+        <PassagesPicture />
+      </Figure>
+
+      <Prose>
+        <p>
+          A passage never runs from one page onto the next. It never runs past a heading either. That way each passage has one page number.
         </p>
         <p>
-          A cut can still land in the middle of a thought. So when a section has to be cut, the next passage does not start where the last
-          one stopped. It starts about {overlap ? formatNumber(overlap) : "a hundred and fifty"} characters earlier. That shared stretch is
-          the <strong>overlap</strong>, and it means a sentence that straddles a cut is whole in at least one of the two passages.
+          A long page is cut where a paragraph ends, if it can be. If not, it is cut where a sentence ends. Only as a last resort is it cut
+          between two words.
+        </p>
+        <p>
+          A cut can still fall in the middle of a thought. So each passage repeats the last few lines of the one before it: about{" "}
+          {overlap ? formatNumber(overlap) : "a hundred and fifty"} letters. This repeated stretch is called the <strong>overlap</strong>.
+          Thanks to it, a sentence cut in two is still whole in one of the passages.
         </p>
       </Prose>
 
       <Figure
         id="fig-ribbon"
-        title="One document, cut into passages"
+        title="A document of yours, cut into passages"
         reading={
           chunks.data
             ? ribbonReading(chunks.data)
-            : "The whole text of a document as one ribbon, read left to right and top to bottom. Each block is a passage, drawn at its true position and length."
+            : "The text of one document, drawn as a long strip read from left to right. Each block on the strip is one passage."
         }
       >
         {empty ? (
@@ -171,13 +190,14 @@ export function CuttingSection({
       </Figure>
 
       <Prose>
-        <p>
-          Passages sit on two rows only so that neighbours can be told apart; the text runs straight through. Where a block on one row
-          reaches past the start of the next block on the other row, the two share that text, and the stretch is drawn in a stronger tone
-          across both rows. A thin upright line marks the start of a new page or heading. Notice that there is never an overlap across one
-          of those lines: a new section always starts clean.
-        </p>
-        <p>The target size is a ceiling, not a rule. Most sections do not divide evenly, so many passages are shorter than the limit.</p>
+        <p>How to read the strip:</p>
+        <ul>
+          <li>The blocks take turns on two rows. That is only so you can tell neighbours apart. The text itself runs straight on.</li>
+          <li>Where two blocks overlap, they share those lines. The shared part is drawn darker.</li>
+          <li>A thin upright line marks a new page or a new heading. No block ever crosses one.</li>
+          <li>Many blocks are shorter than the limit. A page rarely divides into equal parts, and a short page is one short passage.</li>
+        </ul>
+        <p>Choose a block to read its passage.</p>
       </Prose>
 
       <Figure id="fig-lengths" title="How long the passages are" reading={overview && !empty ? lengthsReading(overview) : undefined}>
@@ -200,16 +220,15 @@ export function CuttingSection({
 
       <Prose>
         <p>
-          Once cut, the passages are put into an <strong>index</strong>. An index is a structure prepared in advance so that a question can
-          be answered without reading everything, in the way the index at the back of a book tells you which pages mention a word without
-          your reading the book. Outpost keeps two: one by word, described in the next section, and one by vector, described in the section
-          after. {overview && !empty ? indexSentence(overview) : ""}
+          Next, the passages go into an <strong>index</strong>. It works like the index at the back of a book. It lists every word, and
+          which passages hold it. So a search never has to read everything: it looks your words up. Outpost keeps two indexes. One is by
+          word, and the next section is about it. The other is by meaning, and the section after that is about it.{" "}
+          {overview && !empty ? indexSentence(overview) : ""}
         </p>
         <p>
-          Each passage also carries a <strong>content hash</strong>: a short fingerprint worked out from its text. Change one letter and the
-          fingerprint changes; leave the text alone and it stays the same. When a document is read again, a passage whose fingerprint has
-          not changed keeps the vector already made for it. That matters because making vectors is by far the slowest part of indexing, and
-          most edits touch only a few passages. You can see each passage’s fingerprint under the ribbon above.
+          Each passage also gets a <strong>fingerprint</strong>: a short code worked out from its text. If one letter changes, the code
+          changes. If nothing changes, the code stays the same. When a document is read again, Outpost compares fingerprints. Passages that
+          have not changed are kept as they are, which saves the slowest work. You can see each fingerprint under the strip above.
         </p>
       </Prose>
     </Stage>
@@ -227,9 +246,17 @@ export function WordsSection() {
           predictable, and it is still the best tool when you remember a particular term, a name or a part number.
         </p>
         <p>
-          First the question is tidied into something the index understands. Punctuation is dropped. Each word is reduced to its stem, so
-          that “boil”, “boiled” and “boiling” count as the same word. Then the words are joined into an <strong>expression</strong>: a small
-          formula saying which words a passage must contain.
+          First the question is tidied. Punctuation is dropped. Small words that only shape a question, such as “how”, “to”, “the” and
+          “what”, are left out. So “How to change car battery” looks for “change”, “car” and “battery”. Words like “not” and “without” are
+          kept, because they change the meaning.
+        </p>
+        <p>
+          Each word is cut back to its root, so “boil”, “boiled” and “boiling” count as one word. Then the words are joined into an{" "}
+          <strong>expression</strong>: a short line telling the index which words a passage must hold.
+        </p>
+        <p>
+          A passage must hold every word. If fewer than five items do, Outpost also shows items that hold most of the words. They come after
+          the others, and the results say so.
         </p>
       </Prose>
 
@@ -241,10 +268,14 @@ export function WordsSection() {
 
       <Prose>
         <p>
-          Finding the passages is the easy half. The harder half is putting them in order, because a question of three words may match
-          dozens of passages and you will read only the first few. The index gives every matching passage a score, using a formula called{" "}
-          <strong>BM25</strong> (“best match 25”, the twenty-fifth version its authors tried). It has been the standard way to rank keyword
-          results for thirty years, and it rests on three ideas.
+          Finding the passages is the easy half. The harder half is putting them in order. A question of three words may match dozens of
+          passages, and you will read only the first few.
+        </p>
+        <p>
+          This happens in two steps. First the index picks the likely passages with a standard formula called <strong>BM25</strong> (“best
+          match 25”). Then Outpost gives each of them a score from 0 to 1, by one rule for everything it searches: your documents, your
+          notes, and articles in reference collections. That way a result from one place can be compared with a result from another. The
+          rule, and BM25 too, rest on a few ideas.
         </p>
         <h3>Rare words count for more</h3>
         <p>
@@ -296,20 +327,33 @@ export function WordsSection() {
       </Figure>
 
       <Prose>
+        <h3>All your words, close together, in the title</h3>
+        <p>On top of those ideas, Outpost’s score asks four plain questions of each passage:</p>
+        <ul>
+          <li>
+            <strong>How much of the question does it hold?</strong> Each word counts by its weight, so missing a rare word costs more than
+            missing a common one. This is half the score.
+          </li>
+          <li>
+            <strong>Are the words in the title?</strong> A title says what the whole thing is about. A heading or a tag counts a little
+            less. This is a fifth of the score.
+          </li>
+          <li>
+            <strong>Are the words close together?</strong> “Replace a car battery” is about car batteries. A page that says “car” at the top
+            and “battery” at the bottom may not be. Side by side, in the order you typed them, counts most.
+          </li>
+          <li>
+            <strong>How often do they appear?</strong> As above, each extra mention adds less.
+          </li>
+        </ul>
         <p>
-          One more thing changes a score: <em>where</em> the word was found. A word in a document’s title says more about the whole document
-          than the same word in passing. In Outpost a mention in the title is counted as eight mentions, in a tag as four, in a heading as
-          three, and in the text itself as one. Because of saturation, eight mentions are not worth eight times as much as one; in the curve
-          above they are worth nearly twice as much.
-        </p>
-        <p>
-          The final score of a passage is the sum, over each of your words, of that word’s weight multiplied by its saturated count. Here is
-          what that gives for your question.
+          The list of results shows the answer in a few words beside each one, such as “All 3 words, side by side” or “2 of 3 words”. Here
+          are the passages found for your question, in order.
         </p>
       </Prose>
 
       <Figure id="fig-keyword-results" title="What keyword search found, in order" reading={data ? keywordReading(data) : undefined}>
-        <FromTrace shape="bars" invitation="A ranked list of passages, each with a bar for its BM25 score and the words that matched.">
+        <FromTrace shape="bars" invitation="A ranked list of passages, each with a bar for its score and the words that matched.">
           {(traced) =>
             traced.keyword.hits.length > 0 ? (
               <KeywordResults trace={traced} />

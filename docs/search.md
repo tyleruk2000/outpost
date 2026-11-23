@@ -58,10 +58,20 @@ Up to five are given.
 English word forms match ("boil" finds "boiling"); accents, capitals and punctuation are
 ignored; `AND` and `OR` are just words. Up to 500 characters.
 
-### When nothing has every word
+Small words that only shape a question ("how", "to", "the", "what", "do", "I", "my" and
+the like) are left out, and the results name them: "How to change car battery" looks for
+"change", "car" and "battery". "Not", "no", "without" and "off" are kept, since they change
+the meaning. Inside quotes every word counts, and a query of nothing but small words keeps
+them all.
 
-Outpost searches again for items with **any** of the words, and says "No single item had
-every word, so these match some of them."
+### When few items have every word
+
+When fewer than five items hold every word, Outpost adds items that hold **most** of
+them, after the ones that hold all. "Most" is weighed: each word counts by how rare it is
+in your library, and an item must hold at least half of the total. So an item with
+"bowline" alone can come for "water bowline", but one with "water" alone does not. The
+results say "Only 2 results have every word; results with some of them follow", or "No
+result has every word; showing results with some."
 
 ### What is searched
 
@@ -85,9 +95,29 @@ the exact page. A change applies to documents added or re-read afterwards.
 
 ### Ranking
 
-Results are ranked by BM25 with weights title 8, tags 4, heading 3, body 1. An item ranks
-by its best passage and shows up to three, with the matched words marked. The percentage
-is relative to the best match of that search. A PDF opens at the matching page.
+Every result, whatever found it, gets a score from 0 to 1 by the same rule, so a page of
+your own and an article in a reference collection can be put in one order:
+
+| Part | Share | What it asks |
+| --- | --- | --- |
+| Coverage | 0.50 | How much of the query it holds, each word weighed by how rare it is in your library. |
+| Title | 0.20 | How much of the query is in the title (a tag counts three quarters, a heading 0.6). |
+| Closeness | 0.15 | How near together the words are, small words in between not counted. |
+| Side by side | 0.05 | All the words next to each other, in the order typed. |
+| Frequency | 0.10 | How often they occur, each further mention adding less. |
+
+An item is scored by its best passage and shows up to three, with the words that matter
+marked; a PDF opens at that passage's page. Beside each result a few words say why it is
+there: "All 3 words in the title", "All 3 words, side by side", "2 of 3 words".
+
+The index first finds every passage holding the words and groups them into items, so every
+match is counted and every page of results can be reached, however many passages a long
+book has. The first 200 items by BM25 (weights title 8, tags 4, heading 3, body 1) are
+then scored by the rule above. Paging further scores further.
+
+**Places and repeaters** whose names match are not mixed into the list: they are shown
+apart, under **Places and repeaters**, after the results, or before them when what you
+typed looks like one of their names, a callsign or a frequency. Their tabs list them all.
 
 **What is on this device comes first.** Catalogue entries would have to be downloaded
 before they could be opened, so they always come after everything that can be opened now:
@@ -106,6 +136,10 @@ Articles in ZIM archives are searched by kiwix-serve, not Outpost's index. **You
 results do not wait for them**: they appear at once, and "Still searching reference
 collections…" shows while the archives are asked, three at a time.
 
+- kiwix-serve is asked for the words that matter, without the small words, and puts its
+  answers in an order of its own. Outpost scores each article again by the
+  [same rule](#ranking), from its title and snippet, and drops one that shows less than
+  half of what the query is about. A collection's articles come best first.
 - Each collection's best match is added under **In reference collections** as it
   answers; nothing already shown moves. The **Reference** tab lists every article found.
 - A collection that takes more than 8 seconds, or is not reached within 30, is left out
@@ -291,15 +325,25 @@ are not matched. The small computer still needs the same model for its searches.
 
 ### Hybrid ranking
 
-When search by meaning is ready, the default is **Best of both**: keyword and meaning
-results are ranked separately and combined by reciprocal rank fusion, each item scoring
-`weight / (k + rank)` summed over the lists it is in.
+When search by meaning is ready, the default is **Best of both**, and the count above the
+results says which way they were found ("found by words and by meaning").
+
+- **The list of results.** A result's similarity to the query becomes a score: 0.2 and
+  below counts as nothing, 0.7 and above as 0.6, the most meaning alone can earn, so it
+  stays below a result holding every word. A result found both ways scores
+  1 − (1 − words) × (1 − meaning): more than either alone.
+- **Passages for an answer.** Ranked separately and combined by reciprocal rank fusion,
+  each passage scoring `weight / (k + rank)` summed over the lists it is in.
 
 | Setting | Default | Effect |
 | --- | --- | --- |
-| `search.hybrid.rrfK` | 60 | Larger flattens the difference between ranks. |
-| `search.hybrid.keywordWeight` | 1 | Weight of the keyword list. |
-| `search.hybrid.semanticWeight` | 1 | Weight of the meaning list. |
+| `search.hybrid.rrfK` | 60 | Passages for an answer: larger flattens the difference between ranks. |
+| `search.hybrid.keywordWeight` | 1 | Weight of the words (multiplies their score in the list). |
+| `search.hybrid.semanticWeight` | 1 | Weight of meaning (multiplies its score in the list). |
+
+Search by meaning is off until it is turned on and its index built, because building
+costs time: on a Raspberry Pi with tens of thousands of passages, hours. Until then
+searches are keyword searches and say so.
 
 They are under **More options**; *How search works* lets you try a change first. **By
 meaning** alone leaves reference articles out, since they have no vectors.

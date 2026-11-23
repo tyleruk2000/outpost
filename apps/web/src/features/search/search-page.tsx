@@ -73,8 +73,8 @@ function ResultRow({ result, heading: Heading = "h2" }: { result: SearchResult; 
             </span>
           ))}
         </p>
-        {/* What "match" means is said once above the results, where touch and the keyboard reach it too, not in a hover title. */}
-        <span className="tabular shrink-0 text-micro text-ink-faint">{Math.round(result.score * 100)}% match</span>
+        {/* Why it is here, in words: a percentage would claim more than a ranking knows. */}
+        {result.why ? <span className="shrink-0 text-micro text-ink-faint">{result.why}</span> : null}
       </div>
       <Heading className="mt-1 font-title text-lead hyphens-auto break-words">
         <Link to={resultHref(result)} className="text-ink decoration-primary decoration-1 underline-offset-[0.22em] hover:underline">
@@ -98,6 +98,44 @@ function ResultRow({ result, heading: Heading = "h2" }: { result: SearchResult; 
       ) : null}
       {result.tags.length > 0 ? <p className="mt-2 text-micro text-ink-faint">{result.tags.map((tag) => `#${tag}`).join("  ")}</p> : null}
     </li>
+  );
+}
+
+const MODE_WORDS: Record<SearchMode, string> = {
+  keyword: "found by their words",
+  hybrid: "found by words and by meaning",
+  semantic: "found by meaning",
+};
+
+/** Said when too few results hold every word and results holding most of them follow. */
+function relaxedSentence(everyWord: number): string {
+  if (everyWord === 0) return "No result has every word; showing results with some.";
+  return `Only ${plural(everyWord, "result")} ${everyWord === 1 ? "has" : "have"} every word; results with some of them follow.`;
+}
+
+/** Places on the map and repeaters whose names match: apart from the results, so that a town called Waterfields does not bury what is about water. */
+function PlacesStrip({ places }: { places: SearchResult[] }) {
+  return (
+    <section aria-labelledby="places-results" className="mt-4 max-w-[46rem]">
+      <h2 id="places-results" className="text-small font-medium text-ink-muted">
+        Places and repeaters
+      </h2>
+      <ul className="mt-1 divide-y divide-border border-y border-border">
+        {places.map((place) => (
+          <li key={`${place.kind}:${place.entityId}`}>
+            <Link to={resultHref(place)} className="group flex min-h-11 items-baseline gap-3 py-2.5 text-ink">
+              <span className="min-w-0 flex-1">
+                <span className="font-medium group-hover:underline group-hover:decoration-primary group-hover:underline-offset-4">
+                  {place.title}
+                </span>
+                {place.subtitle ? <span className="ml-2 text-small text-ink-muted">{place.subtitle}</span> : null}
+              </span>
+              <span className="shrink-0 text-micro text-ink-faint">{kindOf(place.kind).label}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -388,7 +426,6 @@ export default function SearchPage() {
                     {reference.status === "searching" ? " so far." : "."}
                   </p>
                   <ReferenceTrouble reference={reference} />
-                  <p className="text-small text-ink-muted">The match beside each is how close it comes to the best one.</p>
                   <ol className="mt-1 divide-y divide-border">
                     {reference.results.slice((referencePage - 1) * PAGE_SIZE, referencePage * PAGE_SIZE).map((result) => (
                       <ResultRow key={`${result.kind}:${result.entityId}`} result={result} />
@@ -423,7 +460,7 @@ export default function SearchPage() {
             <div className="mt-6">
               <ErrorState error={search.error} onRetry={() => search.refetch()} />
             </div>
-          ) : data && data.results.length === 0 && !(referenceBelow && referenceHasSomething) ? (
+          ) : data && data.results.length === 0 && data.places.length === 0 && !(referenceBelow && referenceHasSomething) ? (
             <div className="mt-8 max-w-[52ch]">
               <h2 className="font-title text-heading">Nothing matches “{data.query}”</h2>
               <p className="mt-2 text-ink-muted">
@@ -444,8 +481,7 @@ export default function SearchPage() {
                   </p>
                 ) : (
                   <p className="tabular mt-4 text-small text-ink-muted" aria-live="polite">
-                    {plural(data.total, "result")}
-                    {data.relaxed ? ". No single item had every word, so these match some of them." : ""}
+                    {plural(data.total, "result")}, {MODE_WORDS[data.mode]}
                     <span className="text-ink-faint"> in {data.tookMs} ms. </span>
                     <Link
                       to={`/search/how-it-works?q=${encodeURIComponent(data.query)}`}
@@ -455,11 +491,13 @@ export default function SearchPage() {
                     </Link>
                   </p>
                 )}
-                {data.results.length > 0 ? (
+                {own.length > 0 && data.relaxed ? <p className="mt-1 text-small text-ink">{relaxedSentence(data.everyWord)}</p> : null}
+                {own.length > 0 && data.ignored.length > 0 ? (
                   <p className="mt-1 text-small text-ink-muted">
-                    The match beside each result is how close it comes to the best one for this search.
+                    Left out of the search, as words that only shape a question: {data.ignored.map((word) => `“${word}”`).join(", ")}.
                   </p>
                 ) : null}
+                {data.placesFirst && data.places.length > 0 ? <PlacesStrip places={data.places} /> : null}
                 {referenceBelow ? <ReferenceLine reference={reference} onShow={() => setParam("kind", "reference")} /> : null}
                 {data.warnings.map((warning) => (
                   <Notice
@@ -487,6 +525,7 @@ export default function SearchPage() {
                 {data.total > PAGE_SIZE ? (
                   <Pager page={page} pages={Math.ceil(data.total / PAGE_SIZE)} onPage={(next) => setParam("page", String(next))} />
                 ) : null}
+                {!data.placesFirst && data.places.length > 0 ? <PlacesStrip places={data.places} /> : null}
               </div>
               {referenceBelow ? (
                 // Always after a person's own results, and only ever added to at its end: nothing above it moves.

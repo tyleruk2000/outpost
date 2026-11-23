@@ -175,7 +175,13 @@ describe("keyword search", () => {
     const test = await app();
     const { search } = test.ctx.services;
     for (let index = 0; index < 10; index += 1) {
-      search.upsert({ kind: "note", entityId: `w${index}`, title: `Water ${index}`, url: `/notes/w${index}`, sections: [{ text: "water" }] });
+      search.upsert({
+        kind: "note",
+        entityId: `w${index}`,
+        title: `Water ${index}`,
+        url: `/notes/w${index}`,
+        sections: [{ text: "water" }],
+      });
     }
     search.upsert({ kind: "note", entityId: "rare", title: "Bowline", url: "/notes/rare", sections: [{ text: "A bowline knot." }] });
     const { body } = await test.api("GET", "/api/search?q=water+bowline+");

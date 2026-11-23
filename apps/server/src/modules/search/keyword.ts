@@ -101,8 +101,7 @@ export function rankKeyword(
     const items = [...byItem.values()];
     for (const item of items) item.hits.sort((a, b) => a.rank - b.rank);
     items.sort(
-      (a, b) =>
-        Number(a.kind === options.toDownload) - Number(b.kind === options.toDownload) || a.hits[0]!.rank - b.hits[0]!.rank,
+      (a, b) => Number(a.kind === options.toDownload) - Number(b.kind === options.toDownload) || a.hits[0]!.rank - b.hits[0]!.rank,
     );
     return items;
   };
