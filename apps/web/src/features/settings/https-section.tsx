@@ -55,7 +55,7 @@ function OwnCertificateChoice({ data, secure, refresh }: { data: HttpsStatus; se
   return (
     <details className="group border-t border-border pt-3" onToggle={(event) => event.currentTarget.open && setOpened(true)}>
       <summary className="flex min-h-11 cursor-default items-center gap-2 py-2 text-small font-medium text-ink marker:content-none hover:text-primary [&::-webkit-details-marker]:hidden">
-        <ChevronRight aria-hidden className="size-4 text-ink-muted transition-transform duration-150 group-open:rotate-90" />
+        <ChevronRight aria-hidden className="size-4 text-ink-muted transition-transform group-open:rotate-90" />
         Use a certificate of your own instead
       </summary>
       <div className="grid gap-5 pb-2 pl-6">
@@ -364,7 +364,7 @@ export function HttpsSection({
               </div>
               <details className="group">
                 <summary className="flex min-h-11 cursor-default items-center gap-2 py-2 text-small font-medium text-ink marker:content-none hover:text-primary [&::-webkit-details-marker]:hidden">
-                  <ChevronRight aria-hidden className="size-4 text-ink-muted transition-transform duration-150 group-open:rotate-90" />
+                  <ChevronRight aria-hidden className="size-4 text-ink-muted transition-transform group-open:rotate-90" />
                   What trusting it means
                 </summary>
                 <p className="pb-2 pl-6 text-small text-ink-muted">

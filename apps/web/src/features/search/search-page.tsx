@@ -34,7 +34,10 @@ function GoTo({ places }: { places: Place[] }) {
       <ul className="mt-1 divide-y divide-border border-y border-border">
         {places.map((place) => (
           <li key={place.to}>
-            <Link to={place.to} className="group flex min-h-11 items-start gap-3 py-2.5 text-ink">
+            <Link
+              to={place.to}
+              className="group -mx-2 flex min-h-11 items-start gap-3 rounded-control px-2 py-2.5 text-ink transition-colors duration-(--duration-fast) hover:bg-surface"
+            >
               <place.icon aria-hidden className="mt-0.5 size-[18px] shrink-0 text-ink-muted" strokeWidth={1.6} />
               <span className="min-w-0 flex-1">
                 <span className="block font-medium group-hover:underline group-hover:decoration-primary group-hover:underline-offset-4">
@@ -43,7 +46,7 @@ function GoTo({ places }: { places: Place[] }) {
                   {place.label}
                 </span>
                 {"about" in place && typeof place.about === "string" ? (
-                  <span className="mt-0.5 line-clamp-2 block text-small text-ink-muted">{place.about}</span>
+                  <span className="mt-0.5 line-clamp-1 text-small text-ink-muted sm:line-clamp-2">{place.about}</span>
                 ) : null}
               </span>
               <ChevronRight aria-hidden className="mt-1 size-4 shrink-0 text-ink-faint" />
@@ -70,7 +73,7 @@ function AnswerCard({ card }: { card: SearchCard }) {
       </h2>
       <Link
         to={card.url}
-        className="group flex min-h-11 items-start gap-3 rounded-panel border border-border bg-surface px-4 py-3 text-ink hover:border-border-strong"
+        className="group flex min-h-11 items-start gap-3 rounded-panel border border-border bg-surface px-4 py-3 text-ink transition-colors duration-(--duration-fast) hover:border-border-strong"
       >
         <Icon aria-hidden className="mt-0.5 size-5 shrink-0 text-primary" strokeWidth={1.6} />
         <span className="min-w-0 flex-1">
@@ -244,7 +247,10 @@ function PlacesStrip({ places }: { places: SearchResult[] }) {
       <ul className="mt-1 divide-y divide-border border-y border-border">
         {places.map((place) => (
           <li key={`${place.kind}:${place.entityId}`}>
-            <Link to={resultHref(place)} className="group flex min-h-11 items-baseline gap-3 py-2.5 text-ink">
+            <Link
+              to={resultHref(place)}
+              className="group -mx-2 flex min-h-11 items-baseline gap-3 rounded-control px-2 py-2.5 text-ink transition-colors duration-(--duration-fast) hover:bg-surface"
+            >
               <span className="min-w-0 flex-1">
                 <span className="font-medium group-hover:underline group-hover:decoration-primary group-hover:underline-offset-4">
                   {place.title}
@@ -499,7 +505,8 @@ export default function SearchPage() {
             </Button>
           ) : null}
         </div>
-        <ScreensUnder parent="/search" />
+        {/* On a phone, once there are results, these give way to them: "How were these found?" leads to the same place. */}
+        <ScreensUnder parent="/search" className={q.trim() ? "max-md:hidden" : undefined} />
       </div>
 
       <AnswerArea q={q} mode={mode} referenceResults={q.trim() ? reference.results.length : 0} />
@@ -557,7 +564,7 @@ export default function SearchPage() {
                   tabIndex={kind === key ? 0 : -1}
                   onClick={() => setParam("kind", key || undefined)}
                   className={cn(
-                    "relative flex items-center gap-1.5 border-b-2 border-transparent pt-1 pb-2.5 text-small font-medium whitespace-nowrap text-ink-muted hover:text-ink max-md:min-h-11",
+                    "relative flex items-center gap-1.5 border-b-2 border-transparent pt-1 pb-2.5 text-small font-medium whitespace-nowrap text-ink-muted transition-colors duration-(--duration-fast) hover:text-ink max-md:min-h-11 md:pointer-coarse:min-h-11",
                     kind === key && "border-primary text-ink",
                   )}
                 >

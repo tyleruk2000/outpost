@@ -266,7 +266,7 @@ export function FromTrace({
   }
   if (trace.isError && !trace.isFetching) return <ErrorState error={trace.error} onRetry={() => void trace.refetch()} />;
   if (!trace.data) return <FigureSkeleton shape={shape} />;
-  return <div className={cn("transition-opacity duration-150", trace.isPlaceholderData && "opacity-50")}>{children(trace.data)}</div>;
+  return <div className={cn("transition-opacity", trace.isPlaceholderData && "opacity-50")}>{children(trace.data)}</div>;
 }
 
 /** Reading prose: the serif, the reading measure. */

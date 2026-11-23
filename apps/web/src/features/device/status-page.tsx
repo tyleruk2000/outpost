@@ -3,10 +3,10 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { CircleAlert, CircleCheck, CircleDashed, CircleHelp, CircleX, RefreshCw } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Link } from "react-router";
-import { Disclosure, ErrorState, Page, PageHeader, Rows, Section } from "@/components/page";
+import { Disclosure, ErrorState, JumpLinks, Page, PageHeader, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Badge, Skeleton } from "@/components/ui/misc";
-import { Table } from "@/components/ui/table";
+import { Table, TableHead, Td, Th, Tr } from "@/components/ui/table";
 import { api } from "@/lib/api";
 import { formatTimeOfDay } from "@/lib/clock";
 import { cn, formatDateTime, plural } from "@/lib/utils";
@@ -70,7 +70,7 @@ export function clockCheck(reading: ClockReading): DeviceCheck {
 function CheckRow({ check, action }: { check: DeviceCheck; action?: ReactNode }) {
   const state = STATES[check.state];
   return (
-    <li className="flex flex-wrap items-start gap-x-4 gap-y-2 py-4">
+    <li id={`check-${check.id}`} className="flex flex-wrap items-start gap-x-4 gap-y-2 py-4">
       <state.icon aria-hidden className={cn("mt-0.5 size-5 shrink-0", state.colour)} strokeWidth={1.6} />
       <div className="min-w-0 flex-1 basis-60">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -97,6 +97,22 @@ function CheckRow({ check, action }: { check: DeviceCheck; action?: ReactNode })
   );
 }
 
+/**
+ * Under the sentence, the lines that need something done, as links to them: on a phone the backup that needs
+ * attention is three screens down, under storage that is fine.
+ */
+function NeedsALook({ checks }: { checks: DeviceCheck[] }) {
+  const needing = checks.filter((check) => check.state === "problem" || check.state === "attention");
+  if (needing.length === 0) return null;
+  return (
+    <JumpLinks
+      label="What needs attention"
+      items={needing.map((check) => ({ id: `check-${check.id}`, label: check.title }))}
+      className="mt-1 mb-0"
+    />
+  );
+}
+
 /** The minutes the event-loop delay was measured, as a table: the worst and the mean hold-up in each. */
 function DelayTable({ eventLoop }: { eventLoop: EventLoopDelay }) {
   if (eventLoop.minutes.length === 0) return null;
@@ -108,21 +124,21 @@ function DelayTable({ eventLoop }: { eventLoop: EventLoopDelay }) {
           {formatDateTime(eventLoop.worst.at)}.
         </p>
       ) : null}
-      <Table label="The event loop, minute by minute">
-        <thead>
-          <tr className="text-left text-ink-muted">
-            <th className="py-1 pr-4 font-medium">Minute</th>
-            <th className="py-1 pr-4 text-right font-medium">Worst</th>
-            <th className="py-1 text-right font-medium">Mean</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
+      <Table label="The hold-ups, minute by minute">
+        <TableHead>
+          <Tr>
+            <Th>Minute</Th>
+            <Th numeric>Worst</Th>
+            <Th numeric>Mean</Th>
+          </Tr>
+        </TableHead>
+        <tbody>
           {[...eventLoop.minutes].reverse().map((minute) => (
-            <tr key={minute.at}>
-              <td className="py-1 pr-4">{formatTimeOfDay(minute.at)}</td>
-              <td className="tabular py-1 pr-4 text-right">{minute.worstMs} ms</td>
-              <td className="tabular py-1 text-right">{minute.meanMs} ms</td>
-            </tr>
+            <Tr key={minute.at}>
+              <Td className="tabular">{formatTimeOfDay(minute.at)}</Td>
+              <Td numeric>{minute.worstMs} ms</Td>
+              <Td numeric>{minute.meanMs} ms</Td>
+            </Tr>
           ))}
         </tbody>
       </Table>
@@ -166,7 +182,7 @@ export default function StatusPage() {
         title={STATUS_TITLE}
         description="How the computer Outpost runs on is doing, in plain words, and what to do when something needs it."
         actions={
-          <Button onClick={() => void Promise.all([status.refetch(), clock.refetch()])} disabled={status.isFetching}>
+          <Button onClick={() => void Promise.all([status.refetch(), clock.refetch()])} loading={status.isFetching}>
             <RefreshCw /> Check again
           </Button>
         }
@@ -182,10 +198,13 @@ export default function StatusPage() {
         <ErrorState error={status.error} onRetry={() => void status.refetch()} />
       ) : (
         <>
-          <p className="mb-8 text-lead text-ink">
-            {overallSentence(checks)}{" "}
-            <span className="text-small text-ink-muted">Checked at {formatTimeOfDay(status.data.checkedAt)}.</span>
-          </p>
+          <div className="mb-8">
+            <p className="text-lead text-ink">
+              {overallSentence(checks)}{" "}
+              <span className="text-small text-ink-muted">Checked at {formatTimeOfDay(status.data.checkedAt)}.</span>
+            </p>
+            <NeedsALook checks={checks} />
+          </div>
           {GROUPS.map((group) => {
             const inGroup = checks.filter((check) => check.group === group.id);
             if (inGroup.length === 0) return null;
@@ -198,7 +217,7 @@ export default function StatusPage() {
                       check={check}
                       action={
                         check.id === "clock" && check.state !== "good" && clock.data?.server.setting.allowed ? (
-                          <Button size="sm" variant="primary" onClick={() => setClock.mutate()} disabled={setClock.isPending}>
+                          <Button size="sm" variant="primary" onClick={() => setClock.mutate()} loading={setClock.isPending}>
                             {SET_CLOCK}
                           </Button>
                         ) : check.id === "database" && check.state === "unchecked" ? (

@@ -145,7 +145,7 @@ function Block({ block, system, choose }: { block: GuideBlock; system: GuideSyst
       return (
         <details className="group border-y border-border">
           <summary className="flex min-h-11 cursor-default items-center gap-1.5 text-small font-medium text-ink-muted marker:content-none hover:text-ink [&::-webkit-details-marker]:hidden">
-            <ChevronRight aria-hidden className="size-4 transition-transform duration-150 group-open:rotate-90" />
+            <ChevronRight aria-hidden className="size-4 transition-transform group-open:rotate-90" />
             The {block.sources.length} pages that were read
           </summary>
           <ul className="divide-y divide-border border-t border-border text-small">

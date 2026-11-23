@@ -84,7 +84,8 @@
   height: 1.5rem;
   cursor: pointer;
 }
-@media (max-width: 47.99rem) {
+/* A finger, on a phone or on a tablet wider than one. */
+@media (max-width: 47.99rem), (pointer: coarse) {
   .understand-range {
     height: 2.75rem;
   }

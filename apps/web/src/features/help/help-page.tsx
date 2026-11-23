@@ -2,13 +2,31 @@
  * Help: the guides to installing Outpost, looking after it and using it, grouped the way a
  * household thinks of them. Each guide is a page of docs/, word for word, read when the app
  * was built (guides.ts says which). The ones for people changing the code are folded away.
+ * A field at the top narrows the sixty-odd guides to those whose name, sentence or everyday
+ * words hold what is typed, so that "backup" is one guide away rather than a long scroll.
  */
 
 import { GUIDE_INDEX } from "virtual:outpost-guides";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Search } from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router";
 import { Disclosure, Page, PageHeader, Rows, Section } from "@/components/page";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { plural } from "@/lib/utils";
 import { GUIDE_GROUPS, GUIDES, type Guide, guidePath } from "./guides";
+
+const titleOf = (guide: Guide) => GUIDE_INDEX[guide.slug]?.title ?? guide.slug;
+
+/** The guides holding every word typed, in the order Help lists them. */
+export function matchGuides(typed: string, guides: Guide[] = GUIDES): Guide[] {
+  const words = typed.toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return guides;
+  return guides.filter((guide) => {
+    const text = `${titleOf(guide)} ${guide.about} ${guide.keywords ?? ""}`.toLowerCase();
+    return words.every((word) => text.includes(word));
+  });
+}
 
 function GuideRows({ guides }: { guides: Guide[] }) {
   return (
@@ -17,11 +35,11 @@ function GuideRows({ guides }: { guides: Guide[] }) {
         <li key={guide.slug}>
           <Link
             to={guidePath(guide.slug)}
-            className="group flex items-center gap-4 py-3.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            className="group -mx-2 flex items-center gap-4 rounded-control px-2 py-3.5 transition-colors duration-(--duration-fast) hover:bg-surface"
           >
             <span className="min-w-0 flex-1">
               <span className="block font-title text-lead text-ink [overflow-wrap:anywhere] group-hover:text-primary">
-                {GUIDE_INDEX[guide.slug]?.title ?? guide.slug}
+                {titleOf(guide)}
               </span>
               <span className="mt-0.5 block text-small text-ink-muted">{guide.about}</span>
             </span>
@@ -34,29 +52,62 @@ function GuideRows({ guides }: { guides: Guide[] }) {
 }
 
 export default function HelpPage() {
+  const [typed, setTyped] = useState("");
+  const words = typed.trim();
+  const found = words ? matchGuides(words) : [];
   return (
     <Page width="reading">
       <PageHeader
         title="Help"
         description="How to install Outpost, look after it and use each part of it. These are the pages of Outpost’s documentation, word for word, and they read with no internet."
       />
-      {GUIDE_GROUPS.map((group) => {
-        const guides = GUIDES.filter((guide) => guide.group === group.id);
-        if (guides.length === 0) return null;
-        if (group.closed) {
+      {/* biome-ignore lint/a11y/useSemanticElements: a form with role="search" is the search landmark every browser and screen reader knows */}
+      <form role="search" className="relative -mt-2 max-w-[28rem]" onSubmit={(event) => event.preventDefault()}>
+        <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-muted" />
+        <Input
+          type="search"
+          value={typed}
+          onChange={(event) => setTyped(event.target.value)}
+          placeholder="Find a guide, such as backup"
+          aria-label="Find a guide"
+          enterKeyHint="search"
+          autoCapitalize="none"
+          autoComplete="off"
+          className="w-full pl-9"
+        />
+      </form>
+      {words ? (
+        <section aria-label="Guides found" className="mt-6">
+          <p role="status" className="mb-2 text-small text-ink-muted">
+            {found.length === 0 ? `No guide is about “${words}”.` : `${plural(found.length, "guide")} about “${words}”.`}
+          </p>
+          {found.length > 0 ? <GuideRows guides={found} /> : null}
+          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-small text-ink-muted">
+            <Button size="sm" onClick={() => setTyped("")}>
+              Show every guide
+            </Button>
+            {found.length === 0 ? <span>The quick search also finds each section inside the guides.</span> : null}
+          </div>
+        </section>
+      ) : (
+        GUIDE_GROUPS.map((group) => {
+          const guides = GUIDES.filter((guide) => guide.group === group.id);
+          if (guides.length === 0) return null;
+          if (group.closed) {
+            return (
+              <Disclosure key={group.id} className="mt-10" summary={`${group.title}: ${guides.length} pages`}>
+                {group.about ? <p className="text-ink-muted">{group.about}</p> : null}
+                <GuideRows guides={guides} />
+              </Disclosure>
+            );
+          }
           return (
-            <Disclosure key={group.id} className="mt-10" summary={`${group.title}: ${guides.length} pages`}>
-              {group.about ? <p className="text-ink-muted">{group.about}</p> : null}
+            <Section key={group.id} title={group.title}>
               <GuideRows guides={guides} />
-            </Disclosure>
+            </Section>
           );
-        }
-        return (
-          <Section key={group.id} title={group.title}>
-            <GuideRows guides={guides} />
-          </Section>
-        );
-      })}
+        })
+      )}
       <p className="mt-10 text-small text-ink-muted">
         The guides are Outpost’s own pages, not part of your library: the library’s search does not hold them, and they are never sent to a
         model server. The quick search finds them, and each of their sections, by name.

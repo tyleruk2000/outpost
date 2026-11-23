@@ -54,7 +54,7 @@ function Row({ contact, inEmergencyGroup }: { contact: ContactSummary; inEmergen
       >
         <span className="min-w-0 flex-1">
           {/* A name is what the row is for: it takes a second line rather than lose its end. */}
-          <span className="line-clamp-2 block text-body font-medium [overflow-wrap:anywhere] text-ink group-aria-[current=page]:text-primary-soft-ink">
+          <span className="line-clamp-2 text-body font-medium [overflow-wrap:anywhere] text-ink group-aria-[current=page]:text-primary-soft-ink">
             {contact.displayName}
           </span>
           {second ? <span className="block truncate text-small text-ink-muted">{second}</span> : null}

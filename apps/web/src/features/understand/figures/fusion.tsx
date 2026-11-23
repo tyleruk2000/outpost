@@ -364,7 +364,7 @@ export function BumpChart({ whatIf }: { whatIf: WhatIf }) {
                 tabIndex={0}
                 aria-label={`Final place ${row.rank}: ${passageName(row.hit)}. ${row.keywordRank === null ? "Not found by words" : `Place ${row.keywordRank} by words`}; ${row.semanticRank === null ? "not found by meaning" : `place ${row.semanticRank} by meaning`}.`}
                 className={cn(
-                  "understand-mark absolute flex items-center gap-2 rounded-control px-2 text-small transition-opacity duration-150",
+                  "understand-mark absolute flex items-center gap-2 rounded-control px-2 text-small transition-opacity",
                   active !== null && active !== row.chunkId && "opacity-40",
                 )}
                 style={{ left: bandLeft + 8, width: band - 16, top: 4 + (row.rank - 1) * ROW_HEIGHT + 2, height: ROW_HEIGHT - 4 }}
@@ -468,7 +468,7 @@ export function ContributionBars({ whatIf }: { whatIf: WhatIf }) {
             <div className="min-w-0">
               <p className="flex flex-wrap items-baseline justify-between gap-x-4 text-small">
                 <span className="min-w-0 truncate font-medium text-ink">{passageName(row.hit)}</span>
-                <span className="tabular shrink-0 text-ink-muted">
+                <span className="tabular min-w-0 text-ink-muted">
                   {row.keywordRank !== null && row.semanticRank !== null
                     ? `${ordinal(row.keywordRank)} by words, ${ordinal(row.semanticRank)} by meaning`
                     : row.keywordRank !== null

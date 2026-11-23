@@ -57,7 +57,19 @@ export function SettingRow({
   htmlFor?: string;
 }) {
   const hintId = useId();
+  const switchId = useId();
   const controlArea = useRef<HTMLDivElement>(null);
+  const labelRef = useRef<HTMLLabelElement>(null);
+  // A row whose control is one switch: its name labels the switch too, so a press on the words turns it on or off,
+  // a far bigger target on a phone than the switch alone.
+  useEffect(() => {
+    if (htmlFor || !labelRef.current) return;
+    const switches = controlArea.current?.querySelectorAll<HTMLElement>('[role="switch"]') ?? [];
+    const only = switches.length === 1 ? switches[0] : undefined;
+    if (!only) return;
+    if (!only.id) only.id = switchId;
+    labelRef.current.htmlFor = only.id;
+  });
   // The hint says what the setting does, so a screen reader reads it with the control, not only when read line by line
   // (WCAG 1.3.1). The fields below take it from RowHint; any other control (a switch, a choice of several, a button)
   // is described by it here.
@@ -73,7 +85,7 @@ export function SettingRow({
   return (
     <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
       <div className="min-w-[min(12rem,100%)] flex-1">
-        <label htmlFor={htmlFor} className="text-small font-medium text-ink">
+        <label ref={labelRef} htmlFor={htmlFor} className="text-small font-medium text-ink">
           {label}
         </label>
         {hint ? (
@@ -208,8 +220,8 @@ export function MoreOptions({ children, label = "More options" }: { children: Re
   const [open, setOpen] = useState(false);
   return (
     <details className="group border-t border-border" onToggle={(event) => setOpen(event.currentTarget.open)}>
-      <summary className="flex min-h-11 cursor-default items-center gap-1.5 text-small font-medium text-ink-muted marker:content-none hover:text-ink [&::-webkit-details-marker]:hidden">
-        <ChevronRight aria-hidden className="size-4 transition-transform duration-150 group-open:rotate-90" />
+      <summary className="flex min-h-11 cursor-default items-center gap-1.5 text-small font-medium text-ink-muted transition-colors duration-(--duration-fast) marker:content-none hover:text-ink [&::-webkit-details-marker]:hidden">
+        <ChevronRight aria-hidden className="size-4 transition-transform group-open:rotate-90" />
         {label}
       </summary>
       {open ? <div className="grid grid-cols-[minmax(0,1fr)] gap-5 pt-2 pb-1">{children}</div> : null}

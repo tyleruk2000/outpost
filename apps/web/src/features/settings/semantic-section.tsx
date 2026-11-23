@@ -213,7 +213,7 @@ export function SemanticSection({
         </Notice>
       ) : null}
 
-      <p className="flex flex-wrap gap-x-4 gap-y-1 text-small text-ink-muted">
+      <p className="flex flex-wrap gap-x-4 text-small text-ink-muted [&>a]:inline-flex [&>a]:min-h-11 [&>a]:items-center md:[&>a]:min-h-6 md:pointer-coarse:[&>a]:min-h-11">
         <GuideLink part="search-by-meaning" />
         <Link to="/search/how-meaning-works" className="text-primary underline decoration-1 underline-offset-2 hover:decoration-2">
           How search by meaning works

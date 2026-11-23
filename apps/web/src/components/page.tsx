@@ -284,32 +284,54 @@ export function Joined({ parts }: { parts: ReactNode[] }) {
  */
 export function JumpLinks({
   label,
-  items,
+  items = [],
+  groups,
   onJump,
   className,
 }: {
   label: string;
-  items: { id: string; label: ReactNode }[];
+  items?: { id: string; label: ReactNode }[];
+  /**
+   * Instead of `items`, for a screen of many sections (Settings): the links under the name of each group, the name
+   * beside them on a wide screen and above them on a phone.
+   */
+  groups?: { id: string; label: string; items: { id: string; label: ReactNode }[] }[];
   /** Instead of following the link: a screen whose address the router owns moves to the section itself. */
   onJump?: (id: string, event: MouseEvent<HTMLAnchorElement>) => void;
   className?: string;
 }) {
+  const links = (list: { id: string; label: ReactNode }[], labelledBy?: string) => (
+    <ul aria-labelledby={labelledBy} className={cn("flex flex-wrap gap-x-5 text-small", !groups && "gap-y-1")}>
+      {list.map((item) => (
+        // A long name (a file's path in a heading) wraps inside the screen rather than run past it.
+        <li key={item.id} className="min-w-0 max-w-full">
+          <a
+            href={`#${item.id}`}
+            onClick={onJump ? (event) => onJump(item.id, event) : undefined}
+            className="inline-flex min-h-11 items-center text-primary underline decoration-1 [overflow-wrap:anywhere] underline-offset-[0.2em] hover:decoration-2 md:min-h-8 md:pointer-coarse:min-h-11"
+          >
+            {item.label}
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
   return (
     <nav aria-label={label} className={cn("-mt-4 mb-6", className)}>
-      <ul className="flex flex-wrap gap-x-5 gap-y-1 text-small">
-        {items.map((item) => (
-          // A long name (a file's path in a heading) wraps inside the screen rather than run past it.
-          <li key={item.id} className="min-w-0 max-w-full">
-            <a
-              href={`#${item.id}`}
-              onClick={onJump ? (event) => onJump(item.id, event) : undefined}
-              className="inline-flex min-h-11 items-center text-primary underline decoration-1 [overflow-wrap:anywhere] underline-offset-[0.2em] hover:decoration-2 md:min-h-8"
-            >
-              {item.label}
-            </a>
-          </li>
-        ))}
-      </ul>
+      {groups ? (
+        <ul className="grid gap-y-2 sm:gap-y-0.5">
+          {groups.map((group) => (
+            <li key={group.id} className="grid gap-x-6 sm:grid-cols-[10.5rem_minmax(0,1fr)]">
+              <span id={`jump-${group.id}`} className="text-small text-ink-muted sm:flex sm:min-h-8 sm:items-center">
+                {group.label}
+              </span>
+              {links(group.items, `jump-${group.id}`)}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        links(items)
+      )}
     </nav>
   );
 }
