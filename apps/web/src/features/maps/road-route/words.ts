@@ -95,7 +95,7 @@ export function crossingOptions(crossings: readonly RoadCrossingDto[]): Crossing
     options.push({
       value: "eurotunnel",
       label: "Eurotunnel",
-      description: joined ? "Le Shuttle, Folkestone to Calais" : "Not reachable: install the road networks on both sides",
+      description: joined ? "Le Shuttle, Folkestone to Calais" : "Needs roads on both sides",
       disabled: !joined,
     });
   }
@@ -106,18 +106,11 @@ export function crossingOptions(crossings: readonly RoadCrossingDto[]): Crossing
     options.push({
       value: ferry.id,
       label: ferry.name,
-      description: ferry.joined
-        ? [ferry.operator, "car ferry"].filter(Boolean).join(", ")
-        : "Not reachable: install the road networks on both sides",
+      description: ferry.joined ? [ferry.operator, "car ferry"].filter(Boolean).join(", ") : "Needs roads on both sides",
       disabled: !ferry.joined,
     });
   }
   return options;
-}
-
-/** An error the server gave that a road network would put right: it leads to installing one. */
-export function wantsANetwork(message: string): boolean {
-  return /no road network is installed|has no network installed|networks installed do not join|not reach both sides/i.test(message);
 }
 
 /** "Great Britain, France": the countries a route runs through, by name. */

@@ -30,21 +30,22 @@ import { ArrowLeft, CircleAlert, Plus, Route, Save, Scan, Trash2 } from "lucide-
 import { type FormEvent, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
-import { EmptyState, ErrorState, Notice } from "@/components/page";
+import { ErrorState, Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Segmented, Select, Skeleton, Spinner } from "@/components/ui/misc";
-import { useHomeCountry } from "@/features/frequencies/home-country";
 import { errorMessage } from "@/lib/api";
-import { formatDate, plural } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import { useStoredState } from "../hooks";
 import type { LatLon } from "../lib/geo";
+import { countryName } from "../lib/search";
 import type { MapEngine } from "../map/engine";
 import {
   useDeleteRoadRoute,
   usePlanRoadRoute,
   useRenameRoadRoute,
+  useRoadCoverage,
   useRoadCrossings,
   useRoadNetworks,
   useSavedRoadRoute,
@@ -55,29 +56,23 @@ import { DirectionsList, RouteCredit, RouteTotals, RouteWarnings } from "./direc
 import { PlainTextBox } from "./plain-text";
 import { PointField } from "./point-field";
 import { RouteCardPdf } from "./route-card-pdf";
+import { AddRoadsButton, problemCountries, problemOf, RouteNeedsNotice, routeNeeds } from "./route-needs";
 import { DoorToDoorList, StreetLinesList, StreetsCredit, StreetsTotals } from "./street-directions";
 import {
   addStreetsLabel,
+  type CountryRef,
   geometryBounds,
   isRouteMode,
   MODE_LINES,
   modeAvailable,
   ROUTE_MODES,
   type RouteMode,
+  streetsMissFor,
   streetsTitle,
   unavailableLine,
 } from "./street-words";
 import { usePlanStreetsRoute, useStreetsStatus } from "./streets-data";
-import {
-  crossingOptions,
-  legBounds,
-  legLines,
-  type RoutePointChoice,
-  routeBounds,
-  routeTitle,
-  suggestedName,
-  wantsANetwork,
-} from "./words";
+import { crossingOptions, legBounds, legLines, type RoutePointChoice, routeBounds, routeTitle, suggestedName } from "./words";
 
 export type RoadRouteMap = Pick<MapEngine, "getCenter" | "fitBounds">;
 
@@ -128,15 +123,13 @@ export function RoadRoutePanel({
   onShow: (route: ShownRoute | null, selected: number | null) => void;
   /** On a phone, lowers the sheet so the map can be seen. */
   onNeedMap: () => void;
-  /** Opens Map data at adding roads for routes, for a country (two letters) when one is known. */
-  onOpenNetworks: (country?: string | null) => void;
+  /** Opens Map data's add flow with roads for routes for exactly these countries (two letters each); with none, Map data itself. */
+  onOpenNetworks: (countries?: readonly string[]) => void;
   /** Opens Map data at building streets for routes, for a country (two letters) when one is known. */
   onOpenStreets: (country?: string | null) => void;
 }) {
-  const home = useHomeCountry();
   const networks = useRoadNetworks();
   const installed = networks.data?.networks ?? [];
-  const crossings = useRoadCrossings(installed.length > 0);
   const plan = usePlanRoadRoute();
   const streets = useStreetsStatus();
   const streetsPlan = usePlanStreetsRoute();
@@ -165,12 +158,43 @@ export function RoadRoutePanel({
   show.current = onShow;
   useEffect(() => () => show.current(null, null), []);
 
+  // The countries the points need, worked out here as soon as any point is chosen.
+  const chosen = points.filter((point): point is RoutePointChoice => point !== null);
+  const complete = chosen.length === points.length;
+  const coverage = useRoadCoverage(chosen);
+  const needs = routeNeeds(complete ? coverage.data : undefined);
+  // The country a way of travelling is wanted in: where the route starts, else where it ends.
+  const routeCountry = useMemo(() => {
+    const code = coverage.data?.points.find((point) => point.country)?.country ?? null;
+    return code ? { code, name: countryName(code) ?? code } : null;
+  }, [coverage.data]);
+  // A sea crossing is asked about only when the route has one: the straight line crosses water, or the route planned did.
+  const plannedCrossing = (plan.data?.summary.crossings.length ?? 0) > 0;
+  const seaCrossing = (complete && coverage.data?.seaCrossing === true) || plannedCrossing || crossing !== "any";
+  const crossings = useRoadCrossings(installed.length > 0 && seaCrossing);
   const options = useMemo(() => crossingOptions(crossings.data ?? []), [crossings.data]);
-  const chosenCrossing = options.some((option) => option.value === crossing) ? crossing : "any";
+  const chosenCrossing = seaCrossing && options.some((option) => option.value === crossing) ? crossing : "any";
+  // Only a drive waits for roads: door to door goes on streets where there are none.
+  const blocked =
+    mode === "drive"
+      ? needs.blocked
+      : streetsMissFor(streets.data, routeCountry)
+        ? `Add walking and cycling for ${routeCountry?.name} first`
+        : null;
+  const blockedId = useId();
+  // A failed plan's words belong to the points it was for.
+  const pointsKey = chosen.map((point) => `${point.lat},${point.lon}`).join(";");
+  const resetPlan = plan.reset;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once for each change of the points
+  useEffect(() => {
+    if (plan.isError) resetPlan();
+  }, [pointsKey]);
+  const openNetworks = (codes: string[]) => onOpenNetworks(codes);
 
   const submit = (event?: FormEvent) => {
     event?.preventDefault();
     if (points.some((point) => point === null)) return setMissing(true);
+    if (blocked) return;
     setMissing(false);
     setSelected(null);
     if (mode !== "drive") {
@@ -322,7 +346,7 @@ export function RoadRoutePanel({
           <h3 className="font-title text-lead text-ink">Plan a route</h3>
           <p className="mt-1 text-small text-ink-muted">
             {mode === "drive"
-              ? "Planned directions for a drive: the main roads, which way, the junctions and the places on the signs. Not turn by turn, and never live. Worked out on this device from the road networks installed."
+              ? "Planned directions for a drive: the main roads, which way, the junctions and the places on the signs. Not turn by turn, and never live. Worked out on this device from the roads kept for each country."
               : `${MODE_LINES[mode]} Worked out on this device; never live.`}
           </p>
         </div>
@@ -338,32 +362,7 @@ export function RoadRoutePanel({
         ) : null}
 
         {mode !== "drive" && streets.data && !modeAvailable(streets.data, mode) ? (
-          <StreetsUnavailable status={streets.data} home={home} onOpenStreets={onOpenStreets} />
-        ) : mode === "drive" && networks.isPending ? (
-          <div className="grid gap-3" aria-busy>
-            <Skeleton className="h-9" />
-            <Skeleton className="h-9" />
-            <Skeleton className="h-9" />
-          </div>
-        ) : mode === "drive" && networks.isError ? (
-          <ErrorState error={networks.error} onRetry={() => networks.refetch()} />
-        ) : mode === "drive" && installed.length === 0 ? (
-          <EmptyState
-            compact
-            level={3}
-            title="No roads for routes yet"
-            action={
-              <Button variant="primary" onClick={() => onOpenNetworks(home?.code)}>
-                {home ? `Add roads for ${home.name}` : "Add roads for routes"}
-              </Button>
-            }
-          >
-            Routes are planned from the roads kept on this device, one country (or part of one) at a time, read from its country file: a
-            one-off download from Geofabrik, after which planning works offline. Add every country you will drive through.
-            {(networks.data?.building ?? []).length > 0
-              ? ` ${plural((networks.data?.building ?? []).length, "network")} being added now: ${(networks.data?.building ?? []).map((each) => each.name).join(", ")}.`
-              : ""}
-          </EmptyState>
+          <StreetsUnavailable status={streets.data} mode={mode} country={routeCountry} onOpenStreets={onOpenStreets} />
         ) : (
           <form className="grid gap-3" onSubmit={submit} aria-label="Plan a road route">
             <PointField
@@ -403,11 +402,16 @@ export function RoadRoutePanel({
               <p className="text-small text-ink-muted">Ten via points is as many as a route takes.</p>
             )}
 
-            {mode === "drive" || (mode === "drive-door" && installed.length > 0) ? (
-              <Field label="Crossing the Channel" hint="Used only where the route crosses the sea. The time given is time on board.">
+            {(mode === "drive" || (mode === "drive-door" && installed.length > 0)) && seaCrossing ? (
+              <Field
+                label="Sea crossing"
+                hint="This route crosses the sea. Choose how, or let Outpost choose; the time given is time on board."
+              >
                 {(ids) =>
                   crossings.isError ? (
                     <p className="text-small text-danger">{errorMessage(crossings.error)}</p>
+                  ) : crossings.isPending && installed.length > 0 ? (
+                    <Skeleton className="h-10" />
                   ) : (
                     <Select
                       {...ids}
@@ -442,10 +446,31 @@ export function RoadRoutePanel({
               </p>
             ) : null}
 
-            <div className="flex flex-wrap gap-2">
-              <Button type="submit" variant="primary" loading={mode === "drive" ? plan.isPending : streetsPlan.isPending}>
+            {mode === "drive" && !complete && installed.length === 0 ? (
+              <p className="text-small text-ink-muted">
+                Choose where from and where to. Outpost then says which countries' roads it needs.
+              </p>
+            ) : null}
+            {mode === "drive" && complete ? <RouteNeedsNotice coverage={coverage.data} onAdd={openNetworks} /> : null}
+            {mode !== "drive" && streetsMissFor(streets.data, routeCountry) ? (
+              <StreetsUnavailable status={streets.data!} mode={mode} country={routeCountry} onOpenStreets={onOpenStreets} />
+            ) : null}
+
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={blocked !== null}
+                aria-describedby={blocked ? blockedId : undefined}
+                loading={mode === "drive" ? plan.isPending : streetsPlan.isPending}
+              >
                 <Route /> Plan route
               </Button>
+              {blocked ? (
+                <span id={blockedId} className="text-small text-ink-muted">
+                  {blocked}
+                </span>
+              ) : null}
             </div>
 
             {mode !== "drive" ? (
@@ -458,8 +483,8 @@ export function RoadRoutePanel({
                   {errorMessage(streetsPlan.error)}
                   <span className="mt-2 flex flex-wrap gap-2">
                     {/not installed for/i.test(errorMessage(streetsPlan.error)) ? (
-                      <Button size="sm" onClick={() => onOpenStreets()}>
-                        Streets for routes
+                      <Button size="sm" onClick={() => onOpenStreets(routeCountry?.code)}>
+                        {addStreetsLabel(routeCountry)}
                       </Button>
                     ) : null}
                     <Button size="sm" onClick={() => submit()}>
@@ -471,10 +496,10 @@ export function RoadRoutePanel({
             ) : plan.isPending ? (
               <div className="grid gap-2" aria-busy>
                 <p className="flex items-center gap-2.5 text-small text-ink" role="status">
-                  <Spinner label="Planning" /> Planning the route on the road networks installed.
+                  <Spinner label="Planning" /> Planning the route on the roads kept for routes.
                 </p>
                 <p className="text-small text-ink-muted">
-                  The first route in a while takes longest, up to a minute on a small computer, while the networks are read. Nothing is sent
+                  The first route in a while takes longest, up to a minute on a small computer, while the roads are read. Nothing is sent
                   anywhere.
                 </p>
               </div>
@@ -482,11 +507,18 @@ export function RoadRoutePanel({
               <Notice tone="danger" icon={<CircleAlert />} title="The route could not be planned">
                 {errorMessage(plan.error)}
                 <span className="mt-2 flex flex-wrap gap-2">
-                  {wantsANetwork(errorMessage(plan.error)) ? (
-                    <Button size="sm" onClick={() => onOpenNetworks()}>
-                      Add a road network
-                    </Button>
-                  ) : null}
+                  {(() => {
+                    const problem = problemOf(plan.error);
+                    const wanted = problem ? problemCountries(problem) : [];
+                    return wanted.length > 0 ? (
+                      <AddRoadsButton
+                        countries={wanted}
+                        onAdd={openNetworks}
+                        size="sm"
+                        all={problem !== null && problem.missing.length === 0}
+                      />
+                    ) : null;
+                  })()}
                   <Button size="sm" onClick={() => submit()}>
                     Try again
                   </Button>
@@ -515,20 +547,23 @@ export function RoadRoutePanel({
 
 function StreetsUnavailable({
   status,
-  home,
+  mode,
+  country,
   onOpenStreets,
 }: {
   status: StreetsStatusResponse;
-  home: { code: string; name: string } | null | undefined;
+  mode: RouteMode;
+  /** Where the route is, when a point is chosen: never the home country by default. */
+  country: CountryRef | null;
   onOpenStreets: (country?: string | null) => void;
 }) {
-  const { text, action } = unavailableLine(status);
+  const { text, action } = unavailableLine(status, { way: mode, country });
   return (
     <div className="grid justify-items-start gap-2" role="status">
       <p className="text-small text-ink">{text}</p>
       {action === "add" ? (
-        <Button variant="primary" onClick={() => onOpenStreets(home?.code)}>
-          {addStreetsLabel(home)}
+        <Button variant="primary" onClick={() => onOpenStreets(country?.code)}>
+          {addStreetsLabel(country)}
         </Button>
       ) : action === "progress" ? (
         <Button onClick={() => onOpenStreets()}>See its progress</Button>

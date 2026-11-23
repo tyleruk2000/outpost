@@ -3,9 +3,9 @@
  * the owner writes them, the condensed plain text, the panel in each of its states, and
  * the printed route card.
  */
-import type { RoadCrossingDto, RoadNetworksResponse, RoadRouteResult } from "@outpost/shared";
+import type { RoadCoverageCountry, RoadCoverageResponse, RoadCrossingDto, RoadNetworksResponse, RoadRouteResult } from "@outpost/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { MemoryRouter } from "react-router";
@@ -18,8 +18,9 @@ import { RoadNetworksSection } from "./road-networks";
 import { RoadRoutePanel } from "./road-route-panel";
 import { routeCardDocument } from "./route-card";
 import { routeOverlay } from "./route-map";
+import { addRoadsLink, missingTitle, namesText, progressText } from "./route-needs";
 import { CHANNEL_TRIP } from "./test-route";
-import { crossingOptions, endLine, legLines, startLine, suggestedName, wantsANetwork } from "./words";
+import { crossingOptions, endLine, legLines, startLine, suggestedName } from "./words";
 
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }) }));
 
@@ -95,9 +96,30 @@ describe("the words round the lines", () => {
     ]);
   });
 
-  it("knows an error that a road network would put right", () => {
-    expect(wantsANetwork("No road network is installed for Switzerland, where “Zürich” is: install it from Road networks.")).toBe(true);
-    expect(wantsANetwork("“Chamonix” is more than 40 km from a main road in the networks installed (France).")).toBe(false);
+  it("names the countries a route needs together, and says where one on its way stands in Map data's words", () => {
+    expect(missingTitle([{ name: "France", state: "missing" }])).toBe("France has no roads yet");
+    expect(
+      missingTitle([
+        { name: "France", state: "missing" },
+        { name: "Switzerland", state: "missing" },
+      ]),
+    ).toBe("France and Switzerland have no roads yet");
+    expect(missingTitle([{ name: "France", state: "part" }])).toBe("Only part of France has roads");
+    expect(namesText(["France", "Italy", "Switzerland"])).toBe("France, Italy and Switzerland");
+    expect(addRoadsLink(["FR", "CH"])).toBe("/maps/data?add=1&kinds=roads&countries=FR,CH");
+    expect(addRoadsLink([])).toBe("/maps/data");
+    const on = { jobId: "d1", name: "France", state: "running", message: null };
+    expect(progressText({ ...on, phase: "downloading", receivedBytes: 1.2e9, totalBytes: 4.9e9, etaSeconds: 1080 })).toBe(
+      "Downloading 1.20 of 4.90 GB, 18 minutes left",
+    );
+    expect(progressText({ ...on, phase: "downloading", receivedBytes: 412e6, totalBytes: 4.9e9, etaSeconds: null })).toBe(
+      "Downloading 412 MB of 4.90 GB",
+    );
+    expect(progressText({ ...on, phase: "waiting" })).toBe("Waiting");
+    expect(progressText({ ...on, phase: "building", message: null })).toBe("Building");
+    expect(progressText({ ...on, phase: "failed", error: "The connection dropped" })).toBe(
+      "Failed: The connection dropped. Add it again to try once more",
+    );
   });
 
   it("cuts the drawn line into each leg's part, the crossing its own", () => {
@@ -197,7 +219,28 @@ interface Sent {
 }
 let sent: Sent[] = [];
 
-function serve(handlers: { networks?: RoadNetworksResponse; route?: (body: unknown) => unknown }) {
+const country = (code: string, name: string, state: RoadCoverageCountry["state"], more: Partial<RoadCoverageCountry> = {}) => ({
+  code,
+  name,
+  state,
+  regionId: null,
+  parts: [],
+  dataDate: null,
+  progress: null,
+  ...more,
+});
+/** Leatherhead to Chamonix with both countries' roads kept: over the Channel. */
+const BOTH_READY: RoadCoverageResponse = {
+  points: [{ country: "GB" }, { country: "FR" }],
+  countries: [country("GB", "United Kingdom", "ready"), country("FR", "France", "ready")],
+  seaCrossing: true,
+};
+
+function serve(handlers: {
+  networks?: RoadNetworksResponse;
+  route?: (body: unknown) => unknown;
+  coverage?: (body: { points: unknown[] }) => RoadCoverageResponse;
+}) {
   sent = [];
   vi.stubGlobal(
     "fetch",
@@ -210,6 +253,7 @@ function serve(handlers: { networks?: RoadNetworksResponse; route?: (body: unkno
       try {
         if (path === "/api/roads/networks") return json(handlers.networks ?? { networks: [network], building: [], credit });
         if (path === "/api/roads/crossings") return json({ crossings: [] });
+        if (path === "/api/roads/coverage") return json(handlers.coverage?.(body as { points: unknown[] }) ?? BOTH_READY);
         if (path === "/api/roads/routes" && init?.method === "POST")
           return json({ id: "r1", name: (body as { name: string }).name, fromTo: "Leatherhead to Chamonix", route: CHANNEL_TRIP });
         if (path === "/api/roads/routes") return json({ routes: [] });
@@ -223,8 +267,11 @@ function serve(handlers: { networks?: RoadNetworksResponse; route?: (body: unkno
   );
 }
 
-const fail = (status: number, message: string) =>
-  new Response(JSON.stringify({ error: { code: "bad_request", message } }), { status, headers: { "content-type": "application/json" } });
+const fail = (status: number, message: string, details?: unknown) =>
+  new Response(JSON.stringify({ error: { code: "bad_request", message, details } }), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
 
 const LEATHERHEAD = { id: "m1", name: "Leatherhead", lat: 51.296, lon: -0.33 };
 const CHAMONIX = { id: "m2", name: "Chamonix", lat: 45.9237, lon: 6.8694 };
@@ -260,14 +307,134 @@ async function choosePlace(label: string, name: string) {
 }
 
 describe("the road route panel", () => {
-  it("with no networks installed, says so and leads to installing one", async () => {
+  it("with no roads kept, still shows the form and says what happens once the ends are chosen", async () => {
     serve({ networks: { networks: [], building: [], credit } });
+    panel();
+    expect(
+      await screen.findByText("Choose where from and where to. Outpost then says which countries' roads it needs."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Plan route" })).toBeEnabled();
+    expect(screen.getByLabelText("From")).toBeInTheDocument();
+    // No country is offered before the route says which: never the home country.
+    expect(screen.queryByRole("button", { name: /^Add roads for/ })).toBeNull();
+  });
+
+  it("names the country a route has no roads for before Plan route, and adds exactly that one", async () => {
+    serve({
+      networks: { networks: [network], building: [], credit },
+      coverage: () => ({
+        points: [{ country: "GB" }, { country: "FR" }],
+        countries: [country("GB", "United Kingdom", "ready"), country("FR", "France", "missing")],
+        seaCrossing: true,
+      }),
+    });
     const { onOpenNetworks } = panel();
-    expect(await screen.findByRole("heading", { name: "No roads for routes yet" })).toBeInTheDocument();
-    expect(screen.getByText(/a one-off download from Geofabrik, after which planning works offline/)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: /^Add roads for/ }));
-    expect(onOpenNetworks).toHaveBeenCalled();
-    expect(screen.queryByRole("button", { name: "Plan route" })).toBeNull();
+    await screen.findByRole("button", { name: "Plan route" });
+    await choosePlace("From", "Leatherhead");
+    await choosePlace("To", "Chamonix");
+    expect(await screen.findByText("France has no roads yet")).toBeInTheDocument();
+    expect(screen.getByText("This route runs through France. United Kingdom is ready.")).toBeInTheDocument();
+    expect(screen.getByText("Asks the size first. Needs a connection once.")).toBeInTheDocument();
+    const plan = screen.getByRole("button", { name: "Plan route" });
+    expect(plan).toBeDisabled();
+    expect(plan).toHaveAccessibleDescription("Add France first");
+    await userEvent.click(screen.getByRole("button", { name: "Add roads for France" }));
+    expect(onOpenNetworks).toHaveBeenCalledWith(["FR"]);
+    expect(sent.filter((each) => each.path === "/api/roads/coverage").at(-1)?.body).toEqual({
+      points: [
+        { lat: 51.296, lon: -0.33 },
+        { lat: 45.9237, lon: 6.8694 },
+      ],
+    });
+    expect(sent.some((each) => each.path === "/api/roads/route")).toBe(false);
+  });
+
+  it("names several countries together, with one press for all of them", async () => {
+    serve({
+      networks: { networks: [], building: [], credit },
+      coverage: () => ({
+        points: [{ country: "FR" }, { country: "CH" }],
+        countries: [country("FR", "France", "missing"), country("CH", "Switzerland", "missing")],
+        seaCrossing: false,
+      }),
+    });
+    const { onOpenNetworks } = panel();
+    await screen.findByRole("button", { name: "Plan route" });
+    await choosePlace("From", "Leatherhead");
+    await choosePlace("To", "Chamonix");
+    expect(await screen.findByText("France and Switzerland have no roads yet")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Plan route" })).toHaveAccessibleDescription("Add France and Switzerland first");
+    await userEvent.click(screen.getByRole("button", { name: "Add roads for France and Switzerland" }));
+    expect(onOpenNetworks).toHaveBeenCalledWith(["FR", "CH"]);
+  });
+
+  it("shows a country's roads on their way with real progress, once, then says it is ready and lets the route be planned", async () => {
+    let state: "downloading" | "ready" = "downloading";
+    const downloading = {
+      jobId: "d1",
+      name: "France",
+      state: "running",
+      message: null,
+      country: "FR",
+      regionId: "france",
+      phase: "downloading" as const,
+      receivedBytes: 1.2e9,
+      totalBytes: 4.9e9,
+      etaSeconds: 1080,
+    };
+    serve({
+      networks: { networks: [network], building: [downloading, downloading], credit },
+      coverage: () => ({
+        points: [{ country: "GB" }, { country: "FR" }],
+        countries: [
+          country("GB", "United Kingdom", "ready"),
+          state === "ready" ? country("FR", "France", "ready") : country("FR", "France", "downloading", { progress: downloading }),
+        ],
+        seaCrossing: true,
+      }),
+    });
+    panel();
+    await screen.findByRole("button", { name: "Plan route" });
+    await choosePlace("From", "Leatherhead");
+    await choosePlace("To", "Chamonix");
+    expect(await screen.findByText("Downloading 1.20 of 4.90 GB, 18 minutes left.", { exact: false })).toBeInTheDocument();
+    // One download, said once.
+    expect(screen.getAllByText(/Downloading 1\.20 of 4\.90 GB/)).toHaveLength(1);
+    expect(screen.getByText("You can leave this screen.")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "France: roads for routes on their way" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Add roads for/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Plan route" })).toHaveAccessibleDescription("Wait for France");
+    state = "ready";
+    expect(await screen.findByText("France is ready.", {}, { timeout: 4000 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Plan route" })).toBeEnabled();
+  });
+
+  it("asks about a sea crossing only when the route crosses the sea", async () => {
+    let sea = false;
+    serve({
+      coverage: () => ({
+        points: [{ country: "FR" }, { country: "FR" }],
+        countries: [country("FR", "France", "ready")],
+        seaCrossing: sea,
+      }),
+    });
+    const view = panel();
+    await screen.findByRole("button", { name: "Plan route" });
+    expect(screen.queryByText("Crossing the Channel")).toBeNull();
+    await choosePlace("From", "Leatherhead");
+    await choosePlace("To", "Chamonix");
+    await waitFor(() => expect(sent.some((each) => each.path === "/api/roads/coverage")).toBe(true));
+    expect(screen.queryByLabelText("Sea crossing")).toBeNull();
+    // Over water: the choice is there.
+    sea = true;
+    cleanup();
+    void view;
+    panel();
+    await screen.findByRole("button", { name: "Plan route" });
+    await choosePlace("From", "Leatherhead");
+    await choosePlace("To", "Chamonix");
+    expect(await screen.findByText("Sea crossing")).toBeInTheDocument();
+    expect(screen.queryByText("Crossing the Channel")).toBeNull();
   });
 
   it("asks for a start and an end before planning", async () => {
@@ -300,7 +467,7 @@ describe("the road route panel", () => {
     await userEvent.click(screen.getByRole("button", { name: "Via 1: the middle of the map" }));
     await choosePlace("To", "Chamonix");
     await userEvent.click(screen.getByRole("button", { name: "Plan route" }));
-    expect(await screen.findByText("Planning the route on the road networks installed.")).toBeInTheDocument();
+    expect(await screen.findByText("Planning the route on the roads kept for routes.")).toBeInTheDocument();
     expect(sent.find((each) => each.path === "/api/roads/route")?.body).toEqual({
       points: [
         { lat: 51.296, lon: -0.33, name: "Leatherhead" },
@@ -329,10 +496,14 @@ describe("the road route panel", () => {
     );
   });
 
-  it("says what went wrong when a route cannot be planned, and leads to a missing network", async () => {
+  it("says what went wrong when a route cannot be planned, and adds the countries the server names", async () => {
     serve({
       route: () => {
-        throw fail(400, "No road network is installed for Switzerland, where “Zürich” is: install it from Road networks.");
+        throw fail(400, "“Chamonix” is more than 40 km from any main road kept for France: only Nord-Pas-de-Calais is kept.", {
+          missing: [],
+          far: [{ index: 1, name: "Chamonix", country: { code: "FR", name: "France", regionId: "france" }, distanceM: 40_000 }],
+          reason: "point",
+        });
       },
     });
     const { onOpenNetworks } = panel();
@@ -342,9 +513,9 @@ describe("the road route panel", () => {
     await userEvent.click(screen.getByRole("button", { name: "Plan route" }));
     const notice = await screen.findByRole("alert");
     expect(notice).toHaveTextContent("The route could not be planned");
-    expect(notice).toHaveTextContent("No road network is installed for Switzerland");
-    await userEvent.click(within(notice).getByRole("button", { name: "Add a road network" }));
-    expect(onOpenNetworks).toHaveBeenCalled();
+    expect(notice).toHaveTextContent("more than 40 km from any main road kept for France");
+    await userEvent.click(within(notice).getByRole("button", { name: "Add roads for all of France" }));
+    expect(onOpenNetworks).toHaveBeenCalledWith(["FR"]);
     expect(within(notice).getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
 });

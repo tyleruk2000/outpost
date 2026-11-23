@@ -8,6 +8,8 @@ import type {
   RoadDataCredit,
   RoadDistanceUnit,
   RoadLeg,
+  RoadMissingCountry,
+  RoadRouteProblem,
   RoadRouteRequest,
   RoadRouteResult,
   RoadSnappedPoint,
@@ -18,8 +20,9 @@ import { COUNTRIES, countryOf } from "../layers/countries.ts";
 import { OSM_CREDIT } from "../maps/route-finder/sources.ts";
 import { simplifyIndices } from "./build.ts";
 import { countryOfPoint } from "./countries.ts";
+import { countriesInOrder, missingCountry, samplesAlong } from "./coverage.ts";
 import { buildDirections, type CountryLookup } from "./directions.ts";
-import { edgeShape, type Graph, type GraphNetwork, meters } from "./graph.ts";
+import { edgeShape, type Graph, type GraphNetwork } from "./graph.ts";
 import { chooseJoins, crossingFilter, quickestPath, SNAP_WITHIN_M, type SnapCandidate, type Step, snapCandidates } from "./route.ts";
 
 /** A join further than this from the point asked is said in the warnings. */
@@ -46,19 +49,6 @@ function pointWords(point: PlanPoint, index: number, count: number): string {
   return `via point ${index}`;
 }
 
-/** Countries a straight line between two points passes over that have no network installed. */
-function missingBetween(graph: Graph, a: PlanPoint, b: PlanPoint): string[] {
-  const installed = new Set(graph.networks.map((n) => n.country).filter(Boolean));
-  const out: string[] = [];
-  const steps = Math.max(2, Math.ceil(meters(a.lat, a.lon, b.lat, b.lon) / 20_000));
-  for (let i = 0; i <= steps; i += 1) {
-    const t = i / steps;
-    const code = countryLookup(a.lat + (b.lat - a.lat) * t, a.lon + (b.lon - a.lon) * t, null);
-    if (code && !installed.has(code) && !out.includes(code)) out.push(code);
-  }
-  return out;
-}
-
 const listWords = (words: string[]) => (words.length <= 1 ? (words[0] ?? "") : `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`);
 
 export function roadCredit(networks: GraphNetwork[]): RoadDataCredit {
@@ -76,39 +66,76 @@ export function roadCredit(networks: GraphNetwork[]): RoadDataCredit {
 export function planRoute(
   graph: Graph,
   points: PlanPoint[],
-  options: { crossing: string; units: RoadDistanceUnit; request: RoadRouteRequest; now?: number },
+  options: {
+    crossing: string;
+    units: RoadDistanceUnit;
+    request: RoadRouteRequest;
+    now?: number;
+    /** Geofabrik's id for a whole country, where its list is kept: given with a missing country. */
+    regionOf?: (code: string) => string | null;
+  },
 ): RoadRouteResult {
   const { crossing, units } = options;
+  const regionOf = options.regionOf ?? (() => null);
   const warnings: string[] = [];
-  if (graph.nodeCount === 0)
-    throw new AppError("bad_request", "No road network is installed. Install the country or region you are driving in from Road networks.");
+  const installed = new Set(graph.networks.map((n) => n.country).filter((c): c is string => Boolean(c)));
+  // The countries the route needs and has no roads for: the points' own and those the straight lines between them cross.
+  const missingAlong = (): RoadMissingCountry[] =>
+    countriesInOrder(samplesAlong(points).samples)
+      .filter((code) => !installed.has(code))
+      .map((code) => missingCountry(code, regionOf));
+  const refuse = (message: string, problem: RoadRouteProblem): never => {
+    throw new AppError("bad_request", message, problem as unknown as Record<string, unknown>);
+  };
+  const addWords = (missing: RoadMissingCountry[]) => {
+    const names = listWords(missing.map((m) => m.name));
+    return `${names} ${missing.length === 1 ? "has" : "have"} no roads yet. Add roads for ${names}, then plan again.`;
+  };
+
+  if (graph.nodeCount === 0) {
+    const missing = missingAlong();
+    refuse(
+      missing.length > 0
+        ? addWords(missing)
+        : "No roads for routes are kept on this device yet. Add roads for the countries the route runs through.",
+      { missing, far: [], reason: "empty" },
+    );
+  }
 
   // Join each point.
   const candidates: SnapCandidate[][] = points.map((point) => snapCandidates(graph, point.lat, point.lon));
   const lost = points.map((point, index) => ({ point, index })).filter(({ index }) => candidates[index]!.length === 0);
   if (lost.length > 0) {
-    const installed = new Set(graph.networks.map((n) => n.country));
-    const sentences = lost.map(({ point, index }) => {
+    const missing = missingAlong();
+    const far: RoadRouteProblem["far"] = [];
+    const sentences: string[] = [];
+    for (const { point, index } of lost) {
       const code = countryLookup(point.lat, point.lon, null);
+      if (code && !installed.has(code)) continue;
       const where = pointWords(point, index, points.length);
-      if (code && !installed.has(code))
-        return `No road network is installed for ${countryName(code)}, where ${where} is: install it from Road networks.`;
-      return `${where.charAt(0).toUpperCase()}${where.slice(1)} is more than ${roadDistanceText(SNAP_WITHIN_M, units)} from a main road in the networks installed${code ? ` (${countryName(code)})` : ""}.`;
-    });
-    throw new AppError("bad_request", sentences.join(" "));
+      const parts = graph.networks.filter((n) => n.country === code).map((n) => n.name);
+      far.push({ index, name: point.name, country: code ? missingCountry(code, regionOf) : null, distanceM: SNAP_WITHIN_M });
+      const kept = parts.length > 0 ? `: only ${listWords(parts)} ${parts.length === 1 ? "is" : "are"} kept` : "";
+      const next = code
+        ? ` Add roads for all of ${countryName(code)}, or choose a point nearer a main road.`
+        : " Choose a point nearer a main road.";
+      sentences.push(
+        `${where.charAt(0).toUpperCase()}${where.slice(1)} is more than ${roadDistanceText(SNAP_WITHIN_M, units)} from any main road kept${code ? ` for ${countryName(code)}` : ""}${kept}.${next}`,
+      );
+    }
+    refuse([...(missing.length > 0 ? [addWords(missing)] : []), ...sentences].join(" "), { missing, far, reason: "point" });
   }
-  const joins = chooseJoins(graph, candidates);
-  if (!joins) {
-    const missing = new Set<string>();
-    for (let i = 0; i + 1 < points.length; i += 1) for (const code of missingBetween(graph, points[i]!, points[i + 1]!)) missing.add(code);
-    const names = [...missing].map((code) => countryName(code)!);
-    throw new AppError(
-      "bad_request",
-      names.length > 0
-        ? `The road networks installed do not join these points. The way between runs through ${listWords(names)}, which ${names.length === 1 ? "has" : "have"} no network installed.`
-        : "The road networks installed do not join these points: a country or region between them is missing, or a sea crossing reaches only one side.",
+  const found = chooseJoins(graph, candidates);
+  if (!found) {
+    const missing = missingAlong();
+    return refuse(
+      missing.length > 0
+        ? `The roads kept do not join these points. ${addWords(missing)}`
+        : "The roads kept do not join these points: a country or region between them is missing, or a sea crossing reaches only one side.",
+      { missing, far: [], reason: "between" },
     );
   }
+  const joins = found;
 
   // The quickest path from each point to the next.
   const allowed = crossingFilter(graph, crossing);
@@ -204,9 +231,7 @@ export function planRoute(
   const now = options.now ?? Date.now();
   for (const network of graph.networks) {
     if (network.dataDate && now - Date.parse(network.dataDate) > OLD_DATA_MS)
-      warnings.push(
-        `The road data for ${network.name} is from ${network.dataDate}: roads may have changed since. Update it from Road networks.`,
-      );
+      warnings.push(`The road data for ${network.name} is from ${network.dataDate}: roads may have changed since. Update it in Map data.`);
   }
 
   const countries: string[] = [];

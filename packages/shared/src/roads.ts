@@ -38,9 +38,99 @@ export interface RoadNetworkDto {
 
 export interface RoadNetworksResponse {
   networks: RoadNetworkDto[];
-  /** Networks being built now (jobs), so the screen can show them before they are listed. */
-  building: Array<{ jobId: string; name: string; state: string; message: string | null }>;
+  /**
+   * Networks being built now (jobs), so the screen can show them before they are listed.
+   * One entry a region: a download and the read after it, or a failed read and a new try,
+   * are one entry.
+   */
+  building: RoadNetworkBuilding[];
   credit: RoadDataCredit;
+}
+
+/** "waiting", "downloading", "building" or "failed": where a network on its way stands, in Map data's words. */
+export type RoadBuildingPhase = "waiting" | "downloading" | "building" | "failed";
+
+/** A network on its way: downloading its country file, waiting, or being built. */
+export interface RoadNetworkBuilding {
+  jobId: string;
+  name: string;
+  state: string;
+  message: string | null;
+  /** ISO 3166-1 alpha-2, upper case, where known. */
+  country?: string | null;
+  regionId?: string | null;
+  phase?: RoadBuildingPhase;
+  /** While downloading: bytes so far, of how many, and the time left in seconds, where known. */
+  receivedBytes?: number | null;
+  totalBytes?: number | null;
+  etaSeconds?: number | null;
+  /** For a failed one: what went wrong, in plain words. */
+  error?: string | null;
+}
+
+/** A country a route needs and has no roads for (in a failed plan's error `details.missing`). */
+export interface RoadMissingCountry {
+  /** ISO 3166-1 alpha-2, upper case. */
+  code: string;
+  /** "France". */
+  name: string;
+  /** Geofabrik's id for the whole country, where its list has been read on this device; else null. */
+  regionId: string | null;
+}
+
+/**
+ * Why a route could not be planned, in a failed plan's error `details` (the message says the
+ * same in words). `missing`: countries with no roads kept. `far`: points in a country that
+ * has roads, but further than `distanceM` from any main road kept (only part of it is kept).
+ */
+export interface RoadRouteProblem {
+  missing: RoadMissingCountry[];
+  far: Array<{ index: number; name: string | null; country: RoadMissingCountry | null; distanceM: number }>;
+  /** No roads kept at all; a point no road kept reaches; or roads kept that do not join the points. */
+  reason?: "empty" | "point" | "between";
+}
+
+// ── Coverage: which countries a route needs ─────────────────────────────────
+
+/**
+ * POST /api/roads/coverage: for the points of a route (or one point), the country of each
+ * and the countries the straight lines between them pass over, with whether each has roads
+ * kept. Worked out on this device from the country outlines it holds and the networks
+ * installed; nothing is asked of anyone, and no network is read into memory.
+ */
+export interface RoadCoverageRequest {
+  /** One to twelve. */
+  points: Array<{ lat: number; lon: number }>;
+}
+
+/**
+ * - ready: roads are kept for it
+ * - part: roads are kept for part of it, and the route goes outside that part
+ * - downloading: on its way (waiting, downloading or being built: see `progress.phase`)
+ * - missing: none kept (after a failed try, `progress.phase` is "failed")
+ */
+export type RoadCoverageState = "ready" | "part" | "downloading" | "missing";
+
+export interface RoadCoverageCountry {
+  code: string;
+  name: string;
+  state: RoadCoverageState;
+  regionId: string | null;
+  /** The parts kept, by name, for "part" ("Nord-Pas-de-Calais"); empty otherwise. */
+  parts: string[];
+  /** The oldest kept data's day for a country with roads ("2026-11-20"), or null. */
+  dataDate: string | null;
+  /** While on its way, or after a failed try. */
+  progress: RoadNetworkBuilding | null;
+}
+
+export interface RoadCoverageResponse {
+  /** Each point's country (null at sea or where none is known), in the order given. */
+  points: Array<{ country: string | null }>;
+  /** Every country the route touches, in the order it reaches them, each once. */
+  countries: RoadCoverageCountry[];
+  /** True when a straight line between two points crosses open sea: a crossing may be needed. */
+  seaCrossing: boolean;
 }
 
 /** POST /api/roads/networks: build a network from Geofabrik (`regionId`) or from a file already in storage. */

@@ -475,7 +475,16 @@ export function buildDirections(input: DirectionsInput): RoadLeg[] {
     const split = legs.flatMap((leg, index) =>
       leg.kind === "road" ? splitBySigns(leg, [...crossingHint(graph, legs[index + 1]), ...(target ? [target] : [])]) : [leg],
     );
-    drafts.push(...fold(split));
+    drafts.push(...placesFromNext(graph, fold(split)));
+  });
+  // A via point with no name of its own takes the place the road before it was signed for.
+  drafts.forEach((draft, index) => {
+    if (draft.kind !== "via" || draft.via?.name) return;
+    const before = drafts
+      .slice(0, index)
+      .reverse()
+      .find((d) => d.kind === "road" && d.towards);
+    if (before?.towards && draft.via) draft.via = { ...draft.via, name: before.towards };
   });
   // Too many lines still: the shortest road lines join the one before.
   let roads = drafts.filter((d) => d.kind === "road");
@@ -561,9 +570,52 @@ function fold(legs: Draft[]): Draft[] {
       merge(prev, leg);
       continue;
     }
+    // The same road on, signed for a place its earlier signs already gave ("Birmingham;Preston",
+    // then "Preston"): one line, for that place, its European routes together ("M6 (E05 - E22)").
+    // A place the signs had not given before ("A26 (E17) - Reims (A4)" then "A26 (E17) - Troyes")
+    // is a line of its own, as the owner writes it.
+    if (
+      prev &&
+      prev.kind === "road" &&
+      leg.kind === "road" &&
+      prev.road &&
+      prev.road === leg.road &&
+      leg.towards &&
+      signedPlaces(prev).some((place) => samePlace(place, leg.towards))
+    ) {
+      merge(prev, leg);
+      prev.towards = leg.towards;
+      prev.towardsRef = leg.towardsRef;
+      continue;
+    }
     kept.push(leg);
   }
   return kept;
+}
+
+/** Every place a leg's signs name, in the direction driven. */
+const signedPlaces = (leg: Draft) => [...leg.approach, ...leg.steps].flatMap((s) => s.sign?.places ?? []);
+
+/** Whether a leg is mostly on motorways: those read by their number alone ("M25"), as the owner writes them. */
+const onMotorway = (graph: Graph, leg: Draft) => {
+  let motorway = 0;
+  for (const s of leg.steps) if (s.kind === "road" && graph.cls[s.edge] === CLASS.motorway) motorway += s.lengthM;
+  return motorway >= sumLength(leg.steps) / 2;
+};
+
+/**
+ * A road that is not a motorway and has no sign of its own ("A5103", "A501") takes the place
+ * the next road is signed for, or the name of the junction it is left at; with neither it
+ * stays as its number alone.
+ */
+function placesFromNext(graph: Graph, legs: Draft[]): Draft[] {
+  legs.forEach((leg, index) => {
+    if (leg.kind !== "road" || leg.towards || !leg.road || onMotorway(graph, leg)) return;
+    const next = legs[index + 1];
+    const place = (next?.kind === "road" ? next.towards : null) ?? leg.leaveAt?.name ?? null;
+    if (place && !samePlace(place, leg.road)) leg.towards = place;
+  });
+  return legs;
 }
 
 function crossingOf(graph: Graph, draft: Draft): RoadCrossingOnRoute {

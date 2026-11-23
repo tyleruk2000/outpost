@@ -49,6 +49,9 @@ const installSchema = z.union([
 const countriesSchema = z.object({
   boxes: z.array(z.tuple([lon, lat, lon, lat])).max(200),
 });
+const coverageSchema = z.object({
+  points: z.array(z.object({ lat, lon })).min(1, "Give at least one point.").max(12, "Twelve points at most."),
+});
 const idParams = z.object({ id: z.string().min(1).max(40) });
 const routeName = z.string().trim().min(1, "Give the route a name.").max(160);
 /** A saved route is kept as it was planned: checked for its shape, not planned again. */
@@ -103,6 +106,8 @@ export async function registerRoads(app: FastifyInstance, ctx: AppContext): Prom
 
   /** The countries the given boxes (the installed map regions') cover: offered first when a network is added. */
   app.post("/api/roads/countries", async (request) => ({ countries: countriesInBoxes(countriesSchema.parse(request.body).boxes) }));
+  /** Which countries a route's points and the lines between them touch, and whether each has roads kept: local only. */
+  app.post("/api/roads/coverage", async (request) => service.coverage(coverageSchema.parse(request.body).points));
   app.get("/api/roads/crossings", async () => ({ crossings: await service.crossings() }));
   app.post("/api/roads/route", async (request) => service.plan(routeRequestSchema.parse(request.body)));
 

@@ -62,7 +62,9 @@ export async function doorToDoor(input: {
     try {
       road = await input.plan();
     } catch (error) {
-      if (error instanceof AppError && /No road network is installed/.test(error.message)) noNetwork = true;
+      // No roads kept at all, or none where a point is: the whole drive goes on streets.
+      const reason = error instanceof AppError ? (error.details as { reason?: string } | undefined)?.reason : undefined;
+      if (reason === "empty" || reason === "point") noNetwork = true;
       else throw error;
     }
   }
@@ -71,7 +73,7 @@ export async function doorToDoor(input: {
     const reply = await client.route({ points, costing: "auto", ...(input.signal ? { signal: input.signal } : {}) });
     if (noNetwork)
       warnings.push(
-        "No road network is installed, so the whole drive is on streets, turn by turn. Install road networks for the owner's main-road lines.",
+        "No roads for routes are kept where this drive goes, so the whole drive is on streets, turn by turn. Add roads for routes for the main-road lines.",
       );
     return {
       spine: "streets",

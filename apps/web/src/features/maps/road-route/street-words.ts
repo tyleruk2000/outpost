@@ -46,18 +46,51 @@ export function modeAvailable(status: StreetsStatusResponse | undefined, mode: R
   return mode === "drive-door" ? status.modes.driveDoor : mode === "walk" ? status.modes.walk : status.modes.cycle;
 }
 
-/** Why streets cannot answer now, in one calm line, and what would put it right. */
-export function unavailableLine(status: StreetsStatusResponse): { text: string; action: "add" | "progress" | null } {
+/** A country by its two letters and name: where a route or a point is. */
+export interface CountryRef {
+  code: string;
+  name: string;
+}
+
+const WAY_WORDS: Record<RouteMode | "reach-walk" | "reach-cycle", string> = {
+  drive: "Driving routes",
+  "drive-door": "Door-to-door routes",
+  walk: "Walking routes",
+  cycle: "Cycling routes",
+  "reach-walk": "Walking areas",
+  "reach-cycle": "Cycling areas",
+};
+
+/** Whether streets are built but not for this country (where the streets say which countries they hold). */
+export function streetsMissFor(status: StreetsStatusResponse | undefined, country: CountryRef | null | undefined): boolean {
+  const held = status?.tileset?.countries ?? [];
+  return Boolean(status?.state === "ready" && country && held.length > 0 && !held.includes(country.code));
+}
+
+/**
+ * Why streets cannot answer now, in one calm line, and what would put it right: naming the
+ * country the route or the point is in, where it is known ("Walking routes in France need
+ * street detail, built once on this device").
+ */
+export function unavailableLine(
+  status: StreetsStatusResponse,
+  options: { way?: keyof typeof WAY_WORDS; country?: CountryRef | null } = {},
+): { text: string; action: "add" | "progress" | null } {
   const build = status.build;
   if (build && build.state !== "failed") {
     const step = build.step ? `, step ${build.step.at} of ${build.step.of}` : "";
-    return { text: `Streets are being built on this device${step}. This way of travelling works once they are ready.`, action: "progress" };
-  }
-  if (status.state === "no-streets")
     return {
-      text: "This needs streets for routes, built once on this device from a kept country file.",
+      text: `Street detail is being built on this device${step}. This way of travelling works once it is ready.`,
+      action: "progress",
+    };
+  }
+  if (status.state === "no-streets" || streetsMissFor(status, options.country)) {
+    const way = WAY_WORDS[options.way ?? "walk"];
+    return {
+      text: `${options.way ? way : "This"} ${options.country ? `in ${options.country.name} ` : ""}${options.way ? "need" : "needs"} street detail, built once on this device.`,
       action: "add",
     };
+  }
   if (status.state === "not-answering")
     return { text: status.message ?? "The streets service is not answering just now. Drives still plan on the main roads.", action: null };
   return { text: status.message ?? "Streets for routes cannot be used just now.", action: null };
@@ -185,9 +218,9 @@ export function geometryBounds(result: StreetsRouteResult): [number, number, num
   return [west, south, east, north];
 }
 
-/** "Add streets for United Kingdom", from the home country where known. */
-export const addStreetsLabel = (home: { name: string } | null | undefined) =>
-  home ? `Add streets for ${home.name}` : "Add streets for routes";
+/** "Add walking and cycling for France": for the country the route or the point is in, where known. Never the home country by default. */
+export const addStreetsLabel = (country: { name: string } | null | undefined) =>
+  country ? `Add walking and cycling for ${country.name}` : "Add walking and cycling";
 
 /** Words for a time on the map: "15 min", "1 hour". */
 export const reachTimeText = (minutes: number) => (minutes >= 60 ? `${minutes / 60} hour${minutes > 60 ? "s" : ""}` : `${minutes} min`);
