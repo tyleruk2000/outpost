@@ -259,6 +259,16 @@ describe("a power plan", () => {
     expect(await screen.findByRole("img", { name: /^Battery bank, 2 in parallel: 12.8 V, 200 Ah, 2.56 kWh\./ })).toBeInTheDocument();
   });
 
+  it("starts the battery bank from a power station in the library", async () => {
+    const server = show("/tools/power/plans/p1");
+    fireEvent.click(await screen.findByRole("combobox", { name: "Start from" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Anker SOLIX C2000 Gen 2 power station, 2,048 Wh" }));
+    expect(await screen.findByRole("img", { name: /^Battery bank, 1 battery: 51.2 V, 40 Ah, 2.05 kWh\./ })).toBeInTheDocument();
+    await waitFor(() => expect(server.put.at(-1)?.battery).toMatchObject({ chemistry: "lifepo4", volts: 51.2, ampHours: 40 }), {
+      timeout: 3000,
+    });
+  });
+
   it("shows an error with a way back when the plan is not there", async () => {
     show("/tools/power/plans/missing");
     expect(await screen.findByText("Not here.")).toBeInTheDocument();

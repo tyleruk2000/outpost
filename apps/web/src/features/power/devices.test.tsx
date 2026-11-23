@@ -111,6 +111,27 @@ describe("the battery runtime calculator, from devices", () => {
     expect(within(runtime()).queryByText("Runs what runs")).not.toBeInTheDocument();
   });
 
+  it("finds devices by their common names: “G90”, “vape”, “18650”, “power station”", async () => {
+    show("/tools/power");
+    fireEvent.click(await screen.findByText("Battery runtime"));
+    fireEvent.click(screen.getByRole("button", { name: "Add a device" }));
+    const dialog = await screen.findByRole("dialog", { name: "Add a device" });
+    const find = within(dialog).getByLabelText("Find a device");
+    const names = () =>
+      within(dialog)
+        .queryAllByRole("button")
+        .map((button) => button.textContent ?? "");
+    fireEvent.change(find, { target: { value: "G90" } });
+    expect(names().some((name) => name.startsWith("Xiegu G90S"))).toBe(true);
+    fireEvent.change(find, { target: { value: "vape" } });
+    expect(names().some((name) => name.startsWith("Vape with a built-in battery: VOOPOO ARGUS G3"))).toBe(true);
+    expect(within(dialog).getByRole("region", { name: "Cells, batteries and power stations" })).toBeInTheDocument();
+    fireEvent.change(find, { target: { value: "18650" } });
+    expect(names().some((name) => name.startsWith("18650 cell: Molicel INR-18650-P28A"))).toBe(true);
+    fireEvent.change(find, { target: { value: "power station" } });
+    expect(names().some((name) => name.startsWith("Anker SOLIX C2000 Gen 2 power station"))).toBe(true);
+  });
+
   it("answers for a Raspberry Pi, two phones and a radio, with the working", async () => {
     show("/tools/power");
     fireEvent.click(await screen.findByText("Battery runtime"));

@@ -589,10 +589,11 @@ fetched from any of them.
 | Open Food Facts ([data](https://world.openfoodfacts.org/data)) | Nothing used; what it would allow is in supplies.md | ODbL (database), DbCL (contents), CC BY-SA (images) |
 | USDA FoodData Central, SR Legacy (April 2018) ([downloads](https://fdc.nal.usda.gov/download-datasets/), read 2026-11-17) | **Built in**: energy, protein, fat and carbohydrate per 100 g for 7,793 foods, made by `scripts/build-food-energy.mjs` from `FoodData_Central_sr_legacy_food_csv_2018-04.zip` (6.1 MB; sha256 `b8081729…3e6fd0`) | [Home page](https://fdc.nal.usda.gov/): public domain, CC0 1.0; "we request that users list FoodData Central as the source". Citation: "U.S. Department of Agriculture, Agricultural Research Service, Beltsville Human Nutrition Research Center. FoodData Central. [Internet]. [cited (enter date)]. Available from https://fdc.nal.usda.gov/." USDA asks to be told of products that use it; it has not been told. |
 
-## Device figures for the battery calculators, read on 2026-11-16
+## Device figures for the battery calculators, read on 2026-11-16 and 2026-11-23
 
 The published power figures of common devices (Raspberry Pi boards, phones, radios,
-routers, NAS boxes, lamps, a cool box) that **Tools → Power and batteries** offers, each with
+routers, NAS boxes, lamps, a cool box, and from 2026-11-23 lithium-ion cells, vapes,
+batteries, power stations, Starlink and more radios) that **Tools → Power and batteries** offers, each with
 its publisher, document, address and date, are in [tools-power.md](tools-power.md) and
 `packages/shared/src/power-devices-data.ts`. They were read once from the makers' own pages
 and manuals and are bundled as short factual quotations; no document is copied. Also

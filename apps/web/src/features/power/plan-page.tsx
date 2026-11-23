@@ -30,6 +30,7 @@ import { errorMessage } from "@/lib/api";
 import { appLocale, deviceRegion, likelyPaperFor } from "@/lib/region";
 import { formatDateTime, plural } from "@/lib/utils";
 import { BankDiagram } from "./bank-diagram-view";
+import { BANK_ENTRIES, batteryFromEntry } from "./calc/devices";
 import { assumptions, loadDailyWh, radioDuty, simulate, usbEfficiency, workOut } from "./calc/plan";
 import { inputOf, isConflict, useCopyPowerPlan, usePowerPlan, useRemovePowerPlan, useSavePowerPlan } from "./data";
 import { FigureSources } from "./device-rows";
@@ -182,6 +183,7 @@ export default function PowerPlanPage() {
   const [editing, setEditing] = useState<PowerLoad | "new" | null>(null);
   const [removing, setRemoving] = useState<PowerLoad | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [fromEntry, setFromEntry] = useState("own");
   // The answers do not depend on the name or the notes: typing those works nothing out again and leaves the chart as it is.
   // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on the parts of the plan the answers are worked out from
   const worked = useMemo(() => {
@@ -481,6 +483,20 @@ export default function PowerPlanPage() {
 
       <Section title="Battery bank">
         <Fields>
+          <ChoiceField
+            label="Start from"
+            value={fromEntry}
+            hint="A battery or power station from the library sets one battery of its maker's watt-hours; change any figure after."
+            onChange={(id) => {
+              setFromEntry(id);
+              const entry = BANK_ENTRIES.find((item) => item.id === id);
+              if (entry) battery(batteryFromEntry(entry, draft.battery));
+            }}
+            options={[
+              { value: "own", label: "Your own figures" },
+              ...BANK_ENTRIES.map((entry) => ({ value: entry.id, label: `${entry.name}, ${figure(entry.battery.value, 1)} Wh` })),
+            ]}
+          />
           <ChoiceField
             label="Chemistry"
             value={draft.battery.chemistry}

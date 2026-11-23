@@ -10,11 +10,14 @@
  * plan made from the same devices gives a little less.
  */
 import {
+  type ChargeEntry,
   COMMON_DEVICES,
   type CommonDevice,
+  chemistryById,
   type DeviceState,
   type LoadOrigin,
   type OwnDevice,
+  type PowerBattery,
   type PowerLoad,
   type PowerSupply,
   type PublishedFigure,
@@ -297,5 +300,38 @@ export function workOutMix(loads: PowerLoad[], setting: MixSetting): MixAnswers 
     needAh: setting.volts > 0 ? needWh / setting.volts : 0,
     atLeast: loads.some((load) => figureKind(load) === "at-most"),
     estimated: loads.some((load) => figureKind(load) === "estimate"),
+  };
+}
+
+// ── A battery or power station as a plan's battery bank ─────────────────────
+
+export type BankEntry = ChargeEntry & { bank: NonNullable<ChargeEntry["bank"]> };
+
+/** The library's batteries and power stations a plan can start from. */
+export const BANK_ENTRIES: readonly BankEntry[] = COMMON_DEVICES.filter(
+  (entry): entry is BankEntry => entry.kind === "charge" && entry.bank !== undefined,
+);
+
+/**
+ * A plan's battery set from a library entry: one battery, its chemistry's starting
+ * figures, and the maker's volts and amp-hours where given; otherwise the chemistry's
+ * volts and the amp-hours that make the maker's watt-hours. The watt-hours are the
+ * maker's either way. The rated currents are left as they were: Outpost does not guess them.
+ */
+export function batteryFromEntry(entry: BankEntry, current: PowerBattery): PowerBattery {
+  const chemistry = entry.bank.chemistry ?? current.chemistry;
+  const facts = chemistryById(chemistry);
+  const changed = chemistry !== current.chemistry;
+  const volts = entry.bank.volts ?? (entry.bank.chemistry ? Number((facts.cellVolts * facts.cellsPerBlock).toFixed(2)) : current.volts);
+  const ampHours = entry.bank.volts && entry.bank.ampHours ? entry.bank.ampHours : Number((entry.battery.value / volts).toFixed(3));
+  return {
+    ...current,
+    chemistry,
+    volts,
+    ampHours,
+    series: 1,
+    parallel: 1,
+    usableDod: changed ? facts.usableDod : current.usableDod,
+    roundTrip: changed ? facts.roundTrip : current.roundTrip,
   };
 }
