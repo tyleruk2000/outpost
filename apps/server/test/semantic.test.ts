@@ -171,6 +171,59 @@ describe("semantic and hybrid search", () => {
     expect((await app.api("DELETE", `/api/semantic/models/${encodeURIComponent("test:concepts")}`)).body.removed).toBe(3);
   });
 
+  it("lists the passages it has no vector for, for another computer to read, and takes the vectors back", async () => {
+    const passagesOf = async (query = "") => {
+      const response = await app.app.inject({
+        method: "GET",
+        url: `/api/semantic/passages?model=test:concepts${query}`,
+        headers: { host: "localhost" },
+      });
+      expect(response.statusCode).toBe(200);
+      const [header, ...lines] = gunzipSync(response.rawPayload)
+        .toString("utf8")
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line));
+      return { header, lines: lines as Array<{ h: string; t: string }> };
+    };
+    const asked = await passagesOf();
+    expect(asked.header).toMatchObject({ format: "outpost-passages", modelId: "test:concepts", passages: 3 });
+    // Read as the build reads them: with the title and heading.
+    expect(asked.lines.map((line) => line.t)).toContain(
+      "Field hygiene\nSafe drinking\nBoil it for one minute, or filter and treat it, before drinking.",
+    );
+    // Another computer reads them and sends back an export.
+    const vectors = await conceptProvider().embed(
+      asked.lines.map((line) => line.t),
+      "passage",
+    );
+    const file = [
+      JSON.stringify({
+        format: "outpost-embeddings",
+        version: 1,
+        modelId: "test:concepts",
+        provider: "test",
+        model: "concepts",
+        dimensions: 4,
+      }),
+      ...asked.lines.map((line, index) => JSON.stringify({ h: line.h, v: Buffer.from(vectors[index]!.buffer).toString("base64") })),
+    ].join("\n");
+    const imported = await app.app.inject({
+      method: "POST",
+      url: "/api/semantic/import",
+      headers: { host: "localhost", "x-outpost-request": "1", "content-type": "application/gzip" },
+      payload: gzipSync(file),
+    });
+    expect(imported.json()).toMatchObject({ passagesUpdated: 3, vectorsWithoutPassage: 0 });
+    expect((await app.api("GET", "/api/semantic/status")).body).toMatchObject({ totalChunks: 3, embeddedChunks: 3 });
+    // Nothing is left to read, and the build that runs now has nothing to do.
+    expect((await passagesOf()).lines).toEqual([]);
+    expect((await passagesOf("&all=1")).lines).toHaveLength(3);
+    await buildIndex();
+    expect(provider.calls).toBe(0);
+    expect((await app.api("GET", "/api/search?q=purification&mode=semantic")).body.results[0].entityId).toBe("d-water");
+  });
+
   it("exports vectors and imports them into another installation with the same passages", async () => {
     await buildIndex();
     const exported = await app.app.inject({ method: "GET", url: "/api/semantic/export", headers: { host: "localhost" } });
@@ -262,6 +315,33 @@ describe("semantic and hybrid search", () => {
     });
     expect(response.statusCode).toBe(400);
     expect(response.json().error.message).toMatch(/longer than any/);
+  });
+
+  it("still offers the word put right when only meaning found anything, and lists those below what the words find", async () => {
+    const { search } = app.ctx.services;
+    for (let index = 0; index < 6; index += 1) {
+      search.upsert({
+        kind: "note",
+        entityId: `n-water-${index}`,
+        title: `Drinking ${index}`,
+        url: `/notes/n-water-${index}`,
+        sections: [{ text: `Purify it by boiling for a minute, batch ${index}.` }],
+      });
+    }
+    await buildIndex();
+    // "purifiy" and "water" are in no passage; meaning finds the boiling notes anyway, and says how.
+    const { body } = await app.api("GET", "/api/search?q=purifiy%20water");
+    expect(body.mode).toBe("hybrid");
+    expect(body.results.length).toBeGreaterThanOrEqual(5);
+    expect(body.results.every((result: { why: string }) => result.why === "Similar in meaning")).toBe(true);
+    expect(body.didYouMean?.query).toBe("purify water");
+    // Asked rightly, the words find them, and a result by meaning alone comes after all of them.
+    const right = (await app.api("GET", "/api/search?q=purify")).body;
+    expect(right.didYouMean).toBeNull();
+    const firstByMeaningAlone = right.results.findIndex((result: { sources: string[] }) => !result.sources.includes("keyword"));
+    const lastByWords = right.results.findLastIndex((result: { sources: string[] }) => result.sources.includes("keyword"));
+    expect(lastByWords).toBeGreaterThanOrEqual(5);
+    if (firstByMeaningAlone !== -1) expect(firstByMeaningAlone).toBeGreaterThan(lastByWords);
   });
 
   it("explains what is missing when no provider is configured", async () => {

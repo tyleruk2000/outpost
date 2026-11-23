@@ -49,6 +49,9 @@ describe("the kind of question", () => {
     expect(manual.notes).toEqual(["favoured: first aid source"]);
     const forum = adjustFor(question, { title: "Rescue breaths?", collection: "The Great Outdoors Q&A", tags: [], article: true });
     expect(forum.factor).toBe(1);
+    // Trusted for the question, which is what lets meaning put the manual first (search-meaning.test.ts).
+    expect([wikimed.trusted, manual.trusted, forum.trusted]).toEqual([true, true, false]);
+    expect(adjustFor(intent("car battery"), { title: "First aid manual", collection: null, tags: [] }).trusted).toBe(false);
   });
 
   it("does not count the question's own words in a title as the kind of source", () => {

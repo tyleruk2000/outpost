@@ -97,8 +97,8 @@ export function FusionSection() {
         </p>
         <p>
           This is how passages are chosen for an answer. The list of results on the Search screen mixes the two a simpler way, so that its
-          scores keep their meaning: a result found both ways scores more than either alone, and one found by meaning alone never scores as
-          high as one holding all your words.
+          scores keep their meaning: a result found both ways scores more than by its words alone, and one found by meaning alone, with none
+          of your words, comes after every result holding all of them.
         </p>
       </Prose>
 

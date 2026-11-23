@@ -60,16 +60,26 @@ interface Waiting {
   detach(): void;
 }
 
-export function createBuiltInEmbedder(options: BuiltInOptions = {}): BuiltInEmbedder {
-  const modelDir = options.modelDir ?? defaultModelDir();
-  const threads = embedThreads(os.availableParallelism());
-  const waiting = new Map<number, Waiting>();
+interface Slot {
+  embed(texts: string[], kind: "passage" | "query", signal?: AbortSignal): Promise<Float32Array[]>;
+  loaded(): boolean;
+  /** True while it owes passages: a question sent to it would wait for the passage it is on. */
+  owesPassages(): boolean;
+  drop(error: AppError | undefined): Promise<unknown>;
+}
+
+/** One worker thread running the model, started when first needed and ended when idle. */
+function createSlot(
+  modelDir: string,
+  threads: number,
+  options: BuiltInOptions,
+  installation: () => ReturnType<typeof builtInInstallation>,
+): Slot {
+  const waiting = new Map<number, Waiting & { passages: boolean }>();
   let worker: Worker | undefined;
   let nextId = 1;
   let idleTimer: NodeJS.Timeout | undefined;
   let stallTimer: NodeJS.Timeout | undefined;
-
-  const installation = () => builtInInstallation(modelDir);
 
   /** Ends the worker and fails whatever it still owed. */
   function drop(error: AppError | undefined): Promise<unknown> {
@@ -183,7 +193,13 @@ export function createBuiltInEmbedder(options: BuiltInOptions = {}): BuiltInEmbe
         reject(signal?.reason ?? new Error("Stopped."));
       };
       signal?.addEventListener("abort", onAbort, { once: true });
-      waiting.set(id, { resolve, reject, count: texts.length, detach: () => signal?.removeEventListener("abort", onAbort) });
+      waiting.set(id, {
+        resolve,
+        reject,
+        count: texts.length,
+        passages: kind === "passage",
+        detach: () => signal?.removeEventListener("abort", onAbort),
+      });
       running.postMessage({ kind: "embed", id, texts, urgent: kind === "query" } satisfies EmbedRequest);
       // Only an idle worker's clock is restarted: one that already owes an answer keeps its deadline.
       if (waiting.size === 1) watch();
@@ -191,12 +207,32 @@ export function createBuiltInEmbedder(options: BuiltInOptions = {}): BuiltInEmbe
   }
 
   return {
+    embed,
+    loaded: () => worker !== undefined,
+    owesPassages: () => [...waiting.values()].some((entry) => entry.passages),
+    drop,
+  };
+}
+
+export function createBuiltInEmbedder(options: BuiltInOptions = {}): BuiltInEmbedder {
+  const modelDir = options.modelDir ?? defaultModelDir();
+  const threads = embedThreads(os.availableParallelism());
+  const installation = () => builtInInstallation(modelDir);
+  const main = createSlot(modelDir, threads, options, installation);
+  // While passages are being read, a question would wait for the passage the model is on: on a
+  // Raspberry Pi a few hundred milliseconds. So questions asked then go to a second copy of the
+  // model, on one thread of its own, loaded only while a build runs and searches come.
+  const quick = createSlot(modelDir, 1, options, installation);
+  const embed = (texts: string[], kind: "passage" | "query", signal?: AbortSignal) =>
+    kind === "query" && main.owesPassages() ? quick.embed(texts, kind, signal) : main.embed(texts, kind, signal);
+
+  return {
     modelId: BUILT_IN_MODEL_ID,
     provider: BUILT_IN_PROVIDER,
     model: BUILT_IN_MODEL_NAME,
     threads,
     installation,
-    loaded: () => worker !== undefined,
+    loaded: () => main.loaded() || quick.loaded(),
     embed,
     async check() {
       const found = installation();
@@ -210,7 +246,7 @@ export function createBuiltInEmbedder(options: BuiltInOptions = {}): BuiltInEmbe
       }
     },
     async close() {
-      await drop(undefined);
+      await Promise.all([main.drop(undefined), quick.drop(undefined)]);
     },
   };
 }

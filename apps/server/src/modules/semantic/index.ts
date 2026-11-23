@@ -86,6 +86,12 @@ declare module "../../core/context.ts" {
 }
 
 const EXPORT_FORMAT = "outpost-embeddings";
+const PASSAGES_FORMAT = "outpost-passages";
+
+/** What the model reads for a passage: its title and heading with it, since short passages mean little without them. */
+export function passageInput(passage: { title: string; heading: string; text: string }): string {
+  return [passage.title, passage.heading, passage.text].filter(Boolean).join("\n");
+}
 /** The longest line an import may have: a vector of 8192 dimensions, in base64 and JSON, is about 44 000 characters. */
 const MAX_IMPORT_LINE_CHARS = 1024 * 1024;
 
@@ -183,8 +189,7 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
           contentHash: string;
         }>;
         if (rows.length === 0) break;
-        // A passage is embedded with its title and heading: short passages mean little without them.
-        const inputs = rows.map((row) => [row.title, row.heading, row.text].filter(Boolean).join("\n"));
+        const inputs = rows.map(passageInput);
         const vectors = await provider.embed(inputs, "passage", signal);
         index.upsert(
           provider.modelId,
@@ -522,6 +527,40 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
       .header("Content-Disposition", `attachment; filename="outpost-embeddings-${safeName}.jsonl.gz"`);
     // pipeline(), not pipe(): an error reading the index destroys the reply instead of
     // being emitted with no listener, which would end the process.
+    return reply.send(pipeline(Readable.from(lines()), createGzip(), () => undefined));
+  });
+
+  /**
+   * The passages that have no vector yet for a model, as the model would read them, for a
+   * faster computer to embed (scripts/build-vectors.mjs) and send back as an embeddings
+   * export. Gzip-compressed JSON lines: a line describing the file, then one per passage
+   * text, keyed by its hash as the export is. `?all=1` gives every passage.
+   */
+  app.get("/api/semantic/passages", async (request, reply) => {
+    const query = z.object({ model: z.string().max(300).optional(), all: z.enum(["1"]).optional() }).parse(request.query);
+    const modelId = query.model ?? currentProvider()?.modelId ?? chosenProvider()?.modelId;
+    if (!modelId) throw badRequest("Say which model the vectors are for with ?model=.");
+    const rows = sqlite
+      .prepare(
+        `SELECT c.content_hash AS h, c.title AS title, c.heading AS heading, c.text AS text
+         FROM chunks c LEFT JOIN embeddings m ON m.chunk_id = c.id AND m.model_id = ?
+         WHERE c.text <> '' AND (? OR m.chunk_id IS NULL OR m.content_hash <> c.content_hash)
+         GROUP BY c.content_hash`,
+      )
+      .iterate(modelId, query.all ? 1 : 0) as IterableIterator<{ h: string; title: string; heading: string; text: string }>;
+    const total = (
+      sqlite
+        .prepare(
+          `SELECT count(DISTINCT c.content_hash) AS n FROM chunks c LEFT JOIN embeddings m ON m.chunk_id = c.id AND m.model_id = ?
+           WHERE c.text <> '' AND (? OR m.chunk_id IS NULL OR m.content_hash <> c.content_hash)`,
+        )
+        .get(modelId, query.all ? 1 : 0) as { n: number }
+    ).n;
+    function* lines() {
+      yield `${JSON.stringify({ format: PASSAGES_FORMAT, version: 1, modelId, passages: total, exportedAt: new Date().toISOString() })}\n`;
+      for (const row of rows) yield `${JSON.stringify({ h: row.h, t: passageInput(row) })}\n`;
+    }
+    reply.header("Content-Type", "application/gzip").header("Content-Disposition", 'attachment; filename="outpost-passages.jsonl.gz"');
     return reply.send(pipeline(Readable.from(lines()), createGzip(), () => undefined));
   });
 

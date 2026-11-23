@@ -22,6 +22,14 @@ export function resultText(result) {
 }
 
 /** A fixture result's grade: from the query's grades, by item. */
+/**
+ * Whether a search found anything by its words. When it did not, and offered "Did you mean",
+ * a person takes the offer: results by meaning alone ("Similar in meaning") sit under it.
+ */
+export function foundByWords(results) {
+  return results.some((result) => (result.sources ?? ["keyword"]).some((source) => source !== "semantic"));
+}
+
 export function gradeById(query, result) {
   return query.grades[result.entityId] ?? 0;
 }

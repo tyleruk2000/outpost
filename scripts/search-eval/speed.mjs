@@ -10,6 +10,13 @@
  *   node scripts/search-eval/speed.mjs build <folder>     makes the library (once; about 15 s)
  *   node scripts/search-eval/speed.mjs run <folder> [n]   runs every search n times (default 3)
  *
+ * With --meaning, search by meaning is on with the built-in model (its files must have been
+ * fetched): every passage is given a vector first (random ones, made here in a moment, since
+ * the library's words are random too), so each search embeds its question with the real model
+ * and compares it with 57,600 vectors. With --building as well, 3,000 passages are left
+ * without one, so the index build runs, with the real model, while the searches are timed.
+ * The time each part takes is printed: words, the question's vector, comparing it.
+ *
  * The folder is a data directory of its own; nothing else is touched. No network.
  */
 import fs from "node:fs";
@@ -151,16 +158,87 @@ if (mode === "build") {
   console.log(`${passages} passages in ${folder}`);
   await app.close();
 } else {
+  const meaning = process.argv.includes("--meaning");
+  const building = process.argv.includes("--building");
   const app = await createTestApp({}, folder, { voacapData: false });
-  const ask = async (q) => (await app.api("GET", `/api/search?q=${encodeURIComponent(q)}&limit=20&reference=later`)).body.tookMs;
+  const { sqlite } = app.ctx;
+  const stages = { embed: [], compare: [] };
+  if (meaning) {
+    const { BUILT_IN_MODEL_ID } = await import("../../apps/server/src/modules/semantic/built-in-model.ts");
+    sqlite
+      .prepare(
+        "INSERT OR IGNORE INTO embedding_models (id, provider, model, dimensions, created_at) VALUES (?, 'built-in', 'all-MiniLM-L6-v2', 384, 0)",
+      )
+      .run(BUILT_IN_MODEL_ID);
+    const missing = sqlite
+      .prepare(
+        "SELECT c.id, c.content_hash FROM chunks c LEFT JOIN embeddings m ON m.chunk_id = c.id AND m.model_id = ? WHERE c.text <> '' AND m.chunk_id IS NULL",
+      )
+      .raw()
+      .all(BUILT_IN_MODEL_ID);
+    const insert = sqlite.prepare("INSERT INTO embeddings (chunk_id, model_id, vector, content_hash, created_at) VALUES (?, ?, ?, ?, 0)");
+    sqlite.transaction(() => {
+      for (const [chunkId, hash] of missing) {
+        const vector = Float32Array.from({ length: 384 }, () => rand() * 2 - 1);
+        const norm = Math.hypot(...vector);
+        for (let index = 0; index < 384; index += 1) vector[index] /= norm;
+        insert.run(chunkId, BUILT_IN_MODEL_ID, Buffer.from(vector.buffer), hash);
+      }
+    })();
+    // A build to run while searching: the last passages lose their vectors.
+    sqlite
+      .prepare("DELETE FROM embeddings WHERE model_id = ? AND chunk_id IN (SELECT id FROM chunks ORDER BY id DESC LIMIT ?)")
+      .run(BUILT_IN_MODEL_ID, building ? 3000 : 0);
+    // Each part of a search by meaning, timed where it happens.
+    const { semantic } = app.ctx.services;
+    const index = semantic.index;
+    const query = index.query.bind(index);
+    index.query = (...args) => {
+      const started = performance.now();
+      const hits = query(...args);
+      stages.compare.push(performance.now() - started);
+      return hits;
+    };
+    await app.api("PATCH", "/api/settings", { "search.semantic.enabled": true });
+    await semantic.settled();
+    // Switched on already in an earlier run: the build is asked for as Settings' button does.
+    if (building) semantic.requestIndexing(true);
+    const provider = semantic.provider();
+    const embed = provider.embed.bind(provider);
+    provider.embed = async (texts, kind, signal) => {
+      const started = performance.now();
+      const vectors = await embed(texts, kind, signal);
+      if (kind === "query") stages.embed.push(performance.now() - started);
+      return vectors;
+    };
+    if (building) await new Promise((resolve) => setTimeout(resolve, 3000));
+    console.log(`search by meaning on, ${index.count(BUILT_IN_MODEL_ID)} vectors${building ? ", index build running" : ""}`);
+  }
+  // A question asked a second time reuses its vector: each round asks it in other capitals, as a new question.
+  let round = 0;
+  const cased = (q) => (round % 2 ? q.toUpperCase() : q.toLowerCase()) + "?".repeat(Math.floor(round / 2));
+  const ask = async (q) => (await app.api("GET", `/api/search?q=${encodeURIComponent(cased(q))}&limit=20&reference=later`)).body.tookMs;
   const queries = loadQueries().map((query) => query.q);
   for (const q of queries.slice(0, 3)) await ask(q);
+  stages.embed.length = 0;
+  stages.compare.length = 0;
   const timed = [];
-  for (let round = 0; round < Number(times ?? 3); round += 1) for (const q of queries) timed.push({ q, ms: await ask(q) });
+  for (round = 1; round <= Number(times ?? 3); round += 1) for (const q of queries) timed.push({ q, ms: await ask(q) });
   const ms = timed.map((each) => each.ms);
   console.log(
     `own results at the server: median ${percentile(ms, 0.5)} ms, p95 ${percentile(ms, 0.95)} ms, slowest ${Math.max(...ms)} ms (${timed.length} searches)`,
   );
+  if (building) {
+    const { BUILT_IN_MODEL_ID } = await import("../../apps/server/src/modules/semantic/built-in-model.ts");
+    const status = (await app.api("GET", "/api/semantic/status")).body;
+    console.log(
+      `  the build was still running at the end: ${status.indexing}, ${app.ctx.services.semantic.index.count(BUILT_IN_MODEL_ID)} vectors`,
+    );
+  }
+  if (meaning) {
+    const show = (list) => `median ${percentile(list, 0.5).toFixed(1)} ms, p95 ${percentile(list, 0.95).toFixed(1)} ms`;
+    console.log(`  the question's vector: ${show(stages.embed)}; comparing it with every vector: ${show(stages.compare)}`);
+  }
   for (const each of timed.sort((a, b) => b.ms - a.ms).slice(0, 5)) console.log(`  ${String(each.ms).padStart(5)} ms  ${each.q}`);
   await app.close();
 }

@@ -511,7 +511,7 @@ export function looksLikeAName(q: string, places: SearchResult[]): boolean {
  * Similarity to the question (cosine, from the embedding model) as a score on the
  * shared scale. The built-in model scores unrelated text about 0.1 to 0.3 and text on
  * the subject 0.4 and more, so 0.2 maps to nothing and 0.7 to the most meaning alone
- * can earn, `MEANING_CEILING`: below a result that holds every word.
+ * can earn, `MEANING_CEILING`.
  */
 export const MEANING_CEILING = 0.6;
 export function meaningScore(similarity: number): number {
@@ -519,37 +519,73 @@ export function meaningScore(similarity: number): number {
 }
 
 /**
- * Words and meaning on one scale. A result found both ways scores 1 − (1 − words)(1 − meaning):
- * more than either alone, never above 1. Found by meaning alone, it scores its meaning.
+ * For a question about first aid or medicine, a first aid or medical source that holds every
+ * word, and whose passage is at least this similar to the question, comes before the results
+ * that are not both: a forum post whose title is the question does not come before the first
+ * aid manual's page on it. Both are needed. The source alone would lift any medical book that
+ * happens to hold the words; the meaning confirms its passage is about what was asked.
+ */
+export const SAME_MEANING = 0.6;
+
+/**
+ * How much meaning lifts a result the words found: half its meaning score. At full weight,
+ * the library's own items, which have vectors, rose above better reference articles, which
+ * have none (fixture, with reference collections: nDCG@5 0.826 at full weight, 0.838 at half,
+ * against 0.836 by words alone); among the library's own results half and full did the same.
+ */
+export const MEANING_LIFT = 0.5;
+
+/** Which results hold every word that matters, and which are trusted sources for the question (intent.ts). */
+export interface WordsHeld {
+  everyWord: Set<string>;
+  trusted: Set<string>;
+}
+
+export const resultKey = (result: { kind: string; entityId: string }) => `${result.kind}:${result.entityId}`;
+
+/**
+ * Words and meaning on one scale. A result found both ways scores 1 - (1 - words)(1 - meaning
+ * × `MEANING_LIFT`): more than by words alone, never above 1. Found by meaning alone ("Similar in meaning"), it
+ * scores its meaning, always less than every result holding every word, and is left out when
+ * it is more than `SIMILARITY_WINDOW` behind the nearest. No floor of similarity is set: none
+ * tells nonsense from a real question. In a library of 59,000 passages "zzqx flurble" comes
+ * within 0.45 of one, while the note that answers "dog paws snow ice" ("Trim the hair between
+ * the pads and rinse off grit and road salt") is 0.19 from it. So when the words find plenty, results by meaning alone wait
+ * below them; when the words find little or nothing, these fill the list.
  */
 export function blendMeaning(
   byWords: SearchResult[],
   byMeaning: SearchResult[],
   weights: { keywordWeight: number; semanticWeight: number },
+  held: WordsHeld = { everyWord: new Set(), trusted: new Set() },
 ): SearchResult[] {
-  const key = (result: SearchResult) => `${result.kind}:${result.entityId}`;
-  const meaning = new Map(byMeaning.map((result) => [key(result), result]));
+  const meaning = new Map(byMeaning.map((result) => [resultKey(result), result]));
+  const confirmed = new Set<string>();
   const blended = byWords.map((result) => {
-    const near = meaning.get(key(result));
+    const key = resultKey(result);
+    const near = meaning.get(key);
     if (!near) return result;
-    meaning.delete(key(result));
+    meaning.delete(key);
     const words = Math.min(1, result.score * weights.keywordWeight);
-    const sense = Math.min(1, meaningScore(near.score) * weights.semanticWeight);
+    const sense = Math.min(1, meaningScore(near.score) * weights.semanticWeight * MEANING_LIFT);
+    const same = held.trusted.has(key) && held.everyWord.has(key) && near.score >= SAME_MEANING;
+    if (same) confirmed.add(key);
     return {
       ...result,
       score: Math.round((1 - (1 - words) * (1 - sense)) * 1000) / 1000,
       sources: [...new Set([...result.sources, ...near.sources])],
-      why: result.why ? `${result.why}, and by meaning` : "Found by meaning",
+      why: result.why ? `${result.why}, and ${same ? "means the same" : "by meaning"}` : "Similar in meaning",
     };
   });
+  const lowestWithEveryWord = Math.min(...blended.filter((result) => held.everyWord.has(resultKey(result))).map((result) => result.score));
+  const nearest = Math.max(0, ...byMeaning.map((result) => result.score));
   for (const near of meaning.values()) {
-    blended.push({
-      ...near,
-      score: Math.round(Math.min(1, meaningScore(near.score) * weights.semanticWeight) * 1000) / 1000,
-      why: "Found by meaning",
-    });
+    if (near.score < nearest - SIMILARITY_WINDOW) continue;
+    const score = Math.min(meaningScore(near.score) * weights.semanticWeight, MEANING_CEILING, lowestWithEveryWord - 0.001);
+    blended.push({ ...near, score: Math.max(0, Math.round(score * 1000) / 1000), why: "Similar in meaning" });
   }
-  return blended.sort((a, b) => b.score - a.score);
+  const tier = (result: SearchResult) => (confirmed.has(resultKey(result)) ? 0 : 1);
+  return blended.sort((a, b) => tier(a) - tier(b) || b.score - a.score);
 }
 
 /** What kind of question it is (intent.ts), from the words that matter, their other ways of being said, and the small words. */
@@ -736,6 +772,7 @@ export function createSearchService(ctx: AppContext): SearchService {
     total: number;
     terms: ScoringTerm[];
     didYouMean: Suggestion | null;
+    held: WordsHeld;
   } {
     // Passages holding each word: for its weight, and to see whether a word is in the library at all.
     const counts = parsed.required.length > 1 ? countTerms(sqlite, parsed) : undefined;
@@ -755,7 +792,16 @@ export function createSearchService(ctx: AppContext): SearchService {
           ? suggester.suggest(params.q, parsed, counts, false)
           : null;
     if (ranking.items.length === 0) {
-      return { results: [], relaxed: false, everyWord: 0, facets: ranking.facets, total: 0, terms: ranking.terms, didYouMean };
+      return {
+        results: [],
+        relaxed: false,
+        everyWord: 0,
+        facets: ranking.facets,
+        total: 0,
+        terms: ranking.terms,
+        didYouMean,
+        held: { everyWord: new Set(), trusted: new Set() },
+      };
     }
 
     // Every candidate's title, collection and tags: what kind of source it is decides the mild priors (intent.ts).
@@ -814,9 +860,13 @@ export function createSearchService(ctx: AppContext): SearchService {
       for (const [chunkId, mark] of markPassages(sqlite, toFtsQuery(parsed, "all", undefined, true)!, shownOf(begun)))
         marked.set(chunkId, mark);
     }
+    const held: WordsHeld = { everyWord: new Set(), trusted: new Set() };
     const results = page.flatMap((item): SearchResult[] => {
       const entity = entities.get(item.entityRowId);
       if (!entity) return [];
+      const key = resultKey(entity);
+      if (item.everyWord) held.everyWord.add(key);
+      if (adjustments.get(item.entityRowId)?.trusted) held.trusted.add(key);
       const best = item.passages[0]!;
       const shown = item.passages.slice(0, 3).flatMap((passage) => {
         const snippet = marked.get(passage.chunkId)?.snippet ?? "";
@@ -850,6 +900,7 @@ export function createSearchService(ctx: AppContext): SearchService {
       total: ranking.total,
       terms: ranking.terms,
       didYouMean,
+      held,
     };
   }
 
@@ -859,7 +910,15 @@ export function createSearchService(ctx: AppContext): SearchService {
    * and so is one showing less than `RELAXED_COVERAGE` of what the query is about: the
    * same rule as for Outpost's own items that lack a word.
    */
-  function rescore(results: SearchResult[], terms: ScoringTerm[], excluded: string[], nouns?: string[], intent?: Intent): SearchResult[] {
+  function rescore(
+    results: SearchResult[],
+    terms: ScoringTerm[],
+    excluded: string[],
+    nouns?: string[],
+    intent?: Intent,
+    /** Filled with the results that hold every word. */
+    everyWord?: Set<string>,
+  ): SearchResult[] {
     /** The mild priors of intent.ts: a reference article's kind of source is its collection. */
     const prior = (result: SearchResult, text: string): SearchResult => {
       if (!intent || plainIntent(intent)) return result;
@@ -883,6 +942,7 @@ export function createSearchService(ctx: AppContext): SearchService {
         if (holdsExcluded(excluded, fields)) return [];
         const parts = scoreFields(terms, fields);
         if (parts.found === 0 || parts.coverage < RELAXED_COVERAGE) return [];
+        if (parts.found === parts.of) everyWord?.add(resultKey(result));
         if (nouns && titleIsAnswer(result.title, terms, nouns)) {
           // The words it lacks only say what to do ("treat"): scored on the words a title would hold, it holds them all.
           const held = new Set(nouns.map((noun) => noun.toLowerCase()));
@@ -1208,6 +1268,7 @@ export function createSearchService(ctx: AppContext): SearchService {
               total: 0,
               terms: weighTerms(sqlite, parsed),
               didYouMean: null,
+              held: { everyWord: new Set<string>(), trusted: new Set<string>() },
             }
           : keywordSearch(params, parsed, window);
       const lexical: SearchResult[] = [...keyword.results];
@@ -1227,7 +1288,14 @@ export function createSearchService(ctx: AppContext): SearchService {
             alternate: alternateQuery(forCollections),
             parsed: forCollections,
             rank: (found, options) =>
-              rescore(found, keyword.terms, parsed.excluded, options?.titleAnswers === false ? undefined : nouns, intent),
+              rescore(
+                found,
+                keyword.terms,
+                parsed.excluded,
+                options?.titleAnswers === false ? undefined : nouns,
+                intent,
+                keyword.held.everyWord,
+              ),
             signal: params.signal,
             budgetMs: referenceBudgets.onePartMs,
           });
@@ -1276,10 +1344,15 @@ export function createSearchService(ctx: AppContext): SearchService {
       // One scale: every result found by words was scored by the same rule, so they are simply put in order.
       let results = [...lexical].sort((a, b) => b.score - a.score);
       if (mode !== "keyword" && meaning.length > 0) {
-        results = blendMeaning(results, meaning, {
-          keywordWeight: ctx.services.settings.get("search.hybrid.keywordWeight"),
-          semanticWeight: ctx.services.settings.get("search.hybrid.semanticWeight"),
-        });
+        results = blendMeaning(
+          results,
+          meaning,
+          {
+            keywordWeight: ctx.services.settings.get("search.hybrid.keywordWeight"),
+            semanticWeight: ctx.services.settings.get("search.hybrid.semanticWeight"),
+          },
+          keyword.held,
+        );
       }
       results = onDeviceFirst(results);
       // One title once: a collection, the document made from it and its catalogue entry are one row.
@@ -1299,8 +1372,10 @@ export function createSearchService(ctx: AppContext): SearchService {
         everyWord: keyword.everyWord,
         ignored: parsed.ignored ?? [],
         alsoSearched: also,
-        // Offered only while little is found: a suggestion beside a full page would be noise.
-        didYouMean: results.length < FEW ? keyword.didYouMean : null,
+        // Offered only while the words find little: a suggestion beside a full page would be noise. Results by
+        // meaning alone do not count: for a word mistyped they are guesses, and the word put right finds the page.
+        didYouMean:
+          results.filter((result) => result.sources.some((source) => source !== "semantic")).length < FEW ? keyword.didYouMean : null,
         // Results found another way can only add to what the words found.
         total: Math.max(results.length, keyword.total - collapsed),
         results: results.slice(offset, offset + limit),

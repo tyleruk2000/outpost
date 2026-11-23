@@ -185,7 +185,18 @@ function Together() {
         <p>Outpost runs both searches on every question, as long as search by meaning is on and has read something.</p>
         <p>Keyword search makes one list, best first. Search by meaning makes another.</p>
         <p>
-          The two lists are combined by a method called <strong>reciprocal rank fusion</strong>.
+          <strong>On the Search screen</strong>, each result keeps the score its words earned, and being near in meaning adds to it. A
+          result found by meaning alone, with none of your words, is marked “Similar in meaning”. It always comes after every result that
+          holds all your words, and it is left out when it is much further from your question than the nearest one. So when your words find
+          plenty, these wait below; when your words find little or nothing, they fill the list.
+        </p>
+        <p>
+          For a first aid question, a first aid or medical source that holds all your words, and whose passage means the same as your
+          question, comes first. A forum post whose title happens to match does not come before the first aid manual.
+        </p>
+        <p>
+          <strong>For an answer</strong>, Outpost picks passages rather than results, and combines the two lists by a method called{" "}
+          <strong>reciprocal rank fusion</strong>.
         </p>
         <p>
           Each passage earns points from its place in each list: first place earns 1 ÷ ({k} + 1), second place 1 ÷ ({k} + 2), and so on.
@@ -330,6 +341,10 @@ export default function HowMeaningWorksPage() {
             Nearness is measured by <strong>cosine similarity</strong>: 1 means the same direction, 0 means unrelated.
           </p>
           <p>Outpost compares your question with every passage it has read, not a sample, so it never misses the closest one.</p>
+          <p>
+            To do that quickly, it keeps every passage’s numbers in memory rounded to whole numbers, which takes a quarter of the space.
+            Then it works out the closest few exactly.
+          </p>
         </div>
         <MapPlate withQuestion />
       </Part>
@@ -387,8 +402,9 @@ export default function HowMeaningWorksPage() {
           <p>This happens only while search by meaning is on.</p>
           <p>If you turn it off, what has been read is kept. When you turn it on again, Outpost reads only what is missing.</p>
           <p>
-            To save time on a small computer, a faster computer holding the same library can make the numbers. Export them there and import
-            them here, under More options in{" "}
+            To save time on a small computer, a faster computer can make the numbers for it. On a computer with a copy of Outpost’s source,
+            one command fetches the passages from this Outpost, reads them, and sends the numbers back. Vectors can also be exported and
+            imported under More options in{" "}
             <Link to={SETTING} className={linkClass}>
               Settings
             </Link>

@@ -25,7 +25,16 @@ import { writeFileSync } from "node:fs";
 import { adjusted, adjustFor, intentOf } from "../apps/server/src/modules/search/intent.ts";
 import { alternateQuery, expandQuery, parseQuery, plainQuery } from "../apps/server/src/modules/search/query.ts";
 import { inverseFrequency, reasonFor, scoreFields, scoringTerms } from "../apps/server/src/modules/search/score.ts";
-import { formatSummary, formatTable, gradeByPattern, loadQueries, percentile, resultText, summarise } from "./search-eval/metrics.mjs";
+import {
+  formatSummary,
+  formatTable,
+  foundByWords,
+  gradeByPattern,
+  loadQueries,
+  percentile,
+  resultText,
+  summarise,
+} from "./search-eval/metrics.mjs";
 import { formatReference, measureReference, readReference } from "./search-eval/reference-stream.mjs";
 
 const args = process.argv.slice(2);
@@ -121,7 +130,7 @@ const before = [];
 const after = [];
 for (const query of queries) {
   let { body, ms } = await search(query.q);
-  if (body.results.length === 0 && body.didYouMean) ({ body } = await search(body.didYouMean.query));
+  if (!foundByWords(body.results) && body.didYouMean) ({ body } = await search(body.didYouMean.query));
   before.push({ query, results: body.results, ms });
   if (rescoreToo) after.push({ query, ...(await rescore(query.q)) });
   process.stderr.write(".");

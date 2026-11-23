@@ -425,6 +425,64 @@ describe.skipIf(!modelPresent)(`the built-in embedding model, run for real (${mo
     expect((await provider.embed(["again"], "query"))[0]).toHaveLength(384);
   });
 
+  it("answers a question asked during a build from a second copy of the model, with the same vector", { timeout: 60_000 }, async () => {
+    const provider = embedder();
+    const [alone] = await provider.embed(["where does the stove go"], "query");
+    const passages = Array.from({ length: 30 }, (_, index) => `Passage ${index}. ${"Keep the stove outside the tent. ".repeat(20)}`);
+    let passagesDone = false;
+    const batch = provider.embed(passages, "passage").then(() => {
+      passagesDone = true;
+    });
+    // Asked while the first copy is part-way through the passages: it does not wait for the passage it is on.
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const [during] = await provider.embed(["where does the stove go"], "query");
+    expect(passagesDone).toBe(false);
+    expect(dot(alone!, during!)).toBeGreaterThan(0.9999);
+    await batch;
+    await provider.close();
+  });
+
+  it("gets its vectors built by another computer with one command, the same as it would have made", { timeout: 90_000 }, async () => {
+    const app = await testApp();
+    const { search } = app.ctx.services;
+    for (const [id, text] of [
+      ["a", "Boil water for one minute before drinking it."],
+      ["b", "A bowline makes a fixed loop at the end of a rope."],
+      ["c", "Keep the stove outside the tent."],
+    ]) {
+      search.upsert({ kind: "note", entityId: id!, title: `Note ${id}`, url: `/notes/${id}`, sections: [{ text: text! }] });
+    }
+    // Search by meaning is off here: a small computer that has not read its library yet.
+    const address = await app.app.listen({ port: 0, host: "127.0.0.1" });
+    const out = path.join(emptyFolder(), "vectors.jsonl.gz");
+    const script = path.resolve(import.meta.dirname, "../../../scripts/build-vectors.mjs");
+    const { execFile } = await import("node:child_process");
+    const printed = await new Promise<string>((resolve, reject) =>
+      execFile(process.execPath, [script, address, "--out", out, "--copies", "2"], (error, stdout, stderr) =>
+        error ? reject(new Error(`${error.message}\n${stderr}`)) : resolve(stdout),
+      ),
+    );
+    expect(printed).toMatch(/Imported: 3 passages/);
+    const status = (await app.api("GET", "/api/semantic/status")).body;
+    expect(status).toMatchObject({ totalChunks: 3, keptChunks: 3 });
+    // The very vector the model here makes for the passage, as read with its title.
+    const chunkId = app.ctx.sqlite
+      .prepare("SELECT c.id FROM chunks c JOIN search_entities e ON e.id = c.entity_row_id WHERE e.entity_id = 'b'")
+      .pluck()
+      .get() as number;
+    const stored = app.ctx.sqlite
+      .prepare("SELECT vector FROM embeddings WHERE chunk_id = ? AND model_id = ?")
+      .pluck()
+      .get(chunkId, BUILT_IN_MODEL_ID) as Buffer;
+    const [here] = await embedder().embed(["Note b\nA bowline makes a fixed loop at the end of a rope."], "passage");
+    expect(dot(new Float32Array(new Uint8Array(stored).buffer), here!)).toBeGreaterThan(0.9999);
+    // Run again: nothing is left to read.
+    const again = await new Promise<string>((resolve, reject) =>
+      execFile(process.execPath, [script, address, "--out", out], (error, stdout) => (error ? reject(error) : resolve(stdout))),
+    );
+    expect(again).toMatch(/Nothing to do/);
+  });
+
   it("refuses files that are not the ones it was built with", { timeout: 60_000 }, async () => {
     const dir = emptyFolder();
     fs.cpSync(defaultModelDir(), dir, { recursive: true });

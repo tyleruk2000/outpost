@@ -1,17 +1,19 @@
 /**
  * The search evaluation set (scripts/search-eval) against its fixture library and the
  * recorded answers of 37 reference collections. Writes the tables to the file named by
- * SEARCH_EVAL_OUT: the whole search, and the reference collections on their own as the
- * search screen gets them. Fails if the measures fall below what they are.
+ * SEARCH_EVAL_OUT: the whole search, the same with search by meaning on (when the built-in
+ * model's files are here), and the reference collections on their own as the search screen
+ * gets them. Fails if the measures fall below what they are.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 // @ts-expect-error: a plain JavaScript module shared with scripts/search-eval.mjs
 import { library } from "../../../scripts/search-eval/library.mjs";
 // @ts-expect-error: as above
-import { formatSummary, formatTable, gradeById, gradeByPattern, loadQueries, summarise } from "../../../scripts/search-eval/metrics.mjs";
+import * as metrics from "../../../scripts/search-eval/metrics.mjs";
 // @ts-expect-error: as above
 import { formatReference, measureReference, readReference, summariseReference } from "../../../scripts/search-eval/reference-stream.mjs";
+import { builtInInstallation, defaultModelDir } from "../src/modules/semantic/built-in-model.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 import { type SlowKiwix, startSlowKiwix, uuidFor, writeArchives } from "./slow-kiwix.ts";
 
@@ -46,10 +48,16 @@ const asResult = (hit: { title: string; snippet: string }) => ({ title: hit.titl
 const grade = (query: Query, result: { kind: string }) =>
   result.kind === "reference" ? gradeByPattern(query, result) : gradeById(query, result);
 
+const { formatSummary, formatTable, foundByWords, gradeById, gradeByPattern, loadQueries, summarise } = metrics;
+const modelPresent = builtInInstallation(defaultModelDir()).installed;
+
 describe("search quality on the household evaluation set", () => {
   let app: TestApp;
   let kiwix: SlowKiwix;
   const rows: Row[] = [];
+  /** The same searches with search by meaning on, when the built-in model is here. */
+  const meaningRows: Row[] = [];
+  const keywordAgain: Row[] = [];
   // biome-ignore lint/suspicious/noExplicitAny: rows of a plain JavaScript module
   const referenceRows: any[] = [];
 
@@ -79,39 +87,55 @@ describe("search quality on the household evaluation set", () => {
     }
     for (const entity of library()) app.ctx.services.search.upsert(entity);
     const pool = recorded.collections.flatMap((collection) => collection.hits).map(asResult);
-    for (const query of loadQueries() as Query[]) {
-      const started = performance.now();
-      let { body } = await app.api("GET", `/api/search?q=${encodeURIComponent(query.q)}&limit=20`);
-      const ms = performance.now() - started;
-      // Nothing found and a word offered in its place: a person would take the offer, so that is what is graded.
-      const followed = body.results.length === 0 && body.didYouMean ? (body.didYouMean.query as string) : null;
-      if (followed) ({ body } = await app.api("GET", `/api/search?q=${encodeURIComponent(followed)}&limit=20`));
-      const results = body.results as Array<{ kind: string; entityId: string; title: string }>;
-      const ideal = [...Object.values(query.grades), ...pool.map((hit) => gradeByPattern(query, hit))].filter((value) => value > 0);
-      rows.push({
-        q: followed ? `${query.q} → ${followed}` : query.q,
-        grades: results.map((result) => grade(query, result)),
-        ideal,
-        expects: ideal.length > 0,
-        count: results.length,
-        ms,
-        titles: results.map((result) => (result.kind === "reference" ? `[ref] ${result.title}` : result.title)),
-      });
-    }
+    const evaluate = async (into: Row[]) => {
+      for (const query of loadQueries() as Query[]) {
+        const started = performance.now();
+        let { body } = await app.api("GET", `/api/search?q=${encodeURIComponent(query.q)}&limit=20`);
+        const ms = performance.now() - started;
+        // Nothing found by the words and a word offered in its place: a person would take the offer, so that is what is graded.
+        const followed = !foundByWords(body.results) && body.didYouMean ? (body.didYouMean.query as string) : null;
+        if (followed) ({ body } = await app.api("GET", `/api/search?q=${encodeURIComponent(followed)}&limit=20`));
+        const results = body.results as Array<{ kind: string; entityId: string; title: string }>;
+        const ideal = [...Object.values(query.grades), ...pool.map((hit) => gradeByPattern(query, hit))].filter((value) => value > 0);
+        into.push({
+          q: followed ? `${query.q} → ${followed}` : query.q,
+          grades: results.map((result) => grade(query, result)),
+          ideal,
+          expects: ideal.length > 0,
+          count: results.length,
+          ms,
+          titles: results.map((result) => (result.kind === "reference" ? `[ref] ${result.title}` : result.title)),
+        });
+      }
+    };
+    await evaluate(rows);
     // The reference collections on their own, as the search screen asks for them, one search after another.
     const base = await app.app.listen({ port: 0, host: "127.0.0.1" });
     for (const query of loadQueries() as Query[]) {
       if (query.pi.length === 0) continue;
       referenceRows.push(measureReference(query, await readReference(base, query.q)));
     }
+    // Search by meaning on, with the model that comes with Outpost: the index is built, then the same searches.
+    if (modelPresent) {
+      // The keyword searches again first: a second pass differs a little from the first (reference collections
+      // answer from what they have read since), and that, not the first, is what meaning is compared with.
+      await evaluate(keywordAgain);
+      await app.api("PATCH", "/api/settings", { "search.semantic.enabled": true });
+      await app.ctx.services.semantic.settled();
+      await app.ctx.jobs.whenIdle();
+      await evaluate(meaningRows);
+    }
     // A file, not the console: the test runner keeps a passing test's output to itself.
     if (process.env.SEARCH_EVAL_OUT) {
+      const withMeaning = modelPresent
+        ? `${formatTable(meaningRows)}\n\n${formatSummary("fixture library, keyword again", summarise(keywordAgain))}\n${formatSummary("fixture library, with search by meaning", summarise(meaningRows))}\n\n`
+        : "";
       writeFileSync(
         process.env.SEARCH_EVAL_OUT,
-        `${formatTable(rows)}\n\n${formatSummary("fixture library", summarise(rows))}\n\n${formatReference("recorded reference collections", referenceRows)}\n`,
+        `${formatTable(rows)}\n\n${formatSummary("fixture library", summarise(rows))}\n\n${withMeaning}${formatReference("recorded reference collections", referenceRows)}\n`,
       );
     }
-  }, 60_000);
+  }, 120_000);
   afterAll(async () => {
     await app.close();
     await kiwix.close();
@@ -131,6 +155,17 @@ describe("search quality on the household evaluation set", () => {
       referenceRows.flatMap((row) => row.titles).filter((title: string) => /questions\/tagged|Highest Voted|Main Page/.test(title)),
     ).toEqual([]);
   });
+
+  it.skipIf(!modelPresent)(
+    "does at least as well with search by meaning on, and puts the first aid manual first for rescue breaths",
+    () => {
+      const summary = summarise(meaningRows);
+      expect(summary.success3).toBeGreaterThanOrEqual(0.95);
+      expect(summary.zeroResultRate).toBe(0);
+      expect(summary.ndcg5).toBeGreaterThanOrEqual(summarise(keywordAgain).ndcg5);
+      expect(meaningRows.find((row) => row.q === "rescue breaths for a child")!.titles[0]).toBe("First aid manual");
+    },
+  );
 
   it("answers the owner's question with the car battery page first", () => {
     const row = rows.find((candidate) => candidate.q === "How to change car battery")!;
