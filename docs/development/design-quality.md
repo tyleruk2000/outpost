@@ -168,5 +168,8 @@ desktop at 1280 px.
 | The same with roads for routes and places to find, first time | about 23 (the above, then Add a road network, Read the list of regions, Add; Get reference data, the source, its layers, Show the size, Download), the 2.2 GB country file downloaded twice | 10 (the above, two ticks, Next, the country file choice) | about 22 | 8 (two ticks, the country file choice) | One country file for both, asked once whether to keep it; from Map data 7 on a phone, 6 on a desktop, one fewer once the choice is remembered |
 | Roads for a drive, from Road route's empty state | 4 (Add road networks, Add a road network, Read the list of regions, Add), the file deleted with no say | 4 (Add roads for the home country, Check sizes, the choice, Download) | 4 | 4 | The country chosen from home; the choice asked, then remembered (3); a kept file is read with no download (**Build roads**, 2) |
 
+| Plan a walk from a point on the map (streets add-on installed) | Not possible | 6 (press and hold, Plan a route from here, Walk, To, a place, Plan route); 5 once Walk is remembered | Not possible | 6 (right-click, the same) | One Plan a route with its ways of travelling; the way chosen is remembered |
+| Show 30 minutes' drive from a point | Not possible | 2 (press and hold, Reachable from here): 30 minutes is the default | Not possible | 2 (right-click, Reachable from here) | From the quick search ("reachable"), 2 for the middle of the map. Works on every installation with a road network (Main roads only) |
+
 On a tablet at 768 px every screen gained 196 px of width; the full sidebar is one press
 away (the button at the top of the rail, or Ctrl \\).

@@ -58,7 +58,7 @@ function choose(pathName: string, body: Record<string, unknown> | null): { statu
   return { status: 404, body: JSON.stringify({ error_code: 106, error: "Try any of: '/route' '/isochrone' '/status'" }) };
 }
 
-export async function createValhallaStandIn(): Promise<ValhallaStandIn> {
+export async function createValhallaStandIn(port = 0): Promise<ValhallaStandIn> {
   const standIn: ValhallaStandIn = {
     url: "",
     requests: [],
@@ -89,7 +89,7 @@ export async function createValhallaStandIn(): Promise<ValhallaStandIn> {
       else send();
     });
   });
-  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  await new Promise<void>((resolve) => server.listen(port, "127.0.0.1", resolve));
   standIn.url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   standIn.close = () =>
     new Promise((resolve) => {

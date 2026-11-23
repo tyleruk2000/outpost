@@ -26,7 +26,8 @@ it lists every tool by name. A tool taken up on a phone has its card at the foot
 screen in place of the tabs; close the card to have the tabs back. Pinch to zoom.
 
 Right-click the map (press and hold on a touch screen) for **Save a place here**, **Measure
-from here**, **Draw a route from here**, **Road route from here**, **Road route to here**,
+from here**, **Draw a route from here**, **Plan a route from here**, **Plan a route to here**,
+**Reachable from here**,
 **Sun times here**, **Estimated radio range from here**, **How far on foot from here** and
 **Copy coordinates** (and **Move** on a saved place).
 
@@ -235,10 +236,39 @@ A hand compass reads to a degree or two, about 90 m at 5 km, so expect a few hun
 ## Road routes
 
 Planned directions for a drive, written the way you would write them down: "M20 -
-Folkestone", "A26 (E17) - Reims (A4)". Open **Routes**, then **Road route**; or press and
-hold (right-click) a point on the map and choose **Road route from here** or **Road route to
-here**. The roads are added by country on **Map data**, as **Roads for routes**. See
-[road-routes.md](road-routes.md).
+Folkestone", "A26 (E17) - Reims (A4)". Open **Routes**, then **Plan a route**; or press and
+hold (right-click) a point on the map and choose **Plan a route from here** or **Plan a route
+to here**. The roads are added by country on **Map data**, as **Roads for routes**. With
+the optional streets add-on, the same panel also plans door to door, walking and cycling.
+See [road-routes.md](road-routes.md).
+
+## Reachable from here
+
+Press and hold a point and choose **Reachable from here**: the areas reachable in 15, 30 or
+60 minutes, drawn in three steps of one colour with a labelled outline for each time. By
+car it works over the road networks installed (**Main roads only**); with the streets
+add-on, over every street, by car, bicycle or on foot (**Streets**). Free-flowing traffic,
+no stops. See [road-routes.md](road-routes.md#reachable-from-here).
+
+## Streets for routes
+
+Only where the optional streets add-on is installed, each country on **Map data** has a
+**Streets for routes** row. Streets are built on this device from a kept country file;
+nothing is downloaded.
+
+1. Keep the country file first (the **Country file** row's **Keep one**), if it is not kept.
+2. On **Streets for routes**, press **Add**, and tick the countries to build (several are
+   joined into one set, which replaces the one in use).
+3. Read **What it takes** before you start: for Great Britain on a Raspberry Pi 5, about an
+   hour, about 2.3 GB of memory, and about 53 GB written to the disk it works on. An SD
+   card wears with every write: under **Where it works**, choose the NAS or a USB disk to
+   spare it. The finished streets are copied back.
+4. **Build streets**. The row shows each stage with its progress (step 3 of 5) and the time
+   left; routes keep working on the streets in use meanwhile. **Stop building** in its
+   **…** menu stops it and leaves the streets in use as they were.
+
+**Remove** in the row's menu deletes the streets; the country files stay. Where the add-on
+is not installed, Map data says so in one line, with how to turn it on.
 
 ## Printing a map
 
@@ -457,6 +487,10 @@ are not counted, and radio often reaches less. It works the same way as a repeat
 shading, its edge and the circles are drawn in reds, the typical-range circle the brightest.
 
 ## How far on foot from a point
+
+(For walking times along streets rather than over open ground, see **Reachable from here**
+above.)
+
 
 Press and hold the map and choose **How far on foot from here**: the ground reachable on
 foot in 30 minutes to 4 hours, shaded orange with a ring each half hour or hour. The pace is

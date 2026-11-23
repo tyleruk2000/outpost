@@ -4,7 +4,7 @@
  * Outpost prints none of it itself: it is for pasting into a message, a note or a small
  * printer of one's own.
  */
-import { directionsAsPlainText, type RoadRouteResult } from "@outpost/shared";
+import { directionsAsPlainText, type RoadRouteResult, type StreetsRouteResult } from "@outpost/shared";
 import { Copy } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -12,15 +12,19 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/misc";
 import { copyText } from "@/lib/clipboard";
 import { notify } from "@/lib/notify";
+import { streetsAsPlainText } from "./street-words";
 
 export const PLAIN_TEXT_WIDTH = 48;
 
-export function PlainTextBox({ route, title }: { route: RoadRouteResult; title?: string }) {
+export function PlainTextBox({ route, title }: { route: RoadRouteResult | StreetsRouteResult; title?: string }) {
   const asciiId = useId();
   const headingId = useId();
   const [ascii, setAscii] = useState(false);
   const text = useMemo(
-    () => directionsAsPlainText(route, { width: PLAIN_TEXT_WIDTH, ascii, ...(title ? { title } : {}) }),
+    () =>
+      "mode" in route
+        ? streetsAsPlainText(route, { width: PLAIN_TEXT_WIDTH, ascii, ...(title ? { title } : {}) })
+        : directionsAsPlainText(route, { width: PLAIN_TEXT_WIDTH, ascii, ...(title ? { title } : {}) }),
     [route, ascii, title],
   );
   return (

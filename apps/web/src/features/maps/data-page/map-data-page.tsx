@@ -24,9 +24,11 @@ import { useActiveJobs } from "@/lib/queries";
 import { plural } from "@/lib/utils";
 import { useMapOverview } from "../data";
 import { fold } from "../lib/search";
+import { useStreetsStatus } from "../road-route/streets-data";
 import { AddMapData, type AddStart } from "./add-map-data";
 import { DataRow, type RowContext } from "./data-row";
 import { PlaceNamesDialog } from "./place-names";
+import { StreetsBuildDialog, StreetsNotInstalled } from "./streets-build";
 import { UpdatesDialog } from "./update-dialog";
 import { useMapData } from "./use-map-data";
 import { activeLine, NOT_ADDED, notKeptLine, olderFiles, staleItems, staleLine, statusSentence } from "./words";
@@ -60,8 +62,20 @@ const ownName = (country: string) => (item: MapDataItem) => {
   return title !== fold(country) && title !== fold(`${country} (terrain)`);
 };
 
-function CountryGroup({ country, context, onAdd }: { country: MapDataCountry; context: RowContext; onAdd: (start: AddStart) => void }) {
+function CountryGroup({
+  country,
+  context,
+  onAdd,
+  onAddStreets,
+}: {
+  country: MapDataCountry;
+  context: RowContext;
+  onAdd: (start: AddStart) => void;
+  onAddStreets: (country: string) => void;
+}) {
   const rows = new Map(country.rows.map((row) => [row.kind, row.items]));
+  // The server sends a streets row only where the optional streets service is installed.
+  const streets = country.rows.find((row) => row.kind === "streets");
   const titled = ownName(country.name);
   const start = (kinds: MapDataAddKind[]) => onAdd({ country: country.country, regionId: country.regionId, kinds });
   return (
@@ -90,6 +104,16 @@ function CountryGroup({ country, context, onAdd }: { country: MapDataCountry; co
           titled={titled}
           context={context}
         />
+        {streets ? (
+          <DataRow
+            kind="streets"
+            items={streets.items}
+            empty={NOT_ADDED.streets}
+            onAdd={() => onAddStreets(country.country)}
+            titled={() => true}
+            context={context}
+          />
+        ) : null}
       </Rows>
     </section>
   );
@@ -255,6 +279,9 @@ export default function MapDataPage() {
   const [getting, setGetting] = useState<{ initial: ReferenceEstimateRequest | null } | null>(null);
   const [importing, setImporting] = useState(false);
   const [names, setNames] = useState(false);
+  /** Building streets for routes, for the country whose row asked (or none). */
+  const [streetsFor, setStreetsFor] = useState<{ country: string | null } | null>(null);
+  const streetsStatus = useStreetsStatus();
   // Review updates ("review"), or Update for one thing from its row's menu.
   const [reviewing, setReviewing] = useState<"review" | MapDataItem | null>(null);
 
@@ -267,7 +294,8 @@ export default function MapDataPage() {
     }
     if (params.get("get")) setGetting({ initial: null });
     if (params.get("names")) setNames(true);
-    if (params.get("add") || params.get("get") || params.get("names")) setParams({}, { replace: true });
+    if (params.get("streets")) setStreetsFor({ country: params.get("country") });
+    if (params.get("add") || params.get("get") || params.get("names") || params.get("streets")) setParams({}, { replace: true });
   }, [params.toString()]);
 
   const context: RowContext = useMemo(
@@ -403,10 +431,21 @@ export default function MapDataPage() {
             ) : (
               <div className="grid gap-8">
                 {countries.map((country) => (
-                  <CountryGroup key={country.country} country={country} context={context} onAdd={add} />
+                  <CountryGroup
+                    key={country.country}
+                    country={country}
+                    context={context}
+                    onAdd={add}
+                    onAddStreets={(code) => setStreetsFor({ country: code })}
+                  />
                 ))}
               </div>
             )}
+            {streetsStatus.data && !streetsStatus.data.installed ? (
+              <div className="mt-6">
+                <StreetsNotInstalled />
+              </div>
+            ) : null}
           </Section>
 
           {other.length > 0 ? (
@@ -471,6 +510,14 @@ export default function MapDataPage() {
         />
       ) : null}
       <PlaceNamesDialog open={names} onOpenChange={setNames} />
+      {streetsStatus.data?.installed ? (
+        <StreetsBuildDialog
+          open={streetsFor !== null}
+          onOpenChange={(open) => !open && setStreetsFor(null)}
+          country={streetsFor?.country ?? null}
+          onKeepFile={(country) => add({ country, kinds: ["extract"] })}
+        />
+      ) : null}
     </Page>
   );
 }

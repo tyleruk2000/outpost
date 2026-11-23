@@ -8,14 +8,16 @@
  *
  * Pure: the route and the drawn map in, pdfmake's document out.
  */
-import { type RoadRouteResult, roadDistanceText, roadDurationText } from "@outpost/shared";
+import { type RoadRouteResult, roadDistanceText, roadDurationText, type StreetDirections, type StreetsRouteResult } from "@outpost/shared";
 import type { Content, TableCell } from "pdfmake/interfaces";
 import { PRINT_COLOURS as C, callout, measureOf, type PrintPaper, para, printable, printDocument } from "@/features/print-kit";
-import type { RouteMap } from "./route-map";
+import type { CardRoute, RouteMap } from "./route-map";
+import { endTurnsTitle, streetsTitle, streetsTotals, turnsSummary } from "./street-words";
 import { countriesText, endLine, routeTitle, startLine } from "./words";
 
 export interface RouteCardInput {
-  route: RoadRouteResult;
+  /** Outpost's road route; or a route planned on streets: a door-to-door drive, a walk or a ride. */
+  route: CardRoute;
   /** The name the route is saved under, or its ends. */
   name: string;
   paper: PrintPaper;
@@ -38,8 +40,8 @@ function pointsLine(route: RoadRouteResult): string {
   return `${names[0]}, via ${names.slice(1, -1).join(", ")}, to ${names.at(-1)}`;
 }
 
-/** The directions as a table: a box to tick, the line and its detail, distance and time. */
-export function directionsTable(route: RoadRouteResult): Content {
+/** The directions as a table: a box to tick, the line and its detail, distance and time. With `door`, the streets at each end. */
+export function directionsTable(route: RoadRouteResult, door?: StreetsRouteResult): Content {
   const units = route.request.units ?? "km";
   const head = (text: string, alignment: "left" | "right" = "left"): TableCell => ({
     text,
@@ -59,8 +61,26 @@ export function directionsTable(route: RoadRouteResult): Content {
     ],
   });
   const cell = (content: Content) => content as TableCell;
+  // The turns at an end of a door-to-door drive: a band with what they are, then each turn smaller, with its distance.
+  const turns = (title: string, directions: StreetDirections) => {
+    bands.set(body.length, C.shade);
+    body.push([
+      { text: printable(`${title} (${turnsSummary(directions, units)})`), colSpan: 4, bold: true, fontSize: 10, margin: [0, 1, 0, 1] },
+      {},
+      {},
+      {},
+    ]);
+    for (const turn of directions.lines)
+      body.push([
+        cell(tickBox),
+        { text: printable(turn.text), fontSize: 10.5 },
+        { text: turn.distanceText, alignment: "right", fontSize: 9, margin: [0, 1.5, 0, 0] },
+        "",
+      ]);
+  };
   const start = startLine(route);
-  if (start) body.push([cell(tickBox), cell(line(`Start: ${start.title}`, start.detail, { size: 12 })), "", ""]);
+  if (door?.start) turns(endTurnsTitle(door, "start"), door.start);
+  else if (start) body.push([cell(tickBox), cell(line(`Start: ${start.title}`, start.detail, { size: 12 })), "", ""]);
   for (const leg of route.legs) {
     if (leg.kind === "via") {
       bands.set(body.length, C.accentSoft);
@@ -86,12 +106,14 @@ export function directionsTable(route: RoadRouteResult): Content {
     ]);
   }
   const end = endLine(route);
-  if (end) body.push([cell(tickBox), cell(line(`End: ${end.title}`, end.detail, { size: 12 })), "", ""]);
+  if (door?.end) turns(endTurnsTitle(door, "end"), door.end);
+  else if (end) body.push([cell(tickBox), cell(line(`End: ${end.title}`, end.detail, { size: 12 })), "", ""]);
+  const summary = door?.summary ?? route.summary;
   body.push([
     "",
     { text: "All told", bold: true, fontSize: 10 },
-    { text: roadDistanceText(route.summary.distanceM, units), bold: true, alignment: "right", fontSize: 10 },
-    { text: roadDurationText(route.summary.durationS), bold: true, alignment: "right", fontSize: 10 },
+    { text: roadDistanceText(summary.distanceM, units), bold: true, alignment: "right", fontSize: 10 },
+    { text: roadDurationText(summary.durationS), bold: true, alignment: "right", fontSize: 10 },
   ]);
   const last = body.length - 1;
   return {
@@ -110,21 +132,120 @@ export function directionsTable(route: RoadRouteResult): Content {
   } as Content;
 }
 
-export function routeCardDocument(input: RouteCardInput) {
+/** A walk, a ride or a short drive on streets all the way: the turns, each with a box and its distance. */
+export function streetTurnsTable(directions: StreetDirections, units: "km" | "miles"): Content {
+  const body: TableCell[][] = [
+    [
+      { text: "", fontSize: 8 },
+      { text: "Turn", bold: true, fontSize: 8, color: C.muted },
+      { text: "Then", bold: true, fontSize: 8, color: C.muted, alignment: "right" },
+    ],
+  ];
+  for (const turn of directions.lines)
+    body.push([
+      tickBox as TableCell,
+      { text: printable(turn.text), fontSize: 12 },
+      { text: turn.distanceText, alignment: "right", fontSize: 10, margin: [0, 2, 0, 0] },
+    ]);
+  body.push([
+    "",
+    { text: "All told", bold: true, fontSize: 10 },
+    {
+      text: `${roadDistanceText(directions.distanceM, units)}, ${roadDurationText(directions.durationS)}`,
+      bold: true,
+      alignment: "right",
+      fontSize: 10,
+    },
+  ]);
+  const last = body.length - 1;
+  return {
+    table: { headerRows: 1, widths: [16, "*", 96], body, dontBreakRows: true },
+    layout: {
+      hLineWidth: (index: number) => (index === 0 ? 0 : index === 1 || index === last ? 1 : 0.5),
+      vLineWidth: () => 0,
+      hLineColor: (index: number) => (index === 1 || index === last ? C.ink : C.rule),
+      paddingTop: () => 4,
+      paddingBottom: () => 4,
+      paddingLeft: (index: number) => (index === 0 ? 2 : 6),
+      paddingRight: () => 4,
+    },
+    margin: [0, 4, 0, 10],
+  } as Content;
+}
+
+const KIND_WORDS = { "drive-door": "Door to door", walk: "Walk", cycle: "Ride" } as const;
+
+/** The card for a route on streets all the way: the map, then the turns. */
+function streetsCardDocument(input: RouteCardInput & { route: StreetsRouteResult }) {
   const { route, paper } = input;
   const measure = measureOf(paper);
   const units = route.request.units ?? "km";
   const planned = plannedDay(route.plannedAt);
+  const directions = route.streets;
+  const first: Content[] = [
+    { text: KIND_WORDS[route.mode], fontSize: 8, bold: true, color: C.accent, characterSpacing: 0.4 },
+    { text: printable(input.name), fontSize: 22, bold: true, margin: [0, 2, 0, 2] },
+    { text: printable(streetsTitle(route)), fontSize: 11 },
+    { text: printable(`${streetsTotals(route)}; planned ${planned}.`), color: C.muted, margin: [0, 2, 0, 0] },
+    { canvas: [{ type: "line", x1: 0, y1: 0, x2: measure, y2: 0, lineWidth: 1.6, lineColor: C.accent }], margin: [0, 8, 0, 10] },
+    input.map
+      ? ({ svg: input.map.svg, width: input.map.width, margin: [0, 0, 0, 8] } as Content)
+      : para("No overview map was drawn for this card. The turns follow."),
+    callout(
+      "warn",
+      "Planned in advance, not live",
+      para(
+        printable(
+          `Planned on ${planned} from street data installed on this device, at an even pace with no stops. It knows nothing of closures, works or the weather. Follow the signs.`,
+        ),
+      ),
+    ),
+  ];
+  const turns: Content[] = [
+    { text: "Turns", fontSize: 16, bold: true, margin: [0, 0, 0, 2] },
+    { text: "Each line is a turn, and how far to go before the next. Tick each as you go.", color: C.muted, margin: [0, 0, 0, 4] },
+    directions ? streetTurnsTable(directions, units) : para("No turns were given for this route."),
+    ...route.warnings.map((warning) => para(printable(warning))),
+    {
+      text: printable(`Planned in advance, not live, on ${planned}. ${route.credit}`),
+      fontSize: 7.5,
+      color: C.muted,
+      margin: [0, 6, 0, 0],
+    },
+  ];
+  return printDocument({
+    paper,
+    title: `${KIND_WORDS[route.mode]}: ${input.name}`,
+    subject: streetsTitle(route),
+    made: input.made,
+    footerName: printable(input.name),
+    footerRight: `Planned ${planned}`,
+    parts: [
+      { kind: "plain", content: first },
+      { kind: "section", running: printable(`Turns · ${input.name}`), content: turns },
+    ],
+  });
+}
+
+export function routeCardDocument(input: RouteCardInput) {
+  const door = "mode" in input.route ? input.route : undefined;
+  if (door && !door.road) return streetsCardDocument({ ...input, route: door });
+  const route = door?.road ?? (input.route as RoadRouteResult);
+  const { paper } = input;
+  const measure = measureOf(paper);
+  const units = route.request.units ?? "km";
+  const planned = plannedDay(route.plannedAt);
   const crossings = route.summary.crossings.map((crossing) => crossing.name).join(", ");
+  const totals = door?.summary ?? route.summary;
   const facts = [
-    `${roadDistanceText(route.summary.distanceM, units)}, about ${roadDurationText(route.summary.durationS)}${crossings ? " with the crossing" : " driving"}`,
+    `${roadDistanceText(totals.distanceM, units)}, about ${roadDurationText(totals.durationS)}${crossings ? " with the crossing" : door ? " door to door" : " driving"}`,
     `through ${countriesText(route.summary.countries)}`,
     crossings ? `crossing by ${crossings}` : "",
     `planned ${planned}`,
   ].filter(Boolean);
 
   const first: Content[] = [
-    { text: "Road route", fontSize: 8, bold: true, color: C.accent, characterSpacing: 0.4 },
+    { text: door ? "Door to door" : "Road route", fontSize: 8, bold: true, color: C.accent, characterSpacing: 0.4 },
     { text: printable(input.name), fontSize: 22, bold: true, margin: [0, 2, 0, 2] },
     { text: printable(pointsLine(route)), fontSize: 11 },
     { text: printable(`${facts.join("; ")}.`), color: C.muted, margin: [0, 2, 0, 0] },
@@ -150,11 +271,11 @@ export function routeCardDocument(input: RouteCardInput) {
       color: C.muted,
       margin: [0, 0, 0, 4],
     },
-    directionsTable(route),
-    ...route.warnings.map((warning) => para(printable(warning))),
+    directionsTable(route, door),
+    ...(door ?? route).warnings.map((warning) => para(printable(warning))),
     {
       text: printable(
-        `Planned in advance, not live, on ${planned}. Check the signs and closures. Junction numbers and signs are as mapped in OpenStreetMap; signs change. ${route.credit.line}`,
+        `Planned in advance, not live, on ${planned}. Check the signs and closures. Junction numbers and signs are as mapped in OpenStreetMap; signs change. ${route.credit.line}${door ? ` ${door.credit}` : ""}`,
       ),
       fontSize: 7.5,
       color: C.muted,

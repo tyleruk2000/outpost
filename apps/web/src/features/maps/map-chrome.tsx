@@ -943,7 +943,7 @@ export function PinCard({
         </Button>
         {onRoadRoute ? (
           <Button size="sm" onClick={onRoadRoute}>
-            <Car aria-hidden /> Road route to here
+            <Car aria-hidden /> Plan a route to here
           </Button>
         ) : null}
       </div>
@@ -965,6 +965,7 @@ export function ContextMenu({
   onSun,
   onRange,
   onWalk,
+  onReach,
   onClose,
 }: {
   point: { x: number; y: number };
@@ -986,6 +987,8 @@ export function ContextMenu({
   onRange?: () => void;
   /** Shows the ground reachable on foot from there in a set time (maps/walk/walk-reach.tsx). */
   onWalk?: () => void;
+  /** Shows the areas reachable from there in 15, 30 or 60 minutes (maps/reach/reach-tool.tsx). */
+  onReach?: () => void;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -1020,7 +1023,9 @@ export function ContextMenu({
   const [drawn, setDrawn] = useState<number | null>(null);
   useLayoutEffect(() => setDrawn(ref.current?.offsetHeight || null), []);
   const width = 232;
-  const height = drawn ?? (place ? 254 : 218) + (locator ? 18 : 0) + (onRange ? 36 : 0) + (onWalk ? 36 : 0) + (onRoadRoute ? 72 : 0);
+  const height =
+    drawn ??
+    (place ? 254 : 218) + (locator ? 18 : 0) + (onRange ? 36 : 0) + (onWalk ? 36 : 0) + (onReach ? 36 : 0) + (onRoadRoute ? 72 : 0);
   const left = Math.max(8, Math.min(point.x, bounds.width - width - 8));
   const top = Math.max(8, Math.min(point.y, bounds.height - height - 8));
   const item =
@@ -1047,12 +1052,17 @@ export function ContextMenu({
       {onRoadRoute ? (
         <>
           <button type="button" role="menuitem" className={item} onClick={() => onRoadRoute("from")}>
-            Road route from here
+            Plan a route from here
           </button>
           <button type="button" role="menuitem" className={item} onClick={() => onRoadRoute("to")}>
-            Road route to here
+            Plan a route to here
           </button>
         </>
+      ) : null}
+      {onReach ? (
+        <button type="button" role="menuitem" className={item} onClick={onReach}>
+          Reachable from here
+        </button>
       ) : null}
       <button type="button" role="menuitem" className={item} onClick={onSun}>
         Sun times here

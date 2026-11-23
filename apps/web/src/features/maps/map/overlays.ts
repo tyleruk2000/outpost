@@ -25,6 +25,7 @@ import { MAP_FONTS, type MapTheme } from "../lib/style";
 import type { LayerSpecification, SourceSpecification } from "../lib/style-types";
 import { utmGridLayers } from "../print/utm-grid";
 import { gridLayers, relayLayers, sightLayers } from "../radio/layers";
+import { reachLayers } from "../reach/reach-map";
 import { recordingLayers } from "../recording/overlay";
 import { resectionLayers } from "../resection/layers";
 import { roadRouteLayers } from "../road-route/layers";
@@ -46,6 +47,8 @@ export const OVERLAY_SOURCES = [
   "o-road-route",
   "o-measure",
   "o-walk",
+  // Areas reachable in 15, 30 or 60 minutes (reach/).
+  "o-reach",
   "o-range",
   "o-repeaters",
   "o-reference",
@@ -275,6 +278,7 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
       paint: halo,
     },
     // The estimated range of the repeater that is open, beneath the repeaters; see features/repeaters/map/range.ts.
+    ...reachLayers(theme),
     ...walkLayers(theme),
     ...rangeLayers(theme),
     // Repeaters, when they are switched on; see features/repeaters/map.

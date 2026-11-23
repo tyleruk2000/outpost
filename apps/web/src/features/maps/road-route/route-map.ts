@@ -9,7 +9,7 @@
  * (`RouteMapInput`), as the household book does, so a card made before the list of
  * installed maps had loaded does not leave the map out.
  */
-import type { Bbox, InstalledRegion, MapSources, RoadRouteResult } from "@outpost/shared";
+import type { Bbox, InstalledRegion, MapSources, RoadRouteResult, StreetsRouteResult } from "@outpost/shared";
 import { drawWithMapLibre } from "@/features/household-papers/binder-map";
 import { FALLBACK_THEME } from "@/features/maps/lib/palette";
 import { buildStyle } from "@/features/maps/lib/style";
@@ -44,9 +44,34 @@ export interface RouteMap {
 
 const MAX_HEIGHT = 440;
 
+/** What a card's map draws: Outpost's road route, a route planned on streets, or a door-to-door drive (both). */
+export type CardRoute = RoadRouteResult | StreetsRouteResult;
+
+/** The streets of a route planned on them, as lines: the ends of a drive, or a whole walk or ride. */
+export function streetLinesOf(route: CardRoute): Array<Array<[number, number]>> {
+  if (!("mode" in route)) return [];
+  return [route.start, route.end, route.streets].filter((part) => part !== null).map((part) => part.geometry.coordinates);
+}
+
+/** The road route under a card's route, where it has one. */
+export const roadOf = (route: CardRoute): RoadRouteResult | null => ("mode" in route ? route.road : route);
+
+function boundsOf(route: CardRoute): Bbox {
+  const road = roadOf(route);
+  const all = streetLinesOf(route).flat();
+  let [west, south, east, north] = road ? routeBounds(road) : [Infinity, Infinity, -Infinity, -Infinity];
+  for (const [lon, lat] of all) {
+    west = Math.min(west, lon);
+    east = Math.max(east, lon);
+    south = Math.min(south, lat);
+    north = Math.max(north, lat);
+  }
+  return [west, south, east, north];
+}
+
 /** The ground the map shows: the whole route with a margin round it. */
-export function routeMapBbox(route: RoadRouteResult): Bbox {
-  const [west, south, east, north] = routeBounds(route);
+export function routeMapBbox(route: CardRoute): Bbox {
+  const [west, south, east, north] = boundsOf(route);
   const padLat = Math.max((north - south) * 0.08, 0.05);
   const padLon = Math.max((east - west) * 0.08, 0.05);
   return [west - padLon, Math.max(-85, south - padLat), east + padLon, Math.min(85, north + padLat)];
@@ -62,22 +87,26 @@ function placer(frame: Frame, size: { width: number; height: number }, ptPerPx: 
 }
 
 /** The route over the picture: a white casing, the road bold in ink, the crossing dashed, and the points. */
-export function routeOverlay(
-  route: RoadRouteResult,
-  place: (at: [number, number]) => [number, number],
-  width = Number.POSITIVE_INFINITY,
-): string {
+export function routeOverlay(card: CardRoute, place: (at: [number, number]) => [number, number], width = Number.POSITIVE_INFINITY): string {
+  const route: RoadRouteResult =
+    roadOf(card) ?? ({ legs: [], geometry: { type: "MultiLineString", coordinates: [] }, snapped: [] } as never);
   const parts = legLines(route);
   const path = (line: Array<[number, number]>) =>
     line.map((at, index) => `${index === 0 ? "M" : "L"}${place(at).map(round).join(",")}`).join(" ");
   const roads: string[] = [];
   const crossings: string[] = [];
+  const streets = streetLinesOf(card).map(path);
   route.legs.forEach((leg, index) => {
     for (const line of parts[index] ?? []) (leg.kind === "crossing" ? crossings : roads).push(path(line));
   });
   const out: string[] = [];
-  const all = [...roads, ...crossings].join(" ");
+  const all = [...roads, ...crossings, ...streets].join(" ");
   if (all) out.push(`<path d="${all}" fill="none" stroke="${C.paper}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>`);
+  // Streets thinner than the main roads, so the two read apart on paper in grey.
+  if (streets.length > 0)
+    out.push(
+      `<path d="${streets.join(" ")}" fill="none" stroke="${C.ink}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`,
+    );
   if (roads.length > 0)
     out.push(
       `<path d="${roads.join(" ")}" fill="none" stroke="${C.ink}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`,
@@ -106,8 +135,17 @@ export function routeOverlay(
     out.push(label(x + 7, y + 3, name));
   });
   // The points: start and end solid, via points open with their number.
-  const last = route.snapped.length - 1;
-  route.snapped.forEach((point, index) => {
+  // A walk or a ride has no road route: its ends are where its streets start and stop.
+  const line = "mode" in card && !card.road ? card.streets?.geometry.coordinates : undefined;
+  const ends =
+    line && line.length > 0 && "mode" in card
+      ? [
+          { input: { lon: line[0]![0], lat: line[0]![1], name: card.request.points[0]?.name ?? null } },
+          { input: { lon: line.at(-1)![0], lat: line.at(-1)![1], name: card.request.points.at(-1)?.name ?? null } },
+        ]
+      : route.snapped;
+  const last = ends.length - 1;
+  ends.forEach((point, index) => {
     const [x, y] = place([point.input.lon, point.input.lat]);
     const via = index > 0 && index < last;
     out.push(
@@ -125,7 +163,7 @@ export function routeOverlay(
  * the browser; tests give their own.
  */
 export async function routeOverviewMap(
-  route: RoadRouteResult,
+  route: CardRoute,
   input: RouteMapInput,
   paper: PrintPaper,
   options: { draw?: DrawMap; signal?: AbortSignal } = {},
@@ -170,9 +208,11 @@ export async function routeOverviewMap(
     if (options.signal?.aborted) throw error;
     missing = `No map under the route: this device could not draw it (${errorMessage(error).replace(/\.$/, "")}).`;
   }
-  figure.captions.push(
-    `${missing ? `${missing} ` : ""}Bold: the main roads of the route. Dashed: the crossing. Not a map to drive by: follow the signs.`,
-  );
+  const road = roadOf(route);
+  const key = !road
+    ? "The line is the route on streets. Not a map to go by: follow the signs."
+    : `Bold: the main roads of the route.${streetLinesOf(route).length > 0 ? " Thin: the streets at each end." : ""} Dashed: the crossing. Not a map to drive by: follow the signs.`;
+  figure.captions.push(`${missing ? `${missing} ` : ""}${key}`);
   const block = mapFigureBlock(figure, inner);
   if (block.kind !== "drawing") throw new Error("The overview map could not be laid out.");
   const items = block.draw(0, 0, inner);

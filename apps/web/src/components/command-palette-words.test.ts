@@ -19,8 +19,10 @@ const lands: Array<[string, string | null]> = [
   ["first aid", null],
   ["dark mode", "Settings: Appearance"],
   ["print", "Maps: Print"],
-  ["directions", "Maps: Road route"],
-  ["driving directions", "Maps: Road route"],
+  ["directions", "Maps: Plan a route"],
+  ["walking directions", "Maps: Plan a route"],
+  ["drive time", "Maps: Reachable from here"],
+  ["driving directions", "Maps: Plan a route"],
   ["gpx", "Maps: Routes"],
   ["sunrise", "Tools: Outdoors"],
   ["food", "Preparedness: Supplies"],
@@ -168,6 +170,7 @@ describe("the quick search's places, for the words people use", () => {
     // Road route and printing open the tool itself, not only its tab.
     expect(findPlaces("directions")[0]?.to).toBe("/maps?tab=routes&road=1");
     expect(findPlaces("print")[0]?.to).toBe("/maps?print=1");
+    expect(findPlaces("reachable")[0]?.to).toBe("/maps?reach=1");
     // "maps" alone is the Maps screen, not each of its tabs as well.
     expect(findPlaces("maps").map(placeName)).not.toContain("Maps: Layers");
   });

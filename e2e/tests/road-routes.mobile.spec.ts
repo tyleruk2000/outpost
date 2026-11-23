@@ -43,8 +43,8 @@ async function raiseSheet(page: Page) {
 async function planOnPhone(page: Page) {
   await page.goto("/maps?lat=49&lon=3&z=5&tab=routes");
   await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
-  await page.getByRole("button", { name: "Road route" }).first().tap();
-  await expect(page.getByRole("heading", { name: "Road route", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Plan a route" }).first().tap();
+  await expect(page.getByRole("heading", { name: "Plan a route", exact: true })).toBeVisible();
   const smallBefore = (await page.evaluate(auditLayout, { scope: SHEET })).filter((finding) => finding.kind === "small-target");
   expect(smallBefore, "the form's controls are 44 px targets").toEqual([]);
   await choosePlace(page, "From", "Leatherhead", true);

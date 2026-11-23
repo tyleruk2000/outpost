@@ -4,7 +4,7 @@
  * on this device, and the card is laid out with the print kit, with the three things every
  * PDF made in Outpost offers: save it, add it to the library, share it.
  */
-import type { RoadRouteResult } from "@outpost/shared";
+
 import { FileText } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Notice } from "@/components/page";
@@ -20,9 +20,13 @@ import { regionsCacheKey } from "../lib/tiles";
 import { readStored, writeStored } from "../lib/view";
 import { PAPERS } from "../print/paper";
 import { routeCardDocument } from "./route-card";
-import { type RouteMap, routeOverviewMap } from "./route-map";
+import { type CardRoute, type RouteMap, routeOverviewMap } from "./route-map";
 
-export function RouteCardPdf({ route, name, from }: { route: RoadRouteResult; name: string; from: { what: string; path: string } }) {
+/** What the PDF is called in the library: a road route, a door-to-door drive, a walk or a ride. */
+const kindOf = (route: CardRoute) =>
+  !("mode" in route) ? "Road route" : route.mode === "drive-door" ? "Door to door" : route.mode === "walk" ? "Walk" : "Ride";
+
+export function RouteCardPdf({ route, name, from }: { route: CardRoute; name: string; from: { what: string; path: string } }) {
   const [open, setOpen] = useState(false);
   if (!open) {
     return (
@@ -36,7 +40,7 @@ export function RouteCardPdf({ route, name, from }: { route: RoadRouteResult; na
 
 type MapState = { status: "drawing" } | { status: "drawn"; map: RouteMap | null; note: string | null };
 
-function RouteCardOpen({ route, name, from }: { route: RoadRouteResult; name: string; from: { what: string; path: string } }) {
+function RouteCardOpen({ route, name, from }: { route: CardRoute; name: string; from: { what: string; path: string } }) {
   const [paper, setPaper] = useState<AidPaper>(() => readStored(AID_PAPER_KEY, isAidPaper, likelyPaper(navigator.language)));
   const sources = useMapSources();
   const overview = useMapOverview();
@@ -83,7 +87,7 @@ function RouteCardOpen({ route, name, from }: { route: RoadRouteResult; name: st
     () => (drawn ? () => routeCardDocument({ route, name, paper, map: drawnMap, made: new Date(route.plannedAt) }) : null),
     [drawn, drawnMap, route, name, paper],
   );
-  const made = useKitPdf(make, { title: `Road route ${name}`, kind: "Road route", from });
+  const made = useKitPdf(make, { title: `${kindOf(route)} ${name}`, kind: kindOf(route), from });
 
   return (
     <section aria-label="Route card as a PDF" className="grid gap-3 border-t border-border pt-3" data-testid="road-route-card">

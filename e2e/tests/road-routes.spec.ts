@@ -31,8 +31,8 @@ test.describe("road routes", () => {
 
       // Routes, Road route.
       await page.getByRole("tab", { name: /Routes/ }).click();
-      await page.getByRole("button", { name: "Road route" }).first().click();
-      await expect(page.getByRole("heading", { name: "Road route", exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Plan a route" }).first().click();
+      await expect(page.getByRole("heading", { name: "Plan a route", exact: true })).toBeVisible();
       const choose = (label: string, place: string) => choosePlace(page, label, place);
       await choose("From", "Leatherhead");
       await page.getByRole("button", { name: "Add a via point" }).click();
@@ -94,7 +94,7 @@ test.describe("road routes", () => {
       expect(words).toContain("Check the signs and closures");
       expect(words).toContain("OpenStreetMap contributors");
 
-      await page.getByRole("button", { name: "Road route", exact: true }).click();
+      await page.getByRole("button", { name: "Plan a route", exact: true }).click();
       await expect(
         page.getByRole("region", { name: "Saved road routes" }).getByRole("button", { name: /Alps by the ferry/ }),
       ).toBeVisible();
