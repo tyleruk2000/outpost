@@ -8,14 +8,22 @@
 #
 # Asking, in /tiles (the valhalla-tiles volume, which Outpost also mounts):
 #   request.json   written by Outpost, one of
-#                  {"id": "...", "name": "United Kingdom", "extracts": ["/storage/internal/…/great-britain.osm.pbf", …]}
+#                  {"id": "...", "name": "United Kingdom", "extracts": ["/storage/internal/…/great-britain.osm.pbf", …],
+#                   "regions": [{"regionId", "name", "country", "dataDate"}, …],   optional, copied into tileset.json
+#                   "work": "/storage/usb-ssd/outpost-streets-work"}                 optional, see below
 #                  {"id": "...", "name": "United Kingdom", "import": "/storage/internal/…/streets-2026-11-23.tar"}
+#                  {"id": "...", "remove": true}   stops serving and deletes the streets in use
 #                  Taken once: it is renamed to last-request.json when work starts.
+#                  "work" puts a build's working files (and its ~50 GB of writes for Great Britain)
+#                  in that folder instead of /tiles/work: a USB SSD rather than an SD card. Its
+#                  last part must be "outpost-streets-work" (it is deleted afterwards), and the
+#                  storage it is on must be mounted read-write in this service.
 #   cancel         an empty file: stops a build under way (the tiles in use stay).
 # Answering:
 #   status.json    {"state": "idle"|"building"|"ready"|"failed", "id", "name", "stage", "message",
 #                   "startedAt", "finishedAt", "current": tileset.json or null}
 #   current/       tiles.tar, valhalla.json, tileset.json: what is served
+#                  tileset.json: {"name", "extracts": [{"file", "bytes"}], "builtAt", "tarBytes", "valhalla", "regions"}
 #
 # A build works in /tiles/work and replaces current/ only when it has finished; a failed
 # or stopped build leaves the tiles in use as they were. Measured on a Raspberry Pi 5
@@ -154,15 +162,21 @@ build() {
   run_stage "$out" tiles "Building streets (the long part)" valhalla_build_tiles -c "$out/valhalla.json" "$pbf" || return 1
   run_stage "$out" extract "Packing tiles" valhalla_build_extract -c "$out/valhalla.json" --overwrite || return 1
   rm -rf "$out/tiles" "$out/joined.osm.pbf" "$out/admins.sqlite"
-  NAME="$name" OUT="$out" python3 - "${extracts[@]}" <<'EOF'
+  NAME="$name" OUT="$out" REQUEST="${REQUEST_FILE:-}" python3 - "${extracts[@]}" <<'EOF'
 import json, os, sys, time
 out = os.environ["OUT"]
+regions = []
+try:
+    regions = json.load(open(os.environ["REQUEST"])).get("regions") or []
+except (OSError, ValueError, KeyError, AttributeError):
+    pass
 tileset = {
     "name": os.environ["NAME"],
     "extracts": [{"file": os.path.basename(p), "bytes": os.path.getsize(p)} for p in sys.argv[1:]],
     "builtAt": int(time.time() * 1000),
     "tarBytes": os.path.getsize(os.path.join(out, "tiles.tar")),
     "valhalla": "3.9.3",
+    "regions": regions if isinstance(regions, list) else [],
 }
 with open(os.path.join(out, "tileset.json"), "w") as f:
     json.dump(tileset, f, indent=1)
@@ -215,6 +229,8 @@ r = json.load(open(sys.argv[1]))
 print(str(r.get("id") or ""))
 print(str(r.get("name") or "Streets"))
 print(str(r.get("import") or ""))
+print(str(r.get("work") or ""))
+print("yes" if r.get("remove") is True else "")
 for p in r.get("extracts") or []:
     print(str(p))
 ' "$HOME_DIR/last-request.json" 2>/dev/null) || {
@@ -222,18 +238,54 @@ for p in r.get("extracts") or []:
     write_status failed "" "The request could not be read."
     return
   }
-  local id name import_from
+  local id name import_from work_from remove
   local -a extracts=()
-  { read -r id; read -r name; read -r import_from; while read -r line; do extracts+=("$line"); done; } <<<"$fields"
+  { read -r id; read -r name; read -r import_from; read -r work_from; read -r remove; while read -r line; do extracts+=("$line"); done; } <<<"$fields"
   STATUS_ID="$id" STATUS_NAME="$name" STATUS_STARTED=$(now_ms) STATUS_FINISHED=null
+  if [ "$remove" = "yes" ]; then
+    write_status building remove "Removing the streets"
+    stop_service
+    rm -rf "$HOME_DIR/current" "$HOME_DIR/previous"
+    STATUS_FINISHED=$(now_ms)
+    log "removed the streets in use"
+    write_status idle "" ""
+    return
+  fi
   local work="$HOME_DIR/work"
-  rm -rf "$work"
   REASON=""
   local ok=true
-  if [ -n "$import_from" ]; then
-    import_tar "$work" "$name" "$import_from" || ok=false
-  else
-    build "$work" "$name" "${extracts[@]}" || ok=false
+  if [ -n "$work_from" ] && [ -z "$import_from" ]; then
+    # Another disk for the working files: Outpost's own folder there, never anything else.
+    if [ "$(basename "$work_from")" != "outpost-streets-work" ]; then
+      ok=false
+      REASON="The work folder must be called outpost-streets-work."
+    elif ! mkdir -p "$work_from" 2>/dev/null || ! touch "$work_from/.writable" 2>/dev/null; then
+      ok=false
+      REASON="The streets service cannot write to $(dirname "$work_from"). Mount that storage read-write in the valhalla service in compose.yaml, or build on the streets' own volume."
+    else
+      rm -f "$work_from/.writable"
+      work="$work_from/build"
+    fi
+  fi
+  rm -rf "$work"
+  if $ok; then
+    if [ -n "$import_from" ]; then
+      import_tar "$work" "$name" "$import_from" || ok=false
+    else
+      REQUEST_FILE="$HOME_DIR/last-request.json" build "$work" "$name" "${extracts[@]}" || ok=false
+    fi
+  fi
+  # Built on another disk: bring the finished streets onto the streets' volume before the swap.
+  if $ok && [ "$work" != "$HOME_DIR/work" ]; then
+    rm -rf "$HOME_DIR/work"
+    mkdir -p "$HOME_DIR/work"
+    if run_stage "$HOME_DIR/work" swap "Copying the new streets" cp "$work/tiles.tar" "$work/tileset.json" "$HOME_DIR/work/"; then
+      cp "$work/build.log" "$HOME_DIR/work/build.log" 2>/dev/null || true
+      rm -rf "$work"
+      work="$HOME_DIR/work"
+    else
+      ok=false
+    fi
   fi
   STATUS_FINISHED=$(now_ms)
   if ! $ok; then

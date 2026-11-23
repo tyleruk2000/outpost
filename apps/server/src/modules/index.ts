@@ -52,6 +52,7 @@ import { registerRoads } from "./roads/index.ts";
 import { registerSatellites } from "./satellites/index.ts";
 import { registerSearch } from "./search/index.ts";
 import { registerSemantic } from "./semantic/index.ts";
+import { registerStreets } from "./streets/index.ts";
 import { registerSupplies } from "./supplies/index.ts";
 import { registerTides } from "./tides/index.ts";
 import { registerTools } from "./tools/index.ts";
@@ -132,6 +133,8 @@ export const modules: ModuleRegister[] = [
   registerHeard,
   // Road routes (Maps): main-roads networks and planned directions, on a line of its own.
   registerRoads,
+  // Streets for routes (the optional Valhalla service), after the road routes it builds on, on a line of its own.
+  registerStreets,
   // Tools a language model may call (Chat, and /mcp), last: they read from every module above.
   registerTools,
 ];

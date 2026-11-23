@@ -47,6 +47,8 @@ const invalidations: Record<string, string[][]> = {
   "repeaters.changed": [["repeaters"], ["search"]],
   // A road network was added, updated or removed, or a road route saved, renamed or deleted (maps/road-route).
   "roads.changed": [["roads"]],
+  // Streets for routes were built, brought in or removed, or a build moved on (the optional streets service).
+  "streets.changed": [["streets"], ["maps"]],
   "imports.changed": [["imports"]],
   "semantic.changed": [["semantic"]],
   "portable.changed": [["portable"]],

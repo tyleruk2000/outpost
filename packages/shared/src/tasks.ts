@@ -236,6 +236,13 @@ export const TASK_KINDS: Record<string, TaskKind> = {
     retry: true,
     from: { to: "/maps", label: "Open Maps" },
   },
+  "streets.build": {
+    name: "Building streets for routes",
+    about:
+      "Has the streets service build door-to-door, walking and cycling streets from kept country files, or bring in a set built elsewhere.",
+    retry: true,
+    from: { to: "/maps", label: "Open Maps" },
+  },
   "semantic.index": {
     name: "Building search by meaning",
     about: "Turns each passage of the library into numbers that say what it means, so search can find it by meaning.",

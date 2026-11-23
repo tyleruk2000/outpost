@@ -15,9 +15,10 @@ export const MAP_DATA_COUNTRY_KINDS = ["map", "terrain", "names", "roads", "plac
 /**
  * What a piece of map data is for: "map" the map to look at, "terrain" hills and heights,
  * "names" place names for search, "roads" roads for routes, "places" places to find
- * (reference layers), "extract" a country file, "imagery" satellite pictures.
+ * (reference layers), "extract" a country file, "imagery" satellite pictures, "streets"
+ * streets for routes (door to door, walking, cycling, reachable areas: the optional add-on).
  */
-export type MapDataKind = (typeof MAP_DATA_COUNTRY_KINDS)[number] | "imagery";
+export type MapDataKind = (typeof MAP_DATA_COUNTRY_KINDS)[number] | "imagery" | "streets";
 
 /**
  * Where a piece of map data stands. "waiting" is queued behind other downloads or tasks;
@@ -119,7 +120,10 @@ export interface MapDataCountry {
   name: string;
   /** Geofabrik's region for the whole country, to add roads, places or the country file from; null until the list is read or where it has none. */
   regionId: string | null;
-  /** Always six, in `MAP_DATA_COUNTRY_KINDS` order. */
+  /**
+   * Six, in `MAP_DATA_COUNTRY_KINDS` order; and a seventh, "streets" (Streets for routes),
+   * only where the streets add-on is installed.
+   */
   rows: MapDataRow[];
   /** The newest country file read for this country, kept or not. */
   lastRead: CountryFileRead | null;
