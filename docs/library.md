@@ -21,6 +21,24 @@ weather; the United Kingdom also gets Ordnance Survey names, food shops, flood d
 Met Office warnings. Each row opens the screen that fetches it, size shown first.
 Nothing is fetched to make the suggestions.
 
+## Packs for the outdoors
+
+**Explore** lists packs first. Three are for the outdoors:
+
+- **Survival guide** gathers open sources that between them cover the ground of a classic
+  wilderness survival handbook: being ready, cold and hot country, shelter and fire, water,
+  wild food, finding your way, first aid, the sea, signals and rescue, and knots. Two of
+  them are US War Department manuals from the 1940s; some of their first aid is out of date, so follow
+  the current guides in the pack where they differ.
+- **Climbing and mountains** is for rock climbing, mountaineering, alpinism and ski
+  touring: the UIAA's mountain medicine and safety papers, an avalanche handbook, knots,
+  map and compass, mountain weather and distress signals.
+- **Hills and navigation** is for walking and camping.
+
+Their entries are also under **Survival and wilderness skills** and **Climbing and
+mountaineering** in Explore's categories. Each is free from its publisher; where each source comes from and on what terms is in
+[sources.md](sources.md#survival-climbing-and-mountains-read-on-2026-11-23).
+
 ## Highlights and margin notes
 
 In a PDF, a Markdown document or an EPUB chapter, select words, press **Highlight**, add a
