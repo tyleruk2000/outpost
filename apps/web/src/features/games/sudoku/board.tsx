@@ -92,7 +92,7 @@ export function SudokuGrid({
                   aria-label={cellName(game, cell)}
                   onClick={() => onSelect(cell, false)}
                   className={cn(
-                    "absolute inset-0 flex items-center justify-center transition-colors duration-150 motion-reduce:transition-none focus-visible:z-10",
+                    "absolute inset-0 flex items-center justify-center transition-colors duration-(--duration-fast) motion-reduce:transition-none focus-visible:z-10",
                     peer && "bg-surface-strong",
                     same && "bg-primary-soft",
                     isSelected && "bg-primary-soft shadow-[inset_0_0_0_2px_var(--primary)]",
@@ -161,7 +161,7 @@ export function NumberPad({
             aria-label={`${noting ? "Note" : "Write"} ${digit}, ${count === 0 ? "none" : count} left`}
             onClick={() => onDigit(digit)}
             className={cn(
-              "flex h-14 flex-col items-center justify-center rounded-control border border-border-strong bg-page transition-colors duration-150 hover:bg-surface active:bg-surface-strong disabled:opacity-50 motion-reduce:transition-none md:h-16",
+              "flex h-14 flex-col items-center justify-center rounded-control border border-border-strong bg-page transition-colors duration-(--duration-fast) hover:bg-surface active:bg-surface-strong disabled:opacity-50 motion-reduce:transition-none md:h-16",
               noting && "border-dashed",
             )}
           >
@@ -185,7 +185,7 @@ export function NumberPad({
         type="button"
         disabled={disabled}
         onClick={onErase}
-        className="flex h-14 flex-col items-center justify-center gap-1 rounded-control border border-border-strong bg-page text-small text-ink transition-colors duration-150 hover:bg-surface active:bg-surface-strong disabled:opacity-50 motion-reduce:transition-none md:col-span-3 md:h-12 md:flex-row md:gap-2"
+        className="flex h-14 flex-col items-center justify-center gap-1 rounded-control border border-border-strong bg-page text-small text-ink transition-colors duration-(--duration-fast) hover:bg-surface active:bg-surface-strong disabled:opacity-50 motion-reduce:transition-none md:col-span-3 md:h-12 md:flex-row md:gap-2"
       >
         <Eraser aria-hidden className="size-5" />
         Erase

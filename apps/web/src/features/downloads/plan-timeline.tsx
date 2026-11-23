@@ -238,7 +238,7 @@ export const PlanTimeline = memo(function PlanTimeline({
                             fill="none"
                             strokeWidth={2}
                             className={cn(
-                              "opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100",
+                              "opacity-0 transition-opacity duration-(--duration-fast) group-hover:opacity-100 group-focus-visible:opacity-100",
                               active ? "stroke-lamp" : "stroke-chart-1",
                             )}
                           />

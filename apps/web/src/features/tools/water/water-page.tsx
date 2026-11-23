@@ -1,4 +1,5 @@
 import { Notice } from "@/components/page";
+import { Table, TableHead, Td, Th, Tr } from "@/components/ui/table";
 import { formatDate, plural } from "@/lib/utils";
 import {
   allValues,
@@ -139,27 +140,27 @@ function StorageCalculator() {
               )}{" "}
               About {formatRange(total[0]! / u.ukGallon.toBase(1), total[1]! / u.ukGallon.toBase(1), "UK gallons", { decimals: 0 })}.
             </p>
-            <table className="mt-3 w-full text-left text-small tabular">
-              <caption className="text-left text-ink-muted">The same household by each body's figure</caption>
+            <Table label="The same household by each body's figure" className="mt-3">
+              <caption className="pb-1 text-left text-ink-muted">The same household by each body's figure</caption>
               <tbody>
                 {PLANNING_FIGURES.map((item) => (
-                  <tr key={item.id} className="border-t border-border">
-                    <th scope="row" className="py-1 pr-3 font-medium">
+                  <Tr key={item.id}>
+                    <th scope="row" className="py-2.5 pr-3 text-left align-top font-medium text-ink">
                       {item.who}
                       <span className="block font-normal text-ink-muted">{item.covers}</span>
                     </th>
-                    <td className="py-1 align-top">
+                    <Td numeric className="whitespace-nowrap">
                       {formatRange(
                         storageLitres(values[0], values[1], item.litres[0]),
                         storageLitres(values[0], values[1], item.litres[1]),
                         "litres",
                         { decimals: 0 },
                       )}
-                    </td>
-                  </tr>
+                    </Td>
+                  </Tr>
                 ))}
               </tbody>
-            </table>
+            </Table>
           </>
         ) : null}
       </Result>
@@ -499,23 +500,23 @@ function Purification() {
         litre). Find the strength on your bottle's label and use the table for it. No UK body was found that publishes its own table.
       </p>
       <ChoiceField label="Bleach strength" value={tableId} onChange={setTable} options={tables} className="mt-3 max-w-sm" />
-      <table className="mt-3 w-full text-left text-small">
-        <caption className="text-left font-semibold text-ink">{table.title}</caption>
-        <thead>
-          <tr className="text-ink-muted">
-            <th className="py-1 pr-3 font-medium">Water</th>
-            <th className="py-1 font-medium">Bleach to add</th>
-          </tr>
-        </thead>
+      <Table label={table.title} className="mt-3">
+        <caption className="pb-1 text-left font-semibold text-ink">{table.title}</caption>
+        <TableHead>
+          <Tr>
+            <Th>Water</Th>
+            <Th>Bleach to add</Th>
+          </Tr>
+        </TableHead>
         <tbody>
           {table.rows.map((row) => (
-            <tr key={row.water} className="border-t border-border">
-              <td className="py-1.5 pr-3 align-top tabular">{row.water}</td>
-              <td className="py-1.5 tabular">{row.dose}</td>
-            </tr>
+            <Tr key={row.water}>
+              <Td className="tabular">{row.water}</Td>
+              <Td className="tabular">{row.dose}</Td>
+            </Tr>
           ))}
         </tbody>
-      </table>
+      </Table>
       <ul className="mt-3 grid gap-1 text-small text-ink">
         {BLEACH_STEPS.map((step) => (
           <li key={step.text}>

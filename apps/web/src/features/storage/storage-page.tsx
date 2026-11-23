@@ -19,6 +19,7 @@ import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "
 import { Field, Input } from "@/components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Badge, Skeleton } from "@/components/ui/misc";
+import { Table } from "@/components/ui/table";
 import { api, errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { useStorage } from "@/lib/queries";
@@ -417,7 +418,7 @@ export default function StoragePage() {
               </p>
             ) : (
               <div className="@container">
-                <table className="w-full max-w-xl text-small">
+                <Table label="Space used by each kind" className="max-w-xl">
                   <thead className="sr-only">
                     <tr>
                       <th>Kind</th>
@@ -441,7 +442,7 @@ export default function StoragePage() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </Table>
               </div>
             )}
           </Section>

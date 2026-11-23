@@ -10,7 +10,7 @@ import {
 } from "@outpost/shared";
 import { useMemo } from "react";
 import { Link } from "react-router";
-import { Field } from "@/components/ui/input";
+import { Field, Input } from "@/components/ui/input";
 import { formatBearing, formatDistanceWithMiles } from "@/features/maps/lib/geo";
 import { moonPhase } from "@/features/maps/lib/moon";
 import { dayLengthChange, isIsoDate, sunDay } from "@/features/maps/lib/sun";
@@ -279,7 +279,7 @@ function CoordinateInput({
       hint={!error ? "Decimal degrees, degrees and minutes, a British grid reference or a Maidenhead locator." : undefined}
     >
       {(ids) => (
-        <input
+        <Input
           {...ids}
           name={id}
           type="text"
@@ -287,7 +287,7 @@ function CoordinateInput({
           spellCheck={false}
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="h-9 w-full rounded-control border border-border-strong bg-page px-3 font-mono text-small text-ink hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus aria-invalid:border-danger max-md:h-11"
+          className="font-mono"
         />
       )}
     </Field>
@@ -406,15 +406,7 @@ function SunCalculator() {
       <Inputs>
         <CoordinateInput id="place" label="Position" value={placeText} onChange={setPlace} point={place} />
         <Field label="Date" hint="Today if left empty.">
-          {(ids) => (
-            <input
-              {...ids}
-              type="date"
-              value={date}
-              onChange={(event) => setDate(event.target.value)}
-              className="h-9 w-full rounded-control border border-border-strong bg-page px-3 text-body text-ink focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus max-md:h-11"
-            />
-          )}
+          {(ids) => <Input {...ids} type="date" value={date} onChange={(event) => setDate(event.target.value)} />}
         </Field>
       </Inputs>
       <Result

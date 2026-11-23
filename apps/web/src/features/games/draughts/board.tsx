@@ -254,7 +254,7 @@ export function Board({ board, flipped, selected, targets, taking, marked, dragg
         <svg
           aria-hidden
           viewBox="0 0 8 8"
-          className="pointer-events-none absolute inset-0 size-full transition-opacity duration-150 motion-reduce:transition-none"
+          className="pointer-events-none absolute inset-0 size-full transition-opacity duration-(--duration-fast) motion-reduce:transition-none"
         >
           <polyline
             points={marked.path.map(centre).join(" ")}

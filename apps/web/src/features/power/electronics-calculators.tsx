@@ -178,7 +178,17 @@ export function CombineCalculator() {
   return (
     <div>
       <Field label="Resistances, in ohms" hint="Separated by commas or spaces: 100, 220, 330.">
-        {(ids) => <Input {...ids} className="tabular" value={text} onChange={(event) => setText(event.target.value)} inputMode="decimal" />}
+        {(ids) => (
+          <Input
+            {...ids}
+            className="tabular"
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            inputMode="decimal"
+            enterKeyHint="done"
+            autoComplete="off"
+          />
+        )}
       </Field>
       <Answers missing={valid ? null : "Type one or more resistances in ohms."}>
         {valid ? (

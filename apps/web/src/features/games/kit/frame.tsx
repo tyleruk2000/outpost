@@ -32,7 +32,7 @@ export function GameAbout({ summary = "About this game", children }: { summary?:
   return (
     <details className="group mt-6 border-t border-border pt-2 text-small">
       <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-primary md:min-h-8 [&::-webkit-details-marker]:hidden">
-        <ChevronRight aria-hidden className="size-4 transition-transform duration-150 group-open:rotate-90 motion-reduce:transition-none" />
+        <ChevronRight aria-hidden className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none" />
         {summary}
       </summary>
       <div className="mt-1 grid max-w-[70ch] gap-2 pl-5.5 text-ink">{children}</div>

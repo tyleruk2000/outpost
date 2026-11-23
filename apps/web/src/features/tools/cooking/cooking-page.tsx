@@ -2,6 +2,7 @@ import { Timer } from "lucide-react";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Field, Textarea } from "@/components/ui/input";
+import { Table, TableHead, Td, Th, Tr } from "@/components/ui/table";
 import {
   Calculator,
   ChoiceField,
@@ -191,24 +192,24 @@ function SafeTemperatures() {
       <p className="text-body text-ink">
         <q className="font-title">{FSA_RULE}</q>
       </p>
-      <table className="mt-3 w-full max-w-sm text-left tabular">
-        <thead>
-          <tr className="text-small text-ink-muted">
-            <th className="py-1 font-medium">In the middle of the food</th>
-            <th className="py-1 font-medium">For at least</th>
-          </tr>
-        </thead>
+      <Table label="Time and temperature in the middle of the food" className="mt-3 max-w-sm text-body tabular">
+        <TableHead>
+          <Tr>
+            <Th>In the middle of the food</Th>
+            <Th>For at least</Th>
+          </Tr>
+        </TableHead>
         <tbody>
           {FSA_TIME_TEMPERATURE.map((row) => (
-            <tr key={row.celsius} className="border-t border-border">
-              <td className="py-1.5">
+            <Tr key={row.celsius}>
+              <Td>
                 {row.celsius}°C ({formatFigure(convert(row.celsius, u.celsius, u.fahrenheit), { decimals: 0 })}°F)
-              </td>
-              <td className="py-1.5">{row.time}</td>
-            </tr>
+              </Td>
+              <Td>{row.time}</Td>
+            </Tr>
           ))}
         </tbody>
-      </table>
+      </Table>
       <p className="mt-1 text-small text-ink-muted">The °F figures are converted here; the FSA gives °C.</p>
       <ul className="mt-4 grid gap-1.5 text-small text-ink">
         {SAFETY_QUOTES.map((quote) => (
@@ -407,27 +408,31 @@ function OvenCalculator() {
           </p>
         ) : null}
       </Result>
-      <table className="mt-4 w-full text-left text-small tabular">
-        <caption className="text-left font-semibold text-ink">Gas marks, as Which? tables them</caption>
-        <thead>
-          <tr className="text-ink-muted">
-            <th className="py-1 font-medium">Gas mark</th>
-            <th className="py-1 font-medium">°C</th>
-            <th className="py-1 font-medium">Fan °C</th>
-            <th className="py-1 font-medium">°F</th>
-          </tr>
-        </thead>
+      <Table label="Gas marks, as Which? tables them" className="mt-4 max-w-md">
+        <caption className="pb-1 text-left font-semibold text-ink">Gas marks, as Which? tables them</caption>
+        <TableHead>
+          <Tr>
+            <Th>Gas mark</Th>
+            <Th numeric>°C</Th>
+            <Th numeric>Fan °C</Th>
+            <Th numeric>°F</Th>
+          </Tr>
+        </TableHead>
         <tbody>
           {GAS_MARKS.map((row) => (
-            <tr key={row.mark} className={row.mark === mark?.mark ? "border-t border-border bg-primary-soft" : "border-t border-border"}>
-              <td className="py-1">{row.mark}</td>
-              <td className="py-1">{row.celsius}</td>
-              <td className="py-1">{row.fan}</td>
-              <td className="py-1">{row.fahrenheit}</td>
-            </tr>
+            <Tr
+              key={row.mark}
+              aria-current={row.mark === mark?.mark || undefined}
+              className={row.mark === mark?.mark ? "bg-primary-soft" : undefined}
+            >
+              <Td className="tabular">{row.mark}</Td>
+              <Td numeric>{row.celsius}</Td>
+              <Td numeric>{row.fan}</Td>
+              <Td numeric>{row.fahrenheit}</Td>
+            </Tr>
           ))}
         </tbody>
-      </table>
+      </Table>
       <HowWorkedOut
         formula={
           <p>

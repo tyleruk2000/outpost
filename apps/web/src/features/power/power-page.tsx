@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/misc";
+import { Table } from "@/components/ui/table";
 import { useHousehold } from "@/features/households/use-household";
 import { errorMessage } from "@/lib/api";
 import { plural } from "@/lib/utils";
@@ -88,43 +89,39 @@ function Comparison({ plans }: { plans: Array<{ plan: PowerPlan; answers: PlanAn
     ["Peak current", (a) => `${figure(a.peak.dischargeA, 1)} A`],
   ];
   return (
-    // biome-ignore lint/a11y/noNoninteractiveTabindex: the table scrolls sideways when the plans are many, so it is reachable by keyboard
-    // biome-ignore lint/a11y/useSemanticElements: a named group to scroll, not a set of form fields
-    <div tabIndex={0} role="group" aria-label="Your plans side by side" className="scroll-quiet overflow-x-auto">
-      <table className="tabular w-full min-w-max text-small">
-        <caption className="mb-2 text-left text-ink-muted">
-          Your plans side by side. Each is an estimate from the figures typed into it.
-        </caption>
-        <thead>
-          <tr className="border-b border-border text-left">
-            <th scope="col" className="py-1.5 pr-4 font-medium text-ink-muted">
-              <span className="sr-only">Answer</span>
+    <Table label="Your plans side by side" className="tabular min-w-max">
+      <caption className="mb-2 text-left text-ink-muted">
+        Your plans side by side. Each is an estimate from the figures typed into it.
+      </caption>
+      <thead>
+        <tr className="border-b border-border text-left">
+          <th scope="col" className="py-1.5 pr-4 font-medium text-ink-muted">
+            <span className="sr-only">Answer</span>
+          </th>
+          {plans.map(({ plan }) => (
+            <th key={plan.id} scope="col" className="px-3 py-1.5 font-medium text-ink">
+              <Link to={`/tools/power/plans/${plan.id}`} className="text-primary underline underline-offset-2">
+                {plan.name}
+              </Link>
             </th>
-            {plans.map(({ plan }) => (
-              <th key={plan.id} scope="col" className="px-3 py-1.5 font-medium text-ink">
-                <Link to={`/tools/power/plans/${plan.id}`} className="text-primary underline underline-offset-2">
-                  {plan.name}
-                </Link>
-              </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map(([label, cell]) => (
+          <tr key={label} className="border-b border-border">
+            <th scope="row" className="py-1.5 pr-4 text-left font-normal text-ink-muted">
+              {label}
+            </th>
+            {plans.map(({ plan, answers }) => (
+              <td key={plan.id} className="px-3 py-1.5 text-ink">
+                {cell(answers, plan)}
+              </td>
             ))}
           </tr>
-        </thead>
-        <tbody>
-          {rows.map(([label, cell]) => (
-            <tr key={label} className="border-b border-border">
-              <th scope="row" className="py-1.5 pr-4 text-left font-normal text-ink-muted">
-                {label}
-              </th>
-              {plans.map(({ plan, answers }) => (
-                <td key={plan.id} className="px-3 py-1.5 text-ink">
-                  {cell(answers, plan)}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+        ))}
+      </tbody>
+    </Table>
   );
 }
 

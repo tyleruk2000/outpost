@@ -81,6 +81,7 @@ export function NumberField({
           <Input
             {...ids}
             inputMode="decimal"
+            enterKeyHint="done"
             autoComplete="off"
             value={text}
             placeholder={placeholder}
@@ -174,7 +175,7 @@ export function Basis({ children, summary = "How this is worked out" }: { childr
   return (
     <details className="group mt-3 text-small">
       <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-primary md:min-h-8 [&::-webkit-details-marker]:hidden">
-        <ChevronRight aria-hidden className="size-4 transition-transform duration-150 group-open:rotate-90" />
+        <ChevronRight aria-hidden className="size-4 transition-transform group-open:rotate-90" />
         {summary}
       </summary>
       <div className="mt-1 grid max-w-[70ch] gap-2 pl-5.5 text-ink">{children}</div>
@@ -192,7 +193,7 @@ export function CalculatorGroup({ title, about, children, id }: { title: string;
             <span className="block text-lead text-ink group-hover:text-primary">{title}</span>
             <span className="mt-0.5 block text-small text-ink-muted">{about}</span>
           </span>
-          <ChevronRight aria-hidden className="size-4 shrink-0 text-ink-faint transition-transform duration-150 group-open:rotate-90" />
+          <ChevronRight aria-hidden className="size-4 shrink-0 text-ink-faint transition-transform group-open:rotate-90" />
         </summary>
         <div className="pb-6">{children}</div>
       </details>

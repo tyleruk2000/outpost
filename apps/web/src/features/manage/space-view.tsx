@@ -10,6 +10,7 @@ import { ErrorState, Notice, Section } from "@/components/page";
 import { StorageBar } from "@/components/storage-bar";
 import { Button } from "@/components/ui/button";
 import { Badge, Skeleton, Spinner, Tooltip } from "@/components/ui/misc";
+import { Table } from "@/components/ui/table";
 import { errorMessage } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { cn, plural, timeAgo } from "@/lib/utils";
@@ -48,8 +49,7 @@ function KindTable({ usage }: { usage: UsageResponse }) {
   const largest = Math.max(0, ...top.map((row) => row.bytes ?? 0));
   const total = usageTotal(usage).bytes;
   return (
-    <table className="w-full text-small">
-      <caption className="sr-only">Space used by each kind of thing Outpost stores</caption>
+    <Table label="Space used by each kind of thing Outpost stores">
       <thead className="sr-only">
         <tr>
           <th scope="col">Kind</th>
@@ -100,7 +100,7 @@ function KindTable({ usage }: { usage: UsageResponse }) {
           </tbody>
         );
       })}
-    </table>
+    </Table>
   );
 }
 

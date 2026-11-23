@@ -10,7 +10,7 @@ import { formatDecimal, homeLabel, type MarkerDto, parseCoordinates } from "@out
 import { useState } from "react";
 import { Link } from "react-router";
 import { Notice } from "@/components/page";
-import { Field } from "@/components/ui/input";
+import { Field, Input } from "@/components/ui/input";
 import { Select, Skeleton } from "@/components/ui/misc";
 import { HomeAsOf, NoHome, useHome } from "@/features/households/home";
 import { useMarkers } from "@/features/maps/data";
@@ -133,7 +133,7 @@ export function usePlaceAndZone(): PlaceState {
             hint={!typedError ? "Decimal degrees, degrees and minutes, a British grid reference or a Maidenhead locator." : undefined}
           >
             {(ids) => (
-              <input
+              <Input
                 {...ids}
                 type="text"
                 autoComplete="off"
@@ -141,7 +141,7 @@ export function usePlaceAndZone(): PlaceState {
                 placeholder="51.4779, -0.0015"
                 value={typed}
                 onChange={(event) => setTyped(event.target.value)}
-                className="h-9 w-full rounded-control border border-border-strong bg-page px-3 font-mono text-small text-ink placeholder:text-ink-faint hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus aria-invalid:border-danger max-md:h-11"
+                className="font-mono"
               />
             )}
           </Field>

@@ -7,7 +7,7 @@
  */
 import { useMemo, useState } from "react";
 import { Notice } from "@/components/page";
-import { Field } from "@/components/ui/input";
+import { Field, Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/misc";
 import { type IsoDate, isIsoDate } from "@/features/maps/lib/sun";
 import { dateIn, deviceZone } from "@/features/maps/lib/sun-text";
@@ -28,9 +28,6 @@ const STAR_CHOICES = [
   { value: "dubhe" as const, label: "The Plough's pointers" },
   { value: "kochab" as const, label: "Kochab" },
 ];
-
-const inputClass =
-  "h-9 w-full rounded-control border border-border-strong bg-page px-3 text-body text-ink tabular hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus aria-invalid:border-danger max-md:h-11";
 
 export function NocturnalTab({ place, zone }: { place: ChosenPlace | null; zone: ZoneChoice }) {
   const style = useClockStyle();
@@ -143,9 +140,7 @@ export function NocturnalTab({ place, zone }: { place: ChosenPlace | null; zone:
             error={dateError}
             hint={!dateError ? "After midnight, still give the evening's date." : undefined}
           >
-            {(ids) => (
-              <input {...ids} type="date" value={dateText} onChange={(event) => setDate(event.target.value)} className={inputClass} />
-            )}
+            {(ids) => <Input {...ids} type="date" value={dateText} onChange={(event) => setDate(event.target.value)} className="tabular" />}
           </Field>
           <ChoiceField label="Which star" value={star} onChange={setStar} options={STAR_CHOICES} />
           <Field label="Where the hand points">
