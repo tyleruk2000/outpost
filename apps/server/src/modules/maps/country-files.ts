@@ -14,6 +14,7 @@
  * Every file read is written down (`country_files`): kept or not, its size and date, so
  * the Map data screen can say "read and deleted 17 Nov 2026 (2.29 GB)".
  */
+import crypto from "node:crypto";
 import fs from "node:fs";
 import type { MapDataAddResponse } from "@outpost/shared";
 import { desc } from "drizzle-orm";
@@ -167,7 +168,8 @@ export function referenceFor(region: GeofabrikRegion, parents: string[], layers:
   };
 }
 
-const stamp = () => new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+/** When the file came, to the second, and a short random tail: two downloads in the same second must not share a name. */
+const stamp = () => `${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}-${crypto.randomBytes(2).toString("hex")}`;
 
 export function createCountryFiles(ctx: AppContext, client: HttpClient): CountryFilesService {
   const { collections, storage, downloads, settings } = ctx.services;
