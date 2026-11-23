@@ -112,9 +112,10 @@ export const knowledgeNav: NavItem[] = [
     children: [
       {
         to: "/maps/data",
-        label: "Map data",
+        label: "Offline maps",
         icon: MapPinned,
-        keywords: "offline maps regions terrain hills place names roads country file geofabrik openstreetmap extract",
+        keywords:
+          "map data offline maps add a place regions terrain hills place names roads routes nearby country file source file geofabrik openstreetmap extract",
       },
     ],
   },

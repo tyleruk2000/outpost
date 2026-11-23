@@ -345,7 +345,7 @@ export default function DownloadsPage() {
             )}
             {nothing ? null : (
               <Button asChild>
-                <Link to="/maps/data">Map data</Link>
+                <Link to="/maps/data">Offline maps</Link>
               </Button>
             )}
           </>
@@ -406,7 +406,7 @@ export default function DownloadsPage() {
                 <Link to="/maps">Download maps</Link>
               </Button>
               <Button asChild>
-                <Link to="/maps/data">Map data</Link>
+                <Link to="/maps/data">Offline maps</Link>
               </Button>
             </>
           }

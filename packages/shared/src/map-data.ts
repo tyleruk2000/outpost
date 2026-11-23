@@ -83,6 +83,11 @@ export interface MapDataItem {
   taskId: string | null;
   /** How it is brought up to date, where it can be; absent or null where it cannot (an imported file). */
   update?: MapDataUpdateWay | null;
+  /**
+   * A set made once and never revised (Natural Earth's 2022 borders, a census grid): it is never
+   * "over a year old" and never offered an update. Absent means false.
+   */
+  ageless?: boolean;
 }
 
 /**
@@ -150,6 +155,101 @@ export interface MapDataResponse {
   /** The last choice for a country file, to preselect: null until one was made (ask, preselecting nothing). */
   countryFileChoice: { keep: boolean | null; locationId: string | null };
   /** Geofabrik's list of regions has been read on this device: a country's region can be chosen. */
+  regionsListed: boolean;
+  /**
+   * The same data by place: one entry per country (with its parts), drawn area and the world's
+   * basics, each saying where its Map, Routes, Nearby places and Walk/cycle stand. Every item is
+   * in exactly one place; a download that serves two bundles (one source file for routes and
+   * nearby places) is listed once.
+   */
+  places?: MapDataPlace[];
+  /** The streets add-on (walking and cycling) is installed: the Walk/cycle bundle is offered. */
+  streetsInstalled?: boolean;
+}
+
+/**
+ * What a place is for, as a person would say it. "map": the map to look at with its hills and
+ * place names; "routes": roads to plan a drive; "nearby": hospitals, shelters, food; "walk":
+ * walking and cycling (the streets add-on); "imagery": satellite pictures of a drawn area.
+ */
+export type MapDataBundleKind = "map" | "routes" | "nearby" | "walk" | "imagery";
+
+/** Where a bundle stands: the one word the row shows. */
+export type MapDataBundleState =
+  | "none"
+  | "waiting"
+  | "downloading"
+  | "paused"
+  | "building"
+  | "moving"
+  | "ready"
+  | "failed"
+  | "location-offline";
+
+export interface MapDataBundle {
+  kind: MapDataBundleKind;
+  state: MapDataBundleState;
+  /** The keys of the items in it (`MapDataPlace.items`). */
+  items: string[];
+  /** Bytes on disk, and for a download under way the bytes it will be. */
+  sizeBytes: number;
+  /** For "downloading", "paused" and "building": how far, 0 to 1, where known. */
+  fraction: number | null;
+  /** The oldest day its data is from, of what is here (ageless sets left out). */
+  dataDate: string | null;
+  /** Why it failed, or what is wrong, in words for the person. */
+  reason: string | null;
+}
+
+export interface MapDataPlace {
+  /** "country:FR", "area:<item key>" or "world". */
+  key: string;
+  type: "country" | "area" | "world";
+  name: string;
+  /** Two letters for a country; null for a drawn area and the world. */
+  country: string | null;
+  /** Geofabrik's region for the whole country, where its list has been read. */
+  regionId: string | null;
+  /** The parts of the country added on their own ("Rhône-Alpes"), by name. */
+  parts: string[];
+  /** Always map, routes and nearby for a country (walk too where the add-on is installed); what it has for the others. */
+  bundles: MapDataBundle[];
+  /** Every item of the place, once: the bundles' and the kept source file. */
+  items: MapDataItem[];
+  /** The kept source file (the country's OpenStreetMap record), where one is kept or on its way to be. */
+  sourceFile: MapDataItem | null;
+  /** The newest source file read for this country, kept or not. */
+  lastRead: CountryFileRead | null;
+  /** Bytes on disk, the source file included. */
+  sizeBytes: number;
+  /** The storage locations it is on, by name. */
+  locations: string[];
+  /** How many of its items are over a year old (ageless sets left out). */
+  stale: number;
+}
+
+/** `GET /api/maps/data/where?q=` (or `?lat=&lon=`, or `?countries=FR,CH`): a country, a part or a town, found offline. */
+export interface MapDataWhereResult {
+  type: "country" | "part" | "town";
+  /** As found: "France", "Rhône-Alpes", "Chamonix-Mont-Blanc". */
+  name: string;
+  /** Two letters. */
+  country: string;
+  countryName: string;
+  /** Geofabrik's region of the country (or of the part), where its list has been read. */
+  regionId: string | null;
+  /** For a town: the part of its country it is in, where that is known. For a part: the part itself. */
+  part: { regionId: string; name: string } | null;
+  /** The country's box, for a map of it where no ready-made one is listed. */
+  bbox: [number, number, number, number] | null;
+  /** Where a town is. */
+  lat: number | null;
+  lon: number | null;
+}
+
+export interface MapDataWhereResponse {
+  results: MapDataWhereResult[];
+  /** Geofabrik's list has been read: parts of countries can be found and offered. */
   regionsListed: boolean;
 }
 

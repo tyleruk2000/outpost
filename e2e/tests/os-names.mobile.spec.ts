@@ -1,42 +1,74 @@
 /**
- * Place names for Great Britain on a phone: checked, downloaded and installed from the
- * stand-in for Ordnance Survey's Downloads API (tools/fake-dist.mjs, serving a small real
- * sample of OS Open Names), then a village and a postcode found from the map's search.
+ * Place names for Great Britain on a phone: added with Great Britain's map through Add a place
+ * on Offline maps, with nothing more to choose: Ordnance Survey is asked for its edition on the
+ * same press as the map's size (the stand-ins in tools/fake-dist.mjs, serving a small real
+ * sample of OS Open Names and a small map), then a village and a postcode found from the
+ * map's search.
  */
 import { api, expect, test, watchForErrors } from "./fixtures";
 
+const filesPort = Number(process.env.OUTPOST_E2E_FILES_PORT ?? 8473);
+
 test.describe("place names for Great Britain from a phone", () => {
-  test.afterAll(async ({ browser }) => {
-    // Other specs expect no place names; take these away again.
+  let tileSource = "";
+  test.beforeAll(async ({ browser }) => {
     const page = await browser.newPage();
+    tileSource = String((await api<{ settings: Record<string, unknown> }>(page, "GET", "/api/settings")).settings["maps.tileSource"] ?? "");
+    await api(page, "PATCH", "/api/settings", { "maps.tileSource": `http://127.0.0.1:${filesPort}/maps/20261122.pmtiles` });
+    await page.close();
+  });
+  test.afterAll(async ({ browser }) => {
+    // Other specs expect no place names and no map of the United Kingdom; take these away again.
+    const page = await browser.newPage();
+    await api(page, "PATCH", "/api/settings", { "maps.tileSource": tileSource });
     const { datasets } = await api<{ datasets: Array<{ id: string; source: string }> }>(page, "GET", "/api/maps/places/datasets");
     for (const dataset of datasets.filter((item) => item.source === "os")) {
       await api(page, "DELETE", `/api/maps/places/datasets/${dataset.id}`);
     }
+    const { collections } = await api<{ collections: Array<{ id: string; kind: string; title: string }> }>(page, "GET", "/api/collections");
+    for (const collection of collections.filter((each) => each.kind === "map" && each.title === "United Kingdom"))
+      await api(page, "DELETE", `/api/collections/${collection.id}?deleteFiles=true`);
     await page.close();
   });
 
-  test("installs OS Open Names and finds a village and a postcode", async ({ page }) => {
+  test("installs OS Open Names with Great Britain's map and finds a village and a postcode", async ({ page }) => {
     test.setTimeout(90_000);
     const errors = watchForErrors(page);
     const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-    // Place names are added on Map data, the screen of everything kept for the map.
-    await page.goto("/maps/data?names=1");
-    await expect(page.getByRole("dialog", { name: "Place names" })).toBeVisible();
-
-    const section = page.getByRole("region", { name: "Place names for Great Britain" });
-    await section.scrollIntoViewIfNeeded();
-    await expect(section.getByText(/Northern Ireland, the Isle of Man and the Channel Islands are not covered/)).toBeVisible();
-    const check = section.getByRole("button", { name: "Check the size" });
+    // Place names come with a country's map, on Offline maps: the older link leads to Add a place.
+    await page.goto("/maps/data?names=1&country=GB");
+    const dialog = page.getByRole("dialog", { name: "Add a place" });
+    await expect(dialog.getByRole("heading", { name: "What for United Kingdom?" })).toBeVisible();
+    await expect(dialog.getByRole("checkbox", { name: /^Map/ })).toBeChecked();
+    // Hills come from a source the suite does not stand in for: the map alone.
+    await dialog.getByText("More choices").tap();
+    await dialog.getByRole("checkbox", { name: /Hills and heights/ }).tap();
+    await dialog.getByRole("radio", { name: /Roads and towns/ }).tap();
+    const check = dialog.getByRole("button", { name: "Check size" });
     expect((await check.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await check.tap();
-    await expect(section.getByText(/October 2026 edition, a [\d.]+ kB download from 127\.0\.0\.1/)).toBeVisible();
-    const download = section.getByRole("button", { name: /^Download [\d.]+ kB$/ });
+    await expect(dialog.getByText(/Sizes from .*127\.0\.0\.1/)).toBeVisible({ timeout: 15_000 });
+    const download = dialog.getByRole("button", { name: /^Download · / });
     expect((await download.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-    expect(await overflow(), "sideways overflow on Map data").toBeLessThanOrEqual(1);
+    expect(await overflow(), "sideways overflow on Offline maps").toBeLessThanOrEqual(1);
     await download.tap();
-    await expect(section.getByText("OS Open Names, October 2026 edition")).toBeVisible({ timeout: 30_000 });
-    await expect(section.getByText(/Contains OS data © Crown Copyright and database rights 2026/)).toBeVisible();
+    await expect(dialog).toBeHidden();
+    await expect
+      .poll(
+        async () =>
+          (await api<{ datasets: Array<{ source: string }> }>(page, "GET", "/api/maps/places/datasets")).datasets.some(
+            (dataset) => dataset.source === "os",
+          ),
+        { timeout: 30_000 },
+      )
+      .toBe(true);
+    // The stand-in's small map came with them; the search below is about the names, so it is taken away again.
+    const ukMaps = async () =>
+      (await api<{ collections: Array<{ id: string; kind: string; title: string }> }>(page, "GET", "/api/collections")).collections.filter(
+        (each) => each.kind === "map" && each.title === "United Kingdom",
+      );
+    await expect.poll(async () => (await ukMaps()).length, { timeout: 30_000 }).toBeGreaterThan(0);
+    for (const map of await ukMaps()) await api(page, "DELETE", `/api/collections/${map.id}?deleteFiles=true`);
 
     await page.goto("/maps?lat=54.45&lon=-3.0&z=9");
     await page.locator('.outpost-map[data-map-idle="true"]').waitFor({ timeout: 20_000 });

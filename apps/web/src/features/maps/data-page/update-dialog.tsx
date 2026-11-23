@@ -9,6 +9,7 @@ import {
   formatBytes,
   type MapDataCheckResponse,
   type MapDataItem,
+  type MapDataPlace,
   type MapDataResponse,
   type ReferenceEstimateRequest,
 } from "@outpost/shared";
@@ -21,7 +22,7 @@ import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui
 import { usePacks } from "@/features/layers/data";
 import { errorMessage } from "@/lib/api";
 import { useAddMapData, useCheckUpdate, useUpdateMapData } from "./use-map-data";
-import { dayText, hostsText, KIND_NAMES, keptFileFor } from "./words";
+import { BUNDLE_NAMES, dayText, hostsText, isHere, KIND_NAMES, keptFileFor, overAYearOld } from "./words";
 
 const small = "max-md:min-h-11 md:pointer-coarse:min-h-11";
 
@@ -266,6 +267,127 @@ export function UpdatesDialog({
         </DialogBody>
         <DialogFooter>
           <Button onClick={() => onOpenChange(false)}>Done</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── By place ──
+
+/** What updating a place covers: what is over a year old when reviewing, everything that can be updated for one place. */
+export function updateItems(place: MapDataPlace, review: boolean, now = Date.now()): MapDataItem[] {
+  return place.items.filter(
+    (item) => isHere(item) && Boolean(item.update) && !item.ageless && (!review || overAYearOld(item.dataDate, now)),
+  );
+}
+
+/** "France · Map from 1 Jun 2025". */
+export function placeUpdateLine(place: MapDataPlace, items: MapDataItem[]): string {
+  const oldest = [...items].sort((a, b) => (a.dataDate ?? "").localeCompare(b.dataDate ?? ""))[0];
+  if (!oldest) return place.name;
+  const bundle = place.bundles.find((each) => each.items.includes(oldest.key));
+  const what = bundle ? BUNDLE_NAMES[bundle.kind] : KIND_NAMES[oldest.kind];
+  const day = dayText(oldest.dataDate);
+  return `${place.name} · ${what}${day ? ` from ${day}` : ""}`;
+}
+
+/**
+ * Updates by place: each place with what is over a year old (or, for one place, everything that
+ * can be updated), each saying what it costs on a press of Check, with Update for each and
+ * Update all. What is held stays in use until its replacement is in place.
+ */
+export function PlaceUpdatesDialog({
+  places,
+  review,
+  data,
+  open,
+  onOpenChange,
+  onUpdatePlaces,
+}: {
+  places: MapDataPlace[];
+  review: boolean;
+  data: MapDataResponse;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onUpdatePlaces?: (request: ReferenceEstimateRequest) => void;
+}) {
+  const [shown, setShown] = useState(places);
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) setShown(places);
+  }
+  const update = useUpdateMapData();
+  const add = useAddMapData();
+  const [all, setAll] = useState<"idle" | "busy" | "done">("idle");
+  const [failed, setFailed] = useState<unknown>(null);
+  const groups = shown.map((place) => ({ place, items: updateItems(place, review) })).filter((group) => group.items.length > 0);
+  const every = groups.flatMap((group) => group.items).filter((item) => item.update?.how !== "elsewhere");
+  const one = !review && groups.length === 1 ? groups[0]!.place : null;
+
+  const updateAll = async () => {
+    setAll("busy");
+    setFailed(null);
+    try {
+      const regions = new Set<string>();
+      for (const item of every) {
+        if (item.update?.how === "download" && item.collectionId) await update.mutateAsync(item.collectionId);
+        else if (item.update?.how === "country-file" && item.regionId && !regions.has(item.regionId)) {
+          // Roads and nearby places of one region come from one new source file: asked for once.
+          regions.add(item.regionId);
+          const kinds = groups
+            .flatMap((group) => group.items)
+            .filter((each) => each.regionId === item.regionId && each.update?.how === "country-file")
+            .map((each) => (each.kind === "roads" ? "roads" : "places"));
+          const kept = keptFileFor(data, item.regionId);
+          await add.mutateAsync({
+            regionId: item.regionId,
+            kinds: [...new Set(kinds)] as Array<"roads" | "places">,
+            keep: kept !== null,
+            ...(kept?.locationId ? { locationId: kept.locationId } : {}),
+            ...(kept ? { newerThan: dayAfter(kept.dataDate) } : {}),
+          });
+        }
+      }
+      setAll("done");
+    } catch (error) {
+      setFailed(error);
+      setAll("idle");
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        title={one ? `Update ${one.name}` : "Check for updates"}
+        description="Nothing is checked or downloaded until you press. What you have stays in use until its replacement is in place."
+        size="lg"
+      >
+        <DialogBody className="grid gap-6">
+          {groups.length === 0 ? <p className="text-small text-ink-muted">Everything is up to date.</p> : null}
+          {groups.map(({ place, items }) => (
+            <section key={place.key} aria-label={place.name} className="grid gap-1">
+              <h3 className="text-body font-medium text-ink">{placeUpdateLine(place, items)}</h3>
+              <Rows aria-label={`What updating ${place.name} takes`} className="border-y-0">
+                {items.map((item) => (
+                  <UpdateEntry key={item.key} item={item} data={data} onUpdatePlaces={onUpdatePlaces} />
+                ))}
+              </Rows>
+            </section>
+          ))}
+          {all === "done" ? (
+            <Started>Everything chosen is downloading. What you have stays in use until each new one is in place.</Started>
+          ) : null}
+          {failed ? <Failed error={failed} /> : null}
+        </DialogBody>
+        <DialogFooter>
+          <Button onClick={() => onOpenChange(false)}>Done</Button>
+          {every.length > 1 && all !== "done" ? (
+            <Button variant="primary" loading={all === "busy"} onClick={updateAll}>
+              Update all
+            </Button>
+          ) : null}
         </DialogFooter>
       </DialogContent>
     </Dialog>

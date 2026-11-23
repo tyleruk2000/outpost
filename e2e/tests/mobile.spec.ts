@@ -88,7 +88,7 @@ test.describe("on a phone", () => {
       // A tab, listed again as the heading of the screen under it.
       ["Library", "/library", [["Import from Calibre", "/library/calibre"]]],
       // A tab, listed again as the heading of the screen under it.
-      ["Maps", "/maps", [["Map data", "/maps/data"]]],
+      ["Maps", "/maps", [["Offline maps", "/maps/data"]]],
       // A tab, listed again as the heading of the screen under it.
       ["Notes", "/notes", [["Import", "/import"]]],
       ["Explore", "/explore", []],

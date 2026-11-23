@@ -33,12 +33,12 @@ test.describe("street routes", () => {
       await expect(page.getByRole("radiogroup", { name: "Way of travelling" })).toHaveCount(0);
       await expect(page.getByRole("button", { name: "Plan route" })).toBeVisible();
 
-      // Map data has no streets row, and says once what the add-on is and how to turn it on.
+      // Offline maps offers no walking and cycling, and says once, in one line, that it is not set up and how to add it.
       await page.goto("/maps/data");
-      await expect(page.getByRole("list", { name: "Map data for United Kingdom" })).toBeVisible();
-      await expect(page.getByRole("heading", { name: "Streets for routes" })).toHaveCount(0);
-      await expect(page.getByText(/come with an optional add-on, not part of this installation/)).toBeVisible();
-      await expect(page.getByRole("link", { name: "How to turn it on" })).toHaveAttribute("href", "/help/deployment#h-street-routes");
+      await expect(page.locator('[data-place="country:GB"]')).toBeVisible();
+      await expect(page.getByRole("button", { name: /^Add walking and cycling/ })).toHaveCount(0);
+      await expect(page.getByText(/Walking and cycling: not set up/)).toBeVisible();
+      await expect(page.getByRole("link", { name: "How to add it" })).toHaveAttribute("href", "/help/deployment#h-street-routes");
 
       // Reachable from here still works for a drive, over the main roads, and says so.
       await page.goto("/maps?lat=51.296&lon=-0.33&z=10&reach=1");
@@ -72,9 +72,8 @@ test.describe("street routes", () => {
       // Installed with no streets yet: the row offers to add them, and the dialog asks for a kept country file first.
       installStreets("none");
       await page.goto("/maps/data");
-      const gb = page.getByRole("list", { name: "Map data for United Kingdom" });
-      await expect(gb.getByRole("heading", { name: "Streets for routes" })).toBeVisible();
-      await gb.getByRole("button", { name: "Add: streets for routes" }).click();
+      const gb = page.locator('[data-place="country:GB"]');
+      await gb.getByRole("button", { name: "Add walking and cycling for United Kingdom" }).click();
       const dialog = page.getByRole("dialog", { name: "Add streets for routes" });
       await expect(dialog.getByRole("button", { name: "Keep a country file" })).toBeVisible();
       await dialog.getByRole("button", { name: "Cancel" }).click();
@@ -88,7 +87,8 @@ test.describe("street routes", () => {
       // Streets for Great Britain ready.
       installStreets("ready");
       await page.goto("/maps/data");
-      await expect(gb.getByText("Streets for routes: Great Britain")).toBeVisible();
+      await gb.getByRole("button", { name: /^United Kingdom/ }).click();
+      await expect(gb.getByText(/Streets for routes: Great Britain/).first()).toBeVisible();
 
       await openPlanner(page);
       const ways = page.getByRole("radiogroup", { name: "Way of travelling" });

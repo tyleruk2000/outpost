@@ -11,7 +11,7 @@ import type { AddressInfo } from "node:net";
 import type { DownloadDetail, ManagedItemsResponse, MapDataItem, MapDataResponse, UsageResponse } from "@outpost/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { datedFilesIn, dateOfName } from "../src/modules/layers/adapters/geofabrik-file.ts";
-import { countryOfBox } from "../src/modules/maps/map-data.ts";
+import { countryLikeBox, countryOfBox } from "../src/modules/maps/map-data.ts";
 import { buildPbf } from "./fixtures/layers/builders.ts";
 import { createGeofabrikStandIn } from "./fixtures/layers/geofabrik-stand-in.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
@@ -48,6 +48,9 @@ describe("which dated file to fetch", () => {
   it("finds the country of a ready-made map area", () => {
     expect(countryOfBox([-8.65, 49.85, 1.77, 60.86])).toBe("GB");
     expect(countryOfBox([5.7, 49.4, 6.6, 50.2])).toBe("LU");
+    // A map brought in from a file: its country when the boxes are much the same, never for a valley drawn by hand.
+    expect(countryLikeBox([-8.7, 49.8, 1.8, 60.9])).toBe("GB");
+    expect(countryLikeBox([6.75, 45.85, 7.05, 46.0])).toBeNull();
   });
 });
 
@@ -186,6 +189,13 @@ describe("one country file for roads and places", () => {
     const coming = rowOf(answer, "roads").find((item: MapDataItem) => item.downloadId === fresher.body.downloadIds[0]);
     expect(coming?.state).toMatch(/waiting|downloading|processing/);
     expect(rowOf(answer, "extract").some((item: MapDataItem) => item.downloadId === fresher.body.downloadIds[0])).toBe(true);
+    // By place: Monaco's routes say they are on their way, the one download behind them and the source file.
+    const monacoPlace = answer.places?.find((place) => place.key === "country:MC");
+    expect(monacoPlace?.bundles.find((bundle) => bundle.kind === "routes")?.state).toMatch(/waiting|downloading|building/);
+    expect(monacoPlace?.sourceFile?.state).toBe("ready");
+    expect(new Set(monacoPlace?.items.filter((each) => each.downloadId).map((each) => each.downloadId))).toEqual(
+      new Set([fresher.body.downloadIds[0]]),
+    );
     // A second press for the same region while it comes is refused, not a second download.
     expect(
       (await app.api("POST", "/api/maps/data/add", { regionId: "monaco", kinds: ["places"], keep: true, newerThan: "2030-01-01" })).status,
