@@ -22,6 +22,7 @@ export const KIND_NAMES: Record<MapDataKind, string> = {
   places: "Places to find",
   extract: "Country file",
   imagery: "Satellite pictures",
+  streets: "Streets for routes",
 };
 
 /** What a row says when there is nothing of its kind yet: that, and what it is needed for. */
@@ -31,6 +32,7 @@ export const NOT_ADDED: Record<Exclude<MapDataKind, "extract" | "imagery">, stri
   names: "Not added. Needed to find towns and hills by name.",
   roads: "Not added. Needed to plan a drive.",
   places: "Not added. Needed to find hospitals, shelters and food nearby.",
+  streets: "Not added. Needed for door-to-door, walking and cycling routes, and reachable areas.",
 };
 
 /** What still works while the storage location holding something is not connected. */
@@ -42,6 +44,7 @@ export const WHILE_AWAY: Record<MapDataKind, string> = {
   places: "Its places are not shown until it is back.",
   extract: "Roads and places made from it keep working; rebuilding waits.",
   imagery: "The map is drawn without the pictures until it is back.",
+  streets: "Drives still plan on the main roads; door to door, walking and cycling wait until it is back.",
 };
 
 /** "17 Nov 2026" from "2026-11-17". */

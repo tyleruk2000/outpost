@@ -30,6 +30,7 @@ const WHAT_STOPS: Record<MapDataItem["kind"], string> = {
   names: "Search will no longer find these places by name. The list can be downloaded again at any time.",
   roads: "Routes can no longer be planned through it. Saved routes keep their directions.",
   places: "Its places leave the map and the lists of what is nearest.",
+  streets: "Door-to-door, walking and cycling routes and street-level reachable areas stop. Drives still plan on the main roads.",
 };
 
 /** A file on a storage location: removed through the collections, with the file deleted or left. */
