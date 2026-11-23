@@ -67,10 +67,10 @@ export function AirportFrequencies({ frequencies }: { frequencies: AirportFreque
       {!frequencies.held ? (
         <>
           <p className="mt-0.5 text-small text-ink-muted">
-            Not held for this airport yet. Update the airports pack in Map data to get them.
+            Not held for this airport yet. Update the airports under Offline maps to get them.
           </p>
           <Link to="/maps/data" className="inline-flex min-h-11 items-center text-small text-primary underline underline-offset-2">
-            Map data
+            Offline maps
           </Link>
         </>
       ) : frequencies.list.length === 0 ? (

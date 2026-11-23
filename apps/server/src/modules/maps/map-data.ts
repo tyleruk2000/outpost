@@ -23,6 +23,7 @@ import {
   type MapDataUpdateWay,
   type MapDataWhereResponse,
   type MapDataWhereResult,
+  mapPlacesOf,
   OS_NAMES_DATASET,
   type PlaceDto,
 } from "@outpost/shared";
@@ -40,8 +41,9 @@ import { COUNTRIES, countryOf } from "../layers/countries.ts";
 import { foldName } from "../layers/store.ts";
 import { countryLookup } from "../roads/plan.ts";
 import { DEFAULT_PLACE_LAYERS, isCountryFileDownload } from "./country-files.ts";
-import { placesOf } from "./map-places.ts";
+
 import type { OsNamesService } from "./os-names/index.ts";
+import { OS_DOWNLOADS_API } from "./os-names/source.ts";
 import { bboxSchema, dayOfBuild } from "./regions.ts";
 import { BUILD_BASE_URL, BUILDS_URL, hostOf } from "./source.ts";
 
@@ -49,7 +51,18 @@ import { BUILD_BASE_URL, BUILDS_URL, hostOf } from "./source.ts";
  * Sets made once and never revised: Natural Earth's outlines (2022), WorldPop's census grids and
  * the historical records behind the nuclear layers. They are never "over a year old".
  */
-export const AGELESS_PROVIDERS = new Set(["natural-earth", "worldpop", "fas", "sipri", "nti", "iaea", "nsarchive", "napb-90", "tna", "ensi"]);
+export const AGELESS_PROVIDERS = new Set([
+  "natural-earth",
+  "worldpop",
+  "fas",
+  "sipri",
+  "nti",
+  "iaea",
+  "nsarchive",
+  "napb-90",
+  "tna",
+  "ensi",
+]);
 /** Sets of the whole world, listed under World basics whatever country they were clipped to. */
 export const WORLD_PROVIDERS = new Set(["natural-earth", "ourairports", "worldpop"]);
 
@@ -171,7 +184,7 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
       return row.meta.imported ? null : way("download", kind === "map" ? hosts.map() : hosts.terrain());
     if (kind === "names")
       return row.meta.dataset === OS_NAMES_DATASET
-        ? way("elsewhere", [], "Brought up to date with “Check for a newer edition”, under Place names.")
+        ? way("download", hostsOf(ctx.config.osDownloadsUrl ?? OS_DOWNLOADS_API))
         : way("download", hosts.names());
     if (kind === "extract") return way("download", hosts.geofabrik());
     return null;
@@ -463,16 +476,16 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
     // ── The status line ──
     const everything = [...countryRows.values()].flatMap((rows) => [...rows.values()].flat()).concat(world, other);
     // One set of streets can cover several countries: count it once.
-    const onDisk = everything.filter(
+    const mapItemOnDisk = everything.filter(
       (item, index) => !item.downloadId && item.sizeBytes && everything.findIndex((other) => other.key === item.key) === index,
     );
     const byLocation = new Map<string | null, number>();
-    for (const item of onDisk) byLocation.set(item.locationId, (byLocation.get(item.locationId) ?? 0) + (item.sizeBytes ?? 0));
+    for (const item of mapItemOnDisk) byLocation.set(item.locationId, (byLocation.get(item.locationId) ?? 0) + (item.sizeBytes ?? 0));
     const choice = settings.get("maps.countryFileKeep");
     const lastKept = countryFiles.at(0);
     return {
       summary: {
-        totalBytes: onDisk.reduce((sum, item) => sum + (item.sizeBytes ?? 0), 0),
+        totalBytes: mapItemOnDisk.reduce((sum, item) => sum + (item.sizeBytes ?? 0), 0),
         locations: [...byLocation.entries()]
           .map(([locationId, bytes]) => ({
             locationId,
@@ -494,7 +507,7 @@ export function createMapData(ctx: AppContext, client: HttpClient) {
       onThisPhone: null,
       countryFileChoice: { keep: choice === "ask" ? null : choice === "keep", locationId: lastKept?.locationId ?? null },
       regionsListed: regions !== null,
-      places: placesOf({ countries, world, other }, { streets: streetsInstalled }),
+      places: mapPlacesOf({ countries, world, other }, { streets: streetsInstalled }),
       streetsInstalled,
     };
   };
@@ -572,7 +585,7 @@ export function createMapDataAdd(ctx: AppContext, osNames: () => OsNamesService 
  * the newest copy is (nothing downloaded), then downloading it. The one kept stays, and is used,
  * until the new one is in place and checked; a failed download leaves it as it was.
  */
-export function createMapDataUpdates(ctx: AppContext, client: HttpClient) {
+export function createMapDataUpdates(ctx: AppContext, client: HttpClient, osNames: () => OsNamesService | undefined = () => undefined) {
   const { collections } = ctx.services;
   const hosts = updateHosts(ctx);
 
@@ -597,8 +610,17 @@ export function createMapDataUpdates(ctx: AppContext, client: HttpClient) {
         return { hosts: asked, sizeBytes: found.sizeBytes, dataDate: dayOfBuild(found.build), newer: found.newer };
       }
       if (row.kind === "places") {
-        if (row.meta.dataset === OS_NAMES_DATASET)
-          throw badRequest("OS Open Names is checked with “Check for a newer edition”, under Place names.");
+        if (row.meta.dataset === OS_NAMES_DATASET) {
+          const os = osNames();
+          if (!os) throw badRequest("Ordnance Survey's place names cannot be checked on this installation.");
+          const found = await os.check(signal);
+          return {
+            hosts: [found.host],
+            sizeBytes: found.sizeBytes,
+            dataDate: /^\d{4}-\d{2}$/.test(found.edition) ? `${found.edition}-01` : null,
+            newer: found.installed ? found.updateAvailable : true,
+          };
+        }
         const url = ctx.services.maps.places.sourceUrl(String(row.meta.dataset ?? ""));
         const { response } = await client.fetch(url, { method: "HEAD", allowedHosts: hostsOf(url), signal });
         await response.body?.cancel().catch(() => undefined);
@@ -633,6 +655,12 @@ export function createMapDataUpdates(ctx: AppContext, client: HttpClient) {
       const row = rowOf(collectionId);
       if (row.kind === "map" || row.kind === "terrain")
         return { downloadIds: [(await ctx.services.maps.regions.update(row.id, signal)).id] };
+      if (row.kind === "places" && row.meta.dataset === OS_NAMES_DATASET) {
+        const os = osNames();
+        if (!os) throw badRequest("Ordnance Survey's place names cannot be updated on this installation.");
+        await os.check(signal);
+        return { downloadIds: [(await os.start({ roads: row.meta.roads !== false, locationId: row.locationId })).id] };
+      }
       if (row.kind === "places") return { downloadIds: [(await ctx.services.maps.places.update(row.id)).id] };
       if (row.kind === "extract") {
         const meta = countryFileOf(row);
@@ -679,9 +707,7 @@ export function createMapDataWhere(ctx: AppContext, client: HttpClient) {
     const wholeOf = (code: string) => listed?.find((region) => region.depth === 0 && region.country === code) ?? null;
     const results: MapDataWhereResult[] = [];
     const push = (result: MapDataWhereResult) => {
-      const same = results.some(
-        (each) => each.type === result.type && each.country === result.country && each.name === result.name,
-      );
+      const same = results.some((each) => each.type === result.type && each.country === result.country && each.name === result.name);
       if (!same && results.length < MAX_WHERE) results.push(result);
     };
     const countryResult = (code: string, part: MapDataWhereResult["part"] = null): MapDataWhereResult | null => {

@@ -6,9 +6,13 @@
 import {
   type CountryFileRead,
   formatBytes,
+  type MapDataBundle,
+  type MapDataBundleKind,
   type MapDataItem,
   type MapDataKind,
+  type MapDataPlace,
   type MapDataResponse,
+  mapPlacesOf,
   REFERENCE_LAYER_INFO,
 } from "@outpost/shared";
 import { formatDate, plural } from "@/lib/utils";
@@ -204,7 +208,7 @@ export function isHere(item: MapDataItem): boolean {
 /** What is over a year old, oldest first. */
 export function staleItems(data: MapDataResponse, now = Date.now()): MapDataItem[] {
   return allItems(data)
-    .filter((item) => isHere(item) && overAYearOld(item.dataDate, now))
+    .filter((item) => isHere(item) && !item.ageless && overAYearOld(item.dataDate, now))
     .sort((a, b) => (a.dataDate ?? "").localeCompare(b.dataDate ?? ""));
 }
 
@@ -287,4 +291,154 @@ export function storageRows(data: MapDataResponse): StorageRow[] {
       where: [...new Set(items.map((item) => item.locationName ?? "Outpost's own data"))],
     };
   });
+}
+
+// ── By place: the one pattern every kind of map data follows ──
+
+/** What a place's bundles are called: on a phone's line, in the details, in a dialog. */
+export const BUNDLE_NAMES: Record<MapDataBundleKind, string> = {
+  map: "Map",
+  routes: "Routes",
+  nearby: "Nearby places",
+  walk: "Walking and cycling",
+  imagery: "Satellite pictures",
+};
+
+/** The columns of the wide table: short. */
+export const BUNDLE_COLUMNS: Record<MapDataBundleKind, string> = {
+  map: "Map",
+  routes: "Routes",
+  nearby: "Nearby",
+  walk: "Walk/cycle",
+  imagery: "Satellite",
+};
+
+/** What each bundle is for, said wherever it is chosen. */
+export const BUNDLE_DETAILS: Record<MapDataBundleKind, string> = {
+  map: "Roads, paths, hills, and towns by name",
+  routes: "Plan a drive",
+  nearby: "Hospitals, shelters, food",
+  walk: "Walking, cycling and door-to-door routes",
+  imagery: "Pictures from above, under the map",
+};
+
+/** What stops working when a bundle is removed. */
+export const BUNDLE_STOPS: Record<MapDataBundleKind, string> = {
+  map: "The map shows only outlines there, and search no longer finds its towns by name.",
+  routes: "Drives can no longer be planned there. Saved routes keep their directions.",
+  nearby: "Its hospitals, shelters and food leave the map and the lists of what is nearest.",
+  walk: "Walking, cycling and door-to-door routes stop. Drives still plan on the main roads.",
+  imagery: "The satellite pictures are no longer drawn under the map there.",
+};
+
+/** "19 min", "1 h 5 min", "under a minute". */
+export function timeLeftText(seconds: number | null | undefined): string | null {
+  if (seconds === null || seconds === undefined || !Number.isFinite(seconds)) return null;
+  if (seconds < 60) return "under a minute";
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes} min`;
+  return `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
+}
+
+/** "1.0 of 2.3 GB": both in the larger's unit, so they read as one figure. */
+export function ofText(current: number, total: number): string {
+  const units = ["bytes", "kB", "MB", "GB", "TB"];
+  let unit = 0;
+  for (let size = total; size >= 1000 && unit < units.length - 1; size /= 1000) unit += 1;
+  const scale = 1000 ** unit;
+  const digits = unit === 0 ? 0 : 1;
+  return `${(current / scale).toFixed(digits)} of ${(total / scale).toFixed(digits)} ${units[unit]}`;
+}
+
+/** The figures of a download that a bundle's words need. */
+export interface DownloadFigures {
+  receivedBytes: number;
+  totalBytes: number | null;
+  etaSeconds: number | null;
+}
+
+/**
+ * Where a bundle stands, in the words every kind uses: Not added · Waiting · Downloading 1.0 of
+ * 2.3 GB, 19 min left · Building · Ready, from 17 Nov 2026 · Over a year old · Failed: what to do ·
+ * Storage not connected · Moving.
+ */
+export function bundleStateText(bundle: MapDataBundle, download?: DownloadFigures | null, now = Date.now()): string {
+  const percent = bundle.fraction !== null ? ` ${Math.round(bundle.fraction * 100)}%` : "";
+  switch (bundle.state) {
+    case "none":
+      return "Not added";
+    case "waiting":
+      return "Waiting";
+    case "downloading": {
+      if (download?.totalBytes) {
+        const left = timeLeftText(download.etaSeconds);
+        return `Downloading ${ofText(download.receivedBytes, download.totalBytes)}${left ? `, ${left} left` : ""}`;
+      }
+      return `Downloading${percent}`;
+    }
+    case "paused":
+      return `Paused${percent}`;
+    case "building":
+      return `Building${percent}`;
+    case "moving":
+      return `Moving${percent}`;
+    case "failed":
+      return `Failed: ${bundle.reason ?? "try again"}`;
+    case "location-offline":
+      return "Storage not connected";
+    case "ready": {
+      const day = dayText(bundle.dataDate);
+      if (bundle.dataDate && overAYearOld(bundle.dataDate, now)) return `Over a year old, from ${day}`;
+      return day ? `Ready, from ${day}` : "Ready";
+    }
+  }
+}
+
+/** The short mark of a bundle in a row: "Ready", "43%", "Add". */
+export function bundleMark(bundle: MapDataBundle, now = Date.now()): string {
+  const percent = bundle.fraction !== null ? `${Math.round(bundle.fraction * 100)}%` : "";
+  switch (bundle.state) {
+    case "none":
+      return "Add";
+    case "ready":
+      return bundle.dataDate && overAYearOld(bundle.dataDate, now) ? "Over a year old" : "Ready";
+    case "downloading":
+      return percent || "Downloading";
+    case "waiting":
+      return "Waiting";
+    case "paused":
+      return `Paused${percent ? ` ${percent}` : ""}`;
+    case "building":
+      return `Building${percent ? ` ${percent}` : ""}`;
+    case "moving":
+      return "Moving";
+    case "failed":
+      return "Failed";
+    case "location-offline":
+      return "Storage not connected";
+  }
+}
+
+/** "2 places are over a year old." */
+export function stalePlacesLine(count: number): string {
+  return count === 1 ? "1 place is over a year old." : `${count} places are over a year old.`;
+}
+
+/** The places of an answer: the server's, or made here from the rows (an older server). */
+export function placesIn(data: MapDataResponse): MapDataPlace[] {
+  return data.places ?? mapPlacesOf(data, { streets: data.streetsInstalled ?? false });
+}
+
+/** "7.9 GB on Internal storage", "7.9 GB on Internal storage and NAS". */
+export function offlineSummary(summary: MapDataResponse["summary"]): string {
+  if (summary.totalBytes === 0) return "Maps, routes and nearby places added here work with no connection.";
+  const where = summary.locations.filter((location) => location.bytes > 0).map((location) => location.name);
+  const list = where.length <= 1 ? (where[0] ?? "") : `${where.slice(0, -1).join(", ")} and ${where.at(-1)}`;
+  return `${formatBytes(summary.totalBytes)} on ${list}`;
+}
+
+/** "France", "France and Switzerland", "France, Italy and Switzerland". */
+export function namesText(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? "";
+  return `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
 }

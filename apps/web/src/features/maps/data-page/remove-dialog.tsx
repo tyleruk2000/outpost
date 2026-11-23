@@ -4,18 +4,19 @@
  * file) asks whether to delete it or leave it where it is; removing roads asks whether to delete
  * the kept country file too, unticked. Nothing is deleted without the person's choice.
  */
-import { formatBytes, type MapDataItem } from "@outpost/shared";
+import { formatBytes, type MapDataBundleKind, type MapDataItem, type MapDataPlace } from "@outpost/shared";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/misc";
 import { ChoiceList } from "@/features/downloads/choice-list";
 import { usePacks, useRemovePack } from "@/features/layers/data";
+import { errorMessage } from "@/lib/api";
 import { useRemovePlaces, useRemoveRegion } from "../data";
 import { useRemoveRoadNetwork } from "../road-route/data";
 import { useRemoveStreets } from "../road-route/streets-data";
 import { useMapData } from "./use-map-data";
-import { keptFileFor } from "./words";
+import { BUNDLE_NAMES, BUNDLE_STOPS, keptFileFor } from "./words";
 
 /** "Frees 30 MB on NAS." */
 export function freesLine(item: MapDataItem): string {
@@ -257,4 +258,177 @@ export function removable(item: MapDataItem): boolean {
   if (item.kind === "roads") return item.networkId !== null;
   if (item.kind === "places") return item.packId !== null;
   return item.collectionId !== null && item.state !== "moving";
+}
+
+// ── By place: one dialog for every kind ──
+
+/** A line of the place's removal: one bundle, or the source file, with what it frees. */
+export interface RemoveLine {
+  key: MapDataBundleKind | "source";
+  name: string;
+  items: MapDataItem[];
+  bytes: number;
+  /** Ticked when the dialog opens: everything but the source file, which is kept unless asked. */
+  ticked: boolean;
+}
+
+/** What "Remove France…" offers: each bundle with something here, and the source file, with sizes. */
+export function removeLines(place: MapDataPlace): RemoveLine[] {
+  const lines: RemoveLine[] = [];
+  for (const bundle of place.bundles) {
+    const items = place.items.filter((item) => bundle.items.includes(item.key) && removable(item));
+    if (items.length === 0) continue;
+    lines.push({
+      key: bundle.kind,
+      name: BUNDLE_NAMES[bundle.kind],
+      items,
+      bytes: items.reduce((sum, item) => sum + (item.sizeBytes ?? 0), 0),
+      ticked: true,
+    });
+  }
+  const files = place.items.filter((item) => item.kind === "extract" && removable(item));
+  if (files.length > 0)
+    lines.push({
+      key: "source",
+      name: "Source file",
+      items: files,
+      bytes: files.reduce((sum, item) => sum + (item.sizeBytes ?? 0), 0),
+      ticked: false,
+    });
+  return lines;
+}
+
+/** "Remove · frees 3.1 GB". */
+export function freesTotal(lines: RemoveLine[], ticked: Set<string>): number {
+  return lines.filter((line) => ticked.has(line.key)).reduce((sum, line) => sum + line.bytes, 0);
+}
+
+/** Removing a place, or some of what it has: ticks, what stops working, and what is freed. */
+export function RemovePlaceDialog({
+  place,
+  open,
+  onOpenChange,
+}: {
+  place: MapDataPlace | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const lines = place ? removeLines(place) : [];
+  const [ticked, setTicked] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+  const [opened, setOpened] = useState<string | null>(null);
+  if (open && place && opened !== place.key) {
+    setOpened(place.key);
+    setTicked(new Set(lines.filter((line) => line.ticked).map((line) => line.key)));
+    setFailed(null);
+  }
+  if (!open && opened !== null) setOpened(null);
+
+  const removeFile = useRemoveRegion();
+  const removeNames = useRemovePlaces();
+  const removeRoads = useRemoveRoadNetwork();
+  const removePack = useRemovePack();
+  const removeStreets = useRemoveStreets();
+  const away = [
+    ...new Set(
+      lines
+        .flatMap((line) => line.items)
+        .filter((item) => item.state === "location-offline")
+        .map((item) => item.locationName),
+    ),
+  ];
+
+  async function removeOne(item: MapDataItem) {
+    const deleteFiles = item.state !== "location-offline";
+    if (item.kind === "streets") return removeStreets.mutateAsync(undefined);
+    if (item.kind === "roads" && item.networkId) return removeRoads.mutateAsync(item.networkId);
+    if (item.kind === "places" && item.packId) return removePack.mutateAsync({ id: item.packId, deleteFiles });
+    if (item.kind === "names" && item.collectionId)
+      return removeNames.mutateAsync({ id: item.collectionId } as Parameters<typeof removeNames.mutateAsync>[0]);
+    if (item.collectionId) return removeFile.mutateAsync({ id: item.collectionId, deleteFiles });
+  }
+
+  const frees = freesTotal(lines, ticked);
+  const chosen = lines.filter((line) => ticked.has(line.key));
+  const everything = chosen.length === lines.length;
+  const stops = chosen.filter((line) => line.key !== "source").map((line) => BUNDLE_STOPS[line.key as MapDataBundleKind]);
+  return (
+    <ConfirmDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={`Remove ${place?.name ?? ""}?`}
+      description={stops.length > 0 ? stops.join(" ") : "Choose what to remove."}
+      confirmLabel={chosen.length === 0 ? "Remove" : `Remove · frees ${formatBytes(frees)}`}
+      loading={busy}
+      onConfirm={async () => {
+        if (!place || chosen.length === 0) return;
+        setBusy(true);
+        setFailed(null);
+        try {
+          // The source file last: what is read from it goes first.
+          const items = [...chosen.filter((line) => line.key !== "source"), ...chosen.filter((line) => line.key === "source")].flatMap(
+            (line) => line.items,
+          );
+          let streetsDone = false;
+          for (const item of items) {
+            if (item.kind === "streets") {
+              if (streetsDone) continue;
+              streetsDone = true;
+            }
+            await removeOne(item);
+          }
+          onOpenChange(false);
+          toast.success(
+            everything ? `Removed ${place.name}. Freed ${formatBytes(frees)}.` : `Removed from ${place.name}. Freed ${formatBytes(frees)}.`,
+          );
+        } catch (error) {
+          setFailed(errorMessage(error));
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      <ul aria-label={`What to remove from ${place?.name ?? ""}`} className="grid gap-1">
+        {lines.map((line) => (
+          <li key={line.key}>
+            <label
+              htmlFor={`remove-${line.key}`}
+              className="flex min-h-11 cursor-pointer items-center gap-3 text-small md:min-h-8 md:pointer-coarse:min-h-11"
+            >
+              <Checkbox
+                id={`remove-${line.key}`}
+                checked={ticked.has(line.key)}
+                onCheckedChange={(on) =>
+                  setTicked((current) => {
+                    const next = new Set(current);
+                    if (on === true) next.add(line.key);
+                    else next.delete(line.key);
+                    return next;
+                  })
+                }
+              />
+              <span className="flex-1 text-ink">{line.name}</span>
+              <span className="tabular text-ink-muted">{formatBytes(line.bytes)}</span>
+            </label>
+          </li>
+        ))}
+      </ul>
+      {lines.some((line) => line.key === "source") ? (
+        <p className="mt-2 text-small text-ink-muted">
+          Without the source file, building routes or nearby places again downloads it again.
+        </p>
+      ) : null}
+      {away.length > 0 ? (
+        <p className="mt-2 text-small text-warning">
+          Storage not connected: {away.join(", ")}. Outpost stops using what is there; its files stay until it is back.
+        </p>
+      ) : null}
+      {failed ? (
+        <p role="alert" className="mt-2 text-small text-danger">
+          Failed: {failed} Try again.
+        </p>
+      ) : null}
+    </ConfirmDialog>
+  );
 }

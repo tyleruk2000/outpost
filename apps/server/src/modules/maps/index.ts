@@ -209,7 +209,7 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
   app.get("/api/maps/data/where", async (request) => mapDataWhere(mapDataWhereSchema.parse(request.query)));
   app.post("/api/maps/data/add", async (request) => mapDataAdd(mapDataAddSchema.parse(request.body)));
   // Updating: asking the source first is a press of its own; so is the download that follows.
-  const mapDataUpdates = createMapDataUpdates(ctx, client);
+  const mapDataUpdates = createMapDataUpdates(ctx, client, () => osNames);
   app.post("/api/maps/data/check", async (request) => mapDataUpdates.check(mapDataCheckSchema.parse(request.body).collectionId));
   app.post("/api/maps/data/update", async (request) => mapDataUpdates.update(mapDataUpdateSchema.parse(request.body).collectionId));
 

@@ -1,123 +1,159 @@
 /**
- * "Add map data": which place, then what for it, with every size after one press, then (for
- * roads and places) what happens to the country file, then where to keep it, then Download.
- * The home country comes first. On a wide screen the choices after the place are one view; on
- * a phone the dialog is a sheet with one step to a view. Nothing reaches out until "Check
- * sizes" (which names the hosts it asks) or Download is pressed.
+ * "Add a place": the one way offline map data is added, from everywhere that offers it.
+ *
+ * Step 1, "Where?": a country, a part of one or a town typed in ("Chamonix is in France:
+ * Rhône-Alpes (smaller) or all of France"), a country tapped on a small map of the world, or a
+ * suggestion: where the map is now, home, the whole world, an area drawn on the map, a file.
+ * Nothing is chosen for the person: Outpost is used anywhere.
+ *
+ * Step 2, "What for France?": Map (the map, its hills and its place names), Routes and Nearby
+ * places, ticked; More choices for the detail, the hills, where it is kept and the source file.
+ * The first time Routes or Nearby places are added, the source file is a two-line choice, then
+ * remembered. One button changes as it goes: "Check size" (which asks the map sources and, the
+ * first time, reads Geofabrik's list of regions) and then "Download · 4.1 GB".
+ *
+ * Arriving with countries (/maps/data?add=1&countries=FR,CH, from a route that needs them) opens
+ * at step 2 with Routes ticked for each.
  */
 import {
+  type Bbox,
   formatBytes,
-  type MapDataAddKind,
   type MapDataAddRequest,
+  type MapDataBundleKind,
+  type MapDataPlace,
   type MapDataResponse,
+  type MapDataWhereResponse,
+  type MapDataWhereResult,
   type MapRegionPresetStatus,
+  type OsNamesCheck,
+  type ReferenceEstimate,
   type ReferenceRegionDto,
+  type ReferenceRegionsResponse,
 } from "@outpost/shared";
-import { ArrowLeft, ChevronRight, CircleAlert, House, Search, SquareDashedMousePointer } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, ChevronRight, CircleAlert, FileUp, Globe, House, LocateFixed, Search, SquareDashedMousePointer } from "lucide-react";
+import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router";
 import { toast } from "sonner";
-import { ErrorState, Notice } from "@/components/page";
+import { Disclosure, Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Checkbox, Progress, Skeleton } from "@/components/ui/misc";
+import { Field, Input } from "@/components/ui/input";
+import { Checkbox, Progress, Segmented, Spinner } from "@/components/ui/misc";
+import { ChoiceList } from "@/features/downloads/choice-list";
 import { useHomeCountry } from "@/features/frequencies/home-country";
-import { useCatalogue, useReadRegions, useRegions } from "@/features/layers/data";
-import { StepLine } from "@/features/storage/parts";
-import { errorMessage } from "@/lib/api";
-import { useMediaQuery } from "@/lib/use-media-query";
+import { api, errorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { useMapRegions } from "../data";
+import { estimateRegion, type RegionEstimate, useMapRegions, useStartPlaces } from "../data";
+import { detailChoices, detailLabel } from "../lib/detail";
+import { countTiles } from "../lib/geo";
 import { fold } from "../lib/search";
-import { detailLabel } from "../panels/add-region";
+import { isCameraView, readStored, STORAGE_KEYS } from "../lib/view";
 import { DestinationPicker, useDestination } from "../panels/destination";
-import { CountryFileChoice, suggestedFileLocation } from "./country-file-choice";
-import { countryRegion, type Sizes, useAddMapData, useCheckSizes } from "./use-map-data";
-import { askedLine, KIND_NAMES } from "./words";
+import { suggestedFileLocation } from "./country-file-choice";
+import { touchSize } from "./pattern";
+import { mapDataKeys, useAddMapData } from "./use-map-data";
+import { BUNDLE_DETAILS, BUNDLE_NAMES, keptFileFor, namesText, placesIn } from "./words";
+import { WorldPick } from "./world-pick";
 
-const PHONE = "(max-width: 47.99rem)";
-const MAX_FOUND = 30;
-/** A road network kept is 1 to 2% of the country file it is read from (30 MB of Great Britain's 2.2 GB). */
+/** A road network kept is 1 to 2% of the source file it is read from (30 MB of Great Britain's 2.2 GB). */
 const ROADS_SHARE = 0.02;
+/** The server refuses a map of more tiles than this. */
+const MAX_TILES = 20_000_000;
 
-/** A place to add map data for: a country, or a part of one from Geofabrik's list. */
-export interface Place {
-  /** Two letters; null for a part of the world Geofabrik gives no country for. */
+/** A place chosen in step 1. */
+export interface Chosen {
+  type: "country" | "area" | "world";
+  /** Two letters, for a country or a part of one. */
   code: string | null;
+  /** "France", "Rhône-Alpes", "Chamonix valley", "The whole world". */
   name: string;
-  /** Geofabrik's region, where known; found when sizes are checked otherwise. */
+  /** For a part: its country's name. */
+  countryName: string | null;
+  /** Geofabrik's region for the whole country, where its list has been read. */
   regionId: string | null;
-  /** The country it is part of, for a part of one. */
-  partOf: string | null;
+  /** A part of the country, chosen instead of all of it: routes and nearby places for it only. */
+  part: { regionId: string; name: string } | null;
+  bbox: Bbox | null;
 }
 
-/** Where the add was asked from: a country's row, Road route, or the screen's own button. */
+/** What a link or a row asked for. */
 export interface AddStart {
+  /** One country, two letters. */
   country?: string | null;
-  regionId?: string | null;
-  kinds?: MapDataAddKind[];
+  /** Several countries (?countries=FR,CH, from a route that needs them). */
+  countries?: string[];
+  /** What to tick: the bundles, or the older kinds (?kinds=roads). */
+  bundles?: MapDataBundleKind[];
+  /** An area drawn on the map (?bbox=w,s,e,n&name=…). */
+  area?: { name: string; bbox: Bbox };
+  /** The whole world's basics. */
+  world?: boolean;
 }
 
-type Kind = "map" | "terrain" | "names" | "roads" | "places";
-const KINDS: Kind[] = ["map", "terrain", "names", "roads", "places"];
-const FROM_FILE = new Set<MapDataAddKind>(["roads", "places", "extract"]);
+/** The older kinds a link may still give, as the bundles they are part of. */
+export function bundlesOfKinds(kinds: string[]): MapDataBundleKind[] {
+  const out = new Set<MapDataBundleKind>();
+  for (const kind of kinds) {
+    if (kind === "map" || kind === "terrain" || kind === "names") out.add("map");
+    if (kind === "roads") out.add("routes");
+    if (kind === "places") out.add("nearby");
+    if (kind === "streets") out.add("walk");
+  }
+  return [...out];
+}
 
-const DETAILS: Record<Kind, string> = {
-  map: "Roads, paths, buildings and names, drawn",
-  terrain: "Hill shading, contour lines and heights",
-  names: "Towns, villages, hills and lakes found by name, from GeoNames",
-  roads: "To plan a drive. Read from the country file",
-  places: "Hospitals, emergency services, shelters, food and supplies. Read from the country file",
+type Choosable = "map" | "routes" | "nearby";
+
+/** A where-result as a place to add for. */
+function chosenOf(result: MapDataWhereResult, part: boolean): Chosen {
+  return {
+    type: "country",
+    code: result.country,
+    name: part && result.part ? result.part.name : result.countryName,
+    countryName: part && result.part ? result.countryName : null,
+    regionId: result.regionId,
+    part: part ? result.part : null,
+    bbox: result.bbox,
+  };
+}
+
+const WORLD: Chosen = {
+  type: "world",
+  code: null,
+  name: "The whole world",
+  countryName: null,
+  regionId: null,
+  part: null,
+  bbox: [-180, -85, 180, 85],
 };
 
-function KindChoice({
-  kind,
-  checked,
-  onChange,
-  detail,
-  trailing,
-  disabled,
-}: {
-  kind: Kind;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  detail: React.ReactNode;
-  trailing: React.ReactNode;
-  disabled?: boolean;
-}) {
-  const id = useId();
-  return (
-    <li className="flex items-start gap-3 py-2.5 max-md:py-3">
-      <Checkbox id={id} checked={checked} onCheckedChange={(next) => onChange(next === true)} disabled={disabled} className="mt-0.5" />
-      <label
-        htmlFor={id}
-        className={cn(
-          "flex min-w-0 flex-1 flex-wrap items-baseline justify-between gap-x-4",
-          disabled ? "cursor-not-allowed" : "cursor-pointer",
-        )}
-      >
-        <span className="min-w-0">
-          <span className={cn("block text-small font-medium", disabled ? "text-ink-muted" : "text-ink")}>{KIND_NAMES[kind]}</span>
-          <span className="block text-small text-ink-muted">{detail}</span>
-        </span>
-        {trailing ? <span className="tabular shrink-0 text-small text-ink-muted">{trailing}</span> : null}
-      </label>
-    </li>
-  );
+/** The ready-made map of a country (`country-fr`), or of anything of the same name. */
+export function presetFor(place: Chosen, presets: MapRegionPresetStatus[]): MapRegionPresetStatus | null {
+  if (place.type === "world") return presets.find((preset) => preset.id === "world") ?? null;
+  if (place.type === "area") return null;
+  const code = place.code?.toLowerCase();
+  const name = fold(place.countryName ?? place.name);
+  return presets.find((preset) => preset.id === `country-${code}`) ?? presets.find((preset) => fold(preset.name) === name) ?? null;
 }
 
-function PlaceButton({ name, note, onChoose, icon }: { name: string; note?: string | null; onChoose: () => void; icon?: React.ReactNode }) {
+/** The deepest detail a box can have and stay a sensible download. */
+export function defaultZoom(bbox: Bbox, preset: MapRegionPresetStatus | null): number {
+  if (preset) return preset.recommendedMaxZoom;
+  return [14, 12, 10, 8, 6].find((zoom) => countTiles(bbox, 0, zoom) <= 1_000_000) ?? 6;
+}
+
+function SuggestionButton({ icon, title, note, onChoose }: { icon: ReactNode; title: ReactNode; note?: ReactNode; onChoose: () => void }) {
   return (
     <li>
       <button
         type="button"
         onClick={onChoose}
-        className="flex min-h-11 w-full items-center gap-3 px-2 py-2 text-left text-small transition-colors duration-(--duration-fast) hover:bg-surface focus-visible:-outline-offset-2 max-md:py-3 md:pointer-coarse:py-3"
+        className="flex min-h-11 w-full items-center gap-3 rounded-control px-2 py-2 text-left text-small transition-colors duration-(--duration-fast) hover:bg-surface active:bg-surface-strong focus-visible:-outline-offset-2"
       >
-        {icon ? <span className="shrink-0 text-ink-muted [&_svg]:size-4">{icon}</span> : null}
+        <span className="shrink-0 text-ink-muted [&_svg]:size-4">{icon}</span>
         <span className="min-w-0 flex-1">
-          <span className="block font-medium text-ink">{name}</span>
+          <span className="block font-medium text-ink">{title}</span>
           {note ? <span className="block text-micro text-ink-muted">{note}</span> : null}
         </span>
         <ChevronRight aria-hidden className="size-4 shrink-0 text-ink-muted" />
@@ -126,233 +162,371 @@ function PlaceButton({ name, note, onChoose, icon }: { name: string; note?: stri
   );
 }
 
-/** Step 1: home first, the places already listed, then search; or draw an area on the map. */
-function ChoosePlace({ data, onChoose, onDraw }: { data: MapDataResponse; onChoose: (place: Place) => void; onDraw: () => void }) {
+/** Asks the server, offline, where a text, a point or a list of countries is. */
+async function whereIs(query: string): Promise<MapDataWhereResponse> {
+  return api.get<MapDataWhereResponse>(`/api/maps/data/where?${query}`);
+}
+
+function useTyped(text: string) {
+  const [settled, setSettled] = useState(text);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSettled(text), 150);
+    return () => window.clearTimeout(timer);
+  }, [text]);
+  return settled;
+}
+
+/** Step 1: Where? */
+function Where({
+  data,
+  onChoose,
+  onDraw,
+  onImport,
+  heading,
+}: {
+  data: MapDataResponse;
+  onChoose: (places: Chosen[]) => void;
+  onDraw: () => void;
+  onImport: () => void;
+  heading: React.RefObject<HTMLHeadingElement | null>;
+}) {
   const home = useHomeCountry();
-  const catalogue = useCatalogue();
-  const regions = useRegions(null);
-  const read = useReadRegions();
   const [text, setText] = useState("");
-  const typed = fold(text);
-  const list = regions.data?.held ? regions.data.regions : [];
-  const byId = useMemo(() => new Map(list.map((region) => [region.id, region])), [list]);
-  const countries = catalogue.data?.countries ?? [];
-  const countryPlace = (code: string, name: string): Place => ({
-    code,
-    name,
-    regionId: countryRegion(list, code)?.id ?? data.countries.find((country) => country.country === code)?.regionId ?? null,
-    partOf: null,
+  const typed = useTyped(text.trim());
+  const fieldId = useId();
+  const found = useQuery({
+    queryKey: [...mapDataKeys.all, "where", typed],
+    queryFn: () => whereIs(`q=${encodeURIComponent(typed)}`),
+    enabled: typed.length >= 2,
+    placeholderData: keepPreviousData,
   });
-  const regionPlace = (region: ReferenceRegionDto): Place => ({
-    code: region.country,
-    name:
-      region.depth === 0
-        ? region.name
-        : region.name.replace(/^[a-z]{2}\//, "").replace(/(^|-)([a-z])/g, (_, a, b) => `${a ? " " : ""}${b.toUpperCase()}`),
-    regionId: region.id,
-    partOf: region.parent ? (byId.get(region.parent)?.name ?? null) : null,
+  // Where the map was last left, in this browser: the first suggestion.
+  const view = useMemo(() => readStored(STORAGE_KEYS.view, isCameraView, null), []);
+  const here = useQuery({
+    queryKey: [...mapDataKeys.all, "where", "view", view?.lat, view?.lon],
+    queryFn: () => whereIs(`lat=${view!.lat.toFixed(4)}&lon=${view!.lon.toFixed(4)}`),
+    enabled: view !== null && (view?.zoom ?? 0) >= 3,
+    staleTime: Number.POSITIVE_INFINITY,
   });
-  const found = useMemo(() => {
-    if (!typed) return [];
-    const match = (name: string) => fold(name).includes(typed);
-    const first = (name: string) => (fold(name).startsWith(typed) ? 0 : 1);
-    const fromCountries = countries
-      .filter((country) => match(country.name))
-      .map((country) => ({ key: `c:${country.code}`, name: country.name }));
-    const parts = list
-      .filter((region) => region.depth > 0 && match(region.name))
-      .map((region) => ({ key: `r:${region.id}`, name: region.name }));
-    return [...fromCountries, ...parts]
-      .sort((a, b) => first(a.name) - first(b.name) || a.name.localeCompare(b.name, "en"))
-      .slice(0, MAX_FOUND);
-  }, [typed, countries, list]);
-  const listed = data.countries.filter((country) => country.country !== home?.code);
+  const [picking, setPicking] = useState(false);
+  const [pickFailed, setPickFailed] = useState(false);
+  const pick = async (point: { lat: number; lon: number }) => {
+    setPicking(true);
+    setPickFailed(false);
+    try {
+      const answer = await whereIs(`lat=${point.lat.toFixed(4)}&lon=${point.lon.toFixed(4)}`);
+      const first = answer.results[0];
+      if (first) onChoose([chosenOf(first, false)]);
+      else setPickFailed(true);
+    } finally {
+      setPicking(false);
+    }
+  };
+  const nowAt = here.data?.results[0] ?? null;
+  const world = placesIn(data).find((place) => place.type === "world");
+  const results = typed.length >= 2 ? (found.data?.results ?? []) : [];
 
   return (
-    <div className="grid gap-4">
-      <h3 className="font-title text-lead text-ink">Which place?</h3>
-      <ul className="-mx-2 divide-y divide-border" aria-label="Your places">
-        {home ? (
-          <PlaceButton name={home.name} note="Your home" icon={<House />} onChoose={() => onChoose(countryPlace(home.code, home.name))} />
-        ) : null}
-        {listed.map((country) => (
-          <PlaceButton
-            key={country.country}
-            name={country.name}
-            note="Has map data"
-            onChoose={() =>
-              onChoose({
-                ...countryPlace(country.country, country.name),
-                regionId: country.regionId ?? countryRegion(list, country.country)?.id ?? null,
-              })
-            }
-          />
-        ))}
-      </ul>
-      <div className="grid gap-2">
+    <div className="grid gap-5">
+      <h3 ref={heading} tabIndex={-1} className="font-title text-lead text-ink focus:outline-none">
+        Where?
+      </h3>
+      <div className="grid gap-1.5">
+        <label htmlFor={fieldId} className="text-small font-medium text-ink">
+          Country, region or town
+        </label>
         <div className="relative">
           <Search aria-hidden className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-ink-muted" />
           <Input
+            id={fieldId}
             type="search"
-            aria-label="Find a country or region"
-            placeholder="Find a country or region"
             value={text}
             onChange={(event) => setText(event.target.value)}
             className="pl-8"
             autoComplete="off"
             enterKeyHint="search"
+            placeholder="France, Bavaria, Chamonix"
           />
+          {found.isFetching ? <Spinner delay className="absolute top-1/2 right-2.5 -translate-y-1/2" label="Looking" /> : null}
         </div>
-        {typed ? (
-          found.length === 0 ? (
-            <p className="text-small text-ink-muted">No country or region is called that. Try its name in English.</p>
-          ) : (
-            <ul aria-label="Places found" className="-mx-2 divide-y divide-border">
-              {found.map((entry) => {
-                const code = entry.key.startsWith("c:") ? entry.key.slice(2) : null;
-                const region = code ? null : byId.get(entry.key.slice(2));
-                return (
-                  <PlaceButton
-                    key={entry.key}
-                    name={region ? regionPlace(region).name : entry.name}
-                    note={region ? (region.parent ? `Part of ${byId.get(region.parent)?.name ?? region.parent}` : null) : null}
-                    onChoose={() => onChoose(region ? regionPlace(region) : countryPlace(code!, entry.name))}
-                  />
-                );
-              })}
-            </ul>
-          )
-        ) : null}
-        {regions.data && !regions.data.held ? (
-          <div className="grid gap-2 text-small text-ink-muted">
-            <p>
-              Parts of a country (a state, a county) are listed once Geofabrik's list of regions is read: one file of about 500 kB from
-              download.geofabrik.de.
-            </p>
-            <div>
-              <Button size="sm" onClick={() => read.mutate()} loading={read.isPending}>
-                Read the list of regions
-              </Button>
-            </div>
-            {read.isError ? <p className="text-danger">{errorMessage(read.error)}</p> : null}
-          </div>
-        ) : null}
+        <p className="text-micro text-ink-muted">Found on this device: nothing is looked up elsewhere.</p>
       </div>
-      <div className="grid gap-1 border-t border-border pt-4">
-        <div>
-          <Button onClick={onDraw}>
-            <SquareDashedMousePointer /> Draw my own area
-          </Button>
+
+      {typed.length >= 2 ? (
+        results.length === 0 && !found.isFetching ? (
+          <p className="text-small text-ink-muted">
+            Nothing is called that. Try a country's name in English, or tap it on the map.
+            {found.data && !found.data.regionsListed ? " Regions are found once Geofabrik's list is read, at the first Check size." : ""}
+          </p>
+        ) : (
+          <ul aria-label="Places found" className="-mx-2 grid gap-0.5">
+            {results.map((result) =>
+              result.type === "town" ? (
+                <li key={`town-${result.name}-${result.lat}`} className="grid gap-1 px-2 py-2">
+                  <p className="text-small text-ink">
+                    <span className="font-medium">{result.name}</span> is in {result.countryName}
+                    {result.part ? `: ${result.part.name} (smaller) or all of ${result.countryName}` : ""}.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {result.part ? (
+                      <Button size="sm" className={touchSize} onClick={() => onChoose([chosenOf(result, true)])}>
+                        {result.part.name}
+                      </Button>
+                    ) : null}
+                    <Button size="sm" className={touchSize} onClick={() => onChoose([chosenOf(result, false)])}>
+                      {result.part ? `All of ${result.countryName}` : result.countryName}
+                    </Button>
+                  </div>
+                </li>
+              ) : (
+                <SuggestionButton
+                  key={`${result.type}-${result.part?.regionId ?? result.country}`}
+                  icon={<Globe />}
+                  title={result.name}
+                  note={result.type === "part" ? `Part of ${result.countryName}` : null}
+                  onChoose={() => onChoose([chosenOf(result, result.type === "part")])}
+                />
+              ),
+            )}
+          </ul>
+        )
+      ) : null}
+
+      <div className="grid gap-1.5">
+        <p className="text-small text-ink-muted" id={`${fieldId}-map`}>
+          Or tap a country.
+        </p>
+        <div className="relative">
+          <WorldPick onPick={pick} className={cn(picking && "opacity-60")} />
+          {picking ? <Spinner delay className="absolute top-2 right-2" label="Finding the country" /> : null}
         </div>
-        <p className="text-small text-ink-muted">On the map, for a valley, an island or the way you are going.</p>
+        {pickFailed ? <p className="text-small text-ink-muted">No country there. Tap on land.</p> : null}
       </div>
+
+      <ul aria-label="Suggestions" className="-mx-2 grid gap-0.5 border-t border-border pt-3">
+        {nowAt ? (
+          <SuggestionButton
+            icon={<LocateFixed />}
+            title={`Where the map is now: ${nowAt.countryName}`}
+            onChoose={() => onChoose([chosenOf(nowAt, false)])}
+          />
+        ) : null}
+        {home ? (
+          <SuggestionButton
+            icon={<House />}
+            title={`Home: ${home.name}`}
+            onChoose={() =>
+              void whereIs(`countries=${home.code}`).then((answer) => answer.results[0] && onChoose([chosenOf(answer.results[0], false)]))
+            }
+          />
+        ) : null}
+        {!world || world.bundles.some((bundle) => bundle.kind === "map" && bundle.state === "none") ? (
+          <SuggestionButton
+            icon={<Globe />}
+            title="The whole world"
+            note="Countries, cities and main roads everywhere, at less detail"
+            onChoose={() => onChoose([WORLD])}
+          />
+        ) : null}
+        <SuggestionButton
+          icon={<SquareDashedMousePointer />}
+          title="Draw an area on the map"
+          note="A valley, an island, the way you are going"
+          onChoose={onDraw}
+        />
+        <SuggestionButton icon={<FileUp />} title="Import a file" note="GeoJSON, KML, GPX or a CSV of places" onChoose={onImport} />
+      </ul>
     </div>
   );
 }
 
-/** The flow, in a dialog (a sheet from the foot of a phone). */
+/** One tick of step 2. */
+function Tick({
+  name,
+  detail,
+  checked,
+  onChange,
+  trailing,
+  disabled,
+}: {
+  name: string;
+  detail: ReactNode;
+  checked: boolean;
+  onChange: (on: boolean) => void;
+  trailing?: ReactNode;
+  disabled?: boolean;
+}) {
+  const id = useId();
+  return (
+    <li className="flex items-start gap-3 py-3">
+      <Checkbox id={id} checked={checked} disabled={disabled} onCheckedChange={(next) => onChange(next === true)} className="mt-0.5" />
+      <label
+        htmlFor={id}
+        className={cn(
+          "flex min-w-0 flex-1 flex-wrap items-baseline justify-between gap-x-4",
+          disabled ? "cursor-not-allowed" : "cursor-pointer",
+        )}
+      >
+        <span className="min-w-0">
+          <span className={cn("block text-small font-medium", disabled ? "text-ink-muted" : "text-ink")}>{name}</span>
+          <span className="block text-small text-ink-muted">{detail}</span>
+        </span>
+        {trailing ? <span className="tabular shrink-0 text-small text-ink-muted">{trailing}</span> : null}
+      </label>
+    </li>
+  );
+}
+
+/** What Check size found. */
+interface Sizes {
+  /** By place key. */
+  map: Record<string, RegionEstimate>;
+  /** Source files by region: bytes, or null where one is kept and nothing is downloaded. */
+  file: Record<string, number | null>;
+  names: OsNamesCheck | null;
+  hosts: string[];
+  /** Geofabrik's list, read on the press where it was not held. */
+  regions: ReferenceRegionDto[];
+}
+
+const hostOf = (url: string) => {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+};
+
+const placeKey = (place: Chosen) =>
+  place.type === "area" ? `area:${place.bbox?.join(",")}` : `${place.type}:${place.code ?? ""}:${place.part?.regionId ?? ""}`;
+
+/** The dialog: a sheet from the foot of a phone. */
 export function AddMapData({
   open,
   onOpenChange,
   data,
   start,
   onAdded,
+  onImport,
+  onOtherSources,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   data: MapDataResponse;
   start: AddStart | null;
-  /** After Download: the country it was for, to bring into view. */
-  onAdded?: (country: string | null) => void;
+  onAdded?: (place: Chosen) => void;
+  onImport: () => void;
+  /** Nearby places from other sources (Natural Earth, airports, national lists): the layers' own choices. */
+  onOtherSources: () => void;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title="Add map data" size="lg" className="max-md:h-[calc(100dvh-2rem)]">
-        {open ? <Flow data={data} start={start} onClose={() => onOpenChange(false)} onAdded={onAdded} /> : null}
+      <DialogContent title="Add a place" size="lg" className="max-md:h-[calc(100dvh-2rem)]">
+        {open ? (
+          <Flow
+            data={data}
+            start={start}
+            onClose={() => onOpenChange(false)}
+            onAdded={onAdded}
+            onImport={() => {
+              onOpenChange(false);
+              onImport();
+            }}
+            onOtherSources={onOtherSources}
+          />
+        ) : null}
       </DialogContent>
     </Dialog>
   );
 }
-
-type Step = "place" | "what" | "file" | "where";
 
 function Flow({
   data,
   start,
   onClose,
   onAdded,
+  onImport,
+  onOtherSources,
 }: {
   data: MapDataResponse;
   start: AddStart | null;
   onClose: () => void;
-  onAdded?: (country: string | null) => void;
+  onAdded?: ((place: Chosen) => void) | undefined;
+  onImport: () => void;
+  onOtherSources: () => void;
 }) {
-  const phone = useMediaQuery(PHONE);
   const navigate = useNavigate();
-  const catalogue = useCatalogue();
-  const home = useHomeCountry();
+  const client = useQueryClient();
   const presets = useMapRegions(true);
-  const check = useCheckSizes();
   const add = useAddMapData();
-  const [place, setPlace] = useState<Place | null>(null);
-  const [step, setStep] = useState<Step>("place");
-  const [kinds, setKinds] = useState<Set<MapDataAddKind>>(new Set());
-  const [sizes, setSizes] = useState<{ map: Record<string, Sizes["map"]>; file: Record<string, Sizes["file"]> }>({ map: {}, file: {} });
-  const [hosts, setHosts] = useState<string[]>([]);
+  const startPlaces = useStartPlaces();
+  const heading = useRef<HTMLHeadingElement>(null);
+  const [step, setStep] = useState<"where" | "what">("where");
+  const [places, setPlaces] = useState<Chosen[]>([]);
+  const [ticks, setTicks] = useState<Set<Choosable>>(new Set());
+  const [hills, setHills] = useState(true);
+  const [zoom, setZoom] = useState<number | null>(null);
   const [keep, setKeep] = useState<boolean | undefined>(data.countryFileChoice.keep ?? undefined);
   const firstTime = data.countryFileChoice.keep === null;
-  const heading = useRef<HTMLHeadingElement>(null);
-
-  // Arriving with a place (a country's row, Road route): straight to what to add for it.
-  const [startApplied, setStartApplied] = useState(false);
-  useEffect(() => {
-    if (startApplied || !start || presets.isPending) return;
-    const code = start.country ?? (start.regionId ? null : home?.code) ?? null;
-    const name = code ? (catalogue.data?.countries.find((country) => country.code === code)?.name ?? null) : null;
-    if (!start.regionId && (!code || !name)) {
-      if (catalogue.isSuccess || catalogue.isError) setStartApplied(true);
-      return;
-    }
-    setStartApplied(true);
-    choose(
-      {
-        code,
-        name: name ?? start.regionId ?? "",
-        regionId: start.regionId ?? data.countries.find((country) => country.country === code)?.regionId ?? null,
-        partOf: null,
-      },
-      start.kinds,
-    );
+  /** Parts left out, by country: none left out means the whole country's one file. */
+  const [leftOut, setLeftOut] = useState<Set<string>>(new Set());
+  const [sizes, setSizes] = useState<{ key: string; sizes: Sizes } | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [checkError, setCheckError] = useState<unknown>(null);
+  const [sending, setSending] = useState(false);
+  const regionsHeld = useQuery({
+    queryKey: ["layers", "regions", ""],
+    queryFn: () => api.get<ReferenceRegionsResponse>("/api/reference/regions"),
+    staleTime: Number.POSITIVE_INFINITY,
   });
+  const allPresets = useMemo(() => (presets.data?.groups ?? []).flatMap((group) => group.regions), [presets.data]);
+  const known = placesIn(data);
 
-  const preset: MapRegionPresetStatus | null = useMemo(() => {
-    if (!place) return null;
-    const all = (presets.data?.groups ?? []).flatMap((group) => group.regions);
-    return all.find((entry) => fold(entry.name) === fold(place.name)) ?? null;
-  }, [place, presets.data]);
-  const held = place?.code ? data.countries.find((country) => country.country === place.code) : undefined;
-  const present = (kind: MapDataAddKind) =>
-    held?.rows.find((row) => row.kind === kind)?.items.some((item) => item.state === "ready" || item.state === "location-offline") ?? false;
-  const regionId = place?.regionId ?? null;
-  const keptFile =
-    data.countryFiles.find((file) => file.state === "ready" && regionId !== null && file.regionId === regionId) ??
-    (regionId === null && place?.code
-      ? held?.rows.find((row) => row.kind === "extract")?.items.find((item) => item.state === "ready")
-      : undefined);
-
-  function choose(next: Place, asked?: MapDataAddKind[]) {
-    setPlace(next);
-    const all = (presets.data?.groups ?? []).flatMap((group) => group.regions);
-    const hasMap = all.some((entry) => fold(entry.name) === fold(next.name));
-    const country = next.code ? data.countries.find((each) => each.country === next.code) : undefined;
-    const has = (kind: MapDataAddKind) =>
-      country?.rows.find((row) => row.kind === kind)?.items.some((item) => item.state === "ready") ?? false;
-    const wanted = asked
-      ? asked
-      : (["map", "terrain", "names"] as const).filter((kind) => (kind === "names" ? next.code !== null : hasMap) && !has(kind));
-    setKinds(new Set(wanted));
+  function choose(next: Chosen[], asked?: MapDataBundleKind[]) {
+    setPlaces(next);
+    const held = (bundle: MapDataBundleKind) =>
+      next.every((place) => {
+        const have =
+          known.find((each) => place.code && each.key === `country:${place.code}`) ??
+          (place.type === "world" ? known.find((each) => each.type === "world") : undefined);
+        return have?.bundles.some((each) => each.kind === bundle && each.state !== "none") ?? false;
+      });
+    const wanted: Choosable[] = asked
+      ? (asked.filter((each) => each === "map" || each === "routes" || each === "nearby") as Choosable[])
+      : next[0]?.type === "country"
+        ? (["map", "routes"] as const).filter((each) => !held(each))
+        : ["map"];
+    setTicks(new Set(wanted.length > 0 ? wanted : next[0]?.type === "country" ? ["routes"] : ["map"]));
+    setZoom(null);
+    setLeftOut(new Set());
+    setSizes(null);
+    setCheckError(null);
     setStep("what");
   }
+
+  // Arriving with a place: straight to what to add for it.
+  const [applied, setApplied] = useState(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once, when the place is known
+  useEffect(() => {
+    if (applied || !start) return;
+    const codes = start.countries?.length ? start.countries : start.country ? [start.country] : [];
+    setApplied(true);
+    if (start.world) return choose([WORLD], start.bundles);
+    if (start.area)
+      return choose(
+        [{ type: "area", code: null, name: start.area.name, countryName: null, regionId: null, part: null, bbox: start.area.bbox }],
+        ["map"],
+      );
+    if (codes.length === 0) return;
+    void whereIs(`countries=${codes.join(",")}`).then((answer) => {
+      if (answer.results.length === 0) return;
+      // Several countries came from a route that needs them: their routes are what is asked for.
+      choose(
+        answer.results.map((result) => chosenOf(result, false)),
+        start.bundles ?? (codes.length > 1 ? ["routes"] : undefined),
+      );
+    });
+  }, [start]);
 
   // Each step's heading has the keyboard, so the step is read from its start (WCAG 2.4.3).
   // biome-ignore lint/correctness/useExhaustiveDependencies: once for each step
@@ -360,20 +534,125 @@ function Flow({
     heading.current?.focus({ preventScroll: true });
   }, [step]);
 
-  const fromFile = [...kinds].filter((kind) => FROM_FILE.has(kind));
-  const rest = [...kinds].filter((kind) => !FROM_FILE.has(kind)) as Kind[];
-  const needsMap = (kinds.has("map") || kinds.has("terrain")) && preset !== null;
-  const mapKey = preset ? `${preset.id}:${preset.recommendedMaxZoom}:${kinds.has("terrain")}` : "";
-  const fileKey = regionId ?? place?.code ?? "";
-  const mapSize = needsMap ? sizes.map[mapKey] : null;
-  const fileSize = fromFile.length > 0 ? sizes.file[fileKey] : null;
-  const missingSizes = (needsMap && mapSize === undefined) || (fromFile.length > 0 && !keptFile && fileSize === undefined);
-  const fileBytes = fileSize?.bytes ?? null;
-  const resolvedRegion = regionId ?? fileSize?.regionId ?? null;
+  const countries = places.filter((place) => place.type === "country");
+  const fromFile = ticks.has("routes") || ticks.has("nearby");
+  const regionList = sizes?.sizes.regions.length ? sizes.sizes.regions : regionsHeld.data?.held ? regionsHeld.data.regions : [];
+  const wholeRegion = (place: Chosen) =>
+    place.regionId ?? regionList.find((region) => region.depth === 0 && region.country === place.code)?.id ?? null;
+  const partsOf = (place: Chosen) => {
+    const whole = wholeRegion(place);
+    return place.part || !whole ? [] : regionList.filter((region) => region.parent === whole && region.depth === 1);
+  };
+  /** The source files to read for a place: a part, all its parts' one whole file, or the parts left ticked. */
+  const filesOf = (place: Chosen): string[] => {
+    if (place.part) return [place.part.regionId];
+    const whole = wholeRegion(place);
+    const parts = partsOf(place);
+    const ticked = parts.filter((part) => !leftOut.has(part.id));
+    if (parts.length > 0 && ticked.length < parts.length) return ticked.map((part) => part.id);
+    return whole ? [whole] : [];
+  };
+  const keptFor = (regionId: string) => keptFileFor(data, regionId);
 
-  const restBytes = mapSize ? mapSize.totalBytes : null;
-  const restDestination = useDestination(restBytes, "maps");
-  const fileDestination = useDestination(fileBytes);
+  const presetOf = (place: Chosen) => presetFor(place, allPresets);
+  const boxOf = (place: Chosen) => presetOf(place)?.bbox ?? place.bbox;
+  const zoomOf = (place: Chosen) => zoom ?? (boxOf(place) ? defaultZoom(boxOf(place)!, presetOf(place)) : 10);
+  const wantsOsNames = ticks.has("map") && countries.some((place) => place.code === "GB");
+
+  const signature = JSON.stringify({
+    places: places.map(placeKey),
+    ticks: [...ticks].sort(),
+    hills,
+    zoom,
+    leftOut: [...leftOut].sort(),
+  });
+  const found = sizes?.key === signature ? sizes.sizes : null;
+
+  const checkSize = async () => {
+    setChecking(true);
+    setCheckError(null);
+    try {
+      const hosts: string[] = [];
+      let regions = regionsHeld.data?.held ? regionsHeld.data.regions : [];
+      // Geofabrik's list is read on this press the first time: the press is the person's.
+      if (fromFile && countries.length > 0 && regions.length === 0) {
+        const list = await api.post<ReferenceRegionsResponse>("/api/reference/regions", {});
+        hosts.push(hostOf(list.source));
+        regions = list.regions;
+        void client.invalidateQueries({ queryKey: ["layers", "regions"] });
+        void client.invalidateQueries({ queryKey: mapDataKeys.all });
+      }
+      const result: Sizes = { map: {}, file: {}, names: null, hosts, regions };
+      if (fromFile) {
+        const ids: string[] = [];
+        for (const place of countries) {
+          const whole = place.regionId ?? regions.find((region) => region.depth === 0 && region.country === place.code)?.id ?? null;
+          const resolved = { ...place, regionId: whole };
+          const parts = place.part || !whole ? [] : regions.filter((region) => region.parent === whole && region.depth === 1);
+          const ticked = parts.filter((part) => !leftOut.has(part.id));
+          const files = place.part
+            ? [place.part.regionId]
+            : parts.length > 0 && ticked.length < parts.length
+              ? ticked.map((p) => p.id)
+              : whole
+                ? [whole]
+                : [];
+          if (files.length === 0)
+            throw new Error(`Geofabrik has no file for ${resolved.name}. Draw an area instead, or choose one of its parts.`);
+          for (const id of files) {
+            if (keptFor(id)) result.file[id] = null;
+            else ids.push(id);
+          }
+        }
+        if (ids.length > 0) {
+          const estimate = await api.post<ReferenceEstimate>("/api/reference/estimate", {
+            provider: "osm-extract",
+            scope: { regions: ids },
+          });
+          estimate.items.forEach((item, index) => {
+            if (item.host) hosts.push(item.host);
+            result.file[ids[index] ?? item.key] = item.bytes || null;
+          });
+        }
+      }
+      if (ticks.has("map")) {
+        for (const place of places) {
+          const box = boxOf(place);
+          if (!box) continue;
+          const zoomHere = zoomOf(place);
+          if (countTiles(box, 0, zoomHere) > MAX_TILES)
+            throw new Error(`${place.name} is too large at this detail. Choose less detail under More choices.`);
+          const estimate = await estimateRegion({ bbox: box, maxZoom: zoomHere, includeTerrain: hills });
+          hosts.push(hostOf(estimate.map.sourceUrl));
+          if (estimate.terrain) hosts.push(hostOf(estimate.terrain.sourceUrl));
+          result.map[placeKey(place)] = estimate;
+        }
+        if (wantsOsNames) {
+          try {
+            result.names = await api.post<OsNamesCheck>("/api/maps/places/os-names/check", {});
+            hosts.push(result.names.host);
+          } catch {
+            // OS out of reach: GeoNames' list for the country is downloaded instead, its size said when it starts.
+            result.names = null;
+          }
+        }
+      }
+      setSizes({ key: signature, sizes: { ...result, hosts: [...new Set(hosts)] } });
+    } catch (error) {
+      setCheckError(error);
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const fileBytes = found ? Object.values(found.file).reduce<number>((sum, bytes) => sum + (bytes ?? 0), 0) : 0;
+  const mapBytes = found ? Object.values(found.map).reduce((sum, estimate) => sum + estimate.totalBytes, 0) : 0;
+  const namesBytes = found?.names && !found.names.installed ? found.names.sizeBytes : 0;
+  const total = fileBytes + mapBytes + namesBytes;
+  const allKept = fromFile && found !== null && Object.values(found.file).every((bytes) => bytes === null);
+
+  const mapDestination = useDestination(found ? mapBytes + namesBytes : null, "maps");
+  const fileDestination = useDestination(found && fileBytes > 0 ? fileBytes : null);
   const [suggested, setSuggested] = useState(false);
   useEffect(() => {
     if (suggested || fileDestination.locations.length === 0) return;
@@ -382,283 +661,321 @@ function Flow({
     if (id) fileDestination.choose(id);
   }, [suggested, fileDestination, data.countryFileChoice.locationId]);
 
-  const toggle = (kind: MapDataAddKind, on: boolean) =>
-    setKinds((current) => {
-      const next = new Set(current);
-      if (on) next.add(kind);
-      else next.delete(kind);
-      // Hills and heights come with a map of the same area.
-      if (kind === "map" && !on) next.delete("terrain");
-      if (kind === "terrain" && on) next.add("map");
-      return next;
-    });
-
-  const checkSizes = () =>
-    check.mutate(
-      {
-        map:
-          needsMap && mapSize === undefined
-            ? { bbox: preset!.bbox, maxZoom: preset!.recommendedMaxZoom, terrain: kinds.has("terrain") }
-            : null,
-        file: fromFile.length > 0 && !keptFile && fileSize === undefined ? { regionId, country: place?.code ?? null, kept: false } : null,
-      },
-      {
-        onSuccess: (result) => {
-          setSizes((current) => ({
-            map: result.map ? { ...current.map, [mapKey]: result.map } : current.map,
-            file: result.file ? { ...current.file, [fileKey]: result.file } : current.file,
-          }));
-          setHosts((current) => [...new Set([...current, ...result.hosts])]);
-        },
-      },
-    );
-
-  const fileChoiceNeeded = fromFile.length > 0 && !keptFile && !kinds.has("extract");
-  const keepNow = keptFile ? true : kinds.has("extract") ? true : keep;
+  const askFile = fromFile && countries.length > 0 && !allKept;
   const problems = [
-    kinds.size === 0 ? "Choose what to add." : null,
-    missingSizes ? "Check sizes first." : null,
-    fileChoiceNeeded && keep === undefined ? "Choose what happens to the country file." : null,
-    keepNow && fromFile.length > 0 && !keptFile && !fileDestination.locationId ? "Choose where to keep the country file." : null,
-    rest.length > 0 && !restDestination.locationId ? "Choose where to keep it." : null,
-  ].filter(Boolean) as string[];
+    ticks.size === 0 ? "Choose what to add." : null,
+    askFile && keep === undefined ? "Choose what happens to the source file." : null,
+    askFile && keep && fileBytes > 0 && !fileDestination.locationId ? "Choose where to keep the source file." : null,
+    ticks.has("map") && found && !mapDestination.locationId ? "Choose where to keep the map." : null,
+  ].filter((each): each is string => each !== null);
 
   const download = async () => {
-    if (!place || problems.length > 0) return;
-    const requests: MapDataAddRequest[] = [];
-    if (fromFile.length > 0 && resolvedRegion)
-      requests.push({
-        regionId: resolvedRegion,
-        kinds: fromFile,
-        keep: keepNow ?? false,
-        ...(keepNow && !keptFile && fileDestination.locationId ? { locationId: fileDestination.locationId } : {}),
-      });
-    if (rest.length > 0)
-      requests.push({
-        kinds: rest,
-        ...(restDestination.locationId ? { locationId: restDestination.locationId } : {}),
-        ...((kinds.has("map") || kinds.has("terrain")) && preset
-          ? { map: { name: preset.name, regionId: preset.id, bbox: preset.bbox, maxZoom: preset.recommendedMaxZoom } }
-          : {}),
-        ...(kinds.has("names") && place.code ? { country: place.code } : {}),
-      });
+    if (!found || problems.length > 0) return;
+    setSending(true);
     try {
-      for (const request of requests) await add.mutateAsync(request);
-      restDestination.remember();
-      toast.success(
-        keptFile && rest.length === 0
-          ? `Reading the kept country file for ${place.name}. Progress is shown on this screen.`
-          : `Downloading map data for ${place.name}. Progress is shown on this screen and under Downloads and tasks.`,
-      );
-      onAdded?.(place.code);
+      for (const place of places) {
+        const requests: MapDataAddRequest[] = [];
+        if (place.type === "country" && fromFile) {
+          for (const regionId of filesOf({ ...place, regionId: wholeRegion(place) })) {
+            const kept = keptFor(regionId);
+            requests.push({
+              regionId,
+              kinds: [...(ticks.has("routes") ? (["roads"] as const) : []), ...(ticks.has("nearby") ? (["places"] as const) : [])],
+              keep: kept ? true : (keep ?? false),
+              ...(kept
+                ? { locationId: kept.locationId ?? undefined }
+                : keep && fileDestination.locationId
+                  ? { locationId: fileDestination.locationId }
+                  : {}),
+            });
+          }
+        }
+        const box = boxOf(place);
+        if (ticks.has("map") && box) {
+          const preset = presetOf(place);
+          const name = place.type === "country" ? (place.countryName ?? place.name) : (preset?.name ?? place.name);
+          requests.push({
+            kinds: ["map", ...(hills ? (["terrain"] as const) : []), ...(place.code ? (["names"] as const) : [])],
+            map: {
+              name,
+              regionId: preset?.id ?? (place.code ? `country-${place.code.toLowerCase()}` : undefined),
+              bbox: box,
+              maxZoom: zoomOf(place),
+            },
+            ...(place.code ? { country: place.code } : {}),
+            ...(mapDestination.locationId ? { locationId: mapDestination.locationId } : {}),
+          });
+        }
+        for (const request of requests) await add.mutateAsync(request);
+        // The world's towns, to find any town by name: with the world's map.
+        if (place.type === "world" && ticks.has("map"))
+          await startPlaces.mutateAsync({
+            dataset: "cities500",
+            ...(mapDestination.locationId ? { locationId: mapDestination.locationId } : {}),
+          });
+      }
+      mapDestination.remember();
+      toast.success(`Adding ${namesText(places.map((place) => place.name))}. Progress is shown on Offline maps.`);
+      onAdded?.(places[0]!);
       onClose();
-    } catch {
-      // Said under the buttons (add.error).
+    } catch (error) {
+      setCheckError(error);
+    } finally {
+      setSending(false);
     }
   };
 
-  // ── Views ──
-  const phoneSteps: Step[] = [
-    "place",
-    "what",
-    ...(fileChoiceNeeded || (keptFile && fromFile.length > 0) ? (["file"] as const) : []),
-    // Where to keep it is a step of its own only when there is a choice to make.
-    ...(rest.length > 0 && restDestination.locations.length > 1 ? (["where"] as const) : []),
-  ];
-  const stepNames: Record<Step, string> = {
-    place: "Which place",
-    what: "What to add",
-    file: "The country file",
-    where: "Where to keep it",
-  };
-  const at = phoneSteps.indexOf(step);
-  const last = phone ? at === phoneSteps.length - 1 : step === "what";
-  const showWhat = step === "what";
-  const showFile = phone ? step === "file" : step === "what";
-  const showWhere = phone ? step === "where" : step === "what";
-
-  const sizeOf = (kind: Kind): React.ReactNode => {
-    if (kind === "map") return mapSize ? formatBytes(mapSize.map.sizeBytes) : null;
-    if (kind === "terrain") return mapSize?.terrain ? formatBytes(mapSize.terrain.sizeBytes) : null;
-    if (kind === "names") return null;
-    if (keptFile) return "No download";
-    if (!fileBytes) return null;
-    return kind === "roads" ? `${formatBytes(fileBytes * ROADS_SHARE)} or less kept` : "From the same file";
-  };
-  const detailOf = (kind: Kind): React.ReactNode => {
-    const already = present(kind) ? " Already added: adding it again replaces it with the newest." : "";
-    if (kind === "map") {
-      if (!preset) return <>No ready-made map of {place?.name}. Draw your own area on the map instead.</>;
-      return `${detailLabel(preset.recommendedMaxZoom)}, to zoom ${preset.recommendedMaxZoom}.${already}`;
-    }
-    if (kind === "terrain")
-      return preset ? `${DETAILS.terrain}. Comes with the map of the same area.${already}` : "Comes with a map of the same area.";
-    if (kind === "names") {
-      if (!place?.code) return "Not offered for this region.";
-      const country = catalogue.data?.countries.find((each) => each.code === place.code)?.name;
-      return `${DETAILS.names}${place.partOf && country ? `, for the whole of ${country}` : ""}. Size given when it starts.${already}`;
-    }
-    return `${DETAILS[kind]}.${already}`;
-  };
-  const fileTotal = fromFile.length > 0 && !keptFile ? fileBytes : 0;
-  const total = (mapSize?.totalBytes ?? 0) + (fileTotal ?? 0);
-
-  const body = (
-    <DialogBody className="grid content-start gap-6">
-      {step === "place" ? (
-        presets.isPending ? (
-          <div className="grid gap-2" aria-busy>
-            <Skeleton className="h-11" />
-            <Skeleton className="h-11" />
-          </div>
-        ) : (
-          <ChoosePlace
-            data={data}
-            onChoose={(next) => choose(next)}
-            onDraw={() => {
-              onClose();
-              navigate("/maps?offline=draw");
-            }}
-          />
-        )
-      ) : null}
-      {showWhat && place ? (
-        <section className="grid gap-3" aria-labelledby="add-what">
-          <h3 id="add-what" ref={heading} tabIndex={-1} className="font-title text-lead text-ink focus:outline-none">
-            What do you want for {place.name}?
-          </h3>
-          {place.partOf ? <p className="-mt-2 text-small text-ink-muted">Part of {place.partOf}</p> : null}
-          <ul className="divide-y divide-border border-y border-border" aria-label={`What to add for ${place.name}`}>
-            {KINDS.map((kind) => (
-              <KindChoice
-                key={kind}
-                kind={kind}
-                checked={kinds.has(kind)}
-                onChange={(on) => toggle(kind, on)}
-                disabled={(kind === "map" || kind === "terrain") && !preset ? true : kind === "names" && !place.code}
-                detail={detailOf(kind)}
-                trailing={sizeOf(kind)}
-              />
-            ))}
-          </ul>
-          {!preset ? (
-            <p className="text-small">
-              <Link to="/maps?offline=draw" className="text-primary underline decoration-1 underline-offset-2" onClick={onClose}>
-                Draw an area on the map
-              </Link>
-            </p>
-          ) : null}
-          <div className="grid gap-2" aria-live="polite">
-            {check.isPending ? (
-              <div role="status" className="grid gap-2">
-                <Progress label="Checking the sizes" tone="lamp" />
-                <p className="text-small text-ink-muted">Asking how large each is. It needs a connection and takes a few seconds.</p>
-              </div>
-            ) : check.isError ? (
-              <Notice tone="danger" icon={<CircleAlert />} title="The sizes could not be checked">
-                {errorMessage(check.error)}
-              </Notice>
-            ) : null}
-            {missingSizes && !check.isPending ? (
-              <>
-                <p className="max-w-[60ch] text-small text-ink-muted">
-                  {askedLine([
-                    needsMap ? "the map source" : null,
-                    needsMap && kinds.has("terrain") ? "the terrain source" : null,
-                    fromFile.length > 0 && !keptFile ? "Geofabrik (download.geofabrik.de)" : null,
-                  ])}
-                </p>
-                <div>
-                  <Button onClick={checkSizes} loading={check.isPending}>
-                    {check.isError ? "Check sizes again" : "Check sizes"}
-                  </Button>
-                </div>
-              </>
-            ) : !check.isPending && (mapSize || fileSize) ? (
-              <p className="text-small text-ink">
-                <span className="tabular font-semibold">About {formatBytes(total)} to download</span>
-                {kinds.has("names") ? ", and the place names" : ""}.
-                {hosts.length > 0 ? <span className="block text-ink-muted">Sizes from {hosts.join(", ")}.</span> : null}
-              </p>
-            ) : null}
-          </div>
-        </section>
-      ) : null}
-      {showFile && place && fromFile.length > 0 && (phone || step === "what") ? (
-        <CountryFileChoice
-          size={fileBytes}
-          kept={keptFile ? { dataDate: keptFile.dataDate, locationName: keptFile.locationName } : null}
-          value={kinds.has("extract") ? true : keep}
-          onChange={setKeep}
-          firstTime={firstTime}
-          destination={fileDestination}
-        />
-      ) : null}
-      {showWhere && place && rest.length > 0 ? (
-        <section className="grid gap-2" aria-labelledby="add-where">
-          <h3 id="add-where" className="text-small font-semibold text-ink">
-            {fromFile.length > 0 ? "Where to keep the rest" : "Where to keep it"}
-          </h3>
-          <DestinationPicker destination={restDestination} />
-        </section>
-      ) : null}
-      {add.isError ? (
-        <Notice tone="danger" icon={<CircleAlert />} title="The download did not start">
-          {errorMessage(add.error)}
-        </Notice>
-      ) : null}
-      {presets.isError ? <ErrorState error={presets.error} onRetry={() => presets.refetch()} /> : null}
-    </DialogBody>
-  );
-
-  const stepLine = phone ? (
-    <StepLine
-      step={Math.max(at, 0) + 1}
-      of={step === "place" ? Math.max(phoneSteps.length, 3) : phoneSteps.length}
-      label={stepNames[step]}
-    />
-  ) : null;
-  if (step === "place")
+  if (step === "where") {
     return (
-      <>
-        {stepLine}
-        {body}
-      </>
+      <DialogBody className="grid content-start gap-6">
+        <Where
+          data={data}
+          heading={heading}
+          onChoose={(next) => choose(next)}
+          onDraw={() => {
+            onClose();
+            navigate("/maps?offline=draw");
+          }}
+          onImport={onImport}
+        />
+      </DialogBody>
     );
+  }
 
-  const back = () => {
-    if (phone && at > 1) setStep(phoneSteps[at - 1]!);
-    else setStep("place");
+  const title = namesText(places.map((place) => place.name));
+  const first = places[0];
+  const sizeOf = (bundle: Choosable): ReactNode => {
+    if (!found) return null;
+    if (bundle === "map") return mapBytes > 0 ? formatBytes(mapBytes + namesBytes) : null;
+    if (allKept) return "No download";
+    if (bundle === "routes") return fileBytes > 0 ? `about ${formatBytes(fileBytes * ROADS_SHARE)} kept` : null;
+    return ticks.has("routes") ? "Read from the same file" : null;
   };
-  const next = () => setStep(phoneSteps[at + 1]!);
-  const blocking = phone
-    ? step === "what"
-      ? problems.filter((problem) => problem === "Choose what to add." || problem === "Check sizes first.")
-      : step === "file"
-        ? problems.filter((problem) => problem.includes("country file"))
-        : problems
-    : problems;
-  const onlyReading = keptFile && rest.length === 0;
+  const offered: Choosable[] = first?.type === "country" ? ["map", "routes", "nearby"] : ["map"];
+  const partsNote = countries.length === 1 && !countries[0]!.part ? partsOf(countries[0]!) : [];
+  const wholeSize = found && countries.length === 1 ? found.file[wholeRegion(countries[0]!) ?? ""] : undefined;
+
+  const fileChoice = (
+    <div className="grid gap-2">
+      <ChoiceList
+        label="The source file"
+        value={keep === undefined ? undefined : keep ? "keep" : "delete"}
+        onChange={(next) => setKeep(next === "keep")}
+        choices={[
+          {
+            value: "keep",
+            title: `Keep the source file${fileBytes > 0 ? ` (${formatBytes(fileBytes)})` : ""}`,
+            detail: "Rebuild routes and places later with no download",
+          },
+          {
+            value: "delete",
+            title: "Delete it after reading",
+            detail: `${fileBytes > 0 ? `Saves ${formatBytes(fileBytes)}` : "Saves its room"}; updates download it again`,
+          },
+        ]}
+      />
+      {keep && fileBytes > 0 ? <DestinationPicker destination={fileDestination} label="Where to keep the source file" /> : null}
+    </div>
+  );
 
   return (
     <>
-      {stepLine}
-      {body}
+      <DialogBody className="grid content-start gap-5">
+        <section className="grid gap-3" aria-labelledby="add-what">
+          <div>
+            <h3 id="add-what" ref={heading} tabIndex={-1} className="font-title text-lead text-ink focus:outline-none">
+              What for {title}?
+            </h3>
+            {first?.countryName ? <p className="text-small text-ink-muted">Part of {first.countryName}</p> : null}
+          </div>
+          {first?.type === "area" ? (
+            <Field label="Name" hint="How it is listed, such as “Chamonix valley”.">
+              {(ids) => (
+                <Input
+                  {...ids}
+                  value={first.name}
+                  maxLength={120}
+                  enterKeyHint="done"
+                  onChange={(event) => setPlaces([{ ...first, name: event.target.value }])}
+                />
+              )}
+            </Field>
+          ) : null}
+          <ul aria-label={`What to add for ${title}`} className="divide-y divide-border border-y border-border">
+            {offered.map((bundle) => (
+              <Tick
+                key={bundle}
+                name={BUNDLE_NAMES[bundle]}
+                detail={
+                  bundle === "map" && first?.type === "world"
+                    ? "Countries, cities and main roads everywhere, and the world's towns by name"
+                    : bundle === "map" && first?.countryName
+                      ? `${BUNDLE_DETAILS.map}: all of ${first.countryName}`
+                      : BUNDLE_DETAILS[bundle]
+                }
+                checked={ticks.has(bundle)}
+                onChange={(on) =>
+                  setTicks((current) => {
+                    const next = new Set(current);
+                    if (on) next.add(bundle);
+                    else next.delete(bundle);
+                    return next;
+                  })
+                }
+                trailing={sizeOf(bundle)}
+              />
+            ))}
+          </ul>
+          {fromFile && partsNote.length > 0 ? (
+            <div className="grid gap-1.5 text-small">
+              <p className="text-ink">
+                {countries[0]!.name} comes in {partsNote.length} parts
+                {wholeSize ? `, ${formatBytes(wholeSize)} together` : ""}.{" "}
+                {leftOut.size === 0 ? "All are ticked." : `${partsNote.length - leftOut.size} are ticked.`}
+              </p>
+              <Disclosure summary="Choose parts">
+                <ul aria-label={`Parts of ${countries[0]!.name}`} className="grid gap-0.5">
+                  {partsNote.map((part) => (
+                    <PartTick
+                      key={part.id}
+                      name={part.name}
+                      checked={!leftOut.has(part.id)}
+                      onChange={(on) =>
+                        setLeftOut((current) => {
+                          const next = new Set(current);
+                          if (on) next.delete(part.id);
+                          else next.add(part.id);
+                          return next;
+                        })
+                      }
+                    />
+                  ))}
+                </ul>
+              </Disclosure>
+            </div>
+          ) : null}
+        </section>
+
+        {askFile && firstTime ? (
+          <section className="grid gap-2" aria-labelledby="add-file">
+            <h4 id="add-file" className="text-small font-semibold text-ink">
+              The source file
+            </h4>
+            <p className="max-w-[60ch] text-small text-ink-muted">
+              Routes and nearby places are read from the country's whole OpenStreetMap record.
+            </p>
+            {fileChoice}
+          </section>
+        ) : null}
+
+        <Disclosure summary="More choices">
+          <div className="grid gap-5">
+            {ticks.has("map") && first ? (
+              <div className="grid gap-2">
+                <h4 className="text-small font-semibold text-ink">Detail</h4>
+                <Segmented
+                  label="Detail"
+                  value={String(zoomOf(first))}
+                  onChange={(value) => setZoom(Number(value))}
+                  options={detailChoices(presetOf(first)?.recommendedMaxZoom).map((each) => ({
+                    value: String(each),
+                    label: detailLabel(each),
+                  }))}
+                />
+                <label htmlFor="add-hills" className="mt-1 flex cursor-pointer items-start gap-3 text-small text-ink">
+                  <Checkbox id="add-hills" checked={hills} onCheckedChange={(on) => setHills(on === true)} className="mt-0.5" />
+                  <span>
+                    Hills and heights
+                    <span className="block text-ink-muted">Hill shading, contour lines and heights, with the map</span>
+                  </span>
+                </label>
+              </div>
+            ) : null}
+            {ticks.has("map") ? (
+              <div className="grid gap-2">
+                <h4 className="text-small font-semibold text-ink">Where the map is kept</h4>
+                <DestinationPicker destination={mapDestination} label="Where the map is kept" />
+              </div>
+            ) : null}
+            {askFile && !firstTime ? (
+              <div className="grid gap-2">
+                <h4 className="text-small font-semibold text-ink">The source file</h4>
+                {fileChoice}
+              </div>
+            ) : null}
+            {ticks.has("nearby") || first?.type === "world" ? (
+              <p className="text-small">
+                <button type="button" onClick={onOtherSources} className="text-primary underline decoration-1 underline-offset-2">
+                  Nearby places from other sources
+                </button>
+                <span className="text-ink-muted">: borders, airports, national lists</span>
+              </p>
+            ) : null}
+          </div>
+        </Disclosure>
+
+        <div aria-live="polite" className="grid gap-2">
+          {checking ? (
+            <div role="status" className="grid gap-2">
+              <Progress label="Checking the size" tone="lamp" />
+              <p className="text-small text-ink-muted">Checking size. It needs a connection and takes a few seconds.</p>
+            </div>
+          ) : checkError ? (
+            <Notice tone="danger" icon={<CircleAlert />} title="Failed">
+              {errorMessage(checkError)} Try again.
+            </Notice>
+          ) : found ? (
+            <p className="text-small text-ink">
+              <span className="tabular font-semibold">
+                {allKept && mapBytes === 0 ? "No download: read from the kept file" : `${formatBytes(total)} to download`}
+              </span>
+              {fromFile && !allKept && keep === false ? ", the source file deleted once read" : ""}.
+              {found.hosts.length > 0 ? <span className="block text-ink-muted">Sizes from {namesText(found.hosts)}.</span> : null}
+            </p>
+          ) : (
+            <p className="max-w-[60ch] text-small text-ink-muted">
+              Asks the map sources how large it is. Nothing is downloaded yet.
+              {fromFile && countries.length > 0 && !regionsHeld.data?.held
+                ? " The first time, Geofabrik's list of regions is read too (download.geofabrik.de)."
+                : ""}
+            </p>
+          )}
+        </div>
+      </DialogBody>
       <DialogFooter>
-        {blocking[0] ? <span className="mr-auto text-small text-ink-muted">{blocking[0]}</span> : null}
-        <Button onClick={back}>
-          <ArrowLeft /> {at > 1 && phone ? "Back" : "Another place"}
+        {found && problems[0] ? <span className="mr-auto text-small text-ink-muted">{problems[0]}</span> : null}
+        <Button onClick={() => setStep("where")}>
+          <ArrowLeft /> Another place
         </Button>
-        {last ? (
-          <Button variant="primary" onClick={download} loading={add.isPending} disabled={problems.length > 0}>
-            {onlyReading ? (fromFile.includes("roads") ? "Build roads" : "Read the kept file") : "Download"}
+        {found ? (
+          <Button variant="primary" onClick={download} loading={sending} disabled={problems.length > 0}>
+            {allKept && mapBytes === 0 ? "Build from the kept file" : `Download · ${formatBytes(total)}`}
           </Button>
         ) : (
-          <Button variant="primary" onClick={next} disabled={blocking.length > 0}>
-            Next
+          <Button variant="primary" onClick={checkSize} loading={checking} disabled={ticks.size === 0}>
+            {checkError ? "Check size again" : "Check size"}
           </Button>
         )}
       </DialogFooter>
     </>
   );
+}
+
+function PartTick({ name, checked, onChange }: { name: string; checked: boolean; onChange: (on: boolean) => void }) {
+  const id = useId();
+  return (
+    <li className="flex min-h-11 items-center gap-3 md:min-h-8 md:pointer-coarse:min-h-11">
+      <Checkbox id={id} checked={checked} onCheckedChange={(on) => onChange(on === true)} />
+      <label htmlFor={id} className="cursor-pointer text-small text-ink">
+        {name}
+      </label>
+    </li>
+  );
+}
+
+/** The place a row stands for, as Add a place starts from it. */
+export function startOfPlace(place: MapDataPlace, bundle: MapDataBundleKind): AddStart {
+  if (place.type === "world") return { world: true, bundles: [bundle] };
+  if (place.country) return { country: place.country, bundles: [bundle] };
+  return { bundles: [bundle] };
 }

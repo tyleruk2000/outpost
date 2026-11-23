@@ -1322,7 +1322,8 @@ export default function MapsPage() {
     const withImagery = [...satellite.credits, ...reference.credits, ...base];
     return routePreview || roadShown || anyFoundRoute(geometries) ? [...withImagery, ROUTE_CREDIT] : withImagery;
   }, [sources.data, hasTiles, hillshade, contours, geometries, routePreview, roadShown, satellite.credits, reference.credits]);
-  const firstUse = sources.isSuccess && !hasTiles && !mapDownloading && !firstUseDismissed && !offlineVisible;
+  // Not while a route is being planned: that panel says what it needs itself.
+  const firstUse = sources.isSuccess && !hasTiles && !mapDownloading && !firstUseDismissed && !offlineVisible && !roadRouting;
   const openOffline = (intent: OfflineIntent) => {
     setOfflineIntent(intent);
     showPanel("offline");
@@ -1701,17 +1702,12 @@ export default function MapsPage() {
     ) : firstUse ? (
       <MapCard title="No detailed maps on this device yet" onClose={() => setFirstUseDismissed(true)} closeLabel="Dismiss">
         <p className="mt-1 text-small text-ink-muted">
-          What you see is an outline of the world that comes with Outpost. Detailed maps are downloaded one region at a time, and then work
-          with no connection.
+          What you see is an outline of the world that comes with Outpost. Add a place, anywhere, and its map works with no connection.
         </p>
-        {/* Both lead to the choices before a download, which include where it is kept: nothing starts from here. The
-            person's own area comes first: the world overview is the outline again with a little more in it. */}
+        {/* Add a place on Offline maps: where, then what for it, then its size. Nothing starts from here. */}
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button size="sm" variant="primary" onClick={() => openOffline({ type: "add" })}>
-            Choose your area
-          </Button>
-          <Button size="sm" onClick={() => openOffline({ type: "add", presetId: "world" })}>
-            World overview (about 45 MB)
+          <Button size="sm" variant="primary" onClick={() => navigate("/maps/data?add=1")}>
+            Add a place
           </Button>
         </div>
       </MapCard>

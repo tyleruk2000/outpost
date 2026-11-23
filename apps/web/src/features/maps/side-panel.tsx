@@ -79,7 +79,7 @@ export function DesktopPanel({ onCollapse, children }: { onCollapse: () => void;
           to="/maps/data"
           className="ml-auto inline-flex min-h-8 items-center rounded-control px-1 text-small text-primary underline decoration-1 underline-offset-2 hover:decoration-2"
         >
-          Map data
+          Offline maps
         </Link>
         <Tooltip label="Hide this panel" side="bottom">
           <Button variant="ghost" size="icon" aria-label="Hide this panel" onClick={onCollapse}>

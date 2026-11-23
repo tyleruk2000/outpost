@@ -103,8 +103,8 @@ describe("an airport's radio frequencies on its card", () => {
 
   it("says they are not held yet, and where to get them", () => {
     show(airport({ held: false, asOf: null, list: [] }));
-    expect(screen.getByText(/Not held for this airport yet\. Update the airports pack/)).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Map data" }).getAttribute("href")).toBe("/maps/data");
+    expect(screen.getByText(/Not held for this airport yet\. Update the airports under Offline maps/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Offline maps" }).getAttribute("href")).toBe("/maps/data");
   });
 
   it("shows nothing about frequencies on any other record", () => {

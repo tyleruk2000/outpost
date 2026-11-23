@@ -8,8 +8,8 @@
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import type { MapDataCountry, MapDataItem, MapDataWhereResponse } from "@outpost/shared";
+import { isMapItemStale, mapBundleOf, mapPlacesOf } from "@outpost/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { bundleOf, isStale, placesOf } from "../src/modules/maps/map-places.ts";
 import { createGeofabrikStandIn } from "./fixtures/layers/geofabrik-stand-in.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
@@ -52,7 +52,7 @@ function country(code: string, name: string, items: MapDataItem[], regionId: str
 describe("places from the rows", () => {
   it("makes one place per country with a word for each bundle", () => {
     const download = { current: 43, total: 100, unit: "bytes", message: null, step: null };
-    const places = placesOf(
+    const places = mapPlacesOf(
       {
         countries: [
           country("FR", "France", [
@@ -61,7 +61,14 @@ describe("places from the rows", () => {
             item({ key: "c:names", kind: "names" }),
             // One download read for routes and kept as the source file: on its way in both, counted once.
             item({ key: "download:d1:roads", kind: "roads", state: "downloading", downloadId: "d1", sizeBytes: 4_900, progress: download }),
-            item({ key: "download:d1:extract", kind: "extract", state: "downloading", downloadId: "d1", sizeBytes: 4_900, progress: download }),
+            item({
+              key: "download:d1:extract",
+              kind: "extract",
+              state: "downloading",
+              downloadId: "d1",
+              sizeBytes: 4_900,
+              progress: download,
+            }),
           ]),
         ],
         world: [item({ key: "w:map", kind: "map", title: "World overview" })],
@@ -96,32 +103,35 @@ describe("places from the rows", () => {
   });
 
   it("says what is under way before a failed copy of the same thing", () => {
-    const bundle = bundleOf("routes", [
+    const bundle = mapBundleOf("routes", [
       item({ key: "download:old", kind: "roads", state: "failed", reason: "A block of the file could not be decompressed." }),
       item({ key: "download:new", kind: "roads", state: "downloading", downloadId: "new" }),
     ]);
     expect(bundle.state).toBe("downloading");
-    const failed = bundleOf("routes", [item({ key: "x", kind: "roads", state: "failed", reason: "Its file is missing." })]);
+    const failed = mapBundleOf("routes", [item({ key: "x", kind: "roads", state: "failed", reason: "Its file is missing." })]);
     expect(failed).toMatchObject({ state: "failed", reason: "Its file is missing." });
   });
 
   it("never counts a set made once as over a year old", () => {
     const old = item({ key: "ne", kind: "places", dataDate: "2022-05-13" });
-    expect(isStale(old, NOW)).toBe(true);
-    expect(isStale({ ...old, ageless: true }, NOW)).toBe(false);
-    const [world] = placesOf({ countries: [], world: [{ ...old, ageless: true }], other: [] }, { streets: false, now: NOW });
+    expect(isMapItemStale(old, NOW)).toBe(true);
+    expect(isMapItemStale({ ...old, ageless: true }, NOW)).toBe(false);
+    const [world] = mapPlacesOf({ countries: [], world: [{ ...old, ageless: true }], other: [] }, { streets: false, now: NOW });
     expect(world!.stale).toBe(0);
     expect(world!.bundles.find((bundle) => bundle.kind === "nearby")!.dataDate).toBeNull();
   });
 
   it("names the parts of a country added on their own", () => {
-    const [de] = placesOf(
+    const [de] = mapPlacesOf(
       {
         countries: [
           country(
             "DE",
             "Germany",
-            [item({ key: "r:1", kind: "roads", title: "Bayern", regionId: "bayern" }), item({ key: "r:2", kind: "roads", title: "Germany", regionId: "germany" })],
+            [
+              item({ key: "r:1", kind: "roads", title: "Bayern", regionId: "bayern" }),
+              item({ key: "r:2", kind: "roads", title: "Germany", regionId: "germany" }),
+            ],
             "germany",
           ),
         ],
@@ -175,7 +185,13 @@ describe("where, offline", () => {
     const found = await where("q=bayern");
     expect(found.regionsListed).toBe(true);
     expect(found.results).toContainEqual(
-      expect.objectContaining({ type: "part", name: "Bayern", country: "DE", regionId: "germany", part: { regionId: "bayern", name: "Bayern" } }),
+      expect.objectContaining({
+        type: "part",
+        name: "Bayern",
+        country: "DE",
+        regionId: "germany",
+        part: { regionId: "bayern", name: "Bayern" },
+      }),
     );
     expect((await where("q=germany")).results[0]).toMatchObject({ type: "country", regionId: "germany" });
   });

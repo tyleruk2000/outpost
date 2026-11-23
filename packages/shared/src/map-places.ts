@@ -14,12 +14,12 @@ import type {
   MapDataItem,
   MapDataKind,
   MapDataPlace,
-} from "@outpost/shared";
+} from "./map-data.ts";
 
 const YEAR_MS = 365.25 * 24 * 3600 * 1000;
 
 /** Which bundle each kind of item belongs to; the source file belongs to none. */
-export const BUNDLE_OF: Record<MapDataKind, MapDataBundleKind | null> = {
+export const MAP_BUNDLE_OF: Record<MapDataKind, MapDataBundleKind | null> = {
   map: "map",
   terrain: "map",
   names: "map",
@@ -59,17 +59,17 @@ const ORDER: MapDataBundleState[] = [
 const UNDER_WAY = new Set<MapDataItem["state"]>(["waiting", "downloading", "paused", "processing", "moving"]);
 
 /** On disk now: not a download or a task on its way. */
-export const onDisk = (item: MapDataItem) => !item.downloadId && !UNDER_WAY.has(item.state) && item.state !== "failed";
+export const mapItemOnDisk = (item: MapDataItem) => !item.downloadId && !UNDER_WAY.has(item.state) && item.state !== "failed";
 
 /** Over a year old by the day its data is from; never for a set made once (ageless). */
-export function isStale(item: MapDataItem, now = Date.now()): boolean {
+export function isMapItemStale(item: MapDataItem, now = Date.now()): boolean {
   if (item.ageless || !item.dataDate || item.state !== "ready") return false;
   const time = Date.parse(`${item.dataDate.slice(0, 10)}T12:00:00Z`);
   return Number.isFinite(time) && now - time > YEAR_MS;
 }
 
 /** One bundle from its items: the most pressing state, real progress, the oldest day. */
-export function bundleOf(kind: MapDataBundleKind, items: MapDataItem[]): MapDataBundle {
+export function mapBundleOf(kind: MapDataBundleKind, items: MapDataItem[]): MapDataBundle {
   const states = items.map((item) => STATE_OF[item.state]);
   // A failed copy beside one under way is the same thing being fetched again: the one under way is what counts.
   const state = ORDER.find((each) => states.includes(each)) ?? "none";
@@ -77,7 +77,7 @@ export function bundleOf(kind: MapDataBundleKind, items: MapDataItem[]): MapData
   const current = moving.reduce((sum, item) => sum + (item.progress?.current ?? 0), 0);
   const total = moving.reduce((sum, item) => sum + (item.progress?.total ?? 0), 0);
   const dates = items
-    .filter((item) => onDisk(item) && !item.ageless && item.dataDate)
+    .filter((item) => mapItemOnDisk(item) && !item.ageless && item.dataDate)
     .map((item) => item.dataDate!)
     .sort();
   const seen = new Set<string>();
@@ -106,15 +106,19 @@ function placeOf(
   now: number,
 ): MapDataPlace {
   const seen = new Set<string>();
-  const items = all.filter((item) => (seen.has(item.key) ? false : (seen.add(item.key), true)));
-  const of = (kind: MapDataBundleKind) => items.filter((item) => BUNDLE_OF[item.kind] === kind);
+  const items = all.filter((item) => {
+    if (seen.has(item.key)) return false;
+    seen.add(item.key);
+    return true;
+  });
+  const of = (kind: MapDataBundleKind) => items.filter((item) => MAP_BUNDLE_OF[item.kind] === kind);
   const kinds: MapDataBundleKind[] = ["map", "routes", "nearby", "walk", "imagery"];
-  const bundles = kinds.filter((kind) => always.includes(kind) || of(kind).length > 0).map((kind) => bundleOf(kind, of(kind)));
+  const bundles = kinds.filter((kind) => always.includes(kind) || of(kind).length > 0).map((kind) => mapBundleOf(kind, of(kind)));
   const files = items.filter((item) => item.kind === "extract");
   // The kept file in use: one here before one on its way; the newest of two kept.
   const sourceFile =
-    [...files].filter(onDisk).sort((a, b) => (b.dataDate ?? "").localeCompare(a.dataDate ?? ""))[0] ?? files[0] ?? null;
-  const here = items.filter(onDisk);
+    [...files].filter(mapItemOnDisk).sort((a, b) => (b.dataDate ?? "").localeCompare(a.dataDate ?? ""))[0] ?? files[0] ?? null;
+  const here = items.filter(mapItemOnDisk);
   return {
     ...base,
     parts: [],
@@ -123,25 +127,20 @@ function placeOf(
     sourceFile,
     sizeBytes: here.reduce((sum, item) => sum + (item.sizeBytes ?? 0), 0),
     locations: [...new Set(here.map((item) => item.locationName ?? "Outpost's own data"))],
-    stale: items.filter((item) => isStale(item, now)).length,
+    stale: items.filter((item) => isMapItemStale(item, now)).length,
   };
 }
 
 /** An area's own name: a map and its terrain are one area ("Cairngorms" and "Cairngorms (terrain)"). */
 const areaName = (title: string) => title.replace(/\s*\(terrain\)$/i, "").trim();
 
-const fold = (text: string) =>
-  text
-    .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .trim();
+const fold = (text: string) => text.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 
 /**
  * Every place, countries by name, then drawn areas, then the world's basics last. `streets`: the
  * add-on is installed, so every country offers Walk/cycle.
  */
-export function placesOf(
+export function mapPlacesOf(
   input: { countries: MapDataCountry[]; world: MapDataItem[]; other: MapDataItem[] },
   options: { streets: boolean; now?: number } = { streets: false },
 ): MapDataPlace[] {
