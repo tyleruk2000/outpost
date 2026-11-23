@@ -122,7 +122,7 @@ function KeepFile({
   if (save.isPending || file.adding) {
     const now = save.isPending || file.adding === "now";
     return (
-      <p className="flex h-8 items-center gap-2 px-2.5 text-small text-ink-muted max-md:h-11">
+      <p className="flex h-8 items-center gap-2 px-2.5 text-small text-ink-muted max-md:h-11 md:pointer-coarse:h-11">
         {now ? (
           <LoaderCircle aria-hidden className="size-4 shrink-0 animate-spin text-lamp" />
         ) : (

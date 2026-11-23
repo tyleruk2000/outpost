@@ -40,7 +40,10 @@ function ChapterRow({ chapter, readable }: { chapter: BookChapterDto; readable: 
   return (
     <li>
       {readable ? (
-        <Link to={`/library/documents/${chapter.documentId}`} className={`${row} transition-colors duration-150 hover:bg-surface`}>
+        <Link
+          to={`/library/documents/${chapter.documentId}`}
+          className={`${row} transition-colors duration-(--duration-fast) hover:bg-surface`}
+        >
           {body}
         </Link>
       ) : (

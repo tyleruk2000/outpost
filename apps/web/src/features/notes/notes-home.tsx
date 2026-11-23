@@ -19,7 +19,7 @@ import { PageTree } from "./page-tree";
 import type { TreeIndex } from "./tree-model";
 
 const sideLink =
-  "inline-flex min-h-9 items-center gap-1.5 rounded-control text-ink-muted underline-offset-[0.2em] hover:text-ink hover:underline max-md:min-h-11";
+  "inline-flex min-h-9 items-center gap-1.5 rounded-control text-ink-muted underline-offset-[0.2em] hover:text-ink hover:underline max-md:min-h-11 md:pointer-coarse:min-h-11";
 
 function ListSkeleton({ rows = 4 }: { rows?: number }) {
   return (
@@ -154,7 +154,8 @@ export function NotesHome() {
         description="Pages you write and keep here: plans, lists, things learned. They link to each other and to your library, and they are searched with everything else."
         actions={
           <>
-            {newPageButton}
+            {/* With no pages yet the empty state below offers it, beside Import: once is enough. */}
+            {pageCount === 0 && !tree.isPending && !tree.isError ? null : newPageButton}
             <Menu>
               <MenuTrigger asChild>
                 <Button variant="ghost" size="icon" aria-label="Import, export, templates and trash">

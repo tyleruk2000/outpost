@@ -12,6 +12,7 @@ import { Link } from "react-router";
 import { BackLink, Notice, Page, PageHeader, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Checkbox, Select } from "@/components/ui/misc";
+import { Table, TableHead, Td, Th, Tr } from "@/components/ui/table";
 import { errorMessage } from "@/lib/api";
 import { cn, formatNumber, plural } from "@/lib/utils";
 import { applyImport, discardImport, pickerSupport, pickFromPhone, previewFile, previewPicked } from "./contacts-data";
@@ -49,26 +50,22 @@ function Compare({
       <h3 className="text-lead font-semibold text-ink">{duplicate.displayName}</h3>
       <p className="mt-0.5 max-w-[65ch] text-small text-ink-muted">{REASONS[duplicate.reason]}</p>
 
-      <table className="mt-3 w-full table-fixed border-collapse text-small">
-        <thead>
-          <tr className="border-b border-border text-left text-ink-muted">
-            <th scope="col" className="w-[22%] py-1.5 pr-3 font-medium max-sm:w-[30%]">
+      <Table label={`${duplicate.displayName}: in Outpost and in the file`} className="mt-3 table-fixed">
+        <TableHead>
+          <Tr>
+            <Th className="w-[22%] max-sm:w-[30%]">
               <span className="sr-only">Field</span>
-            </th>
-            <th scope="col" className="py-1.5 pr-3 font-medium">
-              In Outpost
-            </th>
-            <th scope="col" className="py-1.5 font-medium">
-              In the file
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border align-top">
+            </Th>
+            <Th>In Outpost</Th>
+            <Th>In the file</Th>
+          </Tr>
+        </TableHead>
+        <tbody>
           {duplicate.lines.map((line) => (
-            <tr key={line.label} className={cn(line.adds && "bg-primary-soft")}>
+            <Tr key={line.label} className={cn(line.adds && "bg-primary-soft")}>
               <th
                 scope="row"
-                className={cn("py-2 pr-3 pl-1.5 text-left font-medium", line.adds ? "text-primary-soft-ink" : "text-ink-muted")}
+                className={cn("py-2.5 pr-3 pl-1.5 text-left align-top font-medium", line.adds ? "text-primary-soft-ink" : "text-ink-muted")}
               >
                 {line.label}
                 {line.differs ? (
@@ -79,7 +76,7 @@ function Compare({
               </th>
               {[line.here, line.incoming].map((side, at) => (
                 // biome-ignore lint/suspicious/noArrayIndexKey: the two sides, in a fixed order
-                <td key={at} className="py-2 pr-3 text-ink [overflow-wrap:anywhere]">
+                <Td key={at} className="[overflow-wrap:anywhere] last:pr-1.5">
                   {side.length === 0 ? (
                     <span className="text-ink-muted">Nothing</span>
                   ) : (
@@ -90,12 +87,12 @@ function Compare({
                       </span>
                     ))
                   )}
-                </td>
+                </Td>
               ))}
-            </tr>
+            </Tr>
           ))}
         </tbody>
-      </table>
+      </Table>
 
       <fieldset className="mt-3">
         <legend className="sr-only">What to do with {duplicate.displayName}</legend>

@@ -12,8 +12,8 @@ import { type MenuState, PageTree, RowMenu } from "./page-tree";
 import type { TreeIndex } from "./tree-model";
 
 const spineButton =
-  "grid size-6 place-content-center rounded-[4px] text-spine-ink-muted hover:bg-spine-raised hover:text-spine-ink focus-visible:outline-spine-ink data-[state=open]:bg-spine-raised data-[state=open]:text-spine-ink";
-const groupLabel = "flex h-8 items-center pl-2.5 pr-1 text-micro font-medium text-spine-ink-muted/85";
+  "grid size-6 place-content-center rounded-[4px] pointer-coarse:size-11 text-spine-ink-muted hover:bg-spine-raised hover:text-spine-ink focus-visible:outline-spine-ink data-[state=open]:bg-spine-raised data-[state=open]:text-spine-ink";
+const groupLabel = "flex h-8 pointer-coarse:h-11 items-center pl-2.5 pr-1 text-micro font-medium text-spine-ink-muted/85";
 
 /** Links for the whole workspace: bringing pages in, taking them out, templates and the trash. */
 export function WorkspaceMenuItems() {
@@ -62,7 +62,7 @@ function Favourites({ index, currentId }: { index: TreeIndex; currentId: string 
           <li
             key={item.id}
             className={cn(
-              "group/row flex h-[30px] items-center rounded-control pr-1 text-small text-spine-ink-muted transition-colors duration-100 hover:bg-spine-raised hover:text-spine-ink",
+              "group/row flex h-[1.875rem] items-center rounded-control pointer-coarse:h-11 pointer-coarse:text-body pr-1 text-small text-spine-ink-muted transition-colors duration-(--duration-fast) hover:bg-spine-raised hover:text-spine-ink",
               item.id === currentId && "text-spine-ink",
             )}
           >
@@ -84,7 +84,7 @@ function Favourites({ index, currentId }: { index: TreeIndex; currentId: string 
               }}
               className={cn(
                 spineButton,
-                "shrink-0 opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 hover:bg-spine-active",
+                "shrink-0 opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 hover:bg-spine-active [@media(hover:none)]:opacity-100",
                 menu?.item.id === item.id && "opacity-100",
               )}
             >

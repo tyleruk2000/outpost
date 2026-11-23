@@ -67,7 +67,7 @@ function useRoomAbove(editor: Editor, bar: { current: HTMLElement | null }) {
   }, [editor, bar]);
 }
 const textButton =
-  "flex h-8 items-center gap-1 rounded-[4px] pr-1.5 pl-2 text-small text-ink hover:bg-surface-strong data-[state=open]:bg-surface-strong max-md:h-10";
+  "flex h-8 items-center gap-1 rounded-[4px] pr-1.5 pl-2 text-small text-ink hover:bg-surface-strong data-[state=open]:bg-surface-strong max-md:h-10 md:pointer-coarse:h-10";
 
 /** The <table> itself, inside the wrapper that lets a wide table scroll. */
 function innerTable(editor: Editor): HTMLElement | null {

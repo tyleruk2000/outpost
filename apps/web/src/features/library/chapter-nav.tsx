@@ -51,7 +51,7 @@ function Neighbour({ to, direction }: { to: TurnTo; direction: "previous" | "nex
       to={to.to}
       rel={next ? "next" : "prev"}
       className={cn(
-        "group flex min-w-0 flex-1 basis-56 flex-col gap-0.5 rounded-control border border-border px-4 py-3 transition-colors duration-150 hover:border-border-strong hover:bg-surface",
+        "group flex min-w-0 flex-1 basis-56 flex-col gap-0.5 rounded-control border border-border px-4 py-3 transition-colors duration-(--duration-fast) hover:border-border-strong hover:bg-surface",
         next && "sm:items-end sm:text-right",
       )}
     >

@@ -95,7 +95,7 @@ function DropZone({ onUploaded }: { onUploaded: (dto: ImportDto) => void }) {
         }}
         onDrop={onDrop}
         className={cn(
-          "relative isolate overflow-hidden rounded-panel border border-dashed px-6 py-10 transition-colors duration-150 md:px-10 md:py-12",
+          "relative isolate overflow-hidden rounded-panel border border-dashed px-6 py-10 transition-colors duration-(--duration-fast) md:px-10 md:py-12",
           dragging ? "border-primary bg-primary-soft" : "border-border-strong",
         )}
       >

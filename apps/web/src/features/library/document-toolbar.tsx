@@ -72,7 +72,7 @@ function PageControls({
           }}
           // Wide enough for the longest page number this document has.
           style={{ width: `calc(${Math.max(2, String(pageCount).length)}ch + 1rem)` }}
-          className="h-7 rounded-control border border-border-strong bg-page px-1.5 text-center text-ink transition-[border-color,box-shadow] duration-150 hover:border-ink-faint focus-visible:border-focus focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none max-md:h-10 max-md:text-body"
+          className="h-7 rounded-control border border-border-strong bg-page px-1.5 text-center text-ink transition-[border-color,box-shadow] hover:border-ink-faint focus-visible:border-focus focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none max-md:h-10 max-md:text-body md:pointer-coarse:h-10 md:pointer-coarse:text-body"
         />
         of {formatNumber(pageCount)}
       </label>
@@ -82,7 +82,7 @@ function PageControls({
 
 function ZoomControls({ state, controls }: { state: ViewerState; controls: ViewerControls }) {
   return (
-    <div className="flex items-center gap-0.5">
+    <div className="flex flex-wrap items-center justify-end gap-0.5">
       <Tooltip label="Zoom out" shortcut="-">
         <Button variant="ghost" size="icon-sm" aria-label="Zoom out" disabled={!state.canZoomOut} onClick={() => controls.zoomBy(-1)}>
           <Minus />
@@ -159,14 +159,18 @@ export function ViewerToolbar({
   className?: string;
 }) {
   return (
-    <div className={cn("flex items-center gap-x-3", spread && "w-full", className)} role="toolbar" aria-label="Viewing controls">
+    <div
+      className={cn("flex items-center gap-x-3", spread && "w-full flex-wrap gap-y-0.5", className)}
+      role="toolbar"
+      aria-label="Viewing controls"
+    >
       {state.page && state.pageCount && controls.goToPage ? (
         <>
           <PageControls page={state.page} pageCount={state.pageCount} onGo={controls.goToPage} steps={!spread} />
           {spread ? null : <span aria-hidden className="h-5 w-px bg-border" />}
         </>
       ) : null}
-      <div className={cn("flex items-center gap-0.5", spread && "ml-auto")}>
+      <div className={cn("flex items-center gap-0.5", spread && "ml-auto flex-wrap justify-end")}>
         <ZoomControls state={state} controls={controls} />
         {spread && state.page && state.pageCount && controls.goToPage ? (
           <StepMenu page={state.page} pageCount={state.pageCount} onGo={controls.goToPage} />

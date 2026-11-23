@@ -46,7 +46,10 @@ function Row({
 
   return (
     <li>
-      <div className="flex min-h-9 items-start gap-1.5 py-1.5 max-md:min-h-11" style={{ paddingLeft: `${Math.min(depth, 8) * 1.25}rem` }}>
+      <div
+        className="flex min-h-9 items-start gap-1.5 py-1.5 max-md:min-h-11 md:pointer-coarse:min-h-11"
+        style={{ paddingLeft: `${Math.min(depth, 8) * 1.25}rem` }}
+      >
         {children.length > 0 ? (
           <button
             type="button"
@@ -55,7 +58,7 @@ function Row({
             onClick={() => toggle(item.path)}
             className="-my-1 grid size-7 shrink-0 place-content-center rounded-control text-ink-muted hover:bg-surface-strong hover:text-ink max-md:size-9"
           >
-            <ChevronRight aria-hidden className={cn("size-4 transition-transform duration-150", expanded && "rotate-90")} />
+            <ChevronRight aria-hidden className={cn("size-4 transition-transform", expanded && "rotate-90")} />
           </button>
         ) : (
           <span aria-hidden className="size-7 shrink-0 max-md:size-9" />

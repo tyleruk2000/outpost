@@ -225,8 +225,10 @@ function PagesInput({ pages, onChange }: { pages: ContactPageLink[]; onChange: (
                 autoFocus
                 value={query}
                 onValueChange={setQuery}
+                enterKeyHint="search"
+                autoCapitalize="none"
                 placeholder="Find a page"
-                className="h-10 min-w-0 flex-1 bg-transparent text-small text-ink placeholder:text-ink-faint focus:outline-none max-md:h-11 max-md:text-body"
+                className="h-10 min-w-0 flex-1 bg-transparent text-small text-ink placeholder:text-ink-faint focus:outline-none max-md:h-11 max-md:text-body md:pointer-coarse:h-11 md:pointer-coarse:text-body"
               />
             </div>
             <Command.List className="scroll-quiet max-h-[min(45dvh,18rem)] overflow-y-auto p-1.5">
@@ -474,7 +476,7 @@ function Form({ contact }: { contact?: ContactDto }) {
               </Field>
             </div>
             <details open={Boolean(fields.name.prefix || fields.name.additional || fields.name.suffix || fields.nickname)}>
-              <summary className="min-h-9 cursor-pointer py-1.5 text-small text-primary max-md:min-h-11 max-md:py-2.5">
+              <summary className="min-h-9 cursor-pointer py-1.5 text-small text-primary max-md:min-h-11 md:pointer-coarse:min-h-11 max-md:py-2.5 md:pointer-coarse:py-2.5">
                 More of the name
               </summary>
               <div className="mt-2 grid items-start gap-3 sm:grid-cols-2">

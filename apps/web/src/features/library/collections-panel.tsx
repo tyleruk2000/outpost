@@ -52,7 +52,7 @@ function CollectionRow({ collection }: { collection: CollectionDto }) {
   ].filter(Boolean);
 
   return (
-    <li className="group relative -mx-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-control px-3 py-3.5 transition-colors duration-150 hover:bg-surface">
+    <li className="group relative -mx-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-control px-3 py-3.5 transition-colors duration-(--duration-fast) hover:bg-surface">
       <div className="min-w-0 flex-1 basis-64">
         <h3 className={cn("font-title text-lead", away ? "text-ink-muted" : "text-ink")}>
           {/* The link is stretched over the row; the "Read" button sits above it. */}
@@ -172,6 +172,8 @@ export default function CollectionsPanel() {
         <Input
           type="search"
           aria-label="Search your collections by name"
+          enterKeyHint="search"
+          autoCapitalize="none"
           placeholder="Search your collections by name"
           className="pl-9"
           value={text}

@@ -206,7 +206,7 @@ const Row = memo(function Row({
       style={top === undefined ? { paddingLeft: indent } : { paddingLeft: indent, position: "absolute", top, left: 0, right: 0 }}
       className={cn(
         // The height is in rem so that a row grows with the text; windowing measures a drawn row, so it follows.
-        "group/row relative flex h-[1.875rem] items-center gap-1 rounded-control pr-1 text-small select-none transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 max-md:h-11 max-md:text-body",
+        "group/row relative flex h-[1.875rem] items-center gap-1 rounded-control pr-1 text-small select-none transition-colors duration-(--duration-fast) focus-visible:outline-2 focus-visible:-outline-offset-2 max-md:h-11 max-md:text-body md:pointer-coarse:h-11 md:pointer-coarse:text-body",
         "[contain-intrinsic-size:auto_1.875rem] [content-visibility:auto] [-webkit-touch-callout:none]",
         style.row,
         current && style.current,
@@ -234,16 +234,15 @@ const Row = memo(function Row({
           aria-label={row.expanded ? `Collapse ${title}` : `Expand ${title}`}
           onClick={() => onToggle(item.id, !row.expanded)}
           // On small screens the button is 44 px, its margins taking back the room it adds, so the title does not move.
-          className={cn("relative grid size-5 shrink-0 place-content-center rounded-[4px] max-md:-mx-1.5 max-md:size-11", style.button)}
+          className={cn(
+            "relative grid size-5 shrink-0 place-content-center rounded-[4px] max-md:-mx-1.5 max-md:size-11 md:pointer-coarse:-mx-1.5 md:pointer-coarse:size-11",
+            style.button,
+          )}
         >
-          <ChevronRight
-            aria-hidden
-            className={cn("size-3.5 transition-transform duration-150 ease-out", row.expanded && "rotate-90")}
-            strokeWidth={2}
-          />
+          <ChevronRight aria-hidden className={cn("size-3.5 transition-transform", row.expanded && "rotate-90")} strokeWidth={2} />
         </button>
       ) : (
-        <span aria-hidden className="size-5 shrink-0 max-md:size-8" />
+        <span aria-hidden className="size-5 shrink-0 max-md:size-8 md:pointer-coarse:size-8" />
       )}
 
       <Link

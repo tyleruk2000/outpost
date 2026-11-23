@@ -133,6 +133,8 @@ function NameFilter({ value, onChange }: { value: string; onChange: (value: stri
         type="search"
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
+        enterKeyHint="search"
+        autoCapitalize="none"
         placeholder="Filter by name"
         aria-label="Filter documents by name"
         className="pr-9 pl-9 text-small md:h-8 [&::-webkit-search-cancel-button]:hidden"
@@ -198,7 +200,7 @@ function AudiobooksPointer({ count, onShow }: { count: number; onShow: () => voi
       <button
         type="button"
         onClick={onShow}
-        className="font-medium text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2 max-md:min-h-11"
+        className="font-medium text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2 max-md:min-h-11 md:pointer-coarse:min-h-11"
       >
         Show audiobooks
       </button>
@@ -424,13 +426,27 @@ export default function DocumentsPanel() {
             <>
               {addButton}
               {savePageButton}
+              {/* The buttons come straight after the first sentence, so that on a phone they are in view without scrolling;
+                  then the way to something to read for a person with no files of their own, then the formats. */}
+              <p className="mt-2 basis-full text-small text-ink-muted">
+                No files to hand?{" "}
+                <Link
+                  to="/explore"
+                  className="inline-flex min-h-6 items-center font-medium text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2 max-md:min-h-11 md:pointer-coarse:min-h-11"
+                >
+                  Find something to read in Explore
+                </Link>
+                : encyclopedias, field manuals and books to download once and read here.
+              </p>
+              <p className="mt-1 basis-full text-small text-ink-muted">
+                Or drop files anywhere on this screen. {SUPPORTED_TYPES} are supported.
+              </p>
             </>
           }
         >
           <p>
             Add the manuals, books, papers and scans you want to keep. Outpost reads their text so that one search finds the page you need.
           </p>
-          <p className="mt-2 text-small">Choose files, or drop them anywhere on this screen. {SUPPORTED_TYPES} are supported.</p>
         </EmptyState>
       ) : documents.length === 0 ? (
         <div className="mt-3 border-y border-border py-10">
@@ -441,7 +457,7 @@ export default function DocumentsPanel() {
           </Button>
         </div>
       ) : (
-        <div className={cn("mt-3 transition-opacity duration-150", list.isPlaceholderData && "opacity-60")}>
+        <div className={cn("mt-3 transition-opacity", list.isPlaceholderData && "opacity-60")}>
           <Rows aria-label="Documents">
             {documents.map((document) => (
               <DocumentRow key={document.id} document={document} locationName={locationNames.get(document.locationId)} />

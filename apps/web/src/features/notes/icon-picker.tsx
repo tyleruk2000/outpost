@@ -68,7 +68,7 @@ export function IconPicker({
               aria-label="Any other emoji"
               aria-invalid={invalid || undefined}
               placeholder="Or paste any emoji"
-              className="h-8 min-w-0 flex-1 rounded-control border border-border-strong bg-page px-2.5 text-small text-ink placeholder:text-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus max-md:h-10 max-md:text-body"
+              className="h-8 min-w-0 flex-1 rounded-control border border-border-strong bg-page px-2.5 text-small text-ink placeholder:text-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus max-md:h-10 md:pointer-coarse:h-10 max-md:text-body md:pointer-coarse:text-body"
             />
             <Button type="submit" size="sm" disabled={!typed.trim()}>
               Use

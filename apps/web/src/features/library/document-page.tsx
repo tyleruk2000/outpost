@@ -425,7 +425,7 @@ export default function DocumentPage() {
           <Viewer document={document} locationName={locationName} initialPage={urlPage} onState={setViewer} controls={controlsRef} />
           {markable ? <HighlightLayer documentId={document.id} area={readingRef} chapter={epubChapter} /> : null}
           {!desktop && viewer ? (
-            <div className="scroll-quiet flex h-12 shrink-0 items-center overflow-x-auto border-t border-border bg-page px-1.5">
+            <div className="flex min-h-12 shrink-0 items-center border-t border-border bg-page px-1.5 py-0.5">
               <ViewerToolbar state={viewer} controls={controls} spread />
             </div>
           ) : null}

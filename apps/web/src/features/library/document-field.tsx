@@ -43,7 +43,7 @@ export function FieldLabel({ htmlFor, label, status }: { htmlFor: string; label:
         {label}
       </label>
       <span role="status" className="flex h-4 items-center gap-1 text-micro text-success">
-        {status === "saving" ? <Spinner className="size-3.5" label={`Saving ${label.toLowerCase()}`} /> : null}
+        {status === "saving" ? <Spinner delay className="size-3.5" label={`Saving ${label.toLowerCase()}`} /> : null}
         {status === "saved" ? (
           <>
             <Check aria-hidden className="size-3.5" /> Saved

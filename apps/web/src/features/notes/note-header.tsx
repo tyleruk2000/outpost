@@ -8,7 +8,7 @@ import { IconPicker } from "./icon-picker";
 
 /** Quiet controls that appear with the pointer or the keyboard, and are always there on touch screens. */
 const reveal =
-  "opacity-0 transition-opacity duration-150 group-hover/reveal:opacity-100 group-focus-within/reveal:opacity-100 [@media(hover:none)]:opacity-100";
+  "opacity-0 transition-opacity group-hover/reveal:opacity-100 group-focus-within/reveal:opacity-100 [@media(hover:none)]:opacity-100";
 
 export function PageCover({
   url,
