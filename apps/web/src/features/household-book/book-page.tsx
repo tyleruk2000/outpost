@@ -60,6 +60,18 @@ export default function BookPage() {
   const [drawing, setDrawing] = useState(false);
   const mapSources = useMapSources();
   const overview = useMapOverview();
+  /**
+   * The installed maps, read before a map is drawn: on a phone the book can be made before
+   * these have loaded, and an empty list would print "no offline map" over a covered area.
+   */
+  const mapInput = async () => {
+    const [sourcesNow, overviewNow] = await Promise.all([
+      mapSources.data ? Promise.resolve(mapSources.data) : mapSources.refetch().then((result) => result.data),
+      overview.data ? Promise.resolve(overview.data) : overview.refetch().then((result) => result.data),
+    ]);
+    const regions = overviewNow?.regions ?? [];
+    return { sources: sourcesNow, regions, cacheKey: regionsCacheKey(regions), origin: window.location.origin };
+  };
 
   const answers = book.data?.answers ?? DEFAULT_BOOK_ANSWERS;
   const destinationContacts = useContactsById(answers.destinations.map((destination) => destination.contactId ?? "").filter(Boolean));
@@ -107,12 +119,10 @@ export default function BookPage() {
     setDrawing(true);
     try {
       const ranges = await gatherRanges(groups);
-      const regions = overview.data?.regions ?? [];
-      const drawn = await gatherMaps(
-        groups,
-        { sources: mapSources.data, regions, cacheKey: regionsCacheKey(regions), origin: window.location.origin },
-        measureOf(answers.paper),
-      ).catch(() => ({ maps: {}, missing: "This device could not draw the offline map under the repeaters." }));
+      const drawn = await gatherMaps(groups, await mapInput(), measureOf(answers.paper)).catch(() => ({
+        maps: {},
+        missing: "This device could not draw the offline map under the repeaters.",
+      }));
       return { ...gathered, ranges, ...drawn };
     } finally {
       setDrawing(false);
@@ -146,12 +156,7 @@ export default function BookPage() {
         setDrawing(true);
         try {
           const { binderMap } = await import("@/features/household-papers/binder-map");
-          const regions = overview.data?.regions ?? [];
-          placesMap = await binderMap(
-            mapped,
-            { sources: mapSources.data, regions, cacheKey: regionsCacheKey(regions), origin: window.location.origin },
-            book.data.answers.paper,
-          );
+          placesMap = await binderMap(mapped, await mapInput(), book.data.answers.paper);
         } catch {
           placesMap = null;
         } finally {

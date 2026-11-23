@@ -652,8 +652,8 @@ function places(c: Context): Section {
       const items = block.draw(0, 0, c.measure);
       content.push(
         figure(sheetItemsToSvg(items, { x: 0, y: 0, width: c.measure, height: block.height }, pictures), {
+          // The drawing's own captions already say when no map is under it: not twice.
           width: c.measure,
-          caption: c.placesMap.missing ?? undefined,
         }),
       );
     }
