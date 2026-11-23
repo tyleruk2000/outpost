@@ -12,6 +12,8 @@ export interface FileRoute {
   body: Buffer;
   /** Honour Range requests (206 / 416). Default true. */
   ranges?: boolean;
+  /** Honour If-Range (send the whole file when its validator no longer matches). Default true; false sends the tail regardless. */
+  ifRange?: boolean;
   /** Send in pieces of this size with `delayMs` between them. */
   chunkBytes?: number;
   delayMs?: number;
@@ -122,7 +124,8 @@ export async function startFileServer(host = "127.0.0.1"): Promise<FileServer> {
     const range = /^bytes=(\d+)-$/.exec(req.headers.range ?? "");
     // If-Range: a validator that no longer matches means "send the whole current file".
     const ifRange = req.headers["if-range"];
-    const unchanged = ifRange === undefined || ifRange === route.headers?.etag || ifRange === route.headers?.["last-modified"];
+    const unchanged =
+      route.ifRange === false || ifRange === undefined || ifRange === route.headers?.etag || ifRange === route.headers?.["last-modified"];
     if (range && route.ranges !== false && unchanged) {
       const start = Number(range[1]);
       if (start >= total) {

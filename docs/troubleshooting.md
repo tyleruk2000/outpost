@@ -149,10 +149,12 @@ trying for now" means it used its attempts (**Settings → Downloads → Attempt
 giving up**, 8 by default): press **Retry** once online; it continues where it stopped.
 Check the server's own connection, not only your browser's.
 
-### "The downloaded file does not match its published checksum…"
+### "The downloaded file did not match its published checksum, twice…"
 
-It was damaged on the way or changed at its source; nothing was installed. Press
-**Retry**. If it fails again, **Refresh** on Explore and start afresh.
+A file that fails its checksum (or, for a country file, Geofabrik's MD5) is deleted and
+downloaded once more from the start; this message means the second copy failed too.
+Nothing was installed or kept. Press **Retry** later. If it fails again, **Refresh** on
+Explore and start afresh, or download to the device's own storage.
 
 ### "… is not keeping what is written to it"
 

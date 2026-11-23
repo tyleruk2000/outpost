@@ -306,7 +306,7 @@ describe("a region on a real test server", () => {
     expect(row.state).toBe("failed");
     // The downloader holds it to the MD5 read with the estimate, shows that, and deletes what fails it.
     expect(row.errorKind).toBe("checksum_mismatch");
-    expect(row.error).toMatch(/does not match its published checksum/);
+    expect(row.error).toMatch(/did not match (its published checksum|the MD5 its publisher gives), twice/);
     const { integrity } = (await app.api("GET", `/api/downloads/${row.id}`)).body as DownloadDetail;
     expect(integrity.md5Expected).toMatch(/^[0-9a-f]{32}$/);
     expect(integrity.md5Actual).toMatch(/^[0-9a-f]{32}$/);

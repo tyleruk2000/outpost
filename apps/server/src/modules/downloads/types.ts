@@ -75,6 +75,8 @@ export interface FetchContext {
   allowedHosts?: string[];
   /** Every redirect hop held to `allowedHosts`, as `start` was asked. */
   everyHop?: boolean;
+  /** The file is on a network share: write it in whole blocks (`core/synced-write.ts`). */
+  network?: boolean;
   signal: AbortSignal;
   /**
    * Wait for permission to transfer this many bytes. Every fetcher calls this for each

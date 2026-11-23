@@ -89,6 +89,8 @@ export async function hashTree(target: string, options: TransferOptions = {}): P
   for (const file of tree.files) {
     const sha256 = await sha256File(path.join(target, file.rel), {
       signal: options.signal,
+      // A copy just made is checked as the storage holds it, not as it is remembered.
+      fromStorage: true,
       onProgress: (bytes) => options.onProgress?.(done + bytes),
     });
     done += file.size;
