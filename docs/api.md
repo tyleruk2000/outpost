@@ -615,6 +615,8 @@ Types: `maps.ts` and the files named below. See [maps.md](maps.md).
 | `GET /api/maps/regions` | Ready-made regions, with installed and downloading state. |
 | `POST /api/maps/estimate` | `{ bbox [w,s,e,n], maxZoom, minZoom?, tileType? }` → `MapEstimate` (exact size). Needs a connection. |
 | `POST /api/maps/regions` | `{ name, bbox, maxZoom, minZoom?, regionId?, locationId?, includeTerrain? }` → `{ downloads }`. |
+| `GET /api/maps/data` | Everything kept for the map, by country (six rows: map, terrain, names, roads, places, country file), world, other areas and kept country files, each with size, location, data date, state and its download or task (`MapDataResponse`). Asks nothing outside. |
+| `POST /api/maps/data/add` | `{ regionId?, kinds, keep?, locationId?, layers?, newerThan?, map?, country? }` → `{ countryFile, downloadIds, taskIds }`. `keep` is required whenever roads, places or the country file are asked. Remembers `keep` as `maps.countryFileKeep`. `409` while that region's country file is already coming. |
 | `POST /api/maps/import` | `{ locationId, relPath, name, tileType? }`: registers a `.pmtiles` file. |
 | `GET /api/maps/overview` | `MapOverview`: regions, place-name datasets, counts. |
 | `GET /api/maps/sources` | `MapSources`: tile addresses, bounds, zooms, glyphs, sprites, attribution, imagery sets. |
@@ -655,7 +657,7 @@ server on the internet.
 | --- | --- |
 | `GET /api/reference/catalogue` | Providers with licence, quoted terms, date read, verdict, `clientName`; linked-only sources; countries. Contacts nobody. |
 | `POST /api/reference/estimate` | `{ provider, scope (countries?, bbox?, regions?), layers?, clientNameAgreed? }`. Refused (`400`) without `clientNameAgreed` where the provider is sent a name, and for the whole world unless published that way. Each item's size and how it was worked out, the total, notes. `estimateId` lasts half an hour. `scope.regions`: up to three Geofabrik ids from the kept list, with `databaseBytes` and `fileKeptByDefault`. |
-| `POST /api/reference/downloads` | `{ estimateId, keys, locationId?, keepFile? }` → `{ downloads }`. `409` for an expired estimate. |
+| `POST /api/reference/downloads` | `{ estimateId, keys, locationId?, keepFile? }` → `{ downloads, tasks }`. A Geofabrik item is its country file: downloaded once, or read again where it is kept (a task, no download). `409` for an expired estimate. |
 | `GET /api/reference/regions` | `lat?`, `lon?` → Geofabrik's list as kept (`held`, `readAt`, `regions`, `suggested`). Contacts nobody. |
 | `POST /api/reference/regions` | Fetches and keeps that list (~500 kB). |
 | `GET /api/reference/packs` | `ReferencePackDto`s: source, layers, countries, version, dates, records, size, licence, location, `notes`. |

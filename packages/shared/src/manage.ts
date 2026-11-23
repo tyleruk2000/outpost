@@ -20,8 +20,27 @@ export const ERASE_CONFIRMATION = "erase everything";
  * What an installed thing is, as a person would sort them. A "sheet" is a catalogue
  * sheet or book: one item in Explore that is also one or more documents in the library.
  */
-/** "layer" is a dataset drawn on the map (reference layers: Natural Earth, airports, OpenStreetMap extracts); "dataset" is the rest. */
-export type ManagedKind = "zim" | "map" | "terrain" | "places" | "layer" | "sheet" | "file" | "model" | "dataset" | "document";
+/**
+ * "layer" is a dataset drawn on the map (reference layers: Natural Earth, airports, OpenStreetMap places); "dataset" is the rest.
+ * "extract" is a country file kept (a Geofabrik extract, read for roads and places); "roads" a road network for road routes,
+ * kept with Outpost's own data rather than on a storage location.
+ */
+export type ManagedKind =
+  | "zim"
+  | "map"
+  | "terrain"
+  | "places"
+  | "layer"
+  | "sheet"
+  | "file"
+  | "model"
+  | "dataset"
+  | "document"
+  | "extract"
+  | "roads";
+
+/** The `locationId` of a thing kept in Outpost's own data folder (a road network), which is no storage location. */
+export const OWN_DATA_LOCATION = "outpost-data";
 
 /**
  * Where it came from. "downloaded" came from the catalogue or a download and can be
@@ -31,9 +50,9 @@ export type ManagedKind = "zim" | "map" | "terrain" | "places" | "layer" | "shee
 export type ManagedOrigin = "downloaded" | "own";
 
 export interface ManagedItem {
-  /** "collection:<id>" or "document:<id>". */
+  /** "collection:<id>", "document:<id>" or "road-network:<id>". */
   key: string;
-  type: "collection" | "document";
+  type: "collection" | "document" | "road-network";
   id: string;
   title: string;
   kind: ManagedKind;
@@ -275,6 +294,8 @@ export type UsageId =
   | "model"
   | "dataset"
   | "document"
+  | "extract"
+  | "roads"
   | "attachments"
   /** Files sent on the household board. */
   | "board"

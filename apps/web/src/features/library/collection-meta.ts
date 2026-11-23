@@ -9,6 +9,7 @@ export const kindLabels: Record<CollectionKind, string> = {
   file: "File",
   model: "Search model",
   dataset: "Radio data",
+  extract: "Country file",
 };
 
 /**

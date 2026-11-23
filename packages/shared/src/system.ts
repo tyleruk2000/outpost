@@ -56,6 +56,8 @@ export interface Settings {
   "maps.tileSource": string;
   "maps.terrainSource": string;
   "maps.defaultMaxZoom": number;
+  /** The last choice for a country file once read: "ask" until one is made. */
+  "maps.countryFileKeep": "ask" | "keep" | "delete";
   "storage.checkIntervalSeconds": number;
   /** A storage location for new downloads of each kind of content, where one is set. */
   "storage.kindDefaults": Partial<Record<"maps" | "terrain" | "places" | "layers" | "collections" | "documents", string>>;

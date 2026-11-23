@@ -34,8 +34,9 @@ const kindWords: Record<DownloadKind, string> = {
   places: "Place names",
   file: "File",
   model: "Search model",
-  dataset: "Radio data",
+  dataset: "Map layer or radio data",
   document: "Document saved from a link",
+  extract: "Country file",
 };
 
 const badgeTone: Record<Tone, "neutral" | "lamp" | "success" | "warning" | "danger"> = {

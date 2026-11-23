@@ -45,6 +45,8 @@ export interface StartDownload {
   everyHop?: boolean;
   /** Free-form data kept on the row and handed to the fetcher and installer. */
   meta?: Record<string, unknown>;
+  /** Said on the first line of the download's history (which file was chosen, and why). */
+  note?: string;
 }
 
 /**

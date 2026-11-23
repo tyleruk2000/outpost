@@ -18,7 +18,20 @@ import type { Inventory } from "./inventory.ts";
 import { UNFINISHED } from "./leftovers.ts";
 import type { Surveyor } from "./survey.ts";
 
-const CONTENT_KINDS: ManagedKind[] = ["zim", "map", "terrain", "places", "layer", "sheet", "file", "model", "dataset", "document"];
+const CONTENT_KINDS: ManagedKind[] = [
+  "zim",
+  "map",
+  "terrain",
+  "places",
+  "layer",
+  "roads",
+  "extract",
+  "sheet",
+  "file",
+  "model",
+  "dataset",
+  "document",
+];
 /** The word index SQLite keeps beside passage text comes to roughly half the text again. */
 const INDEX_OVERHEAD = 1.5;
 

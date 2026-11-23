@@ -7,7 +7,7 @@
  * GPX tracks. The browser draws the map with MapLibre against the endpoints here and
  * never needs the network.
  */
-import { MARKER_COLORS, type MapOverview, type MarkerColor, RECORDING_ID_PATTERN } from "@outpost/shared";
+import { MARKER_COLORS, type MapDataResponse, type MapOverview, type MarkerColor, RECORDING_ID_PATTERN } from "@outpost/shared";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
@@ -23,11 +23,13 @@ import {
   routePointsReplaceSchema,
   trackPatchSchema,
 } from "./annotations.ts";
+import { createCountryFiles } from "./country-files.ts";
 import { createElevationSampler } from "./elevation.ts";
 import { createExtractFetcher, createTilesInstaller, EXTRACT_FETCHER } from "./extract-download.ts";
 import { MAX_GPX_BYTES } from "./gpx.ts";
 import { createImageryInstaller, type ImageryService, isImageryDownload, registerImagery } from "./imagery/index.ts";
 import { areaSizeQuery, createAreaMeter } from "./kept-area.ts";
+import { createMapData, createMapDataAdd, mapDataAddSchema } from "./map-data.ts";
 import { registerOsNames } from "./os-names/index.ts";
 import { createPlacesService, datasetSchema, type PlacesService } from "./places.ts";
 import { createPlanner } from "./planner.ts";
@@ -134,6 +136,10 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
   downloads.registerInstaller("map", (context) => (isImageryDownload(context.download) ? installImagery(context) : installMap(context)));
   downloads.registerInstaller("terrain", createTilesInstaller(ctx, "terrain"));
   downloads.registerInstaller("places", places.installer);
+  // Country files: one download per region, read for roads and places, then kept or deleted (country-files.ts).
+  const countryFiles = createCountryFiles(ctx, client);
+  ctx.services.countryFiles = countryFiles;
+  downloads.registerInstaller("extract", countryFiles.installer);
 
   // An extract keeps its plan and progress in files beside the partial archive. The
   // download manager removes the partial archive with the download; these go with it.
@@ -183,6 +189,12 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
   });
 
   // ── Regions ──
+
+  // ── Map data: everything kept for the map, in one answer, and the combined add ──
+  const mapData = createMapData(ctx, client);
+  const mapDataAdd = createMapDataAdd(ctx);
+  app.get("/api/maps/data", async (): Promise<MapDataResponse> => mapData());
+  app.post("/api/maps/data/add", async (request) => mapDataAdd(mapDataAddSchema.parse(request.body)));
 
   app.get("/api/maps/regions", async () => {
     return regions.list();

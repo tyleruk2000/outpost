@@ -74,3 +74,43 @@ after "busy".
   the map coarser.
 - OS Open Names: checked against OS's MD5; attribution from the edition's `Doc/licence.txt`;
   Helmert transformation from OS's *A guide to coordinate systems in Great Britain* v3.6.
+
+## Map data and country files
+
+`GET /api/maps/data` answers the Map data screen in one request, from what is held:
+per country six rows in a fixed order (map to look at, hills and heights, place names,
+roads for routes, places to find, country file), then the whole world, other areas (drawn
+and satellite areas, anything not one country's) and the kept country files. Each item has
+its size, storage location (none for a road network, which is in Outpost's own data), the
+day its data is from, a state (`waiting`, `downloading`, `paused`, `processing` with the
+task's own progress and step, `ready`, `failed` with the reason, `location-offline`,
+`missing`, `damaged`, `moving`) and the download or task to open. A ready-made map area is
+put under the country whose outline box is most like its own; a drawn one is under other
+areas. Kept phone areas live in the phone's browser, so `onThisPhone` is always null.
+
+A country file is a Geofabrik extract (`.osm.pbf`). It is downloaded once (a download of
+kind `extract`) and read for what was asked, the main roads and then the places, each a
+step of the same task; then it is kept or deleted as the person chose. A kept file is a
+collection of kind `extract` ("Country files") in `collections/country-files/` of the
+chosen location, so Storage moves, checks and removes it, and it is marked missing or
+damaged like any other file. Removing it is the only way it is deleted; roads and places
+made from it keep working. Every file read is written to `country_files` (migration
+`0045_country_files`), kept or not, which is how a row can say "read and deleted".
+
+Roads and places read a kept file for the region instead of downloading, a task of type
+`maps.country-file.read` holding the file so it cannot be moved or removed meanwhile. The
+newest kept file is used, by its data date; `newerThan` (a day) asks for a download instead
+when the kept one is older. A kept file whose location is not connected, or which is missing
+or damaged, is not used.
+
+`POST /api/maps/data/add` adds a country's roads, places and country file in one press, with
+the map and terrain (through `regions.start`) and GeoNames names beside them. The keep
+choice is required: nothing is kept or deleted by default. The last choice is the setting
+`maps.countryFileKeep` (`ask` until one is made), which the screen preselects. The road
+routes and places screens' own adds go through the same country file.
+
+Geofabrik's `-latest` address redirects to the newest dated file. When that file answers
+404 (seen on 23 November 2026: `united-kingdom-261122.osm.pbf` while `-261121` was there),
+the newest earlier dated file the region's page lists is fetched instead, checked against
+its own `.md5`, and the download's first history line says which file it was.
+

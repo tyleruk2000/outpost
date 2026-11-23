@@ -187,7 +187,7 @@ back as `{ error: { code, message } }` with a 4xx.
 | Method and path | Body | Answer |
 | --- | --- | --- |
 | `GET /networks` | | `RoadNetworksResponse`: `networks: RoadNetworkDto[]`, `building` (jobs and downloads under way), `credit` |
-| `POST /networks` | `{ regionId, keepExtract?, locationId? }` (a Geofabrik region id, as `GET /api/reference/regions` lists them once read with `POST /api/reference/regions`) or `{ locationId, relPath, name, country? }` (a file already in storage) | `{ downloadId, jobId }`: a download (Downloads and tasks) that builds when it finishes, or a build job |
+| `POST /networks` | `{ regionId, keepExtract?, locationId? }` (a Geofabrik region id, as `GET /api/reference/regions` lists them once read with `POST /api/reference/regions`) or `{ locationId, relPath, name, country? }` (a file already in storage) | `{ downloadId, jobId }`: for a region, the country file's download, or, where the region's country file is kept, a task reading it (no download); for a file in storage, a build job. See [map data](maps.md#map-data-and-country-files) |
 | `POST /networks/:id/update` | | as above: the region downloaded again, or the file read again; the new network replaces the old when built |
 | `DELETE /networks/:id` | | `{ ok: true }`: the network file and row go; a kept extract stays |
 | `POST /countries` | `{ boxes: [w, s, e, n][] }` (≤ 200) | `{ countries }`: ISO codes the boxes cover, most first, from the country outlines; a box over 40° by 25° is passed over. The web app sends the installed map regions' boxes, to offer their countries first |
@@ -264,17 +264,20 @@ installed maps are read before the overview is drawn), `words.ts` (start and end
 crossing choices, and `legLines`, which cuts the route's geometry into each leg's part by
 the legs' ends). Query keys start with `roads`; `roads.changed` refreshes them. The map's
 point menu has **Road route from here / to here**; `/maps?offline=roads` opens the networks.
-The screen installs by region only and never keeps the extract: `keepExtract` and building
-from a file in storage are offered through the API alone.
+A region's roads come from its country file, one download read for roads and places
+together and then kept or deleted as the person chose (`POST /api/maps/data/add`, see
+[map data](maps.md#map-data-and-country-files)); a kept file is read again with no
+download. Building from a file of the person's own in storage is offered through the API.
 Tests: `road-route.test.tsx`, `e2e/tests/road-routes*.spec.ts` (networks built from the
 server fixtures in storage).
 
 ## Storage and memory at rest
 
 `road_networks` (one row a network) and `road_routes` (saved routes, the whole result as
-JSON) in SQLite, migration `0042_road_routes`. Network files in `<data>/roads/`; an
-extract downloaded for a network is in `roads/extracts/` of the storage location until
-read, then deleted unless `keepExtract`. The joined graph is built on the first route
+JSON) in SQLite, migration `0042_road_routes`. Network files in `<data>/roads/`, listed in
+Storage as "Roads for routes" under Outpost's own data (not moved; removed one by one). The
+country file is in `collections/country-files/` of the chosen storage location while it is
+read, and stays there only when kept. The joined graph is built on the first route
 asked for and let go after 30 minutes unused (one `unref`'d timer), so a Pi at rest holds
 none of it. One network is built at a time.
 

@@ -222,6 +222,13 @@ export const TASK_KINDS: Record<string, TaskKind> = {
     about: "Works out which frequencies should carry between two places through the day.",
     from: { to: "/radio/propagation", label: "Open HF propagation" },
   },
+  "maps.country-file.read": {
+    name: "Reading a country file",
+    about: "Reads a kept country file (an OpenStreetMap extract) again for road routes and places to find, with nothing downloaded.",
+    pause: "restarts",
+    retry: true,
+    from: { to: "/maps", label: "Open Maps" },
+  },
   "roads.build": {
     name: "Building a road network",
     about: "Reads the main roads out of an OpenStreetMap extract and makes the network road directions are planned on.",

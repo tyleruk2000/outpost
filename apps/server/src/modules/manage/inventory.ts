@@ -7,11 +7,19 @@
  * same file or files. Here they are one entry, because that is how they are removed and
  * moved: together.
  */
+import fs from "node:fs";
 import path from "node:path";
-import type { ManagedItem, ManagedKind, ManagedOrigin } from "@outpost/shared";
+import { type ManagedItem, type ManagedKind, type ManagedOrigin, OWN_DATA_LOCATION } from "@outpost/shared";
 import { inArray } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
-import { bookChapters, documents as documentsTable, downloads as downloadsTable, jobs as jobsTable } from "../../db/schema.ts";
+import { resolveInside } from "../../core/fs-safe.ts";
+import {
+  bookChapters,
+  documents as documentsTable,
+  downloads as downloadsTable,
+  jobs as jobsTable,
+  roadNetworks,
+} from "../../db/schema.ts";
 import type { CollectionRow } from "../collections/service.ts";
 
 /** The folders Outpost itself makes inside a storage location. Nothing else in one is Outpost's. */
@@ -33,7 +41,12 @@ export interface Entry {
   collection?: CollectionRow;
   /** The documents removed and moved with this entry: its own, or the one it is. */
   documents: DocumentRef[];
+  /** A road network (modules/roads), kept in Outpost's own data: removed through the roads service, never moved. */
+  roadNetworkId?: string;
 }
+
+/** What a road network's place is called, since it is in no storage location. */
+export const OWN_DATA_NAME = "Outpost's own data";
 
 export interface Inventory {
   entries(): Entry[];
@@ -197,6 +210,51 @@ export function createInventory(ctx: AppContext, missingDocuments: () => Readonl
       });
     }
 
+    // Road networks are files Outpost made in its own data folder: listed so Storage can say what they take.
+    const building = db
+      .select()
+      .from(jobsTable)
+      .where(inArray(jobsTable.state, ["queued", "running", "paused"]))
+      .all()
+      .filter((job) => job.type === "roads.build");
+    for (const row of db.select().from(roadNetworks).all()) {
+      let present = false;
+      try {
+        present = fs.existsSync(resolveInside(ctx.config.dataDir, row.relPath));
+      } catch {
+        present = false;
+      }
+      const busy = building.some((job) => (job.payload as { replaces?: string }).replaces === row.id)
+        ? "It is being rebuilt. Wait for that to finish, or cancel it under Downloads and tasks."
+        : null;
+      result.push({
+        documents: [],
+        roadNetworkId: row.id,
+        item: {
+          key: `road-network:${row.id}`,
+          type: "road-network",
+          id: row.id,
+          title: `Roads: ${row.name}`,
+          kind: "roads",
+          // Built from Geofabrik's file, it can be built again; from a file of the person's own, only from that file.
+          origin: row.regionId ? "downloaded" : "own",
+          sizeBytes: row.sizeBytes,
+          addedAt: row.builtAt,
+          locationId: OWN_DATA_LOCATION,
+          locationName: OWN_DATA_NAME,
+          locationAvailable: true,
+          relPath: row.relPath,
+          inOutpostFolder: true,
+          state: busy ? "busy" : present ? "ok" : "missing",
+          busyReason: busy,
+          documents: [],
+          catalogEntryId: null,
+          href: "/maps",
+          warning: `Road routes through ${row.name} cannot be planned without it. Saved routes keep their directions.`,
+        },
+      });
+    }
+
     for (const row of documentRows) {
       if (claimed.has(row.id)) continue;
       const { locationName, locationAvailable } = describe(row.locationId);
@@ -259,6 +317,13 @@ export function createInventory(ctx: AppContext, missingDocuments: () => Readonl
 
 /** Where an entry's file is, as an absolute path for a person to read (as last known when disconnected). */
 export function fileOf(ctx: AppContext, entry: Entry): { title: string; locationName: string; path: string; bytes: number } {
+  if (entry.roadNetworkId)
+    return {
+      title: entry.item.title,
+      locationName: OWN_DATA_NAME,
+      path: path.join(ctx.config.dataDir, entry.item.relPath),
+      bytes: entry.item.sizeBytes,
+    };
   const location = ctx.services.storage.list().find((candidate) => candidate.id === entry.item.locationId);
   return {
     title: entry.item.title,

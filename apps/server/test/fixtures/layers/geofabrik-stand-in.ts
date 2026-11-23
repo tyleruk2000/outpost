@@ -125,6 +125,13 @@ interface StandInFile {
   claimedBytes?: number;
   /** Sent from another host, as Geofabrik sends Germany's file from a mirror. */
   mirror?: boolean;
+  /** The day `-latest` leads to, as Geofabrik writes it (261116 when not said). */
+  latest?: string;
+  /**
+   * The dated files there are, all with the same bytes (just 261116 when not said). One that `latest` leads to and is
+   * not here answers 404, as Geofabrik's did on 23 November 2026; the region's page (`<path>/`) lists those that are.
+   */
+  dated?: string[];
 }
 
 export interface GeofabrikStandIn {
@@ -208,17 +215,29 @@ export function createGeofabrikStandIn(): GeofabrikStandIn {
       const latest = /^\/(.+)-latest\.osm\.pbf$/.exec(route);
       if (latest && files.has(latest[1]!)) {
         const elsewhere = files.get(latest[1]!)!.mirror ? base.replace("127.0.0.1", "localhost") : base;
-        response.writeHead(302, { location: `${elsewhere}/${latest[1]}-261116.osm.pbf` }).end();
+        response.writeHead(302, { location: `${elsewhere}/${latest[1]}-${files.get(latest[1]!)!.latest ?? "261116"}.osm.pbf` }).end();
         return;
       }
-      const dated = /^\/(.+)-261116\.osm\.pbf(\.md5)?$/.exec(route);
+      // The region's page, linking its dated files by relative addresses as Geofabrik's does.
+      const page = /^\/(.+)\/$/.exec(route);
+      if (page && files.has(page[1]!)) {
+        const file = files.get(page[1]!)!;
+        const name = file.path.split("/").at(-1);
+        const links = (file.dated ?? ["261116"]).map(
+          (day) =>
+            `<tr><td><a href="../${name}-${day}.osm.pbf">${name}-${day}.osm.pbf</a></td><td><a href="../${name}-${day}.osm.pbf.md5">md5</a></td></tr>`,
+        );
+        response.writeHead(200, { "content-type": "text/html" }).end(`<html><body><table>${links.join("")}</table></body></html>`);
+        return;
+      }
+      const dated = /^\/(.+)-(\d{6})\.osm\.pbf(\.md5)?$/.exec(route);
       const file = dated ? files.get(dated[1]!) : undefined;
-      if (!dated || !file) {
+      if (!dated || !file || !(file.dated ?? ["261116"]).includes(dated[2]!)) {
         response.writeHead(404).end();
         return;
       }
-      if (dated[2]) {
-        response.writeHead(200, { "content-type": "text/plain" }).end(`${file.md5}  ${file.path.split("/").at(-1)}-261116.osm.pbf\n`);
+      if (dated[3]) {
+        response.writeHead(200, { "content-type": "text/plain" }).end(`${file.md5}  ${file.path.split("/").at(-1)}-${dated[2]}.osm.pbf\n`);
         return;
       }
       const headers = {

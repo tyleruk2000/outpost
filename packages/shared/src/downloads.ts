@@ -1,5 +1,5 @@
 /** What is being fetched; decides how the file is installed once it is complete. */
-export type DownloadKind = "zim" | "map" | "terrain" | "places" | "file" | "model" | "document" | "dataset";
+export type DownloadKind = "zim" | "map" | "terrain" | "places" | "file" | "model" | "document" | "dataset" | "extract";
 
 export type DownloadState = "queued" | "running" | "paused" | "verifying" | "completed" | "failed" | "cancelled";
 

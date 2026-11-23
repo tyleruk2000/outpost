@@ -100,6 +100,8 @@ describe("a region on a real test server", () => {
     standIn.slow = null;
     for (const pack of await packs()) await app.api("DELETE", `/api/reference/packs/${pack.id}?deleteFiles=1`);
     for (const download of app.ctx.services.downloads.list()) await app.ctx.services.downloads.remove(download.id).catch(() => undefined);
+    for (const row of app.ctx.services.collections.list({ kind: "extract" }))
+      await app.ctx.services.collections.remove(row.id, { deleteFiles: true });
   });
 
   const readList = async () => {
@@ -240,14 +242,32 @@ describe("a region on a real test server", () => {
     expect(offered.suggested[0]).toEqual({ id: "us/ohio", why: "Held already, and holds the home place" });
   });
 
-  it("keeps the extract too when asked", async () => {
+  it("keeps the extract too when asked, as a country file read again with no download", async () => {
     await readList();
     await fetchRegions(["us/ohio"], ["food"], true);
     const [pack] = await packs();
-    expect(pack!.notes).toEqual(["OpenStreetMap only: likely to be fuller in towns than in the country."]);
-    expect(pack!.sizeBytes).toBe(standIn.files.get("north-america/us/ohio")!.body.length);
-    const folder = app.ctx.services.storage.resolve(pack!.locationId, "collections/reference/osm-extract");
-    expect(fs.readdirSync(folder).filter((name) => name.endsWith(".osm.pbf"))).toHaveLength(1);
+    expect(pack!.notes).toEqual([
+      "OpenStreetMap only: likely to be fuller in towns than in the country.",
+      "Read from the country file, which is kept: updating this pack reads it again with no download.",
+    ]);
+    // The file is a country file of its own; the pack holds only its places.
+    const [kept] = app.ctx.services.collections.list({ kind: "extract" });
+    expect(kept).toMatchObject({ title: "Country file: Ohio", sizeBytes: standIn.files.get("north-america/us/ohio")!.body.length });
+    expect(kept!.relPath).toMatch(/^collections\/country-files\/us-ohio-.+\.osm\.pbf$/);
+    expect(fs.existsSync(app.ctx.services.storage.resolve(kept!.locationId, kept!.relPath))).toBe(true);
+
+    // Asked again, it is read from the kept file: nothing is asked of Geofabrik.
+    standIn.requests.length = 0;
+    const again = await estimate(["us/ohio"], ["food", "hospitals"]);
+    expect(again.items[0]).toMatchObject({ bytes: 0, host: "" });
+    expect(again.items[0]!.basis).toMatch(/^Read from the country file kept on .+: nothing is downloaded\./);
+    const started = await app.api("POST", "/api/reference/downloads", { estimateId: again.estimateId, keys: [again.items[0]!.key] });
+    expect(started.body).toMatchObject({ downloads: [], tasks: [expect.any(String)] });
+    await app.ctx.jobs.whenIdle();
+    expect(standIn.requests).toEqual([]);
+    const after = await packs();
+    expect(after).toHaveLength(1);
+    expect(after[0]!.layers).toEqual(expect.arrayContaining(["food", "hospitals"]));
   });
 
   it("holds two regions at once, each its own pack, a place on the line between them once, and removes one alone", async () => {
@@ -291,8 +311,8 @@ describe("a region on a real test server", () => {
     expect(integrity.md5Expected).toMatch(/^[0-9a-f]{32}$/);
     expect(integrity.md5Actual).toMatch(/^[0-9a-f]{32}$/);
     expect(integrity.verified).toBe(false);
-    const folder = app.ctx.services.storage.resolve(row.locationId, "collections/reference/osm-extract");
-    expect(fs.readdirSync(folder)).toEqual([]);
+    const folder = app.ctx.services.storage.resolve(row.locationId, "collections/country-files");
+    expect(fs.readdirSync(folder).filter((name) => name.startsWith("us-kentucky"))).toEqual([]);
     expect(await packs()).toEqual([]);
   });
 
