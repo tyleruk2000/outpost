@@ -37,7 +37,9 @@ you through them again.
 6. **What goes in the book.** The household's name for the cover, the paper (A4 or US
    Letter, first set from the country home is in), the sections, blank pages for notes,
    whether each medical sheet goes in in full, and the size of the grab cards (wallet or
-   A6). Untick sections to print only some.
+   A6). Untick sections to print only some. Under **Your radio plans**, choose whether
+   every radio plan from **Radio → Plans** goes in, or only some. Radio plans are kept
+   for every household, so each household's book takes all of them unless you choose.
 
 ## What is in the book
 
@@ -52,18 +54,19 @@ foot.
 | Fridge sheets | One page for each emergency plan in the book: the number, what to do, who to call, where to meet |
 | Our household | Supplies' household, your answers, and the medical sheets that can be read on this device |
 | Keeping in touch | Contacts marked for emergencies, and the communication plan, with a page for each person |
-| Home and meeting points | A map of home and every meeting point from the offline map on this device, each place in several grid formats, and the people you would go to |
+| Home and meeting points | A map of home and every meeting point from the offline map on this device, a drawing of where to go in each case, each place in several grid formats, and the people you would go to |
 | First aid | Lines of the NHS website's pages, unchanged, and FEMA's words on the recovery position, with drawings of them |
 | Help near home | Hospitals, pharmacies, emergency services, shelters, drinking water, food banks and shops in the reference layers, with distance and direction |
 | Places to keep away from | Nuclear and military sites, airports and fuel stations in the reference layers, and the wind at home |
 | What to do, by situation | Every emergency plan in the book, in full and as you wrote it; for a hazard with no plan, the template's general advice, marked as such |
-| Water | How much for your people and days, how to make it safe (quoted, with drawings of a layered filter, catching rain and boiling), and drinking water near home |
-| Food, toilet and hygiene | The energy your household needs, food after a power cut or a flood, keeping clean with little water |
+| Water | How much for your people and days (with a drawing of each person's litres a day), how to make it safe (the steps drawn in order, then quoted, with drawings of a layered filter, catching rain and boiling), and drinking water near home |
+| Food, toilet and hygiene | The energy your household needs, food after a power cut or a flood (with the hours for the fridge and the freezer drawn on a line), keeping clean with little water |
 | Warmth, light and the radio | Official guidance on keeping warm and lit |
 | Radio frequencies | The communication plan's channels first, then licence-free channels, emergency broadcasting, distress and calling, broadcasters your sets can hear, and repeaters near each of your places with a map of their likely range |
+| Radio plans | Each radio plan from **Radio → Plans** you chose: when to listen and call in local time and UTC, the bands best first, the stations, and the plan's day drawn |
 | Journeys | Each place you would go to, on foot and by car, with a drawing of the route |
 | Checklists | A shopping list for your people and days, the grab bag, the first aid kit and the car, with a box for **Got it** and **To get** |
-| Supplies | What is kept, where and until when, and how long it lasts |
+| Supplies | What is kept, where and until when, and how long food and water last drawn against the days you want |
 | Local risks | Flood and emergency planning zones at home where a layer is held, and the climate's extremes |
 | Grab cards | A card for each person at its real size, wallet (folded) or A6, with marks to cut along: medical lines, who to call, where to meet, home's position |
 | Cards for the children | A card each, to cut out |
@@ -114,6 +117,32 @@ so. The map is drawn from the offline map on the device the book is made on; wit
 installed, the places and repeaters are drawn to scale on a plain grid with a scale bar
 and north. Nothing is fetched from the internet to make it.
 
+## Radio plans
+
+**Radio plans** has a part for each radio plan from **Radio → Plans** that goes in the
+book. It is its own section, not part of **Radio frequencies**: a radio plan is a
+schedule between named stations on HF bands, worked out for a month, while the
+frequencies are channels to listen to or talk on at any time.
+
+Each part starts with **When to listen and call**: the plan's window, and for each pair
+of stations the first and second band with the hours each serves, in UTC and in local
+time. Local time is the time zone of the device the book is made on, on the plan's date,
+so summer time is counted when the plan is for a summer month. A drawing of the plan's
+day follows, an hour a cell, with UTC over it and local time under it. Then the bands in
+order of preference (the plan's own table, then its other bands), the stations, each
+pair's grid of hours on every band as the plan's own paper prints it, and the plan's
+notes. A station shows a call sign when a contact marked for emergencies has the
+station's name or call sign. An emergency plan that names the radio plan is listed.
+
+The figures are the matrix last worked out for the plan, as it stands, on this Outpost.
+A plan with none (never worked out, or changed since) goes in with its bands in the order
+it lists them, and the book says to open it, press **Work out the plan**, and make the
+book again.
+
+An emergency plan's own **Keeping in touch** (its words, the frequency, when, and the
+radio plan it names) is printed on its fridge sheet and with the plan in full, each part
+named, with where the radio plan is in the book.
+
 ## Names in other scripts
 
 The book's typeface has Latin letters only. A name in Greek, Cyrillic, Arabic, Hebrew,
@@ -153,7 +182,11 @@ allow theirs to be reprinted, so the book points to them instead. Clearing cloud
 and catching rain are the CDC's and the US Army's survival manual's words. It holds no
 guidance on toilets without water.
 
-Each drawing shows what the words beside it say and no more. Where the words leave
+Each drawing shows what the words beside it say and no more. The book's own drawings
+are: making water safe in order, each person's litres a day, where to go in each case,
+the plan's day for each radio plan, how long supplies last against the days wanted, and
+the hours for the fridge and the freezer in a power cut (GOV.UK's guidance after a flood,
+listed at the back). Where the words leave
 something open (the US Army's filter names its materials but no order, and no bottle), the
 caption says so.
 
@@ -164,8 +197,8 @@ added or taken out in each section since. Make the book again whenever the house
 plans or its places change, and replace the printed copy.
 
 When anything the last book was made from has changed or been deleted since (the answers,
-emergency plans, contacts, saved places, medical sheets, Keeping in touch, supplies and the
-household), Home and the book's screen say which, with a link to make it again. Facts read
+emergency plans, contacts, saved places, medical sheets, Keeping in touch, radio plans,
+supplies and the household), Home and the book's screen say which, with a link to make it again. Facts read
 round home (help nearby, the wind, terrain) are not watched. A household binder made
 before the binder became part of the book stands in for the book until the book is made.
 

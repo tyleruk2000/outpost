@@ -69,6 +69,12 @@ export const BOOK_SECTIONS = [
       "The communication plan's channels first, then licence-free channels, emergency and calling frequencies, broadcasters and repeaters near our places with maps of their range, each with whether it needs a licence.",
   },
   {
+    id: "radio-plans",
+    label: "Radio plans",
+    about:
+      "Each radio plan from Radio › Plans: its stations, when to listen and call in local time and UTC, and the bands in order of preference.",
+  },
+  {
     id: "journeys",
     label: "Journeys",
     about: "To each place you would go: on foot, with a stop for each day, and by car, with a drawn route.",
@@ -191,6 +197,10 @@ export interface BookAnswers {
   grabCardSize: "wallet" | "a6";
   /** The plans chosen when `planChoice` is "some". */
   planIds: string[];
+  /** Which radio plans (Radio › Plans, kept for every household) go in the book: all of them, or only those in `radioPlanIds`. */
+  radioPlanChoice: "all" | "some";
+  /** The radio plans chosen when `radioPlanChoice` is "some". */
+  radioPlanIds: string[];
 }
 
 export const DEFAULT_BOOK_ANSWERS: BookAnswers = {
@@ -211,6 +221,8 @@ export const DEFAULT_BOOK_ANSWERS: BookAnswers = {
   planChoice: "all",
   grabCardSize: "wallet",
   planIds: [],
+  radioPlanChoice: "all",
+  radioPlanIds: [],
 };
 
 /** The plans that go in the book, by the answers: all of them, or those chosen that still exist. */
@@ -218,6 +230,16 @@ export function bookPlanIds(answers: Pick<BookAnswers, "planChoice" | "planIds">
   return answers.planChoice === "all"
     ? plans.map((plan) => plan.id)
     : plans.filter((plan) => answers.planIds.includes(plan.id)).map((plan) => plan.id);
+}
+
+/** The radio plans that go in the book, by the answers: all of them, or those chosen that still exist, in the list's order. */
+export function bookRadioPlanIds(
+  answers: Pick<BookAnswers, "radioPlanChoice" | "radioPlanIds">,
+  plans: ReadonlyArray<{ id: string }>,
+): string[] {
+  return answers.radioPlanChoice === "some"
+    ? plans.filter((plan) => answers.radioPlanIds.includes(plan.id)).map((plan) => plan.id)
+    : plans.map((plan) => plan.id);
 }
 
 /** The hazards the household has a plan for, by the template each plan was started from. */
@@ -256,6 +278,7 @@ export const BOOK_SOURCES = [
   { id: "places", label: "saved places" },
   { id: "medical", label: "medical sheets" },
   { id: "comms", label: "keeping in touch" },
+  { id: "radio", label: "radio plans" },
   { id: "supplies", label: "supplies and the household" },
 ] as const;
 export type BookSource = (typeof BOOK_SOURCES)[number]["id"];
