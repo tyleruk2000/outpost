@@ -1960,7 +1960,7 @@ function journeys(c: Context): Section {
       "know",
       "How these are worked out",
       para(
-        `Each journey is the straight line from home: Outpost has no road routing, so it cannot follow the roads, and the way on the ground is longer. The time on foot is worked out along that line with Tobler's hiking function (5 km/h on level ground, slower up and down the slopes of the ground along the line, from the terrain installed), for a fit adult with no load, and at half that pace, Outpost's allowance for someone hurt, tired, unused to hills, or with small children. ${c.answers.walkHoursPerDay} hours of walking a day is your own figure from the questions.`,
+        `Each journey is the straight line from home, so the way on the ground is longer; for the roads to take, plan a road route under Maps › Routes and print its route card. The time on foot is worked out along that line with Tobler's hiking function (5 km/h on level ground, slower up and down the slopes of the ground along the line, from the terrain installed), for a fit adult with no load, and at half that pace, Outpost's allowance for someone hurt, tired, unused to hills, or with small children. ${c.answers.walkHoursPerDay} hours of walking a day is your own figure from the questions.`,
         0,
       ),
     ),

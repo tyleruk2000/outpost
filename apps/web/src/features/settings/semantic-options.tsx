@@ -249,8 +249,10 @@ export function SemanticOptions({
           {stage === "empty" && data.totalChunks > 0 ? (
             <p className="mt-2 text-small text-ink-muted">
               Building reads {plural(remaining, "passage")} and adds about {cost.disk} to the database.
-              {usesBuiltIn ? ` On a recent laptop that takes about ${cost.time}; a small computer takes several times longer.` : ""} It runs
-              in the background and can be paused.
+              {usesBuiltIn
+                ? ` On a recent laptop that takes about ${cost.time}; a Raspberry Pi 5 takes about five times longer (about four minutes per thousand passages).`
+                : ""}{" "}
+              It runs in the background and can be paused.
             </p>
           ) : null}
           {stage === "empty" && data.totalChunks === 0 ? (
@@ -418,8 +420,9 @@ function Cost({ passages, dimensions }: { passages: number; dimensions: number }
       <div>
         <dt className="font-medium text-ink">Time to build the index</dt>
         <dd className="mt-0.5 text-ink-muted">
-          About {perThousand.time} for every thousand passages on a recent laptop; several times longer on a small computer such as a
-          Raspberry Pi.{passages > 0 ? ` This library has ${formatNumber(passages)}: about ${cost.time} on that laptop.` : ""}
+          About {perThousand.time} for every thousand passages on a recent laptop; about four minutes for every thousand on a Raspberry Pi
+          5, or build them on a faster computer and import them.
+          {passages > 0 ? ` This library has ${formatNumber(passages)}: about ${cost.time} on that laptop.` : ""}
         </dd>
       </div>
       <div>

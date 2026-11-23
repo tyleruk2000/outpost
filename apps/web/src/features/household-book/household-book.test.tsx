@@ -335,7 +335,7 @@ describe("the book's pages", () => {
   it("walks the journey with a stop for each night, and says the van cannot get there on one tank", () => {
     expect(all).toContain("To Gran's");
     expect(all).toContain("Midway");
-    expect(all).toMatch(/Outpost has no road routing/);
+    expect(all).toMatch(/plan a road route under Maps › Routes/);
     expect(all).toMatch(/The van: about 30 km.*cannot get there on one/s);
   });
 
