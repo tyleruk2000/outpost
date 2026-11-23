@@ -20,9 +20,10 @@ import {
   RANGE_STATIONS,
   type RepeaterBand,
   type RepeaterDto,
+  type SightRange,
 } from "@outpost/shared";
 import type { BinderPlace } from "@/features/household-papers/binder-places";
-import type { Frame } from "@/features/maps/print/scale";
+import { type Frame, shapeBox } from "@/features/maps/print/scale";
 import { frameFor, type PictureSize, pictureSize } from "@/features/nuclear/print-frames";
 
 /** A place the book lists repeaters round. A journey is its straight line, from `lat`/`lon` to `to`. */
@@ -239,11 +240,14 @@ export function placeLabel(location: RepeaterLocation): string {
 
 /** A repeater's likely range for the map: from the terrain installed (`/api/maps/sight-range`), or the smooth-Earth radio horizon. */
 export interface BookRepeaterRange {
+  /** The typical range (terrain), or the radio horizon. */
   meters: number;
   basis: "terrain" | "horizon";
   aerialMeters: number;
   /** Whether the list gave the aerial's height; otherwise `RANGE_DEFAULT_AERIAL_METERS` was assumed. */
   aerialListed: boolean;
+  /** The ground in sight of the aerial for a handheld, bearing by bearing, as the map's estimated range shades it. With terrain only. */
+  sight?: SightRange;
 }
 
 /** The handheld the range is worked out for: 1.5 m, held at head height. */
@@ -264,7 +268,8 @@ export function horizonRange(repeater: Pick<RepeaterDto, "antennaMeters">): Book
 
 /** The most maps of repeaters a book draws. */
 export const REPEATER_MAPS_MOST = 8;
-const MAP_HEIGHT = 300;
+/** Every map is the full width of the text and this high, in points: more ground east and west than north and south. */
+export const REPEATER_MAP_HEIGHT = 300;
 /** The least ground a map shows across: about 10 km. */
 const LEAST_SPAN_METERS = 10_000;
 
@@ -272,8 +277,11 @@ const LEAST_SPAN_METERS = 10_000;
 export const mappedGroups = (groups: readonly RepeaterGroup[]) =>
   groups.filter((group) => group.chosen.length > 0 || (group.location.to && group.also.length > 0)).slice(0, REPEATER_MAPS_MOST);
 
-/** The ground a place's map shows: the place (or the line), and every repeater chosen round it, with a margin. */
-export function repeaterMapBbox(group: RepeaterGroup): Bbox {
+/**
+ * The ground a place's map shows: the place (or the line), and every repeater chosen round it, with a margin, widened
+ * (or deepened) about its middle to the shape of the picture, `aspect` being its width over its height.
+ */
+export function repeaterMapBbox(group: RepeaterGroup, aspect?: number): Bbox {
   const points = [
     { lat: group.location.lat, lon: group.location.lon },
     ...(group.location.to ? [group.location.to] : []),
@@ -287,12 +295,15 @@ export function repeaterMapBbox(group: RepeaterGroup): Bbox {
   const least = LEAST_SPAN_METERS / 111_320;
   const padLat = Math.max((north - south) * 0.12, least / 2 - (north - south) / 2, 0.02);
   const padLon = Math.max((east - west) * 0.12, least / cos / 2 - (east - west) / 2, 0.02 / cos);
-  return [west - padLon, Math.max(-85, south - padLat), east + padLon, Math.min(85, north + padLat)];
+  const box: Bbox = [west - padLon, Math.max(-85, south - padLat), east + padLon, Math.min(85, north + padLat)];
+  return aspect ? shapeBox(box, aspect, "around") : box;
 }
 
 /** The map of a place: its picture's size on the page and the view it is drawn at. The screen draws the offline map at this frame. */
 export function repeaterMapFrame(group: RepeaterGroup, measure: number): { bbox: Bbox; size: PictureSize; frame: Frame } {
-  const bbox = repeaterMapBbox(group);
-  const size = pictureSize(bbox, measure, MAP_HEIGHT);
+  // A few points in from each side, so that the scale bar's 0 under the left edge is not cut.
+  const width = measure - 8;
+  const bbox = repeaterMapBbox(group, width / REPEATER_MAP_HEIGHT);
+  const size = pictureSize(bbox, width, REPEATER_MAP_HEIGHT);
   return { bbox, size, frame: frameFor(bbox, size.pixels) };
 }

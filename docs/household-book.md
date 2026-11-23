@@ -60,7 +60,7 @@ foot.
 | Water | How much for your people and days, how to make it safe (quoted, with drawings of a layered filter, catching rain and boiling), and drinking water near home |
 | Food, toilet and hygiene | The energy your household needs, food after a power cut or a flood, keeping clean with little water |
 | Warmth, light and the radio | Official guidance on keeping warm and lit |
-| Radio frequencies | The communication plan's channels first, then licence-free channels, emergency broadcasting, distress and calling, broadcasters your sets can hear, and repeaters near each of your places with a map of their likely range |
+| Radio frequencies | The communication plan's channels first, then licence-free channels, emergency broadcasting, distress and calling, broadcasters your sets can hear, and repeaters near each of your places with a map of the ground each can reach |
 | Journeys | Each place you would go to, on foot and by car, with a drawing of the route |
 | Checklists | A shopping list for your people and days, the grab bag, the first aid kit and the car, with a box for **Got it** and **To get** |
 | Supplies | What is kept, where and until when, and how long it lasts |
@@ -97,22 +97,33 @@ ones, and those listed as not operational are left out. These distances are Outp
 choice of what is worth trying, not a range.
 
 Each repeater is listed once, under the first place it is near; a later place names it
-as also near. The table gives the callsign, the output (listen on it), the input with its
-shift (talk on it), the tone, the mode, where it is, its distance and direction from the
-place (from the line, and how far along, for a journey), and its likely range. Under the
-tables the book names each list the repeaters came from and the date of its data.
+as also near. The table gives the callsign, the output, the input with its shift, the
+tone, the mode, where it is, its distance and direction from the place (from the line,
+and how far along, for a journey), and its likely range. A short key under the first
+table says what the columns mean: the output is the frequency you listen on (the repeater
+transmits), the input the one you transmit on (the repeater listens), the shift is the
+input minus the output, and the tone (CTCSS, or a DCS code) is what your radio must send
+to open the repeater. Under the tables the book names each list the repeaters came from
+and the date of its data.
 
-A map follows for each place with repeaters of its own and for each journey: the place,
-the repeaters with their callsigns, and a circle round each for its likely range, dashed
-differently for 2 m, 70 cm and other bands so they stay apart on a black-and-white copy.
-Where terrain is installed, the circle is the repeater's typical range worked out from it
-for a handheld, as **Estimated range** on the map gives it. Without terrain it is the
-radio horizon over flat ground between the repeater's aerial (its listed height, or 10 m
-when the list gives none) and a handheld at head height. Either way it is a rough guide,
-not a coverage prediction: hills and buildings block VHF and UHF, and the caption says
-so. The map is drawn from the offline map on the device the book is made on; with none
-installed, the places and repeaters are drawn to scale on a plain grid with a scale bar
-and north. Nothing is fetched from the internet to make it.
+A map follows for each place with repeaters of its own and for each journey, the full
+width of the page: the offline map, the place, and the repeaters with their callsigns,
+each label kept inside the frame and clear of the others. Round each repeater the map
+shades the ground in sight of its aerial for a handheld at head height (1.5 m), worked
+out from the terrain installed, as **Estimated radio range** on the map shades it. The
+aerial is at the height the list gives, or 10 m where it gives none, and the caption
+names the repeaters whose height was assumed. Each repeater's ground has a light tint, a
+hatching at its own angle and an outline with its own dash, and the key under the map
+shows each one, so overlapping areas read apart in colour and on a black-and-white copy.
+
+Working this out takes a second or so a repeater; the book screen says how far it has
+got ("Working out repeater coverage, 3 of 6"). Where no terrain is installed under a
+repeater, a circle at its radio horizon over flat ground stands in, and the caption says
+so. Either way it is line of sight only, a rough guide: buildings and trees block more,
+and a signal often reaches a little past a ridge. The map is drawn from the offline map
+on the device the book is made on; with none installed, or none covering the place, the
+places and repeaters are drawn to scale on a plain grid with a scale bar and north.
+Nothing is fetched from the internet to make it.
 
 ## Names in other scripts
 

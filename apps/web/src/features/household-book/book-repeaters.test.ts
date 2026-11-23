@@ -263,14 +263,22 @@ describe("the repeaters in the book", () => {
     const mapped = mappedGroups(bookRepeaterGroups(bookInputs()));
     expect(mapped.length).toBeGreaterThanOrEqual(2);
     expect(words).toContain("Repeaters: Home");
-    expect(words).toContain("A rough guide, not a coverage prediction.");
-    expect(words).toContain("Hills and buildings block VHF and UHF");
-    expect(words).toMatch(/GB3NEAR \(24 km\): the typical range worked out from the terrain installed/);
-    expect(words).toMatch(/smooth-Earth radio horizon/);
+    expect(words).toContain("A rough guide:");
+    expect(words).toContain("buildings and trees block more");
+    // No terrain is installed in these inputs: every repeater is a circle, and the caption says why.
+    expect(words).toMatch(/no terrain installed there, so a circle at the radio horizon over flat ground/);
     expect(words).toContain("drawn to scale on a plain grid");
   });
 
-  it("draws each band's circle with its own dash, the callsigns and the key", () => {
+  it("says what output, input, shift and tone mean, once, by the first table", () => {
+    expect(words).toContain(
+      "Output: the frequency you listen on (the repeater transmits, your radio receives). Input: the frequency you transmit on (your radio sends, the repeater listens). Shift: input minus output. Tone (CTCSS): the sub-audible tone your radio must send to open the repeater",
+    );
+    expect(words.split("Output: the frequency you listen on")).toHaveLength(2);
+    expect(words.indexOf("Output: the frequency")).toBeGreaterThan(words.indexOf("GB3NEAR"));
+  });
+
+  it("draws each repeater's circle with its own dash where no terrain is installed, with the callsigns and the key", () => {
     const groups = bookRepeaterGroups(bookInputs());
     const { svg } = repeaterMapSvg({
       group: groups[0]!,
@@ -280,10 +288,12 @@ describe("the repeaters in the book", () => {
       missing: null,
       measure: 499,
     });
-    expect(svg).toContain('stroke-dasharray="7 3"');
-    expect(svg).toContain('stroke-dasharray="2 2"');
+    expect(svg).toContain('data-circle="GB3NEAR"');
+    expect(svg).toContain('stroke-dasharray="6 2.5"');
+    expect(svg).toContain('stroke-dasharray="2 1.6"');
+    expect(svg).not.toContain("data-coverage");
     expect(svg).toContain(">GB3NEAR<");
-    expect(svg).toContain("2 m: likely range");
+    expect(svg).toContain(">GB3NEAR (circle)<");
     expect(svg).toContain("Grid lines");
   });
 

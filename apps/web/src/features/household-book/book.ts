@@ -128,6 +128,7 @@ import {
   quote,
   rainCatch,
   recoveryPosition,
+  rich,
   sectionHeader,
   seedOf,
   sheetItemsToSvg,
@@ -900,6 +901,10 @@ function repeaterRow(c: Context, each: ChosenRepeater, journey: boolean): string
   ];
 }
 
+/** What a repeater table's columns mean, printed under the first. */
+export const REPEATER_KEY =
+  "**Output:** the frequency you listen on (the repeater transmits, your radio receives). **Input:** the frequency you transmit on (your radio sends, the repeater listens). **Shift:** input minus output. **Tone (CTCSS):** the sub-audible tone your radio must send to open the repeater; DCS is a digital code used the same way. **Likely range:** the typical range for a handheld at head height.";
+
 /** Repeaters round every place, grouped by place, with a map of each; the lists they came from and their dates. */
 function repeaterContent(c: Context, notes: NoteList, summary: string[]): Content[] {
   const content: Content[] = [label("Repeaters near our places")];
@@ -913,9 +918,7 @@ function repeaterContent(c: Context, notes: NoteList, summary: string[]): Conten
     ];
   const cited = notes.cite(licenceLine("listen-and-transmit", NO_RADIO_LICENCE)?.text ?? "");
   content.push(
-    para(
-      `The nearest useful repeaters round each place in this book, each listed once, under the first place it is near. ${SEARCH_WORDS} Listen on the output; talk on the input, sending the tone where one is listed.`,
-    ),
+    para(`The nearest useful repeaters round each place in this book, each listed once, under the first place it is near. ${SEARCH_WORDS}`),
     {
       columns: [
         { text: "Talking on any of them:", fontSize: PRINT_TYPE.small, width: "auto", margin: [0, 1, 4, 0] },
@@ -924,11 +927,12 @@ function repeaterContent(c: Context, notes: NoteList, summary: string[]): Conten
       margin: [0, 0, 0, 4],
     } as Content,
   );
+  let keyed = false;
   for (const group of groups) {
     const journey = Boolean(group.location.to);
     const title = placeLabel(group.location);
     content.push(heading(title));
-    if (group.chosen.length > 0)
+    if (group.chosen.length > 0) {
       content.push(
         dataTable(
           ["Callsign", "Output", "Input (shift)", "Tone", "Mode", "Where", journey ? "From the line" : "From here", "Likely range"],
@@ -936,6 +940,10 @@ function repeaterContent(c: Context, notes: NoteList, summary: string[]): Conten
           { right: [1, 2] },
         ),
       );
+      // What the columns mean, once, under the first table.
+      if (!keyed) content.push({ text: rich(REPEATER_KEY) as never, fontSize: PRINT_TYPE.small, margin: [0, 0, 0, 6] } as Content);
+      keyed = true;
+    }
     if (group.also.length > 0) {
       // Grouped by the place each is listed under: "Also near: GB3AA 4 km N, GB3BB 7 km E (listed under Home)."
       const under = [...new Set(group.also.map((each) => each.listedUnder))];
