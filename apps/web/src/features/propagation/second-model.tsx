@@ -105,7 +105,7 @@ function Setup({ status }: { status: SecondModelStatus }) {
   const download = useMutation({
     mutationFn: () => api.post("/api/radio/propagation/second-model/maps/download", { locationId: chosen }),
     onSuccess: () => {
-      toast.success("Fetching the P.533 maps. Progress is under Downloads.");
+      toast.success("Fetching the P.533 maps. Progress is under Downloads and tasks.");
       void client.invalidateQueries({ queryKey: statusKey });
     },
     onError: (error) => notify.error(errorMessage(error)),
@@ -116,7 +116,7 @@ function Setup({ status }: { status: SecondModelStatus }) {
       {!status.engine.built ? <EngineSetup status={status} /> : null}
       {!status.maps.installed ? (
         status.maps.downloading ? (
-          <p className="mt-2 text-small text-ink-muted">The maps are downloading. Progress is under Downloads.</p>
+          <p className="mt-2 text-small text-ink-muted">The maps are downloading. Progress is under Downloads and tasks.</p>
         ) : (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {available.length > 1 ? (

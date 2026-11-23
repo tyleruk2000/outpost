@@ -49,7 +49,7 @@ const SCREENS: Record<string, string> = {
   library: "The library",
   notes: "The list of your pages",
   import: "Importing",
-  downloads: "Downloads",
+  downloads: "Downloads and tasks",
   storage: "Storage",
   settings: "Settings",
   prepare: "Preparedness",

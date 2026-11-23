@@ -428,7 +428,8 @@ export interface BuildStats {
 
 export interface BuildOptions {
   signal?: AbortSignal;
-  progress?: (message: string, bytes: number, total: number) => void;
+  /** `unit` is what `done` and `total` count: bytes of the file while it is read, ways while the junctions are sorted. */
+  progress?: (message: string, done: number, total: number, unit?: "bytes" | "ways") => void;
   /** Leave out secondary roads (for measuring only). */
   withoutSecondary?: boolean;
 }
@@ -700,7 +701,7 @@ export async function buildNetwork(filePath: string, options: BuildOptions = {})
     blocks += 1;
     if (blocks % BLOCKS_PER_YIELD === 0) {
       sampleRss();
-      options.progress?.("Reading the roads (pass 1 of 2)", blob.offset, total);
+      options.progress?.("Reading the roads (pass 1 of 2)", blob.offset, total, "bytes");
       await yieldToEventLoop();
     }
   }
@@ -723,7 +724,7 @@ export async function buildNetwork(filePath: string, options: BuildOptions = {})
   for (const index of ferryPending) dropped[index] = 1;
 
   // Pass 2, in memory: unique ids, and each way's ids as positions in that list.
-  options.progress?.("Sorting the junctions", total, total);
+  options.progress?.("Sorting the junctions", 0, wayId.length, "ways");
   const allRefs = refs.done();
   refs.data = new Float64Array(0);
   const sorted = allRefs.slice().sort();
@@ -747,7 +748,10 @@ export async function buildNetwork(filePath: string, options: BuildOptions = {})
       isNode[refIndex[a]!] = 1;
       isNode[refIndex[b - 1]!] = 1;
     }
-    if (w % 50_000 === 0) await yieldToEventLoop();
+    if (w % 50_000 === 0) {
+      options.progress?.("Sorting the junctions", w, wayId.length, "ways");
+      await yieldToEventLoop();
+    }
   }
   for (let i = 0; i < unique; i += 1) if (uses[i]! >= 2) isNode[i] = 1;
   for (const id of junctions.keys()) {
@@ -780,7 +784,7 @@ export async function buildNetwork(filePath: string, options: BuildOptions = {})
     blocks += 1;
     if (blocks % BLOCKS_PER_YIELD === 0) {
       sampleRss();
-      options.progress?.("Reading the roads' positions (pass 2 of 2)", blob.offset, total);
+      options.progress?.("Reading the roads' positions (pass 2 of 2)", blob.offset, total, "bytes");
       await yieldToEventLoop();
     }
   }

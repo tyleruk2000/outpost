@@ -26,7 +26,7 @@ export function useDownloadEngineData() {
   return useMutation({
     mutationFn: () => api.post<{ download: unknown | null; status: EngineDataStatus }>("/api/radio/propagation/engine-data/download", {}),
     onSuccess: (answer) => {
-      toast.success(answer.download ? "Fetching VOACAP's data. Progress is under Downloads." : "VOACAP's data is back in place.");
+      toast.success(answer.download ? "Fetching VOACAP's data. Progress is under Downloads and tasks." : "VOACAP's data is back in place.");
       void client.invalidateQueries({ queryKey: ["propagation"] });
     },
     onError: (error) => notify.error(errorMessage(error)),
@@ -42,7 +42,7 @@ export function EngineDataLine({ data, className }: { data: EngineDataStatus; cl
       <p className="mt-1 text-small text-ink-muted">{data.why}</p>
       {data.downloading ? (
         <p className="mt-2 text-small text-ink-muted" aria-live="polite">
-          Downloading. Progress is under Downloads; the planner is ready as soon as it finishes.
+          Downloading. Progress is under Downloads and tasks; the planner is ready as soon as it finishes.
         </p>
       ) : (
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">

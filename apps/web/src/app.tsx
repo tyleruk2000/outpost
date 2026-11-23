@@ -27,6 +27,7 @@ const EncryptionPage = lazy(() => import("./features/encryption/encryption-page"
 const ExplorePage = lazy(() => import("./features/explore/explore-page"));
 const DownloadsPage = lazy(() => import("./features/downloads/downloads-page"));
 const DownloadPage = lazy(() => import("./features/downloads/download-page"));
+const TaskPage = lazy(() => import("./features/downloads/task-page"));
 const UnderstandPage = lazy(() => import("./features/understand/understand-page"));
 const HowMeaningWorksPage = lazy(() => import("./features/how-meaning-works/how-meaning-works-page"));
 const MapsPage = lazy(() => import("./features/maps/maps-page"));
@@ -185,6 +186,7 @@ export function App() {
           <Route path="encryption" element={<EncryptionPage />} />
           <Route path="downloads" element={<DownloadsPage />} />
           <Route path="downloads/:id" element={<DownloadPage />} />
+          <Route path="downloads/tasks/:id" element={<TaskPage />} />
           <Route path="search/how-it-works" element={<UnderstandPage />} />
           <Route path="search/how-meaning-works" element={<HowMeaningWorksPage />} />
           <Route path="storage" element={<StoragePage />} />

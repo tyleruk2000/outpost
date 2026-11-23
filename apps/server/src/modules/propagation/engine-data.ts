@@ -266,7 +266,7 @@ export function registerEngineData(
 
   app.delete("/api/radio/propagation/engine-data", async () => {
     if (ctx.services.downloads.list().some((row) => isOurs(row.meta) && ACTIVE.includes(row.state)))
-      throw conflict("VOACAP's data is being downloaded. Wait for it to finish, or cancel it under Downloads.");
+      throw conflict("VOACAP's data is being downloaded. Wait for it to finish, or cancel it under Downloads and tasks.");
     for (const row of ourCollections()) {
       if (ctx.services.collections.isBusy(row.id)) throw conflict("VOACAP's data is being moved or checked. Wait for that to finish.");
       await ctx.services.collections.remove(row.id, { deleteFiles: ctx.services.storage.isAvailable(row.locationId) });

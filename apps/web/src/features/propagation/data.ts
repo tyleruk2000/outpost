@@ -148,7 +148,7 @@ export const useDownloadSolar = () =>
   useChange(
     (locationId: string | undefined) => api.post("/api/radio/propagation/datasets/solar-cycle/download", { locationId }),
     keys.datasets,
-    "Fetching the solar cycle table. Progress is under Downloads.",
+    "Fetching the solar cycle table. Progress is under Downloads and tasks.",
   );
 
 // ── The form ────────────────────────────────────────────────────────────────

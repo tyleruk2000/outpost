@@ -158,7 +158,7 @@ test.describe("on a phone", () => {
           ["Skerry", "/games/skerry"],
         ],
       ],
-      ["Downloads", "/downloads", []],
+      ["Downloads and tasks", "/downloads", []],
       [
         "Storage",
         "/storage",

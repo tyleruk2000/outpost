@@ -206,7 +206,7 @@ function EstimateResult({ estimate, onDone }: { estimate: ReferenceEstimate; onD
               {
                 onSuccess: (result) => {
                   destination.remember();
-                  toast.success(`${plural(result.downloads.length, "download")} started. Progress is under Downloads.`);
+                  toast.success(`${plural(result.downloads.length, "download")} started. Progress is under Downloads and tasks.`);
                   onDone();
                 },
               },

@@ -293,7 +293,7 @@ export function createOfflineDrillService(ctx: AppContext, changed: () => void):
       lines.push(
         safely("downloads", "Anything half-downloaded", () => {
           const unfinished = s.downloads.unfinished().filter((row) => row.state !== "cancelled");
-          const link = { to: "/downloads", label: "Downloads" };
+          const link = { to: "/downloads", label: "Downloads and tasks" };
           return unfinished.length > 0
             ? {
                 id: "downloads",

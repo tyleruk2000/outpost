@@ -171,7 +171,7 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
           .get(provider.modelId) as { n: number }
       ).n;
       let done = 0;
-      progress({ current: 0, total, message: "Reading passages" });
+      progress({ current: 0, total, message: "Reading passages", unit: "passages" });
       pace = { modelId: provider.modelId, first: { at: Date.now(), done: 0 }, done: 0, total };
       for (;;) {
         signal.throwIfAborted();

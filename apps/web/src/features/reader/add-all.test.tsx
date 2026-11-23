@@ -207,7 +207,7 @@ describe("adding all of them", () => {
       ),
     );
     expect(dialog).toHaveTextContent("Pages that are scans are not read; a document that has some offers OCR on its own page.");
-    expect(dialog).toHaveTextContent("It carries on if you close this page, and can be stopped here or under Downloads.");
+    expect(dialog).toHaveTextContent("It carries on if you close this page, and can be stopped here or under Downloads and tasks.");
     expect(dialog).toHaveTextContent("What has been added stays in your library, also if this collection is removed later.");
     // Nothing has been started by opening it.
     expect(server.calls).not.toContain(`POST ${BASE}/files/add-all`);
@@ -220,7 +220,7 @@ describe("adding all of them", () => {
     expect(status).toHaveTextContent("Adding documents to your library · 1 of 3");
     expect(status).toHaveTextContent("Adding “Finding north without a compass”");
     expect(status).toHaveTextContent(
-      "You can leave this page; it carries on, and shows under Downloads. Stopping keeps what has been added.",
+      "You can leave this page; it carries on, and shows under Downloads and tasks. Stopping keeps what has been added.",
     );
     expect(within(status).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "33.33333333333333");
     // While it runs there is no second way to start it.

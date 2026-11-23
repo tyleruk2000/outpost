@@ -274,7 +274,7 @@ function Wizard({ status, onClose, startAt }: { status: PortableStatus; onClose:
               </div>
               <Progress value={fraction} tone="lamp" label="Writing the drive" />
               <p className="mt-3 text-small text-ink-muted">
-                Keep the drive plugged in. You can close this window; the work carries on and shows under Downloads.
+                Keep the drive plugged in. You can close this window; the work carries on and shows under Downloads and tasks.
               </p>
             </div>
           )}

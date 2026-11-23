@@ -623,7 +623,7 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
       });
     }
     if (jobs.list({ states: ["queued", "running"], types: ["portable.build"], limit: 1 }).length > 0) {
-      throw conflict("A drive is already being written. Wait for it to finish, or cancel it on the Downloads screen.");
+      throw conflict("A drive is already being written. Wait for it to finish, or cancel it on the Downloads and tasks screen.");
     }
     const job = jobs.enqueue("portable.build", body, {
       title: `Write portable drive to ${path.basename(current.target.path)}`,

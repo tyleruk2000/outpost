@@ -172,7 +172,7 @@ formula, its source with the date read, and the range it holds for.
 
 | Feature | What it does |
 | --- | --- |
-| [Downloads](docs/offline.md) | Every download and job in one list: resumable, retried and checksummed. |
+| [Downloads and tasks](docs/downloads-and-tasks.md) | Every download and every task Outpost works on in one place: progress, rate, time left and what happened; downloads resumable, retried and checksummed. |
 | [Storage](docs/storage.md) | Disks, USB drives and NAS shares as storage locations; collections move between them with verification. |
 | [Manage and clean up](docs/storage.md) | Everything installed in one list; each removal says first whether it can be undone. |
 | [Backups](docs/storage.md#backing-up) | The database, attachments and text to a file, by hand or on a schedule, optionally encrypted. |

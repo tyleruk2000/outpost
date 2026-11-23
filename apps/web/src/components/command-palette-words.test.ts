@@ -64,7 +64,8 @@ const lands: Array<[string, string | null]> = [
   ["offline drill", "Preparedness: Offline drill"],
   ["pace", "Preparedness: Keeping in touch"],
   ["wikipedia", "Explore"],
-  ["download", "Downloads"],
+  ["download", "Downloads and tasks"],
+  ["background work", "Downloads and tasks"],
   ["disk space", "Storage"],
   ["delete", "Storage: Manage and clean up"],
   ["pages", "Notes"],
@@ -164,7 +165,7 @@ describe("the quick search's places, for the words people use", () => {
   });
 
   it("finds a screen by its own name before one that only mentions the word", () => {
-    expect(findPlaces("download").map(placeName).slice(0, 3)).toEqual(["Downloads", "Settings: Downloads", "Explore"]);
+    expect(findPlaces("download").map(placeName).slice(0, 3)).toEqual(["Downloads and tasks", "Settings: Downloads", "Explore"]);
   });
 
   it("leaves out the small words of a question, but not when they are all there is", () => {

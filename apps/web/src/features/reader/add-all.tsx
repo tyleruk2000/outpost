@@ -301,7 +301,7 @@ export function AddAllStatus({
           className="mt-3"
         />
         <p className="mt-2 text-small text-ink-muted">
-          You can leave this page; it carries on, and shows under Downloads. Stopping keeps what has been added.
+          You can leave this page; it carries on, and shows under Downloads and tasks. Stopping keeps what has been added.
         </p>
       </section>
     );
@@ -433,8 +433,8 @@ export function AddAllDialog({
                     : "Pages that are scans are not read; a document that has some offers OCR on its own page."}
                 </p>
                 <p className="text-ink-muted">
-                  It carries on if you close this page, and can be stopped here or under Downloads. What has been added stays in your
-                  library, also if this collection is removed later.
+                  It carries on if you close this page, and can be stopped here or under Downloads and tasks. What has been added stays in
+                  your library, also if this collection is removed later.
                 </p>
                 {data!.refusal ? (
                   <Notice tone="warning" icon={<CircleAlert />} title="There is not room for them">

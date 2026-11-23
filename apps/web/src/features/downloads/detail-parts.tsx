@@ -103,14 +103,28 @@ const KEPT_LAST = 7;
  * download is alive.
  */
 export function History({ events, alive, now }: { events: DownloadEvent[]; alive: boolean; now: number }) {
+  return (
+    <Timeline
+      lines={describeEvents(events)}
+      alive={alive}
+      now={now}
+      empty="Nothing was recorded for this download. Downloads started by an older version of Outpost have no history."
+    />
+  );
+}
+
+/** One step of a history in words. */
+export interface TimelineLine {
+  at: number;
+  title: string;
+  detail?: string | null;
+  tone: Tone;
+}
+
+/** Steps as a connected line, oldest first; the last is lit while the thing is alive. A long middle folds away. */
+export function Timeline({ lines, alive, now, empty }: { lines: TimelineLine[]; alive: boolean; now: number; empty: string }) {
   const [unfolded, setUnfolded] = useState(false);
-  const lines = describeEvents(events);
-  if (lines.length === 0)
-    return (
-      <p className="text-small text-ink-muted">
-        Nothing was recorded for this download. Downloads started by an older version of Outpost have no history.
-      </p>
-    );
+  if (lines.length === 0) return <p className="text-small text-ink-muted">{empty}</p>;
 
   const folded = !unfolded && lines.length > FOLD_OVER;
   const hidden = folded ? lines.length - KEPT_FIRST - KEPT_LAST : 0;

@@ -280,7 +280,7 @@ export function AddRegion({
       {
         onSuccess: () => {
           destination.remember();
-          toast.success(`Downloading “${regionName}” to ${kept}. Progress is shown here and under Downloads.`);
+          toast.success(`Downloading “${regionName}” to ${kept}. Progress is shown here and under Downloads and tasks.`);
           onClose();
         },
       },

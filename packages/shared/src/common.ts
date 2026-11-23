@@ -16,7 +16,11 @@ export interface JobDto {
   state: JobState;
   title: string;
   subject: string | null;
-  progress: { current: number; total: number | null; message: string | null };
+  /**
+   * `unit` says what current and total count ("bytes", "passages"); absent or null when the job does not say.
+   * `ratePerSecond` is how many of them it does a second, smoothed over the last few minutes, while it runs.
+   */
+  progress: { current: number; total: number | null; message: string | null; unit?: string | null; ratePerSecond?: number | null };
   error: string | null;
   errorKind: string | null;
   attempts: number;

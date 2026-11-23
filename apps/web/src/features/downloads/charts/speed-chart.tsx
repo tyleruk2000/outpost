@@ -31,8 +31,13 @@ export function SpeedChart({
   tableCaption,
   tableBucketSeconds,
   className,
+  format = formatSpeed,
+  formatTick = formatRate,
+  ticksFor = speedTicks,
+  valueName = "Speed",
+  gapMs = GAP_MS,
 }: {
-  /** Oldest first. `value` is bytes per second. */
+  /** Oldest first. `value` is bytes per second, unless `format` says otherwise. */
   readings: readonly Reading[];
   /** The two ends of the time axis, in milliseconds since the epoch. */
   domain: readonly [number, number];
@@ -49,6 +54,16 @@ export function SpeedChart({
   tableCaption: string;
   tableBucketSeconds: number;
   className?: string;
+  /**
+   * For a rate that is not bytes per second (a task's passages a minute): how a reading
+   * is written, how an axis value is written, the axis's round values, and what the
+   * table's column is called. Readings further apart than `gapMs` break the line.
+   */
+  format?: (value: number) => string;
+  formatTick?: (value: number) => string;
+  ticksFor?: (max: number, maxTicks: number) => { ticks: number[]; max: number };
+  valueName?: string;
+  gapMs?: number;
 }) {
   const [frame, measured] = useWidth();
   const scale = useTextScale();
@@ -64,8 +79,8 @@ export function SpeedChart({
   );
   const peak = shown.reduce((max, reading) => Math.max(max, reading.value), 0);
   const limitDrawn = limit && (peak === 0 || limit <= peak * LIMIT_WITHIN) ? limit : null;
-  const y = speedTicks(Math.max(peak, limitDrawn ?? 0), baseHeight < 150 ? 2 : 4);
-  const tickLabels = y.ticks.map((tick) => (tick === 0 ? "0" : formatRate(tick)));
+  const y = ticksFor(Math.max(peak, limitDrawn ?? 0), baseHeight < 150 ? 2 : 4);
+  const tickLabels = y.ticks.map((tick) => (tick === 0 ? "0" : formatTick(tick)));
 
   const margin = {
     top: 20 * scale,
@@ -94,7 +109,7 @@ export function SpeedChart({
   const runs: Reading[][] = [];
   for (const reading of shown) {
     const run = runs[runs.length - 1];
-    if (run && reading.at - run[run.length - 1]!.at <= GAP_MS) run.push(reading);
+    if (run && reading.at - run[run.length - 1]!.at <= gapMs) run.push(reading);
     else runs.push([reading]);
   }
   const point = (reading: Reading) => `${toX(reading.at).toFixed(1)},${toY(reading.value).toFixed(1)}`;
@@ -226,7 +241,7 @@ export function SpeedChart({
               strokeLinejoin="round"
               paintOrder="stroke"
             >
-              Limit {formatRate(limitDrawn)}
+              Limit {formatTick(limitDrawn)}
             </text>
           ) : null}
 
@@ -259,11 +274,11 @@ export function SpeedChart({
 
       {current ? (
         <ChartTooltip x={toX(current.at)} y={toY(current.value)} frameWidth={width} above={toY(current.value) > plot.top + 44}>
-          <TooltipValue value={formatSpeed(current.value)} label={timeLabel(current.at)} />
+          <TooltipValue value={format(current.value)} label={timeLabel(current.at)} />
         </ChartTooltip>
       ) : null}
       <p className="sr-only" aria-live="polite">
-        {current && pointing?.by === "keys" ? `${formatSpeed(current.value)}, ${timeLabel(current.at)}` : ""}
+        {current && pointing?.by === "keys" ? `${format(current.value)}, ${timeLabel(current.at)}` : ""}
       </p>
 
       {/* A table ignores the one-pixel box that hides it from sight, so a block around it takes that job. */}
@@ -273,14 +288,14 @@ export function SpeedChart({
           <thead>
             <tr>
               <th scope="col">Time</th>
-              <th scope="col">Speed</th>
+              <th scope="col">{valueName}</th>
             </tr>
           </thead>
           <tbody>
             {table.map((row) => (
               <tr key={row.at}>
                 <th scope="row">{timeLabel(row.at)}</th>
-                <td>{formatSpeed(row.value)}</td>
+                <td>{format(row.value)}</td>
               </tr>
             ))}
           </tbody>

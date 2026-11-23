@@ -343,7 +343,7 @@ export default function CollectionPage() {
         }}
         onStarted={() => {
           toast.success(`Downloading “${collection.title}”`, {
-            description: "Progress is under Downloads.",
+            description: "Progress is under Downloads and tasks.",
             action: { label: "Open Downloads", onClick: () => navigate("/downloads") },
           });
         }}

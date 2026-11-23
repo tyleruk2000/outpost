@@ -1,11 +1,18 @@
-import { ACTIVE_DOWNLOAD_STATES, type CollectionsResponse, type DownloadDto, type DownloadsResponse } from "@outpost/shared";
+import {
+  ACTIVE_DOWNLOAD_STATES,
+  type CollectionsResponse,
+  DOWNLOAD_JOB_TYPE,
+  type DownloadDto,
+  type DownloadsResponse,
+  type JobDto,
+} from "@outpost/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleAlert } from "lucide-react";
 import { memo, type ReactNode, useMemo, useState } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { EmptyState, ErrorState, Joined, Page, PageHeader, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/misc";
+import { Segmented, Skeleton } from "@/components/ui/misc";
 import { api } from "@/lib/api";
 import { useActiveJobs } from "@/lib/queries";
 import { formatNumber, plural, timeAgo } from "@/lib/utils";
@@ -13,15 +20,110 @@ import { manageLink } from "../manage/manage-data";
 import { clockAt } from "./charts/time-axis";
 import { DownloadControls, DownloadProgress, RemoveDownloadButton } from "./download-progress";
 import { describeDownload } from "./download-text";
-import { JobRow } from "./job-row";
 import { PlanControls } from "./plan-controls";
 import { PlanSection } from "./plan-section";
 import { queuePosition, queuePositions, stalledWords } from "./plan-text";
+import { TaskRow } from "./task-row";
+import { filterOf, type TaskFilter } from "./task-text";
 import { downloadsKey, useDownloads, useOlderHistory } from "./use-downloads";
 import { usePlan } from "./use-plan";
+import { useFinishedTasks } from "./use-tasks";
 
-/** How many waiting jobs are listed before the rest are summed up in a line. */
-const JOBS_SHOWN = 8;
+/** What a task is, said once at the top of the screen and again over the tasks. */
+export const TASK_MEANING =
+  "A task is work Outpost does here, such as reading a document, building search by meaning, or building a road network.";
+
+type Show = "all" | "downloads" | "tasks";
+
+/** The order tasks are listed in: what runs, then what waits, then what failed, then what finished. */
+const taskOrder: Record<TaskFilter, number> = { running: 0, waiting: 1, failed: 2, finished: 3 };
+
+const nothingWords: Record<TaskFilter | "all", string> = {
+  all: "No tasks yet. Reading a document you add, building search by meaning, or building a road network shows here.",
+  running: "No task is running right now.",
+  waiting: "No task is waiting.",
+  finished: "No task has finished in a while.",
+  failed: "No task has failed.",
+};
+
+/** Every task, in one list with a filter: running, waiting, finished, failed. */
+function TasksSection({ active, finished }: { active: JobDto[]; finished: ReturnType<typeof useFinishedTasks> }) {
+  const [params, setParams] = useSearchParams();
+  const asked = params.get("tasks");
+  const filter: TaskFilter | "all" =
+    asked === "running" || asked === "waiting" || asked === "finished" || asked === "failed" ? asked : "all";
+  // One row per task: a task that has just ended may still be in the list of active ones for a moment.
+  const tasks = [...new Map([...(finished.data ?? []), ...active].map((job) => [job.id, job] as const)).values()].sort(
+    (a, b) =>
+      taskOrder[filterOf(a)] - taskOrder[filterOf(b)] ||
+      (filterOf(a) === "running" || filterOf(a) === "waiting"
+        ? a.createdAt - b.createdAt
+        : (b.finishedAt ?? b.updatedAt) - (a.finishedAt ?? a.updatedAt)),
+  );
+  const counts = { running: 0, waiting: 0, finished: 0, failed: 0 };
+  for (const job of tasks) counts[filterOf(job)] += 1;
+  const shown = filter === "all" ? tasks : tasks.filter((job) => filterOf(job) === filter);
+  const choose = (next: TaskFilter | "all") =>
+    setParams(
+      (current) => {
+        const copy = new URLSearchParams(current);
+        if (next === "all") copy.delete("tasks");
+        else copy.set("tasks", next);
+        return copy;
+      },
+      { replace: true },
+    );
+
+  return (
+    <Section title="Tasks" description={TASK_MEANING} className="scroll-mt-20">
+      <div id="tasks" className="mb-3">
+        <Segmented
+          label="Which tasks"
+          value={filter}
+          onChange={choose}
+          options={[
+            { value: "all", label: "All" },
+            { value: "running", label: `Running (${counts.running})` },
+            { value: "waiting", label: `Waiting (${counts.waiting})` },
+            { value: "finished", label: `Finished (${counts.finished})` },
+            { value: "failed", label: `Failed (${counts.failed})` },
+          ]}
+        />
+      </div>
+      {finished.isPending && active.length === 0 ? (
+        <div className="grid gap-3" aria-busy>
+          <Skeleton className="h-14" />
+          <Skeleton className="h-14" />
+        </div>
+      ) : finished.isError && tasks.length === 0 ? (
+        <ErrorState error={finished.error} onRetry={() => finished.refetch()} />
+      ) : shown.length === 0 ? (
+        <p className="text-small text-ink-muted">
+          {nothingWords[filter]}
+          {filter !== "all" && tasks.length > 0 ? (
+            <>
+              {" "}
+              <Button variant="link" size="sm" onClick={() => choose("all")}>
+                Show all tasks
+              </Button>
+            </>
+          ) : null}
+        </p>
+      ) : (
+        <>
+          <Rows>
+            {shown.map((job) => (
+              <TaskRow key={job.id} job={job} />
+            ))}
+          </Rows>
+          {finished.isError ? (
+            <p className="mt-2.5 text-small text-danger">Finished tasks could not be loaded; only those under way are listed.</p>
+          ) : null}
+        </>
+      )}
+    </Section>
+  );
+}
 
 function MetaLine({ parts, className }: { parts: ReactNode[]; className?: string }) {
   return (
@@ -178,12 +280,27 @@ export default function DownloadsPage() {
     ).values(),
   ].sort((a, b) => (b.finishedAt ?? b.updatedAt) - (a.finishedAt ?? a.updatedAt));
   const moreHistory = history.length < historyTotal && (!olderAsked || older.hasNextPage || older.isFetching);
-  const otherWork = (jobs.data ?? [])
-    .filter((job) => job.type !== "download.run")
-    .sort((a, b) => Number(b.state === "running") - Number(a.state === "running") || a.createdAt - b.createdAt);
+  const otherWork = (jobs.data ?? []).filter((job) => job.type !== DOWNLOAD_JOB_TYPE);
+  const finishedTasks = useFinishedTasks();
+  const anyTask = otherWork.length > 0 || (finishedTasks.data?.length ?? 0) > 0;
+  const [params, setParams] = useSearchParams();
+  const asked = params.get("show");
+  const show: Show = asked === "downloads" || asked === "tasks" ? asked : "all";
+  const showOnly = (next: Show) =>
+    setParams(
+      (current) => {
+        const copy = new URLSearchParams(current);
+        if (next === "all") copy.delete("show");
+        else copy.set("show", next);
+        if (next === "downloads") copy.delete("tasks");
+        return copy;
+      },
+      { replace: true },
+    );
   // Until the library has loaded, a finished download is taken to be installed still.
   const installedIds = collections.data ? new Set(collections.data.collections.map((item) => item.id)) : undefined;
-  const nothing = all.length === 0 && otherWork.length === 0;
+  // Nothing at all, or nothing in the part asked for: the downloads' own empty state says what belongs here.
+  const nothing = all.length === 0 && (show === "downloads" || !anyTask);
   const installed = collections.data?.collections.length ?? 0;
 
   // The plan: asked for once there are downloads at all, refreshed while any is on its way.
@@ -214,8 +331,8 @@ export default function DownloadsPage() {
   return (
     <Page>
       <PageHeader
-        title="Downloads"
-        description="What is being fetched, when it will be here, and what has finished. Downloads carry on in the background and continue from where they stopped."
+        title="Downloads and tasks"
+        description={`What is being fetched, when it will be here, and what has finished. ${TASK_MEANING} Both carry on in the background; downloads continue from where they stopped.`}
         actions={
           <>
             <Button asChild>
@@ -235,7 +352,21 @@ export default function DownloadsPage() {
         }
       />
 
-      {downloads.isPending ? (
+      {all.length > 0 || anyTask ? (
+        <Segmented
+          label="Show"
+          value={show}
+          onChange={showOnly}
+          className="-mt-2 mb-8"
+          options={[
+            { value: "all", label: "Downloads and tasks" },
+            { value: "downloads", label: "Downloads" },
+            { value: "tasks", label: otherWork.length > 0 ? `Tasks (${otherWork.length} under way)` : "Tasks" },
+          ]}
+        />
+      ) : null}
+
+      {show === "tasks" ? null : downloads.isPending ? (
         <div className="grid gap-6" aria-busy>
           <Skeleton className="h-20" />
           <Skeleton className="h-20" />
@@ -324,19 +455,6 @@ export default function DownloadsPage() {
             </Section>
           ) : null}
 
-          {otherWork.length > 0 ? (
-            <Section title="Other work in the background">
-              <Rows>
-                {otherWork.slice(0, JOBS_SHOWN).map((job) => (
-                  <JobRow key={job.id} job={job} />
-                ))}
-              </Rows>
-              {otherWork.length > JOBS_SHOWN ? (
-                <p className="mt-2.5 text-small text-ink-muted">And {plural(otherWork.length - JOBS_SHOWN, "more job")} waiting.</p>
-              ) : null}
-            </Section>
-          ) : null}
-
           {history.length > 0 ? (
             <Section title="History">
               <Rows>
@@ -366,6 +484,8 @@ export default function DownloadsPage() {
           ) : null}
         </>
       )}
+
+      {show === "downloads" || (show === "all" && !anyTask) ? null : <TasksSection active={otherWork} finished={finishedTasks} />}
     </Page>
   );
 }

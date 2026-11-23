@@ -192,7 +192,13 @@ export const knowledgeNav: NavItem[] = [
 
 /** Where the library is looked after. */
 export const upkeepNav: NavItem[] = [
-  { to: "/downloads", label: "Downloads", icon: Download, key: "d", keywords: "download queue progress" },
+  {
+    to: "/downloads",
+    label: "Downloads and tasks",
+    icon: Download,
+    key: "d",
+    keywords: "download queue progress tasks jobs background work",
+  },
   {
     to: "/storage",
     label: "Storage",

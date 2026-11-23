@@ -35,7 +35,7 @@ describe("Download details", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Wikipedia 100" })).toBeInTheDocument();
     expect(screen.getByText("Downloading")).toBeInTheDocument();
     expect(screen.getByText(/Reference collection/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Downloads" })).toHaveAttribute("href", "/downloads");
+    expect(screen.getByRole("link", { name: "Downloads and tasks" })).toHaveAttribute("href", "/downloads");
   });
 
   it("shows where it stands now with real bytes, a forecast and the controls", async () => {
@@ -372,7 +372,7 @@ describe("Download details", () => {
     serve({ "GET /api/downloads/d1": { status: 404, error: { code: "not_found", message: "That download does not exist." } } });
     show();
     expect(await screen.findByRole("heading", { name: "This download is not listed any more" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Back to Downloads" })).toHaveAttribute("href", "/downloads");
+    expect(screen.getByRole("link", { name: "Back to Downloads and tasks" })).toHaveAttribute("href", "/downloads");
   });
 
   it("offers to try again when the server cannot be reached", async () => {

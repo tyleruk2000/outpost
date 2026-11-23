@@ -51,7 +51,7 @@ export async function removeEntry(ctx: AppContext, inventory: Inventory, entry: 
 
   // Asked again now, not trusted from when the list was made.
   if (entry.collection && collections.isBusy(entry.collection.id)) {
-    return { outcome: "failed", reason: "It is being moved or checked. Wait for that to finish, or cancel it under Downloads." };
+    return { outcome: "failed", reason: "It is being moved or checked. Wait for that to finish, or cancel it under Downloads and tasks." };
   }
   for (const document of entry.documents) {
     const busy = inventory.documentBusy(document.id);

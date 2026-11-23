@@ -55,8 +55,8 @@ export function documentIdsOf(meta: Record<string, unknown>): string[] {
 }
 
 const DOCUMENT_MOVE_JOB = "documents.move";
-const BUSY_COLLECTION = "It is being moved or checked. Wait for that to finish, or cancel it under Downloads.";
-const BUSY_DOCUMENT = "Documents are being moved. Wait for that to finish, or cancel it under Downloads.";
+const BUSY_COLLECTION = "It is being moved or checked. Wait for that to finish, or cancel it under Downloads and tasks.";
+const BUSY_DOCUMENT = "Documents are being moved. Wait for that to finish, or cancel it under Downloads and tasks.";
 
 export function createInventory(ctx: AppContext, missingDocuments: () => ReadonlySet<string>): Inventory {
   const { db } = ctx;
