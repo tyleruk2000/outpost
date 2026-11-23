@@ -16,6 +16,7 @@
  *    after them, and the answer says so.
  */
 import type Database from "better-sqlite3";
+import type { Owners } from "./owners.ts";
 import { groupExpression, HIT_CLOSE, HIT_OPEN, type ParsedQuery, toFtsQuery } from "./query.ts";
 import { inverseFrequency, type ScoreParts, type ScoringTerm, scoreFields, scoringTerms } from "./score.ts";
 
@@ -23,6 +24,8 @@ import { inverseFrequency, type ScoreParts, type ScoringTerm, scoreFields, scori
 export const RESCORE_POOL = 200;
 /** Passages of one item scored again. */
 const PASSAGES_SCORED = 4;
+/** Candidates, at least, whose further passages are scored after their first (`score` in `rankKeyword`). */
+const REFINED = 60;
 /** Fewer items than this holding every word, and items holding most of them are added. */
 export const FEW = 5;
 /** The share of the query (weighed by rarity) an item must hold to be added when relaxing. */
@@ -53,6 +56,8 @@ export interface KeywordRanking {
   facets: Record<string, number>;
   total: number;
   terms: ScoringTerm[];
+  /** Some items hold the last word only as the start of a longer one: their snippets must mark it so. */
+  prefixUsed: boolean;
 }
 
 interface Hit {
@@ -75,10 +80,33 @@ export function countTerms(sqlite: Database.Database, parsed: ParsedQuery): numb
   });
 }
 
+/** How long the number of passages is trusted without counting again, when nothing in this process changed them. */
+const COUNT_TRUSTED_MS = 30_000;
+const passageCounts = new WeakMap<Database.Database, { n: number; at: number }>();
+
+/**
+ * How many passages the index holds, for weighing words. Counting reads the whole index
+ * (tens of milliseconds for 60,000 passages on a Raspberry Pi), so the number is kept:
+ * until the search service changes passages (`forgetPassageCount`), or for half a
+ * minute, for passages removed some other way. Weights move by a hair for a few
+ * passages more or less.
+ */
+export function passageCount(sqlite: Database.Database): number {
+  const kept = passageCounts.get(sqlite);
+  if (kept && Date.now() - kept.at < COUNT_TRUSTED_MS) return kept.n;
+  const n = (sqlite.prepare("SELECT count(*) AS n FROM chunks").get() as { n: number }).n;
+  passageCounts.set(sqlite, { n, at: Date.now() });
+  return n;
+}
+
+export function forgetPassageCount(sqlite: Database.Database): void {
+  passageCounts.delete(sqlite);
+}
+
 /** The weight of each term: how rare it is in the index. `counts` when already known (`countTerms`). */
 export function weighTerms(sqlite: Database.Database, parsed: ParsedQuery, counts?: number[]): ScoringTerm[] {
   if (parsed.required.length < 2) return scoringTerms(parsed, () => 1);
-  const rows = (sqlite.prepare("SELECT count(*) AS n FROM chunks_fts").get() as { n: number }).n;
+  const rows = passageCount(sqlite);
   const held = counts ?? countTerms(sqlite, parsed);
   return scoringTerms(parsed, (_, index) => inverseFrequency(rows, held[index]!));
 }
@@ -86,33 +114,52 @@ export function weighTerms(sqlite: Database.Database, parsed: ParsedQuery, count
 export function rankKeyword(
   sqlite: Database.Database,
   parsed: ParsedQuery,
-  options: { kinds?: string[]; tag?: string; window: number; toDownload: string; counts?: number[] },
+  options: {
+    kinds?: string[];
+    tag?: string;
+    window: number;
+    toDownload: string;
+    counts?: number[];
+    owners: Owners;
+    /** The current household: items kept per household are found only in their own. */
+    household: string;
+  },
 ): KeywordRanking {
   const terms = weighTerms(sqlite, parsed, options.counts);
   // The last word as typed first; as the start of a longer word only when that finds too little.
   const strictMatch = toFtsQuery(parsed, "all", undefined, false);
-  if (!strictMatch) return { items: [], everyWord: 0, relaxed: false, facets: {}, total: 0, terms };
+  if (!strictMatch) return { items: [], everyWord: 0, relaxed: false, facets: {}, total: 0, terms, prefixUsed: false };
   const tagClause = options.tag ? ` AND {tags}: "${options.tag.replace(/"/g, '""')}"` : "";
   const wanted = (kind: string) => !options.kinds?.length || options.kinds.includes(kind);
 
-  const find = sqlite.prepare(
-    `SELECT c.id AS chunkId, c.entity_row_id AS entityRowId, e.kind AS kind, bm25(chunks_fts, 8.0, 3.0, 1.0, 4.0) AS rank
-     FROM chunks_fts JOIN chunks c ON c.id = chunks_fts.rowid JOIN search_entities e ON e.id = c.entity_row_id
-     WHERE chunks_fts MATCH ?`,
-  );
-  /** Every matching item, with its passages best first, and items in order of their best passage (on this device first). */
+  // Passage numbers and ranks alone: which item each belongs to is known in memory (owners.ts).
+  const find = sqlite.prepare("SELECT rowid, bm25(chunks_fts, 8.0, 3.0, 1.0, 4.0) FROM chunks_fts WHERE chunks_fts MATCH ?").raw();
+  const { owners } = options;
+  /** Every matching item, with its best passages first, and items in order of their best passage (on this device first). */
   const group = (match: string) => {
+    if (!owners.loaded()) owners.reload();
+    const rows = find.all(match) as Array<[number, number]>;
+    if (rows.some(([chunkId]) => owners.ownerOf(chunkId) === 0)) owners.reload();
     const byItem = new Map<number, { entityRowId: number; kind: string; hits: Hit[] }>();
-    for (const hit of find.all(match) as Hit[]) {
-      let item = byItem.get(hit.entityRowId);
+    for (const [chunkId, rank] of rows) {
+      const entityRowId = owners.ownerOf(chunkId);
+      let item = byItem.get(entityRowId);
       if (!item) {
-        item = { entityRowId: hit.entityRowId, kind: hit.kind, hits: [] };
-        byItem.set(hit.entityRowId, item);
+        const facts = owners.item(entityRowId);
+        // Another household's plans and supplies are not this one's to find.
+        if (!facts || (facts.household !== null && facts.household !== options.household)) continue;
+        item = { entityRowId, kind: facts.kind, hits: [] };
+        byItem.set(entityRowId, item);
       }
-      item.hits.push(hit);
+      // Only the best few passages of an item are ever scored: keep those, best first.
+      const hits = item.hits;
+      if (hits.length === PASSAGES_SCORED && rank >= hits[hits.length - 1]!.rank) continue;
+      let at = hits.length;
+      while (at > 0 && hits[at - 1]!.rank > rank) at -= 1;
+      hits.splice(at, 0, { chunkId, entityRowId, kind: item.kind, rank });
+      if (hits.length > PASSAGES_SCORED) hits.pop();
     }
     const items = [...byItem.values()];
-    for (const item of items) item.hits.sort((a, b) => a.rank - b.rank);
     items.sort(
       (a, b) => Number(a.kind === options.toDownload) - Number(b.kind === options.toDownload) || a.hits[0]!.rank - b.hits[0]!.rank,
     );
@@ -131,18 +178,42 @@ export function rankKeyword(
     return texts;
   };
 
-  const score = (candidates: Array<{ entityRowId: number; kind: string; hits: Hit[] }>, everyWord: boolean): RankedItem[] => {
-    const ids = candidates.flatMap((item) => item.hits.slice(0, PASSAGES_SCORED).map((hit) => hit.chunkId));
-    const texts = passageText(ids);
-    return candidates.map((item) => {
-      const passages = item.hits.slice(0, PASSAGES_SCORED).flatMap((hit) => {
-        const row = texts.get(hit.chunkId);
-        if (!row) return [];
-        return [{ chunkId: hit.chunkId, page: row.page, heading: row.heading, parts: scoreFields(terms, row) }];
-      });
-      passages.sort((a, b) => b.parts.score - a.parts.score);
-      return { entityRowId: item.entityRowId, kind: item.kind, passages, parts: passages[0]!.parts, everyWord };
+  const scorePassages = (hits: Hit[]): RankedPassage[] => {
+    const texts = passageText(hits.map((hit) => hit.chunkId));
+    return hits.flatMap((hit) => {
+      const row = texts.get(hit.chunkId);
+      if (!row) return [];
+      return [{ chunkId: hit.chunkId, page: row.page, heading: row.heading, parts: scoreFields(terms, row) }];
     });
+  };
+  /**
+   * Each candidate is scored by its best passage in BM25's order first; then those that
+   * could be on the page asked for (`REFINED`, or more for a later page) have their next
+   * few passages scored too, and take the best. Scoring a passage reads all its words,
+   * and passages further down the list cannot reach the page.
+   */
+  const score = (candidates: Array<{ entityRowId: number; kind: string; hits: Hit[] }>, everyWord: boolean): RankedItem[] => {
+    const first = new Map(scorePassages(candidates.map((item) => item.hits[0]!)).map((passage) => [passage.chunkId, passage]));
+    const ranked = candidates.flatMap((item) => {
+      const best = first.get(item.hits[0]!.chunkId);
+      return best
+        ? [{ entityRowId: item.entityRowId, kind: item.kind, passages: [best], parts: best.parts, everyWord, hits: item.hits }]
+        : [];
+    });
+    ranked.sort((a, b) => b.parts.score - a.parts.score);
+    const refined = ranked.slice(0, Math.max(REFINED, options.window + FEW));
+    const more = new Map(
+      scorePassages(refined.flatMap((item) => item.hits.slice(1, PASSAGES_SCORED))).map((passage) => [passage.chunkId, passage]),
+    );
+    for (const item of refined) {
+      for (const hit of item.hits.slice(1, PASSAGES_SCORED)) {
+        const passage = more.get(hit.chunkId);
+        if (passage) item.passages.push(passage);
+      }
+      item.passages.sort((a, b) => b.parts.score - a.parts.score);
+      item.parts = item.passages[0]!.parts;
+    }
+    return ranked.map(({ hits: _hits, ...item }) => item);
   };
   /** Items that hold the last word only as the start of a longer one. */
   const begun = new Set<number>();
@@ -168,7 +239,8 @@ export function rankKeyword(
   let relaxed = false;
   let added = 0;
   if (strict.length < FEW && parsed.required.length > 1) {
-    const anyMatch = toFtsQuery(parsed, "any")!;
+    // The last word as a beginning only where it had to be one for the items holding every word.
+    const anyMatch = toFtsQuery(parsed, "any", undefined, begun.size > 0)!;
     const held = new Set(strictAll.map((item) => item.entityRowId));
     const others = group(anyMatch + tagClause).filter((item) => !held.has(item.entityRowId));
     const kept = score(others.slice(0, RESCORE_POOL), false).filter((item) => item.parts.coverage >= RELAXED_COVERAGE);
@@ -180,7 +252,7 @@ export function rankKeyword(
       items.push(...shown);
     }
   }
-  return { items, everyWord: strict.length, relaxed, facets, total: strict.length + added, terms };
+  return { items, everyWord: strict.length, relaxed, facets, total: strict.length + added, terms, prefixUsed: begun.size > 0 };
 }
 
 /** Snippets and the marked title for the passages that will be shown. */
@@ -191,13 +263,17 @@ export function markPassages(
 ): Map<number, { snippet: string; titleMarked: string }> {
   const marked = new Map<number, { snippet: string; titleMarked: string }>();
   if (chunkIds.length === 0) return marked;
-  const rows = sqlite
-    .prepare(
-      `SELECT rowid AS chunkId, snippet(chunks_fts, 2, '${HIT_OPEN}', '${HIT_CLOSE}', '…', 32) AS snippet,
-              highlight(chunks_fts, 0, '${HIT_OPEN}', '${HIT_CLOSE}') AS titleMarked
-       FROM chunks_fts WHERE chunks_fts MATCH ? AND rowid IN (${chunkIds.map(() => "?").join(",")})`,
-    )
-    .all(match, ...chunkIds) as Array<{ chunkId: number; snippet: string; titleMarked: string }>;
-  for (const row of rows) marked.set(row.chunkId, row);
+  // One passage at a time: the index goes straight to a passage asked for by `rowid =`, where
+  // `rowid IN (…)` has it walk every passage the words match first (hundreds of milliseconds for
+  // "water" on a large library, more for a word being typed, which matches as a beginning).
+  const one = sqlite.prepare(
+    `SELECT rowid AS chunkId, snippet(chunks_fts, 2, '${HIT_OPEN}', '${HIT_CLOSE}', '…', 32) AS snippet,
+            highlight(chunks_fts, 0, '${HIT_OPEN}', '${HIT_CLOSE}') AS titleMarked
+     FROM chunks_fts WHERE chunks_fts MATCH ? AND rowid = ?`,
+  );
+  for (const chunkId of new Set(chunkIds)) {
+    const row = one.get(match, chunkId) as { chunkId: number; snippet: string; titleMarked: string } | undefined;
+    if (row) marked.set(row.chunkId, row);
+  }
   return marked;
 }

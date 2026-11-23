@@ -17,7 +17,8 @@ import { AppError } from "../../core/errors.ts";
 import { chunks, searchEntities } from "../../db/schema.ts";
 import { type ChunkOptions, chunkSections, type Section } from "./chunker.ts";
 import { reciprocalRankFusion } from "./fusion.ts";
-import { countTerms, FEW, markPassages, RELAXED_COVERAGE, rankKeyword, weighTerms } from "./keyword.ts";
+import { countTerms, FEW, forgetPassageCount, markPassages, passageCount, RELAXED_COVERAGE, rankKeyword, weighTerms } from "./keyword.ts";
+import { createOwners } from "./owners.ts";
 import {
   alternateQuery,
   expandQuery,
@@ -47,6 +48,11 @@ export interface IndexEntity {
   sourcePath?: string | null;
   tags?: string[];
   meta?: Record<string, unknown>;
+  /**
+   * For what one household keeps (its plans, its supplies): that household's id. Such an
+   * item is found only while its household is the current one.
+   */
+  household?: string | null;
   sections: Section[];
 }
 
@@ -526,6 +532,8 @@ export function createSearchService(ctx: AppContext): SearchService {
      VALUES (@entityRowId, @ordinal, @title, @tags, @heading, @text, @page, @charStart, @charEnd, @contentHash, @indexVersion)`,
   );
 
+  const owners = createOwners(sqlite);
+
   const upsert = sqlite.transaction((entity: IndexEntity) => {
     const now = Date.now();
     const tags = (entity.tags ?? []).join(TAG_SEPARATOR);
@@ -543,7 +551,7 @@ export function createSearchService(ctx: AppContext): SearchService {
       collection: entity.collection ?? null,
       url: entity.url,
       sourcePath: entity.sourcePath ?? null,
-      meta: { ...entity.meta, tags: entity.tags ?? [] },
+      meta: { ...entity.meta, tags: entity.tags ?? [], ...(entity.household ? { household: entity.household } : {}) },
       updatedAt: now,
     };
     let rowId: number;
@@ -553,6 +561,7 @@ export function createSearchService(ctx: AppContext): SearchService {
     } else {
       rowId = Number(db.insert(searchEntities).values(values).run().lastInsertRowid);
     }
+    owners.noteItem(rowId, { kind: entity.kind, household: entity.household ?? null });
 
     let passages = chunkSections(entity.sections, chunkOptions());
     if (passages.length === 0) {
@@ -595,7 +604,7 @@ export function createSearchService(ctx: AppContext): SearchService {
 
     db.delete(chunks).where(eq(chunks.entityRowId, rowId)).run();
     for (const passage of passages) {
-      insertChunk.run({
+      const inserted = insertChunk.run({
         entityRowId: rowId,
         ordinal: passage.ordinal,
         title: entity.title,
@@ -608,6 +617,7 @@ export function createSearchService(ctx: AppContext): SearchService {
         contentHash: passage.contentHash,
         indexVersion: INDEX_VERSION,
       });
+      owners.notePassage(Number(inserted.lastInsertRowid), rowId);
     }
     return { chunks: passages.length, changed: true, rowId };
   });
@@ -635,7 +645,15 @@ export function createSearchService(ctx: AppContext): SearchService {
   } {
     // Passages holding each word: for its weight, and to see whether a word is in the library at all.
     const counts = parsed.required.length > 1 ? countTerms(sqlite, parsed) : undefined;
-    const ranking = rankKeyword(sqlite, parsed, { kinds: params.kinds, tag: params.tag, window, toDownload: TO_DOWNLOAD, counts });
+    const ranking = rankKeyword(sqlite, parsed, {
+      kinds: params.kinds,
+      tag: params.tag,
+      window,
+      toDownload: TO_DOWNLOAD,
+      counts,
+      owners,
+      household: ctx.services.households.currentId(),
+    });
     const didYouMean =
       ranking.total < FEW && parsed.required.length > 0
         ? suggester.suggest(params.q, parsed, counts ?? countTerms(sqlite, parsed), ranking.everyWord === 0)
@@ -672,7 +690,7 @@ export function createSearchService(ctx: AppContext): SearchService {
     // Snippets only for what is shown: every word that matters is marked, whichever of them a passage holds.
     const marked = markPassages(
       sqlite,
-      toFtsQuery(parsed, "any")!,
+      toFtsQuery(parsed, "any", undefined, ranking.prefixUsed)!,
       page.flatMap((item) => item.passages.slice(0, 3).map((passage) => passage.chunkId)),
     );
     const results = page.flatMap((item): SearchResult[] => {
@@ -780,7 +798,7 @@ export function createSearchService(ctx: AppContext): SearchService {
     const taken = new Set(strict.map((row) => row.chunkId));
     const candidates = (statement.all(toFtsQuery(parsed, "any")!, ...bound, pool) as Row[]).filter((row) => !taken.has(row.chunkId));
     if (candidates.length === 0) return { rows: strict, relaxed: false };
-    const total = (sqlite.prepare("SELECT count(*) AS n FROM chunks_fts").get() as { n: number }).n;
+    const total = passageCount(sqlite);
     const ids = candidates.map((row) => row.chunkId);
     const held = new Map<number, number>(ids.map((id) => [id, 0]));
     let whole = 0;
@@ -904,6 +922,7 @@ export function createSearchService(ctx: AppContext): SearchService {
 
     upsert(entity) {
       const { rowId, ...outcome } = upsert(entity);
+      if (outcome.changed) forgetPassageCount(sqlite);
       if (outcome.changed) for (const listener of chunkListeners) listener(rowId);
       return outcome;
     },
@@ -912,6 +931,7 @@ export function createSearchService(ctx: AppContext): SearchService {
       db.delete(searchEntities)
         .where(and(eq(searchEntities.kind, kind), eq(searchEntities.entityId, entityId)))
         .run();
+      forgetPassageCount(sqlite);
     },
 
     scrubbing(work) {

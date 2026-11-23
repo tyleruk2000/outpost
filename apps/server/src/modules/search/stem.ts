@@ -168,7 +168,9 @@ export function stem(input: string): string {
     // Step 5b
     if (measure(word) > 1 && endsDoubleConsonant(word) && word.endsWith("l")) word = word.slice(0, -1);
   }
-  if (cache.size > 20_000) cache.clear();
+  // A large library has tens of thousands of different words, and every search scores
+  // hundreds of passages: a cache smaller than the vocabulary is emptied on every search.
+  if (cache.size > 200_000) cache.clear();
   cache.set(input, word);
   return word;
 }
