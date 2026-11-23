@@ -29,6 +29,7 @@ import { kitPdfOf, useKitPdf } from "@/features/print-kit/use-kit-pdf";
 import { errorMessage } from "@/lib/api";
 import { appLocale, deviceRegion, likelyPaperFor } from "@/lib/region";
 import { formatDateTime, plural } from "@/lib/utils";
+import { BankDiagram } from "./bank-diagram-view";
 import { assumptions, loadDailyWh, radioDuty, simulate, usbEfficiency, workOut } from "./calc/plan";
 import { inputOf, isConflict, useCopyPowerPlan, usePowerPlan, useRemovePowerPlan, useSavePowerPlan } from "./data";
 import { FigureSources } from "./device-rows";
@@ -555,6 +556,12 @@ export default function PowerPlanPage() {
           {figure(answers.bank.volts, 1)} V, {figure(answers.bank.ampHours, 0)} Ah, {figure(answers.bank.wattHours, 0)} Wh rated, of which{" "}
           {figure(answers.bank.usableWh, 0)} Wh is used.
         </p>
+        <BankDiagram
+          volts={draft.battery.volts}
+          ampHours={draft.battery.ampHours}
+          series={draft.battery.series}
+          parallel={draft.battery.parallel}
+        />
         {draft.battery.series * draft.battery.parallel > 1 ? (
           <p className="mt-1 max-w-[70ch] text-small text-ink-muted">
             Batteries joined together should be the same model, capacity and age, at the same charge when connected, and allowed by their
@@ -655,6 +662,12 @@ export default function PowerPlanPage() {
       </Section>
 
       <Section title="Charging">
+        {draft.solar.arrayWatts === 0 && !draft.charger.enabled ? (
+          <p className="mb-4 max-w-[70ch] text-small text-ink-muted">
+            No charging yet: the plan runs on the battery alone. Add what you have: your panels' watts and the peak sun hours below, or a
+            generator or charger.
+          </p>
+        ) : null}
         <h3 className="mb-3 text-body font-semibold text-ink">Solar</h3>
         <Fields>
           <NumberField

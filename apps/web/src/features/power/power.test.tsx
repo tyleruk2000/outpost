@@ -204,6 +204,14 @@ describe("the Power and batteries screen", () => {
     expect(await screen.findByText("51.2 hours (2.1 days)")).toBeInTheDocument();
   });
 
+  it("starts the solar calculator with no panels, asking for what the person has", async () => {
+    show("/tools/power", { plans: [] });
+    await screen.findByText("No power plans yet");
+    fireEvent.click(screen.getByText("Solar output and charging"));
+    expect(screen.getByLabelText("Panels")).toHaveValue("");
+    expect(screen.getByText("Give the panels' watts and the peak sun hours.")).toBeInTheDocument();
+  });
+
   it("says when the plans could not be loaded", async () => {
     show("/tools/power", { plans: "fails" });
     expect(await screen.findByText("The database is busy.")).toBeInTheDocument();
@@ -241,6 +249,14 @@ describe("a power plan", () => {
     expect(screen.getByText(/Not checked: give the battery's rated discharge current/)).toBeInTheDocument();
     expect(await screen.findByText("Save as PDF")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add to library" })).toBeInTheDocument();
+  });
+
+  it("draws the battery bank as set, and says when nothing charges it yet", async () => {
+    show("/tools/power/plans/p1");
+    expect(await screen.findByRole("img", { name: /^Battery bank, 1 battery: 12.8 V, 100 Ah, 1.28 kWh\./ })).toBeInTheDocument();
+    expect(screen.getByText(/No charging yet: the plan runs on the battery alone/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Strings in parallel"), { target: { value: "2" } });
+    expect(await screen.findByRole("img", { name: /^Battery bank, 2 in parallel: 12.8 V, 200 Ah, 2.56 kWh\./ })).toBeInTheDocument();
   });
 
   it("shows an error with a way back when the plan is not there", async () => {
