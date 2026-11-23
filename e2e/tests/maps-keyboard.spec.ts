@@ -143,7 +143,7 @@ test.describe("maps from the keyboard", () => {
   test("what takes the place of the button pressed has the keyboard, not the page", async ({ page }) => {
     await open(page);
     await page.getByRole("tab", { name: /^Offline/ }).click();
-    await page.getByRole("button", { name: "Add a region" }).press("Enter");
+    await page.getByRole("button", { name: "Add an area by drawing" }).press("Enter");
     await expect(page.getByRole("heading", { name: "Add a region" })).toBeFocused();
     // Keeping the places on this computer: the button is busy a moment, and keeps the keyboard through it.
     const { marker } = await api(page, "POST", "/api/maps/markers", { name: "Kept hut", lat: CENTRE.lat, lon: CENTRE.lon });

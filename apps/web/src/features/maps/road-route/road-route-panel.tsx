@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Segmented, Select, Skeleton, Spinner } from "@/components/ui/misc";
+import { useHomeCountry } from "@/features/frequencies/home-country";
 import { errorMessage } from "@/lib/api";
 import { formatDate, plural } from "@/lib/utils";
 import { useStoredState } from "../hooks";
@@ -92,9 +93,10 @@ export function RoadRoutePanel({
   onShow: (route: RoadRouteResult | null, selected: number | null) => void;
   /** On a phone, lowers the sheet so the map can be seen. */
   onNeedMap: () => void;
-  /** Opens Offline maps at the road networks. */
-  onOpenNetworks: () => void;
+  /** Opens Map data at adding roads for routes, for a country (two letters) when one is known. */
+  onOpenNetworks: (country?: string | null) => void;
 }) {
+  const home = useHomeCountry();
   const networks = useRoadNetworks();
   const installed = networks.data?.networks ?? [];
   const crossings = useRoadCrossings(installed.length > 0);
@@ -168,7 +170,7 @@ export function RoadRoutePanel({
           show.current(null, null);
         }}
         onSaved={(saved) => setView({ kind: "saved", id: saved.id })}
-        onOpenNetworks={onOpenNetworks}
+        onOpenNetworks={() => onOpenNetworks()}
       />
     );
   }
@@ -239,15 +241,15 @@ export function RoadRoutePanel({
           <EmptyState
             compact
             level={3}
-            title="No road networks yet"
+            title="No roads for routes yet"
             action={
-              <Button variant="primary" onClick={onOpenNetworks}>
-                Add road networks
+              <Button variant="primary" onClick={() => onOpenNetworks(home?.code)}>
+                {home ? `Add roads for ${home.name}` : "Add roads for routes"}
               </Button>
             }
           >
-            Routes are planned from road networks installed on this device, one country (or part of one) at a time: a one-off download from
-            Geofabrik, after which planning works offline. Add every country you will drive through.
+            Routes are planned from the roads kept on this device, one country (or part of one) at a time, read from its country file: a
+            one-off download from Geofabrik, after which planning works offline. Add every country you will drive through.
             {networks.data.building.length > 0
               ? ` ${plural(networks.data.building.length, "network")} being added now: ${networks.data.building.map((each) => each.name).join(", ")}.`
               : ""}
@@ -349,7 +351,7 @@ export function RoadRoutePanel({
                 {errorMessage(plan.error)}
                 <span className="mt-2 flex flex-wrap gap-2">
                   {wantsANetwork(errorMessage(plan.error)) ? (
-                    <Button size="sm" onClick={onOpenNetworks}>
+                    <Button size="sm" onClick={() => onOpenNetworks()}>
                       Add a road network
                     </Button>
                   ) : null}

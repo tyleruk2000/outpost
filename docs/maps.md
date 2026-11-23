@@ -10,8 +10,9 @@ More on the map: [Routes and tracks](map-routes.md), [Road routes](road-routes.m
 
 The panel beside the map (a sheet you drag up on a phone) has five tabs: **Places** (saved
 places), **Routes** ([map-routes.md](map-routes.md) and [road routes](road-routes.md)),
-**Layers** ([reference-layers.md](reference-layers.md)), **Offline** (installed regions,
-road networks and downloads) and **Sun** ([Sunrise and sunset](#sunrise-and-sunset)).
+**Layers** ([reference-layers.md](reference-layers.md)), **Offline** (what covers the view,
+adding an area, satellite pictures, keeping the view on a phone) and **Sun**
+([Sunrise and sunset](#sunrise-and-sunset)).
 
 The buttons on the map: the **search box** (place names, postcodes in Great Britain, or any
 of the [Coordinate formats](#coordinate-formats)), **Measure a distance** (then **Save as a
@@ -57,6 +58,65 @@ never a guess, and **Get terrain** is offered. It is the ground thereabouts from
 terrain installed, mostly a 30 m model, so a summit reads a few metres low. Metres or feet:
 **Settings → Appearance → Heights**.
 
+## Map data: everything kept for the map
+
+**Maps → Map data** (also **All map data** in the Offline tab) is the one place for
+everything kept for the map. A line at the top says how much there is, where, and whether
+anything is downloading. Then:
+
+- **Your places**: each country with six rows, each saying what it is for and where it
+  stands. **Map to look at** (the drawn map), **Hills and heights** (shading, contours and
+  heights), **Place names** (search by name), **Roads for routes** (road routes), **Places
+  to find** (hospitals, shelters, food and more, for the Layers tab) and **Country file**.
+  Something here shows its size, where it is kept and the day its data is from; something
+  on its way shows its progress, with Pause; a storage location that is not connected says
+  so and what still works. Each row's **…** menu has Details, Show on the map, Update where
+  it can be updated, and Remove.
+- **Other areas**: areas drawn by hand, maps of your own and satellite pictures of an area.
+- **Whole world**: the world overview, the world's towns, borders and airports, and
+  satellite pictures of the world.
+- **Country files**: the ones kept (see below).
+- **On this phone** (or computer): what is kept in this browser, with a link to it.
+
+**Sources and licences** at the foot names where each kind comes from. The **…** beside
+**Add map data** has **Place names** (the world's towns, one country in full, Ordnance
+Survey's names), **Other places to find** (every source in
+[reference-layers.md](reference-layers.md)), **Import a file**, and **Draw an area on the
+map**.
+
+### Adding map data for a place
+
+1. **Add map data**. With a home saved, its country is chosen already; **Another place** finds any
+   country, or a part of one (a state, a county) once Geofabrik's list of regions is read.
+   **Draw my own area** goes to the map instead.
+2. Tick what you want. The map, hills and heights and place names are ticked; roads for
+   routes and places to find are not.
+3. **Check sizes** asks the map source, the terrain source and Geofabrik how large each is,
+   and says which it asked. Nothing is downloaded before **Download**.
+4. If roads or places are ticked: what happens to the country file afterwards (below).
+5. Where to keep it, then **Download**. Progress shows on Map data and on **Downloads and
+   tasks**; you can leave the screen.
+
+For your home country that is three presses for the map, hills and place names
+(**Add map data**, **Check sizes**, **Download**). A row's own **Add** starts the same steps
+with that country and that kind chosen.
+
+### Country files
+
+Roads for routes and places to find cannot be read from the map you look at, which is a
+drawing. They are read from the country's full OpenStreetMap record, a separate file from
+Geofabrik (2.2 GB for the United Kingdom). The first time, you choose what happens to it
+once read; nothing is chosen for you, and your answer is chosen the next time:
+
+- **Read it, then delete it.** It needs the room only while it is read. Every update, and
+  anything else made from it, downloads it again.
+- **Keep it.** Roads are rebuilt and places refreshed with no download. Choose where it is
+  kept; the location with the most room is suggested. On a drive that is switched off, roads
+  keep working and rebuilding waits.
+
+With a file kept for a place, adding roads or places reads it again with no download and
+no question (**Build roads**). Remove a kept file from its row's **…** menu, or under Storage.
+
 ## Downloading a region
 
 A region is a rectangle of the map at a range of zoom levels, kept as one file on a storage
@@ -64,7 +124,9 @@ location. Install as many as you like; Outpost joins them into one map, using th
 detailed for each tile. Move or remove them as in [storage.md](storage.md). Downloading
 needs the internet.
 
-1. Open **Offline**. Pick one of 188 ready-made regions (the world overview, each country,
+For a whole country, **Add map data** on Map data is quicker. For any other area:
+
+1. Open **Offline** and press **Add an area by drawing**, or **Choose from a list** for one of 188 ready-made regions (the world overview, each country,
    parts of Britain and Ireland, some mountain ranges), or **Draw a box** or **Use the
    current view**. Adjust the box by its corner and edge handles (drag, or Tab to one and use
    the arrow keys).
@@ -140,8 +202,8 @@ A hand compass reads to a degree or two, about 90 m at 5 km, so expect a few hun
 Planned directions for a drive, written the way you would write them down: "M20 -
 Folkestone", "A26 (E17) - Reims (A4)". Open **Routes**, then **Road route**; or press and
 hold (right-click) a point on the map and choose **Road route from here** or **Road route to
-here**. The road data is installed by country under **Offline**, in **Road networks for
-routes**. See [road-routes.md](road-routes.md).
+here**. The roads are added by country on **Map data**, as **Roads for routes**. See
+[road-routes.md](road-routes.md).
 
 ## Printing a map
 
@@ -379,7 +441,8 @@ position are not drawn.
 
 ## Offline place search
 
-Download place names under **Offline maps → Place names**: `cities500` (every town over 500
+Add place names on **Map data**: for a country with **Add map data**, or from the **…**
+beside it, **Place names**: `cities500` (every town over 500
 people), `cities15000` (larger towns), or a country (its places, hills, waters, parks and
 landmarks). Every word typed must match the start of a word in a name; accents are ignored.
 Your own places come first, then the best matches nearest the map's centre.
@@ -391,7 +454,7 @@ from a position to a name. Coordinates work with no names installed.
 
 ## Place names for Great Britain
 
-**Offline maps → Place names → Place names for Great Britain** adds Ordnance Survey's OS Open
+**Map data → … → Place names → Place names for Great Britain** adds Ordnance Survey's OS Open
 Names: postcodes, roads, settlements, hills, waters and woods, with Welsh and Gaelic names.
 
 - Postcodes are typed any way; a part postcode ("SY23" or "SY23 3") finds its area.

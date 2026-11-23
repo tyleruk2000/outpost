@@ -29,9 +29,11 @@ mapped infrastructure and anything modelled are kept apart and never counted tog
   its scale; filters by country, source and kind; a search by name; the legend.
 - **A press on a record** opens its card: kind, class, source, dates, licence, accuracy,
   and every field the source gives.
-- **Maps → Offline maps → Reference data for the map** (also from Downloads and tasks and Manage
-  and clean up): installed packs, **Get reference data**, **Import a file**, and the
-  sources that are only linked, with why.
+- **Maps → Map data** (also from Downloads and tasks and Manage and clean up): installed
+  packs under **Places to find** for each country and under **Whole world**, each with
+  **Check for an update** and **Remove**; the **…** beside **Add map data** has **Other places
+  to find** (every source) and **Import a file**; **Sources and licences** lists the sources
+  that are only linked, with why.
 - **Preparedness → Nuclear preparedness** shows the same layers
   ([nuclear-preparedness.md](nuclear-preparedness.md)). **Search** finds records by name.
 

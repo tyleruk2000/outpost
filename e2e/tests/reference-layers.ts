@@ -32,15 +32,12 @@ export async function referenceLayersFlow(page: Page, testInfo: TestInfo, phone:
   const file = testInfo.outputPath("shelters.csv");
   fs.writeFileSync(file, SHELTERS);
 
-  await page.goto(`/maps?lat=${VIEW.lat}&lon=${VIEW.lon}&z=${VIEW.zoom}`);
-  await idle(page);
-
-  // Imported through Offline maps: nothing is fetched; who published it and under what licence is kept with each row.
-  await page.getByRole("tab", { name: "Offline maps" }).click();
-  const section = page.getByRole("region", { name: "Reference data for the map" });
-  await section.scrollIntoViewIfNeeded();
-  await expect(section.getByText("None on this device yet.")).toBeVisible();
-  await section.getByRole("button", { name: "Import a file" }).click();
+  // Imported through Map data: nothing is fetched; who published it and under what licence is kept with each row.
+  await page.goto("/maps/data");
+  const world = page.getByRole("list", { name: "Map data for the whole world" });
+  await expect(world.getByRole("heading", { name: "Borders and airports" }).locator("xpath=..")).toContainText("Not added");
+  await page.getByRole("button", { name: "More ways to add" }).click();
+  await page.getByRole("menuitem", { name: "Import a file" }).click();
   const dialog = page.getByRole("dialog", { name: "Import a file" });
   await dialog.getByLabel("File", { exact: true }).setInputFiles(file);
   // A drop-down inside the dialog.
@@ -50,7 +47,11 @@ export async function referenceLayersFlow(page: Page, testInfo: TestInfo, phone:
   await dialog.getByRole("button", { name: "Import" }).click();
   await expect(dialog.getByText("Imported 2.")).toBeVisible({ timeout: 20_000 });
   await page.keyboard.press("Escape");
-  await expect(section.getByRole("heading", { name: "Rest centres (test)" })).toBeVisible();
+  // Listed on Map data, where it can be updated or removed.
+  await expect(page.getByText("Rest centres (test)").first()).toBeAttached();
+
+  await page.goto(`/maps?lat=${VIEW.lat}&lon=${VIEW.lon}&z=${VIEW.zoom}`);
+  await idle(page);
 
   // A historical record too, by the API: it is drawn as a ring marked H and says what kind of record it is.
   const historical = testInfo.outputPath("historical.csv");

@@ -20,8 +20,9 @@ test.describe("place names for Great Britain from a phone", () => {
     test.setTimeout(90_000);
     const errors = watchForErrors(page);
     const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-    await page.goto("/maps?lat=54.45&lon=-3.0&z=9");
-    await page.getByRole("tab", { name: "Offline maps" }).click();
+    // Place names are added on Map data, the screen of everything kept for the map.
+    await page.goto("/maps/data?names=1");
+    await expect(page.getByRole("dialog", { name: "Place names" })).toBeVisible();
 
     const section = page.getByRole("region", { name: "Place names for Great Britain" });
     await section.scrollIntoViewIfNeeded();
@@ -32,11 +33,13 @@ test.describe("place names for Great Britain from a phone", () => {
     await expect(section.getByText(/October 2026 edition, a [\d.]+ kB download from 127\.0\.0\.1/)).toBeVisible();
     const download = section.getByRole("button", { name: /^Download [\d.]+ kB$/ });
     expect((await download.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-    expect(await overflow(), "sideways overflow in the Offline tab").toBeLessThanOrEqual(1);
+    expect(await overflow(), "sideways overflow on Map data").toBeLessThanOrEqual(1);
     await download.tap();
     await expect(section.getByText("OS Open Names, October 2026 edition")).toBeVisible({ timeout: 30_000 });
     await expect(section.getByText(/Contains OS data © Crown Copyright and database rights 2026/)).toBeVisible();
 
+    await page.goto("/maps?lat=54.45&lon=-3.0&z=9");
+    await page.locator('.outpost-map[data-map-idle="true"]').waitFor({ timeout: 20_000 });
     const search = page.getByLabel("Search the map");
     await search.fill("Grasmere");
     const village = page.getByRole("option", { name: /Grasmere.*Village/ });
@@ -47,6 +50,8 @@ test.describe("place names for Great Britain from a phone", () => {
     // The place's card says what it is and where.
     await expect(page.getByText("Village · Westmorland and Furness, England")).toBeVisible();
 
+    // The card of the village has the keyboard once it opens: back to the search box first.
+    await search.tap();
     await search.fill("sy233by");
     const postcode = page.getByRole("option", { name: /SY23 3BY/ }).first();
     await expect(postcode).toBeVisible();

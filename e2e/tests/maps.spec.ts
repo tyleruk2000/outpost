@@ -211,9 +211,13 @@ test.describe("maps", () => {
     await expect(page.getByText(/Will be kept on Internal storage/)).toBeVisible();
     await expect(page.getByRole("button", { name: "Download", exact: true })).toBeDisabled();
 
-    // Place names ask the same question.
+    // Place names ask the same question, on Map data.
     await page.getByRole("button", { name: "Choose another area" }).click();
-    await page.getByRole("button", { name: "Maps on this device" }).click();
+    await page.getByRole("button", { name: "Offline maps" }).click();
+    await page.getByRole("link", { name: /All map data/ }).click();
+    await expect(page.getByRole("heading", { name: "Map data", level: 1 })).toBeVisible();
+    await page.getByRole("button", { name: "More ways to add" }).click();
+    await page.getByRole("menuitem", { name: "Place names" }).click();
     await page.getByRole("radio", { name: /Larger towns and cities only/ }).click();
     await expect(
       page.getByRole("radiogroup", { name: "Where to keep the place names" }).getByRole("radio", { name: /Internal storage/ }),

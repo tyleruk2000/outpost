@@ -17,15 +17,17 @@ test.describe("road routes", () => {
     const places = await installChannelTrip(page);
 
     try {
-      await page.goto("/maps?lat=49&lon=3&z=5&tab=offline");
-      await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
+      // Map data lists the roads under each country, with what they are and the day their data is from.
+      await page.goto("/maps/data");
+      const gb = page.getByRole("list", { name: "Map data for United Kingdom" });
+      const roads = gb.getByRole("heading", { name: "Roads for routes" }).locator("xpath=..");
+      await expect(roads).toContainText("Great Britain (test)");
+      await expect(roads).toContainText(/roads from 20 Nov 2026/);
+      await expect(page.getByRole("list", { name: "Map data for France" })).toContainText("France north (test)");
+      await expect(page.getByText(/© OpenStreetMap contributors/).first()).toBeAttached();
 
-      // Offline maps lists the networks, with what they are.
-      const networks = page.getByRole("region", { name: "Road networks for routes" });
-      await networks.scrollIntoViewIfNeeded();
-      await expect(networks.getByRole("heading", { name: "Great Britain (test)" })).toBeVisible();
-      await expect(networks.getByText("map data from 20 Nov 2026").first()).toBeVisible();
-      await expect(networks.getByText(/© OpenStreetMap contributors/)).toBeVisible();
+      await page.goto("/maps?lat=49&lon=3&z=5");
+      await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
 
       // Routes, Road route.
       await page.getByRole("tab", { name: /Routes/ }).click();

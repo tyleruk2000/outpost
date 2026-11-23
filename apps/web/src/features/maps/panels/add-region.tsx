@@ -132,6 +132,7 @@ function PresetList({ chosen, onChoose }: { chosen: string | undefined; onChoose
 export function AddRegion({
   engine,
   initialPresetId,
+  initialMode = "list",
   onClose,
   onNeedMap,
   onNeedRoom,
@@ -139,6 +140,8 @@ export function AddRegion({
   engine: MapEngine | null;
   /** A preset to start from, when the person arrived by a "World overview" shortcut. */
   initialPresetId?: string;
+  /** Start by drawing a box ("Add an area by drawing") rather than from the list. */
+  initialMode?: "list" | "draw";
   onClose: () => void;
   /** Asks the screen to get out of the map's way (on a phone, lowers the sheet) while a box is drawn. */
   onNeedMap: () => void;
@@ -148,7 +151,7 @@ export function AddRegion({
   const regions = useMapRegions(true);
   const terrainId = useId();
   const whereRef = useRef<HTMLDivElement>(null);
-  const [mode, setMode] = useState<"list" | "draw">("list");
+  const [mode, setMode] = useState<"list" | "draw">(initialMode);
   const [area, setArea] = useState<Area | null>(null);
   const [step, setStep] = useState<"area" | "options">("area");
   const [drawing, setDrawing] = useState(false);
@@ -290,7 +293,7 @@ export function AddRegion({
   const header = (
     <div className="flex items-center gap-1 border-b border-border px-2 py-1.5">
       <Button variant="ghost" size="sm" onClick={step === "options" ? () => setStep("area") : onClose}>
-        <ArrowLeft /> {step === "options" ? "Choose another area" : "Maps on this device"}
+        <ArrowLeft /> {step === "options" ? "Choose another area" : "Offline maps"}
       </Button>
     </div>
   );

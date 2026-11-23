@@ -43,23 +43,26 @@ countries you need are installed, nothing goes on the internet.
 
 ## Installing road networks
 
-On the Maps screen, open **Offline**; the part called **Road networks for routes** lists the
-networks installed, with the country, the date of the map data and the size. **Add a road
-network** offers first the countries your downloaded map regions cover, then any country or
-region by name.
+Roads are listed on **Maps → Map data**, as **Roads for routes** under each country, with
+the day their data is from and their size. With none installed, Road route's own button
+(**Add roads for** your home country) opens the same steps.
 
 Road data comes by country, or by part of a country, from Geofabrik's OpenStreetMap
 extracts. Install every country you will drive through: a trip from England to Austria
 needs Great Britain, France, and Belgium or Luxembourg and Germany (or however you go),
 and Austria. Neighbouring networks join at their borders by themselves.
 
-1. Read Geofabrik's list of regions once (the same list as for reference layers).
-2. Choose a country or region and install it. The extract is downloaded (you see it on
-   **Downloads and tasks**), checked against Geofabrik's checksum, read for its main roads,
-   and then **deleted**. Only the network is kept: about 1–2% of
-   the extract (Great Britain's 2.2 GB extract makes a 30 MB network).
-3. Building takes a while on a Raspberry Pi: minutes for a large country. It runs in the
-   background; one network is built at a time.
+1. On the country's **Roads for routes** row, press **Add** (or **Add map data**, then
+   choose the country or a part of it, and tick **Roads for routes**).
+2. **Check sizes** asks Geofabrik the size of the country file, reading its list of regions
+   first if it is not on this device yet.
+3. Choose what happens to the country file once read: **Read it, then delete it**, or
+   **Keep it** (and where). The network kept is about 1–2% of the file (Great Britain's
+   2.2 GB file makes a 30 MB network). With a file kept already, nothing is downloaded:
+   **Build roads** reads it again.
+4. **Download**. The file is checked against Geofabrik's checksum and read for its main
+   roads; you see it on Map data and on **Downloads and tasks**. Building takes minutes
+   for a large country on a Raspberry Pi, in the background.
 
 Germany (and some other large countries) cannot be downloaded whole, because Geofabrik
 sends its file from another server: install its parts (its Länder) instead. They join.
@@ -68,10 +71,10 @@ A network can also be built from an `.osm.pbf` file already in your storage, or 
 the extract kept, through the API only (see
 [the developer page](development/road-routes.md)); that file is yours and is never deleted.
 
-Each network's **…** menu has **Update**, which downloads it again and replaces the network, and
-**Remove**, which deletes the network (saved routes keep their directions).
-While a network is being added its download and then its build show there with their
-progress, and the download is on **Downloads and tasks** too.
+Each network's **…** menu on Map data has **Update**, which reads its country file again
+(downloading it when none is kept) and replaces the network, and **Remove**, which deletes
+the network (saved routes keep their directions). While roads are being added, the download
+and then the reading show on the row with their progress.
 
 ## Planning a route
 

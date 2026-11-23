@@ -15,13 +15,10 @@ test.describe("food and supplies for a state on a phone", () => {
 
   test("chooses a country and a state, sees the size, fetches it and finds the nearest pharmacy", async ({ page, sealed }) => {
     const errors = watchForErrors(page);
-    await page.goto(`/maps?lat=${COLUMBUS.lat}&lon=${COLUMBUS.lon}&z=14`);
-    await page.locator('.outpost-map[data-map-idle="true"]').waitFor({ timeout: 20_000 });
-
-    await page.getByRole("tab", { name: "Offline maps" }).click();
-    const section = page.getByRole("region", { name: "Reference data for the map" });
-    await section.scrollIntoViewIfNeeded();
-    await section.getByRole("button", { name: "Get reference data" }).click();
+    // Other places to find, from Map data's menu.
+    await page.goto("/maps/data");
+    await page.getByRole("button", { name: "More ways to add" }).tap();
+    await page.getByRole("menuitem", { name: "Other places to find" }).tap();
     const dialog = page.getByRole("dialog", { name: "Get reference data" });
 
     // The source, from the drop-down inside the dialog.
@@ -55,8 +52,13 @@ test.describe("food and supplies for a state on a phone", () => {
       })
       .toBeGreaterThan(5);
     await page.keyboard.press("Escape");
-    await expect(section.getByRole("heading", { name: /OpenStreetMap: Ohio/ })).toBeVisible();
-    await expect(section.getByText(/Only the places were kept/)).toBeVisible();
+    // Listed under its country on Map data, and the file read and then deleted, as chosen.
+    const us = page.getByRole("list", { name: /^Map data for United States/ });
+    await expect(us.getByRole("heading", { name: "Places to find" }).locator("xpath=..")).toContainText(/OpenStreetMap: Ohio/);
+    await expect(us.getByRole("heading", { name: "Country file" }).locator("xpath=..")).toContainText(/read and deleted/);
+
+    await page.goto(`/maps?lat=${COLUMBUS.lat}&lon=${COLUMBUS.lon}&z=14`);
+    await page.locator('.outpost-map[data-map-idle="true"]').waitFor({ timeout: 20_000 });
 
     // The layer on, pharmacies alone, and the nearest from the middle of the map.
     await page.getByRole("tab", { name: "Layers" }).click();

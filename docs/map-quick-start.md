@@ -7,11 +7,11 @@ screen and works with no internet once a map is installed.
 
 If the map shows only a plain outline of the world, none is installed.
 
-1. Open the **Offline** tab beside the map (on a phone, drag the sheet at the bottom up).
-2. Pick a ready-made region, or draw a box round the area you want.
-3. Tick **Include terrain for hill shading and contour lines**: heights, line of sight and
-   radio range need it too.
-4. Press **Check the size**, then **Download**.
+1. Open **Maps → Map data** and press **Add map data**. With a home saved, its country is chosen; press
+   **Another place** for another, or **Draw my own area** for a box round the area you want.
+2. The map, **Hills and heights** (heights, line of sight and radio range need them) and
+   place names are ticked. Tick **Roads for routes** too for road routes.
+3. Press **Check sizes**, then **Download**.
 
 This needs the internet once.
 

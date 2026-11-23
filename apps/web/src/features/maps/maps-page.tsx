@@ -20,7 +20,7 @@ import {
 } from "@outpost/shared";
 import { CircleAlert, Crosshair, FileUp, PanelLeftOpen } from "lucide-react";
 import { type DragEvent, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -233,6 +233,7 @@ const isTyping = (target: EventTarget | null) =>
 
 export default function MapsPage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const isDesktop = useIsDesktop();
   /** A finger, not a mouse (a tablet at any width): the map's own controls are 44 px each. */
   const coarse = useMediaQuery("(pointer: coarse)");
@@ -607,16 +608,17 @@ export default function MapsPage() {
     }
     if (tab && (PANEL_TABS as readonly string[]).includes(tab)) showPanel(tab as PanelTab);
     if (params.get("print") === "1") setPrintAsked(true);
-    // From Explore's suggestions: /maps?offline=region&preset=… opens Offline maps at that region, /maps?offline=places at place names.
+    // /maps?offline=region&preset=… opens Offline maps at that region, offline=draw at drawing one, offline=imagery at
+    // satellite pictures. Place names and roads for routes are on Map data now: the older links lead there.
     const offline = new URLSearchParams(location.search).get("offline");
-    if (offline === "region" || offline === "places" || offline === "roads") {
+    if (offline === "places") navigate("/maps/data?names=1", { replace: true });
+    else if (offline === "roads") navigate("/maps/data?add=1&kinds=roads", { replace: true });
+    else if (offline === "region" || offline === "draw" || offline === "imagery") {
       const preset = new URLSearchParams(location.search).get("preset");
       setOfflineIntent(
-        offline === "places"
-          ? { type: "places" }
-          : offline === "roads"
-            ? { type: "roads" }
-            : { type: "add", ...(preset ? { presetId: preset } : {}) },
+        offline === "imagery"
+          ? { type: "imagery" }
+          : { type: "add", ...(preset ? { presetId: preset } : {}), ...(offline === "draw" ? { draw: true } : {}) },
       );
       showPanel("offline");
     }
@@ -1200,10 +1202,11 @@ export default function MapsPage() {
   const reference = useReferenceLayers({
     engine,
     browsing: tool === "browse" && !moving && !draft,
+    // Places to find are added and looked after on Map data; an older link (/maps?reference=manage) leads there too.
     onManage: useCallback(() => {
-      setOfflineIntent({ type: "reference" });
-      showPanel("offline");
-    }, [showPanel]),
+      const fromLink = new URLSearchParams(window.location.search).get("reference") === "manage";
+      navigate(fromLink ? "/maps/data" : "/maps/data?get=places", { replace: fromLink });
+    }, [navigate]),
   });
 
   /**
@@ -1442,7 +1445,7 @@ export default function MapsPage() {
             onClose={() => setRoadRouting(false)}
             onShow={showRoadRoute}
             onNeedMap={() => setDetent((current) => (current === "full" ? "half" : current))}
-            onOpenNetworks={() => openOffline({ type: "roads" })}
+            onOpenNetworks={(country) => navigate(`/maps/data?add=1&kinds=roads${country ? `&country=${country}` : ""}`)}
           />
         ) : finding ? (
           <FindRoutePanel
@@ -1861,7 +1864,7 @@ export default function MapsPage() {
               placesInstalled={(overview.data?.places.length ?? 0) > 0}
               getCenter={() => engine?.getCenter() ?? null}
               onChoose={chooseResult}
-              onAddPlaceNames={() => openOffline({ type: "places" })}
+              onAddPlaceNames={() => navigate("/maps/data?names=1")}
               leading={
                 isDesktop && !panel.open ? (
                   <Tooltip label="Show places, routes and offline maps" side="bottom">

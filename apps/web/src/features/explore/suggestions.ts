@@ -120,7 +120,7 @@ export function suggestionsFor(input: SuggestionInput): Suggestions {
     id: "places",
     title: `Place names in ${country.name}`,
     about: "Towns, villages and features to search the map by name, from GeoNames.",
-    to: "/maps?offline=places",
+    to: "/maps/data?names=1",
     done: places.some(
       (dataset) => dataset.source === "geonames" && (dataset.countries.includes(country.code) || dataset.dataset.startsWith("cities")),
     ),
@@ -130,7 +130,7 @@ export function suggestionsFor(input: SuggestionInput): Suggestions {
     title: `OpenStreetMap reference layers for ${country.name}`,
     about:
       "Hospitals, police, fire and ambulance, shelters, food and supplies, and walking and cycling routes, read from one Geofabrik extract of the country or a region of it.",
-    to: "/maps?reference=manage",
+    to: `/maps/data?add=1&kinds=places&country=${country.code}`,
     done: false,
   });
 
@@ -180,7 +180,7 @@ export function suggestionsFor(input: SuggestionInput): Suggestions {
         id: "uk-os-names",
         title: "Ordnance Survey place names",
         about: "OS Open Names: every named place in Great Britain, with postcodes, beside GeoNames.",
-        to: "/maps?offline=places",
+        to: "/maps/data?names=1",
         done: places.some((dataset) => dataset.source === "os"),
         uk: true,
       },
@@ -188,7 +188,7 @@ export function suggestionsFor(input: SuggestionInput): Suggestions {
         id: "uk-fsa",
         title: "Food shops from the Food Standards Agency",
         about: "Registered food businesses for the area on screen, as an addition to OpenStreetMap's food and supplies.",
-        to: "/maps?reference=manage",
+        to: "/maps/data?get=places",
         done: false,
         uk: true,
       },
@@ -196,7 +196,7 @@ export function suggestionsFor(input: SuggestionInput): Suggestions {
         id: "uk-ea",
         title: "Environment Agency flood zones and river levels",
         about: "England's Flood Map for Planning as a layer, and river and sea levels under Weather and hazards.",
-        to: "/maps?reference=manage",
+        to: "/maps/data?get=places",
         done: false,
         uk: true,
       },

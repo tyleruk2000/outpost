@@ -159,6 +159,9 @@ desktop at 1280 px.
 | Open Help | 2 (More, Help at the foot of the sheet) | 1 (on the first visit) | 1 | 1 | A line under Start here |
 | Find something to read, from an empty Library | 2 (More, Explore), nothing on Library saying where | 1 | 1 (the sidebar) | 1 | A link in Library's empty state, before the list of formats |
 | Start a page, on an empty Notes | 1, with New page offered twice | 1, offered once | 1 | 1 | The empty state's button, beside Import pages |
+| Maps for where I live: map, hills and place names for the home country | 11 (Maps, Offline, Choose your area, the country, terrain, Check the size, Download; then One country in full, the country from a list, Download place names) | 6 (Maps, Offline, All map data, Add map data, Check sizes, Download) | 10 | 5 (Maps, Map data, Add map data, Check sizes, Download) | Map data's one flow; the home country chosen already; one press for every size. From Map data itself: 3 |
+| The same with roads for routes and places to find, first time | about 23 (the above, then Add a road network, Read the list of regions, Add; Get reference data, the source, its layers, Show the size, Download), the 2.2 GB country file downloaded twice | 10 (the above, two ticks, Next, the country file choice) | about 22 | 8 (two ticks, the country file choice) | One country file for both, asked once whether to keep it; from Map data 7 on a phone, 6 on a desktop, one fewer once the choice is remembered |
+| Roads for a drive, from Road route's empty state | 4 (Add road networks, Add a road network, Read the list of regions, Add), the file deleted with no say | 4 (Add roads for the home country, Check sizes, the choice, Download) | 4 | 4 | The country chosen from home; the choice asked, then remembered (3); a kept file is read with no download (**Build roads**, 2) |
 
 On a tablet at 768 px every screen gained 196 px of width; the full sidebar is one press
 away (the button at the top of the rail, or Ctrl \\).

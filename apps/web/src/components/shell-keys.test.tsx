@@ -106,13 +106,14 @@ describe("the phone's bottom bar", () => {
         .getAllByRole("link")
         .map((link) => link.textContent),
     ).toEqual(["Downloads and tasks", "Storage", "On this computer", "Settings", "Help"]);
-    // The four tabs are not here again, except Library and Notes, as the headings of the screens under them.
+    // The four tabs are not here again, except Library, Maps and Notes, as the headings of the screens under them.
     const names = within(knowledge)
       .getAllByRole("link")
       .map((link) => link.textContent);
     expect(names).toEqual([
       "Search",
       "Library",
+      "Maps",
       "Notes",
       "Explore",
       "Chat",

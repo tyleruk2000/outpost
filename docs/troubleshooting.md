@@ -303,8 +303,8 @@ over it. A regional server knows only its region. Otherwise draw it or import a 
 
 ### "No road network is installed", or "The road networks installed do not join these points"
 
-A road route needs a road network for every country it passes through, installed under
-**Maps → Offline → Road networks for routes**. The message names a country missing
+A road route needs a road network for every country it passes through, added under
+**Maps → Map data**, as **Roads for routes**. The message names a country missing
 between the points when it can. Across the sea, both sides need a network, joined by a car ferry or the Channel Tunnel
 ([road-routes.md](road-routes.md#installing-road-networks)).
 
