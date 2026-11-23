@@ -9,7 +9,7 @@ import type { MapDataAddKind, MapDataCountry, MapDataItem, MapDataResponse, Refe
 import { formatBytes } from "@outpost/shared";
 import { Ellipsis, FileUp, Layers, MapPin, Plus, SquareDashedMousePointer } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 import { Disclosure, ErrorState, JumpLinks, Page, PageHeader, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/menu";
@@ -27,8 +27,9 @@ import { fold } from "../lib/search";
 import { AddMapData, type AddStart } from "./add-map-data";
 import { DataRow, type RowContext } from "./data-row";
 import { PlaceNamesDialog } from "./place-names";
+import { UpdatesDialog } from "./update-dialog";
 import { useMapData } from "./use-map-data";
-import { activeLine, NOT_ADDED, notKeptLine, statusSentence } from "./words";
+import { activeLine, NOT_ADDED, notKeptLine, olderFiles, staleItems, staleLine, statusSentence } from "./words";
 
 const link = "text-primary underline decoration-1 underline-offset-2";
 const COUNTRY_KINDS = ["map", "terrain", "names", "roads", "places"] as const;
@@ -254,6 +255,8 @@ export default function MapDataPage() {
   const [getting, setGetting] = useState<{ initial: ReferenceEstimateRequest | null } | null>(null);
   const [importing, setImporting] = useState(false);
   const [names, setNames] = useState(false);
+  // Review updates ("review"), or Update for one thing from its row's menu.
+  const [reviewing, setReviewing] = useState<"review" | MapDataItem | null>(null);
 
   // Arriving to do something: /maps/data?add=1&country=GB&kinds=roads, ?get=places, ?names=1.
   // biome-ignore lint/correctness/useExhaustiveDependencies: once for each arrival
@@ -273,8 +276,11 @@ export default function MapDataPage() {
       jobs: jobs.data ?? [],
       regions: overview.data?.regions ?? [],
       onUpdatePlaces: (initial) => setGetting({ initial }),
+      data: data.data,
+      older: olderFiles(data.data?.countryFiles ?? []),
+      onUpdate: (item) => setReviewing(item),
     }),
-    [downloads.data, jobs.data, overview.data],
+    [downloads.data, jobs.data, overview.data, data.data],
   );
 
   const countries = useMemo(() => {
@@ -291,6 +297,13 @@ export default function MapDataPage() {
   };
 
   const answer: MapDataResponse | undefined = data.data;
+  const stale = useMemo(() => (answer ? staleItems(answer) : []), [answer]);
+  // Arriving at a part of the screen (/maps/data#country-files, from Storage): there once it is drawn.
+  const { hash } = useLocation();
+  const drawn = answer !== undefined;
+  useEffect(() => {
+    if (drawn && hash) document.getElementById(decodeURIComponent(hash.slice(1)))?.scrollIntoView({ block: "start" });
+  }, [drawn, hash]);
   const other = answer?.other ?? [];
   const jumps = [
     { id: "your-places", label: "Your places" },
@@ -357,6 +370,16 @@ export default function MapDataPage() {
           </>
         }
       />
+      {stale.length > 0 ? (
+        <div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 border-y border-border py-3">
+          <p className="text-small text-ink">
+            {staleLine(stale.length)} <span className="text-ink-muted">Nothing is checked or downloaded until you ask.</span>
+          </p>
+          <Button size="sm" onClick={() => setReviewing("review")} className="max-md:min-h-11 md:pointer-coarse:min-h-11">
+            Review updates
+          </Button>
+        </div>
+      ) : null}
       <JumpLinks label="Parts of this screen" items={jumps} />
 
       {data.isError ? (
@@ -434,6 +457,19 @@ export default function MapDataPage() {
         initial={getting?.initial ?? null}
       />
       <ImportDialog open={importing} onOpenChange={setImporting} />
+      {answer ? (
+        <UpdatesDialog
+          review={reviewing === "review"}
+          items={reviewing === "review" || reviewing === null ? stale : [reviewing]}
+          data={answer}
+          open={reviewing !== null}
+          onOpenChange={(open) => !open && setReviewing(null)}
+          onUpdatePlaces={(initial) => {
+            setReviewing(null);
+            setGetting({ initial });
+          }}
+        />
+      ) : null}
       <PlaceNamesDialog open={names} onOpenChange={setNames} />
     </Page>
   );

@@ -3,7 +3,14 @@
  * is for, how a row says where it stands, and the choice about a country file. Kept apart
  * from the components so that the tests can read them and the screen says one thing one way.
  */
-import { type CountryFileRead, formatBytes, type MapDataItem, type MapDataKind, REFERENCE_LAYER_INFO } from "@outpost/shared";
+import {
+  type CountryFileRead,
+  formatBytes,
+  type MapDataItem,
+  type MapDataKind,
+  type MapDataResponse,
+  REFERENCE_LAYER_INFO,
+} from "@outpost/shared";
 import { formatDate, plural } from "@/lib/utils";
 
 /** What each kind is called, as a person would. */
@@ -166,4 +173,115 @@ export function askedLine(hosts: Array<string | null>): string {
   const list = named.length === 1 ? named[0]! : `${named.slice(0, -1).join(", ")} and ${named.at(-1)}`;
   const verb = named.length === 1 ? "is asked how large it is" : "are asked how large each is";
   return `${list.charAt(0).toUpperCase()}${list.slice(1)} ${verb}. Nothing is downloaded until you press Download.`;
+}
+
+// ── Age, updates and the older of two country files ──
+
+/** Every piece of map data in the answer, once (a kept country file is listed under its country and among the country files). */
+export function allItems(data: MapDataResponse): MapDataItem[] {
+  const seen = new Map<string, MapDataItem>();
+  const every = [
+    ...data.countries.flatMap((country) => country.rows.flatMap((row) => row.items)),
+    ...data.world,
+    ...data.other,
+    ...data.countryFiles,
+  ];
+  for (const item of every) if (!seen.has(item.key)) seen.set(item.key, item);
+  return [...seen.values()];
+}
+
+const UNDER_WAY: MapDataItem["state"][] = ["waiting", "downloading", "paused", "processing", "moving"];
+
+/** Here, not on its way: something on a storage location or in Outpost's own data. */
+export function isHere(item: MapDataItem): boolean {
+  if (item.downloadId || UNDER_WAY.includes(item.state) || item.state === "failed") return false;
+  return item.collectionId !== null || item.networkId !== null || item.packId !== null;
+}
+
+/** What is over a year old, oldest first. */
+export function staleItems(data: MapDataResponse, now = Date.now()): MapDataItem[] {
+  return allItems(data)
+    .filter((item) => isHere(item) && overAYearOld(item.dataDate, now))
+    .sort((a, b) => (a.dataDate ?? "").localeCompare(b.dataDate ?? ""));
+}
+
+export function staleLine(count: number): string {
+  return count === 1 ? "1 thing is over a year old." : `${count} things are over a year old.`;
+}
+
+/** The kept country file for a region, the newest if there are two: what roads and places are read from with no download. */
+export function keptFileFor(data: MapDataResponse | undefined, regionId: string | null): MapDataItem | null {
+  if (!data || !regionId) return null;
+  return (
+    data.countryFiles
+      .filter((file) => file.regionId === regionId && file.state === "ready")
+      .sort((a, b) => (b.dataDate ?? "").localeCompare(a.dataDate ?? ""))[0] ?? null
+  );
+}
+
+/** Each kept country file that has a newer one for the same region, with that newer one. */
+export function olderFiles(files: MapDataItem[]): Map<string, MapDataItem> {
+  const older = new Map<string, MapDataItem>();
+  const byRegion = new Map<string, MapDataItem[]>();
+  for (const file of files) {
+    if (!file.regionId || !file.collectionId) continue;
+    byRegion.set(file.regionId, [...(byRegion.get(file.regionId) ?? []), file]);
+  }
+  for (const group of byRegion.values()) {
+    const sorted = [...group].sort((a, b) => (b.dataDate ?? "").localeCompare(a.dataDate ?? ""));
+    const newest = sorted[0]!;
+    for (const file of sorted.slice(1)) if ((file.dataDate ?? "") < (newest.dataDate ?? "")) older.set(file.key, newest);
+  }
+  return older;
+}
+
+/** "build.protomaps.com", "a and b": who is asked or downloaded from. */
+export function hostsText(hosts: string[]): string {
+  if (hosts.length === 0) return "its source";
+  return hosts.length === 1 ? hosts[0]! : `${hosts.slice(0, -1).join(", ")} and ${hosts.at(-1)}`;
+}
+
+// ── Storage › Map data ──
+
+/** The kinds as Storage lists them, by what they are for. */
+export const STORAGE_KINDS: Array<{ kinds: MapDataKind[]; name: string; jump: string }> = [
+  { kinds: ["map"], name: "Maps to look at", jump: "your-places" },
+  { kinds: ["terrain"], name: "Hills and heights", jump: "your-places" },
+  { kinds: ["names"], name: "Place names", jump: "your-places" },
+  { kinds: ["places"], name: "Places to find", jump: "your-places" },
+  { kinds: ["roads"], name: "Roads for routes", jump: "your-places" },
+  { kinds: ["extract"], name: "Country files", jump: "country-files" },
+  { kinds: ["imagery"], name: "Satellite pictures", jump: "whole-world" },
+];
+
+export interface StorageRow {
+  name: string;
+  jump: string;
+  count: number;
+  bytes: number;
+  where: string[];
+}
+
+/**
+ * Storage's rows: what is here of each kind, where, how many and how large. A kind the list does
+ * not name (one added since, such as streets) follows the rest under its own name.
+ */
+export function storageRows(data: MapDataResponse): StorageRow[] {
+  const here = allItems(data).filter(isHere);
+  const known = new Set<string>(STORAGE_KINDS.flatMap((entry) => entry.kinds));
+  const extra = [...new Set(here.map((item) => item.kind as string).filter((kind) => !known.has(kind)))].map((kind) => ({
+    kinds: [kind as MapDataKind],
+    name: (KIND_NAMES as Record<string, string | undefined>)[kind] ?? kind.charAt(0).toUpperCase() + kind.slice(1),
+    jump: "your-places",
+  }));
+  return [...STORAGE_KINDS, ...extra].map((entry) => {
+    const items = here.filter((item) => entry.kinds.includes(item.kind));
+    return {
+      name: entry.name,
+      jump: entry.jump,
+      count: items.length,
+      bytes: items.reduce((sum, item) => sum + (item.sizeBytes ?? 0), 0),
+      where: [...new Set(items.map((item) => item.locationName ?? "Outpost's own data"))],
+    };
+  });
 }

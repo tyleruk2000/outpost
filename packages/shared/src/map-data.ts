@@ -80,6 +80,20 @@ export interface MapDataItem {
   downloadId: string | null;
   /** The task to open at /downloads/tasks/:id (a build, a read, a move). */
   taskId: string | null;
+  /** How it is brought up to date, where it can be; absent or null where it cannot (an imported file). */
+  update?: MapDataUpdateWay | null;
+}
+
+/**
+ * How one piece of map data is brought up to date. "download": fetched again from `hosts`, the
+ * old kept until the new one is in place and checked. "country-file": read again from the kept
+ * country file (no download), or from a new one fetched from `hosts`. "elsewhere": `note` says where.
+ */
+export interface MapDataUpdateWay {
+  how: "download" | "country-file" | "elsewhere";
+  /** Who is asked, on a press, for the newest one's size and date, and who it comes from. */
+  hosts: string[];
+  note: string | null;
 }
 
 export interface MapDataRow {
@@ -174,4 +188,29 @@ export interface MapDataAddResponse {
   /** Every download started, and every task queued (reading a kept file). */
   downloadIds: string[];
   taskIds: string[];
+}
+
+/** `POST /api/maps/data/check`: ask the source, on a press, how large and how new its newest copy is. */
+export interface MapDataCheckRequest {
+  collectionId: string;
+}
+
+export interface MapDataCheckResponse {
+  /** Who was asked. */
+  hosts: string[];
+  /** The size of the newest copy, where the source says. */
+  sizeBytes: number | null;
+  /** The day the newest copy is from ("2026-11-22"), where the source says. */
+  dataDate: string | null;
+  /** Newer than the one kept; null when the source gives no date to compare. */
+  newer: boolean | null;
+}
+
+/** `POST /api/maps/data/update`: download the same area or list again; the old one stays until the new one is in place and checked. */
+export interface MapDataUpdateRequest {
+  collectionId: string;
+}
+
+export interface MapDataUpdateResponse {
+  downloadIds: string[];
 }
