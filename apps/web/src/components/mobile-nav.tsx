@@ -141,7 +141,10 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
 
   return (
     <>
-      <header ref={header} className="sticky top-0 z-(--z-nav) flex h-13 items-center gap-2 bg-spine px-4 text-spine-ink md:hidden">
+      <header
+        ref={header}
+        className="sticky top-0 z-(--z-nav) flex h-13 items-center gap-2 bg-spine pr-[max(1rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))] text-spine-ink md:hidden"
+      >
         <Link to="/" className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5">
           <LogoMark />
           <span className="font-title text-lead">Outpost</span>
@@ -159,7 +162,7 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
       <nav
         ref={bar}
         aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-(--z-nav) flex border-t border-border bg-page/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm md:hidden"
+        className="fixed inset-x-0 bottom-0 z-(--z-nav) flex border-t border-border bg-page/95 pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] backdrop-blur-sm md:hidden"
       >
         {tabs.map((item) => (
           <NavLink key={item.to} to={item.to} end={item.to === "/"} className={tab}>

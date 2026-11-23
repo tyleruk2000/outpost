@@ -59,6 +59,9 @@ and at 200% text, before calling it done. Screenshot it and look.
   makes the page scroll sideways.
 - The most used action of the screen is in reach without scrolling on a phone.
 - On a tablet (768 to 1023 px) the screen has the full width less a 60 px rail: check it.
+- Clear of a notch and the home indicator: the bars, the sidebar and `Page` already keep
+  `env(safe-area-inset-*)`; a screen that draws to an edge itself (full bleed, a fixed
+  bar of its own) keeps them too.
 
 **Forms**
 - One `Field` per control; the label says what to type, the hint says why or in what

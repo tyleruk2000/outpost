@@ -320,7 +320,7 @@ export function Sidebar({
       {over ? (
         <>
           {/* The rail's room, kept while the whole sidebar lies over the page, so that the page does not move. */}
-          <div aria-hidden className="hidden w-[60px] shrink-0 md:block" />
+          <div aria-hidden className="box-content hidden w-[60px] shrink-0 pl-[env(safe-area-inset-left)] md:block" />
           <button
             type="button"
             tabIndex={-1}
@@ -333,7 +333,7 @@ export function Sidebar({
       <aside
         aria-label="Main"
         className={cn(
-          "sticky top-0 z-(--z-nav) hidden h-dvh shrink-0 flex-col bg-spine text-spine-ink transition-[width] duration-(--duration-slow) md:flex",
+          "sticky top-0 z-(--z-nav) box-content hidden h-dvh shrink-0 flex-col bg-spine pl-[env(safe-area-inset-left)] text-spine-ink transition-[width] duration-(--duration-slow) md:flex",
           // 16rem, but at larger text no more than 22% of the window (still 256 px at least): at Largest on a 1280 px
           // window it took 384 px, and 512 px at 200%, from the screen beside it.
           collapsed ? "w-[60px]" : "w-[min(16rem,max(256px,22vw))]",

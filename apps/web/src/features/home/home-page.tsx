@@ -202,6 +202,8 @@ export default function HomePage() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search everything you keep"
+              enterKeyHint="search"
+              autoCapitalize="none"
               aria-label="Search everything you keep"
               className="h-12 w-full rounded-panel border border-border-strong bg-page pr-4 pl-12 text-body text-ink placeholder:text-ink-faint hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-search-cancel-button]:hidden"
             />

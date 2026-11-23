@@ -171,6 +171,10 @@ export function CommandPalette({
                 value={query}
                 onValueChange={setQuery}
                 placeholder="Search, or go to a screen"
+                enterKeyHint="search"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 className="h-13 flex-1 bg-transparent text-body text-ink placeholder:text-ink-faint focus:outline-none"
               />
               {(results.isFetching || stillSearching) && searching ? <Spinner label="Searching" delay /> : null}

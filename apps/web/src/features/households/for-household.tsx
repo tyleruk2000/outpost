@@ -16,7 +16,7 @@ export function ForHousehold({ className }: { className?: string }) {
       For {data.household.name} ·{" "}
       <Link
         to={HOUSEHOLDS_PATH}
-        className="inline-flex items-center text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2 max-md:min-h-11"
+        className="inline-flex items-center text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2 max-md:min-h-11 pointer-coarse:min-h-11"
       >
         Change
       </Link>
