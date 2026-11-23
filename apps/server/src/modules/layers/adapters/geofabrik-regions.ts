@@ -80,8 +80,12 @@ export function readRegions(text: string, base = GEOFABRIK_BASE): GeofabrikRegio
     const p = feature.properties ?? {};
     const pbf = allowedFile((p.urls as Record<string, unknown> | undefined)?.pbf, origin);
     if (typeof p.id !== "string" || !/^[a-z0-9/-]{1,80}$/.test(p.id) || !pbf) continue;
+    // Geofabrik has given these codes as a list (["PS", "IL"]) and as text ("PS,IL", "FR"): take either.
     const codes = (value: unknown) =>
-      Array.isArray(value) ? value.filter((code): code is string => typeof code === "string").map((code) => code.toUpperCase()) : [];
+      (typeof value === "string" ? value.split(",") : Array.isArray(value) ? value : [])
+        .map((code) => (typeof code === "string" ? code.trim() : code))
+        .filter((code): code is string => typeof code === "string" && code.length > 0)
+        .map((code) => code.toUpperCase());
     const given = typeof p.name === "string" ? p.name.trim().slice(0, 120) : "";
     entries.push({
       id: p.id,

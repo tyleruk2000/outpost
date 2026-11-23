@@ -50,6 +50,29 @@ describe("Geofabrik's list as regions", () => {
     expect(nameFromId("us/us-virgin-islands")).toBe("US Virgin Islands");
   });
 
+  it("reads the country codes whether Geofabrik gives them as a list or as text (its index of November 2026)", () => {
+    const entry = (id: string, parent: string | null, extra: Record<string, unknown>) => ({
+      type: "Feature",
+      properties: { id, name: id, ...(parent ? { parent } : {}), urls: { pbf: `${base}/x/${id}-latest.osm.pbf` }, ...extra },
+    });
+    const text = JSON.stringify({
+      type: "FeatureCollection",
+      features: [
+        entry("europe", null, {}),
+        entry("united-kingdom", "europe", { "iso3166-1:alpha2": "GB" }),
+        entry("england", "united-kingdom", {}),
+        entry("israel-and-palestine", "asia", { "iso3166-1:alpha2": "PS,IL" }),
+        entry("us", "north-america", { "iso3166-1:alpha2": "US" }),
+        entry("us/ohio", "us", { "iso3166-2": "US-OH" }),
+      ],
+    });
+    const read = readRegions(text, base);
+    expect(read.find((region) => region.id === "united-kingdom")).toMatchObject({ country: "GB", depth: 0 });
+    expect(read.find((region) => region.id === "england")).toMatchObject({ country: "GB", parent: "united-kingdom" });
+    expect(read.find((region) => region.id === "israel-and-palestine")).toMatchObject({ country: "PS", depth: 0 });
+    expect(read.find((region) => region.id === "us/ohio")).toMatchObject({ country: "US", parent: "us" });
+  });
+
   it("refuses files on any other host", () => {
     const elsewhere = readRegions(standIn.index("https://example.org"), base);
     expect(elsewhere).toEqual([]);

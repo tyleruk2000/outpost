@@ -64,7 +64,9 @@ export function readGeofabrikIndex(text: string, base = GEOFABRIK_BASE): IndexEn
   for (const feature of parsed.features ?? []) {
     const p = feature.properties ?? {};
     const urls = p.urls as Record<string, unknown> | undefined;
-    const alpha2 = p["iso3166-1:alpha2"];
+    // Given as a list (["PS", "IL"]) and as text ("PS,IL", "FR") by Geofabrik over time: take either.
+    const given = p["iso3166-1:alpha2"];
+    const alpha2 = typeof given === "string" ? given.split(",").map((code) => code.trim()).filter(Boolean) : given;
     if (typeof p.id !== "string" || typeof urls?.pbf !== "string" || !Array.isArray(alpha2)) continue;
     let pbf: URL;
     try {
@@ -77,7 +79,9 @@ export function readGeofabrikIndex(text: string, base = GEOFABRIK_BASE): IndexEn
       id: p.id,
       name: typeof p.name === "string" ? p.name : p.id,
       alpha2: alpha2.filter((code): code is string => typeof code === "string").map((code) => code.toUpperCase()),
-      subdivision: Array.isArray(p["iso3166-2"]) && (p["iso3166-2"] as unknown[]).length > 0,
+      subdivision:
+        (Array.isArray(p["iso3166-2"]) && (p["iso3166-2"] as unknown[]).length > 0) ||
+        (typeof p["iso3166-2"] === "string" && p["iso3166-2"].length > 0),
       pbf: pbf.toString(),
     });
   }
