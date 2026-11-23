@@ -309,6 +309,10 @@ for p in r.get("extracts") or []:
 
 serve() {
   mkdir -p "$HOME_DIR"
+  # Outpost (another container, as OUTPOST_UID, 1000 by default) leaves its requests here, so
+  # it must be able to write in this folder. This service runs as root and keeps writing.
+  chown "${OUTPOST_UID:-1000}:${OUTPOST_GID:-1000}" "$HOME_DIR" 2>/dev/null || true
+  chmod 0775 "$HOME_DIR" 2>/dev/null || true
   rm -rf "$HOME_DIR/work" "$HOME_DIR/status.json.part"
   # A swap cut short: previous/ is the last complete set.
   if [ ! -d "$HOME_DIR/current" ] && [ -d "$HOME_DIR/previous" ]; then mv "$HOME_DIR/previous" "$HOME_DIR/current"; fi
