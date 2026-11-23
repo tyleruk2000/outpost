@@ -61,6 +61,8 @@ export default function BookPage() {
   const [making, setMaking] = useState(false);
   const [drawing, setDrawing] = useState(false);
   const radioPlans = useRadioPlans();
+  /** What the book is waiting on, while it is slow: the repeaters' ground in sight, one at a time. */
+  const [working, setWorking] = useState<string | null>(null);
   const mapSources = useMapSources();
   const overview = useMapOverview();
   /**
@@ -121,7 +123,10 @@ export default function BookPage() {
     });
     setDrawing(true);
     try {
-      const ranges = await gatherRanges(groups);
+      const ranges = await gatherRanges(groups, (done, total) =>
+        setWorking(done < total ? `Working out repeater coverage, ${done + 1} of ${total}` : null),
+      );
+      setWorking("Drawing the repeater maps");
       const drawn = await gatherMaps(groups, await mapInput(), measureOf(answers.paper)).catch(() => ({
         maps: {},
         missing: "This device could not draw the offline map under the repeaters.",
@@ -129,6 +134,7 @@ export default function BookPage() {
       return { ...gathered, ranges, ...drawn };
     } finally {
       setDrawing(false);
+      setWorking(null);
     }
   };
 
@@ -298,6 +304,9 @@ export default function BookPage() {
             <Button onClick={() => setAsking("people")}>
               <ListChecks /> Change the answers
             </Button>
+            <p className="text-small text-ink-muted" role="status" aria-live="polite">
+              {making ? working : null}
+            </p>
           </div>
           {facts.data && !facts.data.home ? (
             <Notice tone="info" title="No home is marked">

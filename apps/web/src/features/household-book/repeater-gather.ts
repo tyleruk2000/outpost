@@ -19,6 +19,7 @@ import { creditsFor } from "@/features/maps/map-footer";
 import { mapCoverage } from "@/features/maps/print/coverage";
 import { printedCredits } from "@/features/maps/print/credits";
 import { GET_A_MAP } from "@/features/nuclear/print-figures";
+import type { DrawMap } from "@/features/nuclear/print-maps";
 import { api } from "@/lib/api";
 import {
   type BookRepeaterRange,
@@ -57,11 +58,19 @@ export async function gatherRepeaters(
   }
 }
 
-/** Each chosen repeater's typical range from the terrain installed; one with no terrain under it, or none in sight, is left to its radio horizon. */
-export async function gatherRanges(groups: readonly RepeaterGroup[]): Promise<Record<string, BookRepeaterRange>> {
+/**
+ * Each chosen repeater's ground in sight over the terrain installed, for a handheld at head height, and its typical
+ * range; one with no terrain under it, or none in sight, is left to its radio horizon. Worked out one at a time on
+ * this Outpost (a viewshed each, a second or so apiece), saying how far it has got.
+ */
+export async function gatherRanges(
+  groups: readonly RepeaterGroup[],
+  onProgress?: (done: number, total: number) => void,
+): Promise<Record<string, BookRepeaterRange>> {
   const ranges: Record<string, BookRepeaterRange> = {};
   const chosen = groups.flatMap((group) => group.chosen.map((each) => each.repeater)).slice(0, RANGES_MOST);
-  for (const repeater of chosen) {
+  for (const [index, repeater] of chosen.entries()) {
+    onProgress?.(index, chosen.length);
     const aerial = repeater.antennaMeters ?? RANGE_DEFAULT_AERIAL_METERS;
     try {
       const range = await api.get<SightRange>("/api/maps/sight-range", {
@@ -71,11 +80,12 @@ export async function gatherRanges(groups: readonly RepeaterGroup[]): Promise<Re
       });
       if (range.coverage === "none" || range.bearings.length === 0) continue;
       const typical = range.typicalMeters ?? typicalRangeMeters(range.bearings);
-      if (typical && typical > 0) ranges[repeater.id] = { ...horizonRange(repeater), meters: typical, basis: "terrain" };
+      if (typical && typical > 0) ranges[repeater.id] = { ...horizonRange(repeater), meters: typical, basis: "terrain", sight: range };
     } catch {
       // Left to its radio horizon.
     }
   }
+  onProgress?.(chosen.length, chosen.length);
   return ranges;
 }
 
@@ -84,6 +94,8 @@ export async function gatherMaps(
   groups: readonly RepeaterGroup[],
   input: { sources: MapSources | undefined; regions: InstalledRegion[]; cacheKey: string; origin: string },
   measure: number,
+  /** Draws the offline map; MapLibre on this device unless a test gives its own. */
+  draw?: DrawMap,
 ): Promise<{ maps: Record<string, BookRepeaterMap>; missing: string | null }> {
   const maps: Record<string, BookRepeaterMap> = {};
   const hasTiles = input.sources?.hasTiles ?? false;
@@ -100,7 +112,7 @@ export async function gatherMaps(
       continue;
     }
     try {
-      const drawn = await drawWithMapLibre(placesStyle(input), frame, size.pixels);
+      const drawn = await (draw ?? drawWithMapLibre)(placesStyle(input), frame, size.pixels);
       const scale = size.width / size.pixels.width;
       const pictures = new Map<string, string>();
       const pieces = drawn.pieces.map((piece, index) => {

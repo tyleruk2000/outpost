@@ -130,7 +130,8 @@ test.describe("the household book", () => {
     // The repeater round home, in the table and on its map, with the map's caveat.
     expect(prose).toContain("QZ3BKR");
     expect(prose).toContain("Repeaters: ");
-    expect(prose).toContain("A rough guide, not a coverage prediction.");
+    expect(prose).toContain("A rough guide:");
+    expect(prose).toContain("Output: the frequency you listen on");
     expect(errors).toEqual([]);
   });
 });
