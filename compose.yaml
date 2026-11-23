@@ -39,6 +39,9 @@ services:
       OUTPOST_METRICS: ${OUTPOST_METRICS:-false}
       OUTPOST_ALLOW_REMOTE_CLOCK: ${OUTPOST_ALLOW_REMOTE_CLOCK:-false}
       OUTPOST_KIWIX_URL: http://kiwix:8080
+      # Streets for routes (optional, the "routes" profile below). Unanswered when it is off.
+      OUTPOST_VALHALLA_URL: http://valhalla:8002
+      OUTPOST_VALHALLA_DIR: /valhalla
     # The computer Docker runs on, by name, for a radio decoder running there (Heard on the radio: host.docker.internal).
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -54,12 +57,16 @@ services:
       - outpost-data:/data
       - outpost-library:/storage/internal
       - kiwix-library:/kiwix
+      - valhalla-tiles:/valhalla
       # External drives and network shares: mount each under /storage, then add it
       # on the Storage screen. Examples (uncomment and edit):
       # - /mnt/usb-ssd:/storage/usb-ssd
       # - /Volumes/FieldSSD:/storage/field-ssd          # macOS
       # - /mnt/d/outpost:/storage/drive-d               # Windows, from WSL2
       # - nas-library:/storage/nas                      # a volume defined below
+    networks:
+      - default
+      - streets
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/api/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
       interval: 15s
@@ -99,10 +106,50 @@ services:
         limits:
           memory: ${KIWIX_MEMORY_LIMIT:-512m}
 
+  # Streets for routes: door to door, walking, cycling and reachable areas (Valhalla).
+  # Optional: started only with the "routes" profile (COMPOSE_PROFILES=routes in .env, or
+  # deploy/pi/install.sh --street-routes). Outpost asks it to build streets from country
+  # files already in storage, on this computer; it fetches nothing from the internet. It is
+  # on a network of its own with Outpost and nothing else, and its port is never published.
+  # On a Raspberry Pi 5 (8 GB), Great Britain took about an hour to build; see
+  # docs/development/street-routes-measurements.md.
+  valhalla:
+    profiles: ["routes"]
+    image: ${OUTPOST_VALHALLA_IMAGE:-outpost-valhalla:local}
+    build: docker/valhalla
+    restart: unless-stopped
+    init: true
+    environment:
+      VALHALLA_BUILD_THREADS: ${VALHALLA_BUILD_THREADS:-2}
+      VALHALLA_SERVE_THREADS: ${VALHALLA_SERVE_THREADS:-2}
+      VALHALLA_MIN_AVAILABLE_MB: ${VALHALLA_MIN_AVAILABLE_MB:-800}
+    networks:
+      - streets
+    volumes:
+      - valhalla-tiles:/tiles
+      - outpost-library:/storage/internal:ro
+      # Repeat every extra /storage mount from the outpost service here, read-only:
+      # - /mnt/usb-ssd:/storage/usb-ssd:ro
+      # - nas-library:/storage/nas:ro
+    deploy:
+      resources:
+        limits:
+          memory: ${VALHALLA_MEMORY_LIMIT:-3g}
+
+networks:
+  default:
+  # Outpost and the streets service only; no way out to the internet.
+  streets:
+    internal: true
+
 volumes:
   outpost-data:
   outpost-library:
   kiwix-library:
+  # Streets for routes: the tiles in use (2.7 GB for Great Britain) and, while a new set is
+  # built, its working files (5.2 GB at the end of a Great Britain build). Keep it on a
+  # disk of the computer's own: a build writes about 50 GB to it (see the measurements).
+  valhalla-tiles:
 
   # A NAS share mounted by Docker itself. Credentials stay in Docker's configuration
   # (or an .env file readable only by you), never inside Outpost.

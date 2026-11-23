@@ -61,6 +61,13 @@
 #                     Outpost reads them at host.docker.internal. Not yet tried on a Pi.
 #   --aprs-frequency=F  The frequency Dire Wolf tunes an SDR to, such as 144.80M (Europe,
 #                     the default) or 144.39M (North America). Only with --decoders.
+#   --street-routes   Add streets for routes (Valhalla, beside Outpost): door-to-door
+#                     directions, walking, cycling and reachable areas. Sets
+#                     COMPOSE_PROFILES=routes in .env and builds the streets image here (it
+#                     downloads Valhalla's image, about 700 MB, once). Streets are then built
+#                     per country from Offline maps → Map data, on this Pi: Great Britain
+#                     took about an hour on a Pi 5 (8 GB), 8 GB of free disk while
+#                     building, 2.7 GB after, and about 50 GB written to the disk.
 #   --dry-run         Print the commands instead of running them.
 #
 # It never deletes anything, and it does not touch an existing .env except the lines
@@ -79,6 +86,7 @@ CLOCK_FROM_NETWORK=false
 METRICS=false
 UPDATES=true
 DECODERS=false
+STREET_ROUTES=false
 APRS_FREQUENCY=144.80M
 for arg in "$@"; do
   case "$arg" in
@@ -95,9 +103,10 @@ for arg in "$@"; do
     --metrics) METRICS=true ;;
     --no-updates) UPDATES=false ;;
     --decoders) DECODERS=true ;;
+    --street-routes) STREET_ROUTES=true ;;
     --aprs-frequency=*) APRS_FREQUENCY="${arg#--aprs-frequency=}" ;;
     -h | --help)
-      sed -n '2,66p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,74p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *)
@@ -239,6 +248,10 @@ add_allowed_host() { # add_allowed_host NAME: adds one name to OUTPOST_ALLOWED_H
 
 $CLOCK_FROM_NETWORK && set_env OUTPOST_ALLOW_REMOTE_CLOCK true
 $METRICS && set_env OUTPOST_METRICS true
+if $STREET_ROUTES; then
+  say "Adding streets for routes (Valhalla). Build streets for a country afterwards from Offline maps → Map data."
+  set_env COMPOSE_PROFILES routes
+fi
 
 # ── A name on the network: outpost.local ─────────────────────────────────────
 # Avahi (mDNS) answers for NAME.local on the local network. Raspberry Pi OS runs
@@ -320,6 +333,10 @@ if [ -n "$release_image" ]; then
   # Set by the update service: Outpost runs a release installed from the app. Building
   # now would put this checkout's code under the release's name.
   say "Outpost runs $release_image, installed from the app, so it is started as it is and not built from this checkout. To build from the checkout again, remove the OUTPOST_IMAGE line from .env."
+  # The streets image is never part of a release: build it here when it is wanted.
+  if $STREET_ROUTES || grep -q '^COMPOSE_PROFILES=.*routes' .env 2>/dev/null; then
+    run "${DOCKER[@]}" compose build valhalla
+  fi
   run "${DOCKER[@]}" compose up -d --no-build
 else
   run "${DOCKER[@]}" compose up -d --build

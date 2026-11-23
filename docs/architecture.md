@@ -331,6 +331,7 @@ package with its licence text, written by `scripts/build-app.mjs`.
 | Component | Licence | How it is used |
 | --- | --- | --- |
 | kiwix-serve, libzim | GPL-3.0 / GPL-2.0+ | Separate process over HTTP. Not linked or in the image. |
+| Valhalla 3.9.3, osmium-tool 1.16 | MIT; GPL-3.0 | Optional streets service (`docker/valhalla/`, the Compose "routes" profile): a separate container on a network of its own with Outpost, reached over HTTP. Not linked or in Outpost's image. See [street-routes-measurements.md](development/street-routes-measurements.md). |
 | Dire Wolf 1.8, readsb 3.16, AIS-catcher, rtl-sdr | GPL-2.0+; GPL-3.0+; GPL-3.0; GPL-2.0+ | Separate programs the person runs (on the Pi via `deploy/pi/install.sh --decoders`). Outpost reads their ports; its KISS, AX.25, APRS, SBS and AIS readers are its own (`modules/heard/`). |
 | pyais 3.3.1 | MIT | Not used; run once to make the AIS test fixture. |
 | `mupdf`, PyMuPDF | AGPL-3.0 | Not used; PDF text from unpdf (Apache-2.0). |
