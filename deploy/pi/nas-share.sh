@@ -217,6 +217,16 @@ services:
         target: /storage/nas
         read_only: true
         bind:
+          propagation: rslave
+  # Walking and cycling (the optional \"routes\" profile) reads source files kept on the NAS;
+  # read-only, so its working files stay on this computer's own disk.
+  valhalla:
+    volumes:
+      - type: bind
+        source: $PARENT
+        target: /storage/nas
+        read_only: true
+        bind:
           propagation: rslave"
 if $DRY_RUN; then
   printf '  would write compose.nas.yaml:\n%s\n' "$NAS_COMPOSE" | sed 's/^/    /'
