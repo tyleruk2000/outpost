@@ -326,6 +326,12 @@ export default function UnderstandPage() {
                   on your own library, with the real numbers.
                 </p>
               </Prose>
+              <p className="mt-3 text-small">
+                <Link to="/search/how-it-was-tuned" className="text-primary underline underline-offset-2">
+                  How search was tuned
+                </Link>
+                : how it was measured and improved, one change at a time.
+              </p>
             </header>
 
             {overview.isError ? (

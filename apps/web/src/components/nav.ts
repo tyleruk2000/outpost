@@ -89,6 +89,7 @@ export const knowledgeNav: NavItem[] = [
     children: [
       { to: "/search/how-it-works", label: "How search works", icon: Waypoints, keywords: "ranking explain why found" },
       { to: "/search/how-meaning-works", label: "How search by meaning works", icon: Waypoints, keywords: "semantic embedding vectors" },
+      { to: "/search/how-it-was-tuned", label: "How search was tuned", icon: Waypoints, keywords: "evaluation ndcg bm25 ranking weights" },
     ],
   },
   {

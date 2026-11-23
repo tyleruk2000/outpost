@@ -241,7 +241,7 @@ Reference archives (`modules/kiwix`):
 
 ### Measuring search
 
-`scripts/search-eval/queries.json` holds 50 household questions, each with graded answers
+`scripts/search-eval/queries.json` holds 56 household questions, each with graded answers
 in the fixture library (`library.mjs`, item id → 0–3) and patterns for grading any
 library's results. `reference.json` is what 37 reference collections answered to them,
 with each collection's description, category, tags and language, recorded from a real
