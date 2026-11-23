@@ -141,7 +141,19 @@ export default function SettingsPage() {
 
   return (
     <Page>
-      <PageHeader title="Settings" under="/settings" />
+      <PageHeader
+        title="Settings"
+        under="/settings"
+        description={
+          <>
+            The defaults suit most households. Worth doing early: a{" "}
+            <a href="#backup" className="text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2">
+              backup
+            </a>
+            , kept somewhere other than this device.
+          </>
+        }
+      />
       <JumpLinks label="Sections of Settings" groups={GROUPS} className="mb-8" />
 
       <SettingsSection id="appearance" title="Appearance" description="Saved in this browser, so each device can have its own.">

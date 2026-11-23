@@ -156,7 +156,8 @@ export function PipelineDiagram({ overview, trace }: { overview: ExplainOverview
   const texts = nodeTexts(overview, trace);
 
   return (
-    <div ref={ref}>
+    // Clipped at its own edge: with the text at 200% a label drawn past the figure never makes the page scroll sideways.
+    <div ref={ref} className="overflow-x-clip">
       <svg
         width={layout.width}
         height={layout.height}
@@ -170,7 +171,11 @@ export function PipelineDiagram({ overview, trace }: { overview: ExplainOverview
         </defs>
         {layout.bands.map((band) => (
           <text key={band.id} x={band.x} y={band.y} className="fill-ink-muted text-[0.78125rem]">
-            {band.id === "before" ? "Beforehand, once for each document and page" : "Then, for every question"}
+            {band.id === "before"
+              ? layout.width >= 420
+                ? "Beforehand, once for each document and page"
+                : "Beforehand, for each document"
+              : "Then, for every question"}
           </text>
         ))}
         {layout.edges.map((edge) => (

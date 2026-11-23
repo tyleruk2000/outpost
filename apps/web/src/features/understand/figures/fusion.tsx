@@ -468,7 +468,7 @@ export function ContributionBars({ whatIf }: { whatIf: WhatIf }) {
             <div className="min-w-0">
               <p className="flex flex-wrap items-baseline justify-between gap-x-4 text-small">
                 <span className="min-w-0 truncate font-medium text-ink">{passageName(row.hit)}</span>
-                <span className="tabular shrink-0 text-ink-muted">
+                <span className="tabular min-w-0 text-ink-muted">
                   {row.keywordRank !== null && row.semanticRank !== null
                     ? `${ordinal(row.keywordRank)} by words, ${ordinal(row.semanticRank)} by meaning`
                     : row.keywordRank !== null

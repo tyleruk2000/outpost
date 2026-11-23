@@ -156,6 +156,11 @@ desktop at 1280 px.
 | See downloads and tasks | 2 (More, Downloads and tasks) | 2, and the lamp on More while one runs | 1 | 1 | |
 | Change a setting | 2 (More, Settings) | 2 | 1 | 1 | |
 | Open Help | 2 (More, Help at the foot of the sheet) | 1 (on the first visit) | 1 | 1 | A line under Start here |
+| Make a backup, from Settings | 1 press after scrolling 9,800 px (or a press in 19 ungrouped links) | 1 (the line under the title), or 5,300 px down | 1 after 6,200 px | 1 after 3,300 px | Settings in five groups, what most people come for first; a line under the title |
+| Turn a setting's switch | The 24 px switch | The switch or its name | The switch | The switch or its name | A row's name labels its one switch |
+| Find a guide in Help | Scroll a list of 60 | Type a word (0 presses) | Scroll | Type a word | A field over the guides |
+| Reach what Server status says needs attention | Scroll past every line that is fine | 1 (a link under the sentence) | Scroll | 1 | |
+| Read search results on a phone | First result 790 px down for "water" | About 560 px down | | | The explainer links give way to results on a phone; Go to's sentences one line each |
 
 On a tablet at 768 px every screen gained 196 px of width; the full sidebar is one press
 away (the button at the top of the rail, or Ctrl \\).
