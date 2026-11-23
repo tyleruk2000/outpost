@@ -472,6 +472,22 @@ not legal advice.
   openstreetmap.org/copyright, printed out on paper. Hence "Routes: © OpenStreetMap
   contributors", linked, in the map's credits while a found route is drawn.
 
+### Road routes
+
+Read on 2026-11-22 for road routes ([road-routes.md](road-routes.md)). Nothing is asked of
+any server while planning: only installing a network downloads, on a press.
+
+| # | Source | How Outpost uses it | Licence and terms |
+| --- | --- | --- | --- |
+| D1 | Geofabrik extracts (as R4 and R18) | **Downloaded on request**, one country or region a press, its `.osm.pbf` checked against Geofabrik's MD5, read for the main roads (motorway to secondary and their slip roads, motorway junctions, signs, car ferries and the Channel Tunnel shuttle) and then deleted unless you keep it. Never fetched again by itself. | ODbL 1.0, "Data processed by Geofabrik GmbH and created by OpenStreetMap Contributors"; "Download responsibly!" as R18. Credited on every route: "Road data © OpenStreetMap contributors, Open Database Licence (ODbL) 1.0, from Geofabrik's extracts", with the data's date. A route's directions and line are an extract of the database and keep the notice, as a found route does ([above](#what-the-open-database-licence-asks-of-a-found-route)). |
+| D2 | GOV.UK, [Speed limits](https://www.gov.uk/speed-limits) | **Read** for the legal limits the speed table sits under: 70 mph motorways and dual carriageways, 60 mph single carriageways, 30 mph built-up areas (20 mph in Wales). | Open Government Licence v3.0. |
+| D3 | OpenStreetMap wiki, [Default speed limits](https://wiki.openstreetmap.org/wiki/Default_speed_limits) | **Read** for other countries' limits (motorways in France, Austria, Italy, Luxembourg and the Netherlands 130 km/h, Switzerland 120, Germany advisory 130; France 110 on dual carriageways and 80 outside towns) and for reading `maxspeed` codes such as `FR:rural`. | CC BY-SA 2.0; the figures are facts from the national laws it cites. |
+| D4 | Natural Earth 1:50m admin-0 countries, v5.1.2 | **Bundled**, simplified to about 3 km (423 kB): which country a point is in, to say which network is missing. Same file as R1 (sha256 `3e458fc0…7fdeb`). | Public domain. |
+
+The typical speeds and ceilings (in [road-routes.md](road-routes.md#how-fast)) are
+Outpost's assumptions. The shuttle's 35 minutes is its `duration` as mapped in
+OpenStreetMap; a ferry's time is its own `duration`, or 28 km/h where none is mapped.
+
 ### Map file formats
 
 What the KML, KMZ and GeoJSON import follows (read 2026-11-21):

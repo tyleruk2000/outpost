@@ -68,6 +68,8 @@ DERIVED_FOLDERS.push("covers");
 DERIVED_FOLDERS.push("exports");
 // The scratch copy of a backup a test restore (modules/backup/restore-test.ts) left when Outpost stopped half-way.
 DERIVED_FOLDERS.push("restore-test");
+// Road networks (modules/roads): files built from extracts, listed in road_networks, which erasing empties.
+DERIVED_FOLDERS.push("roads");
 
 interface RemovePayload extends Record<string, unknown> {
   scope: "items" | "downloaded";
@@ -585,6 +587,8 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
       maps.annotations.removeTrack(track.id);
       personal.routes += 1;
     }
+    // Saved road routes count as routes; the road networks go too (their files with the data folder's).
+    personal.routes += await ctx.services.roads.eraseAll();
     // Contacts are other people's details as well as the person's own: every one goes, with its place in search.
     personal.contacts = ctx.services.contacts.eraseAll();
     // Conversations with a model are the person's own words, and a reply being written is stopped first.

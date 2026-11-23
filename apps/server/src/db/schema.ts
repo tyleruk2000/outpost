@@ -609,6 +609,47 @@ export const tracks = sqliteTable("tracks", {
   updatedAt: updatedAt(),
 });
 
+// ── Road routes ─────────────────────────────────────────────────────────────
+
+/** Installed main-roads networks (modules/roads): the network itself is a file in the data directory. */
+export const roadNetworks = sqliteTable("road_networks", {
+  id: id(),
+  /** Geofabrik's region id, or null for a file the person brought. */
+  regionId: text("region_id"),
+  name: text("name").notNull(),
+  country: text("country"),
+  dataDate: text("data_date"),
+  /** The network file, relative to the data directory ("roads/<id>.roads"). */
+  relPath: text("rel_path").notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  nodes: integer("nodes").notNull(),
+  edges: integer("edges").notNull(),
+  crossings: integer("crossings").notNull().default(0),
+  /** Where the extract came from: Geofabrik's address, or "Your file". */
+  source: text("source").notNull(),
+  bbox: json<[number, number, number, number]>("bbox"),
+  /** The extract read: kept (where) or deleted once read. */
+  extract: json<{ kept: boolean; locationId: string | null; relPath: string | null; bytes: number }>("extract").notNull(),
+  /** How the build went: seconds, peak memory, ways read. */
+  stats: json<Record<string, unknown>>("stats"),
+  builtAt: integer("built_at").notNull(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+/** Road routes a person planned and saved, with their directions, so they print with no network loaded. */
+export const roadRoutes = sqliteTable("road_routes", {
+  id: id(),
+  name: text("name").notNull(),
+  fromTo: text("from_to").notNull().default(""),
+  distanceM: real("distance_m").notNull(),
+  durationS: real("duration_s").notNull(),
+  /** The whole planned route (`RoadRouteResult` in the shared package). */
+  route: json<Record<string, unknown>>("route").notNull(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
 // ── Contacts ────────────────────────────────────────────────────────────────
 
 /**
